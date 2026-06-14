@@ -1,0 +1,18 @@
+<% content_for :title, "Fulfillment" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Fulfillment #{@fulfillment.delivery_id}") %>
+
+<table class="mc-table max-w-2xl mb-4">
+  <tbody>
+    <tr><th>Status</th><td><%= @fulfillment.status %></td></tr>
+    <tr><th>Order</th><td><%= @fulfillment.order.order_number %></td></tr>
+    <tr><th>Item</th><td><%= @fulfillment.order_item.product_name %></td></tr>
+    <tr><th>Attempts</th><td><%= @fulfillment.attempts_count %></td></tr>
+    <% if @fulfillment.last_error.present? %>
+      <tr><th>Last error</th><td class="text-sm" style="color: var(--mc-danger)"><%= @fulfillment.last_error %></td></tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= button_to "Retry fulfillment", admin_store_fulfillment_path(@fulfillment), method: :patch, params: { retry: "1" }, class: "mc-btn mc-btn-primary", form: { data: { turbo_confirm: "Retry this fulfillment?" } } %>
+<%= link_to "Back", admin_store_fulfillments_path, class: "mc-btn no-underline" %>

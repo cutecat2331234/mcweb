@@ -1,0 +1,16 @@
+<% content_for :title, "Report content" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Report content") %>
+
+<%= form_with url: forum_reports_path, method: :post, class: "max-w-lg space-y-4" do |f| %>
+  <%= hidden_field_tag "report[reportable_type]", params[:reportable_type] %>
+  <%= hidden_field_tag "report[reportable_id]", params[:reportable_id] %>
+  <div>
+    <label class="mc-label" for="report_reason">Reason</label>
+    <textarea name="report[reason]" id="report_reason" rows="4" class="mc-input w-full" required></textarea>
+  </div>
+  <div class="flex gap-2">
+    <%= link_to "Cancel", :back, class: "mc-btn no-underline" %>
+    <%= f.submit "Submit report", class: "mc-btn mc-btn-primary" %>
+  </div>
+<% end %>

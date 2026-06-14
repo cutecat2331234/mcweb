@@ -18,5 +18,9 @@ module Community
 
       user && perms.any? { |role_key| user.permission?(role_key) }
     end
+
+    def to_param
+      slug
+    end
   end
 end

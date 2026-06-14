@@ -3,7 +3,7 @@
 module Admin
   module Store
     class OrdersController < BaseController
-      before_action -> { require_permission("admin.store.manage") }
+      before_action -> { require_permission("store.orders.read") }
       before_action :set_order, only: %i[show update]
 
       def index

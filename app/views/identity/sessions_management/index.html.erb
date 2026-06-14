@@ -1,0 +1,34 @@
+<% content_for :title, "Active sessions" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Active sessions", subtitle: "Manage devices signed in to your account") %>
+
+<% if @sessions.any? %>
+  <table class="mc-table">
+    <thead>
+      <tr>
+        <th>IP</th>
+        <th>User agent</th>
+        <th>Last active</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @sessions.each do |session| %>
+        <tr>
+          <td><%= session.ip_address %></td>
+          <td class="text-sm" style="color: var(--mc-fg-muted)"><%= truncate(session.user_agent.to_s, length: 60) %></td>
+          <td><%= l(session.last_active_at || session.created_at, format: :short) %></td>
+          <td>
+            <% unless session.id == current_session&.id %>
+              <%= button_to "Revoke", identity_sessions_management_path(session), method: :delete, class: "mc-btn mc-btn-danger text-xs" %>
+            <% else %>
+              <span class="text-xs" style="color: var(--mc-fg-muted)">Current</span>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "No active sessions.", variant: :info) %>
+<% end %>

@@ -21,6 +21,7 @@ end
 
 class InstallationLockTest < ActiveSupport::TestCase
   test "setup lock prevents reopening" do
+    InstallationLock.unlock!
     user = create_user
     assert_not InstallationLock.locked?
     InstallationLock.lock!(user: user)

@@ -1,0 +1,48 @@
+<% content_for :title, @topic.title %>
+
+<%= render Ui::BreadcrumbComponent.new(items: [
+  { label: "Home", href: root_path },
+  { label: "Forum", href: forum_sections_path },
+  { label: @topic.section.name, href: forum_section_path(@topic.section) },
+  { label: @topic.title, current: true }
+]) %>
+
+<%= render Ui::PageHeaderComponent.new(title: @topic.title, subtitle: "by #{@topic.user.username}") %>
+
+<% if @topic.locked? %>
+  <%= render Ui::AlertComponent.new(message: "此主题已锁定，无法回复。", variant: :warning) %>
+<% end %>
+
+<table class="mc-table">
+  <thead>
+    <tr>
+      <th style="width: 4rem">#</th>
+      <th>Author</th>
+      <th>Content</th>
+      <th>Time</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% @posts.each_with_index do |post, index| %>
+      <tr id="post-<%= post.floor_number %>">
+        <td><%= post.floor_number %></td>
+        <td><%= post.user.username %></td>
+        <td><%= simple_format(post.body) %></td>
+        <td><%= l(post.created_at, format: :short) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<% if logged_in? && !@topic.locked? %>
+  <hr class="mc-divider">
+  <h2 class="text-sm font-semibold mb-2">Reply</h2>
+  <%= form_with url: forum_posts_path, method: :post, class: "max-w-2xl space-y-3" do |f| %>
+    <%= hidden_field_tag "post[topic_id]", @topic.public_id %>
+    <div>
+      <label class="mc-label" for="post_body">Message</label>
+      <textarea name="post[body]" id="post_body" rows="6" class="mc-input w-full" required></textarea>
+    </div>
+    <%= f.submit "Post reply", class: "mc-btn mc-btn-primary" %>
+  <% end %>
+<% end %>

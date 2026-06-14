@@ -14,12 +14,12 @@ module Commerce
 
     def new
       @cart = Commerce::Cart.find_by(user: current_user)
-      redirect_to commerce_cart_path, alert: "Your cart is empty." if @cart.nil? || @cart.empty?
+      redirect_to store_cart_path, alert: "Your cart is empty." if @cart.nil? || @cart.empty?
     end
 
     def create
       cart = Commerce::Cart.find_by(user: current_user)
-      return redirect_to commerce_cart_path, alert: "Your cart is empty." if cart.nil? || cart.empty?
+      return redirect_to store_cart_path, alert: "Your cart is empty." if cart.nil? || cart.empty?
 
       result = Commerce::CreateOrder.call(
         cart: cart,
@@ -28,9 +28,9 @@ module Commerce
       )
 
       if result.success?
-        redirect_to commerce_order_path(result.value), notice: "Order created."
+        redirect_to store_order_path(result.value), notice: "Order created."
       else
-        redirect_to new_commerce_order_path, alert: service_error_message(result)
+        redirect_to new_store_order_path, alert: service_error_message(result)
       end
     end
 

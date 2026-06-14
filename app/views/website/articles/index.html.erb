@@ -1,0 +1,22 @@
+<% content_for :title, "Blog" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "News & announcements") %>
+
+<% if @articles.any? %>
+  <table class="mc-table">
+    <thead>
+      <tr><th>Title</th><th>Type</th><th>Published</th></tr>
+    </thead>
+    <tbody>
+      <% @articles.each do |article| %>
+        <tr>
+          <td><%= link_to article.title, website_article_path(article), class: "no-underline font-medium" %></td>
+          <td><%= article.article_type %></td>
+          <td><%= article.published_at ? l(article.published_at, format: :short) : "—" %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "No articles published.", variant: :info) %>
+<% end %>

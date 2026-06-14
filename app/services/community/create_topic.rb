@@ -17,7 +17,7 @@ module Community
 
       topic = Community::Topic.create!(
         public_id: generate_public_id,
-        forum_section: @section,
+        section: @section,
         user: @user,
         title: @title,
         status: "published",
@@ -64,16 +64,12 @@ module Community
     end
 
     def muted_in_section?
-      Community::Mute
-        .where(user: @user)
-        .where(forum_section: [ @section, nil ])
-        .where("expires_at IS NULL OR expires_at > ?", Time.current)
-        .exists?
+      Community::Mute.muted?(@user, section: @section)
     end
 
     def duplicate_title?
       Community::Topic
-        .where(user: @user, forum_section: @section)
+        .where(user: @user, forum_section_id: @section.id)
         .where("created_at > ?", 1.hour.ago)
         .where("LOWER(title) = ?", @title.downcase)
         .exists?

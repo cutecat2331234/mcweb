@@ -3,7 +3,7 @@
 module Admin
   module System
     class SettingsController < BaseController
-      before_action -> { require_permission("admin.system.settings") }
+      before_action -> { require_permission("system.settings.manage") }
 
       def show
         @settings = SiteSetting.order(:key)

@@ -1,0 +1,50 @@
+<% content_for :title, "Cart" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Shopping cart") %>
+
+<% if @cart_items.any? %>
+  <table class="mc-table">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Qty</th>
+        <th>Unit price</th>
+        <th>Total</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @cart_items.each do |item| %>
+        <tr>
+          <td><%= item.product.name %><% if item.variant %> — <%= item.variant.name %><% end %></td>
+          <td>
+            <%= form_with url: store_cart_path, method: :patch, class: "inline-flex gap-1" do %>
+              <%= hidden_field_tag :item_id, item.id %>
+              <input type="number" name="quantity" value="<%= item.quantity %>" min="1" class="mc-input w-16">
+              <button type="submit" class="mc-btn text-xs">Update</button>
+            <% end %>
+          </td>
+          <td><%= number_to_currency((item.variant&.price_cents || item.product.price_cents) / 100.0, unit: "¥") %></td>
+          <td><%= number_to_currency(item.total_cents / 100.0, unit: "¥") %></td>
+          <td>
+            <%= button_to "Remove", store_cart_path, method: :patch, params: { item_id: item.id, quantity: 0 }, class: "mc-btn mc-btn-danger text-xs" %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <hr class="mc-divider">
+
+  <p class="font-medium mb-4">Total: <%= number_to_currency(@cart.subtotal_cents / 100.0, unit: "¥") %></p>
+
+  <% if logged_in? %>
+    <%= link_to "Proceed to checkout", store_checkout_path, class: "mc-btn mc-btn-primary no-underline" %>
+  <% else %>
+    <%= render Ui::AlertComponent.new(message: "Please sign in to checkout.", variant: :warning) %>
+    <%= link_to "Sign in", identity_sign_in_path, class: "mc-btn no-underline" %>
+  <% end %>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "Your cart is empty.", variant: :info) %>
+  <%= link_to "Browse products", store_products_path, class: "mc-btn no-underline" %>
+<% end %>

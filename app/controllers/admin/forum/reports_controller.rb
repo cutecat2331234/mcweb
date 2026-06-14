@@ -3,7 +3,7 @@
 module Admin
   module Forum
     class ReportsController < BaseController
-      before_action -> { require_permission("admin.forum.moderate") }
+      before_action -> { require_permission("forum.topics.lock") }
       before_action :set_report, only: %i[show update]
 
       def index

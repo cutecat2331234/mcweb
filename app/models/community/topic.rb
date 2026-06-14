@@ -21,11 +21,11 @@ module Community
       increment!(:views_count)
     end
 
-    def lock!
+    def lock_topic!
       update!(locked: true)
     end
 
-    def unlock!
+    def unlock_topic!
       update!(locked: false)
     end
   end

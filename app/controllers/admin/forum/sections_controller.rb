@@ -3,7 +3,7 @@
 module Admin
   module Forum
     class SectionsController < BaseController
-      before_action -> { require_permission("admin.forum.manage") }
+      before_action -> { require_permission("forum.sections.manage") }
       before_action :set_section, only: %i[show edit update destroy]
 
       def index

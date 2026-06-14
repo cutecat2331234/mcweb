@@ -1,0 +1,37 @@
+<% content_for :title, "Search" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Forum search") %>
+
+<%= form_with url: forum_search_path, method: :get, class: "flex gap-2 mb-4 max-w-lg" do %>
+  <input type="search" name="q" value="<%= h(@query) %>" class="mc-input flex-1" placeholder="Search topics and posts" required>
+  <button type="submit" class="mc-btn mc-btn-primary">Search</button>
+<% end %>
+
+<% if @query.present? %>
+  <h2 class="text-sm font-semibold mb-2">Topics</h2>
+  <% if @topics&.any? %>
+    <ul class="mc-list mb-4">
+      <% @topics.each do |topic| %>
+        <li class="mc-list-item">
+          <%= link_to topic.title, forum_topic_path(topic), class: "no-underline font-medium" %>
+          <span class="text-xs ml-2" style="color: var(--mc-fg-muted)"><%= topic.section.name %></span>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <%= render Ui::AlertComponent.new(message: "No topics found.", variant: :info) %>
+  <% end %>
+
+  <h2 class="text-sm font-semibold mb-2">Posts</h2>
+  <% if @posts&.any? %>
+    <ul class="mc-list">
+      <% @posts.each do |post| %>
+        <li class="mc-list-item">
+          <%= link_to truncate(post.body, length: 80), forum_topic_path(post.topic, anchor: "post-#{post.floor_number}"), class: "no-underline" %>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <%= render Ui::AlertComponent.new(message: "No posts found.", variant: :info) %>
+  <% end %>
+<% end %>

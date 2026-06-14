@@ -1,0 +1,46 @@
+<% content_for :title, @section.name %>
+
+<%= render Ui::BreadcrumbComponent.new(items: [
+  { label: "Home", href: root_path },
+  { label: "Forum", href: forum_sections_path },
+  { label: @section.name, current: true }
+]) %>
+
+<%= render Ui::PageHeaderComponent.new(
+  title: @section.name,
+  subtitle: @section.description
+) do %>
+  <% if logged_in? %>
+    <%= link_to "New topic", new_forum_topic_path(section_id: @section.slug), class: "mc-btn mc-btn-primary no-underline" %>
+  <% end %>
+<% end %>
+
+<% if @topics.any? %>
+  <table class="mc-table">
+    <thead>
+      <tr>
+        <th>Topic</th>
+        <th>Author</th>
+        <th>Replies</th>
+        <th>Last post</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @topics.each do |topic| %>
+        <tr>
+          <td>
+            <% if topic.pinned? %><span class="text-xs" style="color: var(--mc-fg-muted)">[置顶]</span> <% end %>
+            <% if topic.locked? %><span class="text-xs" style="color: var(--mc-fg-muted)">[锁定]</span> <% end %>
+            <%= link_to topic.title, forum_topic_path(topic), class: "font-medium no-underline" %>
+          </td>
+          <td><%= topic.user&.username %></td>
+          <td><%= topic.replies_count %></td>
+          <td><%= topic.last_posted_at ? l(topic.last_posted_at, format: :short) : "—" %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+  <%= render Ui::PaginationComponent.new(pagy: @pagy) %>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "此分区暂无主题。", variant: :info) %>
+<% end %>

@@ -1,0 +1,15 @@
+<% content_for :title, @user.username %>
+
+<%= render Ui::PageHeaderComponent.new(title: @user.display_name.presence || @user.username, subtitle: @user.email) %>
+
+<table class="mc-table max-w-lg">
+  <tbody>
+    <tr><th>Username</th><td><%= @user.username %></td></tr>
+    <tr><th>Status</th><td><%= @user.status %></td></tr>
+    <tr><th>Roles</th><td><%= @user.roles.pluck(:name).join(", ") %></td></tr>
+    <tr><th>Email verified</th><td><%= @user.email_verified? ? "Yes" : "No" %></td></tr>
+    <tr><th>Registered</th><td><%= l(@user.created_at, format: :long) %></td></tr>
+  </tbody>
+</table>
+
+<%= link_to "Back", admin_users_path, class: "mc-btn mt-4 no-underline" %>

@@ -1,0 +1,20 @@
+<% content_for :title, "Products" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Store products") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Name</th><th>Type</th><th>Price</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @products.each do |product| %>
+      <tr>
+        <td><%= product.name %></td>
+        <td><%= product.product_type %></td>
+        <td><%= number_to_currency(product.price_cents / 100.0, unit: "¥") %></td>
+        <td><%= product.status %></td>
+        <td><%= link_to "View", admin_store_product_path(product), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

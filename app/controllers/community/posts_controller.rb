@@ -16,9 +16,9 @@ module Community
       )
 
       if result.success?
-        redirect_to community_topic_path(@topic, anchor: "post-#{result.value.id}")
+        redirect_to forum_topic_path(@topic, anchor: "post-#{result.value.id}")
       else
-        redirect_to community_topic_path(@topic), alert: service_error_message(result)
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
     end
 
@@ -26,9 +26,9 @@ module Community
       authorize_post_owner!
 
       if @post.edit_body!(post_params[:body], editor: current_user)
-        redirect_to community_topic_path(@post.topic), notice: "Post updated."
+        redirect_to forum_topic_path(@post.topic), notice: "Post updated."
       else
-        redirect_to community_topic_path(@post.topic), alert: "Unable to update post."
+        redirect_to forum_topic_path(@post.topic), alert: "Unable to update post."
       end
     end
 
@@ -37,13 +37,14 @@ module Community
 
       topic = @post.topic
       @post.soft_delete!
-      redirect_to community_topic_path(topic), notice: "Post deleted."
+      redirect_to forum_topic_path(topic), notice: "Post deleted."
     end
 
     private
 
     def set_topic
-      @topic = Community::Topic.find_by!(public_id: params[:topic_id])
+      topic_id = params[:topic_id].presence || params.dig(:post, :topic_id)
+      @topic = Community::Topic.find_by!(public_id: topic_id)
     end
 
     def set_post
@@ -51,7 +52,7 @@ module Community
     end
 
     def post_params
-      params.expect(post: %i[body quoted_post_id])[:post]
+      params.require(:post).permit(:body, :quoted_post_id)
     end
 
     def find_quoted_post
@@ -61,9 +62,9 @@ module Community
     end
 
     def authorize_post_owner!
-      return if current_user&.id == @post.user_id || current_user&.permission?("community.moderate")
+      return if current_user&.id == @post.user_id || current_user&.permission?("forum.topics.lock")
 
-      redirect_to community_topic_path(@post.topic), alert: "You are not authorized to modify this post."
+      redirect_to forum_topic_path(@post.topic), alert: "You are not authorized to modify this post."
     end
   end
 end

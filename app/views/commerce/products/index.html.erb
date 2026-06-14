@@ -21,7 +21,7 @@
       <% @products.each do |product| %>
         <tr>
           <td>
-            <span class="font-medium"><%= product.name %></span>
+            <%= link_to product.name, store_product_path(product), class: "font-medium no-underline" %>
             <span class="text-xs ml-2" style="color: var(--mc-fg-subtle)"><%= product.slug %></span>
           </td>
           <td><%= product.category&.name || "—" %></td>

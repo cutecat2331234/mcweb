@@ -25,9 +25,9 @@ module Commerce
         end
       end
 
-      redirect_to commerce_cart_path, notice: "Cart updated."
+      redirect_to store_cart_path, notice: "Cart updated."
     rescue ActiveRecord::RecordNotFound, ActiveRecord::RecordInvalid => e
-      redirect_to commerce_cart_path, alert: e.message
+      redirect_to store_cart_path, alert: e.message
     end
 
     private

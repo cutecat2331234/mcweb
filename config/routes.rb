@@ -1,6 +1,8 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
+  mount MissionControl::Jobs::Engine, at: "/jobs"
+
   root "website/home#index"
 
   namespace :setup, path: "setup" do
@@ -22,24 +24,24 @@ Rails.application.routes.draw do
   namespace :admin do
     root "dashboard#index"
     resources :users, only: %i[index show]
-    resources :roles, only: %i[index]
-    resources :audit_logs, only: %i[index]
+    resources :roles, only: %i[index show]
+    resources :audit_logs, only: %i[index show]
     namespace :forum do
-      resources :sections, only: %i[index]
-      resources :topics, only: %i[index]
-      resources :reports, only: %i[index]
+      resources :sections, only: %i[index show]
+      resources :topics, only: %i[index show]
+      resources :reports, only: %i[index show]
     end
     namespace :store do
-      resources :products, only: %i[index]
-      resources :orders, only: %i[index]
-      resources :fulfillments, only: %i[index]
+      resources :products, only: %i[index show]
+      resources :orders, only: %i[index show]
+      resources :fulfillments, only: %i[index show update]
     end
     namespace :website do
-      resources :pages, only: %i[index]
-      resources :articles, only: %i[index]
+      resources :pages, only: %i[index show]
+      resources :articles, only: %i[index show]
     end
     namespace :minecraft do
-      resources :servers, only: %i[index]
+      resources :servers, only: %i[index show]
     end
     namespace :system do
       resource :settings, only: %i[show update]
@@ -58,8 +60,8 @@ Rails.application.routes.draw do
   scope module: :commerce, path: "store", as: :store do
     resources :products, only: %i[index show]
     resource :cart, only: %i[show update]
-    resources :orders, only: %i[index show]
-    resource :checkout, only: %i[show create]
+    resources :orders, only: %i[index show create]
+    resource :checkout, only: %i[show create], controller: "checkout"
     post "webhooks/:provider", to: "webhooks#create", as: :webhook
   end
 

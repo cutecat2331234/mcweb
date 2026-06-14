@@ -1,0 +1,29 @@
+<% content_for :title, "Order #{@order.order_number}" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Order #{@order.order_number}", subtitle: "Status: #{@order.status}") %>
+
+<table class="mc-table mb-4">
+  <thead>
+    <tr><th>Item</th><th>Qty</th><th>Price</th></tr>
+  </thead>
+  <tbody>
+    <% @order.items.each do |item| %>
+      <tr>
+        <td><%= item.product_name %><% if item.variant_name.present? %> — <%= item.variant_name %><% end %></td>
+        <td><%= item.quantity %></td>
+        <td><%= number_to_currency(item.total_cents / 100.0, unit: "¥") %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<p class="font-medium mb-4">Total: <%= number_to_currency(@order.total_cents / 100.0, unit: "¥") %></p>
+
+<% if @order.pending? || @order.awaiting_payment? %>
+  <%= form_with url: store_checkout_path, method: :post, class: "inline" do %>
+    <%= hidden_field_tag :order_id, @order.public_id %>
+    <button type="submit" class="mc-btn mc-btn-primary">Pay</button>
+  <% end %>
+<% end %>
+
+<%= link_to "Back to orders", store_orders_path, class: "mc-btn no-underline" %>

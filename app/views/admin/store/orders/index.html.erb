@@ -1,0 +1,21 @@
+<% content_for :title, "Orders" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Store orders") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Order</th><th>User</th><th>Status</th><th>Total</th><th>Date</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @orders.each do |order| %>
+      <tr>
+        <td><%= order.order_number %></td>
+        <td><%= order.user.username %></td>
+        <td><%= order.status %></td>
+        <td><%= number_to_currency(order.total_cents / 100.0, unit: "¥") %></td>
+        <td><%= l(order.created_at, format: :short) %></td>
+        <td><%= link_to "View", admin_store_order_path(order), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

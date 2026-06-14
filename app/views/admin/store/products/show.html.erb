@@ -1,0 +1,16 @@
+<% content_for :title, @product.name %>
+
+<%= render Ui::PageHeaderComponent.new(title: @product.name) %>
+
+<table class="mc-table max-w-2xl">
+  <tbody>
+    <tr><th>Slug</th><td><%= @product.slug %></td></tr>
+    <tr><th>Type</th><td><%= @product.product_type %></td></tr>
+    <tr><th>Price</th><td><%= number_to_currency(@product.price_cents / 100.0, unit: "¥") %></td></tr>
+    <tr><th>Status</th><td><%= @product.status %></td></tr>
+    <tr><th>Stock</th><td><%= @product.stock || "Unlimited" %></td></tr>
+    <tr><th>Description</th><td><%= @product.description %></td></tr>
+  </tbody>
+</table>
+
+<%= link_to "Back", admin_store_products_path, class: "mc-btn mt-4 no-underline" %>

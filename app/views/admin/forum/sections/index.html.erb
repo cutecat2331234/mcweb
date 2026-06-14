@@ -1,0 +1,19 @@
+<% content_for :title, "Forum sections" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Forum sections") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Name</th><th>Slug</th><th>Category</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @sections.each do |section| %>
+      <tr>
+        <td><%= section.name %></td>
+        <td><%= section.slug %></td>
+        <td><%= section.category&.name %></td>
+        <td><%= link_to "View", admin_forum_section_path(section), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

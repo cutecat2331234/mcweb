@@ -1,0 +1,13 @@
+<% content_for :title, @article.title %>
+
+<%= render Ui::PageHeaderComponent.new(title: @article.title) %>
+
+<table class="mc-table max-w-lg mb-4">
+  <tbody>
+    <tr><th>Slug</th><td><%= @article.slug %></td></tr>
+    <tr><th>Type</th><td><%= @article.article_type %></td></tr>
+    <tr><th>Status</th><td><%= @article.status %></td></tr>
+  </tbody>
+</table>
+
+<%= link_to "Back", admin_website_articles_path, class: "mc-btn no-underline" %>

@@ -1,0 +1,15 @@
+<% content_for :title, @server.name %>
+
+<%= render Ui::PageHeaderComponent.new(title: @server.name) %>
+
+<table class="mc-table max-w-lg">
+  <tbody>
+    <tr><th>Address</th><td><%= @server.address %></td></tr>
+    <tr><th>Status</th><td><%= @server.online? ? "Online" : "Offline" %></td></tr>
+    <tr><th>Players</th><td><%= @server.online_players %> / <%= @server.max_players %></td></tr>
+    <tr><th>Version</th><td><%= @server.version || "—" %></td></tr>
+    <tr><th>Last heartbeat</th><td><%= @server.last_heartbeat_at ? l(@server.last_heartbeat_at, format: :long) : "—" %></td></tr>
+  </tbody>
+</table>
+
+<%= link_to "Back", admin_minecraft_servers_path, class: "mc-btn mt-4 no-underline" %>

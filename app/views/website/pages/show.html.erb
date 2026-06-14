@@ -1,0 +1,24 @@
+<% content_for :title, @page.title %>
+
+<% content_for :head do %>
+  <% if @page.seo.present? %>
+    <meta name="description" content="<%= h(@page.seo["description"]) %>">
+  <% end %>
+<% end %>
+
+<%= render Ui::PageHeaderComponent.new(title: @page.title) %>
+
+<% @page.blocks.visible_blocks.ordered.each do |block| %>
+  <section class="mb-6">
+    <% case block.block_type %>
+    <% when "hero" %>
+      <h2 class="text-2xl font-bold mb-2"><%= block.settings["headline"] %></h2>
+      <p style="color: var(--mc-fg-muted)"><%= block.settings["subheadline"] %></p>
+    <% when "rich_text" %>
+      <%= sanitize(block.settings["html"].to_s, tags: %w[p br strong em ul ol li a h2 h3], attributes: %w[href]) %>
+    <% else %>
+      <p class="text-sm" style="color: var(--mc-fg-muted)">[<%= block.block_type %>]</p>
+    <% end %>
+  </section>
+  <hr class="mc-divider">
+<% end %>

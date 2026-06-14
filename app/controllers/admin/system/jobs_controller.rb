@@ -3,10 +3,10 @@
 module Admin
   module System
     class JobsController < BaseController
-      before_action -> { require_permission("admin.system.jobs") }
+      before_action -> { require_permission("system.jobs.read") }
 
       def index
-        redirect_to "/admin/jobs/engine", allow_other_host: false
+        redirect_to "/jobs", allow_other_host: false
       end
     end
   end

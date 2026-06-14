@@ -4,7 +4,7 @@ module Minecraft
   class LinkController < ApplicationController
     before_action :require_login
 
-    def new
+    def show
     end
 
     def create
@@ -17,7 +17,7 @@ module Minecraft
         redirect_to root_path, notice: "Minecraft account linked successfully."
       else
         flash.now[:alert] = service_error_message(result)
-        render :new, status: :unprocessable_entity
+        render :show, status: :unprocessable_entity
       end
     end
 

@@ -8,8 +8,8 @@
       <%= link_to "Store", store_products_path,
           class: "mc-nav-link #{'mc-nav-link-active' if controller_path.start_with?('commerce')}" %>
       <% if current_user %>
-        <%= link_to "Account", "#",
-            class: "mc-nav-link" %>
+        <%= link_to "Orders", store_orders_path, class: "mc-nav-link" %>
+        <%= link_to "Link MC", minecraft_link_path, class: "mc-nav-link" %>
       <% end %>
     </nav>
   </div>

@@ -1,0 +1,18 @@
+<% content_for :title, "System settings" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "System settings") %>
+
+<%= form_with url: admin_system_settings_path, method: :patch, class: "max-w-lg space-y-4" do %>
+  <% @settings.each do |setting| %>
+    <div>
+      <label class="mc-form-label" for="setting_<%= setting.key.parameterize %>"><%= setting.key %></label>
+      <input type="text" name="settings[<%= setting.key %>]" id="setting_<%= setting.key.parameterize %>" value="<%= h(setting.value.is_a?(String) ? setting.value : setting.value.to_json) %>" class="mc-input w-full">
+    </div>
+  <% end %>
+  <button type="submit" class="mc-btn mc-btn-primary">Save settings</button>
+<% end %>
+
+<p class="mt-4 text-sm" style="color: var(--mc-fg-muted)">
+  <%= link_to "Background jobs", admin_system_jobs_path, class: "no-underline" %> ·
+  <%= link_to "Health check", health_ready_path, class: "no-underline" %>
+</p>

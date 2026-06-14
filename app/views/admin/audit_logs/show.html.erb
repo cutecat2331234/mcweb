@@ -1,0 +1,18 @@
+<% content_for :title, "Audit log" %>
+
+<%= render Ui::PageHeaderComponent.new(title: @audit_log.action) %>
+
+<table class="mc-table max-w-2xl">
+  <tbody>
+    <tr><th>Actor</th><td><%= @audit_log.actor&.username || "—" %></td></tr>
+    <tr><th>Resource</th><td><%= @audit_log.resource_type %> #<%= @audit_log.resource_id %></td></tr>
+    <tr><th>IP</th><td><%= @audit_log.ip_address %></td></tr>
+    <tr><th>User agent</th><td class="text-sm"><%= @audit_log.user_agent %></td></tr>
+    <tr><th>Time</th><td><%= l(@audit_log.created_at, format: :long) %></td></tr>
+  </tbody>
+</table>
+
+<% if @audit_log.metadata.present? %>
+  <h2 class="text-sm font-semibold mt-4 mb-2">Metadata</h2>
+  <pre class="mc-code-block text-xs"><%= JSON.pretty_generate(@audit_log.metadata) %></pre>
+<% end %>

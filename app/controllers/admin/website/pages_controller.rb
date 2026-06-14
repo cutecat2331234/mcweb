@@ -3,7 +3,7 @@
 module Admin
   module Website
     class PagesController < BaseController
-      before_action -> { require_permission("admin.website.manage") }
+      before_action -> { require_permission("website.pages.edit") }
       before_action :set_page, only: %i[show edit update destroy]
 
       def index

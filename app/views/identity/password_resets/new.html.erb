@@ -1,0 +1,15 @@
+<% content_for :title, "Forgot password" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Reset password") %>
+
+<%= form_with url: identity_password_resets_path, method: :post, scope: :password_reset, class: "max-w-sm space-y-4" do |f| %>
+  <div>
+    <label class="mc-form-label" for="password_reset_email">Email</label>
+    <%= f.email_field :email, class: "mc-input w-full", required: true, id: "password_reset_email" %>
+  </div>
+  <%= f.submit "Send reset link", class: "mc-btn mc-btn-primary" %>
+<% end %>
+
+<p class="mt-4 text-sm" style="color: var(--mc-fg-muted)">
+  <%= link_to "Back to sign in", identity_sign_in_path, class: "no-underline" %>
+</p>

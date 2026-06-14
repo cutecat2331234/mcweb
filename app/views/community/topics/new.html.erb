@@ -1,0 +1,17 @@
+<% content_for :title, "New topic" %>
+
+<%= render Ui::BreadcrumbComponent.new(items: [
+  { label: "Forum", href: forum_sections_path },
+  { label: @section.name, href: forum_section_path(@section) },
+  { label: "New topic", current: true }
+]) %>
+
+<%= render Ui::PageHeaderComponent.new(title: "New topic in #{@section.name}") %>
+
+<%= form_with model: @topic, url: forum_topics_path(section_id: @section.slug), class: "max-w-lg space-y-4" do |f| %>
+  <%= render Ui::FormFieldComponent.new(form: f, attribute: :title, label: "Title", required: true) %>
+  <div class="flex gap-2">
+    <%= link_to "Cancel", forum_section_path(@section), class: "mc-btn no-underline" %>
+    <%= f.submit "Create topic", class: "mc-btn mc-btn-primary" %>
+  </div>
+<% end %>

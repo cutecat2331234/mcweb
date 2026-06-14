@@ -20,7 +20,7 @@
       <% @sections.each do |section| %>
         <tr>
           <td>
-            <span class="font-medium"><%= section.name %></span>
+            <%= link_to section.name, forum_section_path(section), class: "font-medium no-underline" %>
             <span class="text-xs ml-2" style="color: var(--mc-fg-subtle)"><%= section.slug %></span>
           </td>
           <td><%= section.category&.name || "—" %></td>

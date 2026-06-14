@@ -3,7 +3,7 @@
 module Admin
   module Minecraft
     class ServersController < BaseController
-      before_action -> { require_permission("admin.minecraft.manage") }
+      before_action -> { require_permission("minecraft.servers.manage") }
       before_action :set_server, only: %i[show edit update destroy]
 
       def index

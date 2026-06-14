@@ -1,0 +1,37 @@
+<% content_for :title, "Checkout" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Checkout") %>
+
+<% if @cart_items.any? %>
+  <table class="mc-table mb-4">
+    <thead>
+      <tr><th>Product</th><th>Qty</th><th>Total</th></tr>
+    </thead>
+    <tbody>
+      <% @cart_items.each do |item| %>
+        <tr>
+          <td><%= item.product.name %></td>
+          <td><%= item.quantity %></td>
+          <td><%= number_to_currency(item.total_cents / 100.0, unit: "¥") %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <p class="font-medium mb-4">Total: <%= number_to_currency(@cart.subtotal_cents / 100.0, unit: "¥") %></p>
+
+  <%= form_with url: store_checkout_path, method: :post, class: "max-w-lg space-y-4" do %>
+    <div>
+      <label class="mc-form-label" for="checkout_provider">Payment provider</label>
+      <select name="checkout[provider]" id="checkout_provider" class="mc-input w-full">
+        <% Payments::ProviderConfig.enabled_providers.each do |config| %>
+          <option value="<%= config.provider %>"><%= config.provider.humanize %></option>
+        <% end %>
+      </select>
+    </div>
+    <button type="submit" class="mc-btn mc-btn-primary">Pay now</button>
+  <% end %>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "Your cart is empty.", variant: :info) %>
+  <%= link_to "View cart", store_cart_path, class: "mc-btn no-underline" %>
+<% end %>

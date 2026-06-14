@@ -3,7 +3,7 @@
 module Admin
   module Forum
     class TopicsController < BaseController
-      before_action -> { require_permission("admin.forum.moderate") }
+      before_action -> { require_permission("forum.topics.lock") }
       before_action :set_topic, only: %i[show edit update destroy]
 
       def index

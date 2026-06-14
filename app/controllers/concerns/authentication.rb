@@ -53,20 +53,20 @@ module Authentication
     redirect_to root_path, alert: "You are not authorized to perform this action."
   end
 
-  def sign_in(session:, token:, remember_me: false)
+  def sign_in(session_record:, token:, remember_me: false)
     cookie_options = {
       value: token,
       httponly: true,
       secure: Rails.env.production?,
       same_site: :lax,
-      expires: session.expires_at
+      expires: session_record.expires_at
     }
 
     if remember_me
       cookies.signed.permanent[SESSION_COOKIE] = cookie_options
     else
       cookies.signed[SESSION_COOKIE] = cookie_options
-      session[SESSION_COOKIE] = token
+      request.session[SESSION_COOKIE] = token
     end
   end
 

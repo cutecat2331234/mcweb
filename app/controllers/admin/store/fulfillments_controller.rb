@@ -3,7 +3,7 @@
 module Admin
   module Store
     class FulfillmentsController < BaseController
-      before_action -> { require_permission("admin.store.fulfill") }
+      before_action -> { require_permission("minecraft.fulfillments.retry") }
       before_action :set_fulfillment, only: %i[show update]
 
       def index

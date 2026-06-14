@@ -1,0 +1,19 @@
+<% content_for :title, "Pages" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Website pages") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Title</th><th>Slug</th><th>Status</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @pages.each do |page| %>
+      <tr>
+        <td><%= page.title %></td>
+        <td><%= page.slug %></td>
+        <td><%= page.status %></td>
+        <td><%= link_to "View", admin_website_page_path(page), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

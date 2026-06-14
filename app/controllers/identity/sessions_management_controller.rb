@@ -11,7 +11,7 @@ module Identity
     def destroy
       session_record = current_user.sessions.find(params[:id])
       Identity::SessionManager.call(session: session_record, action: :revoke)
-      redirect_to identity_managed_sessions_path, notice: "Session revoked."
+      redirect_to identity_sessions_management_index_path, notice: "Session revoked."
     end
   end
 end

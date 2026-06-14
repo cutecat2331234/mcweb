@@ -1,0 +1,12 @@
+<% content_for :title, @role.name %>
+
+<%= render Ui::PageHeaderComponent.new(title: @role.name, subtitle: @role.description) %>
+
+<h2 class="text-sm font-semibold mb-2">Permissions</h2>
+<ul class="mc-list max-w-lg">
+  <% @role.permissions.order(:key).each do |permission| %>
+    <li class="mc-list-item"><code class="text-xs"><%= permission.key %></code> — <%= permission.name %></li>
+  <% end %>
+</ul>
+
+<%= link_to "Back", admin_roles_path, class: "mc-btn mt-4 no-underline" %>

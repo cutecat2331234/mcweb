@@ -1,0 +1,21 @@
+<% content_for :title, "Audit logs" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Audit logs") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Action</th><th>Actor</th><th>Resource</th><th>IP</th><th>Time</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @audit_logs.limit(100).each do |log| %>
+      <tr>
+        <td><%= log.action %></td>
+        <td><%= log.actor&.username || "—" %></td>
+        <td class="text-sm" style="color: var(--mc-fg-muted)"><%= log.resource_type %> #<%= log.resource_id %></td>
+        <td><%= log.ip_address %></td>
+        <td><%= l(log.created_at, format: :short) %></td>
+        <td><%= link_to "View", admin_audit_log_path(log), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

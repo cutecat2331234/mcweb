@@ -10,9 +10,19 @@ module ActiveSupport
 
     setup do
       Rails.cache.clear
+      InstallationLock.find_or_create_by!(id: 1) { |lock| lock.locked = false }
+      InstallationLock.lock!(user: User.first || create_user) unless InstallationLock.locked?
     end
 
-    def sign_in_as(user, remember_me: false)
+    def sign_in_as(user, remember_me: false, password: "password123")
+      if is_a?(ActionDispatch::IntegrationTest)
+        post identity_session_path, params: {
+          session: { email: user.email, password: password, remember_me: remember_me ? "1" : "0" }
+        }
+        assert_response :redirect, "Sign in failed for #{user.email}"
+        return
+      end
+
       result = Identity::SessionManager.call(user: user, ip_address: "127.0.0.1", user_agent: "Test", remember_me: remember_me)
       token = result.value[:token]
       @current_session = result.value[:session]

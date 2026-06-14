@@ -1,0 +1,24 @@
+<% content_for :title, @product.name %>
+
+<%= render Ui::BreadcrumbComponent.new(items: [
+  { label: "Home", href: root_path },
+  { label: "Store", href: store_products_path },
+  { label: @product.name, current: true }
+]) %>
+
+<%= render Ui::PageHeaderComponent.new(title: @product.name, subtitle: @product.description) %>
+
+<table class="mc-table max-w-lg mb-4">
+  <tbody>
+    <tr><th>Price</th><td><%= number_to_currency(@product.price_cents / 100.0, unit: @product.currency == "CNY" ? "¥" : "$") %></td></tr>
+    <tr><th>Type</th><td><%= @product.product_type %></td></tr>
+    <tr><th>Category</th><td><%= @product.category&.name || "—" %></td></tr>
+    <tr><th>Stock</th><td><%= @product.in_stock? ? "Available" : "Out of stock" %></td></tr>
+  </tbody>
+</table>
+
+<% if @product.in_stock? %>
+  <%= button_to "Add to cart", store_cart_path, method: :patch, params: { product_id: @product.id, quantity: 1 }, class: "mc-btn mc-btn-primary" %>
+<% end %>
+
+<%= link_to "Back to store", store_products_path, class: "mc-btn ml-2 no-underline" %>

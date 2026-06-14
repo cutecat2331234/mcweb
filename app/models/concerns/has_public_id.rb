@@ -16,6 +16,10 @@ module HasPublicId
     end
   end
 
+  def to_param
+    public_id
+  end
+
   private
 
   def generate_public_id

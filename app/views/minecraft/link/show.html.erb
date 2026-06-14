@@ -1,0 +1,14 @@
+<% content_for :title, "Link Minecraft account" %>
+
+<%= render Ui::PageHeaderComponent.new(
+  title: "Link Minecraft account",
+  subtitle: "Run /website link in-game, then enter the code below"
+) %>
+
+<%= form_with url: minecraft_link_path, method: :post, scope: :link, class: "max-w-sm space-y-4" do |f| %>
+  <div>
+    <label class="mc-form-label" for="link_code">Verification code</label>
+    <%= f.text_field :code, class: "mc-input w-full font-mono", required: true, autocomplete: "off", id: "link_code" %>
+  </div>
+  <%= f.submit "Link account", class: "mc-btn mc-btn-primary" %>
+<% end %>

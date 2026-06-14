@@ -1,0 +1,20 @@
+<% content_for :title, "Articles" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Articles & news") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Title</th><th>Type</th><th>Status</th><th>Published</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @articles.each do |article| %>
+      <tr>
+        <td><%= article.title %></td>
+        <td><%= article.article_type %></td>
+        <td><%= article.status %></td>
+        <td><%= article.published_at ? l(article.published_at, format: :short) : "—" %></td>
+        <td><%= link_to "View", admin_website_article_path(article), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

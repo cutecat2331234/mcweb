@@ -28,7 +28,7 @@ module Community
       )
 
       if result.success?
-        redirect_to community_topic_path(result.value), notice: "Topic created."
+        redirect_to forum_topic_path(result.value), notice: "Topic created."
       else
         @topic = @section.topics.build(topic_params)
         flash.now[:alert] = service_error_message(result)
@@ -44,7 +44,7 @@ module Community
       authorize_topic_owner!
 
       if @topic.update(topic_params)
-        redirect_to community_topic_path(@topic), notice: "Topic updated."
+        redirect_to forum_topic_path(@topic), notice: "Topic updated."
       else
         render :edit, status: :unprocessable_entity
       end
@@ -61,13 +61,13 @@ module Community
     end
 
     def topic_params
-      params.expect(topic: %i[title])[:topic]
+      params.require(:topic).permit(:title)
     end
 
     def authorize_topic_owner!
-      return if current_user&.id == @topic.user_id || current_user&.permission?("community.moderate")
+      return if current_user&.id == @topic.user_id || current_user&.permission?("forum.topics.lock")
 
-      redirect_to community_topic_path(@topic), alert: "You are not authorized to edit this topic."
+      redirect_to forum_topic_path(@topic), alert: "You are not authorized to edit this topic."
     end
   end
 end

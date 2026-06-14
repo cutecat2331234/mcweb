@@ -1,0 +1,16 @@
+<% content_for :title, @topic.title %>
+
+<%= render Ui::PageHeaderComponent.new(title: @topic.title) %>
+
+<table class="mc-table max-w-lg mb-4">
+  <tbody>
+    <tr><th>Section</th><td><%= @topic.section.name %></td></tr>
+    <tr><th>Author</th><td><%= @topic.user.username %></td></tr>
+    <tr><th>Locked</th><td><%= @topic.locked? ? "Yes" : "No" %></td></tr>
+    <tr><th>Pinned</th><td><%= @topic.pinned? ? "Yes" : "No" %></td></tr>
+    <tr><th>Posts</th><td><%= @topic.replies_count %></td></tr>
+  </tbody>
+</table>
+
+<%= link_to "View on site", forum_topic_path(@topic), class: "mc-btn no-underline" %>
+<%= link_to "Back", admin_forum_topics_path, class: "mc-btn no-underline" %>

@@ -2,7 +2,7 @@
 
 module Admin
   class RolesController < BaseController
-    before_action -> { require_permission("admin.roles.manage") }
+    before_action -> { require_permission("system.settings.manage") }
     before_action :set_role, only: %i[show edit update destroy]
 
     def index

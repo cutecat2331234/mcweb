@@ -1,0 +1,20 @@
+<% content_for :title, "Minecraft servers" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Minecraft servers") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Name</th><th>Address</th><th>Online</th><th>Players</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @servers.each do |server| %>
+      <tr>
+        <td><%= server.name %></td>
+        <td><%= server.address %></td>
+        <td><%= server.online? ? "Yes" : "No" %></td>
+        <td><%= server.online_players %> / <%= server.max_players %></td>
+        <td><%= link_to "View", admin_minecraft_server_path(server), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

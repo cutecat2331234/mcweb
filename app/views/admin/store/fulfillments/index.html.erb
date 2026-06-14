@@ -1,0 +1,20 @@
+<% content_for :title, "Fulfillments" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Fulfillments") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Delivery ID</th><th>Status</th><th>Order</th><th>Created</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @fulfillments.each do |f| %>
+      <tr>
+        <td class="font-mono text-xs"><%= f.delivery_id %></td>
+        <td><%= f.status %></td>
+        <td><%= f.order.order_number %></td>
+        <td><%= l(f.created_at, format: :short) %></td>
+        <td><%= link_to "View", admin_store_fulfillment_path(f), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

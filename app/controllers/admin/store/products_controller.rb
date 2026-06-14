@@ -3,7 +3,7 @@
 module Admin
   module Store
     class ProductsController < BaseController
-      before_action -> { require_permission("admin.store.manage") }
+      before_action -> { require_permission("store.products.manage") }
       before_action :set_product, only: %i[show edit update destroy]
 
       def index

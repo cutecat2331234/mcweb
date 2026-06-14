@@ -18,17 +18,15 @@ module Community
       return spam_result if spam_result.failure?
 
       post = nil
-      Community::Topic.transaction do
-        @topic.lock!
-
+      @topic.with_lock do
         if @topic.locked?
           return ServiceResult.failure(error: "This topic is locked.")
         end
 
-        floor_number = @topic.forum_posts.maximum(:floor_number).to_i + 1
+        floor_number = @topic.posts.maximum(:floor_number).to_i + 1
 
         post = Community::Post.create!(
-          forum_topic: @topic,
+          topic: @topic,
           user: @user,
           floor_number: floor_number,
           body: @body,
@@ -37,7 +35,7 @@ module Community
         )
 
         @topic.update!(
-          replies_count: @topic.replies_count + 1,
+          replies_count: @topic.posts.count,
           last_posted_at: Time.current,
           last_post_user: @user
         )
@@ -86,18 +84,15 @@ module Community
     end
 
     def muted_in_section?
-      Community::Mute
-        .where(user: @user)
-        .where(forum_section: [ @topic.forum_section, nil ])
-        .where("expires_at IS NULL OR expires_at > ?", Time.current)
-        .exists?
+      Community::Mute.muted?(@user, section: @topic.section)
     end
 
     def duplicate_body?
       Community::Post
-        .where(user: @user, forum_topic: @topic)
+        .where(user: @user, forum_topic_id: @topic.id)
         .where("created_at > ?", 5.minutes.ago)
-        .exists?(body: @body)
+        .where(body: @body)
+        .exists?
     end
   end
 end

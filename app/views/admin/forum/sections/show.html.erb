@@ -1,0 +1,14 @@
+<% content_for :title, @section.name %>
+
+<%= render Ui::PageHeaderComponent.new(title: @section.name) %>
+
+<table class="mc-table max-w-lg">
+  <tbody>
+    <tr><th>Slug</th><td><%= @section.slug %></td></tr>
+    <tr><th>Category</th><td><%= @section.category&.name %></td></tr>
+    <tr><th>Description</th><td><%= @section.description %></td></tr>
+    <tr><th>Topics</th><td><%= @section.topics.count %></td></tr>
+  </tbody>
+</table>
+
+<%= link_to "Back", admin_forum_sections_path, class: "mc-btn mt-4 no-underline" %>

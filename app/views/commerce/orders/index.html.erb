@@ -1,0 +1,28 @@
+<% content_for :title, "Orders" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "My orders") %>
+
+<% if @orders.any? %>
+  <table class="mc-table">
+    <thead>
+      <tr>
+        <th>Order</th>
+        <th>Status</th>
+        <th>Total</th>
+        <th>Date</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @orders.each do |order| %>
+        <tr>
+          <td><%= link_to order.order_number, store_order_path(order), class: "no-underline font-medium" %></td>
+          <td><%= render Ui::BadgeComponent.new(label: order.status, variant: :default) %></td>
+          <td><%= number_to_currency(order.total_cents / 100.0, unit: "¥") %></td>
+          <td><%= l(order.created_at, format: :short) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "No orders yet.", variant: :info) %>
+<% end %>

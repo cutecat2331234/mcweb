@@ -10,5 +10,9 @@ module Commerce
         limit: 20
       )
     end
+
+    def show
+      @product = Commerce::Product.available.find_by!(public_id: params[:id])
+    end
   end
 end

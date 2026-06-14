@@ -1,0 +1,47 @@
+<% content_for :title, "Setup — #{@step.humanize}" %>
+
+<%= render Ui::PageHeaderComponent.new(
+  title: "McWeb 安装向导",
+  subtitle: "步骤 #{Setup::WizardController::STEPS.index(@step) + 1} / #{Setup::WizardController::STEPS.size - 1}"
+) %>
+
+<hr class="mc-divider">
+
+<% case @step %>
+<% when "site" %>
+  <%= form_with url: setup_step_path("site"), method: :patch, scope: :setup, class: "max-w-lg space-y-4" do |f| %>
+    <div>
+      <label class="mc-form-label" for="setup_name">站点名称</label>
+      <%= f.text_field :name, value: @settings.dig("site", "name"), class: "mc-input w-full", required: true, id: "setup_name" %>
+    </div>
+    <div>
+      <label class="mc-form-label" for="setup_url">站点 URL</label>
+      <%= f.url_field :url, value: @settings.dig("site", "url"), class: "mc-input w-full", placeholder: "https://example.com", required: true, id: "setup_url" %>
+    </div>
+    <%= f.submit "继续", class: "mc-btn mc-btn-primary" %>
+  <% end %>
+
+<% when "admin" %>
+  <%= form_with url: setup_step_path("admin"), method: :patch, scope: :setup, class: "max-w-lg space-y-4" do |f| %>
+    <div>
+      <label class="mc-form-label" for="setup_email">管理员邮箱</label>
+      <%= f.email_field :email, value: @settings.dig("admin", "email"), class: "mc-input w-full", required: true, id: "setup_email" %>
+    </div>
+    <div>
+      <label class="mc-form-label" for="setup_username">用户名</label>
+      <%= f.text_field :username, value: @settings.dig("admin", "username"), class: "mc-input w-full", required: true, id: "setup_username" %>
+    </div>
+    <div>
+      <label class="mc-form-label" for="setup_display_name">显示名称</label>
+      <%= f.text_field :display_name, value: @settings.dig("admin", "display_name"), class: "mc-input w-full", id: "setup_display_name" %>
+    </div>
+    <div>
+      <label class="mc-form-label" for="setup_password">密码</label>
+      <%= f.password_field :password, class: "mc-input w-full", required: true, id: "setup_password" %>
+    </div>
+    <div class="flex gap-2">
+      <%= link_to "上一步", setup_step_path("site"), class: "mc-btn no-underline" %>
+      <%= f.submit "完成安装", class: "mc-btn mc-btn-primary" %>
+    </div>
+  <% end %>
+<% end %>

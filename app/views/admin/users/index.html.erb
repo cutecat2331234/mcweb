@@ -1,0 +1,20 @@
+<% content_for :title, "Users" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Users") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Username</th><th>Email</th><th>Status</th><th>Joined</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @users.each do |user| %>
+      <tr>
+        <td><%= user.username %></td>
+        <td><%= user.email %></td>
+        <td><%= render Ui::BadgeComponent.new(label: user.status, variant: :default) %></td>
+        <td><%= l(user.created_at, format: :short) %></td>
+        <td><%= link_to "View", admin_user_path(user), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

@@ -1,0 +1,17 @@
+<% content_for :title, @page.title %>
+
+<%= render Ui::PageHeaderComponent.new(title: @page.title) %>
+
+<table class="mc-table max-w-lg mb-4">
+  <tbody>
+    <tr><th>Slug</th><td><%= @page.slug %></td></tr>
+    <tr><th>Status</th><td><%= @page.status %></td></tr>
+    <tr><th>Type</th><td><%= @page.page_type %></td></tr>
+    <tr><th>Blocks</th><td><%= @page.blocks.count %></td></tr>
+  </tbody>
+</table>
+
+<% if @page.published? %>
+  <%= link_to "View on site", website_page_path(@page.slug), class: "mc-btn no-underline" %>
+<% end %>
+<%= link_to "Back", admin_website_pages_path, class: "mc-btn no-underline" %>

@@ -1,0 +1,15 @@
+<% content_for :title, "Report ##{@report.id}" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Report ##{@report.id}") %>
+
+<table class="mc-table max-w-2xl">
+  <tbody>
+    <tr><th>Status</th><td><%= @report.status %></td></tr>
+    <tr><th>Reporter</th><td><%= @report.reporter&.username %></td></tr>
+    <tr><th>Target</th><td><%= @report.reportable_type %> #<%= @report.reportable_id %></td></tr>
+    <tr><th>Reason</th><td><%= simple_format(@report.reason) %></td></tr>
+    <tr><th>Submitted</th><td><%= l(@report.created_at, format: :long) %></td></tr>
+  </tbody>
+</table>
+
+<%= link_to "Back", admin_forum_reports_path, class: "mc-btn mt-4 no-underline" %>

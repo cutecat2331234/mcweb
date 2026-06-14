@@ -1,0 +1,20 @@
+<% content_for :title, "Reports" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Content reports") %>
+
+<table class="mc-table">
+  <thead>
+    <tr><th>Reason</th><th>Reporter</th><th>Status</th><th>Time</th><th></th></tr>
+  </thead>
+  <tbody>
+    <% @reports.each do |report| %>
+      <tr>
+        <td><%= truncate(report.reason, length: 60) %></td>
+        <td><%= report.reporter&.username %></td>
+        <td><%= report.status %></td>
+        <td><%= l(report.created_at, format: :short) %></td>
+        <td><%= link_to "View", admin_forum_report_path(report), class: "mc-btn text-xs no-underline" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

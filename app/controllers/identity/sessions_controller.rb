@@ -21,7 +21,7 @@ module Identity
 
       if result.success?
         sign_in(
-          session: result.value[:session],
+          session_record: result.value[:session],
           token: result.value[:token],
           remember_me: session_params[:remember_me] == "1"
         )
@@ -40,7 +40,7 @@ module Identity
     private
 
     def session_params
-      params.expect(session: %i[email password totp_code remember_me])[:session]
+      params.require(:session).permit(:email, :password, :totp_code, :remember_me)
     end
 
     def redirect_if_signed_in

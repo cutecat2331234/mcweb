@@ -1,0 +1,45 @@
+<% content_for :title, @order.order_number %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Order #{@order.order_number}", subtitle: "Status: #{@order.status}") %>
+
+<table class="mc-table max-w-lg mb-4">
+  <tbody>
+    <tr><th>Customer</th><td><%= @order.user.username %></td></tr>
+    <tr><th>Total</th><td><%= number_to_currency(@order.total_cents / 100.0, unit: "¥") %></td></tr>
+    <tr><th>Created</th><td><%= l(@order.created_at, format: :long) %></td></tr>
+  </tbody>
+</table>
+
+<h2 class="text-sm font-semibold mb-2">Items</h2>
+<table class="mc-table mb-4">
+  <thead><tr><th>Product</th><th>Qty</th><th>Total</th></tr></thead>
+  <tbody>
+    <% @order.items.each do |item| %>
+      <tr>
+        <td><%= item.product_name %></td>
+        <td><%= item.quantity %></td>
+        <td><%= number_to_currency(item.total_cents / 100.0, unit: "¥") %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<h2 class="text-sm font-semibold mb-2">Fulfillments</h2>
+<% if @fulfillments.any? %>
+  <table class="mc-table">
+    <thead><tr><th>Delivery ID</th><th>Status</th><th>Item</th></tr></thead>
+    <tbody>
+      <% @fulfillments.each do |f| %>
+        <tr>
+          <td class="font-mono text-xs"><%= f.delivery_id %></td>
+          <td><%= f.status %></td>
+          <td><%= f.order_item.product_name %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "No fulfillments yet.", variant: :info) %>
+<% end %>
+
+<%= link_to "Back", admin_store_orders_path, class: "mc-btn mt-4 no-underline" %>

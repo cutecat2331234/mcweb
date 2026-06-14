@@ -2,7 +2,7 @@
 
 module Admin
   class UsersController < BaseController
-    before_action -> { require_permission("admin.users.manage") }
+    before_action -> { require_permission("system.settings.manage") }
     before_action :set_user, only: %i[show edit update destroy]
 
     def index

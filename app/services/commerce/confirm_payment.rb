@@ -57,6 +57,11 @@ module Commerce
           path: "/store/orders/#{order.public_id}"
         )
         Community::CheckAutoBadges.call(user: order.user)
+        order.items.includes(:product).find_each do |item|
+          next unless item.product
+
+          Commerce::SubscribeProductDiscussion.call(user: order.user, product: item.product)
+        end
       end
 
       ServiceResult.success(record: @payment_record.reload, idempotent: false, newly_paid: newly_paid)

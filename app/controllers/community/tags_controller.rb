@@ -2,6 +2,8 @@
 
 module Community
   class TagsController < ApplicationController
+    include Community::TopicListPreloadable
+
     before_action :require_login, only: %i[toggle_subscription]
 
     def index
@@ -28,7 +30,7 @@ module Community
       tag = Community::Tag.usable_by(current_user).find_by!(slug: params[:slug])
       sort = params[:sort].to_s.presence || "activity"
       topic_ids = tag.topics.where(status: :published).pluck(:id)
-      scope = Community::Topic.where(id: topic_ids).sorted(sort).includes(:user)
+      scope = preload_topics(Community::Topic.where(id: topic_ids).sorted(sort))
       scope = filter_blocked_topics(scope)
       @pagy, topics = pagy(scope, limit: 20)
 

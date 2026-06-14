@@ -12,6 +12,10 @@ module Community
     def call
       author = @post.user
       return ServiceResult.success if author.id == @reactor.id
+      return ServiceResult.success unless Community::FilterNotificationRecipients.call(
+        actor_id: @reactor.id,
+        recipient_ids: [ author.id ]
+      ).value.include?(author.id)
       return ServiceResult.success unless NotificationPreference.enabled?(author, channel: "in_app", notification_type: "forum.reaction")
 
       Notification.notify!(

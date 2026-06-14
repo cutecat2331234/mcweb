@@ -25,6 +25,12 @@ export interface TopicItem {
   replies_count: number
   views_count: number
   last_posted_at: string | null
+  last_poster_username?: string | null
+  last_poster_url?: string | null
+  linked_product?: boolean
+  linked_product_name?: string | null
+  linked_product_url?: string | null
+  tags?: Array<{ name: string; slug: string; url: string }>
   pinned: boolean
   locked: boolean
   featured: boolean
@@ -168,6 +174,10 @@ function markAllRead() {
               :solved="topic.solved"
               :has-unread="topic.has_unread"
               :unread-count="topic.unread_count"
+              :linked-product="topic.linked_product"
+              :linked-product-name="topic.linked_product_name"
+              :linked-product-url="topic.linked_product_url"
+              :tags="topic.tags"
             />
             <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
             <div v-if="topic.participant_avatars?.length" class="mt-1 flex items-center gap-1">
@@ -183,7 +193,13 @@ function markAllRead() {
           </TableCell>
           <TableCell>{{ topic.author || '—' }}</TableCell>
           <TableCell>{{ topic.replies_count }}</TableCell>
-          <TableCell>{{ topic.last_posted_at || '—' }}</TableCell>
+          <TableCell>
+            <template v-if="topic.last_poster_username && topic.last_poster_url">
+              <Link :href="topic.last_poster_url" class="hover:underline">@{{ topic.last_poster_username }}</Link>
+            </template>
+            <span v-else>{{ topic.last_posted_at || '—' }}</span>
+            <p v-if="topic.last_poster_username" class="text-xs text-muted-foreground">{{ topic.last_posted_at || '—' }}</p>
+          </TableCell>
         </TableRow>
       </TableBody>
     </Table>

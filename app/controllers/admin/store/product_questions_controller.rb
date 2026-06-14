@@ -7,7 +7,7 @@ module Admin
       before_action :set_question, only: %i[hide unhide destroy]
 
       def index
-        questions = Commerce::ProductQuestion.includes(:user, :product, :answers).order(created_at: :desc).limit(100)
+        questions = Commerce::ProductQuestion.includes(:user, :product, :order_item, answers: :user, order_item: :order).order(created_at: :desc).limit(100)
 
         render inertia: "Admin/Store/ProductQuestions/Index", props: {
           questions: questions.map do |q|
@@ -18,6 +18,7 @@ module Admin
               body: q.body,
               status: q.status,
               created_at: l(q.created_at, format: :short),
+              order_number: q.order_item&.order&.order_number,
               hide_url: hide_admin_store_product_question_path(q),
               unhide_url: unhide_admin_store_product_question_path(q)
             }

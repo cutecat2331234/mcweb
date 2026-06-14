@@ -138,7 +138,7 @@ module Commerce
                   Commerce::Product.none
                 end
 
-      questions_scope = product.questions.visible.includes(:user, :answers).recent
+      questions_scope = product.questions.visible.includes(:user, answers: :helpful_votes).recent
       if params[:question_q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:question_q].to_s.strip)}%"
         questions_scope = questions_scope.where("body ILIKE ?", q)
@@ -157,7 +157,7 @@ module Commerce
         ratingBreakdown: (1..5).map { |rating| { rating: rating, count: rating_breakdown[rating] || 0 } },
         reviewsPagination: pagy_props(@pagy_reviews),
         related_products: related.map { |p| serialize_product_list_item(p) },
-        questions: questions.map { |q| serialize_product_question(q) },
+        questions: questions.map { |q| serialize_product_question(q, current_user: current_user) },
         questionsPagination: pagy_props(@pagy_questions),
         questionQuery: params[:question_q].to_s,
         stockAlertUrl: stock_alert_store_product_path(product),
@@ -225,7 +225,7 @@ module Commerce
         .find_by(id: params[:order_item_id])
       return nil unless item
 
-      { order_number: item.order.order_number, item_name: item.product_name }
+      { order_number: item.order.order_number, item_name: item.product_name, order_item_id: item.id }
     end
 
     def index_filter_params
@@ -239,20 +239,25 @@ module Commerce
       }.compact
     end
 
-    def serialize_product_question(question)
+    def serialize_product_question(question, current_user: nil)
       {
         id: question.id,
         body: question.body,
         author: question.user.username,
         created_at: l(question.created_at, format: :short),
+        from_order: question.store_order_item_id.present?,
         answerUrl: answer_question_store_product_path(question.product, question_id: question.id),
         answers: question.answers.order(created_at: :asc).map do |answer|
+          helpful = current_user && Commerce::AnswerHelpfulVote.exists?(user: current_user, answer: answer)
           {
             id: answer.id,
             body: answer.body,
             author: answer.user.username,
             official: answer.official,
-            created_at: l(answer.created_at, format: :short)
+            created_at: l(answer.created_at, format: :short),
+            helpful_count: answer.helpful_votes.count,
+            helpful: helpful,
+            helpful_url: current_user ? helpful_answer_store_product_path(question.product, question_id: question.id, answer_id: answer.id) : nil
           }
         end
       }

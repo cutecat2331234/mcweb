@@ -194,6 +194,7 @@ Rails.application.routes.draw do
         end
         resources :questions, only: %i[create], controller: "product_questions"
         post "questions/:question_id/answer", to: "product_questions#answer", as: :answer_question
+        post "questions/:question_id/answers/:answer_id/helpful", to: "product_questions#toggle_answer_helpful", as: :helpful_answer
       end
     end
     get "compare", to: "compare#show"

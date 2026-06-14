@@ -20,6 +20,7 @@ defineProps<{
     body: string
     status: string
     created_at: string
+    order_number?: string | null
     hide_url: string
     unhide_url: string
   }>
@@ -44,6 +45,7 @@ function unhideQuestion(url: string) {
           <TableHead>商品</TableHead>
           <TableHead>提问者</TableHead>
           <TableHead>问题</TableHead>
+          <TableHead>订单</TableHead>
           <TableHead>状态</TableHead>
           <TableHead>时间</TableHead>
           <TableHead />
@@ -54,6 +56,7 @@ function unhideQuestion(url: string) {
           <TableCell>{{ q.product }}</TableCell>
           <TableCell>{{ q.author }}</TableCell>
           <TableCell class="max-w-xs truncate">{{ q.body }}</TableCell>
+          <TableCell>{{ q.order_number || '—' }}</TableCell>
           <TableCell>{{ q.status }}</TableCell>
           <TableCell>{{ q.created_at }}</TableCell>
           <TableCell class="flex gap-2">

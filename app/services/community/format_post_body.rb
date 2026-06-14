@@ -124,12 +124,20 @@ module Community
         token
       end
 
+      text = text.gsub(%r{\A(/forum/topics/[\w-]+)\s*\z}) do |path|
+        token = placeholder_token(placeholders, "ONEBOX")
+        placeholders[token] = topic_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
+        token
+      end
+
       text = text.gsub(/\A(https?:\/\/[^\s]+)\z/) do |url|
         token = placeholder_token(placeholders, "ONEBOX")
         if (embed = video_embed_html(url))
           placeholders[token] = embed
         elsif (product_box = product_onebox_html(url))
           placeholders[token] = product_box
+        elsif (topic_box = topic_onebox_html(url))
+          placeholders[token] = topic_box
         else
           preview = Community::FetchLinkPreview.call(url: url)
           if preview.success? && preview.value
@@ -206,6 +214,15 @@ module Community
       img = p[:image_url].present? ? %(<img src="#{ERB::Util.html_escape(p[:image_url])}" alt="" class="onebox-image product-onebox-image" loading="lazy" />) : ""
       summary = p[:summary].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(p[:summary].to_s.truncate(120))}</p>) : ""
       %(<aside class="onebox product-onebox"><a href="#{ERB::Util.html_escape(p[:url])}" class="onebox-link">#{img}<strong class="onebox-title">#{ERB::Util.html_escape(p[:name])}</strong>#{summary}<span class="onebox-price">#{ERB::Util.html_escape(p[:price_label])}</span></a></aside>)
+    end
+
+    def topic_onebox_html(url)
+      result = Community::FetchTopicOnebox.call(url: url)
+      return nil unless result.success? && result.value
+
+      t = result.value
+      meta = [ t[:author], t[:section_name], "#{t[:replies_count]} 回复" ].compact.join(" · ")
+      %(<aside class="onebox topic-onebox"><a href="#{ERB::Util.html_escape(t[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(t[:title])}</strong><p class="onebox-desc">#{ERB::Util.html_escape(meta)}</p></a></aside>)
     end
 
     def markdown_to_html(text)
@@ -300,6 +317,8 @@ module Community
         url = Regexp.last_match(2)
         if (product_box = product_onebox_html(url))
           product_box
+        elsif (topic_box = topic_onebox_html(url))
+          topic_box
         else
           %(<a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener">#{ERB::Util.html_escape(label)}</a>)
         end

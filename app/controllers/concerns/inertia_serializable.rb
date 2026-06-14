@@ -71,6 +71,8 @@ module InertiaSerializable
       replies_count: topic.replies_count,
       views_count: topic.views_count,
       last_posted_at: topic.last_posted_at ? l(topic.last_posted_at, format: :short) : nil,
+      last_poster_username: topic.last_post_user&.username,
+      last_poster_url: topic.last_post_user ? forum_user_path(topic.last_post_user.username) : nil,
       pinned: topic.pinned?,
       prefix: topic.prefix,
       locked: topic.locked?,
@@ -80,7 +82,8 @@ module InertiaSerializable
       has_unread: unread_count.positive?,
       participant_avatars: topic.participant_users(limit: 5).map do |user|
         { username: user.username, avatar_url: user.avatar_url, profile_url: forum_user_path(user.username) }
-      end
+      end,
+      tags: topic.association(:tags).loaded? ? topic.tags.first(3).map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } } : []
     }.merge(linked_product_props(topic))
   end
 

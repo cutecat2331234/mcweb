@@ -3,6 +3,7 @@
 module Community
   class ActivityController < ApplicationController
     include Community::TopicListSortable
+    include Community::TopicListPreloadable
 
     def index
       tab = params[:tab].presence_in(%w[posts topics following]) || "posts"
@@ -59,7 +60,7 @@ module Community
 
     def render_topics_tab(tab)
       sort = params[:sort].presence || "latest"
-      scope = Community::Topic.where(status: :published).includes(:user, :section).joins(:section)
+      scope = preload_topics(Community::Topic.where(status: :published).joins(:section))
       scope = filter_blocked_topics(scope) if logged_in?
       scope = apply_forum_topic_sort(scope, sort)
       @pagy, topics = pagy(scope, limit: 30)

@@ -23,6 +23,7 @@ const props = defineProps<{
     posts_count: number
     likes_received: number
     reviews_count: number
+    purchases_count: number
     trust_level: number
     trust_name: string
     member_since: string
@@ -87,7 +88,7 @@ function changeSort(value: string) {
           <Badge v-if="member.online" class="ml-2 text-[10px]">在线</Badge>
         </p>
         <p class="text-xs text-muted-foreground">
-          @{{ member.username }} · {{ member.trust_name }} · {{ member.posts_count }} 帖 · {{ member.likes_received }} 赞
+          @{{ member.username }} · {{ member.trust_name }} · {{ member.posts_count }} 帖 · {{ member.likes_received }} 赞 · {{ member.purchases_count }} 购
         </p>
         <p class="text-xs text-muted-foreground">
           {{ member.reviews_count }} 评价 ·

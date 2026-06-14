@@ -778,6 +778,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["user_id"], name: "index_store_price_alerts_on_user_id"
   end
 
+  create_table "store_product_answer_helpful_votes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "store_product_answer_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_product_answer_id", "user_id"], name: "index_answer_helpful_votes_on_answer_and_user", unique: true
+    t.index ["store_product_answer_id"], name: "idx_on_store_product_answer_id_56a408f7be"
+    t.index ["user_id"], name: "index_store_product_answer_helpful_votes_on_user_id"
+  end
+
   create_table "store_product_answers", force: :cascade do |t|
     t.text "body", null: false
     t.datetime "created_at", null: false
@@ -1151,6 +1161,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_price_alerts", "store_product_variants"
   add_foreign_key "store_price_alerts", "store_products"
   add_foreign_key "store_price_alerts", "users"
+  add_foreign_key "store_product_answer_helpful_votes", "store_product_answers"
+  add_foreign_key "store_product_answer_helpful_votes", "users"
   add_foreign_key "store_product_answers", "store_product_questions"
   add_foreign_key "store_product_answers", "users"
   add_foreign_key "store_product_questions", "store_order_items"

@@ -94,7 +94,7 @@ const props = defineProps<{
   priceAlertUrl?: string | null
   hasPriceAlert?: boolean
   createDiscussionUrl?: string | null
-  askFromOrder?: { order_number: string; item_name: string } | null
+  askFromOrder?: { order_number: string; item_name: string; order_item_id: number } | null
   canReview?: boolean
   canEditReview?: boolean
   canDeleteReview?: boolean
@@ -121,7 +121,11 @@ const props = defineProps<{
       author: string
       official: boolean
       created_at: string
+      helpful_count?: number
+      helpful?: boolean
+      helpful_url?: string | null
     }>
+    from_order?: boolean
   }>
   questionsPagination?: import('@/components/portal/Pagination.vue').PaginationMeta
   questionQuery?: string
@@ -329,10 +333,17 @@ function filterByRating(rating: number) {
 }
 
 function submitQuestion() {
-  questionForm.post(props.questionUrl, {
+  questionForm.transform((data) => ({
+    ...data,
+    order_item_id: props.askFromOrder?.order_item_id,
+  })).post(props.questionUrl, {
     preserveScroll: true,
     onSuccess: () => { questionForm.question.body = '' },
   })
+}
+
+function toggleAnswerHelpful(url: string) {
+  router.post(url, {}, { preserveScroll: true })
 }
 
 function submitAnswer(questionId: number, answerUrl: string) {
@@ -524,13 +535,27 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </div>
     <div v-if="questions.length" class="mb-6 space-y-4">
       <article v-for="q in questions" :key="q.id" class="rounded-lg border p-4">
-        <p class="text-sm font-medium">问：{{ q.body }}</p>
+        <p class="text-sm font-medium">
+          问：{{ q.body }}
+          <Badge v-if="q.from_order" class="ml-2 text-[10px]">已购提问</Badge>
+        </p>
         <p class="mt-1 text-xs text-muted-foreground">{{ q.author }} · {{ q.created_at }}</p>
         <div v-if="q.answers.length" class="mt-3 space-y-2 border-l-2 pl-3">
           <div v-for="answer in q.answers" :key="answer.id" class="text-sm">
             <span v-if="answer.official" class="mr-1 rounded bg-primary/10 px-1 text-xs text-primary">官方</span>
             <span class="font-medium">{{ answer.author }}：</span>{{ answer.body }}
             <p class="text-xs text-muted-foreground">{{ answer.created_at }}</p>
+            <div v-if="answer.helpful_url" class="mt-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                :class="answer.helpful ? 'border-primary text-primary' : ''"
+                @click="toggleAnswerHelpful(answer.helpful_url!)"
+              >
+                有帮助 ({{ answer.helpful_count || 0 }})
+              </Button>
+            </div>
           </div>
         </div>
         <form v-if="loggedIn" class="mt-3 space-y-2" @submit.prevent="submitAnswer(q.id, q.answerUrl)">

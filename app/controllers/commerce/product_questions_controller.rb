@@ -2,7 +2,7 @@
 
 module Commerce
   class ProductQuestionsController < ApplicationController
-    before_action :require_login, only: %i[create answer]
+    before_action :require_login, only: %i[create answer toggle_answer_helpful]
     before_action :set_product
 
     def index
@@ -46,6 +46,18 @@ module Commerce
 
       if result.success?
         redirect_to store_product_path(@product), notice: "回答已发布。"
+      else
+        redirect_to store_product_path(@product), alert: service_error_message(result)
+      end
+    end
+
+    def toggle_answer_helpful
+      question = @product.questions.visible.find(params[:question_id])
+      answer = question.answers.find(params[:answer_id])
+      result = Commerce::ToggleAnswerHelpful.call(user: current_user, answer: answer)
+
+      if result.success?
+        redirect_to store_product_path(@product), notice: result.value[:helpful] ? "已标记有帮助。" : "已取消标记。"
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end

@@ -598,3 +598,19 @@ app/
 | 编辑内联 diff | `DiffLines` → `edit_diff_lines` 序列化 |
 | 更新日志通知购买者 | `NotifyProductChangelogJob` + `commerce.product_changelog` |
 | 上架自动创建讨论帖 | 管理端 create/update 商品时调用 |
+
+### 第三十二轮（论坛列表完善与商城问答增强）
+
+| 功能 | 实现 |
+|------|------|
+| 论坛主题 Onebox | `FetchTopicOnebox` + `FormatPostBody` |
+| 主题列表最后回复者 | `last_poster_username` + 列表页展示 |
+| 主题列表标签/商品徽章 | `TopicTitleBadges` tags + linked_product |
+| 列表 N+1 优化 | `TopicListPreloadable` concern |
+| 忽略用户过滤通知 | `FilterNotificationRecipients` |
+| 购买后自动关注讨论 | `SubscribeProductDiscussion` on payment |
+| 订单关联提问修复 | `order_item_id` 前后端贯通 |
+| 问答回答有帮助投票 | `ToggleAnswerHelpful` + migration |
+| 成员购买数展示 | `purchases_count` 排行榜 |
+| 优惠券限制透明化 | per_user_limit / max_discount 公开页 |
+| 管理端问答订单列 | admin product_questions order_number |

@@ -14,8 +14,12 @@ module Community
         .pluck(:user_id)
 
       muted_ids = Community::TopicMute.where(forum_topic_id: @topic.id, user_id: subscriber_ids).pluck(:user_id)
+      recipient_ids = Community::FilterNotificationRecipients.call(
+        actor_id: @post.user_id,
+        recipient_ids: subscriber_ids - muted_ids
+      ).value
 
-      User.where(id: subscriber_ids - muted_ids).find_each do |user|
+      User.where(id: recipient_ids).find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.topic_reply")
 
         Notification.notify!(

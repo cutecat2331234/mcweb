@@ -3,6 +3,7 @@
 module Community
   class UnreadController < ApplicationController
     include Community::TopicListSortable
+    include Community::TopicListPreloadable
 
     before_action :require_login
 
@@ -10,7 +11,7 @@ module Community
       sort = params[:sort].presence || "latest"
       scope = Community::ReadState
         .with_unread_for(current_user)
-        .includes(topic: :user)
+        .includes(topic: TOPIC_LIST_INCLUDES)
         .joins(:topic)
 
       scope = scope.where.not(forum_topics: { user_id: blocked_user_ids }) if blocked_user_ids.any?

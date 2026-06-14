@@ -55,7 +55,8 @@ module Community
       {
         posts: Community::Post.where(user_id: ids, status: :published).group(:user_id).count,
         likes: Community::Reaction.joins(:post).where(forum_posts: { user_id: ids }).group("forum_posts.user_id").count,
-        reviews: Commerce::Review.where(user_id: ids, status: :published).group(:user_id).count
+        reviews: Commerce::Review.where(user_id: ids, status: :published).group(:user_id).count,
+        purchases: Commerce::Order.where(user_id: ids, status: %w[paid processing fulfilling fulfilled completed]).group(:user_id).count
       }
     end
 
@@ -71,6 +72,7 @@ module Community
         posts_count: stats[:posts][user.id].to_i,
         likes_received: stats[:likes][user.id].to_i,
         reviews_count: stats[:reviews][user.id].to_i,
+        purchases_count: stats[:purchases][user.id].to_i,
         trust_level: trust[:level],
         trust_name: trust[:name],
         member_since: l(user.created_at, format: :short)

@@ -3,6 +3,7 @@
 module Community
   class SectionsController < ApplicationController
     include Community::TopicFilterable
+    include Community::TopicListPreloadable
 
     def index
       @pagy, sections = pagy(Community::Section.roots.ordered.includes(:category, :children), limit: 20)
@@ -27,10 +28,10 @@ module Community
       section = Community::Section.find_by!(slug: params[:id])
       sort = params[:sort].to_s.presence || "activity"
       filter = params[:filter].to_s.presence
-      scope = section.topics.where(status: :published).sorted(sort)
+      scope = preload_topics(section.topics.where(status: :published).sorted(sort))
       scope = filter_blocked_topics(scope)
       scope = apply_topic_filter(scope, filter: filter, user: current_user)
-      featured = section.topics.featured_topics.pinned_first.limit(5)
+      featured = preload_topics(section.topics.featured_topics.pinned_first.limit(5))
       featured = filter_blocked_topics(featured)
 
       @pagy, topics = pagy(scope, limit: 20)

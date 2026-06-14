@@ -2,6 +2,8 @@
 
 module Community
   class BookmarksController < ApplicationController
+    include Community::TopicListPreloadable
+
     before_action :require_login
     before_action :set_bookmark, only: :update
 
@@ -11,11 +13,7 @@ module Community
       post_bookmarks = bookmarks.select { |bookmark| bookmark.forum_post_id.present? }
 
       topic_ids = topic_bookmarks.map(&:forum_topic_id).uniq
-      topics = Community::Topic
-        .where(id: topic_ids, status: :published)
-        .includes(:user, :section)
-        .order(last_posted_at: :desc)
-        .limit(50)
+      topics = preload_topics(Community::Topic.where(id: topic_ids, status: :published).order(last_posted_at: :desc).limit(50))
       topics = filter_blocked_topics(topics)
 
       read_states = Community::ReadState

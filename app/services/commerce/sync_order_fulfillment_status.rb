@@ -7,7 +7,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.success(@order) if @order.fulfilled? || @order.completed?
+      return ServiceResult.success(@order) if @order.completed?
 
       item_count = @order.items.count
       return ServiceResult.success(@order) if item_count.zero?
@@ -15,14 +15,16 @@ module Commerce
       fulfilled_count = @order.fulfillments.where(status: "fulfilled").count
       return ServiceResult.success(@order) unless fulfilled_count >= item_count
 
-      was_paid = @order.paid?
+      was_fulfilled = @order.fulfilled?
+      previous_status = @order.status
+
       if @order.may_mark_fulfilled?
         @order.mark_fulfilled!
-      elsif @order.paid?
+      elsif %w[paid processing fulfilling].include?(@order.status)
         @order.update!(status: "fulfilled")
       end
 
-      if was_paid && @order.fulfilled?
+      if !was_fulfilled && @order.fulfilled?
         MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_fulfilled", "deliver_now", args: [ @order.id ])
         Commerce::NotifyOrderEvent.call(
           user: @order.user,
@@ -33,9 +35,26 @@ module Commerce
         )
       end
 
+      if @order.fulfilled? && @order.may_complete?
+        @order.complete!
+        notify_completed! unless previous_status == "completed"
+      end
+
       ServiceResult.success(@order)
     rescue AASM::InvalidTransition => e
       ServiceResult.failure(error: e.message)
+    end
+
+    private
+
+    def notify_completed!
+      Commerce::NotifyOrderEvent.call(
+        user: @order.user,
+        notification_type: "commerce.order_completed",
+        title: "订单已完成",
+        body: "订单 #{@order.order_number} 已全部完成，感谢购买。",
+        path: "/store/orders/#{@order.public_id}"
+      )
     end
   end
 end

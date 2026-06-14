@@ -37,6 +37,7 @@ export const routes = {
   store: '/store/products',
   storeRecentlyViewed: '/store/products/recently_viewed',
   storeCompare: '/store/compare',
+  storeWishlist: '/store/wishlist',
   storeStockAlerts: '/store/stock_alerts',
   storeProduct: (id: string) => `/store/products/${id}`,
   storeCart: '/store/cart',

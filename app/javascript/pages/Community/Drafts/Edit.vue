@@ -53,6 +53,10 @@ const form = useForm({
 })
 
 function save() {
+  if (!showPoll.value) {
+    form.draft.poll_question = ''
+    form.draft.poll_options = ''
+  }
   form.patch(`/forum/drafts/${props.draft.id}`)
 }
 

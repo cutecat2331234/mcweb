@@ -36,6 +36,7 @@ module Commerce
       avg = product.reviews.published.average(:rating)&.round(1)
       {
         id: product.public_id,
+        db_id: product.id,
         name: product.name,
         url: store_product_path(product),
         price_label: format_price(product),
@@ -44,7 +45,8 @@ module Commerce
         average_rating: avg,
         view_count: product.view_count,
         variants: product.variants.map { |variant| serialize_variant(variant, product) },
-        toggle_url: store_toggle_compare_path(product_id: product.public_id)
+        toggle_url: store_toggle_compare_path(product_id: product.public_id),
+        add_to_cart_url: store_cart_path
       }
     end
   end

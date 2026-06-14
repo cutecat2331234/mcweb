@@ -12,7 +12,7 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  tab: 'posts' | 'topics'
+  tab: 'posts' | 'topics' | 'following'
   posts: Array<{
     id: number
     floor_number: number
@@ -42,7 +42,7 @@ const props = defineProps<{
   sortOptions: Array<{ value: string; label: string }>
 }>()
 
-function switchTab(value: 'posts' | 'topics') {
+function switchTab(value: 'posts' | 'topics' | 'following') {
   router.get(routes.forumActivity, { tab: value }, { preserveState: true })
 }
 
@@ -64,6 +64,7 @@ function changeSort(value: string) {
     <div class="flex gap-2">
       <Button :variant="tab === 'posts' ? 'default' : 'outline'" size="sm" @click="switchTab('posts')">最新回复</Button>
       <Button :variant="tab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">最新主题</Button>
+      <Button :variant="tab === 'following' ? 'default' : 'outline'" size="sm" @click="switchTab('following')">关注的人</Button>
     </div>
     <select
       v-if="tab === 'topics'"
@@ -75,7 +76,7 @@ function changeSort(value: string) {
     </select>
   </div>
 
-  <div v-if="tab === 'posts'">
+  <div v-if="tab === 'posts' || tab === 'following'">
     <div v-if="posts.length" class="space-y-3">
       <article v-for="post in posts" :key="post.id" class="rounded-lg border p-4">
         <div class="mb-2 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">

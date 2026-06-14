@@ -8,13 +8,26 @@ module Community
       q = params[:q].to_s.strip
       return render json: { users: [] } if q.length < 2
 
-      users = User.where("username ILIKE ?", "#{ActiveRecord::Base.sanitize_sql_like(q)}%")
+      pattern = "#{ActiveRecord::Base.sanitize_sql_like(q)}%"
+      blocked_ids = Community::UserBlock.where(blocker: current_user).select(:blocked_id)
+      blocked_by_ids = Community::UserBlock.where(blocked: current_user).select(:blocker_id)
+
+      users = User
+        .where("username ILIKE :q OR display_name ILIKE :q", q: pattern)
         .where.not(id: current_user.id)
-        .where.not(id: Community::UserBlock.where(blocker: current_user).select(:blocked_id))
+        .where.not(id: blocked_ids)
+        .where.not(id: blocked_by_ids)
+        .order(:username)
         .limit(8)
 
       render json: {
-        users: users.map { |u| { username: u.username, avatar_url: u.avatar_url } }
+        users: users.map do |u|
+          {
+            username: u.username,
+            display_name: u.display_name,
+            avatar_url: u.avatar_url
+          }
+        end
       }
     end
   end

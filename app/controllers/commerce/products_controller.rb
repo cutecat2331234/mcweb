@@ -123,7 +123,13 @@ module Commerce
                   Commerce::Product.none
                 end
 
-      questions = product.questions.visible.includes(:user, :answers).recent.limit(20)
+      questions_scope = product.questions.visible.includes(:user, :answers).recent
+      if params[:question_q].present?
+        q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:question_q].to_s.strip)}%"
+        questions_scope = questions_scope.where("body ILIKE ?", q)
+      end
+      question_page = [ params[:question_page].to_i, 1 ].max
+      @pagy_questions, questions = pagy(questions_scope, limit: 10, page: question_page)
 
       render inertia: "Commerce/Products/Show", props: {
         product: serialize_product_detail(product, wishlisted: wishlisted, reviews: reviews, average_rating: avg).merge(
@@ -134,6 +140,8 @@ module Commerce
         reviewsPagination: pagy_props(@pagy_reviews),
         related_products: related.map { |p| serialize_product_list_item(p) },
         questions: questions.map { |q| serialize_product_question(q) },
+        questionsPagination: pagy_props(@pagy_questions),
+        questionQuery: params[:question_q].to_s,
         stockAlertUrl: stock_alert_store_product_path(product),
         stockAlertVariantIds: stock_alert_variant_ids,
         canReview: can_review,

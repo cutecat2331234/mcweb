@@ -507,3 +507,15 @@ app/
 | 购物车更新重置弃购提醒 | `Cart#reset_abandoned_reminder!` |
 | 评价编辑保留图片提示 | `Products/Show.vue` 现有图片预览 |
 | 评价图片可点击放大 | 评价列表图片链至原图 |
+
+### 第二十六轮（论坛 / 商城社交与交易闭环）
+
+| 功能 | 实现 |
+|------|------|
+| 活动流关注的人 Tab | `ActivityController` tab=following |
+| @提及搜索增强 | 昵称/显示名、双向拉黑过滤、头像展示 |
+| 草稿隐藏投票清除 | `Drafts/Edit.vue` 保存时清空 poll |
+| 商品问答分页搜索 | `products#show` question_page/question_q |
+| 订单完成通知 | `SyncOrderFulfillmentStatus` → `commerce.order_completed` |
+| 对比页加入购物车 | `Compare/Show.vue` + `db_id` |
+| 导航修复 | `routes.storeWishlist` + 标签主题链接 |

@@ -140,7 +140,7 @@ class Commerce::SyncOrderFulfillmentStatusTest < ActiveSupport::TestCase
     @fulfillment.update!(status: "fulfilled", fulfilled_at: Time.current)
     result = Commerce::SyncOrderFulfillmentStatus.call(order: @order)
     assert result.success?
-    assert_equal "fulfilled", @order.reload.status
+    assert_equal "completed", @order.reload.status
   end
 end
 

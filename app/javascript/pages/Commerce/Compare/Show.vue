@@ -11,6 +11,7 @@ defineOptions({ layout: PortalLayout })
 const props = defineProps<{
   products: Array<{
     id: string
+    db_id: number
     name: string
     url: string
     price_label: string
@@ -20,6 +21,7 @@ const props = defineProps<{
     view_count: number
     variants: Array<{ id: number; name: string; price_label: string; in_stock: boolean }>
     toggle_url: string
+    add_to_cart_url: string
   }>
   compareCount: number
 }>()
@@ -30,6 +32,15 @@ function remove(product: { toggle_url: string }) {
 
 function clearAll() {
   router.delete(routes.storeCompare)
+}
+
+function addToCart(product: { db_id: number; add_to_cart_url: string; variants: Array<{ id: number; in_stock: boolean }> }) {
+  const variant = product.variants.find((v) => v.in_stock) || product.variants[0]
+  router.patch(product.add_to_cart_url, {
+    product_id: product.db_id,
+    variant_id: variant?.id,
+    quantity: 1,
+  })
 }
 </script>
 
@@ -87,7 +98,15 @@ function clearAll() {
         </tr>
         <tr>
           <td class="p-3 text-muted-foreground">操作</td>
-          <td v-for="product in products" :key="`${product.id}-action`" class="p-3">
+          <td v-for="product in products" :key="`${product.id}-action`" class="space-y-2 p-3">
+            <Button
+              v-if="product.in_stock"
+              type="button"
+              size="sm"
+              @click="addToCart(product)"
+            >
+              加入购物车
+            </Button>
             <Button type="button" variant="outline" size="sm" @click="remove(product)">移除</Button>
           </td>
         </tr>

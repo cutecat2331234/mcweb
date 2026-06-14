@@ -105,6 +105,8 @@ const props = defineProps<{
       created_at: string
     }>
   }>
+  questionsPagination?: import('@/components/portal/Pagination.vue').PaginationMeta
+  questionQuery?: string
 }>()
 
 const questionForm = useForm({ question: { body: '' } })
@@ -183,6 +185,14 @@ const stockAlertUnsubscribeUrl = computed(() => {
 const reviewSort = ref(props.reviewSort || 'newest')
 
 const reviewRating = ref<number | ''>(props.reviewRating || '')
+const questionSearch = ref(props.questionQuery || '')
+
+function searchQuestions() {
+  router.get(routes.storeProduct(props.product.id), {
+    question_q: questionSearch.value || undefined,
+    question_page: undefined,
+  }, { preserveScroll: true, preserveState: true })
+}
 
 function changeReviewSort(value: string) {
   reviewSort.value = value
@@ -430,7 +440,13 @@ function submitAnswer(questionId: number, answerUrl: string) {
   </div>
 
   <section class="mt-10 max-w-xl">
-    <h2 class="mb-4 text-sm font-semibold">商品问答</h2>
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-sm font-semibold">商品问答</h2>
+      <form class="flex gap-2" @submit.prevent="searchQuestions">
+        <Input v-model="questionSearch" placeholder="搜索问答…" class="h-8 max-w-xs text-sm" />
+        <Button type="submit" size="sm" variant="outline">搜索</Button>
+      </form>
+    </div>
     <div v-if="questions.length" class="mb-6 space-y-4">
       <article v-for="q in questions" :key="q.id" class="rounded-lg border p-4">
         <p class="text-sm font-medium">问：{{ q.body }}</p>
@@ -454,6 +470,13 @@ function submitAnswer(questionId: number, answerUrl: string) {
       <Textarea v-model="questionForm.question.body" rows="3" placeholder="关于商品的问题…" />
       <Button type="submit" size="sm" :disabled="questionForm.processing">提交问题</Button>
     </form>
+    <Pagination
+      v-if="questionsPagination && questionsPagination.pages > 1"
+      class="mt-4"
+      :pagination="questionsPagination"
+      :base-path="routes.storeProduct(product.id)"
+      :page-param="'question_page'"
+    />
   </section>
 
   <section v-if="related_products.length" class="mt-10">

@@ -10,7 +10,7 @@ const emit = defineEmits<{
   'update:modelValue': [value: string]
 }>()
 
-const suggestions = ref<Array<{ username: string }>>([])
+const suggestions = ref<Array<{ username: string; display_name?: string | null; avatar_url?: string }>>([])
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 function onInput(event: Event) {
@@ -49,15 +49,17 @@ function pick(username: string) {
     <slot :on-input="onInput" />
     <ul
       v-if="suggestions.length"
-      class="absolute z-10 mt-1 max-h-40 w-full overflow-auto rounded-md border bg-background shadow"
+      class="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-background shadow"
     >
       <li
         v-for="user in suggestions"
         :key="user.username"
-        class="cursor-pointer px-3 py-2 text-sm hover:bg-muted"
+        class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
         @mousedown.prevent="pick(user.username)"
       >
-        @{{ user.username }}
+        <img v-if="user.avatar_url" :src="user.avatar_url" :alt="user.username" class="h-6 w-6 rounded-full" />
+        <span class="font-medium">@{{ user.username }}</span>
+        <span v-if="user.display_name" class="text-muted-foreground">{{ user.display_name }}</span>
       </li>
     </ul>
   </div>

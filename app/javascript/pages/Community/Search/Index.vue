@@ -4,6 +4,7 @@ import { ref, watch } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Input from '@/components/ui/Input.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
@@ -31,18 +32,33 @@ export interface SearchPost {
   created_at: string
 }
 
+export interface SectionOption {
+  slug: string
+  name: string
+  category: string | null
+}
+
 const props = defineProps<{
   query: string
+  section: string | null
+  sections: SectionOption[]
   topics: SearchTopic[]
   posts: SearchPost[]
+  topicsPagination: PaginationMeta
+  postsPagination: PaginationMeta
 }>()
 
 const q = ref(props.query)
+const sectionSlug = ref(props.section || '')
 
 watch(() => props.query, (value) => { q.value = value })
+watch(() => props.section, (value) => { sectionSlug.value = value || '' })
 
 function search() {
-  router.get(routes.forumSearch, { q: q.value }, { preserveState: true })
+  router.get(routes.forumSearch, {
+    q: q.value,
+    section: sectionSlug.value || undefined,
+  }, { preserveState: true })
 }
 </script>
 
@@ -55,8 +71,14 @@ function search() {
 
   <PageHeader title="搜索论坛" />
 
-  <form class="mb-8 flex max-w-lg gap-2" @submit.prevent="search">
-    <Input v-model="q" placeholder="输入关键词..." />
+  <form class="mb-8 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
+    <Input v-model="q" placeholder="输入关键词..." class="min-w-[200px] flex-1" />
+    <select v-model="sectionSlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">全部分区</option>
+      <option v-for="sec in sections" :key="sec.slug" :value="sec.slug">
+        {{ sec.category ? `${sec.category} / ` : '' }}{{ sec.name }}
+      </option>
+    </select>
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">搜索</button>
   </form>
 
@@ -72,6 +94,7 @@ function search() {
           </TableRow>
         </TableBody>
       </Table>
+      <Pagination :pagination="topicsPagination" :base-path="routes.forumSearch" query-param="topic_page" />
     </div>
     <p v-else class="mb-8 text-sm text-muted-foreground">未找到相关主题。</p>
 
@@ -87,6 +110,7 @@ function search() {
           </TableRow>
         </TableBody>
       </Table>
+      <Pagination :pagination="postsPagination" :base-path="routes.forumSearch" query-param="post_page" />
     </div>
     <p v-else class="text-sm text-muted-foreground">未找到相关帖子。</p>
   </template>

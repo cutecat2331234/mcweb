@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000001) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,6 +52,34 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000001) do
     t.string "slug", null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_forum_categories_on_slug", unique: true
+  end
+
+  create_table "forum_conversation_participants", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_conversation_id", null: false
+    t.datetime "last_read_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_conversation_id", "user_id"], name: "idx_forum_conv_participants_unique", unique: true
+    t.index ["forum_conversation_id"], name: "index_forum_conversation_participants_on_forum_conversation_id"
+    t.index ["user_id"], name: "index_forum_conversation_participants_on_user_id"
+  end
+
+  create_table "forum_conversations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_message_at"
+    t.datetime "updated_at", null: false
+  end
+
+  create_table "forum_messages", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.bigint "forum_conversation_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_conversation_id", "created_at"], name: "index_forum_messages_on_forum_conversation_id_and_created_at"
+    t.index ["forum_conversation_id"], name: "index_forum_messages_on_forum_conversation_id"
+    t.index ["user_id"], name: "index_forum_messages_on_user_id"
   end
 
   create_table "forum_mutes", force: :cascade do |t|
@@ -591,6 +619,30 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000001) do
     t.index ["store_order_id"], name: "index_store_refunds_on_store_order_id"
   end
 
+  create_table "store_reviews", force: :cascade do |t|
+    t.text "body"
+    t.datetime "created_at", null: false
+    t.integer "rating", null: false
+    t.string "status", default: "published", null: false
+    t.bigint "store_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_product_id", "status"], name: "index_store_reviews_on_store_product_id_and_status"
+    t.index ["store_product_id", "user_id"], name: "index_store_reviews_on_store_product_id_and_user_id", unique: true
+    t.index ["store_product_id"], name: "index_store_reviews_on_store_product_id"
+    t.index ["user_id"], name: "index_store_reviews_on_user_id"
+  end
+
+  create_table "store_wishlist_items", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "store_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_product_id"], name: "index_store_wishlist_items_on_store_product_id"
+    t.index ["user_id", "store_product_id"], name: "index_store_wishlist_items_on_user_id_and_store_product_id", unique: true
+    t.index ["user_id"], name: "index_store_wishlist_items_on_user_id"
+  end
+
   create_table "user_roles", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "role_id", null: false
@@ -728,6 +780,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000001) do
   add_foreign_key "audit_logs", "users", column: "actor_id"
   add_foreign_key "forum_bookmarks", "forum_topics"
   add_foreign_key "forum_bookmarks", "users"
+  add_foreign_key "forum_conversation_participants", "forum_conversations"
+  add_foreign_key "forum_conversation_participants", "users"
+  add_foreign_key "forum_messages", "forum_conversations"
+  add_foreign_key "forum_messages", "users"
   add_foreign_key "forum_mutes", "forum_sections"
   add_foreign_key "forum_mutes", "users"
   add_foreign_key "forum_mutes", "users", column: "created_by_id"
@@ -785,6 +841,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000001) do
   add_foreign_key "store_refunds", "store_orders"
   add_foreign_key "store_refunds", "users", column: "approved_by_id"
   add_foreign_key "store_refunds", "users", column: "requested_by_id"
+  add_foreign_key "store_reviews", "store_products"
+  add_foreign_key "store_reviews", "users"
+  add_foreign_key "store_wishlist_items", "store_products"
+  add_foreign_key "store_wishlist_items", "users"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"
   add_foreign_key "website_articles", "users", column: "author_id"

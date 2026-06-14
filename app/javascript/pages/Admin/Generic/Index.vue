@@ -17,16 +17,34 @@ export interface AdminColumn {
   link?: boolean
 }
 
+export interface AdminAction {
+  label: string
+  href: string
+}
+
 defineProps<{
   title: string
   subtitle?: string
   columns: AdminColumn[]
   rows: Array<Record<string, string>>
+  actions?: AdminAction[]
 }>()
 </script>
 
 <template>
-  <PageHeader :title="title" :subtitle="subtitle" />
+  <div class="mb-4 flex items-center justify-between">
+    <PageHeader :title="title" :subtitle="subtitle" />
+    <div v-if="actions?.length" class="flex gap-2">
+      <Link
+        v-for="action in actions"
+        :key="action.href"
+        :href="action.href"
+        class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground no-underline hover:opacity-90"
+      >
+        {{ action.label }}
+      </Link>
+    </div>
+  </div>
 
   <div v-if="rows.length" class="rounded-lg border">
     <Table>

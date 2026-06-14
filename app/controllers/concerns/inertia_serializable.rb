@@ -70,7 +70,7 @@ module InertiaSerializable
     }
   end
 
-  def serialize_topic_detail(topic, watching: false, bookmarked: false, can_moderate: false)
+  def serialize_topic_detail(topic, watching: false, bookmarked: false, can_moderate: false, can_edit: false)
     {
       id: topic.public_id,
       title: topic.title,
@@ -83,7 +83,9 @@ module InertiaSerializable
       watching: watching,
       bookmarked: bookmarked,
       can_moderate: can_moderate,
+      can_edit: can_edit,
       tags: topic.tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
+      tags_string: topic.tags.map(&:name).join(", "),
       section: {
         name: topic.section.name,
         slug: topic.section.slug,
@@ -107,10 +109,13 @@ module InertiaSerializable
       floor_number: post.floor_number,
       author: post.user.username,
       author_url: forum_user_path(post.user.username),
+      avatar_url: post.user.avatar_url,
       body: post.body,
       body_html: body_html,
       created_at: l(post.created_at, format: :short),
       edited_at: post.edited_at ? l(post.edited_at, format: :short) : nil,
+      edit_count: post.edits.count,
+      edits_url: post.edits.any? ? edits_forum_post_path(post) : nil,
       quoted_post: serialize_quoted_post(post.quoted_post),
       reaction_counts: reaction_counts,
       user_reactions: user_reactions,
@@ -176,7 +181,7 @@ module InertiaSerializable
     }
   end
 
-  def serialize_product_detail(product)
+  def serialize_product_detail(product, wishlisted: false, reviews: [], average_rating: nil)
     {
       id: product.public_id,
       db_id: product.id,
@@ -188,7 +193,20 @@ module InertiaSerializable
       category_name: product.category&.name,
       in_stock: product.in_stock?,
       purchase_limit: product.purchase_limit,
-      variants: product.variants.map { |variant| serialize_variant(variant, product) }
+      wishlisted: wishlisted,
+      average_rating: average_rating,
+      variants: product.variants.map { |variant| serialize_variant(variant, product) },
+      reviews: reviews.map { |review| serialize_review(review) }
+    }
+  end
+
+  def serialize_review(review)
+    {
+      id: review.id,
+      author: review.user.username,
+      rating: review.rating,
+      body: review.body,
+      created_at: l(review.created_at, format: :short)
     }
   end
 

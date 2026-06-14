@@ -1,5 +1,6 @@
 class User < ApplicationRecord
   include HasPublicId
+  include HasAvatar
 
   has_secure_password
 

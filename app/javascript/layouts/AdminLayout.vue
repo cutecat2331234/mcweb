@@ -26,6 +26,7 @@ const nav = [
   ]},
   { label: '商城', items: [
     { label: '商品', href: adminRoutes.storeProducts },
+    { label: '优惠券', href: adminRoutes.storeCoupons },
     { label: '订单', href: adminRoutes.storeOrders },
     { label: '发货', href: adminRoutes.storeFulfillments },
   ]},

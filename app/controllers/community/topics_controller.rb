@@ -2,16 +2,16 @@
 
 module Community
   class TopicsController < ApplicationController
-    before_action :require_login, only: %i[new create toggle_subscription toggle_bookmark moderate move]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show toggle_subscription toggle_bookmark moderate move]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move]
 
     def show
       @topic.record_view!
       mark_topic_read!
 
       @pagy, posts = pagy(
-        @topic.posts.chronological.includes(:user, :quoted_post, :reactions),
+        @topic.posts.chronological.includes(:user, :quoted_post, :reactions, :edits),
         limit: 20
       )
 
@@ -20,7 +20,8 @@ module Community
           @topic,
           watching: watching_topic?,
           bookmarked: bookmarked_topic?,
-          can_moderate: can_moderate_topic?
+          can_moderate: can_moderate_topic?,
+          can_edit: can_edit_topic?
         ),
         posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?) },
         pagination: pagy_props(@pagy),
@@ -64,6 +65,21 @@ module Community
                },
                status: :unprocessable_entity,
                errors: topic_errors(result)
+      end
+    end
+
+    def update
+      result = Community::EditTopic.call(
+        user: current_user,
+        topic: @topic,
+        title: topic_params[:title],
+        tag_names: topic_params[:tags]
+      )
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "主题已更新。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
     end
 
@@ -156,6 +172,12 @@ module Community
 
     def can_moderate_topic?
       current_user&.permission?("forum.topics.lock")
+    end
+
+    def can_edit_topic?
+      return false unless current_user
+
+      current_user.id == @topic.user_id || current_user.permission?("forum.topics.lock")
     end
 
     def movable_sections

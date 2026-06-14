@@ -12,14 +12,18 @@ export interface PaginationMeta {
   next: number | null
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   pagination: PaginationMeta
   basePath: string
-}>()
+  pageParam?: string
+}>(), {
+  pageParam: 'page',
+})
 
 const pageUrl = (page: number) => {
-  const url = new URL(props.basePath, window.location.origin)
-  url.searchParams.set('page', String(page))
+  const url = new URL(window.location.href)
+  url.pathname = new URL(props.basePath, window.location.origin).pathname
+  url.searchParams.set(props.pageParam, String(page))
   return `${url.pathname}${url.search}`
 }
 

@@ -2,6 +2,26 @@
 
 module Community
   class TagsController < ApplicationController
+    def index
+      tags = Community::Tag
+        .left_joins(:topic_tags)
+        .group(:id)
+        .select("forum_tags.*, COUNT(forum_topic_tags.id) AS topics_count")
+        .order("topics_count DESC")
+        .limit(100)
+
+      render inertia: "Community/Tags/Index", props: {
+        tags: tags.map do |tag|
+          {
+            name: tag.name,
+            slug: tag.slug,
+            topics_count: tag.topics_count.to_i,
+            url: forum_tag_path(tag.slug)
+          }
+        end
+      }
+    end
+
     def show
       tag = Community::Tag.find_by!(slug: params[:slug])
       topic_ids = tag.topics.where(status: :published).pluck(:id)

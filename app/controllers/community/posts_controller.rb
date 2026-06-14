@@ -4,7 +4,7 @@ module Community
   class PostsController < ApplicationController
     before_action :require_login
     before_action :set_topic, only: :create
-    before_action :set_post, only: %i[update destroy toggle_reaction moderate]
+    before_action :set_post, only: %i[update destroy toggle_reaction moderate edits]
 
     def create
       result = Community::CreatePost.call(
@@ -75,6 +75,30 @@ module Community
       end
     end
 
+    def edits
+      unless can_view_edits?
+        return redirect_to forum_topic_path(@post.topic), alert: "无权查看编辑历史。"
+      end
+
+      edits = @post.edits.includes(:editor).order(created_at: :desc)
+
+      render inertia: "Community/Posts/Edits", props: {
+        post: {
+          id: @post.id,
+          floor_number: @post.floor_number,
+          topic_url: forum_topic_path(@post.topic)
+        },
+        edits: edits.map do |edit|
+          {
+            editor: edit.editor.username,
+            body_before: edit.body_before,
+            body_after: edit.body_after,
+            created_at: l(edit.created_at, format: :short)
+          }
+        end
+      }
+    end
+
     private
 
     def set_topic
@@ -94,6 +118,13 @@ module Community
       return if post_params[:quoted_post_id].blank?
 
       Community::Post.find_by(id: post_params[:quoted_post_id], forum_topic_id: @topic.id)
+    end
+
+    def can_view_edits?
+      return true if current_user&.permission?("forum.topics.lock")
+      return true if current_user&.id == @post.user_id
+
+      false
     end
   end
 end

@@ -77,6 +77,15 @@ app/
 | 标签 | `Community::SyncTopicTags`（最多 5 个）+ `/forum/tags/:slug` |
 | 用户资料 | `/forum/users/:username` |
 | 关注列表 | `/forum/watching` |
+| 书签列表 | `/forum/bookmarks` |
+| 最新动态 | `/forum/latest` |
+| 标签云 | `/forum/tags` |
+| 私信 | `Community::CreateConversation` + `/forum/conversations` |
+| 编辑主题/标签 | `Community::EditTopic` |
+| 编辑历史 | `PostEdit` + `/forum/posts/:id/edits` |
+| Gravatar 头像 | `HasAvatar` concern |
+| 通知偏好 | `/forum/preferences` |
+| 搜索增强 | 分区筛选 + 分页 |
 
 ## 商城功能
 
@@ -92,4 +101,8 @@ app/
 | 订单取消 | `Commerce::CancelOrder`（待支付状态，恢复库存） |
 | 发货状态展示 | 订单详情页显示 fulfillment 状态 |
 | 商品搜索/排序 | `?q=`、`price_asc` / `price_desc` |
-| 管理后台退款 | `Commerce::ProcessRefund` 全额退款 |
+| 管理后台退款 | `Commerce::ProcessRefund` 全额退款（恢复库存） |
+| 后台商品 CRUD | `Admin::Store::ProductsController` + Inertia 表单 |
+| 后台优惠券 CRUD | `Admin::Store::CouponsController` |
+| 心愿单 | `Commerce::ToggleWishlist` + `/store/wishlist` |
+| 商品评价 | `Commerce::CreateReview` + 星级展示 |

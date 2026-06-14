@@ -25,7 +25,8 @@ module Admin
               price: format_price(product),
               url: admin_store_product_path(product)
             )
-          end
+          end,
+          actions: [{ label: "新建商品", href: new_admin_store_product_path }]
         }
       end
 
@@ -40,38 +41,46 @@ module Admin
             { label: "库存", value: @product.stock.nil? ? "无限" : @product.stock.to_s },
             { label: "描述", value: @product.description || "—" }
           ],
-          backUrl: admin_store_products_path
+          backUrl: admin_store_products_path,
+          actions: [
+            { label: "编辑", href: edit_admin_store_product_path(@product) },
+            { label: "归档", href: admin_store_product_path(@product), method: "delete", confirm: "确定归档此商品？" }
+          ]
         }
       end
 
       def new
-        @product = ::Commerce::Product.new
+        render inertia: "Admin/Store/Products/Form", props: form_props(::Commerce::Product.new)
       end
 
       def create
-        @product = ::Commerce::Product.new(product_params)
-
-        if @product.save
-          redirect_to admin_store_product_path(@product), notice: "Product created."
+        product = ::Commerce::Product.new(product_params)
+        if product.save
+          redirect_to admin_store_product_path(product), notice: "商品已创建。"
         else
-          render :new, status: :unprocessable_entity
+          render inertia: "Admin/Store/Products/Form",
+                 props: form_props(product),
+                 status: :unprocessable_entity
         end
       end
 
       def edit
+        render inertia: "Admin/Store/Products/Form", props: form_props(@product)
       end
 
       def update
         if @product.update(product_params)
-          redirect_to admin_store_product_path(@product), notice: "Product updated."
+          redirect_to admin_store_product_path(@product), notice: "商品已更新。"
         else
-          render :edit, status: :unprocessable_entity
+          render inertia: "Admin/Store/Products/Form",
+                 props: form_props(@product),
+                 status: :unprocessable_entity
         end
       end
 
       def destroy
         @product.update!(status: :archived)
-        redirect_to admin_store_products_path, notice: "Product archived."
+        redirect_to admin_store_products_path, notice: "商品已归档。"
       end
 
       private
@@ -81,7 +90,33 @@ module Admin
       end
 
       def product_params
-        params.expect(product: %i[name slug description product_type status price_cents currency stock store_category_id fulfillment_config])[:product]
+        params.require(:product).permit(
+          :name, :slug, :description, :product_type, :status,
+          :price_cents, :currency, :stock, :store_category_id, :purchase_limit
+        )
+      end
+
+      def form_props(product)
+        {
+          title: product.persisted? ? "编辑商品" : "新建商品",
+          product: {
+            public_id: product.public_id,
+            name: product.name || "",
+            slug: product.slug || "",
+            description: product.description || "",
+            product_type: product.product_type || "virtual",
+            status: product.status || "draft",
+            price_cents: product.price_cents || 0,
+            currency: product.currency || "CNY",
+            stock: product.stock,
+            store_category_id: product.store_category_id,
+            purchase_limit: product.purchase_limit
+          },
+          categories: ::Commerce::Category.ordered.map { |c| { id: c.id, name: c.name } },
+          submitUrl: product.persisted? ? admin_store_product_path(product) : admin_store_products_path,
+          method: product.persisted? ? "patch" : "post",
+          backUrl: admin_store_products_path
+        }
       end
     end
   end

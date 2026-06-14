@@ -32,7 +32,8 @@ Rails.application.routes.draw do
       resources :reports, only: %i[index show update]
     end
     namespace :store do
-      resources :products, only: %i[index show]
+      resources :products
+      resources :coupons
       resources :orders, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
     end
@@ -51,7 +52,7 @@ Rails.application.routes.draw do
 
   scope module: :community, path: "forum", as: :forum do
     resources :sections, only: %i[index show]
-    resources :topics, only: %i[show new create] do
+    resources :topics, only: %i[show new create update] do
       member do
         post :moderate
         post :move
@@ -63,6 +64,7 @@ Rails.application.routes.draw do
       member do
         post :reaction, action: :toggle_reaction
         post :moderate
+        get :edits
       end
     end
     resources :reports, only: %i[new create]
@@ -75,8 +77,16 @@ Rails.application.routes.draw do
       end
     end
     get "search", to: "search#index"
+    get "latest", to: "latest#index"
+    get "bookmarks", to: "bookmarks#index"
+    get "preferences", to: "preferences#show"
+    patch "preferences", to: "preferences#update"
     get "watching", to: "watched#index"
+    get "tags", to: "tags#index", as: :tags
     get "tags/:slug", to: "tags#show", as: :tag
+    resources :conversations, only: %i[index show new create] do
+      resources :messages, only: %i[create], controller: "conversation_messages"
+    end
     resources :users, only: %i[show], param: :id
   end
 
@@ -84,7 +94,13 @@ Rails.application.routes.draw do
   post "payments/fake/:id", to: "payments/fake#create"
 
   scope module: :commerce, path: "store", as: :store do
-    resources :products, only: %i[index show]
+    resources :products, only: %i[index show] do
+      member do
+        post :wishlist, to: "wishlist#toggle"
+        resources :reviews, only: %i[create], controller: "reviews"
+      end
+    end
+    get "wishlist", to: "wishlist#index"
     resource :cart, only: %i[show update]
     resources :orders, only: %i[index show create] do
       member do

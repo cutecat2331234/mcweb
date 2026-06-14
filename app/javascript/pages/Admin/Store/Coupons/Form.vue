@@ -1,0 +1,90 @@
+<script setup lang="ts">
+import { Link, useForm } from '@inertiajs/vue3'
+import AdminLayout from '@/layouts/AdminLayout.vue'
+import PageHeader from '@/components/portal/PageHeader.vue'
+import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
+import Label from '@/components/ui/Label.vue'
+
+defineOptions({ layout: AdminLayout })
+
+const props = defineProps<{
+  title: string
+  coupon: {
+    id?: number
+    code: string
+    discount_type: string
+    discount_value: number
+    min_amount_cents: number
+    usage_limit: number | null
+    active: boolean
+    starts_at: string | null
+    ends_at: string | null
+  }
+  submitUrl: string
+  method: 'post' | 'patch'
+  backUrl: string
+}>()
+
+const form = useForm({ coupon: { ...props.coupon } })
+
+function submit() {
+  if (props.method === 'patch') {
+    form.patch(props.submitUrl)
+  } else {
+    form.post(props.submitUrl)
+  }
+}
+</script>
+
+<template>
+  <PageHeader :title="title" />
+
+  <form class="max-w-lg space-y-4" @submit.prevent="submit">
+    <div class="space-y-2">
+      <Label for="code">优惠码</Label>
+      <Input id="code" v-model="form.coupon.code" required />
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="space-y-2">
+        <Label for="discount_type">类型</Label>
+        <select id="discount_type" v-model="form.coupon.discount_type" class="h-9 w-full rounded-md border px-2 text-sm">
+          <option value="percentage">百分比</option>
+          <option value="fixed">固定金额（分）</option>
+        </select>
+      </div>
+      <div class="space-y-2">
+        <Label for="discount_value">折扣值</Label>
+        <Input id="discount_value" v-model.number="form.coupon.discount_value" type="number" min="1" required />
+      </div>
+    </div>
+    <div class="space-y-2">
+      <Label for="min_amount_cents">最低消费（分）</Label>
+      <Input id="min_amount_cents" v-model.number="form.coupon.min_amount_cents" type="number" min="0" />
+    </div>
+    <div class="space-y-2">
+      <Label for="usage_limit">使用上限（空=无限）</Label>
+      <Input id="usage_limit" v-model.number="form.coupon.usage_limit" type="number" min="1" />
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="space-y-2">
+        <Label for="starts_at">开始时间</Label>
+        <Input id="starts_at" v-model="form.coupon.starts_at" type="datetime-local" />
+      </div>
+      <div class="space-y-2">
+        <Label for="ends_at">结束时间</Label>
+        <Input id="ends_at" v-model="form.coupon.ends_at" type="datetime-local" />
+      </div>
+    </div>
+    <label class="flex items-center gap-2 text-sm">
+      <input v-model="form.coupon.active" type="checkbox" class="h-4 w-4" />
+      启用
+    </label>
+    <div class="flex gap-2">
+      <Button type="submit" :disabled="form.processing">保存</Button>
+      <Button as-child variant="outline">
+        <Link :href="backUrl">取消</Link>
+      </Button>
+    </div>
+  </form>
+</template>

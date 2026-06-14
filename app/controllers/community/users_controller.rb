@@ -11,10 +11,12 @@ module Community
       render inertia: "Community/Users/Show", props: {
         profile: {
           username: user.username,
+          avatar_url: user.avatar_url,
           member_since: l(user.created_at, format: :long),
           topics_count: topics_scope.count,
           posts_count: posts_count,
-          profile_url: forum_user_path(user.username)
+          profile_url: forum_user_path(user.username),
+          message_url: logged_in? && current_user.id != user.id ? new_forum_conversation_path(to: user.username) : nil
         },
         topics: topics.map { |topic| serialize_topic(topic) }
       }

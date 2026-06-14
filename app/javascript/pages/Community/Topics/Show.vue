@@ -6,6 +6,7 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import { routes } from '@/lib/routes'
 
@@ -22,11 +23,13 @@ export interface PostItem {
   id: number
   floor_number: number
   author: string
-  author_id: number
+  author_url: string
+  avatar_url: string
   body: string
   body_html: string
   created_at: string
   edited_at: string | null
+  edits_url: string | null
   quoted_post: QuotedPost | null
   reaction_counts: Record<string, number>
   user_reactions: string[]
@@ -56,7 +59,9 @@ const props = defineProps<{
     watching: boolean
     bookmarked: boolean
     can_moderate: boolean
+    can_edit: boolean
     tags: Array<{ name: string; slug: string; url: string }>
+    tags_string: string
     section: { name: string; slug: string; url: string }
   }
   posts: PostItem[]
@@ -72,6 +77,9 @@ const loggedIn = !!page.props.auth.user
 
 const editingPostId = ref<number | null>(null)
 const editBody = ref('')
+const editingTopic = ref(false)
+const editTitle = ref(props.topic.title)
+const editTags = ref(props.topic.tags_string)
 
 const replyForm = useForm({
   post: {
@@ -158,6 +166,14 @@ function moveTopic() {
   router.post(`/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
 }
 
+function saveTopicEdit() {
+  router.patch(`/forum/topics/${props.topic.id}`, {
+    topic: { title: editTitle.value, tags: editTags.value },
+  }, {
+    onSuccess: () => { editingTopic.value = false },
+  })
+}
+
 function hasReacted(post: PostItem, emoji: string) {
   return post.user_reactions.includes(emoji)
 }
@@ -177,6 +193,9 @@ function hasReacted(post: PostItem, emoji: string) {
       :subtitle="`${topic.author ? `作者 ${topic.author}` : ''}${topic.author ? ' · ' : ''}${topic.views_count} 次浏览`"
     />
     <div class="flex flex-wrap gap-2">
+      <Button v-if="topic.can_edit" type="button" variant="outline" size="sm" @click="editingTopic = !editingTopic">
+        编辑主题
+      </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleBookmark">
         {{ topic.bookmarked ? '移除书签' : '加入书签' }}
       </Button>
@@ -197,6 +216,15 @@ function hasReacted(post: PostItem, emoji: string) {
           {{ topic.hidden ? '取消隐藏' : '隐藏主题' }}
         </Button>
       </template>
+    </div>
+  </div>
+
+  <div v-if="editingTopic" class="mb-4 max-w-xl space-y-3 rounded-lg border p-4">
+    <Input v-model="editTitle" placeholder="主题标题" />
+    <Input v-model="editTags" placeholder="标签（逗号分隔，最多5个）" />
+    <div class="flex gap-2">
+      <Button type="button" size="sm" @click="saveTopicEdit">保存</Button>
+      <Button type="button" size="sm" variant="outline" @click="editingTopic = false">取消</Button>
     </div>
   </div>
 
@@ -237,53 +265,61 @@ function hasReacted(post: PostItem, emoji: string) {
       class="rounded-lg border p-4"
       :class="post.hidden ? 'opacity-60 border-dashed' : ''"
     >
-      <div class="mb-3 flex items-center justify-between gap-2 text-sm text-muted-foreground">
-        <div>
-          <span class="font-medium text-foreground">#{{ post.floor_number }}</span>
-          <span class="mx-2">·</span>
-          <span>{{ post.author }}</span>
-          <span class="mx-2">·</span>
-          <span>{{ post.created_at }}</span>
-          <span v-if="post.edited_at" class="ml-2">（已编辑 {{ post.edited_at }}）</span>
-          <span v-if="post.hidden" class="ml-2 text-amber-600">[已隐藏]</span>
-        </div>
-        <div class="flex gap-2">
-          <button v-if="canReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
-          <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">举报</Link>
-          <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
-            {{ post.hidden ? '显示' : '隐藏' }}
-          </button>
-          <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">编辑</button>
-          <button v-if="post.can_delete" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">删除</button>
-        </div>
-      </div>
+      <div class="mb-3 flex items-start gap-3">
+        <img :src="post.avatar_url" :alt="post.author" class="h-9 w-9 shrink-0 rounded-full" />
+        <div class="min-w-0 flex-1">
+          <div class="flex items-center justify-between gap-2 text-sm text-muted-foreground">
+            <div>
+              <span class="font-medium text-foreground">#{{ post.floor_number }}</span>
+              <span class="mx-2">·</span>
+              <Link :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
+              <span class="mx-2">·</span>
+              <span>{{ post.created_at }}</span>
+              <span v-if="post.edited_at" class="ml-2">
+                （已编辑 {{ post.edited_at }}
+                <Link v-if="post.edits_url" :href="post.edits_url" class="hover:underline">历史</Link>）
+              </span>
+              <span v-if="post.hidden" class="ml-2 text-amber-600">[已隐藏]</span>
+            </div>
+            <div class="flex gap-2">
+              <button v-if="canReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
+              <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">举报</Link>
+              <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
+                {{ post.hidden ? '显示' : '隐藏' }}
+              </button>
+              <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">编辑</button>
+              <button v-if="post.can_delete" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">删除</button>
+            </div>
+          </div>
 
-      <blockquote v-if="post.quoted_post" class="mb-3 border-l-2 border-muted pl-3 text-sm text-muted-foreground">
-        <span class="font-medium">#{{ post.quoted_post.floor_number }} {{ post.quoted_post.author }}：</span>
-        {{ post.quoted_post.excerpt }}
-      </blockquote>
+          <blockquote v-if="post.quoted_post" class="mb-3 mt-2 border-l-2 border-muted pl-3 text-sm text-muted-foreground">
+            <span class="font-medium">#{{ post.quoted_post.floor_number }} {{ post.quoted_post.author }}：</span>
+            {{ post.quoted_post.excerpt }}
+          </blockquote>
 
-      <div v-if="editingPostId === post.id" class="space-y-2">
-        <Textarea v-model="editBody" rows="6" />
-        <div class="flex gap-2">
-          <Button type="button" size="sm" @click="saveEdit(post)">保存</Button>
-          <Button type="button" size="sm" variant="outline" @click="cancelEdit">取消</Button>
+          <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
+            <Textarea v-model="editBody" rows="6" />
+            <div class="flex gap-2">
+              <Button type="button" size="sm" @click="saveEdit(post)">保存</Button>
+              <Button type="button" size="sm" variant="outline" @click="cancelEdit">取消</Button>
+            </div>
+          </div>
+          <div v-else class="prose prose-sm mt-2 max-w-none text-sm dark:prose-invert" v-html="post.body_html" />
+
+          <div v-if="loggedIn" class="mt-3 flex flex-wrap gap-1">
+            <button
+              v-for="emoji in reactionEmojis"
+              :key="emoji"
+              type="button"
+              class="rounded-full border px-2 py-0.5 text-xs transition-colors"
+              :class="hasReacted(post, emoji) ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
+              @click="toggleReaction(post, emoji)"
+            >
+              {{ emoji }}
+              <span v-if="post.reaction_counts[emoji]">{{ post.reaction_counts[emoji] }}</span>
+            </button>
+          </div>
         </div>
-      </div>
-      <p v-else class="prose prose-sm max-w-none text-sm dark:prose-invert" v-html="post.body_html" />
-
-      <div v-if="loggedIn" class="mt-3 flex flex-wrap gap-1">
-        <button
-          v-for="emoji in reactionEmojis"
-          :key="emoji"
-          type="button"
-          class="rounded-full border px-2 py-0.5 text-xs transition-colors"
-          :class="hasReacted(post, emoji) ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
-          @click="toggleReaction(post, emoji)"
-        >
-          {{ emoji }}
-          <span v-if="post.reaction_counts[emoji]">{{ post.reaction_counts[emoji] }}</span>
-        </button>
       </div>
     </article>
   </div>

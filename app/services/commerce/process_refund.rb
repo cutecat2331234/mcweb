@@ -32,7 +32,10 @@ module Commerce
 
         if result.success?
           refund.update!(status: "completed") unless refund.completed?
-          @order.update!(status: "refunded") if full_refund?
+          if full_refund?
+            @order.update!(status: "refunded")
+            restore_stock!
+          end
         else
           refund.update!(status: "rejected")
           return result
@@ -55,6 +58,15 @@ module Commerce
 
     def full_refund?
       @amount_cents >= @payment_record.amount_cents
+    end
+
+    def restore_stock!
+      @order.items.includes(:product, :variant).find_each do |item|
+        target = item.variant || item.product
+        next if target.stock.nil?
+
+        target.update!(stock: target.stock + item.quantity)
+      end
     end
   end
 end

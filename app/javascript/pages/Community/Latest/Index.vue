@@ -3,34 +3,30 @@ import { Link } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
+import Badge from '@/components/ui/Badge.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
-import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
 defineProps<{
-  profile: {
-    username: string
-    avatar_url: string
-    member_since: string
-    topics_count: number
-    posts_count: number
-    profile_url: string
-    message_url: string | null
-  }
   topics: Array<{
     id: string
     title: string
     url: string
+    author: string | null
     replies_count: number
     last_posted_at: string | null
+    has_unread: boolean
+    unread_count: number
   }>
+  pagination: PaginationMeta
 }>()
 </script>
 
@@ -38,41 +34,37 @@ defineProps<{
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '论坛', href: routes.forum },
-    { label: profile.username, current: true },
+    { label: '最新', current: true },
   ]" />
 
-  <div class="mb-6 flex items-center gap-4">
-    <img :src="profile.avatar_url" :alt="profile.username" class="h-16 w-16 rounded-full" />
-    <div>
-      <PageHeader :title="profile.username" :subtitle="`加入于 ${profile.member_since}`" />
-      <div class="mt-2 flex gap-6 text-sm">
-        <span><strong>{{ profile.topics_count }}</strong> 主题</span>
-        <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
-      </div>
-      <Button v-if="profile.message_url" as-child size="sm" class="mt-3">
-        <Link :href="profile.message_url">发私信</Link>
-      </Button>
-    </div>
-  </div>
+  <PageHeader title="最新主题" subtitle="全站最近活跃的主题" />
 
-  <h2 class="mb-3 text-sm font-semibold">最近主题</h2>
   <div v-if="topics.length" class="rounded-lg border">
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>标题</TableHead>
+          <TableHead>主题</TableHead>
+          <TableHead>作者</TableHead>
           <TableHead>回复</TableHead>
           <TableHead>最后回复</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         <TableRow v-for="topic in topics" :key="topic.id">
-          <TableCell><Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link></TableCell>
+          <TableCell>
+            <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
+            <Badge v-if="topic.has_unread" class="ml-2">{{ topic.unread_count }} 未读</Badge>
+          </TableCell>
+          <TableCell>{{ topic.author || '—' }}</TableCell>
           <TableCell>{{ topic.replies_count }}</TableCell>
           <TableCell>{{ topic.last_posted_at || '—' }}</TableCell>
         </TableRow>
       </TableBody>
     </Table>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无主题。</p>
+  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+    暂无主题。
+  </p>
+
+  <Pagination :pagination="pagination" :base-path="routes.forumLatest" />
 </template>

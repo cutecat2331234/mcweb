@@ -2,7 +2,7 @@
 
 module Setup
   class WizardController < ApplicationController
-    STEPS = %w[site admin complete].freeze
+    STEPS = %w[site admin].freeze
 
     def index
       redirect_to setup_step_path(STEPS.first)
@@ -19,30 +19,58 @@ module Setup
       @step = params[:step]
       return redirect_to setup_root_path unless STEPS.include?(@step)
 
+      if @step == "admin"
+        return finalize_setup(step_params)
+      end
+
       save_step_data(@step, step_params)
-      next_step = STEPS[STEPS.index(@step) + 1]
-      redirect_to next_step ? setup_step_path(next_step) : setup_complete_path
+      redirect_to setup_step_path(STEPS[STEPS.index(@step) + 1])
     end
 
+    # 保留路由兼容；安装应在 admin 步骤提交时同步完成，避免密码写入 session 后丢失。
     def complete
       data = wizard_session_data
-      admin_data = data["admin"] || {}
+      admin_data = data.fetch("admin", {}).with_indifferent_access
 
-      if admin_data["password"].blank?
+      if admin_data[:password].present?
+        finalize_setup(admin_data)
+      else
+        flash[:alert] = t("mcweb.setup.password_required")
+        redirect_to setup_step_path("admin")
+      end
+    end
+
+    private
+
+    def finalize_setup(admin_params)
+      admin_data = admin_params.to_h.with_indifferent_access
+      site_data = wizard_session_data.fetch("site", {}).with_indifferent_access
+
+      password = admin_data[:password].to_s
+
+      if password.blank?
         flash[:alert] = t("mcweb.setup.password_required")
         return redirect_to setup_step_path("admin")
       end
 
-      if admin_data["password"].to_s.length < 6
+      if password.length < 6
         flash[:alert] = t("mcweb.setup.password_too_short")
         return redirect_to setup_step_path("admin")
       end
 
+      confirmation = admin_data[:password_confirmation].to_s
+      if confirmation.present? && confirmation != password
+        flash[:alert] = t("mcweb.setup.password_mismatch")
+        return redirect_to setup_step_path("admin")
+      end
+
+      save_step_data("admin", admin_data.except(:password, :password_confirmation).merge("password" => "[FILTERED]"))
+
       result = Identity::RegisterUser.call(
-        email: admin_data["email"],
-        username: admin_data["username"],
-        password: admin_data["password"],
-        display_name: admin_data["display_name"]
+        email: admin_data[:email],
+        username: admin_data[:username],
+        password: password,
+        display_name: admin_data[:display_name]
       )
 
       unless result.success?
@@ -56,9 +84,8 @@ module Setup
       admin_role = Role.find_or_create_by!(key: "admin", name: "Administrator", system_role: true)
       user.roles << admin_role unless user.roles.include?(admin_role)
 
-      site_data = data["site"] || {}
-      SiteSetting.set("site.name", site_data["name"]) if site_data["name"].present?
-      SiteSetting.set("site.url", site_data["url"]) if site_data["url"].present?
+      SiteSetting.set("site.name", site_data[:name]) if site_data[:name].present?
+      SiteSetting.set("site.url", site_data[:url]) if site_data[:url].present?
 
       InstallationLock.lock!(user: user)
       session.delete(:setup_wizard)
@@ -66,14 +93,12 @@ module Setup
       redirect_to identity_sign_in_path, notice: t("mcweb.flash.setup_complete")
     end
 
-    private
-
     def step_params
       case @step
       when "site"
-        params.expect(setup: %i[name url])[:setup]
+        params.require(:setup).permit(:name, :url)
       when "admin"
-        params.expect(setup: %i[email username password display_name])[:setup]
+        params.require(:setup).permit(:email, :username, :password, :password_confirmation, :display_name)
       else
         {}
       end
@@ -84,7 +109,7 @@ module Setup
     end
 
     def save_step_data(step, data)
-      wizard_session_data[step] = data.to_h
+      wizard_session_data[step.to_s] = data.to_h.stringify_keys
       session[:setup_wizard] = wizard_session_data
     end
   end

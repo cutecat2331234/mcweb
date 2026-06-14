@@ -2,7 +2,7 @@
 
 <%= render Ui::PageHeaderComponent.new(
   title: "McWeb 安装向导",
-  subtitle: "步骤 #{Setup::WizardController::STEPS.index(@step) + 1} / #{Setup::WizardController::STEPS.size - 1}"
+  subtitle: "步骤 #{Setup::WizardController::STEPS.index(@step) + 1} / #{Setup::WizardController::STEPS.size}"
 ) %>
 
 <hr class="mc-divider">
@@ -37,7 +37,12 @@
     </div>
     <div>
       <label class="mc-form-label" for="setup_password">密码</label>
-      <%= f.password_field :password, class: "mc-input w-full", required: true, id: "setup_password" %>
+      <%= f.password_field :password, autocomplete: "new-password", class: "mc-input w-full", required: true, minlength: 6, id: "setup_password" %>
+      <p class="mc-form-hint">至少 6 个字符</p>
+    </div>
+    <div>
+      <label class="mc-form-label" for="setup_password_confirmation">确认密码</label>
+      <%= f.password_field :password_confirmation, autocomplete: "new-password", class: "mc-input w-full", required: true, minlength: 6, id: "setup_password_confirmation" %>
     </div>
     <div class="flex gap-2">
       <%= link_to "上一步", setup_step_path("site"), class: "mc-btn no-underline" %>

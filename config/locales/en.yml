@@ -33,3 +33,4 @@ en:
     setup:
       password_required: Password is required.
       password_too_short: Password must be at least 6 characters.
+      password_mismatch: Password confirmation does not match.

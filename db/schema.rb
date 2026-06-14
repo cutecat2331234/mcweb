@@ -793,9 +793,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "body", null: false
     t.datetime "created_at", null: false
     t.string "status", default: "published", null: false
+    t.bigint "store_order_item_id"
     t.bigint "store_product_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["store_order_item_id"], name: "index_store_product_questions_on_store_order_item_id"
     t.index ["store_product_id"], name: "index_store_product_questions_on_store_product_id"
     t.index ["user_id"], name: "index_store_product_questions_on_user_id"
   end
@@ -827,11 +829,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "store_products", force: :cascade do |t|
     t.text "changelog"
+    t.string "changelog_notified_version"
     t.integer "compare_at_price_cents"
     t.datetime "created_at", null: false
     t.string "currency", default: "CNY", null: false
     t.text "description"
     t.boolean "featured", default: false, null: false
+    t.bigint "forum_topic_id"
     t.jsonb "fulfillment_config", default: {}, null: false
     t.jsonb "gallery_urls", default: [], null: false
     t.string "image_url"
@@ -849,6 +853,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "updated_at", null: false
     t.string "version"
     t.integer "view_count", default: 0, null: false
+    t.index ["forum_topic_id"], name: "index_store_products_on_forum_topic_id"
     t.index ["public_id"], name: "index_store_products_on_public_id", unique: true
     t.index ["slug"], name: "index_store_products_on_slug", unique: true
     t.index ["store_category_id"], name: "index_store_products_on_store_category_id"
@@ -882,11 +887,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   create_table "store_reviews", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
+    t.bigint "forum_post_id"
     t.integer "rating", null: false
     t.string "status", default: "published", null: false
     t.bigint "store_product_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["forum_post_id"], name: "index_store_reviews_on_forum_post_id"
     t.index ["store_product_id", "status"], name: "index_store_reviews_on_store_product_id_and_status"
     t.index ["store_product_id", "user_id"], name: "index_store_reviews_on_store_product_id_and_user_id", unique: true
     t.index ["store_product_id"], name: "index_store_reviews_on_store_product_id"
@@ -1146,11 +1153,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_price_alerts", "users"
   add_foreign_key "store_product_answers", "store_product_questions"
   add_foreign_key "store_product_answers", "users"
+  add_foreign_key "store_product_questions", "store_order_items"
   add_foreign_key "store_product_questions", "store_products"
   add_foreign_key "store_product_questions", "users"
   add_foreign_key "store_product_variants", "store_products"
   add_foreign_key "store_product_views", "store_products"
   add_foreign_key "store_product_views", "users"
+  add_foreign_key "store_products", "forum_topics"
   add_foreign_key "store_products", "store_categories"
   add_foreign_key "store_refunds", "payment_records"
   add_foreign_key "store_refunds", "store_orders"
@@ -1158,6 +1167,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_refunds", "users", column: "requested_by_id"
   add_foreign_key "store_review_helpful_votes", "store_reviews"
   add_foreign_key "store_review_helpful_votes", "users"
+  add_foreign_key "store_reviews", "forum_posts"
   add_foreign_key "store_reviews", "store_products"
   add_foreign_key "store_reviews", "users"
   add_foreign_key "store_stock_alerts", "store_product_variants"

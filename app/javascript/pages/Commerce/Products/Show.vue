@@ -36,6 +36,9 @@ export interface ProductReview {
   helpful_url?: string | null
   report_url?: string | null
   verified_purchaser?: boolean
+  can_share_to_forum?: boolean
+  share_to_forum_url?: string | null
+  forum_post_url?: string | null
   photo_urls?: string[]
 }
 
@@ -66,6 +69,8 @@ export interface ProductDetail {
   average_rating: number | null
   variants: ProductVariant[]
   reviews: ProductReview[]
+  discussion_url?: string | null
+  discussion_replies_count?: number | null
 }
 
 const props = defineProps<{
@@ -88,6 +93,8 @@ const props = defineProps<{
   stockAlertUnsubscribeUrls?: Array<{ variant_id: number | null; unsubscribe_url: string }>
   priceAlertUrl?: string | null
   hasPriceAlert?: boolean
+  createDiscussionUrl?: string | null
+  askFromOrder?: { order_number: string; item_name: string } | null
   canReview?: boolean
   canEditReview?: boolean
   canDeleteReview?: boolean
@@ -305,6 +312,15 @@ function togglePriceAlert() {
   }, { preserveScroll: true })
 }
 
+function createDiscussion() {
+  if (!props.createDiscussionUrl) return
+  router.post(props.createDiscussionUrl)
+}
+
+function shareReviewToForum(url: string) {
+  router.post(url)
+}
+
 function filterByRating(rating: number) {
   router.get(routes.storeProduct(props.product.id), {
     review_rating: rating,
@@ -347,6 +363,25 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <p v-if="product.version" class="text-sm">当前版本：{{ product.version }}</p>
     <p v-if="product.changelog" class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{{ product.changelog }}</p>
   </section>
+
+  <section v-if="product.discussion_url || createDiscussionUrl" class="mb-6 max-w-xl rounded-lg border p-4">
+    <h2 class="mb-2 text-sm font-semibold">社区讨论</h2>
+    <p v-if="product.discussion_replies_count !== null && product.discussion_replies_count !== undefined" class="text-sm text-muted-foreground">
+      {{ product.discussion_replies_count }} 条回复
+    </p>
+    <div class="mt-2 flex gap-2">
+      <Button v-if="product.discussion_url" as-child size="sm">
+        <Link :href="product.discussion_url">参与讨论</Link>
+      </Button>
+      <Button v-else-if="createDiscussionUrl" type="button" size="sm" variant="outline" @click="createDiscussion">
+        开启讨论帖
+      </Button>
+    </div>
+  </section>
+
+  <p v-if="askFromOrder" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+    关于订单 {{ askFromOrder.order_number }} 的商品「{{ askFromOrder.item_name }}」提问
+  </p>
 
   <div v-if="allImages.length" class="mb-6 max-w-xl">
     <img
@@ -576,6 +611,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
       <div class="mb-2 flex items-center justify-between">
         <p class="text-sm font-medium">你的评价</p>
         <div class="flex gap-2">
+          <Button v-if="userReview.can_share_to_forum && userReview.share_to_forum_url" type="button" size="sm" variant="outline" @click="shareReviewToForum(userReview.share_to_forum_url!)">分享到论坛</Button>
+          <Button v-if="userReview.forum_post_url" as-child size="sm" variant="outline">
+            <Link :href="userReview.forum_post_url">查看论坛帖</Link>
+          </Button>
           <Button v-if="canEditReview" type="button" size="sm" variant="outline" @click="startEditReview">编辑</Button>
           <Button v-if="canDeleteReview" type="button" size="sm" variant="destructive" @click="deleteReview">删除</Button>
         </div>

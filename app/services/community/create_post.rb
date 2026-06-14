@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 10.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, topic:, body:, quoted_post: nil, parent_post: nil, ip_address: nil)
+    def initialize(user:, topic:, body:, quoted_post: nil, parent_post: nil, ip_address: nil, skip_interval_check: false)
       @user = user
       @topic = topic
       @body = body.to_s.strip
@@ -13,6 +13,7 @@ module Community
       @quoted_post = quoted_post
       @parent_post = parent_post
       @ip_address = ip_address
+      @skip_interval_check = skip_interval_check
     end
 
     def call
@@ -98,7 +99,7 @@ module Community
       end
 
       recent = Community::Post.where(user: @user).order(created_at: :desc).first
-      if recent&.created_at&.> MIN_INTERVAL.ago
+      if !@skip_interval_check && recent && recent.created_at > MIN_INTERVAL.ago
         return ServiceResult.failure(error: "Please wait before posting again.")
       end
 

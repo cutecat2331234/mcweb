@@ -4,6 +4,7 @@ module Commerce
   class Review < ApplicationRecord
     belongs_to :user
     belongs_to :product, class_name: "Commerce::Product", foreign_key: :store_product_id
+    belongs_to :forum_post, class_name: "Community::Post", foreign_key: :forum_post_id, optional: true
     has_many :helpful_votes, class_name: "Commerce::ReviewHelpfulVote", foreign_key: :store_review_id, dependent: :destroy
     has_many_attached :photos
 

@@ -582,3 +582,19 @@ app/
 | 商品 Onebox | `FetchProductOnebox` + `FormatPostBody` 嵌入卡片 |
 | 认证买家徽章 | 帖子 `verified_purchaser` + `first_purchase` 自动徽章 |
 | 资料商城 Tab | 用户资料页展示评价与订单数 |
+
+### 第三十一轮（论坛商城深度联动）
+
+| 功能 | 实现 |
+|------|------|
+| 商品讨论主题 | `store_products.forum_topic_id` + `EnsureProductDiscussionTopic` |
+| 主题关联商品卡片 | `Topic#linked_product` + `Topics/Show.vue` |
+| 评价分享到论坛 | `ShareReviewToForum` + `reviews#share_to_forum` |
+| 成员排行榜排序 | `members#index` posts/likes/reviews/purchases 排序 |
+| 订单商品链接与提问 | `Orders/Show.vue` product_url + askFromOrder |
+| 公开优惠券页 | `CouponsController` + `Coupons/Show.vue` |
+| 主题 bump 冷却 | `forum.bump_cooldown_hours` + `bump_props` |
+| 帖子编辑通知 | `NotifyPostEdited` + `forum.post_edited` 偏好 |
+| 编辑内联 diff | `DiffLines` → `edit_diff_lines` 序列化 |
+| 更新日志通知购买者 | `NotifyProductChangelogJob` + `commerce.product_changelog` |
+| 上架自动创建讨论帖 | 管理端 create/update 商品时调用 |

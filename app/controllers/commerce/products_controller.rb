@@ -90,7 +90,7 @@ module Commerce
     end
 
     def show
-      product = Commerce::Product.available.includes(:variants, :category).find_by!(public_id: params[:id])
+      product = Commerce::Product.available.includes(:variants, :category, :forum_topic).find_by!(public_id: params[:id])
       product.increment!(:view_count)
       Commerce::RecordProductView.call(user: current_user, product: product) if logged_in?
 
@@ -179,6 +179,8 @@ module Commerce
         end,
         priceAlertUrl: logged_in? ? price_alert_store_product_path(product) : nil,
         hasPriceAlert: price_alert.present?,
+        createDiscussionUrl: logged_in? && product.forum_topic_id.blank? ? discussion_store_product_path(product) : nil,
+        askFromOrder: ask_from_order_props(params),
         reorderUrl: logged_in? && purchased ? reorder_store_product_path(product) : nil,
         reviewUrl: store_reviews_path(product),
         questionUrl: store_questions_path(product),
@@ -200,7 +202,31 @@ module Commerce
       end
     end
 
+    def create_discussion
+      return redirect_to store_products_path, alert: "请先登录。" unless logged_in?
+
+      product = Commerce::Product.available.find_by!(public_id: params[:id])
+      result = Commerce::EnsureProductDiscussionTopic.call(product: product, creator: current_user)
+
+      if result.success?
+        redirect_to forum_topic_path(result.value), notice: "讨论帖已创建。"
+      else
+        redirect_to store_product_path(product), alert: service_error_message(result)
+      end
+    end
+
     private
+
+    def ask_from_order_props(params)
+      return nil unless params[:ask] == "1" && params[:order_item_id].present? && logged_in?
+
+      item = Commerce::OrderItem.joins(:order)
+        .where(store_orders: { user_id: current_user.id })
+        .find_by(id: params[:order_item_id])
+      return nil unless item
+
+      { order_number: item.order.order_number, item_name: item.product_name }
+    end
 
     def index_filter_params
       {

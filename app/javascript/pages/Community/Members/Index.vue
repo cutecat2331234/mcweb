@@ -21,6 +21,10 @@ const props = defineProps<{
     last_seen_at: string | null
     online: boolean
     posts_count: number
+    likes_received: number
+    reviews_count: number
+    trust_level: number
+    trust_name: string
     member_since: string
   }>
   pagination: PaginationMeta
@@ -62,6 +66,10 @@ function changeSort(value: string) {
     <select :value="sort" class="h-9 rounded-md border px-2 text-sm" @change="changeSort(($event.target as HTMLSelectElement).value)">
       <option value="active">最近活跃</option>
       <option value="joined">最新加入</option>
+      <option value="posts">发帖最多</option>
+      <option value="likes">获赞最多</option>
+      <option value="reviews">评价最多</option>
+      <option value="purchases">购买最多</option>
     </select>
   </div>
 
@@ -78,8 +86,11 @@ function changeSort(value: string) {
           {{ member.display_name || member.username }}
           <Badge v-if="member.online" class="ml-2 text-[10px]">在线</Badge>
         </p>
-        <p class="text-xs text-muted-foreground">@{{ member.username }} · {{ member.posts_count }} 帖</p>
         <p class="text-xs text-muted-foreground">
+          @{{ member.username }} · {{ member.trust_name }} · {{ member.posts_count }} 帖 · {{ member.likes_received }} 赞
+        </p>
+        <p class="text-xs text-muted-foreground">
+          {{ member.reviews_count }} 评价 ·
           {{ member.last_seen_at ? `最后在线 ${member.last_seen_at}` : `加入于 ${member.member_since}` }}
         </p>
       </div>

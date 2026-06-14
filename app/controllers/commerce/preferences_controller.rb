@@ -18,6 +18,7 @@ module Commerce
       commerce.abandoned_cart
       commerce.stock_restocked
       commerce.price_drop
+      commerce.product_changelog
       commerce.question_answered
     ].freeze
 
@@ -71,6 +72,7 @@ module Commerce
         "commerce.abandoned_cart" => "购物车提醒",
         "commerce.stock_restocked" => "到货通知",
         "commerce.price_drop" => "降价提醒",
+        "commerce.product_changelog" => "商品更新日志",
         "commerce.question_answered" => "问答回复通知"
       }[type] || type.humanize
     end

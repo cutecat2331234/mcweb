@@ -4,6 +4,7 @@ module Commerce
   class ProductQuestion < ApplicationRecord
     belongs_to :user
     belongs_to :product, class_name: "Commerce::Product", foreign_key: :store_product_id
+    belongs_to :order_item, class_name: "Commerce::OrderItem", foreign_key: :store_order_item_id, optional: true
     has_many :answers, class_name: "Commerce::ProductAnswer", foreign_key: :store_product_question_id, dependent: :destroy
 
     enum :status, { published: "published", hidden: "hidden" }, validate: true

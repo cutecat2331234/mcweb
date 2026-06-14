@@ -183,11 +183,13 @@ Rails.application.routes.draw do
       member do
         post :wishlist, to: "wishlist#toggle"
         post :reorder
+        post :discussion, action: :create_discussion
         post :price_alert, to: "price_alerts#create"
         post :stock_alert, to: "stock_alerts#create"
         resources :reviews, only: %i[create destroy], controller: "reviews" do
           member do
             post :helpful, action: :toggle_helpful
+            post :share_to_forum
           end
         end
         resources :questions, only: %i[create], controller: "product_questions"
@@ -227,6 +229,8 @@ Rails.application.routes.draw do
     resource :checkout, only: %i[show create], controller: "checkout" do
       post :preview_coupon, on: :member
     end
+    get "coupons/:code", to: "coupons#show", as: :coupon
+    post "coupons/:code/apply", to: "coupons#apply", as: :apply_coupon
     post "webhooks/:provider", to: "webhooks#create", as: :webhook
     get "downloads/:token", to: "downloads#show", as: :download
     get "preferences", to: "preferences#show"

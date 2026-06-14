@@ -129,7 +129,9 @@ module Commerce
     private
 
     def set_order
-      @order = Commerce::Order.where(user: current_user).includes(:items, :fulfillments, :refunds, :events).find_by!(public_id: params[:id])
+      @order = Commerce::Order.where(user: current_user)
+                              .includes(:items, :fulfillments, :refunds, :events, items: { product: :forum_topic })
+                              .find_by!(public_id: params[:id])
     end
 
     def order_params

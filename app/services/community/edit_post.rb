@@ -34,6 +34,7 @@ module Community
         post: @post,
         topic: @post.topic
       )
+      Community::NotifyPostEdited.call(post: @post) if @old_body != @body
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

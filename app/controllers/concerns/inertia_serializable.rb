@@ -81,6 +81,17 @@ module InertiaSerializable
       participant_avatars: topic.participant_users(limit: 5).map do |user|
         { username: user.username, avatar_url: user.avatar_url, profile_url: forum_user_path(user.username) }
       end
+    }.merge(linked_product_props(topic))
+  end
+
+  def linked_product_props(topic)
+    product = topic.association(:linked_product).loaded? ? topic.linked_product : Commerce::Product.find_by(forum_topic_id: topic.id)
+    return {} unless product
+
+    {
+      linked_product: true,
+      linked_product_name: product.name,
+      linked_product_url: store_product_path(product)
     }
   end
 
@@ -116,7 +127,19 @@ module InertiaSerializable
         slug: topic.section.slug,
         url: forum_section_path(topic.section)
       }
-    }
+    }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate))
+  end
+
+  def bump_props(topic, can_moderate:)
+    return {} unless can_moderate
+
+    cooldown_hours = SiteSetting.get("forum.bump_cooldown_hours", "24").to_i
+    remaining = if cooldown_hours.positive? && topic.bumped_at && topic.bumped_at > cooldown_hours.hours.ago
+                  ((topic.bumped_at + cooldown_hours.hours) - Time.current).to_i
+                else
+                  0
+                end
+    { bump_cooldown_remaining_seconds: remaining.positive? ? remaining : nil }
   end
 
   def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil, post_bookmark: nil)
@@ -148,6 +171,12 @@ module InertiaSerializable
       signature_html = formatted_sig.success? ? formatted_sig.value : ERB::Util.html_escape(post.user.forum_signature)
     end
 
+    last_edit = post.edits.order(created_at: :desc).first
+    edit_diff_lines = if last_edit
+                        diff = Community::DiffLines.call(before_text: last_edit.body_before, after_text: last_edit.body_after)
+                        diff.success? ? diff.value : nil
+                      end
+
     {
       id: post.id,
       floor_number: post.floor_number,
@@ -163,6 +192,7 @@ module InertiaSerializable
       body_html: body_html,
       body_long: body_long,
       edit_seconds_remaining: edit_seconds_remaining(post, current_user),
+      edit_diff_lines: edit_diff_lines,
       signature_html: signature_html,
       created_at: l(post.created_at, format: :short),
       edited_at: post.edited_at ? l(post.edited_at, format: :short) : nil,
@@ -318,7 +348,19 @@ module InertiaSerializable
       average_rating: average_rating,
       variants: product.variants.map { |variant| serialize_variant(variant, product) },
       reviews: reviews.map { |review| serialize_review(review, current_user: current_user) }
-    }
+    }.merge(product_discussion_props(product))
+  end
+
+  def product_discussion_props(product)
+    topic = product.forum_topic
+    if topic
+      {
+        discussion_url: forum_topic_path(topic),
+        discussion_replies_count: topic.replies_count
+      }
+    else
+      { discussion_url: nil, discussion_replies_count: nil }
+    end
   end
 
   def serialize_review(review, current_user: nil)
@@ -335,7 +377,10 @@ module InertiaSerializable
       helpful_url: current_user && current_user.id != review.user_id ? helpful_store_product_review_path(review.product.public_id, review.id) : nil,
       report_url: current_user && current_user.id != review.user_id ? new_forum_report_path(reportable_type: "Commerce::Review", reportable_id: review.id) : nil,
       verified_purchaser: verified,
-      photo_urls: review.photos.map { |photo| rails_blob_path(photo, only_path: true) }
+      photo_urls: review.photos.map { |photo| rails_blob_path(photo, only_path: true) },
+      forum_post_url: review.forum_post ? "#{forum_topic_path(review.forum_post.topic)}#post-#{review.forum_post_id}" : nil,
+      can_share_to_forum: current_user && current_user.id == review.user_id && review.forum_post_id.blank?,
+      share_to_forum_url: current_user && current_user.id == review.user_id && review.forum_post_id.blank? ? share_to_forum_store_product_review_path(review.product.public_id, review.id) : nil
     }
   end
 
@@ -501,12 +546,16 @@ module InertiaSerializable
         config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
         download_url = signed_download_url_for(item)
         refresh_download_url = download_url.present? ? refresh_download_store_order_path(order, order_item_id: item.id) : nil
+        product = item.product
         {
           id: item.id,
           product_name: item.product_name,
           variant_name: item.variant_name,
           quantity: item.quantity,
           total_label: format_money(item.total_cents, order.currency),
+          product_url: product ? store_product_path(product) : nil,
+          ask_question_url: product ? store_product_path(product, ask: 1, order_item_id: item.id) : nil,
+          discussion_url: product&.forum_topic ? forum_topic_path(product.forum_topic) : nil,
           fulfillment_status: fulfillment&.status,
           fulfillment_status_label: fulfillment_status_label(fulfillment&.status),
           download_url: download_url,

@@ -60,6 +60,7 @@ module Admin
       def create
         product = ::Commerce::Product.new(product_params)
         if product.save
+          Commerce::EnsureProductDiscussionTopic.call(product: product) if product.active?
           redirect_to admin_store_product_path(product), notice: "商品已创建。"
         else
           render inertia: "Admin/Store/Products/Form",
@@ -73,6 +74,9 @@ module Admin
       end
 
       def update
+        changelog_changed = product_params[:changelog].present? && product_params[:changelog] != @product.changelog
+        version_changed = product_params[:version].present? && product_params[:version] != @product.version
+
         if @product.update(product_params)
           if @product.saved_change_to_price_cents? && @product.price_cents < @product.price_cents_before_last_save.to_i
             Commerce::NotifyPriceDropJob.perform_later(@product.id)
@@ -84,6 +88,12 @@ module Admin
             if variant.saved_change_to_stock? && variant.stock.to_i.positive?
               Commerce::NotifyStockRestockedJob.perform_later(@product.id, variant.id)
             end
+          end
+          if (changelog_changed || version_changed) && @product.changelog.present?
+            Commerce::NotifyProductChangelogJob.perform_later(@product.id)
+          end
+          if @product.active? && @product.forum_topic_id.blank?
+            Commerce::EnsureProductDiscussionTopic.call(product: @product)
           end
           redirect_to admin_store_product_path(@product), notice: "商品已更新。"
         else

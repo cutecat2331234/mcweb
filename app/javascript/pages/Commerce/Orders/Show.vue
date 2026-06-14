@@ -59,6 +59,9 @@ const props = defineProps<{
       variant_name: string | null
       quantity: number
       total_label: string
+      product_url?: string | null
+      ask_question_url?: string | null
+      discussion_url?: string | null
       fulfillment_status: string | null
       fulfillment_status_label?: string | null
       download_url?: string | null
@@ -131,8 +134,13 @@ function refreshDownload(url: string) {
       <TableBody>
         <TableRow v-for="(item, index) in order.items" :key="index">
           <TableCell>
-            {{ item.product_name }}
+            <Link v-if="item.product_url" :href="item.product_url" class="hover:underline">{{ item.product_name }}</Link>
+            <template v-else>{{ item.product_name }}</template>
             <span v-if="item.variant_name" class="text-muted-foreground"> — {{ item.variant_name }}</span>
+            <div v-if="item.ask_question_url || item.discussion_url" class="mt-1 flex gap-2">
+              <Link v-if="item.ask_question_url" :href="item.ask_question_url" class="text-xs text-primary hover:underline">提问</Link>
+              <Link v-if="item.discussion_url" :href="item.discussion_url" class="text-xs text-primary hover:underline">参与讨论</Link>
+            </div>
           </TableCell>
           <TableCell>{{ item.quantity }}</TableCell>
           <TableCell>{{ item.total_label }}</TableCell>

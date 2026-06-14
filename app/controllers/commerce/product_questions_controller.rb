@@ -12,10 +12,18 @@ module Commerce
     end
 
     def create
+      order_item = nil
+      if params[:order_item_id].present?
+        order_item = Commerce::OrderItem.joins(:order)
+          .where(store_orders: { user_id: current_user.id })
+          .find_by(id: params[:order_item_id])
+      end
+
       result = Commerce::CreateProductQuestion.call(
         user: current_user,
         product: @product,
-        body: params.dig(:question, :body)
+        body: params.dig(:question, :body),
+        order_item: order_item
       )
 
       if result.success?

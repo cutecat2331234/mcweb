@@ -27,6 +27,11 @@ module Community
       when "unpin"
         @topic.update!(pinned: false, pinned_until: nil)
       when "bump"
+        cooldown_hours = SiteSetting.get("forum.bump_cooldown_hours", "24").to_i
+        if cooldown_hours.positive? && @topic.bumped_at && @topic.bumped_at > cooldown_hours.hours.ago
+          remaining = ((@topic.bumped_at + cooldown_hours.hours) - Time.current).to_i
+          return ServiceResult.failure(error: "提升冷却中，请 #{remaining / 3600} 小时后再试。")
+        end
         @topic.update!(bumped_at: Time.current, last_posted_at: Time.current)
       when "hide"
         @topic.update!(status: "hidden")

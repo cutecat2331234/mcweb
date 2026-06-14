@@ -316,7 +316,7 @@ module Community
     end
 
     def set_topic
-      @topic = Community::Topic.includes(:section, :user, :tags, :poll, :solved_post).find_by!(public_id: params[:id])
+      @topic = Community::Topic.includes(:section, :user, :tags, :poll, :solved_post, :linked_product).find_by!(public_id: params[:id])
       ensure_topic_visible!(@topic)
     end
 

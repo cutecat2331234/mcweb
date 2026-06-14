@@ -35,6 +35,7 @@ export interface PostItem {
   body_html: string
   body_long?: boolean
   edit_seconds_remaining?: number | null
+  edit_diff_lines?: Array<{ kind: string; text: string }> | null
   signature_html?: string | null
   created_at: string
   edited_at: string | null
@@ -114,6 +115,9 @@ const props = defineProps<{
     tags_string: string
     section: { name: string; slug: string; url: string }
     section_prefixes?: string[]
+    linked_product_name?: string
+    linked_product_url?: string
+    bump_cooldown_remaining_seconds?: number | null
   }
   posts: PostItem[]
   pagination: PaginationMeta
@@ -179,6 +183,7 @@ const editingPostBookmarkId = ref<number | null>(null)
 const postBookmarkNote = ref('')
 const postBookmarkRemindAt = ref('')
 const expandedPosts = ref<Record<number, boolean>>({})
+const expandedDiffs = ref<Record<number, boolean>>({})
 const lockReasonInput = ref('')
 let draftSaveTimer: ReturnType<typeof setTimeout> | null = null
 
@@ -578,7 +583,16 @@ function pollPercent(votes: number) {
         <Button v-if="topic.can_moderate && !topic.pinned" type="button" variant="outline" size="sm" @click="moderate('pin_7')">
           置顶 7 天
         </Button>
-        <Button type="button" variant="outline" size="sm" @click="moderate('bump')">提升主题</Button>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          :disabled="!!topic.bump_cooldown_remaining_seconds"
+          :title="topic.bump_cooldown_remaining_seconds ? `冷却中（${topic.bump_cooldown_remaining_seconds}秒）` : undefined"
+          @click="moderate('bump')"
+        >
+          提升主题
+        </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.featured ? 'unfeature' : 'feature')">
           {{ topic.featured ? '取消精选' : '设为精选' }}
         </Button>
@@ -700,6 +714,11 @@ function pollPercent(votes: number) {
     </ul>
   </section>
 
+  <section v-if="topic.linked_product_url" class="mb-6 max-w-xl rounded-lg border p-4">
+    <h2 class="mb-2 text-sm font-semibold">关联商品</h2>
+    <Link :href="topic.linked_product_url" class="font-medium hover:underline">{{ topic.linked_product_name }}</Link>
+  </section>
+
   <section v-if="relatedTopics?.length" class="mb-6 max-w-xl rounded-lg border p-4">
     <h2 class="mb-2 text-sm font-semibold">相关主题</h2>
     <ul class="space-y-1 text-sm">
@@ -800,6 +819,9 @@ function pollPercent(votes: number) {
               <span>{{ post.created_at }}</span>
               <span v-if="post.edited_at" class="ml-2">
                 （已编辑 {{ post.edited_at }}
+                <button v-if="post.edit_diff_lines?.length" type="button" class="hover:underline" @click="expandedDiffs[post.id] = !expandedDiffs[post.id]">
+                  {{ expandedDiffs[post.id] ? '收起改动' : '查看改动' }}
+                </button>
                 <Link v-if="post.edits_url" :href="post.edits_url" class="hover:underline">历史</Link>）
               </span>
               <span v-if="post.hidden" class="ml-2 text-amber-600">[已隐藏]</span>
@@ -849,6 +871,18 @@ function pollPercent(votes: number) {
             </div>
           </div>
           <div v-else class="mt-2">
+            <div
+              v-if="expandedDiffs[post.id] && post.edit_diff_lines?.length"
+              class="mb-2 space-y-0.5 rounded border bg-muted/30 p-2 font-mono text-xs"
+            >
+              <div
+                v-for="(line, i) in post.edit_diff_lines"
+                :key="i"
+                :class="line.kind === 'added' ? 'text-green-700' : line.kind === 'removed' ? 'text-red-700 line-through' : 'text-muted-foreground'"
+              >
+                {{ line.kind === 'added' ? '+' : line.kind === 'removed' ? '-' : ' ' }} {{ line.text }}
+              </div>
+            </div>
             <div
               class="prose prose-sm max-w-none text-sm dark:prose-invert"
               :class="post.body_long && !isPostExpanded(post) ? 'max-h-64 overflow-hidden relative' : ''"

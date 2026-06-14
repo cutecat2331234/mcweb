@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
+import { ref } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Badge from '@/components/ui/Badge.vue'
+import Input from '@/components/ui/Input.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -31,12 +33,25 @@ export interface CategoryItem {
   url: string
 }
 
-defineProps<{
+const props = defineProps<{
   products: ProductItem[]
   categories: CategoryItem[]
   activeCategory: string | null
+  query: string
+  sort: string
   pagination: PaginationMeta
 }>()
+
+const q = ref(props.query)
+const sort = ref(props.sort)
+
+function search() {
+  router.get(routes.store, {
+    q: q.value || undefined,
+    sort: sort.value !== 'newest' ? sort.value : undefined,
+    category: props.activeCategory || undefined,
+  }, { preserveState: true })
+}
 </script>
 
 <template>
@@ -46,6 +61,16 @@ defineProps<{
   ]" />
 
   <PageHeader title="商品列表" subtitle="浏览可购买的数字商品" />
+
+  <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
+    <Input v-model="q" placeholder="搜索商品…" class="max-w-xs" />
+    <select v-model="sort" class="h-9 rounded-md border border-input bg-transparent px-3 text-sm">
+      <option value="newest">最新</option>
+      <option value="price_asc">价格升序</option>
+      <option value="price_desc">价格降序</option>
+    </select>
+    <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">筛选</button>
+  </form>
 
   <div v-if="categories.length" class="mb-4 flex flex-wrap gap-2">
     <Link
@@ -100,5 +125,5 @@ defineProps<{
     暂无商品。
   </p>
 
-  <Pagination :pagination="pagination" :base-path="activeCategory ? `/store/products?category=${activeCategory}` : routes.store" />
+  <Pagination :pagination="pagination" :base-path="routes.store" />
 </template>

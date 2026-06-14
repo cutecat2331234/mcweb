@@ -24,6 +24,7 @@ export interface PostItem {
   author: string
   author_id: number
   body: string
+  body_html: string
   created_at: string
   edited_at: string | null
   quoted_post: QuotedPost | null
@@ -53,7 +54,9 @@ const props = defineProps<{
     hidden: boolean
     views_count: number
     watching: boolean
+    bookmarked: boolean
     can_moderate: boolean
+    tags: Array<{ name: string; slug: string; url: string }>
     section: { name: string; slug: string; url: string }
   }
   posts: PostItem[]
@@ -138,6 +141,10 @@ function toggleWatch() {
   router.post(`/forum/topics/${props.topic.id}/subscription`, {}, { preserveScroll: true })
 }
 
+function toggleBookmark() {
+  router.post(`/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
+}
+
 function moderate(action: string) {
   router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: action }, { preserveScroll: true })
 }
@@ -170,6 +177,9 @@ function hasReacted(post: PostItem, emoji: string) {
       :subtitle="`${topic.author ? `作者 ${topic.author}` : ''}${topic.author ? ' · ' : ''}${topic.views_count} 次浏览`"
     />
     <div class="flex flex-wrap gap-2">
+      <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleBookmark">
+        {{ topic.bookmarked ? '移除书签' : '加入书签' }}
+      </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleWatch">
         {{ topic.watching ? '取消关注' : '关注主题' }}
       </Button>
@@ -188,6 +198,17 @@ function hasReacted(post: PostItem, emoji: string) {
         </Button>
       </template>
     </div>
+  </div>
+
+  <div v-if="topic.tags.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      v-for="tag in topic.tags"
+      :key="tag.slug"
+      :href="tag.url"
+      class="rounded-full border px-2 py-0.5 text-xs hover:bg-muted"
+    >
+      #{{ tag.name }}
+    </Link>
   </div>
 
   <div v-if="topic.can_moderate && sections.length" class="mb-4 flex flex-wrap items-center gap-2">
@@ -249,7 +270,7 @@ function hasReacted(post: PostItem, emoji: string) {
           <Button type="button" size="sm" variant="outline" @click="cancelEdit">取消</Button>
         </div>
       </div>
-      <p v-else class="whitespace-pre-wrap text-sm">{{ post.body }}</p>
+      <p v-else class="prose prose-sm max-w-none text-sm dark:prose-invert" v-html="post.body_html" />
 
       <div v-if="loggedIn" class="mt-3 flex flex-wrap gap-1">
         <button

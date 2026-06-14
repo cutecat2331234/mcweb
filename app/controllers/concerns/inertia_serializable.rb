@@ -70,17 +70,20 @@ module InertiaSerializable
     }
   end
 
-  def serialize_topic_detail(topic, watching: false, can_moderate: false)
+  def serialize_topic_detail(topic, watching: false, bookmarked: false, can_moderate: false)
     {
       id: topic.public_id,
       title: topic.title,
       author: topic.user&.username,
+      author_url: topic.user ? forum_user_path(topic.user.username) : nil,
       locked: topic.locked?,
       pinned: topic.pinned?,
       hidden: topic.status == "hidden",
       views_count: topic.views_count,
       watching: watching,
+      bookmarked: bookmarked,
       can_moderate: can_moderate,
+      tags: topic.tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
       section: {
         name: topic.section.name,
         slug: topic.section.slug,
@@ -90,6 +93,8 @@ module InertiaSerializable
   end
 
   def serialize_post(post, current_user: nil, can_moderate: false)
+    formatted = Community::FormatPostBody.call(body: post.body)
+    body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(post.body)
     reaction_counts = post.reactions.group(:emoji).count
     user_reactions = if current_user
                        post.reactions.where(user: current_user).pluck(:emoji)
@@ -101,8 +106,9 @@ module InertiaSerializable
       id: post.id,
       floor_number: post.floor_number,
       author: post.user.username,
-      author_id: post.user_id,
+      author_url: forum_user_path(post.user.username),
       body: post.body,
+      body_html: body_html,
       created_at: l(post.created_at, format: :short),
       edited_at: post.edited_at ? l(post.edited_at, format: :short) : nil,
       quoted_post: serialize_quoted_post(post.quoted_post),

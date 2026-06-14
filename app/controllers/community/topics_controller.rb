@@ -2,9 +2,9 @@
 
 module Community
   class TopicsController < ApplicationController
-    before_action :require_login, only: %i[new create toggle_subscription moderate move]
+    before_action :require_login, only: %i[new create toggle_subscription toggle_bookmark moderate move]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show toggle_subscription moderate move]
+    before_action :set_topic, only: %i[show toggle_subscription toggle_bookmark moderate move]
 
     def show
       @topic.record_view!
@@ -19,6 +19,7 @@ module Community
         topic: serialize_topic_detail(
           @topic,
           watching: watching_topic?,
+          bookmarked: bookmarked_topic?,
           can_moderate: can_moderate_topic?
         ),
         posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?) },
@@ -46,6 +47,7 @@ module Community
         section: @section,
         title: topic_params[:title],
         body: topic_params[:body],
+        tag_names: topic_params[:tags],
         ip_address: request.remote_ip
       )
 
@@ -70,6 +72,16 @@ module Community
 
       if result.success?
         redirect_to forum_topic_path(@topic), notice: result.value[:watching] ? "已关注此主题。" : "已取消关注。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def toggle_bookmark
+      result = Community::ToggleBookmark.call(user: current_user, topic: @topic)
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: result.value[:bookmarked] ? "已加入书签。" : "已移除书签。"
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -107,11 +119,11 @@ module Community
     end
 
     def set_topic
-      @topic = Community::Topic.includes(:section, :user).find_by!(public_id: params[:id])
+      @topic = Community::Topic.includes(:section, :user, :tags).find_by!(public_id: params[:id])
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body)
+      params.require(:topic).permit(:title, :body, :tags)
     end
 
     def topic_errors(result)
@@ -134,6 +146,12 @@ module Community
       return false unless logged_in?
 
       Community::Subscription.exists?(user: current_user, subscribable: @topic)
+    end
+
+    def bookmarked_topic?
+      return false unless logged_in?
+
+      Community::Bookmark.exists?(user: current_user, topic: @topic)
     end
 
     def can_moderate_topic?

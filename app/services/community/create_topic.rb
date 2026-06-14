@@ -5,11 +5,12 @@ module Community
     MIN_INTERVAL = 30.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, body:, ip_address: nil)
+    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
       @body = body.to_s.strip
+      @tag_names = tag_names
       @ip_address = ip_address
     end
 
@@ -44,6 +45,7 @@ module Community
 
         Community::Subscription.subscribe!(@user, topic)
         Community::ReadState.mark_read!(@user, topic, floor: 1)
+        Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names) if @tag_names.present?
       end
 
       Administration::AuditLogger.call(
@@ -52,6 +54,9 @@ module Community
         resource: topic,
         ip_address: @ip_address
       )
+
+      opening_post = topic.posts.first
+      Community::ProcessMentions.call(body: @body, author: @user, post: opening_post, topic: topic) if opening_post
 
       ServiceResult.success(topic)
     rescue ActiveRecord::RecordInvalid => e

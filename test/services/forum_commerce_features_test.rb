@@ -142,6 +142,96 @@ class Community::MoveTopicTest < ActiveSupport::TestCase
   end
 end
 
+class Community::ToggleBookmarkTest < ActiveSupport::TestCase
+  test "toggles bookmark on topic" do
+    user = create_user
+    category = Community::Category.find_or_create_by!(slug: "bm-cat") { |c| c.name = "BM" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "bm-sec") do |s|
+      s.name = "BM Sec"
+      s.position = 0
+    end
+    topic = Community::CreateTopic.call(
+      user: user, section: section, title: "Bookmark me", body: "Content", ip_address: "127.0.0.1"
+    ).value
+
+    add = Community::ToggleBookmark.call(user: user, topic: topic)
+    assert add.success?
+    assert add.value[:bookmarked]
+
+    remove = Community::ToggleBookmark.call(user: user, topic: topic)
+    assert remove.success?
+    assert_not remove.value[:bookmarked]
+  end
+end
+
+class Community::FormatPostBodyTest < ActiveSupport::TestCase
+  test "renders markdown and mentions" do
+    result = Community::FormatPostBody.call(body: "Hello **world** @testuser")
+    assert result.success?
+    assert_includes result.value, "<strong>world</strong>"
+    assert_includes result.value, '/forum/users/testuser'
+  end
+end
+
+class Community::ProcessMentionsTest < ActiveSupport::TestCase
+  test "notifies mentioned users" do
+    author = create_user
+    mentioned = create_user(email: "men@example.com", username: "mentioned")
+    category = Community::Category.find_or_create_by!(slug: "men-cat") { |c| c.name = "Men" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "men-sec") do |s|
+      s.name = "Men Sec"
+      s.position = 0
+    end
+    topic = Community::CreateTopic.call(
+      user: author, section: section, title: "Mention", body: "Hi", ip_address: "127.0.0.1"
+    ).value
+    post = topic.posts.first
+
+    Community::ProcessMentions.call(body: "Hello @mentioned", author: author, post: post, topic: topic)
+    assert Notification.exists?(user: mentioned, notification_type: "forum.mention")
+  end
+end
+
+class Commerce::CancelOrderTest < ActiveSupport::TestCase
+  test "cancels pending order and restores stock" do
+    user = create_user
+    product = Commerce::Product.create!(
+      public_id: "prod_cancel1",
+      name: "Cancel Item",
+      slug: "cancel-item",
+      product_type: "currency",
+      status: "active",
+      price_cents: 100,
+      currency: "CNY",
+      stock: 5
+    )
+    order = Commerce::Order.create!(
+      public_id: "ord_cancel1",
+      order_number: "ORD-CAN-001",
+      user: user,
+      status: "pending",
+      subtotal_cents: 100,
+      total_cents: 100,
+      discount_cents: 0,
+      currency: "CNY"
+    )
+    Commerce::OrderItem.create!(
+      order: order,
+      product: product,
+      product_name: product.name,
+      unit_price_cents: 100,
+      quantity: 2,
+      total_cents: 200
+    )
+    product.update!(stock: 3)
+
+    result = Commerce::CancelOrder.call(order: order, actor: user)
+    assert result.success?
+    assert_equal "cancelled", order.reload.status
+    assert_equal 5, product.reload.stock
+  end
+end
+
 class Commerce::PreviewCouponTest < ActiveSupport::TestCase
   test "previews percentage coupon" do
     Commerce::Coupon.create!(

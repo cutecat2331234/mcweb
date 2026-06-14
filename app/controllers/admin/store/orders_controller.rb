@@ -31,6 +31,7 @@ module Admin
 
       def show
         fulfillments = @order.fulfillments.includes(:order_item)
+        payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
 
         render inertia: "Admin/Generic/Show", props: {
           title: "订单 #{@order.order_number}",
@@ -54,11 +55,16 @@ module Admin
               end.presence || [{ label: "暂无发货记录", value: nil }]
             }
           ],
-          backUrl: admin_store_orders_path
+          backUrl: admin_store_orders_path,
+          actions: refund_actions(payment)
         }
       end
 
       def update
+        if params[:refund].present?
+          return process_refund
+        end
+
         if @order.update(order_params)
           redirect_to admin_store_order_path(@order), notice: "Order updated."
         else
@@ -73,7 +79,39 @@ module Admin
       end
 
       def order_params
-        params.expect(order: %i[status notes])[:order]
+        params.fetch(:order, {}).permit(:status, :notes)
+      end
+
+      def process_refund
+        return redirect_to admin_store_order_path(@order), alert: "Not authorized." unless current_user.permission?("store.orders.refund")
+
+        payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
+        return redirect_to admin_store_order_path(@order), alert: "No refundable payment." unless payment
+
+        result = Commerce::ProcessRefund.call(
+          order: @order,
+          payment_record: payment,
+          amount_cents: payment.amount_cents,
+          reason: "Admin refund",
+          approved_by: current_user
+        )
+
+        if result.success?
+          redirect_to admin_store_order_path(@order), notice: "Refund processed."
+        else
+          redirect_to admin_store_order_path(@order), alert: service_error_message(result)
+        end
+      end
+
+      def refund_actions(payment)
+        return [] unless payment && @order.status == "paid" && current_user.permission?("store.orders.refund")
+
+        [{
+          label: "全额退款",
+          href: admin_store_order_path(@order),
+          method: "patch",
+          data: { refund: true }
+        }]
       end
     end
   end

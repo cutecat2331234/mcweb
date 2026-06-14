@@ -16,7 +16,7 @@ const props = defineProps<{
 }>()
 
 const form = useForm({
-  topic: { title: '', body: '' },
+  topic: { title: '', body: '', tags: '' },
 })
 
 function submit() {
@@ -42,8 +42,12 @@ function submit() {
     </div>
     <div class="space-y-2">
       <Label for="body">首帖内容</Label>
-      <Textarea id="body" v-model="form.topic.body" required rows="8" placeholder="写下主题的第一条内容…" />
+      <Textarea id="body" v-model="form.topic.body" required rows="8" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名" />
       <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
+    </div>
+    <div class="space-y-2">
+      <Label for="tags">标签（逗号分隔，最多 5 个）</Label>
+      <Input id="tags" v-model="form.topic.tags" placeholder="例如：公告,活动" />
     </div>
     <div class="flex gap-3">
       <Button type="submit" :disabled="form.processing">创建</Button>

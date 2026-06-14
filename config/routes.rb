@@ -33,7 +33,7 @@ Rails.application.routes.draw do
     end
     namespace :store do
       resources :products, only: %i[index show]
-      resources :orders, only: %i[index show]
+      resources :orders, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
     end
     namespace :website do
@@ -56,6 +56,7 @@ Rails.application.routes.draw do
         post :moderate
         post :move
         post :subscription, action: :toggle_subscription
+        post :bookmark, action: :toggle_bookmark
       end
     end
     resources :posts, only: %i[create update destroy] do
@@ -74,6 +75,9 @@ Rails.application.routes.draw do
       end
     end
     get "search", to: "search#index"
+    get "watching", to: "watched#index"
+    get "tags/:slug", to: "tags#show", as: :tag
+    resources :users, only: %i[show], param: :id
   end
 
   get "payments/fake/:id", to: "payments/fake#show", as: :fake_payment

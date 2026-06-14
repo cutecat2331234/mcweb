@@ -31,6 +31,7 @@ function toggleTheme() {
           <nav class="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
             <Link :href="routes.forum" class="hover:text-foreground transition-colors">论坛</Link>
             <Link :href="routes.forumSearch" class="hover:text-foreground transition-colors">搜索</Link>
+            <Link v-if="auth.user" :href="routes.forumWatching" class="hover:text-foreground transition-colors">关注</Link>
             <Link :href="routes.store" class="hover:text-foreground transition-colors">商城</Link>
           </nav>
         </div>
@@ -53,7 +54,7 @@ function toggleTheme() {
             </Link>
           </Button>
           <div class="mx-1 h-6 w-px bg-border" />
-          <Link v-if="auth.user" :href="routes.forum" class="text-sm text-muted-foreground hover:text-foreground">
+          <Link v-if="auth.user" :href="routes.forumUser(auth.user.username)" class="text-sm text-muted-foreground hover:text-foreground">
             {{ auth.user.username }}
           </Link>
           <Button v-else as-child variant="outline" size="sm">

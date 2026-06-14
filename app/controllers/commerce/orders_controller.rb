@@ -20,14 +20,13 @@ module Commerce
     end
 
     def cancel
-      unless @order.pending? || @order.awaiting_payment?
-        return redirect_to store_order_path(@order), alert: "此订单无法取消。"
-      end
+      result = Commerce::CancelOrder.call(order: @order, actor: current_user)
 
-      @order.cancel! if @order.may_cancel?
-      redirect_to store_order_path(@order), notice: "订单已取消。"
-    rescue AASM::InvalidTransition
-      redirect_to store_order_path(@order), alert: "无法取消此订单。"
+      if result.success?
+        redirect_to store_order_path(@order), notice: "订单已取消。"
+      else
+        redirect_to store_order_path(@order), alert: service_error_message(result)
+      end
     end
 
     def new

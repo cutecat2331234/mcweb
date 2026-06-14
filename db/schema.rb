@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_14_000005) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -32,6 +32,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_14_000005) do
     t.index ["actor_id"], name: "index_audit_logs_on_actor_id"
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
     t.index ["resource_type", "resource_id"], name: "index_audit_logs_on_resource_type_and_resource_id"
+  end
+
+  create_table "forum_bookmarks", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_topic_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_topic_id"], name: "index_forum_bookmarks_on_forum_topic_id"
+    t.index ["user_id", "forum_topic_id"], name: "index_forum_bookmarks_on_user_id_and_forum_topic_id", unique: true
+    t.index ["user_id"], name: "index_forum_bookmarks_on_user_id"
   end
 
   create_table "forum_categories", force: :cascade do |t|
@@ -147,6 +157,24 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_14_000005) do
     t.bigint "user_id", null: false
     t.index ["user_id", "subscribable_type", "subscribable_id"], name: "idx_on_user_id_subscribable_type_subscribable_id_8ef4ba5a1f", unique: true
     t.index ["user_id"], name: "index_forum_subscriptions_on_user_id"
+  end
+
+  create_table "forum_tags", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_forum_tags_on_slug", unique: true
+  end
+
+  create_table "forum_topic_tags", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_tag_id", null: false
+    t.bigint "forum_topic_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["forum_tag_id"], name: "index_forum_topic_tags_on_forum_tag_id"
+    t.index ["forum_topic_id", "forum_tag_id"], name: "index_forum_topic_tags_on_forum_topic_id_and_forum_tag_id", unique: true
+    t.index ["forum_topic_id"], name: "index_forum_topic_tags_on_forum_topic_id"
   end
 
   create_table "forum_topics", force: :cascade do |t|
@@ -698,6 +726,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_14_000005) do
   end
 
   add_foreign_key "audit_logs", "users", column: "actor_id"
+  add_foreign_key "forum_bookmarks", "forum_topics"
+  add_foreign_key "forum_bookmarks", "users"
   add_foreign_key "forum_mutes", "forum_sections"
   add_foreign_key "forum_mutes", "users"
   add_foreign_key "forum_mutes", "users", column: "created_by_id"
@@ -715,6 +745,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_14_000005) do
   add_foreign_key "forum_sections", "forum_categories"
   add_foreign_key "forum_sections", "forum_sections", column: "parent_id"
   add_foreign_key "forum_subscriptions", "users"
+  add_foreign_key "forum_topic_tags", "forum_tags"
+  add_foreign_key "forum_topic_tags", "forum_topics"
   add_foreign_key "forum_topics", "forum_sections"
   add_foreign_key "forum_topics", "users"
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"

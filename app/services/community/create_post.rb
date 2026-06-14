@@ -56,6 +56,7 @@ module Community
       )
 
       Community::NotifyTopicReply.call(post: post)
+      Community::ProcessMentions.call(body: @body, author: @user, post: post, topic: @topic)
 
       ServiceResult.success(post)
     rescue ActiveRecord::RecordInvalid => e

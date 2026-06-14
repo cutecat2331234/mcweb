@@ -84,7 +84,8 @@ module InertiaSerializable
     {
       id: topic.public_id,
       title: topic.title,
-      author: topic.user&.username,
+      author: topic.user ? forum_author_name(topic.user) : nil,
+      author_username: topic.user&.username,
       author_url: topic.user ? forum_user_path(topic.user.username) : nil,
       locked: topic.locked?,
       pinned: topic.pinned?,
@@ -126,7 +127,8 @@ module InertiaSerializable
       parent_post_id: post.parent_post_id,
       depth: post_depth(post),
       is_solved: solved_post_id == post.id,
-      author: post.user.username,
+      author: forum_author_name(post.user),
+      author_username: post.user.username,
       author_url: forum_user_path(post.user.username),
       avatar_url: post.user.avatar_url,
       body: post.body,
@@ -302,6 +304,22 @@ module InertiaSerializable
     "failed" => "失败"
   }.freeze
 
+  REFUND_STATUS_LABELS = {
+    "pending" => "待审核",
+    "approved" => "已批准",
+    "rejected" => "已拒绝",
+    "completed" => "已完成"
+  }.freeze
+
+  ORDER_EVENT_LABELS = {
+    "created" => "订单创建",
+    "payment_submitted" => "提交支付",
+    "paid" => "支付成功",
+    "cancelled" => "订单取消",
+    "refunded" => "已退款",
+    "fulfilled" => "发货完成"
+  }.freeze
+
   def serialize_order_list_item(order)
     {
       id: order.public_id,
@@ -321,17 +339,29 @@ module InertiaSerializable
       order_number: order.order_number,
       status: order.status,
       status_label: order_status_label(order.status),
+      notes: order.notes,
       total_label: format_money(order.total_cents, order.currency),
+      receipt_url: receipt_store_order_path(order),
       can_pay: order.pending? || order.awaiting_payment?,
       can_cancel: order.pending? || order.awaiting_payment?,
       can_request_refund: refundable_order?(order),
+      can_download_receipt: %w[paid processing fulfilling fulfilled completed refunded].include?(order.status),
       refund_url: refund_store_order_path(order),
       refunds: order.refunds.order(created_at: :desc).map do |refund|
         {
           amount_label: format_money(refund.amount_cents, order.currency),
           status: refund.status,
+          status_label: REFUND_STATUS_LABELS[refund.status] || refund.status,
+          reason: refund.reason,
           created_at: l(refund.created_at, format: :short),
           customer_requested: refund.requested_by_customer?
+        }
+      end,
+      events: order.events.chronological.map do |event|
+        {
+          event_type: event.event_type,
+          label: ORDER_EVENT_LABELS[event.event_type] || event.event_type.humanize,
+          created_at: l(event.created_at, format: :short)
         }
       end,
       cancel_url: cancel_store_order_path(order),
@@ -415,6 +445,13 @@ module InertiaSerializable
   def format_money(cents, currency)
     unit = currency == "CNY" ? "¥" : "$"
     number_to_currency(cents / 100.0, unit: unit)
+  end
+
+  def forum_author_name(user)
+    return "—" unless user
+
+    name = user.display_name.presence || user.username
+    user.forum_title.present? ? "#{name} · #{user.forum_title}" : name
   end
 
   def number_to_currency(amount, unit:)

@@ -1,0 +1,7 @@
+您的购物车中还有以下商品尚未结算：
+
+<% @cart.items.each do |item| %>
+- <%= item.product.name %> x<%= item.quantity %>
+<% end %>
+
+请访问 <%= store_cart_url %> 完成购买。

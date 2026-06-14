@@ -14,10 +14,29 @@ module Community
         .limit(20)
       posts_count = Community::Post.where(user: user, status: :published).count
       trust = Community::TrustLevel.level_info(user)
+      liked_posts = Community::Post.where(user: user, status: :published)
+        .select("forum_posts.*, COUNT(forum_reactions.id) AS reactions_count")
+        .joins(:reactions)
+        .group("forum_posts.id")
+        .order(Arel.sql("COUNT(forum_reactions.id) DESC"))
+        .limit(10)
+        .includes(:topic)
+        .map do |post|
+          {
+            id: post.id,
+            body: post.body.truncate(100),
+            floor_number: post.floor_number,
+            topic_title: post.topic.title,
+            topic_url: forum_topic_path(post.topic),
+            likes_count: post[:reactions_count].to_i
+          }
+        end
 
       render inertia: "Community/Users/Show", props: {
         profile: {
           username: user.username,
+          display_name: user.display_name,
+          forum_title: user.forum_title,
           avatar_url: user.avatar_url,
           bio: user.bio,
           trust_level: trust[:level],
@@ -43,7 +62,8 @@ module Community
             topic_url: forum_topic_path(post.topic),
             created_at: l(post.created_at, format: :short)
           }
-        end
+        end,
+        liked_posts: liked_posts
       }
     end
 
@@ -61,7 +81,7 @@ module Community
     private
 
     def user_params
-      params.require(:user).permit(:bio)
+      params.require(:user).permit(:bio, :forum_title)
     end
   end
 end

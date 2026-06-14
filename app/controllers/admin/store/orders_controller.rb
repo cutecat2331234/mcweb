@@ -7,10 +7,12 @@ module Admin
       before_action :set_order, only: %i[show update]
 
       def index
-        orders = ::Commerce::Order.recent.limit(50)
+        orders_scope = ::Commerce::Order.recent.includes(:user)
+        @pagy, orders = pagy(orders_scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: "订单",
+          exportUrl: export_admin_store_orders_path,
           columns: [
             admin_column(:order_number, "订单号", link: true),
             admin_column(:customer, "客户"),
@@ -25,8 +27,29 @@ module Admin
               total: format_money(order.total_cents, order.currency),
               url: admin_store_order_path(order)
             )
-          end
+          end,
+          pagination: pagy_props(@pagy)
         }
+      end
+
+      def export
+        require_permission("store.orders.read")
+        orders = ::Commerce::Order.recent.includes(:user, :items).limit(5000)
+
+        csv = CSV.generate(headers: true) do |rows|
+          rows << %w[订单号 客户 状态 金额 创建时间]
+          orders.each do |order|
+            rows << [
+              order.order_number,
+              order.user.username,
+              order.status,
+              order.total_cents / 100.0,
+              order.created_at.iso8601
+            ]
+          end
+        end
+
+        send_data csv, filename: "orders-#{Time.current.strftime('%Y%m%d')}.csv", type: "text/csv"
       end
 
       def show

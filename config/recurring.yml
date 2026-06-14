@@ -17,3 +17,7 @@ production:
     class: Commerce::ExpirePendingOrdersJob
     queue: maintenance
     schedule: every 15 minutes
+  abandoned_cart_reminders:
+    class: Commerce::AbandonedCartReminderJob
+    queue: mailers
+    schedule: at 10am every day

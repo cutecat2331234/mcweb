@@ -3,7 +3,7 @@
 module Commerce
   class OrdersController < ApplicationController
     before_action :require_login
-    before_action :set_order, only: %i[show cancel refund]
+    before_action :set_order, only: %i[show cancel refund receipt]
 
     def index
       orders_scope = Commerce::Order.where(user: current_user).includes(:items).recent
@@ -45,6 +45,14 @@ module Commerce
       end
     end
 
+    def receipt
+      unless %w[paid processing fulfilling fulfilled completed refunded].include?(@order.status)
+        return redirect_to store_order_path(@order), alert: "该订单暂无收据。"
+      end
+
+      render "commerce/orders/receipt", layout: false
+    end
+
     def new
       cart = Commerce::Cart.find_by(user: current_user)
       redirect_to store_cart_path, alert: "Your cart is empty." if cart.nil? || cart.empty?
@@ -70,7 +78,7 @@ module Commerce
     private
 
     def set_order
-      @order = Commerce::Order.where(user: current_user).includes(:items, :fulfillments).find_by!(public_id: params[:id])
+      @order = Commerce::Order.where(user: current_user).includes(:items, :fulfillments, :refunds, :events).find_by!(public_id: params[:id])
     end
 
     def order_params

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000006) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -55,6 +55,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000006) do
     t.string "slug", null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_forum_categories_on_slug", unique: true
+  end
+
+  create_table "forum_censored_words", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "replacement", default: "***", null: false
+    t.datetime "updated_at", null: false
+    t.string "word", null: false
+    t.index ["word"], name: "index_forum_censored_words_on_word", unique: true
   end
 
   create_table "forum_conversation_participants", force: :cascade do |t|
@@ -506,6 +514,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000006) do
   end
 
   create_table "store_carts", force: :cascade do |t|
+    t.datetime "abandoned_reminder_sent_at"
     t.datetime "created_at", null: false
     t.string "session_token"
     t.datetime "updated_at", null: false
@@ -714,6 +723,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000006) do
     t.boolean "email_verified", default: false, null: false
     t.datetime "email_verified_at"
     t.integer "failed_login_count", default: 0, null: false
+    t.string "forum_title"
     t.datetime "last_sign_in_at"
     t.string "last_sign_in_ip"
     t.string "locale", default: "zh-CN", null: false

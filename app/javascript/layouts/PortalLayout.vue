@@ -42,7 +42,7 @@ function toggleTheme() {
             <Link v-if="auth.user" :href="routes.forumDrafts" class="hover:text-foreground transition-colors">草稿</Link>
             <Link :href="routes.store" class="hover:text-foreground transition-colors">商城</Link>
             <Link v-if="auth.user" :href="routes.storeWishlist" class="hover:text-foreground transition-colors">心愿单</Link>
-            <Link v-if="auth.user && cart" :href="cart.url" class="hover:text-foreground transition-colors">
+            <Link v-if="cart" :href="cart.url" class="hover:text-foreground transition-colors">
               购物车<span v-if="cart.count > 0" class="ml-1 text-primary">({{ cart.count }})</span>
             </Link>
           </nav>

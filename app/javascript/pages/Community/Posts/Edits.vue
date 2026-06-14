@@ -17,6 +17,7 @@ defineProps<{
     editor: string
     body_before: string
     body_after: string
+    diff_lines: Array<{ kind: string; text: string }>
     created_at: string
   }>
 }>()
@@ -34,6 +35,21 @@ defineProps<{
   <div v-if="edits.length" class="space-y-4">
     <article v-for="(edit, i) in edits" :key="i" class="rounded-lg border p-4">
       <p class="mb-2 text-sm text-muted-foreground">{{ edit.editor }} · {{ edit.created_at }}</p>
+      <div v-if="edit.diff_lines.length" class="mb-3 space-y-1 rounded bg-muted p-3 font-mono text-xs">
+        <div
+          v-for="(line, j) in edit.diff_lines"
+          :key="j"
+          :class="{
+            'text-red-600 line-through': line.kind === 'removed',
+            'text-green-600': line.kind === 'added',
+            'text-muted-foreground': line.kind === 'same',
+          }"
+        >
+          <span v-if="line.kind === 'removed'">− </span>
+          <span v-else-if="line.kind === 'added'">+ </span>
+          <span v-else>  </span>{{ line.text }}
+        </div>
+      </div>
       <div class="grid gap-4 md:grid-cols-2">
         <div>
           <p class="mb-1 text-xs font-semibold text-muted-foreground">编辑前</p>

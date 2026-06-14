@@ -117,7 +117,36 @@ const replyForm = useForm({
 const quotePreview = ref<QuotedPost | null>(null)
 const replyPreview = ref<{ id: number; floor_number: number; author: string } | null>(null)
 const moveSectionSlug = ref('')
+const mergeTargetId = ref('')
 const slowModeSeconds = ref(props.topic.slow_mode_seconds || 0)
+const replyPreviewHtml = ref<string | null>(null)
+const replyPreviewLoading = ref(false)
+const editPreviewHtml = ref<string | null>(null)
+const editPreviewLoading = ref(false)
+
+async function previewBody(body: string, target: 'reply' | 'edit') {
+  if (!body.trim()) return
+  const loading = target === 'reply' ? replyPreviewLoading : editPreviewLoading
+  const htmlRef = target === 'reply' ? replyPreviewHtml : editPreviewHtml
+  loading.value = true
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
+    const res = await fetch(routes.forumPreview, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': token || '',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({ body }),
+      credentials: 'same-origin',
+    })
+    const data = await res.json()
+    htmlRef.value = data.html
+  } finally {
+    loading.value = false
+  }
+}
 
 function submitReply() {
   replyForm.post('/forum/posts', {
@@ -128,6 +157,7 @@ function submitReply() {
       replyForm.post.parent_post_id = null
       quotePreview.value = null
       replyPreview.value = null
+      replyPreviewHtml.value = null
     },
   })
 }
@@ -218,6 +248,12 @@ function moderatePost(post: PostItem, action: string) {
 function moveTopic() {
   if (!moveSectionSlug.value) return
   router.post(`/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
+}
+
+function mergeTopic() {
+  if (!mergeTargetId.value.trim()) return
+  if (!confirm('确定将此主题合并到目标主题？源主题将被隐藏。')) return
+  router.post(`/forum/topics/${props.topic.id}/merge`, { target_topic_id: mergeTargetId.value.trim() })
 }
 
 function saveTopicEdit() {
@@ -357,6 +393,10 @@ function pollPercent(votes: number) {
       </option>
     </select>
     <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">移动</Button>
+    <template v-if="topic.can_move">
+      <Input v-model="mergeTargetId" placeholder="合并到主题 ID" class="h-8 w-40" />
+      <Button type="button" size="sm" variant="outline" :disabled="!mergeTargetId" @click="mergeTopic">合并</Button>
+    </template>
     <template v-if="topic.can_moderate">
       <Input v-model.number="slowModeSeconds" type="number" min="0" class="h-8 w-24" placeholder="慢速秒" />
       <Button type="button" size="sm" variant="outline" @click="updateSlowMode">设置慢速</Button>
@@ -430,9 +470,11 @@ function pollPercent(votes: number) {
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
             <Textarea v-model="editBody" rows="6" />
             <div class="flex gap-2">
+              <Button type="button" size="sm" variant="outline" :disabled="editPreviewLoading" @click="previewBody(editBody, 'edit')">预览</Button>
               <Button type="button" size="sm" @click="saveEdit(post)">保存</Button>
               <Button type="button" size="sm" variant="outline" @click="cancelEdit">取消</Button>
             </div>
+            <div v-if="editPreviewHtml" class="prose prose-sm max-w-none rounded border p-3 text-sm dark:prose-invert" v-html="editPreviewHtml" />
           </div>
           <div v-else class="prose prose-sm mt-2 max-w-none text-sm dark:prose-invert" v-html="post.body_html" />
 
@@ -487,7 +529,11 @@ function pollPercent(votes: number) {
     </div>
     <form class="space-y-3" @submit.prevent="submitReply">
       <Textarea v-model="replyForm.post.body" required rows="6" placeholder="写下你的回复…" />
-      <Button type="submit" :disabled="replyForm.processing">发表回复</Button>
+      <div class="flex gap-2">
+        <Button type="button" variant="outline" size="sm" :disabled="replyPreviewLoading || !replyForm.post.body" @click="previewBody(replyForm.post.body, 'reply')">预览</Button>
+        <Button type="submit" :disabled="replyForm.processing">发表回复</Button>
+      </div>
+      <div v-if="replyPreviewHtml" class="prose prose-sm max-w-none rounded border p-3 text-sm dark:prose-invert" v-html="replyPreviewHtml" />
     </form>
   </section>
 </template>

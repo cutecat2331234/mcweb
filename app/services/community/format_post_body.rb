@@ -3,7 +3,10 @@
 module Community
   class FormatPostBody < ApplicationService
     WHITELIST = Website::BlockSanitizer::WHITELIST.merge(
-      "img" => %w[src alt title width height class loading]
+      "img" => %w[src alt title width height class loading],
+      "aside" => %w[class],
+      "strong" => %w[class],
+      "p" => %w[class]
     )
     MENTION_PATTERN = /@([a-zA-Z0-9_]{3,32})/
 
@@ -12,8 +15,11 @@ module Community
     end
 
     def call
+      filtered = Community::FilterCensoredWords.call(text: @body)
+      body = filtered.success? ? filtered.value : @body
+
       placeholders = {}
-      text = @body.dup
+      text = body.dup
 
       text = text.gsub(/```(\w*)\n([\s\S]*?)```/) do
         token = placeholder_token(placeholders, "CODE")
@@ -42,6 +48,20 @@ module Community
         username = Regexp.last_match(1)
         token = placeholder_token(placeholders, "MENTION")
         placeholders[token] = %(<a href="/forum/users/#{username}" class="mention">@#{username}</a>)
+        token
+      end
+
+      text = text.gsub(/\A(https?:\/\/[^\s]+)\z/) do |url|
+        token = placeholder_token(placeholders, "ONEBOX")
+        preview = Community::FetchLinkPreview.call(url: url)
+        if preview.success? && preview.value
+          p = preview.value
+          img = p[:image_url].present? ? %(<img src="#{ERB::Util.html_escape(p[:image_url])}" alt="" class="onebox-image" loading="lazy" />) : ""
+          desc = p[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(p[:description].to_s.truncate(200))}</p>) : ""
+          placeholders[token] = %(<aside class="onebox"><a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener" class="onebox-link">#{img}<strong class="onebox-title">#{ERB::Util.html_escape(p[:title].to_s)}</strong>#{desc}</a></aside>)
+        else
+          placeholders[token] = %(<a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener">#{ERB::Util.html_escape(url)}</a>)
+        end
         token
       end
 

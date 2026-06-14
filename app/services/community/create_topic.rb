@@ -10,6 +10,7 @@ module Community
       @section = section
       @title = title.to_s.strip
       @body = body.to_s.strip
+      filter_censored_body!
       @tag_names = tag_names
       @ip_address = ip_address
       @poll_question = poll_question.to_s.strip.presence
@@ -143,6 +144,11 @@ module Community
         options: @poll_options.first(10),
         closes_at: closes_at
       )
+    end
+
+    def filter_censored_body!
+      result = Community::FilterCensoredWords.call(text: @body)
+      @body = result.value if result.success?
     end
   end
 end

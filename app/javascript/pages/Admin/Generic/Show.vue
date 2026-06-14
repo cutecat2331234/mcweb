@@ -40,6 +40,12 @@ export interface RefundForm {
   max_label: string
 }
 
+export interface BanForm {
+  banned: boolean
+  ban_url: string
+  unban_url: string
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -48,12 +54,18 @@ const props = defineProps<{
   preformatted?: { title: string; content: string }
   actions?: DetailAction[]
   muteForm?: MuteForm | null
+  banForm?: BanForm | null
   refundForm?: RefundForm | null
   backUrl: string
 }>()
 
 const muteForm = useForm({
   user_id: props.muteForm?.user_id || '',
+  reason: '',
+  expires_at: '',
+})
+
+const banForm = useForm({
   reason: '',
   expires_at: '',
 })
@@ -66,6 +78,16 @@ const refundForm = useForm({
 function submitMute() {
   if (!props.muteForm) return
   muteForm.post(props.muteForm.action_url)
+}
+
+function submitBan() {
+  if (!props.banForm || props.banForm.banned) return
+  banForm.post(props.banForm.ban_url)
+}
+
+function submitUnban() {
+  if (!props.banForm || !props.banForm.banned) return
+  router.post(props.banForm.unban_url)
 }
 
 function submitRefund() {
@@ -117,6 +139,24 @@ function submitRefund() {
     </div>
     <Button type="submit" variant="destructive" size="sm" :disabled="muteForm.processing">禁言</Button>
   </form>
+
+  <form v-if="props.banForm && !props.banForm.banned" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitBan">
+    <h2 class="text-sm font-semibold">封禁用户</h2>
+    <div class="space-y-2">
+      <Label>封禁原因</Label>
+      <Input v-model="banForm.reason" placeholder="封禁原因" />
+    </div>
+    <div class="space-y-2">
+      <Label>到期时间（空=永久）</Label>
+      <Input v-model="banForm.expires_at" type="datetime-local" />
+    </div>
+    <Button type="submit" variant="destructive" size="sm" :disabled="banForm.processing">封禁账号</Button>
+  </form>
+
+  <div v-if="props.banForm?.banned" class="mt-6 max-w-lg rounded-lg border p-4">
+    <p class="mb-3 text-sm text-destructive">该用户当前处于封禁状态。</p>
+    <Button type="button" size="sm" variant="outline" @click="submitUnban">解除封禁</Button>
+  </div>
 
   <form v-if="props.refundForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitRefund">
     <h2 class="text-sm font-semibold">部分退款</h2>

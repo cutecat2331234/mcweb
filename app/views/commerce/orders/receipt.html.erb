@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>订单收据 <%= order.order_number %></title>
+  <style>
+    body { font-family: sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #111; }
+    h1 { font-size: 1.25rem; }
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0; }
+    th, td { border: 1px solid #ddd; padding: 0.5rem; text-align: left; font-size: 0.875rem; }
+    .total { font-weight: bold; text-align: right; margin-top: 1rem; }
+    @media print { body { margin: 0; } }
+  </style>
+</head>
+<body>
+  <h1>订单收据</h1>
+  <p>订单号：<strong><%= order.order_number %></strong></p>
+  <p>日期：<%= l(order.created_at, format: :long) %></p>
+  <p>状态：<% labels = { "paid" => "已支付", "fulfilled" => "已发货", "completed" => "已完成", "refunded" => "已退款" } %><%= labels[order.status] || order.status %></p>
+  <% if order.notes.present? %>
+    <p>备注：<%= order.notes %></p>
+  <% end %>
+
+  <table>
+    <thead>
+      <tr>
+        <th>商品</th>
+        <th>数量</th>
+        <th>小计</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% order.items.each do |item| %>
+        <tr>
+          <td>
+            <%= item.product_name %>
+            <% if item.variant_name.present? %> — <%= item.variant_name %><% end %>
+          </td>
+          <td><%= item.quantity %></td>
+          <td><%= number_to_currency(item.total_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <p class="total">合计：<%= number_to_currency(order.total_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+
+  <p><small>McWeb 商城 — 本收据由系统自动生成。</small></p>
+</body>
+</html>

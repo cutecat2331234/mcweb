@@ -4,7 +4,7 @@ module Community
   class TopicsController < ApplicationController
     include Community::TopicVisibility
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move mark_solved unsolve update_slow_mode]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move merge mark_solved unsolve update_slow_mode]
     before_action :set_section, only: %i[new create]
     before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move mark_solved unsolve update_slow_mode]
 
@@ -139,6 +139,20 @@ module Community
 
       if result.success?
         redirect_to forum_topic_path(@topic), notice: "主题已移动。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def merge
+      result = Community::MergeTopics.call(
+        user: current_user,
+        source: @topic,
+        target_public_id: params[:target_topic_id]
+      )
+
+      if result.success?
+        redirect_to forum_topic_path(result.value), notice: "主题已合并。"
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end

@@ -6,6 +6,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Textarea from '@/components/ui/Textarea.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -41,6 +42,7 @@ const form = useForm({
   checkout: {
     provider: props.defaultProvider || props.providers[0]?.value || 'fake',
     coupon_code: '',
+    notes: '',
   },
 })
 
@@ -119,6 +121,11 @@ async function previewCoupon() {
         </div>
         <p v-if="couponMessage" class="text-sm text-green-600">{{ couponMessage }}</p>
         <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
+      </div>
+
+      <div class="space-y-2">
+        <Label for="notes">订单备注（可选）</Label>
+        <Textarea id="notes" v-model="form.checkout.notes" rows="2" placeholder="如有特殊说明请填写…" />
       </div>
 
       <div class="space-y-2">

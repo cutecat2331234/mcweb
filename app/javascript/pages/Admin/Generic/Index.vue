@@ -25,6 +25,7 @@ export interface AdminAction {
 defineProps<{
   title: string
   subtitle?: string
+  exportUrl?: string
   columns: AdminColumn[]
   rows: Array<Record<string, string>>
   actions?: AdminAction[]
@@ -34,9 +35,10 @@ defineProps<{
 <template>
   <div class="mb-4 flex items-center justify-between">
     <PageHeader :title="title" :subtitle="subtitle" />
-    <div v-if="actions?.length" class="flex gap-2">
+    <div class="flex gap-2">
+      <a v-if="exportUrl" :href="exportUrl" class="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-muted">导出 CSV</a>
       <Link
-        v-for="action in actions"
+        v-for="action in actions || []"
         :key="action.href"
         :href="action.href"
         class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground no-underline hover:opacity-90"

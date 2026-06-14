@@ -23,7 +23,12 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root "dashboard#index"
-    resources :users, only: %i[index show]
+    resources :users, only: %i[index show] do
+      member do
+        post :ban
+        post :unban
+      end
+    end
     resources :roles, only: %i[index show]
     resources :audit_logs, only: %i[index show]
     namespace :forum do
@@ -32,12 +37,17 @@ Rails.application.routes.draw do
       resources :topics, only: %i[index show]
       resources :reports, only: %i[index show update]
       resources :mutes, only: %i[create destroy]
+      resources :censored_words, only: %i[index create destroy]
     end
     namespace :store do
       resources :categories
       resources :products
       resources :coupons
-      resources :orders, only: %i[index show update]
+      resources :orders, only: %i[index show update] do
+        collection do
+          get :export
+        end
+      end
       resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
     end
@@ -78,6 +88,7 @@ Rails.application.routes.draw do
       member do
         post :moderate
         post :move
+        post :merge
         post :mark_solved
         post :unsolve
         patch :slow_mode, action: :update_slow_mode
@@ -138,6 +149,7 @@ Rails.application.routes.draw do
       member do
         post :cancel
         post :refund
+        get :receipt
       end
     end
     resource :checkout, only: %i[show create], controller: "checkout" do

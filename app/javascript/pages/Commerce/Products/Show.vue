@@ -51,6 +51,13 @@ export interface ProductDetail {
 
 const props = defineProps<{
   product: ProductDetail
+  related_products: Array<{
+    id: string
+    name: string
+    price_label: string
+    url: string
+    image_url: string | null
+  }>
   addToCartUrl: string
   wishlistUrl: string
   reviewUrl: string
@@ -216,6 +223,22 @@ function submitReview() {
       <Link :href="routes.store">返回商城</Link>
     </Button>
   </div>
+
+  <section v-if="related_products.length" class="mt-10">
+    <h2 class="mb-4 text-sm font-semibold">相关商品</h2>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <Link
+        v-for="item in related_products"
+        :key="item.id"
+        :href="item.url"
+        class="rounded-lg border p-3 hover:bg-muted/50"
+      >
+        <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="mb-2 h-24 w-full rounded object-cover" />
+        <p class="text-sm font-medium">{{ item.name }}</p>
+        <p class="text-sm text-muted-foreground">{{ item.price_label }}</p>
+      </Link>
+    </div>
+  </section>
 
   <section v-if="product.reviews.length" class="mt-10 max-w-xl">
     <h2 class="mb-4 text-sm font-semibold">用户评价</h2>

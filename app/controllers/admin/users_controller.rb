@@ -3,7 +3,7 @@
 module Admin
   class UsersController < BaseController
     before_action -> { require_permission("system.settings.manage") }
-    before_action :set_user, only: %i[show edit update destroy]
+    before_action :set_user, only: %i[show edit update destroy ban unban]
 
     def index
       users = User.order(created_at: :desc)
@@ -50,6 +50,8 @@ module Admin
         fields: [
           { label: "用户名", value: @user.username },
           { label: "状态", value: @user.status },
+          { label: "封禁原因", value: @user.ban_reason.presence || "—" },
+          { label: "封禁到期", value: @user.ban_expires_at ? l(@user.ban_expires_at, format: :long) : (@user.banned? ? "永久" : "—") },
           { label: "角色", value: @user.roles.pluck(:name).join(", ").presence || "—" },
           { label: "邮箱已验证", value: @user.email_verified? ? "是" : "否" },
           { label: "注册时间", value: l(@user.created_at, format: :long) }
@@ -63,6 +65,11 @@ module Admin
           user_id: @user.public_id,
           action_url: admin_forum_mutes_path
         } : nil,
+        banForm: {
+          banned: @user.banned?,
+          ban_url: ban_admin_user_path(@user),
+          unban_url: unban_admin_user_path(@user)
+        },
         actions: mute_actions.map do |m|
           { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
         end
@@ -85,6 +92,31 @@ module Admin
       @user.soft_delete!
       Administration::AuditLogger.call(actor: current_user, action: "admin.user_deleted", resource: @user)
       redirect_to admin_users_path, notice: "User deleted."
+    end
+
+    def ban
+      expires_at = params[:expires_at].present? ? Time.zone.parse(params[:expires_at]) : nil
+      result = Administration::BanUser.call(
+        user: @user,
+        actor: current_user,
+        reason: params[:reason],
+        expires_at: expires_at
+      )
+
+      if result.success?
+        redirect_to admin_user_path(@user), notice: "用户已封禁。"
+      else
+        redirect_to admin_user_path(@user), alert: service_error_message(result)
+      end
+    end
+
+    def unban
+      result = Administration::UnbanUser.call(user: @user, actor: current_user)
+      if result.success?
+        redirect_to admin_user_path(@user), notice: "用户已解封。"
+      else
+        redirect_to admin_user_path(@user), alert: service_error_message(result)
+      end
     end
 
     private

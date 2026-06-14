@@ -9,6 +9,7 @@ module Community
       @user = user
       @topic = topic
       @body = body.to_s.strip
+      filter_censored_body!
       @quoted_post = quoted_post
       @parent_post = parent_post
       @ip_address = ip_address
@@ -123,6 +124,11 @@ module Community
         .where("created_at > ?", 5.minutes.ago)
         .where(body: @body)
         .exists?
+    end
+
+    def filter_censored_body!
+      result = Community::FilterCensoredWords.call(text: @body)
+      @body = result.value if result.success?
     end
   end
 end

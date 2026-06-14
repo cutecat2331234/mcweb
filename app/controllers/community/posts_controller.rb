@@ -100,10 +100,12 @@ module Community
           topic_url: forum_topic_path(@post.topic)
         },
         edits: edits.map do |edit|
+          diff = Community::DiffLines.call(before_text: edit.body_before, after_text: edit.body_after)
           {
             editor: edit.editor.username,
             body_before: edit.body_before,
             body_after: edit.body_after,
+            diff_lines: diff.success? ? diff.value : [],
             created_at: l(edit.created_at, format: :short)
           }
         end

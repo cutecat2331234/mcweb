@@ -37,9 +37,15 @@ module Commerce
       reviews = product.reviews.published.includes(:user).order(created_at: :desc).limit(20)
       avg = product.reviews.published.average(:rating)&.round(1)
       wishlisted = logged_in? && Commerce::WishlistItem.exists?(user: current_user, product: product)
+      related = if product.store_category_id
+                  product.category.products.available.where.not(id: product.id).order(created_at: :desc).limit(4)
+                else
+                  Commerce::Product.none
+                end
 
       render inertia: "Commerce/Products/Show", props: {
         product: serialize_product_detail(product, wishlisted: wishlisted, reviews: reviews, average_rating: avg),
+        related_products: related.map { |p| serialize_product_list_item(p) },
         addToCartUrl: store_cart_path,
         wishlistUrl: wishlist_store_product_path(product),
         reviewUrl: store_reviews_path(product),

@@ -10,6 +10,7 @@ module Commerce
       commerce.order_fulfilled
       commerce.order_cancelled
       commerce.refund_processed
+      commerce.abandoned_cart
     ].freeze
 
     CHANNELS = %w[email].freeze
@@ -48,7 +49,8 @@ module Commerce
         "commerce.payment_confirmed" => "支付成功",
         "commerce.order_fulfilled" => "发货完成",
         "commerce.order_cancelled" => "订单取消",
-        "commerce.refund_processed" => "退款通知"
+        "commerce.refund_processed" => "退款通知",
+        "commerce.abandoned_cart" => "购物车提醒"
       }[type] || type.humanize
     end
   end

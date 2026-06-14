@@ -207,3 +207,24 @@ app/
 | 支付重试去重 | `CheckoutController` 复用 pending payment |
 | 取消订单作废支付 | `CancelOrder#cancel_pending_payments!` |
 | 低库存含变体 | `SalesMetrics#low_stock_variant_count` |
+
+### 第十二轮（论坛 / 商城深化）
+
+| 功能 | 实现 |
+|------|------|
+| 回复/编辑 Markdown 预览 | `Topics/Show.vue` 复用 `/forum/preview` |
+| 编辑历史 diff | `DiffLines` + `Posts/Edits.vue` 高亮 |
+| 链接 Onebox | `FetchLinkPreview` + `FormatPostBody` |
+| 敏感词过滤 | `CensoredWord` + `FilterCensoredWords` + 后台管理 |
+| 主题合并 | `MergeTopics` + 版主 UI |
+| 用户封禁后台 | `BanUser` / `UnbanUser` + Admin 用户页 |
+| 论坛头衔/显示名 | `users.forum_title` + 资料页编辑 |
+| 获赞帖子列表 | 用户资料页 `liked_posts` |
+| 结账订单备注 | Checkout → `CreateOrder#notes` |
+| 退款状态中文 | `REFUND_STATUS_LABELS` |
+| 订单时间线 | `OrderEvent` 序列化 + 详情页 |
+| 订单收据下载 | `orders#receipt` HTML |
+| 相关商品 | 同分类推荐 |
+| 游客购物车徽章 | `inertia_share` 会话购物车 |
+| 弃购提醒邮件 | `AbandonedCartReminderJob` + `CartMailer` |
+| 后台订单 CSV 导出 | `admin/store/orders#export` |

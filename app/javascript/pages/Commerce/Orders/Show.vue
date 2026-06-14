@@ -22,10 +22,13 @@ const props = defineProps<{
     order_number: string
     status: string
     status_label: string
+    notes: string | null
     total_label: string
+    receipt_url: string
     can_pay: boolean
     can_cancel: boolean
     can_request_refund: boolean
+    can_download_receipt: boolean
     cancel_url: string
     refund_url: string
     payment_providers: Array<{ value: string; label: string }>
@@ -33,8 +36,15 @@ const props = defineProps<{
     refunds: Array<{
       amount_label: string
       status: string
+      status_label: string
+      reason: string | null
       created_at: string
       customer_requested: boolean
+    }>
+    events: Array<{
+      event_type: string
+      label: string
+      created_at: string
     }>
     items: Array<{
       product_name: string
@@ -61,6 +71,20 @@ const refundForm = useForm({ reason: '' })
 
 <template>
   <PageHeader :title="`订单 ${order.order_number}`" :subtitle="`状态：${order.status_label}`" />
+
+  <p v-if="order.notes" class="mb-4 rounded-lg border p-4 text-sm">
+    <span class="font-medium">订单备注：</span>{{ order.notes }}
+  </p>
+
+  <div v-if="order.events.length" class="mb-6 rounded-lg border p-4">
+    <h2 class="mb-3 text-sm font-semibold">订单时间线</h2>
+    <ol class="space-y-2 text-sm">
+      <li v-for="(event, index) in order.events" :key="index" class="flex justify-between gap-4">
+        <span>{{ event.label }}</span>
+        <span class="text-muted-foreground">{{ event.created_at }}</span>
+      </li>
+    </ol>
+  </div>
 
   <div class="mb-6 rounded-lg border">
     <Table>
@@ -110,7 +134,8 @@ const refundForm = useForm({ reason: '' })
       <li v-for="(refund, index) in order.refunds" :key="index" class="flex justify-between gap-4">
         <span>{{ refund.amount_label }}</span>
         <span>
-          <Badge>{{ refund.status }}</Badge>
+          <Badge>{{ refund.status_label || refund.status }}</Badge>
+          <span v-if="refund.reason" class="ml-2 text-xs text-muted-foreground">{{ refund.reason }}</span>
           <span v-if="refund.customer_requested" class="ml-2 text-xs text-muted-foreground">客户申请</span>
           <span class="ml-2 text-muted-foreground">{{ refund.created_at }}</span>
         </span>
@@ -140,6 +165,9 @@ const refundForm = useForm({ reason: '' })
     </form>
     <Button v-else-if="order.can_pay" type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
     <Button v-if="order.can_cancel" type="button" variant="outline" @click="cancelForm.post(order.cancel_url)">取消订单</Button>
+    <Button v-if="order.can_download_receipt" as-child variant="outline">
+      <a :href="order.receipt_url" target="_blank" rel="noopener">下载收据</a>
+    </Button>
     <Button as-child variant="outline">
       <Link :href="routes.storeOrders">返回订单列表</Link>
     </Button>

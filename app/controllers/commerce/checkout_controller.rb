@@ -38,7 +38,8 @@ module Commerce
         order_result = Commerce::CreateOrder.call(
           cart: cart,
           user: current_user,
-          coupon_code: checkout_params[:coupon_code]
+          coupon_code: checkout_params[:coupon_code],
+          notes: checkout_params[:notes]
         )
         unless order_result.success?
           return redirect_to store_checkout_path, alert: service_error_message(order_result)
@@ -94,7 +95,7 @@ module Commerce
     private
 
     def checkout_params
-      params.fetch(:checkout, {}).permit(:provider, :coupon_code)
+      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :notes)
     end
 
     def default_provider

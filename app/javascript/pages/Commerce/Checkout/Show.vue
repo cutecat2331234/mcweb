@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -35,13 +35,14 @@ const props = defineProps<{
   subtotalLabel: string
   providers: ProviderOption[]
   defaultProvider?: string
+  pendingCouponCode?: string | null
   previewCouponUrl: string
 }>()
 
 const form = useForm({
   checkout: {
     provider: props.defaultProvider || props.providers[0]?.value || 'fake',
-    coupon_code: '',
+    coupon_code: props.pendingCouponCode || '',
     notes: '',
   },
 })
@@ -84,6 +85,12 @@ async function previewCoupon() {
     previewing.value = false
   }
 }
+
+onMounted(() => {
+  if (props.pendingCouponCode) {
+    previewCoupon()
+  }
+})
 </script>
 
 <template>

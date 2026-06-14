@@ -25,6 +25,9 @@ module Community
       Community::ProcessMentions.call(body: opening_post.body, author: @topic.user, post: opening_post, topic: @topic) if opening_post
       Community::NotifySectionTopic.call(topic: @topic)
       Community::NotifyFollowedUserTopic.call(topic: @topic)
+      if @topic.tags.any?
+        Community::NotifyTagTopic.call(topic: @topic, tags: @topic.tags)
+      end
       Community::CheckAutoBadges.call(user: @topic.user)
 
       ServiceResult.success(@topic)

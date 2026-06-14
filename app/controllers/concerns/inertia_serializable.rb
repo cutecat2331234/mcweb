@@ -139,6 +139,7 @@ module InertiaSerializable
       edits_url: post.edits.any? ? edits_forum_post_path(post) : nil,
       quoted_post: serialize_quoted_post(post.quoted_post),
       reaction_counts: reaction_counts,
+      reactions_total: reaction_counts.values.sum,
       user_reactions: user_reactions,
       can_edit: can_edit_post?(post, current_user),
       can_delete: can_delete_post?(post, current_user),
@@ -261,17 +262,21 @@ module InertiaSerializable
       wishlisted: wishlisted,
       average_rating: average_rating,
       variants: product.variants.map { |variant| serialize_variant(variant, product) },
-      reviews: reviews.map { |review| serialize_review(review) }
+      reviews: reviews.map { |review| serialize_review(review, current_user: current_user) }
     }
   end
 
-  def serialize_review(review)
+  def serialize_review(review, current_user: nil)
+    helpful = current_user && Commerce::ReviewHelpfulVote.exists?(user: current_user, review: review)
     {
       id: review.id,
       author: review.user.username,
       rating: review.rating,
       body: review.body,
-      created_at: l(review.created_at, format: :short)
+      created_at: l(review.created_at, format: :short),
+      helpful_count: review.helpful_votes.count,
+      helpful: helpful,
+      helpful_url: current_user ? helpful_store_product_review_path(review.product.public_id, review.id) : nil
     }
   end
 
@@ -344,8 +349,13 @@ module InertiaSerializable
   ORDER_EVENT_LABELS = {
     "created" => "订单创建",
     "payment_submitted" => "提交支付",
+    "submit_payment" => "提交支付",
+    "payment_confirmed" => "支付成功",
     "paid" => "支付成功",
+    "mark_paid" => "支付成功",
+    "cancel" => "订单取消",
     "cancelled" => "订单取消",
+    "refund_requested" => "退款申请",
     "refunded" => "已退款",
     "fulfilled" => "发货完成"
   }.freeze
@@ -370,6 +380,9 @@ module InertiaSerializable
       status: order.status,
       status_label: order_status_label(order.status),
       notes: order.notes,
+      subtotal_label: format_money(order.subtotal_cents, order.currency),
+      discount_label: order.discount_cents.positive? ? format_money(order.discount_cents, order.currency) : nil,
+      coupon_code: order.coupon&.code,
       total_label: format_money(order.total_cents, order.currency),
       receipt_url: receipt_store_order_path(order),
       receipt_pdf_url: receipt_pdf_store_order_path(order),

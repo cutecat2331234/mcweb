@@ -24,11 +24,15 @@ module Commerce
 
     private
 
-    def purchased?
+    def self.purchased?(user:, product:)
       Commerce::OrderItem
         .joins(:order)
-        .where(store_orders: { user_id: @user.id, status: %w[paid fulfilled] })
-        .exists?(store_product_id: @product.id)
+        .where(store_orders: { user_id: user.id, status: %w[paid processing fulfilling fulfilled completed] })
+        .exists?(store_product_id: product.id)
+    end
+
+    def purchased?
+      self.class.purchased?(user: @user, product: @product)
     end
   end
 end

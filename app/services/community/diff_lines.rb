@@ -1,10 +1,15 @@
 # frozen_string_literal: true
 
+require "diff/lcs"
+
 module Community
   class DiffLines < ApplicationService
     def initialize(before_text:, after_text:)
-      @before_lines = before_text.to_s.split("\n")
-      @after_lines = after_text.to_s.split("\n")
+      @before_lines = before_text.to_s.split("\n", -1)
+      @after_lines = after_text.to_s.split("\n", -1)
+      # Trim trailing empty line from split behavior when text doesn't end with newline
+      @before_lines.pop if @before_lines.last == "" && !before_text.to_s.end_with?("\n")
+      @after_lines.pop if @after_lines.last == "" && !after_text.to_s.end_with?("\n")
     end
 
     def call
@@ -14,23 +19,21 @@ module Community
     private
 
     def compute_diff
-      before_set = @before_lines
-      after_set = @after_lines
-      result = []
-
-      before_set.each do |line|
-        if after_set.include?(line)
-          result << { kind: "same", text: line }
-        else
-          result << { kind: "removed", text: line }
+      Diff::LCS.sdiff(@before_lines, @after_lines).filter_map do |change|
+        case change.action
+        when "-"
+          { kind: "removed", text: change.old_element }
+        when "+"
+          { kind: "added", text: change.new_element }
+        when "="
+          { kind: "same", text: change.old_element }
+        when "!"
+          [
+            { kind: "removed", text: change.old_element },
+            { kind: "added", text: change.new_element }
+          ]
         end
-      end
-
-      after_set.each do |line|
-        result << { kind: "added", text: line } unless before_set.include?(line)
-      end
-
-      result
+      end.flatten
     end
   end
 end

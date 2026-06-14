@@ -16,7 +16,7 @@ module Community
       since = @user.forum_digest_last_sent_at || digest_window(frequency).ago
       notifications = @user.notifications
         .where("created_at > ?", since)
-        .where(notification_type: %w[forum.topic_reply forum.mention forum.section_topic forum.private_message forum.followed_topic])
+        .where(notification_type: %w[forum.topic_reply forum.mention forum.section_topic forum.private_message forum.followed_topic forum.tag_topic forum.reaction])
         .order(created_at: :desc)
         .limit(50)
 

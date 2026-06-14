@@ -29,6 +29,9 @@ export interface ProductReview {
   rating: number
   body: string | null
   created_at: string
+  helpful_count?: number
+  helpful?: boolean
+  helpful_url?: string | null
 }
 
 export interface ProductDetail {
@@ -67,7 +70,8 @@ const props = defineProps<{
   wishlistUrl: string
   reviewUrl: string
   stockAlertUrl: string
-  stockAlertSubscribed: boolean
+  stockAlertVariantIds?: Array<number | null>
+  canReview?: boolean
   loggedIn: boolean
   questionUrl: string
   canAnswerOfficially: boolean
@@ -121,6 +125,23 @@ const canPurchase = computed(() => {
   }
   return props.product.in_stock
 })
+
+const showLowStock = computed(() => {
+  if (selectedVariant.value) {
+    return selectedVariant.value.low_stock && selectedVariant.value.in_stock
+  }
+  return props.product.low_stock && props.product.in_stock
+})
+
+const stockAlertSubscribed = computed(() => {
+  const variantId = selectedVariantId.value
+  return props.stockAlertVariantIds?.includes(variantId) ?? false
+})
+
+function toggleHelpful(url: string | null | undefined) {
+  if (!url) return
+  router.post(url, {}, { preserveScroll: true })
+}
 
 function addToCart() {
   router.patch(props.addToCartUrl, {
@@ -243,8 +264,8 @@ function submitAnswer(questionId: number, answerUrl: string) {
       </div>
       <div class="flex justify-between text-sm">
         <span class="text-muted-foreground">库存</span>
-        <span :class="product.low_stock && canPurchase ? 'text-amber-600' : ''">
-          {{ !canPurchase ? '缺货' : product.low_stock ? '库存紧张' : '有货' }}
+        <span :class="showLowStock ? 'text-amber-600' : ''">
+          {{ !canPurchase ? '缺货' : showLowStock ? '库存紧张' : '有货' }}
         </span>
       </div>
       <div v-if="product.purchase_limit" class="flex justify-between text-sm">
@@ -346,12 +367,24 @@ function submitAnswer(questionId: number, answerUrl: string) {
           <span class="text-amber-500">{{ '★'.repeat(review.rating) }}</span>
         </div>
         <p v-if="review.body" class="text-sm">{{ review.body }}</p>
-        <p class="mt-1 text-xs text-muted-foreground">{{ review.created_at }}</p>
+        <div class="mt-2 flex items-center justify-between gap-2">
+          <p class="text-xs text-muted-foreground">{{ review.created_at }}</p>
+          <Button
+            v-if="loggedIn && review.helpful_url"
+            type="button"
+            variant="outline"
+            size="sm"
+            :class="review.helpful ? 'border-primary' : ''"
+            @click="toggleHelpful(review.helpful_url)"
+          >
+            有帮助{{ review.helpful_count ? ` (${review.helpful_count})` : '' }}
+          </Button>
+        </div>
       </article>
     </div>
   </section>
 
-  <section v-if="loggedIn" class="mt-8 max-w-xl">
+  <section v-if="loggedIn && canReview" class="mt-8 max-w-xl">
     <h2 class="mb-3 text-sm font-semibold">写评价</h2>
     <form class="space-y-3" @submit.prevent="submitReview">
       <div class="space-y-2">

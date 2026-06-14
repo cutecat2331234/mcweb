@@ -10,6 +10,7 @@ module Commerce
       providers = Payments::ProviderConfig.enabled_providers.map { |config| serialize_checkout_provider(config) }
       currency = items.first&.product&.currency || "CNY"
       subtotal_cents = cart&.subtotal_cents.to_i
+      pending_coupon = session[:pending_coupon_code].to_s.presence
 
       render inertia: "Commerce/Checkout/Show", props: {
         items: items.map { |item|
@@ -22,6 +23,7 @@ module Commerce
         },
         subtotalCents: subtotal_cents,
         subtotalLabel: format_money(subtotal_cents, currency),
+        pendingCouponCode: pending_coupon,
         providers: providers,
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path
@@ -38,7 +40,7 @@ module Commerce
         order_result = Commerce::CreateOrder.call(
           cart: cart,
           user: current_user,
-          coupon_code: checkout_params[:coupon_code],
+          coupon_code: checkout_params[:coupon_code].presence || session.delete(:pending_coupon_code),
           notes: checkout_params[:notes]
         )
         unless order_result.success?

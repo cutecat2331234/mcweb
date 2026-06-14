@@ -44,7 +44,12 @@ module Commerce
       reviews = product.reviews.published.includes(:user).order(created_at: :desc).limit(20)
       avg = product.reviews.published.average(:rating)&.round(1)
       wishlisted = logged_in? && Commerce::WishlistItem.exists?(user: current_user, product: product)
-      stock_alert = logged_in? && Commerce::StockAlert.exists?(user: current_user, product: product)
+      stock_alert_variant_ids = if logged_in?
+                                Commerce::StockAlert.where(user: current_user, product: product).pluck(:store_product_variant_id)
+                              else
+                                []
+                              end
+      can_review = logged_in? && Commerce::CreateReview.purchased?(user: current_user, product: product)
       related = if product.store_category_id
                   product.category.products.available.where.not(id: product.id).order(created_at: :desc).limit(4)
                 else
@@ -58,7 +63,8 @@ module Commerce
         related_products: related.map { |p| serialize_product_list_item(p) },
         questions: questions.map { |q| serialize_product_question(q) },
         stockAlertUrl: stock_alert_store_product_path(product),
-        stockAlertSubscribed: stock_alert,
+        stockAlertVariantIds: stock_alert_variant_ids,
+        canReview: can_review,
         addToCartUrl: store_cart_path,
         wishlistUrl: wishlist_store_product_path(product),
         reviewUrl: store_reviews_path(product),

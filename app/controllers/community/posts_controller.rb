@@ -27,7 +27,8 @@ module Community
       result = Community::EditPost.call(
         user: current_user,
         post: @post,
-        body: post_params[:body]
+        body: post_params[:body],
+        reason: post_params[:reason]
       )
 
       if result.success?
@@ -106,6 +107,7 @@ module Community
             body_before: edit.body_before,
             body_after: edit.body_after,
             diff_lines: diff.success? ? diff.value : [],
+            reason: edit.reason,
             created_at: l(edit.created_at, format: :short)
           }
         end
@@ -124,7 +126,7 @@ module Community
     end
 
     def post_params
-      params.require(:post).permit(:body, :quoted_post_id, :parent_post_id)
+      params.require(:post).permit(:body, :quoted_post_id, :parent_post_id, :reason)
     end
 
     def find_quoted_post

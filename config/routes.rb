@@ -138,6 +138,7 @@ Rails.application.routes.draw do
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
     get "watching", to: "watched#index"
+    get "watching/tags", to: "watched#tags", as: :watched_tags
     get "tags", to: "tags#index", as: :tags
     get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
@@ -157,7 +158,11 @@ Rails.application.routes.draw do
       member do
         post :wishlist, to: "wishlist#toggle"
         post :stock_alert, to: "stock_alerts#create"
-        resources :reviews, only: %i[create], controller: "reviews"
+        resources :reviews, only: %i[create], controller: "reviews" do
+          member do
+            post :helpful, action: :toggle_helpful
+          end
+        end
         resources :questions, only: %i[create], controller: "product_questions"
         post "questions/:question_id/answer", to: "product_questions#answer", as: :answer_question
       end

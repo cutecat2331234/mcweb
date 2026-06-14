@@ -23,6 +23,9 @@ const props = defineProps<{
     status: string
     status_label: string
     notes: string | null
+    subtotal_label?: string | null
+    discount_label?: string | null
+    coupon_code?: string | null
     total_label: string
     receipt_url: string
     receipt_pdf_url: string
@@ -147,6 +150,8 @@ const reorderForm = useForm({})
     </ul>
   </div>
 
+  <p v-if="order.subtotal_label" class="mb-1 text-sm text-muted-foreground">小计：{{ order.subtotal_label }}</p>
+  <p v-if="order.discount_label" class="mb-1 text-sm text-green-700">优惠{{ order.coupon_code ? ` (${order.coupon_code})` : '' }}：−{{ order.discount_label }}</p>
   <p class="mb-6 font-medium">合计：{{ order.total_label }}</p>
 
   <form v-if="order.can_request_refund" class="mb-6 max-w-md space-y-3 rounded-lg border p-4" @submit.prevent="refundForm.post(order.refund_url)">

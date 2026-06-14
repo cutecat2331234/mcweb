@@ -10,6 +10,7 @@ export const routes = {
   newForumTopic: (sectionSlug: string) => `/forum/topics/new?section_id=${sectionSlug}`,
   forumSearch: '/forum/search',
   forumWatching: '/forum/watching',
+  forumWatchedTags: '/forum/watching/tags',
   forumBookmarks: '/forum/bookmarks',
   forumUnread: '/forum/unread',
   forumUnreadMarkAllRead: '/forum/unread/mark_all_read',

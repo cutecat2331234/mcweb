@@ -36,6 +36,7 @@ function toggleTheme() {
             <Link :href="routes.forumSearch" class="hover:text-foreground transition-colors">搜索</Link>
             <Link :href="routes.forumTags" class="hover:text-foreground transition-colors">标签</Link>
             <Link v-if="auth.user" :href="routes.forumWatching" class="hover:text-foreground transition-colors">关注主题</Link>
+            <Link v-if="auth.user" :href="routes.forumWatchedTags" class="hover:text-foreground transition-colors">关注标签</Link>
             <Link v-if="auth.user" :href="routes.forumFollowing" class="hover:text-foreground transition-colors">关注用户</Link>
             <Link v-if="auth.user" :href="routes.forumBookmarks" class="hover:text-foreground transition-colors">书签</Link>
             <Link v-if="auth.user" :href="routes.forumUnread" class="hover:text-foreground transition-colors">未读</Link>

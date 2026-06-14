@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000020) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000030) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -178,6 +178,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000020) do
     t.datetime "created_at", null: false
     t.bigint "editor_id", null: false
     t.bigint "forum_post_id", null: false
+    t.string "reason"
     t.datetime "updated_at", null: false
     t.index ["editor_id"], name: "index_forum_post_edits_on_editor_id"
     t.index ["forum_post_id"], name: "index_forum_post_edits_on_forum_post_id"
@@ -782,6 +783,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000020) do
     t.index ["store_order_id"], name: "index_store_refunds_on_store_order_id"
   end
 
+  create_table "store_review_helpful_votes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "store_review_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_review_id", "user_id"], name: "index_review_helpful_votes_on_review_and_user", unique: true
+  end
+
   create_table "store_reviews", force: :cascade do |t|
     t.text "body"
     t.datetime "created_at", null: false
@@ -1041,6 +1050,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000020) do
   add_foreign_key "store_refunds", "store_orders"
   add_foreign_key "store_refunds", "users", column: "approved_by_id"
   add_foreign_key "store_refunds", "users", column: "requested_by_id"
+  add_foreign_key "store_review_helpful_votes", "store_reviews"
+  add_foreign_key "store_review_helpful_votes", "users"
   add_foreign_key "store_reviews", "store_products"
   add_foreign_key "store_reviews", "users"
   add_foreign_key "store_stock_alerts", "store_product_variants"

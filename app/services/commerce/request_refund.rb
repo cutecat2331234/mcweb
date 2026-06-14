@@ -28,6 +28,13 @@ module Commerce
         requested_by_customer: true
       )
 
+      Commerce::OrderEvent.create!(
+        order: @order,
+        actor: @user,
+        event_type: "refund_requested",
+        metadata: { refund_id: refund.id }
+      )
+
       ServiceResult.success(refund)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

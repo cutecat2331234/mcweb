@@ -18,6 +18,7 @@ defineProps<{
     body_before: string
     body_after: string
     diff_lines: Array<{ kind: string; text: string }>
+    reason?: string | null
     created_at: string
   }>
 }>()
@@ -34,7 +35,10 @@ defineProps<{
 
   <div v-if="edits.length" class="space-y-4">
     <article v-for="(edit, i) in edits" :key="i" class="rounded-lg border p-4">
-      <p class="mb-2 text-sm text-muted-foreground">{{ edit.editor }} · {{ edit.created_at }}</p>
+      <p class="mb-2 text-sm text-muted-foreground">
+        {{ edit.editor }} · {{ edit.created_at }}
+        <span v-if="edit.reason" class="ml-2">说明：{{ edit.reason }}</span>
+      </p>
       <div v-if="edit.diff_lines.length" class="mb-3 space-y-1 rounded bg-muted p-3 font-mono text-xs">
         <div
           v-for="(line, j) in edit.diff_lines"

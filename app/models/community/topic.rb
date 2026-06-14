@@ -31,6 +31,8 @@ module Community
         order(pinned: :desc, replies_count: :desc, last_posted_at: :desc)
       when "newest"
         order(pinned: :desc, created_at: :desc)
+      when "hot"
+        order(Arel.sql("pinned DESC, (replies_count * 3 + views_count)::float / POWER(GREATEST(EXTRACT(EPOCH FROM (NOW() - last_posted_at)) / 3600.0, 0) + 2, 1.2) DESC"))
       else
         pinned_first
       end

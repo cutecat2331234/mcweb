@@ -36,7 +36,20 @@ const props = defineProps<{
   }>
   pagination: PaginationMeta
   loggedIn?: boolean
+  sort?: string
 }>()
+
+const sortOptions = [
+  { value: 'activity', label: '最近活跃' },
+  { value: 'hot', label: '热门' },
+  { value: 'newest', label: '最新发布' },
+  { value: 'replies', label: '最多回复' },
+  { value: 'views', label: '最多浏览' },
+]
+
+function changeSort(value: string) {
+  router.get(`/forum/tags/${props.tag.slug}`, { sort: value }, { preserveState: true })
+}
 
 function toggleWatch() {
   if (!props.tag.subscription_url) return
@@ -63,6 +76,17 @@ function toggleWatch() {
   <p class="mb-4">
     <a :href="tag.rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
   </p>
+
+  <div class="mb-4 flex items-center gap-2">
+    <label class="text-sm text-muted-foreground">排序：</label>
+    <select
+      :value="sort || 'activity'"
+      class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+      @change="changeSort(($event.target as HTMLSelectElement).value)"
+    >
+      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+    </select>
+  </div>
 
   <div v-if="topics.length" class="rounded-lg border">
     <Table>

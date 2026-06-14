@@ -34,6 +34,11 @@ module Community
 
       Community::ProcessMentions.call(body: post.body, author: @user, post: post, topic: @topic)
       Community::NotifySectionTopic.call(topic: @topic)
+      Community::NotifyFollowedUserTopic.call(topic: @topic)
+      if @topic.tags.any?
+        Community::NotifyTagTopic.call(topic: @topic, tags: @topic.tags)
+      end
+      Community::CheckAutoBadges.call(user: @user)
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

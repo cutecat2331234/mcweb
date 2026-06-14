@@ -21,6 +21,7 @@ module Commerce
       result = Commerce::PreviewCoupon.call(subtotal_cents: subtotal_cents, code: params[:code])
 
       if result.success?
+        session[:pending_coupon_code] = result.value[:code] if logged_in?
         render json: {
           code: result.value[:code],
           discount_cents: result.value[:discount_cents],

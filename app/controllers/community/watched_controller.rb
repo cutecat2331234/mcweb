@@ -24,5 +24,25 @@ module Community
         topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) }
       }
     end
+
+    def tags
+      tag_ids = Community::Subscription
+        .where(user: current_user, subscribable_type: "Community::Tag")
+        .pluck(:subscribable_id)
+
+      tags = Community::Tag.where(id: tag_ids).order(:name)
+
+      render inertia: "Community/Watched/Tags", props: {
+        tags: tags.map do |tag|
+          {
+            name: tag.name,
+            slug: tag.slug,
+            description: tag.description,
+            url: forum_tag_path(tag.slug),
+            subscription_url: forum_tag_subscription_path(tag.slug)
+          }
+        end
+      }
+    end
   end
 end

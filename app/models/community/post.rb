@@ -19,9 +19,9 @@ module Community
 
     after_create :update_topic_counters
 
-    def edit_body!(new_body, editor:)
+    def edit_body!(new_body, editor:, reason: nil)
       transaction do
-        edits.create!(editor: editor, body_before: body, body_after: new_body)
+        edits.create!(editor: editor, body_before: body, body_after: new_body, reason: reason)
         update!(body: new_body, edited_at: Time.current)
       end
     end

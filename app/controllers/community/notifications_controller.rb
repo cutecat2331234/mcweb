@@ -50,7 +50,9 @@ module Community
     def group_notifications(notifications)
       grouped = notifications.group_by do |n|
         topic_id = n.metadata["topic_id"] || n.metadata.dig("topic", "id")
-        [ n.notification_type, topic_id ]
+        conversation_id = n.metadata["conversation_id"]
+        group_key = topic_id || conversation_id || n.id
+        [ n.notification_type, group_key ]
       end
 
       grouped.map do |(type, topic_id), items|

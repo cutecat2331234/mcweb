@@ -296,3 +296,26 @@ app/
 | 问答恢复显示 | `ShowProductQuestion` + 后台 unhide |
 | 商品版本/更新日志 | `version` + `changelog` |
 | Bug 修复 | Stripe 签名验证、封面 image_url 同步、上传 attach 结果 |
+
+### 第十七轮（论坛 / 商城精细化与 Bug 修复）
+
+| 功能 | 实现 |
+|------|------|
+| LCS 行级 diff | `DiffLines` 使用 `diff/lcs` |
+| 编辑帖子 @提及 | `ProcessNewMentions` + `EditPost` |
+| 编辑说明 | `forum_post_edits.reason` |
+| 草稿/定时发布通知补全 | `NotifyTagTopic` / `NotifyFollowedUserTopic` |
+| 关注标签列表页 | `WatchedController#tags` |
+| 热门主题排序 | `Topic.sorted("hot")` |
+| 标签页排序 UI | `Tags/Show.vue` |
+| 通知分组修复 | 私信按 `conversation_id` 分组 + 展开子项 |
+| 反应总数显示 | `reactions_total` |
+| 发帖权限守卫 | `TopicsController#new` |
+| 评价有帮助投票 | `ReviewHelpfulVote` + `ToggleReviewHelpful` |
+| 购买后可评价校验修复 | `CreateReview.purchased?` 扩展状态 |
+| 仅买家可见评价表单 | `canReview` |
+| 退款申请时间线 | `refund_requested` OrderEvent |
+| 购物车优惠券传递 | session `pending_coupon_code` → 结账 |
+| 订单优惠明细 | `discount_label` / `coupon_code` |
+| 规格级到货通知 | `stockAlertVariantIds` |
+| Bug 修复 | 私信分页 `pages`、限购排除未支付订单 |

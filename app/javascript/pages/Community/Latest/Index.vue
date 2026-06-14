@@ -40,6 +40,7 @@ const props = defineProps<{
 
 const sortOptions = [
   { value: 'activity', label: '最近活跃' },
+  { value: 'hot', label: '热门' },
   { value: 'newest', label: '最新发布' },
   { value: 'replies', label: '最多回复' },
   { value: 'views', label: '最多浏览' },

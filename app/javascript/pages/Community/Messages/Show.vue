@@ -86,7 +86,7 @@ function submit() {
     </div>
   </div>
 
-  <Pagination v-if="pagination.last > 1" class="mb-4" :pagination="pagination" :base-path="`/forum/conversations/${conversation.id}`" />
+  <Pagination v-if="pagination.pages > 1" class="mb-4" :pagination="pagination" :base-path="`/forum/conversations/${conversation.id}`" />
 
   <form class="max-w-2xl space-y-3" @submit.prevent="submit">
     <MarkdownEditor v-model="form.message.body" :show-mention="false" :rows="3" placeholder="输入消息…" />

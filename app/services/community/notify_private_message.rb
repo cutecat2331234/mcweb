@@ -17,7 +17,11 @@ module Community
           notification_type: "forum.private_message",
           title: @conversation.is_group? ? "群组「#{@conversation.title}」新消息" : "来自 #{@message.user.username} 的私信",
           body: @message.body.truncate(120),
-          metadata: { url: "/forum/conversations/#{@conversation.id}" }
+          metadata: {
+            conversation_id: @conversation.id,
+            url: "/forum/conversations/#{@conversation.id}",
+            path: "/forum/conversations/#{@conversation.id}"
+          }
         )
 
         if NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.private_message")

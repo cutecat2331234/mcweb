@@ -57,7 +57,7 @@ module Community
     end
 
     def toggle_subscription
-      tag = Community::Tag.find_by!(slug: params[:slug])
+      tag = Community::Tag.usable_by(current_user).find_by!(slug: params[:slug])
       result = Community::ToggleTagSubscription.call(user: current_user, tag: tag)
 
       if result.success?

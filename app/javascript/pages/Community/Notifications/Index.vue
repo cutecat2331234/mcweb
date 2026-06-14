@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -34,8 +35,18 @@ defineProps<{
   notifications: NotificationGroup[]
 }>()
 
+const expanded = ref<Record<string, boolean>>({})
+
 function markAllRead() {
   router.patch('/forum/notifications/mark_all_read')
+}
+
+function toggleExpand(key: string) {
+  expanded.value[key] = !expanded.value[key]
+}
+
+function markRead(url: string) {
+  router.patch(url, {}, { preserveScroll: true })
 }
 </script>
 
@@ -68,10 +79,30 @@ function markAllRead() {
           <p v-if="group.body" class="mt-1 text-sm text-muted-foreground">{{ group.body }}</p>
           <p class="mt-2 text-xs text-muted-foreground">{{ group.latest_at }}</p>
         </div>
-        <Button v-if="group.visit_url" as-child size="sm">
-          <Link :href="group.visit_url">查看</Link>
-        </Button>
+        <div class="flex shrink-0 gap-2">
+          <Button v-if="group.count > 1" type="button" variant="outline" size="sm" @click="toggleExpand(group.key)">
+            {{ expanded[group.key] ? '收起' : '展开' }}
+          </Button>
+          <Button v-if="group.visit_url" as-child size="sm">
+            <Link :href="group.visit_url">查看</Link>
+          </Button>
+        </div>
       </div>
+      <ul v-if="expanded[group.key] && group.items.length" class="mt-3 space-y-2 border-t pt-3">
+        <li v-for="item in group.items" :key="item.id" class="flex items-start justify-between gap-2 text-sm">
+          <div :class="item.read ? 'text-muted-foreground' : ''">
+            <p class="font-medium">{{ item.title }}</p>
+            <p v-if="item.body" class="text-xs text-muted-foreground">{{ item.body }}</p>
+            <p class="text-xs text-muted-foreground">{{ item.created_at }}</p>
+          </div>
+          <div class="flex gap-1">
+            <Button v-if="!item.read" type="button" variant="outline" size="sm" @click="markRead(item.mark_read_url)">已读</Button>
+            <Button as-child size="sm" variant="outline">
+              <Link :href="item.visit_url">查看</Link>
+            </Button>
+          </div>
+        </li>
+      </ul>
     </article>
   </div>
 

@@ -13,17 +13,26 @@ module Community
       post.created_at > EDIT_WINDOW.ago
     end
 
-    def initialize(user:, post:, body:)
+    def initialize(user:, post:, body:, reason: nil)
       @user = user
       @post = post
       @body = body.to_s.strip
+      @reason = reason.to_s.strip.presence
+      @old_body = post.body
     end
 
     def call
       return ServiceResult.failure(error: "Post body is too short.") if @body.length < CreatePost::MIN_BODY_LENGTH
       return ServiceResult.failure(error: "You cannot edit this post.") unless can_edit?
 
-      @post.edit_body!( @body, editor: @user )
+      @post.edit_body!(@body, editor: @user, reason: @reason)
+      Community::ProcessNewMentions.call(
+        old_body: @old_body,
+        new_body: @body,
+        author: @user,
+        post: @post,
+        topic: @post.topic
+      )
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

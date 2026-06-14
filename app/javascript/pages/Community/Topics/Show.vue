@@ -35,6 +35,7 @@ export interface PostItem {
   edits_url: string | null
   quoted_post: QuotedPost | null
   reaction_counts: Record<string, number>
+  reactions_total?: number
   user_reactions: string[]
   can_edit: boolean
   can_delete: boolean
@@ -101,6 +102,7 @@ const loggedIn = !!page.props.auth.user
 
 const editingPostId = ref<number | null>(null)
 const editBody = ref('')
+const editReason = ref('')
 const editingTopic = ref(false)
 const editTitle = ref(props.topic.title)
 const editTags = ref(props.topic.tags_string)
@@ -182,10 +184,11 @@ function startEdit(post: PostItem) {
 function cancelEdit() {
   editingPostId.value = null
   editBody.value = ''
+  editReason.value = ''
 }
 
 function saveEdit(post: PostItem) {
-  router.patch(post.update_url, { post: { body: editBody.value } }, {
+  router.patch(post.update_url, { post: { body: editBody.value, reason: editReason.value } }, {
     preserveScroll: true,
     onSuccess: () => cancelEdit(),
   })
@@ -440,6 +443,7 @@ function pollPercent(votes: number) {
 
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
             <MarkdownEditor v-model="editBody" :rows="6" />
+            <Input v-model="editReason" placeholder="编辑说明（可选）" class="h-8" />
             <div class="flex gap-2">
               <Button type="button" size="sm" @click="saveEdit(post)">保存</Button>
               <Button type="button" size="sm" variant="outline" @click="cancelEdit">取消</Button>
@@ -447,7 +451,8 @@ function pollPercent(votes: number) {
           </div>
           <div v-else class="prose prose-sm mt-2 max-w-none text-sm dark:prose-invert" v-html="post.body_html" />
 
-          <div class="mt-3 flex flex-wrap gap-1">
+          <div class="mt-3 flex flex-wrap items-center gap-2">
+            <span v-if="post.reactions_total" class="text-xs text-muted-foreground">{{ post.reactions_total }} 个反应</span>
             <template v-if="loggedIn">
               <button
                 v-for="emoji in reactionEmojis"

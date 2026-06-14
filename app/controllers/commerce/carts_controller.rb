@@ -8,11 +8,13 @@ module Commerce
       items = @cart.items.includes(:product, :variant)
       pending_coupon = session[:pending_coupon_code].to_s.presence
       pending_gift_card = session[:pending_gift_card_code].to_s.presence
+      currency = items.first&.product&.currency || "CNY"
+      subtotal_cents = @cart.subtotal_cents
 
       render inertia: "Commerce/Carts/Show", props: {
         items: items.map { |item| serialize_cart_item(item) },
-        subtotalLabel: format_money(@cart.subtotal_cents, items.first&.product&.currency || "CNY"),
-        subtotalCents: @cart.subtotal_cents,
+        subtotalLabel: format_money(subtotal_cents, currency),
+        subtotalCents: subtotal_cents,
         loggedIn: logged_in?,
         pendingCouponCode: pending_coupon,
         pendingGiftCardCode: pending_gift_card,
@@ -22,7 +24,8 @@ module Commerce
         clearGiftCardUrl: clear_gift_card_store_cart_path,
         moveToWishlistUrl: move_to_wishlist_store_cart_path,
         clearCartUrl: clear_store_cart_path,
-        crossSellProducts: cross_sell_products(items)
+        crossSellProducts: cross_sell_products(items),
+        **serialize_shipping_quote(subtotal_cents, currency: currency)
       }
     end
 
@@ -54,7 +57,15 @@ module Commerce
     def preview_coupon
       subtotal_cents = @cart.subtotal_cents
       cart_items = @cart.items.includes(:product)
-      result = Commerce::PreviewCoupon.call(subtotal_cents: subtotal_cents, code: params[:code], cart_items: cart_items, user: current_user)
+      currency = cart_items.first&.product&.currency || "CNY"
+      shipping_cents = shipping_cents_for_preview(subtotal_cents)
+      result = Commerce::PreviewCoupon.call(
+        subtotal_cents: subtotal_cents,
+        code: params[:code],
+        cart_items: cart_items,
+        user: current_user,
+        shipping_cents: shipping_cents
+      )
 
       if result.success?
         session[:pending_coupon_code] = result.value[:code]
@@ -62,8 +73,9 @@ module Commerce
           code: result.value[:code],
           discount_cents: result.value[:discount_cents],
           total_cents: result.value[:total_cents],
-          discount_label: format_money(result.value[:discount_cents], @cart.items.first&.product&.currency || "CNY"),
-          total_label: format_money(result.value[:total_cents], @cart.items.first&.product&.currency || "CNY"),
+          discount_label: format_money(result.value[:discount_cents], currency),
+          total_label: format_money(result.value[:total_cents], currency),
+          shipping_label: format_money(shipping_cents, currency),
           min_amount_label: result.value[:min_amount_label],
           amount_remaining_label: result.value[:amount_remaining_label]
         }
@@ -85,15 +97,18 @@ module Commerce
           subtotal_cents: subtotal_cents,
           code: params[:coupon_code],
           cart_items: @cart.items.includes(:product),
-          user: current_user
+          user: current_user,
+          shipping_cents: shipping_cents_for_preview(subtotal_cents)
         )
         discount_cents = preview.success? ? preview.value[:discount_cents] : 0
       end
 
+      shipping_cents = shipping_cents_for_preview(subtotal_cents)
       result = Commerce::PreviewGiftCard.call(
         subtotal_cents: subtotal_cents,
         code: params[:code],
-        discount_cents: discount_cents
+        discount_cents: discount_cents,
+        shipping_cents: shipping_cents
       )
 
       if result.success?
@@ -208,6 +223,11 @@ module Commerce
         .limit(4)
 
       scope.map { |product| serialize_product_list_item(product) }
+    end
+
+    def shipping_cents_for_preview(subtotal_cents)
+      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents)
+      result.success? ? result.value[:shipping_cents].to_i : 0
     end
   end
 end

@@ -19,6 +19,7 @@ module Community
 
       @topic.update!(solved_post: @post)
       Community::NotifyTopicSolved.call(topic: @topic, post: @post, actor: @user)
+      auto_close_on_solved!
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
@@ -30,6 +31,19 @@ module Community
       return true if @user.permission?("forum.topics.lock")
 
       @user.id == @topic.user_id
+    end
+
+    def auto_close_on_solved!
+      return unless SiteSetting.get("forum.auto_close_on_solved", "0") == "1"
+      return if @topic.locked?
+
+      @topic.update!(locked: true)
+      actor = Community::SystemActor.user || @user
+      Community::CreateSmallActionPost.call(
+        topic: @topic,
+        actor: actor,
+        body: "主题已标记为解决并自动关闭。"
+      )
     end
   end
 end

@@ -19,7 +19,7 @@ const props = defineProps<{
     in_stock: boolean
     average_rating: number | null
     view_count: number
-    variants: Array<{ id: number; name: string; price_label: string; in_stock: boolean }>
+    variants: Array<{ id: number; name: string; sku?: string | null; price_label: string; in_stock: boolean }>
     toggle_url: string
     add_to_cart_url: string
   }>
@@ -88,10 +88,19 @@ function addToCart(product: { db_id: number; add_to_cart_url: string; variants: 
           <td v-for="product in products" :key="`${product.id}-views`" class="p-3">{{ product.view_count }}</td>
         </tr>
         <tr class="border-b">
+          <td class="p-3 text-muted-foreground">SKU</td>
+          <td v-for="product in products" :key="`${product.id}-sku`" class="p-3 text-xs">
+            <div v-if="product.variants.length">
+              <div v-for="variant in product.variants" :key="`sku-${variant.id}`">{{ variant.sku || '—' }}</div>
+            </div>
+            <span v-else>—</span>
+          </td>
+        </tr>
+        <tr class="border-b">
           <td class="p-3 text-muted-foreground">规格</td>
           <td v-for="product in products" :key="`${product.id}-variants`" class="p-3 text-xs">
             <div v-if="product.variants.length">
-              <div v-for="variant in product.variants" :key="variant.id">{{ variant.name }} · {{ variant.price_label }} · {{ variant.in_stock ? '有货' : '缺货' }}</div>
+              <div v-for="variant in product.variants" :key="variant.id">{{ variant.name }} · {{ variant.sku ? `${variant.sku} · ` : '' }}{{ variant.price_label }} · {{ variant.in_stock ? '有货' : '缺货' }}</div>
             </div>
             <span v-else>—</span>
           </td>

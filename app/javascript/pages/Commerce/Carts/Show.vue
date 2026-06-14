@@ -29,6 +29,11 @@ export interface CartItem {
 const props = defineProps<{
   items: CartItem[]
   subtotalLabel: string
+  subtotalCents?: number
+  shippingLabel?: string | null
+  freeShipping?: boolean
+  freeShippingMinLabel?: string | null
+  freeShippingRemainingLabel?: string | null
   loggedIn: boolean
   pendingCouponCode?: string | null
   pendingGiftCardCode?: string | null
@@ -218,6 +223,15 @@ function clearCart() {
     </div>
 
     <p class="font-medium">小计：{{ subtotalLabel }}</p>
+    <p v-if="shippingLabel" class="text-sm text-muted-foreground">
+      运费：{{ freeShipping ? '免运费' : shippingLabel }}
+    </p>
+    <p
+      v-if="freeShippingRemainingLabel && !freeShipping"
+      class="text-xs text-muted-foreground"
+    >
+      再购 {{ freeShippingRemainingLabel }} 即可免运费（满 {{ freeShippingMinLabel }} 免运费）
+    </p>
 
     <div class="max-w-md space-y-2 rounded-lg border p-4">
       <Label for="coupon">优惠券</Label>

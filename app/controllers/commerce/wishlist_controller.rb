@@ -25,6 +25,8 @@ module Commerce
           alert = Commerce::PriceAlert.find_by(user: current_user, product: product)
           data.merge(
             wishlist_url: wishlist_store_product_path(product),
+            update_note_url: note_store_wishlist_path(product.public_id),
+            note: item.note.to_s,
             add_to_cart_url: add_wishlist_item_to_cart_store_path(product.public_id),
             saved_variant_id: variant&.id,
             saved_variant_name: variant&.name,
@@ -54,7 +56,7 @@ module Commerce
         owner: user.display_name || user.username,
         products: items.map do |item|
           data = serialize_product_list_item(item.product)
-          data.merge(saved_variant_name: item.variant&.name)
+          data.merge(saved_variant_name: item.variant&.name, note: item.note.to_s)
         end
       }
     end
@@ -90,6 +92,17 @@ module Commerce
         notice = "已将 #{result.value[:added]} 件商品加入购物车。"
         notice += " 跳过：#{result.value[:skipped].join('、')}" if result.value[:skipped].any?
         redirect_to store_cart_path, notice: notice
+      else
+        redirect_to store_wishlist_path, alert: service_error_message(result)
+      end
+    end
+
+    def update_note
+      product = Commerce::Product.available.find_by!(public_id: params[:product_id])
+      result = Commerce::UpdateWishlistNote.call(user: current_user, product: product, note: params[:note])
+
+      if result.success?
+        redirect_to store_wishlist_path, notice: "备注已保存。"
       else
         redirect_to store_wishlist_path, alert: service_error_message(result)
       end

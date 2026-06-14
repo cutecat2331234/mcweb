@@ -12,12 +12,13 @@ module Community
       parsed_section = parsed.success? ? parsed.value[:section_slug] : nil
       parsed_author = parsed.success? ? parsed.value[:author] : nil
       parsed_tag = parsed.success? ? parsed.value[:tag_slug] : nil
+      parsed_solved = parsed.success? ? parsed.value[:solved_filter] : nil
 
       query = parsed_query
       section_slug = params[:section].to_s.presence || parsed_section
       author = params[:author].to_s.strip.presence || parsed_author
       tag_slug = params[:tag].to_s.strip.presence || parsed_tag
-      solved_filter = params[:solved].to_s.presence
+      solved_filter = params[:solved].to_s.presence || parsed_solved
       topics = Community::Topic.none
       posts = Community::Post.none
 

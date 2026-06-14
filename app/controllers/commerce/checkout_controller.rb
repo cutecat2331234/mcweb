@@ -29,7 +29,8 @@ module Commerce
         providers: providers,
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path,
-        previewGiftCardUrl: preview_gift_card_store_checkout_path
+        previewGiftCardUrl: preview_gift_card_store_checkout_path,
+        **serialize_shipping_quote(subtotal_cents, currency: currency)
       }
     end
 
@@ -95,7 +96,15 @@ module Commerce
       cart = Commerce::Cart.find_by(user: current_user)
       subtotal_cents = cart&.subtotal_cents.to_i
       cart_items = cart&.items&.includes(:product) || []
-      result = Commerce::PreviewCoupon.call(subtotal_cents: subtotal_cents, code: params[:code], cart_items: cart_items, user: current_user)
+      currency = cart_items.first&.product&.currency || "CNY"
+      shipping_cents = shipping_cents_for_preview(subtotal_cents)
+      result = Commerce::PreviewCoupon.call(
+        subtotal_cents: subtotal_cents,
+        code: params[:code],
+        cart_items: cart_items,
+        user: current_user,
+        shipping_cents: shipping_cents
+      )
 
       if result.success?
         session[:pending_coupon_code] = result.value[:code]
@@ -103,8 +112,9 @@ module Commerce
           code: result.value[:code],
           discount_cents: result.value[:discount_cents],
           total_cents: result.value[:total_cents],
-          discount_label: format_money(result.value[:discount_cents], cart&.items&.first&.product&.currency || "CNY"),
-          total_label: format_money(result.value[:total_cents], cart&.items&.first&.product&.currency || "CNY"),
+          discount_label: format_money(result.value[:discount_cents], currency),
+          total_label: format_money(result.value[:total_cents], currency),
+          shipping_label: format_money(shipping_cents, currency),
           min_amount_label: result.value[:min_amount_label],
           amount_remaining_label: result.value[:amount_remaining_label]
         }
@@ -117,12 +127,14 @@ module Commerce
       cart = Commerce::Cart.find_by(user: current_user)
       subtotal_cents = cart&.subtotal_cents.to_i
       discount_cents = 0
+      shipping_cents = shipping_cents_for_preview(subtotal_cents)
       if params[:coupon_code].present?
         preview = Commerce::PreviewCoupon.call(
           subtotal_cents: subtotal_cents,
           code: params[:coupon_code],
           cart_items: cart&.items&.includes(:product) || [],
-          user: current_user
+          user: current_user,
+          shipping_cents: shipping_cents
         )
         discount_cents = preview.success? ? preview.value[:discount_cents] : 0
       end
@@ -130,7 +142,8 @@ module Commerce
       result = Commerce::PreviewGiftCard.call(
         subtotal_cents: subtotal_cents,
         code: params[:code],
-        discount_cents: discount_cents
+        discount_cents: discount_cents,
+        shipping_cents: shipping_cents
       )
 
       if result.success?
@@ -157,6 +170,11 @@ module Commerce
 
     def default_provider
       Payments::ProviderConfig.enabled_providers.pick(:provider) || "fake"
+    end
+
+    def shipping_cents_for_preview(subtotal_cents)
+      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents)
+      result.success? ? result.value[:shipping_cents].to_i : 0
     end
   end
 end

@@ -43,6 +43,8 @@ module InertiaSerializable
       slug: section.slug,
       description: section.description&.truncate(80),
       category_name: section.category&.name,
+      category_icon: section.category&.icon,
+      category_color_hex: section.category&.color_hex,
       color_hex: section.color_hex,
       icon: section.icon,
       topics_count: section.topics.where(status: :published).count,
@@ -464,6 +466,8 @@ module InertiaSerializable
     {
       slug: category.slug,
       name: category.name,
+      icon: category.icon,
+      color_hex: category.color_hex,
       url: store_category_path(category.slug, **query.compact)
     }
   end
@@ -549,6 +553,8 @@ module InertiaSerializable
       status_label: order_status_label(order.status),
       notes: order.notes,
       subtotal_label: format_money(order.subtotal_cents, order.currency),
+      shipping_label: order.shipping_cents.positive? ? format_money(order.shipping_cents, order.currency) : nil,
+      free_shipping: order.shipping_cents.zero? && order.subtotal_cents.positive?,
       discount_label: order.discount_cents.positive? ? format_money(order.discount_cents, order.currency) : nil,
       coupon_code: order.coupon&.code,
       gift_card_code: order.gift_card&.code,
@@ -687,6 +693,20 @@ module InertiaSerializable
     return nil if status.blank?
 
     FULFILLMENT_STATUS_LABELS[status.to_s] || status.to_s.humanize
+  end
+
+  def serialize_shipping_quote(subtotal_cents, currency: "CNY")
+    result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents)
+    return {} unless result.success?
+
+    value = result.value
+    {
+      shippingCents: value[:shipping_cents],
+      shippingLabel: format_money(value[:shipping_cents], currency),
+      freeShipping: value[:free_shipping],
+      freeShippingMinLabel: value[:free_shipping_min_cents].positive? ? format_money(value[:free_shipping_min_cents], currency) : nil,
+      freeShippingRemainingLabel: value[:amount_remaining_cents].positive? ? format_money(value[:amount_remaining_cents], currency) : nil
+    }
   end
 
   def compare_product_count

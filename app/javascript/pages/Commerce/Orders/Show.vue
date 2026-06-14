@@ -24,6 +24,8 @@ const props = defineProps<{
     status_label: string
     notes: string | null
     subtotal_label?: string | null
+    shipping_label?: string | null
+    free_shipping?: boolean
     discount_label?: string | null
     coupon_code?: string | null
     gift_card_code?: string | null
@@ -204,6 +206,7 @@ function refreshDownload(url: string) {
   </div>
 
   <p v-if="order.subtotal_label" class="mb-1 text-sm text-muted-foreground">小计：{{ order.subtotal_label }}</p>
+  <p v-if="order.shipping_label" class="mb-1 text-sm text-muted-foreground">运费：{{ order.free_shipping ? '免运费' : order.shipping_label }}</p>
   <p v-if="order.discount_label" class="mb-1 text-sm text-green-700">优惠{{ order.coupon_code ? ` (${order.coupon_code})` : '' }}：−{{ order.discount_label }}</p>
   <p v-if="order.gift_card_amount_label" class="mb-1 text-sm text-green-700">礼品卡{{ order.gift_card_code ? ` (${order.gift_card_code})` : '' }}：−{{ order.gift_card_amount_label }}</p>
   <p class="mb-6 font-medium">合计：{{ order.total_label }}</p>

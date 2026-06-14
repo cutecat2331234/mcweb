@@ -20,6 +20,7 @@ const props = defineProps<{
     description: string | null
     color_hex?: string | null
     icon?: string | null
+    banner_text?: string | null
     read_only?: boolean
     notification_level?: 'watching' | 'tracking' | null
     new_topic_url: string | null
@@ -113,6 +114,10 @@ function markAllRead() {
       </Button>
     </div>
   </div>
+
+  <p v-if="section.banner_text" class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100">
+    {{ section.banner_text }}
+  </p>
 
   <p v-if="section.read_only" class="mb-4 rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
     此分区为只读模式，普通用户无法发帖或回复（版主除外）。

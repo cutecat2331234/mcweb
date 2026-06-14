@@ -224,6 +224,7 @@ Rails.application.routes.draw do
     delete "compare", to: "compare#clear"
     get "wishlist", to: "wishlist#index"
     post "wishlist/add_all_to_cart", to: "wishlist#add_all_to_cart", as: :add_all_to_cart_wishlist
+    patch "wishlist/:product_id/note", to: "wishlist#update_note", as: :note_wishlist
     post "wishlist/:product_id/add_to_cart", to: "wishlist#add_to_cart", as: :add_wishlist_item_to_cart
     get "wishlist/share", to: "wishlist#share"
     get "wishlist/:token", to: "wishlist#public_show", as: :public_wishlist

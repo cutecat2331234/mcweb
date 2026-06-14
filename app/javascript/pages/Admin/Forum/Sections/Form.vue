@@ -30,6 +30,7 @@ const props = defineProps<{
     read_only: boolean
     color_hex: string
     icon: string
+    banner_text: string
   }
   tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
@@ -138,6 +139,10 @@ function submit() {
       <div class="space-y-2">
         <Label for="icon">图标（emoji）</Label>
         <Input id="icon" v-model="form.section.icon" placeholder="💬" />
+      </div>
+      <div class="space-y-2">
+        <Label for="banner_text">公告横幅（分区页顶部展示）</Label>
+        <Textarea id="banner_text" v-model="form.section.banner_text" rows="2" placeholder="欢迎参与讨论，请遵守版规…" />
       </div>
     </div>
     <div class="grid grid-cols-2 gap-4">

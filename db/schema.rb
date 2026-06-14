@@ -101,8 +101,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_categories", force: :cascade do |t|
+    t.string "color_hex"
     t.datetime "created_at", null: false
     t.text "description"
+    t.string "icon"
     t.string "name", null: false
     t.integer "position", default: 0, null: false
     t.string "slug", null: false
@@ -288,6 +290,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "forum_sections", force: :cascade do |t|
     t.jsonb "allowed_tag_ids", default: [], null: false
+    t.text "banner_text"
     t.string "color_hex"
     t.datetime "created_at", null: false
     t.text "description"
@@ -885,6 +888,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "notes"
     t.string "order_number", null: false
     t.string "public_id", null: false
+    t.integer "shipping_cents", default: 0, null: false
     t.string "status", default: "pending", null: false
     t.bigint "store_coupon_id"
     t.bigint "store_gift_card_id"
@@ -1062,6 +1066,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "store_wishlist_items", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.text "note"
     t.bigint "store_product_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false

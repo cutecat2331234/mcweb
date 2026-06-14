@@ -102,6 +102,9 @@ SiteSetting.set("forum.bump_cooldown_hours", "24") unless SiteSetting.exists?(ke
 SiteSetting.set("forum.warning_mute_threshold", "10") unless SiteSetting.exists?(key: "forum.warning_mute_threshold")
 SiteSetting.set("forum.warning_mute_days", "7") unless SiteSetting.exists?(key: "forum.warning_mute_days")
 SiteSetting.set("forum.report_auto_hide_threshold", "5") unless SiteSetting.exists?(key: "forum.report_auto_hide_threshold")
+SiteSetting.set("forum.auto_close_on_solved", "0") unless SiteSetting.exists?(key: "forum.auto_close_on_solved")
+SiteSetting.set("store.free_shipping_min_order_cents", "0") unless SiteSetting.exists?(key: "store.free_shipping_min_order_cents")
+SiteSetting.set("store.flat_shipping_cents", "0") unless SiteSetting.exists?(key: "store.flat_shipping_cents")
 
 if Rails.env.development?
   unless InstallationLock.locked?

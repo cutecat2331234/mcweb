@@ -10,7 +10,7 @@ defineOptions({ layout: AdminLayout })
 
 const props = defineProps<{
   title: string
-  category: { id?: number; name: string; slug: string; position: number }
+  category: { id?: number; name: string; slug: string; position: number; color_hex?: string; icon?: string }
   submitUrl: string
   method: 'post' | 'patch'
   backUrl: string
@@ -42,6 +42,14 @@ function submit() {
     <div class="space-y-2">
       <Label for="position">排序</Label>
       <Input id="position" v-model.number="form.category.position" type="number" min="0" />
+    </div>
+    <div class="space-y-2">
+      <Label for="color_hex">颜色 (#hex)</Label>
+      <Input id="color_hex" v-model="form.category.color_hex" placeholder="#2563eb" />
+    </div>
+    <div class="space-y-2">
+      <Label for="icon">图标 (emoji)</Label>
+      <Input id="icon" v-model="form.category.icon" placeholder="💬" />
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

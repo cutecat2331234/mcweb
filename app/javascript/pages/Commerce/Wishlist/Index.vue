@@ -26,6 +26,8 @@ const props = defineProps<{
     saved_variant_name?: string
     price_alert_url?: string
     has_price_alert?: boolean
+    note?: string
+    update_note_url?: string
   }>
   shareUrl: string | null
   addAllToCartUrl?: string
@@ -46,6 +48,11 @@ function removeFromWishlist(url: string) {
 
 function togglePriceAlert(url: string) {
   router.post(url, {}, { preserveScroll: true })
+}
+
+function saveNote(product: { update_note_url?: string; note?: string }) {
+  if (!product.update_note_url) return
+  router.patch(product.update_note_url, { note: product.note || '' }, { preserveScroll: true })
 }
 
 function copyShareLink() {
@@ -81,6 +88,16 @@ function copyShareLink() {
           <Badge v-if="product.discount_label" variant="outline" class="ml-1 text-[10px]">{{ product.discount_label }}</Badge>
         </p>
         <p v-if="product.saved_variant_name" class="text-xs text-muted-foreground">规格：{{ product.saved_variant_name }}</p>
+        <div v-if="product.update_note_url" class="mt-2 flex max-w-md gap-2">
+          <input
+            v-model="product.note"
+            type="text"
+            placeholder="添加备注…"
+            class="h-8 flex-1 rounded-md border px-2 text-xs"
+            @keydown.enter.prevent="saveNote(product)"
+          >
+          <Button type="button" size="sm" variant="outline" @click="saveNote(product)">保存备注</Button>
+        </div>
         <Badge v-if="!product.in_stock" variant="default" class="mt-1">缺货</Badge>
         <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>
       </div>

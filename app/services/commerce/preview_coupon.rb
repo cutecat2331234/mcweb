@@ -2,11 +2,12 @@
 
 module Commerce
   class PreviewCoupon < ApplicationService
-    def initialize(subtotal_cents:, code:, cart_items: nil, user: nil)
+    def initialize(subtotal_cents:, code:, cart_items: nil, user: nil, shipping_cents: 0)
       @subtotal_cents = subtotal_cents
       @code = code.to_s.strip.upcase
       @cart_items = cart_items
       @user = user
+      @shipping_cents = shipping_cents.to_i
     end
 
     def call
@@ -22,7 +23,7 @@ module Commerce
       ServiceResult.success(
         code: coupon.code,
         discount_cents: discount_cents,
-        total_cents: [ @subtotal_cents - discount_cents, 0 ].max,
+        total_cents: [ @subtotal_cents - discount_cents + @shipping_cents, 0 ].max,
         min_amount_cents: coupon.min_amount_cents,
         min_amount_label: coupon.min_amount_cents.positive? ? format_money(coupon.min_amount_cents) : nil,
         amount_remaining_cents: coupon.min_amount_cents.positive? ? [ coupon.min_amount_cents - @subtotal_cents, 0 ].max : 0,

@@ -16,7 +16,7 @@ module Commerce
       reason = card.inapplicable_reason
       return ServiceResult.failure(error: reason) if reason
 
-      payable = [ @order.subtotal_cents - @order.discount_cents, 0 ].max
+      payable = [ @order.subtotal_cents - @order.discount_cents + @order.shipping_cents.to_i, 0 ].max
       amount = card.applicable_amount_cents(payable)
       return ServiceResult.failure(error: "订单金额已为零，无需使用礼品卡。") unless amount.positive?
 

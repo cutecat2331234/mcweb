@@ -66,7 +66,8 @@ module Commerce
 
         order.update!(
           subtotal_cents: subtotal_cents,
-          total_cents: subtotal_cents,
+          shipping_cents: shipping_cents_for(subtotal_cents),
+          total_cents: subtotal_cents + shipping_cents_for(subtotal_cents),
           discount_cents: 0
         )
 
@@ -151,6 +152,11 @@ module Commerce
 
     def generate_order_number
       "MC#{Time.current.strftime('%Y%m%d')}#{SecureRandom.hex(4).upcase}"
+    end
+
+    def shipping_cents_for(subtotal_cents)
+      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents)
+      result.success? ? result.value[:shipping_cents].to_i : 0
     end
   end
 end

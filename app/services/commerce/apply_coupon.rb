@@ -21,7 +21,8 @@ module Commerce
       return ServiceResult.failure(error: reason) if reason
 
       discount_cents = coupon.calculate_discount(@order.subtotal_cents, cart_items: @order.items.includes(:product), user: @order.user)
-      total_cents = [ @order.subtotal_cents - discount_cents, 0 ].max
+      shipping_cents = @order.shipping_cents.to_i
+      total_cents = [ @order.subtotal_cents - discount_cents + shipping_cents, 0 ].max
 
       Commerce::Order.transaction do
         @order.update!(

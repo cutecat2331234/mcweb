@@ -761,3 +761,17 @@ app/
 | 退款撤销已发礼品卡 | `RevokeIssuedGiftCards` + `ProcessRefund` 联动 |
 | 商城分类图标与颜色 | `store_categories.icon` / `color_hex` |
 | 优惠券公开说明 | `store_coupons.description` + 详情页展示 |
+
+### 第四十二轮（分类样式、分区公告、运费与心愿单备注）
+
+| 功能 | 实现 |
+|------|------|
+| 论坛分类颜色与图标（XenForo） | `forum_categories.color_hex` / `icon` + 管理端 + 板块列表展示 |
+| 分区公告横幅（Discourse） | `forum_sections.banner_text` + 分区页顶部展示 |
+| 搜索 is:solved / is:unsolved | `ParseSearchQuery` + `SearchController` 联动 |
+| 解决后自动关闭主题 | SiteSetting `forum.auto_close_on_solved` + `MarkTopicSolved` 小操作帖 |
+| 免运费门槛与固定运费 | SiteSetting + `CalculateShipping` + 购物车/结账/订单展示 |
+| 订单运费字段 | `store_orders.shipping_cents` + `CreateOrder` / 优惠券礼品卡合计 |
+| 心愿单备注（XenForo watch notes） | `store_wishlist_items.note` + `UpdateWishlistNote` |
+| 商品对比 SKU 行 | 对比页展示变体 SKU |
+| 商城分类导航图标 | `serialize_category` 含 icon/color_hex |

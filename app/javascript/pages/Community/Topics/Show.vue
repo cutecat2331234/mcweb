@@ -30,6 +30,7 @@ export interface PostItem {
   avatar_url: string
   body: string
   body_html: string
+  signature_html?: string | null
   created_at: string
   edited_at: string | null
   edits_url: string | null
@@ -58,13 +59,17 @@ export interface PollItem {
   id: number
   question: string
   open: boolean
+  multiple_choice?: boolean
+  max_choices?: number
   hide_results_until_vote?: boolean
   show_results?: boolean
   options?: Array<{ label: string; index: number }>
   results: Array<{ label: string; index: number; votes: number }>
   total_votes: number | null
   user_vote_index: number | null
+  user_vote_indices?: number[]
   vote_url: string
+  close_url?: string | null
 }
 
 const props = defineProps<{
@@ -103,6 +108,7 @@ const props = defineProps<{
   sections: SectionOption[]
   reportTopicUrl: string | null
   poll: PollItem | null
+  topicSearchQuery?: string
   meta?: { title: string; description: string | null }
 }>()
 
@@ -132,12 +138,21 @@ const mergeTargetId = ref('')
 const slowModeSeconds = ref(props.topic.slow_mode_seconds || 0)
 const autoCloseAt = ref('')
 const draftKey = `forum-reply-draft-${props.topic.id}`
+const topicSearch = ref(props.topicSearchQuery || '')
+const selectedPollOptions = ref<number[]>(props.poll?.user_vote_indices || [])
 
 onMounted(() => {
   const saved = localStorage.getItem(draftKey)
   if (saved && !replyForm.post.body) {
     replyForm.post.body = saved
   }
+  document.querySelectorAll('.code-copy-btn').forEach((button) => {
+    button.addEventListener('click', () => {
+      const wrap = button.closest('.code-block-wrap')
+      const code = wrap?.querySelector('code')?.textContent
+      if (code) navigator.clipboard.writeText(code)
+    })
+  })
   const hash = window.location.hash
   if (hash.startsWith('#post-')) {
     setTimeout(() => {
@@ -301,7 +316,42 @@ function togglePostBookmark(post: PostItem) {
 
 function votePoll(optionIndex: number) {
   if (!props.poll) return
+  if (props.poll.multiple_choice) return
   router.post(props.poll.vote_url, { option_index: optionIndex }, { preserveScroll: true })
+}
+
+function togglePollOption(index: number) {
+  const max = props.poll?.max_choices || 1
+  const current = [...selectedPollOptions.value]
+  const pos = current.indexOf(index)
+  if (pos >= 0) {
+    current.splice(pos, 1)
+  } else if (current.length < max) {
+    current.push(index)
+  }
+  selectedPollOptions.value = current.sort((a, b) => a - b)
+}
+
+function submitMultiPoll() {
+  if (!props.poll) return
+  router.post(props.poll.vote_url, { option_indices: selectedPollOptions.value }, { preserveScroll: true })
+}
+
+function closePoll() {
+  if (!props.poll?.close_url) return
+  if (!confirm('确定关闭此投票？')) return
+  router.post(props.poll.close_url, {}, { preserveScroll: true })
+}
+
+function searchInTopic() {
+  router.get(routes.forumTopic(props.topic.id), { q: topicSearch.value || undefined }, { preserveScroll: true })
+}
+
+function pollVoted(index: number) {
+  if (props.poll?.multiple_choice) {
+    return (props.poll.user_vote_indices || []).includes(index)
+  }
+  return props.poll?.user_vote_index === index
 }
 
 function pollPercent(votes: number) {
@@ -388,7 +438,11 @@ function pollPercent(votes: number) {
   </div>
 
   <section v-if="poll" class="mb-6 max-w-xl rounded-lg border p-4">
-    <h2 class="mb-3 text-sm font-semibold">{{ poll.question }}</h2>
+    <div class="mb-3 flex items-center justify-between gap-2">
+      <h2 class="text-sm font-semibold">{{ poll.question }}</h2>
+      <Button v-if="poll.close_url" type="button" variant="outline" size="sm" @click="closePoll">关闭投票</Button>
+    </div>
+    <p v-if="poll.multiple_choice" class="mb-2 text-xs text-muted-foreground">多选（最多 {{ poll.max_choices }} 项）</p>
     <p v-if="!poll.open" class="mb-3 text-xs text-muted-foreground">投票已结束</p>
     <p v-if="poll.hide_results_until_vote && !poll.show_results" class="mb-3 text-xs text-muted-foreground">
       投票后可查看结果
@@ -403,7 +457,7 @@ function pollPercent(votes: number) {
           <div class="h-full bg-primary transition-all" :style="{ width: `${pollPercent(option.votes)}%` }" />
         </div>
         <Button
-          v-if="poll.open && loggedIn && poll.user_vote_index !== option.index"
+          v-if="poll.open && loggedIn && !poll.multiple_choice && !pollVoted(option.index)"
           type="button"
           size="sm"
           variant="outline"
@@ -411,22 +465,35 @@ function pollPercent(votes: number) {
         >
           {{ poll.user_vote_index === null ? '投票' : '改投此项' }}
         </Button>
-        <span v-else-if="poll.user_vote_index === option.index" class="text-xs text-primary">你已投票</span>
+        <span v-else-if="pollVoted(option.index)" class="text-xs text-primary">你已投票</span>
       </div>
     </div>
     <div v-else-if="poll.open && loggedIn && poll.options?.length" class="space-y-2">
-      <div v-for="option in poll.options" :key="option.index">
-        <Button
-          v-if="poll.user_vote_index !== option.index"
-          type="button"
-          size="sm"
-          variant="outline"
-          @click="votePoll(option.index)"
-        >
-          {{ poll.user_vote_index === null ? '投票' : '改投此项' }}：{{ option.label }}
-        </Button>
-        <span v-else class="text-xs text-primary">已选：{{ option.label }}</span>
-      </div>
+      <template v-if="poll.multiple_choice">
+        <label v-for="option in poll.options" :key="option.index" class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            :checked="selectedPollOptions.includes(option.index)"
+            @change="togglePollOption(option.index)"
+          />
+          {{ option.label }}
+        </label>
+        <Button type="button" size="sm" :disabled="!selectedPollOptions.length" @click="submitMultiPoll">提交投票</Button>
+      </template>
+      <template v-else>
+        <div v-for="option in poll.options" :key="option.index">
+          <Button
+            v-if="!pollVoted(option.index)"
+            type="button"
+            size="sm"
+            variant="outline"
+            @click="votePoll(option.index)"
+          >
+            {{ poll.user_vote_index === null ? '投票' : '改投此项' }}：{{ option.label }}
+          </Button>
+          <span v-else class="text-xs text-primary">已选：{{ option.label }}</span>
+        </div>
+      </template>
     </div>
     <p v-if="poll.show_results && poll.total_votes !== null" class="mt-3 text-xs text-muted-foreground">共 {{ poll.total_votes }} 票</p>
   </section>
@@ -471,6 +538,11 @@ function pollPercent(votes: number) {
   <p v-if="topic.locked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
     此主题已锁定，无法回复。
   </p>
+
+  <form class="mb-4 flex max-w-md gap-2" @submit.prevent="searchInTopic">
+    <Input v-model="topicSearch" placeholder="在此主题内搜索帖子…" class="flex-1" />
+    <Button type="submit" variant="outline">搜索</Button>
+  </form>
 
   <div class="space-y-4">
     <template v-for="post in posts" :key="post.id">
@@ -538,6 +610,7 @@ function pollPercent(votes: number) {
             </div>
           </div>
           <div v-else class="prose prose-sm mt-2 max-w-none text-sm dark:prose-invert" v-html="post.body_html" />
+          <div v-if="post.signature_html" class="mt-3 border-t pt-2 text-xs text-muted-foreground prose prose-sm max-w-none" v-html="post.signature_html" />
 
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <span v-if="post.reactions_total" class="text-xs text-muted-foreground">{{ post.reactions_total }} 个反应</span>

@@ -7,7 +7,7 @@ module Commerce
     def index
       items = Commerce::WishlistItem
         .where(user: current_user)
-        .includes(product: :category)
+        .includes(product: %i[category variants], variant: [])
         .order(created_at: :desc)
 
       share = Commerce::EnsureWishlistShareToken.call(user: current_user)
@@ -15,7 +15,11 @@ module Commerce
       render inertia: "Commerce/Wishlist/Index", props: {
         products: items.map do |item|
           data = serialize_product_list_item(item.product)
-          data.merge(wishlist_url: wishlist_store_product_path(item.product))
+          data.merge(
+            wishlist_url: wishlist_store_product_path(item.product),
+            saved_variant_id: item.variant&.id,
+            saved_variant_name: item.variant&.name
+          )
         end,
         shareUrl: share.success? ? store_public_wishlist_url(share.value[:token]) : nil,
         addAllToCartUrl: add_all_to_cart_store_wishlist_path
@@ -43,7 +47,8 @@ module Commerce
 
     def toggle
       product = Commerce::Product.available.find_by!(public_id: params[:id])
-      result = Commerce::ToggleWishlist.call(user: current_user, product: product)
+      variant = product.variants.find_by(id: params[:variant_id]) if params[:variant_id].present?
+      result = Commerce::ToggleWishlist.call(user: current_user, product: product, variant: variant)
 
       if result.success?
         redirect_back fallback_location: store_product_path(product),

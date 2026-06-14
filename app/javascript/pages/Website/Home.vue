@@ -13,8 +13,18 @@ export interface FeaturedArticle {
   published_at: string | null
 }
 
+export interface FeaturedProduct {
+  id: string
+  name: string
+  price_label: string
+  image_url: string | null
+  url: string
+  average_rating?: number | null
+}
+
 defineProps<{
   featuredArticles: FeaturedArticle[]
+  featuredProducts: FeaturedProduct[]
 }>()
 
 const features = [
@@ -57,6 +67,26 @@ const features = [
         <h3 class="mb-2 text-lg font-semibold">{{ feature.title }}</h3>
         <p class="text-sm text-slate-300">{{ feature.description }}</p>
       </article>
+    </div>
+  </section>
+
+  <section v-if="featuredProducts.length" class="mx-auto max-w-5xl px-4 pb-12">
+    <div class="mb-8 flex items-center justify-between">
+      <h2 class="text-2xl font-semibold">精选商品</h2>
+      <Link :href="routes.store" class="text-sm text-sky-300 hover:underline">浏览全部</Link>
+    </div>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Link
+        v-for="product in featuredProducts"
+        :key="product.id"
+        :href="product.url"
+        class="website-card text-left"
+      >
+        <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="mb-3 h-36 w-full rounded object-cover" />
+        <h3 class="font-semibold">{{ product.name }}</h3>
+        <p class="mt-1 text-sm text-slate-300">{{ product.price_label }}</p>
+        <p v-if="product.average_rating" class="mt-1 text-xs text-amber-300">★ {{ product.average_rating }}</p>
+      </Link>
     </div>
   </section>
 

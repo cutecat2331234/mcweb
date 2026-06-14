@@ -6,7 +6,7 @@ module Community
     belongs_to :user
 
     validates :option_index, presence: true
-    validates :user_id, uniqueness: { scope: :forum_poll_id }
+    validates :user_id, uniqueness: { scope: %i[forum_poll_id option_index] }
     validate :option_index_in_range
 
     private

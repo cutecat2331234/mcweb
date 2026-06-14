@@ -2,9 +2,10 @@
 
 module Commerce
   class ToggleWishlist < ApplicationService
-    def initialize(user:, product:)
+    def initialize(user:, product:, variant: nil)
       @user = user
       @product = product
+      @variant = variant
     end
 
     def call
@@ -13,7 +14,7 @@ module Commerce
         item.destroy!
         ServiceResult.success(wishlisted: false)
       else
-        Commerce::WishlistItem.create!(user: @user, product: @product)
+        Commerce::WishlistItem.create!(user: @user, product: @product, variant: @variant)
         ServiceResult.success(wishlisted: true)
       end
     rescue ActiveRecord::RecordInvalid => e

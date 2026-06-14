@@ -31,6 +31,14 @@ module Commerce
       mail(to: @order.user.email, subject: "退款处理通知 #{@order.order_number}")
     end
 
+    def refund_rejected(refund_id)
+      @refund = Commerce::Refund.find(refund_id)
+      @order = @refund.order
+      return unless commerce_email_enabled?(@order.user, "commerce.refund_rejected")
+
+      mail(to: @order.user.email, subject: "退款申请未通过 #{@order.order_number}")
+    end
+
     def order_fulfilled(order_id)
       @order = Commerce::Order.find(order_id)
       return unless commerce_email_enabled?(@order.user, "commerce.order_fulfilled")

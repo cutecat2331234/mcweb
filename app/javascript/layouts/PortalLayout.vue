@@ -41,6 +41,7 @@ function toggleTheme() {
             <Link v-if="auth.user" :href="routes.forumWatchedTags" class="hover:text-foreground transition-colors">关注标签</Link>
             <Link v-if="auth.user" :href="routes.forumFollowing" class="hover:text-foreground transition-colors">关注用户</Link>
             <Link v-if="auth.user" :href="routes.forumBookmarks" class="hover:text-foreground transition-colors">书签</Link>
+            <Link :href="routes.forumMembers" class="hover:text-foreground transition-colors">成员</Link>
             <Link v-if="auth.user" :href="routes.forumUnread" class="hover:text-foreground transition-colors">未读</Link>
             <Link v-if="auth.user" :href="routes.forumMessages" class="hover:text-foreground transition-colors">私信</Link>
             <Link v-if="auth.user" :href="routes.forumPreferences" class="hover:text-foreground transition-colors">偏好</Link>

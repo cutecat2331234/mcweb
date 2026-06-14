@@ -20,6 +20,8 @@ module Commerce
         metadata: { refund_id: @refund.id, reason: @reason }
       )
 
+      MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_rejected", "deliver_now", args: [ @refund.id ])
+
       ServiceResult.success(@refund)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

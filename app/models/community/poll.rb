@@ -21,7 +21,11 @@ module Community
     end
 
     def total_votes
-      votes.count
+      votes.select(:user_id).distinct.count
+    end
+
+    def user_vote_indices(user)
+      votes.where(user: user).pluck(:option_index)
     end
   end
 end

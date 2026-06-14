@@ -43,6 +43,9 @@ module Community
           trust_name: trust[:name],
           likes_received: Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count,
           member_since: l(user.created_at, format: :long),
+          last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
+          online: user.last_seen_at && user.last_seen_at > 5.minutes.ago,
+          forum_signature: user.forum_signature,
           topics_count: topics_scope.count,
           posts_count: posts_count,
           profile_url: forum_user_path(user.username),
@@ -82,6 +85,7 @@ module Community
       return head :forbidden unless current_user.id == user.id
 
       if user.update(user_params)
+        attach_forum_avatar!(user) if params[:user][:forum_avatar].present?
         redirect_to forum_user_path(user.username), notice: "资料已更新。"
       else
         redirect_to forum_user_path(user.username), alert: user.errors.full_messages.to_sentence
@@ -91,7 +95,18 @@ module Community
     private
 
     def user_params
-      params.require(:user).permit(:bio, :forum_title)
+      params.require(:user).permit(:bio, :forum_title, :forum_signature)
+    end
+
+    def attach_forum_avatar!(user)
+      file = params[:user][:forum_avatar]
+      return unless file.respond_to?(:content_type)
+
+      allowed = %w[image/jpeg image/png image/gif image/webp]
+      return unless allowed.include?(file.content_type)
+      return if file.size > 2.megabytes
+
+      user.forum_avatar.attach(file)
     end
   end
 end

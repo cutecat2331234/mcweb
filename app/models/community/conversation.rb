@@ -39,5 +39,9 @@ module Community
     def mark_read_for!(user)
       participants.find_by(user: user)&.update!(last_read_at: Time.current)
     end
+
+    def participant?(user)
+      participants.exists?(user: user)
+    end
   end
 end

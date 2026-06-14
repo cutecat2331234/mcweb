@@ -61,6 +61,7 @@ function copyShareLink() {
       <div>
         <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
         <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+        <p v-if="product.saved_variant_name" class="text-xs text-muted-foreground">规格：{{ product.saved_variant_name }}</p>
         <Badge v-if="!product.in_stock" variant="default" class="mt-1">缺货</Badge>
         <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>
       </div>

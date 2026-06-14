@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
   include Pagy::Backend
   include InertiaSerializable
   include BlockedUsersFilterable
+  include TouchLastSeen
 
   allow_browser versions: :modern
 

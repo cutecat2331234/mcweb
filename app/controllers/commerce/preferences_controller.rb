@@ -10,6 +10,7 @@ module Commerce
       commerce.order_fulfilled
       commerce.order_cancelled
       commerce.refund_processed
+      commerce.refund_rejected
       commerce.abandoned_cart
       commerce.stock_restocked
       commerce.question_answered
@@ -52,6 +53,7 @@ module Commerce
         "commerce.order_fulfilled" => "发货完成",
         "commerce.order_cancelled" => "订单取消",
         "commerce.refund_processed" => "退款通知",
+        "commerce.refund_rejected" => "退款拒绝通知",
         "commerce.abandoned_cart" => "购物车提醒",
         "commerce.stock_restocked" => "到货通知",
         "commerce.question_answered" => "问答回复通知"

@@ -382,3 +382,26 @@ app/
 | 商品列表评分 | `average_rating` on list |
 | 到货通知增强 | 订阅时间、有货标识、规格校验 |
 | 发货记录中文 | fulfillments `status_label` |
+
+### 第二十轮（论坛 / 商城深度功能与 Bug 修复）
+
+| 功能 | 实现 |
+|------|------|
+| 书签备注/提醒 | `UpdateBookmark` + `forum_bookmarks.note/remind_at` |
+| 多选投票 | `Poll#multiple_choice` + `VotePoll` 多票 |
+| 手动关闭投票 | `ClosePoll` + `polls#close` |
+| Markdown 增强 | 引用/有序列表/表格/视频嵌入/代码复制按钮 |
+| 用户签名 | `users.forum_signature` + 帖子底部展示 |
+| 最后在线 | `last_seen_at` + `TouchLastSeen` |
+| 成员目录 | `MembersController` + `/forum/members` |
+| 群组增删成员 | `AddConversationParticipant` / `RemoveConversationParticipant` |
+| 编辑版本恢复 | `RestorePostEdit` + `posts#restore_edit` |
+| 分区未读计数 | `ReadState.unread_count_for_section` |
+| 主题内搜索 | `topics#show?q=` |
+| 自定义头像 | `User#forum_avatar` ActiveStorage |
+| 优惠券品类/商品限制 | `Coupon#product_ids/category_ids` |
+| 心愿单记住规格 | `WishlistItem#variant_id` |
+| 评价加载更多 | `Products/Show.vue` load more |
+| 数字下载鉴权 | `GenerateDownloadToken` + `DownloadsController` |
+| 首页精选商品 | `Website::Home` featured products |
+| 退款拒绝邮件 | `OrderMailer#refund_rejected` |

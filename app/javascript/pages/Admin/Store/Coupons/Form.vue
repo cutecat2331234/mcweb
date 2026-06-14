@@ -19,8 +19,11 @@ const props = defineProps<{
     usage_limit: number | null
     active: boolean
     starts_at: string | null
-    ends_at: string | null
+    product_ids?: number[]
+    category_ids?: number[]
   }
+  products?: Array<{ id: number; name: string }>
+  categories?: Array<{ id: number; name: string }>
   submitUrl: string
   method: 'post' | 'patch'
   backUrl: string
@@ -74,6 +77,24 @@ function submit() {
       <div class="space-y-2">
         <Label for="ends_at">结束时间</Label>
         <Input id="ends_at" v-model="form.coupon.ends_at" type="datetime-local" />
+      </div>
+    </div>
+    <div class="space-y-2">
+      <Label>限定商品（不选=全部）</Label>
+      <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
+        <label v-for="product in products || []" :key="product.id" class="flex items-center gap-2">
+          <input v-model="form.coupon.product_ids" type="checkbox" :value="product.id" class="h-4 w-4" />
+          {{ product.name }}
+        </label>
+      </div>
+    </div>
+    <div class="space-y-2">
+      <Label>限定分类（不选=全部）</Label>
+      <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
+        <label v-for="category in categories || []" :key="category.id" class="flex items-center gap-2">
+          <input v-model="form.coupon.category_ids" type="checkbox" :value="category.id" class="h-4 w-4" />
+          {{ category.name }}
+        </label>
       </div>
     </div>
     <label class="flex items-center gap-2 text-sm">

@@ -1,0 +1,6 @@
+<p>你好，</p>
+<p>你的订单 <strong><%= @order.order_number %></strong> 退款申请未通过审核。</p>
+<% if @refund.reason.present? %>
+  <p>原因：<%= @refund.reason %></p>
+<% end %>
+<p>如有疑问请联系客服。</p>

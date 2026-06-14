@@ -11,8 +11,15 @@ module Website
         []
       end
 
+      featured_products = begin
+        Commerce::Product.available.where(featured: true).order(created_at: :desc).limit(6)
+      rescue ActiveRecord::StatementInvalid
+        []
+      end
+
       render inertia: "Website/Home", props: {
-        featuredArticles: featured.map { |article| serialize_article(article) }
+        featuredArticles: featured.map { |article| serialize_article(article) },
+        featuredProducts: featured_products.map { |product| serialize_product_list_item(product) }
       }
     end
   end

@@ -44,5 +44,10 @@ module Community
     scope :unread_topics_count_for, ->(user) {
       with_unread_for(user).count
     }
+
+    def self.unread_count_for_section(user, section)
+      topic_ids = section.topics.where(status: :published).select(:id)
+      with_unread_for(user).where(forum_topic_id: topic_ids).count
+    end
   end
 end

@@ -83,7 +83,8 @@ module Admin
       def coupon_params
         params.require(:coupon).permit(
           :code, :discount_type, :discount_value, :min_amount_cents,
-          :usage_limit, :active, :starts_at, :ends_at
+          :usage_limit, :active, :starts_at, :ends_at,
+          product_ids: [], category_ids: []
         )
       end
 
@@ -99,8 +100,12 @@ module Admin
             usage_limit: coupon.usage_limit,
             active: coupon.active.nil? ? true : coupon.active,
             starts_at: coupon.starts_at&.strftime("%Y-%m-%dT%H:%M"),
-            ends_at: coupon.ends_at&.strftime("%Y-%m-%dT%H:%M")
+            ends_at: coupon.ends_at&.strftime("%Y-%m-%dT%H:%M"),
+            product_ids: coupon.restricted_product_ids,
+            category_ids: coupon.restricted_category_ids
           },
+          products: ::Commerce::Product.order(:name).pluck(:id, :name).map { |id, name| { id: id, name: name } },
+          categories: ::Commerce::Category.ordered.pluck(:id, :name).map { |id, name| { id: id, name: name } },
           submitUrl: coupon.persisted? ? admin_store_coupon_path(coupon) : admin_store_coupons_path,
           method: coupon.persisted? ? "patch" : "post",
           backUrl: admin_store_coupons_path

@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 30.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, prefix: nil)
+    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, prefix: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
@@ -16,6 +16,8 @@ module Community
       @poll_question = poll_question.to_s.strip.presence
       @poll_options = Array(poll_options).map(&:to_s).map(&:strip).reject(&:blank?)
       @poll_closes_days = poll_closes_days.to_i
+      @poll_multiple_choice = ActiveModel::Type::Boolean.new.cast(poll_multiple_choice) || false
+      @poll_max_choices = [ poll_max_choices.to_i, 1 ].max
       @prefix = prefix.to_s.strip.presence
     end
 
@@ -152,11 +154,14 @@ module Community
 
     def create_poll!(topic)
       closes_at = @poll_closes_days.positive? ? @poll_closes_days.days.from_now : nil
+      max_choices = @poll_multiple_choice ? [ @poll_max_choices, @poll_options.size ].min : 1
       Community::Poll.create!(
         topic: topic,
         question: @poll_question,
         options: @poll_options.first(10),
-        closes_at: closes_at
+        closes_at: closes_at,
+        multiple_choice: @poll_multiple_choice,
+        max_choices: max_choices
       )
     end
 

@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -14,14 +15,22 @@ defineProps<{
     topic_url: string
   }
   edits: Array<{
+    id: number
     editor: string
     body_before: string
     body_after: string
     diff_lines: Array<{ kind: string; text: string }>
     reason?: string | null
     created_at: string
+    restore_url?: string | null
   }>
+  can_restore?: boolean
 }>()
+
+function restoreEdit(url: string | null | undefined) {
+  if (!url || !confirm('确定恢复到此版本？')) return
+  router.post(url, {}, { preserveScroll: true })
+}
 </script>
 
 <template>
@@ -38,6 +47,9 @@ defineProps<{
       <p class="mb-2 text-sm text-muted-foreground">
         {{ edit.editor }} · {{ edit.created_at }}
         <span v-if="edit.reason" class="ml-2">说明：{{ edit.reason }}</span>
+        <Button v-if="edit.restore_url" type="button" variant="outline" size="sm" class="ml-2" @click="restoreEdit(edit.restore_url)">
+          恢复此版本
+        </Button>
       </p>
       <div v-if="edit.diff_lines.length" class="mb-3 space-y-1 rounded bg-muted p-3 font-mono text-xs">
         <div

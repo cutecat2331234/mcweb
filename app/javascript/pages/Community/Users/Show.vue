@@ -28,6 +28,9 @@ const props = defineProps<{
     trust_name: string
     likes_received: number
     member_since: string
+    last_seen_at?: string | null
+    online?: boolean
+    forum_signature?: string | null
     topics_count: number
     posts_count: number
     profile_url: string
@@ -72,7 +75,14 @@ const props = defineProps<{
 
 const editingBio = ref(false)
 const editingTitle = ref(false)
-const bioForm = useForm({ user: { bio: props.profile.bio || '', forum_title: props.profile.forum_title || '' } })
+const editingSignature = ref(false)
+const bioForm = useForm({
+  user: {
+    bio: props.profile.bio || '',
+    forum_title: props.profile.forum_title || '',
+    forum_signature: props.profile.forum_signature || '',
+  },
+})
 
 function toggleBlock() {
   if (!props.profile.block_url) return
@@ -90,6 +100,7 @@ function saveBio() {
     onSuccess: () => {
       editingBio.value = false
       editingTitle.value = false
+      editingSignature.value = false
     },
   })
 }
@@ -111,7 +122,7 @@ function saveBio() {
     <div class="min-w-0 flex-1">
       <PageHeader
         :title="profile.display_name || profile.username"
-        :subtitle="`${profile.forum_title ? profile.forum_title + ' · ' : ''}加入于 ${profile.member_since} · ${profile.trust_name} (Lv.${profile.trust_level})`"
+        :subtitle="`${profile.forum_title ? profile.forum_title + ' · ' : ''}加入于 ${profile.member_since}${profile.last_seen_at ? ' · 最后在线 ' + profile.last_seen_at : ''}${profile.online ? ' · 在线' : ''} · ${profile.trust_name} (Lv.${profile.trust_level})`"
       />
       <div class="mt-2 flex gap-6 text-sm">
         <span><strong>{{ profile.topics_count }}</strong> 主题</span>
@@ -157,6 +168,9 @@ function saveBio() {
         <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="editingBio = !editingBio">
           编辑简介
         </Button>
+        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="editingSignature = !editingSignature">
+          编辑签名
+        </Button>
       </div>
     </div>
   </div>
@@ -180,6 +194,19 @@ function saveBio() {
     <div class="flex gap-2">
       <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
       <Button type="button" size="sm" variant="outline" @click="editingBio = false">取消</Button>
+    </div>
+  </form>
+
+  <div v-if="profile.forum_signature && !editingSignature" class="mb-6 max-w-xl rounded-lg border p-4 text-sm whitespace-pre-wrap text-muted-foreground">
+    签名：{{ profile.forum_signature }}
+  </div>
+
+  <form v-if="editingSignature" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
+    <Label for="forum_signature">帖子签名（支持 Markdown）</Label>
+    <Textarea id="forum_signature" v-model="bioForm.user.forum_signature" rows="3" placeholder="显示在帖子底部的签名…" />
+    <div class="flex gap-2">
+      <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
+      <Button type="button" size="sm" variant="outline" @click="editingSignature = false">取消</Button>
     </div>
   </form>
 

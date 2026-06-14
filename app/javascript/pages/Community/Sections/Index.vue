@@ -21,6 +21,7 @@ export interface SectionItem {
   description: string | null
   category_name: string | null
   topics_count: number
+  unread_count?: number
   url: string
   children?: SectionItem[]
 }
@@ -46,6 +47,7 @@ defineProps<{
           <TableHead>板块</TableHead>
           <TableHead>分类</TableHead>
           <TableHead>主题数</TableHead>
+          <TableHead>未读</TableHead>
           <TableHead>简介</TableHead>
         </TableRow>
       </TableHeader>
@@ -60,6 +62,10 @@ defineProps<{
             </TableCell>
             <TableCell>{{ section.category_name || '—' }}</TableCell>
             <TableCell>{{ section.topics_count }}</TableCell>
+            <TableCell>
+              <span v-if="section.unread_count" class="text-xs font-medium text-primary">{{ section.unread_count }}</span>
+              <span v-else class="text-muted-foreground">—</span>
+            </TableCell>
             <TableCell class="text-muted-foreground">
               {{ section.description || '—' }}
             </TableCell>
@@ -73,6 +79,10 @@ defineProps<{
             </TableCell>
             <TableCell>{{ child.category_name || section.category_name || '—' }}</TableCell>
             <TableCell>{{ child.topics_count }}</TableCell>
+            <TableCell>
+              <span v-if="child.unread_count" class="text-xs font-medium text-primary">{{ child.unread_count }}</span>
+              <span v-else class="text-muted-foreground">—</span>
+            </TableCell>
             <TableCell class="text-muted-foreground">
               {{ child.description || '—' }}
             </TableCell>

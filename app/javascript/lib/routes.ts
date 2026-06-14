@@ -12,6 +12,7 @@ export const routes = {
   forumWatching: '/forum/watching',
   forumWatchedTags: '/forum/watching/tags',
   forumBookmarks: '/forum/bookmarks',
+  forumMembers: '/forum/members',
   forumUnread: '/forum/unread',
   forumUnreadMarkAllRead: '/forum/unread/mark_all_read',
   forumPreview: '/forum/preview',

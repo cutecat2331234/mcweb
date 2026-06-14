@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3'
+import { ref } from 'vue'
+import { Link, useForm, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import { routes } from '@/lib/routes'
@@ -30,7 +32,26 @@ const props = defineProps<{
   }>
   pagination: PaginationMeta
   participants: Array<{ username: string; avatar_url: string }>
+  addParticipantUrl?: string | null
+  removeParticipantUrlTemplate?: string | null
 }>()
+
+const addUsername = ref('')
+
+function addParticipant() {
+  if (!props.addParticipantUrl || !addUsername.value.trim()) return
+  router.post(props.addParticipantUrl, { username: addUsername.value.trim() }, {
+    preserveScroll: true,
+    onSuccess: () => { addUsername.value = '' },
+  })
+}
+
+function removeParticipant(username: string) {
+  if (!props.removeParticipantUrlTemplate) return
+  const url = props.removeParticipantUrlTemplate.replace(':username', username)
+  if (!confirm(`确定移除 ${username}？`)) return
+  router.delete(url, { preserveScroll: true })
+}
 
 const title = props.conversation.display_name || props.conversation.other_user?.username || '私信'
 const subtitle = props.conversation.is_group ? props.conversation.participants_label : '私信对话'
@@ -57,11 +78,26 @@ function submit() {
 
   <PageHeader :title="title" :subtitle="subtitle" />
 
-  <div v-if="conversation.is_group && participants.length" class="mb-4 flex flex-wrap gap-2">
-    <span v-for="p in participants" :key="p.username" class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
-      <img :src="p.avatar_url" :alt="p.username" class="h-4 w-4 rounded-full" />
-      {{ p.username }}
-    </span>
+  <div v-if="conversation.is_group && participants.length" class="mb-4">
+    <p class="mb-2 text-xs font-semibold text-muted-foreground">群组成员</p>
+    <div class="flex flex-wrap gap-2">
+      <span v-for="p in participants" :key="p.username" class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
+        <img :src="p.avatar_url" :alt="p.username" class="h-4 w-4 rounded-full" />
+        {{ p.username }}
+        <button
+          v-if="removeParticipantUrlTemplate"
+          type="button"
+          class="ml-1 text-muted-foreground hover:text-destructive"
+          @click="removeParticipant(p.username)"
+        >
+          ×
+        </button>
+      </span>
+    </div>
+    <form v-if="addParticipantUrl" class="mt-3 flex max-w-sm gap-2" @submit.prevent="addParticipant">
+      <Input v-model="addUsername" placeholder="用户名" class="flex-1" />
+      <Button type="submit" variant="outline" size="sm">添加成员</Button>
+    </form>
   </div>
 
   <div class="mb-6 max-h-[50vh] space-y-3 overflow-y-auto rounded-lg border p-4">

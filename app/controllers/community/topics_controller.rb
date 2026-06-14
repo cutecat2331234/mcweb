@@ -14,6 +14,10 @@ module Community
 
       posts_scope = @topic.posts.chronological.includes(:user, :quoted_post, :parent_post, :reactions, :edits)
       posts_scope = filter_blocked_posts(posts_scope)
+      if params[:q].present?
+        q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
+        posts_scope = posts_scope.where("body ILIKE ?", q)
+      end
 
       per_page = 20
       target_post_id = params[:post_id].presence || params[:anchor].to_s.sub(/\Apost-/, "").presence
@@ -48,6 +52,7 @@ module Community
         sections: can_move_topic? ? movable_sections : [],
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
         poll: @topic.poll ? serialize_poll(@topic.poll) : nil,
+        topicSearchQuery: params[:q].to_s,
         meta: {
           title: @topic.title,
           description: @topic.posts.first&.body&.truncate(160)
@@ -98,6 +103,8 @@ module Community
         poll_question: topic_params[:poll_question],
         poll_options: parse_poll_options(topic_params[:poll_options]),
         poll_closes_days: topic_params[:poll_closes_days],
+        poll_multiple_choice: topic_params[:poll_multiple_choice],
+        poll_max_choices: topic_params[:poll_max_choices],
         prefix: topic_params[:prefix],
         ip_address: request.remote_ip
       )
@@ -249,7 +256,7 @@ module Community
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days, :prefix, :scheduled_at)
+      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days, :poll_multiple_choice, :poll_max_choices, :prefix, :scheduled_at)
     end
 
     def section_props

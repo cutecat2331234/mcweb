@@ -91,6 +91,7 @@ Rails.application.routes.draw do
     resources :polls, only: [] do
       member do
         post :vote
+        post :close
       end
     end
     get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
@@ -115,6 +116,7 @@ Rails.application.routes.draw do
         post :bookmark, action: :toggle_bookmark
         post :moderate
         get :edits
+        post :restore_edit
       end
     end
     resources :reports, only: %i[new create]
@@ -137,6 +139,7 @@ Rails.application.routes.draw do
     post "preview", to: "previews#create"
     post "uploads", to: "uploads#create"
     get "bookmarks", to: "bookmarks#index"
+    patch "bookmarks/:id", to: "bookmarks#update", as: :bookmark
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
     get "watching", to: "watched#index"
@@ -148,7 +151,9 @@ Rails.application.routes.draw do
     post "tags/:slug/subscription", to: "tags#toggle_subscription", as: :tag_subscription
     resources :conversations, only: %i[index show new create] do
       resources :messages, only: %i[create], controller: "conversation_messages"
+      resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username
     end
+    get "members", to: "members#index", as: :members
     resources :users, only: %i[show update], param: :id
   end
 
@@ -191,6 +196,7 @@ Rails.application.routes.draw do
       post :preview_coupon, on: :member
     end
     post "webhooks/:provider", to: "webhooks#create", as: :webhook
+    get "downloads/:token", to: "downloads#show", as: :download
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
   end

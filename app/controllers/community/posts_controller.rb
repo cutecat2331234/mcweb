@@ -4,7 +4,7 @@ module Community
   class PostsController < ApplicationController
     before_action :require_login
     before_action :set_topic, only: :create
-    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits]
+    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit]
 
     def create
       result = Community::CreatePost.call(
@@ -103,15 +103,29 @@ module Community
         edits: edits.map do |edit|
           diff = Community::DiffLines.call(before_text: edit.body_before, after_text: edit.body_after)
           {
+            id: edit.id,
             editor: edit.editor.username,
             body_before: edit.body_before,
             body_after: edit.body_after,
             diff_lines: diff.success? ? diff.value : [],
             reason: edit.reason,
-            created_at: l(edit.created_at, format: :short)
+            created_at: l(edit.created_at, format: :short),
+            restore_url: can_view_edits? ? restore_edit_forum_post_path(@post, edit_id: edit.id) : nil
           }
-        end
+        end,
+        can_restore: can_view_edits?
       }
+    end
+
+    def restore_edit
+      edit = @post.edits.find(params[:edit_id])
+      result = Community::RestorePostEdit.call(user: current_user, edit: edit)
+
+      if result.success?
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: "已恢复至选定版本。"
+      else
+        redirect_to edits_forum_post_path(@post), alert: service_error_message(result)
+      end
     end
 
     private

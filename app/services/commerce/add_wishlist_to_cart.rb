@@ -11,13 +11,14 @@ module Commerce
       added = 0
       skipped = []
 
-      Commerce::WishlistItem.where(user: @user).includes(:product).find_each do |item|
+      Commerce::WishlistItem.where(user: @user).includes(:product, :variant).find_each do |item|
         product = item.product
         next unless product.active? && product.in_stock?
 
-        variant = if product.variants.exists?
-                    product.variants.order(:id).find { |v| v.stock.nil? || v.stock.positive? }
-                  end
+        variant = item.variant
+        if variant.nil? && product.variants.exists?
+          variant = product.variants.order(:id).find { |v| v.stock.nil? || v.stock.positive? }
+        end
         next if product.variants.exists? && variant.nil?
 
         validation = Commerce::ValidateCartItem.call(

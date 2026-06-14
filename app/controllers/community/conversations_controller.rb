@@ -33,7 +33,9 @@ module Community
         conversation: serialize_conversation(conversation, include_other: true),
         messages: messages.map { |msg| serialize_message(msg, conversation: conversation, participants_by_user: participants_by_user) },
         pagination: pagy_props(@pagy),
-        participants: conversation.is_group? ? conversation.users.map { |u| { username: u.username, avatar_url: u.avatar_url } } : []
+        participants: conversation.is_group? ? conversation.users.map { |u| { username: u.username, avatar_url: u.avatar_url } } : [],
+        addParticipantUrl: conversation.is_group? ? forum_conversation_participants_path(conversation) : nil,
+        removeParticipantUrlTemplate: conversation.is_group? ? forum_conversation_participant_path(conversation, ":username") : nil
       }
     end
 

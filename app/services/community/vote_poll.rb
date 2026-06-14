@@ -2,21 +2,31 @@
 
 module Community
   class VotePoll < ApplicationService
-    def initialize(user:, poll:, option_index:)
+    def initialize(user:, poll:, option_index: nil, option_indices: nil)
       @user = user
       @poll = poll
-      @option_index = option_index.to_i
+      indices = option_indices.presence || [ option_index ]
+      @option_indices = Array(indices).map(&:to_i).uniq.sort
     end
 
     def call
       return ServiceResult.failure(error: "Poll is closed.") unless @poll.open?
-      return ServiceResult.failure(error: "Invalid option.") unless @option_index.between?(0, @poll.options.size - 1)
+      return ServiceResult.failure(error: "No options selected.") if @option_indices.empty?
 
-      vote = Community::PollVote.find_or_initialize_by(poll: @poll, user: @user)
-      vote.option_index = @option_index
-      vote.save!
+      max = @poll.multiple_choice? ? @poll.max_choices : 1
+      return ServiceResult.failure(error: "Too many options selected.") if @option_indices.size > max
 
-      ServiceResult.success(vote)
+      invalid = @option_indices.any? { |index| !index.between?(0, @poll.options.size - 1) }
+      return ServiceResult.failure(error: "Invalid option.") if invalid
+
+      Community::PollVote.transaction do
+        @poll.votes.where(user: @user).destroy_all
+        @option_indices.each do |index|
+          @poll.votes.create!(user: @user, option_index: index)
+        end
+      end
+
+      ServiceResult.success(@poll.votes.where(user: @user))
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end

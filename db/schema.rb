@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000032) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -79,10 +79,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
     t.datetime "created_at", null: false
     t.bigint "forum_post_id"
     t.bigint "forum_topic_id", null: false
+    t.text "note"
+    t.datetime "remind_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["forum_post_id"], name: "index_forum_bookmarks_on_forum_post_id"
     t.index ["forum_topic_id"], name: "index_forum_bookmarks_on_forum_topic_id"
+    t.index ["remind_at"], name: "index_forum_bookmarks_on_remind_at", where: "(remind_at IS NOT NULL)"
     t.index ["user_id", "forum_post_id"], name: "index_forum_bookmarks_on_user_id_and_forum_post_id", unique: true, where: "(forum_post_id IS NOT NULL)"
     t.index ["user_id", "forum_topic_id"], name: "index_forum_bookmarks_on_user_topic_without_post", unique: true, where: "(forum_post_id IS NULL)"
     t.index ["user_id"], name: "index_forum_bookmarks_on_user_id"
@@ -157,7 +160,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
     t.integer "option_index", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
-    t.index ["forum_poll_id", "user_id"], name: "index_forum_poll_votes_on_forum_poll_id_and_user_id", unique: true
+    t.index ["forum_poll_id", "user_id", "option_index"], name: "index_forum_poll_votes_on_poll_user_option", unique: true
     t.index ["forum_poll_id"], name: "index_forum_poll_votes_on_forum_poll_id"
     t.index ["user_id"], name: "index_forum_poll_votes_on_user_id"
   end
@@ -167,6 +170,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
     t.datetime "created_at", null: false
     t.bigint "forum_topic_id", null: false
     t.boolean "hide_results_until_vote", default: false, null: false
+    t.integer "max_choices", default: 1, null: false
+    t.boolean "multiple_choice", default: false, null: false
     t.jsonb "options", default: [], null: false
     t.string "question", null: false
     t.datetime "updated_at", null: false
@@ -619,12 +624,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
 
   create_table "store_coupons", force: :cascade do |t|
     t.boolean "active", default: true, null: false
+    t.jsonb "category_ids", default: [], null: false
     t.string "code", null: false
     t.datetime "created_at", null: false
     t.string "discount_type", null: false
     t.integer "discount_value", null: false
     t.datetime "ends_at"
     t.integer "min_amount_cents", default: 0, null: false
+    t.jsonb "product_ids", default: [], null: false
     t.datetime "starts_at"
     t.datetime "updated_at", null: false
     t.integer "usage_limit"
@@ -826,9 +833,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
     t.bigint "store_product_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.bigint "variant_id"
     t.index ["store_product_id"], name: "index_store_wishlist_items_on_store_product_id"
     t.index ["user_id", "store_product_id"], name: "index_store_wishlist_items_on_user_id_and_store_product_id", unique: true
     t.index ["user_id"], name: "index_store_wishlist_items_on_user_id"
+    t.index ["variant_id"], name: "index_store_wishlist_items_on_variant_id"
   end
 
   create_table "user_roles", force: :cascade do |t|
@@ -857,7 +866,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
     t.integer "failed_login_count", default: 0, null: false
     t.string "forum_digest_frequency", default: "none", null: false
     t.datetime "forum_digest_last_sent_at"
+    t.text "forum_signature"
     t.string "forum_title"
+    t.datetime "last_seen_at"
     t.datetime "last_sign_in_at"
     t.string "last_sign_in_ip"
     t.string "locale", default: "zh-CN", null: false
@@ -877,6 +888,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
     t.string "wishlist_share_token"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
+    t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
     t.index ["public_id"], name: "index_users_on_public_id", unique: true
     t.index ["status"], name: "index_users_on_status"
     t.index ["username"], name: "index_users_on_username", unique: true
@@ -1060,6 +1072,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
   add_foreign_key "store_stock_alerts", "store_product_variants"
   add_foreign_key "store_stock_alerts", "store_products"
   add_foreign_key "store_stock_alerts", "users"
+  add_foreign_key "store_wishlist_items", "store_product_variants", column: "variant_id"
   add_foreign_key "store_wishlist_items", "store_products"
   add_foreign_key "store_wishlist_items", "users"
   add_foreign_key "user_roles", "roles"

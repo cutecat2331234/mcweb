@@ -184,7 +184,19 @@ function selectGalleryImage(index: number) {
 }
 
 function toggleWishlist() {
-  router.post(props.wishlistUrl, {}, { preserveScroll: true })
+  router.post(props.wishlistUrl, {
+    variant_id: selectedVariantId.value || undefined,
+  }, { preserveScroll: true })
+}
+
+function loadMoreReviews() {
+  const nextPage = (props.reviewsPagination?.page || 1) + 1
+  if (!props.reviewsPagination || nextPage > props.reviewsPagination.pages) return
+  router.get(routes.storeProduct(props.product.id), {
+    review_page: nextPage,
+    review_sort: reviewSort.value !== 'newest' ? reviewSort.value : undefined,
+    review_rating: reviewRating.value || undefined,
+  }, { preserveScroll: true, preserveState: true, only: ['product', 'reviewsPagination', 'reviewsCount'] })
 }
 
 function submitReview() {
@@ -443,6 +455,15 @@ function submitAnswer(questionId: number, answerUrl: string) {
       </article>
     </div>
     <Pagination v-if="reviewsPagination" :pagination="reviewsPagination" :base-path="routes.storeProduct(product.id)" query-param="review_page" />
+    <Button
+      v-if="reviewsPagination && reviewsPagination.page < reviewsPagination.pages"
+      type="button"
+      variant="outline"
+      class="mt-3"
+      @click="loadMoreReviews"
+    >
+      加载更多评价
+    </Button>
   </section>
 
   <section v-if="loggedIn && canReview" class="mt-8 max-w-xl">

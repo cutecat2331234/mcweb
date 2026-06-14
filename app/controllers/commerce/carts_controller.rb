@@ -21,7 +21,8 @@ module Commerce
 
     def preview_coupon
       subtotal_cents = @cart.subtotal_cents
-      result = Commerce::PreviewCoupon.call(subtotal_cents: subtotal_cents, code: params[:code])
+      cart_items = @cart.items.includes(:product)
+      result = Commerce::PreviewCoupon.call(subtotal_cents: subtotal_cents, code: params[:code], cart_items: cart_items)
 
       if result.success?
         session[:pending_coupon_code] = result.value[:code]

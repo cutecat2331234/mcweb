@@ -6,9 +6,29 @@ module Community
       "img" => %w[src alt title width height class loading],
       "aside" => %w[class],
       "strong" => %w[class],
-      "p" => %w[class]
+      "em" => %w[class],
+      "del" => %w[class],
+      "code" => %w[class data-lang],
+      "pre" => %w[class],
+      "p" => %w[class],
+      "blockquote" => %w[class],
+      "ul" => %w[class],
+      "ol" => %w[class],
+      "li" => %w[class],
+      "br" => [],
+      "table" => %w[class],
+      "thead" => %w[class],
+      "tbody" => %w[class],
+      "tr" => %w[class],
+      "th" => %w[class scope],
+      "td" => %w[class],
+      "div" => %w[class],
+      "button" => %w[type class data-copy-target],
+      "iframe" => %w[src width height frameborder allow allowfullscreen class loading title],
+      "a" => %w[href rel class]
     )
     MENTION_PATTERN = /@([a-zA-Z0-9_]{3,32})/
+    VIDEO_URL_PATTERN = %r{\Ahttps?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/|vimeo\.com/)([\w-]+)\z}i
 
     def initialize(body:)
       @body = body.to_s
@@ -21,18 +41,25 @@ module Community
       placeholders = {}
       text = body.dup
 
+      text = text.gsub(/\|\|(.+?)\|\|/m) do
+        token = placeholder_token(placeholders, "SPOILER")
+        placeholders[token] = %(<span class="spoiler">#{ERB::Util.html_escape(Regexp.last_match(1))}</span>)
+        token
+      end
+
+      text = text.gsub(/(?:^\|[^|\n]+(?:\|[^|\n]+)+\|\s*$\r?\n?)+/) do |table_block|
+        token = placeholder_token(placeholders, "TABLE")
+        placeholders[token] = render_table(table_block.split(/\r?\n/).select { |line| line.match?(/\A\|.+\|\z/) })
+        token
+      end
+
       text = text.gsub(/```(\w*)\n([\s\S]*?)```/) do
         token = placeholder_token(placeholders, "CODE")
         lang = Regexp.last_match(1)
         code = Regexp.last_match(2)
         lang_attr = lang.present? ? %( data-lang="#{ERB::Util.html_escape(lang)}") : ""
-        placeholders[token] = %(<pre class="code-block"><code#{lang_attr}>#{ERB::Util.html_escape(code)}</code></pre>)
-        token
-      end
-
-      text = text.gsub(/\|\|(.+?)\|\|/m) do
-        token = placeholder_token(placeholders, "SPOILER")
-        placeholders[token] = %(<span class="spoiler">#{ERB::Util.html_escape(Regexp.last_match(1))}</span>)
+        escaped = ERB::Util.html_escape(code)
+        placeholders[token] = %(<div class="code-block-wrap"><button type="button" class="code-copy-btn" data-copy-target="code">复制</button><pre class="code-block"><code#{lang_attr}>#{escaped}</code></pre></div>)
         token
       end
 
@@ -45,6 +72,14 @@ module Community
         token
       end
 
+      text = text.gsub(/\[video\]\(([^)]+)\)/i) do
+        token = placeholder_token(placeholders, "VIDEO")
+        url = Regexp.last_match(1)
+        embed = video_embed_html(url)
+        placeholders[token] = embed if embed
+        token
+      end
+
       text = text.gsub(MENTION_PATTERN) do
         username = Regexp.last_match(1)
         token = placeholder_token(placeholders, "MENTION")
@@ -54,14 +89,18 @@ module Community
 
       text = text.gsub(/\A(https?:\/\/[^\s]+)\z/) do |url|
         token = placeholder_token(placeholders, "ONEBOX")
-        preview = Community::FetchLinkPreview.call(url: url)
-        if preview.success? && preview.value
-          p = preview.value
-          img = p[:image_url].present? ? %(<img src="#{ERB::Util.html_escape(p[:image_url])}" alt="" class="onebox-image" loading="lazy" />) : ""
-          desc = p[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(p[:description].to_s.truncate(200))}</p>) : ""
-          placeholders[token] = %(<aside class="onebox"><a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener" class="onebox-link">#{img}<strong class="onebox-title">#{ERB::Util.html_escape(p[:title].to_s)}</strong>#{desc}</a></aside>)
+        if (embed = video_embed_html(url))
+          placeholders[token] = embed
         else
-          placeholders[token] = %(<a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener">#{ERB::Util.html_escape(url)}</a>)
+          preview = Community::FetchLinkPreview.call(url: url)
+          if preview.success? && preview.value
+            p = preview.value
+            img = p[:image_url].present? ? %(<img src="#{ERB::Util.html_escape(p[:image_url])}" alt="" class="onebox-image" loading="lazy" />) : ""
+            desc = p[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(p[:description].to_s.truncate(200))}</p>) : ""
+            placeholders[token] = %(<aside class="onebox"><a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener" class="onebox-link">#{img}<strong class="onebox-title">#{ERB::Util.html_escape(p[:title].to_s)}</strong>#{desc}</a></aside>)
+          else
+            placeholders[token] = %(<a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener">#{ERB::Util.html_escape(url)}</a>)
+          end
         end
         token
       end
@@ -80,34 +119,84 @@ module Community
       "MCWEB#{prefix}#{placeholders.size}END"
     end
 
+    def video_embed_html(url)
+      case url
+      when %r{\Ahttps?://(?:www\.)?youtube\.com/watch\?v=([\w-]+)}i,
+           %r{\Ahttps?://youtu\.be/([\w-]+)}i
+        id = Regexp.last_match(1)
+        %(<div class="video-embed"><iframe src="https://www.youtube.com/embed/#{ERB::Util.html_escape(id)}" width="560" height="315" frameborder="0" allowfullscreen loading="lazy" title="YouTube video"></iframe></div>)
+      when %r{\Ahttps?://(?:www\.)?vimeo\.com/(\d+)}i
+        id = Regexp.last_match(1)
+        %(<div class="video-embed"><iframe src="https://player.vimeo.com/video/#{ERB::Util.html_escape(id)}" width="560" height="315" frameborder="0" allowfullscreen loading="lazy" title="Vimeo video"></iframe></div>)
+      end
+    end
+
     def markdown_to_html(text)
       lines = text.split(/\r\n|\r|\n/)
       html_lines = []
-      in_list = false
+      in_ul = false
+      in_ol = false
 
       lines.each do |line|
         if (match = line.match(/\A(#+)\s+(.+)\z/))
-          html_lines << "</ul>" if in_list
-          in_list = false
+          html_lines << "</ul>" if in_ul
+          in_ul = false
+          html_lines << "</ol>" if in_ol
+          in_ol = false
           level = [ match[1].length, 6 ].min
           html_lines << "<h#{level}>#{ERB::Util.html_escape(match[2])}</h#{level}>"
+        elsif (match = line.match(/\A>\s?(.*)\z/))
+          html_lines << "</ul>" if in_ul
+          in_ul = false
+          html_lines << "</ol>" if in_ol
+          in_ol = false
+          html_lines << %(<blockquote class="post-quote">#{inline_format(match[1])}</blockquote>)
         elsif (match = line.match(/\A[-*]\s+(.+)\z/))
-          html_lines << "<ul>" unless in_list
-          in_list = true
+          html_lines << "</ol>" if in_ol
+          in_ol = false
+          html_lines << "<ul>" unless in_ul
+          in_ul = true
+          html_lines << "<li>#{inline_format(match[1])}</li>"
+        elsif (match = line.match(/\A\d+\.\s+(.+)\z/))
+          html_lines << "</ul>" if in_ul
+          in_ul = false
+          html_lines << "<ol>" unless in_ol
+          in_ol = true
           html_lines << "<li>#{inline_format(match[1])}</li>"
         elsif line.strip.empty?
-          html_lines << "</ul>" if in_list
-          in_list = false
+          html_lines << "</ul>" if in_ul
+          in_ul = false
+          html_lines << "</ol>" if in_ol
+          in_ol = false
           html_lines << "<br>"
         else
-          html_lines << "</ul>" if in_list
-          in_list = false
+          html_lines << "</ul>" if in_ul
+          in_ul = false
+          html_lines << "</ol>" if in_ol
+          in_ol = false
           html_lines << inline_format(line)
         end
       end
-      html_lines << "</ul>" if in_list
+
+      html_lines << "</ul>" if in_ul
+      html_lines << "</ol>" if in_ol
 
       html_lines.join("\n")
+    end
+
+    def render_table(rows)
+      return "" if rows.empty?
+
+      cells = rows.map { |row| row.split("|").map(&:strip).reject(&:empty?) }
+      return "" if cells.empty?
+
+      header = cells.first
+      body_rows = cells[1..] || []
+      body_rows = body_rows.drop(1) if body_rows.first&.all? { |cell| cell.match?(/\A[-:]+?\z/) }
+
+      thead = "<thead><tr>#{header.map { |cell| "<th>#{inline_format(cell)}</th>" }.join}</tr></thead>"
+      tbody = "<tbody>#{body_rows.map { |row| "<tr>#{row.map { |cell| "<td>#{inline_format(cell)}</td>" }.join}</tr>" }.join}</tbody>"
+      %(<table class="post-table">#{thead}#{tbody}</table>)
     end
 
     def inline_format(text)

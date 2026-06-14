@@ -35,7 +35,7 @@ module InertiaSerializable
     attrs.transform_values { |v| v.nil? ? "—" : v.to_s }
   end
 
-  def serialize_section(section, include_children: true)
+  def serialize_section(section, include_children: true, unread_map: {})
     data = {
       id: section.id,
       name: section.name,
@@ -43,11 +43,12 @@ module InertiaSerializable
       description: section.description&.truncate(80),
       category_name: section.category&.name,
       topics_count: section.topics.where(status: :published).count,
+      unread_count: unread_map[section.id].to_i,
       url: forum_section_path(section)
     }
 
     if include_children && section.children.any?
-      data[:children] = section.children.ordered.map { |child| serialize_section(child, include_children: false) }
+      data[:children] = section.children.ordered.map { |child| serialize_section(child, include_children: false, unread_map: unread_map) }
     end
 
     data
@@ -125,6 +126,12 @@ module InertiaSerializable
                      end
     bookmarked = current_user && Community::Bookmark.exists?(user: current_user, post: post)
 
+    signature_html = nil
+    if post.user.forum_signature.present?
+      formatted_sig = Community::FormatPostBody.call(body: post.user.forum_signature)
+      signature_html = formatted_sig.success? ? formatted_sig.value : ERB::Util.html_escape(post.user.forum_signature)
+    end
+
     {
       id: post.id,
       floor_number: post.floor_number,
@@ -137,6 +144,7 @@ module InertiaSerializable
       avatar_url: post.user.avatar_url,
       body: post.body,
       body_html: body_html,
+      signature_html: signature_html,
       created_at: l(post.created_at, format: :short),
       edited_at: post.edited_at ? l(post.edited_at, format: :short) : nil,
       edit_count: post.edits.count,
@@ -290,19 +298,25 @@ module InertiaSerializable
   end
 
   def serialize_poll(poll)
-    user_vote = poll.votes.find_by(user: current_user)
-    show_results = !poll.hide_results_until_vote || user_vote.present? || !poll.open?
+    user_votes = poll.votes.where(user: current_user)
+    user_vote_indices = user_votes.pluck(:option_index)
+    show_results = !poll.hide_results_until_vote || user_votes.exists? || !poll.open?
+    can_close = logged_in? && (current_user.id == poll.topic.user_id || current_user.permission?("forum.topics.lock"))
     {
       id: poll.id,
       question: poll.question,
       open: poll.open?,
+      multiple_choice: poll.multiple_choice?,
+      max_choices: poll.max_choices,
       hide_results_until_vote: poll.hide_results_until_vote,
       show_results: show_results,
       options: poll.options.each_with_index.map { |label, index| { label: label, index: index } },
       results: show_results ? poll.results : [],
       total_votes: show_results ? poll.total_votes : nil,
-      user_vote_index: user_vote&.option_index,
-      vote_url: forum_poll_vote_path(poll)
+      user_vote_index: user_vote_indices.first,
+      user_vote_indices: user_vote_indices,
+      vote_url: forum_poll_vote_path(poll),
+      close_url: can_close && poll.open? ? close_forum_poll_path(poll) : nil
     }
   end
 
@@ -439,7 +453,7 @@ module InertiaSerializable
         fulfillment = order.fulfillments.find_by(order_item: item)
         snapshot = item.fulfillment_snapshot || {}
         config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
-        download_url = config["download_url"] || config[:download_url]
+        download_url = signed_download_url_for(item)
         {
           product_name: item.product_name,
           variant_name: item.variant_name,
@@ -447,13 +461,11 @@ module InertiaSerializable
           total_label: format_money(item.total_cents, order.currency),
           fulfillment_status: fulfillment&.status,
           fulfillment_status_label: fulfillment_status_label(fulfillment&.status),
-          download_url: download_url.presence
+          download_url: download_url
         }
       end,
       downloads: order.items.filter_map do |item|
-        snapshot = item.fulfillment_snapshot || {}
-        config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
-        url = config["download_url"] || config[:download_url]
+        url = signed_download_url_for(item)
         next if url.blank?
 
         { product_name: item.product_name, url: url }
@@ -546,5 +558,14 @@ module InertiaSerializable
 
   def number_to_currency(amount, unit:)
     ActionController::Base.helpers.number_to_currency(amount, unit: unit)
+  end
+
+  def signed_download_url_for(order_item)
+    return nil unless logged_in? && order_item.order.user_id == current_user.id
+
+    result = Commerce::GenerateDownloadToken.call(order_item: order_item, user: current_user)
+    return nil unless result.success?
+
+    store_download_path(result.value[:token])
   end
 end

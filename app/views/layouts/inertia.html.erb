@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title inertia>Mcweb</title>
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= render "shared/tech_fingerprint" %>
+    <%= vite_client_tag %>
+    <%= vite_typescript_tag "inertia" %>
+    <%= inertia_ssr_head %>
+    <script>
+      (function () {
+        var key = "mc-theme";
+        var stored = localStorage.getItem(key);
+        var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        if (theme === "dark") document.documentElement.classList.add("dark");
+      })();
+    </script>
+  </head>
+  <body class="antialiased">
+    <%= inertia_root %>
+  </body>
+</html>

@@ -48,3 +48,6 @@ group :test do
   gem "minitest-reporters"
   gem "rails-dom-testing"
 end
+
+gem "vite_rails", "~> 3.11"
+gem "inertia_rails", "~> 3.21"

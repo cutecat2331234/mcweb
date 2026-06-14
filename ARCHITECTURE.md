@@ -39,7 +39,29 @@ app/
 
 `critical` / `payments` / `minecraft` / `mailers` / `notifications` / `media` / `maintenance`
 
-## 官网与后台样式隔离
+## 前端架构（官网 vs 业务 Portal）
 
-- `application.html.erb` + `tailwind/application.css`：论坛/商城/后台
-- `website.html.erb` + `website.css`：官网动画与主题
+同一 Rails 应用内采用 **双视觉体系**，通过 Inertia.js + Vue 3 渲染，后台管理暂保留 ERB。
+
+| 区域 | 布局 | 风格 | 技术 |
+|------|------|------|------|
+| 官网首页 | `WebsiteLayout.vue` | 营销风：渐变、动效、品牌叙事 | `website.css` |
+| 论坛/商城/登录 | `PortalLayout.vue` | 功能优先：shadcn-vue 组件、直角表格 | `portal.css` + shadcn |
+| 安装向导 / 后台 | ERB 布局 | 运维与表单 | Tailwind + ViewComponent |
+
+```
+app/javascript/
+  entrypoints/inertia.ts    # Inertia 入口
+  layouts/                  # WebsiteLayout / PortalLayout
+  pages/                    # 按模块映射控制器 render inertia
+  components/ui/            # shadcn-vue 基础组件
+  styles/website.css        # 官网设计令牌
+  styles/portal.css         # Portal / shadcn 设计令牌
+```
+
+构建：`bin/vite build`（生产部署在 `bin/setup` 中于 `assets:precompile` 之前执行）。
+
+## 官网与后台样式隔离（历史 ERB）
+
+- `application.html.erb` + `tailwind/application.css`：尚未迁移的 ERB 页面（后台、购物车等）
+- `layouts/inertia.html.erb`：Vue 页面统一根布局

@@ -14,14 +14,6 @@
     <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
     <%= stylesheet_link_tag "website", "data-turbo-track": "reload" %>
     <%= javascript_importmap_tags %>
-    <script>
-      (function () {
-        var key = "mc-theme";
-        var stored = localStorage.getItem(key);
-        var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-        if (theme === "dark") document.documentElement.classList.add("dark");
-      })();
-    </script>
   </head>
 
   <body>

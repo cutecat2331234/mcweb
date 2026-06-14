@@ -7,6 +7,7 @@ module Identity
     before_action :redirect_if_signed_in, only: %i[new create]
 
     def new
+      render inertia: "Identity/Sessions/New"
     end
 
     def create
@@ -16,19 +17,20 @@ module Identity
         totp_code: session_params[:totp_code],
         ip_address: request.remote_ip,
         user_agent: request.user_agent,
-        remember_me: session_params[:remember_me] == "1"
+        remember_me: session_params[:remember_me] == "1" || session_params[:remember_me] == true
       )
 
       if result.success?
         sign_in(
           session_record: result.value[:session],
           token: result.value[:token],
-          remember_me: session_params[:remember_me] == "1"
+          remember_me: session_params[:remember_me] == "1" || session_params[:remember_me] == true
         )
         redirect_after_login notice: "Signed in successfully."
       else
-        flash.now[:alert] = service_error_message(result)
-        render :new, status: :unprocessable_entity
+        render inertia: "Identity/Sessions/New",
+               status: :unprocessable_entity,
+               errors: { base: service_error_message(result) }
       end
     end
 

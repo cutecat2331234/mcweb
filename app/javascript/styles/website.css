@@ -1,0 +1,97 @@
+@import "tailwindcss";
+
+:root {
+  --website-bg: #050816;
+  --website-bg-soft: #0b1026;
+  --website-fg: #f8fafc;
+  --website-muted: #94a3b8;
+  --website-accent: #38bdf8;
+  --website-accent-2: #a78bfa;
+  --website-border: rgba(148, 163, 184, 0.2);
+}
+
+.website-page {
+  min-height: 100dvh;
+  background:
+    radial-gradient(ellipse 80% 50% at 50% -20%, rgba(56, 189, 248, 0.18), transparent),
+    radial-gradient(ellipse 60% 40% at 100% 0%, rgba(167, 139, 250, 0.12), transparent),
+    linear-gradient(180deg, var(--website-bg) 0%, var(--website-bg-soft) 100%);
+  color: var(--website-fg);
+}
+
+.website-nav {
+  border-bottom: 1px solid var(--website-border);
+  backdrop-filter: blur(12px);
+  background: rgba(5, 8, 22, 0.72);
+}
+
+.website-nav-link {
+  color: var(--website-muted);
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+
+.website-nav-link:hover {
+  color: var(--website-fg);
+}
+
+.website-hero-title {
+  background: linear-gradient(135deg, #f8fafc 0%, #38bdf8 50%, #a78bfa 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+.website-card {
+  border: 1px solid var(--website-border);
+  border-radius: 1rem;
+  background: rgba(15, 23, 42, 0.55);
+  padding: 1.5rem;
+  transition: transform 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+}
+
+.website-card:hover {
+  transform: translateY(-4px);
+  border-color: rgba(56, 189, 248, 0.35);
+  box-shadow: 0 20px 40px rgba(2, 6, 23, 0.45);
+}
+
+.website-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9999px;
+  padding: 0.75rem 1.5rem;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.website-btn-primary {
+  background: linear-gradient(135deg, #38bdf8, #6366f1);
+  color: #0f172a;
+  box-shadow: 0 10px 30px rgba(56, 189, 248, 0.25);
+}
+
+.website-btn-primary:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 16px 40px rgba(56, 189, 248, 0.35);
+}
+
+.website-btn-ghost {
+  border: 1px solid var(--website-border);
+  color: var(--website-fg);
+}
+
+.website-btn-ghost:hover {
+  border-color: rgba(248, 250, 252, 0.35);
+}
+
+@keyframes website-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+.website-float {
+  animation: website-float 6s ease-in-out infinite;
+}

@@ -25,7 +25,8 @@ module Commerce
           user: current_user,
           product: product,
           variant: variant,
-          quantity: quantity
+          quantity: quantity,
+          cart: @cart
         )
         unless validation.success?
           return redirect_to request.referer.presence || store_cart_path, alert: service_error_message(validation)
@@ -39,7 +40,9 @@ module Commerce
             user: current_user,
             product: item.product,
             variant: item.variant,
-            quantity: params[:quantity].to_i
+            quantity: params[:quantity].to_i,
+            cart: @cart,
+            replace_quantity: true
           )
           unless validation.success?
             return redirect_to store_cart_path, alert: service_error_message(validation)

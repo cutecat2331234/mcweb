@@ -29,6 +29,7 @@ export interface TopicItem {
   locked: boolean
   featured: boolean
   solved?: boolean
+  prefix?: string | null
   unread_count: number
   has_unread: boolean
 }
@@ -141,6 +142,7 @@ function toggleWatch() {
         <TableRow v-for="topic in topics" :key="topic.id">
           <TableCell>
             <TopicTitleBadges
+              :prefix="topic.prefix"
               :pinned="topic.pinned"
               :featured="topic.featured"
               :locked="topic.locked"

@@ -51,7 +51,8 @@ module Commerce
 
       provider_name = checkout_params[:provider].presence || default_provider
 
-      payment_record = Payments::Record.create!(
+      payment_record = order.payment_records.pending.order(created_at: :desc).first
+      payment_record ||= Payments::Record.create!(
         order: order,
         provider: provider_name,
         amount_cents: order.total_cents,

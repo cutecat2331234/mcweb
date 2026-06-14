@@ -44,7 +44,7 @@ module Community
 
       topic = @post.topic
       @post.soft_delete!
-      topic.update!(replies_count: [ topic.posts.count - 1, 0 ].max)
+      Community::SyncTopicLastPost.call(topic: topic)
       redirect_to forum_topic_path(topic), notice: "帖子已删除。"
     end
 

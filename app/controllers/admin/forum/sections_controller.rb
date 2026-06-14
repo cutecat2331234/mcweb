@@ -78,8 +78,13 @@ module Admin
       def section_params
         permitted = params.require(:section).permit(
           :name, :slug, :description, :position, :forum_category_id, :parent_id,
-          :create_topic_roles, :reply_roles
+          :create_topic_roles, :reply_roles, :prefixes
         )
+        prefixes = if permitted[:prefixes].is_a?(String)
+                     permitted[:prefixes].lines.map(&:strip).reject(&:blank?)
+                   else
+                     Array(permitted[:prefixes])
+                   end
         {
           name: permitted[:name],
           slug: permitted[:slug],
@@ -87,6 +92,7 @@ module Admin
           position: permitted[:position],
           forum_category_id: permitted[:forum_category_id],
           parent_id: permitted[:parent_id],
+          prefixes: prefixes,
           permissions: {
             "create_topic" => parse_roles(permitted[:create_topic_roles]),
             "reply" => parse_roles(permitted[:reply_roles])
@@ -113,6 +119,7 @@ module Admin
             position: section.position || 0,
             forum_category_id: section.forum_category_id,
             parent_id: section.parent_id,
+            prefixes: Array(section.prefixes).join("\n"),
             create_topic_roles: Array(section.permissions["create_topic"]).join(", "),
             reply_roles: Array(section.permissions["reply"]).join(", ")
           },

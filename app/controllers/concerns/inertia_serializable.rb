@@ -57,7 +57,7 @@ module InertiaSerializable
     unread_count = if read_state
                      read_state.unread_count
                    elsif current_user
-                     topic.posts.count
+                     0
                    else
                      0
                    end
@@ -71,6 +71,7 @@ module InertiaSerializable
       views_count: topic.views_count,
       last_posted_at: topic.last_posted_at ? l(topic.last_posted_at, format: :short) : nil,
       pinned: topic.pinned?,
+      prefix: topic.prefix,
       locked: topic.locked?,
       featured: topic.featured?,
       solved: topic.solved_post_id.present?,

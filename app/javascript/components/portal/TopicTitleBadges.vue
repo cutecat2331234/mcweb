@@ -2,6 +2,7 @@
 import Badge from '@/components/ui/Badge.vue'
 
 defineProps<{
+  prefix?: string | null
   pinned?: boolean
   featured?: boolean
   locked?: boolean
@@ -12,6 +13,7 @@ defineProps<{
 </script>
 
 <template>
+  <span v-if="prefix" class="mr-1 text-xs text-violet-600">[{{ prefix }}]</span>
   <span v-if="pinned" class="mr-1 text-xs text-amber-600">[置顶]</span>
   <span v-if="featured" class="mr-1 text-xs text-blue-600">[精选]</span>
   <span v-if="locked" class="mr-1 text-xs text-muted-foreground">[锁定]</span>

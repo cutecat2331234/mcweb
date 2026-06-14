@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000005) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -142,6 +142,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000005) do
     t.string "status", default: "published", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index "to_tsvector('simple'::regconfig, COALESCE(body, ''::text))", name: "index_forum_posts_on_body_tsvector", using: :gin
     t.index ["deleted_at"], name: "index_forum_posts_on_deleted_at"
     t.index ["forum_topic_id", "floor_number"], name: "index_forum_posts_on_forum_topic_id_and_floor_number", unique: true
     t.index ["forum_topic_id"], name: "index_forum_posts_on_forum_topic_id"
@@ -196,6 +197,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000005) do
     t.bigint "parent_id"
     t.jsonb "permissions", default: {}, null: false
     t.integer "position", default: 0, null: false
+    t.jsonb "prefixes", default: [], null: false
     t.string "slug", null: false
     t.datetime "updated_at", null: false
     t.index ["forum_category_id", "slug"], name: "index_forum_sections_on_forum_category_id_and_slug", unique: true
@@ -240,6 +242,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000005) do
     t.datetime "last_posted_at"
     t.boolean "locked", default: false, null: false
     t.boolean "pinned", default: false, null: false
+    t.string "prefix"
     t.string "public_id", null: false
     t.integer "replies_count", default: 0, null: false
     t.integer "slow_mode_seconds"
@@ -250,6 +253,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000005) do
     t.bigint "user_id", null: false
     t.integer "views_count", default: 0, null: false
     t.boolean "wiki", default: false, null: false
+    t.index "to_tsvector('simple'::regconfig, (COALESCE(title, ''::character varying))::text)", name: "index_forum_topics_on_title_tsvector", using: :gin
     t.index ["deleted_at"], name: "index_forum_topics_on_deleted_at"
     t.index ["forum_section_id", "last_posted_at"], name: "index_forum_topics_on_forum_section_id_and_last_posted_at"
     t.index ["forum_section_id"], name: "index_forum_topics_on_forum_section_id"

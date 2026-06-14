@@ -2,12 +2,14 @@
 import { Link } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
+import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -22,11 +24,17 @@ defineProps<{
     created_at: string
     url: string
   }>
+  pagination: PaginationMeta
 }>()
 </script>
 
 <template>
-  <PageHeader title="我的订单" />
+  <div class="mb-4 flex items-center justify-between gap-3">
+    <PageHeader title="我的订单" />
+    <Button as-child variant="outline" size="sm">
+      <Link :href="routes.storePreferences">邮件偏好</Link>
+    </Button>
+  </div>
 
   <div v-if="orders.length" class="rounded-lg border">
     <Table>
@@ -48,5 +56,6 @@ defineProps<{
       </TableBody>
     </Table>
   </div>
+  <Pagination v-if="orders.length" :pagination="pagination" :base-path="routes.storeOrders" />
   <p v-else class="text-sm text-muted-foreground">暂无订单。</p>
 </template>

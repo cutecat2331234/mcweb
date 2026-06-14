@@ -13,7 +13,7 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  section: { name: string; slug: string; url: string }
+  section: { name: string; slug: string; url: string; prefixes?: string[] }
 }>()
 
 const form = useForm({
@@ -21,6 +21,7 @@ const form = useForm({
     title: '',
     body: '',
     tags: '',
+    prefix: '',
     poll_question: '',
     poll_options: '',
     poll_closes_days: '',
@@ -83,6 +84,13 @@ async function preview() {
       <Label for="title">标题</Label>
       <Input id="title" v-model="form.topic.title" required autofocus />
       <p v-if="form.errors.title" class="text-sm text-destructive">{{ form.errors.title }}</p>
+    </div>
+    <div v-if="section.prefixes?.length" class="space-y-2">
+      <Label for="prefix">主题前缀</Label>
+      <select id="prefix" v-model="form.topic.prefix" class="h-9 w-full rounded-md border px-2 text-sm">
+        <option value="">无前缀</option>
+        <option v-for="p in section.prefixes" :key="p" :value="p">{{ p }}</option>
+      </select>
     </div>
     <div class="space-y-2">
       <Label for="body">首帖内容</Label>

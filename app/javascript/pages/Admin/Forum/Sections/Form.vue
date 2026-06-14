@@ -19,6 +19,7 @@ const props = defineProps<{
     position: number
     forum_category_id: number | null
     parent_id: number | null
+    prefixes: string
     create_topic_roles: string
     reply_roles: string
   }
@@ -75,12 +76,16 @@ function submit() {
       </select>
     </div>
     <div class="space-y-2">
-      <Label for="create_topic_roles">发帖权限（角色 key，逗号分隔，空=所有人）</Label>
-      <Input id="create_topic_roles" v-model="form.section.create_topic_roles" placeholder="例如：forum.member" />
+      <Label for="create_topic_roles">发帖权限（权限 key，逗号分隔，空=所有人）</Label>
+      <Input id="create_topic_roles" v-model="form.section.create_topic_roles" placeholder="例如：forum.topics.lock" />
     </div>
     <div class="space-y-2">
-      <Label for="reply_roles">回复权限（角色 key，逗号分隔，空=所有人）</Label>
-      <Input id="reply_roles" v-model="form.section.reply_roles" placeholder="例如：forum.member" />
+      <Label for="reply_roles">回复权限（权限 key，逗号分隔，空=所有人）</Label>
+      <Input id="reply_roles" v-model="form.section.reply_roles" placeholder="例如：forum.topics.lock" />
+    </div>
+    <div class="space-y-2">
+      <Label for="prefixes">主题前缀（每行一个，如：公告、求助）</Label>
+      <Textarea id="prefixes" v-model="form.section.prefixes" rows="3" placeholder="公告&#10;求助&#10;分享" />
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

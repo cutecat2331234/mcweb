@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 30.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil)
+    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, prefix: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
@@ -15,6 +15,7 @@ module Community
       @poll_question = poll_question.to_s.strip.presence
       @poll_options = Array(poll_options).map(&:to_s).map(&:strip).reject(&:blank?)
       @poll_closes_days = poll_closes_days.to_i
+      @prefix = prefix.to_s.strip.presence
     end
 
     def call
@@ -32,6 +33,7 @@ module Community
           section: @section,
           user: @user,
           title: @title,
+          prefix: valid_prefix,
           status: "published",
           last_posted_at: Time.current,
           last_post_user: @user,
@@ -124,6 +126,13 @@ module Community
 
     def generate_public_id
       "topic_#{SecureRandom.alphanumeric(16)}"
+    end
+
+    def valid_prefix
+      return nil if @prefix.blank?
+
+      allowed = Array(@section.prefixes)
+      allowed.include?(@prefix) ? @prefix : nil
     end
 
     def create_poll!(topic)

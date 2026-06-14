@@ -12,7 +12,21 @@ module Community
     end
 
     def unread_count
-      topic.posts.where("floor_number > ?", last_read_floor).count
+      topic.posts.where(status: :published).where("floor_number > ?", last_read_floor).count
     end
+
+    scope :with_unread_for, ->(user) {
+      joins(:topic)
+        .where(user: user, forum_topics: { status: :published })
+        .where(<<~SQL.squish)
+          EXISTS (
+            SELECT 1 FROM forum_posts
+            WHERE forum_posts.forum_topic_id = forum_read_states.forum_topic_id
+              AND forum_posts.status = 'published'
+              AND forum_posts.floor_number > forum_read_states.last_read_floor
+          )
+        SQL
+        .order("forum_topics.last_posted_at DESC")
+    }
   end
 end

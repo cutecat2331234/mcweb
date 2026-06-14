@@ -185,3 +185,25 @@ app/
 | 订单支付渠道选择 | 订单详情页选择 Provider |
 | 购物车导航徽章 | `PortalLayout` 显示购物车数量 |
 | 发货重试按钮条件显示 | 仅 pending/failed 显示 |
+
+### 第十一轮（安全 / 论坛 / 商城）
+
+| 功能 | 实现 |
+|------|------|
+| 草稿/隐藏主题访问控制 | `Community::TopicVisibility` + `ensure_topic_visible!` |
+| 发布草稿完整校验 | `PublishTopicDraft` 分区权限、禁言、链接限制 |
+| 分区发帖权限 UI | `canCreateTopic` 与后端 `section.allowed?` 一致 |
+| 回复权限 UI | `canReply` 含锁定与分区回复权限 |
+| 未读列表 SQL 优化 | `ReadState.with_unread_for` scope |
+| 未读不计隐藏帖 | `unread_count` 仅统计 `published` 帖子 |
+| 删帖同步 last_post | `SyncTopicLastPost` + `posts#destroy` |
+| 主题前缀 | 分区 `prefixes` jsonb + 发帖选择 + `TopicTitleBadges` |
+| 搜索 GIN 索引 | `forum_topics` / `forum_posts` tsvector GIN |
+| 用户获赞数 | 资料页 `likes_received` |
+| 商城邮件偏好 | `/store/preferences` + `OrderMailer` 按偏好发送 |
+| 订单列表分页 | `OrdersController#index` + Pagy |
+| 购物车累加库存校验 | `ValidateCartItem` `cart:` / `replace_quantity:` |
+| 游客购物车合并校验 | `MergeGuestCart` 失败保留 guest cart |
+| 支付重试去重 | `CheckoutController` 复用 pending payment |
+| 取消订单作废支付 | `CancelOrder#cancel_pending_payments!` |
+| 低库存含变体 | `SalesMetrics#low_stock_variant_count` |

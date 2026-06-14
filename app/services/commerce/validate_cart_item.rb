@@ -2,14 +2,17 @@
 
 module Commerce
   class ValidateCartItem < ApplicationService
-    def initialize(user:, product:, variant: nil, quantity: 1)
+    def initialize(user:, product:, variant: nil, quantity: 1, cart: nil, replace_quantity: false)
       @user = user
       @product = product
       @variant = variant
+      @cart = cart
+      @replace_quantity = replace_quantity
       @quantity = quantity.to_i
     end
 
     def call
+      @quantity = resolved_quantity
       return ServiceResult.failure(error: "Quantity must be at least 1.") if @quantity < 1
       return ServiceResult.failure(error: "Product is not available.") unless @product.active?
 
@@ -36,6 +39,18 @@ module Commerce
       end
 
       ServiceResult.success
+    end
+
+    private
+
+    def resolved_quantity
+      return @quantity if @replace_quantity || @cart.nil?
+
+      existing = @cart.items.find_by(
+        store_product_id: @product.id,
+        store_product_variant_id: @variant&.id
+      )
+      (existing&.quantity || 0) + @quantity
     end
   end
 end

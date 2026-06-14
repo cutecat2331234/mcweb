@@ -27,6 +27,7 @@ module Commerce
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_cancelled", "deliver_now", args: [ @order.id ])
 
       restore_coupon_usage!
+      cancel_pending_payments!
 
       ServiceResult.success(@order)
     rescue ActiveRecord::RecordInvalid, AASM::InvalidTransition => e
@@ -50,6 +51,10 @@ module Commerce
       return unless coupon.used_count.positive?
 
       coupon.decrement!(:used_count)
+    end
+
+    def cancel_pending_payments!
+      @order.payment_records.where(status: "pending").update_all(status: "failed", updated_at: Time.current)
     end
   end
 end

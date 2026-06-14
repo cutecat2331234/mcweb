@@ -29,6 +29,7 @@ const props = defineProps<{
     featured?: boolean
     locked?: boolean
     solved?: boolean
+    prefix?: string | null
   }>
   pagination: PaginationMeta
   sort: string
@@ -100,6 +101,7 @@ function changeFilter(value: string) {
         <TableRow v-for="topic in topics" :key="topic.id">
           <TableCell>
             <TopicTitleBadges
+              :prefix="topic.prefix"
               :pinned="topic.pinned"
               :featured="topic.featured"
               :locked="topic.locked"

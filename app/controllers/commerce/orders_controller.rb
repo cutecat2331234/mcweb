@@ -6,10 +6,12 @@ module Commerce
     before_action :set_order, only: %i[show cancel refund]
 
     def index
-      orders = Commerce::Order.where(user: current_user).includes(:items).recent
+      orders_scope = Commerce::Order.where(user: current_user).includes(:items).recent
+      @pagy, orders = pagy(orders_scope, limit: 20)
 
       render inertia: "Commerce/Orders/Index", props: {
-        orders: orders.map { |order| serialize_order_list_item(order) }
+        orders: orders.map { |order| serialize_order_list_item(order) },
+        pagination: pagy_props(@pagy)
       }
     end
 

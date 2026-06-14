@@ -144,6 +144,8 @@ Rails.application.routes.draw do
       post :preview_coupon, on: :member
     end
     post "webhooks/:provider", to: "webhooks#create", as: :webhook
+    get "preferences", to: "preferences#show"
+    patch "preferences", to: "preferences#update"
   end
 
   scope module: :website, as: :website do

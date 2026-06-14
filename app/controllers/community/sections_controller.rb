@@ -46,7 +46,7 @@ module Community
         sort: sort,
         filter: filter.to_s,
         filterOptions: topic_filter_options,
-        canCreateTopic: logged_in?
+        canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic),
       }
     end
 

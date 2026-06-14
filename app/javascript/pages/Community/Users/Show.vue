@@ -24,6 +24,7 @@ const props = defineProps<{
     bio: string | null
     trust_level: number
     trust_name: string
+    likes_received: number
     member_since: string
     topics_count: number
     posts_count: number
@@ -85,6 +86,7 @@ function saveBio() {
       <div class="mt-2 flex gap-6 text-sm">
         <span><strong>{{ profile.topics_count }}</strong> 主题</span>
         <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
+        <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
         <Button v-if="profile.message_url" as-child size="sm">

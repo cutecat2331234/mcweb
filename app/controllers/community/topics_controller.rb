@@ -2,6 +2,8 @@
 
 module Community
   class TopicsController < ApplicationController
+    include Community::TopicVisibility
+
     before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move mark_solved unsolve update_slow_mode]
     before_action :set_section, only: %i[new create]
     before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move mark_solved unsolve update_slow_mode]
@@ -27,7 +29,7 @@ module Community
         ),
         posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?, solved_post_id: @topic.solved_post_id) },
         pagination: pagy_props(@pagy),
-        canReply: logged_in? && !@topic.locked?,
+        canReply: logged_in? && !@topic.locked? && @topic.section.allowed?(current_user, :reply),
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
         sections: can_move_topic? ? movable_sections : [],
@@ -45,7 +47,8 @@ module Community
         section: {
           name: @section.name,
           slug: @section.slug,
-          url: forum_section_path(@section)
+          url: forum_section_path(@section),
+          prefixes: Array(@section.prefixes)
         }
       }
     end
@@ -60,6 +63,7 @@ module Community
         poll_question: topic_params[:poll_question],
         poll_options: parse_poll_options(topic_params[:poll_options]),
         poll_closes_days: topic_params[:poll_closes_days],
+        prefix: topic_params[:prefix],
         ip_address: request.remote_ip
       )
 
@@ -71,7 +75,8 @@ module Community
                  section: {
                    name: @section.name,
                    slug: @section.slug,
-                   url: forum_section_path(@section)
+                   url: forum_section_path(@section),
+                   prefixes: Array(@section.prefixes)
                  }
                },
                status: :unprocessable_entity,
@@ -176,10 +181,11 @@ module Community
 
     def set_topic
       @topic = Community::Topic.includes(:section, :user, :tags, :poll, :solved_post).find_by!(public_id: params[:id])
+      ensure_topic_visible!(@topic)
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days)
+      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days, :prefix)
     end
 
     def parse_poll_options(raw)
@@ -229,7 +235,7 @@ module Community
     end
 
     def can_move_topic?
-      current_user&.permission?("forum.topics.move")
+      current_user&.permission?("forum.topics.move") || current_user&.permission?("forum.topics.lock")
     end
 
     def can_edit_topic?

@@ -22,6 +22,7 @@ module Community
           bio: user.bio,
           trust_level: trust[:level],
           trust_name: trust[:name],
+          likes_received: Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count,
           member_since: l(user.created_at, format: :long),
           topics_count: topics_scope.count,
           posts_count: posts_count,

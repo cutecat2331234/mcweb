@@ -32,6 +32,7 @@ export const routes = {
   storeCheckout: '/store/checkout',
   storeOrders: '/store/orders',
   storeOrder: (id: string) => `/store/orders/${id}`,
+  storePreferences: '/store/preferences',
   signIn: '/identity/sign-in',
   register: '/identity/register',
   passwordReset: '/identity/password_resets/new',

@@ -69,6 +69,7 @@ const props = defineProps<{
     author: string | null
     locked: boolean
     pinned: boolean
+    prefix?: string | null
     hidden: boolean
     views_count: number
     watching: boolean
@@ -264,7 +265,7 @@ function pollPercent(votes: number) {
 
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
     <PageHeader
-      :title="`${topic.pinned ? '[置顶] ' : ''}${topic.title}`"
+      :title="`${topic.prefix ? `[${topic.prefix}] ` : ''}${topic.pinned ? '[置顶] ' : ''}${topic.title}`"
       :subtitle="`${topic.author ? `作者 ${topic.author}` : ''}${topic.author ? ' · ' : ''}${topic.views_count} 次浏览`"
     />
     <div class="flex flex-wrap gap-2">

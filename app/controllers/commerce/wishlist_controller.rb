@@ -14,12 +14,19 @@ module Commerce
 
       render inertia: "Commerce/Wishlist/Index", props: {
         products: items.map do |item|
-          data = serialize_product_list_item(item.product)
+          product = item.product
+          variant = item.variant
+          data = serialize_product_list_item(product)
+          if variant
+            data[:price_label] = format_money(variant.price_cents, product.currency)
+            data[:in_stock] = variant.in_stock?
+            data[:low_stock] = variant.low_stock?
+          end
           data.merge(
-            wishlist_url: wishlist_store_product_path(item.product),
-            add_to_cart_url: add_wishlist_item_to_cart_store_path(item.product.public_id),
-            saved_variant_id: item.variant&.id,
-            saved_variant_name: item.variant&.name
+            wishlist_url: wishlist_store_product_path(product),
+            add_to_cart_url: add_wishlist_item_to_cart_store_path(product.public_id),
+            saved_variant_id: variant&.id,
+            saved_variant_name: variant&.name
           )
         end,
         shareUrl: share.success? ? store_public_wishlist_url(share.value[:token]) : nil,

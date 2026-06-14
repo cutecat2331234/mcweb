@@ -54,6 +54,7 @@ module Community
           block_url: logged_in? && current_user.id != user.id ? forum_block_user_path(user.username) : nil,
           is_blocked: logged_in? && current_user.id != user.id && Community::UserBlock.exists?(blocker: current_user, blocked: user),
           is_muted: logged_in? && current_user.id == user.id && Community::Mute.muted?(user),
+          mute_info: mute_info_for(user),
           can_edit: logged_in? && current_user.id == user.id,
           is_following: logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user),
           follow_url: logged_in? && current_user.id != user.id ? forum_user_follow_path(user.username) : nil,
@@ -88,6 +89,7 @@ module Community
 
       if user.update(user_params)
         attach_forum_avatar!(user) if params[:user][:forum_avatar].present?
+        remove_forum_avatar!(user) if ActiveModel::Type::Boolean.new.cast(params.dig(:user, :remove_forum_avatar))
         redirect_to forum_user_path(user.username), notice: "资料已更新。"
       else
         redirect_to forum_user_path(user.username), alert: user.errors.full_messages.to_sentence
@@ -109,6 +111,24 @@ module Community
       return if file.size > 2.megabytes
 
       user.forum_avatar.attach(file)
+    end
+
+    def remove_forum_avatar!(user)
+      user.forum_avatar.purge if user.forum_avatar.attached?
+    end
+
+    def mute_info_for(user)
+      return nil unless logged_in? && current_user.id == user.id
+      return nil unless Community::Mute.muted?(user)
+
+      mute = Community::Mute.active.where(user: user).includes(:section).order(created_at: :desc).first
+      return nil unless mute
+
+      {
+        section: mute.section&.name || "全站",
+        reason: mute.reason,
+        expires_at: mute.expires_at ? l(mute.expires_at, format: :short) : "永久"
+      }
     end
   end
 end

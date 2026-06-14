@@ -76,6 +76,15 @@ function clearAll() {
           <td class="p-3 text-muted-foreground">浏览量</td>
           <td v-for="product in products" :key="`${product.id}-views`" class="p-3">{{ product.view_count }}</td>
         </tr>
+        <tr class="border-b">
+          <td class="p-3 text-muted-foreground">规格</td>
+          <td v-for="product in products" :key="`${product.id}-variants`" class="p-3 text-xs">
+            <div v-if="product.variants.length">
+              <div v-for="variant in product.variants" :key="variant.id">{{ variant.name }} · {{ variant.price_label }} · {{ variant.in_stock ? '有货' : '缺货' }}</div>
+            </div>
+            <span v-else>—</span>
+          </td>
+        </tr>
         <tr>
           <td class="p-3 text-muted-foreground">操作</td>
           <td v-for="product in products" :key="`${product.id}-action`" class="p-3">

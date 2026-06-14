@@ -41,6 +41,7 @@ function toggleTheme() {
             <Link v-if="auth.user" :href="routes.forumWatchedTags" class="hover:text-foreground transition-colors">关注标签</Link>
             <Link v-if="auth.user" :href="routes.forumFollowing" class="hover:text-foreground transition-colors">关注用户</Link>
             <Link v-if="auth.user" :href="routes.forumBookmarks" class="hover:text-foreground transition-colors">书签</Link>
+            <Link v-if="auth.user" :href="routes.forumBlocks" class="hover:text-foreground transition-colors">拉黑</Link>
             <Link :href="routes.forumMembers" class="hover:text-foreground transition-colors">成员</Link>
             <Link v-if="auth.user" :href="routes.forumUnread" class="hover:text-foreground transition-colors">未读</Link>
             <Link v-if="auth.user" :href="routes.forumMessages" class="hover:text-foreground transition-colors">私信</Link>
@@ -48,7 +49,10 @@ function toggleTheme() {
             <Link v-if="auth.user" :href="routes.forumDrafts" class="hover:text-foreground transition-colors">草稿</Link>
             <Link :href="routes.store" class="hover:text-foreground transition-colors">商城</Link>
             <Link v-if="auth.user" :href="routes.storeWishlist" class="hover:text-foreground transition-colors">心愿单</Link>
+            <Link v-if="auth.user" :href="routes.storeRecentlyViewed" class="hover:text-foreground transition-colors">最近浏览</Link>
+            <Link v-if="auth.user" :href="routes.storeCompare" class="hover:text-foreground transition-colors">对比</Link>
             <Link v-if="auth.user" :href="routes.storeStockAlerts" class="hover:text-foreground transition-colors">到货通知</Link>
+            <Link v-if="auth.user" :href="routes.storePreferences" class="hover:text-foreground transition-colors">商城通知</Link>
             <Link v-if="auth.user" :href="routes.storeOrders" class="hover:text-foreground transition-colors">我的订单</Link>
             <Link v-if="cart" :href="cart.url" class="hover:text-foreground transition-colors">
               购物车<span v-if="cart.count > 0" class="ml-1 text-primary">({{ cart.count }})</span>

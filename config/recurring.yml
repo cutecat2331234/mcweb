@@ -41,3 +41,7 @@ production:
     class: Community::UnpinExpiredTopicsJob
     queue: maintenance
     schedule: every hour
+  close_expired_polls:
+    class: Community::CloseExpiredPollsJob
+    queue: maintenance
+    schedule: every 15 minutes

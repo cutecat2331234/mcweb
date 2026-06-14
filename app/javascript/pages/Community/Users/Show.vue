@@ -41,6 +41,11 @@ const props = defineProps<{
     can_edit: boolean
     is_following: boolean
     follow_url: string | null
+    mute_info?: {
+      section: string
+      reason: string | null
+      expires_at: string
+    } | null
     trust_progress?: {
       level: number
       name: string
@@ -116,6 +121,13 @@ function saveBio() {
   })
 }
 
+function removeAvatar() {
+  router.post(`/forum/users/${props.profile.username}`, {
+    _method: 'patch',
+    user: { remove_forum_avatar: true },
+  }, { preserveScroll: true })
+}
+
 function uploadAvatar(event: Event) {
   const file = (event.target as HTMLInputElement).files?.[0]
   if (!file) return
@@ -139,7 +151,10 @@ function uploadAvatar(event: Event) {
     { label: profile.username, current: true },
   ]" />
 
-  <p v-if="profile.is_muted" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+  <p v-if="profile.mute_info" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    你当前被禁言（{{ profile.mute_info.section }}）{{ profile.mute_info.reason ? '：' + profile.mute_info.reason : '' }}，到期：{{ profile.mute_info.expires_at }}
+  </p>
+  <p v-else-if="profile.is_muted" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
     你当前被禁言，暂时无法发帖。
   </p>
 
@@ -211,6 +226,7 @@ function uploadAvatar(event: Event) {
         <template v-if="profile.can_edit">
           <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="uploadAvatar" />
           <Button type="button" size="sm" variant="outline" @click="avatarInput?.click()">更换头像</Button>
+          <Button type="button" size="sm" variant="outline" @click="removeAvatar">恢复默认头像</Button>
         </template>
       </div>
     </div>

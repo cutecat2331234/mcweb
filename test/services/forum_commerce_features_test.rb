@@ -264,7 +264,7 @@ class Commerce::ValidateCartItemTest < ActiveSupport::TestCase
 
     result = Commerce::ValidateCartItem.call(user: user, product: product, quantity: 2)
     assert result.failure?
-    assert_match(/stock/i, result.error)
+    assert_match(/库存/, result.error)
   end
 end
 

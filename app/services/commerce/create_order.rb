@@ -10,7 +10,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Cart is empty.") if @cart.items.empty?
+      return ServiceResult.failure(error: "购物车为空。") if @cart.items.empty?
 
       @cart.items.includes(:product, :variant).find_each do |item|
         validation = Commerce::ValidateCartItem.call(
@@ -81,7 +81,7 @@ module Commerce
       end
 
       return ServiceResult.failure(error: coupon_error) if coupon_error.present?
-      return ServiceResult.failure(error: "Unable to create order.") unless order&.persisted?
+      return ServiceResult.failure(error: "无法创建订单。") unless order&.persisted?
 
       Commerce::OrderEvent.create!(
         order: order,
@@ -97,6 +97,13 @@ module Commerce
       )
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_created", "deliver_now", args: [ order.id ])
+      Commerce::NotifyOrderEvent.call(
+        user: order.user,
+        notification_type: "commerce.order_created",
+        title: "订单已创建",
+        body: "订单 #{order.order_number} 等待支付。",
+        path: "/store/orders/#{order.public_id}"
+      )
 
       ServiceResult.success(order)
     rescue ActiveRecord::RecordInvalid => e
@@ -110,7 +117,7 @@ module Commerce
       return ServiceResult.success if target.stock.nil?
 
       target.with_lock do
-        return ServiceResult.failure(error: "Insufficient stock.") if target.stock < quantity
+        return ServiceResult.failure(error: "库存不足。") if target.stock < quantity
 
         target.update!(stock: target.stock - quantity)
       end

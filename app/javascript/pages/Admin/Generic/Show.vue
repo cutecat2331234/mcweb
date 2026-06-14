@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -46,6 +47,12 @@ export interface BanForm {
   unban_url: string
 }
 
+export interface BadgeForm {
+  action_url: string
+  badges: Array<{ slug: string; name: string }>
+  earned: string[]
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -56,8 +63,11 @@ const props = defineProps<{
   muteForm?: MuteForm | null
   banForm?: BanForm | null
   refundForm?: RefundForm | null
+  badgeForm?: BadgeForm | null
   backUrl: string
 }>()
+
+const badgeSlug = ref('')
 
 const muteForm = useForm({
   user_id: props.muteForm?.user_id || '',
@@ -97,6 +107,11 @@ function submitRefund() {
     amount_cents: refundForm.amount_cents,
     reason: refundForm.reason,
   })
+}
+
+function submitBadge() {
+  if (!props.badgeForm || !badgeSlug.value) return
+  router.post(props.badgeForm.action_url, { badge_slug: badgeSlug.value })
 }
 </script>
 
@@ -170,6 +185,19 @@ function submitRefund() {
       <Input v-model="refundForm.reason" placeholder="退款原因" />
     </div>
     <Button type="submit" size="sm" :disabled="refundForm.processing">处理退款</Button>
+  </form>
+
+  <form v-if="props.badgeForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitBadge">
+    <h2 class="text-sm font-semibold">授予徽章</h2>
+    <p v-if="props.badgeForm.earned.length" class="text-xs text-muted-foreground">已拥有：{{ props.badgeForm.earned.join('、') }}</p>
+    <div class="space-y-2">
+      <Label>选择徽章</Label>
+      <select v-model="badgeSlug" class="h-9 w-full rounded-md border px-2 text-sm" required>
+        <option value="">请选择</option>
+        <option v-for="badge in props.badgeForm.badges" :key="badge.slug" :value="badge.slug">{{ badge.name }}</option>
+      </select>
+    </div>
+    <Button type="submit" size="sm">授予</Button>
   </form>
 
   <div class="mt-6 flex flex-wrap gap-3">

@@ -11,8 +11,8 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Rating must be between 1 and 5.") unless (1..5).cover?(@rating)
-      return ServiceResult.failure(error: "Purchase required to review.") unless purchased?
+      return ServiceResult.failure(error: "评分须在 1 到 5 之间。") unless (1..5).cover?(@rating)
+      return ServiceResult.failure(error: "购买后才能评价。") unless purchased?
 
       review = Commerce::Review.find_or_initialize_by(user: @user, product: @product)
       review.assign_attributes(rating: @rating, body: @body, status: :published)
@@ -38,12 +38,12 @@ module Commerce
     end
 
     def attach_photos!(review)
-      return if @photos.blank?
+      photos = Array(@photos).select { |photo| photo.respond_to?(:content_type) }
+      return if photos.blank?
 
       review.photos.purge if review.photos.attached?
 
-      Array(@photos).first(3).each do |photo|
-        next unless photo.respond_to?(:content_type)
+      photos.first(3).each do |photo|
         next unless %w[image/jpeg image/png image/gif image/webp].include?(photo.content_type)
         next if photo.size > 2.megabytes
 

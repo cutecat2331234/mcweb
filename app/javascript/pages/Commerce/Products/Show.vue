@@ -79,6 +79,7 @@ const props = defineProps<{
   reviewUrl: string
   stockAlertUrl: string
   stockAlertVariantIds?: Array<number | null>
+  stockAlertUnsubscribeUrls?: Array<{ variant_id: number | null; unsubscribe_url: string }>
   canReview?: boolean
   canEditReview?: boolean
   userReview?: ProductReview | null
@@ -169,8 +170,13 @@ const ratingBreakdownMax = computed(() => {
 })
 
 const stockAlertSubscribed = computed(() => {
-  const variantId = selectedVariantId.value
-  return props.stockAlertVariantIds?.includes(variantId) ?? false
+  const variantId = selectedVariantId.value ?? null
+  return props.stockAlertVariantIds?.some((id) => id === variantId) ?? false
+})
+
+const stockAlertUnsubscribeUrl = computed(() => {
+  const variantId = selectedVariantId.value ?? null
+  return props.stockAlertUnsubscribeUrls?.find((entry) => entry.variant_id === variantId)?.unsubscribe_url
 })
 
 const reviewSort = ref(props.reviewSort || 'newest')
@@ -255,6 +261,19 @@ function subscribeStockAlert() {
   router.post(props.stockAlertUrl, {
     variant_id: selectedVariantId.value,
   }, { preserveScroll: true })
+}
+
+function unsubscribeStockAlert() {
+  const url = stockAlertUnsubscribeUrl.value
+  if (!url) return
+  router.delete(url, { preserveScroll: true })
+}
+
+function filterByRating(rating: number) {
+  router.get(routes.storeProduct(props.product.id), {
+    review_rating: rating,
+    review_sort: reviewSort.value !== 'newest' ? reviewSort.value : undefined,
+  }, { preserveScroll: true, preserveState: true })
 }
 
 function submitQuestion() {
@@ -398,8 +417,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
     >
       到货通知
     </Button>
-    <p v-else-if="loggedIn && !canPurchase && stockAlertSubscribed" class="self-center text-sm text-muted-foreground">
+    <p v-else-if="loggedIn && !canPurchase && stockAlertSubscribed" class="flex items-center gap-2 self-center text-sm text-muted-foreground">
       已订阅到货通知
+      <Button v-if="stockAlertUnsubscribeUrl" type="button" variant="outline" size="sm" @click="unsubscribeStockAlert">取消订阅</Button>
     </p>
     <Button as-child variant="outline">
       <Link :href="routes.store">返回商城</Link>
@@ -472,13 +492,19 @@ function submitAnswer(questionId: number, answerUrl: string) {
       </select>
     </div>
     <div v-if="ratingBreakdown?.length" class="mb-4 space-y-1">
-      <div v-for="entry in [...ratingBreakdown].sort((a, b) => b.rating - a.rating)" :key="entry.rating" class="flex items-center gap-2 text-xs">
+      <button
+        v-for="entry in [...ratingBreakdown].sort((a, b) => b.rating - a.rating)"
+        :key="entry.rating"
+        type="button"
+        class="flex w-full items-center gap-2 text-xs hover:opacity-80"
+        @click="filterByRating(entry.rating)"
+      >
         <span class="w-8">{{ entry.rating }} 星</span>
         <div class="h-2 flex-1 overflow-hidden rounded bg-muted">
           <div class="h-full bg-amber-400" :style="{ width: `${(entry.count / ratingBreakdownMax) * 100}%` }" />
         </div>
         <span class="w-8 text-muted-foreground">{{ entry.count }}</span>
-      </div>
+      </button>
     </div>
     <div v-if="userReview && !editingReview" class="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
       <div class="mb-2 flex items-center justify-between">
@@ -490,6 +516,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
         <span class="text-xs text-muted-foreground">{{ userReview.created_at }}</span>
       </div>
       <p v-if="userReview.body" class="text-sm">{{ userReview.body }}</p>
+      <div v-if="userReview.photo_urls?.length" class="mt-2 flex flex-wrap gap-2">
+        <img v-for="(url, i) in userReview.photo_urls" :key="i" :src="url" alt="" class="h-20 w-20 rounded object-cover" />
+      </div>
     </div>
     <div class="space-y-3">
       <article v-for="review in product.reviews" :key="review.id" class="rounded-lg border p-4">

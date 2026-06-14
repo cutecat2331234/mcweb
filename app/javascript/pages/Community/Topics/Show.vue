@@ -46,6 +46,12 @@ export interface PostItem {
   report_url: string | null
   bookmarked: boolean
   bookmark_url: string | null
+  bookmark?: {
+    id: number
+    update_url: string
+    note: string | null
+    remind_at_input: string | null
+  } | null
   update_url: string
 }
 
@@ -98,6 +104,7 @@ const props = defineProps<{
     tags: Array<{ name: string; slug: string; url: string }>
     tags_string: string
     section: { name: string; slug: string; url: string }
+    section_prefixes?: string[]
   }
   posts: PostItem[]
   pagination: PaginationMeta
@@ -130,6 +137,7 @@ const editReason = ref('')
 const editingTopic = ref(false)
 const editTitle = ref(props.topic.title)
 const editTags = ref(props.topic.tags_string)
+const editPrefix = ref(props.topic.prefix || '')
 
 const replyForm = useForm({
   post: {
@@ -152,6 +160,9 @@ const selectedPollOptions = ref<number[]>(props.poll?.user_vote_indices || [])
 const editingBookmark = ref(false)
 const bookmarkNote = ref(props.topicBookmark?.note || '')
 const bookmarkRemindAt = ref(props.topicBookmark?.remind_at_input || '')
+const editingPostBookmarkId = ref<number | null>(null)
+const postBookmarkNote = ref('')
+const postBookmarkRemindAt = ref('')
 
 onMounted(() => {
   const saved = localStorage.getItem(draftKey)
@@ -334,7 +345,7 @@ function mergeTopic() {
 
 function saveTopicEdit() {
   router.patch(`/forum/topics/${props.topic.id}`, {
-    topic: { title: editTitle.value, tags: editTags.value },
+    topic: { title: editTitle.value, tags: editTags.value, prefix: editPrefix.value },
   }, {
     onSuccess: () => { editingTopic.value = false },
   })
@@ -345,6 +356,30 @@ function hasReacted(post: PostItem, emoji: string) {
 }
 
 function togglePostBookmark(post: PostItem) {
+  if (!post.bookmark_url) return
+  if (post.bookmarked && post.bookmark) {
+    editingPostBookmarkId.value = post.id
+    postBookmarkNote.value = post.bookmark.note || ''
+    postBookmarkRemindAt.value = post.bookmark.remind_at_input || ''
+    return
+  }
+  router.post(post.bookmark_url, {}, { preserveScroll: true })
+}
+
+function savePostBookmark(post: PostItem) {
+  if (!post.bookmark?.update_url) return
+  router.patch(post.bookmark.update_url, {
+    bookmark: {
+      note: postBookmarkNote.value,
+      remind_at: postBookmarkRemindAt.value || null,
+    },
+  }, {
+    preserveScroll: true,
+    onSuccess: () => { editingPostBookmarkId.value = null },
+  })
+}
+
+function removePostBookmark(post: PostItem) {
   if (!post.bookmark_url) return
   router.post(post.bookmark_url, {}, { preserveScroll: true })
 }
@@ -461,6 +496,13 @@ function pollPercent(votes: number) {
 
   <div v-if="editingTopic" class="mb-4 max-w-xl space-y-3 rounded-lg border p-4">
     <Input v-model="editTitle" placeholder="主题标题" />
+    <div v-if="topic.section_prefixes?.length" class="space-y-1">
+      <label class="text-sm">前缀</label>
+      <select v-model="editPrefix" class="h-9 w-full rounded-md border px-2 text-sm">
+        <option value="">无前缀</option>
+        <option v-for="p in topic.section_prefixes" :key="p" :value="p">{{ p }}</option>
+      </select>
+    </div>
     <Input v-model="editTags" placeholder="标签（逗号分隔，最多5个）" />
     <div class="flex gap-2">
       <Button type="button" size="sm" @click="saveTopicEdit">保存</Button>
@@ -641,8 +683,9 @@ function pollPercent(votes: number) {
               <button type="button" class="text-xs hover:underline" @click="copyPermalink(post)">复制链接</button>
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">回复</button>
               <button v-if="post.bookmark_url" type="button" class="text-xs hover:underline" @click="togglePostBookmark(post)">
-                {{ post.bookmarked ? '移除书签' : '书签' }}
+                {{ post.bookmarked ? '编辑书签' : '书签' }}
               </button>
+              <button v-if="post.bookmarked && post.bookmark_url" type="button" class="text-xs hover:underline" @click="removePostBookmark(post)">移除书签</button>
               <button v-if="canMarkSolved && !post.is_solved" type="button" class="text-xs text-green-600 hover:underline" @click="markSolved(post)">标为已解决</button>
               <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">举报</Link>
               <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
@@ -659,6 +702,15 @@ function pollPercent(votes: number) {
               {{ post.quoted_post.excerpt }}
             </a>
           </blockquote>
+
+          <div v-if="editingPostBookmarkId === post.id && post.bookmark" class="mt-2 space-y-2 rounded border bg-muted/30 p-3">
+            <textarea v-model="postBookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="书签备注" />
+            <input v-model="postBookmarkRemindAt" type="datetime-local" class="h-8 w-full rounded-md border px-2 text-sm" />
+            <div class="flex gap-2">
+              <Button type="button" size="sm" @click="savePostBookmark(post)">保存</Button>
+              <Button type="button" size="sm" variant="outline" @click="editingPostBookmarkId = null">取消</Button>
+            </div>
+          </div>
 
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
             <MarkdownEditor v-model="editBody" :rows="6" />

@@ -47,7 +47,15 @@ module Commerce
 
       Commerce::FulfillOrderJob.perform_later(order_id) if newly_paid && order_id
       if newly_paid && order_id
+        order = Commerce::Order.find(order_id)
         MailDeliveryJob.perform_later("Commerce::OrderMailer", "payment_confirmed", "deliver_now", args: [ order_id ])
+        Commerce::NotifyOrderEvent.call(
+          user: order.user,
+          notification_type: "commerce.payment_confirmed",
+          title: "支付成功",
+          body: "订单 #{order.order_number} 已支付成功。",
+          path: "/store/orders/#{order.public_id}"
+        )
       end
 
       ServiceResult.success(record: @payment_record.reload, idempotent: false, newly_paid: newly_paid)

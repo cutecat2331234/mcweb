@@ -8,7 +8,7 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const props = defineProps<{
   products: Array<{
     id: string
     name: string
@@ -18,7 +18,13 @@ defineProps<{
     average_rating?: number | null
     in_stock?: boolean
   }>
+  clearUrl?: string
 }>()
+
+function clearHistory() {
+  if (!props.clearUrl) return
+  router.delete(props.clearUrl)
+}
 </script>
 
 <template>
@@ -29,6 +35,8 @@ defineProps<{
   ]" />
 
   <PageHeader title="最近浏览" subtitle="你最近查看过的商品" />
+
+  <Button v-if="clearUrl && products.length" type="button" variant="outline" size="sm" class="mb-4" @click="clearHistory">清空浏览记录</Button>
 
   <div v-if="products.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <Link

@@ -13,16 +13,16 @@ module Commerce
 
     def call
       @quantity = resolved_quantity
-      return ServiceResult.failure(error: "Quantity must be at least 1.") if @quantity < 1
-      return ServiceResult.failure(error: "Product is not available.") unless @product.active?
+      return ServiceResult.failure(error: "数量至少为 1。") if @quantity < 1
+      return ServiceResult.failure(error: "商品已下架。") unless @product.active?
 
       if @product.variants.exists? && @variant.nil?
-        return ServiceResult.failure(error: "Please select a variant.")
+        return ServiceResult.failure(error: "请选择规格。")
       end
 
       purchasable = @variant || @product
       if purchasable.stock.present? && purchasable.stock < @quantity
-        return ServiceResult.failure(error: "Insufficient stock.")
+        return ServiceResult.failure(error: "库存不足。")
       end
 
       if @product.purchase_limit.present? && @user
@@ -34,7 +34,7 @@ module Commerce
           .sum(:quantity)
 
         if purchased + @quantity > @product.purchase_limit
-          return ServiceResult.failure(error: "Purchase limit exceeded for this product.")
+          return ServiceResult.failure(error: "已超过该商品的限购数量。")
         end
       end
 

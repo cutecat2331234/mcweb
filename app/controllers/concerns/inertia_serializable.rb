@@ -114,7 +114,7 @@ module InertiaSerializable
     }
   end
 
-  def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil)
+  def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil, post_bookmark: nil)
     formatted = Community::FormatPostBody.call(body: post.body)
     body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(post.body)
     reaction_counts = post.reactions.group(:emoji).count
@@ -126,7 +126,15 @@ module InertiaSerializable
                      else
                        []
                      end
-    bookmarked = current_user && Community::Bookmark.exists?(user: current_user, post: post)
+    bookmarked = post_bookmark.present? || (current_user && Community::Bookmark.exists?(user: current_user, post: post))
+    bookmark_meta = if post_bookmark
+                      {
+                        id: post_bookmark.id,
+                        update_url: forum_bookmark_path(post_bookmark),
+                        note: post_bookmark.note,
+                        remind_at_input: post_bookmark.remind_at&.strftime("%Y-%m-%dT%H:%M")
+                      }
+                    end
 
     signature_html = nil
     if post.user.forum_signature.present?
@@ -161,6 +169,7 @@ module InertiaSerializable
       can_moderate: can_moderate,
       bookmarked: bookmarked,
       bookmark_url: current_user ? bookmark_forum_post_path(post) : nil,
+      bookmark: bookmark_meta,
       hidden: post.status == "hidden",
       report_url: current_user ? new_forum_report_path(reportable_type: "Community::Post", reportable_id: post.id) : nil,
       update_url: forum_post_path(post)
@@ -542,6 +551,11 @@ module InertiaSerializable
     return nil if status.blank?
 
     FULFILLMENT_STATUS_LABELS[status.to_s] || status.to_s.humanize
+  end
+
+  def compare_product_count
+    ids = Array(session[:compare_product_ids])
+    Commerce::Product.available.where(public_id: ids).count
   end
 
   def format_price(product)

@@ -450,3 +450,26 @@ app/
 | 商品对比（Session） | `ToggleCompare` + `Compare/Show.vue` |
 | 评分分布图 | `ratingBreakdown` on product show |
 | 商城站内通知 | Q&A 回复 / 到货补货 in_app 渠道 |
+
+### 第二十三轮（论坛 / 商城精细化与 Bug 修复）
+
+| 功能 | 实现 |
+|------|------|
+| 投票过期维护任务 | `CloseExpiredPollsJob` + `recurring.yml` |
+| 预览审查词过滤 | `PreviewsController` 接入 `FilterCensoredWords` |
+| 帖子书签内联编辑 | `serialize_post` bookmark 元数据 + `Topics/Show.vue` |
+| 编辑主题前缀 | `EditTopic` + 主题编辑 UI |
+| 移除自定义头像 | `remove_forum_avatar` + 资料页按钮 |
+| 拉黑用户列表 | `BlocksController#index` + `/forum/blocks` |
+| 禁言详情展示 | `mute_info` on 个人资料页 |
+| 后台手动授徽章 | `Admin::UsersController#grant_badge` |
+| 评价编辑保留图片 | `CreateReview` 无新图时不 purge |
+| 心愿单规格价格库存 | `WishlistController` variant-aware 序列化 |
+| 对比列表计数修复 | `compare_product_count` 仅统计在售商品 |
+| 商品页取消到货通知 | `stockAlertUnsubscribeUrls` + 取消按钮 |
+| 评分分布可点击筛选 | `Products/Show.vue` 点击星级 |
+| 订单站内通知 | `NotifyOrderEvent` 创建/支付成功 |
+| 商城错误信息中文化 | `ValidateCartItem` / `CreateReview` 等 |
+| 导航补全 | 最近浏览 / 对比 / 商城通知 / 拉黑 |
+| 清空浏览记录 | `products#clear_recently_viewed` |
+| 对比页规格行 | `Compare/Show.vue` variants 展示 |

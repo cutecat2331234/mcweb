@@ -27,6 +27,7 @@ Rails.application.routes.draw do
       member do
         post :ban
         post :unban
+        post :grant_badge
       end
     end
     resources :roles, only: %i[index show]
@@ -86,6 +87,7 @@ Rails.application.routes.draw do
         post :publish
       end
     end
+    get "blocks", to: "blocks#index", as: :blocks
     post "users/:username/block", to: "blocks#create", as: :block_user
     post "users/:username/follow", to: "follows#create", as: :user_follow
     resources :polls, only: [] do
@@ -164,6 +166,7 @@ Rails.application.routes.draw do
     resources :products, only: %i[index show] do
       collection do
         get :recently_viewed
+        delete :clear_recently_viewed
       end
       member do
         post :wishlist, to: "wishlist#toggle"

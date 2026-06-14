@@ -130,7 +130,7 @@ class Commerce::CartAccumulationTest < ActiveSupport::TestCase
       cart: @cart
     )
     assert result.failure?
-    assert_includes result.error, "stock"
+    assert_includes result.error, "库存"
   end
 end
 

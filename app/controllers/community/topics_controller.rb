@@ -33,6 +33,11 @@ module Community
       topic_bookmark = if logged_in?
                          Community::Bookmark.find_by(user: current_user, topic: @topic, forum_post_id: nil)
                        end
+      post_bookmarks = if logged_in?
+                         Community::Bookmark.where(user: current_user, forum_post_id: posts.map(&:id)).index_by(&:forum_post_id)
+                       else
+                         {}
+                       end
 
       render inertia: "Community/Topics/Show", props: {
         topic: serialize_topic_detail(
@@ -42,8 +47,18 @@ module Community
           can_moderate: can_moderate_topic?,
           can_move: can_move_topic?,
           can_edit: can_edit_topic?
+        ).merge(
+          section_prefixes: Array(@topic.section.prefixes)
         ),
-        posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?, solved_post_id: @topic.solved_post_id) },
+        posts: posts.map do |post|
+          serialize_post(
+            post,
+            current_user: current_user,
+            can_moderate: can_moderate_topic?,
+            solved_post_id: @topic.solved_post_id,
+            post_bookmark: post_bookmarks[post.id]
+          )
+        end,
         pagination: pagy_props(@pagy),
         lastReadFloor: last_read_floor,
         firstUnreadFloor: first_unread_floor,
@@ -136,7 +151,8 @@ module Community
         user: current_user,
         topic: @topic,
         title: topic_params[:title],
-        tag_names: topic_params[:tags]
+        tag_names: topic_params[:tags],
+        prefix: topic_params[:prefix]
       )
 
       if result.success?
@@ -266,7 +282,7 @@ module Community
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days, :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :prefix, :scheduled_at)
+      params.require(:topic).permit(:title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days, :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :scheduled_at)
     end
 
     def section_props

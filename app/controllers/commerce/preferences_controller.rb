@@ -7,6 +7,8 @@ module Commerce
     NOTIFICATION_TYPES = %w[
       commerce.order_created
       commerce.payment_confirmed
+      commerce.order_processing
+      commerce.order_fulfilling
       commerce.order_fulfilled
       commerce.order_cancelled
       commerce.refund_requested
@@ -56,6 +58,8 @@ module Commerce
       {
         "commerce.order_created" => "订单确认",
         "commerce.payment_confirmed" => "支付成功",
+        "commerce.order_processing" => "订单处理中",
+        "commerce.order_fulfilling" => "发货处理中",
         "commerce.order_fulfilled" => "发货完成",
         "commerce.order_cancelled" => "订单取消",
         "commerce.refund_requested" => "退款申请提交",

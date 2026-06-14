@@ -492,3 +492,18 @@ app/
 | 订单列表再次购买 | `serialize_order_list_item` + `Orders/Index.vue` |
 | 下载链接刷新 | `orders#refresh_download` + 订单详情按钮 |
 | 商城退款申请偏好 | `commerce.refund_requested` 通知类型 |
+
+### 第二十五轮（论坛 / 商城体验细化与 Bug 修复）
+
+| 功能 | 实现 |
+|------|------|
+| 草稿编辑投票/前缀 | `Drafts/Edit.vue` + `drafts#update` 传递 poll 参数 |
+| 草稿列表投票标识 | `has_poll` badge on `Drafts/Index` |
+| 未读按数量排序 | `TopicListSortable` `unread` 排序 |
+| 活动流主题 Tab | `ActivityController` tab=posts/topics |
+| 关注标签主题流 | `watched#tag_topics` + `Watched/TagTopics.vue` |
+| 订单处理中通知 | `FulfillOrderJob` → `commerce.order_processing` |
+| 订单发货中通知 | `FulfillOrderJob` → `commerce.order_fulfilling` |
+| 购物车更新重置弃购提醒 | `Cart#reset_abandoned_reminder!` |
+| 评价编辑保留图片提示 | `Products/Show.vue` 现有图片预览 |
+| 评价图片可点击放大 | 评价列表图片链至原图 |

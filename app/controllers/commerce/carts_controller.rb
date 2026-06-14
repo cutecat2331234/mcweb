@@ -81,6 +81,7 @@ module Commerce
         else
           item.destroy!
         end
+        @cart.reset_abandoned_reminder!
       end
 
       redirect_to store_cart_path, notice: "购物车已更新。"

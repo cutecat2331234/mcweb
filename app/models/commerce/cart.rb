@@ -14,6 +14,7 @@ module Commerce
       )
       item.quantity = (item.persisted? ? item.quantity : 0) + quantity
       item.save!
+      reset_abandoned_reminder!
       item
     end
 
@@ -26,6 +27,10 @@ module Commerce
 
     def empty?
       items.none?
+    end
+
+    def reset_abandoned_reminder!
+      update_column(:abandoned_reminder_sent_at, nil) if abandoned_reminder_sent_at.present?
     end
 
     private

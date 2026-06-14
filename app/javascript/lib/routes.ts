@@ -11,6 +11,7 @@ export const routes = {
   forumSearch: '/forum/search',
   forumWatching: '/forum/watching',
   forumWatchedTags: '/forum/watching/tags',
+  forumWatchedTagTopics: '/forum/watching/tag-topics',
   forumBookmarks: '/forum/bookmarks',
   forumBlocks: '/forum/blocks',
   forumMembers: '/forum/members',

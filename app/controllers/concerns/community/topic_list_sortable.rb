@@ -18,6 +18,16 @@ module Community
         scope.reorder("forum_topics.pinned DESC, forum_topics.replies_count DESC, forum_topics.last_posted_at DESC")
       when "newest"
         scope.reorder("forum_topics.pinned DESC, forum_topics.created_at DESC")
+      when "unread"
+        scope.reorder(Arel.sql(<<~SQL.squish))
+          (
+            SELECT COUNT(*) FROM forum_posts
+            WHERE forum_posts.forum_topic_id = forum_read_states.forum_topic_id
+              AND forum_posts.status = 'published'
+              AND forum_posts.floor_number > forum_read_states.last_read_floor
+          ) DESC,
+          forum_topics.last_posted_at DESC
+        SQL
       else
         scope.reorder("forum_topics.pinned DESC, forum_topics.last_posted_at DESC")
       end

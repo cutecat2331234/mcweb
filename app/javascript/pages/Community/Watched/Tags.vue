@@ -16,6 +16,7 @@ defineProps<{
     url: string
     subscription_url: string
   }>
+  tagTopicsUrl: string
 }>()
 
 function unsubscribe(url: string) {
@@ -30,7 +31,12 @@ function unsubscribe(url: string) {
     { label: '关注标签', current: true },
   ]" />
 
-  <PageHeader title="关注的标签" subtitle="有新主题使用这些标签时会通知你" />
+  <div class="mb-4 flex items-center justify-between gap-3">
+    <PageHeader title="关注的标签" subtitle="有新主题使用这些标签时会通知你" />
+    <Button as-child variant="outline" size="sm">
+      <Link :href="tagTopicsUrl">标签主题流</Link>
+    </Button>
+  </div>
 
   <div v-if="tags.length" class="space-y-3">
     <div v-for="tag in tags" :key="tag.slug" class="flex items-start justify-between gap-3 rounded-lg border p-4">

@@ -44,6 +44,7 @@ module Community
     def forum_sort_options
       [
         { value: "latest", label: "最新回复" },
+        { value: "unread", label: "未读最多" },
         { value: "hot", label: "热门" },
         { value: "replies", label: "回复最多" },
         { value: "newest", label: "最新发布" }

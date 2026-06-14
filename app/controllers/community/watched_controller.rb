@@ -48,7 +48,34 @@ module Community
             url: forum_tag_path(tag.slug),
             subscription_url: forum_tag_subscription_path(tag.slug)
           }
-        end
+        end,
+        tagTopicsUrl: forum_watched_tag_topics_path
+      }
+    end
+
+    def tag_topics
+      sort = params[:sort].presence || "latest"
+      tag_ids = Community::Subscription
+        .where(user: current_user, subscribable_type: "Community::Tag")
+        .pluck(:subscribable_id)
+
+      topic_ids = Community::TopicTag.where(forum_tag_id: tag_ids).distinct.pluck(:forum_topic_id)
+      topics_scope = Community::Topic
+        .where(id: topic_ids, status: :published)
+        .includes(:user, :section, :tags)
+      topics_scope = filter_blocked_topics(topics_scope)
+      topics_scope = apply_forum_topic_sort(topics_scope, sort)
+      @pagy, topics = pagy(topics_scope, limit: 20)
+
+      read_states = Community::ReadState
+        .where(user: current_user, forum_topic_id: topics.map(&:id))
+        .index_by(&:forum_topic_id)
+
+      render inertia: "Community/Watched/TagTopics", props: {
+        topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
+        pagination: pagy_props(@pagy),
+        sort: sort,
+        sortOptions: forum_sort_options
       }
     end
 

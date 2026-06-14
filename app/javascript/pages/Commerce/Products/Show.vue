@@ -131,6 +131,7 @@ const reviewForm = useForm<{
   review: { rating: 5, body: '', photos: [] },
 })
 const editingReview = ref(false)
+const existingReviewPhotos = ref<string[]>([])
 
 function onReviewPhotosChange(event: Event) {
   const input = event.target as HTMLInputElement
@@ -231,6 +232,7 @@ function startEditReview() {
   if (!props.userReview) return
   reviewForm.review.rating = props.userReview.rating
   reviewForm.review.body = props.userReview.body || ''
+  existingReviewPhotos.value = props.userReview.photo_urls || []
   editingReview.value = true
 }
 
@@ -251,6 +253,7 @@ function submitReview() {
     onSuccess: () => {
       reviewForm.review.body = ''
       reviewForm.review.photos = []
+      existingReviewPhotos.value = []
       editingReview.value = false
     },
   })
@@ -531,7 +534,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
         </div>
         <p v-if="review.body" class="text-sm">{{ review.body }}</p>
         <div v-if="review.photo_urls?.length" class="mt-2 flex flex-wrap gap-2">
-          <img v-for="(url, i) in review.photo_urls" :key="i" :src="url" alt="" class="h-20 w-20 rounded object-cover" />
+          <a v-for="(url, i) in review.photo_urls" :key="i" :href="url" target="_blank" rel="noopener">
+            <img :src="url" alt="" class="h-20 w-20 rounded object-cover ring-1 ring-border hover:opacity-90" />
+          </a>
         </div>
         <div class="mt-2 flex items-center justify-between gap-2">
           <p class="text-xs text-muted-foreground">{{ review.created_at }}</p>
@@ -570,6 +575,14 @@ function submitAnswer(questionId: number, answerUrl: string) {
         </select>
       </div>
       <Textarea v-model="reviewForm.review.body" rows="4" placeholder="分享你的使用体验（可选）" />
+      <div v-if="existingReviewPhotos.length" class="space-y-2">
+        <Label>当前图片（不上传新图则保留）</Label>
+        <div class="flex flex-wrap gap-2">
+          <a v-for="(url, i) in existingReviewPhotos" :key="i" :href="url" target="_blank" rel="noopener">
+            <img :src="url" alt="" class="h-20 w-20 rounded object-cover ring-1 ring-border" />
+          </a>
+        </div>
+      </div>
       <div class="space-y-2">
         <Label for="review_photos">图片（最多 3 张）</Label>
         <Input id="review_photos" type="file" accept="image/*" multiple @change="onReviewPhotosChange" />

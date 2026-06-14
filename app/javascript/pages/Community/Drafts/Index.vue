@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
@@ -24,6 +25,7 @@ defineProps<{
     section_url: string
     updated_at: string
     scheduled_at: string | null
+    has_poll?: boolean
     edit_url: string
   }>
 }>()
@@ -63,7 +65,10 @@ function deleteDraft(id: string) {
           <TableCell>
             <Link :href="draft.section_url" class="hover:underline">{{ draft.section_name }}</Link>
           </TableCell>
-          <TableCell>{{ draft.scheduled_at || '—' }}</TableCell>
+          <TableCell>
+            {{ draft.scheduled_at || '—' }}
+            <Badge v-if="draft.has_poll" variant="secondary" class="ml-1">投票</Badge>
+          </TableCell>
           <TableCell>{{ draft.updated_at }}</TableCell>
           <TableCell class="text-right">
             <Button as-child variant="outline" size="sm">

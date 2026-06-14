@@ -53,8 +53,8 @@ module Minecraft
           completed_at: Time.current
         )
 
-        if task.store_fulfillment
-          task.store_fulfillment.update!(
+        if task.fulfillment
+          task.fulfillment.update!(
             status: "fulfilled",
             fulfilled_at: Time.current,
             last_error: nil

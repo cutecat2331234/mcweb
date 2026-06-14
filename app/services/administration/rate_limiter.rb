@@ -14,7 +14,7 @@ module Administration
         reset_counter_if_expired!(counter)
 
         if counter.count >= @limit
-          return ServiceResult.failure(error: "Rate limit exceeded.", value: { retry_after: retry_after(counter) })
+          return ServiceResult.failure(error: "Rate limit exceeded.")
         end
 
         counter.count += 1

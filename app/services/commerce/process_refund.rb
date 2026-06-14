@@ -12,7 +12,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Payment is not refundable.") unless @payment_record.status == "paid"
+      return ServiceResult.failure(error: "Payment is not refundable.") unless @payment_record.status == "succeeded"
       return ServiceResult.failure(error: "Refund amount exceeds payment amount.") if @amount_cents > @payment_record.amount_cents
 
       refund = nil
@@ -31,11 +31,10 @@ module Commerce
         result = provider.process_refund(refund)
 
         if result.success?
-          refund.update!(status: "completed")
-          @payment_record.update!(status: "refunded") if full_refund?
+          refund.update!(status: "completed") unless refund.completed?
           @order.update!(status: "refunded") if full_refund?
         else
-          refund.update!(status: "failed")
+          refund.update!(status: "rejected")
           return result
         end
       end

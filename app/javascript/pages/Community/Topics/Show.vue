@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch, onMounted } from 'vue'
+import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -118,6 +118,7 @@ const props = defineProps<{
     linked_product_name?: string
     linked_product_url?: string
     bump_cooldown_remaining_seconds?: number | null
+    slow_mode_remaining_seconds?: number | null
   }
   posts: PostItem[]
   pagination: PaginationMeta
@@ -173,6 +174,9 @@ const splitSectionSlug = ref('')
 const showPollVoters = ref(false)
 const pollVoters = ref<Array<{ label: string; index: number; voters: string[] }>>([])
 const slowModeSeconds = ref(props.topic.slow_mode_seconds || 0)
+const slowModeRemaining = ref(props.topic.slow_mode_remaining_seconds || 0)
+const effectiveCanReply = computed(() => props.canReply && slowModeRemaining.value <= 0)
+let slowModeTimer: ReturnType<typeof setInterval> | null = null
 const autoCloseAt = ref('')
 const draftKey = `forum-reply-draft-${props.topic.id}`
 const topicSearch = ref(props.topicSearchQuery || '')
@@ -207,6 +211,15 @@ onMounted(() => {
       document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 100)
   }
+  if (slowModeRemaining.value > 0) {
+    slowModeTimer = setInterval(() => {
+      if (slowModeRemaining.value > 0) slowModeRemaining.value -= 1
+    }, 1000)
+  }
+})
+
+onUnmounted(() => {
+  if (slowModeTimer) clearInterval(slowModeTimer)
 })
 
 watch(() => replyForm.post.body, (body) => {
@@ -780,7 +793,12 @@ function pollPercent(votes: number) {
     <button v-if="canMarkSolved" type="button" class="ml-2 underline" @click="unsolveTopic">取消已解决</button>
   </p>
   <p v-if="topic.slow_mode_seconds" class="mb-4 rounded-md border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900">
+  <template v-if="slowModeRemaining > 0">
+    慢速模式冷却中，请等待 {{ slowModeRemaining }} 秒后再回复。
+  </template>
+  <template v-else>
     慢速模式：同一用户需间隔 {{ topic.slow_mode_seconds }} 秒才能再次回复。
+  </template>
   </p>
   <p v-if="topic.auto_close_at" class="mb-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
     将于 {{ topic.auto_close_at }} 自动关闭。
@@ -833,11 +851,11 @@ function pollPercent(votes: number) {
               <span v-if="post.hidden" class="ml-2 text-amber-600">[已隐藏]</span>
             </div>
             <div class="flex gap-2">
-              <button v-if="canReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
+              <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
               <button type="button" class="text-xs hover:underline" @click="copyPermalink(post)">
                 {{ copiedPostId === post.id ? '已复制' : '复制链接' }}
               </button>
-              <button v-if="canReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">回复</button>
+              <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">回复</button>
               <a v-if="post.raw_url" :href="post.raw_url" target="_blank" rel="noopener" class="text-xs hover:underline">原文</a>
               <button v-if="post.bookmark_url" type="button" class="text-xs hover:underline" @click="togglePostBookmark(post)">
                 {{ post.bookmarked ? '编辑书签' : '书签' }}
@@ -945,7 +963,7 @@ function pollPercent(votes: number) {
 
   <Pagination :pagination="pagination" :base-path="routes.forumTopic(topic.id)" />
 
-  <section v-if="canReply" id="reply-form" class="mt-8 max-w-2xl">
+  <section v-if="effectiveCanReply" id="reply-form" class="mt-8 max-w-2xl">
     <h2 class="mb-3 text-sm font-semibold">回复</h2>
     <div v-if="replyPreview" class="mb-3 rounded-md border bg-muted/40 p-3 text-sm">
       <div class="flex items-start justify-between gap-2">

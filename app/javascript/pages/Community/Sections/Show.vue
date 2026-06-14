@@ -26,6 +26,8 @@ const props = defineProps<{
     mark_all_read_url?: string | null
     rss_url: string
     required_tags?: Array<{ name: string; slug: string; url: string }>
+    allowed_tags?: Array<{ name: string; slug: string; url: string }>
+    prefix_required?: boolean
   }
   featuredTopics: TopicItem[]
   topics: TopicItem[]
@@ -98,6 +100,15 @@ function markAllRead() {
     <template v-for="(tag, index) in section.required_tags" :key="tag.slug">
       <Link :href="tag.url" class="font-medium underline">{{ tag.name }}</Link><span v-if="index < section.required_tags.length - 1">、</span>
     </template>
+  </p>
+  <p v-if="section.allowed_tags?.length" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950 dark:text-blue-100">
+    此分区仅允许标签：
+    <template v-for="(tag, index) in section.allowed_tags" :key="`allowed-${tag.slug}`">
+      <Link :href="tag.url" class="font-medium underline">{{ tag.name }}</Link><span v-if="index < section.allowed_tags.length - 1">、</span>
+    </template>
+  </p>
+  <p v-if="section.prefix_required" class="mb-4 rounded-md border border-violet-200 bg-violet-50 px-3 py-2 text-sm text-violet-900">
+    发帖时必须选择主题前缀。
   </p>
 
   <div class="mb-4 flex flex-wrap items-center gap-4">

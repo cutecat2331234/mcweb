@@ -29,6 +29,15 @@ module Community
         return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
       end
 
+      if Array(@section.required_tag_ids).map(&:to_i).reject(&:zero?).any? && @tag_names.blank?
+        names = @section.required_tags.pluck(:name).join("、")
+        return ServiceResult.failure(error: "此分区要求至少包含以下标签之一：#{names.presence || '指定标签'}")
+      end
+
+      if @section.prefix_required? && @prefix.blank?
+        return ServiceResult.failure(error: "此分区要求选择主题前缀。")
+      end
+
       topic = nil
       tag_result = nil
       poll_result = nil

@@ -643,3 +643,17 @@ app/
 | 复制帖子链接反馈 | `Topics/Show.vue` 复制后显示「已复制」 |
 | 订单处理/发货/完成邮件 | `OrderMailer#order_processing/fulfilling/completed` |
 | 反应通知忽略过滤确认 | `NotifyPostReaction` 已接入 `FilterNotificationRecipients` |
+
+### 第三十五轮（XenForo 规则补全与通知邮件）
+
+| 功能 | 实现 |
+|------|------|
+| 草稿/定时发布必填标签校验 | `PublishTopicDraft` / `PublishScheduledTopic` / `ScheduleTopic` |
+| 分区标签白名单 | `allowed_tag_ids` + `SyncTopicTags` 校验 |
+| 主题前缀必填 | `prefix_required` + `CreateTopic` 校验 |
+| 列表 UI 补全 | 搜索/动态/用户资料接入 `TopicListTable` |
+| 用户资料 Onebox | `FetchUserOnebox` + `FormatPostBody` |
+| 慢速模式倒计时 UI | `slow_mode_remaining_seconds` + 回复表单禁用 |
+| 图片上传信任等级 | `TrustLevel.can_upload_images?` + 前端提示 |
+| 书签提醒邮件 | `ForumMailer#bookmark_reminder` |
+| 降价/退款申请邮件 | `OrderMailer#price_drop` / `#refund_requested` |

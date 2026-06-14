@@ -33,6 +33,12 @@ module Community
       level_for(user) >= 1
     end
 
+    def self.can_upload_images?(user)
+      return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
+
+      level_for(user) >= 1
+    end
+
     def self.contains_link?(text)
       text.to_s.match?(/https?:\/\//i)
     end
@@ -53,7 +59,8 @@ module Community
         next_level_name: next_entry&.dig(:name),
         posts_needed: posts_needed,
         can_send_pm: can_send_pm?(user),
-        can_post_links: can_post_links?(user)
+        can_post_links: can_post_links?(user),
+        can_upload_images: can_upload_images?(user)
       }
     end
   end

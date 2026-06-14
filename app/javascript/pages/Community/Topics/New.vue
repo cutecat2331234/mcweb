@@ -14,7 +14,7 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  section: { name: string; slug: string; url: string; prefixes?: string[]; required_tags?: Array<{ name: string; slug: string; url: string }> }
+  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; required_tags?: Array<{ name: string; slug: string; url: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }> }
 }>()
 
 const form = useForm({
@@ -76,9 +76,9 @@ function saveDraft() {
       <p v-if="form.errors.title" class="text-sm text-destructive">{{ form.errors.title }}</p>
     </div>
     <div v-if="section.prefixes?.length" class="space-y-2">
-      <Label for="prefix">主题前缀</Label>
-      <select id="prefix" v-model="form.topic.prefix" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option value="">无前缀</option>
+      <Label for="prefix">主题前缀{{ section.prefix_required ? '（必选）' : '' }}</Label>
+      <select id="prefix" v-model="form.topic.prefix" class="h-9 w-full rounded-md border px-2 text-sm" :required="section.prefix_required">
+        <option v-if="!section.prefix_required" value="">无前缀</option>
         <option v-for="p in section.prefixes" :key="p" :value="p">{{ p }}</option>
       </select>
     </div>
@@ -94,6 +94,12 @@ function saveDraft() {
         此分区要求至少包含以下标签之一：
         <template v-for="(tag, index) in section.required_tags" :key="tag.slug">
           <Link :href="tag.url" class="underline">{{ tag.name }}</Link><span v-if="index < section.required_tags.length - 1">、</span>
+        </template>
+      </p>
+      <p v-if="section.allowed_tags?.length" class="text-xs text-muted-foreground">
+        此分区仅允许使用：
+        <template v-for="(tag, index) in section.allowed_tags" :key="`allowed-${tag.slug}`">
+          <Link :href="tag.url" class="underline">{{ tag.name }}</Link><span v-if="index < section.allowed_tags.length - 1">、</span>
         </template>
       </p>
     </div>

@@ -23,6 +23,8 @@ const props = defineProps<{
     create_topic_roles: string
     reply_roles: string
     required_tag_ids: number[]
+    allowed_tag_ids: number[]
+    prefix_required: boolean
   }
   tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
@@ -32,10 +34,26 @@ const props = defineProps<{
   backUrl: string
 }>()
 
-const form = useForm({ section: { ...props.section, required_tag_ids: [ ...props.section.required_tag_ids ] } })
+const form = useForm({
+  section: {
+    ...props.section,
+    required_tag_ids: [ ...props.section.required_tag_ids ],
+    allowed_tag_ids: [ ...props.section.allowed_tag_ids ],
+  },
+})
 
 function toggleRequiredTag(tagId: number) {
   const ids = form.section.required_tag_ids
+  const index = ids.indexOf(tagId)
+  if (index >= 0) {
+    ids.splice(index, 1)
+  } else {
+    ids.push(tagId)
+  }
+}
+
+function toggleAllowedTag(tagId: number) {
+  const ids = form.section.allowed_tag_ids
   const index = ids.indexOf(tagId)
   if (index >= 0) {
     ids.splice(index, 1)
@@ -98,6 +116,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="prefixes">主题前缀（每行一个，如：公告、求助）</Label>
       <Textarea id="prefixes" v-model="form.section.prefixes" rows="3" placeholder="公告&#10;求助&#10;分享" />
+      <label class="flex items-center gap-2 text-sm">
+        <input v-model="form.section.prefix_required" type="checkbox" class="h-4 w-4" />
+        发帖时必须选择前缀
+      </label>
     </div>
     <div v-if="tags.length" class="space-y-2">
       <Label>必填标签（发帖时至少选一个，XenForo 风格）</Label>
@@ -113,6 +135,21 @@ function submit() {
         </label>
       </div>
       <p class="text-xs text-muted-foreground">勾选后，用户在此分区发帖必须包含至少一个所选标签。</p>
+    </div>
+    <div v-if="tags.length" class="space-y-2">
+      <Label>允许标签（白名单，空=不限制）</Label>
+      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
+        <label v-for="tag in tags" :key="`allowed-${tag.id}`" class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            class="h-4 w-4"
+            :checked="form.section.allowed_tag_ids.includes(tag.id)"
+            @change="toggleAllowedTag(tag.id)"
+          />
+          {{ tag.name }}
+        </label>
+      </div>
+      <p class="text-xs text-muted-foreground">勾选后，仅可使用列表中的标签；留空表示不限制。</p>
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

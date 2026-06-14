@@ -26,6 +26,15 @@ module Commerce
           }
         )
 
+        if NotificationPreference.enabled?(user, channel: "email", notification_type: "commerce.price_drop")
+          MailDeliveryJob.perform_later(
+            "Commerce::OrderMailer",
+            "price_drop",
+            "deliver_now",
+            args: [ user.id, product.id, alert.baseline_price_cents, current_price ]
+          )
+        end
+
         alert.update!(baseline_price_cents: current_price, notified_at: Time.current)
       end
     end

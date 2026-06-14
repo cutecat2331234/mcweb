@@ -53,7 +53,9 @@ module Community
           mute_url: mute_forum_section_path(section),
           mark_all_read_url: logged_in? ? mark_all_read_forum_section_path(section) : nil,
           rss_url: forum_section_rss_path(section),
-          required_tags: section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } }
+          required_tags: section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
+          allowed_tags: section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
+          prefix_required: section.prefix_required?
         },
         featuredTopics: serialize_topics(featured, read_states: read_states),
         topics: serialize_topics(topics, read_states: read_states),

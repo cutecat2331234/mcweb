@@ -111,6 +111,10 @@ module Community
         return ServiceResult.failure(error: required_tags_message)
       end
 
+      if @section.prefix_required? && @prefix.blank?
+        return ServiceResult.failure(error: "此分区要求选择主题前缀。")
+      end
+
       if @user.banned?
         return ServiceResult.failure(error: "Your account is banned.")
       end

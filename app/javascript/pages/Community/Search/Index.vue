@@ -5,23 +5,13 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
+import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Input from '@/components/ui/Input.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-export interface SearchTopic {
-  id: string
-  title: string
-  url: string
-  last_posted_at: string | null
-}
+export type SearchTopic = TopicListItem
 
 export interface SearchPost {
   id: number
@@ -120,32 +110,28 @@ function search() {
 
   <template v-if="query">
     <h2 class="mb-3 text-sm font-semibold">主题</h2>
-    <div v-if="topics.length" class="mb-8 rounded-lg border">
-      <Table>
-        <TableHeader><TableRow><TableHead>标题</TableHead><TableHead>最后回复</TableHead></TableRow></TableHeader>
-        <TableBody>
-          <TableRow v-for="topic in topics" :key="topic.id">
-            <TableCell><Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link></TableCell>
-            <TableCell>{{ topic.last_posted_at || '—' }}</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-      <Pagination :pagination="topicsPagination" :base-path="routes.forumSearch" query-param="topic_page" />
-    </div>
+    <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants class="mb-4" />
+    <Pagination v-if="topics.length" :pagination="topicsPagination" :base-path="routes.forumSearch" page-param="topic_page" class="mb-8" />
     <p v-else class="mb-8 text-sm text-muted-foreground">未找到相关主题。</p>
 
     <h2 class="mb-3 text-sm font-semibold">帖子</h2>
     <div v-if="posts.length" class="rounded-lg border">
-      <Table>
-        <TableHeader><TableRow><TableHead>内容</TableHead><TableHead>主题</TableHead><TableHead>作者</TableHead></TableRow></TableHeader>
-        <TableBody>
-          <TableRow v-for="post in posts" :key="post.id">
-            <TableCell>{{ post.body }}</TableCell>
-            <TableCell><Link :href="post.topic_url" class="hover:underline">{{ post.topic_title }}</Link></TableCell>
-            <TableCell>{{ post.author }}</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+      <table class="w-full text-sm">
+        <thead>
+          <tr class="border-b text-left">
+            <th class="p-3">内容</th>
+            <th class="p-3">主题</th>
+            <th class="p-3">作者</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="post in posts" :key="post.id" class="border-b">
+            <td class="p-3">{{ post.body }}</td>
+            <td class="p-3"><Link :href="post.topic_url" class="hover:underline">{{ post.topic_title }}</Link></td>
+            <td class="p-3">{{ post.author }}</td>
+          </tr>
+        </tbody>
+      </table>
       <Pagination :pagination="postsPagination" :base-path="routes.forumSearch" query-param="post_page" />
     </div>
     <p v-else class="text-sm text-muted-foreground">未找到相关帖子。</p>

@@ -43,6 +43,8 @@ module Commerce
         path: "/store/orders/#{@order.public_id}"
       )
 
+      MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_requested", "deliver_now", args: [ refund.id ])
+
       ServiceResult.success(refund)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

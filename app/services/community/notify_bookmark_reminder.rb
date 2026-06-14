@@ -29,6 +29,15 @@ module Community
         metadata: { path: path, bookmark_id: @bookmark.id }
       )
 
+      if NotificationPreference.enabled?(@user, channel: "email", notification_type: "forum.bookmark_reminder")
+        MailDeliveryJob.perform_later(
+          "Community::ForumMailer",
+          "bookmark_reminder",
+          "deliver_now",
+          args: [ @user.id, @bookmark.id ]
+        )
+      end
+
       @bookmark.update!(remind_at: nil)
       ServiceResult.success
     end

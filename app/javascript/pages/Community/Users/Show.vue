@@ -14,6 +14,7 @@ import Button from '@/components/ui/Button.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import Label from '@/components/ui/Label.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
+import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -63,13 +64,7 @@ const props = defineProps<{
       can_post_links: boolean
     } | null
   }
-  topics: Array<{
-    id: string
-    title: string
-    url: string
-    replies_count: number
-    last_posted_at: string | null
-  }>
+  topics: TopicListItem[]
   topicsPagination: PaginationMeta
   recent_posts: Array<{
     id: number
@@ -327,24 +322,7 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
 
   <section v-if="activeTab === 'topics'">
   <h2 class="mb-3 text-sm font-semibold">最近主题</h2>
-  <div v-if="topics.length" class="rounded-lg border">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>标题</TableHead>
-          <TableHead>回复</TableHead>
-          <TableHead>最后回复</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="topic in topics" :key="topic.id">
-          <TableCell><Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link></TableCell>
-          <TableCell>{{ topic.replies_count }}</TableCell>
-          <TableCell>{{ topic.last_posted_at || '—' }}</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </div>
+  <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants />
   <p v-else class="text-sm text-muted-foreground">暂无主题。</p>
   <Pagination
     v-if="topicsPagination.pages > 1"

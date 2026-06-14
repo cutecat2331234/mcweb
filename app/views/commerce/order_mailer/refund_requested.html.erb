@@ -1,0 +1,6 @@
+<p>您好 <%= @order.user.username %>，</p>
+<p>订单 <strong><%= @order.order_number %></strong> 的退款申请已提交，正在审核中。</p>
+<% if @refund.reason.present? %>
+<p>原因：<%= @refund.reason %></p>
+<% end %>
+<p><a href="<%= store_order_url(@order) %>">查看订单详情</a></p>

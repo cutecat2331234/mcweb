@@ -23,7 +23,8 @@ module InertiaSerializable
     {
       id: current_user.public_id,
       username: current_user.username,
-      email: current_user.email
+      email: current_user.email,
+      can_upload_images: Community::TrustLevel.can_upload_images?(current_user)
     }
   end
 
@@ -98,7 +99,7 @@ module InertiaSerializable
     }
   end
 
-  def serialize_topic_detail(topic, watching: false, bookmarked: false, muted: false, can_moderate: false, can_move: false, can_edit: false)
+  def serialize_topic_detail(topic, watching: false, bookmarked: false, muted: false, can_moderate: false, can_move: false, can_edit: false, viewer: nil)
     {
       id: topic.public_id,
       title: topic.title,
@@ -130,7 +131,18 @@ module InertiaSerializable
         slug: topic.section.slug,
         url: forum_section_path(topic.section)
       }
-    }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate))
+    }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate)).merge(slow_mode_props(topic, user: viewer))
+  end
+
+  def slow_mode_props(topic, user:)
+    seconds = topic.slow_mode_seconds.to_i
+    return {} unless user && seconds.positive?
+
+    last_in_topic = topic.posts.where(user: user).order(created_at: :desc).first
+    return {} unless last_in_topic
+
+    remaining = seconds - (Time.current - last_in_topic.created_at).to_i
+    remaining.positive? ? { slow_mode_remaining_seconds: remaining } : {}
   end
 
   def bump_props(topic, can_moderate:)

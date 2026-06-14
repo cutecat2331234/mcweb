@@ -4,9 +4,8 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
-import Badge from '@/components/ui/Badge.vue'
+import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Button from '@/components/ui/Button.vue'
-import TopicTitleBadges from '@/components/portal/TopicTitleBadges.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -24,19 +23,7 @@ const props = defineProps<{
     section_name: string
     created_at: string
   }>
-  topics: Array<{
-    id: string
-    title: string
-    url: string
-    author: string | null
-    replies_count: number
-    last_posted_at: string | null
-    pinned: boolean
-    locked: boolean
-    prefix?: string | null
-    has_unread: boolean
-    unread_count: number
-  }>
+  topics: TopicListItem[]
   pagination: PaginationMeta
   sort: string
   sortOptions: Array<{ value: string; label: string }>
@@ -94,24 +81,7 @@ function changeSort(value: string) {
   </div>
 
   <div v-else>
-    <div v-if="topics.length" class="space-y-2">
-      <Link
-        v-for="topic in topics"
-        :key="topic.id"
-        :href="topic.url"
-        class="block rounded-lg border p-4 transition-colors hover:bg-muted/50"
-      >
-        <div class="flex items-center gap-2">
-          <TopicTitleBadges :pinned="topic.pinned" :locked="topic.locked" :prefix="topic.prefix" />
-          <span class="font-medium">{{ topic.title }}</span>
-          <Badge v-if="topic.has_unread" class="ml-auto">{{ topic.unread_count }} 未读</Badge>
-        </div>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ topic.author }} · {{ topic.replies_count }} 回复
-          <span v-if="topic.last_posted_at"> · {{ topic.last_posted_at }}</span>
-        </p>
-      </Link>
-    </div>
+    <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants />
     <p v-else class="text-sm text-muted-foreground">暂无主题。</p>
   </div>
 

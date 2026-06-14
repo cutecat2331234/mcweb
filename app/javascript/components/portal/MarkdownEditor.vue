@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import Button from '@/components/ui/Button.vue'
 import MentionAutocomplete from '@/components/portal/MentionAutocomplete.vue'
 import ImageUploadButton from '@/components/portal/ImageUploadButton.vue'
@@ -24,6 +25,11 @@ const emit = defineEmits<{
 
 const previewHtml = ref<string | null>(null)
 const previewLoading = ref(false)
+const page = usePage()
+const canUploadImages = computed(() => {
+  const user = (page.props.auth as { user?: { can_upload_images?: boolean } } | undefined)?.user
+  return user?.can_upload_images !== false
+})
 
 function update(value: string) {
   emit('update:modelValue', value)
@@ -65,7 +71,8 @@ async function preview() {
       <Button type="button" variant="outline" size="sm" @click="wrap('*', '*')">斜体</Button>
       <Button type="button" variant="outline" size="sm" @click="wrap('`', '`')">代码</Button>
       <Button type="button" variant="outline" size="sm" @click="wrap('[', '](https://)')">链接</Button>
-      <ImageUploadButton v-if="showImageUpload" @insert="insertImage" />
+      <ImageUploadButton v-if="showImageUpload && canUploadImages" @insert="insertImage" />
+      <p v-else-if="showImageUpload && !canUploadImages" class="text-xs text-muted-foreground">Lv.1 后可上传图片</p>
       <Button type="button" variant="outline" size="sm" :disabled="previewLoading || !modelValue" @click="preview">
         {{ previewLoading ? '预览中…' : '预览' }}
       </Button>

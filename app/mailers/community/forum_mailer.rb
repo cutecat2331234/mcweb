@@ -53,5 +53,21 @@ module Community
 
       mail(to: @user.email, subject: "帖子已编辑：#{@topic.title.truncate(60)}")
     end
+
+    def bookmark_reminder(user_id, bookmark_id)
+      @user = User.find(user_id)
+      @bookmark = Community::Bookmark.find(bookmark_id)
+      @topic = @bookmark.topic
+      return unless @topic
+
+      @url = if @bookmark.forum_post_id.present? && @bookmark.post
+               "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@bookmark.post.id}"}"
+             else
+               "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+             end
+      @note = @bookmark.note
+
+      mail(to: @user.email, subject: "书签提醒：#{@topic.title.truncate(60)}")
+    end
   end
 end

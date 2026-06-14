@@ -18,8 +18,16 @@ module Community
         return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
       end
 
-      if Community::Mute.muted?(@user, section: @topic.section)
-        return ServiceResult.failure(error: "You are muted in this section.")
+      return ServiceResult.failure(error: "You are muted in this section.") if Community::Mute.muted?(@user, section: @topic.section)
+
+      required_result = Community::ValidateSectionRequiredTags.call(
+        section: @topic.section,
+        tag_ids: @topic.tags.pluck(:id)
+      )
+      return required_result if required_result.failure?
+
+      if @topic.section.prefix_required? && @topic.prefix.blank?
+        return ServiceResult.failure(error: "此分区要求选择主题前缀。")
       end
 
       if Community::TrustLevel.contains_link?(post.body) && !Community::TrustLevel.can_post_links?(@user)

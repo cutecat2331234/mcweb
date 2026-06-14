@@ -60,6 +60,25 @@ module Commerce
       mail(to: @order.user.email, subject: "订单已完成 #{@order.order_number}")
     end
 
+    def refund_requested(refund_id)
+      @refund = Commerce::Refund.find(refund_id)
+      @order = @refund.order
+      return unless commerce_email_enabled?(@order.user, "commerce.refund_requested")
+
+      mail(to: @order.user.email, subject: "退款申请已提交 #{@order.order_number}")
+    end
+
+    def price_drop(user_id, product_id, baseline_cents, current_cents)
+      @user = User.find(user_id)
+      @product = Commerce::Product.find(product_id)
+      return unless commerce_email_enabled?(@user, "commerce.price_drop")
+
+      @baseline = baseline_cents
+      @current = current_cents
+      @url = "#{root_url.chomp('/')}#{"/store/products/#{@product.public_id}"}"
+      mail(to: @user.email, subject: "商品降价：#{@product.name}")
+    end
+
     def order_fulfilled(order_id)
       @order = Commerce::Order.find(order_id)
       return unless commerce_email_enabled?(@order.user, "commerce.order_fulfilled")

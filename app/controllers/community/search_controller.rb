@@ -3,6 +3,7 @@
 module Community
   class SearchController < ApplicationController
     include BlockedUsersFilterable
+    include Community::TopicListPreloadable
 
     def index
       query = params[:q].to_s.strip
@@ -29,6 +30,7 @@ module Community
                  else topics.order(last_posted_at: :desc)
                  end
         topics = filter_blocked_topics(topics)
+        topics = preload_topics(topics)
 
         posts = Community::Post.where(status: :published)
         posts = posts.joins(topic: :section).where(forum_sections: { slug: section_slug }) if section_slug
@@ -69,7 +71,7 @@ module Community
         postSort: params[:post_sort].to_s.presence || "recent",
         sections: sections,
         tags: tags,
-        topics: topics.map { |topic| serialize_search_topic(topic) },
+        topics: serialize_topics(topics),
         posts: posts.map { |post| serialize_search_post(post) },
         topicsPagination: pagy_props(@pagy_topics),
         postsPagination: pagy_props(@pagy_posts)

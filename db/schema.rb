@@ -273,6 +273,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_sections", force: :cascade do |t|
+    t.jsonb "allowed_tag_ids", default: [], null: false
     t.datetime "created_at", null: false
     t.text "description"
     t.bigint "forum_category_id", null: false
@@ -280,6 +281,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.bigint "parent_id"
     t.jsonb "permissions", default: {}, null: false
     t.integer "position", default: 0, null: false
+    t.boolean "prefix_required", default: false, null: false
     t.jsonb "prefixes", default: [], null: false
     t.jsonb "required_tag_ids", default: [], null: false
     t.string "slug", null: false

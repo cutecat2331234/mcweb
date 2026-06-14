@@ -22,6 +22,16 @@ module Community
       end
 
       tags = @tag_names.filter_map { |name| Community::Tag.find_or_create_by_name!(name, user: @user) }
+
+      allowed = Array(@topic.section.allowed_tag_ids).map(&:to_i).reject(&:zero?)
+      if allowed.any?
+        invalid = tags.reject { |tag| allowed.include?(tag.id) }
+        if invalid.any?
+          names = invalid.map(&:name).join("、")
+          return ServiceResult.failure(error: "此分区不允许使用以下标签：#{names}")
+        end
+      end
+
       @topic.topic_tags.where.not(forum_tag_id: tags.map(&:id)).destroy_all
       tags.each do |tag|
         Community::TopicTag.find_or_create_by!(topic: @topic, tag: tag)

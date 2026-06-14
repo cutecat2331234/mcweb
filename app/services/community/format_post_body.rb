@@ -118,6 +118,12 @@ module Community
         token
       end
 
+      text = text.gsub(%r{\A(/forum/users/[\w-]+)\s*\z}i) do |path|
+        token = placeholder_token(placeholders, "ONEBOX")
+        placeholders[token] = user_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
+        token
+      end
+
       text = text.gsub(%r{\A(/store/products/[\w-]+)\s*\z}) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = product_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
@@ -144,6 +150,8 @@ module Community
           placeholders[token] = product_box
         elsif (topic_box = topic_onebox_html(url))
           placeholders[token] = topic_box
+        elsif (user_box = user_onebox_html(url))
+          placeholders[token] = user_box
         elsif (coupon_box = coupon_onebox_html(url))
           placeholders[token] = coupon_box
         else
@@ -231,6 +239,16 @@ module Community
       t = result.value
       meta = [ t[:author], t[:section_name], "#{t[:replies_count]} 回复" ].compact.join(" · ")
       %(<aside class="onebox topic-onebox"><a href="#{ERB::Util.html_escape(t[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(t[:title])}</strong><p class="onebox-desc">#{ERB::Util.html_escape(meta)}</p></a></aside>)
+    end
+
+    def user_onebox_html(url)
+      result = Community::FetchUserOnebox.call(url: url)
+      return nil unless result.success? && result.value
+
+      u = result.value
+      avatar = u[:avatar_url].present? ? %(<img src="#{ERB::Util.html_escape(u[:avatar_url])}" alt="" class="onebox-image user-onebox-avatar" loading="lazy" />) : ""
+      meta = [ u[:trust_name], "#{u[:posts_count]} 帖" ].join(" · ")
+      %(<aside class="onebox user-onebox"><a href="#{ERB::Util.html_escape(u[:url])}" class="onebox-link">#{avatar}<strong class="onebox-title">#{ERB::Util.html_escape(u[:display_name])}</strong><p class="onebox-desc">@#{ERB::Util.html_escape(u[:username])} · #{ERB::Util.html_escape(meta)}</p></a></aside>)
     end
 
     def coupon_onebox_html(url)
@@ -335,6 +353,8 @@ module Community
           product_box
         elsif (topic_box = topic_onebox_html(url))
           topic_box
+        elsif (user_box = user_onebox_html(url))
+          user_box
         elsif (coupon_box = coupon_onebox_html(url))
           coupon_box
         else

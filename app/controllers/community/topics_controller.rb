@@ -48,7 +48,8 @@ module Community
           bookmarked: bookmarked_topic?,
           can_moderate: can_moderate_topic?,
           can_move: can_move_topic?,
-          can_edit: can_edit_topic?
+          can_edit: can_edit_topic?,
+          viewer: current_user
         ).merge(
           section_prefixes: Array(@topic.section.prefixes)
         ),
@@ -331,7 +332,9 @@ module Community
         slug: @section.slug,
         url: forum_section_path(@section),
         prefixes: Array(@section.prefixes),
-        required_tags: @section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } }
+        prefix_required: @section.prefix_required?,
+        required_tags: @section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
+        allowed_tags: @section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } }
       }
     end
 

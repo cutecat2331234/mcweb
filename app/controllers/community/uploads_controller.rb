@@ -8,6 +8,10 @@ module Community
     ALLOWED_TYPES = %w[image/jpeg image/png image/gif image/webp].freeze
 
     def create
+      unless Community::TrustLevel.can_upload_images?(current_user)
+        return render json: { error: "新成员暂不能上传图片，多发帖后即可解锁。" }, status: :forbidden
+      end
+
       file = params[:file]
       return render json: { error: "No file provided." }, status: :unprocessable_entity unless file
 

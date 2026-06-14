@@ -11,6 +11,16 @@ module Community
       return ServiceResult.failure(error: "Topic is not ready.") unless @topic.scheduled_at <= Time.current
       return ServiceResult.failure(error: "Topic already published.") unless @topic.draft?
 
+      required_result = Community::ValidateSectionRequiredTags.call(
+        section: @topic.section,
+        tag_ids: @topic.tags.pluck(:id)
+      )
+      return required_result if required_result.failure?
+
+      if @topic.section.prefix_required? && @topic.prefix.blank?
+        return ServiceResult.failure(error: "此分区要求选择主题前缀。")
+      end
+
       Community::Topic.transaction do
         @topic.update!(
           status: "published",

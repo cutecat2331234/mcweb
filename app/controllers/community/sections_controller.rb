@@ -46,6 +46,8 @@ module Community
           name: section.name,
           slug: section.slug,
           description: section.description,
+          color_hex: section.color_hex,
+          icon: section.icon,
           read_only: section.read_only?,
           notification_level: logged_in? ? Community::Subscription.find_by(user: current_user, subscribable: section)&.notification_level : nil,
           new_topic_url: logged_in? && section.writable_by?(current_user, :create_topic) && section.allowed?(current_user, :create_topic) ? new_forum_topic_path(section_id: section.slug) : nil,

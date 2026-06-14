@@ -17,6 +17,7 @@ module Community
     has_one :linked_product, class_name: "Commerce::Product", foreign_key: :forum_topic_id
     has_many :reply_bans, class_name: "Community::TopicReplyBan", foreign_key: :forum_topic_id, dependent: :destroy
     has_many :staff_notes, class_name: "Community::TopicStaffNote", foreign_key: :forum_topic_id, dependent: :destroy
+    has_many :invites, class_name: "Community::TopicInvite", foreign_key: :forum_topic_id, dependent: :destroy
     belongs_to :solved_post, class_name: "Community::Post", optional: true
 
     scope :global_announcements, -> { where(global_announcement: true, status: :published) }

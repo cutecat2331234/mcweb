@@ -18,6 +18,8 @@ const props = defineProps<{
     name: string
     slug: string
     description: string | null
+    color_hex?: string | null
+    icon?: string | null
     read_only?: boolean
     notification_level?: 'watching' | 'tracking' | null
     new_topic_url: string | null
@@ -82,8 +84,17 @@ function markAllRead() {
     { label: section.name, current: true },
   ]" />
 
+  <div
+    v-if="section.color_hex"
+    class="mb-4 h-1 w-full max-w-xl rounded-full"
+    :style="{ backgroundColor: section.color_hex }"
+  />
+
   <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
-    <PageHeader :title="section.name" :subtitle="section.description || undefined" />
+    <PageHeader
+      :title="`${section.icon ? section.icon + ' ' : ''}${section.name}`"
+      :subtitle="section.description || undefined"
+    />
     <div class="flex flex-wrap gap-2">
       <Button type="button" variant="outline" size="sm" @click="toggleWatch">
         {{ sectionWatchLabel() }}

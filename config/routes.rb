@@ -134,6 +134,7 @@ Rails.application.routes.draw do
         post :staff_note
         post :reply_ban
         post :reply_unban
+        post :invite
       end
     end
     resources :posts, only: %i[create update destroy] do

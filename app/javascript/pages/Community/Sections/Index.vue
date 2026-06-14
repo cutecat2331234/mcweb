@@ -20,6 +20,8 @@ export interface SectionItem {
   slug: string
   description: string | null
   category_name: string | null
+  color_hex?: string | null
+  icon?: string | null
   topics_count: number
   unread_count?: number
   url: string
@@ -56,6 +58,12 @@ defineProps<{
           <TableRow>
             <TableCell>
               <Link :href="section.url" class="font-medium hover:underline">
+                <span v-if="section.icon" class="mr-1">{{ section.icon }}</span>
+                <span
+                  v-if="section.color_hex"
+                  class="mr-2 inline-block h-2.5 w-2.5 rounded-full align-middle"
+                  :style="{ backgroundColor: section.color_hex }"
+                />
                 {{ section.name }}
               </Link>
               <span class="ml-2 text-xs text-muted-foreground">{{ section.slug }}</span>

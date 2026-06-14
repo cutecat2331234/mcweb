@@ -6,9 +6,15 @@ module Community
     include Community::TopicListPreloadable
 
     def index
-      query = params[:q].to_s.strip
-      section_slug = params[:section].to_s.presence
-      author = params[:author].to_s.strip.presence
+      raw_query = params[:q].to_s.strip
+      parsed = Community::ParseSearchQuery.call(query: raw_query)
+      parsed_query = parsed.success? ? parsed.value[:query] : raw_query
+      parsed_section = parsed.success? ? parsed.value[:section_slug] : nil
+      parsed_author = parsed.success? ? parsed.value[:author] : nil
+
+      query = parsed_query
+      section_slug = params[:section].to_s.presence || parsed_section
+      author = params[:author].to_s.strip.presence || parsed_author
       tag_slug = params[:tag].to_s.strip.presence
       solved_filter = params[:solved].to_s.presence
       topics = Community::Topic.none
@@ -78,7 +84,7 @@ module Community
       tags = Community::Tag.usable_by(current_user).order(:name).limit(50).map { |tag| { slug: tag.slug, name: tag.name } }
 
       render inertia: "Community/Search/Index", props: {
-        query: query,
+        query: raw_query,
         section: section_slug,
         author: author.to_s,
         tag: tag_slug.to_s,

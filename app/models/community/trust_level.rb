@@ -39,6 +39,15 @@ module Community
       level_for(user) >= 1
     end
 
+    def self.can_react?(user)
+      return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
+
+      min_level = SiteSetting.get("forum.min_trust_level_reaction", "0").to_i
+      return true if min_level <= 0
+
+      level_for(user) >= min_level
+    end
+
     def self.contains_link?(text)
       text.to_s.match?(/https?:\/\//i)
     end

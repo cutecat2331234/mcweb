@@ -2,6 +2,21 @@
 
 module Community
   class ModerateTopic < ApplicationService
+    SMALL_ACTION_MESSAGES = {
+      "lock" => "此主题已锁定。",
+      "unlock" => "此主题已解锁。",
+      "pin" => "此主题已置顶。",
+      "unpin" => "此主题已取消置顶。",
+      "hide" => "此主题已隐藏。",
+      "unhide" => "此主题已恢复显示。",
+      "feature" => "此主题已设为精选。",
+      "unfeature" => "此主题已取消精选。",
+      "enable_wiki" => "此主题已开启 Wiki 模式。",
+      "disable_wiki" => "此主题已关闭 Wiki 模式。",
+      "global_announcement" => "此主题已设为全站公告。",
+      "remove_global_announcement" => "此主题已取消全站公告。"
+    }.freeze
+
     def initialize(user:, topic:, action:, lock_reason: nil)
       @user = user
       @topic = topic
@@ -53,9 +68,22 @@ module Community
         return ServiceResult.failure(error: "Unknown moderation action.")
       end
 
+      record_small_action! unless @action == "bump"
+
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    def record_small_action!
+      message = SMALL_ACTION_MESSAGES[@action]
+      message = "此主题已置顶 #{Regexp.last_match(1)} 天。" if @action.match?(/\Apin_(\d+)\z/)
+      return if message.blank?
+
+      body = @lock_reason.present? && @action == "lock" ? "#{message} 原因：#{@lock_reason}" : message
+      Community::CreateSmallActionPost.call(topic: @topic, actor: @user, body: body)
     end
   end
 end

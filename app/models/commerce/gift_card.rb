@@ -6,6 +6,7 @@ module Commerce
 
     belongs_to :created_by, class_name: "User", optional: true
     belongs_to :owner_user, class_name: "User", optional: true
+    belongs_to :source_order_item, class_name: "Commerce::OrderItem", foreign_key: :source_order_item_id, optional: true
     has_many :transactions, class_name: "Commerce::GiftCardTransaction", foreign_key: :store_gift_card_id, dependent: :destroy
     has_many :orders, class_name: "Commerce::Order", foreign_key: :store_gift_card_id, dependent: :nullify
 

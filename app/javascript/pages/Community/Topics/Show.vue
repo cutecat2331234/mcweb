@@ -52,6 +52,8 @@ export interface PostItem {
   can_moderate: boolean
   hidden: boolean
   deleted?: boolean
+  small_action?: boolean
+  wiki?: boolean
   restore_url?: string | null
   report_url: string | null
   raw_url?: string
@@ -115,6 +117,8 @@ const props = defineProps<{
     staff_notes?: Array<{ id: number; body: string; author: string; created_at: string }>
     staff_note_url?: string | null
     reply_bans?: Array<{ username: string; reason: string | null; expires_at: string | null }>
+    can_invite?: boolean
+    invite_url?: string | null
     can_move: boolean
     can_edit: boolean
     featured: boolean
@@ -124,7 +128,7 @@ const props = defineProps<{
     solved_post_id: number | null
     tags: Array<{ name: string; slug: string; url: string }>
     tags_string: string
-    section: { name: string; slug: string; url: string }
+    section: { name: string; slug: string; url: string; color_hex?: string | null; icon?: string | null }
     section_prefixes?: string[]
     linked_product_name?: string
     linked_product_url?: string
@@ -389,6 +393,7 @@ function toggleReaction(post: PostItem, emoji: string) {
 
 const staffNoteBody = ref('')
 const replyBanUsername = ref('')
+const inviteUsername = ref('')
 const replyBanReason = ref('')
 
 function watchLabel() {
@@ -425,6 +430,14 @@ function banReply() {
 
 function unbanReply(username: string) {
   router.post(`/forum/topics/${props.topic.id}/reply_unban`, { username }, { preserveScroll: true })
+}
+
+function inviteWatcher() {
+  if (!props.topic.invite_url || !inviteUsername.value.trim()) return
+  router.post(props.topic.invite_url, { username: inviteUsername.value.trim() }, {
+    preserveScroll: true,
+    onSuccess: () => { inviteUsername.value = '' },
+  })
 }
 
 function toggleMute() {
@@ -915,6 +928,15 @@ function pollPercent(votes: number) {
     </div>
   </section>
 
+  <section v-if="topic.can_invite && topic.invite_url" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
+    <h2 class="text-sm font-semibold">邀请关注</h2>
+    <p class="text-xs text-muted-foreground">邀请用户关注此主题（Discourse 风格），对方将收到通知并自动设为「关注」。</p>
+    <div class="flex flex-wrap gap-2">
+      <Input v-model="inviteUsername" placeholder="用户名" class="max-w-[12rem]" />
+      <Button type="button" size="sm" variant="outline" :disabled="!inviteUsername.trim()" @click="inviteWatcher">发送邀请</Button>
+    </div>
+  </section>
+
   <form class="mb-4 flex max-w-md gap-2" @submit.prevent="searchInTopic">
     <Input v-model="topicSearch" placeholder="在此主题内搜索帖子…" class="flex-1" />
     <Button type="submit" variant="outline">搜索</Button>
@@ -933,10 +955,20 @@ function pollPercent(votes: number) {
       <article
         :id="`post-${post.id}`"
         class="rounded-lg border p-4"
-        :class="[post.hidden ? 'opacity-60 border-dashed' : '', post.deleted ? 'opacity-50 border-dashed bg-muted/30' : '', post.is_solved ? 'border-green-400 bg-green-50/50 dark:bg-green-950/20' : '']"
+        :class="[
+          post.small_action ? 'border-dashed bg-muted/20 text-sm italic' : '',
+          post.hidden ? 'opacity-60 border-dashed' : '',
+          post.deleted ? 'opacity-50 border-dashed bg-muted/30' : '',
+          post.is_solved ? 'border-green-400 bg-green-50/50 dark:bg-green-950/20' : '',
+        ]"
         :style="{ marginLeft: `${post.depth * 1.5}rem` }"
       >
-      <div class="mb-3 flex items-start gap-3">
+      <div v-if="post.small_action" class="mb-2 text-xs font-medium text-muted-foreground">系统操作</div>
+      <div v-if="post.small_action" class="text-sm text-muted-foreground">
+        {{ post.body }}
+        <span class="ml-2 text-xs not-italic">— {{ post.author }}, {{ post.created_at }}</span>
+      </div>
+      <div v-else class="mb-3 flex items-start gap-3">
         <img :src="post.avatar_url" :alt="post.author" class="h-9 w-9 shrink-0 rounded-full" />
         <div class="min-w-0 flex-1">
           <div class="flex items-center justify-between gap-2 text-sm text-muted-foreground">
@@ -955,6 +987,7 @@ function pollPercent(votes: number) {
                 </button>
                 <Link v-if="post.edits_url" :href="post.edits_url" class="hover:underline">历史</Link>）
               </span>
+              <span v-if="post.wiki" class="ml-2 text-xs text-blue-600">[Wiki 帖]</span>
               <span v-if="post.hidden" class="ml-2 text-amber-600">[已隐藏]</span>
               <span v-if="post.deleted" class="ml-2 text-destructive">[已删除]</span>
             </div>
@@ -974,6 +1007,9 @@ function pollPercent(votes: number) {
               <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">举报</Link>
               <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
                 {{ post.hidden ? '显示' : '隐藏' }}
+              </button>
+              <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.wiki ? 'disable_wiki' : 'enable_wiki')">
+                {{ post.wiki ? '关闭 Wiki' : 'Wiki 帖' }}
               </button>
               <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">编辑</button>
               <button v-if="post.can_delete && !post.deleted" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">删除</button>
@@ -1037,7 +1073,7 @@ function pollPercent(votes: number) {
           </p>
           <div v-if="post.signature_html" class="mt-3 border-t pt-2 text-xs text-muted-foreground prose prose-sm max-w-none" v-html="post.signature_html" />
 
-          <div class="mt-3 flex flex-wrap items-center gap-2">
+          <div class="mt-3 flex flex-wrap items-center gap-2" v-if="!post.small_action">
             <span v-if="post.reactions_total" class="text-xs text-muted-foreground">{{ post.reactions_total }} 个反应</span>
             <template v-if="loggedIn && !isOwnPost(post)">
               <ReactionUsersPopover

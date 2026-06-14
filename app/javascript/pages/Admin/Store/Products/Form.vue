@@ -112,6 +112,8 @@ async function uploadCover(event: Event) {
         <select id="product_type" v-model="form.product.product_type" class="h-9 w-full rounded-md border px-2 text-sm">
           <option value="virtual">虚拟商品</option>
           <option value="physical">实体商品</option>
+          <option value="gift_card">礼品卡（购买后自动发卡）</option>
+          <option value="digital">数字商品</option>
         </select>
       </div>
       <div class="space-y-2">

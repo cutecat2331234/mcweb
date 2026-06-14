@@ -18,6 +18,10 @@ module Community
         @post.update!(status: "hidden")
       when "unhide"
         @post.update!(status: "published")
+      when "enable_wiki"
+        @post.update!(wiki: true)
+      when "disable_wiki"
+        @post.update!(wiki: false)
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

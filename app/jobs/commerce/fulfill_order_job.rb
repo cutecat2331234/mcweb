@@ -14,6 +14,14 @@ module Commerce
       end
 
       order.items.find_each do |order_item|
+        snapshot = order_item.fulfillment_snapshot || {}
+        product_type = snapshot["product_type"] || snapshot[:product_type]
+
+        if product_type == "gift_card"
+          Commerce::FulfillGiftCardItem.call(order_item: order_item)
+          next
+        end
+
         result = Commerce::CreateFulfillment.call(order_item: order_item)
         next if result.failure?
 

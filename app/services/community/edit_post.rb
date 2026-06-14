@@ -8,6 +8,7 @@ module Community
       return false unless user
       return true if user.permission?("forum.topics.lock")
       return true if post.topic.wiki?
+      return true if post.wiki_post?
       return false unless user.id == post.user_id
 
       post.created_at > EDIT_WINDOW.ago

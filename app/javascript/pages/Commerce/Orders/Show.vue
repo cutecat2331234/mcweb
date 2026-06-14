@@ -69,6 +69,7 @@ const props = defineProps<{
       fulfillment_status_label?: string | null
       download_url?: string | null
       refresh_download_url?: string | null
+      issued_gift_cards?: Array<{ code: string; balance_label: string; url: string }>
     }>
     downloads?: Array<{ product_name: string; url: string }>
     fulfillments: Array<{
@@ -144,6 +145,11 @@ function refreshDownload(url: string) {
               <Link v-if="item.ask_question_url" :href="item.ask_question_url" class="text-xs text-primary hover:underline">提问</Link>
               <Link v-if="item.discussion_url" :href="item.discussion_url" class="text-xs text-primary hover:underline">参与讨论</Link>
             </div>
+            <ul v-if="item.issued_gift_cards?.length" class="mt-2 space-y-1 text-xs text-green-700">
+              <li v-for="card in item.issued_gift_cards" :key="card.code">
+                礼品卡 <Link :href="card.url" class="font-mono underline">{{ card.code }}</Link>（{{ card.balance_label }}）
+              </li>
+            </ul>
           </TableCell>
           <TableCell>{{ item.quantity }}</TableCell>
           <TableCell>{{ item.total_label }}</TableCell>

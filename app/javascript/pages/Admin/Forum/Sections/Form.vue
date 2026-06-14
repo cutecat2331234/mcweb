@@ -28,6 +28,8 @@ const props = defineProps<{
     min_trust_level_create: number
     min_trust_level_reply: number
     read_only: boolean
+    color_hex: string
+    icon: string
   }
   tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
@@ -128,6 +130,16 @@ function submit() {
       <input v-model="form.section.read_only" type="checkbox" class="h-4 w-4" />
       只读分区（普通用户不可发帖/回复）
     </label>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="space-y-2">
+        <Label for="color_hex">颜色（Hex，如 #3b82f6）</Label>
+        <Input id="color_hex" v-model="form.section.color_hex" placeholder="#3b82f6" />
+      </div>
+      <div class="space-y-2">
+        <Label for="icon">图标（emoji）</Label>
+        <Input id="icon" v-model="form.section.icon" placeholder="💬" />
+      </div>
+    </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
         <Label for="min_trust_level_create">最低发帖信任等级 (0-4)</Label>

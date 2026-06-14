@@ -13,6 +13,7 @@ module Community
     def call
       return ServiceResult.failure(error: "Invalid reaction.") unless ALLOWED_EMOJI.include?(@emoji)
       return ServiceResult.failure(error: "不能给自己的帖子点反应。") if @user.id == @post.user_id
+      return ServiceResult.failure(error: "你的信任等级不足以使用反应功能。") unless Community::TrustLevel.can_react?(@user)
 
       added = Community::Reaction.toggle!(@user, @post, @emoji)
       counts = @post.reactions.group(:emoji).count

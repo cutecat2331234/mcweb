@@ -1,0 +1,11 @@
+您好，
+
+您购买的礼品卡已发放（订单 <%= @order.order_number %>）：
+
+<% @cards.each do |card| %>
+- 代码：<%= card.code %>
+  面额：<%= number_to_currency(card.initial_balance_cents / 100.0, unit: "¥") %>
+  <% if card.expires_at %>到期：<%= l(card.expires_at, format: :short) %><% end %>
+<% end %>
+
+您可在账户的礼品卡页面查看余额，或在结账时使用。

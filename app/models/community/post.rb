@@ -11,11 +11,20 @@ module Community
     has_many :reactions, class_name: "Community::Reaction", foreign_key: :forum_post_id, dependent: :destroy
 
     enum :status, { published: "published", hidden: "hidden", deleted: "deleted" }, validate: true
+    enum :post_type, { regular: "regular", small_action: "small_action" }, validate: true, prefix: true
 
     validates :body, presence: true
     validates :floor_number, presence: true, uniqueness: { scope: :forum_topic_id }
 
     scope :chronological, -> { order(:floor_number) }
+
+    def small_action?
+      post_type == "small_action"
+    end
+
+    def wiki_post?
+      wiki == true
+    end
 
     after_create :update_topic_counters
 

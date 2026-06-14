@@ -43,6 +43,8 @@ module InertiaSerializable
       slug: section.slug,
       description: section.description&.truncate(80),
       category_name: section.category&.name,
+      color_hex: section.color_hex,
+      icon: section.icon,
       topics_count: section.topics.where(status: :published).count,
       unread_count: unread_map[section.id].to_i,
       url: forum_section_path(section)
@@ -130,7 +132,9 @@ module InertiaSerializable
       section: {
         name: topic.section.name,
         slug: topic.section.slug,
-        url: forum_section_path(topic.section)
+        url: forum_section_path(topic.section),
+        color_hex: topic.section.color_hex,
+        icon: topic.section.icon
       }
     }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate)).merge(slow_mode_props(topic, user: viewer)).merge(reading_time_props(topic))
   end
@@ -235,6 +239,8 @@ module InertiaSerializable
       bookmark: bookmark_meta,
       hidden: post.status == "hidden",
       deleted: post.deleted_at.present?,
+      small_action: post.small_action?,
+      wiki: post.wiki_post?,
       restore_url: (can_moderate && post.deleted_at.present?) ? restore_forum_post_path(post) : nil,
       report_url: current_user ? new_forum_report_path(reportable_type: "Community::Post", reportable_id: post.id) : nil,
       raw_url: raw_forum_post_path(post),
@@ -582,6 +588,7 @@ module InertiaSerializable
         download_url = signed_download_url_for(item)
         refresh_download_url = download_url.present? ? refresh_download_store_order_path(order, order_item_id: item.id) : nil
         product = item.product
+        issued_cards = Commerce::GiftCard.where(source_order_item_id: item.id).order(:id)
         {
           id: item.id,
           product_name: item.product_name,
@@ -594,7 +601,14 @@ module InertiaSerializable
           fulfillment_status: fulfillment&.status,
           fulfillment_status_label: fulfillment_status_label(fulfillment&.status),
           download_url: download_url,
-          refresh_download_url: refresh_download_url
+          refresh_download_url: refresh_download_url,
+          issued_gift_cards: issued_cards.map do |card|
+            {
+              code: card.code,
+              balance_label: format_money(card.balance_cents, card.currency),
+              url: store_gift_card_path(card.code)
+            }
+          end
         }
       end,
       downloads: order.items.filter_map do |item|

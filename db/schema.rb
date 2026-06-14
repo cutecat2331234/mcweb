@@ -209,10 +209,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "floor_number", null: false
     t.bigint "forum_topic_id", null: false
     t.bigint "parent_post_id"
+    t.string "post_type", default: "regular", null: false
     t.bigint "quoted_post_id"
     t.string "status", default: "published", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.boolean "wiki", default: false, null: false
     t.index "to_tsvector('simple'::regconfig, COALESCE(body, ''::text))", name: "index_forum_posts_on_body_tsvector", using: :gin
     t.index ["deleted_at"], name: "index_forum_posts_on_deleted_at"
     t.index ["forum_topic_id", "floor_number"], name: "index_forum_posts_on_forum_topic_id_and_floor_number", unique: true
@@ -285,9 +287,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "forum_sections", force: :cascade do |t|
     t.jsonb "allowed_tag_ids", default: [], null: false
+    t.string "color_hex"
     t.datetime "created_at", null: false
     t.text "description"
     t.bigint "forum_category_id", null: false
+    t.string "icon"
     t.integer "min_trust_level_create", default: 0, null: false
     t.integer "min_trust_level_reply", default: 0, null: false
     t.string "name", null: false
@@ -335,6 +339,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.boolean "staff_only", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_forum_tags_on_slug", unique: true
+  end
+
+  create_table "forum_topic_invites", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_topic_id", null: false
+    t.bigint "invited_by_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_topic_id", "user_id"], name: "index_forum_topic_invites_on_forum_topic_id_and_user_id", unique: true
+    t.index ["forum_topic_id"], name: "index_forum_topic_invites_on_forum_topic_id"
+    t.index ["invited_by_id"], name: "index_forum_topic_invites_on_invited_by_id"
+    t.index ["user_id"], name: "index_forum_topic_invites_on_user_id"
   end
 
   create_table "forum_topic_mutes", force: :cascade do |t|
@@ -817,10 +833,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "initial_balance_cents", default: 0, null: false
     t.string "note"
     t.bigint "owner_user_id"
+    t.bigint "source_order_item_id"
     t.datetime "updated_at", null: false
     t.index ["code"], name: "index_store_gift_cards_on_code", unique: true
     t.index ["created_by_id"], name: "index_store_gift_cards_on_created_by_id"
     t.index ["owner_user_id"], name: "index_store_gift_cards_on_owner_user_id"
+    t.index ["source_order_item_id"], name: "index_store_gift_cards_on_source_order_item_id"
   end
 
   create_table "store_order_events", force: :cascade do |t|
@@ -1228,6 +1246,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_staff_notes", "users"
   add_foreign_key "forum_staff_notes", "users", column: "author_id"
   add_foreign_key "forum_subscriptions", "users"
+  add_foreign_key "forum_topic_invites", "forum_topics"
+  add_foreign_key "forum_topic_invites", "users"
+  add_foreign_key "forum_topic_invites", "users", column: "invited_by_id"
   add_foreign_key "forum_topic_mutes", "forum_topics"
   add_foreign_key "forum_topic_mutes", "users"
   add_foreign_key "forum_topic_reply_bans", "forum_topics"
@@ -1278,6 +1299,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_fulfillments", "store_orders"
   add_foreign_key "store_gift_card_transactions", "store_gift_cards"
   add_foreign_key "store_gift_card_transactions", "store_orders"
+  add_foreign_key "store_gift_cards", "store_order_items", column: "source_order_item_id"
   add_foreign_key "store_gift_cards", "users", column: "created_by_id"
   add_foreign_key "store_gift_cards", "users", column: "owner_user_id"
   add_foreign_key "store_order_events", "store_orders"

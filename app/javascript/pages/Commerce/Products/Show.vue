@@ -474,6 +474,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
           {{ !canPurchase ? '缺货' : showLowStock ? '库存紧张' : '有货' }}
         </span>
       </div>
+      <div v-if="selectedVariant?.sku" class="flex justify-between text-sm">
+        <span class="text-muted-foreground">SKU</span>
+        <code class="text-xs">{{ selectedVariant.sku }}</code>
+      </div>
       <div v-if="product.purchase_limit" class="flex justify-between text-sm">
         <span class="text-muted-foreground">限购</span>
         <span>每人最多 {{ product.purchase_limit }} 件</span>

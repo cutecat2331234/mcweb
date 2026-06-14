@@ -37,6 +37,7 @@ module Community
 
     def can_restore?
       return true if @post.topic.wiki?
+      return true if @post.wiki_post?
       return true if @user.permission?("forum.topics.lock")
       return true if @user.id == @post.user_id
 

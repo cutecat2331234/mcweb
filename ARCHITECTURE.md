@@ -730,3 +730,21 @@ app/
 | 礼品卡余额流水 | `store_gift_card_transactions` + 扣款/退款记录 |
 | 商城分类描述 | `store_categories.description` + 分类页展示 |
 | 用户订单 CSV 导出 | `OrdersController#export` |
+
+### 第四十轮（分区样式、邀请关注与礼品卡商品）
+
+| 功能 | 实现 |
+|------|------|
+| 分区颜色与图标（Discourse/XenForo） | `forum_sections.color_hex` / `icon` + 管理端 + 分区列表展示 |
+| 主题邀请关注（Discourse） | `forum_topic_invites` + `InviteTopicWatcher` + 主题页邀请 UI |
+| 邀请通知 | `NotifyTopicInvite` + `forum.topic_invite` 站内通知 |
+| 版控小操作帖（XenForo small action） | `post_type: small_action` + `CreateSmallActionPost` + 版控自动记录 |
+| 单帖 Wiki 模式 | `forum_posts.wiki` + `ModeratePost` enable/disable + 编辑权限 |
+| 搜索高级语法 | `ParseSearchQuery` 解析 `in:分区` / `@用户` / `author:用户` |
+| 反应信任等级门槛 | `TrustLevel.can_react?` + SiteSetting `forum.min_trust_level_reaction` |
+| 礼品卡商品类型 | `product_type: gift_card` + `FulfillGiftCardItem` 自动发卡 |
+| 礼品卡购买邮件 | `GiftCardMailer#gift_card_purchased` |
+| 订单礼品卡展示 | `serialize_order_detail` + `Orders/Show.vue` |
+| 优惠券最低消费 UI | 结账预览 `min_amount_label` / `amount_remaining_label` |
+| 商品 SKU 公开展示 | `Products/Show.vue` 变体 SKU |
+| 礼品卡来源订单项 | `store_gift_cards.source_order_item_id` |

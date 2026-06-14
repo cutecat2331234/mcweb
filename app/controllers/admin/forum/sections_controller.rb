@@ -43,7 +43,9 @@ module Admin
             { label: "前缀必填", value: @section.prefix_required? ? "是" : "否" },
             { label: "最低发帖信任等级", value: @section.min_trust_level_create.to_i },
             { label: "最低回复信任等级", value: @section.min_trust_level_reply.to_i },
-            { label: "只读分区", value: @section.read_only? ? "是" : "否" }
+            { label: "只读分区", value: @section.read_only? ? "是" : "否" },
+            { label: "颜色", value: @section.color_hex.presence || "—" },
+            { label: "图标", value: @section.icon.presence || "—" }
           ],
           backUrl: admin_forum_sections_path,
           actions: [{ label: "编辑", href: edit_admin_forum_section_path(@section) }]
@@ -85,7 +87,7 @@ module Admin
         permitted = params.require(:section).permit(
           :name, :slug, :description, :position, :forum_category_id, :parent_id,
           :create_topic_roles, :reply_roles, :prefixes, :prefix_required, :topic_template,
-          :min_trust_level_create, :min_trust_level_reply, :read_only,
+          :min_trust_level_create, :min_trust_level_reply, :read_only, :color_hex, :icon,
           required_tag_ids: [], allowed_tag_ids: []
         )
         prefixes = if permitted[:prefixes].is_a?(String)
@@ -110,6 +112,8 @@ module Admin
           min_trust_level_create: permitted[:min_trust_level_create].to_i,
           min_trust_level_reply: permitted[:min_trust_level_reply].to_i,
           read_only: ActiveModel::Type::Boolean.new.cast(permitted[:read_only]),
+          color_hex: permitted[:color_hex].to_s.strip.presence,
+          icon: permitted[:icon].to_s.strip.presence,
           permissions: {
             "create_topic" => parse_roles(permitted[:create_topic_roles]),
             "reply" => parse_roles(permitted[:reply_roles])
@@ -145,7 +149,9 @@ module Admin
             topic_template: section.topic_template || "",
             min_trust_level_create: section.min_trust_level_create.to_i,
             min_trust_level_reply: section.min_trust_level_reply.to_i,
-            read_only: section.read_only?
+            read_only: section.read_only?,
+            color_hex: section.color_hex || "",
+            icon: section.icon || ""
           },
           tags: ::Community::Tag.order(:name).map { |tag| { id: tag.id, name: tag.name } },
           categories: ::Community::Category.order(:name).map { |c| { id: c.id, name: c.name } },

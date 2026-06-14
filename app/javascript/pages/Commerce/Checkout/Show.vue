@@ -52,6 +52,8 @@ const form = useForm({
 
 const couponMessage = ref<string | null>(null)
 const couponError = ref<string | null>(null)
+const couponMinAmountHint = ref<string | null>(null)
+const couponRemainingHint = ref<string | null>(null)
 const giftCardMessage = ref<string | null>(null)
 const giftCardError = ref<string | null>(null)
 const discountLabel = ref<string | null>(null)
@@ -99,6 +101,8 @@ async function previewGiftCard() {
 async function previewCoupon() {
   couponMessage.value = null
   couponError.value = null
+  couponMinAmountHint.value = null
+  couponRemainingHint.value = null
   discountLabel.value = null
   totalLabel.value = props.subtotalLabel
 
@@ -119,6 +123,8 @@ async function previewCoupon() {
       couponMessage.value = `优惠码 ${data.code} 已应用`
       discountLabel.value = data.discount_label
       totalLabel.value = data.total_label
+      couponMinAmountHint.value = data.min_amount_label ? `最低消费 ${data.min_amount_label}` : null
+      couponRemainingHint.value = data.amount_remaining_label ? `还差 ${data.amount_remaining_label} 可用` : null
       if (form.checkout.gift_card_code.trim()) {
         await previewGiftCard()
       }
@@ -176,6 +182,8 @@ onMounted(() => {
           <Button type="button" variant="outline" :disabled="previewing" @click="previewCoupon">验证</Button>
         </div>
         <p v-if="couponMessage" class="text-sm text-green-600">{{ couponMessage }}</p>
+        <p v-if="couponMinAmountHint" class="text-xs text-muted-foreground">{{ couponMinAmountHint }}</p>
+        <p v-if="couponRemainingHint" class="text-xs text-amber-600">{{ couponRemainingHint }}</p>
         <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
       </div>
 

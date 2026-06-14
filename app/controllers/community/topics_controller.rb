@@ -5,9 +5,9 @@ module Community
     include Community::TopicVisibility
     include Community::TopicListPreloadable
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite]
 
     def show
       @topic.record_view!
@@ -65,7 +65,9 @@ module Community
           staff_note_url: can_moderate_topic? ? staff_note_forum_topic_path(@topic) : nil,
           reply_bans: can_moderate_topic? ? @topic.reply_bans.active.includes(:user).map { |ban|
             { username: ban.user.username, reason: ban.reason, expires_at: ban.expires_at ? l(ban.expires_at, format: :short) : nil }
-          } : []
+          } : [],
+          can_invite: can_invite_topic?,
+          invite_url: can_invite_topic? ? invite_forum_topic_path(@topic) : nil
         ),
         posts: posts.map do |post|
           serialize_post(
@@ -379,6 +381,20 @@ module Community
       end
     end
 
+    def invite
+      result = Community::InviteTopicWatcher.call(
+        inviter: current_user,
+        topic: @topic,
+        username: params[:username]
+      )
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "已邀请 #{params[:username]} 关注此主题。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
     private
 
     def set_section
@@ -476,6 +492,12 @@ module Community
 
     def can_moderate_topic?
       current_user&.permission?("forum.topics.lock")
+    end
+
+    def can_invite_topic?
+      return false unless current_user
+
+      can_moderate_topic? || current_user.id == @topic.user_id
     end
 
     def can_move_topic?

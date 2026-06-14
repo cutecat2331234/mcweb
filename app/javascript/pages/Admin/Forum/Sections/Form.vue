@@ -33,6 +33,7 @@ const props = defineProps<{
     banner_text: string
     link_url: string
     link_label: string
+    default_notification_level: string
   }
   tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
@@ -164,6 +165,13 @@ function submit() {
         <Label for="min_trust_level_reply">最低回复信任等级 (0-4)</Label>
         <Input id="min_trust_level_reply" v-model.number="form.section.min_trust_level_reply" type="number" min="0" max="4" />
       </div>
+    </div>
+    <div class="space-y-2">
+      <Label for="default_notification_level">默认订阅级别（首次关注分区）</Label>
+      <select id="default_notification_level" v-model="form.section.default_notification_level" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
+        <option value="watching">关注（邮件+站内）</option>
+        <option value="tracking">跟踪（仅站内）</option>
+      </select>
     </div>
     <div class="space-y-2">
       <Label for="topic_template">主题模板（XenForo，发帖时预填正文）</Label>

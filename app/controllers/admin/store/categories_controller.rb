@@ -36,7 +36,9 @@ module Admin
             { label: "排序", value: @category.position.to_s },
             { label: "描述", value: @category.description.presence || "—" },
             { label: "图标", value: @category.icon.presence || "—" },
-            { label: "颜色", value: @category.color_hex.presence || "—" }
+            { label: "颜色", value: @category.color_hex.presence || "—" },
+            { label: "SEO 标题", value: @category.seo["title"].presence || "—" },
+            { label: "SEO 描述", value: @category.seo["description"].presence || "—" }
           ],
           backUrl: admin_store_categories_path,
           actions: [{ label: "编辑", href: edit_admin_store_category_path(@category) }]
@@ -80,7 +82,16 @@ module Admin
       end
 
       def category_params
-        params.require(:category).permit(:name, :slug, :position, :description, :icon, :color_hex)
+        permitted = params.require(:category).permit(
+          :name, :slug, :position, :description, :icon, :color_hex, :seo_title, :seo_description
+        )
+        if permitted.key?(:seo_title) || permitted.key?(:seo_description)
+          permitted[:seo] = {
+            "title" => permitted.delete(:seo_title).to_s.presence,
+            "description" => permitted.delete(:seo_description).to_s.presence
+          }.compact
+        end
+        permitted
       end
 
       def form_props(category)
@@ -93,7 +104,9 @@ module Admin
             position: category.position || 0,
             description: category.description || "",
             icon: category.icon || "",
-            color_hex: category.color_hex || ""
+            color_hex: category.color_hex || "",
+            seo_title: category.seo&.dig("title").to_s,
+            seo_description: category.seo&.dig("description").to_s
           },
           submitUrl: category.persisted? ? admin_store_category_path(category) : admin_store_categories_path,
           method: category.persisted? ? "patch" : "post",

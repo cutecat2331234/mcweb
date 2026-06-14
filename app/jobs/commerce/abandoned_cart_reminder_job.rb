@@ -26,12 +26,13 @@ module Commerce
 
           if in_app_enabled
             item_count = cart.items.sum(:quantity)
+            cart.ensure_recovery_token!
             Commerce::NotifyOrderEvent.call(
               user: user,
               notification_type: "commerce.abandoned_cart",
               title: "购物车提醒",
               body: "你的购物车中有 #{item_count} 件商品尚未结账。",
-              path: "/store/cart"
+              path: "/store/cart?recovery=#{cart.recovery_token}"
             )
           end
 

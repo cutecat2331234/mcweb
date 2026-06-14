@@ -96,7 +96,11 @@ module Commerce
 
       if result.success?
         notice = "已将 #{result.value[:added]} 件商品加入购物车。"
-        notice += " 跳过：#{result.value[:skipped].join('、')}" if result.value[:skipped].any?
+        skipped = result.value[:skipped] || []
+        if skipped.any?
+          details = skipped.map { |entry| "#{entry[:name]}（#{entry[:reason]}）" }.join("、")
+          notice += " 跳过：#{details}"
+        end
         redirect_to store_cart_path, notice: notice
       else
         redirect_to store_order_path(@order), alert: service_error_message(result)

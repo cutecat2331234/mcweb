@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -11,7 +11,15 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  category: { slug: string; name: string; description?: string | null; icon?: string | null; color_hex?: string | null }
+  category: {
+    slug: string
+    name: string
+    description?: string | null
+    icon?: string | null
+    color_hex?: string | null
+    seo_title?: string
+    seo_description?: string | null
+  }
   products: Array<{
     public_id: string
     name: string
@@ -38,6 +46,12 @@ function applyFilter(key: 'in_stock' | 'on_sale', value: boolean) {
 </script>
 
 <template>
+  <Head v-if="category.seo_title">
+    <title>{{ category.seo_title }}</title>
+    <meta v-if="category.seo_description" head-key="description" name="description" :content="category.seo_description" />
+    <meta head-key="og:title" property="og:title" :content="category.seo_title" />
+    <meta v-if="category.seo_description" head-key="og:description" property="og:description" :content="category.seo_description" />
+  </Head>
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '商城', href: routes.store },

@@ -142,6 +142,7 @@ Rails.application.routes.draw do
         post :reaction, action: :toggle_reaction
         post :bookmark, action: :toggle_bookmark
         post :moderate
+        post :fork_topic
         get :edits
         get :raw
         post :restore_edit

@@ -138,8 +138,24 @@ module InertiaSerializable
         url: forum_section_path(topic.section),
         color_hex: topic.section.color_hex,
         icon: topic.section.icon
-      }
+      },
+      source_topic: source_topic_props(topic)
     }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate)).merge(slow_mode_props(topic, user: viewer)).merge(reading_time_props(topic))
+  end
+
+  def source_topic_props(topic)
+    return nil unless topic.source_post_id.present?
+
+    source_post = topic.association(:source_post).loaded? ? topic.source_post : Community::Post.find_by(id: topic.source_post_id)
+    return nil unless source_post
+
+    source = source_post.topic
+    {
+      title: source.title,
+      url: forum_topic_path(source, anchor: "post-#{source_post.id}"),
+      floor_number: source_post.floor_number,
+      author: source_post.user.username
+    }
   end
 
   def reading_time_props(topic)
@@ -250,6 +266,7 @@ module InertiaSerializable
       restore_url: (can_moderate && post.deleted_at.present?) ? restore_forum_post_path(post) : nil,
       report_url: current_user ? new_forum_report_path(reportable_type: "Community::Post", reportable_id: post.id) : nil,
       raw_url: raw_forum_post_path(post),
+      fork_topic_url: current_user ? fork_topic_forum_post_path(post) : nil,
       update_url: forum_post_path(post)
     }
   end
@@ -590,6 +607,8 @@ module InertiaSerializable
       status: order.status,
       status_label: order_status_label(order.status),
       notes: order.notes,
+      shipping_address: order.shipping_address.presence,
+      shipping_address_label: format_shipping_address(order.shipping_address),
       subtotal_label: format_money(order.subtotal_cents, order.currency),
       shipping_label: order.shipping_cents.positive? ? format_money(order.shipping_cents, order.currency) : nil,
       free_shipping: order.shipping_cents.zero? && order.subtotal_cents.positive?,
@@ -756,6 +775,19 @@ module InertiaSerializable
 
   def format_price(product)
     format_money(product.price_cents, product.currency)
+  end
+
+  def format_shipping_address(address)
+    return nil unless address.is_a?(Hash) && address.values.any?(&:present?)
+
+    parts = [
+      address["name"],
+      address["phone"],
+      [ address["province"], address["city"] ].compact.join(" "),
+      [ address["line1"], address["line2"] ].compact.join(" "),
+      address["postal_code"]
+    ].map(&:presence).compact
+    parts.join("，")
   end
 
   def format_money(cents, currency)

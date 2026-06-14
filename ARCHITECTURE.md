@@ -825,3 +825,16 @@ app/
 | 结账页 URL 自动应用优惠码 | `CheckoutController` `?coupon=` |
 | 商品列表快捷加购 | `quick_addable` + `Products/Index.vue` |
 | 购物车总件数上限 | SiteSetting `store.cart_max_items` + `ValidateCartItem` |
+
+### 第四十七轮（阅读进度、转主题、分区默认订阅与商城收货）
+
+| 功能 | 实现 |
+|------|------|
+| 主题阅读进度条（Discourse） | `ReadingProgress.vue` + `Topics/Show.vue` |
+| 回复转新主题（带回溯链接） | `CreateTopicFromPost` + `forum_topics.source_post_id` + `posts#fork_topic` |
+| 分区默认通知级别 | `forum_sections.default_notification_level` + `ToggleSectionSubscription` |
+| 多选引用回复 | `Topics/Show.vue` 累积多条 quote |
+| 分类 SEO 元数据 | `store_categories.seo` + 管理端 + `Categories/Show.vue` Head |
+| 订单收货地址 | `store_orders.shipping_address` + 结账表单 + `CreateOrder` |
+| 弃购购物车深链 | `store_carts.recovery_token` + 邮件/通知恢复 URL |
+| 再次购买跳过原因 | `ReorderFromOrder` 详细 `skipped` + 订单页提示 |

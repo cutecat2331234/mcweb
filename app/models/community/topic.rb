@@ -19,6 +19,7 @@ module Community
     has_many :staff_notes, class_name: "Community::TopicStaffNote", foreign_key: :forum_topic_id, dependent: :destroy
     has_many :invites, class_name: "Community::TopicInvite", foreign_key: :forum_topic_id, dependent: :destroy
     belongs_to :solved_post, class_name: "Community::Post", optional: true
+    belongs_to :source_post, class_name: "Community::Post", optional: true
 
     scope :global_announcements, -> { where(global_announcement: true, status: :published) }
 

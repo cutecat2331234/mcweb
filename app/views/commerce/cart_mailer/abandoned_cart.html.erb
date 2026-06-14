@@ -5,4 +5,4 @@
     <li><%= item.product.name %><% if item.variant %>（<%= item.variant.name %>）<% end %> × <%= item.quantity %></li>
   <% end %>
 </ul>
-<p><a href="<%= store_cart_url %>">前往购物车完成购买</a></p>
+<p><a href="<%= @recovery_url %>">前往购物车完成购买</a></p>

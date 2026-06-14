@@ -5,6 +5,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -18,6 +19,8 @@ const props = defineProps<{
     description?: string
     icon?: string
     color_hex?: string
+    seo_title?: string
+    seo_description?: string
   }
   submitUrl: string
   method: 'post' | 'patch'
@@ -66,6 +69,14 @@ function submit() {
         <Label for="color_hex">颜色（Hex）</Label>
         <Input id="color_hex" v-model="form.category.color_hex" placeholder="#3b82f6" />
       </div>
+    </div>
+    <div class="space-y-2">
+      <Label for="seo_title">SEO 标题（空=分类名）</Label>
+      <Input id="seo_title" v-model="form.category.seo_title" />
+    </div>
+    <div class="space-y-2">
+      <Label for="seo_description">SEO 描述</Label>
+      <Textarea id="seo_description" v-model="form.category.seo_description" rows="2" />
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

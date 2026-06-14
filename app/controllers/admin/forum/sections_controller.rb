@@ -47,7 +47,8 @@ module Admin
             { label: "颜色", value: @section.color_hex.presence || "—" },
             { label: "图标", value: @section.icon.presence || "—" },
             { label: "公告横幅", value: @section.banner_text.presence || "—" },
-            { label: "外链", value: @section.link_url.presence || "—" }
+            { label: "外链", value: @section.link_url.presence || "—" },
+            { label: "默认订阅级别", value: @section.default_notification_level == "tracking" ? "跟踪" : "关注" }
           ],
           backUrl: admin_forum_sections_path,
           actions: [{ label: "编辑", href: edit_admin_forum_section_path(@section) }]
@@ -90,6 +91,7 @@ module Admin
           :name, :slug, :description, :position, :forum_category_id, :parent_id,
           :create_topic_roles, :reply_roles, :prefixes, :prefix_required, :topic_template,
           :min_trust_level_create, :min_trust_level_reply, :read_only, :color_hex, :icon, :banner_text, :link_url, :link_label,
+          :default_notification_level,
           required_tag_ids: [], allowed_tag_ids: []
         )
         prefixes = if permitted[:prefixes].is_a?(String)
@@ -119,6 +121,7 @@ module Admin
           banner_text: permitted[:banner_text].to_s.strip.presence,
           link_url: permitted[:link_url].to_s.strip.presence,
           link_label: permitted[:link_label].to_s.strip.presence,
+          default_notification_level: permitted[:default_notification_level].presence_in(Community::Subscription::NOTIFICATION_LEVELS) || "watching",
           permissions: {
             "create_topic" => parse_roles(permitted[:create_topic_roles]),
             "reply" => parse_roles(permitted[:reply_roles])
@@ -159,7 +162,8 @@ module Admin
             icon: section.icon || "",
             banner_text: section.banner_text || "",
             link_url: section.link_url || "",
-            link_label: section.link_label || ""
+            link_label: section.link_label || "",
+            default_notification_level: section.default_notification_level.presence || "watching"
           },
           tags: ::Community::Tag.order(:name).map { |tag| { id: tag.id, name: tag.name } },
           categories: ::Community::Category.order(:name).map { |c| { id: c.id, name: c.name } },

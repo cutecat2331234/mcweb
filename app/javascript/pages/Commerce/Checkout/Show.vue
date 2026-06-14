@@ -38,6 +38,7 @@ const props = defineProps<{
   pendingCouponCode?: string | null
   pendingGiftCardCode?: string | null
   couponAutoApplied?: boolean
+  requiresShipping?: boolean
   previewCouponUrl: string
   previewGiftCardUrl: string
 }>()
@@ -48,6 +49,15 @@ const form = useForm({
     coupon_code: props.pendingCouponCode || '',
     gift_card_code: props.pendingGiftCardCode || '',
     notes: '',
+    shipping_address: {
+      name: '',
+      phone: '',
+      line1: '',
+      line2: '',
+      city: '',
+      province: '',
+      postal_code: '',
+    },
   },
 })
 
@@ -200,6 +210,42 @@ onMounted(() => {
         </div>
         <p v-if="giftCardMessage" class="text-sm text-green-600">{{ giftCardMessage }}</p>
         <p v-if="giftCardError" class="text-sm text-destructive">{{ giftCardError }}</p>
+      </div>
+
+      <div v-if="requiresShipping" class="space-y-3 rounded-lg border p-4">
+        <h2 class="text-sm font-semibold">收货地址</h2>
+        <div class="grid gap-3 sm:grid-cols-2">
+          <div class="space-y-2">
+            <Label for="ship_name">收件人</Label>
+            <Input id="ship_name" v-model="form.checkout.shipping_address.name" required />
+          </div>
+          <div class="space-y-2">
+            <Label for="ship_phone">手机号</Label>
+            <Input id="ship_phone" v-model="form.checkout.shipping_address.phone" required />
+          </div>
+        </div>
+        <div class="space-y-2">
+          <Label for="ship_line1">地址</Label>
+          <Input id="ship_line1" v-model="form.checkout.shipping_address.line1" required />
+        </div>
+        <div class="space-y-2">
+          <Label for="ship_line2">地址补充（可选）</Label>
+          <Input id="ship_line2" v-model="form.checkout.shipping_address.line2" />
+        </div>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <div class="space-y-2">
+            <Label for="ship_province">省/州</Label>
+            <Input id="ship_province" v-model="form.checkout.shipping_address.province" required />
+          </div>
+          <div class="space-y-2">
+            <Label for="ship_city">城市</Label>
+            <Input id="ship_city" v-model="form.checkout.shipping_address.city" required />
+          </div>
+          <div class="space-y-2">
+            <Label for="ship_postal">邮编</Label>
+            <Input id="ship_postal" v-model="form.checkout.shipping_address.postal_code" />
+          </div>
+        </div>
       </div>
 
       <div class="space-y-2">

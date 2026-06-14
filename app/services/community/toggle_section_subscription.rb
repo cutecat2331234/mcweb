@@ -10,8 +10,9 @@ module Community
     def call
       existing = Community::Subscription.find_by(user: @user, subscribable: @section)
       if existing.nil?
-        Community::Subscription.subscribe!(@user, @section, level: "watching")
-        return ServiceResult.success(watching: true, notification_level: "watching")
+        level = @section.default_notification_level.presence_in(Community::Subscription::NOTIFICATION_LEVELS) || "watching"
+        Community::Subscription.subscribe!(@user, @section, level: level)
+        return ServiceResult.success(watching: true, notification_level: level)
       end
 
       case existing.notification_level

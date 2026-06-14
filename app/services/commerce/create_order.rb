@@ -2,12 +2,13 @@
 
 module Commerce
   class CreateOrder < ApplicationService
-    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil)
+    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil, shipping_address: nil)
       @cart = cart
       @user = user
       @notes = notes
       @coupon_code = coupon_code
       @gift_card_code = gift_card_code
+      @shipping_address = shipping_address
     end
 
     def call
@@ -35,7 +36,8 @@ module Commerce
           user: @user,
           status: "pending",
           currency: "CNY",
-          notes: @notes
+          notes: @notes,
+          shipping_address: normalized_shipping_address
         )
 
         @cart.items.includes(:product, :variant).find_each do |item|
@@ -164,6 +166,20 @@ module Commerce
     def shipping_cents_for(subtotal_cents, cart_items: nil, coupon: nil)
       result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
       result.success? ? result.value[:shipping_cents].to_i : 0
+    end
+
+    def normalized_shipping_address
+      return {} unless @shipping_address.is_a?(Hash)
+
+      {
+        "name" => @shipping_address["name"].to_s.strip.presence,
+        "phone" => @shipping_address["phone"].to_s.strip.presence,
+        "line1" => @shipping_address["line1"].to_s.strip.presence,
+        "line2" => @shipping_address["line2"].to_s.strip.presence,
+        "city" => @shipping_address["city"].to_s.strip.presence,
+        "province" => @shipping_address["province"].to_s.strip.presence,
+        "postal_code" => @shipping_address["postal_code"].to_s.strip.presence
+      }.compact
     end
   end
 end

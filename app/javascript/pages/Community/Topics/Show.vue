@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import ReactionUsersPopover from '@/components/portal/ReactionUsersPopover.vue'
 import UserHoverCard from '@/components/portal/UserHoverCard.vue'
+import ReadingProgress from '@/components/portal/ReadingProgress.vue'
 import { routes } from '@/lib/routes'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
 
@@ -69,6 +70,7 @@ export interface PostItem {
     note: string | null
     remind_at_input: string | null
   } | null
+  fork_topic_url?: string | null
   update_url: string
 }
 
@@ -140,6 +142,12 @@ const props = defineProps<{
     bump_cooldown_remaining_seconds?: number | null
     slow_mode_remaining_seconds?: number | null
     reading_time_minutes?: number | null
+    source_topic?: {
+      title: string
+      url: string
+      floor_number: number
+      author: string
+    } | null
   }
   posts: PostItem[]
   pagination: PaginationMeta
@@ -189,7 +197,7 @@ const replyForm = useForm({
   },
 })
 
-const quotePreview = ref<QuotedPost | null>(null)
+const quotePreviews = ref<QuotedPost[]>([])
 const replyPreview = ref<{ id: number; floor_number: number; author: string } | null>(null)
 const moveSectionSlug = ref('')
 const mergeTargetId = ref('')
@@ -283,7 +291,7 @@ function submitReply() {
       replyForm.post.body = ''
       replyForm.post.quoted_post_id = null
       replyForm.post.parent_post_id = null
-      quotePreview.value = null
+      quotePreviews.value = []
       replyPreview.value = null
       localStorage.removeItem(draftKey)
       if (props.replyDraftUrl) {
@@ -299,26 +307,42 @@ function submitReply() {
   })
 }
 
+function buildQuoteBlock(post: PostItem) {
+  const lines = post.body.split('\n').map((line) => `> ${line}`)
+  return `> **#${post.floor_number} ${post.author}：**\n${lines.join('\n')}\n\n`
+}
+
 function quotePost(post: PostItem) {
   replyForm.post.quoted_post_id = post.id
-  quotePreview.value = {
-    id: post.id,
-    floor_number: post.floor_number,
-    author: post.author,
-    excerpt: post.body.slice(0, 120),
+  if (!quotePreviews.value.find((item) => item.id === post.id)) {
+    quotePreviews.value.push({
+      id: post.id,
+      floor_number: post.floor_number,
+      author: post.author,
+      excerpt: post.body.slice(0, 120),
+    })
+  }
+  const block = buildQuoteBlock(post)
+  if (!replyForm.post.body.includes(`#${post.floor_number} ${post.author}`)) {
+    replyForm.post.body = replyForm.post.body ? `${replyForm.post.body}\n\n${block}` : block
   }
   document.getElementById('reply-form')?.scrollIntoView({ behavior: 'smooth' })
 }
 
-function clearQuote() {
+function removeQuote(id: number) {
+  quotePreviews.value = quotePreviews.value.filter((item) => item.id !== id)
+  if (replyForm.post.quoted_post_id === id) {
+    replyForm.post.quoted_post_id = quotePreviews.value.at(-1)?.id ?? null
+  }
+}
+
+function clearQuotes() {
   replyForm.post.quoted_post_id = null
-  quotePreview.value = null
+  quotePreviews.value = []
 }
 
 function replyToPost(post: PostItem) {
   replyForm.post.parent_post_id = post.id
-  replyForm.post.quoted_post_id = null
-  quotePreview.value = null
   replyPreview.value = { id: post.id, floor_number: post.floor_number, author: post.author }
   document.getElementById('reply-form')?.scrollIntoView({ behavior: 'smooth' })
 }
@@ -532,6 +556,16 @@ function splitPost(post: PostItem) {
   })
 }
 
+function forkTopic(post: PostItem) {
+  if (!post.fork_topic_url) return
+  const title = window.prompt('新主题标题（留空使用默认）', `回复：${props.topic.title}`)
+  const body = window.prompt('补充说明（可选）', '') || undefined
+  router.post(post.fork_topic_url, {
+    title: title || undefined,
+    body,
+  })
+}
+
 async function loadPollVoters() {
   if (!props.poll?.voters_url) return
   showPollVoters.value = !showPollVoters.value
@@ -641,6 +675,7 @@ function pollPercent(votes: number) {
 </script>
 
 <template>
+  <ReadingProgress />
   <Head v-if="meta">
     <title>{{ meta.title }}</title>
     <meta v-if="meta.description" head-key="description" name="description" :content="meta.description" />
@@ -655,6 +690,14 @@ function pollPercent(votes: number) {
     { label: topic.section.name, href: topic.section.url },
     { label: topic.title, current: true },
   ]" />
+
+  <p v-if="topic.source_topic" class="mb-4 rounded-lg border bg-muted/30 px-4 py-3 text-sm">
+    本主题源自
+    <Link :href="topic.source_topic.url" class="font-medium text-primary hover:underline">
+      #{{ topic.source_topic.floor_number }} {{ topic.source_topic.author }} 的回复
+    </Link>
+    （{{ topic.source_topic.title }}）
+  </p>
 
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
     <PageHeader
@@ -1024,6 +1067,7 @@ function pollPercent(votes: number) {
             </div>
             <div class="flex gap-2">
               <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
+              <button v-if="post.fork_topic_url" type="button" class="text-xs hover:underline" @click="forkTopic(post)">转为新主题</button>
               <button type="button" class="text-xs hover:underline" @click="copyPermalink(post)">
                 {{ copiedPostId === post.id ? '已复制' : '复制链接' }}
               </button>
@@ -1187,14 +1231,21 @@ function pollPercent(votes: number) {
         <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearReplyTarget">清除</button>
       </div>
     </div>
-    <div v-if="quotePreview" class="mb-3 rounded-md border bg-muted/40 p-3 text-sm">
-      <div class="flex items-start justify-between gap-2">
-        <p>
-          引用 #{{ quotePreview.floor_number }} {{ quotePreview.author }}：
-          {{ quotePreview.excerpt }}
-        </p>
-        <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearQuote">清除</button>
+    <div v-if="quotePreviews.length" class="mb-3 space-y-2">
+      <div
+        v-for="quote in quotePreviews"
+        :key="quote.id"
+        class="rounded-md border bg-muted/40 p-3 text-sm"
+      >
+        <div class="flex items-start justify-between gap-2">
+          <p>
+            引用 #{{ quote.floor_number }} {{ quote.author }}：
+            {{ quote.excerpt }}
+          </p>
+          <button type="button" class="text-xs text-muted-foreground hover:underline" @click="removeQuote(quote.id)">移除</button>
+        </div>
       </div>
+      <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearQuotes">清除全部引用</button>
     </div>
     <form class="space-y-3" @submit.prevent="submitReply">
       <MarkdownEditor v-model="replyForm.post.body" :rows="6" placeholder="写下你的回复… 输入 @ 可提及用户" required />

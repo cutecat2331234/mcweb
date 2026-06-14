@@ -4,7 +4,7 @@ module Community
   class PostsController < ApplicationController
     before_action :require_login, except: %i[raw edits]
     before_action :set_topic, only: :create
-    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit raw restore]
+    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit raw restore fork_topic]
 
     def create
       result = Community::CreatePost.call(
@@ -136,6 +136,24 @@ module Community
         redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: "帖子已恢复。"
       else
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+      end
+    end
+
+    def fork_topic
+      section = params[:section_slug].present? ? Community::Section.find_by(slug: params[:section_slug]) : nil
+      result = Community::CreateTopicFromPost.call(
+        user: current_user,
+        post: @post,
+        title: params[:title],
+        body: params[:body],
+        section: section,
+        ip_address: request.remote_ip
+      )
+
+      if result.success?
+        redirect_to forum_topic_path(result.value), notice: "已创建新主题。"
+      else
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), alert: service_error_message(result)
       end
     end
 

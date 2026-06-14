@@ -14,6 +14,7 @@ module Commerce
       pending_coupon ||= session[:pending_coupon_code].to_s.presence
       pending_gift_card = session[:pending_gift_card_code].to_s.presence
       coupon = Commerce::Coupon.find_by(code: pending_coupon) if pending_coupon.present?
+      requires_shipping = items.any? { |item| item.product&.requires_shipping? }
 
       render inertia: "Commerce/Checkout/Show", props: {
         items: items.map { |item|
@@ -29,6 +30,7 @@ module Commerce
         pendingCouponCode: pending_coupon,
         pendingGiftCardCode: pending_gift_card,
         couponAutoApplied: params[:coupon].present? && pending_coupon.present?,
+        requiresShipping: requires_shipping,
         providers: providers,
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path,
@@ -49,7 +51,8 @@ module Commerce
           user: current_user,
           coupon_code: checkout_params[:coupon_code].presence || session.delete(:pending_coupon_code),
           gift_card_code: checkout_params[:gift_card_code].presence || session.delete(:pending_gift_card_code),
-          notes: checkout_params[:notes]
+          notes: checkout_params[:notes],
+          shipping_address: shipping_address_params
         )
         unless order_result.success?
           return redirect_to store_checkout_path, alert: service_error_message(order_result)
@@ -171,6 +174,13 @@ module Commerce
 
     def checkout_params
       params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes)
+    end
+
+    def shipping_address_params
+      raw = params.fetch(:checkout, {}).fetch(:shipping_address, {}).permit(
+        :name, :phone, :line1, :line2, :city, :province, :postal_code
+      )
+      raw.to_h
     end
 
     def default_provider

@@ -8,6 +8,9 @@ module Commerce
       return unless @user
       return unless NotificationPreference.enabled?(@user, channel: "email", notification_type: "commerce.abandoned_cart")
 
+      @cart.ensure_recovery_token!
+      @recovery_url = @cart.recovery_cart_url
+
       mail(to: @user.email, subject: "您的购物车还有未结算商品")
     end
   end

@@ -14,7 +14,10 @@ module Commerce
 
       @order.items.includes(:product, :variant).find_each do |item|
         product = item.product
-        next unless product&.active?
+        unless product&.active?
+          skipped << { name: item.product_name, reason: "商品已下架。" }
+          next
+        end
 
         validation = Commerce::ValidateCartItem.call(
           user: @user,
@@ -28,11 +31,12 @@ module Commerce
           cart.add_item!(product: product, variant: item.variant, quantity: item.quantity)
           added += 1
         else
-          skipped << product.name
+          reason = validation.error.presence || "无法加入购物车"
+          skipped << { name: product.name, reason: reason }
         end
       end
 
-      ServiceResult.success(cart: cart, added: added, skipped: skipped)
+      ServiceResult.success(cart: cart, added: added, skipped: skipped, skipped_names: skipped.map { |entry| entry[:name] })
     end
   end
 end

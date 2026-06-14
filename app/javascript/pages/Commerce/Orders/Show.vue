@@ -23,6 +23,7 @@ const props = defineProps<{
     status: string
     status_label: string
     notes: string | null
+    shipping_address_label?: string | null
     subtotal_label?: string | null
     shipping_label?: string | null
     free_shipping?: boolean
@@ -101,6 +102,10 @@ function refreshDownload(url: string) {
 
   <p v-if="order.notes" class="mb-4 rounded-lg border p-4 text-sm">
     <span class="font-medium">订单备注：</span>{{ order.notes }}
+  </p>
+
+  <p v-if="order.shipping_address_label" class="mb-4 rounded-lg border p-4 text-sm">
+    <span class="font-medium">收货地址：</span>{{ order.shipping_address_label }}
   </p>
 
   <p v-if="order.refund_pending" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">

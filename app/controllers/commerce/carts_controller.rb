@@ -185,6 +185,15 @@ module Commerce
     private
 
     def set_cart
+      if params[:recovery].present?
+        recovered = Commerce::Cart.find_by(recovery_token: params[:recovery])
+        if recovered && !recovered.empty?
+          @cart = recovered
+          persist_cart_cookie(@cart) unless logged_in?
+          return
+        end
+      end
+
       @cart = find_user_cart || find_session_cart || create_session_cart
       persist_cart_cookie(@cart) unless logged_in?
     end

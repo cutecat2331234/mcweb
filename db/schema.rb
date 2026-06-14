@@ -304,6 +304,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "banner_text"
     t.string "color_hex"
     t.datetime "created_at", null: false
+    t.string "default_notification_level", default: "watching", null: false
     t.text "description"
     t.bigint "forum_category_id", null: false
     t.string "icon"
@@ -435,6 +436,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "scheduled_at"
     t.integer "slow_mode_seconds"
     t.bigint "solved_post_id"
+    t.bigint "source_post_id"
     t.string "status", default: "published", null: false
     t.string "title", null: false
     t.boolean "unlisted", default: false, null: false
@@ -453,6 +455,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["public_id"], name: "index_forum_topics_on_public_id", unique: true
     t.index ["scheduled_at"], name: "index_forum_topics_on_scheduled_at"
     t.index ["solved_post_id"], name: "index_forum_topics_on_solved_post_id"
+    t.index ["source_post_id"], name: "index_forum_topics_on_source_post_id"
     t.index ["user_id"], name: "index_forum_topics_on_user_id"
   end
 
@@ -767,9 +770,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   create_table "store_carts", force: :cascade do |t|
     t.datetime "abandoned_reminder_sent_at"
     t.datetime "created_at", null: false
+    t.string "recovery_token"
     t.string "session_token"
     t.datetime "updated_at", null: false
     t.bigint "user_id"
+    t.index ["recovery_token"], name: "index_store_carts_on_recovery_token", unique: true
     t.index ["session_token"], name: "index_store_carts_on_session_token", unique: true
     t.index ["user_id"], name: "index_store_carts_on_user_id"
   end
@@ -781,6 +786,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "icon"
     t.string "name", null: false
     t.integer "position", default: 0, null: false
+    t.jsonb "seo", default: {}, null: false
     t.string "slug", null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_store_categories_on_slug", unique: true
@@ -902,6 +908,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "notes"
     t.string "order_number", null: false
     t.string "public_id", null: false
+    t.jsonb "shipping_address", default: {}, null: false
     t.integer "shipping_cents", default: 0, null: false
     t.string "status", default: "pending", null: false
     t.bigint "store_coupon_id"
@@ -1290,6 +1297,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_topic_tags", "forum_tags"
   add_foreign_key "forum_topic_tags", "forum_topics"
   add_foreign_key "forum_topics", "forum_posts", column: "solved_post_id"
+  add_foreign_key "forum_topics", "forum_posts", column: "source_post_id"
   add_foreign_key "forum_topics", "forum_sections"
   add_foreign_key "forum_topics", "users"
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"

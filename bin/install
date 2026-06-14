@@ -91,6 +91,8 @@ configure_app() {
     install -m 600 config/templates/mcweb.env.example "${env_file}"
     echo "请编辑 ${env_file} 后重新运行 bin/setup"
   fi
+  grep -q '^RAILS_SERVE_STATIC_FILES=' "${env_file}" || echo 'RAILS_SERVE_STATIC_FILES=1' >> "${env_file}"
+  grep -q '^BUNDLE_WITHOUT=' "${env_file}" || echo 'BUNDLE_WITHOUT=development:test' >> "${env_file}"
 }
 
 write_systemd_units() {

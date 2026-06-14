@@ -21,6 +21,21 @@ module Commerce
 
     scope :available, -> { where(status: :active) }
 
+    scope :with_stock, -> {
+      where(
+        <<~SQL.squish
+          (
+            NOT EXISTS (SELECT 1 FROM store_product_variants v WHERE v.store_product_id = store_products.id)
+            AND (store_products.stock IS NULL OR store_products.stock > 0)
+          ) OR EXISTS (
+            SELECT 1 FROM store_product_variants v
+            WHERE v.store_product_id = store_products.id
+            AND (v.stock IS NULL OR v.stock > 0)
+          )
+        SQL
+      )
+    }
+
     def in_stock?
       if variants.exists?
         variants.any? { |variant| variant.stock.nil? || variant.stock.positive? }

@@ -15,15 +15,21 @@ module Commerce
         product = item.product
         next unless product.active? && product.in_stock?
 
+        variant = if product.variants.exists?
+                    product.variants.order(:id).find { |v| v.stock.nil? || v.stock.positive? }
+                  end
+        next if product.variants.exists? && variant.nil?
+
         validation = Commerce::ValidateCartItem.call(
           user: @user,
           product: product,
+          variant: variant,
           quantity: 1,
           cart: cart
         )
 
         if validation.success?
-          cart.add_item!(product: product, quantity: 1)
+          cart.add_item!(product: product, variant: variant, quantity: 1)
           added += 1
         else
           skipped << product.name

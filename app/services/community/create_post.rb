@@ -27,6 +27,7 @@ module Community
         return ServiceResult.failure(error: "Invalid parent post.")
       end
 
+      old_trust_level = Community::TrustLevel.level_for(@user)
       post = nil
       @topic.with_lock do
         if @topic.locked?
@@ -58,7 +59,9 @@ module Community
 
       Community::NotifyTopicReply.call(post: post)
       Community::ProcessMentions.call(body: @body, author: @user, post: post, topic: @topic)
+      Community::NotifyPostQuoted.call(post: post, quoter: @user, quoted_post: @quoted_post) if @quoted_post
       Community::CheckAutoBadges.call(user: @user)
+      notify_trust_level_up!(old_trust_level)
 
       ServiceResult.success(post)
     rescue ActiveRecord::RecordInvalid => e
@@ -133,6 +136,13 @@ module Community
     def filter_censored_body!
       result = Community::FilterCensoredWords.call(text: @body)
       @body = result.value if result.success?
+    end
+
+    def notify_trust_level_up!(old_level)
+      info = Community::TrustLevel.level_info(@user)
+      return if info[:level] <= old_level
+
+      Community::NotifyTrustLevelUp.call(user: @user, level: info[:level], level_name: info[:name])
     end
   end
 end

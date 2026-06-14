@@ -319,3 +319,38 @@ app/
 | 订单优惠明细 | `discount_label` / `coupon_code` |
 | 规格级到货通知 | `stockAlertVariantIds` |
 | Bug 修复 | 私信分页 `pages`、限购排除未支付订单 |
+
+### 第十八轮（论坛 / 商城体验深化与 Bug 修复）
+
+| 功能 | 实现 |
+|------|------|
+| 合并主题修复 | `TopicsController#set_topic` 包含 `merge` |
+| 分页已读追踪 | 仅标记当前页最高楼层为已读 |
+| 帖子书签索引修复 | 主题书签 partial unique index |
+| 关注用户主题流 | `FollowsController#index` + `Following/Index.vue` |
+| 回复草稿自动保存 | `Topics/Show.vue` localStorage |
+| 主题自动关闭 | `auto_close_at` + `CloseScheduledTopicsJob` |
+| 徽章获得通知 | `NotifyBadgeEarned` |
+| 信任等级提升通知 | `NotifyTrustLevelUp` |
+| 引用通知 | `NotifyPostQuoted` |
+| 已解决通知 | `NotifyTopicSolved` |
+| 反应用户列表 | `reaction_users` + title 提示 |
+| 导航未读角标 | `forum_unread` inertia share |
+| 上次阅读分隔线 | `lastReadFloor` |
+| 编辑审查词过滤 | `EditPost` censored words |
+| Wiki 公开编辑历史 | `can_view_edits?` wiki 主题 |
+| 投票隐藏结果 | `hide_results_until_vote` |
+| 搜索排序 | 主题/帖子 最新/最早 |
+| @提及排除拉黑用户 | `MentionsController` |
+| 心愿单规格加购修复 | `AddWishlistToCart` 选首个有货规格 |
+| 已完成订单可退款 | `RequestRefund` + `refundable_order?` |
+| 退款时间线补全 | `refund_processed` / `refund_rejected` |
+| 取消订单事件去重 | 移除 `CancelOrder` 重复事件 |
+| 仅看有货筛选 | `Product.with_stock` |
+| 评价最有帮助排序 | `review_sort=helpful` |
+| 到货通知管理 | `StockAlertsController#index/destroy` |
+| 游客优惠券 session | 购物车预览保存 coupon |
+| 已购评价徽章 | `verified_purchaser` |
+| 已评价隐藏表单 | `userReview` + `canReview` |
+| 发货状态中文 | `fulfillment_status_label` |
+| 数字商品下载 | 订单 `downloads` 来自 fulfillment_snapshot |

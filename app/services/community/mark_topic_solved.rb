@@ -18,6 +18,7 @@ module Community
       end
 
       @topic.update!(solved_post: @post)
+      Community::NotifyTopicSolved.call(topic: @topic, post: @post, actor: @user)
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

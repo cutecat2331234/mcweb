@@ -32,6 +32,7 @@ export const routes = {
   forumReport: '/forum/reports/new',
   store: '/store/products',
   storeWishlist: '/store/wishlist',
+  storeStockAlerts: '/store/stock_alerts',
   storeProduct: (id: string) => `/store/products/${id}`,
   storeCart: '/store/cart',
   storeCheckout: '/store/checkout',

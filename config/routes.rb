@@ -103,6 +103,7 @@ Rails.application.routes.draw do
         post :mark_solved
         post :unsolve
         patch :slow_mode, action: :update_slow_mode
+        patch :auto_close, action: :update_auto_close
         post :subscription, action: :toggle_subscription
         post :bookmark, action: :toggle_bookmark
       end
@@ -171,6 +172,7 @@ Rails.application.routes.draw do
     post "wishlist/add_all_to_cart", to: "wishlist#add_all_to_cart", as: :add_all_to_cart_wishlist
     get "wishlist/share", to: "wishlist#share"
     get "wishlist/:token", to: "wishlist#public_show", as: :public_wishlist
+    resources :stock_alerts, only: %i[index destroy]
     resource :cart, only: %i[show update] do
       post :preview_coupon, on: :member
     end

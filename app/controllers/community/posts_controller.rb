@@ -142,6 +142,7 @@ module Community
     end
 
     def can_view_edits?
+      return true if @post.topic.wiki?
       return true if current_user&.permission?("forum.topics.lock")
       return true if current_user&.id == @post.user_id
 

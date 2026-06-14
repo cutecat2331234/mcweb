@@ -6,6 +6,12 @@ module Community
 
     def index
       follows = Community::UserFollow.where(follower: current_user).includes(:followed)
+      followed_ids = follows.map(&:followed_id)
+      topics = Community::Topic
+        .where(user_id: followed_ids, status: :published)
+        .includes(:user, :section)
+        .order(last_posted_at: :desc)
+        .limit(30)
 
       render inertia: "Community/Following/Index", props: {
         users: follows.map do |follow|
@@ -18,7 +24,8 @@ module Community
             profile_url: forum_user_path(user.username),
             unfollow_url: forum_user_follow_path(user.username)
           }
-        end
+        end,
+        topics: topics.map { |topic| serialize_topic(topic) }
       }
     end
 

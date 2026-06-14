@@ -42,17 +42,20 @@ const props = defineProps<{
   activeCategory: string | null
   query: string
   sort: string
+  inStock?: boolean
   pagination: PaginationMeta
 }>()
 
 const q = ref(props.query)
 const sort = ref(props.sort)
+const inStock = ref(props.inStock ?? false)
 
 function search() {
   router.get(routes.store, {
     q: q.value || undefined,
     sort: sort.value !== 'newest' ? sort.value : undefined,
     category: props.activeCategory || undefined,
+    in_stock: inStock.value ? '1' : undefined,
   }, { preserveState: true })
 }
 </script>
@@ -92,6 +95,10 @@ function search() {
       <option value="price_asc">价格升序</option>
       <option value="price_desc">价格降序</option>
     </select>
+    <label class="flex items-center gap-2 text-sm">
+      <input v-model="inStock" type="checkbox" class="rounded border" />
+      仅看有货
+    </label>
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">筛选</button>
   </form>
 

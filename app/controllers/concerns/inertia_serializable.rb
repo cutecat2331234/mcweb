@@ -93,6 +93,7 @@ module InertiaSerializable
       featured: topic.featured?,
       wiki: topic.wiki?,
       slow_mode_seconds: topic.slow_mode_seconds,
+      auto_close_at: topic.auto_close_at ? l(topic.auto_close_at, format: :short) : nil,
       solved_post_id: topic.solved_post_id,
       views_count: topic.views_count,
       watching: watching,
@@ -114,6 +115,9 @@ module InertiaSerializable
     formatted = Community::FormatPostBody.call(body: post.body)
     body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(post.body)
     reaction_counts = post.reactions.group(:emoji).count
+    reaction_users = post.reactions.includes(:user).group_by(&:emoji).transform_values do |reactions|
+      reactions.map { |reaction| reaction.user.username }.uniq.first(15)
+    end
     user_reactions = if current_user
                        post.reactions.where(user: current_user).pluck(:emoji)
                      else
@@ -139,6 +143,7 @@ module InertiaSerializable
       edits_url: post.edits.any? ? edits_forum_post_path(post) : nil,
       quoted_post: serialize_quoted_post(post.quoted_post),
       reaction_counts: reaction_counts,
+      reaction_users: reaction_users,
       reactions_total: reaction_counts.values.sum,
       user_reactions: user_reactions,
       can_edit: can_edit_post?(post, current_user),
@@ -276,18 +281,23 @@ module InertiaSerializable
       created_at: l(review.created_at, format: :short),
       helpful_count: review.helpful_votes.count,
       helpful: helpful,
-      helpful_url: current_user ? helpful_store_product_review_path(review.product.public_id, review.id) : nil
+      helpful_url: current_user ? helpful_store_product_review_path(review.product.public_id, review.id) : nil,
+      verified_purchaser: true
     }
   end
 
   def serialize_poll(poll)
     user_vote = poll.votes.find_by(user: current_user)
+    show_results = !poll.hide_results_until_vote || user_vote.present? || !poll.open?
     {
       id: poll.id,
       question: poll.question,
       open: poll.open?,
-      results: poll.results,
-      total_votes: poll.total_votes,
+      hide_results_until_vote: poll.hide_results_until_vote,
+      show_results: show_results,
+      options: poll.options.each_with_index.map { |label, index| { label: label, index: index } },
+      results: show_results ? poll.results : [],
+      total_votes: show_results ? poll.total_votes : nil,
       user_vote_index: user_vote&.option_index,
       vote_url: forum_poll_vote_path(poll)
     }
@@ -346,6 +356,13 @@ module InertiaSerializable
     "completed" => "已完成"
   }.freeze
 
+  FULFILLMENT_STATUS_LABELS = {
+    "pending" => "待处理",
+    "processing" => "处理中",
+    "fulfilled" => "已完成",
+    "failed" => "失败"
+  }.freeze
+
   ORDER_EVENT_LABELS = {
     "created" => "订单创建",
     "payment_submitted" => "提交支付",
@@ -356,6 +373,8 @@ module InertiaSerializable
     "cancel" => "订单取消",
     "cancelled" => "订单取消",
     "refund_requested" => "退款申请",
+    "refund_processed" => "退款完成",
+    "refund_rejected" => "退款拒绝",
     "refunded" => "已退款",
     "fulfilled" => "发货完成"
   }.freeze
@@ -413,13 +432,26 @@ module InertiaSerializable
       can_reorder: order.items.any?,
       items: order.items.map do |item|
         fulfillment = order.fulfillments.find_by(order_item: item)
+        snapshot = item.fulfillment_snapshot || {}
+        config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
+        download_url = config["download_url"] || config[:download_url]
         {
           product_name: item.product_name,
           variant_name: item.variant_name,
           quantity: item.quantity,
           total_label: format_money(item.total_cents, order.currency),
-          fulfillment_status: fulfillment&.status
+          fulfillment_status: fulfillment&.status,
+          fulfillment_status_label: fulfillment_status_label(fulfillment&.status),
+          download_url: download_url.presence
         }
+      end,
+      downloads: order.items.filter_map do |item|
+        snapshot = item.fulfillment_snapshot || {}
+        config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
+        url = config["download_url"] || config[:download_url]
+        next if url.blank?
+
+        { product_name: item.product_name, url: url }
       end,
       fulfillments: order.fulfillments.map do |f|
         {
@@ -479,9 +511,15 @@ module InertiaSerializable
   end
 
   def refundable_order?(order)
-    return false unless %w[paid fulfilled].include?(order.status)
+    return false unless %w[paid fulfilled completed].include?(order.status)
 
     !order.refunds.where(status: %w[pending completed]).exists?
+  end
+
+  def fulfillment_status_label(status)
+    return nil if status.blank?
+
+    FULFILLMENT_STATUS_LABELS[status.to_s] || status.to_s.humanize
   end
 
   def format_price(product)

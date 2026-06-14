@@ -58,7 +58,10 @@ const props = defineProps<{
       quantity: number
       total_label: string
       fulfillment_status: string | null
+      fulfillment_status_label?: string | null
+      download_url?: string | null
     }>
+    downloads?: Array<{ product_name: string; url: string }>
     fulfillments: Array<{
       delivery_id: string
       status: string
@@ -82,6 +85,16 @@ const reorderForm = useForm({})
   <p v-if="order.notes" class="mb-4 rounded-lg border p-4 text-sm">
     <span class="font-medium">订单备注：</span>{{ order.notes }}
   </p>
+
+  <div v-if="order.downloads?.length" class="mb-6 rounded-lg border p-4">
+    <h2 class="mb-3 text-sm font-semibold">数字商品下载</h2>
+    <ul class="space-y-2 text-sm">
+      <li v-for="(download, index) in order.downloads" :key="index" class="flex justify-between gap-4">
+        <span>{{ download.product_name }}</span>
+        <a :href="download.url" target="_blank" rel="noopener" class="text-primary hover:underline">下载</a>
+      </li>
+    </ul>
+  </div>
 
   <div v-if="order.events.length" class="mb-6 rounded-lg border p-4">
     <h2 class="mb-3 text-sm font-semibold">订单时间线</h2>
@@ -112,10 +125,11 @@ const reorderForm = useForm({})
           <TableCell>{{ item.quantity }}</TableCell>
           <TableCell>{{ item.total_label }}</TableCell>
           <TableCell>
-            <Badge v-if="item.fulfillment_status" :variant="item.fulfillment_status === 'fulfilled' ? 'success' : 'default'">
-              {{ item.fulfillment_status }}
+            <Badge v-if="item.fulfillment_status_label || item.fulfillment_status" :variant="item.fulfillment_status === 'fulfilled' ? 'success' : 'default'">
+              {{ item.fulfillment_status_label || item.fulfillment_status }}
             </Badge>
-            <span v-else class="text-muted-foreground">—</span>
+            <a v-if="item.download_url" :href="item.download_url" target="_blank" rel="noopener" class="ml-2 text-xs text-primary hover:underline">下载</a>
+            <span v-else-if="!item.fulfillment_status" class="text-muted-foreground">—</span>
           </TableCell>
         </TableRow>
       </TableBody>

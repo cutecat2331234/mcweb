@@ -16,6 +16,7 @@ module Community
 
       user_badge.granted_at = Time.current
       user_badge.save!
+      Community::NotifyBadgeEarned.call(user: @user, badge: badge)
       ServiceResult.success(user_badge)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

@@ -28,5 +28,9 @@ module Community
         SQL
         .order("forum_topics.last_posted_at DESC")
     }
+
+    scope :unread_topics_count_for, ->(user) {
+      with_unread_for(user).count
+    }
   end
 end

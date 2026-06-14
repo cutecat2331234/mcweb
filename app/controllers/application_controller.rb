@@ -42,6 +42,10 @@ class ApplicationController < ActionController::Base
         unread_count: current_user.notifications.unread.count,
         url: forum_notifications_path
       }
+      share[:forum_unread] = {
+        count: Community::ReadState.with_unread_for(current_user).count,
+        url: forum_unread_path
+      }
     end
 
     share

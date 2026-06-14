@@ -29,3 +29,7 @@ production:
     class: Community::PublishScheduledTopicsJob
     queue: default
     schedule: every 5 minutes
+  close_scheduled_topics:
+    class: Community::CloseScheduledTopicsJob
+    queue: default
+    schedule: every 5 minutes

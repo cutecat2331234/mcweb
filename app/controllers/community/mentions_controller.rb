@@ -10,6 +10,7 @@ module Community
 
       users = User.where("username ILIKE ?", "#{ActiveRecord::Base.sanitize_sql_like(q)}%")
         .where.not(id: current_user.id)
+        .where.not(id: Community::UserBlock.where(blocker: current_user).select(:blocked_id))
         .limit(8)
 
       render json: {

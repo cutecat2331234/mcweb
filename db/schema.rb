@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000030) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000031) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -84,7 +84,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000030) do
     t.index ["forum_post_id"], name: "index_forum_bookmarks_on_forum_post_id"
     t.index ["forum_topic_id"], name: "index_forum_bookmarks_on_forum_topic_id"
     t.index ["user_id", "forum_post_id"], name: "index_forum_bookmarks_on_user_id_and_forum_post_id", unique: true, where: "(forum_post_id IS NOT NULL)"
-    t.index ["user_id", "forum_topic_id"], name: "index_forum_bookmarks_on_user_id_and_forum_topic_id", unique: true
+    t.index ["user_id", "forum_topic_id"], name: "index_forum_bookmarks_on_user_topic_without_post", unique: true, where: "(forum_post_id IS NULL)"
     t.index ["user_id"], name: "index_forum_bookmarks_on_user_id"
   end
 
@@ -166,6 +166,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000030) do
     t.datetime "closes_at"
     t.datetime "created_at", null: false
     t.bigint "forum_topic_id", null: false
+    t.boolean "hide_results_until_vote", default: false, null: false
     t.jsonb "options", default: [], null: false
     t.string "question", null: false
     t.datetime "updated_at", null: false
@@ -290,6 +291,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000030) do
   end
 
   create_table "forum_topics", force: :cascade do |t|
+    t.datetime "auto_close_at"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
     t.boolean "featured", default: false, null: false
@@ -311,6 +313,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000030) do
     t.integer "views_count", default: 0, null: false
     t.boolean "wiki", default: false, null: false
     t.index "to_tsvector('simple'::regconfig, (COALESCE(title, ''::character varying))::text)", name: "index_forum_topics_on_title_tsvector", using: :gin
+    t.index ["auto_close_at"], name: "index_forum_topics_on_auto_close_at"
     t.index ["deleted_at"], name: "index_forum_topics_on_deleted_at"
     t.index ["forum_section_id", "last_posted_at"], name: "index_forum_topics_on_forum_section_id_and_last_posted_at"
     t.index ["forum_section_id"], name: "index_forum_topics_on_forum_section_id"

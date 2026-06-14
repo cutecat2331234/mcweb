@@ -10,19 +10,10 @@ module Commerce
     def call
       return ServiceResult.failure(error: "Order cannot be cancelled.") unless @order.pending? || @order.awaiting_payment?
 
-      from_status = @order.status
       Commerce::Order.transaction do
         @order.cancel! if @order.may_cancel?
         restore_stock!
       end
-
-      Commerce::OrderEvent.create!(
-        order: @order,
-        event_type: "cancelled",
-        from_status: from_status,
-        to_status: "cancelled",
-        actor: @actor
-      )
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_cancelled", "deliver_now", args: [ @order.id ])
 

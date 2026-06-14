@@ -5,6 +5,7 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
+import Badge from '@/components/ui/Badge.vue'
 import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Label from '@/components/ui/Label.vue'
@@ -32,6 +33,7 @@ export interface ProductReview {
   helpful_count?: number
   helpful?: boolean
   helpful_url?: string | null
+  verified_purchaser?: boolean
 }
 
 export interface ProductDetail {
@@ -72,6 +74,8 @@ const props = defineProps<{
   stockAlertUrl: string
   stockAlertVariantIds?: Array<number | null>
   canReview?: boolean
+  userReview?: ProductReview | null
+  reviewSort?: string
   loggedIn: boolean
   questionUrl: string
   canAnswerOfficially: boolean
@@ -137,6 +141,15 @@ const stockAlertSubscribed = computed(() => {
   const variantId = selectedVariantId.value
   return props.stockAlertVariantIds?.includes(variantId) ?? false
 })
+
+const reviewSort = ref(props.reviewSort || 'newest')
+
+function changeReviewSort(value: string) {
+  reviewSort.value = value
+  router.get(routes.storeProduct(props.product.id), {
+    review_sort: value !== 'newest' ? value : undefined,
+  }, { preserveScroll: true, preserveState: true })
+}
 
 function toggleHelpful(url: string | null | undefined) {
   if (!url) return
@@ -358,12 +371,35 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </div>
   </section>
 
-  <section v-if="product.reviews.length" class="mt-10 max-w-xl">
-    <h2 class="mb-4 text-sm font-semibold">用户评价</h2>
+  <section v-if="product.reviews.length || userReview" class="mt-10 max-w-xl">
+    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-sm font-semibold">用户评价</h2>
+      <select
+        v-if="product.reviews.length"
+        :value="reviewSort"
+        class="h-8 rounded-md border px-2 text-xs"
+        @change="changeReviewSort(($event.target as HTMLSelectElement).value)"
+      >
+        <option value="newest">最新</option>
+        <option value="helpful">最有帮助</option>
+        <option value="rating">评分最高</option>
+      </select>
+    </div>
+    <div v-if="userReview" class="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+      <p class="mb-2 text-sm font-medium">你的评价</p>
+      <div class="mb-1 flex items-center justify-between text-sm">
+        <span class="text-amber-500">{{ '★'.repeat(userReview.rating) }}</span>
+        <span class="text-xs text-muted-foreground">{{ userReview.created_at }}</span>
+      </div>
+      <p v-if="userReview.body" class="text-sm">{{ userReview.body }}</p>
+    </div>
     <div class="space-y-3">
       <article v-for="review in product.reviews" :key="review.id" class="rounded-lg border p-4">
         <div class="mb-1 flex items-center justify-between text-sm">
-          <span class="font-medium">{{ review.author }}</span>
+          <span class="font-medium">
+            {{ review.author }}
+            <Badge v-if="review.verified_purchaser" variant="default" class="ml-2 text-[10px]">已购</Badge>
+          </span>
           <span class="text-amber-500">{{ '★'.repeat(review.rating) }}</span>
         </div>
         <p v-if="review.body" class="text-sm">{{ review.body }}</p>

@@ -4,6 +4,7 @@ module Commerce
   class ProductsController < ApplicationController
     def index
       scope = Commerce::Product.includes(:category).available
+      scope = scope.with_stock if params[:in_stock] == "1"
       if params[:q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
         scope = scope.where("name ILIKE ? OR slug ILIKE ?", q, q)
@@ -34,6 +35,7 @@ module Commerce
         activeCategory: params[:category],
         query: params[:q].to_s,
         sort: params[:sort].to_s.presence || "newest",
+        inStock: params[:in_stock] == "1",
         pagination: pagy_props(@pagy)
       }
     end
@@ -41,7 +43,18 @@ module Commerce
     def show
       product = Commerce::Product.available.includes(:variants, :category).find_by!(public_id: params[:id])
       product.increment!(:view_count)
-      reviews = product.reviews.published.includes(:user).order(created_at: :desc).limit(20)
+      review_sort = params[:review_sort].to_s
+      reviews_scope = product.reviews.published.includes(:user, :helpful_votes)
+      reviews = case review_sort
+                when "helpful"
+                  reviews_scope.left_joins(:helpful_votes)
+                    .group("store_reviews.id")
+                    .order(Arel.sql("COUNT(store_review_helpful_votes.id) DESC, store_reviews.created_at DESC"))
+                when "rating"
+                  reviews_scope.order(rating: :desc, created_at: :desc)
+                else
+                  reviews_scope.order(created_at: :desc)
+                end.limit(20)
       avg = product.reviews.published.average(:rating)&.round(1)
       wishlisted = logged_in? && Commerce::WishlistItem.exists?(user: current_user, product: product)
       stock_alert_variant_ids = if logged_in?
@@ -49,7 +62,8 @@ module Commerce
                               else
                                 []
                               end
-      can_review = logged_in? && Commerce::CreateReview.purchased?(user: current_user, product: product)
+      user_review = logged_in? ? product.reviews.find_by(user: current_user) : nil
+      can_review = logged_in? && Commerce::CreateReview.purchased?(user: current_user, product: product) && user_review.nil?
       related = if product.store_category_id
                   product.category.products.available.where.not(id: product.id).order(created_at: :desc).limit(4)
                 else
@@ -65,6 +79,8 @@ module Commerce
         stockAlertUrl: stock_alert_store_product_path(product),
         stockAlertVariantIds: stock_alert_variant_ids,
         canReview: can_review,
+        userReview: user_review ? serialize_review(user_review, current_user: current_user) : nil,
+        reviewSort: review_sort.presence || "newest",
         addToCartUrl: store_cart_path,
         wishlistUrl: wishlist_store_product_path(product),
         reviewUrl: store_reviews_path(product),

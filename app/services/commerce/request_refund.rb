@@ -10,7 +10,7 @@ module Commerce
 
     def call
       return ServiceResult.failure(error: "Not your order.") unless @order.user_id == @user.id
-      return ServiceResult.failure(error: "Order is not refundable.") unless %w[paid fulfilled].include?(@order.status)
+      return ServiceResult.failure(error: "Order is not refundable.") unless %w[paid fulfilled completed].include?(@order.status)
 
       payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
       return ServiceResult.failure(error: "No payment found.") unless payment

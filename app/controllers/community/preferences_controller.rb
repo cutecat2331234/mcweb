@@ -12,6 +12,10 @@ module Community
       forum.followed_topic
       forum.tag_topic
       forum.reaction
+      forum.quote
+      forum.topic_solved
+      forum.badge
+      forum.trust_level
     ].freeze
 
     DIGEST_OPTIONS = %w[none daily weekly].freeze
@@ -65,7 +69,11 @@ module Community
         "forum.private_message" => "私信",
         "forum.followed_topic" => "关注用户新主题",
         "forum.tag_topic" => "关注标签新主题",
-        "forum.reaction" => "帖子反应"
+        "forum.reaction" => "帖子反应",
+        "forum.quote" => "帖子引用",
+        "forum.topic_solved" => "主题已解决",
+        "forum.badge" => "获得徽章",
+        "forum.trust_level" => "信任等级提升"
       }[type] || type.humanize
     end
 

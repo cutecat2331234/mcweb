@@ -34,6 +34,12 @@ module Commerce
 
         if result.success?
           refund.update!(status: "completed") unless refund.completed?
+          Commerce::OrderEvent.create!(
+            order: @order,
+            actor: @approved_by || @requested_by,
+            event_type: "refund_processed",
+            metadata: { refund_id: refund.id, amount_cents: @amount_cents }
+          )
           if full_refund?(@amount_cents, refunded_cents)
             @order.update!(status: "refunded")
             restore_stock!
@@ -42,6 +48,12 @@ module Commerce
           MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_processed", "deliver_now", args: [ refund.id ])
         else
           refund.update!(status: "rejected")
+          Commerce::OrderEvent.create!(
+            order: @order,
+            actor: @approved_by,
+            event_type: "refund_rejected",
+            metadata: { refund_id: refund.id, reason: result.error }
+          )
           return result
         end
       end

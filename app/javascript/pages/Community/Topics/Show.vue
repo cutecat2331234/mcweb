@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, onMounted } from 'vue'
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -35,6 +35,7 @@ export interface PostItem {
   edits_url: string | null
   quoted_post: QuotedPost | null
   reaction_counts: Record<string, number>
+  reaction_users?: Record<string, string[]>
   reactions_total?: number
   user_reactions: string[]
   can_edit: boolean
@@ -57,8 +58,11 @@ export interface PollItem {
   id: number
   question: string
   open: boolean
+  hide_results_until_vote?: boolean
+  show_results?: boolean
+  options?: Array<{ label: string; index: number }>
   results: Array<{ label: string; index: number; votes: number }>
-  total_votes: number
+  total_votes: number | null
   user_vote_index: number | null
   vote_url: string
 }
@@ -81,6 +85,7 @@ const props = defineProps<{
     featured: boolean
     wiki: boolean
     slow_mode_seconds: number | null
+    auto_close_at?: string | null
     solved_post_id: number | null
     tags: Array<{ name: string; slug: string; url: string }>
     tags_string: string
@@ -88,6 +93,7 @@ const props = defineProps<{
   }
   posts: PostItem[]
   pagination: PaginationMeta
+  lastReadFloor?: number
   canReply: boolean
   canMarkSolved: boolean
   reactionEmojis: string[]
@@ -121,6 +127,23 @@ const replyPreview = ref<{ id: number; floor_number: number; author: string } | 
 const moveSectionSlug = ref('')
 const mergeTargetId = ref('')
 const slowModeSeconds = ref(props.topic.slow_mode_seconds || 0)
+const autoCloseAt = ref('')
+const draftKey = `forum-reply-draft-${props.topic.id}`
+
+onMounted(() => {
+  const saved = localStorage.getItem(draftKey)
+  if (saved && !replyForm.post.body) {
+    replyForm.post.body = saved
+  }
+})
+
+watch(() => replyForm.post.body, (body) => {
+  if (body.trim()) {
+    localStorage.setItem(draftKey, body)
+  } else {
+    localStorage.removeItem(draftKey)
+  }
+})
 
 function submitReply() {
   replyForm.post('/forum/posts', {
@@ -131,6 +154,7 @@ function submitReply() {
       replyForm.post.parent_post_id = null
       quotePreview.value = null
       replyPreview.value = null
+      localStorage.removeItem(draftKey)
     },
   })
 }
@@ -174,6 +198,15 @@ function unsolveTopic() {
 
 function updateSlowMode() {
   router.patch(`/forum/topics/${props.topic.id}/slow_mode`, { seconds: slowModeSeconds.value })
+}
+
+function updateAutoClose() {
+  router.patch(`/forum/topics/${props.topic.id}/auto_close`, { auto_close_at: autoCloseAt.value || null })
+}
+
+function reactionTitle(post: PostItem, emoji: string) {
+  const users = post.reaction_users?.[emoji]
+  return users?.length ? users.join('、') : ''
 }
 
 function startEdit(post: PostItem) {
@@ -253,7 +286,7 @@ function votePoll(optionIndex: number) {
 }
 
 function pollPercent(votes: number) {
-  if (!props.poll || props.poll.total_votes === 0) return 0
+  if (!props.poll || !props.poll.show_results || !props.poll.total_votes) return 0
   return Math.round((votes / props.poll.total_votes) * 100)
 }
 </script>
@@ -334,7 +367,10 @@ function pollPercent(votes: number) {
   <section v-if="poll" class="mb-6 max-w-xl rounded-lg border p-4">
     <h2 class="mb-3 text-sm font-semibold">{{ poll.question }}</h2>
     <p v-if="!poll.open" class="mb-3 text-xs text-muted-foreground">投票已结束</p>
-    <div class="space-y-2">
+    <p v-if="poll.hide_results_until_vote && !poll.show_results" class="mb-3 text-xs text-muted-foreground">
+      投票后可查看结果
+    </p>
+    <div v-if="poll.show_results" class="space-y-2">
       <div v-for="option in poll.results" :key="option.index" class="space-y-1">
         <div class="flex items-center justify-between gap-2 text-sm">
           <span>{{ option.label }}</span>
@@ -355,7 +391,21 @@ function pollPercent(votes: number) {
         <span v-else-if="poll.user_vote_index === option.index" class="text-xs text-primary">你已投票</span>
       </div>
     </div>
-    <p class="mt-3 text-xs text-muted-foreground">共 {{ poll.total_votes }} 票</p>
+    <div v-else-if="poll.open && loggedIn && poll.options?.length" class="space-y-2">
+      <div v-for="option in poll.options" :key="option.index">
+        <Button
+          v-if="poll.user_vote_index !== option.index"
+          type="button"
+          size="sm"
+          variant="outline"
+          @click="votePoll(option.index)"
+        >
+          {{ poll.user_vote_index === null ? '投票' : '改投此项' }}：{{ option.label }}
+        </Button>
+        <span v-else class="text-xs text-primary">已选：{{ option.label }}</span>
+      </div>
+    </div>
+    <p v-if="poll.show_results && poll.total_votes !== null" class="mt-3 text-xs text-muted-foreground">共 {{ poll.total_votes }} 票</p>
   </section>
 
   <div v-if="topic.can_move && sections.length" class="mb-4 flex flex-wrap items-center gap-2">
@@ -374,6 +424,8 @@ function pollPercent(votes: number) {
     <template v-if="topic.can_moderate">
       <Input v-model.number="slowModeSeconds" type="number" min="0" class="h-8 w-24" placeholder="慢速秒" />
       <Button type="button" size="sm" variant="outline" @click="updateSlowMode">设置慢速</Button>
+      <Input v-model="autoCloseAt" type="datetime-local" class="h-8 w-48" />
+      <Button type="button" size="sm" variant="outline" @click="updateAutoClose">定时关闭</Button>
     </template>
   </div>
 
@@ -390,19 +442,29 @@ function pollPercent(votes: number) {
   <p v-if="topic.slow_mode_seconds" class="mb-4 rounded-md border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900">
     慢速模式：同一用户需间隔 {{ topic.slow_mode_seconds }} 秒才能再次回复。
   </p>
+  <p v-if="topic.auto_close_at" class="mb-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+    将于 {{ topic.auto_close_at }} 自动关闭。
+  </p>
   <p v-if="topic.locked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
     此主题已锁定，无法回复。
   </p>
 
   <div class="space-y-4">
-    <article
-      v-for="post in posts"
-      :id="`post-${post.id}`"
-      :key="post.id"
-      class="rounded-lg border p-4"
-      :class="[post.hidden ? 'opacity-60 border-dashed' : '', post.is_solved ? 'border-green-400 bg-green-50/50 dark:bg-green-950/20' : '']"
-      :style="{ marginLeft: `${post.depth * 1.5}rem` }"
-    >
+    <template v-for="post in posts" :key="post.id">
+      <div
+        v-if="lastReadFloor && post.floor_number === lastReadFloor + 1"
+        class="flex items-center gap-3 text-xs text-primary"
+      >
+        <span class="h-px flex-1 bg-primary/30" />
+        <span>上次读到这里</span>
+        <span class="h-px flex-1 bg-primary/30" />
+      </div>
+      <article
+        :id="`post-${post.id}`"
+        class="rounded-lg border p-4"
+        :class="[post.hidden ? 'opacity-60 border-dashed' : '', post.is_solved ? 'border-green-400 bg-green-50/50 dark:bg-green-950/20' : '']"
+        :style="{ marginLeft: `${post.depth * 1.5}rem` }"
+      >
       <div class="mb-3 flex items-start gap-3">
         <img :src="post.avatar_url" :alt="post.author" class="h-9 w-9 shrink-0 rounded-full" />
         <div class="min-w-0 flex-1">
@@ -460,6 +522,7 @@ function pollPercent(votes: number) {
                 type="button"
                 class="rounded-full border px-2 py-0.5 text-xs transition-colors"
                 :class="hasReacted(post, emoji) ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
+                :title="reactionTitle(post, emoji)"
                 @click="toggleReaction(post, emoji)"
               >
                 {{ emoji }}
@@ -480,6 +543,7 @@ function pollPercent(votes: number) {
         </div>
       </div>
     </article>
+    </template>
   </div>
 
   <Pagination :pagination="pagination" :base-path="routes.forumTopic(topic.id)" />

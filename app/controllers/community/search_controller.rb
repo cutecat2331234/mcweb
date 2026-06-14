@@ -23,7 +23,11 @@ module Community
         topics = topics.where(
           "to_tsvector('simple', coalesce(forum_topics.title, '')) @@ plainto_tsquery('simple', ?)",
           query
-        ).order(last_posted_at: :desc)
+        )
+        topics = case params[:topic_sort]
+                 when "oldest" then topics.order(created_at: :asc)
+                 else topics.order(last_posted_at: :desc)
+                 end
         topics = filter_blocked_topics(topics)
 
         posts = Community::Post.where(status: :published)
@@ -38,7 +42,11 @@ module Community
         posts = posts.where(
           "to_tsvector('simple', coalesce(forum_posts.body, '')) @@ plainto_tsquery('simple', ?)",
           query
-        ).includes(:user, topic: :section).order(created_at: :desc)
+        ).includes(:user, topic: :section)
+        posts = case params[:post_sort]
+                when "oldest" then posts.order(created_at: :asc)
+                else posts.order(created_at: :desc)
+                end
         posts = filter_blocked_posts(posts)
       end
 
@@ -57,6 +65,8 @@ module Community
         author: author.to_s,
         tag: tag_slug.to_s,
         solved: solved_filter.to_s,
+        topicSort: params[:topic_sort].to_s.presence || "recent",
+        postSort: params[:post_sort].to_s.presence || "recent",
         sections: sections,
         tags: tags,
         topics: topics.map { |topic| serialize_search_topic(topic) },

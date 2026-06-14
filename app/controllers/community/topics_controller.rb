@@ -4,19 +4,20 @@ module Community
   class TopicsController < ApplicationController
     include Community::TopicVisibility
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move merge mark_solved unsolve update_slow_mode]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move merge mark_solved unsolve update_slow_mode update_auto_close]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move mark_solved unsolve update_slow_mode]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move merge mark_solved unsolve update_slow_mode update_auto_close]
 
     def show
       @topic.record_view!
-      mark_topic_read!
       mark_topic_notifications_read!
 
       posts_scope = @topic.posts.chronological.includes(:user, :quoted_post, :parent_post, :reactions, :edits)
       posts_scope = filter_blocked_posts(posts_scope)
 
       @pagy, posts = pagy(posts_scope, limit: 20)
+      mark_topic_read!(posts)
+      last_read_floor = logged_in? ? Community::ReadState.find_by(user: current_user, topic: @topic)&.last_read_floor.to_i : 0
 
       render inertia: "Community/Topics/Show", props: {
         topic: serialize_topic_detail(
@@ -29,6 +30,7 @@ module Community
         ),
         posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?, solved_post_id: @topic.solved_post_id) },
         pagination: pagy_props(@pagy),
+        lastReadFloor: last_read_floor,
         canReply: logged_in? && !@topic.locked? && @topic.section.allowed?(current_user, :reply),
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
@@ -204,6 +206,16 @@ module Community
       redirect_to forum_topic_path(@topic), notice: seconds.positive? ? "慢速模式已启用（#{seconds} 秒）。" : "慢速模式已关闭。"
     end
 
+    def update_auto_close
+      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+
+      at = params[:auto_close_at].present? ? Time.zone.parse(params[:auto_close_at].to_s) : nil
+      @topic.update!(auto_close_at: at)
+      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动关闭。" : "自动关闭已取消。"
+    rescue ArgumentError
+      redirect_to forum_topic_path(@topic), alert: "无效的关闭时间。"
+    end
+
     private
 
     def set_section
@@ -241,10 +253,11 @@ module Community
       errors
     end
 
-    def mark_topic_read!
+    def mark_topic_read!(posts)
       return unless logged_in?
+      return if posts.blank?
 
-      last_floor = @topic.posts.maximum(:floor_number).to_i
+      last_floor = posts.map(&:floor_number).max.to_i
       Community::ReadState.mark_read!(current_user, @topic, floor: last_floor)
     end
 
@@ -263,7 +276,7 @@ module Community
     def mark_topic_notifications_read!
       return unless logged_in?
 
-      types = %w[forum.topic_reply forum.mention forum.section_topic forum.reaction forum.tag_topic forum.followed_topic]
+      types = %w[forum.topic_reply forum.mention forum.section_topic forum.reaction forum.tag_topic forum.followed_topic forum.quote forum.topic_solved]
       current_user.notifications.unread.where(notification_type: types).find_each do |notification|
         topic_id = notification.metadata["topic_id"]
         notification.mark_read! if topic_id == @topic.public_id

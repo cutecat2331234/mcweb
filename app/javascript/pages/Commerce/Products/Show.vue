@@ -106,6 +106,7 @@ const props = defineProps<{
   reviewRating?: number | null
   reviewsCount?: number
   reviewsPagination?: import('@/components/portal/Pagination.vue').PaginationMeta
+  questionSort?: string
   loggedIn: boolean
   questionUrl: string
   canAnswerOfficially: boolean
@@ -346,6 +347,13 @@ function toggleAnswerHelpful(url: string) {
   router.post(url, {}, { preserveScroll: true })
 }
 
+function changeQuestionSort(value: string) {
+  router.get(routes.storeProduct(props.product.id), {
+    question_sort: value !== 'newest' ? value : undefined,
+    question_q: questionSearch.value || undefined,
+  }, { preserveScroll: true, preserveState: true })
+}
+
 function submitAnswer(questionId: number, answerUrl: string) {
   const body = answerForms.value[questionId]
   if (!body?.trim()) return
@@ -528,10 +536,21 @@ function submitAnswer(questionId: number, answerUrl: string) {
   <section class="mt-10 max-w-xl">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">商品问答</h2>
-      <form class="flex gap-2" @submit.prevent="searchQuestions">
-        <Input v-model="questionSearch" placeholder="搜索问答…" class="h-8 max-w-xs text-sm" />
-        <Button type="submit" size="sm" variant="outline">搜索</Button>
-      </form>
+      <div class="flex flex-wrap items-center gap-2">
+        <select
+          v-if="questions.length"
+          :value="questionSort || 'newest'"
+          class="h-8 rounded-md border px-2 text-xs"
+          @change="changeQuestionSort(($event.target as HTMLSelectElement).value)"
+        >
+          <option value="newest">最新回答</option>
+          <option value="helpful">最有帮助</option>
+        </select>
+        <form class="flex gap-2" @submit.prevent="searchQuestions">
+          <Input v-model="questionSearch" placeholder="搜索问答…" class="h-8 max-w-xs text-sm" />
+          <Button type="submit" size="sm" variant="outline">搜索</Button>
+        </form>
+      </div>
     </div>
     <div v-if="questions.length" class="mb-6 space-y-4">
       <article v-for="q in questions" :key="q.id" class="rounded-lg border p-4">

@@ -97,6 +97,8 @@ InstallationLock.find_or_create_by!(id: 1) do |lock|
   lock.locked = false
 end
 
+SiteSetting.set("forum.bump_cooldown_hours", "24") unless SiteSetting.exists?(key: "forum.bump_cooldown_hours")
+
 if Rails.env.development?
   unless InstallationLock.locked?
     puts "Development mode: installation not locked. Visit /setup to initialize."
@@ -139,6 +141,13 @@ if Rails.env.development?
     s.description = "服务器公告"
     s.position = 0
   end
+
+  discussion_section = Community::Section.find_or_create_by!(category: category, slug: "product-discussion") do |s|
+    s.name = "商品讨论"
+    s.description = "商品相关讨论"
+    s.position = 1
+  end
+  SiteSetting.set("store.product_discussion_section_slug", discussion_section.slug)
 
   store_category = Commerce::Category.find_or_create_by!(slug: "vip") do |c|
     c.name = "VIP"

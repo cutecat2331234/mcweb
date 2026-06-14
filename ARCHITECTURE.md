@@ -614,3 +614,20 @@ app/
 | 成员购买数展示 | `purchases_count` 排行榜 |
 | 优惠券限制透明化 | per_user_limit / max_discount 公开页 |
 | 管理端问答订单列 | admin product_questions order_number |
+
+### 第三十三轮（列表统一与通知补全）
+
+| 功能 | 实现 |
+|------|------|
+| 主题列表浏览数 | `TopicListTable` + views 列 |
+| 统一主题列表组件 | `TopicListTable.vue` 用于分区/最新/标签/关注/未读 |
+| 优惠券 Onebox | `FetchCouponOnebox` + `FormatPostBody` |
+| 帖子编辑邮件通知 | `ForumMailer#post_edited` |
+| 更新日志邮件通知 | `OrderMailer#product_changelog` |
+| 通知忽略过滤补全 | followed/tag 通知过滤 |
+| Wiki 编辑历史公开 | guests 可访问 `posts#edits` |
+| 类似主题扩展 | `similar_topics` 同分区回退 |
+| 问答回答排序 | `question_sort=helpful` |
+| 员工新提问通知 | `NotifyNewProductQuestion` |
+| 资料页订单历史 | 本人 store tab 显示订单 |
+| SiteSetting 种子 | bump 冷却 + 商品讨论分区 |

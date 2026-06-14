@@ -130,6 +130,12 @@ module Community
         token
       end
 
+      text = text.gsub(%r{\A(/store/coupons/[\w-]+)\s*\z}i) do |path|
+        token = placeholder_token(placeholders, "ONEBOX")
+        placeholders[token] = coupon_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
+        token
+      end
+
       text = text.gsub(/\A(https?:\/\/[^\s]+)\z/) do |url|
         token = placeholder_token(placeholders, "ONEBOX")
         if (embed = video_embed_html(url))
@@ -138,6 +144,8 @@ module Community
           placeholders[token] = product_box
         elsif (topic_box = topic_onebox_html(url))
           placeholders[token] = topic_box
+        elsif (coupon_box = coupon_onebox_html(url))
+          placeholders[token] = coupon_box
         else
           preview = Community::FetchLinkPreview.call(url: url)
           if preview.success? && preview.value
@@ -223,6 +231,14 @@ module Community
       t = result.value
       meta = [ t[:author], t[:section_name], "#{t[:replies_count]} 回复" ].compact.join(" · ")
       %(<aside class="onebox topic-onebox"><a href="#{ERB::Util.html_escape(t[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(t[:title])}</strong><p class="onebox-desc">#{ERB::Util.html_escape(meta)}</p></a></aside>)
+    end
+
+    def coupon_onebox_html(url)
+      result = Community::FetchCouponOnebox.call(url: url)
+      return nil unless result.success? && result.value
+
+      c = result.value
+      %(<aside class="onebox coupon-onebox"><a href="#{ERB::Util.html_escape(c[:url])}" class="onebox-link"><strong class="onebox-title">优惠券 #{ERB::Util.html_escape(c[:code])}</strong><span class="onebox-price">#{ERB::Util.html_escape(c[:discount_label])}</span></a></aside>)
     end
 
     def markdown_to_html(text)
@@ -319,6 +335,8 @@ module Community
           product_box
         elsif (topic_box = topic_onebox_html(url))
           topic_box
+        elsif (coupon_box = coupon_onebox_html(url))
+          coupon_box
         else
           %(<a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener">#{ERB::Util.html_escape(label)}</a>)
         end

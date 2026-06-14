@@ -4,14 +4,8 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
-import Badge from '@/components/ui/Badge.vue'
+import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Button from '@/components/ui/Button.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -25,15 +19,7 @@ const props = defineProps<{
     watching?: boolean
     subscription_url?: string
   }
-  topics: Array<{
-    id: string
-    title: string
-    url: string
-    author: string | null
-    replies_count: number
-    has_unread: boolean
-    unread_count: number
-  }>
+  topics: TopicListItem[]
   pagination: PaginationMeta
   loggedIn?: boolean
   sort?: string
@@ -88,28 +74,7 @@ function toggleWatch() {
     </select>
   </div>
 
-  <div v-if="topics.length" class="rounded-lg border">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>主题</TableHead>
-          <TableHead>作者</TableHead>
-          <TableHead>回复</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="topic in topics" :key="topic.id">
-          <TableCell>
-            <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
-            <Badge v-if="topic.has_unread" class="ml-2">{{ topic.unread_count }}</Badge>
-          </TableCell>
-          <TableCell>{{ topic.author || '—' }}</TableCell>
-          <TableCell>{{ topic.replies_count }}</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </div>
-  <p v-else class="text-sm text-muted-foreground">此标签下暂无主题。</p>
+  <TopicListTable :topics="topics" show-views />
 
   <Pagination :pagination="pagination" :base-path="`/forum/tags/${tag.slug}`" />
 </template>

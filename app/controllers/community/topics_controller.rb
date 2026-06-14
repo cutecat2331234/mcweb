@@ -69,7 +69,7 @@ module Community
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
         sections: can_move_topic? ? movable_sections : [],
-        relatedTopics: @topic.related_by_tags.map { |t| serialize_topic(t) },
+        relatedTopics: @topic.similar_topics.map { |t| serialize_topic(t) },
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
         poll: @topic.poll ? serialize_poll(@topic.poll) : nil,
         topicSearchQuery: params[:q].to_s,

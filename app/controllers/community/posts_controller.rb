@@ -2,7 +2,7 @@
 
 module Community
   class PostsController < ApplicationController
-    before_action :require_login, except: %i[raw]
+    before_action :require_login, except: %i[raw edits]
     before_action :set_topic, only: :create
     before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit raw]
 

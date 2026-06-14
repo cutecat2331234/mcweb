@@ -32,6 +32,15 @@ module Commerce
             product_public_id: product.public_id
           }
         )
+
+        if NotificationPreference.enabled?(user, channel: "email", notification_type: "commerce.product_changelog")
+          MailDeliveryJob.perform_later(
+            "Commerce::OrderMailer",
+            "product_changelog",
+            "deliver_now",
+            args: [ user.id, product.id ]
+          )
+        end
       end
 
       product.update_column(:changelog_notified_version, version_key)

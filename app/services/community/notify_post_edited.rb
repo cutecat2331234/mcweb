@@ -33,6 +33,15 @@ module Community
             path: "/forum/topics/#{@topic.public_id}#post-#{@post.id}"
           }
         )
+
+        if NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.post_edited")
+          MailDeliveryJob.perform_later(
+            "Community::ForumMailer",
+            "post_edited",
+            "deliver_now",
+            args: [ user.id, @topic.public_id, @post.id ]
+          )
+        end
       end
 
       ServiceResult.success

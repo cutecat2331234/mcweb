@@ -56,6 +56,15 @@ module Commerce
       mail(to: @user.email, subject: "你的商品问题已收到回复")
     end
 
+    def product_changelog(user_id, product_id)
+      @user = User.find(user_id)
+      @product = Commerce::Product.find(product_id)
+      return unless commerce_email_enabled?(@user, "commerce.product_changelog")
+
+      @url = "#{root_url.chomp('/')}#{"/store/products/#{@product.public_id}"}"
+      mail(to: @user.email, subject: "商品更新：#{@product.name}")
+    end
+
     private
 
     def commerce_email_enabled?(user, notification_type)

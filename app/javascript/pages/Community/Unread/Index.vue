@@ -1,31 +1,17 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
-import Badge from '@/components/ui/Badge.vue'
+import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Button from '@/components/ui/Button.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  topics: Array<{
-    id: string
-    title: string
-    url: string
-    author: string | null
-    replies_count: number
-    last_posted_at: string | null
-    unread_count: number
-  }>
+  topics: TopicListItem[]
   markAllReadUrl: string
   pagination: PaginationMeta
   sort: string
@@ -64,30 +50,7 @@ function changeSort(value: string) {
     </div>
   </div>
 
-  <div v-if="topics.length" class="rounded-lg border">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>主题</TableHead>
-          <TableHead>作者</TableHead>
-          <TableHead>未读</TableHead>
-          <TableHead>最后回复</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="topic in topics" :key="topic.id">
-          <TableCell>
-            <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
-          </TableCell>
-          <TableCell>{{ topic.author || '—' }}</TableCell>
-          <TableCell><Badge>{{ topic.unread_count }}</Badge></TableCell>
-          <TableCell>{{ topic.last_posted_at || '—' }}</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </div>
-  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    没有未读主题，全部已读。
-  </p>
+  <TopicListTable :topics="topics" show-views />
+
   <Pagination v-if="pagination.pages > 1" :pagination="pagination" :base-path="routes.forumUnread" />
 </template>

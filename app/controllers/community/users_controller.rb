@@ -43,6 +43,20 @@ module Community
         }
       end
       orders_count = Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed]).count
+      store_orders = if logged_in? && current_user.id == user.id
+                       Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed])
+                         .order(created_at: :desc).limit(10).map do |order|
+                         {
+                           order_number: order.order_number,
+                           status_label: order_status_label(order.status),
+                           total_label: format_money(order.total_cents, order.currency),
+                           url: store_order_path(order),
+                           created_at: l(order.created_at, format: :short)
+                         }
+                       end
+                     else
+                       []
+                     end
 
       render inertia: "Community/Users/Show", props: {
         profile: {
@@ -99,7 +113,8 @@ module Community
         postsPagination: pagy_props(@pagy_posts),
         activeTab: tab,
         liked_posts: liked_posts,
-        store_reviews: store_reviews
+        store_reviews: store_reviews,
+        store_orders: store_orders
       }
     end
 

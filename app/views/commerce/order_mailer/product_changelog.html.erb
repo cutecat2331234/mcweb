@@ -1,0 +1,4 @@
+<p>你好 <%= @user.username %>，</p>
+<p>你购买的商品 <strong><%= @product.name %></strong> 已更新：</p>
+<blockquote><%= simple_format(@product.changelog.to_s.truncate(500)) %></blockquote>
+<p><a href="<%= @url %>">查看商品</a></p>

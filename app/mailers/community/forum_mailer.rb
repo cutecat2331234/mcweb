@@ -43,5 +43,15 @@ module Community
 
       mail(to: @user.email, subject: "论坛摘要 — #{@notifications.count} 条新动态")
     end
+
+    def post_edited(user_id, topic_id, post_id)
+      @user = User.find(user_id)
+      @topic = Community::Topic.find_by!(public_id: topic_id)
+      @post = Community::Post.find(post_id)
+      @editor = @post.user
+      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+
+      mail(to: @user.email, subject: "帖子已编辑：#{@topic.title.truncate(60)}")
+    end
   end
 end

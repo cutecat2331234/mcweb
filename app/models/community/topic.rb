@@ -70,6 +70,22 @@ module Community
         .limit(limit)
     end
 
+    def similar_topics(limit: 5)
+      results = related_by_tags(limit: limit).to_a
+      return results if results.size >= limit
+
+      remaining = limit - results.size
+      exclude_ids = [ id ] + results.map(&:id)
+      section_topics = Community::Topic
+        .where(status: :published, forum_section_id: forum_section_id)
+        .where.not(id: exclude_ids)
+        .order(last_posted_at: :desc)
+        .limit(remaining)
+        .to_a
+
+      results + section_topics
+    end
+
     def lock_topic!
       update!(locked: true)
     end

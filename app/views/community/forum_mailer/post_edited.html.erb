@@ -1,0 +1,4 @@
+<p>你好 <%= @user.username %>，</p>
+<p><strong><%= @editor.username %></strong> 编辑了主题「<%= @topic.title %>」中的 #<%= @post.floor_number %> 楼：</p>
+<blockquote><%= simple_format(@post.body.truncate(500)) %></blockquote>
+<p><a href="<%= @url %>">查看帖子</a></p>

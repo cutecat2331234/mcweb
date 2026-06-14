@@ -24,6 +24,7 @@ module Commerce
         order_item: @order_item,
         status: "published"
       )
+      Commerce::NotifyNewProductQuestion.call(question: question)
       ServiceResult.success(question)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

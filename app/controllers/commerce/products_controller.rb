@@ -144,6 +144,7 @@ module Commerce
         questions_scope = questions_scope.where("body ILIKE ?", q)
       end
       question_page = [ params[:question_page].to_i, 1 ].max
+      question_sort = params[:question_sort].to_s.presence || "newest"
       @pagy_questions, questions = pagy(questions_scope, limit: 10, page: question_page)
 
       price_alert = logged_in? ? Commerce::PriceAlert.find_by(user: current_user, product: product) : nil
@@ -157,9 +158,10 @@ module Commerce
         ratingBreakdown: (1..5).map { |rating| { rating: rating, count: rating_breakdown[rating] || 0 } },
         reviewsPagination: pagy_props(@pagy_reviews),
         related_products: related.map { |p| serialize_product_list_item(p) },
-        questions: questions.map { |q| serialize_product_question(q, current_user: current_user) },
+        questions: questions.map { |q| serialize_product_question(q, current_user: current_user, sort: question_sort) },
         questionsPagination: pagy_props(@pagy_questions),
         questionQuery: params[:question_q].to_s,
+        questionSort: question_sort,
         stockAlertUrl: stock_alert_store_product_path(product),
         stockAlertVariantIds: stock_alert_variant_ids,
         canReview: can_review,
@@ -239,7 +241,16 @@ module Commerce
       }.compact
     end
 
-    def serialize_product_question(question, current_user: nil)
+    def serialize_product_question(question, current_user: nil, sort: "newest")
+      answers = question.answers.includes(:helpful_votes, :user).to_a
+      answers.sort_by! do |answer|
+        [
+          answer.official? ? 0 : 1,
+          sort == "helpful" ? -answer.helpful_votes.size : 0,
+          sort == "helpful" ? -answer.created_at.to_i : answer.created_at.to_i
+        ]
+      end
+
       {
         id: question.id,
         body: question.body,
@@ -247,17 +258,18 @@ module Commerce
         created_at: l(question.created_at, format: :short),
         from_order: question.store_order_item_id.present?,
         answerUrl: answer_question_store_product_path(question.product, question_id: question.id),
-        answers: question.answers.order(created_at: :asc).map do |answer|
-          helpful = current_user && Commerce::AnswerHelpfulVote.exists?(user: current_user, answer: answer)
+        answers: answers.map do |answer|
+          can_helpful = current_user && current_user.id != answer.user_id
+          helpful = can_helpful && Commerce::AnswerHelpfulVote.exists?(user: current_user, answer: answer)
           {
             id: answer.id,
             body: answer.body,
             author: answer.user.username,
             official: answer.official,
             created_at: l(answer.created_at, format: :short),
-            helpful_count: answer.helpful_votes.count,
+            helpful_count: answer.helpful_votes.size,
             helpful: helpful,
-            helpful_url: current_user ? helpful_answer_store_product_path(question.product, question_id: question.id, answer_id: answer.id) : nil
+            helpful_url: can_helpful ? helpful_answer_store_product_path(question.product, question_id: question.id, answer_id: answer.id) : nil
           }
         end
       }

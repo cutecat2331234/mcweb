@@ -103,6 +103,13 @@ const props = defineProps<{
     body: string | null
     created_at: string
   }>
+  store_orders?: Array<{
+    order_number: string
+    status_label: string
+    total_label: string
+    url: string
+    created_at: string
+  }>
 }>()
 
 const editingBio = ref(false)
@@ -348,6 +355,16 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
   </section>
 
   <section v-else-if="activeTab === 'store'">
+    <h2 class="mb-3 text-sm font-semibold">我的订单</h2>
+    <div v-if="store_orders?.length" class="mb-6 space-y-2 rounded-lg border p-4">
+      <div v-for="order in store_orders" :key="order.order_number" class="flex flex-wrap items-center justify-between gap-2 text-sm">
+        <Link :href="order.url" class="font-medium hover:underline">{{ order.order_number }}</Link>
+        <span class="text-muted-foreground">{{ order.status_label }} · {{ order.total_label }}</span>
+        <span class="text-xs text-muted-foreground">{{ order.created_at }}</span>
+      </div>
+    </div>
+    <p v-else-if="profile.can_edit" class="mb-6 text-sm text-muted-foreground">暂无订单记录。</p>
+
     <h2 class="mb-3 text-sm font-semibold">商城评价</h2>
     <div v-if="store_reviews?.length" class="space-y-2 rounded-lg border p-4">
       <div v-for="review in store_reviews" :key="review.id" class="text-sm">

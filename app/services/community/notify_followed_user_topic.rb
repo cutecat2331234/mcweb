@@ -8,9 +8,13 @@ module Community
 
     def call
       followers = Community::UserFollow.where(followed: @topic.user).includes(:follower)
-      followers.find_each do |follow|
+      recipient_ids = Community::FilterNotificationRecipients.call(
+        actor_id: @topic.user_id,
+        recipient_ids: followers.map(&:follower_id).uniq - [ @topic.user_id ]
+      ).value
+
+      Community::UserFollow.where(followed: @topic.user, follower_id: recipient_ids).includes(:follower).find_each do |follow|
         user = follow.follower
-        next if user.id == @topic.user_id
 
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.followed_topic")
 

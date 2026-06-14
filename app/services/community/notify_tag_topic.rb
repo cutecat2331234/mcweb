@@ -16,7 +16,12 @@ module Community
         .pluck(:user_id)
         .uniq
 
-      User.where(id: subscriber_ids).find_each do |user|
+      recipient_ids = Community::FilterNotificationRecipients.call(
+        actor_id: @topic.user_id,
+        recipient_ids: subscriber_ids
+      ).value
+
+      User.where(id: recipient_ids).find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.tag_topic")
 
         tag_names = @tags.map(&:name).join(", ")

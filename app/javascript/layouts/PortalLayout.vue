@@ -13,6 +13,7 @@ const notifications = computed(() => page.props.notifications as { unread_count:
 const forumUnread = computed(() => page.props.forum_unread as { count: number; url: string } | undefined)
 const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
+const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
 
 const isDark = computed(() => document.documentElement.classList.contains('dark'))
 
@@ -58,6 +59,7 @@ function toggleTheme() {
             <Link v-if="auth.user" :href="routes.storePriceAlerts" class="hover:text-foreground transition-colors">降价提醒</Link>
             <Link v-if="auth.user" :href="routes.storePreferences" class="hover:text-foreground transition-colors">商城通知</Link>
             <Link v-if="auth.user" :href="routes.storeOrders" class="hover:text-foreground transition-colors">我的订单</Link>
+            <Link v-if="auth.user" :href="routes.storeGiftCards" class="hover:text-foreground transition-colors">礼品卡</Link>
             <Link v-if="cart" :href="cart.url" class="hover:text-foreground transition-colors">
               购物车<span v-if="cart.count > 0" class="ml-1 text-primary">({{ cart.count }})</span>
             </Link>
@@ -115,6 +117,20 @@ function toggleTheme() {
         </div>
       </div>
     </header>
+
+    <div v-if="globalAnnouncements?.length" class="border-b bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+      <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm">
+        <span class="font-medium shrink-0">全站公告</span>
+        <Link
+          v-for="item in globalAnnouncements"
+          :key="item.id"
+          :href="item.url"
+          class="truncate hover:underline"
+        >
+          {{ item.title }}
+        </Link>
+      </div>
+    </div>
 
     <main class="mx-auto max-w-6xl px-4 py-6">
       <FlashMessages />

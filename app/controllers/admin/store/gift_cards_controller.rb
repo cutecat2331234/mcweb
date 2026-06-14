@@ -79,6 +79,14 @@ module Admin
         card.code = generate_code if card.code.blank?
 
         if card.save
+          if params[:gift_card][:recipient_email].present?
+            MailDeliveryJob.perform_later(
+              "Commerce::GiftCardMailer",
+              "gift_card_created",
+              "deliver_now",
+              args: [ card.id, params[:gift_card][:recipient_email] ]
+            )
+          end
           redirect_to admin_store_gift_card_path(card), notice: "礼品卡已创建。"
         else
           render inertia: "Admin/Store/GiftCards/Form", props: form_props(card), status: :unprocessable_entity
@@ -88,7 +96,7 @@ module Admin
       private
 
       def gift_card_params
-        params.require(:gift_card).permit(:code, :balance_cents, :currency, :expires_at, :note, :active)
+        params.require(:gift_card).permit(:code, :balance_cents, :currency, :expires_at, :note, :active, :recipient_email)
       end
 
       def form_props(card, editing: false)
@@ -100,7 +108,8 @@ module Admin
             currency: card.currency || "CNY",
             expires_at: card.expires_at&.strftime("%Y-%m-%dT%H:%M"),
             note: card.note || "",
-            active: card.active != false
+            active: card.active != false,
+            recipient_email: ""
           },
           submitUrl: editing ? admin_store_gift_card_path(card) : admin_store_gift_cards_path,
           method: editing ? "patch" : "post",

@@ -99,7 +99,7 @@ module InertiaSerializable
     }
   end
 
-  def serialize_topic_detail(topic, watching: false, bookmarked: false, muted: false, can_moderate: false, can_move: false, can_edit: false, viewer: nil)
+  def serialize_topic_detail(topic, watching: false, notification_level: nil, bookmarked: false, muted: false, can_moderate: false, can_move: false, can_edit: false, viewer: nil)
     {
       id: topic.public_id,
       title: topic.title,
@@ -119,6 +119,7 @@ module InertiaSerializable
       solved_post_id: topic.solved_post_id,
       views_count: topic.views_count,
       watching: watching,
+      notification_level: notification_level,
       muted: muted,
       bookmarked: bookmarked,
       can_moderate: can_moderate,
@@ -414,6 +415,7 @@ module InertiaSerializable
     user_vote_indices = user_votes.pluck(:option_index)
     show_results = !poll.hide_results_until_vote || user_votes.exists? || !poll.open?
     can_close = logged_in? && (current_user.id == poll.topic.user_id || current_user.permission?("forum.topics.lock"))
+    can_see_voters = show_results && (!poll.anonymous? || current_user&.permission?("forum.topics.lock"))
     {
       id: poll.id,
       question: poll.question,
@@ -421,6 +423,7 @@ module InertiaSerializable
       multiple_choice: poll.multiple_choice?,
       max_choices: poll.max_choices,
       hide_results_until_vote: poll.hide_results_until_vote,
+      anonymous: poll.anonymous?,
       show_results: show_results,
       options: poll.options.each_with_index.map { |label, index| { label: label, index: index } },
       results: show_results ? poll.results : [],
@@ -428,7 +431,7 @@ module InertiaSerializable
       user_vote_index: user_vote_indices.first,
       user_vote_indices: user_vote_indices,
       vote_url: forum_poll_vote_path(poll),
-      voters_url: show_results ? voters_forum_poll_path(poll) : nil,
+      voters_url: can_see_voters ? voters_forum_poll_path(poll) : nil,
       close_url: can_close && poll.open? ? close_forum_poll_path(poll) : nil,
       closes_at: poll.closes_at ? l(poll.closes_at, format: :short) : nil
     }
@@ -440,6 +443,9 @@ module InertiaSerializable
       name: variant.name,
       sku: variant.sku,
       price_label: format_money(variant.price_cents, product.currency),
+      compare_at_label: variant.on_sale? ? format_money(variant.compare_at_price_cents, product.currency) : nil,
+      on_sale: variant.on_sale?,
+      discount_percent: variant.discount_percent,
       in_stock: variant.in_stock?,
       low_stock: variant.low_stock?
     }
@@ -449,7 +455,7 @@ module InertiaSerializable
     {
       slug: category.slug,
       name: category.name,
-      url: store_products_path(query.merge(category: category.slug).compact)
+      url: store_category_path(category.slug, **query.compact)
     }
   end
 

@@ -5,14 +5,17 @@ module Community
     before_action :require_login
 
     def index
+      include_archived = params[:archived] == "1"
       conversations = Community::Conversation
-        .for_user(current_user)
+        .for_user(current_user, include_archived: include_archived)
         .includes(participants: :user, messages: :user, creator: [])
         .ordered
         .limit(50)
 
       render inertia: "Community/Messages/Index", props: {
-        conversations: conversations.map { |conv| serialize_conversation(conv) }
+        conversations: conversations.map { |conv| serialize_conversation(conv) },
+        showArchived: include_archived,
+        archivedToggleUrl: include_archived ? forum_conversations_path : forum_conversations_path(archived: 1)
       }
     end
 
@@ -35,6 +38,9 @@ module Community
         pagination: pagy_props(@pagy),
         participants: conversation.is_group? ? serialize_group_participants(conversation) : [],
         addParticipantUrl: conversation.is_group? ? forum_conversation_participants_path(conversation) : nil,
+        archiveUrl: forum_archive_conversation_path(conversation),
+        unarchiveUrl: forum_unarchive_conversation_path(conversation),
+        archived: conversation.participants.find_by(user: current_user)&.archived_at.present?,
         currentUsername: current_user.username
       }
     end
@@ -71,6 +77,28 @@ module Community
       end
     end
 
+    def archive
+      conversation = Community::Conversation.for_user(current_user, include_archived: true).find(params[:id])
+      result = Community::ArchiveConversation.call(user: current_user, conversation: conversation)
+
+      if result.success?
+        redirect_to forum_conversations_path, notice: "会话已归档。"
+      else
+        redirect_to forum_conversation_path(conversation), alert: service_error_message(result)
+      end
+    end
+
+    def unarchive
+      conversation = Community::Conversation.for_user(current_user, include_archived: true).find(params[:id])
+      result = Community::UnarchiveConversation.call(user: current_user, conversation: conversation)
+
+      if result.success?
+        redirect_to forum_conversation_path(conversation), notice: "会话已恢复。"
+      else
+        redirect_to forum_conversations_path(archived: 1), alert: service_error_message(result)
+      end
+    end
+
     private
 
     def conversation_params
@@ -90,7 +118,8 @@ module Community
         display_name: display,
         last_message_at: conversation.last_message_at ? l(conversation.last_message_at, format: :short) : nil,
         unread_count: conversation.unread_count_for(current_user),
-        last_message_preview: last_message&.body&.truncate(80)
+        last_message_preview: last_message&.body&.truncate(80),
+        archived: conversation.participants.find_by(user: current_user)&.archived_at.present?
       }
 
       if include_other

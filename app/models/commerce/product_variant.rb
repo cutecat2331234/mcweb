@@ -5,6 +5,17 @@ module Commerce
     validates :name, presence: true
     validates :sku, presence: true, uniqueness: true
     validates :price_cents, numericality: { greater_than_or_equal_to: 0 }
+    validates :compare_at_price_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+
+    def on_sale?
+      compare_at_price_cents.present? && compare_at_price_cents > price_cents
+    end
+
+    def discount_percent
+      return nil unless on_sale?
+
+      ((compare_at_price_cents - price_cents).to_f / compare_at_price_cents * 100).round
+    end
 
     def in_stock?
       return true if stock.nil?

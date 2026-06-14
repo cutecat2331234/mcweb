@@ -694,3 +694,24 @@ app/
 | 收据/PDF 优惠明细 | 优惠券 + 礼品卡分行展示 |
 | 管理端礼品卡编辑/使用记录 | `edit`/`update` + 订单列表 |
 | 修复 `storePreferences` 路由 | `routes.ts` |
+
+### 第三十八轮（举报阈值、订阅级别与商城完善）
+
+| 功能 | 实现 |
+|------|------|
+| 举报阈值自动隐藏（Discourse） | `CheckReportThreshold` + SiteSetting `forum.report_auto_hide_threshold` |
+| 订阅级别 Watching/Tracking | `forum_subscriptions.notification_level` + `ToggleSubscription` 三级循环 |
+| 跟踪仅站内通知 | `NotifyTopicReply` 邮件仅 `watching` 级别 |
+| 主题回复禁言（XenForo） | `forum_topic_reply_bans` + `BanTopicReply` / `UnbanTopicReply` |
+| 主题员工备注 | `forum_topic_staff_notes` + `CreateTopicStaffNote` |
+| 分区最低信任等级 | `min_trust_level_create/reply` + Section 校验 |
+| PM 会话归档 | `conversation_participants.archived_at` + 归档/恢复 |
+| 全站公告横幅 | `global_announcement` + `PortalLayout` 顶栏 |
+| 匿名投票 | `forum_polls.anonymous` + 投票者列表隐藏 |
+| 礼品卡邮件 | `GiftCardMailer` + 管理端收件人 |
+| 礼品卡到期提醒 Job | `GiftCardExpiryReminderJob` |
+| 用户礼品卡钱包 | `owner_user_id` + `/store/gift_cards` Index |
+| 变体促销原价 | `store_product_variants.compare_at_price_cents` |
+| 商城分类公开页 | `Commerce::CategoriesController` |
+| 管理端复制商品 | `DuplicateProduct` |
+| 低库存员工通知 | `NotifyLowStockStaffJob` |

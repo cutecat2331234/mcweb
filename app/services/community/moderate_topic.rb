@@ -45,6 +45,10 @@ module Community
         @topic.update!(wiki: true)
       when "disable_wiki"
         @topic.update!(wiki: false)
+      when "global_announcement"
+        @topic.update!(global_announcement: true)
+      when "remove_global_announcement"
+        @topic.update!(global_announcement: false)
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

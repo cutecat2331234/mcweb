@@ -48,6 +48,7 @@ module Admin
           backUrl: admin_store_products_path,
           actions: [
             { label: "编辑", href: edit_admin_store_product_path(@product) },
+            { label: "复制商品", href: duplicate_admin_store_product_path(@product), method: "post" },
             { label: "归档", href: admin_store_product_path(@product), method: "delete", confirm: "确定归档此商品？" }
           ]
         }
@@ -78,6 +79,14 @@ module Admin
         version_changed = product_params[:version].present? && product_params[:version] != @product.version
 
         if @product.update(product_params)
+          if @product.low_stock?
+            Commerce::NotifyLowStockStaffJob.perform_later(@product.id)
+          end
+          @product.variants.each do |variant|
+            if variant.low_stock?
+              Commerce::NotifyLowStockStaffJob.perform_later(@product.id, variant.id)
+            end
+          end
           if @product.saved_change_to_price_cents? && @product.price_cents < @product.price_cents_before_last_save.to_i
             Commerce::NotifyPriceDropJob.perform_later(@product.id)
           end
@@ -108,6 +117,15 @@ module Admin
         redirect_to admin_store_products_path, notice: "商品已归档。"
       end
 
+      def duplicate
+        result = Commerce::DuplicateProduct.call(product: @product)
+        if result.success?
+          redirect_to edit_admin_store_product_path(result.value), notice: "商品已复制为草稿，请检查 SKU 与标识。"
+        else
+          redirect_to admin_store_product_path(@product), alert: service_error_message(result)
+        end
+      end
+
       private
 
       def set_product
@@ -119,7 +137,7 @@ module Admin
           :name, :slug, :description, :summary, :product_type, :status,
           :price_cents, :compare_at_price_cents, :currency, :stock, :store_category_id, :purchase_limit, :image_url, :gallery_urls,
           :fulfillment_config, :featured, :version, :changelog,
-          variants_attributes: [ :id, :name, :sku, :price_cents, :stock, :_destroy ]
+          variants_attributes: [ :id, :name, :sku, :price_cents, :compare_at_price_cents, :stock, :_destroy ]
         )
         if permitted[:gallery_urls].is_a?(String)
           permitted[:gallery_urls] = permitted[:gallery_urls].lines.map(&:strip).reject(&:blank?)
@@ -160,7 +178,7 @@ module Admin
             version: product.version || "",
             changelog: product.changelog || "",
             variants: product.variants.map do |v|
-              { id: v.id, name: v.name, sku: v.sku, price_cents: v.price_cents, stock: v.stock }
+              { id: v.id, name: v.name, sku: v.sku, price_cents: v.price_cents, compare_at_price_cents: v.compare_at_price_cents, stock: v.stock }
             end
           },
           categories: ::Commerce::Category.ordered.map { |c| { id: c.id, name: c.name } },

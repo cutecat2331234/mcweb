@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 30.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil, prefix: nil)
+    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil, poll_anonymous: nil, prefix: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
@@ -19,6 +19,7 @@ module Community
       @poll_multiple_choice = ActiveModel::Type::Boolean.new.cast(poll_multiple_choice) || false
       @poll_max_choices = [ poll_max_choices.to_i, 1 ].max
       @poll_hide_results_until_vote = ActiveModel::Type::Boolean.new.cast(poll_hide_results_until_vote) || false
+      @poll_anonymous = ActiveModel::Type::Boolean.new.cast(poll_anonymous) || false
       @prefix = prefix.to_s.strip.presence
     end
 
@@ -28,6 +29,10 @@ module Community
 
       unless @section.allowed?(@user, :create_topic)
         return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
+      end
+
+      unless @section.trust_allowed?(@user, :create_topic)
+        return ServiceResult.failure(error: "Your trust level is too low to create topics in this section.")
       end
 
       topic = nil
@@ -180,7 +185,8 @@ module Community
         closes_at: closes_at,
         multiple_choice: @poll_multiple_choice,
         max_choices: max_choices,
-        hide_results_until_vote: @poll_hide_results_until_vote
+        hide_results_until_vote: @poll_hide_results_until_vote,
+        anonymous: @poll_anonymous
       )
     end
 

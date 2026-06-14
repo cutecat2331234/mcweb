@@ -46,7 +46,11 @@ Rails.application.routes.draw do
     end
     namespace :store do
       resources :categories
-      resources :products
+      resources :products do
+        member do
+          post :duplicate
+        end
+      end
       resources :coupons
       resources :gift_cards, only: %i[index show new create edit update]
       resources :orders, only: %i[index show update] do
@@ -123,6 +127,9 @@ Rails.application.routes.draw do
         post :subscription, action: :toggle_subscription
         post :mute, action: :toggle_mute
         post :bookmark, action: :toggle_bookmark
+        post :staff_note
+        post :reply_ban
+        post :reply_unban
       end
     end
     resources :posts, only: %i[create update destroy] do
@@ -168,6 +175,10 @@ Rails.application.routes.draw do
     get "tags/:slug", to: "tags#show", as: :tag
     post "tags/:slug/subscription", to: "tags#toggle_subscription", as: :tag_subscription
     resources :conversations, only: %i[index show new create] do
+      member do
+        post :archive
+        post :unarchive
+      end
       resources :messages, only: %i[create], controller: "conversation_messages"
       resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username
     end
@@ -178,7 +189,9 @@ Rails.application.routes.draw do
   get "payments/fake/:id", to: "payments/fake#show", as: :fake_payment
   post "payments/fake/:id", to: "payments/fake#create"
 
-  scope module: :commerce, path: "store", as: :store do
+    scope module: :commerce, path: "store", as: :store do
+    get "categories/:slug", to: "categories#show", as: :category
+    get "gift_cards", to: "gift_cards#index", as: :gift_cards
     resources :products, only: %i[index show] do
       collection do
         get :recently_viewed

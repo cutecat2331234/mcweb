@@ -17,6 +17,7 @@ const props = defineProps<{
     expires_at: string | null
     note: string
     active: boolean
+    recipient_email?: string
   }
   submitUrl: string
   method?: 'post' | 'patch'
@@ -60,6 +61,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="note">备注</Label>
       <Input id="note" v-model="form.gift_card.note" placeholder="内部备注" />
+    </div>
+    <div v-if="method !== 'patch'" class="space-y-2">
+      <Label for="recipient_email">发送邮件（可选）</Label>
+      <Input id="recipient_email" v-model="form.gift_card.recipient_email" type="email" placeholder="收件人邮箱" />
     </div>
     <label class="flex items-center gap-2 text-sm">
       <input v-model="form.gift_card.active" type="checkbox" class="h-4 w-4" />

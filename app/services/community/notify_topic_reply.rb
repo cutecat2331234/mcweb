@@ -11,13 +11,15 @@ module Community
       subscriber_ids = Community::Subscription
         .where(subscribable: @topic)
         .where.not(user_id: @post.user_id)
-        .pluck(:user_id)
+        .pluck(:user_id, :notification_level)
 
-      muted_ids = Community::TopicMute.where(forum_topic_id: @topic.id, user_id: subscriber_ids).pluck(:user_id)
+      muted_ids = Community::TopicMute.where(forum_topic_id: @topic.id, user_id: subscriber_ids.map(&:first)).pluck(:user_id)
       recipient_ids = Community::FilterNotificationRecipients.call(
         actor_id: @post.user_id,
-        recipient_ids: subscriber_ids - muted_ids
+        recipient_ids: subscriber_ids.map(&:first) - muted_ids
       ).value
+
+      levels_by_user = subscriber_ids.to_h
 
       User.where(id: recipient_ids).find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.topic_reply")
@@ -34,7 +36,8 @@ module Community
           }
         )
 
-        if NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.topic_reply")
+        level = levels_by_user[user.id] || "watching"
+        if level == "watching" && NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.topic_reply")
           MailDeliveryJob.perform_later(
             "Community::ForumMailer",
             "topic_reply",

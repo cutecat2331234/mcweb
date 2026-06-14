@@ -5,9 +5,9 @@ module Community
     include Community::TopicVisibility
     include Community::TopicListPreloadable
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban]
 
     def show
       @topic.record_view!
@@ -49,6 +49,7 @@ module Community
         topic: serialize_topic_detail(
           @topic,
           watching: watching_topic?,
+          notification_level: topic_notification_level,
           muted: muted_topic?,
           bookmarked: bookmarked_topic?,
           can_moderate: can_moderate_topic?,
@@ -56,7 +57,15 @@ module Community
           can_edit: can_edit_topic?,
           viewer: current_user
         ).merge(
-          section_prefixes: Array(@topic.section.prefixes)
+          section_prefixes: Array(@topic.section.prefixes),
+          global_announcement: @topic.global_announcement?,
+          staff_notes: can_moderate_topic? ? @topic.staff_notes.includes(:author).order(created_at: :desc).map { |note|
+            { id: note.id, body: note.body, author: note.author.username, created_at: l(note.created_at, format: :short) }
+          } : [],
+          staff_note_url: can_moderate_topic? ? staff_note_forum_topic_path(@topic) : nil,
+          reply_bans: can_moderate_topic? ? @topic.reply_bans.active.includes(:user).map { |ban|
+            { username: ban.user.username, reason: ban.reason, expires_at: ban.expires_at ? l(ban.expires_at, format: :short) : nil }
+          } : []
         ),
         posts: posts.map do |post|
           serialize_post(
@@ -72,7 +81,7 @@ module Community
         firstUnreadFloor: first_unread_floor,
         markUnreadUrl: logged_in? ? mark_unread_forum_topic_path(@topic) : nil,
         jumpToUnreadUrl: first_unread_floor ? forum_topic_path(@topic, unread: 1) : nil,
-        canReply: logged_in? && !@topic.locked? && @topic.section.allowed?(current_user, :reply),
+        canReply: can_reply_to_topic?,
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
         sections: can_move_topic? ? movable_sections : [],
@@ -147,6 +156,7 @@ module Community
         poll_multiple_choice: topic_params[:poll_multiple_choice],
         poll_max_choices: topic_params[:poll_max_choices],
         poll_hide_results_until_vote: topic_params[:poll_hide_results_until_vote],
+        poll_anonymous: topic_params[:poll_anonymous],
         prefix: topic_params[:prefix],
         ip_address: request.remote_ip
       )
@@ -183,7 +193,15 @@ module Community
       result = Community::ToggleSubscription.call(user: current_user, topic: @topic)
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: result.value[:watching] ? "已关注此主题。" : "已取消关注。"
+        notice = if result.value[:watching]
+                   case result.value[:notification_level]
+                   when "tracking" then "已切换为跟踪（仅站内通知）。"
+                   else "已关注此主题（即时通知）。"
+                   end
+                 else
+                   "已取消关注。"
+                 end
+        redirect_to forum_topic_path(@topic), notice: notice
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -316,6 +334,49 @@ module Community
       end
     end
 
+    def staff_note
+      result = Community::CreateTopicStaffNote.call(
+        actor: current_user,
+        topic: @topic,
+        body: params[:body]
+      )
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "员工备注已添加。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def reply_ban
+      user = User.find_by!(username: params[:username])
+      expires_at = params[:expires_days].present? ? params[:expires_days].to_i.days.from_now : nil
+      result = Community::BanTopicReply.call(
+        actor: current_user,
+        topic: @topic,
+        user: user,
+        reason: params[:reason],
+        expires_at: expires_at
+      )
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "已禁止 #{user.username} 在此主题回复。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def reply_unban
+      user = User.find_by!(username: params[:username])
+      result = Community::UnbanTopicReply.call(actor: current_user, topic: @topic, user: user)
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "已解除 #{user.username} 的回复限制。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
     private
 
     def set_section
@@ -328,7 +389,7 @@ module Community
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days, :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :scheduled_at)
+      params.require(:topic).permit(:title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days, :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :poll_anonymous, :scheduled_at)
     end
 
     def section_props
@@ -369,6 +430,22 @@ module Community
       return false unless logged_in?
 
       Community::Subscription.exists?(user: current_user, subscribable: @topic)
+    end
+
+    def topic_notification_level
+      return nil unless logged_in?
+
+      Community::Subscription.find_by(user: current_user, subscribable: @topic)&.notification_level
+    end
+
+    def can_reply_to_topic?
+      return false unless logged_in?
+      return false if @topic.locked?
+      return false unless @topic.section.allowed?(current_user, :reply)
+      return false unless @topic.section.trust_allowed?(current_user, :reply)
+      return false if Community::TopicReplyBan.active.exists?(forum_topic_id: @topic.id, user_id: current_user.id)
+
+      true
     end
 
     def bookmarked_topic?

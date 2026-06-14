@@ -37,6 +37,12 @@ module Community
       show_results = !poll.hide_results_until_vote || user_votes.exists? || !poll.open?
       return head :forbidden unless show_results || current_user&.permission?("forum.topics.lock")
 
+      if poll.anonymous? && !current_user&.permission?("forum.topics.lock")
+        return render json: { voters_by_option: poll.options.each_with_index.map { |label, index|
+          { label: label, index: index, voters: [] }
+        }, anonymous: true }
+      end
+
       voters_by_option = poll.options.each_with_index.map do |label, index|
         usernames = poll.votes.where(option_index: index).includes(:user).map { |v| v.user.username }
         { label: label, index: index, voters: usernames }

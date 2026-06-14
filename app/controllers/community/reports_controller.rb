@@ -33,6 +33,8 @@ module Community
         status: :pending
       )
 
+      Community::CheckReportThreshold.call(report: report)
+
       Administration::AuditLogger.call(
         actor: current_user,
         action: "community.report_created",

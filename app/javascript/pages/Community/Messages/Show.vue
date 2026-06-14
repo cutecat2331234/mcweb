@@ -39,6 +39,9 @@ const props = defineProps<{
     remove_url?: string | null
   }>
   addParticipantUrl?: string | null
+  archiveUrl?: string
+  unarchiveUrl?: string
+  archived?: boolean
   currentUsername?: string
 }>()
 
@@ -83,6 +86,15 @@ function submit() {
   ]" />
 
   <PageHeader :title="title" :subtitle="subtitle" />
+
+  <div class="mb-4 flex gap-2">
+    <Button v-if="archived && unarchiveUrl" type="button" size="sm" variant="outline" @click="router.post(unarchiveUrl)">
+      取消归档
+    </Button>
+    <Button v-else-if="!archived && archiveUrl" type="button" size="sm" variant="outline" @click="router.post(archiveUrl)">
+      归档会话
+    </Button>
+  </div>
 
   <div v-if="conversation.is_group && participants.length" class="mb-4">
     <p class="mb-2 text-xs font-semibold text-muted-foreground">群组成员</p>

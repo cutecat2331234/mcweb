@@ -79,6 +79,7 @@ export interface PollItem {
   multiple_choice?: boolean
   max_choices?: number
   hide_results_until_vote?: boolean
+  anonymous?: boolean
   show_results?: boolean
   options?: Array<{ label: string; index: number }>
   results: Array<{ label: string; index: number; votes: number }>
@@ -105,9 +106,14 @@ const props = defineProps<{
     hidden: boolean
     views_count: number
     watching: boolean
+    notification_level?: 'watching' | 'tracking' | null
     muted?: boolean
     bookmarked: boolean
     can_moderate: boolean
+    global_announcement?: boolean
+    staff_notes?: Array<{ id: number; body: string; author: string; created_at: string }>
+    staff_note_url?: string | null
+    reply_bans?: Array<{ username: string; reason: string | null; expires_at: string | null }>
     can_move: boolean
     can_edit: boolean
     featured: boolean
@@ -378,8 +384,44 @@ function toggleReaction(post: PostItem, emoji: string) {
   router.post(`/forum/posts/${post.id}/reaction`, { emoji }, { preserveScroll: true })
 }
 
+const staffNoteBody = ref('')
+const replyBanUsername = ref('')
+const replyBanReason = ref('')
+
+function watchLabel() {
+  if (!props.topic.watching) return '关注主题'
+  if (props.topic.notification_level === 'tracking') return '跟踪中（点击取消）'
+  return '关注中（点击改为跟踪）'
+}
+
 function toggleWatch() {
   router.post(`/forum/topics/${props.topic.id}/subscription`, {}, { preserveScroll: true })
+}
+
+function submitStaffNote() {
+  if (!props.topic.staff_note_url || !staffNoteBody.value.trim()) return
+  router.post(props.topic.staff_note_url, { body: staffNoteBody.value }, {
+    preserveScroll: true,
+    onSuccess: () => { staffNoteBody.value = '' },
+  })
+}
+
+function banReply() {
+  if (!replyBanUsername.value.trim()) return
+  router.post(`/forum/topics/${props.topic.id}/reply_ban`, {
+    username: replyBanUsername.value.trim(),
+    reason: replyBanReason.value,
+  }, {
+    preserveScroll: true,
+    onSuccess: () => {
+      replyBanUsername.value = ''
+      replyBanReason.value = ''
+    },
+  })
+}
+
+function unbanReply(username: string) {
+  router.post(`/forum/topics/${props.topic.id}/reply_unban`, { username }, { preserveScroll: true })
 }
 
 function toggleMute() {
@@ -590,7 +632,7 @@ function pollPercent(votes: number) {
         移除书签
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleWatch">
-        {{ topic.watching ? '取消关注' : '关注主题' }}
+        {{ watchLabel() }}
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleMute">
         {{ topic.muted ? '取消静音' : '静音主题' }}
@@ -630,6 +672,9 @@ function pollPercent(votes: number) {
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.wiki ? 'disable_wiki' : 'enable_wiki')">
           {{ topic.wiki ? '关闭 Wiki' : '开启 Wiki' }}
+        </Button>
+        <Button type="button" variant="outline" size="sm" @click="moderate(topic.global_announcement ? 'remove_global_announcement' : 'global_announcement')">
+          {{ topic.global_announcement ? '取消全站公告' : '设为全站公告' }}
         </Button>
       </template>
     </div>
@@ -678,6 +723,7 @@ function pollPercent(votes: number) {
       <Button v-if="poll.close_url" type="button" variant="outline" size="sm" @click="closePoll">关闭投票</Button>
     </div>
     <p v-if="poll.multiple_choice" class="mb-2 text-xs text-muted-foreground">多选（最多 {{ poll.max_choices }} 项）</p>
+    <p v-if="poll.anonymous" class="mb-2 text-xs text-muted-foreground">匿名投票：不公开投票者名单</p>
     <p v-if="poll.closes_at && poll.open" class="mb-2 text-xs text-muted-foreground">投票将于 {{ poll.closes_at }} 结束</p>
     <p v-if="!poll.open" class="mb-3 text-xs text-muted-foreground">投票已结束</p>
     <p v-if="poll.hide_results_until_vote && !poll.show_results" class="mb-3 text-xs text-muted-foreground">
@@ -817,6 +863,41 @@ function pollPercent(votes: number) {
     此主题已锁定，无法回复。
     <span v-if="topic.lock_reason" class="mt-1 block font-medium">原因：{{ topic.lock_reason }}</span>
   </p>
+
+  <p v-if="topic.global_announcement" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+    此主题为全站公告，将在全站顶部展示。
+  </p>
+
+  <section v-if="topic.can_moderate && topic.staff_notes?.length" class="mb-4 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
+    <h2 class="mb-2 text-sm font-semibold text-amber-900 dark:text-amber-100">员工备注（仅版主可见）</h2>
+    <ul class="space-y-2 text-sm">
+      <li v-for="note in topic.staff_notes" :key="note.id" class="rounded border bg-background/80 p-2">
+        <p class="text-muted-foreground text-xs">{{ note.author }} · {{ note.created_at }}</p>
+        <p class="mt-1 whitespace-pre-wrap">{{ note.body }}</p>
+      </li>
+    </ul>
+  </section>
+
+  <section v-if="topic.can_moderate && topic.staff_note_url" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
+    <h2 class="text-sm font-semibold">添加员工备注</h2>
+    <textarea v-model="staffNoteBody" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="仅员工可见" />
+    <Button type="button" size="sm" :disabled="!staffNoteBody.trim()" @click="submitStaffNote">保存备注</Button>
+  </section>
+
+  <section v-if="topic.can_moderate" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
+    <h2 class="text-sm font-semibold">主题回复禁言</h2>
+    <div v-if="topic.reply_bans?.length" class="space-y-1 text-sm">
+      <div v-for="ban in topic.reply_bans" :key="ban.username" class="flex items-center justify-between gap-2">
+        <span>{{ ban.username }}<span v-if="ban.expires_at" class="text-muted-foreground"> · 至 {{ ban.expires_at }}</span></span>
+        <button type="button" class="text-xs text-primary hover:underline" @click="unbanReply(ban.username)">解除</button>
+      </div>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <Input v-model="replyBanUsername" placeholder="用户名" class="max-w-[10rem]" />
+      <Input v-model="replyBanReason" placeholder="原因（可选）" class="flex-1 min-w-[8rem]" />
+      <Button type="button" size="sm" variant="outline" @click="banReply">禁止回复</Button>
+    </div>
+  </section>
 
   <form class="mb-4 flex max-w-md gap-2" @submit.prevent="searchInTopic">
     <Input v-model="topicSearch" placeholder="在此主题内搜索帖子…" class="flex-1" />

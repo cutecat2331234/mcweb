@@ -7,8 +7,10 @@ module Community
     has_many :messages, class_name: "Community::Message", foreign_key: :forum_conversation_id, dependent: :destroy
     belongs_to :creator, class_name: "User", optional: true
 
-    scope :for_user, ->(user) {
-      joins(:participants).where(forum_conversation_participants: { user_id: user.id })
+    scope :for_user, ->(user, include_archived: false) {
+      scope = joins(:participants).where(forum_conversation_participants: { user_id: user.id })
+      scope = scope.where(forum_conversation_participants: { archived_at: nil }) unless include_archived
+      scope
     }
 
     scope :ordered, -> { order(last_message_at: :desc) }

@@ -20,7 +20,10 @@ defineProps<{
     last_message_at: string | null
     last_message_preview: string | null
     unread_count: number
+    archived?: boolean
   }>
+  showArchived?: boolean
+  archivedToggleUrl?: string
 }>()
 </script>
 
@@ -32,13 +35,18 @@ defineProps<{
   ]" />
 
   <div class="mb-4 flex items-center justify-between">
-    <PageHeader title="私信" subtitle="与站友一对一交流" />
-    <Button as-child size="sm">
-      <Link :href="routes.forumMessagesNew">发私信</Link>
-    </Button>
-    <Button as-child size="sm" variant="outline">
-      <Link :href="routes.forumMessagesGroupNew">群组</Link>
-    </Button>
+    <PageHeader title="私信" :subtitle="showArchived ? '已归档会话' : '与站友一对一交流'" />
+    <div class="flex gap-2">
+      <Button v-if="archivedToggleUrl" as-child size="sm" variant="outline">
+        <Link :href="archivedToggleUrl">{{ showArchived ? '返回活跃会话' : '查看归档' }}</Link>
+      </Button>
+      <Button as-child size="sm">
+        <Link :href="routes.forumMessagesNew">发私信</Link>
+      </Button>
+      <Button as-child size="sm" variant="outline">
+        <Link :href="routes.forumMessagesGroupNew">群组</Link>
+      </Button>
+    </div>
   </div>
 
   <div v-if="conversations.length" class="divide-y rounded-lg border">

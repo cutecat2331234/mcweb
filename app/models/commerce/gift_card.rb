@@ -5,6 +5,7 @@ module Commerce
     self.table_name = "store_gift_cards"
 
     belongs_to :created_by, class_name: "User", optional: true
+    belongs_to :owner_user, class_name: "User", optional: true
     has_many :orders, class_name: "Commerce::Order", foreign_key: :store_gift_card_id, dependent: :nullify
 
     validates :code, presence: true, uniqueness: { case_sensitive: false }

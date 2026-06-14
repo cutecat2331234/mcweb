@@ -24,6 +24,14 @@ module Community
         return ServiceResult.failure(error: "You are not allowed to reply in this section.")
       end
 
+      unless @topic.section.trust_allowed?(@user, :reply)
+        return ServiceResult.failure(error: "Your trust level is too low to reply in this section.")
+      end
+
+      if Community::TopicReplyBan.active.exists?(forum_topic_id: @topic.id, user_id: @user.id)
+        return ServiceResult.failure(error: "You are banned from replying in this topic.")
+      end
+
       if @parent_post && @parent_post.forum_topic_id != @topic.id
         return ServiceResult.failure(error: "Invalid parent post.")
       end

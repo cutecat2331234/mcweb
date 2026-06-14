@@ -45,3 +45,7 @@ production:
     class: Community::CloseExpiredPollsJob
     queue: maintenance
     schedule: every 15 minutes
+  gift_card_expiry_reminders:
+    class: Commerce::GiftCardExpiryReminderJob
+    queue: mailers
+    schedule: at 9am every day

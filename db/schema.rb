@@ -110,6 +110,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_conversation_participants", force: :cascade do |t|
+    t.datetime "archived_at"
     t.datetime "created_at", null: false
     t.bigint "forum_conversation_id", null: false
     t.datetime "last_read_at"
@@ -166,6 +167,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_polls", force: :cascade do |t|
+    t.boolean "anonymous", default: false, null: false
     t.datetime "closes_at"
     t.datetime "created_at", null: false
     t.bigint "forum_topic_id", null: false
@@ -277,6 +279,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "created_at", null: false
     t.text "description"
     t.bigint "forum_category_id", null: false
+    t.integer "min_trust_level_create", default: 0, null: false
+    t.integer "min_trust_level_reply", default: 0, null: false
     t.string "name", null: false
     t.bigint "parent_id"
     t.jsonb "permissions", default: {}, null: false
@@ -304,6 +308,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "forum_subscriptions", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "notification_level", default: "watching", null: false
     t.bigint "subscribable_id", null: false
     t.string "subscribable_type", null: false
     t.datetime "updated_at", null: false
@@ -332,6 +337,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["user_id"], name: "index_forum_topic_mutes_on_user_id"
   end
 
+  create_table "forum_topic_reply_bans", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.datetime "expires_at"
+    t.bigint "forum_topic_id", null: false
+    t.text "reason"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["created_by_id"], name: "index_forum_topic_reply_bans_on_created_by_id"
+    t.index ["forum_topic_id", "user_id"], name: "idx_topic_reply_bans_unique", unique: true
+    t.index ["forum_topic_id"], name: "index_forum_topic_reply_bans_on_forum_topic_id"
+    t.index ["user_id"], name: "index_forum_topic_reply_bans_on_user_id"
+  end
+
+  create_table "forum_topic_staff_notes", force: :cascade do |t|
+    t.bigint "author_id", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.bigint "forum_topic_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_id"], name: "index_forum_topic_staff_notes_on_author_id"
+    t.index ["forum_topic_id"], name: "index_forum_topic_staff_notes_on_forum_topic_id"
+  end
+
   create_table "forum_topic_tags", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "forum_tag_id", null: false
@@ -349,6 +378,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "deleted_at"
     t.boolean "featured", default: false, null: false
     t.bigint "forum_section_id", null: false
+    t.boolean "global_announcement", default: false, null: false
     t.bigint "last_post_user_id"
     t.datetime "last_posted_at"
     t.string "lock_reason"
@@ -372,6 +402,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["deleted_at"], name: "index_forum_topics_on_deleted_at"
     t.index ["forum_section_id", "last_posted_at"], name: "index_forum_topics_on_forum_section_id_and_last_posted_at"
     t.index ["forum_section_id"], name: "index_forum_topics_on_forum_section_id"
+    t.index ["global_announcement"], name: "index_forum_topics_on_global_announcement", where: "(global_announcement = true)"
     t.index ["last_post_user_id"], name: "index_forum_topics_on_last_post_user_id"
     t.index ["pinned_until"], name: "index_forum_topics_on_pinned_until"
     t.index ["public_id"], name: "index_forum_topics_on_public_id", unique: true
@@ -750,9 +781,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "expires_at"
     t.integer "initial_balance_cents", default: 0, null: false
     t.string "note"
+    t.bigint "owner_user_id"
     t.datetime "updated_at", null: false
     t.index ["code"], name: "index_store_gift_cards_on_code", unique: true
     t.index ["created_by_id"], name: "index_store_gift_cards_on_created_by_id"
+    t.index ["owner_user_id"], name: "index_store_gift_cards_on_owner_user_id"
   end
 
   create_table "store_order_events", force: :cascade do |t|
@@ -857,6 +890,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "store_product_variants", force: :cascade do |t|
+    t.integer "compare_at_price_cents"
     t.datetime "created_at", null: false
     t.jsonb "fulfillment_config", default: {}, null: false
     t.string "name", null: false
@@ -1160,6 +1194,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_subscriptions", "users"
   add_foreign_key "forum_topic_mutes", "forum_topics"
   add_foreign_key "forum_topic_mutes", "users"
+  add_foreign_key "forum_topic_reply_bans", "forum_topics"
+  add_foreign_key "forum_topic_reply_bans", "users"
+  add_foreign_key "forum_topic_reply_bans", "users", column: "created_by_id"
+  add_foreign_key "forum_topic_staff_notes", "forum_topics"
+  add_foreign_key "forum_topic_staff_notes", "users", column: "author_id"
   add_foreign_key "forum_topic_tags", "forum_tags"
   add_foreign_key "forum_topic_tags", "forum_topics"
   add_foreign_key "forum_topics", "forum_posts", column: "solved_post_id"
@@ -1200,6 +1239,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_fulfillments", "store_order_items"
   add_foreign_key "store_fulfillments", "store_orders"
   add_foreign_key "store_gift_cards", "users", column: "created_by_id"
+  add_foreign_key "store_gift_cards", "users", column: "owner_user_id"
   add_foreign_key "store_order_events", "store_orders"
   add_foreign_key "store_order_events", "users", column: "actor_id"
   add_foreign_key "store_order_items", "store_orders"

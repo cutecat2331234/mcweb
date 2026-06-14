@@ -25,7 +25,8 @@ const props = defineProps<{
     required_tag_ids: number[]
     allowed_tag_ids: number[]
     prefix_required: boolean
-    topic_template: string
+    min_trust_level_create: number
+    min_trust_level_reply: number
   }
   tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
@@ -121,6 +122,16 @@ function submit() {
         <input v-model="form.section.prefix_required" type="checkbox" class="h-4 w-4" />
         发帖时必须选择前缀
       </label>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="space-y-2">
+        <Label for="min_trust_level_create">最低发帖信任等级 (0-4)</Label>
+        <Input id="min_trust_level_create" v-model.number="form.section.min_trust_level_create" type="number" min="0" max="4" />
+      </div>
+      <div class="space-y-2">
+        <Label for="min_trust_level_reply">最低回复信任等级 (0-4)</Label>
+        <Input id="min_trust_level_reply" v-model.number="form.section.min_trust_level_reply" type="number" min="0" max="4" />
+      </div>
     </div>
     <div class="space-y-2">
       <Label for="topic_template">主题模板（XenForo，发帖时预填正文）</Label>

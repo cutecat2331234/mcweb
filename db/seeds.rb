@@ -101,6 +101,7 @@ end
 SiteSetting.set("forum.bump_cooldown_hours", "24") unless SiteSetting.exists?(key: "forum.bump_cooldown_hours")
 SiteSetting.set("forum.warning_mute_threshold", "10") unless SiteSetting.exists?(key: "forum.warning_mute_threshold")
 SiteSetting.set("forum.warning_mute_days", "7") unless SiteSetting.exists?(key: "forum.warning_mute_days")
+SiteSetting.set("forum.report_auto_hide_threshold", "5") unless SiteSetting.exists?(key: "forum.report_auto_hide_threshold")
 
 if Rails.env.development?
   unless InstallationLock.locked?

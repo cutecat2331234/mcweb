@@ -53,6 +53,17 @@ class ApplicationController < ActionController::Base
       }
     end
 
+    announcements = Community::Topic.global_announcements.order(last_posted_at: :desc).limit(3)
+    if announcements.any?
+      share[:global_announcements] = announcements.map do |topic|
+        {
+          title: topic.title,
+          url: forum_topic_path(topic),
+          id: topic.public_id
+        }
+      end
+    end
+
     share
   end
 end

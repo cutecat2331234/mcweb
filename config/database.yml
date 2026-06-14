@@ -17,7 +17,12 @@ production:
     database: mcweb_production
     username: <%= ENV.fetch("MCWEB_DATABASE_USERNAME", "mcweb") %>
     password: <%= ENV["MCWEB_DATABASE_PASSWORD"] %>
-    host: <%= ENV.fetch("MCWEB_DATABASE_HOST", "localhost") %>
+<% if ENV["MCWEB_DATABASE_HOST"].present? %>
+    host: <%= ENV["MCWEB_DATABASE_HOST"] %>
+<% end %>
+<% if ENV["MCWEB_DATABASE_PORT"].present? %>
+    port: <%= ENV["MCWEB_DATABASE_PORT"] %>
+<% end %>
   cache:
     <<: *primary_production
     database: mcweb_production_cache

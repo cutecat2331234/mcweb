@@ -46,6 +46,7 @@ const props = defineProps<{
   sort: string
   inStock?: boolean
   pagination: PaginationMeta
+  compareCount?: number
 }>()
 
 const q = ref(props.query)
@@ -68,10 +69,18 @@ function search() {
     { label: '商城', current: true },
   ]" />
 
-  <PageHeader title="商品列表" subtitle="浏览可购买的数字商品" />
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <PageHeader title="商品列表" subtitle="浏览可购买的数字商品" />
+    <Link v-if="compareCount" :href="routes.storeCompare" class="text-sm text-primary hover:underline">
+      对比列表 ({{ compareCount }})
+    </Link>
+  </div>
 
   <section v-if="recently_viewed?.length" class="mb-8">
-    <h2 class="mb-3 text-sm font-semibold">最近浏览</h2>
+    <div class="mb-3 flex items-center justify-between">
+      <h2 class="text-sm font-semibold">最近浏览</h2>
+      <Link :href="routes.storeRecentlyViewed" class="text-xs text-primary hover:underline">查看全部</Link>
+    </div>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <Link
         v-for="product in recently_viewed"

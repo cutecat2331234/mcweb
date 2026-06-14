@@ -40,6 +40,8 @@ module Commerce
     def attach_photos!(review)
       return if @photos.blank?
 
+      review.photos.purge if review.photos.attached?
+
       Array(@photos).first(3).each do |photo|
         next unless photo.respond_to?(:content_type)
         next unless %w[image/jpeg image/png image/gif image/webp].include?(photo.content_type)

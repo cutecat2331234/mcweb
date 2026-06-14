@@ -41,6 +41,16 @@ const props = defineProps<{
     can_edit: boolean
     is_following: boolean
     follow_url: string | null
+    trust_progress?: {
+      level: number
+      name: string
+      posts_count: number
+      next_level: number | null
+      next_level_name: string | null
+      posts_needed: number
+      can_send_pm: boolean
+      can_post_links: boolean
+    } | null
   }
   topics: Array<{
     id: string
@@ -76,6 +86,7 @@ const props = defineProps<{
 const editingBio = ref(false)
 const editingTitle = ref(false)
 const editingSignature = ref(false)
+const avatarInput = ref<HTMLInputElement | null>(null)
 const bioForm = useForm({
   user: {
     bio: props.profile.bio || '',
@@ -104,6 +115,21 @@ function saveBio() {
     },
   })
 }
+
+function uploadAvatar(event: Event) {
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  const data = new FormData()
+  data.append('_method', 'patch')
+  data.append('user[forum_avatar]', file)
+  router.post(`/forum/users/${props.profile.username}`, data, {
+    forceFormData: true,
+    preserveScroll: true,
+    onFinish: () => {
+      if (avatarInput.value) avatarInput.value.value = ''
+    },
+  })
+}
 </script>
 
 <template>
@@ -128,6 +154,17 @@ function saveBio() {
         <span><strong>{{ profile.topics_count }}</strong> 主题</span>
         <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
         <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
+      </div>
+      <div v-if="profile.trust_progress" class="mt-3 max-w-md rounded-lg border p-3 text-sm">
+        <p class="font-medium">{{ profile.trust_progress.name }} (Lv.{{ profile.trust_progress.level }})</p>
+        <p v-if="profile.trust_progress.posts_needed > 0" class="mt-1 text-muted-foreground">
+          再发 {{ profile.trust_progress.posts_needed }} 帖可升至 {{ profile.trust_progress.next_level_name }}
+        </p>
+        <p v-else class="mt-1 text-muted-foreground">已达最高信任等级</p>
+        <p class="mt-1 text-xs text-muted-foreground">
+          {{ profile.trust_progress.can_send_pm ? '可发私信' : 'Lv.1 后可发私信' }} ·
+          {{ profile.trust_progress.can_post_links ? '可发链接' : 'Lv.1 后可发链接' }}
+        </p>
       </div>
       <div v-if="badges.length" class="mt-3 flex flex-wrap gap-2">
         <span
@@ -171,6 +208,10 @@ function saveBio() {
         <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="editingSignature = !editingSignature">
           编辑签名
         </Button>
+        <template v-if="profile.can_edit">
+          <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="uploadAvatar" />
+          <Button type="button" size="sm" variant="outline" @click="avatarInput?.click()">更换头像</Button>
+        </template>
       </div>
     </div>
   </div>

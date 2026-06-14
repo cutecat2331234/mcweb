@@ -49,7 +49,21 @@ module Commerce
         query: params[:q].to_s,
         sort: params[:sort].to_s.presence || "newest",
         inStock: params[:in_stock] == "1",
+        compareCount: Array(session[:compare_product_ids]).size,
         pagination: pagy_props(@pagy)
+      }
+    end
+
+    def recently_viewed
+      return redirect_to store_products_path, alert: "请先登录。" unless logged_in?
+
+      products = Commerce::ProductView.recent_for(current_user)
+        .includes(:product)
+        .limit(20)
+        .filter_map { |view| view.product if view.product&.active? }
+
+      render inertia: "Commerce/RecentlyViewed/Index", props: {
+        products: products.map { |product| serialize_product_list_item(product) }
       }
     end
 
@@ -81,14 +95,19 @@ module Commerce
       @pagy_reviews = Pagy.new(count: total_reviews, page: review_page, limit: per_page)
       reviews_count = product.reviews.published.count
       avg = product.reviews.published.average(:rating)&.round(1)
-      wishlisted = logged_in? && Commerce::WishlistItem.exists?(user: current_user, product: product)
+      rating_breakdown = product.reviews.published.group(:rating).count
+      wishlist_item = logged_in? ? Commerce::WishlistItem.find_by(user: current_user, product: product) : nil
+      wishlisted = wishlist_item.present?
+      compared = Array(session[:compare_product_ids]).include?(product.public_id)
       stock_alert_variant_ids = if logged_in?
                                 Commerce::StockAlert.where(user: current_user, product: product).pluck(:store_product_variant_id)
                               else
                                 []
                               end
       user_review = logged_in? ? product.reviews.find_by(user: current_user) : nil
-      can_review = logged_in? && Commerce::CreateReview.purchased?(user: current_user, product: product) && user_review.nil?
+      purchased = logged_in? && Commerce::CreateReview.purchased?(user: current_user, product: product)
+      can_review = logged_in? && purchased && user_review.nil?
+      can_edit_review = logged_in? && purchased && user_review.present?
       related = if product.store_category_id
                   product.category.products.available.where.not(id: product.id).order(created_at: :desc).limit(4)
                 else
@@ -98,19 +117,26 @@ module Commerce
       questions = product.questions.visible.includes(:user, :answers).recent.limit(20)
 
       render inertia: "Commerce/Products/Show", props: {
-        product: serialize_product_detail(product, wishlisted: wishlisted, reviews: reviews, average_rating: avg),
+        product: serialize_product_detail(product, wishlisted: wishlisted, reviews: reviews, average_rating: avg).merge(
+          saved_variant_id: wishlist_item&.variant_id
+        ),
         reviewsCount: reviews_count,
+        ratingBreakdown: (1..5).map { |rating| { rating: rating, count: rating_breakdown[rating] || 0 } },
         reviewsPagination: pagy_props(@pagy_reviews),
         related_products: related.map { |p| serialize_product_list_item(p) },
         questions: questions.map { |q| serialize_product_question(q) },
         stockAlertUrl: stock_alert_store_product_path(product),
         stockAlertVariantIds: stock_alert_variant_ids,
         canReview: can_review,
+        canEditReview: can_edit_review,
         userReview: user_review ? serialize_review(user_review, current_user: current_user) : nil,
         reviewSort: review_sort.presence || "newest",
         reviewRating: (1..5).cover?(review_rating) ? review_rating : nil,
         addToCartUrl: store_cart_path,
         wishlistUrl: wishlist_store_product_path(product),
+        compareUrl: store_toggle_compare_path(product_id: product.public_id),
+        compared: compared,
+        compareCount: Array(session[:compare_product_ids]).size,
         reviewUrl: store_reviews_path(product),
         questionUrl: store_questions_path(product),
         canAnswerOfficially: logged_in? && (current_user.permission?("store.questions.answer") || current_user.permission?("admin.access")),

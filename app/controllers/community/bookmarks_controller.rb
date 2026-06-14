@@ -48,6 +48,8 @@ module Community
           bookmark_id: bookmark.id,
           update_url: forum_bookmark_path(bookmark),
           note: bookmark.note,
+          remind_at: bookmark.remind_at ? l(bookmark.remind_at, format: :short) : nil,
+          remind_at_input: bookmark.remind_at&.strftime("%Y-%m-%dT%H:%M"),
           floor_number: post.floor_number,
           excerpt: post.body.truncate(120),
           topic_title: topic.title,

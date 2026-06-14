@@ -17,6 +17,7 @@ module Commerce
           data = serialize_product_list_item(item.product)
           data.merge(
             wishlist_url: wishlist_store_product_path(item.product),
+            add_to_cart_url: add_wishlist_item_to_cart_store_path(item.product.public_id),
             saved_variant_id: item.variant&.id,
             saved_variant_name: item.variant&.name
           )
@@ -37,11 +38,14 @@ module Commerce
 
     def public_show
       user = User.find_by!(wishlist_share_token: params[:token])
-      items = Commerce::WishlistItem.where(user: user).includes(:product).order(created_at: :desc)
+      items = Commerce::WishlistItem.where(user: user).includes(:product, :variant).order(created_at: :desc)
 
       render inertia: "Commerce/Wishlist/Public", props: {
         owner: user.display_name || user.username,
-        products: items.map { |item| serialize_product_list_item(item.product) }
+        products: items.map do |item|
+          data = serialize_product_list_item(item.product)
+          data.merge(saved_variant_name: item.variant&.name)
+        end
       }
     end
 
@@ -51,10 +55,21 @@ module Commerce
       result = Commerce::ToggleWishlist.call(user: current_user, product: product, variant: variant)
 
       if result.success?
-        redirect_back fallback_location: store_product_path(product),
-                      notice: result.value[:wishlisted] ? "已加入心愿单。" : "已从心愿单移除。"
+        notice = result.value[:wishlisted] ? "已加入心愿单。" : "已从心愿单移除。"
+        redirect_back fallback_location: store_product_path(product), notice: notice
       else
         redirect_back fallback_location: store_product_path(product), alert: service_error_message(result)
+      end
+    end
+
+    def add_to_cart
+      product = Commerce::Product.available.find_by!(public_id: params[:product_id])
+      result = Commerce::AddWishlistItemToCart.call(user: current_user, product: product)
+
+      if result.success?
+        redirect_to store_cart_path, notice: "已加入购物车。"
+      else
+        redirect_to store_wishlist_path, alert: service_error_message(result)
       end
     end
 

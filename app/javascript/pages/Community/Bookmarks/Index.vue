@@ -41,6 +41,8 @@ defineProps<{
     bookmark_id: number
     update_url: string
     note: string | null
+    remind_at?: string | null
+    remind_at_input?: string | null
     floor_number: number
     excerpt: string
     topic_title: string
@@ -103,7 +105,17 @@ function saveBookmark(url: string) {
             <TableCell class="max-w-xs text-muted-foreground">{{ bookmark.note || bookmark.excerpt }}</TableCell>
             <TableCell>{{ bookmark.created_at }}</TableCell>
             <TableCell>
-              <Button type="button" variant="outline" size="sm" @click="startEdit(bookmark.bookmark_id, bookmark.note, null)">编辑</Button>
+              <Button type="button" variant="outline" size="sm" @click="startEdit(bookmark.bookmark_id, bookmark.note, bookmark.remind_at_input)">编辑</Button>
+            </TableCell>
+          </TableRow>
+          <TableRow v-if="editingId === bookmark.bookmark_id">
+            <TableCell colspan="5" class="space-y-2 border-t bg-muted/30 p-4">
+              <Textarea v-model="editNote" rows="2" placeholder="书签备注" />
+              <Input v-model="editRemindAt" type="datetime-local" />
+              <div class="flex gap-2">
+                <Button type="button" size="sm" @click="saveBookmark(bookmark.update_url)">保存</Button>
+                <Button type="button" size="sm" variant="outline" @click="editingId = null">取消</Button>
+              </div>
             </TableCell>
           </TableRow>
         </TableBody>

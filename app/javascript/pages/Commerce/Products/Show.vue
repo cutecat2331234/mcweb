@@ -56,6 +56,7 @@ export interface ProductDetail {
   changelog?: string | null
   view_count?: number
   wishlisted: boolean
+  saved_variant_id?: number | null
   average_rating: number | null
   variants: ProductVariant[]
   reviews: ProductReview[]
@@ -72,11 +73,16 @@ const props = defineProps<{
   }>
   addToCartUrl: string
   wishlistUrl: string
+  compareUrl?: string
+  compared?: boolean
+  compareCount?: number
   reviewUrl: string
   stockAlertUrl: string
   stockAlertVariantIds?: Array<number | null>
   canReview?: boolean
+  canEditReview?: boolean
   userReview?: ProductReview | null
+  ratingBreakdown?: Array<{ rating: number; count: number }>
   reviewSort?: string
   reviewRating?: number | null
   reviewsCount?: number
@@ -104,7 +110,7 @@ const questionForm = useForm({ question: { body: '' } })
 const answerForms = ref<Record<number, string>>({})
 
 const selectedVariantId = ref<number | null>(
-  props.product.variants.length === 1 ? props.product.variants[0].id : null
+  props.product.variants.length === 1 ? props.product.variants[0].id : (props.product.saved_variant_id ?? null)
 )
 const quantity = ref(1)
 const galleryIndex = ref(0)
@@ -123,6 +129,7 @@ const reviewForm = useForm<{
 }>({
   review: { rating: 5, body: '', photos: [] },
 })
+const editingReview = ref(false)
 
 function onReviewPhotosChange(event: Event) {
   const input = event.target as HTMLInputElement
@@ -147,6 +154,18 @@ const showLowStock = computed(() => {
     return selectedVariant.value.low_stock && selectedVariant.value.in_stock
   }
   return props.product.low_stock && props.product.in_stock
+})
+
+const wishlistedForSelection = computed(() => {
+  if (!props.product.wishlisted) return false
+  if (!props.product.saved_variant_id) return true
+  if (!selectedVariantId.value) return true
+  return props.product.saved_variant_id === selectedVariantId.value
+})
+
+const ratingBreakdownMax = computed(() => {
+  const counts = props.ratingBreakdown?.map((entry) => entry.count) || []
+  return Math.max(...counts, 1)
 })
 
 const stockAlertSubscribed = computed(() => {
@@ -197,6 +216,18 @@ function toggleWishlist() {
   }, { preserveScroll: true })
 }
 
+function toggleCompare() {
+  if (!props.compareUrl) return
+  router.post(props.compareUrl, {}, { preserveScroll: true })
+}
+
+function startEditReview() {
+  if (!props.userReview) return
+  reviewForm.review.rating = props.userReview.rating
+  reviewForm.review.body = props.userReview.body || ''
+  editingReview.value = true
+}
+
 function loadMoreReviews() {
   const nextPage = (props.reviewsPagination?.page || 1) + 1
   if (!props.reviewsPagination || nextPage > props.reviewsPagination.pages) return
@@ -214,6 +245,7 @@ function submitReview() {
     onSuccess: () => {
       reviewForm.review.body = ''
       reviewForm.review.photos = []
+      editingReview.value = false
     },
   })
 }
@@ -283,6 +315,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
       <div v-if="product.average_rating" class="text-sm">
         <span class="text-amber-500">★</span> {{ product.average_rating }} / 5（{{ reviewsCount ?? product.reviews.length }} 条评价）
       </div>
+      <div v-if="product.view_count" class="text-sm text-muted-foreground">
+        {{ product.view_count }} 次浏览
+      </div>
 
       <div v-if="product.variants.length" class="space-y-2">
         <Label>规格</Label>
@@ -349,7 +384,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
       加入购物车
     </Button>
     <Button v-if="loggedIn" type="button" variant="outline" @click="toggleWishlist">
-      {{ product.wishlisted ? '移出心愿单' : '加入心愿单' }}
+      {{ wishlistedForSelection ? '移出心愿单' : '加入心愿单' }}
+    </Button>
+    <Button v-if="compareUrl" type="button" variant="outline" @click="toggleCompare">
+      {{ compared ? '移出对比' : '加入对比' }}{{ compareCount ? ` (${compareCount})` : '' }}
     </Button>
     <Button
       v-if="loggedIn && !canPurchase && !stockAlertSubscribed"
@@ -411,7 +449,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </div>
   </section>
 
-  <section v-if="product.reviews.length || userReview" class="mt-10 max-w-xl">
+  <section v-if="product.reviews.length || userReview || ratingBreakdown?.length" class="mt-10 max-w-xl">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">用户评价</h2>
       <select
@@ -433,8 +471,20 @@ function submitAnswer(questionId: number, answerUrl: string) {
         <option v-for="n in 5" :key="n" :value="n">{{ n }} 星</option>
       </select>
     </div>
-    <div v-if="userReview" class="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
-      <p class="mb-2 text-sm font-medium">你的评价</p>
+    <div v-if="ratingBreakdown?.length" class="mb-4 space-y-1">
+      <div v-for="entry in [...ratingBreakdown].sort((a, b) => b.rating - a.rating)" :key="entry.rating" class="flex items-center gap-2 text-xs">
+        <span class="w-8">{{ entry.rating }} 星</span>
+        <div class="h-2 flex-1 overflow-hidden rounded bg-muted">
+          <div class="h-full bg-amber-400" :style="{ width: `${(entry.count / ratingBreakdownMax) * 100}%` }" />
+        </div>
+        <span class="w-8 text-muted-foreground">{{ entry.count }}</span>
+      </div>
+    </div>
+    <div v-if="userReview && !editingReview" class="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
+      <div class="mb-2 flex items-center justify-between">
+        <p class="text-sm font-medium">你的评价</p>
+        <Button v-if="canEditReview" type="button" size="sm" variant="outline" @click="startEditReview">编辑</Button>
+      </div>
       <div class="mb-1 flex items-center justify-between text-sm">
         <span class="text-amber-500">{{ '★'.repeat(userReview.rating) }}</span>
         <span class="text-xs text-muted-foreground">{{ userReview.created_at }}</span>
@@ -481,8 +531,8 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </Button>
   </section>
 
-  <section v-if="loggedIn && canReview" class="mt-8 max-w-xl">
-    <h2 class="mb-3 text-sm font-semibold">写评价</h2>
+  <section v-if="loggedIn && (canReview || (canEditReview && editingReview))" class="mt-8 max-w-xl">
+    <h2 class="mb-3 text-sm font-semibold">{{ canEditReview ? '编辑评价' : '写评价' }}</h2>
     <form class="space-y-3" @submit.prevent="submitReview">
       <div class="space-y-2">
         <Label>评分</Label>

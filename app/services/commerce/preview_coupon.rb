@@ -10,13 +10,13 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Coupon code is required.") if @code.blank?
+      return ServiceResult.failure(error: "请输入优惠券代码。") if @code.blank?
 
       coupon = Commerce::Coupon.find_by(code: @code)
-      return ServiceResult.failure(error: "Invalid coupon code.") unless coupon
-      unless coupon.applicable?(subtotal_cents: @subtotal_cents, cart_items: @cart_items, user: @user)
-        return ServiceResult.failure(error: "Coupon is not applicable to cart items.")
-      end
+      return ServiceResult.failure(error: "优惠券代码无效。") unless coupon
+
+      reason = coupon.inapplicable_reason(subtotal_cents: @subtotal_cents, cart_items: @cart_items, user: @user)
+      return ServiceResult.failure(error: reason) if reason
 
       discount_cents = coupon.calculate_discount(@subtotal_cents, cart_items: @cart_items, user: @user)
       ServiceResult.success(

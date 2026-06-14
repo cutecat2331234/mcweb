@@ -37,6 +37,7 @@ module Community
           title: draft.title,
           body: draft.posts.first&.body || "",
           tags: draft.tags.map(&:name).join(", "),
+          scheduled_at_input: draft.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
           section: { name: draft.section.name, slug: draft.section.slug }
         }
       }
@@ -67,7 +68,9 @@ module Community
         title: draft_params[:title],
         body: draft_params[:body],
         tag_names: draft_params[:tags],
-        topic: draft
+        topic: draft,
+        scheduled_at: draft_params[:scheduled_at],
+        clear_schedule: draft_params[:clear_schedule]
       )
 
       if result.success?
@@ -101,7 +104,7 @@ module Community
     end
 
     def draft_params
-      params.require(:draft).permit(:title, :body, :tags)
+      params.require(:draft).permit(:title, :body, :tags, :scheduled_at, :clear_schedule)
     end
   end
 end

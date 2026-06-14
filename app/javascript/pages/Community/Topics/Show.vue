@@ -70,6 +70,7 @@ export interface PollItem {
   user_vote_indices?: number[]
   vote_url: string
   close_url?: string | null
+  closes_at?: string | null
 }
 
 const props = defineProps<{
@@ -111,6 +112,12 @@ const props = defineProps<{
   reportTopicUrl: string | null
   poll: PollItem | null
   topicSearchQuery?: string
+  topicBookmark?: {
+    id: number
+    update_url: string
+    note: string | null
+    remind_at_input: string | null
+  } | null
   meta?: { title: string; description: string | null }
 }>()
 
@@ -142,6 +149,9 @@ const autoCloseAt = ref('')
 const draftKey = `forum-reply-draft-${props.topic.id}`
 const topicSearch = ref(props.topicSearchQuery || '')
 const selectedPollOptions = ref<number[]>(props.poll?.user_vote_indices || [])
+const editingBookmark = ref(false)
+const bookmarkNote = ref(props.topicBookmark?.note || '')
+const bookmarkRemindAt = ref(props.topicBookmark?.remind_at_input || '')
 
 onMounted(() => {
   const saved = localStorage.getItem(draftKey)
@@ -277,6 +287,29 @@ function toggleWatch() {
 }
 
 function toggleBookmark() {
+  if (props.topic.bookmarked && props.topicBookmark) {
+    editingBookmark.value = !editingBookmark.value
+    bookmarkNote.value = props.topicBookmark.note || ''
+    bookmarkRemindAt.value = props.topicBookmark.remind_at_input || ''
+    return
+  }
+  router.post(`/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
+}
+
+function saveBookmark() {
+  if (!props.topicBookmark) return
+  router.patch(props.topicBookmark.update_url, {
+    bookmark: {
+      note: bookmarkNote.value,
+      remind_at: bookmarkRemindAt.value || null,
+    },
+  }, {
+    preserveScroll: true,
+    onSuccess: () => { editingBookmark.value = false },
+  })
+}
+
+function removeBookmark() {
   router.post(`/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
 }
 
@@ -387,7 +420,10 @@ function pollPercent(votes: number) {
         编辑主题
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleBookmark">
-        {{ topic.bookmarked ? '移除书签' : '加入书签' }}
+        {{ topic.bookmarked ? '编辑书签' : '加入书签' }}
+      </Button>
+      <Button v-if="loggedIn && topic.bookmarked" type="button" variant="outline" size="sm" @click="removeBookmark">
+        移除书签
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleWatch">
         {{ topic.watching ? '取消关注' : '关注主题' }}
@@ -443,12 +479,23 @@ function pollPercent(votes: number) {
     </Link>
   </div>
 
+  <div v-if="editingBookmark && topicBookmark" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
+    <p class="text-sm font-medium">书签备注与提醒</p>
+    <textarea v-model="bookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="备注" />
+    <input v-model="bookmarkRemindAt" type="datetime-local" class="h-9 w-full rounded-md border px-2 text-sm" />
+    <div class="flex gap-2">
+      <Button type="button" size="sm" @click="saveBookmark">保存</Button>
+      <Button type="button" size="sm" variant="outline" @click="editingBookmark = false">取消</Button>
+    </div>
+  </div>
+
   <section v-if="poll" class="mb-6 max-w-xl rounded-lg border p-4">
     <div class="mb-3 flex items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">{{ poll.question }}</h2>
       <Button v-if="poll.close_url" type="button" variant="outline" size="sm" @click="closePoll">关闭投票</Button>
     </div>
     <p v-if="poll.multiple_choice" class="mb-2 text-xs text-muted-foreground">多选（最多 {{ poll.max_choices }} 项）</p>
+    <p v-if="poll.closes_at && poll.open" class="mb-2 text-xs text-muted-foreground">投票将于 {{ poll.closes_at }} 结束</p>
     <p v-if="!poll.open" class="mb-3 text-xs text-muted-foreground">投票已结束</p>
     <p v-if="poll.hide_results_until_vote && !poll.show_results" class="mb-3 text-xs text-muted-foreground">
       投票后可查看结果

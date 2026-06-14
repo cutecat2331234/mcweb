@@ -16,14 +16,15 @@ module Commerce
       commerce.question_answered
     ].freeze
 
-    CHANNELS = %w[email].freeze
+    CHANNELS = %w[email in_app].freeze
 
     def show
       prefs = NOTIFICATION_TYPES.map do |type|
         {
           notification_type: type,
           label: notification_label(type),
-          email: NotificationPreference.enabled?(current_user, channel: "email", notification_type: type)
+          email: NotificationPreference.enabled?(current_user, channel: "email", notification_type: type),
+          in_app: NotificationPreference.enabled?(current_user, channel: "in_app", notification_type: type)
         }
       end
 
@@ -32,16 +33,20 @@ module Commerce
 
     def update
       NOTIFICATION_TYPES.each do |type|
-        enabled = ActiveModel::Type::Boolean.new.cast(params.dig(:preferences, type, :email))
-        NotificationPreference.set!(
-          current_user,
-          channel: "email",
-          notification_type: type,
-          enabled: enabled
-        )
+        CHANNELS.each do |channel|
+          enabled = ActiveModel::Type::Boolean.new.cast(params.dig(:preferences, type, channel))
+          next if enabled.nil?
+
+          NotificationPreference.set!(
+            current_user,
+            channel: channel,
+            notification_type: type,
+            enabled: enabled
+          )
+        end
       end
 
-      redirect_to store_preferences_path, notice: "商城邮件偏好已保存。"
+      redirect_to store_preferences_path, notice: "商城通知偏好已保存。"
     end
 
     private

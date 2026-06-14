@@ -15,6 +15,7 @@ defineProps<{
     name: string
     price_label: string
     url: string
+    saved_variant_name?: string | null
   }>
 }>()
 </script>
@@ -33,6 +34,7 @@ defineProps<{
       <div>
         <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
         <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+        <p v-if="product.saved_variant_name" class="text-xs text-muted-foreground">规格：{{ product.saved_variant_name }}</p>
       </div>
       <Button as-child variant="outline" size="sm">
         <Link :href="product.url">查看</Link>

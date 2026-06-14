@@ -162,6 +162,9 @@ Rails.application.routes.draw do
 
   scope module: :commerce, path: "store", as: :store do
     resources :products, only: %i[index show] do
+      collection do
+        get :recently_viewed
+      end
       member do
         post :wishlist, to: "wishlist#toggle"
         post :stock_alert, to: "stock_alerts#create"
@@ -174,11 +177,19 @@ Rails.application.routes.draw do
         post "questions/:question_id/answer", to: "product_questions#answer", as: :answer_question
       end
     end
+    get "compare", to: "compare#show"
+    post "compare/toggle", to: "compare#toggle", as: :toggle_compare
+    delete "compare", to: "compare#clear"
     get "wishlist", to: "wishlist#index"
     post "wishlist/add_all_to_cart", to: "wishlist#add_all_to_cart", as: :add_all_to_cart_wishlist
+    post "wishlist/:product_id/add_to_cart", to: "wishlist#add_to_cart", as: :add_wishlist_item_to_cart
     get "wishlist/share", to: "wishlist#share"
     get "wishlist/:token", to: "wishlist#public_show", as: :public_wishlist
-    resources :stock_alerts, only: %i[index destroy]
+    resources :stock_alerts, only: %i[index destroy] do
+      member do
+        post :add_to_cart
+      end
+    end
     resource :cart, only: %i[show update] do
       post :preview_coupon, on: :member
       delete :clear_coupon, on: :member

@@ -14,6 +14,7 @@ module Community
         .limit(20)
       posts_count = Community::Post.where(user: user, status: :published).count
       trust = Community::TrustLevel.level_info(user)
+      progress = Community::TrustLevel.progress_for(user)
       liked_posts = Community::Post.where(user: user, status: :published)
         .select("forum_posts.*, COUNT(forum_reactions.id) AS reactions_count")
         .joins(:reactions)
@@ -55,7 +56,8 @@ module Community
           is_muted: logged_in? && current_user.id == user.id && Community::Mute.muted?(user),
           can_edit: logged_in? && current_user.id == user.id,
           is_following: logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user),
-          follow_url: logged_in? && current_user.id != user.id ? forum_user_follow_path(user.username) : nil
+          follow_url: logged_in? && current_user.id != user.id ? forum_user_follow_path(user.username) : nil,
+          trust_progress: progress
         },
         badges: user.user_badges.includes(:badge).order(granted_at: :desc).map do |ub|
           {

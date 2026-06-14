@@ -13,13 +13,17 @@ const props = defineProps<{
     notification_type: string
     label: string
     email: boolean
+    in_app: boolean
   }>
 }>()
 
 const form = useForm({
   preferences: Object.fromEntries(
-    props.preferences.map((pref) => [pref.notification_type, { email: pref.email }])
-  ) as Record<string, { email: boolean }>,
+    props.preferences.map((pref) => [
+      pref.notification_type,
+      { email: pref.email, in_app: pref.in_app },
+    ])
+  ) as Record<string, { email: boolean; in_app: boolean }>,
 })
 
 function submit() {
@@ -31,24 +35,37 @@ function submit() {
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '商城', href: routes.store },
-    { label: '邮件偏好', current: true },
+    { label: '通知偏好', current: true },
   ]" />
 
-  <PageHeader title="商城邮件偏好" subtitle="管理订单相关邮件通知" />
+  <PageHeader title="商城通知偏好" subtitle="管理订单与商品相关通知" />
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <label
+    <div
       v-for="pref in preferences"
       :key="pref.notification_type"
-      class="flex items-center gap-3 rounded-lg border p-4"
+      class="rounded-lg border p-4"
     >
-      <input
-        v-model="form.preferences[pref.notification_type].email"
-        type="checkbox"
-        class="h-4 w-4"
-      />
-      <span class="text-sm font-medium">{{ pref.label }}</span>
-    </label>
+      <p class="mb-3 text-sm font-medium">{{ pref.label }}</p>
+      <div class="flex flex-wrap gap-4">
+        <label class="flex items-center gap-2 text-sm">
+          <input
+            v-model="form.preferences[pref.notification_type].email"
+            type="checkbox"
+            class="h-4 w-4"
+          />
+          邮件
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input
+            v-model="form.preferences[pref.notification_type].in_app"
+            type="checkbox"
+            class="h-4 w-4"
+          />
+          站内通知
+        </label>
+      </div>
+    </div>
     <Button type="submit" :disabled="form.processing">保存</Button>
     <Button as-child variant="outline">
       <Link :href="routes.storeOrders">返回订单</Link>

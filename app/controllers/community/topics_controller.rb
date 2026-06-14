@@ -30,6 +30,9 @@ module Community
       @pagy, posts = pagy(posts_scope, limit: per_page, page: target_page)
       mark_topic_read!(posts) unless params[:unread] == "1"
       last_read_floor = logged_in? ? Community::ReadState.find_by(user: current_user, topic: @topic)&.last_read_floor.to_i : 0
+      topic_bookmark = if logged_in?
+                         Community::Bookmark.find_by(user: current_user, topic: @topic, forum_post_id: nil)
+                       end
 
       render inertia: "Community/Topics/Show", props: {
         topic: serialize_topic_detail(
@@ -53,6 +56,12 @@ module Community
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
         poll: @topic.poll ? serialize_poll(@topic.poll) : nil,
         topicSearchQuery: params[:q].to_s,
+        topicBookmark: topic_bookmark ? {
+          id: topic_bookmark.id,
+          update_url: forum_bookmark_path(topic_bookmark),
+          note: topic_bookmark.note,
+          remind_at_input: topic_bookmark.remind_at&.strftime("%Y-%m-%dT%H:%M")
+        } : nil,
         meta: {
           title: @topic.title,
           description: @topic.posts.first&.body&.truncate(160)
@@ -105,6 +114,7 @@ module Community
         poll_closes_days: topic_params[:poll_closes_days],
         poll_multiple_choice: topic_params[:poll_multiple_choice],
         poll_max_choices: topic_params[:poll_max_choices],
+        poll_hide_results_until_vote: topic_params[:poll_hide_results_until_vote],
         prefix: topic_params[:prefix],
         ip_address: request.remote_ip
       )
@@ -256,7 +266,7 @@ module Community
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days, :poll_multiple_choice, :poll_max_choices, :prefix, :scheduled_at)
+      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days, :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :prefix, :scheduled_at)
     end
 
     def section_props

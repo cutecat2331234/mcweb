@@ -19,6 +19,8 @@ const props = defineProps<{
     in_stock?: boolean
     low_stock?: boolean
     wishlist_url?: string
+    add_to_cart_url?: string
+    saved_variant_name?: string
   }>
   shareUrl: string | null
   addAllToCartUrl?: string
@@ -27,6 +29,10 @@ const props = defineProps<{
 function addAllToCart() {
   if (!props.addAllToCartUrl) return
   router.post(props.addAllToCartUrl)
+}
+
+function addToCart(url: string) {
+  router.post(url)
 }
 
 function removeFromWishlist(url: string) {
@@ -66,6 +72,7 @@ function copyShareLink() {
         <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>
       </div>
       <div class="flex gap-2">
+        <Button v-if="product.add_to_cart_url && product.in_stock" type="button" size="sm" @click="addToCart(product.add_to_cart_url)">加入购物车</Button>
         <Button v-if="product.wishlist_url" type="button" variant="outline" size="sm" @click="removeFromWishlist(product.wishlist_url)">移除</Button>
         <Button as-child variant="outline" size="sm">
           <Link :href="product.url">查看</Link>

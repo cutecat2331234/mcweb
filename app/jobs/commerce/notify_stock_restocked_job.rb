@@ -16,14 +16,31 @@ module Commerce
       scope = scope.where(store_product_variant_id: variant_id) if variant_id
 
       scope.includes(:user).find_each do |alert|
-        next unless NotificationPreference.enabled?(alert.user, channel: "email", notification_type: "commerce.stock_restocked")
+        user = alert.user
 
-        MailDeliveryJob.perform_later(
-          "Commerce::StockMailer",
-          "restocked",
-          "deliver_now",
-          args: [ alert.id ]
-        )
+        if NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.stock_restocked")
+          Notification.notify!(
+            user: user,
+            notification_type: "commerce.stock_restocked",
+            title: "商品已补货",
+            body: "#{product.name}#{alert.variant ? "（#{alert.variant.name}）" : ""} 已有货，可以购买了。",
+            metadata: {
+              path: "/store/products/#{product.public_id}",
+              product_id: product.public_id,
+              variant_id: alert.variant&.id
+            }
+          )
+        end
+
+        if NotificationPreference.enabled?(user, channel: "email", notification_type: "commerce.stock_restocked")
+          MailDeliveryJob.perform_later(
+            "Commerce::StockMailer",
+            "restocked",
+            "deliver_now",
+            args: [ alert.id ]
+          )
+        end
+
         alert.update!(notified_at: Time.current)
       end
     end

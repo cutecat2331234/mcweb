@@ -6,7 +6,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
+import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -17,6 +17,7 @@ const props = defineProps<{
     title: string
     body: string
     tags: string
+    scheduled_at_input?: string | null
     section: { name: string; slug: string }
   }
 }>()
@@ -26,6 +27,8 @@ const form = useForm({
     title: props.draft.title,
     body: props.draft.body,
     tags: props.draft.tags,
+    scheduled_at: props.draft.scheduled_at_input || '',
+    clear_schedule: false,
   },
 })
 
@@ -40,6 +43,12 @@ function publish() {
 function destroy() {
   if (!confirm('确定删除此草稿？')) return
   router.delete(`/forum/drafts/${props.draft.id}`)
+}
+
+function clearSchedule() {
+  form.draft.clear_schedule = true
+  form.draft.scheduled_at = ''
+  save()
 }
 </script>
 
@@ -60,11 +69,17 @@ function destroy() {
     </div>
     <div class="space-y-2">
       <Label for="body">内容</Label>
-      <Textarea id="body" v-model="form.draft.body" rows="10" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名" />
+      <MarkdownEditor v-model="form.draft.body" :rows="10" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名" />
     </div>
     <div class="space-y-2">
       <Label for="tags">标签（逗号分隔）</Label>
       <Input id="tags" v-model="form.draft.tags" />
+    </div>
+    <div class="space-y-2">
+      <Label for="scheduled_at">定时发布（可选）</Label>
+      <Input id="scheduled_at" v-model="form.draft.scheduled_at" type="datetime-local" />
+      <p class="text-xs text-muted-foreground">设置未来时间将在指定时刻自动发布。</p>
+      <Button v-if="draft.scheduled_at_input" type="button" variant="outline" size="sm" @click="clearSchedule">取消定时</Button>
     </div>
     <div class="flex flex-wrap gap-2">
       <Button type="submit" :disabled="form.processing">保存草稿</Button>

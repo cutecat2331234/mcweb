@@ -36,5 +36,25 @@ module Community
     def self.contains_link?(text)
       text.to_s.match?(/https?:\/\//i)
     end
+
+    def self.progress_for(user)
+      return nil unless user
+
+      count = Community::Post.where(user: user, status: :published).count
+      current = level_info(user)
+      next_entry = LEVELS.find { |entry| entry[:level] == current[:level] + 1 }
+      posts_needed = next_entry ? [ next_entry[:min_posts] - count, 0 ].max : 0
+
+      {
+        level: current[:level],
+        name: current[:name],
+        posts_count: count,
+        next_level: next_entry&.dig(:level),
+        next_level_name: next_entry&.dig(:name),
+        posts_needed: posts_needed,
+        can_send_pm: can_send_pm?(user),
+        can_post_links: can_post_links?(user)
+      }
+    end
   end
 end

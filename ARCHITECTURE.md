@@ -425,3 +425,28 @@ app/
 | 优惠券折扣封顶 | `Coupon#max_discount_cents` |
 | 最近浏览商品 | `store_product_views` + `RecordProductView` |
 | 评价图片上传 | `Review#photos` ActiveStorage（最多 3 张） |
+
+### 第二十二轮（论坛 / 商城体验补齐与 Bug 修复）
+
+| 功能 | 实现 |
+|------|------|
+| 自定义头像上传 UI | `Users/Show.vue` 文件选择与上传 |
+| 投票隐藏结果（创建时） | `poll_hide_results_until_vote` + `Topics/New.vue` |
+| 帖子书签提醒 | `Bookmarks/Index.vue` 帖子书签备注/提醒 |
+| 草稿 Markdown 编辑器 | `Drafts/Edit.vue` + `MarkdownEditor` |
+| 草稿定时发布编辑 | `scheduled_at` / `clear_schedule` on draft update |
+| 主题页内联书签编辑 | `topicBookmark` + `Topics/Show.vue` |
+| 分区热门排序 | `Sections/Show.vue` hot sort |
+| 投票截止时间显示 | `serialize_poll` `closes_at` |
+| 信任等级进度提示 | `TrustLevel.progress_for` + 资料页 / 私信门槛 |
+| 心愿单规格切换修复 | `ToggleWishlist` 更新 variant 而非移除 |
+| 到货通知规格库存 | variant-aware `in_stock` + 一键加购 |
+| 心愿单单件加购 | `AddWishlistItemToCart` |
+| 评价编辑 | `canEditReview` + 表单复用 |
+| 最近浏览完整页 | `products#recently_viewed` |
+| 优惠券中文错误 | `Coupon#inapplicable_reason` |
+| 商品浏览量展示 | `Products/Show.vue` view_count |
+| 公开心愿单规格 | `Wishlist/Public.vue` |
+| 商品对比（Session） | `ToggleCompare` + `Compare/Show.vue` |
+| 评分分布图 | `ratingBreakdown` on product show |
+| 商城站内通知 | Q&A 回复 / 到货补货 in_app 渠道 |

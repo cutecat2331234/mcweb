@@ -42,7 +42,8 @@ module Community
     def new
       render inertia: "Community/Messages/New", props: {
         recipient: params[:to].to_s.presence,
-        group: params[:group] == "1"
+        group: params[:group] == "1",
+        canSendPm: Community::TrustLevel.can_send_pm?(current_user)
       }
     end
 

@@ -11,16 +11,20 @@ module Commerce
     scope :active_coupons, -> { where(active: true) }
 
     def applicable?(subtotal_cents:, cart_items: nil, user: nil)
-      return false unless active?
-      return false if starts_at.present? && starts_at > Time.current
-      return false if ends_at.present? && ends_at < Time.current
-      return false if usage_limit.present? && used_count >= usage_limit
-      return false if subtotal_cents < min_amount_cents
-      return false unless matches_cart_restrictions?(cart_items)
-      return false if first_order_only? && user && !first_order?(user)
-      return false if per_user_limit.present? && user && user_usage_count(user) >= per_user_limit
+      inapplicable_reason(subtotal_cents: subtotal_cents, cart_items: cart_items, user: user).nil?
+    end
 
-      true
+    def inapplicable_reason(subtotal_cents:, cart_items: nil, user: nil)
+      return "优惠券无效或已停用" unless active?
+      return "优惠券尚未生效" if starts_at.present? && starts_at > Time.current
+      return "优惠券已过期" if ends_at.present? && ends_at < Time.current
+      return "优惠券已达使用上限" if usage_limit.present? && used_count >= usage_limit
+      return "未达到最低消费金额" if subtotal_cents < min_amount_cents
+      return "优惠券不适用于购物车商品" unless matches_cart_restrictions?(cart_items)
+      return "仅限首单使用" if first_order_only? && user && !first_order?(user)
+      return "已达到每人限用次数" if per_user_limit.present? && user && user_usage_count(user) >= per_user_limit
+
+      nil
     end
 
     def calculate_discount(subtotal_cents, cart_items: nil, user: nil)

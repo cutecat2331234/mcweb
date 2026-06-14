@@ -17,9 +17,14 @@ defineProps<{
     product_url: string
     in_stock?: boolean
     subscribed_at: string
+    add_to_cart_url?: string | null
     unsubscribe_url: string
   }>
 }>()
+
+function addToCart(url: string) {
+  router.post(url)
+}
 
 function unsubscribe(url: string) {
   router.delete(url, { preserveScroll: true })
@@ -43,7 +48,10 @@ function unsubscribe(url: string) {
         <p class="text-xs text-muted-foreground">订阅于 {{ alert.subscribed_at }}</p>
         <Badge v-if="alert.in_stock" variant="success" class="mt-1">已有货</Badge>
       </div>
-      <Button type="button" size="sm" variant="outline" @click="unsubscribe(alert.unsubscribe_url)">取消订阅</Button>
+      <div class="flex gap-2">
+        <Button v-if="alert.add_to_cart_url" type="button" size="sm" @click="addToCart(alert.add_to_cart_url)">加入购物车</Button>
+        <Button type="button" size="sm" variant="outline" @click="unsubscribe(alert.unsubscribe_url)">取消订阅</Button>
+      </div>
     </div>
   </div>
   <p v-else class="text-sm text-muted-foreground">暂无到货通知订阅。</p>

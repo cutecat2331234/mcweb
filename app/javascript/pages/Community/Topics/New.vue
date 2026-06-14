@@ -28,6 +28,7 @@ const form = useForm({
     poll_closes_days: '',
     poll_multiple_choice: false,
     poll_max_choices: 2,
+    poll_hide_results_until_vote: false,
     scheduled_at: '',
   },
 })
@@ -102,6 +103,10 @@ function saveDraft() {
           <Label for="poll_max_choices">最多可选几项</Label>
           <Input id="poll_max_choices" v-model.number="form.topic.poll_max_choices" type="number" min="2" max="10" />
         </div>
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="form.topic.poll_hide_results_until_vote" type="checkbox" class="h-4 w-4" />
+          投票后才显示结果
+        </label>
       </div>
     </div>
 

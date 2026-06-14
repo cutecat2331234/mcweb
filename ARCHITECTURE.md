@@ -786,3 +786,13 @@ app/
 | 商品缺货可预订（Backorder） | `store_products.allow_backorder` + 购物车/下单 |
 | 对比列表上限可配置 | SiteSetting `store.compare_max_items` |
 | 优惠券公开开始时间 | 优惠券详情页 `starts_at` |
+
+### 第四十四轮（精选/公告搜索、分区外链与最低购买量）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索 is:featured / is:announcement / is:global | `ParseSearchQuery` + `ApplyTopicSearchFilters` |
+| 分区筛选精选与全站公告 | `TopicFilterable` 新增筛选项 |
+| 分区外链（Discourse） | `forum_sections.link_url` / `link_label` + 分区页展示 |
+| 商品最低购买量 | `store_products.minimum_quantity` + `ValidateCartItem` |
+| 购物车限购余量提示 | `PurchaseLimitRemaining` + 购物车项序列化 |

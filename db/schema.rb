@@ -296,6 +296,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "description"
     t.bigint "forum_category_id", null: false
     t.string "icon"
+    t.string "link_label"
+    t.string "link_url"
     t.integer "min_trust_level_create", default: 0, null: false
     t.integer "min_trust_level_reply", default: 0, null: false
     t.string "name", null: false
@@ -992,6 +994,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.jsonb "gallery_urls", default: [], null: false
     t.string "image_url"
     t.jsonb "metadata", default: {}, null: false
+    t.integer "minimum_quantity", default: 1, null: false
     t.string "name", null: false
     t.integer "price_cents", default: 0, null: false
     t.string "product_type", null: false

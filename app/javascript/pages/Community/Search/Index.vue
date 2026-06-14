@@ -83,7 +83,7 @@ function search() {
     { label: '搜索', current: true },
   ]" />
 
-  <PageHeader title="搜索论坛" subtitle="支持 in:分区、tag:标签、is:solved/is:locked/is:pinned/is:wiki、@用户名 等高级语法" />
+  <PageHeader title="搜索论坛" subtitle="支持 in:分区、tag:标签、is:solved/is:locked/is:pinned/is:wiki/is:featured/is:announcement 等语法" />
 
   <form class="mb-8 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
     <Input v-model="q" placeholder="输入关键词..." class="min-w-[200px] flex-1" />

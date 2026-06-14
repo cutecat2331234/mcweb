@@ -26,6 +26,7 @@ const props = defineProps<{
     store_category_id: number | null
     purchase_limit: number | null
     allow_backorder?: boolean
+    minimum_quantity?: number
     image_url: string
     gallery_urls: string
     fulfillment_config: string
@@ -150,6 +151,10 @@ async function uploadCover(event: Event) {
     <div class="space-y-2">
       <Label for="purchase_limit">限购（空=不限）</Label>
       <Input id="purchase_limit" v-model.number="form.product.purchase_limit" type="number" min="1" />
+    </div>
+    <div class="space-y-2">
+      <Label for="minimum_quantity">最低购买量</Label>
+      <Input id="minimum_quantity" v-model.number="form.product.minimum_quantity" type="number" min="1" />
     </div>
     <div class="space-y-2">
       <Label for="image_url">商品图片 URL</Label>

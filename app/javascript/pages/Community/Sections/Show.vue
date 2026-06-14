@@ -21,6 +21,8 @@ const props = defineProps<{
     color_hex?: string | null
     icon?: string | null
     banner_text?: string | null
+    link_url?: string | null
+    link_label?: string | null
     read_only?: boolean
     notification_level?: 'watching' | 'tracking' | null
     new_topic_url: string | null
@@ -117,6 +119,12 @@ function markAllRead() {
 
   <p v-if="section.banner_text" class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100">
     {{ section.banner_text }}
+  </p>
+
+  <p v-if="section.link_url" class="mb-4 text-sm">
+    <a :href="section.link_url" class="font-medium text-primary underline" target="_blank" rel="noopener noreferrer">
+      {{ section.link_label || section.link_url }}
+    </a>
   </p>
 
   <p v-if="section.read_only" class="mb-4 rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">

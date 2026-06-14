@@ -377,6 +377,7 @@ module InertiaSerializable
       backorder_available: product.backorder_available?,
       low_stock: product.low_stock?,
       purchase_limit: product.purchase_limit,
+      minimum_quantity: [ product.minimum_quantity.to_i, 1 ].max,
       image_url: product_image_url(product),
       gallery_urls: product.gallery_urls || [],
       version: product.version,
@@ -477,11 +478,15 @@ module InertiaSerializable
   def serialize_cart_item(item)
     unit = item.product.currency == "CNY" ? "¥" : "$"
     unit_cents = item.variant&.price_cents || item.product.price_cents
+    limit_data = logged_in? ? Commerce::PurchaseLimitRemaining.call(user: current_user, product: item.product) : nil
+    remaining = limit_data&.success? ? limit_data.value[:remaining] : nil
     {
       id: item.id,
       product_name: item.product.name,
       variant_name: item.variant&.name,
       quantity: item.quantity,
+      minimum_quantity: [ item.product.minimum_quantity.to_i, 1 ].max,
+      purchase_limit_remaining: remaining,
       unit_price_label: number_to_currency(unit_cents / 100.0, unit: unit),
       total_label: number_to_currency(item.total_cents / 100.0, unit: unit),
       product_url: store_product_path(item.product),

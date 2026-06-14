@@ -8,7 +8,7 @@ module Community
     AUTHOR_AT_PATTERN = /\B@([a-zA-Z0-9_]+)/
     AUTHOR_COLON_PATTERN = /\bauthor:([a-zA-Z0-9_]+)/i
 
-    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki].freeze
+    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global].freeze
 
     def initialize(query:)
       @query = query.to_s.strip
@@ -51,6 +51,10 @@ module Community
                         "unsolved"
                       end
 
+      announcement_filter = if topic_flags["announcement"] || topic_flags["global"]
+                              "announcement"
+                            end
+
       ServiceResult.success(
         query: text.squish,
         section_slug: section_slug,
@@ -59,6 +63,8 @@ module Community
         locked_filter: topic_flags["locked"] ? "locked" : (topic_flags["unlocked"] ? "unlocked" : nil),
         pinned_filter: topic_flags["pinned"] ? "pinned" : nil,
         wiki_filter: topic_flags["wiki"] ? "wiki" : nil,
+        featured_filter: topic_flags["featured"] ? "featured" : nil,
+        announcement_filter: announcement_filter,
         author: author
       )
     end

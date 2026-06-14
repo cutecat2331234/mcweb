@@ -46,7 +46,8 @@ module Admin
             { label: "只读分区", value: @section.read_only? ? "是" : "否" },
             { label: "颜色", value: @section.color_hex.presence || "—" },
             { label: "图标", value: @section.icon.presence || "—" },
-            { label: "公告横幅", value: @section.banner_text.presence || "—" }
+            { label: "公告横幅", value: @section.banner_text.presence || "—" },
+            { label: "外链", value: @section.link_url.presence || "—" }
           ],
           backUrl: admin_forum_sections_path,
           actions: [{ label: "编辑", href: edit_admin_forum_section_path(@section) }]
@@ -88,7 +89,7 @@ module Admin
         permitted = params.require(:section).permit(
           :name, :slug, :description, :position, :forum_category_id, :parent_id,
           :create_topic_roles, :reply_roles, :prefixes, :prefix_required, :topic_template,
-          :min_trust_level_create, :min_trust_level_reply, :read_only, :color_hex, :icon, :banner_text,
+          :min_trust_level_create, :min_trust_level_reply, :read_only, :color_hex, :icon, :banner_text, :link_url, :link_label,
           required_tag_ids: [], allowed_tag_ids: []
         )
         prefixes = if permitted[:prefixes].is_a?(String)
@@ -116,6 +117,8 @@ module Admin
           color_hex: permitted[:color_hex].to_s.strip.presence,
           icon: permitted[:icon].to_s.strip.presence,
           banner_text: permitted[:banner_text].to_s.strip.presence,
+          link_url: permitted[:link_url].to_s.strip.presence,
+          link_label: permitted[:link_label].to_s.strip.presence,
           permissions: {
             "create_topic" => parse_roles(permitted[:create_topic_roles]),
             "reply" => parse_roles(permitted[:reply_roles])
@@ -154,7 +157,9 @@ module Admin
             read_only: section.read_only?,
             color_hex: section.color_hex || "",
             icon: section.icon || "",
-            banner_text: section.banner_text || ""
+            banner_text: section.banner_text || "",
+            link_url: section.link_url || "",
+            link_label: section.link_label || ""
           },
           tags: ::Community::Tag.order(:name).map { |tag| { id: tag.id, name: tag.name } },
           categories: ::Community::Category.order(:name).map { |c| { id: c.id, name: c.name } },

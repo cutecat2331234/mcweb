@@ -31,6 +31,8 @@ const props = defineProps<{
     color_hex: string
     icon: string
     banner_text: string
+    link_url: string
+    link_label: string
   }
   tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
@@ -143,6 +145,14 @@ function submit() {
       <div class="space-y-2">
         <Label for="banner_text">公告横幅（分区页顶部展示）</Label>
         <Textarea id="banner_text" v-model="form.section.banner_text" rows="2" placeholder="欢迎参与讨论，请遵守版规…" />
+      </div>
+      <div class="space-y-2">
+        <Label for="link_url">外链 URL（可选）</Label>
+        <Input id="link_url" v-model="form.section.link_url" placeholder="https://example.com/rules" />
+      </div>
+      <div class="space-y-2">
+        <Label for="link_label">外链显示文字</Label>
+        <Input id="link_label" v-model="form.section.link_label" placeholder="查看版规全文" />
       </div>
     </div>
     <div class="grid grid-cols-2 gap-4">

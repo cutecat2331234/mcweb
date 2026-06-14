@@ -21,6 +21,7 @@ module Commerce
     validates :compare_at_price_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
     validate :compare_at_price_valid
     validates :currency, presence: true
+    validates :minimum_quantity, numericality: { only_integer: true, greater_than: 0 }
 
     def on_sale?
       compare_at_price_cents.present? && compare_at_price_cents > price_cents

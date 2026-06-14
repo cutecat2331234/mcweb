@@ -16,6 +16,8 @@ module Community
       parsed_locked = parsed.success? ? parsed.value[:locked_filter] : nil
       parsed_pinned = parsed.success? ? parsed.value[:pinned_filter] : nil
       parsed_wiki = parsed.success? ? parsed.value[:wiki_filter] : nil
+      parsed_featured = parsed.success? ? parsed.value[:featured_filter] : nil
+      parsed_announcement = parsed.success? ? parsed.value[:announcement_filter] : nil
 
       query = parsed_query
       section_slug = params[:section].to_s.presence || parsed_section
@@ -25,6 +27,8 @@ module Community
       locked_filter = params[:locked].to_s.presence || parsed_locked
       pinned_filter = params[:pinned].to_s.presence || parsed_pinned
       wiki_filter = params[:wiki].to_s.presence || parsed_wiki
+      featured_filter = params[:featured].to_s.presence || parsed_featured
+      announcement_filter = params[:announcement].to_s.presence || parsed_announcement
       topics = Community::Topic.none
       posts = Community::Post.none
 
@@ -38,7 +42,9 @@ module Community
           solved_filter: solved_filter,
           locked_filter: locked_filter,
           pinned_filter: pinned_filter,
-          wiki_filter: wiki_filter
+          wiki_filter: wiki_filter,
+          featured_filter: featured_filter,
+          announcement_filter: announcement_filter
         )
         if params[:created_after].present?
           after = Time.zone.parse(params[:created_after].to_s) rescue nil
@@ -68,7 +74,9 @@ module Community
           solved_filter: solved_filter,
           locked_filter: locked_filter,
           pinned_filter: pinned_filter,
-          wiki_filter: wiki_filter
+          wiki_filter: wiki_filter,
+          featured_filter: featured_filter,
+          announcement_filter: announcement_filter
         )
         if params[:created_after].present?
           after = Time.zone.parse(params[:created_after].to_s) rescue nil
@@ -107,6 +115,8 @@ module Community
         locked: locked_filter.to_s,
         pinned: pinned_filter.to_s,
         wiki: wiki_filter.to_s,
+        featured: featured_filter.to_s,
+        announcement: announcement_filter.to_s,
         createdAfter: params[:created_after].to_s,
         createdBefore: params[:created_before].to_s,
         topicSort: params[:topic_sort].to_s.presence || "recent",
@@ -122,26 +132,30 @@ module Community
 
     private
 
-    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:)
+    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil)
       result = Community::ApplyTopicSearchFilters.call(
         scope: scope,
         solved_filter: solved_filter,
         locked_filter: locked_filter,
         pinned_filter: pinned_filter,
-        wiki_filter: wiki_filter
+        wiki_filter: wiki_filter,
+        featured_filter: featured_filter,
+        announcement_filter: announcement_filter
       )
       result.success? ? result.value : scope
     end
 
-    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:)
-      needs_join = solved_filter.present? || locked_filter.present? || pinned_filter.present? || wiki_filter.present?
+    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil)
+      needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter ].any?(&:present?)
       scope = scope.joins(:topic) if needs_join
       apply_search_topic_filters(
         scope,
         solved_filter: solved_filter,
         locked_filter: locked_filter,
         pinned_filter: pinned_filter,
-        wiki_filter: wiki_filter
+        wiki_filter: wiki_filter,
+        featured_filter: featured_filter,
+        announcement_filter: announcement_filter
       )
     end
   end

@@ -21,6 +21,8 @@ export interface CartItem {
   product_name: string
   variant_name: string | null
   quantity: number
+  minimum_quantity?: number
+  purchase_limit_remaining?: number | null
   unit_price_label: string
   total_label: string
   product_url?: string
@@ -191,6 +193,8 @@ function clearCart() {
               <Link v-if="item.product_url" :href="item.product_url" class="hover:underline">{{ item.product_name }}</Link>
               <template v-else>{{ item.product_name }}</template>
               <span v-if="item.variant_name" class="text-muted-foreground"> — {{ item.variant_name }}</span>
+              <p v-if="item.minimum_quantity && item.minimum_quantity > 1" class="text-xs text-muted-foreground">最少购买 {{ item.minimum_quantity }} 件</p>
+              <p v-if="item.purchase_limit_remaining != null" class="text-xs text-muted-foreground">还可购买 {{ item.purchase_limit_remaining }} 件</p>
             </TableCell>
             <TableCell>
               <input

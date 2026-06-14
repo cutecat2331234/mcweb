@@ -37,6 +37,10 @@ module Community
         scope.where(pinned: true)
       when "wiki"
         scope.where(wiki: true)
+      when "featured"
+        scope.where(featured: true)
+      when "announcement"
+        scope.where(global_announcement: true)
       when /\Aprefix:(.+)\z/
         scope.where(prefix: Regexp.last_match(1))
       else
@@ -56,7 +60,9 @@ module Community
         { value: "locked", label: "已锁定" },
         { value: "unlocked", label: "未锁定" },
         { value: "pinned", label: "已置顶" },
-        { value: "wiki", label: "Wiki 主题" }
+        { value: "wiki", label: "Wiki 主题" },
+        { value: "featured", label: "精选主题" },
+        { value: "announcement", label: "全站公告" }
       ]
       prefixes.each do |prefix|
         options << { value: "prefix:#{prefix}", label: "前缀：#{prefix}" }

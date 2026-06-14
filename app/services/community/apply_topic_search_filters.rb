@@ -2,12 +2,14 @@
 
 module Community
   class ApplyTopicSearchFilters < ApplicationService
-    def initialize(scope:, solved_filter: nil, locked_filter: nil, pinned_filter: nil, wiki_filter: nil)
+    def initialize(scope:, solved_filter: nil, locked_filter: nil, pinned_filter: nil, wiki_filter: nil, featured_filter: nil, announcement_filter: nil)
       @scope = scope
       @solved_filter = solved_filter
       @locked_filter = locked_filter
       @pinned_filter = pinned_filter
       @wiki_filter = wiki_filter
+      @featured_filter = featured_filter
+      @announcement_filter = announcement_filter
     end
 
     def call
@@ -18,6 +20,8 @@ module Community
       scope = scope.where(locked: false) if @locked_filter == "unlocked"
       scope = scope.where(pinned: true) if @pinned_filter == "pinned"
       scope = scope.where(wiki: true) if @wiki_filter == "wiki"
+      scope = scope.where(featured: true) if @featured_filter == "featured"
+      scope = scope.where(global_announcement: true) if @announcement_filter == "announcement"
       ServiceResult.success(scope)
     end
   end

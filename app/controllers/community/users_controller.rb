@@ -2,6 +2,8 @@
 
 module Community
   class UsersController < ApplicationController
+    include Community::TopicListPreloadable
+
     before_action :require_login, only: %i[update]
 
     def show
@@ -10,7 +12,7 @@ module Community
       topics_scope = Community::Topic.where(user: user, status: :published).order(created_at: :desc)
       posts_scope = Community::Post.where(user: user, status: :published).includes(:topic).order(created_at: :desc)
       posts_count = posts_scope.count
-      @pagy_topics, topics = pagy(topics_scope, limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
+      @pagy_topics, topics = pagy(preload_topics(topics_scope), limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
       @pagy_posts, posts = pagy(posts_scope, limit: 20, page: [ params[:posts_page].to_i, 1 ].max)
       trust = Community::TrustLevel.level_info(user)
       progress = Community::TrustLevel.progress_for(user)
@@ -88,8 +90,17 @@ module Community
           can_edit: logged_in? && current_user.id == user.id,
           is_following: logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user),
           follow_url: logged_in? && current_user.id != user.id ? forum_user_follow_path(user.username) : nil,
-          trust_progress: progress
+          trust_progress: progress,
+          warning_points: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? Community::UserWarning.total_points_for(user) : nil
         },
+        warnings: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? user.forum_warnings.recent.limit(10).map do |warning|
+          {
+            reason: warning.reason,
+            points: warning.points,
+            issuer: warning.issuer.username,
+            created_at: l(warning.created_at, format: :short)
+          }
+        end : [],
         badges: user.user_badges.includes(:badge).order(granted_at: :desc).map do |ub|
           {
             name: ub.badge.name,

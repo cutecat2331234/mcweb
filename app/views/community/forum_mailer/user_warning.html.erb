@@ -1,0 +1,5 @@
+<p>您好 <%= @user.username %>，</p>
+<p>你收到了一条社区警告（<%= @warning.points %> 点）：</p>
+<p><strong><%= @warning.reason %></strong></p>
+<p>累计警告积分：<%= Community::UserWarning.total_points_for(@user) %> 点</p>
+<p><a href="<%= @url %>">查看个人资料</a></p>

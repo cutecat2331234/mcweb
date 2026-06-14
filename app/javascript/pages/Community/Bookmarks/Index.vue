@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
-import type { TopicListItem } from '@/components/portal/TopicListTable.vue'
-import TopicTitleBadges from '@/components/portal/TopicTitleBadges.vue'
+import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Textarea from '@/components/ui/Textarea.vue'
@@ -19,7 +18,7 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const props = defineProps<{
   topics: Array<{
     bookmark_id: number
     update_url: string
@@ -42,6 +41,8 @@ defineProps<{
     created_at: string
   }>
 }>()
+
+const topicItems = computed(() => props.topics.map((item) => item.topic))
 
 const editingId = ref<number | null>(null)
 const editNote = ref('')
@@ -89,27 +90,29 @@ function saveBookmark(url: string) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          <TableRow v-for="bookmark in postBookmarks" :key="bookmark.bookmark_id">
-            <TableCell>
-              <Link :href="bookmark.url" class="font-medium hover:underline">{{ bookmark.topic_title }}</Link>
-            </TableCell>
-            <TableCell>#{{ bookmark.floor_number }}</TableCell>
-            <TableCell class="max-w-xs text-muted-foreground">{{ bookmark.note || bookmark.excerpt }}</TableCell>
-            <TableCell>{{ bookmark.created_at }}</TableCell>
-            <TableCell>
-              <Button type="button" variant="outline" size="sm" @click="startEdit(bookmark.bookmark_id, bookmark.note, bookmark.remind_at_input)">编辑</Button>
-            </TableCell>
-          </TableRow>
-          <TableRow v-if="editingId === bookmark.bookmark_id">
-            <TableCell colspan="5" class="space-y-2 border-t bg-muted/30 p-4">
-              <Textarea v-model="editNote" rows="2" placeholder="书签备注" />
-              <Input v-model="editRemindAt" type="datetime-local" />
-              <div class="flex gap-2">
-                <Button type="button" size="sm" @click="saveBookmark(bookmark.update_url)">保存</Button>
-                <Button type="button" size="sm" variant="outline" @click="editingId = null">取消</Button>
-              </div>
-            </TableCell>
-          </TableRow>
+          <template v-for="bookmark in postBookmarks" :key="bookmark.bookmark_id">
+            <TableRow>
+              <TableCell>
+                <Link :href="bookmark.url" class="font-medium hover:underline">{{ bookmark.topic_title }}</Link>
+              </TableCell>
+              <TableCell>#{{ bookmark.floor_number }}</TableCell>
+              <TableCell class="max-w-xs text-muted-foreground">{{ bookmark.note || bookmark.excerpt }}</TableCell>
+              <TableCell>{{ bookmark.created_at }}</TableCell>
+              <TableCell>
+                <Button type="button" variant="outline" size="sm" @click="startEdit(bookmark.bookmark_id, bookmark.note, bookmark.remind_at_input)">编辑</Button>
+              </TableCell>
+            </TableRow>
+            <TableRow v-if="editingId === bookmark.bookmark_id">
+              <TableCell colspan="5" class="space-y-2 border-t bg-muted/30 p-4">
+                <Textarea v-model="editNote" rows="2" placeholder="书签备注" />
+                <Input v-model="editRemindAt" type="datetime-local" />
+                <div class="flex gap-2">
+                  <Button type="button" size="sm" @click="saveBookmark(bookmark.update_url)">保存</Button>
+                  <Button type="button" size="sm" variant="outline" @click="editingId = null">取消</Button>
+                </div>
+              </TableCell>
+            </TableRow>
+          </template>
         </TableBody>
       </Table>
     </div>
@@ -117,31 +120,18 @@ function saveBookmark(url: string) {
 
   <section>
     <h2 class="mb-3 text-sm font-semibold">主题书签</h2>
+    <TopicListTable v-if="topicItems.length" :topics="topicItems" show-views show-participants class="mb-4" />
     <div v-if="topics.length" class="space-y-3">
-      <article v-for="item in topics" :key="item.bookmark_id" class="rounded-lg border p-4">
+      <article
+        v-for="item in topics"
+        :key="item.bookmark_id"
+        class="rounded-lg border p-4"
+      >
         <div class="flex flex-wrap items-start justify-between gap-2">
-          <div>
-            <TopicTitleBadges
-              :prefix="item.topic.prefix"
-              :pinned="item.topic.pinned"
-              :featured="item.topic.featured"
-              :locked="item.topic.locked"
-              :solved="item.topic.solved"
-              :has-unread="item.topic.has_unread"
-              :unread-count="item.topic.unread_count"
-              :linked-product="item.topic.linked_product"
-              :linked-product-name="item.topic.linked_product_name"
-              :linked-product-url="item.topic.linked_product_url"
-              :tags="item.topic.tags"
-            />
-            <Link :href="item.topic.url" class="font-medium hover:underline">{{ item.topic.title }}</Link>
-            <p class="mt-1 text-xs text-muted-foreground">
-              {{ item.topic.author || '—' }} · {{ item.topic.replies_count }} 回复
-              <span v-if="item.topic.views_count != null"> · {{ item.topic.views_count }} 浏览</span>
-              <span v-if="item.topic.last_posted_at"> · {{ item.topic.last_posted_at }}</span>
-            </p>
-            <p v-if="item.note" class="mt-2 text-sm text-muted-foreground">备注：{{ item.note }}</p>
+          <div class="min-w-0 flex-1">
+            <p v-if="item.note" class="text-sm text-muted-foreground">备注：{{ item.note }}</p>
             <p v-if="item.remind_at" class="text-xs text-muted-foreground">提醒：{{ item.remind_at }}</p>
+            <p v-if="!item.note && !item.remind_at" class="text-xs text-muted-foreground">暂无备注或提醒</p>
           </div>
           <Button type="button" variant="outline" size="sm" @click="startEdit(item.bookmark_id, item.note, item.remind_at_input)">编辑备注</Button>
         </div>

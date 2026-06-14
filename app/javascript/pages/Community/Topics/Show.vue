@@ -119,6 +119,7 @@ const props = defineProps<{
     linked_product_url?: string
     bump_cooldown_remaining_seconds?: number | null
     slow_mode_remaining_seconds?: number | null
+    reading_time_minutes?: number | null
   }
   posts: PostItem[]
   pagination: PaginationMeta
@@ -567,7 +568,7 @@ function pollPercent(votes: number) {
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
     <PageHeader
       :title="`${topic.prefix ? `[${topic.prefix}] ` : ''}${topic.pinned ? '[置顶] ' : ''}${topic.title}`"
-      :subtitle="`${topic.author ? `作者 ${topic.author}` : ''}${topic.author ? ' · ' : ''}${topic.views_count} 次浏览`"
+      :subtitle="`${topic.author ? `作者 ${topic.author}` : ''}${topic.author ? ' · ' : ''}${topic.views_count} 次浏览${topic.reading_time_minutes ? ` · 约 ${topic.reading_time_minutes} 分钟阅读` : ''}`"
     />
     <div class="flex flex-wrap gap-2">
       <Button v-if="topic.can_edit" type="button" variant="outline" size="sm" @click="editingTopic = !editingTopic">

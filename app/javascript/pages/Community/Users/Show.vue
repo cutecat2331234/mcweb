@@ -63,7 +63,14 @@ const props = defineProps<{
       can_send_pm: boolean
       can_post_links: boolean
     } | null
+    warning_points?: number | null
   }
+  warnings?: Array<{
+    reason: string
+    points: number
+    issuer: string
+    created_at: string
+  }>
   topics: TopicListItem[]
   topicsPagination: PaginationMeta
   recent_posts: Array<{
@@ -201,6 +208,16 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
           <strong>{{ profile.followers_count ?? 0 }}</strong> 粉丝
         </Link>
         <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
+        <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> 警告积分</span>
+      </div>
+      <div v-if="warnings?.length" class="mt-4 max-w-xl rounded-lg border p-4">
+        <h3 class="mb-2 text-sm font-semibold">社区警告记录</h3>
+        <ul class="space-y-2 text-sm">
+          <li v-for="(warning, index) in warnings" :key="index" class="flex justify-between gap-4 border-b pb-2 last:border-0 last:pb-0">
+            <span>{{ warning.reason }}</span>
+            <span class="shrink-0 text-muted-foreground">{{ warning.points }} 点 · {{ warning.issuer }} · {{ warning.created_at }}</span>
+          </li>
+        </ul>
       </div>
       <div v-if="profile.trust_progress" class="mt-3 max-w-md rounded-lg border p-3 text-sm">
         <p class="font-medium">{{ profile.trust_progress.name }} (Lv.{{ profile.trust_progress.level }})</p>

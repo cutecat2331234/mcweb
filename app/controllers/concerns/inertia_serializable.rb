@@ -131,7 +131,14 @@ module InertiaSerializable
         slug: topic.section.slug,
         url: forum_section_path(topic.section)
       }
-    }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate)).merge(slow_mode_props(topic, user: viewer))
+    }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate)).merge(slow_mode_props(topic, user: viewer)).merge(reading_time_props(topic))
+  end
+
+  def reading_time_props(topic)
+    result = Community::EstimateReadingTime.call(topic: topic)
+    return {} unless result.success? && result.value[:minutes].to_i.positive?
+
+    { reading_time_minutes: result.value[:minutes] }
   end
 
   def slow_mode_props(topic, user:)
@@ -526,6 +533,8 @@ module InertiaSerializable
       subtotal_label: format_money(order.subtotal_cents, order.currency),
       discount_label: order.discount_cents.positive? ? format_money(order.discount_cents, order.currency) : nil,
       coupon_code: order.coupon&.code,
+      gift_card_code: order.gift_card&.code,
+      gift_card_amount_label: order.gift_card_amount_cents.positive? ? format_money(order.gift_card_amount_cents, order.currency) : nil,
       total_label: format_money(order.total_cents, order.currency),
       receipt_url: receipt_store_order_path(order),
       receipt_pdf_url: receipt_pdf_store_order_path(order),

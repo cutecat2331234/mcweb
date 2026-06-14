@@ -105,6 +105,16 @@ module Commerce
       mail(to: @user.email, subject: "商品更新：#{@product.name}")
     end
 
+    def new_product_question(user_id, question_id)
+      @user = User.find(user_id)
+      @question = Commerce::ProductQuestion.find(question_id)
+      @product = @question.product
+      return unless commerce_email_enabled?(@user, "commerce.new_product_question")
+
+      @url = "#{root_url.chomp('/')}#{"/store/products/#{@product.public_id}"}"
+      mail(to: @user.email, subject: "新商品提问：#{@product.name}")
+    end
+
     private
 
     def commerce_email_enabled?(user, notification_type)

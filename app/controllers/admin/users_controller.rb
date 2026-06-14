@@ -54,12 +54,21 @@ module Admin
           { label: "封禁到期", value: @user.ban_expires_at ? l(@user.ban_expires_at, format: :long) : (@user.banned? ? "永久" : "—") },
           { label: "角色", value: @user.roles.pluck(:name).join(", ").presence || "—" },
           { label: "邮箱已验证", value: @user.email_verified? ? "是" : "否" },
-          { label: "注册时间", value: l(@user.created_at, format: :long) }
+          { label: "注册时间", value: l(@user.created_at, format: :long) },
+          { label: "警告积分", value: Community::UserWarning.total_points_for(@user).to_s }
         ],
-        sections: mute_actions.any? ? [{
-          title: "当前禁言",
-          items: mute_actions.map { |m| { label: m[:section], value: "#{m[:reason] || '—'} · 到期: #{m[:expires_at]}" } }
-        }] : [],
+        sections: [
+          mute_actions.any? ? {
+            title: "当前禁言",
+            items: mute_actions.map { |m| { label: m[:section], value: "#{m[:reason] || '—'} · 到期: #{m[:expires_at]}" } }
+          } : nil,
+          {
+            title: "社区警告",
+            items: @user.forum_warnings.recent.limit(5).map do |warning|
+              { label: l(warning.created_at, format: :short), value: "#{warning.points} 点 · #{warning.reason}" }
+            end.presence || [ { label: "记录", value: "无" } ]
+          }
+        ].compact,
         backUrl: admin_users_path,
         muteForm: current_user.permission?("forum.users.mute") ? {
           user_id: @user.public_id,
@@ -74,6 +83,10 @@ module Admin
           action_url: grant_badge_admin_user_path(@user),
           badges: Community::Badge.order(:name).map { |badge| { slug: badge.slug, name: badge.name } },
           earned: @user.user_badges.includes(:badge).map { |ub| ub.badge.name }
+        } : nil,
+        warningForm: current_user.permission?("forum.users.warn") || current_user.permission?("admin.access") ? {
+          action_url: warn_admin_user_path(@user),
+          warning_points: Community::UserWarning.total_points_for(@user)
         } : nil,
         actions: mute_actions.map do |m|
           { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
@@ -130,6 +143,20 @@ module Admin
       result = Community::AwardBadge.call(user: @user, badge_slug: params[:badge_slug])
       if result.success?
         redirect_to admin_user_path(@user), notice: "徽章已授予。"
+      else
+        redirect_to admin_user_path(@user), alert: service_error_message(result)
+      end
+    end
+
+    def warn
+      result = Community::CreateUserWarning.call(
+        actor: current_user,
+        user: @user,
+        reason: params[:reason],
+        points: params[:points]
+      )
+      if result.success?
+        redirect_to admin_user_path(@user), notice: "警告已发出。"
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end

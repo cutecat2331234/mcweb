@@ -1,0 +1,8 @@
+<p>您好 <%= @user.username %>，</p>
+<p>您的购物车中还有以下商品尚未结算：</p>
+<ul>
+  <% @cart.items.each do |item| %>
+    <li><%= item.product.name %><% if item.variant %>（<%= item.variant.name %>）<% end %> × <%= item.quantity %></li>
+  <% end %>
+</ul>
+<p><a href="<%= store_cart_url %>">前往购物车完成购买</a></p>

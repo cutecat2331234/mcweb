@@ -31,6 +31,7 @@ const nav = [
     { label: '商品', href: adminRoutes.storeProducts },
     { label: '分类', href: adminRoutes.storeCategories },
     { label: '优惠券', href: adminRoutes.storeCoupons },
+    { label: '礼品卡', href: adminRoutes.storeGiftCards },
     { label: '订单', href: adminRoutes.storeOrders },
     { label: '评价', href: adminRoutes.storeReviews },
     { label: '商品问答', href: adminRoutes.storeProductQuestions },

@@ -53,6 +53,11 @@ export interface BadgeForm {
   earned: string[]
 }
 
+export interface WarningForm {
+  action_url: string
+  warning_points: number
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -64,10 +69,16 @@ const props = defineProps<{
   banForm?: BanForm | null
   refundForm?: RefundForm | null
   badgeForm?: BadgeForm | null
+  warningForm?: WarningForm | null
   backUrl: string
 }>()
 
 const badgeSlug = ref('')
+
+const warningForm = useForm({
+  reason: '',
+  points: 1,
+})
 
 const muteForm = useForm({
   user_id: props.muteForm?.user_id || '',
@@ -112,6 +123,14 @@ function submitRefund() {
 function submitBadge() {
   if (!props.badgeForm || !badgeSlug.value) return
   router.post(props.badgeForm.action_url, { badge_slug: badgeSlug.value })
+}
+
+function submitWarning() {
+  if (!props.warningForm) return
+  warningForm.post(props.warningForm.action_url, {
+    preserveScroll: true,
+    onSuccess: () => { warningForm.reset() },
+  })
 }
 </script>
 
@@ -198,6 +217,20 @@ function submitBadge() {
       </select>
     </div>
     <Button type="submit" size="sm">授予</Button>
+  </form>
+
+  <form v-if="props.warningForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitWarning">
+    <h2 class="text-sm font-semibold">发出警告（XenForo）</h2>
+    <p class="text-xs text-muted-foreground">当前累计警告积分：{{ props.warningForm.warning_points }}</p>
+    <div class="space-y-2">
+      <Label>警告原因</Label>
+      <Input v-model="warningForm.reason" placeholder="说明违规原因" required />
+    </div>
+    <div class="space-y-2">
+      <Label>警告点数（1-10）</Label>
+      <Input v-model.number="warningForm.points" type="number" min="1" max="10" />
+    </div>
+    <Button type="submit" variant="destructive" size="sm" :disabled="warningForm.processing">发出警告</Button>
   </form>
 
   <div class="mt-6 flex flex-wrap gap-3">

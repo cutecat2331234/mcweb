@@ -24,6 +24,8 @@ module Commerce
       ).value
 
       User.where(id: recipient_ids).find_each do |user|
+        next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.new_product_question")
+
         Notification.notify!(
           user: user,
           notification_type: "commerce.new_product_question",
@@ -35,6 +37,15 @@ module Commerce
             question_id: @question.id
           }
         )
+
+        if NotificationPreference.enabled?(user, channel: "email", notification_type: "commerce.new_product_question")
+          MailDeliveryJob.perform_later(
+            "Commerce::OrderMailer",
+            "new_product_question",
+            "deliver_now",
+            args: [ user.id, @question.id ]
+          )
+        end
       end
 
       ServiceResult.success

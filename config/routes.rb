@@ -28,6 +28,7 @@ Rails.application.routes.draw do
         post :ban
         post :unban
         post :grant_badge
+        post :warn
       end
     end
     resources :roles, only: %i[index show]
@@ -46,6 +47,7 @@ Rails.application.routes.draw do
       resources :categories
       resources :products
       resources :coupons
+      resources :gift_cards, only: %i[index show new create]
       resources :orders, only: %i[index show update] do
         collection do
           get :export
@@ -229,6 +231,7 @@ Rails.application.routes.draw do
     end
     resource :checkout, only: %i[show create], controller: "checkout" do
       post :preview_coupon, on: :member
+      post :preview_gift_card, on: :member
     end
     get "coupons/:code", to: "coupons#show", as: :coupon
     post "coupons/:code/apply", to: "coupons#apply", as: :apply_coupon

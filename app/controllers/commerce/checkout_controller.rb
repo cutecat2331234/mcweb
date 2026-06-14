@@ -26,7 +26,8 @@ module Commerce
         pendingCouponCode: pending_coupon,
         providers: providers,
         defaultProvider: providers.first&.dig(:value),
-        previewCouponUrl: preview_coupon_store_checkout_path
+        previewCouponUrl: preview_coupon_store_checkout_path,
+        previewGiftCardUrl: preview_gift_card_store_checkout_path
       }
     end
 
@@ -41,6 +42,7 @@ module Commerce
           cart: cart,
           user: current_user,
           coupon_code: checkout_params[:coupon_code].presence || session.delete(:pending_coupon_code),
+          gift_card_code: checkout_params[:gift_card_code].presence,
           notes: checkout_params[:notes]
         )
         unless order_result.success?
@@ -96,10 +98,45 @@ module Commerce
       end
     end
 
+    def preview_gift_card
+      cart = Commerce::Cart.find_by(user: current_user)
+      subtotal_cents = cart&.subtotal_cents.to_i
+      discount_cents = 0
+      if params[:coupon_code].present?
+        preview = Commerce::PreviewCoupon.call(
+          subtotal_cents: subtotal_cents,
+          code: params[:coupon_code],
+          cart_items: cart&.items&.includes(:product) || [],
+          user: current_user
+        )
+        discount_cents = preview.success? ? preview.value[:discount_cents] : 0
+      end
+
+      result = Commerce::PreviewGiftCard.call(
+        subtotal_cents: subtotal_cents,
+        code: params[:code],
+        discount_cents: discount_cents
+      )
+
+      if result.success?
+        currency = cart&.items&.first&.product&.currency || "CNY"
+        render json: {
+          code: result.value[:code],
+          gift_card_amount_cents: result.value[:gift_card_amount_cents],
+          total_cents: result.value[:total_cents],
+          balance_cents: result.value[:balance_cents],
+          gift_card_amount_label: format_money(result.value[:gift_card_amount_cents], currency),
+          total_label: format_money(result.value[:total_cents], currency)
+        }
+      else
+        render json: { error: service_error_message(result) }, status: :unprocessable_entity
+      end
+    end
+
     private
 
     def checkout_params
-      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :notes)
+      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes)
     end
 
     def default_provider

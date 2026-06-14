@@ -37,21 +37,63 @@ const props = defineProps<{
   defaultProvider?: string
   pendingCouponCode?: string | null
   previewCouponUrl: string
+  previewGiftCardUrl: string
 }>()
 
 const form = useForm({
   checkout: {
     provider: props.defaultProvider || props.providers[0]?.value || 'fake',
     coupon_code: props.pendingCouponCode || '',
+    gift_card_code: '',
     notes: '',
   },
 })
 
 const couponMessage = ref<string | null>(null)
 const couponError = ref<string | null>(null)
+const giftCardMessage = ref<string | null>(null)
+const giftCardError = ref<string | null>(null)
 const discountLabel = ref<string | null>(null)
+const giftCardLabel = ref<string | null>(null)
 const totalLabel = ref<string | null>(props.subtotalLabel)
 const previewing = ref(false)
+const previewingGiftCard = ref(false)
+
+async function previewGiftCard() {
+  giftCardMessage.value = null
+  giftCardError.value = null
+  giftCardLabel.value = null
+  if (!totalLabel.value) totalLabel.value = props.subtotalLabel
+
+  if (!form.checkout.gift_card_code.trim()) return
+
+  previewingGiftCard.value = true
+  try {
+    const response = await fetch(props.previewGiftCardUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+      },
+      body: JSON.stringify({
+        code: form.checkout.gift_card_code,
+        coupon_code: form.checkout.coupon_code,
+      }),
+    })
+    const data = await response.json()
+    if (response.ok) {
+      giftCardMessage.value = `礼品卡 ${data.code} 已应用`
+      giftCardLabel.value = data.gift_card_amount_label
+      totalLabel.value = data.total_label
+    } else {
+      giftCardError.value = data.error || '礼品卡无效'
+    }
+  } catch {
+    giftCardError.value = '无法验证礼品卡'
+  } finally {
+    previewingGiftCard.value = false
+  }
+}
 
 async function previewCoupon() {
   couponMessage.value = null
@@ -116,6 +158,7 @@ onMounted(() => {
     <div class="space-y-1 text-sm">
       <p>小计：{{ subtotalLabel }}</p>
       <p v-if="discountLabel" class="text-green-600">优惠：-{{ discountLabel }}</p>
+      <p v-if="giftCardLabel" class="text-green-600">礼品卡：-{{ giftCardLabel }}</p>
       <p class="font-medium">应付：{{ totalLabel }}</p>
     </div>
 
@@ -128,6 +171,16 @@ onMounted(() => {
         </div>
         <p v-if="couponMessage" class="text-sm text-green-600">{{ couponMessage }}</p>
         <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
+      </div>
+
+      <div class="space-y-2">
+        <Label for="gift_card">礼品卡</Label>
+        <div class="flex gap-2">
+          <Input id="gift_card" v-model="form.checkout.gift_card_code" placeholder="输入礼品卡代码" class="flex-1" />
+          <Button type="button" variant="outline" :disabled="previewingGiftCard" @click="previewGiftCard">验证</Button>
+        </div>
+        <p v-if="giftCardMessage" class="text-sm text-green-600">{{ giftCardMessage }}</p>
+        <p v-if="giftCardError" class="text-sm text-destructive">{{ giftCardError }}</p>
       </div>
 
       <div class="space-y-2">

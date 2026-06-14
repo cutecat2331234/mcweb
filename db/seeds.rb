@@ -8,6 +8,7 @@ PERMISSIONS = [
   { key: "forum.topics.lock", name: "锁定主题", category: "forum" },
   { key: "forum.topics.move", name: "移动主题", category: "forum" },
   { key: "forum.users.mute", name: "禁言用户", category: "forum" },
+  { key: "forum.users.warn", name: "警告用户", category: "forum" },
   { key: "forum.badges.manage", name: "管理论坛徽章", category: "forum" },
   { key: "forum.tags.manage", name: "管理论坛标签", category: "forum" },
   { key: "store.products.manage", name: "管理商品", category: "store" },
@@ -43,12 +44,12 @@ ROLES = {
   "forum_admin" => {
     name: "论坛管理员",
     description: "管理论坛",
-    permissions: %w[forum.sections.manage forum.topics.lock forum.topics.move forum.users.mute forum.badges.manage forum.tags.manage admin.access]
+    permissions: %w[forum.sections.manage forum.topics.lock forum.topics.move forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage admin.access]
   },
   "moderator" => {
     name: "版主",
     description: "分区版主",
-    permissions: %w[forum.topics.lock forum.users.mute admin.access]
+    permissions: %w[forum.topics.lock forum.users.mute forum.users.warn admin.access]
   },
   "store_admin" => {
     name: "商城管理员",

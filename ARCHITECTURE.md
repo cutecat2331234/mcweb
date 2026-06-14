@@ -657,3 +657,19 @@ app/
 | 图片上传信任等级 | `TrustLevel.can_upload_images?` + 前端提示 |
 | 书签提醒邮件 | `ForumMailer#bookmark_reminder` |
 | 降价/退款申请邮件 | `OrderMailer#price_drop` / `#refund_requested` |
+
+### 第三十六轮（用户警告、礼品卡与阅读体验）
+
+| 功能 | 实现 |
+|------|------|
+| 用户警告系统（XenForo） | `forum_user_warnings` + `CreateUserWarning` + 管理端 `warn` |
+| 警告通知与邮件 | `NotifyUserWarning` + `ForumMailer#user_warning` + 偏好 `forum.user_warning` |
+| 资料页警告积分/记录 | `UsersController` + `Users/Show.vue` |
+| 主题阅读时间估算（Discourse） | `EstimateReadingTime` + `reading_time_minutes` + `Topics/Show.vue` |
+| 礼品卡 | `store_gift_cards` + `ApplyGiftCard` / `PreviewGiftCard` / `DebitGiftCard` |
+| 结账礼品卡预览 | `CheckoutController#preview_gift_card` + `Checkout/Show.vue` |
+| 订单礼品卡展示 | `serialize_order_detail` + `Orders/Show.vue` |
+| 管理端礼品卡 | `Admin::Store::GiftCardsController` + `GiftCards/Form.vue` |
+| 书签主题列表统一 | `Bookmarks/Index.vue` 接入 `TopicListTable` |
+| 员工新提问邮件 | `NotifyNewProductQuestion` + `OrderMailer#new_product_question` |
+| 弃购邮件 HTML | `CartMailer#abandoned_cart.html.erb` |

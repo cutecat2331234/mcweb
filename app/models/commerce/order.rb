@@ -10,6 +10,7 @@ module Commerce
 
     belongs_to :user
     belongs_to :coupon, class_name: "Commerce::Coupon", foreign_key: :store_coupon_id, optional: true
+    belongs_to :gift_card, class_name: "Commerce::GiftCard", foreign_key: :store_gift_card_id, optional: true
     has_many :items, class_name: "Commerce::OrderItem", foreign_key: :store_order_id, dependent: :destroy
     has_many :events, class_name: "Commerce::OrderEvent", foreign_key: :store_order_id, dependent: :destroy
     has_many :fulfillments, class_name: "Commerce::Fulfillment", foreign_key: :store_order_id, dependent: :destroy

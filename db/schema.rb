@@ -410,6 +410,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["ignorer_id"], name: "index_forum_user_ignores_on_ignorer_id"
   end
 
+  create_table "forum_user_warnings", force: :cascade do |t|
+    t.boolean "acknowledged", default: false, null: false
+    t.datetime "created_at", null: false
+    t.bigint "issuer_id", null: false
+    t.integer "points", default: 1, null: false
+    t.text "reason", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["issuer_id"], name: "index_forum_user_warnings_on_issuer_id"
+    t.index ["user_id"], name: "index_forum_user_warnings_on_user_id"
+  end
+
   create_table "installation_locks", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "locked", default: false, null: false
@@ -717,6 +729,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["store_order_item_id"], name: "index_store_fulfillments_on_store_order_item_id"
   end
 
+  create_table "store_gift_cards", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.integer "balance_cents", default: 0, null: false
+    t.string "code", null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.string "currency", default: "CNY", null: false
+    t.datetime "expires_at"
+    t.integer "initial_balance_cents", default: 0, null: false
+    t.string "note"
+    t.datetime "updated_at", null: false
+    t.index ["code"], name: "index_store_gift_cards_on_code", unique: true
+    t.index ["created_by_id"], name: "index_store_gift_cards_on_created_by_id"
+  end
+
   create_table "store_order_events", force: :cascade do |t|
     t.bigint "actor_id"
     t.datetime "created_at", null: false
@@ -751,11 +778,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "created_at", null: false
     t.string "currency", default: "CNY", null: false
     t.integer "discount_cents", default: 0, null: false
+    t.integer "gift_card_amount_cents", default: 0, null: false
     t.text "notes"
     t.string "order_number", null: false
     t.string "public_id", null: false
     t.string "status", default: "pending", null: false
     t.bigint "store_coupon_id"
+    t.bigint "store_gift_card_id"
     t.integer "subtotal_cents", default: 0, null: false
     t.integer "total_cents", default: 0, null: false
     t.datetime "updated_at", null: false
@@ -764,6 +793,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["public_id"], name: "index_store_orders_on_public_id", unique: true
     t.index ["status"], name: "index_store_orders_on_status"
     t.index ["store_coupon_id"], name: "index_store_orders_on_store_coupon_id"
+    t.index ["store_gift_card_id"], name: "index_store_orders_on_store_gift_card_id"
     t.index ["user_id"], name: "index_store_orders_on_user_id"
   end
 
@@ -1131,6 +1161,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_user_follows", "users", column: "follower_id"
   add_foreign_key "forum_user_ignores", "users", column: "ignored_id"
   add_foreign_key "forum_user_ignores", "users", column: "ignorer_id"
+  add_foreign_key "forum_user_warnings", "users"
+  add_foreign_key "forum_user_warnings", "users", column: "issuer_id"
   add_foreign_key "installation_locks", "users", column: "locked_by_id"
   add_foreign_key "ip_bans", "users", column: "banned_by_id"
   add_foreign_key "minecraft_connector_tasks", "minecraft_servers"
@@ -1154,12 +1186,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_fulfillment_attempts", "store_fulfillments"
   add_foreign_key "store_fulfillments", "store_order_items"
   add_foreign_key "store_fulfillments", "store_orders"
+  add_foreign_key "store_gift_cards", "users", column: "created_by_id"
   add_foreign_key "store_order_events", "store_orders"
   add_foreign_key "store_order_events", "users", column: "actor_id"
   add_foreign_key "store_order_items", "store_orders"
   add_foreign_key "store_order_items", "store_product_variants"
   add_foreign_key "store_order_items", "store_products"
   add_foreign_key "store_orders", "store_coupons"
+  add_foreign_key "store_orders", "store_gift_cards"
   add_foreign_key "store_orders", "users"
   add_foreign_key "store_price_alerts", "store_product_variants"
   add_foreign_key "store_price_alerts", "store_products"

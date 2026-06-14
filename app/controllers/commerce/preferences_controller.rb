@@ -20,6 +20,7 @@ module Commerce
       commerce.price_drop
       commerce.product_changelog
       commerce.question_answered
+      commerce.new_product_question
     ].freeze
 
     CHANNELS = %w[email in_app].freeze
@@ -73,7 +74,8 @@ module Commerce
         "commerce.stock_restocked" => "到货通知",
         "commerce.price_drop" => "降价提醒",
         "commerce.product_changelog" => "商品更新日志",
-        "commerce.question_answered" => "问答回复通知"
+        "commerce.question_answered" => "问答回复通知",
+        "commerce.new_product_question" => "新商品提问（员工）"
       }[type] || type.humanize
     end
   end

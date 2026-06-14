@@ -2,11 +2,12 @@
 
 module Commerce
   class CreateOrder < ApplicationService
-    def initialize(cart:, user:, notes: nil, coupon_code: nil)
+    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil)
       @cart = cart
       @user = user
       @notes = notes
       @coupon_code = coupon_code
+      @gift_card_code = gift_card_code
     end
 
     def call
@@ -73,6 +74,14 @@ module Commerce
           coupon_result = Commerce::ApplyCoupon.call(order: order, code: @coupon_code)
           unless coupon_result.success?
             coupon_error = coupon_result.error
+            raise ActiveRecord::Rollback
+          end
+        end
+
+        if @gift_card_code.present?
+          gift_result = Commerce::ApplyGiftCard.call(order: order, code: @gift_card_code)
+          unless gift_result.success?
+            coupon_error = gift_result.error
             raise ActiveRecord::Rollback
           end
         end

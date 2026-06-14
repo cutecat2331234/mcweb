@@ -69,5 +69,12 @@ module Community
 
       mail(to: @user.email, subject: "书签提醒：#{@topic.title.truncate(60)}")
     end
+
+    def user_warning(user_id, warning_id)
+      @user = User.find(user_id)
+      @warning = Community::UserWarning.find(warning_id)
+      @url = "#{root_url.chomp('/')}#{"/forum/users/#{@user.username}"}"
+      mail(to: @user.email, subject: "社区警告通知")
+    end
   end
 end

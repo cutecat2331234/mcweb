@@ -11,6 +11,7 @@ module Community
     def call
       return ServiceResult.failure(error: "Not a participant.") unless participant?
       return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
+      return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@user)
 
       others = @conversation.participants.where.not(user: @user).includes(:user).map(&:user)
       others.each do |other|

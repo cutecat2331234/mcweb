@@ -11,6 +11,9 @@ module Commerce
       scope = case params[:sort]
               when "price_asc" then scope.order(price_cents: :asc)
               when "price_desc" then scope.order(price_cents: :desc)
+              when "popular" then scope.order(view_count: :desc, created_at: :desc)
+              when "rating" then scope.left_joins(:reviews).where(store_reviews: { status: "published" })
+                .group("store_products.id").order(Arel.sql("COALESCE(AVG(store_reviews.rating), 0) DESC"))
               else scope.order(created_at: :desc)
               end
 
@@ -19,11 +22,14 @@ module Commerce
         scope = scope.where(store_category_id: category.id)
       end
 
+      featured = Commerce::Product.available.where(featured: true).order(created_at: :desc).limit(6)
+
       @pagy, products = pagy(scope, limit: 20)
       categories = Commerce::Category.ordered
 
       render inertia: "Commerce/Products/Index", props: {
         products: products.map { |product| serialize_product_list_item(product) },
+        featured_products: featured.map { |product| serialize_product_list_item(product) },
         categories: categories.map { |category| serialize_category(category) },
         activeCategory: params[:category],
         query: params[:q].to_s,
@@ -34,6 +40,7 @@ module Commerce
 
     def show
       product = Commerce::Product.available.includes(:variants, :category).find_by!(public_id: params[:id])
+      product.increment!(:view_count)
       reviews = product.reviews.published.includes(:user).order(created_at: :desc).limit(20)
       avg = product.reviews.published.average(:rating)&.round(1)
       wishlisted = logged_in? && Commerce::WishlistItem.exists?(user: current_user, product: product)

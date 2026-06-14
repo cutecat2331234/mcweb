@@ -32,6 +32,8 @@ const props = defineProps<{
     can_download_receipt: boolean
     cancel_url: string
     refund_url: string
+    reorder_url?: string
+    can_reorder?: boolean
     payment_providers: Array<{ value: string; label: string }>
     default_provider: string
     refunds: Array<{
@@ -68,6 +70,7 @@ const payForm = useForm({
 })
 const cancelForm = useForm({})
 const refundForm = useForm({ reason: '' })
+const reorderForm = useForm({})
 </script>
 
 <template>
@@ -166,6 +169,7 @@ const refundForm = useForm({ reason: '' })
     </form>
     <Button v-else-if="order.can_pay" type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
     <Button v-if="order.can_cancel" type="button" variant="outline" @click="cancelForm.post(order.cancel_url)">取消订单</Button>
+    <Button v-if="order.can_reorder && order.reorder_url" type="button" variant="outline" @click="reorderForm.post(order.reorder_url)">再次购买</Button>
     <Button v-if="order.can_download_receipt" as-child variant="outline">
       <a :href="order.receipt_url" target="_blank" rel="noopener">HTML 收据</a>
     </Button>

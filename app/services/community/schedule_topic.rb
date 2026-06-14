@@ -24,6 +24,7 @@ module Community
       end
 
       topic = nil
+      tag_result = nil
       Community::Topic.transaction do
         topic = Community::Topic.create!(
           public_id: "topic_#{SecureRandom.alphanumeric(16)}",
@@ -46,8 +47,13 @@ module Community
           status: "published"
         )
 
-        Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user) if @tag_names.present?
+        if @tag_names.present?
+          tag_result = Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user)
+          raise ActiveRecord::Rollback unless tag_result.success?
+        end
       end
+
+      return tag_result if tag_result&.failure?
 
       ServiceResult.success(topic)
     rescue ActiveRecord::RecordInvalid => e

@@ -16,6 +16,8 @@ module Community
       added = Community::Reaction.toggle!(@user, @post, @emoji)
       counts = @post.reactions.group(:emoji).count
 
+      Community::NotifyPostReaction.call(post: @post, reactor: @user, emoji: @emoji) if added
+
       ServiceResult.success(added: added, counts: counts)
     end
   end

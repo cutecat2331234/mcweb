@@ -4,7 +4,7 @@ module Admin
   module Store
     class ProductQuestionsController < BaseController
       before_action -> { require_permission("store.questions.manage") }
-      before_action :set_question, only: %i[hide destroy]
+      before_action :set_question, only: %i[hide unhide destroy]
 
       def index
         questions = Commerce::ProductQuestion.includes(:user, :product, :answers).order(created_at: :desc).limit(100)
@@ -18,7 +18,8 @@ module Admin
               body: q.body,
               status: q.status,
               created_at: l(q.created_at, format: :short),
-              hide_url: hide_admin_store_product_question_path(q)
+              hide_url: hide_admin_store_product_question_path(q),
+              unhide_url: unhide_admin_store_product_question_path(q)
             }
           end
         }
@@ -28,6 +29,15 @@ module Admin
         result = Commerce::HideProductQuestion.call(question: @question)
         if result.success?
           redirect_to admin_store_product_questions_path, notice: "问题已隐藏。"
+        else
+          redirect_to admin_store_product_questions_path, alert: service_error_message(result)
+        end
+      end
+
+      def unhide
+        result = Commerce::ShowProductQuestion.call(question: @question)
+        if result.success?
+          redirect_to admin_store_product_questions_path, notice: "问题已恢复显示。"
         else
           redirect_to admin_store_product_questions_path, alert: service_error_message(result)
         end

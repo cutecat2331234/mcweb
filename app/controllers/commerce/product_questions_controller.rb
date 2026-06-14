@@ -26,7 +26,7 @@ module Commerce
     end
 
     def answer
-      question = @product.questions.find(params[:question_id])
+      question = @product.questions.visible.find(params[:question_id])
       official = current_user.permission?("store.questions.answer") || current_user.permission?("admin.access")
 
       result = Commerce::AnswerProductQuestion.call(

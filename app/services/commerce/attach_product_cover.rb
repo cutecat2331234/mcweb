@@ -13,7 +13,7 @@ module Commerce
       blob = ActiveStorage::Blob.find_signed!(@signed_id)
       @product.cover_image.attach(blob)
       url = Rails.application.routes.url_helpers.rails_blob_path(blob, only_path: true)
-      @product.update!(image_url: url) if @product.image_url.blank?
+      @product.update!(image_url: url)
       ServiceResult.success(url: url)
     rescue ActiveSupport::MessageVerifier::InvalidSignature, ActiveRecord::RecordNotFound
       ServiceResult.failure(error: "Invalid image upload.")

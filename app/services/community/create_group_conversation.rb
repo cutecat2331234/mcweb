@@ -8,6 +8,7 @@ module Community
       @sender = sender
       @title = title.to_s.strip
       @usernames = Array(recipient_usernames).flat_map { |n| n.to_s.split(",") }.map(&:strip).reject(&:blank?).uniq
+      @usernames -= [ @sender.username ]
       @body = body.to_s.strip
     end
 
@@ -16,6 +17,7 @@ module Community
       return ServiceResult.failure(error: "Add at least one other participant.") if @usernames.empty?
       return ServiceResult.failure(error: "Too many participants.") if @usernames.size > MAX_PARTICIPANTS
       return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
+      return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@sender)
 
       recipients = User.where(username: @usernames)
       missing = @usernames - recipients.pluck(:username)

@@ -201,6 +201,7 @@ class Community::BlockedMessageTest < ActiveSupport::TestCase
   end
 
   test "blocked users cannot start conversation" do
+    enable_forum_pm!(@blocker)
     result = Community::CreateConversation.call(
       sender: @blocker,
       recipient_username: @blocked.username,

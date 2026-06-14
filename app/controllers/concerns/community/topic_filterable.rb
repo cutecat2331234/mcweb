@@ -21,6 +21,14 @@ module Community
         else
           scope.none
         end
+      when "unread"
+        if user
+          scope.where(id: Community::ReadState.with_unread_for(user).select(:forum_topic_id))
+        else
+          scope.none
+        end
+      when "no_replies"
+        scope.where(replies_count: 0)
       else
         scope
       end
@@ -32,7 +40,9 @@ module Community
         { value: "unsolved", label: "未解决" },
         { value: "solved", label: "已解决" },
         { value: "mine", label: "我的主题" },
-        { value: "participated", label: "我参与的" }
+        { value: "participated", label: "我参与的" },
+        { value: "unread", label: "未读" },
+        { value: "no_replies", label: "零回复" }
       ]
     end
   end

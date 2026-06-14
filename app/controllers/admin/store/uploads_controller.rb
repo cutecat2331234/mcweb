@@ -27,16 +27,18 @@ module Admin
         )
 
         product = nil
+        attached = false
         if params[:product_id].present?
           product = Commerce::Product.find_by!(public_id: params[:product_id])
-          Commerce::AttachProductCover.call(product: product, signed_id: blob.signed_id)
+          attach_result = Commerce::AttachProductCover.call(product: product, signed_id: blob.signed_id)
+          attached = attach_result.success?
         end
 
         url = rails_blob_path(blob, only_path: true)
         render json: {
           url: url,
           signed_id: blob.signed_id,
-          attached_to_product: product.present?
+          attached_to_product: attached
         }
       end
     end

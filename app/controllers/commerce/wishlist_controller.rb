@@ -14,7 +14,8 @@ module Commerce
 
       render inertia: "Commerce/Wishlist/Index", props: {
         products: items.map { |item| serialize_product_list_item(item.product) },
-        shareUrl: share.success? ? store_public_wishlist_url(share.value[:token]) : nil
+        shareUrl: share.success? ? store_public_wishlist_url(share.value[:token]) : nil,
+        addAllToCartUrl: add_all_to_cart_store_wishlist_path
       }
     end
 
@@ -46,6 +47,18 @@ module Commerce
                       notice: result.value[:wishlisted] ? "已加入心愿单。" : "已从心愿单移除。"
       else
         redirect_back fallback_location: store_product_path(product), alert: service_error_message(result)
+      end
+    end
+
+    def add_all_to_cart
+      result = Commerce::AddWishlistToCart.call(user: current_user)
+
+      if result.success?
+        notice = "已将 #{result.value[:added]} 件商品加入购物车。"
+        notice += " 跳过：#{result.value[:skipped].join('、')}" if result.value[:skipped].any?
+        redirect_to store_cart_path, notice: notice
+      else
+        redirect_to store_wishlist_path, alert: service_error_message(result)
       end
     end
   end

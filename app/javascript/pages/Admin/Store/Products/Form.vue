@@ -26,6 +26,9 @@ const props = defineProps<{
     image_url: string
     gallery_urls: string
     fulfillment_config: string
+    featured?: boolean
+    version?: string
+    changelog?: string
     variants: Array<{ id?: number; name: string; sku: string; price_cents: number; stock: number | null }>
   }
   categories: Array<{ id: number; name: string }>
@@ -150,6 +153,20 @@ async function uploadCover(event: Event) {
     <div class="space-y-2">
       <Label for="fulfillment_config">发货配置（JSON，Minecraft 命令等）</Label>
       <Textarea id="fulfillment_config" v-model="form.product.fulfillment_config" rows="6" placeholder='{"server_id":1,"task_type":"deliver_item","commands":["give {player} diamond 1"]}' />
+    </div>
+    <div class="flex items-center gap-2">
+      <input id="featured" v-model="form.product.featured" type="checkbox" class="rounded border" />
+      <Label for="featured">精选商品（首页展示）</Label>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="space-y-2">
+        <Label for="version">版本号</Label>
+        <Input id="version" v-model="form.product.version" placeholder="1.0.0" />
+      </div>
+      <div class="space-y-2">
+        <Label for="changelog">更新日志</Label>
+        <Textarea id="changelog" v-model="form.product.changelog" rows="3" placeholder="本次更新内容…" />
+      </div>
     </div>
 
     <div class="space-y-3">

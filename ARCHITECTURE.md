@@ -275,3 +275,24 @@ app/
 | 商品封面上传 API | `Admin::Store::UploadsController` |
 | 商品问答后台隐藏 | `HideProductQuestion` + `ProductQuestionsController#hide` |
 | Stripe Webhook 增强 | `Stripe-Signature` 头 + `checkout.session.completed` 元数据查找 |
+
+### 第十六轮（论坛 / 商城体验与 Bug 修复）
+
+| 功能 | 实现 |
+|------|------|
+| SyncTopicTags 失败回滚 | 发帖/定时/草稿路径标签校验失败时中止 |
+| staff_only 标签隐藏 | `Tag.usable_by` 用于标签云与搜索 |
+| 私信最新消息分页 | 默认显示最后一页 + Pagination |
+| 私信已读回执 | 发送方可见对方已读用户名 |
+| 标签关注 | `ToggleTagSubscription` + `NotifyTagTopic` |
+| 主题筛选扩展 | 未读 / 零回复（`TopicFilterable`） |
+| 反应通知 | `NotifyPostReaction` + 偏好设置 |
+| 信任等级私信门槛 | `TrustLevel.can_send_pm?` |
+| 精选商品 | `featured` + 首页区块 |
+| 商品浏览量/排序 | `view_count` + popular/rating 排序 |
+| 再次购买 | `ReorderFromOrder` |
+| 心愿单批量加购 | `AddWishlistToCart` |
+| 问答回复邮件 | `NotifyProductQuestionAnswered` |
+| 问答恢复显示 | `ShowProductQuestion` + 后台 unhide |
+| 商品版本/更新日志 | `version` + `changelog` |
+| Bug 修复 | Stripe 签名验证、封面 image_url 同步、上传 attach 结果 |

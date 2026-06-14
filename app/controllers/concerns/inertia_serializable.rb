@@ -255,6 +255,9 @@ module InertiaSerializable
       purchase_limit: product.purchase_limit,
       image_url: product_image_url(product),
       gallery_urls: product.gallery_urls || [],
+      version: product.version,
+      changelog: product.changelog,
+      view_count: product.view_count,
       wishlisted: wishlisted,
       average_rating: average_rating,
       variants: product.variants.map { |variant| serialize_variant(variant, product) },
@@ -393,6 +396,8 @@ module InertiaSerializable
         }
       end,
       cancel_url: cancel_store_order_path(order),
+      reorder_url: reorder_store_order_path(order),
+      can_reorder: order.items.any?,
       items: order.items.map do |item|
         fulfillment = order.fulfillments.find_by(order_item: item)
         {

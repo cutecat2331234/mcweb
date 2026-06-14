@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000010) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000020) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -739,9 +739,11 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000010) do
   end
 
   create_table "store_products", force: :cascade do |t|
+    t.text "changelog"
     t.datetime "created_at", null: false
     t.string "currency", default: "CNY", null: false
     t.text "description"
+    t.boolean "featured", default: false, null: false
     t.jsonb "fulfillment_config", default: {}, null: false
     t.jsonb "gallery_urls", default: [], null: false
     t.string "image_url"
@@ -756,6 +758,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000010) do
     t.integer "stock"
     t.bigint "store_category_id"
     t.datetime "updated_at", null: false
+    t.string "version"
+    t.integer "view_count", default: 0, null: false
     t.index ["public_id"], name: "index_store_products_on_public_id", unique: true
     t.index ["slug"], name: "index_store_products_on_slug", unique: true
     t.index ["store_category_id"], name: "index_store_products_on_store_category_id"

@@ -45,6 +45,9 @@ export interface ProductDetail {
   purchase_limit: number | null
   image_url: string | null
   gallery_urls: string[]
+  version?: string | null
+  changelog?: string | null
+  view_count?: number
   wishlisted: boolean
   average_rating: number | null
   variants: ProductVariant[]
@@ -173,6 +176,12 @@ function submitAnswer(questionId: number, answerUrl: string) {
   ]" />
 
   <PageHeader :title="product.name" :subtitle="product.description || undefined" />
+
+  <section v-if="product.version || product.changelog" class="mb-6 max-w-xl rounded-lg border p-4">
+    <h2 class="mb-2 text-sm font-semibold">版本信息</h2>
+    <p v-if="product.version" class="text-sm">当前版本：{{ product.version }}</p>
+    <p v-if="product.changelog" class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{{ product.changelog }}</p>
+  </section>
 
   <div v-if="allImages.length" class="mb-6 max-w-xl">
     <img

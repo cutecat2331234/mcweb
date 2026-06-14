@@ -10,6 +10,8 @@ module Community
       forum.section_topic
       forum.private_message
       forum.followed_topic
+      forum.tag_topic
+      forum.reaction
     ].freeze
 
     DIGEST_OPTIONS = %w[none daily weekly].freeze
@@ -61,7 +63,9 @@ module Community
         "forum.mention" => "@提及",
         "forum.section_topic" => "关注分区新主题",
         "forum.private_message" => "私信",
-        "forum.followed_topic" => "关注用户新主题"
+        "forum.followed_topic" => "关注用户新主题",
+        "forum.tag_topic" => "关注标签新主题",
+        "forum.reaction" => "帖子反应"
       }[type] || type.humanize
     end
 

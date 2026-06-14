@@ -17,7 +17,13 @@ const props = defineProps<{
     url: string
   }>
   shareUrl: string | null
+  addAllToCartUrl?: string
 }>()
+
+function addAllToCart() {
+  if (!props.addAllToCartUrl) return
+  router.post(props.addAllToCartUrl)
+}
 
 function copyShareLink() {
   if (!props.shareUrl) return
@@ -35,6 +41,7 @@ function copyShareLink() {
   <div class="mb-4 flex items-center justify-between gap-3">
     <PageHeader title="我的心愿单" />
     <div class="flex gap-2">
+      <Button v-if="addAllToCartUrl && products.length" type="button" size="sm" @click="addAllToCart">全部加入购物车</Button>
       <Button v-if="shareUrl" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
       <Button type="button" variant="outline" size="sm" @click="router.post(routes.storeWishlistShare)">生成分享链接</Button>
     </div>

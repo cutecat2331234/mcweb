@@ -37,6 +37,7 @@ end
 class Community::CreateConversationTest < ActiveSupport::TestCase
   test "creates conversation and message" do
     sender = create_user
+    enable_forum_pm!(sender)
     recipient = create_user(email: "pm@example.com", username: "pmuser")
 
     result = Community::CreateConversation.call(

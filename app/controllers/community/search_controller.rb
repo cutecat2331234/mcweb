@@ -49,7 +49,7 @@ module Community
         { slug: section.slug, name: section.name, category: section.category&.name }
       end
 
-      tags = Community::Tag.order(:name).limit(50).map { |tag| { slug: tag.slug, name: tag.name } }
+      tags = Community::Tag.usable_by(current_user).order(:name).limit(50).map { |tag| { slug: tag.slug, name: tag.name } }
 
       render inertia: "Community/Search/Index", props: {
         query: query,

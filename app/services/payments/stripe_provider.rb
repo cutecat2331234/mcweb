@@ -8,7 +8,7 @@ module Payments
 
       if secret_key.blank?
         provider_payment_id = "stripe_test_#{SecureRandom.alphanumeric(16)}"
-        payment_record.update!(provider_payment_id: provider_payment_id)
+        payment_record.update!(provider: "fake", provider_payment_id: provider_payment_id)
         return ServiceResult.success(
           payment_record: payment_record,
           checkout_url: "/payments/fake/#{provider_payment_id}",
@@ -29,10 +29,19 @@ module Payments
       return true if secret.blank?
 
       stripe_sig = headers["HTTP_STRIPE_SIGNATURE"].to_s.presence || signature.to_s
-      return stripe_sig.present? if stripe_sig.include?("t=")
+      return false if stripe_sig.blank?
 
-      expected = OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
-      ActiveSupport::SecurityUtils.secure_compare(expected, stripe_sig)
+      if stripe_sig.include?("t=")
+        timestamp, signatures = parse_stripe_signature(stripe_sig)
+        return false if timestamp.blank? || signatures.empty?
+
+        signed_payload = "#{timestamp}.#{payload}"
+        expected = OpenSSL::HMAC.hexdigest("SHA256", secret, signed_payload)
+        signatures.any? { |sig| ActiveSupport::SecurityUtils.secure_compare(expected, sig) }
+      else
+        expected = OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
+        ActiveSupport::SecurityUtils.secure_compare(expected, stripe_sig)
+      end
     end
 
     def process_webhook_event(event)
@@ -64,6 +73,13 @@ module Payments
 
     def webhook_secret
       Payments::ProviderConfig.find_by(provider: "stripe")&.credentials_hash&.dig("webhook_secret")
+    end
+
+    def parse_stripe_signature(header)
+      parts = header.split(",").map { |part| part.split("=", 2) }.to_h
+      timestamp = parts["t"]
+      signatures = header.scan(/v1=([a-f0-9]+)/).flatten
+      [ timestamp, signatures ]
     end
   end
 end

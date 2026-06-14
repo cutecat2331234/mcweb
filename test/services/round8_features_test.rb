@@ -31,6 +31,7 @@ end
 class Community::NotifyPrivateMessageTest < ActiveSupport::TestCase
   setup do
     @sender = create_user
+    enable_forum_pm!(@sender)
     @recipient = create_user
   end
 

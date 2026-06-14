@@ -21,6 +21,12 @@ module Community
       level_info(user)[:level]
     end
 
+    def self.can_send_pm?(user)
+      return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
+
+      level_for(user) >= 1
+    end
+
     def self.can_post_links?(user)
       return true if user&.permission?("forum.topics.lock")
 

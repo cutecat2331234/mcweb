@@ -6,6 +6,7 @@ require "ostruct"
 class Community::CreateGroupConversationTest < ActiveSupport::TestCase
   setup do
     @sender = create_user
+    enable_forum_pm!(@sender)
     @alice = create_user(username: "alice_#{SecureRandom.hex(3)}")
     @bob = create_user(username: "bob_#{SecureRandom.hex(3)}")
   end
@@ -41,6 +42,7 @@ end
 class Community::CreateConversationGroupIsolationTest < ActiveSupport::TestCase
   setup do
     @sender = create_user
+    enable_forum_pm!(@sender)
     @recipient = create_user
   end
 
@@ -191,8 +193,12 @@ class Payments::StripeProviderWebhookTest < ActiveSupport::TestCase
     assert_equal @payment.id, located.id
   end
 
-  test "accepts stripe signature header format" do
+  test "rejects invalid stripe signature when secret configured" do
+    config = Payments::ProviderConfig.find_or_create_by!(provider: "stripe") do |c|
+      c.enabled = true
+    end
+    config.update!(credentials: { webhook_secret: "whsec_round15" })
     provider = Payments::StripeProvider.new
-    assert provider.verify_webhook_signature(payload: "{}", signature: "", headers: { "HTTP_STRIPE_SIGNATURE" => "t=1,v1=abc" })
+    refute provider.verify_webhook_signature(payload: "{}", signature: "", headers: { "HTTP_STRIPE_SIGNATURE" => "t=1,v1=abc" })
   end
 end

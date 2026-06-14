@@ -55,5 +55,32 @@ module ActiveSupport
       role.permissions << permission unless role.permissions.include?(permission)
       user.roles << role unless user.roles.include?(role)
     end
+
+    def enable_forum_pm!(user)
+      return if Community::TrustLevel.can_send_pm?(user)
+
+      category = Community::Category.find_or_create_by!(slug: "pm-unlock-cat") { |c| c.name = "PM Unlock" }
+      section = Community::Section.find_or_create_by!(category: category, slug: "pm-unlock-sec") do |s|
+        s.name = "PM Unlock"
+        s.position = 0
+      end
+      topic = Community::Topic.create!(
+        public_id: "topic_#{SecureRandom.alphanumeric(16)}",
+        section: section,
+        user: user,
+        title: "PM unlock #{SecureRandom.hex(4)}",
+        status: "published",
+        last_posted_at: Time.current,
+        last_post_user: user,
+        replies_count: 0
+      )
+      Community::Post.create!(
+        topic: topic,
+        user: user,
+        floor_number: 1,
+        body: "Unlock PM",
+        status: "published"
+      )
+    end
   end
 end

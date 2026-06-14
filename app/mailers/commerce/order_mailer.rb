@@ -38,6 +38,16 @@ module Commerce
       mail(to: @order.user.email, subject: "商品已发货 #{@order.order_number}")
     end
 
+    def question_answered(user_id, question_id, answer_id)
+      @user = User.find(user_id)
+      @question = Commerce::ProductQuestion.find(question_id)
+      @answer = Commerce::ProductAnswer.find(answer_id)
+      @product = @question.product
+      return unless commerce_email_enabled?(@user, "commerce.question_answered")
+
+      mail(to: @user.email, subject: "你的商品问题已收到回复")
+    end
+
     private
 
     def commerce_email_enabled?(user, notification_type)

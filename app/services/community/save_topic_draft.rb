@@ -15,6 +15,7 @@ module Community
       return ServiceResult.failure(error: "Title is required.") if @title.blank?
 
       draft = @topic || Community::Topic.new(user: @user, section: @section, status: "draft")
+      tag_result = nil
 
       Community::Topic.transaction do
         draft.assign_attributes(
@@ -32,8 +33,13 @@ module Community
           post.save!
         end
 
-        Community::SyncTopicTags.call(topic: draft, tag_names: @tag_names, user: @user) if @tag_names.present?
+        if @tag_names.present?
+          tag_result = Community::SyncTopicTags.call(topic: draft, tag_names: @tag_names, user: @user)
+          raise ActiveRecord::Rollback unless tag_result.success?
+        end
       end
+
+      return tag_result if tag_result&.failure?
 
       ServiceResult.success(draft)
     rescue ActiveRecord::RecordInvalid => e

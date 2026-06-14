@@ -21,10 +21,15 @@ defineProps<{
     status: string
     created_at: string
     hide_url: string
+    unhide_url: string
   }>
 }>()
 
 function hideQuestion(url: string) {
+  router.patch(url)
+}
+
+function unhideQuestion(url: string) {
   router.patch(url)
 }
 </script>
@@ -51,9 +56,12 @@ function hideQuestion(url: string) {
           <TableCell class="max-w-xs truncate">{{ q.body }}</TableCell>
           <TableCell>{{ q.status }}</TableCell>
           <TableCell>{{ q.created_at }}</TableCell>
-          <TableCell>
+          <TableCell class="flex gap-2">
             <Button v-if="q.status === 'published'" type="button" size="sm" variant="outline" @click="hideQuestion(q.hide_url)">
               隐藏
+            </Button>
+            <Button v-else type="button" size="sm" variant="outline" @click="unhideQuestion(q.unhide_url)">
+              恢复
             </Button>
           </TableCell>
         </TableRow>

@@ -105,7 +105,7 @@ module Admin
         permitted = params.require(:product).permit(
           :name, :slug, :description, :product_type, :status,
           :price_cents, :currency, :stock, :store_category_id, :purchase_limit, :image_url, :gallery_urls,
-          :fulfillment_config,
+          :fulfillment_config, :featured, :version, :changelog,
           variants_attributes: [ :id, :name, :sku, :price_cents, :stock, :_destroy ]
         )
         if permitted[:gallery_urls].is_a?(String)
@@ -141,6 +141,9 @@ module Admin
             image_url: product.image_url || "",
             gallery_urls: (product.gallery_urls || []).join("\n"),
             fulfillment_config: JSON.pretty_generate(product.fulfillment_config.presence || {}),
+            featured: product.featured || false,
+            version: product.version || "",
+            changelog: product.changelog || "",
             variants: product.variants.map do |v|
               { id: v.id, name: v.name, sku: v.sku, price_cents: v.price_cents, stock: v.stock }
             end

@@ -55,6 +55,7 @@ Rails.application.routes.draw do
       resources :product_questions, only: %i[index destroy] do
         member do
           patch :hide
+          patch :unhide
         end
       end
       post :uploads, to: "uploads#create"
@@ -141,6 +142,7 @@ Rails.application.routes.draw do
     get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
     get "tags/:slug", to: "tags#show", as: :tag
+    post "tags/:slug/subscription", to: "tags#toggle_subscription", as: :tag_subscription
     resources :conversations, only: %i[index show new create] do
       resources :messages, only: %i[create], controller: "conversation_messages"
     end
@@ -161,6 +163,7 @@ Rails.application.routes.draw do
       end
     end
     get "wishlist", to: "wishlist#index"
+    post "wishlist/add_all_to_cart", to: "wishlist#add_all_to_cart", as: :add_all_to_cart_wishlist
     get "wishlist/share", to: "wishlist#share"
     get "wishlist/:token", to: "wishlist#public_show", as: :public_wishlist
     resource :cart, only: %i[show update] do
@@ -172,6 +175,7 @@ Rails.application.routes.draw do
         post :refund
         get :receipt
         get :receipt_pdf
+        post :reorder
       end
     end
     resource :checkout, only: %i[show create], controller: "checkout" do

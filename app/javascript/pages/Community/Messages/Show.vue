@@ -26,6 +26,7 @@ const props = defineProps<{
     avatar_url: string
     is_mine: boolean
     created_at: string
+    read_by?: string[]
   }>
   pagination: PaginationMeta
   participants: Array<{ username: string; avatar_url: string }>
@@ -77,10 +78,15 @@ function submit() {
       >
         <p v-if="conversation.is_group && !msg.is_mine" class="mb-1 text-xs font-medium opacity-80">{{ msg.author }}</p>
         <div class="prose prose-sm max-w-none dark:prose-invert" v-html="msg.body_html" />
-        <p class="mt-1 text-[10px] opacity-70">{{ msg.created_at }}</p>
+        <p class="mt-1 text-[10px] opacity-70">
+          {{ msg.created_at }}
+          <span v-if="msg.is_mine && msg.read_by?.length" class="ml-1">已读：{{ msg.read_by.join('、') }}</span>
+        </p>
       </div>
     </div>
   </div>
+
+  <Pagination v-if="pagination.last > 1" class="mb-4" :pagination="pagination" :base-path="`/forum/conversations/${conversation.id}`" />
 
   <form class="max-w-2xl space-y-3" @submit.prevent="submit">
     <MarkdownEditor v-model="form.message.body" :show-mention="false" :rows="3" placeholder="输入消息…" />

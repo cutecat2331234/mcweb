@@ -18,6 +18,7 @@ module Commerce
         body: @body,
         official: @official
       )
+      Commerce::NotifyProductQuestionAnswered.call(question: @question, answer: answer)
       ServiceResult.success(answer)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

@@ -28,6 +28,7 @@ module Community
       end
 
       topic = nil
+      tag_result = nil
       Community::Topic.transaction do
         topic = Community::Topic.create!(
           public_id: generate_public_id,
@@ -51,9 +52,14 @@ module Community
 
         Community::Subscription.subscribe!(@user, topic)
         Community::ReadState.mark_read!(@user, topic, floor: 1)
-        Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user) if @tag_names.present?
+        if @tag_names.present?
+          tag_result = Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user)
+          raise ActiveRecord::Rollback unless tag_result.success?
+        end
         create_poll!(topic) if @poll_question && @poll_options.size >= 2
       end
+
+      return tag_result if tag_result&.failure?
 
       Administration::AuditLogger.call(
         actor: @user,
@@ -66,6 +72,9 @@ module Community
       Community::ProcessMentions.call(body: @body, author: @user, post: opening_post, topic: topic) if opening_post
       Community::NotifySectionTopic.call(topic: topic)
       Community::NotifyFollowedUserTopic.call(topic: topic)
+      if @tag_names.present? && topic.tags.any?
+        Community::NotifyTagTopic.call(topic: topic, tags: topic.tags)
+      end
       Community::CheckAutoBadges.call(user: @user)
 
       ServiceResult.success(topic)

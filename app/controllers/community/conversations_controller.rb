@@ -20,14 +20,18 @@ module Community
       conversation = Community::Conversation.for_user(current_user).find(params[:id])
       conversation.mark_read_for!(current_user)
 
-      @pagy, messages = pagy(
-        conversation.messages.includes(:user).order(created_at: :asc),
-        limit: 50
-      )
+      scope = conversation.messages.includes(:user).order(created_at: :asc)
+      limit = 50
+      last_page = [ (scope.count / limit.to_f).ceil, 1 ].max
+      page = params[:page].to_i
+      page = last_page if page < 1
+
+      @pagy, messages = pagy(scope, page: page, limit: limit)
+      participants_by_user = conversation.participants.index_by(&:user_id)
 
       render inertia: "Community/Messages/Show", props: {
         conversation: serialize_conversation(conversation, include_other: true),
-        messages: messages.map { |msg| serialize_message(msg) },
+        messages: messages.map { |msg| serialize_message(msg, conversation: conversation, participants_by_user: participants_by_user) },
         pagination: pagy_props(@pagy),
         participants: conversation.is_group? ? conversation.users.map { |u| { username: u.username, avatar_url: u.avatar_url } } : []
       }
@@ -109,9 +113,18 @@ module Community
       data
     end
 
-    def serialize_message(message)
+    def serialize_message(message, conversation: nil, participants_by_user: {})
       formatted = Community::FormatPostBody.call(body: message.body)
       body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(message.body)
+
+      read_by = []
+      if conversation && message.user_id == current_user.id
+        read_by = conversation.participants
+          .where.not(user_id: current_user.id)
+          .where("last_read_at IS NOT NULL AND last_read_at >= ?", message.created_at)
+          .includes(:user)
+          .map { |p| p.user.username }
+      end
 
       {
         id: message.id,
@@ -120,7 +133,8 @@ module Community
         author: message.user.username,
         avatar_url: message.user.avatar_url,
         is_mine: message.user_id == current_user.id,
-        created_at: l(message.created_at, format: :short)
+        created_at: l(message.created_at, format: :short),
+        read_by: read_by
       }
     end
   end

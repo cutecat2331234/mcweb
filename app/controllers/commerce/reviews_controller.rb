@@ -11,7 +11,8 @@ module Commerce
         user: current_user,
         product: @product,
         rating: review_params[:rating],
-        body: review_params[:body]
+        body: review_params[:body],
+        photos: review_params[:photos]
       )
 
       if result.success?
@@ -42,7 +43,7 @@ module Commerce
     end
 
     def review_params
-      params.require(:review).permit(:rating, :body)
+      params.require(:review).permit(:rating, :body, photos: [])
     end
   end
 end

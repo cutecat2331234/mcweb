@@ -27,6 +27,15 @@ module Commerce
       featured_scope = featured_scope.with_stock if params[:in_stock] == "1"
       featured = featured_scope.order(created_at: :desc).limit(6)
 
+      recently_viewed = if logged_in?
+                          Commerce::ProductView.recent_for(current_user)
+                            .includes(:product)
+                            .limit(6)
+                            .filter_map { |view| view.product if view.product&.active? }
+                        else
+                          []
+                        end
+
       @pagy, products = pagy(scope, limit: 20)
       categories = Commerce::Category.ordered
       category_query = index_filter_params
@@ -34,6 +43,7 @@ module Commerce
       render inertia: "Commerce/Products/Index", props: {
         products: products.map { |product| serialize_product_list_item(product) },
         featured_products: featured.map { |product| serialize_product_list_item(product) },
+        recently_viewed: recently_viewed.map { |product| serialize_product_list_item(product) },
         categories: categories.map { |category| serialize_category(category, **category_query) },
         activeCategory: params[:category],
         query: params[:q].to_s,
@@ -46,22 +56,29 @@ module Commerce
     def show
       product = Commerce::Product.available.includes(:variants, :category).find_by!(public_id: params[:id])
       product.increment!(:view_count)
+      Commerce::RecordProductView.call(user: current_user, product: product) if logged_in?
+
       review_sort = params[:review_sort].to_s
       review_rating = params[:review_rating].to_i
-      reviews_scope = product.reviews.published.includes(:user, :helpful_votes)
+      reviews_scope = product.reviews.published.includes(:user, :helpful_votes, photos_attachments: :blob)
       reviews_scope = reviews_scope.where(rating: review_rating) if (1..5).cover?(review_rating)
       reviews_scope = reviews_scope.where.not(user_id: current_user.id) if logged_in?
-      reviews = case review_sort
-                when "helpful"
-                  reviews_scope.left_joins(:helpful_votes)
-                    .group("store_reviews.id")
-                    .order(Arel.sql("COUNT(store_review_helpful_votes.id) DESC, store_reviews.created_at DESC"))
-                when "rating"
-                  reviews_scope.order(rating: :desc, created_at: :desc)
-                else
-                  reviews_scope.order(created_at: :desc)
-                end
-      @pagy_reviews, reviews = pagy(reviews, limit: 10, page_param: :review_page)
+      reviews_scope = case review_sort
+                      when "helpful"
+                        reviews_scope.left_joins(:helpful_votes)
+                          .group("store_reviews.id")
+                          .order(Arel.sql("COUNT(store_review_helpful_votes.id) DESC, store_reviews.created_at DESC"))
+                      when "rating"
+                        reviews_scope.order(rating: :desc, created_at: :desc)
+                      else
+                        reviews_scope.order(created_at: :desc)
+                      end
+
+      review_page = [ params[:review_page].to_i, 1 ].max
+      per_page = 10
+      total_reviews = reviews_scope.count
+      reviews = reviews_scope.limit(review_page * per_page)
+      @pagy_reviews = Pagy.new(count: total_reviews, page: review_page, limit: per_page)
       reviews_count = product.reviews.published.count
       avg = product.reviews.published.average(:rating)&.round(1)
       wishlisted = logged_in? && Commerce::WishlistItem.exists?(user: current_user, product: product)

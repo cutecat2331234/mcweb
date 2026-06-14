@@ -33,9 +33,9 @@ module Community
         conversation: serialize_conversation(conversation, include_other: true),
         messages: messages.map { |msg| serialize_message(msg, conversation: conversation, participants_by_user: participants_by_user) },
         pagination: pagy_props(@pagy),
-        participants: conversation.is_group? ? conversation.users.map { |u| { username: u.username, avatar_url: u.avatar_url } } : [],
+        participants: conversation.is_group? ? serialize_group_participants(conversation) : [],
         addParticipantUrl: conversation.is_group? ? forum_conversation_participants_path(conversation) : nil,
-        removeParticipantUrlTemplate: conversation.is_group? ? forum_conversation_participant_path(conversation, ":username") : nil
+        currentUsername: current_user.username
       }
     end
 
@@ -138,6 +138,21 @@ module Community
         created_at: l(message.created_at, format: :short),
         read_by: read_by
       }
+    end
+
+    def serialize_group_participants(conversation)
+      conversation.users.map do |user|
+        can_remove = current_user.id == user.id ||
+                     current_user.id == conversation.creator_id ||
+                     current_user.permission?("forum.topics.lock")
+        {
+          username: user.username,
+          avatar_url: user.avatar_url,
+          is_self: user.id == current_user.id,
+          is_creator: user.id == conversation.creator_id,
+          remove_url: can_remove ? forum_conversation_participant_path(conversation, user.username) : nil
+        }
+      end
     end
   end
 end

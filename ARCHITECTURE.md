@@ -405,3 +405,23 @@ app/
 | 数字下载鉴权 | `GenerateDownloadToken` + `DownloadsController` |
 | 首页精选商品 | `Website::Home` featured products |
 | 退款拒绝邮件 | `OrderMailer#refund_rejected` |
+
+### 第二十一轮（论坛 / 商城 Bug 修复与深度功能）
+
+| 功能 | 实现 |
+|------|------|
+| 评价加载更多修复 | `ProductsController#show` 累积分页（`review_page * per_page`） |
+| 书签提醒时间修复 | `Bookmarks/Index.vue` 使用 `remind_at_input`；controller 返回 ISO |
+| 群组移除成员 URL | `conversations_controller` 每参与者 `remove_url` |
+| 书签到期提醒 | `BookmarkReminderJob` + `NotifyBookmarkReminder` + 偏好 `forum.bookmark_reminder` |
+| 置顶过期自动取消 | `pinned_until` + `UnpinExpiredTopicsJob` |
+| 主题提升 / 限时置顶 | `ModerateTopic` 支持 `bump`、`pin_7` |
+| Markdown 水平线 / 任务列表 | `FormatPostBody` 占位符方案 |
+| 发帖多选投票 UI | `Topics/New.vue` |
+| 群组 PM 群主转移 | 创建者离开时自动转移 |
+| 群组 PM 离开 / 移除 | `RemoveConversationParticipant` 权限化 |
+| 优惠券每人限用 | `Coupon#per_user_limit` |
+| 优惠券首单专享 | `Coupon#first_order_only` |
+| 优惠券折扣封顶 | `Coupon#max_discount_cents` |
+| 最近浏览商品 | `store_product_views` + `RecordProductView` |
+| 评价图片上传 | `Review#photos` ActiveStorage（最多 3 张） |

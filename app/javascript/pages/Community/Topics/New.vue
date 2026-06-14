@@ -26,6 +26,8 @@ const form = useForm({
     poll_question: '',
     poll_options: '',
     poll_closes_days: '',
+    poll_multiple_choice: false,
+    poll_max_choices: 2,
     scheduled_at: '',
   },
 })
@@ -92,6 +94,14 @@ function saveDraft() {
         <Textarea id="poll_options" v-model="form.topic.poll_options" rows="4" placeholder="选项 A&#10;选项 B&#10;选项 C" />
         <Label for="poll_closes_days">自动关闭（天数，0 表示不关闭）</Label>
         <Input id="poll_closes_days" v-model="form.topic.poll_closes_days" type="number" min="0" placeholder="0" />
+        <label class="flex items-center gap-2 text-sm">
+          <input v-model="form.topic.poll_multiple_choice" type="checkbox" class="h-4 w-4" />
+          允许多选投票
+        </label>
+        <div v-if="form.topic.poll_multiple_choice" class="space-y-2">
+          <Label for="poll_max_choices">最多可选几项</Label>
+          <Input id="poll_max_choices" v-model.number="form.topic.poll_max_choices" type="number" min="2" max="10" />
+        </div>
       </div>
     </div>
 

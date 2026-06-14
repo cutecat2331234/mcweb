@@ -23,10 +23,23 @@ module Community
 
       return ServiceResult.failure(error: "Cannot remove the last participant.") if @conversation.participants.count <= 1
 
-      participant.destroy!
-      ServiceResult.success(@conversation)
+      Community::Conversation.transaction do
+        participant.destroy!
+        transfer_creator_if_needed!(removed_user: user)
+      end
+
+      ServiceResult.success(@conversation.reload)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    def transfer_creator_if_needed!(removed_user:)
+      return unless @conversation.creator_id == removed_user.id
+
+      next_creator = @conversation.participants.order(:created_at).first&.user
+      @conversation.update!(creator_id: next_creator&.id)
     end
   end
 end

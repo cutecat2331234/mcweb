@@ -31,9 +31,15 @@ const props = defineProps<{
     read_by?: string[]
   }>
   pagination: PaginationMeta
-  participants: Array<{ username: string; avatar_url: string }>
+  participants: Array<{
+    username: string
+    avatar_url: string
+    is_self?: boolean
+    is_creator?: boolean
+    remove_url?: string | null
+  }>
   addParticipantUrl?: string | null
-  removeParticipantUrlTemplate?: string | null
+  currentUsername?: string
 }>()
 
 const addUsername = ref('')
@@ -46,11 +52,11 @@ function addParticipant() {
   })
 }
 
-function removeParticipant(username: string) {
-  if (!props.removeParticipantUrlTemplate) return
-  const url = props.removeParticipantUrlTemplate.replace(':username', username)
-  if (!confirm(`确定移除 ${username}？`)) return
-  router.delete(url, { preserveScroll: true })
+function removeParticipant(participant: { username: string; remove_url?: string | null; is_self?: boolean }) {
+  if (!participant.remove_url) return
+  const msg = participant.is_self ? '确定离开此群组？' : `确定移除 ${participant.username}？`
+  if (!confirm(msg)) return
+  router.delete(participant.remove_url, { preserveScroll: true })
 }
 
 const title = props.conversation.display_name || props.conversation.other_user?.username || '私信'
@@ -84,13 +90,15 @@ function submit() {
       <span v-for="p in participants" :key="p.username" class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
         <img :src="p.avatar_url" :alt="p.username" class="h-4 w-4 rounded-full" />
         {{ p.username }}
+        <span v-if="p.is_creator" class="text-muted-foreground">（群主）</span>
         <button
-          v-if="removeParticipantUrlTemplate"
+          v-if="p.remove_url"
           type="button"
           class="ml-1 text-muted-foreground hover:text-destructive"
-          @click="removeParticipant(p.username)"
+          :title="p.is_self ? '离开群组' : '移除成员'"
+          @click="removeParticipant(p)"
         >
-          ×
+          {{ p.is_self ? '离开' : '×' }}
         </button>
       </span>
     </div>

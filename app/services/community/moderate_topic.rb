@@ -19,9 +19,14 @@ module Community
       when "unlock"
         @topic.unlock_topic!
       when "pin"
-        @topic.update!(pinned: true)
+        @topic.update!(pinned: true, pinned_until: nil)
+      when /\Apin_(\d+)\z/
+        days = Regexp.last_match(1).to_i
+        @topic.update!(pinned: true, pinned_until: days.positive? ? days.days.from_now : nil)
       when "unpin"
-        @topic.update!(pinned: false)
+        @topic.update!(pinned: false, pinned_until: nil)
+      when "bump"
+        @topic.update!(bumped_at: Time.current, last_posted_at: Time.current)
       when "hide"
         @topic.update!(status: "hidden")
       when "unhide"

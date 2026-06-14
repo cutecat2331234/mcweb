@@ -17,11 +17,11 @@ module Commerce
       return ServiceResult.failure(error: "Coupon has expired.") if coupon.ends_at&.past?
       return ServiceResult.failure(error: "Coupon usage limit reached.") if coupon.usage_limit && coupon.used_count >= coupon.usage_limit
       return ServiceResult.failure(error: "Order does not meet minimum amount.") if @order.subtotal_cents < coupon.min_amount_cents
-      unless coupon.applicable?(subtotal_cents: @order.subtotal_cents, cart_items: @order.items.includes(:product))
+      unless coupon.applicable?(subtotal_cents: @order.subtotal_cents, cart_items: @order.items.includes(:product), user: @order.user)
         return ServiceResult.failure(error: "Coupon is not applicable to order items.")
       end
 
-      discount_cents = coupon.calculate_discount(@order.subtotal_cents, cart_items: @order.items.includes(:product))
+      discount_cents = coupon.calculate_discount(@order.subtotal_cents, cart_items: @order.items.includes(:product), user: @order.user)
       total_cents = [ @order.subtotal_cents - discount_cents, 0 ].max
 
       Commerce::Order.transaction do

@@ -16,6 +16,7 @@ module Community
       forum.topic_solved
       forum.badge
       forum.trust_level
+      forum.bookmark_reminder
     ].freeze
 
     DIGEST_OPTIONS = %w[none daily weekly].freeze
@@ -73,7 +74,8 @@ module Community
         "forum.quote" => "帖子引用",
         "forum.topic_solved" => "主题已解决",
         "forum.badge" => "获得徽章",
-        "forum.trust_level" => "信任等级提升"
+        "forum.trust_level" => "信任等级提升",
+        "forum.bookmark_reminder" => "书签提醒"
       }[type] || type.humanize
     end
 

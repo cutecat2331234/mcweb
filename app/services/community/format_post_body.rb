@@ -23,6 +23,8 @@ module Community
       "th" => %w[class scope],
       "td" => %w[class],
       "div" => %w[class],
+      "input" => %w[type checked disabled class],
+      "hr" => %w[class],
       "button" => %w[type class data-copy-target],
       "iframe" => %w[src width height frameborder allow allowfullscreen class loading title],
       "a" => %w[href rel class]
@@ -40,6 +42,20 @@ module Community
 
       placeholders = {}
       text = body.dup
+
+      text = text.gsub(/^([-*]\s+\[(?: |x|X)\]\s+.+)$/) do |line|
+        match = line.match(/\A[-*]\s+\[( |x|X)\]\s+(.+)\z/)
+        token = placeholder_token(placeholders, "TASK")
+        checked = match[1].match?(/x/i) ? " checked disabled" : " disabled"
+        placeholders[token] = %(<li class="task-item"><input type="checkbox"#{checked} /> #{ERB::Util.html_escape(match[2])}</li>)
+        token
+      end
+
+      text = text.gsub(/^(-{3,}|\*{3,}|_{3,})\s*$/m) do
+        token = placeholder_token(placeholders, "HR")
+        placeholders[token] = '<hr class="post-hr" />'
+        token
+      end
 
       text = text.gsub(/\|\|(.+?)\|\|/m) do
         token = placeholder_token(placeholders, "SPOILER")
@@ -109,6 +125,9 @@ module Community
       sanitized = Sanitize.fragment(html, WHITELIST)
 
       placeholders.each { |token, replacement| sanitized = sanitized.gsub(token, replacement) }
+      sanitized = sanitized.gsub(/(?:<li class="task-item">.*?<\/li>\s*)+/) do |block|
+        "<ul class=\"task-list\">#{block}</ul>"
+      end
 
       ServiceResult.success(sanitized)
     end
@@ -151,6 +170,19 @@ module Community
           html_lines << "</ol>" if in_ol
           in_ol = false
           html_lines << %(<blockquote class="post-quote">#{inline_format(match[1])}</blockquote>)
+        elsif line.match(/\A(-{3,}|\*{3,}|_{3,})\s*\z/)
+          html_lines << "</ul>" if in_ul
+          in_ul = false
+          html_lines << "</ol>" if in_ol
+          in_ol = false
+          html_lines << '<hr class="post-hr" />'
+        elsif (match = line.match(/\A[-*]\s+\[([ xX])\]\s+(.+)\z/))
+          html_lines << "</ol>" if in_ol
+          in_ol = false
+          html_lines << "<ul>" unless in_ul
+          in_ul = true
+          checked = match[1].match?(/[xX]/) ? " checked disabled" : " disabled"
+          html_lines << %(<li class="task-item"><input type="checkbox"#{checked} /> #{inline_format(match[2])}</li>)
         elsif (match = line.match(/\A[-*]\s+(.+)\z/))
           html_lines << "</ol>" if in_ol
           in_ol = false

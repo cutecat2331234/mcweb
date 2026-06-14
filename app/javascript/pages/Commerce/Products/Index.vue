@@ -39,6 +39,7 @@ export interface CategoryItem {
 const props = defineProps<{
   products: ProductItem[]
   featured_products?: ProductItem[]
+  recently_viewed?: ProductItem[]
   categories: CategoryItem[]
   activeCategory: string | null
   query: string
@@ -68,6 +69,24 @@ function search() {
   ]" />
 
   <PageHeader title="商品列表" subtitle="浏览可购买的数字商品" />
+
+  <section v-if="recently_viewed?.length" class="mb-8">
+    <h2 class="mb-3 text-sm font-semibold">最近浏览</h2>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <Link
+        v-for="product in recently_viewed"
+        :key="product.id"
+        :href="product.url"
+        class="flex gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+      >
+        <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover" />
+        <div>
+          <p class="font-medium">{{ product.name }}</p>
+          <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+        </div>
+      </Link>
+    </div>
+  </section>
 
   <section v-if="featured_products?.length" class="mb-8">
     <h2 class="mb-3 text-sm font-semibold">精选商品</h2>

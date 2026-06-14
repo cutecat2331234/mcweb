@@ -79,6 +79,8 @@ const props = defineProps<{
     author: string | null
     locked: boolean
     pinned: boolean
+    pinned_until?: string | null
+    bumped_at?: string | null
     prefix?: string | null
     hidden: boolean
     views_count: number
@@ -404,6 +406,10 @@ function pollPercent(votes: number) {
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.pinned ? 'unpin' : 'pin')">
           {{ topic.pinned ? '取消置顶' : '置顶' }}
         </Button>
+        <Button v-if="topic.can_moderate && !topic.pinned" type="button" variant="outline" size="sm" @click="moderate('pin_7')">
+          置顶 7 天
+        </Button>
+        <Button type="button" variant="outline" size="sm" @click="moderate('bump')">提升主题</Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.featured ? 'unfeature' : 'feature')">
           {{ topic.featured ? '取消精选' : '设为精选' }}
         </Button>
@@ -519,6 +525,12 @@ function pollPercent(votes: number) {
     </template>
   </div>
 
+  <p v-if="topic.pinned_until" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+    置顶将于 {{ topic.pinned_until }} 自动取消。
+  </p>
+  <p v-if="topic.bumped_at" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+    最近提升：{{ topic.bumped_at }}
+  </p>
   <p v-if="topic.hidden" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
     此主题已被版主隐藏。
   </p>

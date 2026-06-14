@@ -5,10 +5,20 @@ module Commerce
     belongs_to :user
     belongs_to :product, class_name: "Commerce::Product", foreign_key: :store_product_id
     has_many :helpful_votes, class_name: "Commerce::ReviewHelpfulVote", foreign_key: :store_review_id, dependent: :destroy
+    has_many_attached :photos
 
     enum :status, { published: "published", hidden: "hidden" }, validate: true
 
     validates :rating, presence: true, inclusion: { in: 1..5 }
     validates :user_id, uniqueness: { scope: :store_product_id }
+    validate :photos_limit
+
+    private
+
+    def photos_limit
+      return unless photos.attached? && photos.count > 3
+
+      errors.add(:photos, "cannot exceed 3 images")
+    end
   end
 end

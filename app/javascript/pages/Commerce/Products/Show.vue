@@ -35,6 +35,7 @@ export interface ProductReview {
   helpful?: boolean
   helpful_url?: string | null
   verified_purchaser?: boolean
+  photo_urls?: string[]
 }
 
 export interface ProductDetail {
@@ -117,9 +118,16 @@ const allImages = computed(() => {
 
 const activeGalleryImage = computed(() => allImages.value[galleryIndex.value] || null)
 
-const reviewForm = useForm({
-  review: { rating: 5, body: '' },
+const reviewForm = useForm<{
+  review: { rating: number; body: string; photos: File[] }
+}>({
+  review: { rating: 5, body: '', photos: [] },
 })
+
+function onReviewPhotosChange(event: Event) {
+  const input = event.target as HTMLInputElement
+  reviewForm.review.photos = Array.from(input.files || []).slice(0, 3)
+}
 
 const selectedVariant = computed(() =>
   props.product.variants.find((variant) => variant.id === selectedVariantId.value) || null
@@ -202,7 +210,11 @@ function loadMoreReviews() {
 function submitReview() {
   reviewForm.post(props.reviewUrl, {
     preserveScroll: true,
-    onSuccess: () => { reviewForm.review.body = '' },
+    forceFormData: true,
+    onSuccess: () => {
+      reviewForm.review.body = ''
+      reviewForm.review.photos = []
+    },
   })
 }
 
@@ -439,6 +451,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
           <span class="text-amber-500">{{ '★'.repeat(review.rating) }}</span>
         </div>
         <p v-if="review.body" class="text-sm">{{ review.body }}</p>
+        <div v-if="review.photo_urls?.length" class="mt-2 flex flex-wrap gap-2">
+          <img v-for="(url, i) in review.photo_urls" :key="i" :src="url" alt="" class="h-20 w-20 rounded object-cover" />
+        </div>
         <div class="mt-2 flex items-center justify-between gap-2">
           <p class="text-xs text-muted-foreground">{{ review.created_at }}</p>
           <Button
@@ -476,6 +491,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
         </select>
       </div>
       <Textarea v-model="reviewForm.review.body" rows="4" placeholder="分享你的使用体验（可选）" />
+      <div class="space-y-2">
+        <Label for="review_photos">图片（最多 3 张）</Label>
+        <Input id="review_photos" type="file" accept="image/*" multiple @change="onReviewPhotosChange" />
+      </div>
       <Button type="submit" :disabled="reviewForm.processing">提交评价</Button>
     </form>
   </section>

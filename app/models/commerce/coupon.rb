@@ -10,28 +10,36 @@ module Commerce
 
     scope :active_coupons, -> { where(active: true) }
 
-    def applicable?(subtotal_cents:, cart_items: nil)
+    def applicable?(subtotal_cents:, cart_items: nil, user: nil)
       return false unless active?
       return false if starts_at.present? && starts_at > Time.current
       return false if ends_at.present? && ends_at < Time.current
       return false if usage_limit.present? && used_count >= usage_limit
       return false if subtotal_cents < min_amount_cents
       return false unless matches_cart_restrictions?(cart_items)
+      return false if first_order_only? && user && !first_order?(user)
+      return false if per_user_limit.present? && user && user_usage_count(user) >= per_user_limit
 
       true
     end
 
-    def calculate_discount(subtotal_cents, cart_items: nil)
-      return 0 unless applicable?(subtotal_cents: subtotal_cents, cart_items: cart_items)
+    def calculate_discount(subtotal_cents, cart_items: nil, user: nil)
+      return 0 unless applicable?(subtotal_cents: subtotal_cents, cart_items: cart_items, user: user)
 
-      case discount_type
-      when "percentage"
-        (subtotal_cents * discount_value / 100.0).round
-      when "fixed"
-        [ discount_value, subtotal_cents ].min
-      else
-        0
+      amount = case discount_type
+               when "percentage"
+                 (subtotal_cents * discount_value / 100.0).round
+               when "fixed"
+                 [ discount_value, subtotal_cents ].min
+               else
+                 0
+               end
+
+      if max_discount_cents.present? && max_discount_cents.positive?
+        amount = [ amount, max_discount_cents ].min
       end
+
+      amount
     end
 
     def redeem!
@@ -47,6 +55,14 @@ module Commerce
     end
 
     private
+
+    def first_order?(user)
+      !Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed]).exists?
+    end
+
+    def user_usage_count(user)
+      Commerce::Order.where(user: user, store_coupon_id: id).where.not(status: %w[pending cancelled failed]).count
+    end
 
     def matches_cart_restrictions?(cart_items)
       product_ids = restricted_product_ids

@@ -32,6 +32,7 @@ module Community
           update_url: forum_bookmark_path(bookmark),
           note: bookmark.note,
           remind_at: bookmark.remind_at ? l(bookmark.remind_at, format: :short) : nil,
+          remind_at_input: bookmark.remind_at&.strftime("%Y-%m-%dT%H:%M"),
           topic: serialize_topic(topic, read_state: read_states[topic.id])
         }
       end

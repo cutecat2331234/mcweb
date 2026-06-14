@@ -33,3 +33,11 @@ production:
     class: Community::CloseScheduledTopicsJob
     queue: default
     schedule: every 5 minutes
+  bookmark_reminders:
+    class: Community::BookmarkReminderJob
+    queue: notifications
+    schedule: every 15 minutes
+  unpin_expired_topics:
+    class: Community::UnpinExpiredTopicsJob
+    queue: maintenance
+    schedule: every hour

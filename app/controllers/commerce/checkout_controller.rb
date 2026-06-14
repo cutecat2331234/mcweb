@@ -80,7 +80,7 @@ module Commerce
       cart = Commerce::Cart.find_by(user: current_user)
       subtotal_cents = cart&.subtotal_cents.to_i
       cart_items = cart&.items&.includes(:product) || []
-      result = Commerce::PreviewCoupon.call(subtotal_cents: subtotal_cents, code: params[:code], cart_items: cart_items)
+      result = Commerce::PreviewCoupon.call(subtotal_cents: subtotal_cents, code: params[:code], cart_items: cart_items, user: current_user)
 
       if result.success?
         session[:pending_coupon_code] = result.value[:code]

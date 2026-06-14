@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000032) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000033) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -297,6 +297,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000032) do
 
   create_table "forum_topics", force: :cascade do |t|
     t.datetime "auto_close_at"
+    t.datetime "bumped_at"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
     t.boolean "featured", default: false, null: false
@@ -305,6 +306,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000032) do
     t.datetime "last_posted_at"
     t.boolean "locked", default: false, null: false
     t.boolean "pinned", default: false, null: false
+    t.datetime "pinned_until"
     t.string "prefix"
     t.string "public_id", null: false
     t.integer "replies_count", default: 0, null: false
@@ -323,6 +325,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000032) do
     t.index ["forum_section_id", "last_posted_at"], name: "index_forum_topics_on_forum_section_id_and_last_posted_at"
     t.index ["forum_section_id"], name: "index_forum_topics_on_forum_section_id"
     t.index ["last_post_user_id"], name: "index_forum_topics_on_last_post_user_id"
+    t.index ["pinned_until"], name: "index_forum_topics_on_pinned_until"
     t.index ["public_id"], name: "index_forum_topics_on_public_id", unique: true
     t.index ["scheduled_at"], name: "index_forum_topics_on_scheduled_at"
     t.index ["solved_post_id"], name: "index_forum_topics_on_solved_post_id"
@@ -630,7 +633,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000032) do
     t.string "discount_type", null: false
     t.integer "discount_value", null: false
     t.datetime "ends_at"
+    t.boolean "first_order_only", default: false, null: false
+    t.integer "max_discount_cents"
     t.integer "min_amount_cents", default: 0, null: false
+    t.integer "per_user_limit"
     t.jsonb "product_ids", default: [], null: false
     t.datetime "starts_at"
     t.datetime "updated_at", null: false
@@ -747,6 +753,18 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000032) do
     t.datetime "updated_at", null: false
     t.index ["sku"], name: "index_store_product_variants_on_sku", unique: true
     t.index ["store_product_id"], name: "index_store_product_variants_on_store_product_id"
+  end
+
+  create_table "store_product_views", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "store_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.datetime "viewed_at", null: false
+    t.index ["store_product_id"], name: "index_store_product_views_on_store_product_id"
+    t.index ["user_id", "store_product_id"], name: "index_store_product_views_on_user_id_and_store_product_id", unique: true
+    t.index ["user_id", "viewed_at"], name: "index_store_product_views_on_user_id_and_viewed_at"
+    t.index ["user_id"], name: "index_store_product_views_on_user_id"
   end
 
   create_table "store_products", force: :cascade do |t|
@@ -1060,6 +1078,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000032) do
   add_foreign_key "store_product_questions", "store_products"
   add_foreign_key "store_product_questions", "users"
   add_foreign_key "store_product_variants", "store_products"
+  add_foreign_key "store_product_views", "store_products"
+  add_foreign_key "store_product_views", "users"
   add_foreign_key "store_products", "store_categories"
   add_foreign_key "store_refunds", "payment_records"
   add_foreign_key "store_refunds", "store_orders"

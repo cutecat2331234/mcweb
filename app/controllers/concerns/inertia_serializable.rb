@@ -90,6 +90,8 @@ module InertiaSerializable
       author_url: topic.user ? forum_user_path(topic.user.username) : nil,
       locked: topic.locked?,
       pinned: topic.pinned?,
+      pinned_until: topic.pinned_until ? l(topic.pinned_until, format: :short) : nil,
+      bumped_at: topic.bumped_at ? l(topic.bumped_at, format: :short) : nil,
       hidden: topic.status == "hidden",
       featured: topic.featured?,
       wiki: topic.wiki?,
@@ -293,7 +295,8 @@ module InertiaSerializable
       helpful_count: review.helpful_votes.count,
       helpful: helpful,
       helpful_url: current_user && current_user.id != review.user_id ? helpful_store_product_review_path(review.product.public_id, review.id) : nil,
-      verified_purchaser: verified
+      verified_purchaser: verified,
+      photo_urls: review.photos.map { |photo| rails_blob_path(photo, only_path: true) }
     }
   end
 

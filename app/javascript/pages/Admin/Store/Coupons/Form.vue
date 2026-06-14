@@ -17,6 +17,9 @@ const props = defineProps<{
     discount_value: number
     min_amount_cents: number
     usage_limit: number | null
+    per_user_limit?: number | null
+    first_order_only?: boolean
+    max_discount_cents?: number | null
     active: boolean
     starts_at: string | null
     product_ids?: number[]
@@ -79,6 +82,18 @@ function submit() {
         <Input id="ends_at" v-model="form.coupon.ends_at" type="datetime-local" />
       </div>
     </div>
+    <div class="space-y-2">
+      <Label for="per_user_limit">每用户使用上限（空=无限）</Label>
+      <Input id="per_user_limit" v-model.number="form.coupon.per_user_limit" type="number" min="1" />
+    </div>
+    <div class="space-y-2">
+      <Label for="max_discount_cents">最大折扣金额（分，空=不限）</Label>
+      <Input id="max_discount_cents" v-model.number="form.coupon.max_discount_cents" type="number" min="1" />
+    </div>
+    <label class="flex items-center gap-2 text-sm">
+      <input v-model="form.coupon.first_order_only" type="checkbox" class="h-4 w-4" />
+      仅限首单
+    </label>
     <div class="space-y-2">
       <Label>限定商品（不选=全部）</Label>
       <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">

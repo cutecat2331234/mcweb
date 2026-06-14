@@ -24,6 +24,7 @@ defineProps<{
     update_url: string
     note: string | null
     remind_at: string | null
+    remind_at_input?: string | null
     topic: {
       id: string
       title: string
@@ -52,10 +53,10 @@ const editingId = ref<number | null>(null)
 const editNote = ref('')
 const editRemindAt = ref('')
 
-function startEdit(id: number, note: string | null, remindAt: string | null) {
+function startEdit(id: number, note: string | null, remindAtInput: string | null | undefined) {
   editingId.value = id
   editNote.value = note || ''
-  editRemindAt.value = ''
+  editRemindAt.value = remindAtInput || ''
 }
 
 function saveBookmark(url: string) {
@@ -124,7 +125,7 @@ function saveBookmark(url: string) {
             <p v-if="item.note" class="mt-2 text-sm text-muted-foreground">备注：{{ item.note }}</p>
             <p v-if="item.remind_at" class="text-xs text-muted-foreground">提醒：{{ item.remind_at }}</p>
           </div>
-          <Button type="button" variant="outline" size="sm" @click="startEdit(item.bookmark_id, item.note, item.remind_at)">编辑备注</Button>
+          <Button type="button" variant="outline" size="sm" @click="startEdit(item.bookmark_id, item.note, item.remind_at_input)">编辑备注</Button>
         </div>
         <div v-if="editingId === item.bookmark_id" class="mt-3 space-y-2 border-t pt-3">
           <Textarea v-model="editNote" rows="2" placeholder="书签备注" />

@@ -7,7 +7,8 @@ class TechFingerprintTest < ActionDispatch::IntegrationTest
     get root_path
     assert_response :success
 
-    assert_match %r{mod_rack/Ruby on Rails}, response.headers["X-Powered-By"].to_s
+    assert_match %r{Ruby on Rails}, response.headers["X-Powered-By"].to_s
+    assert_no_match %r{mod_rack}, response.headers["X-Powered-By"].to_s
     assert_match(/Ruby on Rails/, response.body)
     assert_match(/name="generator"/, response.body)
     assert_match(/csrf-param/, response.body)

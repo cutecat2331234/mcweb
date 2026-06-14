@@ -6,6 +6,6 @@ if ActiveModel::Type::Boolean.new.cast(ENV.fetch("MCWEB_PUBLIC_TECH_STACK", "tru
   Rails.application.config.session_store :cookie_store, key: "_session_id"
 
   Rails.application.config.action_dispatch.default_headers.merge!(
-    "X-Powered-By" => "mod_rack/Ruby on Rails #{Rails.version}"
+    "X-Powered-By" => "McWeb; Ruby on Rails #{Rails.version}; Puma"
   )
 end

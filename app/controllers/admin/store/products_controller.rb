@@ -43,6 +43,7 @@ module Admin
             { label: "状态", value: @product.status },
             { label: "价格", value: format_price(@product) },
             { label: "库存", value: @product.stock.nil? ? "无限" : @product.stock.to_s },
+            { label: "缺货可预订", value: @product.allow_backorder? ? "是" : "否" },
             { label: "描述", value: @product.description || "—" }
           ],
           backUrl: admin_store_products_path,
@@ -135,7 +136,7 @@ module Admin
       def product_params
         permitted = params.require(:product).permit(
           :name, :slug, :description, :summary, :product_type, :status,
-          :price_cents, :compare_at_price_cents, :currency, :stock, :store_category_id, :purchase_limit, :image_url, :gallery_urls,
+          :price_cents, :compare_at_price_cents, :currency, :stock, :store_category_id, :purchase_limit, :allow_backorder, :image_url, :gallery_urls,
           :fulfillment_config, :featured, :version, :changelog,
           variants_attributes: [ :id, :name, :sku, :price_cents, :compare_at_price_cents, :stock, :_destroy ]
         )
@@ -169,6 +170,7 @@ module Admin
             compare_at_price_cents: product.compare_at_price_cents,
             currency: product.currency || "CNY",
             stock: product.stock,
+            allow_backorder: product.allow_backorder?,
             store_category_id: product.store_category_id,
             purchase_limit: product.purchase_limit,
             image_url: product.image_url || "",

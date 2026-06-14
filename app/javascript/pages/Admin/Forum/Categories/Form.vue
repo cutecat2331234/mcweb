@@ -5,12 +5,13 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
 
 const props = defineProps<{
   title: string
-  category: { id?: number; name: string; slug: string; position: number; color_hex?: string; icon?: string }
+  category: { id?: number; name: string; slug: string; position: number; color_hex?: string; icon?: string; description?: string }
   submitUrl: string
   method: 'post' | 'patch'
   backUrl: string
@@ -50,6 +51,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="icon">图标 (emoji)</Label>
       <Input id="icon" v-model="form.category.icon" placeholder="💬" />
+    </div>
+    <div class="space-y-2">
+      <Label for="description">描述</Label>
+      <Textarea id="description" v-model="form.category.description" rows="3" placeholder="分类说明…" />
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

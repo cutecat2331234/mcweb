@@ -22,7 +22,7 @@ module Commerce
 
       purchasable = @variant || @product
       if purchasable.stock.present? && purchasable.stock < @quantity
-        return ServiceResult.failure(error: "库存不足。")
+        return ServiceResult.failure(error: "库存不足。") unless @product.allow_backorder?
       end
 
       if @product.purchase_limit.present? && @user

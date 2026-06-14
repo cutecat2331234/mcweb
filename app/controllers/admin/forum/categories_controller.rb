@@ -36,6 +36,7 @@ module Admin
             { label: "排序", value: @category.position.to_s },
             { label: "颜色", value: @category.color_hex.presence || "—" },
             { label: "图标", value: @category.icon.presence || "—" },
+            { label: "描述", value: @category.description.presence || "—" },
             { label: "板块数", value: @category.sections.count.to_s }
           ],
           backUrl: admin_forum_categories_path,
@@ -84,7 +85,7 @@ module Admin
       end
 
       def category_params
-        params.require(:category).permit(:name, :slug, :position, :color_hex, :icon)
+        params.require(:category).permit(:name, :slug, :position, :color_hex, :icon, :description)
       end
 
       def form_props(category)
@@ -96,7 +97,8 @@ module Admin
             slug: category.slug || "",
             position: category.position || 0,
             color_hex: category.color_hex || "",
-            icon: category.icon || ""
+            icon: category.icon || "",
+            description: category.description || ""
           },
           submitUrl: category.persisted? ? admin_forum_category_path(category) : admin_forum_categories_path,
           method: category.persisted? ? "patch" : "post",

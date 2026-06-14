@@ -17,6 +17,7 @@ const props = defineProps<{
     discount_type: string
     discount_label: string
     min_amount_label: string | null
+    starts_at: string | null
     ends_at: string | null
     first_order_only: boolean
     usage_remaining: number | null
@@ -47,6 +48,7 @@ function applyCoupon() {
     <p v-if="coupon.description" class="text-sm">{{ coupon.description }}</p>
     <ul class="space-y-1 text-sm text-muted-foreground">
       <li v-if="coupon.min_amount_label">最低消费 {{ coupon.min_amount_label }}</li>
+      <li v-if="coupon.starts_at">开始时间 {{ coupon.starts_at }}</li>
       <li v-if="coupon.ends_at">有效期至 {{ coupon.ends_at }}</li>
       <li v-if="coupon.first_order_only">仅限首单使用</li>
       <li v-if="coupon.per_user_limit">每人限用 {{ coupon.per_user_limit }} 次</li>

@@ -2,8 +2,6 @@
 
 module Commerce
   class ToggleCompare < ApplicationService
-    MAX_ITEMS = 4
-
     def initialize(session:, product:)
       @session = session
       @product = product
@@ -12,19 +10,31 @@ module Commerce
     def call
       ids = Array(@session[:compare_product_ids])
       public_id = @product.public_id
+      max_items = compare_max_items
 
       if ids.include?(public_id)
         ids.delete(public_id)
         compared = false
       else
-        return ServiceResult.failure(error: "最多只能对比 #{MAX_ITEMS} 件商品。") if ids.size >= MAX_ITEMS
+        return ServiceResult.failure(error: "最多只能对比 #{max_items} 件商品。") if ids.size >= max_items
 
         ids << public_id
         compared = true
       end
 
       @session[:compare_product_ids] = ids
-      ServiceResult.success(compared: compared, count: ids.size, product_ids: ids)
+      ServiceResult.success(compared: compared, count: ids.size, product_ids: ids, max_items: max_items)
+    end
+
+    def self.compare_max_items
+      max = SiteSetting.get("store.compare_max_items", "4").to_i
+      max.positive? ? max : 4
+    end
+
+    private
+
+    def compare_max_items
+      self.class.compare_max_items
     end
   end
 end

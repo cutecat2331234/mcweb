@@ -24,6 +24,7 @@ const props = defineProps<{
     add_to_cart_url: string
   }>
   compareCount: number
+  compareMaxItems?: number
 }>()
 
 function remove(product: { toggle_url: string }) {
@@ -52,7 +53,7 @@ function addToCart(product: { db_id: number; add_to_cart_url: string; variants: 
   ]" />
 
   <div class="mb-4 flex items-center justify-between gap-3">
-    <PageHeader title="商品对比" :subtitle="`已选 ${compareCount} 件（最多 4 件）`" />
+    <PageHeader title="商品对比" :subtitle="`已选 ${compareCount} / ${compareMaxItems ?? 4} 件`" />
     <Button v-if="products.length" type="button" variant="outline" size="sm" @click="clearAll">清空对比</Button>
   </div>
 

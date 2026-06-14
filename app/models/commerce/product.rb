@@ -61,6 +61,14 @@ module Commerce
       end
     end
 
+    def backorder_available?
+      allow_backorder? && !in_stock?
+    end
+
+    def purchasable?
+      in_stock? || allow_backorder?
+    end
+
     def low_stock?
       return false unless active?
 

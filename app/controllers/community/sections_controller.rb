@@ -20,6 +20,15 @@ module Community
 
       render inertia: "Community/Sections/Index", props: {
         sections: sections.map { |section| serialize_section(section, unread_map: unread_map) },
+        categories: Community::Category.ordered.map do |category|
+          {
+            slug: category.slug,
+            name: category.name,
+            description: category.description,
+            icon: category.icon,
+            color_hex: category.color_hex
+          }
+        end,
         pagination: pagy_props(@pagy)
       }
     end

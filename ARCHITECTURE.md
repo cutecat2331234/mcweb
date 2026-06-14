@@ -775,3 +775,14 @@ app/
 | 心愿单备注（XenForo watch notes） | `store_wishlist_items.note` + `UpdateWishlistNote` |
 | 商品对比 SKU 行 | 对比页展示变体 SKU |
 | 商城分类导航图标 | `serialize_category` 含 icon/color_hex |
+
+### 第四十三轮（主题状态搜索、缺货预订与对比上限）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索 is:locked / is:unlocked / is:pinned / is:wiki | `ParseSearchQuery` + `ApplyTopicSearchFilters` |
+| 分区主题筛选锁定/置顶/Wiki | `TopicFilterable` 新增筛选项 |
+| 论坛分类描述展示 | 管理端 description + 板块首页分类卡片 |
+| 商品缺货可预订（Backorder） | `store_products.allow_backorder` + 购物车/下单 |
+| 对比列表上限可配置 | SiteSetting `store.compare_max_items` |
+| 优惠券公开开始时间 | 优惠券详情页 `starts_at` |

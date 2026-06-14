@@ -32,6 +32,13 @@ export interface SectionItem {
 
 defineProps<{
   sections: SectionItem[]
+  categories?: Array<{
+    slug: string
+    name: string
+    description: string | null
+    icon: string | null
+    color_hex: string | null
+  }>
   pagination: PaginationMeta
 }>()
 </script>
@@ -43,6 +50,25 @@ defineProps<{
   ]" />
 
   <PageHeader title="论坛板块" subtitle="浏览社区讨论分区" />
+
+  <div v-if="categories?.length" class="mb-6 grid gap-3 sm:grid-cols-2">
+    <div
+      v-for="category in categories"
+      :key="category.slug"
+      class="rounded-lg border p-4"
+    >
+      <div class="flex items-center gap-2 font-medium">
+        <span v-if="category.icon">{{ category.icon }}</span>
+        <span
+          v-if="category.color_hex"
+          class="inline-block h-2.5 w-2.5 rounded-full"
+          :style="{ backgroundColor: category.color_hex }"
+        />
+        {{ category.name }}
+      </div>
+      <p v-if="category.description" class="mt-1 text-sm text-muted-foreground">{{ category.description }}</p>
+    </div>
+  </div>
 
   <div v-if="sections.length" class="rounded-lg border">
     <Table>

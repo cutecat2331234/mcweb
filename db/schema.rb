@@ -979,6 +979,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "store_products", force: :cascade do |t|
+    t.boolean "allow_backorder", default: false, null: false
     t.text "changelog"
     t.string "changelog_notified_version"
     t.integer "compare_at_price_cents"

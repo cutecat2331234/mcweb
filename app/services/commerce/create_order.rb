@@ -127,7 +127,14 @@ module Commerce
       return ServiceResult.success if target.stock.nil?
 
       target.with_lock do
-        return ServiceResult.failure(error: "库存不足。") if target.stock < quantity
+        if target.stock < quantity
+          if product.allow_backorder?
+            target.update!(stock: 0)
+            return ServiceResult.success
+          end
+
+          return ServiceResult.failure(error: "库存不足。")
+        end
 
         target.update!(stock: target.stock - quantity)
       end

@@ -25,6 +25,7 @@ const props = defineProps<{
     stock: number | null
     store_category_id: number | null
     purchase_limit: number | null
+    allow_backorder?: boolean
     image_url: string
     gallery_urls: string
     fulfillment_config: string
@@ -169,6 +170,10 @@ async function uploadCover(event: Event) {
     <div class="flex items-center gap-2">
       <input id="featured" v-model="form.product.featured" type="checkbox" class="rounded border" />
       <Label for="featured">精选商品（首页展示）</Label>
+    </div>
+    <div class="flex items-center gap-2">
+      <input id="allow_backorder" v-model="form.product.allow_backorder" type="checkbox" class="rounded border" />
+      <Label for="allow_backorder">缺货时可预订（Backorder）</Label>
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">

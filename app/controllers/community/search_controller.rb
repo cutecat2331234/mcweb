@@ -13,12 +13,18 @@ module Community
       parsed_author = parsed.success? ? parsed.value[:author] : nil
       parsed_tag = parsed.success? ? parsed.value[:tag_slug] : nil
       parsed_solved = parsed.success? ? parsed.value[:solved_filter] : nil
+      parsed_locked = parsed.success? ? parsed.value[:locked_filter] : nil
+      parsed_pinned = parsed.success? ? parsed.value[:pinned_filter] : nil
+      parsed_wiki = parsed.success? ? parsed.value[:wiki_filter] : nil
 
       query = parsed_query
       section_slug = params[:section].to_s.presence || parsed_section
       author = params[:author].to_s.strip.presence || parsed_author
       tag_slug = params[:tag].to_s.strip.presence || parsed_tag
       solved_filter = params[:solved].to_s.presence || parsed_solved
+      locked_filter = params[:locked].to_s.presence || parsed_locked
+      pinned_filter = params[:pinned].to_s.presence || parsed_pinned
+      wiki_filter = params[:wiki].to_s.presence || parsed_wiki
       topics = Community::Topic.none
       posts = Community::Post.none
 
@@ -27,8 +33,13 @@ module Community
         topics = topics.joins(:section).where(forum_sections: { slug: section_slug }) if section_slug
         topics = topics.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
         topics = topics.joins(:tags).where(forum_tags: { slug: tag_slug }) if tag_slug
-        topics = topics.where(solved_post_id: nil) if solved_filter == "unsolved"
-        topics = topics.where.not(solved_post_id: nil) if solved_filter == "solved"
+        topics = apply_search_topic_filters(
+          topics,
+          solved_filter: solved_filter,
+          locked_filter: locked_filter,
+          pinned_filter: pinned_filter,
+          wiki_filter: wiki_filter
+        )
         if params[:created_after].present?
           after = Time.zone.parse(params[:created_after].to_s) rescue nil
           topics = topics.where("forum_topics.created_at >= ?", after) if after
@@ -52,11 +63,13 @@ module Community
         posts = posts.joins(topic: :section).where(forum_sections: { slug: section_slug }) if section_slug
         posts = posts.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
         posts = posts.joins(topic: :tags).where(forum_tags: { slug: tag_slug }) if tag_slug
-        if solved_filter == "unsolved"
-          posts = posts.joins(:topic).where(forum_topics: { solved_post_id: nil })
-        elsif solved_filter == "solved"
-          posts = posts.joins(:topic).where.not(forum_topics: { solved_post_id: nil })
-        end
+        posts = apply_search_topic_filters_on_posts(
+          posts,
+          solved_filter: solved_filter,
+          locked_filter: locked_filter,
+          pinned_filter: pinned_filter,
+          wiki_filter: wiki_filter
+        )
         if params[:created_after].present?
           after = Time.zone.parse(params[:created_after].to_s) rescue nil
           posts = posts.where("forum_posts.created_at >= ?", after) if after
@@ -91,6 +104,9 @@ module Community
         author: author.to_s,
         tag: tag_slug.to_s,
         solved: solved_filter.to_s,
+        locked: locked_filter.to_s,
+        pinned: pinned_filter.to_s,
+        wiki: wiki_filter.to_s,
         createdAfter: params[:created_after].to_s,
         createdBefore: params[:created_before].to_s,
         topicSort: params[:topic_sort].to_s.presence || "recent",
@@ -102,6 +118,31 @@ module Community
         topicsPagination: pagy_props(@pagy_topics),
         postsPagination: pagy_props(@pagy_posts)
       }
+    end
+
+    private
+
+    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:)
+      result = Community::ApplyTopicSearchFilters.call(
+        scope: scope,
+        solved_filter: solved_filter,
+        locked_filter: locked_filter,
+        pinned_filter: pinned_filter,
+        wiki_filter: wiki_filter
+      )
+      result.success? ? result.value : scope
+    end
+
+    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:)
+      needs_join = solved_filter.present? || locked_filter.present? || pinned_filter.present? || wiki_filter.present?
+      scope = scope.joins(:topic) if needs_join
+      apply_search_topic_filters(
+        scope,
+        solved_filter: solved_filter,
+        locked_filter: locked_filter,
+        pinned_filter: pinned_filter,
+        wiki_filter: wiki_filter
+      )
     end
   end
 end

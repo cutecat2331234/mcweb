@@ -9,7 +9,8 @@ module Commerce
 
       render inertia: "Commerce/Compare/Show", props: {
         products: products.map { |product| serialize_compare_product(product) },
-        compareCount: products.size
+        compareCount: products.size,
+        compareMaxItems: Commerce::ToggleCompare.compare_max_items
       }
     end
 

@@ -57,6 +57,7 @@ export interface ProductDetail {
   product_type: string
   category_name: string | null
   in_stock: boolean
+  backorder_available?: boolean
   low_stock: boolean
   purchase_limit: number | null
   image_url: string | null
@@ -171,9 +172,10 @@ const displayPrice = computed(() => selectedVariant.value?.price_label || props.
 
 const canPurchase = computed(() => {
   if (props.product.variants.length > 0) {
-    return selectedVariant.value?.in_stock ?? false
+    if (!selectedVariant.value) return false
+    return selectedVariant.value.in_stock || !!props.product.backorder_available
   }
-  return props.product.in_stock
+  return props.product.in_stock || !!props.product.backorder_available
 })
 
 const showLowStock = computed(() => {
@@ -471,7 +473,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
       <div class="flex justify-between text-sm">
         <span class="text-muted-foreground">库存</span>
         <span :class="showLowStock ? 'text-amber-600' : ''">
-          {{ !canPurchase ? '缺货' : showLowStock ? '库存紧张' : '有货' }}
+          {{ product.backorder_available ? '可预订' : !canPurchase ? '缺货' : showLowStock ? '库存紧张' : '有货' }}
         </span>
       </div>
       <div v-if="selectedVariant?.sku" class="flex justify-between text-sm">

@@ -29,6 +29,14 @@ module Community
         end
       when "no_replies"
         scope.where(replies_count: 0)
+      when "locked"
+        scope.where(locked: true)
+      when "unlocked"
+        scope.where(locked: false)
+      when "pinned"
+        scope.where(pinned: true)
+      when "wiki"
+        scope.where(wiki: true)
       when /\Aprefix:(.+)\z/
         scope.where(prefix: Regexp.last_match(1))
       else
@@ -44,7 +52,11 @@ module Community
         { value: "mine", label: "我的主题" },
         { value: "participated", label: "我参与的" },
         { value: "unread", label: "未读" },
-        { value: "no_replies", label: "零回复" }
+        { value: "no_replies", label: "零回复" },
+        { value: "locked", label: "已锁定" },
+        { value: "unlocked", label: "未锁定" },
+        { value: "pinned", label: "已置顶" },
+        { value: "wiki", label: "Wiki 主题" }
       ]
       prefixes.each do |prefix|
         options << { value: "prefix:#{prefix}", label: "前缀：#{prefix}" }

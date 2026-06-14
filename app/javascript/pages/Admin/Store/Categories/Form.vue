@@ -16,6 +16,8 @@ const props = defineProps<{
     slug: string
     position: number
     description?: string
+    icon?: string
+    color_hex?: string
   }
   submitUrl: string
   method: 'post' | 'patch'
@@ -54,6 +56,16 @@ function submit() {
     <div class="space-y-2">
       <Label for="description">描述（公开分类页展示）</Label>
       <Input id="description" v-model="form.category.description" />
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="space-y-2">
+        <Label for="icon">图标（emoji）</Label>
+        <Input id="icon" v-model="form.category.icon" placeholder="🛍️" />
+      </div>
+      <div class="space-y-2">
+        <Label for="color_hex">颜色（Hex）</Label>
+        <Input id="color_hex" v-model="form.category.color_hex" placeholder="#3b82f6" />
+      </div>
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

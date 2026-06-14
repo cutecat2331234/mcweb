@@ -24,7 +24,8 @@ module Commerce
           first_order_only: coupon.first_order_only?,
           usage_remaining: coupon.usage_limit ? [ coupon.usage_limit - coupon.used_count, 0 ].max : nil,
           per_user_limit: coupon.per_user_limit,
-          max_discount_label: coupon.max_discount_cents.present? && coupon.max_discount_cents.positive? ? format_money(coupon.max_discount_cents) : nil
+          max_discount_label: coupon.max_discount_cents.present? && coupon.max_discount_cents.positive? ? format_money(coupon.max_discount_cents) : nil,
+          description: coupon.description
         },
         code: code,
         loggedIn: logged_in?,

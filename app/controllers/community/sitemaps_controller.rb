@@ -3,7 +3,7 @@
 module Community
   class SitemapsController < ApplicationController
     def index
-      topics = Community::Topic.where(status: :published).order(updated_at: :desc).limit(500)
+      topics = Community::Topic.published_listed.order(updated_at: :desc).limit(500)
       urls = topics.map do |topic|
         <<~XML
           <url>

@@ -15,6 +15,7 @@ const props = defineProps<{
     name: string
     slug: string
     description?: string | null
+    color_hex?: string | null
     rss_url: string
     watching?: boolean
     subscription_url?: string
@@ -49,6 +50,8 @@ function toggleWatch() {
     { label: '论坛', href: routes.forum },
     { label: `标签：${tag.name}`, current: true },
   ]" />
+
+  <div v-if="tag.color_hex" class="mb-4 h-1 w-full max-w-xl rounded-full" :style="{ backgroundColor: tag.color_hex }" />
 
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
     <PageHeader :title="`#${tag.name}`" subtitle="按标签浏览主题" />

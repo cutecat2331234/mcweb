@@ -77,7 +77,8 @@ module Community
       result = Community::ModeratePost.call(
         user: current_user,
         post: @post,
-        action: params[:action_type]
+        action: params[:action_type],
+        staff_notice: params[:staff_notice]
       )
 
       if result.success?

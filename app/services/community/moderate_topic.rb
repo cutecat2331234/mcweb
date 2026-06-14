@@ -14,7 +14,9 @@ module Community
       "enable_wiki" => "此主题已开启 Wiki 模式。",
       "disable_wiki" => "此主题已关闭 Wiki 模式。",
       "global_announcement" => "此主题已设为全站公告。",
-      "remove_global_announcement" => "此主题已取消全站公告。"
+      "remove_global_announcement" => "此主题已取消全站公告。",
+      "unlist" => "此主题已设为未列出（仅链接可访问）。",
+      "list" => "此主题已恢复公开列表显示。"
     }.freeze
 
     def initialize(user:, topic:, action:, lock_reason: nil)
@@ -64,6 +66,10 @@ module Community
         @topic.update!(global_announcement: true)
       when "remove_global_announcement"
         @topic.update!(global_announcement: false)
+      when "unlist"
+        @topic.update!(unlisted: true)
+      when "list"
+        @topic.update!(unlisted: false)
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

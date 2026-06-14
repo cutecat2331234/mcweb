@@ -11,17 +11,18 @@ module Community
       parsed_query = parsed.success? ? parsed.value[:query] : raw_query
       parsed_section = parsed.success? ? parsed.value[:section_slug] : nil
       parsed_author = parsed.success? ? parsed.value[:author] : nil
+      parsed_tag = parsed.success? ? parsed.value[:tag_slug] : nil
 
       query = parsed_query
       section_slug = params[:section].to_s.presence || parsed_section
       author = params[:author].to_s.strip.presence || parsed_author
-      tag_slug = params[:tag].to_s.strip.presence
+      tag_slug = params[:tag].to_s.strip.presence || parsed_tag
       solved_filter = params[:solved].to_s.presence
       topics = Community::Topic.none
       posts = Community::Post.none
 
       if query.present?
-        topics = Community::Topic.where(status: :published)
+        topics = Community::Topic.published_listed
         topics = topics.joins(:section).where(forum_sections: { slug: section_slug }) if section_slug
         topics = topics.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
         topics = topics.joins(:tags).where(forum_tags: { slug: tag_slug }) if tag_slug
@@ -46,7 +47,7 @@ module Community
         topics = filter_blocked_topics(topics)
         topics = preload_topics(topics)
 
-        posts = Community::Post.where(status: :published)
+        posts = Community::Post.where(status: :published).joins(:topic).where(forum_topics: { status: :published, unlisted: false })
         posts = posts.joins(topic: :section).where(forum_sections: { slug: section_slug }) if section_slug
         posts = posts.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
         posts = posts.joins(topic: :tags).where(forum_tags: { slug: tag_slug }) if tag_slug

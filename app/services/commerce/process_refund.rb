@@ -45,6 +45,7 @@ module Commerce
             restore_stock!
             restore_coupon_usage!
             restore_gift_card_balance!
+            Commerce::RevokeIssuedGiftCards.call(order: @order)
           end
           MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_processed", "deliver_now", args: [ refund.id ])
           Commerce::NotifyOrderEvent.call(

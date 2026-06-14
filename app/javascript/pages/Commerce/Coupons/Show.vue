@@ -22,6 +22,7 @@ const props = defineProps<{
     usage_remaining: number | null
     per_user_limit: number | null
     max_discount_label: string | null
+    description?: string | null
   } | null
 }>()
 
@@ -43,6 +44,7 @@ function applyCoupon() {
   <div v-if="coupon" class="max-w-md space-y-4 rounded-lg border p-6">
     <p class="text-2xl font-bold">{{ coupon.discount_label }}</p>
     <p class="text-sm text-muted-foreground">优惠码：<strong>{{ coupon.code }}</strong></p>
+    <p v-if="coupon.description" class="text-sm">{{ coupon.description }}</p>
     <ul class="space-y-1 text-sm text-muted-foreground">
       <li v-if="coupon.min_amount_label">最低消费 {{ coupon.min_amount_label }}</li>
       <li v-if="coupon.ends_at">有效期至 {{ coupon.ends_at }}</li>

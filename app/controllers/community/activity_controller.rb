@@ -47,7 +47,7 @@ module Community
       scope = Community::Post.where(status: :published, user_id: followed_ids)
         .includes(:user, topic: :section)
         .order(created_at: :desc)
-      scope = scope.joins(:topic).where(forum_topics: { status: :published })
+      scope = scope.joins(:topic).where(forum_topics: { status: :published, unlisted: false })
       scope = scope.where.not(forum_topics: { user_id: blocked_user_ids }) if blocked_user_ids.any?
 
       @pagy, posts = pagy(scope, limit: 30)
@@ -60,7 +60,7 @@ module Community
 
     def render_topics_tab(tab)
       sort = params[:sort].presence || "latest"
-      scope = preload_topics(Community::Topic.where(status: :published).joins(:section))
+      scope = preload_topics(Community::Topic.published_listed.joins(:section))
       scope = filter_blocked_topics(scope) if logged_in?
       scope = apply_forum_topic_sort(scope, sort)
       @pagy, topics = pagy(scope, limit: 30)

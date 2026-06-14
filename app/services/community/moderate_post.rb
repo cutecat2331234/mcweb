@@ -2,10 +2,11 @@
 
 module Community
   class ModeratePost < ApplicationService
-    def initialize(user:, post:, action:)
+    def initialize(user:, post:, action:, staff_notice: nil)
       @user = user
       @post = post
       @action = action.to_s
+      @staff_notice = staff_notice.to_s.strip.presence
     end
 
     def call
@@ -22,6 +23,12 @@ module Community
         @post.update!(wiki: true)
       when "disable_wiki"
         @post.update!(wiki: false)
+      when "set_staff_notice"
+        return ServiceResult.failure(error: "员工提示内容不能为空。") if @staff_notice.blank?
+
+        @post.update!(staff_notice: @staff_notice)
+      when "clear_staff_notice"
+        @post.update!(staff_notice: nil)
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

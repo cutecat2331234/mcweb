@@ -24,7 +24,9 @@ module Commerce
         category: {
           slug: category.slug,
           name: category.name,
-          description: category.description
+          description: category.description,
+          icon: category.icon,
+          color_hex: category.color_hex
         },
         products: products.map { |product| serialize_product_list_item(product) },
         pagination: pagy_props(@pagy),

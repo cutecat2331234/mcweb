@@ -748,3 +748,16 @@ app/
 | 优惠券最低消费 UI | 结账预览 `min_amount_label` / `amount_remaining_label` |
 | 商品 SKU 公开展示 | `Products/Show.vue` 变体 SKU |
 | 礼品卡来源订单项 | `store_gift_cards.source_order_item_id` |
+
+### 第四十一轮（未列出主题、标签颜色与礼品卡退款撤销）
+
+| 功能 | 实现 |
+|------|------|
+| 未列出主题（Discourse unlisted） | `forum_topics.unlisted` + `published_listed` 作用域 + 版控切换 |
+| 标签颜色（XenForo） | `forum_tags.color_hex` + 管理端 + 标签页展示 |
+| 搜索 tag: 语法 | `ParseSearchQuery` 解析 `tag:标识` |
+| 帖子员工提示（XenForo notice） | `forum_posts.staff_notice` + 版控设置/清除 |
+| 定时关闭/置顶小操作帖 | `CloseScheduledTopic` / `UnpinExpiredTopicsJob` + `SystemActor` |
+| 退款撤销已发礼品卡 | `RevokeIssuedGiftCards` + `ProcessRefund` 联动 |
+| 商城分类图标与颜色 | `store_categories.icon` / `color_hex` |
+| 优惠券公开说明 | `store_coupons.description` + 详情页展示 |

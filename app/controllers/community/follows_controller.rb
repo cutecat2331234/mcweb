@@ -18,7 +18,7 @@ module Community
       users = follows.reject { |follow| blocked_user_ids.include?(follow.followed_id) }
       @pagy_users, paged_users = pagy_array(users, limit: 20, page_param: :users_page)
 
-      topics_scope = preload_topics(Community::Topic.where(user_id: followed_ids, status: :published))
+      topics_scope = preload_topics(Community::Topic.where(user_id: followed_ids, status: :published, unlisted: false))
       topics_scope = filter_blocked_topics(topics_scope)
       topics_scope = apply_forum_topic_sort(topics_scope, sort)
       @pagy_topics, topics = pagy(topics_scope, limit: 20, page_param: :topics_page)

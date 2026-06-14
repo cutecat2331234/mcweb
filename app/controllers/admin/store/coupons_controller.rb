@@ -84,7 +84,7 @@ module Admin
         params.require(:coupon).permit(
           :code, :discount_type, :discount_value, :min_amount_cents,
           :usage_limit, :active, :starts_at, :ends_at,
-          :per_user_limit, :first_order_only, :max_discount_cents,
+          :per_user_limit, :first_order_only, :max_discount_cents, :description,
           product_ids: [], category_ids: []
         )
       end
@@ -106,7 +106,8 @@ module Admin
             starts_at: coupon.starts_at&.strftime("%Y-%m-%dT%H:%M"),
             ends_at: coupon.ends_at&.strftime("%Y-%m-%dT%H:%M"),
             product_ids: coupon.restricted_product_ids,
-            category_ids: coupon.restricted_category_ids
+            category_ids: coupon.restricted_category_ids,
+            description: coupon.description || ""
           },
           products: ::Commerce::Product.order(:name).pluck(:id, :name).map { |id, name| { id: id, name: name } },
           categories: ::Commerce::Category.ordered.pluck(:id, :name).map { |id, name| { id: id, name: name } },

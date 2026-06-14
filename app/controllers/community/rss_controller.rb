@@ -3,19 +3,19 @@
 module Community
   class RssController < ApplicationController
     def latest
-      topics = Community::Topic.where(status: :published).sorted("activity").limit(30)
+      topics = Community::Topic.published_listed.sorted("activity").limit(30)
       render xml: build_feed(topics, title: "Mcweb 论坛最新", url: forum_latest_url), content_type: "application/rss+xml"
     end
 
     def section
       section = Community::Section.find_by!(slug: params[:id])
-      topics = section.topics.where(status: :published).sorted("activity").limit(30)
+      topics = section.topics.published_listed.sorted("activity").limit(30)
       render xml: build_feed(topics, title: "#{section.name} - Mcweb 论坛", url: forum_section_url(section)), content_type: "application/rss+xml"
     end
 
     def tag
       tag = Community::Tag.find_by!(slug: params[:slug])
-      topic_ids = tag.topics.where(status: :published).pluck(:id)
+      topic_ids = tag.topics.published_listed.pluck(:id)
       topics = Community::Topic.where(id: topic_ids).sorted("activity").limit(30)
       render xml: build_feed(topics, title: "标签 #{tag.name} - Mcweb 论坛", url: forum_tag_url(tag.slug)), content_type: "application/rss+xml"
     end

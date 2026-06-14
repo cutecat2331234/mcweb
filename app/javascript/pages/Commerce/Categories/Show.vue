@@ -11,7 +11,7 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  category: { slug: string; name: string; description?: string | null }
+  category: { slug: string; name: string; description?: string | null; icon?: string | null; color_hex?: string | null }
   products: Array<{
     public_id: string
     name: string
@@ -44,7 +44,8 @@ function applyFilter(key: 'in_stock' | 'on_sale', value: boolean) {
     { label: category.name, current: true },
   ]" />
 
-  <PageHeader :title="category.name" :subtitle="category.description || '分类商品'" />
+  <PageHeader :title="`${category.icon ? category.icon + ' ' : ''}${category.name}`" :subtitle="category.description || '分类商品'" />
+  <div v-if="category.color_hex" class="mb-4 h-1 w-full max-w-xl rounded-full" :style="{ backgroundColor: category.color_hex }" />
 
   <div class="mb-4 flex flex-wrap gap-2">
     <Button type="button" size="sm" :variant="filters.in_stock ? 'default' : 'outline'" @click="applyFilter('in_stock', !filters.in_stock)">

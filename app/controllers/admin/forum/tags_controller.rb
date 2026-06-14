@@ -68,7 +68,7 @@ module Admin
       end
 
       def tag_params
-        params.require(:tag).permit(:name, :slug, :description, :staff_only)
+        params.require(:tag).permit(:name, :slug, :description, :staff_only, :color_hex)
       end
 
       def form_props(tag)
@@ -79,7 +79,8 @@ module Admin
             name: tag.name || "",
             slug: tag.slug || "",
             description: tag.description || "",
-            staff_only: tag.staff_only || false
+            staff_only: tag.staff_only || false,
+            color_hex: tag.color_hex || ""
           },
           submitUrl: tag.persisted? ? admin_forum_tag_path(tag) : admin_forum_tags_path,
           method: tag.persisted? ? "patch" : "post",

@@ -20,6 +20,7 @@ module Community
             name: tag.name,
             slug: tag.slug,
             topics_count: tag.topics_count.to_i,
+            color_hex: tag.color_hex,
             url: forum_tag_path(tag.slug)
           }
         end
@@ -29,7 +30,7 @@ module Community
     def show
       tag = Community::Tag.usable_by(current_user).find_by!(slug: params[:slug])
       sort = params[:sort].to_s.presence || "activity"
-      topic_ids = tag.topics.where(status: :published).pluck(:id)
+      topic_ids = tag.topics.published_listed.pluck(:id)
       scope = preload_topics(Community::Topic.where(id: topic_ids).sorted(sort))
       scope = filter_blocked_topics(scope)
       @pagy, topics = pagy(scope, limit: 20)
@@ -47,6 +48,7 @@ module Community
           name: tag.name,
           slug: tag.slug,
           description: tag.description,
+          color_hex: tag.color_hex,
           rss_url: forum_tag_rss_path(tag.slug),
           watching: watching,
           subscription_url: forum_tag_subscription_path(tag.slug)

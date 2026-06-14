@@ -11,7 +11,7 @@ defineOptions({ layout: AdminLayout })
 
 const props = defineProps<{
   title: string
-  tag: { id?: number; name: string; slug: string; description: string; staff_only: boolean }
+  tag: { id?: number; name: string; slug: string; description: string; staff_only: boolean; color_hex: string }
   submitUrl: string
   method: 'post' | 'patch'
   backUrl: string
@@ -39,6 +39,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="description">描述</Label>
       <Textarea id="description" v-model="form.tag.description" rows="3" />
+    </div>
+    <div class="space-y-2">
+      <Label for="color_hex">颜色（Hex）</Label>
+      <Input id="color_hex" v-model="form.tag.color_hex" placeholder="#22c55e" />
     </div>
     <label class="flex items-center gap-2 text-sm">
       <input v-model="form.tag.staff_only" type="checkbox" />

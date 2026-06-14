@@ -54,6 +54,7 @@ export interface PostItem {
   deleted?: boolean
   small_action?: boolean
   wiki?: boolean
+  staff_notice?: string | null
   restore_url?: string | null
   report_url: string | null
   raw_url?: string
@@ -123,6 +124,7 @@ const props = defineProps<{
     can_edit: boolean
     featured: boolean
     wiki: boolean
+    unlisted?: boolean
     slow_mode_seconds: number | null
     auto_close_at?: string | null
     solved_post_id: number | null
@@ -393,7 +395,8 @@ function toggleReaction(post: PostItem, emoji: string) {
 
 const staffNoteBody = ref('')
 const replyBanUsername = ref('')
-const inviteUsername = ref('')
+const staffNoticePostId = ref<number | null>(null)
+const staffNoticeText = ref('')
 const replyBanReason = ref('')
 
 function watchLabel() {
@@ -494,8 +497,15 @@ function isPostExpanded(post: PostItem) {
   return !post.body_long || expandedPosts.value[post.id]
 }
 
-function moderatePost(post: PostItem, action: string) {
-  router.post(`/forum/posts/${post.id}/moderate`, { action_type: action }, { preserveScroll: true })
+function moderatePost(post: PostItem, action: string, extra: Record<string, string> = {}) {
+  router.post(`/forum/posts/${post.id}/moderate`, { action_type: action, ...extra }, { preserveScroll: true })
+}
+
+function saveStaffNotice(post: PostItem) {
+  if (!staffNoticeText.value.trim()) return
+  moderatePost(post, 'set_staff_notice', { staff_notice: staffNoticeText.value.trim() })
+  staffNoticePostId.value = null
+  staffNoticeText.value = ''
 }
 
 function moveTopic() {
@@ -702,6 +712,9 @@ function pollPercent(votes: number) {
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.global_announcement ? 'remove_global_announcement' : 'global_announcement')">
           {{ topic.global_announcement ? '取消全站公告' : '设为全站公告' }}
         </Button>
+        <Button type="button" variant="outline" size="sm" @click="moderate(topic.unlisted ? 'list' : 'unlist')">
+          {{ topic.unlisted ? '恢复列表显示' : '设为未列出' }}
+        </Button>
       </template>
     </div>
   </div>
@@ -885,6 +898,10 @@ function pollPercent(votes: number) {
     慢速模式：同一用户需间隔 {{ topic.slow_mode_seconds }} 秒才能再次回复。
   </template>
   </p>
+  <p v-if="topic.unlisted" class="mb-4 rounded-md border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+    此主题为未列出状态，不会出现在公开列表中，但持有链接的用户仍可访问。
+  </p>
+
   <p v-if="topic.auto_close_at" class="mb-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
     将于 {{ topic.auto_close_at }} 自动关闭。
   </p>
@@ -1008,13 +1025,29 @@ function pollPercent(votes: number) {
               <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
                 {{ post.hidden ? '显示' : '隐藏' }}
               </button>
+              <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="staffNoticePostId = post.id; staffNoticeText = post.staff_notice || ''">
+                员工提示
+              </button>
               <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.wiki ? 'disable_wiki' : 'enable_wiki')">
                 {{ post.wiki ? '关闭 Wiki' : 'Wiki 帖' }}
               </button>
+              <button v-if="post.can_moderate && post.staff_notice" type="button" class="text-xs hover:underline" @click="moderatePost(post, 'clear_staff_notice')">清除提示</button>
               <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">编辑</button>
               <button v-if="post.can_delete && !post.deleted" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">删除</button>
               <button v-if="post.restore_url" type="button" class="text-xs text-green-600 hover:underline" @click="restorePost(post)">恢复</button>
             </div>
+          </div>
+
+          <div v-if="staffNoticePostId === post.id" class="mb-3 space-y-2 rounded border bg-muted/30 p-3">
+            <textarea v-model="staffNoticeText" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="员工提示（所有人可见）" />
+            <div class="flex gap-2">
+              <Button type="button" size="sm" @click="saveStaffNotice(post)">保存提示</Button>
+              <Button type="button" size="sm" variant="outline" @click="staffNoticePostId = null">取消</Button>
+            </div>
+          </div>
+
+          <div v-if="post.staff_notice" class="mb-3 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+            {{ post.staff_notice }}
           </div>
 
           <blockquote v-if="post.quoted_post" class="mb-3 mt-2 border-l-2 border-muted pl-3 text-sm text-muted-foreground">

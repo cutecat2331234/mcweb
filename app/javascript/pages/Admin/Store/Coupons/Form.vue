@@ -24,6 +24,7 @@ const props = defineProps<{
     starts_at: string | null
     product_ids?: number[]
     category_ids?: number[]
+    description?: string
   }
   products?: Array<{ id: number; name: string }>
   categories?: Array<{ id: number; name: string }>
@@ -67,6 +68,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="min_amount_cents">最低消费（分）</Label>
       <Input id="min_amount_cents" v-model.number="form.coupon.min_amount_cents" type="number" min="0" />
+    </div>
+    <div class="space-y-2">
+      <Label for="description">公开说明（优惠券详情页展示）</Label>
+      <Input id="description" v-model="form.coupon.description" />
     </div>
     <div class="space-y-2">
       <Label for="usage_limit">使用上限（空=无限）</Label>

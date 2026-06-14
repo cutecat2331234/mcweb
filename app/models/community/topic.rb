@@ -28,7 +28,13 @@ module Community
 
     scope :pinned_first, -> { order(pinned: :desc, last_posted_at: :desc) }
     scope :recent, -> { order(last_posted_at: :desc) }
-    scope :featured_topics, -> { where(featured: true, status: :published) }
+    scope :featured_topics, -> { where(featured: true, status: :published, unlisted: false) }
+    scope :listed, -> { where(unlisted: false) }
+    scope :published_listed, -> { where(status: :published, unlisted: false) }
+
+    def unlisted?
+      unlisted == true
+    end
 
     def self.sorted(sort)
       case sort.to_s
@@ -72,7 +78,7 @@ module Community
       return Community::Topic.none if tag_ids.empty?
 
       Community::Topic
-        .where(status: :published)
+        .where(status: :published, unlisted: false)
         .where.not(id: id)
         .joins(:tags)
         .where(forum_tags: { id: tag_ids })
@@ -88,7 +94,7 @@ module Community
       remaining = limit - results.size
       exclude_ids = [ id ] + results.map(&:id)
       section_topics = Community::Topic
-        .where(status: :published, forum_section_id: forum_section_id)
+        .where(status: :published, unlisted: false, forum_section_id: forum_section_id)
         .where.not(id: exclude_ids)
         .order(last_posted_at: :desc)
         .limit(remaining)

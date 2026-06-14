@@ -34,7 +34,9 @@ module Admin
           fields: [
             { label: "标识", value: @category.slug },
             { label: "排序", value: @category.position.to_s },
-            { label: "描述", value: @category.description.presence || "—" }
+            { label: "描述", value: @category.description.presence || "—" },
+            { label: "图标", value: @category.icon.presence || "—" },
+            { label: "颜色", value: @category.color_hex.presence || "—" }
           ],
           backUrl: admin_store_categories_path,
           actions: [{ label: "编辑", href: edit_admin_store_category_path(@category) }]
@@ -78,7 +80,7 @@ module Admin
       end
 
       def category_params
-        params.require(:category).permit(:name, :slug, :position, :description)
+        params.require(:category).permit(:name, :slug, :position, :description, :icon, :color_hex)
       end
 
       def form_props(category)
@@ -89,7 +91,9 @@ module Admin
             name: category.name || "",
             slug: category.slug || "",
             position: category.position || 0,
-            description: category.description || ""
+            description: category.description || "",
+            icon: category.icon || "",
+            color_hex: category.color_hex || ""
           },
           submitUrl: category.persisted? ? admin_store_category_path(category) : admin_store_categories_path,
           method: category.persisted? ? "patch" : "post",

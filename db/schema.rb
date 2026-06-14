@@ -211,6 +211,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.bigint "parent_post_id"
     t.string "post_type", default: "regular", null: false
     t.bigint "quoted_post_id"
+    t.text "staff_notice"
     t.string "status", default: "published", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
@@ -332,6 +333,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_tags", force: :cascade do |t|
+    t.string "color_hex"
     t.datetime "created_at", null: false
     t.text "description"
     t.string "name", null: false
@@ -419,6 +421,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.bigint "solved_post_id"
     t.string "status", default: "published", null: false
     t.string "title", null: false
+    t.boolean "unlisted", default: false, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.integer "views_count", default: 0, null: false
@@ -756,8 +759,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "store_categories", force: :cascade do |t|
+    t.string "color_hex"
     t.datetime "created_at", null: false
     t.text "description"
+    t.string "icon"
     t.string "name", null: false
     t.integer "position", default: 0, null: false
     t.string "slug", null: false
@@ -770,6 +775,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.jsonb "category_ids", default: [], null: false
     t.string "code", null: false
     t.datetime "created_at", null: false
+    t.text "description"
     t.string "discount_type", null: false
     t.integer "discount_value", null: false
     t.datetime "ends_at"

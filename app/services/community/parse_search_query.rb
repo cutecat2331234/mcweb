@@ -3,6 +3,7 @@
 module Community
   class ParseSearchQuery < ApplicationService
     IN_PATTERN = /\bin:(\S+)/i
+    TAG_PATTERN = /\btag:(\S+)/i
     AUTHOR_AT_PATTERN = /\B@([a-zA-Z0-9_]+)/
     AUTHOR_COLON_PATTERN = /\bauthor:([a-zA-Z0-9_]+)/i
 
@@ -12,11 +13,17 @@ module Community
 
     def call
       section_slug = nil
+      tag_slug = nil
       author = nil
       text = @query.dup
 
       if (match = text.match(IN_PATTERN))
         section_slug = match[1]
+        text = text.gsub(match[0], "").strip
+      end
+
+      if (match = text.match(TAG_PATTERN))
+        tag_slug = match[1]
         text = text.gsub(match[0], "").strip
       end
 
@@ -28,7 +35,7 @@ module Community
         text = text.gsub(match[0], "").strip
       end
 
-      ServiceResult.success(query: text.squish, section_slug: section_slug, author: author)
+      ServiceResult.success(query: text.squish, section_slug: section_slug, tag_slug: tag_slug, author: author)
     end
   end
 end

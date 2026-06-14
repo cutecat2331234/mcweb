@@ -4,6 +4,13 @@ module Community
   class ReportsController < ApplicationController
     before_action :require_login
 
+    def new
+      render inertia: "Community/Reports/New", props: {
+        reportableType: params[:reportable_type].to_s,
+        reportableId: params[:reportable_id].to_s
+      }
+    end
+
     def create
       reportable = find_reportable
       return redirect_back fallback_location: root_path, alert: "Content not found." unless reportable
@@ -23,13 +30,19 @@ module Community
 
       redirect_back fallback_location: root_path, notice: "Report submitted."
     rescue ActiveRecord::RecordInvalid => e
-      redirect_back fallback_location: root_path, alert: e.record.errors.full_messages.to_sentence
+      render inertia: "Community/Reports/New",
+             props: {
+               reportableType: report_params[:reportable_type],
+               reportableId: report_params[:reportable_id]
+             },
+             status: :unprocessable_entity,
+             errors: { reason: e.record.errors.full_messages.to_sentence }
     end
 
     private
 
     def report_params
-      params.expect(report: %i[reportable_type reportable_id reason])[:report]
+      params.require(:report).permit(:reportable_type, :reportable_id, :reason)
     end
 
     def find_reportable

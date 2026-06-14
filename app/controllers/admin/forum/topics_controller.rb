@@ -7,11 +7,50 @@ module Admin
       before_action :set_topic, only: %i[show edit update destroy]
 
       def index
-        @topics = ::Community::Topic.order(last_posted_at: :desc).limit(50)
+        topics = ::Community::Topic.order(last_posted_at: :desc).limit(50)
+
+        render inertia: "Admin/Generic/Index", props: {
+          title: "论坛主题",
+          columns: [
+            admin_column(:title, "标题", link: true),
+            admin_column(:author, "作者"),
+            admin_column(:status, "状态"),
+            admin_column(:replies, "回复")
+          ],
+          rows: topics.map do |topic|
+            admin_row(
+              title: topic.title,
+              author: topic.user&.username,
+              status: topic.status,
+              replies: topic.replies_count,
+              url: admin_forum_topic_path(topic)
+            )
+          end
+        }
       end
 
       def show
-        @posts = @topic.posts.chronological.includes(:user)
+        posts = @topic.posts.chronological.includes(:user)
+
+        render inertia: "Admin/Generic/Show", props: {
+          title: @topic.title,
+          subtitle: @topic.user&.username,
+          fields: [
+            { label: "状态", value: @topic.status },
+            { label: "置顶", value: @topic.pinned? ? "是" : "否" },
+            { label: "锁定", value: @topic.locked? ? "是" : "否" },
+            { label: "回复数", value: @topic.replies_count.to_s }
+          ],
+          sections: [
+            {
+              title: "帖子",
+              items: posts.map do |post|
+                { label: "##{post.floor_number} #{post.user.username}", value: post.body.truncate(120) }
+              end
+            }
+          ],
+          backUrl: admin_forum_topics_path
+        }
       end
 
       def edit

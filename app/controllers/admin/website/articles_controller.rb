@@ -7,10 +7,40 @@ module Admin
       before_action :set_article, only: %i[show edit update destroy]
 
       def index
-        @articles = ::Website::Article.order(updated_at: :desc)
+        articles = ::Website::Article.order(updated_at: :desc)
+
+        render inertia: "Admin/Generic/Index", props: {
+          title: "官网文章",
+          columns: [
+            admin_column(:title, "标题", link: true),
+            admin_column(:type, "类型"),
+            admin_column(:status, "状态"),
+            admin_column(:published, "发布")
+          ],
+          rows: articles.map do |article|
+            admin_row(
+              title: article.title,
+              type: article.article_type,
+              status: article.status,
+              published: article.published_at ? l(article.published_at, format: :short) : "—",
+              url: admin_website_article_path(article)
+            )
+          end
+        }
       end
 
       def show
+        render inertia: "Admin/Generic/Show", props: {
+          title: @article.title,
+          subtitle: @article.slug,
+          fields: [
+            { label: "类型", value: @article.article_type },
+            { label: "状态", value: @article.status },
+            { label: "摘要", value: @article.summary || "—" },
+            { label: "发布时间", value: @article.published_at ? l(@article.published_at, format: :long) : "—" }
+          ],
+          backUrl: admin_website_articles_path
+        }
       end
 
       def new
@@ -19,7 +49,6 @@ module Admin
 
       def create
         @article = ::Website::Article.new(article_params)
-        @article.author = current_user
 
         if @article.save
           redirect_to admin_website_article_path(@article), notice: "Article created."
@@ -51,7 +80,7 @@ module Admin
       end
 
       def article_params
-        params.expect(article: %i[title slug article_type status body excerpt seo translations])[:article]
+        params.expect(article: %i[title slug article_type status summary published_at scheduled_at seo translations])[:article]
       end
     end
   end

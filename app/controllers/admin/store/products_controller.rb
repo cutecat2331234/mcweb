@@ -7,10 +7,41 @@ module Admin
       before_action :set_product, only: %i[show edit update destroy]
 
       def index
-        @products = ::Commerce::Product.order(:name)
+        products = ::Commerce::Product.order(:name)
+
+        render inertia: "Admin/Generic/Index", props: {
+          title: "商品",
+          columns: [
+            admin_column(:name, "名称", link: true),
+            admin_column(:slug, "标识"),
+            admin_column(:status, "状态"),
+            admin_column(:price, "价格")
+          ],
+          rows: products.map do |product|
+            admin_row(
+              name: product.name,
+              slug: product.slug,
+              status: product.status,
+              price: format_price(product),
+              url: admin_store_product_path(product)
+            )
+          end
+        }
       end
 
       def show
+        render inertia: "Admin/Generic/Show", props: {
+          title: @product.name,
+          subtitle: @product.slug,
+          fields: [
+            { label: "类型", value: @product.product_type },
+            { label: "状态", value: @product.status },
+            { label: "价格", value: format_price(@product) },
+            { label: "库存", value: @product.stock.nil? ? "无限" : @product.stock.to_s },
+            { label: "描述", value: @product.description || "—" }
+          ],
+          backUrl: admin_store_products_path
+        }
       end
 
       def new

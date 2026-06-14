@@ -6,15 +6,22 @@ module Commerce
     before_action :set_order, only: %i[show]
 
     def index
-      @orders = Commerce::Order.where(user: current_user).includes(:items).recent
+      orders = Commerce::Order.where(user: current_user).includes(:items).recent
+
+      render inertia: "Commerce/Orders/Index", props: {
+        orders: orders.map { |order| serialize_order_list_item(order) }
+      }
     end
 
     def show
+      render inertia: "Commerce/Orders/Show", props: {
+        order: serialize_order_detail(@order)
+      }
     end
 
     def new
-      @cart = Commerce::Cart.find_by(user: current_user)
-      redirect_to store_cart_path, alert: "Your cart is empty." if @cart.nil? || @cart.empty?
+      cart = Commerce::Cart.find_by(user: current_user)
+      redirect_to store_cart_path, alert: "Your cart is empty." if cart.nil? || cart.empty?
     end
 
     def create

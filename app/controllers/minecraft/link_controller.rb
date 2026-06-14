@@ -5,6 +5,7 @@ module Minecraft
     before_action :require_login
 
     def show
+      render inertia: "Minecraft/Link/Show"
     end
 
     def create
@@ -16,15 +17,16 @@ module Minecraft
       if result.success?
         redirect_to root_path, notice: "Minecraft account linked successfully."
       else
-        flash.now[:alert] = service_error_message(result)
-        render :show, status: :unprocessable_entity
+        render inertia: "Minecraft/Link/Show",
+               status: :unprocessable_entity,
+               errors: { base: service_error_message(result) }
       end
     end
 
     private
 
     def link_params
-      params.expect(link: %i[code])[:link]
+      params.require(:link).permit(:code)
     end
   end
 end

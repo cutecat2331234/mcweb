@@ -5,7 +5,13 @@ module Commerce
     before_action :set_cart
 
     def show
-      @cart_items = @cart.items.includes(:product, :variant)
+      items = @cart.items.includes(:product, :variant)
+
+      render inertia: "Commerce/Carts/Show", props: {
+        items: items.map { |item| serialize_cart_item(item) },
+        subtotalLabel: format_money(@cart.subtotal_cents, items.first&.product&.currency || "CNY"),
+        loggedIn: logged_in?
+      }
     end
 
     def update

@@ -6,10 +6,44 @@ module Admin
     before_action :set_role, only: %i[show edit update destroy]
 
     def index
-      @roles = Role.includes(:permissions).order(:name)
+      roles = Role.includes(:permissions).order(:name)
+
+      render inertia: "Admin/Generic/Index", props: {
+        title: "角色",
+        columns: [
+          admin_column(:name, "名称", link: true),
+          admin_column(:key, "标识"),
+          admin_column(:permissions, "权限数")
+        ],
+        rows: roles.map do |role|
+          admin_row(
+            name: role.name,
+            key: role.key,
+            permissions: role.permissions.size,
+            url: admin_role_path(role)
+          )
+        end
+      }
     end
 
     def show
+      render inertia: "Admin/Generic/Show", props: {
+        title: @role.name,
+        subtitle: @role.description,
+        fields: [
+          { label: "标识", value: @role.key },
+          { label: "系统角色", value: @role.system_role? ? "是" : "否" }
+        ],
+        sections: [
+          {
+            title: "权限",
+            items: @role.permissions.order(:key).map do |permission|
+              { label: permission.key, value: permission.name }
+            end
+          }
+        ],
+        backUrl: admin_roles_path
+      }
     end
 
     def new

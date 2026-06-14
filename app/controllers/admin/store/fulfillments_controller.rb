@@ -7,10 +7,40 @@ module Admin
       before_action :set_fulfillment, only: %i[show update]
 
       def index
-        @fulfillments = ::Commerce::Fulfillment.order(created_at: :desc).limit(50)
+        fulfillments = ::Commerce::Fulfillment.order(created_at: :desc).limit(50)
+
+        render inertia: "Admin/Generic/Index", props: {
+          title: "发货记录",
+          columns: [
+            admin_column(:delivery_id, "Delivery ID", link: true),
+            admin_column(:status, "状态"),
+            admin_column(:order, "订单"),
+            admin_column(:product, "商品")
+          ],
+          rows: fulfillments.map do |fulfillment|
+            admin_row(
+              delivery_id: fulfillment.delivery_id,
+              status: fulfillment.status,
+              order: fulfillment.order.order_number,
+              product: fulfillment.order_item.product_name,
+              url: admin_store_fulfillment_path(fulfillment)
+            )
+          end
+        }
       end
 
       def show
+        render inertia: "Admin/Store/Fulfillments/Show", props: {
+          fulfillment: {
+            id: @fulfillment.id,
+            delivery_id: @fulfillment.delivery_id,
+            status: @fulfillment.status,
+            order_number: @fulfillment.order.order_number,
+            product_name: @fulfillment.order_item.product_name,
+            attempts_count: @fulfillment.attempts_count,
+            last_error: @fulfillment.last_error
+          }
+        }
       end
 
       def update

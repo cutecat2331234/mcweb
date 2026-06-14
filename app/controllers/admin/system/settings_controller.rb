@@ -6,7 +6,16 @@ module Admin
       before_action -> { require_permission("system.settings.manage") }
 
       def show
-        @settings = SiteSetting.order(:key)
+        settings = SiteSetting.order(:key)
+
+        render inertia: "Admin/System/Settings/Show", props: {
+          settings: settings.map do |setting|
+            {
+              key: setting.key,
+              value: setting.value.is_a?(String) ? setting.value : setting.value.to_json
+            }
+          end
+        }
       end
 
       def update

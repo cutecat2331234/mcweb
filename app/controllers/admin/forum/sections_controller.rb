@@ -7,10 +7,37 @@ module Admin
       before_action :set_section, only: %i[show edit update destroy]
 
       def index
-        @sections = ::Community::Section.ordered.includes(:category)
+        sections = ::Community::Section.ordered.includes(:category)
+
+        render inertia: "Admin/Generic/Index", props: {
+          title: "论坛板块",
+          columns: [
+            admin_column(:name, "名称", link: true),
+            admin_column(:slug, "标识"),
+            admin_column(:category, "分类")
+          ],
+          rows: sections.map do |section|
+            admin_row(
+              name: section.name,
+              slug: section.slug,
+              category: section.category&.name,
+              url: admin_forum_section_path(section)
+            )
+          end
+        }
       end
 
       def show
+        render inertia: "Admin/Generic/Show", props: {
+          title: @section.name,
+          subtitle: @section.slug,
+          fields: [
+            { label: "分类", value: @section.category&.name || "—" },
+            { label: "描述", value: @section.description || "—" },
+            { label: "排序", value: @section.position.to_s }
+          ],
+          backUrl: admin_forum_sections_path
+        }
       end
 
       def new

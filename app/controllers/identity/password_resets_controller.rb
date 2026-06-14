@@ -6,6 +6,7 @@ module Identity
     before_action :redirect_if_logged_in, only: %i[new create]
 
     def new
+      render inertia: "Identity/PasswordResets/New"
     end
 
     def create
@@ -14,12 +15,14 @@ module Identity
       if result.success?
         redirect_to identity_sign_in_path, notice: "If the email exists, a reset link has been sent."
       else
-        flash.now[:alert] = service_error_message(result)
-        render :new, status: :unprocessable_entity
+        render inertia: "Identity/PasswordResets/New",
+               status: :unprocessable_entity,
+               errors: { base: service_error_message(result) }
       end
     end
 
     def edit
+      render inertia: "Identity/PasswordResets/Edit", props: { token: params[:token] }
     end
 
     def update
@@ -31,15 +34,17 @@ module Identity
       if result.success?
         redirect_to identity_sign_in_path, notice: "Password has been reset. You can now sign in."
       else
-        flash.now[:alert] = service_error_message(result)
-        render :edit, status: :unprocessable_entity
+        render inertia: "Identity/PasswordResets/Edit",
+               props: { token: params[:token] },
+               status: :unprocessable_entity,
+               errors: { base: service_error_message(result) }
       end
     end
 
     private
 
     def password_reset_params
-      params.expect(password_reset: %i[email password password_confirmation])[:password_reset]
+      params.require(:password_reset).permit(:email, :password, :password_confirmation)
     end
 
     def redirect_if_logged_in

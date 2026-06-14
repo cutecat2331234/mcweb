@@ -12,11 +12,23 @@ module Community
 
     def show
       @topic.record_view!
-      @posts = @topic.posts.chronological.includes(:user)
+      posts = @topic.posts.chronological.includes(:user)
+
+      render inertia: "Community/Topics/Show", props: {
+        topic: serialize_topic_detail(@topic),
+        posts: posts.map { |post| serialize_post(post) },
+        canReply: logged_in? && !@topic.locked?
+      }
     end
 
     def new
-      @topic = @section.topics.build
+      render inertia: "Community/Topics/New", props: {
+        section: {
+          name: @section.name,
+          slug: @section.slug,
+          url: forum_section_path(@section)
+        }
+      }
     end
 
     def create
@@ -30,9 +42,16 @@ module Community
       if result.success?
         redirect_to forum_topic_path(result.value), notice: "Topic created."
       else
-        @topic = @section.topics.build(topic_params)
-        flash.now[:alert] = service_error_message(result)
-        render :new, status: :unprocessable_entity
+        render inertia: "Community/Topics/New",
+               props: {
+                 section: {
+                   name: @section.name,
+                   slug: @section.slug,
+                   url: forum_section_path(@section)
+                 }
+               },
+               status: :unprocessable_entity,
+               errors: { title: service_error_message(result) }
       end
     end
 
@@ -57,7 +76,7 @@ module Community
     end
 
     def set_topic
-      @topic = Community::Topic.find_by!(public_id: params[:id])
+      @topic = Community::Topic.includes(:section, :user).find_by!(public_id: params[:id])
     end
 
     def topic_params

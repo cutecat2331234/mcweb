@@ -5,8 +5,22 @@ module Commerce
     before_action :require_login
 
     def show
-      @cart = Commerce::Cart.find_by(user: current_user)
-      @cart_items = @cart&.items&.includes(:product, :variant) || []
+      cart = Commerce::Cart.find_by(user: current_user)
+      items = cart&.items&.includes(:product, :variant) || []
+      providers = Payments::ProviderConfig.enabled_providers.map { |config| serialize_checkout_provider(config) }
+
+      render inertia: "Commerce/Checkout/Show", props: {
+        items: items.map { |item|
+          {
+            product_name: item.product.name,
+            quantity: item.quantity,
+            total_label: format_money(item.total_cents, item.product.currency)
+          }
+        },
+        subtotalLabel: format_money(cart&.subtotal_cents.to_i, items.first&.product&.currency || "CNY"),
+        providers: providers,
+        defaultProvider: providers.first&.dig(:value)
+      }
     end
 
     def create

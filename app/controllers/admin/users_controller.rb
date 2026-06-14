@@ -6,10 +6,41 @@ module Admin
     before_action :set_user, only: %i[show edit update destroy]
 
     def index
-      @users = User.order(created_at: :desc)
+      users = User.order(created_at: :desc)
+
+      render inertia: "Admin/Generic/Index", props: {
+        title: "用户",
+        columns: [
+          admin_column(:username, "用户名", link: true),
+          admin_column(:email, "邮箱"),
+          admin_column(:status, "状态"),
+          admin_column(:joined, "注册时间")
+        ],
+        rows: users.map do |user|
+          admin_row(
+            username: user.username,
+            email: user.email,
+            status: user.status,
+            joined: l(user.created_at, format: :short),
+            url: admin_user_path(user)
+          )
+        end
+      }
     end
 
     def show
+      render inertia: "Admin/Generic/Show", props: {
+        title: @user.display_name.presence || @user.username,
+        subtitle: @user.email,
+        fields: [
+          { label: "用户名", value: @user.username },
+          { label: "状态", value: @user.status },
+          { label: "角色", value: @user.roles.pluck(:name).join(", ").presence || "—" },
+          { label: "邮箱已验证", value: @user.email_verified? ? "是" : "否" },
+          { label: "注册时间", value: l(@user.created_at, format: :long) }
+        ],
+        backUrl: admin_users_path
+      }
     end
 
     def edit

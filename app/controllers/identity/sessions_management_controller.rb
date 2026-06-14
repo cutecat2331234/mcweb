@@ -5,7 +5,11 @@ module Identity
     before_action :require_login
 
     def index
-      @sessions = current_user.sessions.active.order(last_active_at: :desc)
+      sessions = current_user.sessions.active.order(last_active_at: :desc)
+
+      render inertia: "Identity/SessionsManagement/Index", props: {
+        sessions: sessions.map { |session| serialize_session_record(session) }
+      }
     end
 
     def destroy

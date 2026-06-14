@@ -12,5 +12,6 @@ class TechFingerprintTest < ActionDispatch::IntegrationTest
     assert_match(/Ruby on Rails/, response.body)
     assert_match(/name="generator"/, response.body)
     assert_match(/csrf-param/, response.body)
+    assert_match(/ruby-version/, response.body)
   end
 end

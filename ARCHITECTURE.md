@@ -39,29 +39,17 @@ app/
 
 `critical` / `payments` / `minecraft` / `mailers` / `notifications` / `media` / `maintenance`
 
-## 前端架构（官网 vs 业务 Portal）
+## 前端架构（官网 vs 业务 Portal vs 管理后台）
 
-同一 Rails 应用内采用 **双视觉体系**，通过 Inertia.js + Vue 3 渲染，后台管理暂保留 ERB。
+同一 Rails 应用内采用 **三套 Vue 布局**，通过 Inertia.js + Vue 3 渲染：
 
-| 区域 | 布局 | 风格 | 技术 |
-|------|------|------|------|
-| 官网首页 | `WebsiteLayout.vue` | 营销风：渐变、动效、品牌叙事 | `website.css` |
-| 论坛/商城/登录 | `PortalLayout.vue` | 功能优先：shadcn-vue 组件、直角表格 | `portal.css` + shadcn |
-| 安装向导 / 后台 | ERB 布局 | 运维与表单 | Tailwind + ViewComponent |
+| 区域 | 布局 | 风格 |
+|------|------|------|
+| 官网首页 / 博客 | `WebsiteLayout.vue` | 营销风渐变与动效 |
+| 论坛 / 商城 / 账户 | `PortalLayout.vue` | shadcn-vue 功能界面 |
+| 管理后台 | `AdminLayout.vue` | shadcn-vue 侧边栏运维界面 |
+| 安装向导 | ERB（`setup`） | 一次性初始化 |
 
-```
-app/javascript/
-  entrypoints/inertia.ts    # Inertia 入口
-  layouts/                  # WebsiteLayout / PortalLayout
-  pages/                    # 按模块映射控制器 render inertia
-  components/ui/            # shadcn-vue 基础组件
-  styles/website.css        # 官网设计令牌
-  styles/portal.css         # Portal / shadcn 设计令牌
-```
+安装向导与 API（Webhook、Minecraft Connector）保留服务端接口，不迁移 Vue。
 
-构建：`bin/vite build`（生产部署在 `bin/setup` 中于 `assets:precompile` 之前执行）。
-
-## 官网与后台样式隔离（历史 ERB）
-
-- `application.html.erb` + `tailwind/application.css`：尚未迁移的 ERB 页面（后台、购物车等）
-- `layouts/inertia.html.erb`：Vue 页面统一根布局
+技术栈指纹：`inertia.ts` 设置 `window._rails_loaded`，布局保留 `meta generator` / `X-Powered-By` 响应头供 Wappalyzer 识别 Ruby on Rails。

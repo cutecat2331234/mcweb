@@ -7,6 +7,7 @@ module Identity
     before_action :redirect_if_signed_in, only: %i[new create]
 
     def new
+      render inertia: "Identity/Registrations/New"
     end
 
     def create
@@ -22,15 +23,16 @@ module Identity
       if result.success?
         redirect_to identity_sign_in_path, notice: "Account created. Please check your email to verify your address."
       else
-        flash.now[:alert] = service_error_message(result)
-        render :new, status: :unprocessable_entity
+        render inertia: "Identity/Registrations/New",
+               status: :unprocessable_entity,
+               errors: { base: service_error_message(result) }
       end
     end
 
     private
 
     def registration_params
-      params.expect(registration: %i[email username password display_name locale time_zone])[:registration]
+      params.require(:registration).permit(:email, :username, :password, :display_name, :locale, :time_zone)
     end
 
     def redirect_if_signed_in

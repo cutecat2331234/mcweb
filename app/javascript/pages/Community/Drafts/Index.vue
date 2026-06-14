@@ -23,6 +23,7 @@ defineProps<{
     section_name: string
     section_url: string
     updated_at: string
+    scheduled_at: string | null
     edit_url: string
   }>
 }>()
@@ -48,6 +49,7 @@ function deleteDraft(id: string) {
         <TableRow>
           <TableHead>标题 / 预览</TableHead>
           <TableHead>分区</TableHead>
+          <TableHead>定时</TableHead>
           <TableHead>更新时间</TableHead>
           <TableHead />
         </TableRow>
@@ -61,6 +63,7 @@ function deleteDraft(id: string) {
           <TableCell>
             <Link :href="draft.section_url" class="hover:underline">{{ draft.section_name }}</Link>
           </TableCell>
+          <TableCell>{{ draft.scheduled_at || '—' }}</TableCell>
           <TableCell>{{ draft.updated_at }}</TableCell>
           <TableCell class="text-right">
             <Button as-child variant="outline" size="sm">

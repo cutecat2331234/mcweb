@@ -66,7 +66,26 @@ const props = defineProps<{
   stockAlertUrl: string
   stockAlertSubscribed: boolean
   loggedIn: boolean
+  questionUrl: string
+  canAnswerOfficially: boolean
+  questions: Array<{
+    id: number
+    body: string
+    author: string
+    created_at: string
+    answerUrl: string
+    answers: Array<{
+      id: number
+      body: string
+      author: string
+      official: boolean
+      created_at: string
+    }>
+  }>
 }>()
+
+const questionForm = useForm({ question: { body: '' } })
+const answerForms = ref<Record<number, string>>({})
 
 const selectedVariantId = ref<number | null>(
   props.product.variants.length === 1 ? props.product.variants[0].id : null
@@ -127,6 +146,22 @@ function subscribeStockAlert() {
   router.post(props.stockAlertUrl, {
     variant_id: selectedVariantId.value,
   }, { preserveScroll: true })
+}
+
+function submitQuestion() {
+  questionForm.post(props.questionUrl, {
+    preserveScroll: true,
+    onSuccess: () => { questionForm.question.body = '' },
+  })
+}
+
+function submitAnswer(questionId: number, answerUrl: string) {
+  const body = answerForms.value[questionId]
+  if (!body?.trim()) return
+  router.post(answerUrl, { answer: { body } }, {
+    preserveScroll: true,
+    onSuccess: () => { answerForms.value[questionId] = '' },
+  })
 }
 </script>
 
@@ -249,6 +284,33 @@ function subscribeStockAlert() {
       <Link :href="routes.store">返回商城</Link>
     </Button>
   </div>
+
+  <section class="mt-10 max-w-xl">
+    <h2 class="mb-4 text-sm font-semibold">商品问答</h2>
+    <div v-if="questions.length" class="mb-6 space-y-4">
+      <article v-for="q in questions" :key="q.id" class="rounded-lg border p-4">
+        <p class="text-sm font-medium">问：{{ q.body }}</p>
+        <p class="mt-1 text-xs text-muted-foreground">{{ q.author }} · {{ q.created_at }}</p>
+        <div v-if="q.answers.length" class="mt-3 space-y-2 border-l-2 pl-3">
+          <div v-for="answer in q.answers" :key="answer.id" class="text-sm">
+            <span v-if="answer.official" class="mr-1 rounded bg-primary/10 px-1 text-xs text-primary">官方</span>
+            <span class="font-medium">{{ answer.author }}：</span>{{ answer.body }}
+            <p class="text-xs text-muted-foreground">{{ answer.created_at }}</p>
+          </div>
+        </div>
+        <form v-if="loggedIn" class="mt-3 space-y-2" @submit.prevent="submitAnswer(q.id, q.answerUrl)">
+          <Textarea v-model="answerForms[q.id]" rows="2" placeholder="写下回答…" />
+          <Button type="submit" size="sm" variant="outline">回答</Button>
+        </form>
+      </article>
+    </div>
+    <p v-else class="mb-4 text-sm text-muted-foreground">暂无问答，成为第一个提问的人吧。</p>
+    <form v-if="loggedIn" class="space-y-3" @submit.prevent="submitQuestion">
+      <Label>提问</Label>
+      <Textarea v-model="questionForm.question.body" rows="3" placeholder="关于商品的问题…" />
+      <Button type="submit" size="sm" :disabled="questionForm.processing">提交问题</Button>
+    </form>
+  </section>
 
   <section v-if="related_products.length" class="mt-10">
     <h2 class="mb-4 text-sm font-semibold">相关商品</h2>

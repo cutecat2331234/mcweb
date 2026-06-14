@@ -44,15 +44,41 @@ module Commerce
                   Commerce::Product.none
                 end
 
+      questions = product.questions.visible.includes(:user, :answers).recent.limit(20)
+
       render inertia: "Commerce/Products/Show", props: {
         product: serialize_product_detail(product, wishlisted: wishlisted, reviews: reviews, average_rating: avg),
         related_products: related.map { |p| serialize_product_list_item(p) },
+        questions: questions.map { |q| serialize_product_question(q) },
         stockAlertUrl: stock_alert_store_product_path(product),
         stockAlertSubscribed: stock_alert,
         addToCartUrl: store_cart_path,
         wishlistUrl: wishlist_store_product_path(product),
         reviewUrl: store_reviews_path(product),
+        questionUrl: store_questions_path(product),
+        canAnswerOfficially: logged_in? && (current_user.permission?("store.questions.answer") || current_user.permission?("admin.access")),
         loggedIn: logged_in?
+      }
+    end
+
+    private
+
+    def serialize_product_question(question)
+      {
+        id: question.id,
+        body: question.body,
+        author: question.user.username,
+        created_at: l(question.created_at, format: :short),
+        answerUrl: answer_question_store_product_path(question.product, question_id: question.id),
+        answers: question.answers.order(created_at: :asc).map do |answer|
+          {
+            id: answer.id,
+            body: answer.body,
+            author: answer.user.username,
+            official: answer.official,
+            created_at: l(answer.created_at, format: :short)
+          }
+        end
       }
     end
   end

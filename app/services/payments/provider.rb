@@ -8,6 +8,8 @@ module Payments
       case provider_name.to_s
       when "fake"
         FakeProvider.new
+      when "stripe"
+        StripeProvider.new
       else
         raise UnknownProviderError, "Unknown payment provider: #{provider_name}"
       end

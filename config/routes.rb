@@ -38,6 +38,7 @@ Rails.application.routes.draw do
       resources :reports, only: %i[index show update]
       resources :mutes, only: %i[create destroy]
       resources :censored_words, only: %i[index create destroy]
+      resources :badges, only: %i[index create destroy]
     end
     namespace :store do
       resources :categories
@@ -61,6 +62,7 @@ Rails.application.routes.draw do
     namespace :system do
       resource :settings, only: %i[show update]
       resources :jobs, only: %i[index]
+      resources :ip_bans, only: %i[index create destroy]
     end
   end
 
@@ -123,6 +125,7 @@ Rails.application.routes.draw do
     get "unread", to: "unread#index"
     patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read
     post "preview", to: "previews#create"
+    post "uploads", to: "uploads#create"
     get "bookmarks", to: "bookmarks#index"
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
@@ -146,9 +149,13 @@ Rails.application.routes.draw do
         post :wishlist, to: "wishlist#toggle"
         post :stock_alert, to: "stock_alerts#create"
         resources :reviews, only: %i[create], controller: "reviews"
+        resources :questions, only: %i[create], controller: "product_questions"
+        post "questions/:question_id/answer", to: "product_questions#answer", as: :answer_question
       end
     end
     get "wishlist", to: "wishlist#index"
+    get "wishlist/share", to: "wishlist#share"
+    get "wishlist/:token", to: "wishlist#public_show", as: :public_wishlist
     resource :cart, only: %i[show update] do
       post :preview_coupon, on: :member
     end
@@ -157,6 +164,7 @@ Rails.application.routes.draw do
         post :cancel
         post :refund
         get :receipt
+        get :receipt_pdf
       end
     end
     resource :checkout, only: %i[show create], controller: "checkout" do

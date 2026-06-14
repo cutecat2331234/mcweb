@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { Link } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -8,38 +8,25 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-const props = defineProps<{
+defineProps<{
+  owner: string
   products: Array<{
     id: string
     name: string
-    slug: string
     price_label: string
     url: string
   }>
-  shareUrl: string | null
 }>()
-
-function copyShareLink() {
-  if (!props.shareUrl) return
-  navigator.clipboard.writeText(props.shareUrl)
-}
 </script>
 
 <template>
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '商城', href: routes.store },
-    { label: '心愿单', current: true },
+    { label: '分享心愿单', current: true },
   ]" />
 
-  <div class="mb-4 flex items-center justify-between gap-3">
-    <PageHeader title="我的心愿单" />
-    <div class="flex gap-2">
-      <Button v-if="shareUrl" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
-      <Button type="button" variant="outline" size="sm" @click="router.post(routes.storeWishlistShare)">生成分享链接</Button>
-    </div>
-  </div>
-  <p v-if="shareUrl" class="mb-4 text-xs text-muted-foreground break-all">{{ shareUrl }}</p>
+  <PageHeader :title="`${owner} 的心愿单`" subtitle="公开分享列表" />
 
   <div v-if="products.length" class="divide-y rounded-lg border">
     <div v-for="product in products" :key="product.id" class="flex items-center justify-between p-4">
@@ -53,6 +40,6 @@ function copyShareLink() {
     </div>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    心愿单是空的。浏览商城添加喜欢的商品吧。
+    心愿单是空的。
   </p>
 </template>

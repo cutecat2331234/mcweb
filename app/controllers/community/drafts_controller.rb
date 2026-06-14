@@ -22,6 +22,7 @@ module Community
             section_name: draft.section.name,
             section_url: forum_section_path(draft.section),
             updated_at: l(draft.updated_at, format: :short),
+            scheduled_at: draft.scheduled_at ? l(draft.scheduled_at, format: :short) : nil,
             edit_url: edit_forum_draft_path(draft)
           }
         end

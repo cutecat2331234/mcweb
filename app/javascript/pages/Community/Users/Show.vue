@@ -62,6 +62,12 @@ const props = defineProps<{
     topic_url: string
     likes_count: number
   }>
+  badges: Array<{
+    name: string
+    icon: string
+    description: string | null
+    color: string
+  }>
 }>()
 
 const editingBio = ref(false)
@@ -111,6 +117,17 @@ function saveBio() {
         <span><strong>{{ profile.topics_count }}</strong> 主题</span>
         <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
         <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
+      </div>
+      <div v-if="badges.length" class="mt-3 flex flex-wrap gap-2">
+        <span
+          v-for="badge in badges"
+          :key="badge.name"
+          class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+          :style="{ borderColor: badge.color, color: badge.color }"
+          :title="badge.description || badge.name"
+        >
+          {{ badge.icon }} {{ badge.name }}
+        </span>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
         <Button v-if="profile.message_url" as-child size="sm">

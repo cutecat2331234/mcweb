@@ -36,10 +36,11 @@ module Community
         token
       end
 
-      text = text.gsub(/!\[([^\]]*)\]\((https?:\/\/[^)]+)\)/) do
+      text = text.gsub(/!\[([^\]]*)\]\(([^)]+)\)/) do
         token = placeholder_token(placeholders, "IMG")
         alt = Regexp.last_match(1)
         url = Regexp.last_match(2)
+        next Regexp.last_match(0) unless url.start_with?("http://", "https://", "/rails/active_storage/")
         placeholders[token] = %(<img src="#{ERB::Util.html_escape(url)}" alt="#{ERB::Util.html_escape(alt)}" loading="lazy" class="post-image" />)
         token
       end

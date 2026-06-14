@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import MentionAutocomplete from '@/components/portal/MentionAutocomplete.vue'
+import ImageUploadButton from '@/components/portal/ImageUploadButton.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -26,6 +27,7 @@ const form = useForm({
     poll_question: '',
     poll_options: '',
     poll_closes_days: '',
+    scheduled_at: '',
   },
 })
 
@@ -45,6 +47,10 @@ function saveDraft() {
       tags: form.topic.tags,
     },
   })
+}
+
+function insertImage(markdown: string) {
+  form.topic.body = `${form.topic.body}${form.topic.body ? '\n\n' : ''}${markdown}`
 }
 
 async function preview() {
@@ -108,10 +114,11 @@ async function preview() {
         </template>
       </MentionAutocomplete>
       <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <Button type="button" variant="outline" size="sm" :disabled="previewLoading || !form.topic.body" @click="preview">
           {{ previewLoading ? '预览中…' : '预览' }}
         </Button>
+        <ImageUploadButton @insert="insertImage" />
       </div>
       <div v-if="previewHtml" class="prose prose-sm max-w-none rounded-md border p-3 text-sm dark:prose-invert" v-html="previewHtml" />
     </div>
@@ -132,6 +139,12 @@ async function preview() {
         <Label for="poll_closes_days">自动关闭（天数，0 表示不关闭）</Label>
         <Input id="poll_closes_days" v-model="form.topic.poll_closes_days" type="number" min="0" placeholder="0" />
       </div>
+    </div>
+
+    <div class="space-y-2">
+      <Label for="scheduled_at">定时发布（可选）</Label>
+      <Input id="scheduled_at" v-model="form.topic.scheduled_at" type="datetime-local" />
+      <p class="text-xs text-muted-foreground">留空则立即发布；设置未来时间将保存为定时草稿。</p>
     </div>
 
     <div class="flex flex-wrap gap-3">

@@ -10,9 +10,37 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000009) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "active_storage_attachments", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.datetime "created_at", null: false
+    t.string "name", null: false
+    t.bigint "record_id", null: false
+    t.string "record_type", null: false
+    t.index ["blob_id"], name: "index_active_storage_attachments_on_blob_id"
+    t.index ["record_type", "record_id", "name", "blob_id"], name: "index_active_storage_attachments_uniqueness", unique: true
+  end
+
+  create_table "active_storage_blobs", force: :cascade do |t|
+    t.bigint "byte_size", null: false
+    t.string "checksum"
+    t.string "content_type"
+    t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "key", null: false
+    t.text "metadata"
+    t.string "service_name", null: false
+    t.index ["key"], name: "index_active_storage_blobs_on_key", unique: true
+  end
+
+  create_table "active_storage_variant_records", force: :cascade do |t|
+    t.bigint "blob_id", null: false
+    t.string "variation_digest", null: false
+    t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
 
   create_table "audit_logs", force: :cascade do |t|
     t.string "action", null: false
@@ -32,6 +60,19 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
     t.index ["actor_id"], name: "index_audit_logs_on_actor_id"
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
     t.index ["resource_type", "resource_id"], name: "index_audit_logs_on_resource_type_and_resource_id"
+  end
+
+  create_table "forum_badges", force: :cascade do |t|
+    t.string "color", default: "#6366f1"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "grant_rule", default: "manual", null: false
+    t.integer "grant_threshold", default: 0
+    t.string "icon", default: "🏅", null: false
+    t.string "name", null: false
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_forum_badges_on_slug", unique: true
   end
 
   create_table "forum_bookmarks", force: :cascade do |t|
@@ -253,6 +294,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
     t.string "prefix"
     t.string "public_id", null: false
     t.integer "replies_count", default: 0, null: false
+    t.datetime "scheduled_at"
     t.integer "slow_mode_seconds"
     t.bigint "solved_post_id"
     t.string "status", default: "published", null: false
@@ -267,8 +309,20 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
     t.index ["forum_section_id"], name: "index_forum_topics_on_forum_section_id"
     t.index ["last_post_user_id"], name: "index_forum_topics_on_last_post_user_id"
     t.index ["public_id"], name: "index_forum_topics_on_public_id", unique: true
+    t.index ["scheduled_at"], name: "index_forum_topics_on_scheduled_at"
     t.index ["solved_post_id"], name: "index_forum_topics_on_solved_post_id"
     t.index ["user_id"], name: "index_forum_topics_on_user_id"
+  end
+
+  create_table "forum_user_badges", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_badge_id", null: false
+    t.datetime "granted_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_badge_id"], name: "index_forum_user_badges_on_forum_badge_id"
+    t.index ["user_id", "forum_badge_id"], name: "index_forum_user_badges_on_user_id_and_forum_badge_id", unique: true
+    t.index ["user_id"], name: "index_forum_user_badges_on_user_id"
   end
 
   create_table "forum_user_blocks", force: :cascade do |t|
@@ -298,6 +352,17 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
     t.bigint "locked_by_id"
     t.datetime "updated_at", null: false
     t.index ["locked_by_id"], name: "index_installation_locks_on_locked_by_id"
+  end
+
+  create_table "ip_bans", force: :cascade do |t|
+    t.bigint "banned_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.string "ip_address", null: false
+    t.text "reason"
+    t.datetime "updated_at", null: false
+    t.index ["banned_by_id"], name: "index_ip_bans_on_banned_by_id"
+    t.index ["ip_address"], name: "index_ip_bans_on_ip_address", unique: true
   end
 
   create_table "minecraft_connector_tasks", force: :cascade do |t|
@@ -632,6 +697,28 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
     t.index ["user_id"], name: "index_store_orders_on_user_id"
   end
 
+  create_table "store_product_answers", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.boolean "official", default: false, null: false
+    t.bigint "store_product_question_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_product_question_id"], name: "index_store_product_answers_on_store_product_question_id"
+    t.index ["user_id"], name: "index_store_product_answers_on_user_id"
+  end
+
+  create_table "store_product_questions", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.string "status", default: "published", null: false
+    t.bigint "store_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_product_id"], name: "index_store_product_questions_on_store_product_id"
+    t.index ["user_id"], name: "index_store_product_questions_on_user_id"
+  end
+
   create_table "store_product_variants", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "fulfillment_config", default: {}, null: false
@@ -765,11 +852,13 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
     t.string "totp_secret_ciphertext"
     t.datetime "updated_at", null: false
     t.string "username", null: false
+    t.string "wishlist_share_token"
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["public_id"], name: "index_users_on_public_id", unique: true
     t.index ["status"], name: "index_users_on_status"
     t.index ["username"], name: "index_users_on_username", unique: true
+    t.index ["wishlist_share_token"], name: "index_users_on_wishlist_share_token", unique: true
   end
 
   create_table "website_articles", force: :cascade do |t|
@@ -895,11 +984,14 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
   add_foreign_key "forum_topics", "forum_sections"
   add_foreign_key "forum_topics", "users"
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"
+  add_foreign_key "forum_user_badges", "forum_badges"
+  add_foreign_key "forum_user_badges", "users"
   add_foreign_key "forum_user_blocks", "users", column: "blocked_id"
   add_foreign_key "forum_user_blocks", "users", column: "blocker_id"
   add_foreign_key "forum_user_follows", "users", column: "followed_id"
   add_foreign_key "forum_user_follows", "users", column: "follower_id"
   add_foreign_key "installation_locks", "users", column: "locked_by_id"
+  add_foreign_key "ip_bans", "users", column: "banned_by_id"
   add_foreign_key "minecraft_connector_tasks", "minecraft_servers"
   add_foreign_key "minecraft_connector_tasks", "store_fulfillments"
   add_foreign_key "minecraft_identities", "minecraft_servers"
@@ -928,6 +1020,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
   add_foreign_key "store_order_items", "store_products"
   add_foreign_key "store_orders", "store_coupons"
   add_foreign_key "store_orders", "users"
+  add_foreign_key "store_product_answers", "store_product_questions"
+  add_foreign_key "store_product_answers", "users"
+  add_foreign_key "store_product_questions", "store_products"
+  add_foreign_key "store_product_questions", "users"
   add_foreign_key "store_product_variants", "store_products"
   add_foreign_key "store_products", "store_categories"
   add_foreign_key "store_refunds", "payment_records"

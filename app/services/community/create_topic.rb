@@ -66,6 +66,7 @@ module Community
       Community::ProcessMentions.call(body: @body, author: @user, post: opening_post, topic: topic) if opening_post
       Community::NotifySectionTopic.call(topic: topic)
       Community::NotifyFollowedUserTopic.call(topic: topic)
+      Community::CheckAutoBadges.call(user: @user)
 
       ServiceResult.success(topic)
     rescue ActiveRecord::RecordInvalid => e
@@ -97,6 +98,9 @@ module Community
       if @user.banned?
         return ServiceResult.failure(error: "Your account is banned.")
       end
+
+      ip_result = Administration::CheckIpBan.call(ip_address: @ip_address)
+      return ip_result if ip_result.failure?
 
       recent = Community::Topic.where(user: @user).order(created_at: :desc).first
       if recent&.created_at&.> MIN_INTERVAL.ago

@@ -25,3 +25,7 @@ production:
     class: Community::ForumDigestJob
     queue: mailers
     schedule: at 8am every day
+  publish_scheduled_topics:
+    class: Community::PublishScheduledTopicsJob
+    queue: default
+    schedule: every 5 minutes

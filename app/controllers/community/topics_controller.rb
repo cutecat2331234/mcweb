@@ -44,16 +44,34 @@ module Community
 
     def new
       render inertia: "Community/Topics/New", props: {
-        section: {
-          name: @section.name,
-          slug: @section.slug,
-          url: forum_section_path(@section),
-          prefixes: Array(@section.prefixes)
-        }
+        section: section_props
       }
     end
 
     def create
+      if topic_params[:scheduled_at].present?
+        scheduled_at = Time.zone.parse(topic_params[:scheduled_at].to_s) rescue nil
+        if scheduled_at&.> Time.current
+          result = Community::ScheduleTopic.call(
+            user: current_user,
+            section: @section,
+            title: topic_params[:title],
+            body: topic_params[:body],
+            scheduled_at: scheduled_at,
+            tag_names: topic_params[:tags],
+            prefix: topic_params[:prefix],
+            ip_address: request.remote_ip
+          )
+          if result.success?
+            return redirect_to forum_drafts_path, notice: "主题已定时，将于 #{l(scheduled_at, format: :short)} 发布。"
+          end
+          return render inertia: "Community/Topics/New",
+                        props: { section: section_props },
+                        status: :unprocessable_entity,
+                        errors: topic_errors(result)
+        end
+      end
+
       result = Community::CreateTopic.call(
         user: current_user,
         section: @section,
@@ -72,12 +90,7 @@ module Community
       else
         render inertia: "Community/Topics/New",
                props: {
-                 section: {
-                   name: @section.name,
-                   slug: @section.slug,
-                   url: forum_section_path(@section),
-                   prefixes: Array(@section.prefixes)
-                 }
+                 section: section_props
                },
                status: :unprocessable_entity,
                errors: topic_errors(result)
@@ -199,7 +212,16 @@ module Community
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days, :prefix)
+      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days, :prefix, :scheduled_at)
+    end
+
+    def section_props
+      {
+        name: @section.name,
+        slug: @section.slug,
+        url: forum_section_path(@section),
+        prefixes: Array(@section.prefixes)
+      }
     end
 
     def parse_poll_options(raw)

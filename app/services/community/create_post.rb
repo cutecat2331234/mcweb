@@ -58,6 +58,7 @@ module Community
 
       Community::NotifyTopicReply.call(post: post)
       Community::ProcessMentions.call(body: @body, author: @user, post: post, topic: @topic)
+      Community::CheckAutoBadges.call(user: @user)
 
       ServiceResult.success(post)
     rescue ActiveRecord::RecordInvalid => e
@@ -85,6 +86,9 @@ module Community
       if @user.banned?
         return ServiceResult.failure(error: "Your account is banned.")
       end
+
+      ip_result = Administration::CheckIpBan.call(ip_address: @ip_address)
+      return ip_result if ip_result.failure?
 
       if slow_mode_active?
         return ServiceResult.failure(error: "Slow mode is active. Please wait before posting again.")

@@ -361,6 +361,7 @@ module InertiaSerializable
       notes: order.notes,
       total_label: format_money(order.total_cents, order.currency),
       receipt_url: receipt_store_order_path(order),
+      receipt_pdf_url: receipt_pdf_store_order_path(order),
       can_pay: order.pending? || order.awaiting_payment?,
       can_cancel: order.pending? || order.awaiting_payment?,
       can_request_refund: refundable_order?(order),

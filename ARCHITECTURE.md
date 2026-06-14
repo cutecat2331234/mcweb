@@ -245,3 +245,16 @@ app/
 | 订单搜索/筛选 | `OrdersController#index` `q` / `status` |
 | 低库存标识 | `Product#low_stock?` / `ProductVariant#low_stock?` |
 | 到货通知 | `StockAlert` + `SubscribeStockAlert` + 补货 Job |
+
+### 第十四轮（论坛 / 商城进阶）
+
+| 功能 | 实现 |
+|------|------|
+| 帖子图片上传 | ActiveStorage + `UploadsController` + `ImageUploadButton` |
+| 用户成就徽章 | `Badge` / `UserBadge` + `AwardBadge` / `CheckAutoBadges` |
+| IP 封禁 | `IpBan` + `CheckIpBan` + 发帖校验 + 后台管理 |
+| 主题定时发布 | `ScheduleTopic` + `PublishScheduledTopicsJob` |
+| 商品问答 Q&A | `ProductQuestion` / `ProductAnswer` + 商品详情页 |
+| 心愿单分享 | `wishlist_share_token` + 公开分享页 |
+| Stripe 支付骨架 | `StripeProvider`（无密钥时测试模式） |
+| PDF 订单收据 | `GenerateOrderReceiptPdf`（Prawn） |

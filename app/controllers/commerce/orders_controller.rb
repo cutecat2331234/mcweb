@@ -3,7 +3,7 @@
 module Commerce
   class OrdersController < ApplicationController
     before_action :require_login
-    before_action :set_order, only: %i[show cancel refund receipt]
+    before_action :set_order, only: %i[show cancel refund receipt receipt_pdf]
 
     def index
       orders_scope = Commerce::Order.where(user: current_user).includes(:items).recent
@@ -62,6 +62,22 @@ module Commerce
       end
 
       render "commerce/orders/receipt", layout: false
+    end
+
+    def receipt_pdf
+      unless %w[paid processing fulfilling fulfilled completed refunded].include?(@order.status)
+        return redirect_to store_order_path(@order), alert: "该订单暂无收据。"
+      end
+
+      result = Commerce::GenerateOrderReceiptPdf.call(order: @order)
+      if result.success?
+        send_data result.value,
+                  filename: "receipt-#{@order.order_number}.pdf",
+                  type: "application/pdf",
+                  disposition: "attachment"
+      else
+        redirect_to store_order_path(@order), alert: service_error_message(result)
+      end
     end
 
     def new

@@ -54,6 +54,14 @@ module Community
           is_following: logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user),
           follow_url: logged_in? && current_user.id != user.id ? forum_user_follow_path(user.username) : nil
         },
+        badges: user.user_badges.includes(:badge).order(granted_at: :desc).map do |ub|
+          {
+            name: ub.badge.name,
+            icon: ub.badge.icon,
+            description: ub.badge.description,
+            color: ub.badge.color
+          }
+        end,
         topics: topics.map { |topic| serialize_topic(topic) },
         recent_posts: posts.map do |post|
           {

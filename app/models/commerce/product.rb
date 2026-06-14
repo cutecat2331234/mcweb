@@ -7,6 +7,7 @@ module Commerce
     accepts_nested_attributes_for :variants, allow_destroy: true, reject_if: :all_blank
     has_many :wishlist_items, class_name: "Commerce::WishlistItem", foreign_key: :store_product_id, dependent: :destroy
     has_many :reviews, class_name: "Commerce::Review", foreign_key: :store_product_id, dependent: :destroy
+    has_many :questions, class_name: "Commerce::ProductQuestion", foreign_key: :store_product_id, dependent: :destroy
 
     enum :status, { draft: "draft", active: "active", archived: "archived" }, validate: true
 

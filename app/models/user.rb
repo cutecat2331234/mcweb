@@ -12,6 +12,7 @@ class User < ApplicationRecord
   has_many :roles, through: :user_roles
   has_many :notifications, dependent: :destroy
   has_many :notification_preferences, dependent: :destroy
+  has_many :user_badges, class_name: "Community::UserBadge", dependent: :destroy
 
   enum :status, { active: "active", banned: "banned", deleted: "deleted" }, validate: true
 

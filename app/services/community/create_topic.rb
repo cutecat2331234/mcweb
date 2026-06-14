@@ -51,7 +51,7 @@ module Community
 
         Community::Subscription.subscribe!(@user, topic)
         Community::ReadState.mark_read!(@user, topic, floor: 1)
-        Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names) if @tag_names.present?
+        Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user) if @tag_names.present?
         create_poll!(topic) if @poll_question && @poll_options.size >= 2
       end
 

@@ -46,7 +46,7 @@ module Community
           status: "published"
         )
 
-        Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names) if @tag_names.present?
+        Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user) if @tag_names.present?
       end
 
       ServiceResult.success(topic)

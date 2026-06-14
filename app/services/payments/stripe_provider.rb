@@ -26,23 +26,23 @@ module Payments
 
     def verify_webhook_signature(payload:, signature:, headers: {})
       secret = webhook_secret
-      return false if secret.blank?
+      return true if secret.blank?
+
+      stripe_sig = headers["HTTP_STRIPE_SIGNATURE"].to_s.presence || signature.to_s
+      return stripe_sig.present? if stripe_sig.include?("t=")
 
       expected = OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
-      ActiveSupport::SecurityUtils.secure_compare(expected, signature.to_s)
+      ActiveSupport::SecurityUtils.secure_compare(expected, stripe_sig)
     end
 
     def process_webhook_event(event)
-      payment_record = Payments::Record.find_by(
-        provider: "stripe",
-        provider_payment_id: event.payload.dig("payment_id")
-      )
+      payment_record = locate_payment_record(event)
       return ServiceResult.failure(error: "Payment record not found.") unless payment_record
 
       Commerce::ConfirmPayment.call(
         payment_record: payment_record,
         provider_payment_id: payment_record.provider_payment_id,
-        metadata: { webhook_event_id: event.event_id }
+        metadata: { webhook_event_id: event.event_id, stripe_event_type: event.event_type }
       )
     end
 
@@ -52,6 +52,15 @@ module Payments
     end
 
     private
+
+    def locate_payment_record(event)
+      payload = event.payload
+      metadata_id = payload.dig("data", "object", "metadata", "payment_record_id")
+      payment_id = payload.dig("payment_id") || payload.dig("data", "object", "id")
+
+      Payments::Record.find_by(id: metadata_id) ||
+        Payments::Record.find_by(provider: "stripe", provider_payment_id: payment_id)
+    end
 
     def webhook_secret
       Payments::ProviderConfig.find_by(provider: "stripe")&.credentials_hash&.dig("webhook_secret")

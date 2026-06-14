@@ -7,7 +7,7 @@ module Community
     def index
       conversations = Community::Conversation
         .for_user(current_user)
-        .includes(participants: :user, messages: :user)
+        .includes(participants: :user, messages: :user, creator: [])
         .ordered
         .limit(50)
 
@@ -28,27 +28,38 @@ module Community
       render inertia: "Community/Messages/Show", props: {
         conversation: serialize_conversation(conversation, include_other: true),
         messages: messages.map { |msg| serialize_message(msg) },
-        pagination: pagy_props(@pagy)
+        pagination: pagy_props(@pagy),
+        participants: conversation.is_group? ? conversation.users.map { |u| { username: u.username, avatar_url: u.avatar_url } } : []
       }
     end
 
     def new
       render inertia: "Community/Messages/New", props: {
-        recipient: params[:to].to_s.presence
+        recipient: params[:to].to_s.presence,
+        group: params[:group] == "1"
       }
     end
 
     def create
-      result = Community::CreateConversation.call(
-        sender: current_user,
-        recipient_username: conversation_params[:recipient],
-        body: conversation_params[:body]
-      )
+      if conversation_params[:is_group] == "1" || conversation_params[:is_group] == true
+        result = Community::CreateGroupConversation.call(
+          sender: current_user,
+          title: conversation_params[:title],
+          recipient_usernames: conversation_params[:recipients],
+          body: conversation_params[:body]
+        )
+      else
+        result = Community::CreateConversation.call(
+          sender: current_user,
+          recipient_username: conversation_params[:recipient],
+          body: conversation_params[:body]
+        )
+      end
 
       if result.success?
         redirect_to forum_conversation_path(result.value[:conversation])
       else
-        redirect_to new_forum_conversation_path(to: conversation_params[:recipient]),
+        redirect_to new_forum_conversation_path(to: conversation_params[:recipient], group: conversation_params[:is_group]),
                     alert: service_error_message(result)
       end
     end
@@ -56,27 +67,40 @@ module Community
     private
 
     def conversation_params
-      params.require(:conversation).permit(:recipient, :body)
+      params.require(:conversation).permit(:recipient, :recipients, :title, :body, :is_group)
     end
 
     def serialize_conversation(conversation, include_other: false)
       other = conversation.other_user(current_user)
       last_message = conversation.messages.order(created_at: :desc).first
+      display = conversation.display_name(current_user)
 
       data = {
         id: conversation.id,
         url: forum_conversation_path(conversation),
+        is_group: conversation.is_group?,
+        title: conversation.title,
+        display_name: display,
         last_message_at: conversation.last_message_at ? l(conversation.last_message_at, format: :short) : nil,
         unread_count: conversation.unread_count_for(current_user),
         last_message_preview: last_message&.body&.truncate(80)
       }
 
-      if include_other && other
-        data[:other_user] = {
-          username: other.username,
-          avatar_url: other.avatar_url,
-          profile_url: forum_user_path(other.username)
-        }
+      if include_other
+        if conversation.is_group?
+          data[:participants_label] = conversation.participant_names
+        elsif other
+          data[:other_user] = {
+            username: other.username,
+            avatar_url: other.avatar_url,
+            profile_url: forum_user_path(other.username)
+          }
+        end
+      end
+
+      if conversation.is_group?
+        data[:other_username] = display
+        data[:avatar_url] = current_user.avatar_url
       elsif other
         data[:other_username] = other.username
         data[:avatar_url] = other.avatar_url

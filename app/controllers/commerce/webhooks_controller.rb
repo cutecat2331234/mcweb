@@ -10,7 +10,7 @@ module Commerce
         event_id: webhook_event_id,
         event_type: webhook_event_type,
         payload: request.raw_post.presence || request.request_parameters,
-        signature: request.headers["X-Webhook-Signature"].to_s,
+        signature: request.headers["Stripe-Signature"].presence || request.headers["X-Webhook-Signature"].to_s,
         headers: request.headers.env.select { |k, _| k.start_with?("HTTP_") }
       )
 

@@ -258,3 +258,20 @@ app/
 | 心愿单分享 | `wishlist_share_token` + 公开分享页 |
 | Stripe 支付骨架 | `StripeProvider`（无密钥时测试模式） |
 | PDF 订单收据 | `GenerateOrderReceiptPdf`（Prawn） |
+
+### 第十五轮（论坛 / 商城编辑器与运营）
+
+| 功能 | 实现 |
+|------|------|
+| Markdown 工具栏编辑器 | `MarkdownEditor.vue`（粗体/斜体/代码/链接/图片/预览） |
+| 发帖/回复编辑器升级 | `Topics/New.vue` / `Topics/Show.vue` 接入 `MarkdownEditor` |
+| 群组私信 | `CreateGroupConversation` + `Conversation#is_group` / `title` / `creator` |
+| 1:1 私信与群组隔离 | `CreateConversation#find_existing` 排除 `is_group` |
+| 群组发信拉黑校验 | `SendMessage` 检查所有对方用户 |
+| 群组通知标题 | `NotifyPrivateMessage` 群组标题格式 |
+| 标签描述与权限 | `Tag#staff_only` + `SyncTopicTags` 权限校验 |
+| 标签/徽章后台 CRUD | `Admin::Forum::TagsController` / `BadgesController` + Form 页 |
+| 商品封面 ActiveStorage | `Product#cover_image` + `AttachProductCover` |
+| 商品封面上传 API | `Admin::Store::UploadsController` |
+| 商品问答后台隐藏 | `HideProductQuestion` + `ProductQuestionsController#hide` |
+| Stripe Webhook 增强 | `Stripe-Signature` 头 + `checkout.session.completed` 元数据查找 |

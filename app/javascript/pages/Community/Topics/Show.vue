@@ -7,8 +7,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import MentionAutocomplete from '@/components/portal/MentionAutocomplete.vue'
+import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -120,34 +119,6 @@ const replyPreview = ref<{ id: number; floor_number: number; author: string } | 
 const moveSectionSlug = ref('')
 const mergeTargetId = ref('')
 const slowModeSeconds = ref(props.topic.slow_mode_seconds || 0)
-const replyPreviewHtml = ref<string | null>(null)
-const replyPreviewLoading = ref(false)
-const editPreviewHtml = ref<string | null>(null)
-const editPreviewLoading = ref(false)
-
-async function previewBody(body: string, target: 'reply' | 'edit') {
-  if (!body.trim()) return
-  const loading = target === 'reply' ? replyPreviewLoading : editPreviewLoading
-  const htmlRef = target === 'reply' ? replyPreviewHtml : editPreviewHtml
-  loading.value = true
-  try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
-    const res = await fetch(routes.forumPreview, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': token || '',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ body }),
-      credentials: 'same-origin',
-    })
-    const data = await res.json()
-    htmlRef.value = data.html
-  } finally {
-    loading.value = false
-  }
-}
 
 function submitReply() {
   replyForm.post('/forum/posts', {
@@ -158,7 +129,6 @@ function submitReply() {
       replyForm.post.parent_post_id = null
       quotePreview.value = null
       replyPreview.value = null
-      replyPreviewHtml.value = null
     },
   })
 }
@@ -469,17 +439,11 @@ function pollPercent(votes: number) {
           </blockquote>
 
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
-            <MentionAutocomplete v-model="editBody">
-              <template #default="{ onInput }">
-                <Textarea v-model="editBody" rows="6" @input="onInput" />
-              </template>
-            </MentionAutocomplete>
+            <MarkdownEditor v-model="editBody" :rows="6" />
             <div class="flex gap-2">
-              <Button type="button" size="sm" variant="outline" :disabled="editPreviewLoading" @click="previewBody(editBody, 'edit')">预览</Button>
               <Button type="button" size="sm" @click="saveEdit(post)">保存</Button>
               <Button type="button" size="sm" variant="outline" @click="cancelEdit">取消</Button>
             </div>
-            <div v-if="editPreviewHtml" class="prose prose-sm max-w-none rounded border p-3 text-sm dark:prose-invert" v-html="editPreviewHtml" />
           </div>
           <div v-else class="prose prose-sm mt-2 max-w-none text-sm dark:prose-invert" v-html="post.body_html" />
 
@@ -533,22 +497,8 @@ function pollPercent(votes: number) {
       </div>
     </div>
     <form class="space-y-3" @submit.prevent="submitReply">
-      <MentionAutocomplete v-model="replyForm.post.body">
-        <template #default="{ onInput }">
-          <Textarea
-            v-model="replyForm.post.body"
-            required
-            rows="6"
-            placeholder="写下你的回复… 输入 @ 可提及用户"
-            @input="onInput"
-          />
-        </template>
-      </MentionAutocomplete>
-      <div class="flex gap-2">
-        <Button type="button" variant="outline" size="sm" :disabled="replyPreviewLoading || !replyForm.post.body" @click="previewBody(replyForm.post.body, 'reply')">预览</Button>
-        <Button type="submit" :disabled="replyForm.processing">发表回复</Button>
-      </div>
-      <div v-if="replyPreviewHtml" class="prose prose-sm max-w-none rounded border p-3 text-sm dark:prose-invert" v-html="replyPreviewHtml" />
+      <MarkdownEditor v-model="replyForm.post.body" :rows="6" placeholder="写下你的回复… 输入 @ 可提及用户" required />
+      <Button type="submit" :disabled="replyForm.processing">发表回复</Button>
     </form>
   </section>
 </template>

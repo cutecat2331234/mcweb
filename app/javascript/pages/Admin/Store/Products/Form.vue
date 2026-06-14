@@ -32,6 +32,7 @@ const props = defineProps<{
   submitUrl: string
   method: 'post' | 'patch'
   backUrl: string
+  uploadUrl?: string | null
 }>()
 
 const form = useForm({
@@ -60,6 +61,23 @@ function submit() {
   } else {
     form.post(props.submitUrl)
   }
+}
+
+async function uploadCover(event: Event) {
+  if (!props.uploadUrl) return
+  const file = (event.target as HTMLInputElement).files?.[0]
+  if (!file) return
+  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
+  const body = new FormData()
+  body.append('file', file)
+  const res = await fetch(props.uploadUrl, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': token || '' },
+    body,
+    credentials: 'same-origin',
+  })
+  const data = await res.json()
+  if (res.ok && data.url) form.product.image_url = data.url
 }
 </script>
 
@@ -120,6 +138,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="image_url">商品图片 URL</Label>
       <Input id="image_url" v-model="form.product.image_url" placeholder="https://example.com/image.png" />
+      <div v-if="uploadUrl" class="mt-2">
+        <Label for="cover_upload">或上传封面图</Label>
+        <input id="cover_upload" type="file" accept="image/*" class="text-sm" @change="uploadCover" />
+      </div>
     </div>
     <div class="space-y-2">
       <Label for="gallery_urls">图库 URL（每行一个）</Label>

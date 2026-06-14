@@ -6,25 +6,25 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
+import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
+  group?: boolean
   recipient?: string | null
 }>()
 
 const form = useForm({
   conversation: {
+    is_group: props.group ? '1' : '0',
     recipient: props.recipient || '',
+    recipients: '',
+    title: '',
     body: '',
   },
 })
-
-function submit() {
-  form.post(routes.forumMessages)
-}
 </script>
 
 <template>
@@ -32,19 +32,37 @@ function submit() {
     { label: '首页', href: routes.home },
     { label: '论坛', href: routes.forum },
     { label: '私信', href: routes.forumMessages },
-    { label: '发私信', current: true },
+    { label: group ? '新建群组' : '发私信', current: true },
   ]" />
 
-  <PageHeader title="发私信" />
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
+    <PageHeader :title="group ? '新建群组私信' : '发私信'" />
+    <Button v-if="!group" as-child variant="outline" size="sm">
+      <Link :href="routes.forumMessagesGroupNew">群组私信</Link>
+    </Button>
+    <Button v-else as-child variant="outline" size="sm">
+      <Link :href="routes.forumMessagesNew">一对一私信</Link>
+    </Button>
+  </div>
 
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
+  <form class="max-w-lg space-y-4" @submit.prevent="form.post(routes.forumMessages)">
+    <template v-if="group">
+      <div class="space-y-2">
+        <Label for="title">群组名称</Label>
+        <Input id="title" v-model="form.conversation.title" required placeholder="例如：活动讨论组" />
+      </div>
+      <div class="space-y-2">
+        <Label for="recipients">成员用户名（逗号分隔）</Label>
+        <Input id="recipients" v-model="form.conversation.recipients" required placeholder="user1, user2" />
+      </div>
+    </template>
+    <div v-else class="space-y-2">
       <Label for="recipient">收件人用户名</Label>
       <Input id="recipient" v-model="form.conversation.recipient" required placeholder="username" />
     </div>
     <div class="space-y-2">
-      <Label for="body">消息内容</Label>
-      <Textarea id="body" v-model="form.conversation.body" required rows="6" />
+      <Label>消息内容</Label>
+      <MarkdownEditor v-model="form.conversation.body" :show-mention="false" />
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">发送</Button>

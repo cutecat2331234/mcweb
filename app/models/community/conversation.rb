@@ -5,12 +5,23 @@ module Community
     has_many :participants, class_name: "Community::ConversationParticipant", foreign_key: :forum_conversation_id, dependent: :destroy
     has_many :users, through: :participants
     has_many :messages, class_name: "Community::Message", foreign_key: :forum_conversation_id, dependent: :destroy
+    belongs_to :creator, class_name: "User", optional: true
 
     scope :for_user, ->(user) {
       joins(:participants).where(forum_conversation_participants: { user_id: user.id })
     }
 
     scope :ordered, -> { order(last_message_at: :desc) }
+
+    def display_name(current_user)
+      return title if is_group? && title.present?
+
+      other_user(current_user)&.username || "私信"
+    end
+
+    def participant_names
+      users.pluck(:username).join(", ")
+    end
 
     def other_user(current_user)
       users.where.not(id: current_user.id).first

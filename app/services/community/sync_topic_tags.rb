@@ -4,18 +4,37 @@ module Community
   class SyncTopicTags < ApplicationService
     MAX_TAGS = 5
 
-    def initialize(topic:, tag_names:)
+    def initialize(topic:, tag_names:, user: nil)
       @topic = topic
+      @user = user
       @tag_names = Array(tag_names).flat_map { |n| n.to_s.split(",") }.map(&:strip).reject(&:blank?).first(MAX_TAGS)
     end
 
     def call
-      tags = @tag_names.filter_map { |name| Community::Tag.find_or_create_by_name!(name) }
+      @tag_names.each do |name|
+        slug = name.to_s.parameterize.presence
+        next unless slug
+
+        tag = Community::Tag.find_by(slug: slug)
+        if tag&.staff_only? && !can_use_staff_tags?
+          return ServiceResult.failure(error: "You cannot use restricted tag: #{tag.name}")
+        end
+      end
+
+      tags = @tag_names.filter_map { |name| Community::Tag.find_or_create_by_name!(name, user: @user) }
       @topic.topic_tags.where.not(forum_tag_id: tags.map(&:id)).destroy_all
       tags.each do |tag|
         Community::TopicTag.find_or_create_by!(topic: @topic, tag: tag)
       end
       ServiceResult.success(tags: tags)
+    end
+
+    private
+
+    def can_use_staff_tags?
+      return false unless @user
+
+      @user.permission?("forum.tags.manage") || @user.permission?("admin.access")
     end
   end
 end

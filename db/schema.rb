@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000009) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -119,8 +119,12 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000009) do
 
   create_table "forum_conversations", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.bigint "creator_id"
+    t.boolean "is_group", default: false, null: false
     t.datetime "last_message_at"
+    t.string "title"
     t.datetime "updated_at", null: false
+    t.index ["creator_id"], name: "index_forum_conversations_on_creator_id"
   end
 
   create_table "forum_messages", force: :cascade do |t|
@@ -266,8 +270,10 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000009) do
 
   create_table "forum_tags", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.text "description"
     t.string "name", null: false
     t.string "slug", null: false
+    t.boolean "staff_only", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_forum_tags_on_slug", unique: true
   end
@@ -955,6 +961,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000009) do
   add_foreign_key "forum_bookmarks", "users"
   add_foreign_key "forum_conversation_participants", "forum_conversations"
   add_foreign_key "forum_conversation_participants", "users"
+  add_foreign_key "forum_conversations", "users", column: "creator_id"
   add_foreign_key "forum_messages", "forum_conversations"
   add_foreign_key "forum_messages", "users"
   add_foreign_key "forum_mutes", "forum_sections"

@@ -29,11 +29,10 @@ module Community
 
     def find_existing
       my_ids = Community::ConversationParticipant.where(user: @sender).pluck(:forum_conversation_id)
-      recipient_participant = Community::ConversationParticipant.find_by(
-        forum_conversation_id: my_ids,
-        user_id: @recipient.id
-      )
-      recipient_participant&.conversation
+      Community::Conversation.where(id: my_ids, is_group: false)
+        .joins(:participants)
+        .where(forum_conversation_participants: { user_id: @recipient.id })
+        .first
     end
 
     def create_conversation!

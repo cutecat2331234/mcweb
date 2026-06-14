@@ -7,9 +7,8 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import Textarea from '@/components/ui/Textarea.vue'
-import MentionAutocomplete from '@/components/portal/MentionAutocomplete.vue'
-import ImageUploadButton from '@/components/portal/ImageUploadButton.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -31,8 +30,6 @@ const form = useForm({
   },
 })
 
-const previewHtml = ref<string | null>(null)
-const previewLoading = ref(false)
 const showPoll = ref(false)
 
 function submit() {
@@ -49,31 +46,6 @@ function saveDraft() {
   })
 }
 
-function insertImage(markdown: string) {
-  form.topic.body = `${form.topic.body}${form.topic.body ? '\n\n' : ''}${markdown}`
-}
-
-async function preview() {
-  if (!form.topic.body.trim()) return
-  previewLoading.value = true
-  try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
-    const res = await fetch(routes.forumPreview, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': token || '',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify({ body: form.topic.body }),
-      credentials: 'same-origin',
-    })
-    const data = await res.json()
-    previewHtml.value = data.html
-  } finally {
-    previewLoading.value = false
-  }
-}
 </script>
 
 <template>
@@ -101,26 +73,8 @@ async function preview() {
     </div>
     <div class="space-y-2">
       <Label for="body">首帖内容</Label>
-      <MentionAutocomplete v-model="form.topic.body">
-        <template #default="{ onInput }">
-          <Textarea
-            id="body"
-            v-model="form.topic.body"
-            required
-            rows="8"
-            placeholder="支持 **粗体**、*斜体*、`代码`、@用户名"
-            @input="onInput"
-          />
-        </template>
-      </MentionAutocomplete>
+      <MarkdownEditor v-model="form.topic.body" :rows="8" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名" />
       <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
-      <div class="flex flex-wrap gap-2">
-        <Button type="button" variant="outline" size="sm" :disabled="previewLoading || !form.topic.body" @click="preview">
-          {{ previewLoading ? '预览中…' : '预览' }}
-        </Button>
-        <ImageUploadButton @insert="insertImage" />
-      </div>
-      <div v-if="previewHtml" class="prose prose-sm max-w-none rounded-md border p-3 text-sm dark:prose-invert" v-html="previewHtml" />
     </div>
     <div class="space-y-2">
       <Label for="tags">标签（逗号分隔，最多 5 个）</Label>

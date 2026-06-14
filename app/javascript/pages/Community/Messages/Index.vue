@@ -13,6 +13,8 @@ defineProps<{
   conversations: Array<{
     id: number
     url: string
+    is_group?: boolean
+    display_name?: string
     other_username: string
     avatar_url: string
     last_message_at: string | null
@@ -34,6 +36,9 @@ defineProps<{
     <Button as-child size="sm">
       <Link :href="routes.forumMessagesNew">发私信</Link>
     </Button>
+    <Button as-child size="sm" variant="outline">
+      <Link :href="routes.forumMessagesGroupNew">群组</Link>
+    </Button>
   </div>
 
   <div v-if="conversations.length" class="divide-y rounded-lg border">
@@ -46,7 +51,7 @@ defineProps<{
       <img :src="conv.avatar_url" :alt="conv.other_username" class="h-10 w-10 rounded-full" />
       <div class="min-w-0 flex-1">
         <div class="flex items-center justify-between gap-2">
-          <span class="font-medium text-foreground">{{ conv.other_username }}</span>
+          <span class="font-medium text-foreground">{{ conv.display_name || conv.other_username }}</span>
           <span class="text-xs text-muted-foreground">{{ conv.last_message_at || '' }}</span>
         </div>
         <p class="truncate text-sm text-muted-foreground">{{ conv.last_message_preview || '暂无消息' }}</p>

@@ -8,7 +8,11 @@ PERMISSIONS = [
   { key: "forum.topics.lock", name: "锁定主题", category: "forum" },
   { key: "forum.topics.move", name: "移动主题", category: "forum" },
   { key: "forum.users.mute", name: "禁言用户", category: "forum" },
+  { key: "forum.badges.manage", name: "管理论坛徽章", category: "forum" },
+  { key: "forum.tags.manage", name: "管理论坛标签", category: "forum" },
   { key: "store.products.manage", name: "管理商品", category: "store" },
+  { key: "store.questions.answer", name: "官方回答商品问答", category: "store" },
+  { key: "store.questions.manage", name: "管理商品问答", category: "store" },
   { key: "store.orders.read", name: "查看订单", category: "store" },
   { key: "store.orders.refund", name: "退款", category: "store" },
   { key: "minecraft.servers.manage", name: "管理 Minecraft 服务器", category: "minecraft" },
@@ -39,7 +43,7 @@ ROLES = {
   "forum_admin" => {
     name: "论坛管理员",
     description: "管理论坛",
-    permissions: %w[forum.sections.manage forum.topics.lock forum.topics.move forum.users.mute admin.access]
+    permissions: %w[forum.sections.manage forum.topics.lock forum.topics.move forum.users.mute forum.badges.manage forum.tags.manage admin.access]
   },
   "moderator" => {
     name: "版主",
@@ -49,7 +53,7 @@ ROLES = {
   "store_admin" => {
     name: "商城管理员",
     description: "管理商城",
-    permissions: %w[store.products.manage store.orders.read admin.access]
+    permissions: %w[store.products.manage store.orders.read store.questions.answer store.questions.manage admin.access]
   },
   "finance" => {
     name: "财务",

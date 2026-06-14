@@ -15,7 +15,7 @@ module Community
         Notification.notify!(
           user: user,
           notification_type: "forum.private_message",
-          title: "来自 #{@message.user.username} 的私信",
+          title: @conversation.is_group? ? "群组「#{@conversation.title}」新消息" : "来自 #{@message.user.username} 的私信",
           body: @message.body.truncate(120),
           metadata: { url: "/forum/conversations/#{@conversation.id}" }
         )

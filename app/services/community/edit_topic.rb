@@ -15,7 +15,7 @@ module Community
       Community::Topic.transaction do
         @topic.update!(title: @title) if @title.present?
         if @tag_names
-          result = Community::SyncTopicTags.call(topic: @topic, tag_names: @tag_names)
+          result = Community::SyncTopicTags.call(topic: @topic, tag_names: @tag_names, user: @user)
           return result unless result.success?
         end
       end

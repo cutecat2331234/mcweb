@@ -9,6 +9,8 @@ module Commerce
     has_many :reviews, class_name: "Commerce::Review", foreign_key: :store_product_id, dependent: :destroy
     has_many :questions, class_name: "Commerce::ProductQuestion", foreign_key: :store_product_id, dependent: :destroy
 
+    has_one_attached :cover_image
+
     enum :status, { draft: "draft", active: "active", archived: "archived" }, validate: true
 
     validates :name, presence: true

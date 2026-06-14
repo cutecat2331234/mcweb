@@ -38,7 +38,8 @@ Rails.application.routes.draw do
       resources :reports, only: %i[index show update]
       resources :mutes, only: %i[create destroy]
       resources :censored_words, only: %i[index create destroy]
-      resources :badges, only: %i[index create destroy]
+      resources :badges, only: %i[index new create edit update destroy]
+      resources :tags
     end
     namespace :store do
       resources :categories
@@ -51,6 +52,12 @@ Rails.application.routes.draw do
       end
       resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
+      resources :product_questions, only: %i[index destroy] do
+        member do
+          patch :hide
+        end
+      end
+      post :uploads, to: "uploads#create"
     end
     namespace :website do
       resources :pages, only: %i[index show]

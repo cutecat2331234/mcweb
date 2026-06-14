@@ -32,7 +32,7 @@ module Community
           post.save!
         end
 
-        Community::SyncTopicTags.call(topic: draft, tag_names: @tag_names) if @tag_names.present?
+        Community::SyncTopicTags.call(topic: draft, tag_names: @tag_names, user: @user) if @tag_names.present?
       end
 
       ServiceResult.success(draft)

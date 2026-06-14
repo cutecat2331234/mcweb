@@ -24,6 +24,8 @@ const nav = [
     { label: '分类', href: adminRoutes.forumCategories },
     { label: '主题', href: adminRoutes.forumTopics },
     { label: '举报', href: adminRoutes.forumReports },
+    { label: '徽章', href: adminRoutes.forumBadges },
+    { label: '标签', href: adminRoutes.forumTags },
   ]},
   { label: '商城', items: [
     { label: '商品', href: adminRoutes.storeProducts },
@@ -31,11 +33,13 @@ const nav = [
     { label: '优惠券', href: adminRoutes.storeCoupons },
     { label: '订单', href: adminRoutes.storeOrders },
     { label: '评价', href: adminRoutes.storeReviews },
+    { label: '商品问答', href: adminRoutes.storeProductQuestions },
     { label: '发货', href: adminRoutes.storeFulfillments },
   ]},
   { label: '系统', items: [
     { label: 'Minecraft 服务器', href: adminRoutes.minecraftServers },
     { label: '审计日志', href: adminRoutes.auditLogs },
+    { label: 'IP 封禁', href: adminRoutes.ipBans },
     { label: '设置', href: adminRoutes.settings },
     { label: '后台任务', href: adminRoutes.jobs },
   ]},

@@ -12,12 +12,27 @@ module Community
 
     scope :ordered, -> { order(:name) }
 
-    def self.find_or_create_by_name!(name)
+    def self.usable_by(user)
+      return all unless user
+
+      staff = user.permission?("forum.tags.manage") || user.permission?("admin.access")
+      staff ? all : where(staff_only: false)
+    end
+
+    def self.find_or_create_by_name!(name, user: nil)
       normalized = name.to_s.strip
       return if normalized.blank?
 
       slug = normalized.parameterize.presence || "tag-#{SecureRandom.hex(4)}"
-      find_or_create_by!(slug: slug) { |tag| tag.name = normalized }
+      existing = find_by(slug: slug)
+      return existing if existing
+      return if existing.nil? && staff_only_tag_requested?(normalized, user)
+
+      create!(slug: slug, name: normalized)
+    end
+
+    def self.staff_only_tag_requested?(normalized, user)
+      false
     end
 
     private

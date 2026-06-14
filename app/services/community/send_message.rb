@@ -12,9 +12,11 @@ module Community
       return ServiceResult.failure(error: "Not a participant.") unless participant?
       return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
 
-      other = @conversation.participants.where.not(user: @user).includes(:user).map(&:user).first
-      if other && Community::UserBlock.blocked?(@user, other)
-        return ServiceResult.failure(error: "You cannot message this user.")
+      others = @conversation.participants.where.not(user: @user).includes(:user).map(&:user)
+      others.each do |other|
+        if Community::UserBlock.blocked?(@user, other)
+          return ServiceResult.failure(error: "You cannot message #{other.username}.")
+        end
       end
 
       message = @conversation.messages.create!(user: @user, body: @body)

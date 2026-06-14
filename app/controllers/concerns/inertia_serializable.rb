@@ -227,9 +227,17 @@ module InertiaSerializable
       price_label: format_price(product),
       in_stock: product.in_stock?,
       low_stock: product.low_stock?,
-      image_url: product.image_url,
+      image_url: product_image_url(product),
       url: store_product_path(product)
     }
+  end
+
+  def product_image_url(product)
+    if product.cover_image.attached?
+      rails_blob_path(product.cover_image, only_path: true)
+    else
+      product.image_url
+    end
   end
 
   def serialize_product_detail(product, wishlisted: false, reviews: [], average_rating: nil)
@@ -245,7 +253,7 @@ module InertiaSerializable
       in_stock: product.in_stock?,
       low_stock: product.low_stock?,
       purchase_limit: product.purchase_limit,
-      image_url: product.image_url,
+      image_url: product_image_url(product),
       gallery_urls: product.gallery_urls || [],
       wishlisted: wishlisted,
       average_rating: average_rating,

@@ -148,7 +148,8 @@ module Admin
           categories: ::Commerce::Category.ordered.map { |c| { id: c.id, name: c.name } },
           submitUrl: product.persisted? ? admin_store_product_path(product) : admin_store_products_path,
           method: product.persisted? ? "patch" : "post",
-          backUrl: admin_store_products_path
+          backUrl: admin_store_products_path,
+          uploadUrl: product.persisted? ? admin_store_uploads_path(product_id: product.public_id) : nil
         }
       end
     end

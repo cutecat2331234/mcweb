@@ -24,6 +24,7 @@ export const routes = {
   forumSitemap: '/forum/sitemap.xml',
   forumMessages: '/forum/conversations',
   forumMessagesNew: '/forum/conversations/new',
+  forumMessagesGroupNew: '/forum/conversations/new?group=1',
   forumMessage: (id: number) => `/forum/conversations/${id}`,
   forumUser: (username: string) => `/forum/users/${username}`,
   forumTag: (slug: string) => `/forum/tags/${slug}`,

@@ -1,8 +1,10 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
@@ -16,6 +18,7 @@ defineOptions({ layout: PortalLayout })
 
 export interface CheckoutItem {
   product_name: string
+  variant_name?: string | null
   quantity: number
   total_label: string
 }
@@ -27,14 +30,58 @@ export interface ProviderOption {
 
 const props = defineProps<{
   items: CheckoutItem[]
+  subtotalCents: number
   subtotalLabel: string
   providers: ProviderOption[]
   defaultProvider?: string
+  previewCouponUrl: string
 }>()
 
 const form = useForm({
-  checkout: { provider: props.defaultProvider || props.providers[0]?.value || 'fake' },
+  checkout: {
+    provider: props.defaultProvider || props.providers[0]?.value || 'fake',
+    coupon_code: '',
+  },
 })
+
+const couponMessage = ref<string | null>(null)
+const couponError = ref<string | null>(null)
+const discountLabel = ref<string | null>(null)
+const totalLabel = ref<string | null>(props.subtotalLabel)
+const previewing = ref(false)
+
+async function previewCoupon() {
+  couponMessage.value = null
+  couponError.value = null
+  discountLabel.value = null
+  totalLabel.value = props.subtotalLabel
+
+  if (!form.checkout.coupon_code.trim()) return
+
+  previewing.value = true
+  try {
+    const response = await fetch(props.previewCouponUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+      },
+      body: JSON.stringify({ code: form.checkout.coupon_code }),
+    })
+    const data = await response.json()
+    if (response.ok) {
+      couponMessage.value = `优惠码 ${data.code} 已应用`
+      discountLabel.value = data.discount_label
+      totalLabel.value = data.total_label
+    } else {
+      couponError.value = data.error || '优惠码无效'
+    }
+  } catch {
+    couponError.value = '无法验证优惠码'
+  } finally {
+    previewing.value = false
+  }
+}
 </script>
 
 <template>
@@ -46,7 +93,10 @@ const form = useForm({
         <TableHeader><TableRow><TableHead>商品</TableHead><TableHead>数量</TableHead><TableHead>小计</TableHead></TableRow></TableHeader>
         <TableBody>
           <TableRow v-for="(item, index) in items" :key="index">
-            <TableCell>{{ item.product_name }}</TableCell>
+            <TableCell>
+              {{ item.product_name }}
+              <span v-if="item.variant_name" class="ml-1 text-xs text-muted-foreground">({{ item.variant_name }})</span>
+            </TableCell>
             <TableCell>{{ item.quantity }}</TableCell>
             <TableCell>{{ item.total_label }}</TableCell>
           </TableRow>
@@ -54,9 +104,23 @@ const form = useForm({
       </Table>
     </div>
 
-    <p class="font-medium">合计：{{ subtotalLabel }}</p>
+    <div class="space-y-1 text-sm">
+      <p>小计：{{ subtotalLabel }}</p>
+      <p v-if="discountLabel" class="text-green-600">优惠：-{{ discountLabel }}</p>
+      <p class="font-medium">应付：{{ totalLabel }}</p>
+    </div>
 
     <form class="space-y-4" @submit.prevent="form.post(routes.storeCheckout)">
+      <div class="space-y-2">
+        <Label for="coupon">优惠码</Label>
+        <div class="flex gap-2">
+          <Input id="coupon" v-model="form.checkout.coupon_code" placeholder="输入优惠码" class="flex-1" />
+          <Button type="button" variant="outline" :disabled="previewing" @click="previewCoupon">验证</Button>
+        </div>
+        <p v-if="couponMessage" class="text-sm text-green-600">{{ couponMessage }}</p>
+        <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
+      </div>
+
       <div class="space-y-2">
         <Label for="provider">支付方式</Label>
         <select id="provider" v-model="form.checkout.provider" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">

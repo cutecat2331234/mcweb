@@ -59,12 +59,15 @@ module InertiaSerializable
     }
   end
 
-  def serialize_topic_detail(topic)
+  def serialize_topic_detail(topic, watching: false, can_moderate: false)
     {
       id: topic.public_id,
       title: topic.title,
       author: topic.user&.username,
       locked: topic.locked?,
+      pinned: topic.pinned?,
+      watching: watching,
+      can_moderate: can_moderate,
       section: {
         name: topic.section.name,
         slug: topic.section.slug,
@@ -73,14 +76,50 @@ module InertiaSerializable
     }
   end
 
-  def serialize_post(post)
+  def serialize_post(post, current_user: nil)
+    reaction_counts = post.reactions.group(:emoji).count
+    user_reactions = if current_user
+                       post.reactions.where(user: current_user).pluck(:emoji)
+                     else
+                       []
+                     end
+
     {
       id: post.id,
       floor_number: post.floor_number,
       author: post.user.username,
+      author_id: post.user_id,
       body: post.body,
-      created_at: l(post.created_at, format: :short)
+      created_at: l(post.created_at, format: :short),
+      edited_at: post.edited_at ? l(post.edited_at, format: :short) : nil,
+      quoted_post: serialize_quoted_post(post.quoted_post),
+      reaction_counts: reaction_counts,
+      user_reactions: user_reactions,
+      can_edit: can_edit_post?(post, current_user),
+      can_delete: can_delete_post?(post, current_user),
+      update_url: forum_post_path(post)
     }
+  end
+
+  def serialize_quoted_post(post)
+    return nil unless post
+
+    {
+      id: post.id,
+      floor_number: post.floor_number,
+      author: post.user.username,
+      excerpt: post.body.truncate(120)
+    }
+  end
+
+  def can_edit_post?(post, user)
+    Community::EditPost.editable_by?(user, post)
+  end
+
+  def can_delete_post?(post, user)
+    return false unless user
+
+    user.id == post.user_id || user.permission?("forum.topics.lock")
   end
 
   def serialize_search_topic(topic)
@@ -125,7 +164,27 @@ module InertiaSerializable
       price_label: format_price(product),
       product_type: product.product_type,
       category_name: product.category&.name,
-      in_stock: product.in_stock?
+      in_stock: product.in_stock?,
+      purchase_limit: product.purchase_limit,
+      variants: product.variants.map { |variant| serialize_variant(variant, product) }
+    }
+  end
+
+  def serialize_variant(variant, product)
+    {
+      id: variant.id,
+      name: variant.name,
+      sku: variant.sku,
+      price_label: format_money(variant.price_cents, product.currency),
+      in_stock: variant.in_stock?
+    }
+  end
+
+  def serialize_category(category)
+    {
+      slug: category.slug,
+      name: category.name,
+      url: store_products_path(category: category.slug)
     }
   end
 

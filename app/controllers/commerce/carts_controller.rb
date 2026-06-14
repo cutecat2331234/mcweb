@@ -21,17 +21,37 @@ module Commerce
         quantity = params[:quantity].to_i
         quantity = 1 if quantity < 1
 
+        validation = Commerce::ValidateCartItem.call(
+          user: current_user,
+          product: product,
+          variant: variant,
+          quantity: quantity
+        )
+        unless validation.success?
+          return redirect_to request.referer.presence || store_cart_path, alert: service_error_message(validation)
+        end
+
         @cart.add_item!(product: product, variant: variant, quantity: quantity)
       elsif params[:item_id].present?
         item = @cart.items.find(params[:item_id])
         if params[:quantity].to_i.positive?
+          validation = Commerce::ValidateCartItem.call(
+            user: current_user,
+            product: item.product,
+            variant: item.variant,
+            quantity: params[:quantity].to_i
+          )
+          unless validation.success?
+            return redirect_to store_cart_path, alert: service_error_message(validation)
+          end
+
           item.update!(quantity: params[:quantity].to_i)
         else
           item.destroy!
         end
       end
 
-      redirect_to store_cart_path, notice: "Cart updated."
+      redirect_to store_cart_path, notice: "购物车已更新。"
     rescue ActiveRecord::RecordNotFound, ActiveRecord::RecordInvalid => e
       redirect_to store_cart_path, alert: e.message
     end

@@ -8,7 +8,7 @@ module Minecraft
       fulfillment = Commerce::Fulfillment.find(fulfillment_id)
       return if fulfillment.status != "pending"
 
-      order_item = fulfillment.store_order_item
+      order_item = fulfillment.order_item
       snapshot = order_item.fulfillment_snapshot
       server_id = snapshot.dig("fulfillment_config", "server_id") || snapshot.dig("fulfillment_config", "minecraft_server_id")
       server = Minecraft::Server.find_by(id: server_id) || Minecraft::Server.first

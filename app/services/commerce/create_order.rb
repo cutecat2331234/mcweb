@@ -2,16 +2,29 @@
 
 module Commerce
   class CreateOrder < ApplicationService
-    def initialize(cart:, user:, notes: nil)
+    def initialize(cart:, user:, notes: nil, coupon_code: nil)
       @cart = cart
       @user = user
       @notes = notes
+      @coupon_code = coupon_code
     end
 
     def call
       return ServiceResult.failure(error: "Cart is empty.") if @cart.items.empty?
 
+      @cart.items.includes(:product, :variant).find_each do |item|
+        validation = Commerce::ValidateCartItem.call(
+          user: @user,
+          product: item.product,
+          variant: item.variant,
+          quantity: item.quantity
+        )
+        return validation if validation.failure?
+      end
+
       order = nil
+      coupon_error = nil
+
       Commerce::Order.transaction do
         subtotal_cents = 0
 
@@ -42,6 +55,12 @@ module Commerce
             total_cents: line_total,
             fulfillment_snapshot: snapshot_fulfillment(product, variant)
           )
+
+          stock_result = decrement_stock!(product, variant, item.quantity)
+          if stock_result&.failure?
+            coupon_error = stock_result.error
+            raise ActiveRecord::Rollback
+          end
         end
 
         order.update!(
@@ -50,8 +69,19 @@ module Commerce
           discount_cents: 0
         )
 
+        if @coupon_code.present?
+          coupon_result = Commerce::ApplyCoupon.call(order: order, code: @coupon_code)
+          unless coupon_result.success?
+            coupon_error = coupon_result.error
+            raise ActiveRecord::Rollback
+          end
+        end
+
         @cart.items.destroy_all
       end
+
+      return ServiceResult.failure(error: coupon_error) if coupon_error.present?
+      return ServiceResult.failure(error: "Unable to create order.") unless order&.persisted?
 
       Commerce::OrderEvent.create!(
         order: order,
@@ -72,6 +102,19 @@ module Commerce
     end
 
     private
+
+    def decrement_stock!(product, variant, quantity)
+      target = variant || product
+      return ServiceResult.success if target.stock.nil?
+
+      target.with_lock do
+        return ServiceResult.failure(error: "Insufficient stock.") if target.stock < quantity
+
+        target.update!(stock: target.stock - quantity)
+      end
+
+      ServiceResult.success
+    end
 
     def snapshot_fulfillment(product, variant)
       config = variant&.fulfillment_config.presence || product.fulfillment_config

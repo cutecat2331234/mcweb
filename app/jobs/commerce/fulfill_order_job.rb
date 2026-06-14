@@ -8,7 +8,7 @@ module Commerce
       order = Commerce::Order.find(order_id)
       return unless order.status == "paid"
 
-      order.store_order_items.find_each do |order_item|
+      order.items.find_each do |order_item|
         result = Commerce::CreateFulfillment.call(order_item: order_item)
         next if result.failure?
 

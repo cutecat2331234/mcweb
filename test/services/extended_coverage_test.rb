@@ -77,6 +77,7 @@ class Community::TopicModerationTest < ActiveSupport::TestCase
       user: @user,
       section: @section,
       title: "Moderation topic",
+      body: "Opening post for moderation tests.",
       ip_address: "127.0.0.1"
     ).value
   end
@@ -114,7 +115,13 @@ class Community::ReportTest < ActiveSupport::TestCase
       s.name = "Report Sec"
       s.position = 0
     end
-    topic = Community::CreateTopic.call(user: user, section: section, title: "Report me", ip_address: "127.0.0.1").value
+    topic = Community::CreateTopic.call(
+      user: user,
+      section: section,
+      title: "Report me",
+      body: "Please review this topic.",
+      ip_address: "127.0.0.1"
+    ).value
 
     report = Community::Report.create!(
       reporter: user,

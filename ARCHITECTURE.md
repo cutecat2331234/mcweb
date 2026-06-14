@@ -53,3 +53,29 @@ app/
 安装向导与 API（Webhook、Minecraft Connector）保留服务端接口，不迁移 Vue。
 
 技术栈指纹：`inertia.ts` 设置 `window._rails_loaded`，布局保留 `meta generator` / `X-Powered-By` 响应头供 Wappalyzer 识别 Ruby on Rails。
+
+## 论坛功能（对标 Discourse / XenForo）
+
+| 功能 | 实现 |
+|------|------|
+| 发帖含首帖 | `Community::CreateTopic` 创建 floor 1  opening post |
+| 回复 / 引用 | `Community::CreatePost` + `quoted_post` |
+| 编辑（15 分钟窗口） | `Community::EditPost` |
+| 软删除 | `PostsController#destroy` |
+| 表情反应 | `Community::ToggleReaction`（👍❤️😂🎉👀） |
+| 关注主题 | `Community::ToggleSubscription` |
+| 已读追踪 | `Community::ReadState` |
+| 版主操作 | `Community::ModerateTopic`（锁定/置顶） |
+| 分页 | Pagy 应用于主题帖列表 |
+| 反垃圾 | 速率限制、禁言、重复检测 |
+
+## 商城功能
+
+| 功能 | 实现 |
+|------|------|
+| 商品变体 | `ProductVariant` + 商品详情页选择 |
+| 分类筛选 | 商品列表 `?category=` |
+| 库存 / 限购校验 | `Commerce::ValidateCartItem` |
+| 优惠券 | `Commerce::PreviewCoupon` + `ApplyCoupon` |
+| 游客购物车合并 | `Commerce::MergeGuestCart`（登录时） |
+| 支付后自动发货 | `ConfirmPayment` → `FulfillOrderJob` |

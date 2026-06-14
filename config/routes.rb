@@ -51,8 +51,17 @@ Rails.application.routes.draw do
 
   scope module: :community, path: "forum", as: :forum do
     resources :sections, only: %i[index show]
-    resources :topics, only: %i[index show new create]
-    resources :posts, only: %i[create]
+    resources :topics, only: %i[show new create] do
+      member do
+        post :moderate
+        post :subscription, action: :toggle_subscription
+      end
+    end
+    resources :posts, only: %i[create update destroy] do
+      member do
+        post :reaction, action: :toggle_reaction
+      end
+    end
     resources :reports, only: %i[new create]
     get "search", to: "search#index"
   end
@@ -61,7 +70,9 @@ Rails.application.routes.draw do
     resources :products, only: %i[index show]
     resource :cart, only: %i[show update]
     resources :orders, only: %i[index show create]
-    resource :checkout, only: %i[show create], controller: "checkout"
+    resource :checkout, only: %i[show create], controller: "checkout" do
+      post :preview_coupon, on: :member
+    end
     post "webhooks/:provider", to: "webhooks#create", as: :webhook
   end
 

@@ -6,6 +6,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Textarea from '@/components/ui/Textarea.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -15,7 +16,7 @@ const props = defineProps<{
 }>()
 
 const form = useForm({
-  topic: { title: '' },
+  topic: { title: '', body: '' },
 })
 
 function submit() {
@@ -38,6 +39,11 @@ function submit() {
       <Label for="title">标题</Label>
       <Input id="title" v-model="form.topic.title" required autofocus />
       <p v-if="form.errors.title" class="text-sm text-destructive">{{ form.errors.title }}</p>
+    </div>
+    <div class="space-y-2">
+      <Label for="body">首帖内容</Label>
+      <Textarea id="body" v-model="form.topic.body" required rows="8" placeholder="写下主题的第一条内容…" />
+      <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
     </div>
     <div class="flex gap-3">
       <Button type="submit" :disabled="form.processing">创建</Button>

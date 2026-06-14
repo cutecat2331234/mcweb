@@ -41,7 +41,7 @@ module Commerce
       case coupon.discount_type
       when "fixed"
         [ coupon.discount_value, @order.subtotal_cents ].min
-      when "percent"
+      when "percentage"
         (@order.subtotal_cents * coupon.discount_value / 100.0).floor
       else
         0

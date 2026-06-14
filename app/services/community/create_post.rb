@@ -17,6 +17,10 @@ module Community
       spam_result = check_spam
       return spam_result if spam_result.failure?
 
+      unless @topic.section.allowed?(@user, :reply)
+        return ServiceResult.failure(error: "You are not allowed to reply in this section.")
+      end
+
       post = nil
       @topic.with_lock do
         if @topic.locked?
@@ -35,11 +39,14 @@ module Community
         )
 
         @topic.update!(
-          replies_count: @topic.posts.count,
+          replies_count: [ @topic.posts.count - 1, 0 ].max,
           last_posted_at: Time.current,
           last_post_user: @user
         )
       end
+
+      Community::ReadState.mark_read!(@user, @topic, floor: post.floor_number)
+      Community::Subscription.subscribe!(@user, @topic)
 
       Administration::AuditLogger.call(
         actor: @user,

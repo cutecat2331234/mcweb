@@ -20,11 +20,13 @@ module Payments
       )
       return ServiceResult.failure(error: "Payment record not found.") unless payment_record
 
-      Commerce::ConfirmPayment.call(
+      result = Commerce::ConfirmPayment.call(
         payment_record: payment_record,
         provider_payment_id: event.payload.dig("payment_id"),
         metadata: { webhook_event_id: event.event_id }
       )
+
+      result
     end
 
     def process_refund(refund)

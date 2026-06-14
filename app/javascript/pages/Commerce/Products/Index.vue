@@ -25,8 +25,16 @@ export interface ProductItem {
   url: string
 }
 
+export interface CategoryItem {
+  slug: string
+  name: string
+  url: string
+}
+
 defineProps<{
   products: ProductItem[]
+  categories: CategoryItem[]
+  activeCategory: string | null
   pagination: PaginationMeta
 }>()
 </script>
@@ -38,6 +46,25 @@ defineProps<{
   ]" />
 
   <PageHeader title="商品列表" subtitle="浏览可购买的数字商品" />
+
+  <div v-if="categories.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      :href="routes.store"
+      class="rounded-full border px-3 py-1 text-sm transition-colors"
+      :class="!activeCategory ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
+    >
+      全部
+    </Link>
+    <Link
+      v-for="category in categories"
+      :key="category.slug"
+      :href="category.url"
+      class="rounded-full border px-3 py-1 text-sm transition-colors"
+      :class="activeCategory === category.slug ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
+    >
+      {{ category.name }}
+    </Link>
+  </div>
 
   <div v-if="products.length" class="rounded-lg border">
     <Table>
@@ -73,5 +100,5 @@ defineProps<{
     暂无商品。
   </p>
 
-  <Pagination :pagination="pagination" :base-path="routes.store" />
+  <Pagination :pagination="pagination" :base-path="activeCategory ? `/store/products?category=${activeCategory}` : routes.store" />
 </template>

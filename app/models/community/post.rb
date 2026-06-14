@@ -28,7 +28,7 @@ module Community
 
     def update_topic_counters
       topic.update!(
-        replies_count: topic.posts.count,
+        replies_count: [ topic.posts.count - 1, 0 ].max,
         last_posted_at: created_at,
         last_post_user: user
       )

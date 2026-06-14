@@ -26,6 +26,7 @@ module Identity
           token: result.value[:token],
           remember_me: session_params[:remember_me] == "1" || session_params[:remember_me] == true
         )
+        merge_guest_cart!
         redirect_after_login notice: "Signed in successfully."
       else
         render inertia: "Identity/Sessions/New",
@@ -47,6 +48,14 @@ module Identity
 
     def redirect_if_signed_in
       redirect_to root_path if user_signed_in?
+    end
+
+    def merge_guest_cart!
+      token = cookies.signed[:cart_token]
+      return if token.blank?
+
+      Commerce::MergeGuestCart.call(user: current_user, session_token: token)
+      cookies.delete(:cart_token)
     end
   end
 end

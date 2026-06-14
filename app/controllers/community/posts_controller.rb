@@ -4,7 +4,7 @@ module Community
   class PostsController < ApplicationController
     before_action :require_login
     before_action :set_topic, only: :create
-    before_action :set_post, only: %i[update destroy]
+    before_action :set_post, only: %i[update destroy toggle_reaction]
 
     def create
       result = Community::CreatePost.call(
@@ -23,21 +23,42 @@ module Community
     end
 
     def update
-      authorize_post_owner!
+      result = Community::EditPost.call(
+        user: current_user,
+        post: @post,
+        body: post_params[:body]
+      )
 
-      if @post.edit_body!(post_params[:body], editor: current_user)
-        redirect_to forum_topic_path(@post.topic), notice: "Post updated."
+      if result.success?
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: "帖子已更新。"
       else
-        redirect_to forum_topic_path(@post.topic), alert: "Unable to update post."
+        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
       end
     end
 
     def destroy
-      authorize_post_owner!
+      unless can_delete_post?(@post, current_user)
+        return redirect_to forum_topic_path(@post.topic), alert: "无权删除此帖子。"
+      end
 
       topic = @post.topic
       @post.soft_delete!
-      redirect_to forum_topic_path(topic), notice: "Post deleted."
+      topic.update!(replies_count: [ topic.posts.count - 1, 0 ].max)
+      redirect_to forum_topic_path(topic), notice: "帖子已删除。"
+    end
+
+    def toggle_reaction
+      result = Community::ToggleReaction.call(
+        user: current_user,
+        post: @post,
+        emoji: params[:emoji]
+      )
+
+      if result.success?
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}")
+      else
+        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+      end
     end
 
     private
@@ -59,12 +80,6 @@ module Community
       return if post_params[:quoted_post_id].blank?
 
       Community::Post.find_by(id: post_params[:quoted_post_id], forum_topic_id: @topic.id)
-    end
-
-    def authorize_post_owner!
-      return if current_user&.id == @post.user_id || current_user&.permission?("forum.topics.lock")
-
-      redirect_to forum_topic_path(@post.topic), alert: "You are not authorized to modify this post."
     end
   end
 end

@@ -25,7 +25,9 @@ class ForumIntegrationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     assert_difference "Community::Topic.count", 1 do
-      post forum_topics_path(section_id: @section.slug), params: { topic: { title: "Hello world" } }
+      post forum_topics_path(section_id: @section.slug), params: {
+        topic: { title: "Hello world", body: "This is the opening post." }
+      }
     end
     assert_redirected_to forum_topic_path(Community::Topic.last)
 
@@ -34,13 +36,21 @@ class ForumIntegrationTest < ActionDispatch::IntegrationTest
     assert_response :success
 
     posts_before = Community::Post.count
-    post forum_posts_path, params: { post: { topic_id: topic.public_id, body: "First reply" } }
+    travel 11.seconds do
+      post forum_posts_path, params: { post: { topic_id: topic.public_id, body: "First reply" } }
+    end
     assert_equal posts_before + 1, Community::Post.count
     assert_redirected_to %r{/forum/topics/#{topic.public_id}}
   end
 
   test "forum search finds topics" do
-    Community::CreateTopic.call(user: @user, section: @section, title: "UniqueSearchTerm123", ip_address: "127.0.0.1")
+    Community::CreateTopic.call(
+      user: @user,
+      section: @section,
+      title: "UniqueSearchTerm123",
+      body: "Searchable opening post.",
+      ip_address: "127.0.0.1"
+    )
 
     get forum_search_path, params: { q: "UniqueSearchTerm123" }
     assert_response :success

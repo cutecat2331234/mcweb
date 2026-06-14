@@ -3,11 +3,13 @@
 module Community
   class CreateTopic < ApplicationService
     MIN_INTERVAL = 30.seconds
+    MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, ip_address: nil)
+    def initialize(user:, section:, title:, body:, ip_address: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
+      @body = body.to_s.strip
       @ip_address = ip_address
     end
 
@@ -15,15 +17,34 @@ module Community
       spam_result = check_spam
       return spam_result if spam_result.failure?
 
-      topic = Community::Topic.create!(
-        public_id: generate_public_id,
-        section: @section,
-        user: @user,
-        title: @title,
-        status: "published",
-        last_posted_at: Time.current,
-        last_post_user: @user
-      )
+      unless @section.allowed?(@user, :create_topic)
+        return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
+      end
+
+      topic = nil
+      Community::Topic.transaction do
+        topic = Community::Topic.create!(
+          public_id: generate_public_id,
+          section: @section,
+          user: @user,
+          title: @title,
+          status: "published",
+          last_posted_at: Time.current,
+          last_post_user: @user,
+          replies_count: 0
+        )
+
+        Community::Post.create!(
+          topic: topic,
+          user: @user,
+          floor_number: 1,
+          body: @body,
+          status: "published"
+        )
+
+        Community::Subscription.subscribe!(@user, topic)
+        Community::ReadState.mark_read!(@user, topic, floor: 1)
+      end
 
       Administration::AuditLogger.call(
         actor: @user,
@@ -40,6 +61,14 @@ module Community
     private
 
     def check_spam
+      if @title.blank?
+        return ServiceResult.failure(error: "Title is required.")
+      end
+
+      if @body.length < MIN_BODY_LENGTH
+        return ServiceResult.failure(error: "Post body is too short.")
+      end
+
       rate_result = Administration::RateLimiter.call(
         key: "forum_topic:#{@user.id}",
         limit: 5,

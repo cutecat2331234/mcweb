@@ -12,7 +12,7 @@ module Community
     end
 
     def unread_count
-      topic.replies_count - last_read_floor
+      topic.posts.where("floor_number > ?", last_read_floor).count
     end
   end
 end

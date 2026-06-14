@@ -13,7 +13,12 @@ module Community
       @topic.record_view!
       mark_topic_notifications_read!
 
-      posts_scope = @topic.posts.chronological.includes(:user, :quoted_post, :parent_post, :reactions, :edits)
+      posts_scope = if can_moderate_topic?
+                      @topic.posts.with_discarded.chronological
+                    else
+                      @topic.posts.chronological
+                    end
+      posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits)
       posts_scope = filter_blocked_posts(posts_scope)
       if params[:q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
@@ -333,6 +338,7 @@ module Community
         url: forum_section_path(@section),
         prefixes: Array(@section.prefixes),
         prefix_required: @section.prefix_required?,
+        topic_template: @section.topic_template,
         required_tags: @section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
         allowed_tags: @section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } }
       }

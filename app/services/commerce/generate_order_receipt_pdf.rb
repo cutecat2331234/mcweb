@@ -24,7 +24,18 @@ module Commerce
         pdf.text "- #{item.product_name} x#{item.quantity}  #{format_money(item.total_cents, @order.currency)}"
       end
 
-      pdf.move_down 16
+      pdf.move_down 8
+      pdf.text "Subtotal: #{format_money(@order.subtotal_cents, @order.currency)}"
+      if @order.discount_cents.positive?
+        code = @order.coupon&.code
+        pdf.text "Discount#{code ? " (#{code})" : ""}: -#{format_money(@order.discount_cents, @order.currency)}"
+      end
+      if @order.gift_card_amount_cents.positive?
+        code = @order.gift_card&.code
+        pdf.text "Gift card#{code ? " (#{code})" : ""}: -#{format_money(@order.gift_card_amount_cents, @order.currency)}"
+      end
+
+      pdf.move_down 8
       pdf.text "Total: #{format_money(@order.total_cents, @order.currency)}", style: :bold
 
       ServiceResult.success(pdf.render)

@@ -25,6 +25,7 @@ const props = defineProps<{
     required_tag_ids: number[]
     allowed_tag_ids: number[]
     prefix_required: boolean
+    topic_template: string
   }
   tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
@@ -120,6 +121,10 @@ function submit() {
         <input v-model="form.section.prefix_required" type="checkbox" class="h-4 w-4" />
         发帖时必须选择前缀
       </label>
+    </div>
+    <div class="space-y-2">
+      <Label for="topic_template">主题模板（XenForo，发帖时预填正文）</Label>
+      <Textarea id="topic_template" v-model="form.section.topic_template" rows="5" placeholder="请按以下格式填写…" />
     </div>
     <div v-if="tags.length" class="space-y-2">
       <Label>必填标签（发帖时至少选一个，XenForo 风格）</Label>

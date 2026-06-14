@@ -3,7 +3,7 @@
 module Admin
   class UsersController < BaseController
     before_action -> { require_permission("system.settings.manage") }
-    before_action :set_user, only: %i[show edit update destroy ban unban]
+    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note]
 
     def index
       users = User.order(created_at: :desc)
@@ -67,6 +67,12 @@ module Admin
             items: @user.forum_warnings.recent.limit(5).map do |warning|
               { label: l(warning.created_at, format: :short), value: "#{warning.points} 点 · #{warning.reason}" }
             end.presence || [ { label: "记录", value: "无" } ]
+          },
+          {
+            title: "员工备注（仅管理可见）",
+            items: @user.forum_staff_notes.recent.limit(5).map do |note|
+              { label: "#{note.author.username} · #{l(note.created_at, format: :short)}", value: note.body }
+            end.presence || [ { label: "记录", value: "无" } ]
           }
         ].compact,
         backUrl: admin_users_path,
@@ -87,6 +93,9 @@ module Admin
         warningForm: current_user.permission?("forum.users.warn") || current_user.permission?("admin.access") ? {
           action_url: warn_admin_user_path(@user),
           warning_points: Community::UserWarning.total_points_for(@user)
+        } : nil,
+        staffNoteForm: current_user.permission?("forum.users.warn") || current_user.permission?("admin.access") ? {
+          action_url: staff_note_admin_user_path(@user)
         } : nil,
         actions: mute_actions.map do |m|
           { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
@@ -157,6 +166,19 @@ module Admin
       )
       if result.success?
         redirect_to admin_user_path(@user), notice: "警告已发出。"
+      else
+        redirect_to admin_user_path(@user), alert: service_error_message(result)
+      end
+    end
+
+    def staff_note
+      result = Community::CreateStaffNote.call(
+        actor: current_user,
+        user: @user,
+        body: params[:body]
+      )
+      if result.success?
+        redirect_to admin_user_path(@user), notice: "员工备注已添加。"
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end

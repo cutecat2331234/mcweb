@@ -4,7 +4,7 @@ module Community
   class PostsController < ApplicationController
     before_action :require_login, except: %i[raw edits]
     before_action :set_topic, only: :create
-    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit raw]
+    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit raw restore]
 
     def create
       result = Community::CreatePost.call(
@@ -128,6 +128,16 @@ module Community
       end
     end
 
+    def restore
+      result = Community::RestorePost.call(actor: current_user, post: @post)
+
+      if result.success?
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: "帖子已恢复。"
+      else
+        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+      end
+    end
+
     def raw
       return head :not_found unless topic_visible_to_user?(@post.topic)
 
@@ -142,7 +152,8 @@ module Community
     end
 
     def set_post
-      @post = Community::Post.find(params[:id])
+      scope = action_name == "restore" ? Community::Post.with_discarded : Community::Post
+      @post = scope.find(params[:id])
     end
 
     def post_params

@@ -29,6 +29,7 @@ module Admin
 
       def show
         card = ::Commerce::GiftCard.find(params[:id])
+        orders = card.orders.order(created_at: :desc).limit(10)
         render inertia: "Admin/Generic/Show", props: {
           title: card.code,
           fields: [
@@ -38,8 +39,33 @@ module Admin
             { label: "过期时间", value: card.expires_at ? l(card.expires_at, format: :short) : "—" },
             { label: "备注", value: card.note.presence || "—" }
           ],
-          backUrl: admin_store_gift_cards_path
+          sections: [
+            {
+              title: "使用记录",
+              items: orders.map do |order|
+                { label: order.order_number, value: "#{format_money(order.gift_card_amount_cents, order.currency)} · #{order.status}" }
+              end.presence || [ { label: "记录", value: "暂无" } ]
+            }
+          ],
+          backUrl: admin_store_gift_cards_path,
+          actions: [
+            { label: "编辑", href: edit_admin_store_gift_card_path(card) }
+          ]
         }
+      end
+
+      def edit
+        card = ::Commerce::GiftCard.find(params[:id])
+        render inertia: "Admin/Store/GiftCards/Form", props: form_props(card, editing: true)
+      end
+
+      def update
+        card = ::Commerce::GiftCard.find(params[:id])
+        if card.update(gift_card_params)
+          redirect_to admin_store_gift_card_path(card), notice: "礼品卡已更新。"
+        else
+          render inertia: "Admin/Store/GiftCards/Form", props: form_props(card, editing: true), status: :unprocessable_entity
+        end
       end
 
       def new
@@ -65,9 +91,9 @@ module Admin
         params.require(:gift_card).permit(:code, :balance_cents, :currency, :expires_at, :note, :active)
       end
 
-      def form_props(card)
+      def form_props(card, editing: false)
         {
-          title: "新建礼品卡",
+          title: editing ? "编辑礼品卡" : "新建礼品卡",
           gift_card: {
             code: card.code || "",
             balance_cents: card.balance_cents || 0,
@@ -76,8 +102,9 @@ module Admin
             note: card.note || "",
             active: card.active != false
           },
-          submitUrl: admin_store_gift_cards_path,
-          backUrl: admin_store_gift_cards_path
+          submitUrl: editing ? admin_store_gift_card_path(card) : admin_store_gift_cards_path,
+          method: editing ? "patch" : "post",
+          backUrl: editing ? admin_store_gift_card_path(card) : admin_store_gift_cards_path
         }
       end
 

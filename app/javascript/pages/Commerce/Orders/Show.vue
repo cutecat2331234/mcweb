@@ -32,6 +32,7 @@ const props = defineProps<{
     receipt_url: string
     receipt_pdf_url: string
     can_pay: boolean
+    can_confirm_free?: boolean
     can_cancel: boolean
     can_request_refund: boolean
     can_download_receipt: boolean
@@ -219,6 +220,7 @@ function refreshDownload(url: string) {
       </select>
       <Button type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
     </form>
+    <Button v-else-if="order.can_confirm_free" type="button" @click="payForm.post(routes.storeCheckout)">确认订单</Button>
     <Button v-else-if="order.can_pay" type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
     <Button v-if="order.can_cancel" type="button" variant="outline" @click="cancelForm.post(order.cancel_url)">取消订单</Button>
     <Button v-if="order.can_reorder && order.reorder_url" type="button" variant="outline" @click="reorderForm.post(order.reorder_url)">再次购买</Button>

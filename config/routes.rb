@@ -29,6 +29,7 @@ Rails.application.routes.draw do
         post :unban
         post :grant_badge
         post :warn
+        post :staff_note
       end
     end
     resources :roles, only: %i[index show]
@@ -47,7 +48,7 @@ Rails.application.routes.draw do
       resources :categories
       resources :products
       resources :coupons
-      resources :gift_cards, only: %i[index show new create]
+      resources :gift_cards, only: %i[index show new create edit update]
       resources :orders, only: %i[index show update] do
         collection do
           get :export
@@ -132,6 +133,7 @@ Rails.application.routes.draw do
         get :edits
         get :raw
         post :restore_edit
+        post :restore
       end
     end
     resources :reports, only: %i[new create]
@@ -215,7 +217,9 @@ Rails.application.routes.draw do
     resources :price_alerts, only: %i[index destroy]
     resource :cart, only: %i[show update] do
       post :preview_coupon, on: :member
+      post :preview_gift_card, on: :member
       delete :clear_coupon, on: :member
+      delete :clear_gift_card, on: :member
       post :move_to_wishlist, on: :member
       delete :clear, on: :member
     end
@@ -235,6 +239,8 @@ Rails.application.routes.draw do
     end
     get "coupons/:code", to: "coupons#show", as: :coupon
     post "coupons/:code/apply", to: "coupons#apply", as: :apply_coupon
+    get "gift_cards/:code", to: "gift_cards#show", as: :gift_card
+    post "gift_cards/:code/apply", to: "gift_cards#apply", as: :apply_gift_card
     post "webhooks/:provider", to: "webhooks#create", as: :webhook
     get "downloads/:token", to: "downloads#show", as: :download
     get "preferences", to: "preferences#show"

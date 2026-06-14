@@ -36,6 +36,7 @@ const props = defineProps<{
   providers: ProviderOption[]
   defaultProvider?: string
   pendingCouponCode?: string | null
+  pendingGiftCardCode?: string | null
   previewCouponUrl: string
   previewGiftCardUrl: string
 }>()
@@ -44,7 +45,7 @@ const form = useForm({
   checkout: {
     provider: props.defaultProvider || props.providers[0]?.value || 'fake',
     coupon_code: props.pendingCouponCode || '',
-    gift_card_code: '',
+    gift_card_code: props.pendingGiftCardCode || '',
     notes: '',
   },
 })
@@ -118,6 +119,9 @@ async function previewCoupon() {
       couponMessage.value = `优惠码 ${data.code} 已应用`
       discountLabel.value = data.discount_label
       totalLabel.value = data.total_label
+      if (form.checkout.gift_card_code.trim()) {
+        await previewGiftCard()
+      }
     } else {
       couponError.value = data.error || '优惠码无效'
     }
@@ -131,6 +135,8 @@ async function previewCoupon() {
 onMounted(() => {
   if (props.pendingCouponCode) {
     previewCoupon()
+  } else if (props.pendingGiftCardCode) {
+    previewGiftCard()
   }
 })
 </script>

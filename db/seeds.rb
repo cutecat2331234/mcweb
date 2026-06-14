@@ -99,6 +99,8 @@ InstallationLock.find_or_create_by!(id: 1) do |lock|
 end
 
 SiteSetting.set("forum.bump_cooldown_hours", "24") unless SiteSetting.exists?(key: "forum.bump_cooldown_hours")
+SiteSetting.set("forum.warning_mute_threshold", "10") unless SiteSetting.exists?(key: "forum.warning_mute_threshold")
+SiteSetting.set("forum.warning_mute_days", "7") unless SiteSetting.exists?(key: "forum.warning_mute_days")
 
 if Rails.env.development?
   unless InstallationLock.locked?

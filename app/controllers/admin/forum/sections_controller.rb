@@ -81,7 +81,7 @@ module Admin
       def section_params
         permitted = params.require(:section).permit(
           :name, :slug, :description, :position, :forum_category_id, :parent_id,
-          :create_topic_roles, :reply_roles, :prefixes, :prefix_required,
+          :create_topic_roles, :reply_roles, :prefixes, :prefix_required, :topic_template,
           required_tag_ids: [], allowed_tag_ids: []
         )
         prefixes = if permitted[:prefixes].is_a?(String)
@@ -102,6 +102,7 @@ module Admin
           required_tag_ids: required_tag_ids,
           allowed_tag_ids: allowed_tag_ids,
           prefix_required: ActiveModel::Type::Boolean.new.cast(permitted[:prefix_required]),
+          topic_template: permitted[:topic_template],
           permissions: {
             "create_topic" => parse_roles(permitted[:create_topic_roles]),
             "reply" => parse_roles(permitted[:reply_roles])
@@ -133,7 +134,8 @@ module Admin
             reply_roles: Array(section.permissions["reply"]).join(", "),
             required_tag_ids: Array(section.required_tag_ids).map(&:to_i),
             allowed_tag_ids: Array(section.allowed_tag_ids).map(&:to_i),
-            prefix_required: section.prefix_required?
+            prefix_required: section.prefix_required?,
+            topic_template: section.topic_template || ""
           },
           tags: ::Community::Tag.order(:name).map { |tag| { id: tag.id, name: tag.name } },
           categories: ::Community::Category.order(:name).map { |c| { id: c.id, name: c.name } },

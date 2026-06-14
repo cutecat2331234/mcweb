@@ -673,3 +673,24 @@ app/
 | 书签主题列表统一 | `Bookmarks/Index.vue` 接入 `TopicListTable` |
 | 员工新提问邮件 | `NotifyNewProductQuestion` + `OrderMailer#new_product_question` |
 | 弃购邮件 HTML | `CartMailer#abandoned_cart.html.erb` |
+
+### 第三十七轮（审核恢复、礼品卡完善与论坛细节）
+
+| 功能 | 实现 |
+|------|------|
+| 帖子恢复（XenForo undelete） | `RestorePost` + 管理端恢复按钮 |
+| 已删除帖子幽灵显示 | 版主可见 `with_discarded` + 删除样式 |
+| 编辑原因展示（Discourse） | `last_edit_reason` 内联显示 |
+| 反应用户弹层 | `ReactionUsersPopover` 点击查看 |
+| 分区主题模板（XenForo） | `topic_template` + 发帖预填 |
+| 搜索日期范围 | `created_after` / `created_before` |
+| 员工备注 | `forum_staff_notes` + 管理端私有备注 |
+| 警告积分阈值自动禁言 | `EnforceWarningThreshold` + SiteSetting |
+| 礼品卡退款恢复余额 | `RestoreGiftCardBalance` |
+| 零元订单直接确认 | 礼品卡全额抵扣免支付流程 |
+| 礼品卡公开页 | `/store/gift_cards/:code` |
+| 购物车礼品卡预览 | session 持久化 + 预览 API |
+| 礼品卡 Onebox | `FetchGiftCardOnebox` |
+| 收据/PDF 优惠明细 | 优惠券 + 礼品卡分行展示 |
+| 管理端礼品卡编辑/使用记录 | `edit`/`update` + 订单列表 |
+| 修复 `storePreferences` 路由 | `routes.ts` |

@@ -43,6 +43,12 @@
     </tbody>
   </table>
 
+  <% if order.discount_cents.positive? %>
+    <p class="total">优惠<%= order.coupon ? " (#{order.coupon.code})" : "" %>：−<%= number_to_currency(order.discount_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+  <% end %>
+  <% if order.gift_card_amount_cents.positive? %>
+    <p class="total">礼品卡<%= order.gift_card ? " (#{order.gift_card.code})" : "" %>：−<%= number_to_currency(order.gift_card_amount_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+  <% end %>
   <p class="total">合计：<%= number_to_currency(order.total_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
 
   <p><small>McWeb 商城 — 本收据由系统自动生成。</small></p>

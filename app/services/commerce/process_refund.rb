@@ -44,6 +44,7 @@ module Commerce
             @order.update!(status: "refunded")
             restore_stock!
             restore_coupon_usage!
+            restore_gift_card_balance!
           end
           MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_processed", "deliver_now", args: [ refund.id ])
           Commerce::NotifyOrderEvent.call(
@@ -112,6 +113,10 @@ module Commerce
       return unless coupon.used_count.positive?
 
       coupon.decrement!(:used_count)
+    end
+
+    def restore_gift_card_balance!
+      Commerce::RestoreGiftCardBalance.call(order: @order)
     end
 
     def format_refund_amount(cents)

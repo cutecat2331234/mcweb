@@ -22,6 +22,7 @@ module Community
       )
 
       Community::NotifyUserWarning.call(warning: warning)
+      Community::EnforceWarningThreshold.call(user: @user, actor: @actor)
       ServiceResult.success(warning)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

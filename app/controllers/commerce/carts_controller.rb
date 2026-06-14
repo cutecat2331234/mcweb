@@ -7,6 +7,7 @@ module Commerce
     def show
       items = @cart.items.includes(:product, :variant)
       pending_coupon = session[:pending_coupon_code].to_s.presence
+      pending_gift_card = session[:pending_gift_card_code].to_s.presence
 
       render inertia: "Commerce/Carts/Show", props: {
         items: items.map { |item| serialize_cart_item(item) },
@@ -14,8 +15,11 @@ module Commerce
         subtotalCents: @cart.subtotal_cents,
         loggedIn: logged_in?,
         pendingCouponCode: pending_coupon,
+        pendingGiftCardCode: pending_gift_card,
         previewCouponUrl: preview_coupon_store_cart_path,
+        previewGiftCardUrl: preview_gift_card_store_cart_path,
         clearCouponUrl: clear_coupon_store_cart_path,
+        clearGiftCardUrl: clear_gift_card_store_cart_path,
         moveToWishlistUrl: move_to_wishlist_store_cart_path,
         clearCartUrl: clear_store_cart_path,
         crossSellProducts: cross_sell_products(items)
@@ -71,6 +75,46 @@ module Commerce
     def clear_coupon
       session.delete(:pending_coupon_code)
       redirect_to store_cart_path, notice: "已清除优惠码。"
+    end
+
+    def preview_gift_card
+      subtotal_cents = @cart.subtotal_cents
+      discount_cents = 0
+      if params[:coupon_code].present?
+        preview = Commerce::PreviewCoupon.call(
+          subtotal_cents: subtotal_cents,
+          code: params[:coupon_code],
+          cart_items: @cart.items.includes(:product),
+          user: current_user
+        )
+        discount_cents = preview.success? ? preview.value[:discount_cents] : 0
+      end
+
+      result = Commerce::PreviewGiftCard.call(
+        subtotal_cents: subtotal_cents,
+        code: params[:code],
+        discount_cents: discount_cents
+      )
+
+      if result.success?
+        session[:pending_gift_card_code] = result.value[:code]
+        currency = @cart.items.first&.product&.currency || "CNY"
+        render json: {
+          code: result.value[:code],
+          gift_card_amount_cents: result.value[:gift_card_amount_cents],
+          total_cents: result.value[:total_cents],
+          balance_cents: result.value[:balance_cents],
+          gift_card_amount_label: format_money(result.value[:gift_card_amount_cents], currency),
+          total_label: format_money(result.value[:total_cents], currency)
+        }
+      else
+        render json: { error: service_error_message(result) }, status: :unprocessable_entity
+      end
+    end
+
+    def clear_gift_card
+      session.delete(:pending_gift_card_code)
+      redirect_to store_cart_path, notice: "已清除礼品卡。"
     end
 
     def update

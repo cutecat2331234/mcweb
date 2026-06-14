@@ -142,6 +142,12 @@ module Community
         token
       end
 
+      text = text.gsub(%r{\A(/store/gift_cards/[\w-]+)\s*\z}i) do |path|
+        token = placeholder_token(placeholders, "ONEBOX")
+        placeholders[token] = gift_card_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
+        token
+      end
+
       text = text.gsub(/\A(https?:\/\/[^\s]+)\z/) do |url|
         token = placeholder_token(placeholders, "ONEBOX")
         if (embed = video_embed_html(url))
@@ -154,6 +160,8 @@ module Community
           placeholders[token] = user_box
         elsif (coupon_box = coupon_onebox_html(url))
           placeholders[token] = coupon_box
+        elsif (gift_card_box = gift_card_onebox_html(url))
+          placeholders[token] = gift_card_box
         else
           preview = Community::FetchLinkPreview.call(url: url)
           if preview.success? && preview.value
@@ -259,6 +267,15 @@ module Community
       %(<aside class="onebox coupon-onebox"><a href="#{ERB::Util.html_escape(c[:url])}" class="onebox-link"><strong class="onebox-title">优惠券 #{ERB::Util.html_escape(c[:code])}</strong><span class="onebox-price">#{ERB::Util.html_escape(c[:discount_label])}</span></a></aside>)
     end
 
+    def gift_card_onebox_html(url)
+      result = Community::FetchGiftCardOnebox.call(url: url)
+      return nil unless result.success? && result.value
+
+      g = result.value
+      status = g[:redeemable] ? g[:balance_label] : "不可用"
+      %(<aside class="onebox gift-card-onebox"><a href="#{ERB::Util.html_escape(g[:url])}" class="onebox-link"><strong class="onebox-title">礼品卡 #{ERB::Util.html_escape(g[:code])}</strong><span class="onebox-price">余额 #{ERB::Util.html_escape(status)}</span></a></aside>)
+    end
+
     def markdown_to_html(text)
       lines = text.split(/\r\n|\r|\n/)
       html_lines = []
@@ -357,6 +374,8 @@ module Community
           user_box
         elsif (coupon_box = coupon_onebox_html(url))
           coupon_box
+        elsif (gift_card_box = gift_card_onebox_html(url))
+          gift_card_box
         else
           %(<a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener">#{ERB::Util.html_escape(label)}</a>)
         end

@@ -285,10 +285,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.jsonb "prefixes", default: [], null: false
     t.jsonb "required_tag_ids", default: [], null: false
     t.string "slug", null: false
+    t.text "topic_template"
     t.datetime "updated_at", null: false
     t.index ["forum_category_id", "slug"], name: "index_forum_sections_on_forum_category_id_and_slug", unique: true
     t.index ["forum_category_id"], name: "index_forum_sections_on_forum_category_id"
     t.index ["parent_id"], name: "index_forum_sections_on_parent_id"
+  end
+
+  create_table "forum_staff_notes", force: :cascade do |t|
+    t.bigint "author_id", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["author_id"], name: "index_forum_staff_notes_on_author_id"
+    t.index ["user_id"], name: "index_forum_staff_notes_on_user_id"
   end
 
   create_table "forum_subscriptions", force: :cascade do |t|
@@ -1144,6 +1155,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_section_mutes", "users"
   add_foreign_key "forum_sections", "forum_categories"
   add_foreign_key "forum_sections", "forum_sections", column: "parent_id"
+  add_foreign_key "forum_staff_notes", "users"
+  add_foreign_key "forum_staff_notes", "users", column: "author_id"
   add_foreign_key "forum_subscriptions", "users"
   add_foreign_key "forum_topic_mutes", "forum_topics"
   add_foreign_key "forum_topic_mutes", "users"

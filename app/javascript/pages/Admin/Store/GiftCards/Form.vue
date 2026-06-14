@@ -19,13 +19,18 @@ const props = defineProps<{
     active: boolean
   }
   submitUrl: string
+  method?: 'post' | 'patch'
   backUrl: string
 }>()
 
 const form = useForm({ gift_card: { ...props.gift_card } })
 
 function submit() {
-  form.post(props.submitUrl)
+  if (props.method === 'patch') {
+    form.patch(props.submitUrl)
+  } else {
+    form.post(props.submitUrl)
+  }
 }
 </script>
 
@@ -35,8 +40,8 @@ function submit() {
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
       <Label for="code">礼品卡代码</Label>
-      <Input id="code" v-model="form.gift_card.code" placeholder="留空自动生成" />
-      <p class="text-xs text-muted-foreground">留空将自动生成 GC 开头的代码。</p>
+      <Input id="code" v-model="form.gift_card.code" placeholder="留空自动生成" :disabled="method === 'patch'" />
+      <p v-if="method !== 'patch'" class="text-xs text-muted-foreground">留空将自动生成 GC 开头的代码。</p>
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
@@ -61,7 +66,7 @@ function submit() {
       启用
     </label>
     <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">创建</Button>
+      <Button type="submit" :disabled="form.processing">{{ method === 'patch' ? '保存' : '创建' }}</Button>
       <Button as-child variant="outline">
         <Link :href="backUrl">取消</Link>
       </Button>

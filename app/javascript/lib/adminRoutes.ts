@@ -41,6 +41,7 @@ export const adminRoutes = {
   storeGiftCards: '/admin/store/gift_cards',
   storeGiftCard: (id: number) => `/admin/store/gift_cards/${id}`,
   newStoreGiftCard: '/admin/store/gift_cards/new',
+  editStoreGiftCard: (id: number) => `/admin/store/gift_cards/${id}/edit`,
   storeOrders: '/admin/store/orders',
   storeReviews: '/admin/store/reviews',
   storeOrder: (id: string) => `/admin/store/orders/${id}`,

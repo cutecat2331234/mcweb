@@ -11,6 +11,7 @@ module Commerce
       currency = items.first&.product&.currency || "CNY"
       subtotal_cents = cart&.subtotal_cents.to_i
       pending_coupon = session[:pending_coupon_code].to_s.presence
+      pending_gift_card = session[:pending_gift_card_code].to_s.presence
 
       render inertia: "Commerce/Checkout/Show", props: {
         items: items.map { |item|
@@ -24,6 +25,7 @@ module Commerce
         subtotalCents: subtotal_cents,
         subtotalLabel: format_money(subtotal_cents, currency),
         pendingCouponCode: pending_coupon,
+        pendingGiftCardCode: pending_gift_card,
         providers: providers,
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path,
@@ -42,7 +44,7 @@ module Commerce
           cart: cart,
           user: current_user,
           coupon_code: checkout_params[:coupon_code].presence || session.delete(:pending_coupon_code),
-          gift_card_code: checkout_params[:gift_card_code].presence,
+          gift_card_code: checkout_params[:gift_card_code].presence || session.delete(:pending_gift_card_code),
           notes: checkout_params[:notes]
         )
         unless order_result.success?
@@ -50,6 +52,17 @@ module Commerce
         end
 
         order = order_result.value
+        if order.total_cents.zero?
+          payment_record = Payments::Record.create!(
+            order: order,
+            provider: "fake",
+            amount_cents: 0,
+            currency: order.currency,
+            status: :pending
+          )
+          Commerce::ConfirmPayment.call(payment_record: payment_record, provider_payment_id: "free-#{order.public_id}")
+          return redirect_to store_order_path(order), notice: "订单已确认。"
+        end
       else
         order = Commerce::Order.find_by!(public_id: params[:order_id], user: current_user)
       end
@@ -119,6 +132,7 @@ module Commerce
       )
 
       if result.success?
+        session[:pending_gift_card_code] = result.value[:code]
         currency = cart&.items&.first&.product&.currency || "CNY"
         render json: {
           code: result.value[:code],

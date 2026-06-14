@@ -31,8 +31,11 @@ const props = defineProps<{
   subtotalLabel: string
   loggedIn: boolean
   pendingCouponCode?: string | null
+  pendingGiftCardCode?: string | null
   previewCouponUrl: string
+  previewGiftCardUrl?: string
   clearCouponUrl?: string
+  clearGiftCardUrl?: string
   moveToWishlistUrl?: string
   clearCartUrl?: string
   crossSellProducts?: Array<{
@@ -56,9 +59,21 @@ const couponPreview = ref<{
 const couponError = ref('')
 const couponLoading = ref(false)
 
+const giftCardCode = ref(props.pendingGiftCardCode || '')
+const giftCardPreview = ref<{
+  code: string
+  gift_card_amount_label: string
+  total_label: string
+} | null>(null)
+const giftCardError = ref('')
+const giftCardLoading = ref(false)
+
 onMounted(() => {
   if (props.pendingCouponCode) {
     couponCode.value = props.pendingCouponCode
+  }
+  if (props.pendingGiftCardCode) {
+    giftCardCode.value = props.pendingGiftCardCode
   }
 })
 
@@ -93,6 +108,42 @@ async function previewCoupon() {
 function clearCoupon() {
   if (!props.clearCouponUrl) return
   router.delete(props.clearCouponUrl)
+}
+
+async function previewGiftCard() {
+  if (!props.previewGiftCardUrl || !giftCardCode.value.trim()) return
+  giftCardLoading.value = true
+  giftCardError.value = ''
+  giftCardPreview.value = null
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
+    const res = await fetch(props.previewGiftCardUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': token || '',
+      },
+      body: JSON.stringify({
+        code: giftCardCode.value.trim(),
+        coupon_code: couponCode.value.trim() || undefined,
+      }),
+      credentials: 'same-origin',
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      giftCardError.value = data.error || '礼品卡无效'
+      return
+    }
+    giftCardPreview.value = data
+  } finally {
+    giftCardLoading.value = false
+  }
+}
+
+function clearGiftCard() {
+  if (!props.clearGiftCardUrl) return
+  router.delete(props.clearGiftCardUrl)
 }
 
 function updateQuantity(itemId: number, quantity: number) {
@@ -187,6 +238,22 @@ function clearCart() {
       </p>
       <p v-else-if="pendingCouponCode" class="text-sm text-muted-foreground">已保存优惠码：<strong>{{ pendingCouponCode }}</strong>（结账时自动使用）</p>
       <p class="text-xs text-muted-foreground">优惠码在结账时正式使用。</p>
+    </div>
+
+    <div class="max-w-md space-y-2 rounded-lg border p-4">
+      <Label for="gift_card">礼品卡</Label>
+      <div class="flex gap-2">
+        <Input id="gift_card" v-model="giftCardCode" placeholder="输入礼品卡代码" class="flex-1" />
+        <Button type="button" variant="outline" :disabled="giftCardLoading || !giftCardCode.trim()" @click="previewGiftCard">
+          {{ giftCardLoading ? '验证中…' : '预览' }}
+        </Button>
+        <Button v-if="clearGiftCardUrl && pendingGiftCardCode" type="button" variant="ghost" @click="clearGiftCard">清除</Button>
+      </div>
+      <p v-if="giftCardError" class="text-sm text-destructive">{{ giftCardError }}</p>
+      <p v-if="giftCardPreview" class="text-sm text-muted-foreground">
+        礼品卡 <strong>{{ giftCardPreview.code }}</strong> 可抵扣 {{ giftCardPreview.gift_card_amount_label }}，预计合计 {{ giftCardPreview.total_label }}
+      </p>
+      <p v-else-if="pendingGiftCardCode" class="text-sm text-muted-foreground">已保存礼品卡：<strong>{{ pendingGiftCardCode }}</strong>（结账时自动使用）</p>
     </div>
 
     <div v-if="loggedIn" class="flex flex-wrap gap-3">

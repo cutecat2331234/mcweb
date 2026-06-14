@@ -14,13 +14,13 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; required_tags?: Array<{ name: string; slug: string; url: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }> }
+  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }> }
 }>()
 
 const form = useForm({
   topic: {
     title: '',
-    body: '',
+    body: props.section.topic_template || '',
     tags: '',
     prefix: '',
     poll_question: '',

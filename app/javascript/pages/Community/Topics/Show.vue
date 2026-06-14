@@ -8,6 +8,7 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import ReactionUsersPopover from '@/components/portal/ReactionUsersPopover.vue'
 import { routes } from '@/lib/routes'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
 
@@ -39,6 +40,7 @@ export interface PostItem {
   signature_html?: string | null
   created_at: string
   edited_at: string | null
+  last_edit_reason?: string | null
   edits_url: string | null
   quoted_post: QuotedPost | null
   reaction_counts: Record<string, number>
@@ -49,6 +51,8 @@ export interface PostItem {
   can_delete: boolean
   can_moderate: boolean
   hidden: boolean
+  deleted?: boolean
+  restore_url?: string | null
   report_url: string | null
   raw_url?: string
   bookmarked: boolean
@@ -320,6 +324,11 @@ function updateSlowMode() {
 
 function updateAutoClose() {
   router.patch(`/forum/topics/${props.topic.id}/auto_close`, { auto_close_at: autoCloseAt.value || null })
+}
+
+function restorePost(post: PostItem) {
+  if (!post.restore_url) return
+  router.post(post.restore_url, {}, { preserveScroll: true })
 }
 
 function reactionTitle(post: PostItem, emoji: string) {
@@ -827,7 +836,7 @@ function pollPercent(votes: number) {
       <article
         :id="`post-${post.id}`"
         class="rounded-lg border p-4"
-        :class="[post.hidden ? 'opacity-60 border-dashed' : '', post.is_solved ? 'border-green-400 bg-green-50/50 dark:bg-green-950/20' : '']"
+        :class="[post.hidden ? 'opacity-60 border-dashed' : '', post.deleted ? 'opacity-50 border-dashed bg-muted/30' : '', post.is_solved ? 'border-green-400 bg-green-50/50 dark:bg-green-950/20' : '']"
         :style="{ marginLeft: `${post.depth * 1.5}rem` }"
       >
       <div class="mb-3 flex items-start gap-3">
@@ -843,13 +852,14 @@ function pollPercent(votes: number) {
               <span class="mx-2">·</span>
               <span>{{ post.created_at }}</span>
               <span v-if="post.edited_at" class="ml-2">
-                （已编辑 {{ post.edited_at }}
+                （已编辑 {{ post.edited_at }}<span v-if="post.last_edit_reason">：{{ post.last_edit_reason }}</span>
                 <button v-if="post.edit_diff_lines?.length" type="button" class="hover:underline" @click="expandedDiffs[post.id] = !expandedDiffs[post.id]">
                   {{ expandedDiffs[post.id] ? '收起改动' : '查看改动' }}
                 </button>
                 <Link v-if="post.edits_url" :href="post.edits_url" class="hover:underline">历史</Link>）
               </span>
               <span v-if="post.hidden" class="ml-2 text-amber-600">[已隐藏]</span>
+              <span v-if="post.deleted" class="ml-2 text-destructive">[已删除]</span>
             </div>
             <div class="flex gap-2">
               <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
@@ -869,7 +879,8 @@ function pollPercent(votes: number) {
                 {{ post.hidden ? '显示' : '隐藏' }}
               </button>
               <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">编辑</button>
-              <button v-if="post.can_delete" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">删除</button>
+              <button v-if="post.can_delete && !post.deleted" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">删除</button>
+              <button v-if="post.restore_url" type="button" class="text-xs text-green-600 hover:underline" @click="restorePost(post)">恢复</button>
             </div>
           </div>
 
@@ -932,13 +943,20 @@ function pollPercent(votes: number) {
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <span v-if="post.reactions_total" class="text-xs text-muted-foreground">{{ post.reactions_total }} 个反应</span>
             <template v-if="loggedIn && !isOwnPost(post)">
-              <button
+              <ReactionUsersPopover
                 v-for="emoji in reactionEmojis"
                 :key="emoji"
+                v-show="post.reaction_counts[emoji]"
+                :emoji="emoji"
+                :count="post.reaction_counts[emoji] || 0"
+                :users="post.reaction_users?.[emoji] || []"
+              />
+              <button
+                v-for="emoji in reactionEmojis"
+                :key="`btn-${emoji}`"
                 type="button"
                 class="rounded-full border px-2 py-0.5 text-xs transition-colors"
                 :class="hasReacted(post, emoji) ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
-                :title="reactionTitle(post, emoji)"
                 @click="toggleReaction(post, emoji)"
               >
                 {{ emoji }}
@@ -946,14 +964,14 @@ function pollPercent(votes: number) {
               </button>
             </template>
             <template v-else>
-              <span
+              <ReactionUsersPopover
                 v-for="emoji in reactionEmojis"
                 :key="emoji"
                 v-show="post.reaction_counts[emoji]"
-                class="rounded-full border px-2 py-0.5 text-xs text-muted-foreground"
-              >
-                {{ emoji }} {{ post.reaction_counts[emoji] }}
-              </span>
+                :emoji="emoji"
+                :count="post.reaction_counts[emoji] || 0"
+                :users="post.reaction_users?.[emoji] || []"
+              />
             </template>
           </div>
         </div>

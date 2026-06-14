@@ -58,6 +58,10 @@ export interface WarningForm {
   warning_points: number
 }
 
+export interface StaffNoteForm {
+  action_url: string
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -70,6 +74,7 @@ const props = defineProps<{
   refundForm?: RefundForm | null
   badgeForm?: BadgeForm | null
   warningForm?: WarningForm | null
+  staffNoteForm?: StaffNoteForm | null
   backUrl: string
 }>()
 
@@ -78,6 +83,10 @@ const badgeSlug = ref('')
 const warningForm = useForm({
   reason: '',
   points: 1,
+})
+
+const staffNoteForm = useForm({
+  body: '',
 })
 
 const muteForm = useForm({
@@ -130,6 +139,14 @@ function submitWarning() {
   warningForm.post(props.warningForm.action_url, {
     preserveScroll: true,
     onSuccess: () => { warningForm.reset() },
+  })
+}
+
+function submitStaffNote() {
+  if (!props.staffNoteForm) return
+  staffNoteForm.post(props.staffNoteForm.action_url, {
+    preserveScroll: true,
+    onSuccess: () => { staffNoteForm.reset() },
   })
 }
 </script>
@@ -231,6 +248,16 @@ function submitWarning() {
       <Input v-model.number="warningForm.points" type="number" min="1" max="10" />
     </div>
     <Button type="submit" variant="destructive" size="sm" :disabled="warningForm.processing">发出警告</Button>
+  </form>
+
+  <form v-if="props.staffNoteForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitStaffNote">
+    <h2 class="text-sm font-semibold">添加员工备注</h2>
+    <p class="text-xs text-muted-foreground">仅管理员可见，用户无法查看。</p>
+    <div class="space-y-2">
+      <Label>备注内容</Label>
+      <Input v-model="staffNoteForm.body" placeholder="内部备注" required />
+    </div>
+    <Button type="submit" size="sm" :disabled="staffNoteForm.processing">保存备注</Button>
   </form>
 
   <div class="mt-6 flex flex-wrap gap-3">

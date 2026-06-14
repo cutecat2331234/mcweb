@@ -49,6 +49,8 @@ export const routes = {
   storeOrder: (id: string) => `/store/orders/${id}`,
   storeOrderReceiptPdf: (id: string) => `/store/orders/${id}/receipt_pdf`,
   storeCoupon: (code: string) => `/store/coupons/${code}`,
+  storeGiftCard: (code: string) => `/store/gift_cards/${code}`,
+  storePreferences: '/store/preferences',
   storeWishlistShare: '/store/wishlist/share',
   storePublicWishlist: (token: string) => `/store/wishlist/${token}`,
   forumUpload: '/forum/uploads',

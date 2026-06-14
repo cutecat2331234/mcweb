@@ -34,6 +34,8 @@ const props = defineProps<{
   author: string
   tag: string
   solved: string
+  createdAfter?: string
+  createdBefore?: string
   topicSort?: string
   postSort?: string
   sections: SectionOption[]
@@ -49,6 +51,8 @@ const sectionSlug = ref(props.section || '')
 const author = ref(props.author)
 const tagSlug = ref(props.tag)
 const solved = ref(props.solved)
+const createdAfter = ref(props.createdAfter || '')
+const createdBefore = ref(props.createdBefore || '')
 const topicSort = ref(props.topicSort || 'recent')
 const postSort = ref(props.postSort || 'recent')
 
@@ -64,6 +68,8 @@ function search() {
     author: author.value || undefined,
     tag: tagSlug.value || undefined,
     solved: solved.value || undefined,
+    created_after: createdAfter.value || undefined,
+    created_before: createdBefore.value || undefined,
     topic_sort: topicSort.value !== 'recent' ? topicSort.value : undefined,
     post_sort: postSort.value !== 'recent' ? postSort.value : undefined,
   }, { preserveState: true })
@@ -88,6 +94,8 @@ function search() {
       </option>
     </select>
     <Input v-model="author" placeholder="作者用户名" class="w-36" />
+    <Input v-model="createdAfter" type="date" class="w-36" title="起始日期" />
+    <Input v-model="createdBefore" type="date" class="w-36" title="截止日期" />
     <select v-model="tagSlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
       <option value="">全部标签</option>
       <option v-for="t in tags" :key="t.slug" :value="t.slug">#{{ t.name }}</option>

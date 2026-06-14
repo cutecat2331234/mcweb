@@ -21,6 +21,14 @@ module Community
         topics = topics.joins(:tags).where(forum_tags: { slug: tag_slug }) if tag_slug
         topics = topics.where(solved_post_id: nil) if solved_filter == "unsolved"
         topics = topics.where.not(solved_post_id: nil) if solved_filter == "solved"
+        if params[:created_after].present?
+          after = Time.zone.parse(params[:created_after].to_s) rescue nil
+          topics = topics.where("forum_topics.created_at >= ?", after) if after
+        end
+        if params[:created_before].present?
+          before = Time.zone.parse(params[:created_before].to_s) rescue nil
+          topics = topics.where("forum_topics.created_at <= ?", before) if before
+        end
         topics = topics.where(
           "to_tsvector('simple', coalesce(forum_topics.title, '')) @@ plainto_tsquery('simple', ?)",
           query
@@ -40,6 +48,14 @@ module Community
           posts = posts.joins(:topic).where(forum_topics: { solved_post_id: nil })
         elsif solved_filter == "solved"
           posts = posts.joins(:topic).where.not(forum_topics: { solved_post_id: nil })
+        end
+        if params[:created_after].present?
+          after = Time.zone.parse(params[:created_after].to_s) rescue nil
+          posts = posts.where("forum_posts.created_at >= ?", after) if after
+        end
+        if params[:created_before].present?
+          before = Time.zone.parse(params[:created_before].to_s) rescue nil
+          posts = posts.where("forum_posts.created_at <= ?", before) if before
         end
         posts = posts.where(
           "to_tsvector('simple', coalesce(forum_posts.body, '')) @@ plainto_tsquery('simple', ?)",
@@ -67,6 +83,8 @@ module Community
         author: author.to_s,
         tag: tag_slug.to_s,
         solved: solved_filter.to_s,
+        createdAfter: params[:created_after].to_s,
+        createdBefore: params[:created_before].to_s,
         topicSort: params[:topic_sort].to_s.presence || "recent",
         postSort: params[:post_sort].to_s.presence || "recent",
         sections: sections,

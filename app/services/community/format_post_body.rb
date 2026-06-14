@@ -118,10 +118,18 @@ module Community
         token
       end
 
+      text = text.gsub(%r{\A(/store/products/[\w-]+)\s*\z}) do |path|
+        token = placeholder_token(placeholders, "ONEBOX")
+        placeholders[token] = product_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
+        token
+      end
+
       text = text.gsub(/\A(https?:\/\/[^\s]+)\z/) do |url|
         token = placeholder_token(placeholders, "ONEBOX")
         if (embed = video_embed_html(url))
           placeholders[token] = embed
+        elsif (product_box = product_onebox_html(url))
+          placeholders[token] = product_box
         else
           preview = Community::FetchLinkPreview.call(url: url)
           if preview.success? && preview.value
@@ -188,6 +196,16 @@ module Community
         id = Regexp.last_match(1)
         %(<div class="video-embed"><iframe src="https://player.vimeo.com/video/#{ERB::Util.html_escape(id)}" width="560" height="315" frameborder="0" allowfullscreen loading="lazy" title="Vimeo video"></iframe></div>)
       end
+    end
+
+    def product_onebox_html(url)
+      result = Community::FetchProductOnebox.call(url: url)
+      return nil unless result.success? && result.value
+
+      p = result.value
+      img = p[:image_url].present? ? %(<img src="#{ERB::Util.html_escape(p[:image_url])}" alt="" class="onebox-image product-onebox-image" loading="lazy" />) : ""
+      summary = p[:summary].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(p[:summary].to_s.truncate(120))}</p>) : ""
+      %(<aside class="onebox product-onebox"><a href="#{ERB::Util.html_escape(p[:url])}" class="onebox-link">#{img}<strong class="onebox-title">#{ERB::Util.html_escape(p[:name])}</strong>#{summary}<span class="onebox-price">#{ERB::Util.html_escape(p[:price_label])}</span></a></aside>)
     end
 
     def markdown_to_html(text)
@@ -277,7 +295,15 @@ module Community
       escaped = escaped.gsub(/\*(.+?)\*/, '<em>\1</em>')
       escaped = escaped.gsub(/~~(.+?)~~/, '<del>\1</del>')
       escaped = escaped.gsub(/`([^`]+)`/, '<code>\1</code>')
-      escaped.gsub(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/, '<a href="\2" rel="nofollow noopener">\1</a>')
+      escaped.gsub(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/) do
+        label = Regexp.last_match(1)
+        url = Regexp.last_match(2)
+        if (product_box = product_onebox_html(url))
+          product_box
+        else
+          %(<a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener">#{ERB::Util.html_escape(label)}</a>)
+        end
+      end
     end
   end
 end

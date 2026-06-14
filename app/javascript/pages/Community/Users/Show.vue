@@ -34,6 +34,7 @@ const props = defineProps<{
     forum_signature?: string | null
     topics_count: number
     posts_count: number
+    orders_count?: number
     followers_count?: number
     followers_url?: string | null
     profile_url: string
@@ -79,7 +80,7 @@ const props = defineProps<{
     created_at: string
   }>
   postsPagination: PaginationMeta
-  activeTab: 'topics' | 'posts'
+  activeTab: 'topics' | 'posts' | 'store'
   liked_posts: Array<{
     id: number
     body: string
@@ -93,6 +94,14 @@ const props = defineProps<{
     icon: string
     description: string | null
     color: string
+  }>
+  store_reviews?: Array<{
+    id: number
+    product_name: string
+    product_url: string
+    rating: number
+    body: string | null
+    created_at: string
   }>
 }>()
 
@@ -156,7 +165,7 @@ function uploadAvatar(event: Event) {
   })
 }
 
-function switchTab(tab: 'topics' | 'posts') {
+function switchTab(tab: 'topics' | 'posts' | 'store') {
   router.get(`/forum/users/${props.profile.username}`, { tab }, { preserveState: true })
 }
 </script>
@@ -185,6 +194,7 @@ function switchTab(tab: 'topics' | 'posts') {
       <div class="mt-2 flex gap-6 text-sm">
         <span><strong>{{ profile.topics_count }}</strong> 主题</span>
         <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
+        <span v-if="profile.orders_count"><strong>{{ profile.orders_count }}</strong> 订单</span>
         <Link v-if="profile.followers_url" :href="profile.followers_url" class="hover:underline">
           <strong>{{ profile.followers_count ?? 0 }}</strong> 粉丝
         </Link>
@@ -303,6 +313,9 @@ function switchTab(tab: 'topics' | 'posts') {
     <Button :variant="activeTab === 'posts' ? 'default' : 'outline'" size="sm" @click="switchTab('posts')">
       回复 ({{ profile.posts_count }})
     </Button>
+    <Button :variant="activeTab === 'store' ? 'default' : 'outline'" size="sm" @click="switchTab('store')">
+      商城 ({{ profile.orders_count ?? 0 }})
+    </Button>
   </div>
 
   <section v-if="activeTab === 'topics'">
@@ -332,6 +345,19 @@ function switchTab(tab: 'topics' | 'posts') {
     :base-path="profile.profile_url"
     page-param="topics_page"
   />
+  </section>
+
+  <section v-else-if="activeTab === 'store'">
+    <h2 class="mb-3 text-sm font-semibold">商城评价</h2>
+    <div v-if="store_reviews?.length" class="space-y-2 rounded-lg border p-4">
+      <div v-for="review in store_reviews" :key="review.id" class="text-sm">
+        <Link :href="review.product_url" class="font-medium hover:underline">{{ review.product_name }}</Link>
+        <span class="ml-2 text-amber-500">{{ '★'.repeat(review.rating) }}</span>
+        <p v-if="review.body" class="text-muted-foreground">{{ review.body }}</p>
+        <p class="text-xs text-muted-foreground">{{ review.created_at }}</p>
+      </div>
+    </div>
+    <p v-else class="text-sm text-muted-foreground">暂无商城评价。</p>
   </section>
 
   <section v-else>

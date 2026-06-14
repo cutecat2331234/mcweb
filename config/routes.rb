@@ -90,6 +90,8 @@ Rails.application.routes.draw do
       end
     end
     get "blocks", to: "blocks#index", as: :blocks
+    get "ignores", to: "ignores#index", as: :ignores
+    get "muted", to: "mutes#index", as: :muted
     post "users/:username/block", to: "blocks#create", as: :block_user
     post "users/:username/ignore", to: "ignores#create", as: :ignore_user
     post "users/:username/follow", to: "follows#create", as: :user_follow
@@ -205,6 +207,7 @@ Rails.application.routes.draw do
         post :add_to_cart
       end
     end
+    resources :price_alerts, only: %i[index destroy]
     resource :cart, only: %i[show update] do
       post :preview_coupon, on: :member
       delete :clear_coupon, on: :member

@@ -6,7 +6,7 @@ module Community
 
     def show
       user = User.find_by!(username: params[:id])
-      tab = params[:tab].to_s.in?(%w[topics posts]) ? params[:tab] : "topics"
+      tab = params[:tab].to_s.in?(%w[topics posts store]) ? params[:tab] : "topics"
       topics_scope = Community::Topic.where(user: user, status: :published).order(created_at: :desc)
       posts_scope = Community::Post.where(user: user, status: :published).includes(:topic).order(created_at: :desc)
       posts_count = posts_scope.count
@@ -32,6 +32,18 @@ module Community
           }
         end
 
+      store_reviews = Commerce::Review.published.where(user: user).includes(:product).order(created_at: :desc).limit(10).map do |review|
+        {
+          id: review.id,
+          product_name: review.product.name,
+          product_url: store_product_path(review.product),
+          rating: review.rating,
+          body: review.body&.truncate(120),
+          created_at: l(review.created_at, format: :short)
+        }
+      end
+      orders_count = Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed]).count
+
       render inertia: "Community/Users/Show", props: {
         profile: {
           username: user.username,
@@ -48,6 +60,7 @@ module Community
           forum_signature: user.forum_signature,
           topics_count: topics_scope.count,
           posts_count: posts_count,
+          orders_count: orders_count,
           followers_count: Community::UserFollow.where(followed: user).count,
           followers_url: forum_user_followers_path(user.username),
           profile_url: forum_user_path(user.username),
@@ -85,7 +98,8 @@ module Community
         end,
         postsPagination: pagy_props(@pagy_posts),
         activeTab: tab,
-        liked_posts: liked_posts
+        liked_posts: liked_posts,
+        store_reviews: store_reviews
       }
     end
 

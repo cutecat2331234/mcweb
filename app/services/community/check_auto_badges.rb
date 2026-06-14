@@ -27,6 +27,8 @@ module Community
         Community::Post.where(user: @user, status: :published).count >= badge.grant_threshold
       when "likes_received"
         Community::Reaction.joins(:post).where(forum_posts: { user_id: @user.id }).count >= badge.grant_threshold
+      when "first_purchase"
+        Commerce::Order.where(user: @user, status: %w[paid processing fulfilling fulfilled completed]).exists?
       else
         false
       end

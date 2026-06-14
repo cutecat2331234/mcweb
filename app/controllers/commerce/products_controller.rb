@@ -146,6 +146,8 @@ module Commerce
       question_page = [ params[:question_page].to_i, 1 ].max
       @pagy_questions, questions = pagy(questions_scope, limit: 10, page: question_page)
 
+      price_alert = logged_in? ? Commerce::PriceAlert.find_by(user: current_user, product: product) : nil
+
       render inertia: "Commerce/Products/Show", props: {
         product: serialize_product_detail(product, wishlisted: wishlisted, reviews: reviews, average_rating: avg).merge(
           saved_variant_id: wishlist_item&.variant_id,
@@ -175,6 +177,8 @@ module Commerce
         stockAlertUnsubscribeUrls: stock_alerts.map do |variant_id, alert|
           { variant_id: variant_id, unsubscribe_url: store_stock_alert_path(alert) }
         end,
+        priceAlertUrl: logged_in? ? price_alert_store_product_path(product) : nil,
+        hasPriceAlert: price_alert.present?,
         reorderUrl: logged_in? && purchased ? reorder_store_product_path(product) : nil,
         reviewUrl: store_reviews_path(product),
         questionUrl: store_questions_path(product),

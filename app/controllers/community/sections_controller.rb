@@ -58,7 +58,7 @@ module Community
         pagination: pagy_props(@pagy),
         sort: sort,
         filter: filter.to_s,
-        filterOptions: topic_filter_options,
+        filterOptions: topic_filter_options(prefixes: Array(section.prefixes)),
         canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic),
       }
     end

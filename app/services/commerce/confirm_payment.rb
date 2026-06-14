@@ -56,6 +56,7 @@ module Commerce
           body: "订单 #{order.order_number} 已支付成功。",
           path: "/store/orders/#{order.public_id}"
         )
+        Community::CheckAutoBadges.call(user: order.user)
       end
 
       ServiceResult.success(record: @payment_record.reload, idempotent: false, newly_paid: newly_paid)

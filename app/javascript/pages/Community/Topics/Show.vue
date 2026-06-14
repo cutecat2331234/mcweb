@@ -30,6 +30,7 @@ export interface PostItem {
   author_url: string
   avatar_url: string
   author_username: string
+  verified_purchaser?: boolean
   body: string
   body_html: string
   body_long?: boolean
@@ -794,6 +795,7 @@ function pollPercent(votes: number) {
               <span v-if="post.is_solved" class="ml-2 text-xs text-green-600">[已解决]</span>
               <span class="mx-2">·</span>
               <Link :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
+              <span v-if="post.verified_purchaser" class="ml-1 rounded border border-green-300 bg-green-50 px-1 text-[10px] text-green-700">认证买家</span>
               <span class="mx-2">·</span>
               <span>{{ post.created_at }}</span>
               <span v-if="post.edited_at" class="ml-2">

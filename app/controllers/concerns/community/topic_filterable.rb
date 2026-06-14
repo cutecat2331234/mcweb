@@ -29,13 +29,15 @@ module Community
         end
       when "no_replies"
         scope.where(replies_count: 0)
+      when /\Aprefix:(.+)\z/
+        scope.where(prefix: Regexp.last_match(1))
       else
         scope
       end
     end
 
-    def topic_filter_options
-      [
+    def topic_filter_options(prefixes: [])
+      options = [
         { value: "", label: "全部" },
         { value: "unsolved", label: "未解决" },
         { value: "solved", label: "已解决" },
@@ -44,6 +46,10 @@ module Community
         { value: "unread", label: "未读" },
         { value: "no_replies", label: "零回复" }
       ]
+      prefixes.each do |prefix|
+        options << { value: "prefix:#{prefix}", label: "前缀：#{prefix}" }
+      end
+      options
     end
   end
 end

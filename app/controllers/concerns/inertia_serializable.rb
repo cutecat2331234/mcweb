@@ -157,6 +157,7 @@ module InertiaSerializable
       author: forum_author_name(post.user),
       author_username: post.user.username,
       author_url: forum_user_path(post.user.username),
+      verified_purchaser: verified_purchaser?(post.user),
       avatar_url: post.user.avatar_url,
       body: post.body,
       body_html: body_html,
@@ -620,5 +621,11 @@ module InertiaSerializable
     return nil unless result.success?
 
     store_download_path(result.value[:token])
+  end
+
+  def verified_purchaser?(user)
+    return false unless user
+
+    Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed]).exists?
   end
 end

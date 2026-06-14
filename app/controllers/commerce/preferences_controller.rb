@@ -17,6 +17,7 @@ module Commerce
       commerce.refund_rejected
       commerce.abandoned_cart
       commerce.stock_restocked
+      commerce.price_drop
       commerce.question_answered
     ].freeze
 
@@ -69,6 +70,7 @@ module Commerce
         "commerce.refund_rejected" => "退款拒绝通知",
         "commerce.abandoned_cart" => "购物车提醒",
         "commerce.stock_restocked" => "到货通知",
+        "commerce.price_drop" => "降价提醒",
         "commerce.question_answered" => "问答回复通知"
       }[type] || type.humanize
     end

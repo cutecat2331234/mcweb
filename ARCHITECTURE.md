@@ -568,3 +568,17 @@ app/
 | 购物车交叉销售 | 同分类推荐 `crossSellProducts` |
 | 商品短描述 | `store_products.summary` 列表/管理表单 |
 | 评价举报 | `Commerce::Review` 纳入举报系统 |
+
+### 第三十轮（论坛 / 商城闭环与管理页）
+
+| 功能 | 实现 |
+|------|------|
+| 降价提醒管理页 | `PriceAlertsController#index/#destroy` + `PriceAlerts/Index.vue` |
+| 商品页降价订阅 | `products#show` price_alert 按钮 |
+| 降价通知偏好 | `commerce.price_drop` 商城通知设置 |
+| 忽略用户列表 | `ignores#index` + `Ignores/Index.vue` |
+| 静音管理页 | `mutes#index` 主题/分区静音列表 |
+| 前缀筛选 | `TopicFilterable` prefix 选项 + 分区列表 |
+| 商品 Onebox | `FetchProductOnebox` + `FormatPostBody` 嵌入卡片 |
+| 认证买家徽章 | 帖子 `verified_purchaser` + `first_purchase` 自动徽章 |
+| 资料商城 Tab | 用户资料页展示评价与订单数 |

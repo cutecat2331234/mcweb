@@ -86,6 +86,8 @@ const props = defineProps<{
   stockAlertUrl: string
   stockAlertVariantIds?: Array<number | null>
   stockAlertUnsubscribeUrls?: Array<{ variant_id: number | null; unsubscribe_url: string }>
+  priceAlertUrl?: string | null
+  hasPriceAlert?: boolean
   canReview?: boolean
   canEditReview?: boolean
   canDeleteReview?: boolean
@@ -296,6 +298,13 @@ function unsubscribeStockAlert() {
   router.delete(url, { preserveScroll: true })
 }
 
+function togglePriceAlert() {
+  if (!props.priceAlertUrl) return
+  router.post(props.priceAlertUrl, {
+    variant_id: selectedVariantId.value,
+  }, { preserveScroll: true })
+}
+
 function filterByRating(rating: number) {
   router.get(routes.storeProduct(props.product.id), {
     review_rating: rating,
@@ -440,6 +449,14 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </Button>
     <Button v-if="loggedIn" type="button" variant="outline" @click="toggleWishlist">
       {{ wishlistedForSelection ? '移出心愿单' : '加入心愿单' }}
+    </Button>
+    <Button
+      v-if="loggedIn && priceAlertUrl"
+      type="button"
+      variant="outline"
+      @click="togglePriceAlert"
+    >
+      {{ hasPriceAlert ? '已订阅降价' : '降价提醒' }}
     </Button>
     <Button v-if="compareUrl" type="button" variant="outline" @click="toggleCompare">
       {{ compared ? '移出对比' : '加入对比' }}{{ compareCount ? ` (${compareCount})` : '' }}

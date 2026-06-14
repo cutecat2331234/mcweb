@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
@@ -14,6 +15,8 @@ defineProps<{
     product_name: string
     variant_name: string | null
     product_url: string
+    in_stock?: boolean
+    subscribed_at: string
     unsubscribe_url: string
   }>
 }>()
@@ -37,6 +40,8 @@ function unsubscribe(url: string) {
       <div>
         <Link :href="alert.product_url" class="font-medium hover:underline">{{ alert.product_name }}</Link>
         <p v-if="alert.variant_name" class="text-sm text-muted-foreground">规格：{{ alert.variant_name }}</p>
+        <p class="text-xs text-muted-foreground">订阅于 {{ alert.subscribed_at }}</p>
+        <Badge v-if="alert.in_stock" variant="success" class="mt-1">已有货</Badge>
       </div>
       <Button type="button" size="sm" variant="outline" @click="unsubscribe(alert.unsubscribe_url)">取消订阅</Button>
     </div>

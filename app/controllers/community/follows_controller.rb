@@ -2,16 +2,19 @@
 
 module Community
   class FollowsController < ApplicationController
+    include BlockedUsersFilterable
+
     before_action :require_login
 
     def index
       follows = Community::UserFollow.where(follower: current_user).includes(:followed)
-      followed_ids = follows.map(&:followed_id)
+      followed_ids = follows.map(&:followed_id) - blocked_user_ids
       topics = Community::Topic
         .where(user_id: followed_ids, status: :published)
         .includes(:user, :section)
         .order(last_posted_at: :desc)
         .limit(30)
+      topics = filter_blocked_topics(topics)
 
       render inertia: "Community/Following/Index", props: {
         users: follows.map do |follow|

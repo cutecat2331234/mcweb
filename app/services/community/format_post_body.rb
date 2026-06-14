@@ -114,6 +114,7 @@ module Community
       escaped = ERB::Util.html_escape(text)
       escaped = escaped.gsub(/\*\*(.+?)\*\*/, '<strong>\1</strong>')
       escaped = escaped.gsub(/\*(.+?)\*/, '<em>\1</em>')
+      escaped = escaped.gsub(/~~(.+?)~~/, '<del>\1</del>')
       escaped = escaped.gsub(/`([^`]+)`/, '<code>\1</code>')
       escaped.gsub(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/, '<a href="\2" rel="nofollow noopener">\1</a>')
     end

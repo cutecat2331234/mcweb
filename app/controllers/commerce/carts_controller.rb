@@ -6,13 +6,16 @@ module Commerce
 
     def show
       items = @cart.items.includes(:product, :variant)
+      pending_coupon = session[:pending_coupon_code].to_s.presence
 
       render inertia: "Commerce/Carts/Show", props: {
         items: items.map { |item| serialize_cart_item(item) },
         subtotalLabel: format_money(@cart.subtotal_cents, items.first&.product&.currency || "CNY"),
         subtotalCents: @cart.subtotal_cents,
         loggedIn: logged_in?,
-        previewCouponUrl: preview_coupon_store_cart_path
+        pendingCouponCode: pending_coupon,
+        previewCouponUrl: preview_coupon_store_cart_path,
+        clearCouponUrl: clear_coupon_store_cart_path
       }
     end
 
@@ -32,6 +35,11 @@ module Commerce
       else
         render json: { error: service_error_message(result) }, status: :unprocessable_entity
       end
+    end
+
+    def clear_coupon
+      session.delete(:pending_coupon_code)
+      redirect_to store_cart_path, notice: "已清除优惠码。"
     end
 
     def update

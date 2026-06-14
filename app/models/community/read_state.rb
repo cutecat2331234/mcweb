@@ -11,6 +11,18 @@ module Community
       state.save!
     end
 
+    def self.first_unread_floor(user, topic)
+      state = find_by(user: user, topic: topic)
+      last_read = state&.last_read_floor.to_i
+      topic.posts.where(status: :published).where("floor_number > ?", last_read).minimum(:floor_number)
+    end
+
+    def self.page_for_floor(floor, per_page: 20)
+      return 1 if floor.to_i <= 0
+
+      ((floor.to_i - 1) / per_page) + 1
+    end
+
     def unread_count
       topic.posts.where(status: :published).where("floor_number > ?", last_read_floor).count
     end

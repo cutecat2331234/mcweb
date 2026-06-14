@@ -23,15 +23,18 @@ module Commerce
         scope = scope.where(store_category_id: category.id)
       end
 
-      featured = Commerce::Product.available.where(featured: true).order(created_at: :desc).limit(6)
+      featured_scope = Commerce::Product.available.where(featured: true)
+      featured_scope = featured_scope.with_stock if params[:in_stock] == "1"
+      featured = featured_scope.order(created_at: :desc).limit(6)
 
       @pagy, products = pagy(scope, limit: 20)
       categories = Commerce::Category.ordered
+      category_query = index_filter_params
 
       render inertia: "Commerce/Products/Index", props: {
         products: products.map { |product| serialize_product_list_item(product) },
         featured_products: featured.map { |product| serialize_product_list_item(product) },
-        categories: categories.map { |category| serialize_category(category) },
+        categories: categories.map { |category| serialize_category(category, **category_query) },
         activeCategory: params[:category],
         query: params[:q].to_s,
         sort: params[:sort].to_s.presence || "newest",
@@ -44,7 +47,10 @@ module Commerce
       product = Commerce::Product.available.includes(:variants, :category).find_by!(public_id: params[:id])
       product.increment!(:view_count)
       review_sort = params[:review_sort].to_s
+      review_rating = params[:review_rating].to_i
       reviews_scope = product.reviews.published.includes(:user, :helpful_votes)
+      reviews_scope = reviews_scope.where(rating: review_rating) if (1..5).cover?(review_rating)
+      reviews_scope = reviews_scope.where.not(user_id: current_user.id) if logged_in?
       reviews = case review_sort
                 when "helpful"
                   reviews_scope.left_joins(:helpful_votes)
@@ -54,7 +60,9 @@ module Commerce
                   reviews_scope.order(rating: :desc, created_at: :desc)
                 else
                   reviews_scope.order(created_at: :desc)
-                end.limit(20)
+                end
+      @pagy_reviews, reviews = pagy(reviews, limit: 10, page_param: :review_page)
+      reviews_count = product.reviews.published.count
       avg = product.reviews.published.average(:rating)&.round(1)
       wishlisted = logged_in? && Commerce::WishlistItem.exists?(user: current_user, product: product)
       stock_alert_variant_ids = if logged_in?
@@ -74,6 +82,8 @@ module Commerce
 
       render inertia: "Commerce/Products/Show", props: {
         product: serialize_product_detail(product, wishlisted: wishlisted, reviews: reviews, average_rating: avg),
+        reviewsCount: reviews_count,
+        reviewsPagination: pagy_props(@pagy_reviews),
         related_products: related.map { |p| serialize_product_list_item(p) },
         questions: questions.map { |q| serialize_product_question(q) },
         stockAlertUrl: stock_alert_store_product_path(product),
@@ -81,6 +91,7 @@ module Commerce
         canReview: can_review,
         userReview: user_review ? serialize_review(user_review, current_user: current_user) : nil,
         reviewSort: review_sort.presence || "newest",
+        reviewRating: (1..5).cover?(review_rating) ? review_rating : nil,
         addToCartUrl: store_cart_path,
         wishlistUrl: wishlist_store_product_path(product),
         reviewUrl: store_reviews_path(product),
@@ -91,6 +102,14 @@ module Commerce
     end
 
     private
+
+    def index_filter_params
+      {
+        q: params[:q].presence,
+        sort: params[:sort].presence,
+        in_stock: params[:in_stock] == "1" ? "1" : nil
+      }.compact
+    end
 
     def serialize_product_question(question)
       {

@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
@@ -15,6 +16,9 @@ const props = defineProps<{
     slug: string
     price_label: string
     url: string
+    in_stock?: boolean
+    low_stock?: boolean
+    wishlist_url?: string
   }>
   shareUrl: string | null
   addAllToCartUrl?: string
@@ -23,6 +27,10 @@ const props = defineProps<{
 function addAllToCart() {
   if (!props.addAllToCartUrl) return
   router.post(props.addAllToCartUrl)
+}
+
+function removeFromWishlist(url: string) {
+  router.post(url, {}, { preserveScroll: true })
 }
 
 function copyShareLink() {
@@ -49,14 +57,19 @@ function copyShareLink() {
   <p v-if="shareUrl" class="mb-4 text-xs text-muted-foreground break-all">{{ shareUrl }}</p>
 
   <div v-if="products.length" class="divide-y rounded-lg border">
-    <div v-for="product in products" :key="product.id" class="flex items-center justify-between p-4">
+    <div v-for="product in products" :key="product.id" class="flex items-center justify-between gap-4 p-4">
       <div>
         <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
         <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+        <Badge v-if="!product.in_stock" variant="default" class="mt-1">缺货</Badge>
+        <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>
       </div>
-      <Button as-child variant="outline" size="sm">
-        <Link :href="product.url">查看</Link>
-      </Button>
+      <div class="flex gap-2">
+        <Button v-if="product.wishlist_url" type="button" variant="outline" size="sm" @click="removeFromWishlist(product.wishlist_url)">移除</Button>
+        <Button as-child variant="outline" size="sm">
+          <Link :href="product.url">查看</Link>
+        </Button>
+      </div>
     </div>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

@@ -5,6 +5,7 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
+import Pagination from '@/components/portal/Pagination.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
@@ -76,6 +77,9 @@ const props = defineProps<{
   canReview?: boolean
   userReview?: ProductReview | null
   reviewSort?: string
+  reviewRating?: number | null
+  reviewsCount?: number
+  reviewsPagination?: import('@/components/portal/Pagination.vue').PaginationMeta
   loggedIn: boolean
   questionUrl: string
   canAnswerOfficially: boolean
@@ -144,10 +148,21 @@ const stockAlertSubscribed = computed(() => {
 
 const reviewSort = ref(props.reviewSort || 'newest')
 
+const reviewRating = ref<number | ''>(props.reviewRating || '')
+
 function changeReviewSort(value: string) {
   reviewSort.value = value
   router.get(routes.storeProduct(props.product.id), {
     review_sort: value !== 'newest' ? value : undefined,
+    review_rating: reviewRating.value || undefined,
+  }, { preserveScroll: true, preserveState: true })
+}
+
+function changeReviewRating(value: string) {
+  reviewRating.value = value ? Number(value) : ''
+  router.get(routes.storeProduct(props.product.id), {
+    review_sort: reviewSort.value !== 'newest' ? reviewSort.value : undefined,
+    review_rating: reviewRating.value || undefined,
   }, { preserveScroll: true, preserveState: true })
 }
 
@@ -180,6 +195,7 @@ function submitReview() {
 }
 
 function subscribeStockAlert() {
+  if (props.product.variants.length > 0 && !selectedVariantId.value) return
   router.post(props.stockAlertUrl, {
     variant_id: selectedVariantId.value,
   }, { preserveScroll: true })
@@ -241,7 +257,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
   <Card class="max-w-xl">
     <CardContent class="space-y-3 pt-6">
       <div v-if="product.average_rating" class="text-sm">
-        <span class="text-amber-500">★</span> {{ product.average_rating }} / 5（{{ product.reviews.length }} 条评价）
+        <span class="text-amber-500">★</span> {{ product.average_rating }} / 5（{{ reviewsCount ?? product.reviews.length }} 条评价）
       </div>
 
       <div v-if="product.variants.length" class="space-y-2">
@@ -375,7 +391,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">用户评价</h2>
       <select
-        v-if="product.reviews.length"
+        v-if="product.reviews.length || reviewsCount"
         :value="reviewSort"
         class="h-8 rounded-md border px-2 text-xs"
         @change="changeReviewSort(($event.target as HTMLSelectElement).value)"
@@ -383,6 +399,14 @@ function submitAnswer(questionId: number, answerUrl: string) {
         <option value="newest">最新</option>
         <option value="helpful">最有帮助</option>
         <option value="rating">评分最高</option>
+      </select>
+      <select
+        :value="reviewRating"
+        class="h-8 rounded-md border px-2 text-xs"
+        @change="changeReviewRating(($event.target as HTMLSelectElement).value)"
+      >
+        <option value="">全部星级</option>
+        <option v-for="n in 5" :key="n" :value="n">{{ n }} 星</option>
       </select>
     </div>
     <div v-if="userReview" class="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
@@ -418,6 +442,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
         </div>
       </article>
     </div>
+    <Pagination v-if="reviewsPagination" :pagination="reviewsPagination" :base-path="routes.storeProduct(product.id)" query-param="review_page" />
   </section>
 
   <section v-if="loggedIn && canReview" class="mt-8 max-w-xl">

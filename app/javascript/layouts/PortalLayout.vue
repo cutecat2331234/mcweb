@@ -11,6 +11,7 @@ const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const notifications = computed(() => page.props.notifications as { unread_count: number; url: string } | undefined)
 const forumUnread = computed(() => page.props.forum_unread as { count: number; url: string } | undefined)
+const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 
 const isDark = computed(() => document.documentElement.classList.contains('dark'))
@@ -47,6 +48,7 @@ function toggleTheme() {
             <Link :href="routes.store" class="hover:text-foreground transition-colors">商城</Link>
             <Link v-if="auth.user" :href="routes.storeWishlist" class="hover:text-foreground transition-colors">心愿单</Link>
             <Link v-if="auth.user" :href="routes.storeStockAlerts" class="hover:text-foreground transition-colors">到货通知</Link>
+            <Link v-if="auth.user" :href="routes.storeOrders" class="hover:text-foreground transition-colors">我的订单</Link>
             <Link v-if="cart" :href="cart.url" class="hover:text-foreground transition-colors">
               购物车<span v-if="cart.count > 0" class="ml-1 text-primary">({{ cart.count }})</span>
             </Link>
@@ -67,6 +69,18 @@ function toggleTheme() {
                 class="absolute -right-1 -top-1 h-4 min-w-4 px-1 text-[10px]"
               >
                 {{ notifications.unread_count > 99 ? '99+' : notifications.unread_count }}
+              </Badge>
+            </Link>
+          </Button>
+          <Button v-if="auth.user && messagesUnread" as-child variant="ghost" size="sm" class="relative hidden md:inline-flex">
+            <Link :href="messagesUnread.url">
+              私信
+              <Badge
+                v-if="messagesUnread.count > 0"
+                variant="danger"
+                class="ml-1 h-4 min-w-4 px-1 text-[10px]"
+              >
+                {{ messagesUnread.count > 99 ? '99+' : messagesUnread.count }}
               </Badge>
             </Link>
           </Button>

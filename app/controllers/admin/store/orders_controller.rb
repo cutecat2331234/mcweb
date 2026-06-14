@@ -99,6 +99,10 @@ module Admin
       end
 
       def update
+        if params[:reject_refund].present?
+          return reject_refund
+        end
+
         if params[:refund].present?
           return process_refund
         end
@@ -143,7 +147,7 @@ module Admin
       end
 
       def refund_actions(payment)
-        return [] unless payment && %w[paid fulfilled].include?(@order.status) && current_user.permission?("store.orders.refund")
+        return [] unless payment && refundable_admin_status? && current_user.permission?("store.orders.refund")
 
         [{
           label: "全额退款",
@@ -154,7 +158,7 @@ module Admin
       end
 
       def refund_form_props(payment)
-        return nil unless payment && %w[paid fulfilled].include?(@order.status) && current_user.permission?("store.orders.refund")
+        return nil unless payment && refundable_admin_status? && current_user.permission?("store.orders.refund")
 
         refunded_cents = @order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
         remaining = [ payment.amount_cents - refunded_cents, 0 ].max
@@ -186,14 +190,40 @@ module Admin
       end
 
       def pending_refund_actions(pending_refunds)
-        pending_refunds.map do |refund|
-          {
+        pending_refunds.flat_map do |refund|
+          actions = [{
             label: "批准退款申请 #{format_money(refund.amount_cents, @order.currency)}",
             href: admin_store_order_path(@order),
             method: "patch",
             data: { refund: true, refund_id: refund.id, amount_cents: refund.amount_cents }
-          }
+          }]
+          if current_user.permission?("store.orders.refund")
+            actions << {
+              label: "拒绝退款申请",
+              href: admin_store_order_path(@order),
+              method: "patch",
+              data: { reject_refund: true, refund_id: refund.id }
+            }
+          end
+          actions
         end
+      end
+
+      def reject_refund
+        return redirect_to admin_store_order_path(@order), alert: "Not authorized." unless current_user.permission?("store.orders.refund")
+
+        refund = @order.refunds.pending.find(params[:refund_id])
+        result = Commerce::RejectRefund.call(refund: refund, actor: current_user, reason: params[:reason])
+
+        if result.success?
+          redirect_to admin_store_order_path(@order), notice: "Refund rejected."
+        else
+          redirect_to admin_store_order_path(@order), alert: service_error_message(result)
+        end
+      end
+
+      def refundable_admin_status?
+        %w[paid fulfilled completed].include?(@order.status)
       end
     end
   end

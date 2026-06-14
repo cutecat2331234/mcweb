@@ -13,7 +13,10 @@ module Commerce
       share = Commerce::EnsureWishlistShareToken.call(user: current_user)
 
       render inertia: "Commerce/Wishlist/Index", props: {
-        products: items.map { |item| serialize_product_list_item(item.product) },
+        products: items.map do |item|
+          data = serialize_product_list_item(item.product)
+          data.merge(wishlist_url: wishlist_store_product_path(item.product))
+        end,
         shareUrl: share.success? ? store_public_wishlist_url(share.value[:token]) : nil,
         addAllToCartUrl: add_all_to_cart_store_wishlist_path
       }

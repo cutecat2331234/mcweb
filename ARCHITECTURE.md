@@ -354,3 +354,31 @@ app/
 | 已评价隐藏表单 | `userReview` + `canReview` |
 | 发货状态中文 | `fulfillment_status_label` |
 | 数字商品下载 | 订单 `downloads` 来自 fulfillment_snapshot |
+
+### 第十九轮（论坛 / 商城导航与 Bug 修复）
+
+| 功能 | 实现 |
+|------|------|
+| 标为未读 | `MarkTopicUnread` + 主题页按钮 |
+| 跳到未读 / 跨页锚点 | `post_id` / `unread=1` 分页解析 |
+| 帖子锚点自动滚动 | `Topics/Show.vue` hash scroll |
+| 复制永久链接 | 帖子「复制链接」 |
+| 可点击引用块 | 引用跳转 `#post-{id}` |
+| 搜索排序 UI | `Search/Index.vue` topic/post sort |
+| 搜索帖子锚点 | `serialize_search_post` |
+| 私信未读角标 | `messages_unread` inertia share |
+| 关注动态拉黑过滤 | `FollowsController` + `BlockedUsersFilterable` |
+| Markdown 删除线 | `~~text~~` in `FormatPostBody` |
+| 已购徽章修复 | `serialize_review` 真实校验 |
+| 评价去重/分页/星级筛选 | `ProductsController` |
+| 不能给自己点有帮助 | `ToggleReviewHelpful` |
+| 后台拒绝退款 | `RejectRefund` + admin action |
+| 已完成订单后台退款 | admin `refundable_admin_status?` |
+| 退款审核中提示 | `refund_pending` on order |
+| 游客优惠券持久化 | cart show + clear coupon |
+| 结账预览写 session | `checkout#preview_coupon` |
+| 购物车商品链接 | `serialize_cart_item` |
+| 心愿单库存/移除 | `Wishlist/Index.vue` |
+| 商品列表评分 | `average_rating` on list |
+| 到货通知增强 | 订阅时间、有货标识、规格校验 |
+| 发货记录中文 | fulfillments `status_label` |

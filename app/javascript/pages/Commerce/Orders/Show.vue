@@ -35,6 +35,7 @@ const props = defineProps<{
     can_download_receipt: boolean
     cancel_url: string
     refund_url: string
+    refund_pending?: boolean
     reorder_url?: string
     can_reorder?: boolean
     payment_providers: Array<{ value: string; label: string }>
@@ -65,6 +66,7 @@ const props = defineProps<{
     fulfillments: Array<{
       delivery_id: string
       status: string
+      status_label?: string
       fulfilled_at: string | null
     }>
   }
@@ -84,6 +86,10 @@ const reorderForm = useForm({})
 
   <p v-if="order.notes" class="mb-4 rounded-lg border p-4 text-sm">
     <span class="font-medium">订单备注：</span>{{ order.notes }}
+  </p>
+
+  <p v-if="order.refund_pending" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    退款申请审核中，请耐心等待。
   </p>
 
   <div v-if="order.downloads?.length" class="mb-6 rounded-lg border p-4">
@@ -142,7 +148,7 @@ const reorderForm = useForm({})
       <li v-for="fulfillment in order.fulfillments" :key="fulfillment.delivery_id" class="flex justify-between gap-4">
         <code class="text-xs">{{ fulfillment.delivery_id }}</code>
         <span>
-          <Badge :variant="fulfillment.status === 'fulfilled' ? 'success' : 'default'">{{ fulfillment.status }}</Badge>
+          <Badge :variant="fulfillment.status === 'fulfilled' ? 'success' : 'default'">{{ fulfillment.status_label || fulfillment.status }}</Badge>
           <span v-if="fulfillment.fulfilled_at" class="ml-2 text-muted-foreground">{{ fulfillment.fulfilled_at }}</span>
         </span>
       </li>

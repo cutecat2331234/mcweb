@@ -8,6 +8,8 @@ module Commerce
     end
 
     def call
+      return ServiceResult.failure(error: "You cannot vote on your own review.") if @user.id == @review.user_id
+
       existing = Commerce::ReviewHelpfulVote.find_by(user: @user, review: @review)
       if existing
         existing.destroy!

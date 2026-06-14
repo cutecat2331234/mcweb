@@ -9,6 +9,10 @@ module Commerce
     end
 
     def call
+      if @product.variants.exists? && @variant.nil?
+        return ServiceResult.failure(error: "请选择规格。")
+      end
+
       alert = Commerce::StockAlert.find_or_initialize_by(
         user: @user,
         product: @product,

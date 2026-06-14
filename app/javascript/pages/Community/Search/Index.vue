@@ -44,6 +44,8 @@ const props = defineProps<{
   author: string
   tag: string
   solved: string
+  topicSort?: string
+  postSort?: string
   sections: SectionOption[]
   tags: Array<{ slug: string; name: string }>
   topics: SearchTopic[]
@@ -54,12 +56,13 @@ const props = defineProps<{
 
 const q = ref(props.query)
 const sectionSlug = ref(props.section || '')
-
-watch(() => props.query, (value) => { q.value = value })
 const author = ref(props.author)
 const tagSlug = ref(props.tag)
 const solved = ref(props.solved)
+const topicSort = ref(props.topicSort || 'recent')
+const postSort = ref(props.postSort || 'recent')
 
+watch(() => props.query, (value) => { q.value = value })
 watch(() => props.author, (value) => { author.value = value })
 watch(() => props.tag, (value) => { tagSlug.value = value })
 watch(() => props.solved, (value) => { solved.value = value })
@@ -71,6 +74,8 @@ function search() {
     author: author.value || undefined,
     tag: tagSlug.value || undefined,
     solved: solved.value || undefined,
+    topic_sort: topicSort.value !== 'recent' ? topicSort.value : undefined,
+    post_sort: postSort.value !== 'recent' ? postSort.value : undefined,
   }, { preserveState: true })
 }
 </script>
@@ -101,6 +106,14 @@ function search() {
       <option value="">全部状态</option>
       <option value="unsolved">未解决</option>
       <option value="solved">已解决</option>
+    </select>
+    <select v-model="topicSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="recent">主题：最新</option>
+      <option value="oldest">主题：最早</option>
+    </select>
+    <select v-model="postSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="recent">帖子：最新</option>
+      <option value="oldest">帖子：最早</option>
     </select>
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">搜索</button>
   </form>

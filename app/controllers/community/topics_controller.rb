@@ -4,9 +4,9 @@ module Community
   class TopicsController < ApplicationController
     include Community::TopicVisibility
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move merge mark_solved unsolve update_slow_mode update_auto_close]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move merge mark_solved unsolve update_slow_mode update_auto_close mark_unread]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move merge mark_solved unsolve update_slow_mode update_auto_close]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move merge mark_solved unsolve update_slow_mode update_auto_close mark_unread]
 
     def show
       @topic.record_view!
@@ -15,8 +15,16 @@ module Community
       posts_scope = @topic.posts.chronological.includes(:user, :quoted_post, :parent_post, :reactions, :edits)
       posts_scope = filter_blocked_posts(posts_scope)
 
-      @pagy, posts = pagy(posts_scope, limit: 20)
-      mark_topic_read!(posts)
+      per_page = 20
+      target_post_id = params[:post_id].presence || params[:anchor].to_s.sub(/\Apost-/, "").presence
+      target_page = resolve_post_page(posts_scope, target_post_id, per_page: per_page)
+      first_unread_floor = logged_in? ? Community::ReadState.first_unread_floor(current_user, @topic) : nil
+      if params[:unread] == "1" && first_unread_floor
+        target_page = Community::ReadState.page_for_floor(first_unread_floor, per_page: per_page)
+      end
+
+      @pagy, posts = pagy(posts_scope, limit: per_page, page: target_page)
+      mark_topic_read!(posts) unless params[:unread] == "1"
       last_read_floor = logged_in? ? Community::ReadState.find_by(user: current_user, topic: @topic)&.last_read_floor.to_i : 0
 
       render inertia: "Community/Topics/Show", props: {
@@ -31,6 +39,9 @@ module Community
         posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?, solved_post_id: @topic.solved_post_id) },
         pagination: pagy_props(@pagy),
         lastReadFloor: last_read_floor,
+        firstUnreadFloor: first_unread_floor,
+        markUnreadUrl: logged_in? ? mark_unread_forum_topic_path(@topic) : nil,
+        jumpToUnreadUrl: first_unread_floor ? forum_topic_path(@topic, unread: 1) : nil,
         canReply: logged_in? && !@topic.locked? && @topic.section.allowed?(current_user, :reply),
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
@@ -216,6 +227,16 @@ module Community
       redirect_to forum_topic_path(@topic), alert: "无效的关闭时间。"
     end
 
+    def mark_unread
+      result = Community::MarkTopicUnread.call(user: current_user, topic: @topic)
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "已标记为未读。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
     private
 
     def set_section
@@ -301,6 +322,16 @@ module Community
       Community::Section.ordered.includes(:category).map do |section|
         { slug: section.slug, name: section.name, category: section.category&.name }
       end
+    end
+
+    def resolve_post_page(posts_scope, post_id, per_page:)
+      return params[:page].to_i if params[:page].present? && params[:page].to_i.positive?
+      return 1 if post_id.blank?
+
+      post = posts_scope.find_by(id: post_id)
+      return 1 unless post
+
+      Community::ReadState.page_for_floor(post.floor_number, per_page: per_page)
     end
   end
 end

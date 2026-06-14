@@ -104,6 +104,7 @@ Rails.application.routes.draw do
         post :unsolve
         patch :slow_mode, action: :update_slow_mode
         patch :auto_close, action: :update_auto_close
+        post :mark_unread
         post :subscription, action: :toggle_subscription
         post :bookmark, action: :toggle_bookmark
       end
@@ -175,6 +176,7 @@ Rails.application.routes.draw do
     resources :stock_alerts, only: %i[index destroy]
     resource :cart, only: %i[show update] do
       post :preview_coupon, on: :member
+      delete :clear_coupon, on: :member
     end
     resources :orders, only: %i[index show create] do
       member do

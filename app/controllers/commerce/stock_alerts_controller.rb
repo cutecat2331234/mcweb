@@ -15,6 +15,8 @@ module Commerce
             product_name: product.name,
             variant_name: alert.variant&.name,
             product_url: store_product_path(product),
+            in_stock: product.in_stock?,
+            subscribed_at: l(alert.created_at, format: :short),
             unsubscribe_url: store_stock_alert_path(alert)
           }
         end

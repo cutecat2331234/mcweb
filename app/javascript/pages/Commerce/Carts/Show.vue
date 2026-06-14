@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { onMounted, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -23,16 +23,19 @@ export interface CartItem {
   quantity: number
   unit_price_label: string
   total_label: string
+  product_url?: string
 }
 
 const props = defineProps<{
   items: CartItem[]
   subtotalLabel: string
   loggedIn: boolean
+  pendingCouponCode?: string | null
   previewCouponUrl: string
+  clearCouponUrl?: string
 }>()
 
-const couponCode = ref('')
+const couponCode = ref(props.pendingCouponCode || '')
 const couponPreview = ref<{
   code: string
   discount_label: string
@@ -40,6 +43,12 @@ const couponPreview = ref<{
 } | null>(null)
 const couponError = ref('')
 const couponLoading = ref(false)
+
+onMounted(() => {
+  if (props.pendingCouponCode) {
+    couponCode.value = props.pendingCouponCode
+  }
+})
 
 async function previewCoupon() {
   if (!couponCode.value.trim()) return
@@ -69,6 +78,11 @@ async function previewCoupon() {
   }
 }
 
+function clearCoupon() {
+  if (!props.clearCouponUrl) return
+  router.delete(props.clearCouponUrl)
+}
+
 function updateQuantity(itemId: number, quantity: number) {
   router.patch(routes.storeCart, { item_id: itemId, quantity })
 }
@@ -96,7 +110,8 @@ function removeItem(itemId: number) {
         <TableBody>
           <TableRow v-for="item in items" :key="item.id">
             <TableCell>
-              {{ item.product_name }}
+              <Link v-if="item.product_url" :href="item.product_url" class="hover:underline">{{ item.product_name }}</Link>
+              <template v-else>{{ item.product_name }}</template>
               <span v-if="item.variant_name" class="text-muted-foreground"> — {{ item.variant_name }}</span>
             </TableCell>
             <TableCell>
@@ -127,11 +142,13 @@ function removeItem(itemId: number) {
         <Button type="button" variant="outline" :disabled="couponLoading || !couponCode.trim()" @click="previewCoupon">
           {{ couponLoading ? '验证中…' : '预览' }}
         </Button>
+        <Button v-if="clearCouponUrl && pendingCouponCode" type="button" variant="ghost" @click="clearCoupon">清除</Button>
       </div>
       <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
       <p v-if="couponPreview" class="text-sm text-muted-foreground">
         优惠码 <strong>{{ couponPreview.code }}</strong> 已应用，减免 {{ couponPreview.discount_label }}，预计合计 {{ couponPreview.total_label }}
       </p>
+      <p v-else-if="pendingCouponCode" class="text-sm text-muted-foreground">已保存优惠码：<strong>{{ pendingCouponCode }}</strong>（结账时自动使用）</p>
       <p class="text-xs text-muted-foreground">优惠码在结账时正式使用。</p>
     </div>
 

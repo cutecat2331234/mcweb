@@ -203,7 +203,7 @@ module InertiaSerializable
       body: post.body.truncate(120),
       author: post.user.username,
       topic_title: post.topic.title,
-      topic_url: forum_topic_path(post.topic),
+      topic_url: "#{forum_topic_path(post.topic)}#post-#{post.id}",
       created_at: l(post.created_at, format: :short)
     }
   end
@@ -225,6 +225,7 @@ module InertiaSerializable
   end
 
   def serialize_product_list_item(product)
+    avg = product.reviews.published.average(:rating)&.round(1)
     {
       id: product.public_id,
       name: product.name,
@@ -233,6 +234,7 @@ module InertiaSerializable
       price_label: format_price(product),
       in_stock: product.in_stock?,
       low_stock: product.low_stock?,
+      average_rating: avg,
       image_url: product_image_url(product),
       url: store_product_path(product)
     }
@@ -273,6 +275,7 @@ module InertiaSerializable
 
   def serialize_review(review, current_user: nil)
     helpful = current_user && Commerce::ReviewHelpfulVote.exists?(user: current_user, review: review)
+    verified = Commerce::CreateReview.purchased?(user: review.user, product: review.product)
     {
       id: review.id,
       author: review.user.username,
@@ -281,8 +284,8 @@ module InertiaSerializable
       created_at: l(review.created_at, format: :short),
       helpful_count: review.helpful_votes.count,
       helpful: helpful,
-      helpful_url: current_user ? helpful_store_product_review_path(review.product.public_id, review.id) : nil,
-      verified_purchaser: true
+      helpful_url: current_user && current_user.id != review.user_id ? helpful_store_product_review_path(review.product.public_id, review.id) : nil,
+      verified_purchaser: verified
     }
   end
 
@@ -314,11 +317,11 @@ module InertiaSerializable
     }
   end
 
-  def serialize_category(category)
+  def serialize_category(category, **query)
     {
       slug: category.slug,
       name: category.name,
-      url: store_products_path(category: category.slug)
+      url: store_products_path(query.merge(category: category.slug).compact)
     }
   end
 
@@ -332,6 +335,7 @@ module InertiaSerializable
       quantity: item.quantity,
       unit_price_label: number_to_currency(unit_cents / 100.0, unit: unit),
       total_label: number_to_currency(item.total_cents / 100.0, unit: unit),
+      product_url: store_product_path(item.product),
       update_url: store_cart_path
     }
   end
@@ -408,6 +412,7 @@ module InertiaSerializable
       can_pay: order.pending? || order.awaiting_payment?,
       can_cancel: order.pending? || order.awaiting_payment?,
       can_request_refund: refundable_order?(order),
+      refund_pending: order.refunds.pending.exists?,
       can_download_receipt: %w[paid processing fulfilling fulfilled completed refunded].include?(order.status),
       refund_url: refund_store_order_path(order),
       refunds: order.refunds.order(created_at: :desc).map do |refund|
@@ -457,6 +462,7 @@ module InertiaSerializable
         {
           delivery_id: f.delivery_id,
           status: f.status,
+          status_label: fulfillment_status_label(f.status),
           fulfilled_at: f.fulfilled_at ? l(f.fulfilled_at, format: :short) : nil
         }
       end,

@@ -94,6 +94,9 @@ const props = defineProps<{
   posts: PostItem[]
   pagination: PaginationMeta
   lastReadFloor?: number
+  firstUnreadFloor?: number | null
+  markUnreadUrl?: string | null
+  jumpToUnreadUrl?: string | null
   canReply: boolean
   canMarkSolved: boolean
   reactionEmojis: string[]
@@ -134,6 +137,12 @@ onMounted(() => {
   const saved = localStorage.getItem(draftKey)
   if (saved && !replyForm.post.body) {
     replyForm.post.body = saved
+  }
+  const hash = window.location.hash
+  if (hash.startsWith('#post-')) {
+    setTimeout(() => {
+      document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }, 100)
   }
 })
 
@@ -207,6 +216,16 @@ function updateAutoClose() {
 function reactionTitle(post: PostItem, emoji: string) {
   const users = post.reaction_users?.[emoji]
   return users?.length ? users.join('、') : ''
+}
+
+function copyPermalink(post: PostItem) {
+  const url = `${window.location.origin}${routes.forumTopic(props.topic.id)}#post-${post.id}`
+  navigator.clipboard.writeText(url)
+}
+
+function markUnread() {
+  if (!props.markUnreadUrl) return
+  router.post(props.markUnreadUrl, {}, { preserveScroll: true })
 }
 
 function startEdit(post: PostItem) {
@@ -320,6 +339,10 @@ function pollPercent(votes: number) {
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleWatch">
         {{ topic.watching ? '取消关注' : '关注主题' }}
+      </Button>
+      <Button v-if="markUnreadUrl" type="button" variant="outline" size="sm" @click="markUnread">标为未读</Button>
+      <Button v-if="jumpToUnreadUrl" as-child variant="outline" size="sm">
+        <Link :href="jumpToUnreadUrl">跳到未读</Link>
       </Button>
       <Button v-if="reportTopicUrl" as-child variant="outline" size="sm">
         <Link :href="reportTopicUrl">举报主题</Link>
@@ -484,6 +507,7 @@ function pollPercent(votes: number) {
             </div>
             <div class="flex gap-2">
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
+              <button type="button" class="text-xs hover:underline" @click="copyPermalink(post)">复制链接</button>
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">回复</button>
               <button v-if="post.bookmark_url" type="button" class="text-xs hover:underline" @click="togglePostBookmark(post)">
                 {{ post.bookmarked ? '移除书签' : '书签' }}
@@ -499,8 +523,10 @@ function pollPercent(votes: number) {
           </div>
 
           <blockquote v-if="post.quoted_post" class="mb-3 mt-2 border-l-2 border-muted pl-3 text-sm text-muted-foreground">
-            <span class="font-medium">#{{ post.quoted_post.floor_number }} {{ post.quoted_post.author }}：</span>
-            {{ post.quoted_post.excerpt }}
+            <a :href="`#post-${post.quoted_post.id}`" class="hover:underline">
+              <span class="font-medium">#{{ post.quoted_post.floor_number }} {{ post.quoted_post.author }}：</span>
+              {{ post.quoted_post.excerpt }}
+            </a>
           </blockquote>
 
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">

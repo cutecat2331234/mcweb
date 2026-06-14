@@ -151,8 +151,8 @@ async function uploadCover(event: Event) {
       <Textarea id="gallery_urls" v-model="form.product.gallery_urls" rows="3" placeholder="https://example.com/1.png&#10;https://example.com/2.png" />
     </div>
     <div class="space-y-2">
-      <Label for="fulfillment_config">发货配置（JSON，Minecraft 命令等）</Label>
-      <Textarea id="fulfillment_config" v-model="form.product.fulfillment_config" rows="6" placeholder='{"server_id":1,"task_type":"deliver_item","commands":["give {player} diamond 1"]}' />
+      <Label for="fulfillment_config">发货配置（JSON，可含 download_url、Minecraft 命令等）</Label>
+      <Textarea id="fulfillment_config" v-model="form.product.fulfillment_config" rows="6" placeholder='{"download_url":"https://example.com/file.zip","commands":["give {player} diamond 1"]}' />
     </div>
     <div class="flex items-center gap-2">
       <input id="featured" v-model="form.product.featured" type="checkbox" class="rounded border" />

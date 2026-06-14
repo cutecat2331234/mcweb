@@ -2,6 +2,8 @@
 
 module Identity
   class SessionsController < ApplicationController
+    include GuestCartMergeable
+
     skip_installation_guard only: %i[new create destroy]
 
     before_action :redirect_if_signed_in, only: %i[new create]
@@ -48,14 +50,6 @@ module Identity
 
     def redirect_if_signed_in
       redirect_to root_path if user_signed_in?
-    end
-
-    def merge_guest_cart!
-      token = cookies.signed[:cart_token]
-      return if token.blank?
-
-      result = Commerce::MergeGuestCart.call(user: current_user, session_token: token)
-      cookies.delete(:cart_token) if result.success? && result.value[:merged]
     end
   end
 end

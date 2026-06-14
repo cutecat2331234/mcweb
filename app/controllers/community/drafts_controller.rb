@@ -7,14 +7,18 @@ module Community
     def index
       drafts = Community::Topic
         .where(user: current_user, status: :draft)
-        .includes(:section)
+        .includes(:section, :posts)
         .order(updated_at: :desc)
 
       render inertia: "Community/Drafts/Index", props: {
         drafts: drafts.map do |draft|
+          body = draft.posts.first&.body.to_s
+          formatted = Community::FormatPostBody.call(body: body)
           {
             id: draft.public_id,
             title: draft.title,
+            body_excerpt: body.truncate(120),
+            preview_html: formatted.success? ? formatted.value : nil,
             section_name: draft.section.name,
             section_url: forum_section_path(draft.section),
             updated_at: l(draft.updated_at, format: :short),

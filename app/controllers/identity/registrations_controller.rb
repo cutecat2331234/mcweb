@@ -2,6 +2,8 @@
 
 module Identity
   class RegistrationsController < ApplicationController
+    include GuestCartMergeable
+
     skip_installation_guard only: %i[new create]
 
     before_action :redirect_if_signed_in, only: %i[new create]
@@ -21,7 +23,18 @@ module Identity
       )
 
       if result.success?
-        redirect_to identity_sign_in_path, notice: "Account created. Please check your email to verify your address."
+        user = result.value[:user]
+        session_result = Identity::SessionManager.call(
+          user: user,
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent,
+          remember_me: false
+        )
+        if session_result.success?
+          sign_in(session_record: session_result.value[:session], token: session_result.value[:token])
+          merge_guest_cart!
+        end
+        redirect_to root_path, notice: "注册成功。请查收邮件验证邮箱地址。"
       else
         render inertia: "Identity/Registrations/New",
                status: :unprocessable_entity,

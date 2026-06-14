@@ -50,7 +50,9 @@ module Community
           block_url: logged_in? && current_user.id != user.id ? forum_block_user_path(user.username) : nil,
           is_blocked: logged_in? && current_user.id != user.id && Community::UserBlock.exists?(blocker: current_user, blocked: user),
           is_muted: logged_in? && current_user.id == user.id && Community::Mute.muted?(user),
-          can_edit: logged_in? && current_user.id == user.id
+          can_edit: logged_in? && current_user.id == user.id,
+          is_following: logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user),
+          follow_url: logged_in? && current_user.id != user.id ? forum_user_follow_path(user.username) : nil
         },
         topics: topics.map { |topic| serialize_topic(topic) },
         recent_posts: posts.map do |post|

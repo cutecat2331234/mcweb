@@ -1,8 +1,11 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
+import Label from '@/components/ui/Label.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -26,7 +29,45 @@ const props = defineProps<{
   items: CartItem[]
   subtotalLabel: string
   loggedIn: boolean
+  previewCouponUrl: string
 }>()
+
+const couponCode = ref('')
+const couponPreview = ref<{
+  code: string
+  discount_label: string
+  total_label: string
+} | null>(null)
+const couponError = ref('')
+const couponLoading = ref(false)
+
+async function previewCoupon() {
+  if (!couponCode.value.trim()) return
+  couponLoading.value = true
+  couponError.value = ''
+  couponPreview.value = null
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
+    const res = await fetch(props.previewCouponUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': token || '',
+      },
+      body: JSON.stringify({ code: couponCode.value.trim() }),
+      credentials: 'same-origin',
+    })
+    const data = await res.json()
+    if (!res.ok) {
+      couponError.value = data.error || '优惠券无效'
+      return
+    }
+    couponPreview.value = data
+  } finally {
+    couponLoading.value = false
+  }
+}
 
 function updateQuantity(itemId: number, quantity: number) {
   router.patch(routes.storeCart, { item_id: itemId, quantity })
@@ -77,7 +118,22 @@ function removeItem(itemId: number) {
       </Table>
     </div>
 
-    <p class="font-medium">合计：{{ subtotalLabel }}</p>
+    <p class="font-medium">小计：{{ subtotalLabel }}</p>
+
+    <div class="max-w-md space-y-2 rounded-lg border p-4">
+      <Label for="coupon">优惠券</Label>
+      <div class="flex gap-2">
+        <Input id="coupon" v-model="couponCode" placeholder="输入优惠码" class="flex-1" />
+        <Button type="button" variant="outline" :disabled="couponLoading || !couponCode.trim()" @click="previewCoupon">
+          {{ couponLoading ? '验证中…' : '预览' }}
+        </Button>
+      </div>
+      <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
+      <p v-if="couponPreview" class="text-sm text-muted-foreground">
+        优惠码 <strong>{{ couponPreview.code }}</strong> 已应用，减免 {{ couponPreview.discount_label }}，预计合计 {{ couponPreview.total_label }}
+      </p>
+      <p class="text-xs text-muted-foreground">优惠码在结账时正式使用。</p>
+    </div>
 
     <div v-if="loggedIn" class="flex gap-3">
       <Button as-child>

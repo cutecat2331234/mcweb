@@ -36,6 +36,8 @@ const props = defineProps<{
     is_blocked: boolean
     is_muted: boolean
     can_edit: boolean
+    is_following: boolean
+    follow_url: string | null
   }
   topics: Array<{
     id: string
@@ -69,6 +71,11 @@ const bioForm = useForm({ user: { bio: props.profile.bio || '', forum_title: pro
 function toggleBlock() {
   if (!props.profile.block_url) return
   router.post(props.profile.block_url, {}, { preserveScroll: true })
+}
+
+function toggleFollow() {
+  if (!props.profile.follow_url) return
+  router.post(props.profile.follow_url, {}, { preserveScroll: true })
 }
 
 function saveBio() {
@@ -108,6 +115,15 @@ function saveBio() {
       <div class="mt-3 flex flex-wrap gap-2">
         <Button v-if="profile.message_url" as-child size="sm">
           <Link :href="profile.message_url">发私信</Link>
+        </Button>
+        <Button
+          v-if="profile.follow_url"
+          type="button"
+          size="sm"
+          :variant="profile.is_following ? 'outline' : 'default'"
+          @click="toggleFollow"
+        >
+          {{ profile.is_following ? '取消关注' : '关注' }}
         </Button>
         <Button
           v-if="profile.block_url"

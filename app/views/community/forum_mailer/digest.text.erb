@@ -1,0 +1,10 @@
+您好 <%= @user.username %>，
+
+以下是您订阅的论坛摘要：
+
+<% @notifications.each do |notification| %>
+- <%= notification.title %> (<%= l(notification.created_at, format: :short) %>)
+  <% if notification.body.present? %><%= notification.body.truncate(100) %><% end %>
+<% end %>
+
+访问论坛：<%= root_url %>forum/latest

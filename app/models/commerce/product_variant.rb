@@ -12,6 +12,12 @@ module Commerce
       stock > 0
     end
 
+    def low_stock?
+      return false if stock.nil?
+
+      stock.positive? && stock <= Commerce::SalesMetrics::LOW_STOCK_THRESHOLD
+    end
+
     def price
       price_cents / 100.0
     end

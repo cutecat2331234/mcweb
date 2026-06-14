@@ -1,0 +1,5 @@
+您好 <%= @user.username %>，
+
+您关注的商品「<%= @product.name %>」<% if @alert.variant %>（<%= @alert.variant.name %>）<% end %> 已补货。
+
+请访问商城查看：<%= store_product_url(@product) %>

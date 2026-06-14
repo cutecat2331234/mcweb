@@ -16,6 +16,8 @@ const props = defineProps<{
     in_app: boolean
     email: boolean
   }>
+  digest_frequency: string
+  digest_options: Array<{ value: string; label: string }>
 }>()
 
 const form = useForm({
@@ -25,6 +27,7 @@ const form = useForm({
       { in_app: pref.in_app, email: pref.email },
     ])
   ) as Record<string, { in_app: boolean; email: boolean }>,
+  digest_frequency: props.digest_frequency,
 })
 
 function submit() {
@@ -67,6 +70,15 @@ function submit() {
         </label>
       </div>
     </div>
+
+    <div class="rounded-lg border p-4">
+      <Label for="digest" class="mb-2 block text-sm font-medium">邮件摘要</Label>
+      <select id="digest" v-model="form.digest_frequency" class="h-9 w-full rounded-md border px-2 text-sm">
+        <option v-for="opt in digest_options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+      <p class="mt-2 text-xs text-muted-foreground">摘要将汇总未读的论坛通知，减少即时邮件打扰。</p>
+    </div>
+
     <Button type="submit" :disabled="form.processing">保存</Button>
   </form>
 </template>

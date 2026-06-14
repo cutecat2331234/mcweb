@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
+import MentionAutocomplete from '@/components/portal/MentionAutocomplete.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -94,7 +95,18 @@ async function preview() {
     </div>
     <div class="space-y-2">
       <Label for="body">首帖内容</Label>
-      <Textarea id="body" v-model="form.topic.body" required rows="8" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名" />
+      <MentionAutocomplete v-model="form.topic.body">
+        <template #default="{ onInput }">
+          <Textarea
+            id="body"
+            v-model="form.topic.body"
+            required
+            rows="8"
+            placeholder="支持 **粗体**、*斜体*、`代码`、@用户名"
+            @input="onInput"
+          />
+        </template>
+      </MentionAutocomplete>
       <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
       <div class="flex gap-2">
         <Button type="button" variant="outline" size="sm" :disabled="previewLoading || !form.topic.body" @click="preview">

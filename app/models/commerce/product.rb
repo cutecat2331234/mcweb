@@ -28,6 +28,18 @@ module Commerce
       end
     end
 
+    def low_stock?
+      return false unless active?
+
+      if variants.exists?
+        variants.any? { |v| v.low_stock? }
+      elsif stock.nil?
+        false
+      else
+        stock <= Commerce::SalesMetrics::LOW_STOCK_THRESHOLD
+      end
+    end
+
     def price
       price_cents / 100.0
     end

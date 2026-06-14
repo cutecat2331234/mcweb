@@ -7,11 +7,22 @@ module Commerce
 
     def index
       orders_scope = Commerce::Order.where(user: current_user).includes(:items).recent
+      if params[:q].present?
+        q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
+        orders_scope = orders_scope.where("order_number ILIKE ?", q)
+      end
+      if params[:status].present?
+        orders_scope = orders_scope.where(status: params[:status])
+      end
+
       @pagy, orders = pagy(orders_scope, limit: 20)
 
       render inertia: "Commerce/Orders/Index", props: {
         orders: orders.map { |order| serialize_order_list_item(order) },
-        pagination: pagy_props(@pagy)
+        pagination: pagy_props(@pagy),
+        query: params[:q].to_s,
+        status: params[:status].to_s,
+        statusOptions: Commerce::Order::STATUSES.map { |s| { value: s, label: order_status_label(s) } }
       }
     end
 

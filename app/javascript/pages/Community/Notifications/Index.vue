@@ -4,24 +4,34 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
+import Badge from '@/components/ui/Badge.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-export interface NotificationItem {
-  id: number
+export interface NotificationGroup {
+  key: string
+  notification_type: string
   title: string
   body: string | null
-  notification_type: string
+  count: number
+  unread_count: number
   read: boolean
-  created_at: string
-  url: string | null
-  visit_url: string
-  mark_read_url: string
+  latest_at: string
+  visit_url: string | null
+  items: Array<{
+    id: number
+    title: string
+    body: string | null
+    created_at: string
+    visit_url: string
+    mark_read_url: string
+    read: boolean
+  }>
 }
 
 defineProps<{
-  notifications: NotificationItem[]
+  notifications: NotificationGroup[]
 }>()
 
 function markAllRead() {
@@ -43,25 +53,24 @@ function markAllRead() {
 
   <div v-if="notifications.length" class="space-y-2">
     <article
-      v-for="notification in notifications"
-      :key="notification.id"
+      v-for="group in notifications"
+      :key="group.key"
       class="rounded-lg border p-4"
-      :class="notification.read ? 'opacity-70' : 'border-primary/30 bg-primary/5'"
+      :class="group.read ? 'opacity-70' : 'border-primary/30 bg-primary/5'"
     >
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0 flex-1">
-          <h3 class="text-sm font-medium">{{ notification.title }}</h3>
-          <p v-if="notification.body" class="mt-1 text-sm text-muted-foreground">{{ notification.body }}</p>
-          <p class="mt-2 text-xs text-muted-foreground">{{ notification.created_at }}</p>
+          <div class="flex items-center gap-2">
+            <h3 class="text-sm font-medium">{{ group.title }}</h3>
+            <Badge v-if="group.count > 1">{{ group.count }}</Badge>
+            <Badge v-if="group.unread_count" variant="default">{{ group.unread_count }} 未读</Badge>
+          </div>
+          <p v-if="group.body" class="mt-1 text-sm text-muted-foreground">{{ group.body }}</p>
+          <p class="mt-2 text-xs text-muted-foreground">{{ group.latest_at }}</p>
         </div>
-        <div class="flex shrink-0 gap-2">
-          <Button v-if="!notification.read" as-child variant="outline" size="sm">
-            <Link :href="notification.mark_read_url" method="patch" as="button">已读</Link>
-          </Button>
-          <Button v-if="notification.url" as-child size="sm">
-            <Link :href="notification.visit_url">查看</Link>
-          </Button>
-        </div>
+        <Button v-if="group.visit_url" as-child size="sm">
+          <Link :href="group.visit_url">查看</Link>
+        </Button>
       </div>
     </article>
   </div>

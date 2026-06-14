@@ -8,11 +8,18 @@ module Admin
 
       def index
         orders_scope = ::Commerce::Order.recent.includes(:user)
+        if params[:q].present?
+          q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
+          orders_scope = orders_scope.where("order_number ILIKE ?", q)
+        end
+        if params[:status].present?
+          orders_scope = orders_scope.where(status: params[:status])
+        end
         @pagy, orders = pagy(orders_scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: "订单",
-          exportUrl: export_admin_store_orders_path,
+          exportUrl: export_admin_store_orders_path(q: params[:q], status: params[:status]),
           columns: [
             admin_column(:order_number, "订单号", link: true),
             admin_column(:customer, "客户"),

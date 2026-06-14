@@ -8,6 +8,7 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Textarea from '@/components/ui/Textarea.vue'
+import MentionAutocomplete from '@/components/portal/MentionAutocomplete.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -468,7 +469,11 @@ function pollPercent(votes: number) {
           </blockquote>
 
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
-            <Textarea v-model="editBody" rows="6" />
+            <MentionAutocomplete v-model="editBody">
+              <template #default="{ onInput }">
+                <Textarea v-model="editBody" rows="6" @input="onInput" />
+              </template>
+            </MentionAutocomplete>
             <div class="flex gap-2">
               <Button type="button" size="sm" variant="outline" :disabled="editPreviewLoading" @click="previewBody(editBody, 'edit')">预览</Button>
               <Button type="button" size="sm" @click="saveEdit(post)">保存</Button>
@@ -528,7 +533,17 @@ function pollPercent(votes: number) {
       </div>
     </div>
     <form class="space-y-3" @submit.prevent="submitReply">
-      <Textarea v-model="replyForm.post.body" required rows="6" placeholder="写下你的回复…" />
+      <MentionAutocomplete v-model="replyForm.post.body">
+        <template #default="{ onInput }">
+          <Textarea
+            v-model="replyForm.post.body"
+            required
+            rows="6"
+            placeholder="写下你的回复… 输入 @ 可提及用户"
+            @input="onInput"
+          />
+        </template>
+      </MentionAutocomplete>
       <div class="flex gap-2">
         <Button type="button" variant="outline" size="sm" :disabled="replyPreviewLoading || !replyForm.post.body" @click="previewBody(replyForm.post.body, 'reply')">预览</Button>
         <Button type="submit" :disabled="replyForm.processing">发表回复</Button>

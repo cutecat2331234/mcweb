@@ -9,7 +9,10 @@ module Community
       forum.mention
       forum.section_topic
       forum.private_message
+      forum.followed_topic
     ].freeze
+
+    DIGEST_OPTIONS = %w[none daily weekly].freeze
 
     CHANNELS = %w[in_app email].freeze
 
@@ -23,7 +26,11 @@ module Community
         }
       end
 
-      render inertia: "Community/Preferences/Show", props: { preferences: prefs }
+      render inertia: "Community/Preferences/Show", props: {
+        preferences: prefs,
+        digest_frequency: current_user.forum_digest_frequency,
+        digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } }
+      }
     end
 
     def update
@@ -39,6 +46,10 @@ module Community
         end
       end
 
+      if params[:digest_frequency].present? && DIGEST_OPTIONS.include?(params[:digest_frequency])
+        current_user.update!(forum_digest_frequency: params[:digest_frequency])
+      end
+
       redirect_to forum_preferences_path, notice: "通知偏好已保存。"
     end
 
@@ -49,8 +60,13 @@ module Community
         "forum.topic_reply" => "主题回复",
         "forum.mention" => "@提及",
         "forum.section_topic" => "关注分区新主题",
-        "forum.private_message" => "私信"
+        "forum.private_message" => "私信",
+        "forum.followed_topic" => "关注用户新主题"
       }[type] || type.humanize
+    end
+
+    def digest_label(value)
+      { "none" => "关闭摘要", "daily" => "每日摘要", "weekly" => "每周摘要" }[value] || value
     end
   end
 end

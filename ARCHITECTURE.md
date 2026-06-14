@@ -228,3 +228,20 @@ app/
 | 游客购物车徽章 | `inertia_share` 会话购物车 |
 | 弃购提醒邮件 | `AbandonedCartReminderJob` + `CartMailer` |
 | 后台订单 CSV 导出 | `admin/store/orders#export` |
+
+### 第十三轮（论坛 / 商城联动）
+
+| 功能 | 实现 |
+|------|------|
+| @提及自动补全 | `MentionsController#search` + `MentionAutocomplete.vue` |
+| 论坛动态流 | `ActivityController#index` + `/forum/activity` |
+| 关注用户 | `UserFollow` + `ToggleUserFollow` + 资料页 / 我的关注 |
+| 关注用户新主题通知 | `NotifyFollowedUserTopic` + 偏好 `forum.followed_topic` |
+| 论坛邮件摘要 | `SendForumDigest` + `ForumDigestJob` + 偏好频率 |
+| 通知分组展示 | `NotificationsController#group_notifications` |
+| 草稿预览摘要 | `DraftsController` `body_excerpt` / `preview_html` |
+| 注册/登录合并购物车 | `GuestCartMergeable` concern |
+| 购物车优惠券预览 | `CartsController#preview_coupon` |
+| 订单搜索/筛选 | `OrdersController#index` `q` / `status` |
+| 低库存标识 | `Product#low_stock?` / `ProductVariant#low_stock?` |
+| 到货通知 | `StockAlert` + `SubscribeStockAlert` + 补货 Job |

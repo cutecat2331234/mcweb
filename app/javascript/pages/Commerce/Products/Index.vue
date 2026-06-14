@@ -24,6 +24,7 @@ export interface ProductItem {
   category_name: string | null
   price_label: string
   in_stock: boolean
+  low_stock: boolean
   image_url: string | null
   url: string
 }
@@ -123,9 +124,9 @@ function search() {
           <TableCell>{{ product.category_name || '—' }}</TableCell>
           <TableCell>{{ product.price_label }}</TableCell>
           <TableCell>
-            <Badge :variant="product.in_stock ? 'success' : 'danger'">
-              {{ product.in_stock ? '有货' : '缺货' }}
-            </Badge>
+            <Badge v-if="!product.in_stock" variant="danger">缺货</Badge>
+            <Badge v-else-if="product.low_stock" variant="outline" class="border-amber-300 text-amber-700">库存紧张</Badge>
+            <Badge v-else variant="success">有货</Badge>
           </TableCell>
         </TableRow>
       </TableBody>

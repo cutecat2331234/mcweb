@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000007) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -279,6 +279,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000007) do
     t.index ["blocked_id"], name: "index_forum_user_blocks_on_blocked_id"
     t.index ["blocker_id", "blocked_id"], name: "index_forum_user_blocks_on_blocker_id_and_blocked_id", unique: true
     t.index ["blocker_id"], name: "index_forum_user_blocks_on_blocker_id"
+  end
+
+  create_table "forum_user_follows", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "followed_id", null: false
+    t.bigint "follower_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["followed_id"], name: "index_forum_user_follows_on_followed_id"
+    t.index ["follower_id", "followed_id"], name: "index_forum_user_follows_on_follower_id_and_followed_id", unique: true
+    t.index ["follower_id"], name: "index_forum_user_follows_on_follower_id"
   end
 
   create_table "installation_locks", force: :cascade do |t|
@@ -689,6 +699,19 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000007) do
     t.index ["user_id"], name: "index_store_reviews_on_user_id"
   end
 
+  create_table "store_stock_alerts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "notified_at"
+    t.bigint "store_product_id", null: false
+    t.bigint "store_product_variant_id"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_product_id"], name: "index_store_stock_alerts_on_store_product_id"
+    t.index ["store_product_variant_id"], name: "index_store_stock_alerts_on_store_product_variant_id"
+    t.index ["user_id", "store_product_id", "store_product_variant_id"], name: "index_stock_alerts_on_user_product_variant", unique: true
+    t.index ["user_id"], name: "index_store_stock_alerts_on_user_id"
+  end
+
   create_table "store_wishlist_items", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "store_product_id", null: false
@@ -723,6 +746,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000007) do
     t.boolean "email_verified", default: false, null: false
     t.datetime "email_verified_at"
     t.integer "failed_login_count", default: 0, null: false
+    t.string "forum_digest_frequency", default: "none", null: false
+    t.datetime "forum_digest_last_sent_at"
     t.string "forum_title"
     t.datetime "last_sign_in_at"
     t.string "last_sign_in_ip"
@@ -872,6 +897,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000007) do
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"
   add_foreign_key "forum_user_blocks", "users", column: "blocked_id"
   add_foreign_key "forum_user_blocks", "users", column: "blocker_id"
+  add_foreign_key "forum_user_follows", "users", column: "followed_id"
+  add_foreign_key "forum_user_follows", "users", column: "follower_id"
   add_foreign_key "installation_locks", "users", column: "locked_by_id"
   add_foreign_key "minecraft_connector_tasks", "minecraft_servers"
   add_foreign_key "minecraft_connector_tasks", "store_fulfillments"
@@ -909,6 +936,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000007) do
   add_foreign_key "store_refunds", "users", column: "requested_by_id"
   add_foreign_key "store_reviews", "store_products"
   add_foreign_key "store_reviews", "users"
+  add_foreign_key "store_stock_alerts", "store_product_variants"
+  add_foreign_key "store_stock_alerts", "store_products"
+  add_foreign_key "store_stock_alerts", "users"
   add_foreign_key "store_wishlist_items", "store_products"
   add_foreign_key "store_wishlist_items", "users"
   add_foreign_key "user_roles", "roles"

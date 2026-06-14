@@ -10,8 +10,27 @@ module Commerce
       render inertia: "Commerce/Carts/Show", props: {
         items: items.map { |item| serialize_cart_item(item) },
         subtotalLabel: format_money(@cart.subtotal_cents, items.first&.product&.currency || "CNY"),
-        loggedIn: logged_in?
+        subtotalCents: @cart.subtotal_cents,
+        loggedIn: logged_in?,
+        previewCouponUrl: preview_coupon_store_cart_path
       }
+    end
+
+    def preview_coupon
+      subtotal_cents = @cart.subtotal_cents
+      result = Commerce::PreviewCoupon.call(subtotal_cents: subtotal_cents, code: params[:code])
+
+      if result.success?
+        render json: {
+          code: result.value[:code],
+          discount_cents: result.value[:discount_cents],
+          total_cents: result.value[:total_cents],
+          discount_label: format_money(result.value[:discount_cents], @cart.items.first&.product&.currency || "CNY"),
+          total_label: format_money(result.value[:total_cents], @cart.items.first&.product&.currency || "CNY")
+        }
+      else
+        render json: { error: service_error_message(result) }, status: :unprocessable_entity
+      end
     end
 
     def update

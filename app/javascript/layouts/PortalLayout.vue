@@ -32,9 +32,11 @@ function toggleTheme() {
           <nav class="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
             <Link :href="routes.forum" class="hover:text-foreground transition-colors">论坛</Link>
             <Link :href="routes.forumLatest" class="hover:text-foreground transition-colors">最新</Link>
+            <Link :href="routes.forumActivity" class="hover:text-foreground transition-colors">动态</Link>
             <Link :href="routes.forumSearch" class="hover:text-foreground transition-colors">搜索</Link>
             <Link :href="routes.forumTags" class="hover:text-foreground transition-colors">标签</Link>
-            <Link v-if="auth.user" :href="routes.forumWatching" class="hover:text-foreground transition-colors">关注</Link>
+            <Link v-if="auth.user" :href="routes.forumWatching" class="hover:text-foreground transition-colors">关注主题</Link>
+            <Link v-if="auth.user" :href="routes.forumFollowing" class="hover:text-foreground transition-colors">关注用户</Link>
             <Link v-if="auth.user" :href="routes.forumBookmarks" class="hover:text-foreground transition-colors">书签</Link>
             <Link v-if="auth.user" :href="routes.forumUnread" class="hover:text-foreground transition-colors">未读</Link>
             <Link v-if="auth.user" :href="routes.forumMessages" class="hover:text-foreground transition-colors">私信</Link>

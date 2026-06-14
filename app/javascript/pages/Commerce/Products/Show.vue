@@ -20,6 +20,7 @@ export interface ProductVariant {
   sku: string
   price_label: string
   in_stock: boolean
+  low_stock: boolean
 }
 
 export interface ProductReview {
@@ -40,6 +41,7 @@ export interface ProductDetail {
   product_type: string
   category_name: string | null
   in_stock: boolean
+  low_stock: boolean
   purchase_limit: number | null
   image_url: string | null
   gallery_urls: string[]
@@ -61,6 +63,8 @@ const props = defineProps<{
   addToCartUrl: string
   wishlistUrl: string
   reviewUrl: string
+  stockAlertUrl: string
+  stockAlertSubscribed: boolean
   loggedIn: boolean
 }>()
 
@@ -118,6 +122,12 @@ function submitReview() {
     onSuccess: () => { reviewForm.review.body = '' },
   })
 }
+
+function subscribeStockAlert() {
+  router.post(props.stockAlertUrl, {
+    variant_id: selectedVariantId.value,
+  }, { preserveScroll: true })
+}
 </script>
 
 <template>
@@ -168,7 +178,9 @@ function submitReview() {
             @click="selectedVariantId = variant.id"
           >
             {{ variant.name }} · {{ variant.price_label }}
-            <span class="ml-1 text-xs text-muted-foreground">{{ variant.in_stock ? '有货' : '缺货' }}</span>
+            <span class="ml-1 text-xs text-muted-foreground">
+              {{ !variant.in_stock ? '缺货' : variant.low_stock ? '库存紧张' : '有货' }}
+            </span>
           </button>
         </div>
       </div>
@@ -187,7 +199,9 @@ function submitReview() {
       </div>
       <div class="flex justify-between text-sm">
         <span class="text-muted-foreground">库存</span>
-        <span>{{ canPurchase ? '有货' : '缺货' }}</span>
+        <span :class="product.low_stock && canPurchase ? 'text-amber-600' : ''">
+          {{ !canPurchase ? '缺货' : product.low_stock ? '库存紧张' : '有货' }}
+        </span>
       </div>
       <div v-if="product.purchase_limit" class="flex justify-between text-sm">
         <span class="text-muted-foreground">限购</span>
@@ -219,6 +233,18 @@ function submitReview() {
     <Button v-if="loggedIn" type="button" variant="outline" @click="toggleWishlist">
       {{ product.wishlisted ? '移出心愿单' : '加入心愿单' }}
     </Button>
+    <Button
+      v-if="loggedIn && !canPurchase && !stockAlertSubscribed"
+      type="button"
+      variant="outline"
+      :disabled="product.variants.length > 0 && !selectedVariantId"
+      @click="subscribeStockAlert"
+    >
+      到货通知
+    </Button>
+    <p v-else-if="loggedIn && !canPurchase && stockAlertSubscribed" class="self-center text-sm text-muted-foreground">
+      已订阅到货通知
+    </p>
     <Button as-child variant="outline">
       <Link :href="routes.store">返回商城</Link>
     </Button>

@@ -74,6 +74,14 @@ module Admin
 
       def update
         if @product.update(product_params)
+          if @product.saved_change_to_stock? && @product.stock.to_i.positive?
+            Commerce::NotifyStockRestockedJob.perform_later(@product.id)
+          end
+          @product.variants.each do |variant|
+            if variant.saved_change_to_stock? && variant.stock.to_i.positive?
+              Commerce::NotifyStockRestockedJob.perform_later(@product.id, variant.id)
+            end
+          end
           redirect_to admin_store_product_path(@product), notice: "商品已更新。"
         else
           render inertia: "Admin/Store/Products/Form",

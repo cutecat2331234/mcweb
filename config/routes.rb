@@ -77,6 +77,7 @@ Rails.application.routes.draw do
       end
     end
     post "users/:username/block", to: "blocks#create", as: :block_user
+    post "users/:username/follow", to: "follows#create", as: :user_follow
     resources :polls, only: [] do
       member do
         post :vote
@@ -115,7 +116,10 @@ Rails.application.routes.draw do
       end
     end
     get "search", to: "search#index"
+    get "mentions/search", to: "mentions#search", as: :mention_search
     get "latest", to: "latest#index"
+    get "activity", to: "activity#index"
+    get "following", to: "follows#index"
     get "unread", to: "unread#index"
     patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read
     post "preview", to: "previews#create"
@@ -140,11 +144,14 @@ Rails.application.routes.draw do
     resources :products, only: %i[index show] do
       member do
         post :wishlist, to: "wishlist#toggle"
+        post :stock_alert, to: "stock_alerts#create"
         resources :reviews, only: %i[create], controller: "reviews"
       end
     end
     get "wishlist", to: "wishlist#index"
-    resource :cart, only: %i[show update]
+    resource :cart, only: %i[show update] do
+      post :preview_coupon, on: :member
+    end
     resources :orders, only: %i[index show create] do
       member do
         post :cancel

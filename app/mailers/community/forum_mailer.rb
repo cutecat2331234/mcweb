@@ -36,5 +36,12 @@ module Community
 
       mail(to: @user.email, subject: "分区有新主题：#{@topic.title.truncate(60)}")
     end
+
+    def digest(user_id, notification_ids)
+      @user = User.find(user_id)
+      @notifications = Notification.where(id: notification_ids, user: @user).order(created_at: :desc)
+
+      mail(to: @user.email, subject: "论坛摘要 — #{@notifications.count} 条新动态")
+    end
   end
 end

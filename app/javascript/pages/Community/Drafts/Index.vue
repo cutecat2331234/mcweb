@@ -18,6 +18,8 @@ defineProps<{
   drafts: Array<{
     id: string
     title: string
+    body_excerpt: string
+    preview_html: string | null
     section_name: string
     section_url: string
     updated_at: string
@@ -44,7 +46,7 @@ function deleteDraft(id: string) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>标题</TableHead>
+          <TableHead>标题 / 预览</TableHead>
           <TableHead>分区</TableHead>
           <TableHead>更新时间</TableHead>
           <TableHead />
@@ -54,6 +56,7 @@ function deleteDraft(id: string) {
         <TableRow v-for="draft in drafts" :key="draft.id">
           <TableCell>
             <Link :href="draft.edit_url" class="font-medium hover:underline">{{ draft.title }}</Link>
+            <p class="mt-1 text-xs text-muted-foreground">{{ draft.body_excerpt }}</p>
           </TableCell>
           <TableCell>
             <Link :href="draft.section_url" class="hover:underline">{{ draft.section_name }}</Link>

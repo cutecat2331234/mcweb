@@ -202,6 +202,22 @@ module InertiaSerializable
     }
   end
 
+  def serialize_activity_post(post)
+    formatted = Community::FormatPostBody.call(body: post.body)
+    {
+      id: post.id,
+      floor_number: post.floor_number,
+      author: forum_author_name(post.user),
+      author_url: forum_user_path(post.user.username),
+      body_excerpt: post.body.truncate(200),
+      body_html: formatted.success? ? formatted.value : ERB::Util.html_escape(post.body),
+      topic_title: post.topic.title,
+      topic_url: forum_topic_path(post.topic),
+      section_name: post.topic.section.name,
+      created_at: l(post.created_at, format: :short)
+    }
+  end
+
   def serialize_product_list_item(product)
     {
       id: product.public_id,
@@ -210,6 +226,7 @@ module InertiaSerializable
       category_name: product.category&.name,
       price_label: format_price(product),
       in_stock: product.in_stock?,
+      low_stock: product.low_stock?,
       image_url: product.image_url,
       url: store_product_path(product)
     }
@@ -226,6 +243,7 @@ module InertiaSerializable
       product_type: product.product_type,
       category_name: product.category&.name,
       in_stock: product.in_stock?,
+      low_stock: product.low_stock?,
       purchase_limit: product.purchase_limit,
       image_url: product.image_url,
       gallery_urls: product.gallery_urls || [],
@@ -265,7 +283,8 @@ module InertiaSerializable
       name: variant.name,
       sku: variant.sku,
       price_label: format_money(variant.price_cents, product.currency),
-      in_stock: variant.in_stock?
+      in_stock: variant.in_stock?,
+      low_stock: variant.low_stock?
     }
   end
 

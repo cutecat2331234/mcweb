@@ -162,7 +162,7 @@ const props = defineProps<{
   } | null
   replyDraft?: string | null
   replyDraftUrl?: string | null
-  meta?: { title: string; description: string | null }
+  meta?: { title: string; description: string | null; noindex?: boolean }
 }>()
 
 const page = usePage<{ auth: { user: { id: string; username: string } | null } }>()
@@ -641,6 +641,7 @@ function pollPercent(votes: number) {
   <Head v-if="meta">
     <title>{{ meta.title }}</title>
     <meta v-if="meta.description" head-key="description" name="description" :content="meta.description" />
+    <meta v-if="meta.noindex" head-key="robots" name="robots" content="noindex, nofollow" />
     <meta head-key="og:title" property="og:title" :content="meta.title" />
     <meta v-if="meta.description" head-key="og:description" property="og:description" :content="meta.description" />
     <meta head-key="og:type" property="og:type" content="article" />

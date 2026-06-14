@@ -66,6 +66,7 @@ function changeSort(value: string) {
     </form>
     <select :value="sort" class="h-9 rounded-md border px-2 text-sm" @change="changeSort(($event.target as HTMLSelectElement).value)">
       <option value="active">最近活跃</option>
+      <option value="online">当前在线</option>
       <option value="joined">最新加入</option>
       <option value="posts">发帖最多</option>
       <option value="likes">获赞最多</option>

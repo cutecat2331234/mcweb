@@ -103,7 +103,8 @@ module Community
         replyDraftUrl: logged_in? ? forum_topic_reply_draft_path(@topic) : nil,
         meta: {
           title: @topic.title,
-          description: @topic.posts.first&.body&.truncate(160)
+          description: @topic.posts.first&.body&.truncate(160),
+          noindex: @topic.unlisted?
         }
       }
     end

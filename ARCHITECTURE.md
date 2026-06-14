@@ -796,3 +796,18 @@ app/
 | 分区外链（Discourse） | `forum_sections.link_url` / `link_label` + 分区页展示 |
 | 商品最低购买量 | `store_products.minimum_quantity` + `ValidateCartItem` |
 | 购物车限购余量提示 | `PurchaseLimitRemaining` + 购物车项序列化 |
+
+### 第四十五轮（搜索补全、未列出 SEO、商城运费与限购）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索 is:unlisted / has:poll / has:noreplies | `ParseSearchQuery` + `ApplyTopicSearchFilters` + `SearchController` |
+| 未列出主题 noindex（Discourse） | `TopicsController` meta + `Topics/Show.vue` robots |
+| 版主分区未列出筛选 | `TopicFilterable` + `SectionsController` |
+| 主题邀请通知偏好 | `forum.topic_invite` + `PreferencesController` |
+| 成员目录在线筛选 | `MembersController` sort=online + `Members/Index.vue` |
+| 信任等级编辑窗口（Discourse） | `TrustLevel.edit_window_for` + `EditPost` |
+| 商品最高购买量 | `store_products.maximum_quantity` + `ValidateCartItem` |
+| 商品运费开关 | `requires_shipping` + `CalculateShipping` 按购物车计算 |
+| 优惠券免运费 | `store_coupons.free_shipping` + `ApplyCoupon` / `PreviewCoupon` |
+| 购物车 URL 自动应用优惠码 | `CartsController#show` `?coupon=` 参数 |

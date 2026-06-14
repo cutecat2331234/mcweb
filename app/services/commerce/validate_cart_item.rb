@@ -15,6 +15,9 @@ module Commerce
       @quantity = resolved_quantity
       min_qty = [ @product.minimum_quantity.to_i, 1 ].max
       return ServiceResult.failure(error: "最少购买 #{min_qty} 件。") if @quantity < min_qty
+      if @product.maximum_quantity.present? && @quantity > @product.maximum_quantity
+        return ServiceResult.failure(error: "最多购买 #{@product.maximum_quantity} 件。")
+      end
       return ServiceResult.failure(error: "数量至少为 1。") if @quantity < 1
       return ServiceResult.failure(error: "商品已下架。") unless @product.active?
 

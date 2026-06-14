@@ -41,6 +41,10 @@ module Community
         scope.where(featured: true)
       when "announcement"
         scope.where(global_announcement: true)
+      when "unlisted"
+        scope.where(unlisted: true)
+      when "has_poll"
+        scope.where(id: Community::Poll.select(:forum_topic_id))
       when /\Aprefix:(.+)\z/
         scope.where(prefix: Regexp.last_match(1))
       else
@@ -48,7 +52,7 @@ module Community
       end
     end
 
-    def topic_filter_options(prefixes: [])
+    def topic_filter_options(prefixes: [], staff: false)
       options = [
         { value: "", label: "全部" },
         { value: "unsolved", label: "未解决" },
@@ -62,12 +66,18 @@ module Community
         { value: "pinned", label: "已置顶" },
         { value: "wiki", label: "Wiki 主题" },
         { value: "featured", label: "精选主题" },
-        { value: "announcement", label: "全站公告" }
+        { value: "announcement", label: "全站公告" },
+        { value: "has_poll", label: "含投票" }
       ]
+      options << { value: "unlisted", label: "未列出" } if staff
       prefixes.each do |prefix|
         options << { value: "prefix:#{prefix}", label: "前缀：#{prefix}" }
       end
       options
+    end
+
+    def forum_staff?(user = current_user)
+      user&.permission?("forum.topics.lock")
     end
   end
 end

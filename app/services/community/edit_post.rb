@@ -11,7 +11,10 @@ module Community
       return true if post.wiki_post?
       return false unless user.id == post.user_id
 
-      post.created_at > EDIT_WINDOW.ago
+      window = Community::TrustLevel.edit_window_for(user)
+      return true if window.nil?
+
+      post.created_at > window.ago
     end
 
     def initialize(user:, post:, body:, reason: nil)

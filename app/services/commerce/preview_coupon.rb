@@ -2,12 +2,12 @@
 
 module Commerce
   class PreviewCoupon < ApplicationService
-    def initialize(subtotal_cents:, code:, cart_items: nil, user: nil, shipping_cents: 0)
+    def initialize(subtotal_cents:, code:, cart_items: nil, user: nil, shipping_cents: nil)
       @subtotal_cents = subtotal_cents
       @code = code.to_s.strip.upcase
       @cart_items = cart_items
       @user = user
-      @shipping_cents = shipping_cents.to_i
+      @shipping_cents = shipping_cents
     end
 
     def call
@@ -20,10 +20,13 @@ module Commerce
       return ServiceResult.failure(error: reason) if reason
 
       discount_cents = coupon.calculate_discount(@subtotal_cents, cart_items: @cart_items, user: @user)
+      shipping_cents = resolved_shipping_cents(coupon)
       ServiceResult.success(
         code: coupon.code,
         discount_cents: discount_cents,
-        total_cents: [ @subtotal_cents - discount_cents + @shipping_cents, 0 ].max,
+        shipping_cents: shipping_cents,
+        total_cents: [ @subtotal_cents - discount_cents + shipping_cents, 0 ].max,
+        free_shipping: coupon.free_shipping?,
         min_amount_cents: coupon.min_amount_cents,
         min_amount_label: coupon.min_amount_cents.positive? ? format_money(coupon.min_amount_cents) : nil,
         amount_remaining_cents: coupon.min_amount_cents.positive? ? [ coupon.min_amount_cents - @subtotal_cents, 0 ].max : 0,
@@ -32,6 +35,17 @@ module Commerce
     end
 
     private
+
+    def resolved_shipping_cents(coupon)
+      return @shipping_cents.to_i unless @shipping_cents.nil?
+
+      result = Commerce::CalculateShipping.call(
+        subtotal_cents: @subtotal_cents,
+        cart_items: @cart_items,
+        coupon: coupon
+      )
+      result.success? ? result.value[:shipping_cents].to_i : 0
+    end
 
     def format_money(cents)
       ActionController::Base.helpers.number_to_currency(cents / 100.0, unit: "¥")

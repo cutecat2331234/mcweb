@@ -46,6 +46,10 @@ module Commerce
       amount
     end
 
+    def shipping_discount?
+      free_shipping?
+    end
+
     def redeem!
       increment!(:used_count)
     end

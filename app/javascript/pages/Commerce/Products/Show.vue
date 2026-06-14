@@ -61,6 +61,7 @@ export interface ProductDetail {
   low_stock: boolean
   purchase_limit: number | null
   minimum_quantity?: number
+  maximum_quantity?: number | null
   image_url: string | null
   gallery_urls: string[]
   version?: string | null
@@ -485,6 +486,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
         <span class="text-muted-foreground">起购量</span>
         <span>最少 {{ product.minimum_quantity }} 件</span>
       </div>
+      <div v-if="product.maximum_quantity" class="flex justify-between text-sm">
+        <span class="text-muted-foreground">单次限购</span>
+        <span>最多 {{ product.maximum_quantity }} 件</span>
+      </div>
       <div v-if="product.purchase_limit" class="flex justify-between text-sm">
         <span class="text-muted-foreground">限购</span>
         <span>每人最多 {{ product.purchase_limit }} 件</span>
@@ -496,7 +501,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
           v-model.number="quantity"
           type="number"
           :min="product.minimum_quantity && product.minimum_quantity > 1 ? product.minimum_quantity : 1"
-          :max="product.purchase_limit || 99"
+          :max="product.maximum_quantity || product.purchase_limit || 99"
           class="w-24"
         />
       </div>

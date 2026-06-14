@@ -66,8 +66,8 @@ module Commerce
 
         order.update!(
           subtotal_cents: subtotal_cents,
-          shipping_cents: shipping_cents_for(subtotal_cents),
-          total_cents: subtotal_cents + shipping_cents_for(subtotal_cents),
+          shipping_cents: shipping_cents_for(subtotal_cents, cart_items: @cart.items.includes(:product)),
+          total_cents: subtotal_cents + shipping_cents_for(subtotal_cents, cart_items: @cart.items.includes(:product)),
           discount_cents: 0
         )
 
@@ -161,8 +161,8 @@ module Commerce
       "MC#{Time.current.strftime('%Y%m%d')}#{SecureRandom.hex(4).upcase}"
     end
 
-    def shipping_cents_for(subtotal_cents)
-      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents)
+    def shipping_cents_for(subtotal_cents, cart_items: nil, coupon: nil)
+      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
       result.success? ? result.value[:shipping_cents].to_i : 0
     end
   end

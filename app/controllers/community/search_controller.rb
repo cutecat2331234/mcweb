@@ -18,6 +18,9 @@ module Community
       parsed_wiki = parsed.success? ? parsed.value[:wiki_filter] : nil
       parsed_featured = parsed.success? ? parsed.value[:featured_filter] : nil
       parsed_announcement = parsed.success? ? parsed.value[:announcement_filter] : nil
+      parsed_unlisted = parsed.success? ? parsed.value[:unlisted_filter] : nil
+      parsed_poll = parsed.success? ? parsed.value[:poll_filter] : nil
+      parsed_noreplies = parsed.success? ? parsed.value[:noreplies_filter] : nil
 
       query = parsed_query
       section_slug = params[:section].to_s.presence || parsed_section
@@ -29,11 +32,14 @@ module Community
       wiki_filter = params[:wiki].to_s.presence || parsed_wiki
       featured_filter = params[:featured].to_s.presence || parsed_featured
       announcement_filter = params[:announcement].to_s.presence || parsed_announcement
+      unlisted_filter = params[:unlisted].to_s.presence || parsed_unlisted
+      poll_filter = params[:poll].to_s.presence || parsed_poll
+      noreplies_filter = params[:noreplies].to_s.presence || parsed_noreplies
       topics = Community::Topic.none
       posts = Community::Post.none
 
       if query.present?
-        topics = Community::Topic.published_listed
+        topics = search_topic_base_scope(unlisted_filter: unlisted_filter)
         topics = topics.joins(:section).where(forum_sections: { slug: section_slug }) if section_slug
         topics = topics.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
         topics = topics.joins(:tags).where(forum_tags: { slug: tag_slug }) if tag_slug
@@ -44,7 +50,10 @@ module Community
           pinned_filter: pinned_filter,
           wiki_filter: wiki_filter,
           featured_filter: featured_filter,
-          announcement_filter: announcement_filter
+          announcement_filter: announcement_filter,
+          unlisted_filter: effective_unlisted_filter(unlisted_filter),
+          poll_filter: poll_filter,
+          noreplies_filter: noreplies_filter
         )
         if params[:created_after].present?
           after = Time.zone.parse(params[:created_after].to_s) rescue nil
@@ -76,7 +85,10 @@ module Community
           pinned_filter: pinned_filter,
           wiki_filter: wiki_filter,
           featured_filter: featured_filter,
-          announcement_filter: announcement_filter
+          announcement_filter: announcement_filter,
+          unlisted_filter: effective_unlisted_filter(unlisted_filter),
+          poll_filter: poll_filter,
+          noreplies_filter: noreplies_filter
         )
         if params[:created_after].present?
           after = Time.zone.parse(params[:created_after].to_s) rescue nil
@@ -117,6 +129,9 @@ module Community
         wiki: wiki_filter.to_s,
         featured: featured_filter.to_s,
         announcement: announcement_filter.to_s,
+        unlisted: unlisted_filter.to_s,
+        poll: poll_filter.to_s,
+        noreplies: noreplies_filter.to_s,
         createdAfter: params[:created_after].to_s,
         createdBefore: params[:created_before].to_s,
         topicSort: params[:topic_sort].to_s.presence || "recent",
@@ -132,7 +147,7 @@ module Community
 
     private
 
-    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil)
+    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, poll_filter: nil, noreplies_filter: nil)
       result = Community::ApplyTopicSearchFilters.call(
         scope: scope,
         solved_filter: solved_filter,
@@ -140,13 +155,16 @@ module Community
         pinned_filter: pinned_filter,
         wiki_filter: wiki_filter,
         featured_filter: featured_filter,
-        announcement_filter: announcement_filter
+        announcement_filter: announcement_filter,
+        unlisted_filter: unlisted_filter,
+        poll_filter: poll_filter,
+        noreplies_filter: noreplies_filter
       )
       result.success? ? result.value : scope
     end
 
-    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil)
-      needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter ].any?(&:present?)
+    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, poll_filter: nil, noreplies_filter: nil)
+      needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter, unlisted_filter, poll_filter, noreplies_filter ].any?(&:present?)
       scope = scope.joins(:topic) if needs_join
       apply_search_topic_filters(
         scope,
@@ -155,8 +173,30 @@ module Community
         pinned_filter: pinned_filter,
         wiki_filter: wiki_filter,
         featured_filter: featured_filter,
-        announcement_filter: announcement_filter
+        announcement_filter: announcement_filter,
+        unlisted_filter: unlisted_filter,
+        poll_filter: poll_filter,
+        noreplies_filter: noreplies_filter
       )
+    end
+
+    def search_topic_base_scope(unlisted_filter:)
+      if unlisted_filter == "unlisted" && forum_staff?
+        Community::Topic.where(status: :published, unlisted: true)
+      else
+        Community::Topic.published_listed
+      end
+    end
+
+    def effective_unlisted_filter(unlisted_filter)
+      return nil unless unlisted_filter == "unlisted"
+      return "unlisted" if forum_staff?
+
+      nil
+    end
+
+    def forum_staff?
+      current_user&.permission?("forum.topics.lock")
     end
   end
 end

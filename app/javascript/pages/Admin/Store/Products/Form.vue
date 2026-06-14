@@ -27,6 +27,8 @@ const props = defineProps<{
     purchase_limit: number | null
     allow_backorder?: boolean
     minimum_quantity?: number
+    maximum_quantity?: number | null
+    requires_shipping?: boolean
     image_url: string
     gallery_urls: string
     fulfillment_config: string
@@ -155,6 +157,14 @@ async function uploadCover(event: Event) {
     <div class="space-y-2">
       <Label for="minimum_quantity">最低购买量</Label>
       <Input id="minimum_quantity" v-model.number="form.product.minimum_quantity" type="number" min="1" />
+    </div>
+    <div class="space-y-2">
+      <Label for="maximum_quantity">最高购买量（空=不限）</Label>
+      <Input id="maximum_quantity" v-model.number="form.product.maximum_quantity" type="number" min="1" />
+    </div>
+    <div class="flex items-center gap-2">
+      <input id="requires_shipping" v-model="form.product.requires_shipping" type="checkbox" class="rounded border" />
+      <Label for="requires_shipping">需要运费（实物商品通常勾选）</Label>
     </div>
     <div class="space-y-2">
       <Label for="image_url">商品图片 URL</Label>

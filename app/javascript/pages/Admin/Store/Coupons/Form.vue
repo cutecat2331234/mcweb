@@ -25,6 +25,7 @@ const props = defineProps<{
     product_ids?: number[]
     category_ids?: number[]
     description?: string
+    free_shipping?: boolean
   }
   products?: Array<{ id: number; name: string }>
   categories?: Array<{ id: number; name: string }>
@@ -98,6 +99,10 @@ function submit() {
     <label class="flex items-center gap-2 text-sm">
       <input v-model="form.coupon.first_order_only" type="checkbox" class="h-4 w-4" />
       仅限首单
+    </label>
+    <label class="flex items-center gap-2 text-sm">
+      <input v-model="form.coupon.free_shipping" type="checkbox" class="h-4 w-4" />
+      免运费
     </label>
     <div class="space-y-2">
       <Label>限定商品（不选=全部）</Label>

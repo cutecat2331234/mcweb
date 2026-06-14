@@ -22,6 +22,8 @@ module Commerce
     validate :compare_at_price_valid
     validates :currency, presence: true
     validates :minimum_quantity, numericality: { only_integer: true, greater_than: 0 }
+    validates :maximum_quantity, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
+    validate :maximum_quantity_valid
 
     def on_sale?
       compare_at_price_cents.present? && compare_at_price_cents > price_cents
@@ -86,7 +88,19 @@ module Commerce
       price_cents / 100.0
     end
 
+    def requires_shipping?
+      requires_shipping == true || product_type == "physical"
+    end
+
     private
+
+    def maximum_quantity_valid
+      return if maximum_quantity.blank?
+
+      if maximum_quantity < minimum_quantity
+        errors.add(:maximum_quantity, "must be greater than or equal to minimum quantity")
+      end
+    end
 
     def compare_at_price_valid
       return if compare_at_price_cents.blank?

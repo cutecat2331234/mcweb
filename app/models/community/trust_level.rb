@@ -10,6 +10,12 @@ module Community
       { level: 4, name: "领导者", min_posts: 200 }
     ].freeze
 
+    EDIT_WINDOWS = {
+      0 => 15.minutes,
+      1 => 1.hour,
+      2 => 24.hours
+    }.freeze
+
     def self.level_info(user)
       return LEVELS.first unless user
 
@@ -46,6 +52,15 @@ module Community
       return true if min_level <= 0
 
       level_for(user) >= min_level
+    end
+
+    def self.edit_window_for(user)
+      return nil if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
+
+      level = level_for(user)
+      return nil if level >= 3
+
+      EDIT_WINDOWS[level] || EDIT_WINDOWS[0]
     end
 
     def self.contains_link?(text)

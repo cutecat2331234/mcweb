@@ -45,6 +45,8 @@ module Community
            WHERE store_orders.user_id = users.id
            AND store_orders.status IN ('paid','processing','fulfilling','fulfilled','completed')) DESC
         SQL
+      when "online"
+        scope.where("last_seen_at > ?", 5.minutes.ago).order(last_seen_at: :desc)
       else
         scope.order(Arel.sql("last_seen_at DESC NULLS LAST, created_at DESC"))
       end

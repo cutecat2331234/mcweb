@@ -267,7 +267,10 @@ module InertiaSerializable
     return nil unless user && user.id == post.user_id
     return nil if user.permission?("forum.topics.lock") || post.topic.wiki?
 
-    expires_at = post.created_at + Community::EditPost::EDIT_WINDOW
+    window = Community::TrustLevel.edit_window_for(user)
+    return nil if window.nil?
+
+    expires_at = post.created_at + window
     remaining = (expires_at - Time.current).to_i
     remaining.positive? ? remaining : nil
   end
@@ -378,6 +381,7 @@ module InertiaSerializable
       low_stock: product.low_stock?,
       purchase_limit: product.purchase_limit,
       minimum_quantity: [ product.minimum_quantity.to_i, 1 ].max,
+      maximum_quantity: product.maximum_quantity,
       image_url: product_image_url(product),
       gallery_urls: product.gallery_urls || [],
       version: product.version,
@@ -486,6 +490,7 @@ module InertiaSerializable
       variant_name: item.variant&.name,
       quantity: item.quantity,
       minimum_quantity: [ item.product.minimum_quantity.to_i, 1 ].max,
+      maximum_quantity: item.product.maximum_quantity,
       purchase_limit_remaining: remaining,
       unit_price_label: number_to_currency(unit_cents / 100.0, unit: unit),
       total_label: number_to_currency(item.total_cents / 100.0, unit: unit),
@@ -702,8 +707,8 @@ module InertiaSerializable
     FULFILLMENT_STATUS_LABELS[status.to_s] || status.to_s.humanize
   end
 
-  def serialize_shipping_quote(subtotal_cents, currency: "CNY")
-    result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents)
+  def serialize_shipping_quote(subtotal_cents, currency: "CNY", cart_items: nil, coupon: nil)
+    result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
     return {} unless result.success?
 
     value = result.value
@@ -711,6 +716,8 @@ module InertiaSerializable
       shippingCents: value[:shipping_cents],
       shippingLabel: format_money(value[:shipping_cents], currency),
       freeShipping: value[:free_shipping],
+      noShippableItems: value[:no_shippable_items] == true,
+      couponFreeShipping: value[:coupon_free_shipping] == true,
       freeShippingMinLabel: value[:free_shipping_min_cents].positive? ? format_money(value[:free_shipping_min_cents], currency) : nil,
       freeShippingRemainingLabel: value[:amount_remaining_cents].positive? ? format_money(value[:amount_remaining_cents], currency) : nil
     }

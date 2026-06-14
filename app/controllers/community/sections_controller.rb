@@ -37,7 +37,13 @@ module Community
       section = Community::Section.find_by!(slug: params[:id])
       sort = params[:sort].to_s.presence || "activity"
       filter = params[:filter].to_s.presence
-      scope = preload_topics(section.topics.published_listed.sorted(sort))
+      staff = forum_staff?
+      base_scope = if filter == "unlisted" && staff
+                     section.topics.where(status: :published, unlisted: true)
+                   else
+                     section.topics.published_listed
+                   end
+      scope = preload_topics(base_scope.sorted(sort))
       scope = filter_blocked_topics(scope)
       scope = apply_topic_filter(scope, filter: filter, user: current_user)
       featured = preload_topics(section.topics.featured_topics.pinned_first.limit(5))
@@ -78,7 +84,7 @@ module Community
         pagination: pagy_props(@pagy),
         sort: sort,
         filter: filter.to_s,
-        filterOptions: topic_filter_options(prefixes: Array(section.prefixes)),
+        filterOptions: topic_filter_options(prefixes: Array(section.prefixes), staff: staff),
         canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic),
       }
     end

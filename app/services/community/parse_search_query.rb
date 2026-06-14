@@ -5,10 +5,12 @@ module Community
     IN_PATTERN = /\bin:(\S+)/i
     TAG_PATTERN = /\btag:(\S+)/i
     IS_PATTERN = /\bis:(\S+)\b/i
+    HAS_PATTERN = /\bhas:(\S+)\b/i
     AUTHOR_AT_PATTERN = /\B@([a-zA-Z0-9_]+)/
     AUTHOR_COLON_PATTERN = /\bauthor:([a-zA-Z0-9_]+)/i
 
-    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global].freeze
+    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted].freeze
+    VALID_HAS_FLAGS = %w[poll noreplies].freeze
 
     def initialize(query:)
       @query = query.to_s.strip
@@ -18,6 +20,7 @@ module Community
       section_slug = nil
       tag_slug = nil
       topic_flags = {}
+      has_flags = {}
       author = nil
       text = @query.dup
 
@@ -34,6 +37,12 @@ module Community
       while (match = text.match(IS_PATTERN))
         flag = match[1].downcase
         topic_flags[flag] = true if VALID_TOPIC_FLAGS.include?(flag)
+        text = text.gsub(match[0], "").strip
+      end
+
+      while (match = text.match(HAS_PATTERN))
+        flag = match[1].downcase
+        has_flags[flag] = true if VALID_HAS_FLAGS.include?(flag)
         text = text.gsub(match[0], "").strip
       end
 
@@ -65,6 +74,9 @@ module Community
         wiki_filter: topic_flags["wiki"] ? "wiki" : nil,
         featured_filter: topic_flags["featured"] ? "featured" : nil,
         announcement_filter: announcement_filter,
+        unlisted_filter: topic_flags["unlisted"] ? "unlisted" : nil,
+        poll_filter: has_flags["poll"] ? "poll" : nil,
+        noreplies_filter: has_flags["noreplies"] ? "noreplies" : nil,
         author: author
       )
     end

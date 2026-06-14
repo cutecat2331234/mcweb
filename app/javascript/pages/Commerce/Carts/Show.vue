@@ -22,6 +22,7 @@ export interface CartItem {
   variant_name: string | null
   quantity: number
   minimum_quantity?: number
+  maximum_quantity?: number | null
   purchase_limit_remaining?: number | null
   unit_price_label: string
   total_label: string
@@ -36,6 +37,9 @@ const props = defineProps<{
   freeShipping?: boolean
   freeShippingMinLabel?: string | null
   freeShippingRemainingLabel?: string | null
+  couponFreeShipping?: boolean
+  noShippableItems?: boolean
+  couponAutoApplied?: boolean
   loggedIn: boolean
   pendingCouponCode?: string | null
   pendingGiftCardCode?: string | null
@@ -194,6 +198,7 @@ function clearCart() {
               <template v-else>{{ item.product_name }}</template>
               <span v-if="item.variant_name" class="text-muted-foreground"> — {{ item.variant_name }}</span>
               <p v-if="item.minimum_quantity && item.minimum_quantity > 1" class="text-xs text-muted-foreground">最少购买 {{ item.minimum_quantity }} 件</p>
+              <p v-if="item.maximum_quantity" class="text-xs text-muted-foreground">单次最多 {{ item.maximum_quantity }} 件</p>
               <p v-if="item.purchase_limit_remaining != null" class="text-xs text-muted-foreground">还可购买 {{ item.purchase_limit_remaining }} 件</p>
             </TableCell>
             <TableCell>
@@ -228,7 +233,10 @@ function clearCart() {
 
     <p class="font-medium">小计：{{ subtotalLabel }}</p>
     <p v-if="shippingLabel" class="text-sm text-muted-foreground">
-      运费：{{ freeShipping ? '免运费' : shippingLabel }}
+      运费：{{ freeShipping ? (couponFreeShipping ? '免运费（优惠券）' : noShippableItems ? '无需运费' : '免运费') : shippingLabel }}
+    </p>
+    <p v-if="couponAutoApplied && pendingCouponCode" class="text-sm text-green-700">
+      已通过链接自动应用优惠码 {{ pendingCouponCode }}
     </p>
     <p
       v-if="freeShippingRemainingLabel && !freeShipping"

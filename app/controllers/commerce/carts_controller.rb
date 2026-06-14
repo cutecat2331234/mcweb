@@ -6,10 +6,12 @@ module Commerce
 
     def show
       items = @cart.items.includes(:product, :variant)
-      pending_coupon = session[:pending_coupon_code].to_s.presence
+      pending_coupon = apply_coupon_from_url!(items)
+      pending_coupon ||= session[:pending_coupon_code].to_s.presence
       pending_gift_card = session[:pending_gift_card_code].to_s.presence
       currency = items.first&.product&.currency || "CNY"
       subtotal_cents = @cart.subtotal_cents
+      coupon = Commerce::Coupon.find_by(code: pending_coupon) if pending_coupon.present?
 
       render inertia: "Commerce/Carts/Show", props: {
         items: items.map { |item| serialize_cart_item(item) },
@@ -18,6 +20,7 @@ module Commerce
         loggedIn: logged_in?,
         pendingCouponCode: pending_coupon,
         pendingGiftCardCode: pending_gift_card,
+        couponAutoApplied: params[:coupon].present? && pending_coupon.present?,
         previewCouponUrl: preview_coupon_store_cart_path,
         previewGiftCardUrl: preview_gift_card_store_cart_path,
         clearCouponUrl: clear_coupon_store_cart_path,
@@ -25,7 +28,7 @@ module Commerce
         moveToWishlistUrl: move_to_wishlist_store_cart_path,
         clearCartUrl: clear_store_cart_path,
         crossSellProducts: cross_sell_products(items),
-        **serialize_shipping_quote(subtotal_cents, currency: currency)
+        **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon)
       }
     end
 
@@ -58,17 +61,16 @@ module Commerce
       subtotal_cents = @cart.subtotal_cents
       cart_items = @cart.items.includes(:product)
       currency = cart_items.first&.product&.currency || "CNY"
-      shipping_cents = shipping_cents_for_preview(subtotal_cents)
       result = Commerce::PreviewCoupon.call(
         subtotal_cents: subtotal_cents,
         code: params[:code],
         cart_items: cart_items,
-        user: current_user,
-        shipping_cents: shipping_cents
+        user: current_user
       )
 
       if result.success?
         session[:pending_coupon_code] = result.value[:code]
+        shipping_cents = result.value[:shipping_cents].to_i
         render json: {
           code: result.value[:code],
           discount_cents: result.value[:discount_cents],
@@ -76,6 +78,7 @@ module Commerce
           discount_label: format_money(result.value[:discount_cents], currency),
           total_label: format_money(result.value[:total_cents], currency),
           shipping_label: format_money(shipping_cents, currency),
+          free_shipping: result.value[:free_shipping],
           min_amount_label: result.value[:min_amount_label],
           amount_remaining_label: result.value[:amount_remaining_label]
         }
@@ -97,13 +100,14 @@ module Commerce
           subtotal_cents: subtotal_cents,
           code: params[:coupon_code],
           cart_items: @cart.items.includes(:product),
-          user: current_user,
-          shipping_cents: shipping_cents_for_preview(subtotal_cents)
+          user: current_user
         )
         discount_cents = preview.success? ? preview.value[:discount_cents] : 0
+        shipping_cents = preview.success? ? preview.value[:shipping_cents].to_i : shipping_cents_for_preview(subtotal_cents)
+      else
+        shipping_cents = shipping_cents_for_preview(subtotal_cents)
       end
 
-      shipping_cents = shipping_cents_for_preview(subtotal_cents)
       result = Commerce::PreviewGiftCard.call(
         subtotal_cents: subtotal_cents,
         code: params[:code],
@@ -225,9 +229,31 @@ module Commerce
       scope.map { |product| serialize_product_list_item(product) }
     end
 
-    def shipping_cents_for_preview(subtotal_cents)
-      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents)
+    def shipping_cents_for_preview(subtotal_cents, coupon_code: nil)
+      cart_items = @cart.items.includes(:product)
+      coupon = Commerce::Coupon.find_by(code: coupon_code) if coupon_code.present?
+      coupon ||= Commerce::Coupon.find_by(code: session[:pending_coupon_code]) if session[:pending_coupon_code].present?
+      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
       result.success? ? result.value[:shipping_cents].to_i : 0
+    end
+
+    def apply_coupon_from_url!(cart_items)
+      code = params[:coupon].to_s.strip
+      return nil if code.blank?
+
+      result = Commerce::PreviewCoupon.call(
+        subtotal_cents: @cart.subtotal_cents,
+        code: code,
+        cart_items: cart_items,
+        user: current_user
+      )
+      if result.success?
+        session[:pending_coupon_code] = result.value[:code]
+        result.value[:code]
+      else
+        flash[:alert] = result.error
+        nil
+      end
     end
   end
 end

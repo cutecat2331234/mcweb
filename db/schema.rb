@@ -785,6 +785,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "discount_value", null: false
     t.datetime "ends_at"
     t.boolean "first_order_only", default: false, null: false
+    t.boolean "free_shipping", default: false, null: false
     t.integer "max_discount_cents"
     t.integer "min_amount_cents", default: 0, null: false
     t.integer "per_user_limit"
@@ -993,6 +994,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.jsonb "fulfillment_config", default: {}, null: false
     t.jsonb "gallery_urls", default: [], null: false
     t.string "image_url"
+    t.integer "maximum_quantity"
     t.jsonb "metadata", default: {}, null: false
     t.integer "minimum_quantity", default: 1, null: false
     t.string "name", null: false
@@ -1000,6 +1002,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "product_type", null: false
     t.string "public_id", null: false
     t.integer "purchase_limit"
+    t.boolean "requires_shipping", default: false, null: false
     t.string "slug", null: false
     t.string "status", default: "draft", null: false
     t.integer "stock"

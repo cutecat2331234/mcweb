@@ -19,6 +19,7 @@ module Community
       forum.bookmark_reminder
       forum.post_edited
       forum.user_warning
+      forum.topic_invite
     ].freeze
 
     DIGEST_OPTIONS = %w[none daily weekly].freeze
@@ -79,7 +80,8 @@ module Community
         "forum.trust_level" => "信任等级提升",
         "forum.bookmark_reminder" => "书签提醒",
         "forum.post_edited" => "帖子编辑通知",
-        "forum.user_warning" => "社区警告"
+        "forum.user_warning" => "社区警告",
+        "forum.topic_invite" => "主题邀请关注"
       }[type] || type.humanize
     end
 

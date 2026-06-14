@@ -107,10 +107,12 @@ class Commerce::OrderShippingTest < ActiveSupport::TestCase
     @product = Commerce::Product.create!(
       name: "Ship Product",
       slug: "ship-#{SecureRandom.hex(4)}",
-      product_type: "digital",
+      product_type: "physical",
       price_cents: 5000,
       currency: "CNY",
-      status: "active"
+      status: "active",
+      requires_shipping: true,
+      fulfillment_config: {}
     )
     @prev_flat = SiteSetting.get("store.flat_shipping_cents")
     SiteSetting.set("store.free_shipping_min_order_cents", "0")

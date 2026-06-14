@@ -137,7 +137,7 @@ module Admin
       def product_params
         permitted = params.require(:product).permit(
           :name, :slug, :description, :summary, :product_type, :status,
-          :price_cents, :compare_at_price_cents, :currency, :stock, :store_category_id, :purchase_limit, :minimum_quantity, :allow_backorder, :image_url, :gallery_urls,
+          :price_cents, :compare_at_price_cents, :currency, :stock, :store_category_id, :purchase_limit, :minimum_quantity, :maximum_quantity, :requires_shipping, :allow_backorder, :image_url, :gallery_urls,
           :fulfillment_config, :featured, :version, :changelog,
           variants_attributes: [ :id, :name, :sku, :price_cents, :compare_at_price_cents, :stock, :_destroy ]
         )
@@ -173,6 +173,8 @@ module Admin
             stock: product.stock,
             allow_backorder: product.allow_backorder?,
             minimum_quantity: product.minimum_quantity || 1,
+            maximum_quantity: product.maximum_quantity,
+            requires_shipping: product.requires_shipping?,
             store_category_id: product.store_category_id,
             purchase_limit: product.purchase_limit,
             image_url: product.image_url || "",

@@ -4,7 +4,7 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
-import Badge from '@/components/ui/Badge.vue'
+import TopicTitleBadges from '@/components/portal/TopicTitleBadges.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -25,9 +25,15 @@ const props = defineProps<{
     last_posted_at: string | null
     has_unread: boolean
     unread_count: number
+    pinned?: boolean
+    featured?: boolean
+    locked?: boolean
+    solved?: boolean
   }>
   pagination: PaginationMeta
   sort: string
+  filter: string
+  filterOptions: Array<{ value: string; label: string }>
   rss_url: string
 }>()
 
@@ -39,7 +45,11 @@ const sortOptions = [
 ]
 
 function changeSort(value: string) {
-  router.get(routes.forumLatest, { sort: value }, { preserveState: true })
+  router.get(routes.forumLatest, { sort: value, filter: props.filter || undefined }, { preserveState: true })
+}
+
+function changeFilter(value: string) {
+  router.get(routes.forumLatest, { sort: props.sort, filter: value || undefined }, { preserveState: true })
 }
 </script>
 
@@ -52,15 +62,27 @@ function changeSort(value: string) {
 
   <PageHeader title="最新主题" subtitle="全站最近活跃的主题" />
 
-  <div class="mb-4 flex flex-wrap items-center gap-2">
-    <label class="text-sm text-muted-foreground">排序：</label>
-    <select
-      :value="sort"
-      class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-      @change="changeSort(($event.target as HTMLSelectElement).value)"
-    >
-      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-    </select>
+  <div class="mb-4 flex flex-wrap items-center gap-4">
+    <div class="flex items-center gap-2">
+      <label class="text-sm text-muted-foreground">排序：</label>
+      <select
+        :value="sort"
+        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+        @change="changeSort(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-sm text-muted-foreground">筛选：</label>
+      <select
+        :value="filter"
+        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+        @change="changeFilter(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+    </div>
     <a :href="rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
   </div>
 
@@ -77,8 +99,15 @@ function changeSort(value: string) {
       <TableBody>
         <TableRow v-for="topic in topics" :key="topic.id">
           <TableCell>
+            <TopicTitleBadges
+              :pinned="topic.pinned"
+              :featured="topic.featured"
+              :locked="topic.locked"
+              :solved="topic.solved"
+              :has-unread="topic.has_unread"
+              :unread-count="topic.unread_count"
+            />
             <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
-            <Badge v-if="topic.has_unread" class="ml-2">{{ topic.unread_count }} 未读</Badge>
           </TableCell>
           <TableCell>{{ topic.author || '—' }}</TableCell>
           <TableCell>{{ topic.replies_count }}</TableCell>

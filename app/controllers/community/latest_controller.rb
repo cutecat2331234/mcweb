@@ -2,10 +2,14 @@
 
 module Community
   class LatestController < ApplicationController
+    include Community::TopicFilterable
+
     def index
       sort = params[:sort].to_s.presence || "activity"
+      filter = params[:filter].to_s.presence
       scope = Community::Topic.where(status: :published).sorted(sort).includes(:user, :section)
       scope = filter_blocked_topics(scope)
+      scope = apply_topic_filter(scope, filter: filter, user: current_user)
 
       @pagy, topics = pagy(scope, limit: 30)
 
@@ -19,6 +23,8 @@ module Community
         topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
         pagination: pagy_props(@pagy),
         sort: sort,
+        filter: filter.to_s,
+        filterOptions: topic_filter_options,
         rss_url: forum_latest_rss_path
       }
     end

@@ -41,7 +41,11 @@ export interface SectionOption {
 const props = defineProps<{
   query: string
   section: string | null
+  author: string
+  tag: string
+  solved: string
   sections: SectionOption[]
+  tags: Array<{ slug: string; name: string }>
   topics: SearchTopic[]
   posts: SearchPost[]
   topicsPagination: PaginationMeta
@@ -52,12 +56,21 @@ const q = ref(props.query)
 const sectionSlug = ref(props.section || '')
 
 watch(() => props.query, (value) => { q.value = value })
-watch(() => props.section, (value) => { sectionSlug.value = value || '' })
+const author = ref(props.author)
+const tagSlug = ref(props.tag)
+const solved = ref(props.solved)
+
+watch(() => props.author, (value) => { author.value = value })
+watch(() => props.tag, (value) => { tagSlug.value = value })
+watch(() => props.solved, (value) => { solved.value = value })
 
 function search() {
   router.get(routes.forumSearch, {
     q: q.value,
     section: sectionSlug.value || undefined,
+    author: author.value || undefined,
+    tag: tagSlug.value || undefined,
+    solved: solved.value || undefined,
   }, { preserveState: true })
 }
 </script>
@@ -78,6 +91,16 @@ function search() {
       <option v-for="sec in sections" :key="sec.slug" :value="sec.slug">
         {{ sec.category ? `${sec.category} / ` : '' }}{{ sec.name }}
       </option>
+    </select>
+    <Input v-model="author" placeholder="作者用户名" class="w-36" />
+    <select v-model="tagSlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">全部标签</option>
+      <option v-for="t in tags" :key="t.slug" :value="t.slug">#{{ t.name }}</option>
+    </select>
+    <select v-model="solved" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">全部状态</option>
+      <option value="unsolved">未解决</option>
+      <option value="solved">已解决</option>
     </select>
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">搜索</button>
   </form>

@@ -288,11 +288,25 @@ module InertiaSerializable
     }
   end
 
+  ORDER_STATUS_LABELS = {
+    "pending" => "待支付",
+    "awaiting_payment" => "等待支付",
+    "paid" => "已支付",
+    "processing" => "处理中",
+    "fulfilling" => "发货中",
+    "fulfilled" => "已发货",
+    "completed" => "已完成",
+    "cancelled" => "已取消",
+    "refunded" => "已退款",
+    "failed" => "失败"
+  }.freeze
+
   def serialize_order_list_item(order)
     {
       id: order.public_id,
       order_number: order.order_number,
       status: order.status,
+      status_label: order_status_label(order.status),
       total_label: format_money(order.total_cents, order.currency),
       created_at: l(order.created_at, format: :short),
       url: store_order_path(order)
@@ -300,10 +314,12 @@ module InertiaSerializable
   end
 
   def serialize_order_detail(order)
+    providers = Payments::ProviderConfig.enabled_providers.map { |config| serialize_checkout_provider(config) }
     {
       id: order.public_id,
       order_number: order.order_number,
       status: order.status,
+      status_label: order_status_label(order.status),
       total_label: format_money(order.total_cents, order.currency),
       can_pay: order.pending? || order.awaiting_payment?,
       can_cancel: order.pending? || order.awaiting_payment?,
@@ -334,8 +350,14 @@ module InertiaSerializable
           status: f.status,
           fulfilled_at: f.fulfilled_at ? l(f.fulfilled_at, format: :short) : nil
         }
-      end
+      end,
+      payment_providers: providers,
+      default_provider: providers.first&.dig(:value) || "fake"
     }
+  end
+
+  def order_status_label(status)
+    ORDER_STATUS_LABELS[status.to_s] || status.to_s.humanize
   end
 
   def serialize_article(article)

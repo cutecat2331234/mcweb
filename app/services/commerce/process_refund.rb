@@ -37,6 +37,7 @@ module Commerce
           if full_refund?(@amount_cents, refunded_cents)
             @order.update!(status: "refunded")
             restore_stock!
+            restore_coupon_usage!
           end
           MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_processed", "deliver_now", args: [ refund.id ])
         else
@@ -84,6 +85,14 @@ module Commerce
 
         target.update!(stock: target.stock + item.quantity)
       end
+    end
+
+    def restore_coupon_usage!
+      coupon = @order.coupon
+      return unless coupon
+      return unless coupon.used_count.positive?
+
+      coupon.decrement!(:used_count)
     end
   end
 end

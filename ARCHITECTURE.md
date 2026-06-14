@@ -131,6 +131,17 @@ app/
 | 私信 Markdown | 私信对话页渲染 `body_html` |
 | 移动权限独立 | `can_move` 与 `forum.topics.move` 权限 |
 | 慢速模式路由修复 | `PATCH slow_mode` → `update_slow_mode` |
+| 主题列表已解决徽章 | `TopicTitleBadges` + `serialize_topic.solved` |
+| 主题筛选 | 未解决/已解决/我的/我参与的（`TopicFilterable`） |
+| 搜索增强筛选 | 作者、标签、解决状态 |
+| 取消已解决 | `UnsolveTopic` + `POST unsolve` |
+| 通知点击查看已读 | `notifications#visit` 自动标记并跳转 |
+| 访问主题标记多类型通知已读 | 回复/提及/分区新主题 |
+| 论坛分类后台 CRUD | `Admin::Forum::CategoriesController` |
+| 子板块父级设置 | 分区后台 `parent_id` 选择器 |
+| 举报详情链接 | 管理后台跳转主题/帖子 |
+| 提及/分区邮件通知 | `ForumMailer#mention` / `#section_topic` |
+| 导航修复 | 「偏好」与通知铃铛分离 |
 
 ## 商城功能
 
@@ -165,3 +176,12 @@ app/
 | 变体库存判断 | `Product#in_stock?` 有变体时检查变体库存 |
 | 购买数量选择 | 商品详情页数量输入 |
 | 发货配置后台 | `fulfillment_config` JSON 编辑 |
+| 连接器失败处理 | `TaskDispatcher` 根据结果标记 failed |
+| 优惠券计算统一 | `ApplyCoupon` 使用 `Coupon#calculate_discount` |
+| 变体必选校验 | 有变体商品必须选择规格 |
+| 发货重试去重 | `DispatchFulfillmentJob` 跳过已有 pending 任务 |
+| 全额退款恢复优惠券 | `ProcessRefund#restore_coupon_usage!` |
+| 订单状态中文标签 | `ORDER_STATUS_LABELS` + `status_label` |
+| 订单支付渠道选择 | 订单详情页选择 Provider |
+| 购物车导航徽章 | `PortalLayout` 显示购物车数量 |
+| 发货重试按钮条件显示 | 仅 pending/failed 显示 |

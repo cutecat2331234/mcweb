@@ -164,6 +164,10 @@ function markSolved(post: PostItem) {
   router.post(`/forum/topics/${props.topic.id}/mark_solved`, { post_id: post.id }, { preserveScroll: true })
 }
 
+function unsolveTopic() {
+  router.post(`/forum/topics/${props.topic.id}/unsolve`, {}, { preserveScroll: true })
+}
+
 function updateSlowMode() {
   router.patch(`/forum/topics/${props.topic.id}/slow_mode`, { seconds: slowModeSeconds.value })
 }
@@ -363,6 +367,10 @@ function pollPercent(votes: number) {
   </p>
   <p v-if="topic.wiki" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
     Wiki 主题：所有登录用户可协作编辑帖子。
+  </p>
+  <p v-if="topic.solved_post_id" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+    此主题已标记为已解决。
+    <button v-if="canMarkSolved" type="button" class="ml-2 underline" @click="unsolveTopic">取消已解决</button>
   </p>
   <p v-if="topic.slow_mode_seconds" class="mb-4 rounded-md border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900">
     慢速模式：同一用户需间隔 {{ topic.slow_mode_seconds }} 秒才能再次回复。

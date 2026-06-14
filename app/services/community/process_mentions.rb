@@ -30,6 +30,15 @@ module Community
             path: "/forum/topics/#{@topic.public_id}#post-#{@post.id}"
           }
         )
+
+        if NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.mention")
+          MailDeliveryJob.perform_later(
+            "Community::ForumMailer",
+            "mention",
+            "deliver_now",
+            args: [ user.id, @topic.public_id, @post.id ]
+          )
+        end
       end
 
       ServiceResult.success(mentioned: users.pluck(:username))

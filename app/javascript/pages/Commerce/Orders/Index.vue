@@ -17,6 +17,7 @@ defineProps<{
     id: string
     order_number: string
     status: string
+    status_label: string
     total_label: string
     created_at: string
     url: string
@@ -40,7 +41,7 @@ defineProps<{
       <TableBody>
         <TableRow v-for="order in orders" :key="order.id">
           <TableCell><Link :href="order.url" class="font-medium hover:underline">{{ order.order_number }}</Link></TableCell>
-          <TableCell>{{ order.status }}</TableCell>
+          <TableCell>{{ order.status_label || order.status }}</TableCell>
           <TableCell>{{ order.total_label }}</TableCell>
           <TableCell>{{ order.created_at }}</TableCell>
         </TableRow>

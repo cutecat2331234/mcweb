@@ -54,12 +54,17 @@ module Minecraft
         )
 
         if task.fulfillment
-          task.fulfillment.update!(
-            status: "fulfilled",
-            fulfilled_at: Time.current,
-            last_error: nil
-          )
-          Commerce::SyncOrderFulfillmentStatus.call(order: task.fulfillment.order)
+          if delivery_successful?
+            task.fulfillment.update!(
+              status: "fulfilled",
+              fulfilled_at: Time.current,
+              last_error: nil
+            )
+            Commerce::SyncOrderFulfillmentStatus.call(order: task.fulfillment.order)
+          else
+            error_message = extract_error_message
+            task.fulfillment.mark_failed!(error: error_message)
+          end
         end
 
         if task.delivery_id.present?
@@ -76,6 +81,23 @@ module Minecraft
       ServiceResult.success(task: task, idempotent: false)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    def delivery_successful?
+      return true if @result.blank?
+
+      value = @result
+      value = value.with_indifferent_access if value.respond_to?(:with_indifferent_access)
+      return false if value[:success] == false || value["success"] == false
+      return false if value[:status].to_s == "failed" || value["status"].to_s == "failed"
+
+      true
+    end
+
+    def extract_error_message
+      value = @result
+      value = value.with_indifferent_access if value.respond_to?(:with_indifferent_access)
+      value[:error] || value["error"] || value[:message] || value["message"] || "Delivery failed"
     end
   end
 end

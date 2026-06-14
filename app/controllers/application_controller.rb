@@ -28,6 +28,11 @@ class ApplicationController < ActionController::Base
         unread_count: current_user.notifications.unread.count,
         url: forum_notifications_path
       }
+      cart = Commerce::Cart.find_by(user: current_user)
+      share[:cart] = {
+        count: cart&.items&.sum(:quantity).to_i,
+        url: store_cart_path
+      }
     end
 
     share

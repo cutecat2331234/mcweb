@@ -10,6 +10,7 @@ import Badge from '@/components/ui/Badge.vue'
 const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const notifications = computed(() => page.props.notifications as { unread_count: number; url: string } | undefined)
+const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 
 const isDark = computed(() => document.documentElement.classList.contains('dark'))
 
@@ -37,10 +38,13 @@ function toggleTheme() {
             <Link v-if="auth.user" :href="routes.forumBookmarks" class="hover:text-foreground transition-colors">书签</Link>
             <Link v-if="auth.user" :href="routes.forumUnread" class="hover:text-foreground transition-colors">未读</Link>
             <Link v-if="auth.user" :href="routes.forumMessages" class="hover:text-foreground transition-colors">私信</Link>
-            <Link v-if="auth.user" :href="routes.forumPreferences" class="hover:text-foreground transition-colors">通知</Link>
+            <Link v-if="auth.user" :href="routes.forumPreferences" class="hover:text-foreground transition-colors">偏好</Link>
             <Link v-if="auth.user" :href="routes.forumDrafts" class="hover:text-foreground transition-colors">草稿</Link>
             <Link :href="routes.store" class="hover:text-foreground transition-colors">商城</Link>
             <Link v-if="auth.user" :href="routes.storeWishlist" class="hover:text-foreground transition-colors">心愿单</Link>
+            <Link v-if="auth.user && cart" :href="cart.url" class="hover:text-foreground transition-colors">
+              购物车<span v-if="cart.count > 0" class="ml-1 text-primary">({{ cart.count }})</span>
+            </Link>
           </nav>
         </div>
 

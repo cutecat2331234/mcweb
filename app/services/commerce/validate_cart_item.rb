@@ -13,6 +13,10 @@ module Commerce
       return ServiceResult.failure(error: "Quantity must be at least 1.") if @quantity < 1
       return ServiceResult.failure(error: "Product is not available.") unless @product.active?
 
+      if @product.variants.exists? && @variant.nil?
+        return ServiceResult.failure(error: "Please select a variant.")
+      end
+
       purchasable = @variant || @product
       if purchasable.stock.present? && purchasable.stock < @quantity
         return ServiceResult.failure(error: "Insufficient stock.")

@@ -21,6 +21,7 @@ const nav = [
   ]},
   { label: '社区', items: [
     { label: '板块', href: adminRoutes.forumSections },
+    { label: '分类', href: adminRoutes.forumCategories },
     { label: '主题', href: adminRoutes.forumTopics },
     { label: '举报', href: adminRoutes.forumReports },
   ]},

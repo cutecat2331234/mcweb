@@ -36,16 +36,18 @@ defineProps<{
   </Card>
 
   <div class="flex gap-3">
-    <Button as-child>
-      <Link
-        :href="adminRoutes.storeFulfillment(fulfillment.id)"
-        method="patch"
-        as="button"
-        :data="{ retry: '1' }"
-      >
-        重试发货
-      </Link>
-    </Button>
+    <template v-if="fulfillment.status === 'pending' || fulfillment.status === 'failed'">
+      <Button as-child>
+        <Link
+          :href="adminRoutes.storeFulfillment(fulfillment.id)"
+          method="patch"
+          as="button"
+          :data="{ retry: '1' }"
+        >
+          重试发货
+        </Link>
+      </Button>
+    </template>
     <Button as-child variant="outline">
       <Link :href="adminRoutes.storeFulfillments">返回</Link>
     </Button>

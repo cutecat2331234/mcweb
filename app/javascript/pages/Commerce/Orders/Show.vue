@@ -21,12 +21,15 @@ const props = defineProps<{
     id: string
     order_number: string
     status: string
+    status_label: string
     total_label: string
     can_pay: boolean
     can_cancel: boolean
     can_request_refund: boolean
     cancel_url: string
     refund_url: string
+    payment_providers: Array<{ value: string; label: string }>
+    default_provider: string
     refunds: Array<{
       amount_label: string
       status: string
@@ -48,13 +51,16 @@ const props = defineProps<{
   }
 }>()
 
-const payForm = useForm({ order_id: props.order.id, checkout: { provider: 'fake' } })
+const payForm = useForm({
+  order_id: props.order.id,
+  checkout: { provider: props.order.default_provider || 'fake' },
+})
 const cancelForm = useForm({})
 const refundForm = useForm({ reason: '' })
 </script>
 
 <template>
-  <PageHeader :title="`订单 ${order.order_number}`" :subtitle="`状态：${order.status}`" />
+  <PageHeader :title="`订单 ${order.order_number}`" :subtitle="`状态：${order.status_label}`" />
 
   <div class="mb-6 rounded-lg border">
     <Table>
@@ -123,8 +129,16 @@ const refundForm = useForm({ reason: '' })
     <Button type="submit" variant="outline" :disabled="refundForm.processing">提交退款申请</Button>
   </form>
 
-  <div class="flex gap-3">
-    <Button v-if="order.can_pay" type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
+  <div class="flex flex-wrap gap-3">
+    <form v-if="order.can_pay && order.payment_providers.length > 1" class="flex items-center gap-2">
+      <select v-model="payForm.checkout.provider" class="h-9 rounded-md border px-2 text-sm">
+        <option v-for="provider in order.payment_providers" :key="provider.value" :value="provider.value">
+          {{ provider.label }}
+        </option>
+      </select>
+      <Button type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
+    </form>
+    <Button v-else-if="order.can_pay" type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
     <Button v-if="order.can_cancel" type="button" variant="outline" @click="cancelForm.post(order.cancel_url)">取消订单</Button>
     <Button as-child variant="outline">
       <Link :href="routes.storeOrders">返回订单列表</Link>

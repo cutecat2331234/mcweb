@@ -18,10 +18,12 @@ const props = defineProps<{
     description: string
     position: number
     forum_category_id: number | null
+    parent_id: number | null
     create_topic_roles: string
     reply_roles: string
   }
   categories: Array<{ id: number; name: string }>
+  parentSections: Array<{ id: number; name: string }>
   submitUrl: string
   method: 'post' | 'patch'
   backUrl: string
@@ -63,6 +65,13 @@ function submit() {
       <select id="category" v-model="form.section.forum_category_id" class="h-9 w-full rounded-md border px-2 text-sm">
         <option :value="null">无分类</option>
         <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
+      </select>
+    </div>
+    <div class="space-y-2">
+      <Label for="parent">父级板块（可选）</Label>
+      <select id="parent" v-model="form.section.parent_id" class="h-9 w-full rounded-md border px-2 text-sm">
+        <option :value="null">无（顶级板块）</option>
+        <option v-for="sec in parentSections" :key="sec.id" :value="sec.id">{{ sec.name }}</option>
       </select>
     </div>
     <div class="space-y-2">

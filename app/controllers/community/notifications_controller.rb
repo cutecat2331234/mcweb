@@ -12,6 +12,13 @@ module Community
       }
     end
 
+    def visit
+      notification = current_user.notifications.find(params[:id])
+      notification.mark_read!
+      destination = notification.metadata["path"] || notification.metadata["url"] || forum_notifications_path
+      redirect_to destination
+    end
+
     def mark_read
       notification = current_user.notifications.find(params[:id])
       notification.mark_read!
@@ -34,6 +41,7 @@ module Community
         read: notification.read?,
         created_at: l(notification.created_at, format: :short),
         url: notification.metadata["path"] || notification.metadata["url"],
+        visit_url: visit_forum_notification_path(notification),
         mark_read_url: mark_read_forum_notification_path(notification)
       }
     end

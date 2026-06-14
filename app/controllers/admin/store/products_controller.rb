@@ -108,7 +108,7 @@ module Admin
           begin
             permitted[:fulfillment_config] = raw.present? ? JSON.parse(raw) : {}
           rescue JSON::ParserError
-            permitted[:fulfillment_config] = {}
+            raise ActionController::BadRequest, "发货配置 JSON 格式无效"
           end
         end
         permitted

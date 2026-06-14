@@ -16,6 +16,7 @@ export interface NotificationItem {
   read: boolean
   created_at: string
   url: string | null
+  visit_url: string
   mark_read_url: string
 }
 
@@ -58,7 +59,7 @@ function markAllRead() {
             <Link :href="notification.mark_read_url" method="patch" as="button">已读</Link>
           </Button>
           <Button v-if="notification.url" as-child size="sm">
-            <Link :href="notification.url">查看</Link>
+            <Link :href="notification.visit_url">查看</Link>
           </Button>
         </div>
       </div>

@@ -18,7 +18,7 @@ module Commerce
       return ServiceResult.failure(error: "Coupon usage limit reached.") if coupon.usage_limit && coupon.used_count >= coupon.usage_limit
       return ServiceResult.failure(error: "Order does not meet minimum amount.") if @order.subtotal_cents < coupon.min_amount_cents
 
-      discount_cents = calculate_discount(coupon)
+      discount_cents = coupon.calculate_discount(@order.subtotal_cents)
       total_cents = [ @order.subtotal_cents - discount_cents, 0 ].max
 
       Commerce::Order.transaction do
@@ -33,19 +33,6 @@ module Commerce
       ServiceResult.success(order: @order, discount_cents: discount_cents)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
-    end
-
-    private
-
-    def calculate_discount(coupon)
-      case coupon.discount_type
-      when "fixed"
-        [ coupon.discount_value, @order.subtotal_cents ].min
-      when "percentage"
-        (@order.subtotal_cents * coupon.discount_value / 100.0).floor
-      else
-        0
-      end
     end
   end
 end

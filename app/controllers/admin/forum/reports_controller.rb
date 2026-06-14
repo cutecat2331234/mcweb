@@ -36,11 +36,11 @@ module Admin
             { label: "原因", value: @report.reason },
             { label: "举报人", value: @report.reporter&.username || "—" },
             { label: "状态", value: @report.status },
-            { label: "对象", value: "#{@report.reportable_type} ##{@report.reportable_id}" },
+            { label: "对象", value: reportable_label },
             { label: "时间", value: l(@report.created_at, format: :long) }
           ],
           backUrl: admin_forum_reports_path,
-          actions: report_actions
+          actions: report_actions + reportable_actions
         }
       end
 
@@ -91,6 +91,28 @@ module Admin
             data: { report: { status: "dismissed" } }
           }
         ]
+      end
+
+      def reportable_label
+        case @report.reportable
+        when ::Community::Topic
+          "主题：#{@report.reportable.title}"
+        when ::Community::Post
+          "帖子 ##{@report.reportable.floor_number}（#{@report.reportable.topic.title}）"
+        else
+          "#{@report.reportable_type} ##{@report.reportable_id}"
+        end
+      end
+
+      def reportable_actions
+        case @report.reportable
+        when ::Community::Topic
+          [{ label: "查看主题", href: forum_topic_path(@report.reportable) }]
+        when ::Community::Post
+          [{ label: "查看帖子", href: "#{forum_topic_path(@report.reportable.topic)}#post-#{@report.reportable.id}" }]
+        else
+          []
+        end
       end
     end
   end

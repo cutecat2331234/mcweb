@@ -5,6 +5,7 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Button from '@/components/ui/Button.vue'
+import TopicTitleBadges from '@/components/portal/TopicTitleBadges.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
@@ -27,6 +28,7 @@ export interface TopicItem {
   pinned: boolean
   locked: boolean
   featured: boolean
+  solved?: boolean
   unread_count: number
   has_unread: boolean
 }
@@ -45,6 +47,8 @@ const props = defineProps<{
   topics: TopicItem[]
   pagination: PaginationMeta
   sort: string
+  filter: string
+  filterOptions: Array<{ value: string; label: string }>
   canCreateTopic: boolean
 }>()
 
@@ -56,7 +60,11 @@ const sortOptions = [
 ]
 
 function changeSort(value: string) {
-  router.get(routes.forumSection(props.section.slug), { sort: value }, { preserveState: true })
+  router.get(routes.forumSection(props.section.slug), { sort: value, filter: props.filter || undefined }, { preserveState: true })
+}
+
+function changeFilter(value: string) {
+  router.get(routes.forumSection(props.section.slug), { sort: props.sort, filter: value || undefined }, { preserveState: true })
 }
 
 function toggleWatch() {
@@ -86,15 +94,27 @@ function toggleWatch() {
     </div>
   </div>
 
-  <div class="mb-4 flex items-center gap-2">
-    <label class="text-sm text-muted-foreground">排序：</label>
-    <select
-      :value="sort"
-      class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-      @change="changeSort(($event.target as HTMLSelectElement).value)"
-    >
-      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-    </select>
+  <div class="mb-4 flex flex-wrap items-center gap-4">
+    <div class="flex items-center gap-2">
+      <label class="text-sm text-muted-foreground">排序：</label>
+      <select
+        :value="sort"
+        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+        @change="changeSort(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+    </div>
+    <div class="flex items-center gap-2">
+      <label class="text-sm text-muted-foreground">筛选：</label>
+      <select
+        :value="filter"
+        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+        @change="changeFilter(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+    </div>
   </div>
 
   <div v-if="featuredTopics.length" class="mb-6">
@@ -120,11 +140,15 @@ function toggleWatch() {
       <TableBody>
         <TableRow v-for="topic in topics" :key="topic.id">
           <TableCell>
-            <span v-if="topic.pinned" class="mr-1 text-xs text-muted-foreground">[置顶]</span>
-            <span v-if="topic.featured" class="mr-1 text-xs text-amber-600">[精选]</span>
-            <span v-if="topic.locked" class="mr-1 text-xs text-muted-foreground">[锁定]</span>
+            <TopicTitleBadges
+              :pinned="topic.pinned"
+              :featured="topic.featured"
+              :locked="topic.locked"
+              :solved="topic.solved"
+              :has-unread="topic.has_unread"
+              :unread-count="topic.unread_count"
+            />
             <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
-            <Badge v-if="topic.has_unread" class="ml-2">{{ topic.unread_count }} 未读</Badge>
           </TableCell>
           <TableCell>{{ topic.author || '—' }}</TableCell>
           <TableCell>{{ topic.replies_count }}</TableCell>

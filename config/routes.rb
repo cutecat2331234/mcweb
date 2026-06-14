@@ -27,6 +27,7 @@ Rails.application.routes.draw do
     resources :roles, only: %i[index show]
     resources :audit_logs, only: %i[index show]
     namespace :forum do
+      resources :categories
       resources :sections, only: %i[index show new create edit update]
       resources :topics, only: %i[index show]
       resources :reports, only: %i[index show update]
@@ -78,6 +79,7 @@ Rails.application.routes.draw do
         post :moderate
         post :move
         post :mark_solved
+        post :unsolve
         patch :slow_mode, action: :update_slow_mode
         post :subscription, action: :toggle_subscription
         post :bookmark, action: :toggle_bookmark
@@ -95,6 +97,7 @@ Rails.application.routes.draw do
     resources :notifications, only: %i[index] do
       member do
         patch :mark_read
+        get :visit
       end
       collection do
         patch :mark_all_read

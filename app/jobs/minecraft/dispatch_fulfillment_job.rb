@@ -8,6 +8,10 @@ module Minecraft
       fulfillment = Commerce::Fulfillment.find(fulfillment_id)
       return if fulfillment.status != "pending"
 
+      if Minecraft::ConnectorTask.where(store_fulfillment: fulfillment, status: %w[pending claimed]).exists?
+        return
+      end
+
       order_item = fulfillment.order_item
       snapshot = order_item.fulfillment_snapshot
       server_id = snapshot.dig("fulfillment_config", "server_id") || snapshot.dig("fulfillment_config", "minecraft_server_id")

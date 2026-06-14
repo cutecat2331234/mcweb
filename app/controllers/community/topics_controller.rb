@@ -2,9 +2,9 @@
 
 module Community
   class TopicsController < ApplicationController
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move mark_solved update_slow_mode]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move mark_solved unsolve update_slow_mode]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move mark_solved update_slow_mode]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move mark_solved unsolve update_slow_mode]
 
     def show
       @topic.record_view!
@@ -150,6 +150,16 @@ module Community
       end
     end
 
+    def unsolve
+      result = Community::UnsolveTopic.call(user: current_user, topic: @topic)
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "已取消已解决标记。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
     def update_slow_mode
       return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
 
@@ -207,7 +217,8 @@ module Community
     def mark_topic_notifications_read!
       return unless logged_in?
 
-      current_user.notifications.unread.where(notification_type: "forum.topic_reply").find_each do |notification|
+      types = %w[forum.topic_reply forum.mention forum.section_topic]
+      current_user.notifications.unread.where(notification_type: types).find_each do |notification|
         topic_id = notification.metadata["topic_id"]
         notification.mark_read! if topic_id == @topic.public_id
       end
@@ -218,7 +229,7 @@ module Community
     end
 
     def can_move_topic?
-      current_user&.permission?("forum.topics.move") || current_user&.permission?("forum.topics.lock")
+      current_user&.permission?("forum.topics.move")
     end
 
     def can_edit_topic?

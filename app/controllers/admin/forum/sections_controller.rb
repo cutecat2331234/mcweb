@@ -112,10 +112,12 @@ module Admin
             description: section.description || "",
             position: section.position || 0,
             forum_category_id: section.forum_category_id,
+            parent_id: section.parent_id,
             create_topic_roles: Array(section.permissions["create_topic"]).join(", "),
             reply_roles: Array(section.permissions["reply"]).join(", ")
           },
           categories: ::Community::Category.order(:name).map { |c| { id: c.id, name: c.name } },
+          parentSections: ::Community::Section.roots.where.not(id: section.id).order(:name).map { |s| { id: s.id, name: s.name } },
           submitUrl: section.persisted? ? admin_forum_section_path(section) : admin_forum_sections_path,
           method: section.persisted? ? "patch" : "post",
           backUrl: admin_forum_sections_path

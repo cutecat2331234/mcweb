@@ -26,10 +26,9 @@ module Community
       tag = Community::Tag.find_by!(slug: params[:slug])
       sort = params[:sort].to_s.presence || "activity"
       topic_ids = tag.topics.where(status: :published).pluck(:id)
-      @pagy, topics = pagy(
-        Community::Topic.where(id: topic_ids).sorted(sort).includes(:user),
-        limit: 20
-      )
+      scope = Community::Topic.where(id: topic_ids).sorted(sort).includes(:user)
+      scope = filter_blocked_topics(scope)
+      @pagy, topics = pagy(scope, limit: 20)
 
       read_states = if logged_in?
                       Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id)).index_by(&:forum_topic_id)

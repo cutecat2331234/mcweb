@@ -5,6 +5,8 @@ module Community
     belongs_to :topic, class_name: "Community::Topic", foreign_key: :forum_topic_id
     belongs_to :user
     belongs_to :quoted_post, class_name: "Community::Post", optional: true
+    belongs_to :parent_post, class_name: "Community::Post", optional: true
+    has_many :child_posts, class_name: "Community::Post", foreign_key: :parent_post_id, dependent: :nullify
     has_many :edits, class_name: "Community::PostEdit", foreign_key: :forum_post_id, dependent: :destroy
     has_many :reactions, class_name: "Community::Reaction", foreign_key: :forum_post_id, dependent: :destroy
 

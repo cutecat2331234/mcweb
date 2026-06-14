@@ -5,12 +5,23 @@ module BlockedUsersFilterable
 
   private
 
+  def blocked_user_ids
+    return [] unless logged_in?
+
+    Community::UserBlock.blocked_user_ids(current_user)
+  end
+
   def filter_blocked_topics(scope)
-    return scope unless logged_in?
+    ids = blocked_user_ids
+    return scope if ids.empty?
 
-    blocked_ids = Community::UserBlock.blocked_user_ids(current_user)
-    return scope if blocked_ids.empty?
+    scope.where.not(user_id: ids)
+  end
 
-    scope.where.not(user_id: blocked_ids)
+  def filter_blocked_posts(scope)
+    ids = blocked_user_ids
+    return scope if ids.empty?
+
+    scope.where.not(user_id: ids)
   end
 end

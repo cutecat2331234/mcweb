@@ -11,6 +11,7 @@ module Community
     def call
       return ServiceResult.failure(error: "Recipient not found.") unless @recipient
       return ServiceResult.failure(error: "You cannot message yourself.") if @sender.id == @recipient.id
+      return ServiceResult.failure(error: "You cannot message this user.") if Community::UserBlock.blocked?(@sender, @recipient)
       return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
 
       conversation = find_existing || create_conversation!

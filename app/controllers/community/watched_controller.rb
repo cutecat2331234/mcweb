@@ -14,6 +14,7 @@ module Community
         .includes(:user, :section)
         .order(last_posted_at: :desc)
         .limit(50)
+      topics = filter_blocked_topics(topics)
 
       read_states = Community::ReadState
         .where(user: current_user, forum_topic_id: topics.map(&:id))

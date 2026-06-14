@@ -12,6 +12,7 @@ module Community
         topic: @topic,
         body: post_params[:body],
         quoted_post: find_quoted_post,
+        parent_post: find_parent_post,
         ip_address: request.remote_ip
       )
 
@@ -111,13 +112,19 @@ module Community
     end
 
     def post_params
-      params.require(:post).permit(:body, :quoted_post_id)
+      params.require(:post).permit(:body, :quoted_post_id, :parent_post_id)
     end
 
     def find_quoted_post
       return if post_params[:quoted_post_id].blank?
 
       Community::Post.find_by(id: post_params[:quoted_post_id], forum_topic_id: @topic.id)
+    end
+
+    def find_parent_post
+      return if post_params[:parent_post_id].blank?
+
+      Community::Post.find_by(id: post_params[:parent_post_id], forum_topic_id: @topic.id)
     end
 
     def can_view_edits?

@@ -16,5 +16,11 @@ module Commerce
       @order = Commerce::Order.find(order_id)
       mail(to: @order.user.email, subject: "订单已取消 #{@order.order_number}")
     end
+
+    def refund_processed(refund_id)
+      @refund = Commerce::Refund.find(refund_id)
+      @order = @refund.order
+      mail(to: @order.user.email, subject: "退款处理通知 #{@order.order_number}")
+    end
   end
 end

@@ -1,0 +1,4 @@
+<p>你好，</p>
+<p>你的订单 <strong><%= @order.order_number %></strong> 已处理退款。</p>
+<p>退款金额：<%= number_to_currency(@refund.amount_cents / 100.0, unit: @order.currency == "CNY" ? "¥" : "$") %></p>
+<p>如有疑问请联系客服。</p>

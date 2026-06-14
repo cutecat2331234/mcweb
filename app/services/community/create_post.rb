@@ -5,11 +5,12 @@ module Community
     MIN_INTERVAL = 10.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, topic:, body:, quoted_post: nil, ip_address: nil)
+    def initialize(user:, topic:, body:, quoted_post: nil, parent_post: nil, ip_address: nil)
       @user = user
       @topic = topic
       @body = body.to_s.strip
       @quoted_post = quoted_post
+      @parent_post = parent_post
       @ip_address = ip_address
     end
 
@@ -19,6 +20,10 @@ module Community
 
       unless @topic.section.allowed?(@user, :reply)
         return ServiceResult.failure(error: "You are not allowed to reply in this section.")
+      end
+
+      if @parent_post && @parent_post.forum_topic_id != @topic.id
+        return ServiceResult.failure(error: "Invalid parent post.")
       end
 
       post = nil
@@ -35,13 +40,8 @@ module Community
           floor_number: floor_number,
           body: @body,
           quoted_post: @quoted_post,
+          parent_post: @parent_post,
           status: "published"
-        )
-
-        @topic.update!(
-          replies_count: [ @topic.posts.count - 1, 0 ].max,
-          last_posted_at: Time.current,
-          last_post_user: @user
         )
       end
 
@@ -85,6 +85,10 @@ module Community
         return ServiceResult.failure(error: "Your account is banned.")
       end
 
+      if slow_mode_active?
+        return ServiceResult.failure(error: "Slow mode is active. Please wait before posting again.")
+      end
+
       recent = Community::Post.where(user: @user).order(created_at: :desc).first
       if recent&.created_at&.> MIN_INTERVAL.ago
         return ServiceResult.failure(error: "Please wait before posting again.")
@@ -95,6 +99,14 @@ module Community
       end
 
       ServiceResult.success
+    end
+
+    def slow_mode_active?
+      seconds = @topic.slow_mode_seconds.to_i
+      return false if seconds <= 0
+
+      last_in_topic = @topic.posts.where(user: @user).order(created_at: :desc).first
+      last_in_topic&.created_at&.> seconds.seconds.ago
     end
 
     def muted_in_section?

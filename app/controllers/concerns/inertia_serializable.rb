@@ -81,6 +81,9 @@ module InertiaSerializable
       pinned: topic.pinned?,
       hidden: topic.status == "hidden",
       featured: topic.featured?,
+      wiki: topic.wiki?,
+      slow_mode_seconds: topic.slow_mode_seconds,
+      solved_post_id: topic.solved_post_id,
       views_count: topic.views_count,
       watching: watching,
       bookmarked: bookmarked,
@@ -96,7 +99,7 @@ module InertiaSerializable
     }
   end
 
-  def serialize_post(post, current_user: nil, can_moderate: false)
+  def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil)
     formatted = Community::FormatPostBody.call(body: post.body)
     body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(post.body)
     reaction_counts = post.reactions.group(:emoji).count
@@ -109,6 +112,9 @@ module InertiaSerializable
     {
       id: post.id,
       floor_number: post.floor_number,
+      parent_post_id: post.parent_post_id,
+      depth: post_depth(post),
+      is_solved: solved_post_id == post.id,
       author: post.user.username,
       author_url: forum_user_path(post.user.username),
       avatar_url: post.user.avatar_url,
@@ -149,6 +155,16 @@ module InertiaSerializable
     return false unless user
 
     user.id == post.user_id || user.permission?("forum.topics.lock")
+  end
+
+  def post_depth(post)
+    depth = 0
+    current = post.parent_post
+    while current && depth < 10
+      depth += 1
+      current = current.parent_post
+    end
+    depth
   end
 
   def serialize_search_topic(topic)

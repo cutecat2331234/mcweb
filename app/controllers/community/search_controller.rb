@@ -2,6 +2,8 @@
 
 module Community
   class SearchController < ApplicationController
+    include BlockedUsersFilterable
+
     def index
       query = params[:q].to_s.strip
       section_slug = params[:section].to_s.presence
@@ -11,14 +13,19 @@ module Community
       if query.present?
         topics = Community::Topic.where(status: :published)
         topics = topics.joins(:section).where(forum_sections: { slug: section_slug }) if section_slug
-        topics = topics.where("title ILIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(query)}%")
-                       .order(last_posted_at: :desc)
+        topics = topics.where(
+          "to_tsvector('simple', coalesce(forum_topics.title, '')) @@ plainto_tsquery('simple', ?)",
+          query
+        ).order(last_posted_at: :desc)
+        topics = filter_blocked_topics(topics)
 
         posts = Community::Post.where(status: :published)
         posts = posts.joins(topic: :section).where(forum_sections: { slug: section_slug }) if section_slug
-        posts = posts.where("body ILIKE ?", "%#{ActiveRecord::Base.sanitize_sql_like(query)}%")
-                     .includes(:user, topic: :section)
-                     .order(created_at: :desc)
+        posts = posts.where(
+          "to_tsvector('simple', coalesce(forum_posts.body, '')) @@ plainto_tsquery('simple', ?)",
+          query
+        ).includes(:user, topic: :section).order(created_at: :desc)
+        posts = filter_blocked_posts(posts)
       end
 
       @pagy_topics, topics = pagy(topics, limit: 15, page_param: :topic_page)

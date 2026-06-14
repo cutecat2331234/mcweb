@@ -25,6 +25,7 @@ export const adminRoutes = {
   newStoreCoupon: '/admin/store/coupons/new',
   editStoreCoupon: (id: number) => `/admin/store/coupons/${id}/edit`,
   storeOrders: '/admin/store/orders',
+  storeReviews: '/admin/store/reviews',
   storeOrder: (id: string) => `/admin/store/orders/${id}`,
   storeFulfillments: '/admin/store/fulfillments',
   storeFulfillment: (id: string | number) => `/admin/store/fulfillments/${id}`,

@@ -2,18 +2,18 @@
 
 module Community
   class TopicsController < ApplicationController
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move mark_solved update_slow_mode]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move mark_solved update_slow_mode]
 
     def show
       @topic.record_view!
       mark_topic_read!
 
-      @pagy, posts = pagy(
-        @topic.posts.chronological.includes(:user, :quoted_post, :reactions, :edits),
-        limit: 20
-      )
+      posts_scope = @topic.posts.chronological.includes(:user, :quoted_post, :parent_post, :reactions, :edits)
+      posts_scope = filter_blocked_posts(posts_scope)
+
+      @pagy, posts = pagy(posts_scope, limit: 20)
 
       render inertia: "Community/Topics/Show", props: {
         topic: serialize_topic_detail(
@@ -23,9 +23,10 @@ module Community
           can_moderate: can_moderate_topic?,
           can_edit: can_edit_topic?
         ),
-        posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?) },
+        posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?, solved_post_id: @topic.solved_post_id) },
         pagination: pagy_props(@pagy),
         canReply: logged_in? && !@topic.locked?,
+        canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
         sections: can_moderate_topic? ? movable_sections : [],
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
@@ -135,6 +136,25 @@ module Community
       end
     end
 
+    def mark_solved
+      post = @topic.posts.find(params[:post_id])
+      result = Community::MarkTopicSolved.call(user: current_user, topic: @topic, post: post)
+
+      if result.success?
+        redirect_to forum_topic_path(@topic, anchor: "post-#{post.id}"), notice: "已标记为已解决。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def update_slow_mode
+      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+
+      seconds = params[:seconds].to_i
+      @topic.update!(slow_mode_seconds: seconds.positive? ? seconds : nil)
+      redirect_to forum_topic_path(@topic), notice: seconds.positive? ? "慢速模式已启用（#{seconds} 秒）。" : "慢速模式已关闭。"
+    end
+
     private
 
     def set_section
@@ -142,7 +162,7 @@ module Community
     end
 
     def set_topic
-      @topic = Community::Topic.includes(:section, :user, :tags, :poll).find_by!(public_id: params[:id])
+      @topic = Community::Topic.includes(:section, :user, :tags, :poll, :solved_post).find_by!(public_id: params[:id])
     end
 
     def topic_params

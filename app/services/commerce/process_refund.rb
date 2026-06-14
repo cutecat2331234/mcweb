@@ -2,40 +2,43 @@
 
 module Commerce
   class ProcessRefund < ApplicationService
-    def initialize(order:, payment_record:, amount_cents:, reason: nil, requested_by: nil, approved_by: nil)
+    def initialize(order:, payment_record:, amount_cents:, reason: nil, requested_by: nil, approved_by: nil, existing_refund: nil)
       @order = order
       @payment_record = payment_record
       @amount_cents = amount_cents
       @reason = reason
       @requested_by = requested_by
       @approved_by = approved_by
+      @existing_refund = existing_refund
     end
 
     def call
       return ServiceResult.failure(error: "Payment is not refundable.") unless @payment_record.status == "succeeded"
-      return ServiceResult.failure(error: "Refund amount exceeds payment amount.") if @amount_cents > @payment_record.amount_cents
+
+      refunded_cents = @order.refunds.where(status: %w[pending completed]).where.not(id: @existing_refund&.id).sum(:amount_cents)
+      remaining = @payment_record.amount_cents - refunded_cents
+      return ServiceResult.failure(error: "Refund amount exceeds remaining balance.") if @amount_cents > remaining
 
       refund = nil
       Commerce::Refund.transaction do
-        refund = Commerce::Refund.create!(
-          order: @order,
-          payment_record: @payment_record,
-          status: "pending",
+        refund = find_or_build_refund
+        refund.assign_attributes(
           amount_cents: @amount_cents,
-          reason: @reason,
-          requested_by: @requested_by,
-          approved_by: @approved_by
+          reason: @reason.presence || refund.reason,
+          approved_by: @approved_by || refund.approved_by
         )
+        refund.save!
 
         provider = Payments::Provider.for(@payment_record.provider)
         result = provider.process_refund(refund)
 
         if result.success?
           refund.update!(status: "completed") unless refund.completed?
-          if full_refund?
+          if full_refund?(@amount_cents, refunded_cents)
             @order.update!(status: "refunded")
             restore_stock!
           end
+          MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_processed", "deliver_now", args: [ refund.id ])
         else
           refund.update!(status: "rejected")
           return result
@@ -56,8 +59,22 @@ module Commerce
 
     private
 
-    def full_refund?
-      @amount_cents >= @payment_record.amount_cents
+    def find_or_build_refund
+      return @existing_refund if @existing_refund
+
+      pending = @order.refunds.pending.order(created_at: :asc).first
+      return pending if pending && @approved_by
+
+      Commerce::Refund.new(
+        order: @order,
+        payment_record: @payment_record,
+        status: "pending",
+        requested_by: @requested_by
+      )
+    end
+
+    def full_refund?(amount_cents, already_refunded_cents)
+      amount_cents + already_refunded_cents >= @payment_record.amount_cents
     end
 
     def restore_stock!

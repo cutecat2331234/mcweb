@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000003) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -134,6 +134,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000003) do
     t.datetime "edited_at"
     t.integer "floor_number", null: false
     t.bigint "forum_topic_id", null: false
+    t.bigint "parent_post_id"
     t.bigint "quoted_post_id"
     t.string "status", default: "published", null: false
     t.datetime "updated_at", null: false
@@ -141,6 +142,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000003) do
     t.index ["deleted_at"], name: "index_forum_posts_on_deleted_at"
     t.index ["forum_topic_id", "floor_number"], name: "index_forum_posts_on_forum_topic_id_and_floor_number", unique: true
     t.index ["forum_topic_id"], name: "index_forum_posts_on_forum_topic_id"
+    t.index ["parent_post_id"], name: "index_forum_posts_on_parent_post_id"
     t.index ["quoted_post_id"], name: "index_forum_posts_on_quoted_post_id"
     t.index ["user_id"], name: "index_forum_posts_on_user_id"
   end
@@ -237,16 +239,20 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000003) do
     t.boolean "pinned", default: false, null: false
     t.string "public_id", null: false
     t.integer "replies_count", default: 0, null: false
+    t.integer "slow_mode_seconds"
+    t.bigint "solved_post_id"
     t.string "status", default: "published", null: false
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.integer "views_count", default: 0, null: false
+    t.boolean "wiki", default: false, null: false
     t.index ["deleted_at"], name: "index_forum_topics_on_deleted_at"
     t.index ["forum_section_id", "last_posted_at"], name: "index_forum_topics_on_forum_section_id_and_last_posted_at"
     t.index ["forum_section_id"], name: "index_forum_topics_on_forum_section_id"
     t.index ["last_post_user_id"], name: "index_forum_topics_on_last_post_user_id"
     t.index ["public_id"], name: "index_forum_topics_on_public_id", unique: true
+    t.index ["solved_post_id"], name: "index_forum_topics_on_solved_post_id"
     t.index ["user_id"], name: "index_forum_topics_on_user_id"
   end
 
@@ -690,6 +696,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000003) do
     t.datetime "ban_expires_at"
     t.text "ban_reason"
     t.datetime "banned_at"
+    t.text "bio"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
     t.string "display_name"
@@ -825,6 +832,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000003) do
   add_foreign_key "forum_polls", "forum_topics"
   add_foreign_key "forum_post_edits", "forum_posts"
   add_foreign_key "forum_post_edits", "users", column: "editor_id"
+  add_foreign_key "forum_posts", "forum_posts", column: "parent_post_id"
   add_foreign_key "forum_posts", "forum_posts", column: "quoted_post_id"
   add_foreign_key "forum_posts", "forum_topics"
   add_foreign_key "forum_posts", "users"
@@ -839,6 +847,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000003) do
   add_foreign_key "forum_subscriptions", "users"
   add_foreign_key "forum_topic_tags", "forum_tags"
   add_foreign_key "forum_topic_tags", "forum_topics"
+  add_foreign_key "forum_topics", "forum_posts", column: "solved_post_id"
   add_foreign_key "forum_topics", "forum_sections"
   add_foreign_key "forum_topics", "users"
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"

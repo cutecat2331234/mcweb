@@ -30,6 +30,10 @@ module Community
         @topic.update!(featured: true)
       when "unfeature"
         @topic.update!(featured: false)
+      when "enable_wiki"
+        @topic.update!(wiki: true)
+      when "disable_wiki"
+        @topic.update!(wiki: false)
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

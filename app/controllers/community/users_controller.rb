@@ -2,6 +2,8 @@
 
 module Community
   class UsersController < ApplicationController
+    before_action :require_login, only: %i[update]
+
     def show
       user = User.find_by!(username: params[:id])
       topics_scope = Community::Topic.where(user: user, status: :published)
@@ -16,6 +18,7 @@ module Community
         profile: {
           username: user.username,
           avatar_url: user.avatar_url,
+          bio: user.bio,
           member_since: l(user.created_at, format: :long),
           topics_count: topics_scope.count,
           posts_count: posts_count,
@@ -23,7 +26,8 @@ module Community
           message_url: logged_in? && current_user.id != user.id ? new_forum_conversation_path(to: user.username) : nil,
           block_url: logged_in? && current_user.id != user.id ? forum_block_user_path(user.username) : nil,
           is_blocked: logged_in? && current_user.id != user.id && Community::UserBlock.exists?(blocker: current_user, blocked: user),
-          is_muted: logged_in? && current_user.id == user.id && Community::Mute.muted?(user)
+          is_muted: logged_in? && current_user.id == user.id && Community::Mute.muted?(user),
+          can_edit: logged_in? && current_user.id == user.id
         },
         topics: topics.map { |topic| serialize_topic(topic) },
         recent_posts: posts.map do |post|
@@ -37,6 +41,23 @@ module Community
           }
         end
       }
+    end
+
+    def update
+      user = User.find_by!(username: params[:id])
+      return head :forbidden unless current_user.id == user.id
+
+      if user.update(user_params)
+        redirect_to forum_user_path(user.username), notice: "资料已更新。"
+      else
+        redirect_to forum_user_path(user.username), alert: user.errors.full_messages.to_sentence
+      end
+    end
+
+    private
+
+    def user_params
+      params.require(:user).permit(:bio)
     end
   end
 end

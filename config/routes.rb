@@ -37,6 +37,7 @@ Rails.application.routes.draw do
       resources :products
       resources :coupons
       resources :orders, only: %i[index show update]
+      resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
     end
     namespace :website do
@@ -76,6 +77,8 @@ Rails.application.routes.draw do
       member do
         post :moderate
         post :move
+        post :mark_solved
+        patch :slow_mode
         post :subscription, action: :toggle_subscription
         post :bookmark, action: :toggle_bookmark
       end
@@ -109,7 +112,7 @@ Rails.application.routes.draw do
     resources :conversations, only: %i[index show new create] do
       resources :messages, only: %i[create], controller: "conversation_messages"
     end
-    resources :users, only: %i[show], param: :id
+    resources :users, only: %i[show update], param: :id
   end
 
   get "payments/fake/:id", to: "payments/fake#show", as: :fake_payment

@@ -22,6 +22,9 @@ export interface QuotedPost {
 export interface PostItem {
   id: number
   floor_number: number
+  parent_post_id: number | null
+  depth: number
+  is_solved: boolean
   author: string
   author_url: string
   avatar_url: string
@@ -71,6 +74,9 @@ const props = defineProps<{
     can_moderate: boolean
     can_edit: boolean
     featured: boolean
+    wiki: boolean
+    slow_mode_seconds: number | null
+    solved_post_id: number | null
     tags: Array<{ name: string; slug: string; url: string }>
     tags_string: string
     section: { name: string; slug: string; url: string }
@@ -78,6 +84,7 @@ const props = defineProps<{
   posts: PostItem[]
   pagination: PaginationMeta
   canReply: boolean
+  canMarkSolved: boolean
   reactionEmojis: string[]
   sections: SectionOption[]
   reportTopicUrl: string | null
@@ -99,11 +106,14 @@ const replyForm = useForm({
     topic_id: props.topic.id,
     body: '',
     quoted_post_id: null as number | null,
+    parent_post_id: null as number | null,
   },
 })
 
 const quotePreview = ref<QuotedPost | null>(null)
+const replyPreview = ref<{ id: number; floor_number: number; author: string } | null>(null)
 const moveSectionSlug = ref('')
+const slowModeSeconds = ref(props.topic.slow_mode_seconds || 0)
 
 function submitReply() {
   replyForm.post('/forum/posts', {
@@ -111,7 +121,9 @@ function submitReply() {
     onSuccess: () => {
       replyForm.post.body = ''
       replyForm.post.quoted_post_id = null
+      replyForm.post.parent_post_id = null
       quotePreview.value = null
+      replyPreview.value = null
     },
   })
 }
@@ -130,6 +142,27 @@ function quotePost(post: PostItem) {
 function clearQuote() {
   replyForm.post.quoted_post_id = null
   quotePreview.value = null
+}
+
+function replyToPost(post: PostItem) {
+  replyForm.post.parent_post_id = post.id
+  replyForm.post.quoted_post_id = null
+  quotePreview.value = null
+  replyPreview.value = { id: post.id, floor_number: post.floor_number, author: post.author }
+  document.getElementById('reply-form')?.scrollIntoView({ behavior: 'smooth' })
+}
+
+function clearReplyTarget() {
+  replyForm.post.parent_post_id = null
+  replyPreview.value = null
+}
+
+function markSolved(post: PostItem) {
+  router.post(`/forum/topics/${props.topic.id}/mark_solved`, { post_id: post.id }, { preserveScroll: true })
+}
+
+function updateSlowMode() {
+  router.patch(`/forum/topics/${props.topic.id}/slow_mode`, { seconds: slowModeSeconds.value })
 }
 
 function startEdit(post: PostItem) {
@@ -245,6 +278,9 @@ function pollPercent(votes: number) {
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.hidden ? 'unhide' : 'hide')">
           {{ topic.hidden ? '取消隐藏' : '隐藏主题' }}
         </Button>
+        <Button type="button" variant="outline" size="sm" @click="moderate(topic.wiki ? 'disable_wiki' : 'enable_wiki')">
+          {{ topic.wiki ? '关闭 Wiki' : '开启 Wiki' }}
+        </Button>
       </template>
     </div>
   </div>
@@ -305,10 +341,18 @@ function pollPercent(votes: number) {
       </option>
     </select>
     <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">移动</Button>
+    <Input v-model.number="slowModeSeconds" type="number" min="0" class="h-8 w-24" placeholder="慢速秒" />
+    <Button type="button" size="sm" variant="outline" @click="updateSlowMode">设置慢速</Button>
   </div>
 
   <p v-if="topic.hidden" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
     此主题已被版主隐藏。
+  </p>
+  <p v-if="topic.wiki" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+    Wiki 主题：所有登录用户可协作编辑帖子。
+  </p>
+  <p v-if="topic.slow_mode_seconds" class="mb-4 rounded-md border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900">
+    慢速模式：同一用户需间隔 {{ topic.slow_mode_seconds }} 秒才能再次回复。
   </p>
   <p v-if="topic.locked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
     此主题已锁定，无法回复。
@@ -320,7 +364,8 @@ function pollPercent(votes: number) {
       :id="`post-${post.id}`"
       :key="post.id"
       class="rounded-lg border p-4"
-      :class="post.hidden ? 'opacity-60 border-dashed' : ''"
+      :class="[post.hidden ? 'opacity-60 border-dashed' : '', post.is_solved ? 'border-green-400 bg-green-50/50 dark:bg-green-950/20' : '']"
+      :style="{ marginLeft: `${post.depth * 1.5}rem` }"
     >
       <div class="mb-3 flex items-start gap-3">
         <img :src="post.avatar_url" :alt="post.author" class="h-9 w-9 shrink-0 rounded-full" />
@@ -328,6 +373,7 @@ function pollPercent(votes: number) {
           <div class="flex items-center justify-between gap-2 text-sm text-muted-foreground">
             <div>
               <span class="font-medium text-foreground">#{{ post.floor_number }}</span>
+              <span v-if="post.is_solved" class="ml-2 text-xs text-green-600">[已解决]</span>
               <span class="mx-2">·</span>
               <Link :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
               <span class="mx-2">·</span>
@@ -340,6 +386,8 @@ function pollPercent(votes: number) {
             </div>
             <div class="flex gap-2">
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
+              <button v-if="canReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">回复</button>
+              <button v-if="canMarkSolved && !post.is_solved" type="button" class="text-xs text-green-600 hover:underline" @click="markSolved(post)">标为已解决</button>
               <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">举报</Link>
               <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
                 {{ post.hidden ? '显示' : '隐藏' }}
@@ -385,6 +433,12 @@ function pollPercent(votes: number) {
 
   <section v-if="canReply" id="reply-form" class="mt-8 max-w-2xl">
     <h2 class="mb-3 text-sm font-semibold">回复</h2>
+    <div v-if="replyPreview" class="mb-3 rounded-md border bg-muted/40 p-3 text-sm">
+      <div class="flex items-start justify-between gap-2">
+        <p>回复 #{{ replyPreview.floor_number }} {{ replyPreview.author }}</p>
+        <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearReplyTarget">清除</button>
+      </div>
+    </div>
     <div v-if="quotePreview" class="mb-3 rounded-md border bg-muted/40 p-3 text-sm">
       <div class="flex items-start justify-between gap-2">
         <p>

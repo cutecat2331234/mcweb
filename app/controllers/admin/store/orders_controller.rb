@@ -33,6 +33,7 @@ module Admin
         fulfillments = @order.fulfillments.includes(:order_item)
         payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
 
+        pending_refunds = @order.refunds.pending
         render inertia: "Admin/Generic/Show", props: {
           title: "订单 #{@order.order_number}",
           subtitle: @order.status,
@@ -62,7 +63,7 @@ module Admin
             }
           ],
           backUrl: admin_store_orders_path,
-          actions: refund_actions(payment),
+          actions: refund_actions(payment) + pending_refund_actions(pending_refunds),
           refundForm: refund_form_props(payment)
         }
       end
@@ -100,7 +101,8 @@ module Admin
           payment_record: payment,
           amount_cents: refund_amount_cents(payment),
           reason: params[:reason].presence || "Admin refund",
-          approved_by: current_user
+          approved_by: current_user,
+          existing_refund: find_existing_refund
         )
 
         if result.success?
@@ -137,8 +139,31 @@ module Admin
 
       def refund_amount_cents(payment)
         cents = params[:amount_cents].to_i
+        if params[:refund_id].present?
+          refund = @order.refunds.find_by(id: params[:refund_id])
+          cents = refund.amount_cents if refund
+        end
         cents = payment.amount_cents if cents <= 0
-        [ cents, payment.amount_cents ].min
+        refunded = @order.refunds.where(status: %w[pending completed]).where.not(id: params[:refund_id]).sum(:amount_cents)
+        remaining = payment.amount_cents - refunded
+        [ cents, remaining ].min
+      end
+
+      def find_existing_refund
+        return @order.refunds.find_by(id: params[:refund_id]) if params[:refund_id].present?
+
+        @order.refunds.pending.order(created_at: :asc).first
+      end
+
+      def pending_refund_actions(pending_refunds)
+        pending_refunds.map do |refund|
+          {
+            label: "批准退款申请 #{format_money(refund.amount_cents, @order.currency)}",
+            href: admin_store_order_path(@order),
+            method: "patch",
+            data: { refund: true, refund_id: refund.id, amount_cents: refund.amount_cents }
+          }
+        end
       end
     end
   end

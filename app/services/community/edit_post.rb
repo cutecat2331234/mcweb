@@ -7,6 +7,7 @@ module Community
     def self.editable_by?(user, post)
       return false unless user
       return true if user.permission?("forum.topics.lock")
+      return true if post.topic.wiki?
       return false unless user.id == post.user_id
 
       post.created_at > EDIT_WINDOW.ago

@@ -104,6 +104,15 @@ app/
 | SEO 元数据 | 主题页 Inertia `<Head>` title/description |
 | 发帖预览 | 新建主题页 Markdown 实时预览 |
 | 发帖含投票 | 新建主题可选投票问题与选项 |
+| 嵌套回复 | `parent_post_id` + 主题页缩进展示 |
+| 富文本 Markdown | 标题/列表/代码块/图片/剧透 |
+| 慢速模式 | `slow_mode_seconds` 主题级发帖冷却 |
+| Wiki 主题 | 所有登录用户可协作编辑帖子 |
+| 已解决标记 | `MarkTopicSolved` + 楼主/版主标答案 |
+| 用户简介 | `users.bio` + 资料页编辑 |
+| PostgreSQL 全文搜索 | `to_tsvector` + `plainto_tsquery` |
+| 拉黑过滤完善 | 搜索/标签/书签/关注/未读/帖子列表 |
+| 拉黑禁止私信 | `CreateConversation` / `SendMessage` 校验 |
 
 ## 商城功能
 

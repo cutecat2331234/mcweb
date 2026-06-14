@@ -79,4 +79,20 @@
     @apply bg-background text-foreground antialiased;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+
+  .spoiler {
+    @apply rounded bg-muted px-1 text-transparent select-none;
+  }
+
+  .spoiler:hover {
+    @apply text-foreground;
+  }
+
+  .code-block {
+    @apply my-2 overflow-x-auto rounded-md bg-muted p-3 text-xs;
+  }
+
+  .post-image {
+    @apply my-2 max-h-96 rounded-md border;
+  }
 }

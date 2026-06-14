@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { ref } from 'vue'
+import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -10,6 +11,8 @@ import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 import Button from '@/components/ui/Button.vue'
+import Textarea from '@/components/ui/Textarea.vue'
+import Label from '@/components/ui/Label.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -18,6 +21,7 @@ const props = defineProps<{
   profile: {
     username: string
     avatar_url: string
+    bio: string | null
     member_since: string
     topics_count: number
     posts_count: number
@@ -26,6 +30,7 @@ const props = defineProps<{
     block_url: string | null
     is_blocked: boolean
     is_muted: boolean
+    can_edit: boolean
   }
   topics: Array<{
     id: string
@@ -44,9 +49,19 @@ const props = defineProps<{
   }>
 }>()
 
+const editingBio = ref(false)
+const bioForm = useForm({ user: { bio: props.profile.bio || '' } })
+
 function toggleBlock() {
   if (!props.profile.block_url) return
   router.post(props.profile.block_url, {}, { preserveScroll: true })
+}
+
+function saveBio() {
+  bioForm.patch(`/forum/users/${props.profile.username}`, {
+    preserveScroll: true,
+    onSuccess: () => { editingBio.value = false },
+  })
 }
 </script>
 
@@ -63,7 +78,7 @@ function toggleBlock() {
 
   <div class="mb-6 flex items-center gap-4">
     <img :src="profile.avatar_url" :alt="profile.username" class="h-16 w-16 rounded-full" />
-    <div>
+    <div class="min-w-0 flex-1">
       <PageHeader :title="profile.username" :subtitle="`加入于 ${profile.member_since}`" />
       <div class="mt-2 flex gap-6 text-sm">
         <span><strong>{{ profile.topics_count }}</strong> 主题</span>
@@ -82,9 +97,25 @@ function toggleBlock() {
         >
           {{ profile.is_blocked ? '取消拉黑' : '拉黑用户' }}
         </Button>
+        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="editingBio = !editingBio">
+          编辑简介
+        </Button>
       </div>
     </div>
   </div>
+
+  <div v-if="profile.bio && !editingBio" class="mb-6 max-w-xl rounded-lg border p-4 text-sm whitespace-pre-wrap">
+    {{ profile.bio }}
+  </div>
+
+  <form v-if="editingBio" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
+    <Label for="bio">个人简介</Label>
+    <Textarea id="bio" v-model="bioForm.user.bio" rows="4" placeholder="介绍一下自己…" />
+    <div class="flex gap-2">
+      <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
+      <Button type="button" size="sm" variant="outline" @click="editingBio = false">取消</Button>
+    </div>
+  </form>
 
   <h2 class="mb-3 text-sm font-semibold">最近主题</h2>
   <div v-if="topics.length" class="rounded-lg border">

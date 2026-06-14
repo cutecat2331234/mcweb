@@ -30,8 +30,11 @@ module Community
     end
 
     def mark_all_read
-      current_user.notifications.unread.update_all(read_at: Time.current)
-      redirect_to forum_notifications_path, notice: "全部已标记为已读。"
+      category = params[:category].to_s.presence
+      scope = current_user.notifications.unread
+      scope = filter_notifications_by_category(scope, category) if category.present?
+      scope.update_all(read_at: Time.current)
+      redirect_to forum_notifications_path(category: category), notice: "已标记为已读。"
     end
 
     private

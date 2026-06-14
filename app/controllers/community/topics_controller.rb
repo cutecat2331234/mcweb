@@ -4,9 +4,9 @@ module Community
   class TopicsController < ApplicationController
     include Community::TopicVisibility
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread]
 
     def show
       @topic.record_view!
@@ -43,6 +43,7 @@ module Community
         topic: serialize_topic_detail(
           @topic,
           watching: watching_topic?,
+          muted: muted_topic?,
           bookmarked: bookmarked_topic?,
           can_moderate: can_moderate_topic?,
           can_move: can_move_topic?,
@@ -68,6 +69,7 @@ module Community
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
         sections: can_move_topic? ? movable_sections : [],
+        relatedTopics: @topic.related_by_tags.map { |t| serialize_topic(t) },
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
         poll: @topic.poll ? serialize_poll(@topic.poll) : nil,
         topicSearchQuery: params[:q].to_s,
@@ -180,6 +182,16 @@ module Community
       end
     end
 
+    def toggle_mute
+      result = Community::ToggleTopicMute.call(user: current_user, topic: @topic)
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: result.value[:muted] ? "已静音此主题。" : "已取消静音。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
     def toggle_bookmark
       result = Community::ToggleBookmark.call(user: current_user, topic: @topic)
 
@@ -231,11 +243,13 @@ module Community
 
     def split
       post = @topic.posts.find(params[:post_id])
+      section = params[:section_slug].present? ? Community::Section.find_by(slug: params[:section_slug]) : nil
       result = Community::SplitTopic.call(
         user: current_user,
         topic: @topic,
         post: post,
-        title: params[:title]
+        title: params[:title],
+        section: section
       )
 
       if result.success?
@@ -349,6 +363,12 @@ module Community
       return false unless logged_in?
 
       Community::Bookmark.exists?(user: current_user, topic: @topic)
+    end
+
+    def muted_topic?
+      return false unless logged_in?
+
+      Community::TopicMute.exists?(user: current_user, topic: @topic)
     end
 
     def mark_topic_notifications_read!

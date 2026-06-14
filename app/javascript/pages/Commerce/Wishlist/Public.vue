@@ -14,6 +14,9 @@ defineProps<{
     id: string
     name: string
     price_label: string
+    compare_at_label?: string | null
+    on_sale?: boolean
+    discount_label?: string | null
     url: string
     saved_variant_name?: string | null
   }>
@@ -33,7 +36,10 @@ defineProps<{
     <div v-for="product in products" :key="product.id" class="flex items-center justify-between p-4">
       <div>
         <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
-        <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+        <p class="text-sm">
+          <span>{{ product.price_label }}</span>
+          <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs text-muted-foreground line-through">{{ product.compare_at_label }}</span>
+        </p>
         <p v-if="product.saved_variant_name" class="text-xs text-muted-foreground">规格：{{ product.saved_variant_name }}</p>
       </div>
       <Button as-child variant="outline" size="sm">

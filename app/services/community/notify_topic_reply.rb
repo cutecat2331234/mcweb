@@ -13,7 +13,9 @@ module Community
         .where.not(user_id: @post.user_id)
         .pluck(:user_id)
 
-      User.where(id: subscriber_ids).find_each do |user|
+      muted_ids = Community::TopicMute.where(forum_topic_id: @topic.id, user_id: subscriber_ids).pluck(:user_id)
+
+      User.where(id: subscriber_ids - muted_ids).find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.topic_reply")
 
         Notification.notify!(

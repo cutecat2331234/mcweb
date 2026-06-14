@@ -48,6 +48,7 @@ module Community
           new_topic_url: logged_in? ? new_forum_topic_path(section_id: section.slug) : nil,
           watching: logged_in? && Community::Subscription.exists?(user: current_user, subscribable: section),
           subscription_url: subscription_forum_section_path(section),
+          mark_all_read_url: logged_in? ? mark_all_read_forum_section_path(section) : nil,
           rss_url: forum_section_rss_path(section)
         },
         featuredTopics: featured.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
@@ -67,6 +68,18 @@ module Community
 
       if result.success?
         redirect_to forum_section_path(section), notice: result.value[:watching] ? "已关注此分区。" : "已取消关注。"
+      else
+        redirect_to forum_section_path(section), alert: service_error_message(result)
+      end
+    end
+
+    def mark_all_read
+      require_login
+      section = Community::Section.find_by!(slug: params[:id])
+      result = Community::MarkSectionRead.call(user: current_user, section: section)
+
+      if result.success?
+        redirect_to forum_section_path(section), notice: "分区已全部标为已读。"
       else
         redirect_to forum_section_path(section), alert: service_error_message(result)
       end

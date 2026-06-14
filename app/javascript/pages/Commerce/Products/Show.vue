@@ -47,6 +47,8 @@ export interface ProductDetail {
   price_label: string
   compare_at_label?: string | null
   on_sale?: boolean
+  discount_percent?: number | null
+  discount_label?: string | null
   purchased?: boolean
   product_type: string
   category_name: string | null
@@ -87,6 +89,7 @@ const props = defineProps<{
   canEditReview?: boolean
   canDeleteReview?: boolean
   deleteReviewUrl?: string | null
+  reorderUrl?: string | null
   userReview?: ProductReview | null
   ratingBreakdown?: Array<{ rating: number; count: number }>
   reviewSort?: string
@@ -324,8 +327,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
   ]" />
 
   <PageHeader :title="product.name" :subtitle="product.description || undefined" />
-  <div v-if="product.purchased" class="mb-4">
+  <div v-if="product.purchased" class="mb-4 flex flex-wrap items-center gap-2">
     <Badge variant="default">你已购买此商品</Badge>
+    <Button v-if="reorderUrl" type="button" size="sm" variant="outline" @click="router.post(reorderUrl)">再次购买</Button>
   </div>
 
   <section v-if="product.version || product.changelog" class="mb-6 max-w-xl rounded-lg border p-4">
@@ -389,6 +393,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
           {{ displayPrice }}
           <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs font-normal text-muted-foreground line-through">{{ product.compare_at_label }}</span>
           <Badge v-if="product.on_sale" variant="default" class="ml-2 text-[10px]">促销</Badge>
+          <Badge v-if="product.discount_label" variant="outline" class="ml-1 text-[10px]">{{ product.discount_label }}</Badge>
         </span>
       </div>
       <div class="flex justify-between text-sm">

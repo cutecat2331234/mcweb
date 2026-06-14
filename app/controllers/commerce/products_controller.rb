@@ -5,6 +5,7 @@ module Commerce
     def index
       scope = Commerce::Product.includes(:category).available
       scope = scope.with_stock if params[:in_stock] == "1"
+      scope = scope.on_sale if params[:on_sale] == "1"
       if params[:q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
         scope = scope.where("name ILIKE ? OR slug ILIKE ?", q, q)
@@ -12,6 +13,7 @@ module Commerce
       scope = case params[:sort]
               when "price_asc" then scope.order(price_cents: :asc)
               when "price_desc" then scope.order(price_cents: :desc)
+              when "discount_desc" then scope.on_sale.order(Arel.sql("((compare_at_price_cents - price_cents)::float / NULLIF(compare_at_price_cents, 0)) DESC"))
               when "popular" then scope.order(view_count: :desc, created_at: :desc)
               when "rating" then scope.left_joins(:reviews).where(store_reviews: { status: "published" })
                 .group("store_products.id").order(Arel.sql("COALESCE(AVG(store_reviews.rating), 0) DESC"))
@@ -58,6 +60,7 @@ module Commerce
         query: params[:q].to_s,
         sort: params[:sort].to_s.presence || "newest",
         inStock: params[:in_stock] == "1",
+        onSale: params[:on_sale] == "1",
         priceMin: params[:price_min].to_s,
         priceMax: params[:price_max].to_s,
         compareCount: compare_product_count,
@@ -172,11 +175,25 @@ module Commerce
         stockAlertUnsubscribeUrls: stock_alerts.map do |variant_id, alert|
           { variant_id: variant_id, unsubscribe_url: store_stock_alert_path(alert) }
         end,
+        reorderUrl: logged_in? && purchased ? reorder_store_product_path(product) : nil,
         reviewUrl: store_reviews_path(product),
         questionUrl: store_questions_path(product),
         canAnswerOfficially: logged_in? && (current_user.permission?("store.questions.answer") || current_user.permission?("admin.access")),
         loggedIn: logged_in?
       }
+    end
+
+    def reorder
+      return redirect_to store_products_path, alert: "请先登录。" unless logged_in?
+
+      product = Commerce::Product.available.find_by!(public_id: params[:id])
+      result = Commerce::ReorderProduct.call(user: current_user, product: product)
+
+      if result.success?
+        redirect_to store_cart_path, notice: "已加入购物车。"
+      else
+        redirect_to store_product_path(product), alert: service_error_message(result)
+      end
     end
 
     private
@@ -186,6 +203,7 @@ module Commerce
         q: params[:q].presence,
         sort: params[:sort].presence,
         in_stock: params[:in_stock] == "1" ? "1" : nil,
+        on_sale: params[:on_sale] == "1" ? "1" : nil,
         price_min: params[:price_min].presence,
         price_max: params[:price_max].presence
       }.compact

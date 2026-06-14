@@ -81,7 +81,7 @@ module InertiaSerializable
     }
   end
 
-  def serialize_topic_detail(topic, watching: false, bookmarked: false, can_moderate: false, can_move: false, can_edit: false)
+  def serialize_topic_detail(topic, watching: false, bookmarked: false, muted: false, can_moderate: false, can_move: false, can_edit: false)
     {
       id: topic.public_id,
       title: topic.title,
@@ -100,6 +100,7 @@ module InertiaSerializable
       solved_post_id: topic.solved_post_id,
       views_count: topic.views_count,
       watching: watching,
+      muted: muted,
       bookmarked: bookmarked,
       can_moderate: can_moderate,
       can_move: can_move,
@@ -172,6 +173,7 @@ module InertiaSerializable
       bookmark: bookmark_meta,
       hidden: post.status == "hidden",
       report_url: current_user ? new_forum_report_path(reportable_type: "Community::Post", reportable_id: post.id) : nil,
+      raw_url: raw_forum_post_path(post),
       update_url: forum_post_path(post)
     }
   end
@@ -253,6 +255,8 @@ module InertiaSerializable
       price_label: format_price(product),
       compare_at_label: product.on_sale? ? format_money(product.compare_at_price_cents, product.currency) : nil,
       on_sale: product.on_sale?,
+      discount_percent: product.discount_percent,
+      discount_label: product.discount_percent ? "-#{product.discount_percent}%" : nil,
       in_stock: product.in_stock?,
       low_stock: product.low_stock?,
       average_rating: avg,
@@ -279,6 +283,8 @@ module InertiaSerializable
       price_label: format_price(product),
       compare_at_label: product.on_sale? ? format_money(product.compare_at_price_cents, product.currency) : nil,
       on_sale: product.on_sale?,
+      discount_percent: product.discount_percent,
+      discount_label: product.discount_percent ? "-#{product.discount_percent}%" : nil,
       product_type: product.product_type,
       category_name: product.category&.name,
       in_stock: product.in_stock?,
@@ -332,6 +338,7 @@ module InertiaSerializable
       user_vote_index: user_vote_indices.first,
       user_vote_indices: user_vote_indices,
       vote_url: forum_poll_vote_path(poll),
+      voters_url: show_results ? voters_forum_poll_path(poll) : nil,
       close_url: can_close && poll.open? ? close_forum_poll_path(poll) : nil,
       closes_at: poll.closes_at ? l(poll.closes_at, format: :short) : nil
     }

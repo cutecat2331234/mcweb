@@ -25,6 +25,8 @@ export interface ProductItem {
   price_label: string
   compare_at_label?: string | null
   on_sale?: boolean
+  discount_percent?: number | null
+  discount_label?: string | null
   in_stock: boolean
   low_stock: boolean
   average_rating?: number | null
@@ -47,6 +49,7 @@ const props = defineProps<{
   query: string
   sort: string
   inStock?: boolean
+  onSale?: boolean
   priceMin?: string
   priceMax?: string
   pagination: PaginationMeta
@@ -56,6 +59,7 @@ const props = defineProps<{
 const q = ref(props.query)
 const sort = ref(props.sort)
 const inStock = ref(props.inStock ?? false)
+const onSale = ref(props.onSale ?? false)
 const priceMin = ref(props.priceMin ?? '')
 const priceMax = ref(props.priceMax ?? '')
 
@@ -65,6 +69,7 @@ function search() {
     sort: sort.value !== 'newest' ? sort.value : undefined,
     category: props.activeCategory || undefined,
     in_stock: inStock.value ? '1' : undefined,
+    on_sale: onSale.value ? '1' : undefined,
     price_min: priceMin.value || undefined,
     price_max: priceMax.value || undefined,
   }, { preserveState: true })
@@ -131,10 +136,15 @@ function search() {
       <option value="rating">评分最高</option>
       <option value="price_asc">价格升序</option>
       <option value="price_desc">价格降序</option>
+      <option value="discount_desc">折扣最大</option>
     </select>
     <label class="flex items-center gap-2 text-sm">
       <input v-model="inStock" type="checkbox" class="rounded border" />
       仅看有货
+    </label>
+    <label class="flex items-center gap-2 text-sm">
+      <input v-model="onSale" type="checkbox" class="rounded border" />
+      仅促销
     </label>
     <Input v-model="priceMin" type="number" min="0" step="0.01" placeholder="最低价" class="w-24" />
     <Input v-model="priceMax" type="number" min="0" step="0.01" placeholder="最高价" class="w-24" />
@@ -194,6 +204,7 @@ function search() {
             <span class="font-medium">{{ product.price_label }}</span>
             <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs text-muted-foreground line-through">{{ product.compare_at_label }}</span>
             <Badge v-if="product.on_sale" variant="default" class="ml-2 text-[10px]">促销</Badge>
+            <Badge v-if="product.discount_label" variant="outline" class="ml-1 text-[10px]">{{ product.discount_label }}</Badge>
           </TableCell>
           <TableCell>
             <Badge v-if="!product.in_stock" variant="danger">缺货</Badge>

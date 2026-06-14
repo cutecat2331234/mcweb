@@ -2,9 +2,9 @@
 
 module Community
   class PostsController < ApplicationController
-    before_action :require_login
+    before_action :require_login, except: %i[raw]
     before_action :set_topic, only: :create
-    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit]
+    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit raw]
 
     def create
       result = Community::CreatePost.call(
@@ -128,6 +128,12 @@ module Community
       end
     end
 
+    def raw
+      return head :not_found unless topic_visible_to_user?(@post.topic)
+
+      render plain: @post.body, content_type: "text/plain; charset=utf-8"
+    end
+
     private
 
     def set_topic
@@ -159,6 +165,13 @@ module Community
       return true if @post.topic.wiki?
       return true if current_user&.permission?("forum.topics.lock")
       return true if current_user&.id == @post.user_id
+
+      false
+    end
+
+    def topic_visible_to_user?(topic)
+      return true unless topic.status == "hidden"
+      return true if current_user&.permission?("forum.topics.lock")
 
       false
     end

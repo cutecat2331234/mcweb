@@ -45,6 +45,7 @@ export interface PostItem {
   can_moderate: boolean
   hidden: boolean
   report_url: string | null
+  raw_url?: string
   bookmarked: boolean
   bookmark_url: string | null
   bookmark?: {
@@ -76,6 +77,7 @@ export interface PollItem {
   user_vote_index: number | null
   user_vote_indices?: number[]
   vote_url: string
+  voters_url?: string | null
   close_url?: string | null
   closes_at?: string | null
 }
@@ -93,6 +95,7 @@ const props = defineProps<{
     hidden: boolean
     views_count: number
     watching: boolean
+    muted?: boolean
     bookmarked: boolean
     can_moderate: boolean
     can_move: boolean
@@ -117,6 +120,7 @@ const props = defineProps<{
   canMarkSolved: boolean
   reactionEmojis: string[]
   sections: SectionOption[]
+  relatedTopics?: Array<{ id: string; title: string; url: string; replies_count: number }>
   reportTopicUrl: string | null
   poll: PollItem | null
   topicSearchQuery?: string
@@ -155,6 +159,9 @@ const quotePreview = ref<QuotedPost | null>(null)
 const replyPreview = ref<{ id: number; floor_number: number; author: string } | null>(null)
 const moveSectionSlug = ref('')
 const mergeTargetId = ref('')
+const splitSectionSlug = ref('')
+const showPollVoters = ref(false)
+const pollVoters = ref<Array<{ label: string; index: number; voters: string[] }>>([])
 const slowModeSeconds = ref(props.topic.slow_mode_seconds || 0)
 const autoCloseAt = ref('')
 const draftKey = `forum-reply-draft-${props.topic.id}`
@@ -334,6 +341,10 @@ function toggleWatch() {
   router.post(`/forum/topics/${props.topic.id}/subscription`, {}, { preserveScroll: true })
 }
 
+function toggleMute() {
+  router.post(`/forum/topics/${props.topic.id}/mute`, {}, { preserveScroll: true })
+}
+
 function toggleBookmark() {
   if (props.topic.bookmarked && props.topicBookmark) {
     editingBookmark.value = !editingBookmark.value
@@ -386,7 +397,19 @@ function splitPost(post: PostItem) {
   router.post(`/forum/topics/${props.topic.id}/split`, {
     post_id: post.id,
     title: title || undefined,
+    section_slug: splitSectionSlug.value || undefined,
   })
+}
+
+async function loadPollVoters() {
+  if (!props.poll?.voters_url) return
+  showPollVoters.value = !showPollVoters.value
+  if (!showPollVoters.value || pollVoters.value.length) return
+  const res = await fetch(props.poll.voters_url, { credentials: 'same-origin' })
+  if (res.ok) {
+    const data = await res.json()
+    pollVoters.value = data.voters_by_option || []
+  }
 }
 
 function saveTopicEdit() {
@@ -508,6 +531,9 @@ function pollPercent(votes: number) {
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleWatch">
         {{ topic.watching ? '取消关注' : '关注主题' }}
+      </Button>
+      <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleMute">
+        {{ topic.muted ? '取消静音' : '静音主题' }}
       </Button>
       <Button v-if="markUnreadUrl" type="button" variant="outline" size="sm" @click="markUnread">标为未读</Button>
       <Button v-if="jumpToUnreadUrl" as-child variant="outline" size="sm">
@@ -637,6 +663,25 @@ function pollPercent(votes: number) {
       </template>
     </div>
     <p v-if="poll.show_results && poll.total_votes !== null" class="mt-3 text-xs text-muted-foreground">共 {{ poll.total_votes }} 票</p>
+    <Button v-if="poll.voters_url" type="button" variant="outline" size="sm" class="mt-2" @click="loadPollVoters">
+      {{ showPollVoters ? '收起投票者' : '查看投票者' }}
+    </Button>
+    <ul v-if="showPollVoters && pollVoters.length" class="mt-2 space-y-2 text-xs">
+      <li v-for="group in pollVoters" :key="group.index">
+        <span class="font-medium">{{ group.label }}：</span>
+        <span class="text-muted-foreground">{{ group.voters.length ? group.voters.join('、') : '暂无' }}</span>
+      </li>
+    </ul>
+  </section>
+
+  <section v-if="relatedTopics?.length" class="mb-6 max-w-xl rounded-lg border p-4">
+    <h2 class="mb-2 text-sm font-semibold">相关主题</h2>
+    <ul class="space-y-1 text-sm">
+      <li v-for="related in relatedTopics" :key="related.id">
+        <Link :href="related.url" class="hover:underline">{{ related.title }}</Link>
+        <span class="ml-2 text-xs text-muted-foreground">{{ related.replies_count }} 回复</span>
+      </li>
+    </ul>
   </section>
 
   <div v-if="topic.can_move && sections.length" class="mb-4 flex flex-wrap items-center gap-2">
@@ -649,6 +694,13 @@ function pollPercent(votes: number) {
     </select>
     <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">移动</Button>
     <template v-if="topic.can_move">
+      <label class="text-sm text-muted-foreground">拆分到分区：</label>
+      <select v-model="splitSectionSlug" class="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
+        <option value="">当前分区</option>
+        <option v-for="section in sections" :key="section.slug" :value="section.slug">
+          {{ section.category ? `${section.category} / ` : '' }}{{ section.name }}
+        </option>
+      </select>
       <Input v-model="mergeTargetId" placeholder="合并到主题 ID" class="h-8 w-40" />
       <Button type="button" size="sm" variant="outline" :disabled="!mergeTargetId" @click="mergeTopic">合并</Button>
     </template>
@@ -728,6 +780,7 @@ function pollPercent(votes: number) {
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
               <button type="button" class="text-xs hover:underline" @click="copyPermalink(post)">复制链接</button>
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">回复</button>
+              <a v-if="post.raw_url" :href="post.raw_url" target="_blank" rel="noopener" class="text-xs hover:underline">原文</a>
               <button v-if="post.bookmark_url" type="button" class="text-xs hover:underline" @click="togglePostBookmark(post)">
                 {{ post.bookmarked ? '编辑书签' : '书签' }}
               </button>

@@ -42,6 +42,7 @@ const props = defineProps<{
     new_topic_url: string | null
     watching: boolean
     subscription_url: string
+    mark_all_read_url?: string | null
     rss_url: string
   }
   featuredTopics: TopicItem[]
@@ -72,6 +73,10 @@ function changeFilter(value: string) {
 function toggleWatch() {
   router.post(props.section.subscription_url, {}, { preserveScroll: true })
 }
+function markAllRead() {
+  if (!props.section.mark_all_read_url) return
+  router.patch(props.section.mark_all_read_url)
+}
 </script>
 
 <template>
@@ -86,6 +91,9 @@ function toggleWatch() {
     <div class="flex flex-wrap gap-2">
       <Button type="button" variant="outline" size="sm" @click="toggleWatch">
         {{ section.watching ? '取消关注分区' : '关注分区' }}
+      </Button>
+      <Button v-if="section.mark_all_read_url" type="button" variant="outline" size="sm" @click="markAllRead">
+        全部标为已读
       </Button>
       <Button v-if="canCreateTopic && section.new_topic_url" as-child>
         <Link :href="section.new_topic_url">新建主题</Link>

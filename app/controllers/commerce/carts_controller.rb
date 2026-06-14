@@ -47,7 +47,9 @@ module Commerce
           discount_cents: result.value[:discount_cents],
           total_cents: result.value[:total_cents],
           discount_label: format_money(result.value[:discount_cents], @cart.items.first&.product&.currency || "CNY"),
-          total_label: format_money(result.value[:total_cents], @cart.items.first&.product&.currency || "CNY")
+          total_label: format_money(result.value[:total_cents], @cart.items.first&.product&.currency || "CNY"),
+          min_amount_label: result.value[:min_amount_label],
+          amount_remaining_label: result.value[:amount_remaining_label]
         }
       else
         render json: { error: service_error_message(result) }, status: :unprocessable_entity

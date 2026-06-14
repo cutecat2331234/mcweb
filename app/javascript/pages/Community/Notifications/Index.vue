@@ -41,7 +41,9 @@ const props = defineProps<{
 const expanded = ref<Record<string, boolean>>({})
 
 function markAllRead() {
-  router.patch('/forum/notifications/mark_all_read')
+  router.patch('/forum/notifications/mark_all_read', {
+    category: props.activeCategory === 'all' ? undefined : props.activeCategory,
+  })
 }
 
 function toggleExpand(key: string) {

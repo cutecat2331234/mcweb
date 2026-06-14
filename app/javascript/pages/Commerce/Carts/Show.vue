@@ -41,6 +41,8 @@ const couponPreview = ref<{
   code: string
   discount_label: string
   total_label: string
+  min_amount_label?: string | null
+  amount_remaining_label?: string | null
 } | null>(null)
 const couponError = ref('')
 const couponLoading = ref(false)
@@ -164,6 +166,10 @@ function moveToWishlist(itemId: number) {
       <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
       <p v-if="couponPreview" class="text-sm text-muted-foreground">
         优惠码 <strong>{{ couponPreview.code }}</strong> 已应用，减免 {{ couponPreview.discount_label }}，预计合计 {{ couponPreview.total_label }}
+        <span v-if="couponPreview.min_amount_label" class="block text-xs">最低消费 {{ couponPreview.min_amount_label }}</span>
+      </p>
+      <p v-if="couponError && couponPreview?.amount_remaining_label" class="text-xs text-amber-600">
+        还差 {{ couponPreview.amount_remaining_label }} 可用此优惠码
       </p>
       <p v-else-if="pendingCouponCode" class="text-sm text-muted-foreground">已保存优惠码：<strong>{{ pendingCouponCode }}</strong>（结账时自动使用）</p>
       <p class="text-xs text-muted-foreground">优惠码在结账时正式使用。</p>

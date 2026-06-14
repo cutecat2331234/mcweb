@@ -298,6 +298,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["slug"], name: "index_forum_tags_on_slug", unique: true
   end
 
+  create_table "forum_topic_mutes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_topic_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_topic_id"], name: "index_forum_topic_mutes_on_forum_topic_id"
+    t.index ["user_id", "forum_topic_id"], name: "index_forum_topic_mutes_on_user_id_and_forum_topic_id", unique: true
+    t.index ["user_id"], name: "index_forum_topic_mutes_on_user_id"
+  end
+
   create_table "forum_topic_tags", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "forum_tag_id", null: false
@@ -1047,6 +1057,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_sections", "forum_categories"
   add_foreign_key "forum_sections", "forum_sections", column: "parent_id"
   add_foreign_key "forum_subscriptions", "users"
+  add_foreign_key "forum_topic_mutes", "forum_topics"
+  add_foreign_key "forum_topic_mutes", "users"
   add_foreign_key "forum_topic_tags", "forum_tags"
   add_foreign_key "forum_topic_tags", "forum_topics"
   add_foreign_key "forum_topics", "forum_posts", column: "solved_post_id"

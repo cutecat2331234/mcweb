@@ -25,6 +25,14 @@ module Commerce
       compare_at_price_cents.present? && compare_at_price_cents > price_cents
     end
 
+    scope :on_sale, -> { where("compare_at_price_cents IS NOT NULL AND compare_at_price_cents > price_cents") }
+
+    def discount_percent
+      return nil unless on_sale?
+
+      ((compare_at_price_cents - price_cents).to_f / compare_at_price_cents * 100).round
+    end
+
     scope :available, -> { where(status: :active) }
 
     scope :with_stock, -> {

@@ -2,11 +2,12 @@
 
 module Community
   class SplitTopic < ApplicationService
-    def initialize(user:, topic:, post:, title: nil)
+    def initialize(user:, topic:, post:, title: nil, section: nil)
       @user = user
       @topic = topic
       @post = post
       @title = title.to_s.strip.presence
+      @section = section
     end
 
     def call
@@ -21,9 +22,10 @@ module Community
       Community::Topic.transaction do
         posts_to_move = @topic.posts.where("floor_number >= ?", @post.floor_number).order(:floor_number)
         split_title = @title || "拆分自：#{@topic.title}".truncate(120)
+        target_section = @section || @topic.section
 
         new_topic = Community::Topic.create!(
-          section: @topic.section,
+          section: target_section,
           user: @post.user,
           title: split_title,
           prefix: @topic.prefix,

@@ -22,8 +22,18 @@ module Commerce
       ServiceResult.success(
         code: coupon.code,
         discount_cents: discount_cents,
-        total_cents: [ @subtotal_cents - discount_cents, 0 ].max
+        total_cents: [ @subtotal_cents - discount_cents, 0 ].max,
+        min_amount_cents: coupon.min_amount_cents,
+        min_amount_label: coupon.min_amount_cents.positive? ? format_money(coupon.min_amount_cents) : nil,
+        amount_remaining_cents: coupon.min_amount_cents.positive? ? [ coupon.min_amount_cents - @subtotal_cents, 0 ].max : 0,
+        amount_remaining_label: coupon.min_amount_cents.positive? && @subtotal_cents < coupon.min_amount_cents ? format_money(coupon.min_amount_cents - @subtotal_cents) : nil
       )
+    end
+
+    private
+
+    def format_money(cents)
+      ActionController::Base.helpers.number_to_currency(cents / 100.0, unit: "¥")
     end
   end
 end

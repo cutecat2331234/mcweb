@@ -9,6 +9,7 @@ module Community
     has_many :posts, class_name: "Community::Post", foreign_key: :forum_topic_id, dependent: :destroy
     has_many :read_states, class_name: "Community::ReadState", foreign_key: :forum_topic_id, dependent: :destroy
     has_many :subscriptions, as: :subscribable, class_name: "Community::Subscription", dependent: :destroy
+    has_many :topic_mutes, class_name: "Community::TopicMute", foreign_key: :forum_topic_id, dependent: :destroy
     has_many :topic_tags, class_name: "Community::TopicTag", foreign_key: :forum_topic_id, dependent: :destroy
     has_many :tags, through: :topic_tags, source: :tag
     has_many :bookmarks, class_name: "Community::Bookmark", foreign_key: :forum_topic_id, dependent: :destroy
@@ -40,6 +41,20 @@ module Community
 
     def record_view!
       increment!(:views_count)
+    end
+
+    def related_by_tags(limit: 5)
+      tag_ids = tags.pluck(:id)
+      return Community::Topic.none if tag_ids.empty?
+
+      Community::Topic
+        .where(status: :published)
+        .where.not(id: id)
+        .joins(:tags)
+        .where(forum_tags: { id: tag_ids })
+        .group("forum_topics.id")
+        .order(Arel.sql("COUNT(forum_topic_tags.id) DESC, forum_topics.last_posted_at DESC"))
+        .limit(limit)
     end
 
     def lock_topic!

@@ -534,3 +534,20 @@ app/
 | 购物车移入心愿单 | `MoveCartItemToWishlist` + `carts#move_to_wishlist` |
 | 删除自己的评价 | `DeleteReview` + `reviews#destroy` |
 | 已购买徽章 | `products#show` purchased 标记 |
+
+### 第二十八轮（论坛 / 商城体验深化）
+
+| 功能 | 实现 |
+|------|------|
+| 主题静音 | `TopicMute` + 回复通知过滤 |
+| 分区全部已读 | `MarkSectionRead` + `sections#mark_all_read` |
+| 相关主题 | `Topic#related_by_tags` 侧边栏 |
+| 拆分至目标分区 | `SplitTopic` 可选 `section_slug` |
+| 帖子原文 | `posts#raw` 纯文本 Markdown |
+| 投票者列表 | `polls#voters` JSON |
+| 通知分类全部已读 | `mark_all_read` 支持 category 参数 |
+| 促销筛选排序 | `on_sale` 筛选 + `discount_desc` 排序 |
+| 折扣百分比徽章 | `discount_percent` / `discount_label` |
+| 心愿单促销价 | 列表展示划线价与折扣 |
+| 再次购买 | `ReorderProduct` + `products#reorder` |
+| 优惠券满减提示 | `PreviewCoupon` 最低消费/差额 |

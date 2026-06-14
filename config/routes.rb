@@ -79,6 +79,7 @@ Rails.application.routes.draw do
     resources :sections, only: %i[index show] do
       member do
         post :subscription, action: :toggle_subscription
+        patch :mark_all_read
       end
     end
     resources :drafts, only: %i[index create update destroy], param: :id do
@@ -95,6 +96,7 @@ Rails.application.routes.draw do
       member do
         post :vote
         post :close
+        get :voters
       end
     end
     get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
@@ -112,6 +114,7 @@ Rails.application.routes.draw do
         patch :auto_close, action: :update_auto_close
         post :mark_unread
         post :subscription, action: :toggle_subscription
+        post :mute, action: :toggle_mute
         post :bookmark, action: :toggle_bookmark
       end
     end
@@ -121,6 +124,7 @@ Rails.application.routes.draw do
         post :bookmark, action: :toggle_bookmark
         post :moderate
         get :edits
+        get :raw
         post :restore_edit
       end
     end
@@ -174,6 +178,7 @@ Rails.application.routes.draw do
       end
       member do
         post :wishlist, to: "wishlist#toggle"
+        post :reorder
         post :stock_alert, to: "stock_alerts#create"
         resources :reviews, only: %i[create destroy], controller: "reviews" do
           member do

@@ -15,6 +15,9 @@ const props = defineProps<{
     name: string
     slug: string
     price_label: string
+    compare_at_label?: string | null
+    on_sale?: boolean
+    discount_label?: string | null
     url: string
     in_stock?: boolean
     low_stock?: boolean
@@ -66,7 +69,11 @@ function copyShareLink() {
     <div v-for="product in products" :key="product.id" class="flex items-center justify-between gap-4 p-4">
       <div>
         <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
-        <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+        <p class="text-sm">
+          <span class="font-medium">{{ product.price_label }}</span>
+          <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs text-muted-foreground line-through">{{ product.compare_at_label }}</span>
+          <Badge v-if="product.discount_label" variant="outline" class="ml-1 text-[10px]">{{ product.discount_label }}</Badge>
+        </p>
         <p v-if="product.saved_variant_name" class="text-xs text-muted-foreground">规格：{{ product.saved_variant_name }}</p>
         <Badge v-if="!product.in_stock" variant="default" class="mt-1">缺货</Badge>
         <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>

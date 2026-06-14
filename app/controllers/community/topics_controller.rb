@@ -9,6 +9,7 @@ module Community
     def show
       @topic.record_view!
       mark_topic_read!
+      mark_topic_notifications_read!
 
       posts_scope = @topic.posts.chronological.includes(:user, :quoted_post, :parent_post, :reactions, :edits)
       posts_scope = filter_blocked_posts(posts_scope)
@@ -21,6 +22,7 @@ module Community
           watching: watching_topic?,
           bookmarked: bookmarked_topic?,
           can_moderate: can_moderate_topic?,
+          can_move: can_move_topic?,
           can_edit: can_edit_topic?
         ),
         posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?, solved_post_id: @topic.solved_post_id) },
@@ -28,7 +30,7 @@ module Community
         canReply: logged_in? && !@topic.locked?,
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
-        sections: can_moderate_topic? ? movable_sections : [],
+        sections: can_move_topic? ? movable_sections : [],
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
         poll: @topic.poll ? serialize_poll(@topic.poll) : nil,
         meta: {
@@ -57,6 +59,7 @@ module Community
         tag_names: topic_params[:tags],
         poll_question: topic_params[:poll_question],
         poll_options: parse_poll_options(topic_params[:poll_options]),
+        poll_closes_days: topic_params[:poll_closes_days],
         ip_address: request.remote_ip
       )
 
@@ -166,7 +169,7 @@ module Community
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options)
+      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options, :poll_closes_days)
     end
 
     def parse_poll_options(raw)
@@ -201,8 +204,21 @@ module Community
       Community::Bookmark.exists?(user: current_user, topic: @topic)
     end
 
+    def mark_topic_notifications_read!
+      return unless logged_in?
+
+      current_user.notifications.unread.where(notification_type: "forum.topic_reply").find_each do |notification|
+        topic_id = notification.metadata["topic_id"]
+        notification.mark_read! if topic_id == @topic.public_id
+      end
+    end
+
     def can_moderate_topic?
       current_user&.permission?("forum.topics.lock")
+    end
+
+    def can_move_topic?
+      current_user&.permission?("forum.topics.move") || current_user&.permission?("forum.topics.lock")
     end
 
     def can_edit_topic?

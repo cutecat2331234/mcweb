@@ -78,7 +78,7 @@ Rails.application.routes.draw do
         post :moderate
         post :move
         post :mark_solved
-        patch :slow_mode
+        patch :slow_mode, action: :update_slow_mode
         post :subscription, action: :toggle_subscription
         post :bookmark, action: :toggle_bookmark
       end
@@ -103,6 +103,7 @@ Rails.application.routes.draw do
     get "search", to: "search#index"
     get "latest", to: "latest#index"
     get "unread", to: "unread#index"
+    patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read
     post "preview", to: "previews#create"
     get "bookmarks", to: "bookmarks#index"
     get "preferences", to: "preferences#show"

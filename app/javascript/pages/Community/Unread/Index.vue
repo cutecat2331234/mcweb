@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
+import Button from '@/components/ui/Button.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -14,7 +15,7 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const props = defineProps<{
   topics: Array<{
     id: string
     title: string
@@ -24,7 +25,12 @@ defineProps<{
     last_posted_at: string | null
     unread_count: number
   }>
+  markAllReadUrl: string
 }>()
+
+function markAllRead() {
+  router.patch(props.markAllReadUrl)
+}
 </script>
 
 <template>
@@ -34,7 +40,12 @@ defineProps<{
     { label: '未读主题', current: true },
   ]" />
 
-  <PageHeader title="未读主题" subtitle="你有未读回复的主题" />
+  <div class="mb-4 flex items-center justify-between gap-3">
+    <PageHeader title="未读主题" subtitle="你有未读回复的主题" />
+    <Button v-if="topics.length" type="button" variant="outline" size="sm" @click="markAllRead">
+      全部标为已读
+    </Button>
+  </div>
 
   <div v-if="topics.length" class="rounded-lg border">
     <Table>

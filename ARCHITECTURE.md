@@ -121,6 +121,16 @@ app/
 | 分区后台 Inertia | `Admin::Forum::SectionsController` + 发帖/回复角色权限 |
 | 主题 OG 元数据 | `Topics/Show.vue` Open Graph title/description |
 | 用户信任等级展示 | 资料页 `trust_level` / `trust_name` |
+| 论坛邮件通知 | `Community::ForumMailer` + 偏好邮件渠道 |
+| 访问主题自动已读通知 | 打开主题页标记相关 `forum.topic_reply` 通知 |
+| 全部标为已读 | `MarkAllTopicsRead` + `/forum/unread/mark_all_read` |
+| 帖子书签列表 | 书签页分开展示主题/帖子书签 |
+| 游客可见反应数 | 未登录用户可查看表情统计 |
+| 子分区展示 | 板块列表嵌套显示 `children` + 主题数 |
+| 投票自动关闭 | `poll_closes_days` 创建时设置 `closes_at` |
+| 私信 Markdown | 私信对话页渲染 `body_html` |
+| 移动权限独立 | `can_move` 与 `forum.topics.move` 权限 |
+| 慢速模式路由修复 | `PATCH slow_mode` → `update_slow_mode` |
 
 ## 商城功能
 
@@ -148,3 +158,10 @@ app/
 | 退款邮件 | `OrderMailer#refund_processed` |
 | 退款审批修复 | `ProcessRefund` 复用 pending 客户申请，避免重复记录 |
 | 商品图库 | `store_products.gallery_urls`（jsonb）+ 详情页轮播展示 |
+| 待支付订单过期 | `ExpirePendingOrdersJob`（30 分钟自动取消释放库存） |
+| 取消恢复优惠券 | `CancelOrder` 回滚 `coupon.used_count` |
+| 订单履约完成 | `SyncOrderFulfillmentStatus` + `order_fulfilled` 邮件 |
+| 发货重试修复 | `RetryFulfillment` 重新排队 `DispatchFulfillmentJob` |
+| 变体库存判断 | `Product#in_stock?` 有变体时检查变体库存 |
+| 购买数量选择 | 商品详情页数量输入 |
+| 发货配置后台 | `fulfillment_config` JSON 编辑 |

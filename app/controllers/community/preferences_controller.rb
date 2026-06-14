@@ -11,12 +11,15 @@ module Community
       forum.private_message
     ].freeze
 
+    CHANNELS = %w[in_app email].freeze
+
     def show
       prefs = NOTIFICATION_TYPES.map do |type|
         {
           notification_type: type,
           label: notification_label(type),
-          enabled: NotificationPreference.enabled?(current_user, channel: "in_app", notification_type: type)
+          in_app: NotificationPreference.enabled?(current_user, channel: "in_app", notification_type: type),
+          email: NotificationPreference.enabled?(current_user, channel: "email", notification_type: type)
         }
       end
 
@@ -25,13 +28,15 @@ module Community
 
     def update
       NOTIFICATION_TYPES.each do |type|
-        enabled = ActiveModel::Type::Boolean.new.cast(params.dig(:preferences, type))
-        NotificationPreference.set!(
-          current_user,
-          channel: "in_app",
-          notification_type: type,
-          enabled: enabled
-        )
+        CHANNELS.each do |channel|
+          enabled = ActiveModel::Type::Boolean.new.cast(params.dig(:preferences, type, channel))
+          NotificationPreference.set!(
+            current_user,
+            channel: channel,
+            notification_type: type,
+            enabled: enabled
+          )
+        end
       end
 
       redirect_to forum_preferences_path, notice: "通知偏好已保存。"

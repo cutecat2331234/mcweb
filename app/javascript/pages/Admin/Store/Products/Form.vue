@@ -25,6 +25,7 @@ const props = defineProps<{
     purchase_limit: number | null
     image_url: string
     gallery_urls: string
+    fulfillment_config: string
     variants: Array<{ id?: number; name: string; sku: string; price_cents: number; stock: number | null }>
   }
   categories: Array<{ id: number; name: string }>
@@ -123,6 +124,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="gallery_urls">图库 URL（每行一个）</Label>
       <Textarea id="gallery_urls" v-model="form.product.gallery_urls" rows="3" placeholder="https://example.com/1.png&#10;https://example.com/2.png" />
+    </div>
+    <div class="space-y-2">
+      <Label for="fulfillment_config">发货配置（JSON，Minecraft 命令等）</Label>
+      <Textarea id="fulfillment_config" v-model="form.product.fulfillment_config" rows="6" placeholder='{"server_id":1,"task_type":"deliver_item","commands":["give {player} diamond 1"]}' />
     </div>
 
     <div class="space-y-3">

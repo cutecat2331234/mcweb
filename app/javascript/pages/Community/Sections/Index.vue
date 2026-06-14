@@ -20,7 +20,9 @@ export interface SectionItem {
   slug: string
   description: string | null
   category_name: string | null
+  topics_count: number
   url: string
+  children?: SectionItem[]
 }
 
 defineProps<{
@@ -43,22 +45,39 @@ defineProps<{
         <TableRow>
           <TableHead>板块</TableHead>
           <TableHead>分类</TableHead>
+          <TableHead>主题数</TableHead>
           <TableHead>简介</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow v-for="section in sections" :key="section.id">
-          <TableCell>
-            <Link :href="section.url" class="font-medium hover:underline">
-              {{ section.name }}
-            </Link>
-            <span class="ml-2 text-xs text-muted-foreground">{{ section.slug }}</span>
-          </TableCell>
-          <TableCell>{{ section.category_name || '—' }}</TableCell>
-          <TableCell class="text-muted-foreground">
-            {{ section.description || '—' }}
-          </TableCell>
-        </TableRow>
+        <template v-for="section in sections" :key="section.id">
+          <TableRow>
+            <TableCell>
+              <Link :href="section.url" class="font-medium hover:underline">
+                {{ section.name }}
+              </Link>
+              <span class="ml-2 text-xs text-muted-foreground">{{ section.slug }}</span>
+            </TableCell>
+            <TableCell>{{ section.category_name || '—' }}</TableCell>
+            <TableCell>{{ section.topics_count }}</TableCell>
+            <TableCell class="text-muted-foreground">
+              {{ section.description || '—' }}
+            </TableCell>
+          </TableRow>
+          <TableRow v-for="child in section.children || []" :key="child.id">
+            <TableCell class="pl-8">
+              <span class="text-muted-foreground">↳ </span>
+              <Link :href="child.url" class="font-medium hover:underline">
+                {{ child.name }}
+              </Link>
+            </TableCell>
+            <TableCell>{{ child.category_name || section.category_name || '—' }}</TableCell>
+            <TableCell>{{ child.topics_count }}</TableCell>
+            <TableCell class="text-muted-foreground">
+              {{ child.description || '—' }}
+            </TableCell>
+          </TableRow>
+        </template>
       </TableBody>
     </Table>
   </div>

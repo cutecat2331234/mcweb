@@ -86,9 +86,13 @@ module Community
     end
 
     def serialize_message(message)
+      formatted = Community::FormatPostBody.call(body: message.body)
+      body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(message.body)
+
       {
         id: message.id,
         body: message.body,
+        body_html: body_html,
         author: message.user.username,
         avatar_url: message.user.avatar_url,
         is_mine: message.user_id == current_user.id,

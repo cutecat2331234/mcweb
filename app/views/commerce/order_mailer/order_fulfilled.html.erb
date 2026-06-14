@@ -1,0 +1,4 @@
+<p>您好 <%= @order.user.username %>，</p>
+<p>订单 <strong><%= @order.order_number %></strong> 的商品已全部发货完成。</p>
+<p>金额：<%= number_to_currency(@order.total_cents / 100.0, unit: "¥") %></p>
+<p><a href="<%= store_order_url(@order) %>">查看订单详情</a></p>

@@ -59,7 +59,7 @@ function submit() {
         class="max-w-[75%] rounded-lg px-3 py-2 text-sm"
         :class="msg.is_mine ? 'bg-primary text-primary-foreground' : 'bg-muted'"
       >
-        <p class="whitespace-pre-wrap">{{ msg.body }}</p>
+        <p class="prose prose-sm max-w-none whitespace-pre-wrap" v-html="msg.body_html" />
         <p class="mt-1 text-[10px] opacity-70">{{ msg.created_at }}</p>
       </div>
     </div>

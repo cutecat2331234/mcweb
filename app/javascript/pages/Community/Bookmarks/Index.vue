@@ -25,6 +25,14 @@ defineProps<{
     has_unread: boolean
     unread_count: number
   }>
+  postBookmarks: Array<{
+    id: number
+    floor_number: number
+    excerpt: string
+    topic_title: string
+    url: string
+    created_at: string
+  }>
 }>()
 </script>
 
@@ -35,32 +43,61 @@ defineProps<{
     { label: '我的书签', current: true },
   ]" />
 
-  <PageHeader title="我的书签" subtitle="你收藏的主题" />
+  <PageHeader title="我的书签" subtitle="收藏的主题与帖子" />
 
-  <div v-if="topics.length" class="rounded-lg border">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>主题</TableHead>
-          <TableHead>作者</TableHead>
-          <TableHead>回复</TableHead>
-          <TableHead>最后回复</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="topic in topics" :key="topic.id">
-          <TableCell>
-            <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
-            <Badge v-if="topic.has_unread" class="ml-2">{{ topic.unread_count }} 未读</Badge>
-          </TableCell>
-          <TableCell>{{ topic.author || '—' }}</TableCell>
-          <TableCell>{{ topic.replies_count }}</TableCell>
-          <TableCell>{{ topic.last_posted_at || '—' }}</TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </div>
-  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    你还没有收藏任何主题。
-  </p>
+  <section v-if="postBookmarks.length" class="mb-8">
+    <h2 class="mb-3 text-sm font-semibold">帖子书签</h2>
+    <div class="rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>主题</TableHead>
+            <TableHead>楼层</TableHead>
+            <TableHead>摘录</TableHead>
+            <TableHead>收藏时间</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="bookmark in postBookmarks" :key="bookmark.id">
+            <TableCell>
+              <Link :href="bookmark.url" class="font-medium hover:underline">{{ bookmark.topic_title }}</Link>
+            </TableCell>
+            <TableCell>#{{ bookmark.floor_number }}</TableCell>
+            <TableCell class="max-w-xs truncate text-muted-foreground">{{ bookmark.excerpt }}</TableCell>
+            <TableCell>{{ bookmark.created_at }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+  </section>
+
+  <section>
+    <h2 class="mb-3 text-sm font-semibold">主题书签</h2>
+    <div v-if="topics.length" class="rounded-lg border">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>主题</TableHead>
+            <TableHead>作者</TableHead>
+            <TableHead>回复</TableHead>
+            <TableHead>最后回复</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow v-for="topic in topics" :key="topic.id">
+            <TableCell>
+              <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
+              <Badge v-if="topic.has_unread" class="ml-2">{{ topic.unread_count }} 未读</Badge>
+            </TableCell>
+            <TableCell>{{ topic.author || '—' }}</TableCell>
+            <TableCell>{{ topic.replies_count }}</TableCell>
+            <TableCell>{{ topic.last_posted_at || '—' }}</TableCell>
+          </TableRow>
+        </TableBody>
+      </Table>
+    </div>
+    <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+      你还没有收藏任何主题。
+    </p>
+  </section>
 </template>

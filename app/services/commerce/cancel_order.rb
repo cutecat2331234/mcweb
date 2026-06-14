@@ -26,6 +26,8 @@ module Commerce
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_cancelled", "deliver_now", args: [ @order.id ])
 
+      restore_coupon_usage!
+
       ServiceResult.success(@order)
     rescue ActiveRecord::RecordInvalid, AASM::InvalidTransition => e
       ServiceResult.failure(error: e.message)
@@ -40,6 +42,14 @@ module Commerce
 
         target.update!(stock: target.stock + item.quantity)
       end
+    end
+
+    def restore_coupon_usage!
+      coupon = @order.coupon
+      return unless coupon
+      return unless coupon.used_count.positive?
+
+      coupon.decrement!(:used_count)
     end
   end
 end

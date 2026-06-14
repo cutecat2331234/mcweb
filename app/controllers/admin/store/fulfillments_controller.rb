@@ -44,10 +44,13 @@ module Admin
       end
 
       def update
-        result = Commerce::CreateFulfillment.call(order_item: @fulfillment.order_item) if retry_fulfillment?
-
-        if result&.failure?
-          redirect_to admin_store_fulfillment_path(@fulfillment), alert: service_error_message(result)
+        if retry_fulfillment?
+          result = Commerce::RetryFulfillment.call(fulfillment: @fulfillment)
+          if result.failure?
+            redirect_to admin_store_fulfillment_path(@fulfillment), alert: service_error_message(result)
+          else
+            redirect_to admin_store_fulfillment_path(@fulfillment), notice: "已重新排队发货。"
+          end
         elsif @fulfillment.update(fulfillment_params)
           redirect_to admin_store_fulfillment_path(@fulfillment), notice: "Fulfillment updated."
         else

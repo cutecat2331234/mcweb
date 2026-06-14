@@ -44,7 +44,7 @@ module Commerce
       end
 
       event :mark_fulfilled do
-        transitions from: :fulfilling, to: :fulfilled
+        transitions from: %i[paid processing fulfilling], to: :fulfilled
       end
 
       event :complete do

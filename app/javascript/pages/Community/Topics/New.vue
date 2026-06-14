@@ -23,6 +23,7 @@ const form = useForm({
     tags: '',
     poll_question: '',
     poll_options: '',
+    poll_closes_days: '',
   },
 })
 
@@ -108,6 +109,8 @@ async function preview() {
         <Input id="poll_question" v-model="form.topic.poll_question" placeholder="你想问什么？" />
         <Label for="poll_options">选项（每行一个，至少 2 个）</Label>
         <Textarea id="poll_options" v-model="form.topic.poll_options" rows="4" placeholder="选项 A&#10;选项 B&#10;选项 C" />
+        <Label for="poll_closes_days">自动关闭（天数，0 表示不关闭）</Label>
+        <Input id="poll_closes_days" v-model="form.topic.poll_closes_days" type="number" min="0" placeholder="0" />
       </div>
     </div>
 

@@ -1,0 +1,4 @@
+<p>你好 <%= @user.username %>，</p>
+<p><strong><%= @message.user.username %></strong> 给你发送了私信：</p>
+<blockquote><%= simple_format(@message.body.truncate(500)) %></blockquote>
+<p><a href="<%= @url %>">查看私信</a></p>

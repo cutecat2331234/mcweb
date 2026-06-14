@@ -35,15 +35,22 @@ module InertiaSerializable
     attrs.transform_values { |v| v.nil? ? "—" : v.to_s }
   end
 
-  def serialize_section(section)
-    {
+  def serialize_section(section, include_children: true)
+    data = {
       id: section.id,
       name: section.name,
       slug: section.slug,
       description: section.description&.truncate(80),
       category_name: section.category&.name,
+      topics_count: section.topics.where(status: :published).count,
       url: forum_section_path(section)
     }
+
+    if include_children && section.children.any?
+      data[:children] = section.children.ordered.map { |child| serialize_section(child, include_children: false) }
+    end
+
+    data
   end
 
   def serialize_topic(topic, read_state: nil)
@@ -66,12 +73,13 @@ module InertiaSerializable
       pinned: topic.pinned?,
       locked: topic.locked?,
       featured: topic.featured?,
+      solved: topic.solved_post_id.present?,
       unread_count: unread_count,
       has_unread: unread_count.positive?
     }
   end
 
-  def serialize_topic_detail(topic, watching: false, bookmarked: false, can_moderate: false, can_edit: false)
+  def serialize_topic_detail(topic, watching: false, bookmarked: false, can_moderate: false, can_move: false, can_edit: false)
     {
       id: topic.public_id,
       title: topic.title,
@@ -88,6 +96,7 @@ module InertiaSerializable
       watching: watching,
       bookmarked: bookmarked,
       can_moderate: can_moderate,
+      can_move: can_move,
       can_edit: can_edit,
       tags: topic.tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
       tags_string: topic.tags.map(&:name).join(", "),

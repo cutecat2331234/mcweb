@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button.vue'
 import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Label from '@/components/ui/Label.vue'
+import Input from '@/components/ui/Input.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import { routes } from '@/lib/routes'
 
@@ -59,6 +60,17 @@ const props = defineProps<{
 const selectedVariantId = ref<number | null>(
   props.product.variants.length === 1 ? props.product.variants[0].id : null
 )
+const quantity = ref(1)
+const galleryIndex = ref(0)
+
+const allImages = computed(() => {
+  const images: string[] = []
+  if (props.product.image_url) images.push(props.product.image_url)
+  images.push(...props.product.gallery_urls)
+  return images
+})
+
+const activeGalleryImage = computed(() => allImages.value[galleryIndex.value] || null)
 
 const reviewForm = useForm({
   review: { rating: 5, body: '' },
@@ -81,8 +93,12 @@ function addToCart() {
   router.patch(props.addToCartUrl, {
     product_id: props.product.db_id,
     variant_id: selectedVariantId.value,
-    quantity: 1,
+    quantity: quantity.value,
   })
+}
+
+function selectGalleryImage(index: number) {
+  galleryIndex.value = index
 }
 
 function toggleWishlist() {
@@ -106,21 +122,25 @@ function submitReview() {
 
   <PageHeader :title="product.name" :subtitle="product.description || undefined" />
 
-  <img
-    v-if="product.image_url"
-    :src="product.image_url"
-    :alt="product.name"
-    class="mb-4 max-h-64 rounded-lg border object-cover"
-  />
-
-  <div v-if="product.gallery_urls.length" class="mb-6 flex flex-wrap gap-2">
+  <div v-if="allImages.length" class="mb-6 max-w-xl">
     <img
-      v-for="(url, index) in product.gallery_urls"
-      :key="index"
-      :src="url"
-      :alt="`${product.name} ${index + 1}`"
-      class="h-20 w-20 rounded border object-cover"
+      v-if="activeGalleryImage"
+      :src="activeGalleryImage"
+      :alt="product.name"
+      class="mb-3 max-h-80 w-full rounded-lg border object-cover"
     />
+    <div v-if="allImages.length > 1" class="flex flex-wrap gap-2">
+      <button
+        v-for="(url, index) in allImages"
+        :key="index"
+        type="button"
+        class="overflow-hidden rounded border transition-opacity"
+        :class="galleryIndex === index ? 'ring-2 ring-primary' : 'opacity-70 hover:opacity-100'"
+        @click="selectGalleryImage(index)"
+      >
+        <img :src="url" :alt="`${product.name} ${index + 1}`" class="h-16 w-16 object-cover" />
+      </button>
+    </div>
   </div>
 
   <Card class="max-w-xl">
@@ -165,6 +185,17 @@ function submitReview() {
       <div v-if="product.purchase_limit" class="flex justify-between text-sm">
         <span class="text-muted-foreground">限购</span>
         <span>每人最多 {{ product.purchase_limit }} 件</span>
+      </div>
+      <div v-if="canPurchase" class="space-y-2">
+        <Label for="quantity">数量</Label>
+        <Input
+          id="quantity"
+          v-model.number="quantity"
+          type="number"
+          min="1"
+          :max="product.purchase_limit || 99"
+          class="w-24"
+        />
       </div>
     </CardContent>
   </Card>

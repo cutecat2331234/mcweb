@@ -19,9 +19,13 @@ module Commerce
     scope :available, -> { where(status: :active) }
 
     def in_stock?
-      return true if stock.nil?
-
-      stock > 0
+      if variants.exists?
+        variants.any? { |variant| variant.stock.nil? || variant.stock.positive? }
+      elsif stock.nil?
+        true
+      else
+        stock.positive?
+      end
     end
 
     def price

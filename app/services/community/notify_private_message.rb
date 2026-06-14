@@ -19,6 +19,15 @@ module Community
           body: @message.body.truncate(120),
           metadata: { url: "/forum/conversations/#{@conversation.id}" }
         )
+
+        if NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.private_message")
+          MailDeliveryJob.perform_later(
+            "Community::ForumMailer",
+            "private_message",
+            "deliver_now",
+            args: [ user.id, @conversation.id, @message.id ]
+          )
+        end
       end
 
       ServiceResult.success

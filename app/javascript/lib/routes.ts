@@ -9,6 +9,7 @@ export const routes = {
   forumWatching: '/forum/watching',
   forumBookmarks: '/forum/bookmarks',
   forumUnread: '/forum/unread',
+  forumUnreadMarkAllRead: '/forum/unread/mark_all_read',
   forumPreview: '/forum/preview',
   forumTags: '/forum/tags',
   forumNotifications: '/forum/notifications',

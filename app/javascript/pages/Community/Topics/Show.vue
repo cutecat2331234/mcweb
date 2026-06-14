@@ -74,6 +74,7 @@ const props = defineProps<{
     watching: boolean
     bookmarked: boolean
     can_moderate: boolean
+    can_move: boolean
     can_edit: boolean
     featured: boolean
     wiki: boolean
@@ -342,7 +343,7 @@ function pollPercent(votes: number) {
     <p class="mt-3 text-xs text-muted-foreground">共 {{ poll.total_votes }} 票</p>
   </section>
 
-  <div v-if="topic.can_moderate && sections.length" class="mb-4 flex flex-wrap items-center gap-2">
+  <div v-if="topic.can_move && sections.length" class="mb-4 flex flex-wrap items-center gap-2">
     <label class="text-sm text-muted-foreground">移动到分区：</label>
     <select v-model="moveSectionSlug" class="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
       <option value="">选择分区…</option>
@@ -351,8 +352,10 @@ function pollPercent(votes: number) {
       </option>
     </select>
     <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">移动</Button>
-    <Input v-model.number="slowModeSeconds" type="number" min="0" class="h-8 w-24" placeholder="慢速秒" />
-    <Button type="button" size="sm" variant="outline" @click="updateSlowMode">设置慢速</Button>
+    <template v-if="topic.can_moderate">
+      <Input v-model.number="slowModeSeconds" type="number" min="0" class="h-8 w-24" placeholder="慢速秒" />
+      <Button type="button" size="sm" variant="outline" @click="updateSlowMode">设置慢速</Button>
+    </template>
   </div>
 
   <p v-if="topic.hidden" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
@@ -424,18 +427,30 @@ function pollPercent(votes: number) {
           </div>
           <div v-else class="prose prose-sm mt-2 max-w-none text-sm dark:prose-invert" v-html="post.body_html" />
 
-          <div v-if="loggedIn" class="mt-3 flex flex-wrap gap-1">
-            <button
-              v-for="emoji in reactionEmojis"
-              :key="emoji"
-              type="button"
-              class="rounded-full border px-2 py-0.5 text-xs transition-colors"
-              :class="hasReacted(post, emoji) ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
-              @click="toggleReaction(post, emoji)"
-            >
-              {{ emoji }}
-              <span v-if="post.reaction_counts[emoji]">{{ post.reaction_counts[emoji] }}</span>
-            </button>
+          <div class="mt-3 flex flex-wrap gap-1">
+            <template v-if="loggedIn">
+              <button
+                v-for="emoji in reactionEmojis"
+                :key="emoji"
+                type="button"
+                class="rounded-full border px-2 py-0.5 text-xs transition-colors"
+                :class="hasReacted(post, emoji) ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
+                @click="toggleReaction(post, emoji)"
+              >
+                {{ emoji }}
+                <span v-if="post.reaction_counts[emoji]">{{ post.reaction_counts[emoji] }}</span>
+              </button>
+            </template>
+            <template v-else>
+              <span
+                v-for="emoji in reactionEmojis"
+                :key="emoji"
+                v-show="post.reaction_counts[emoji]"
+                class="rounded-full border px-2 py-0.5 text-xs text-muted-foreground"
+              >
+                {{ emoji }} {{ post.reaction_counts[emoji] }}
+              </span>
+            </template>
           </div>
         </div>
       </div>

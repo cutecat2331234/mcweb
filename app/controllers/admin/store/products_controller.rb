@@ -97,10 +97,19 @@ module Admin
         permitted = params.require(:product).permit(
           :name, :slug, :description, :product_type, :status,
           :price_cents, :currency, :stock, :store_category_id, :purchase_limit, :image_url, :gallery_urls,
+          :fulfillment_config,
           variants_attributes: [ :id, :name, :sku, :price_cents, :stock, :_destroy ]
         )
         if permitted[:gallery_urls].is_a?(String)
           permitted[:gallery_urls] = permitted[:gallery_urls].lines.map(&:strip).reject(&:blank?)
+        end
+        if permitted[:fulfillment_config].is_a?(String)
+          raw = permitted[:fulfillment_config].strip
+          begin
+            permitted[:fulfillment_config] = raw.present? ? JSON.parse(raw) : {}
+          rescue JSON::ParserError
+            permitted[:fulfillment_config] = {}
+          end
         end
         permitted
       end
@@ -123,6 +132,7 @@ module Admin
             purchase_limit: product.purchase_limit,
             image_url: product.image_url || "",
             gallery_urls: (product.gallery_urls || []).join("\n"),
+            fulfillment_config: JSON.pretty_generate(product.fulfillment_config.presence || {}),
             variants: product.variants.map do |v|
               { id: v.id, name: v.name, sku: v.sku, price_cents: v.price_cents, stock: v.stock }
             end

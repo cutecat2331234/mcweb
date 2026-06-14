@@ -59,6 +59,7 @@ module Minecraft
             fulfilled_at: Time.current,
             last_error: nil
           )
+          Commerce::SyncOrderFulfillmentStatus.call(order: task.fulfillment.order)
         end
 
         if task.delivery_id.present?

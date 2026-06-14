@@ -13,14 +13,18 @@ const props = defineProps<{
   preferences: Array<{
     notification_type: string
     label: string
-    enabled: boolean
+    in_app: boolean
+    email: boolean
   }>
 }>()
 
 const form = useForm({
   preferences: Object.fromEntries(
-    props.preferences.map((p) => [p.notification_type, p.enabled])
-  ) as Record<string, boolean>,
+    props.preferences.map((pref) => [
+      pref.notification_type,
+      { in_app: pref.in_app, email: pref.email },
+    ])
+  ) as Record<string, { in_app: boolean; email: boolean }>,
 })
 
 function submit() {
@@ -35,21 +39,34 @@ function submit() {
     { label: '通知偏好', current: true },
   ]" />
 
-  <PageHeader title="通知偏好" subtitle="管理站内通知类型" />
+  <PageHeader title="通知偏好" subtitle="管理站内通知与邮件通知" />
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <label
+    <div
       v-for="pref in preferences"
       :key="pref.notification_type"
-      class="flex items-center gap-3 rounded-lg border p-4"
+      class="rounded-lg border p-4"
     >
-      <input
-        v-model="form.preferences[pref.notification_type]"
-        type="checkbox"
-        class="h-4 w-4"
-      />
-      <span class="text-sm font-medium">{{ pref.label }}</span>
-    </label>
+      <p class="mb-3 text-sm font-medium">{{ pref.label }}</p>
+      <div class="flex flex-wrap gap-6">
+        <label class="flex items-center gap-2 text-sm">
+          <input
+            v-model="form.preferences[pref.notification_type].in_app"
+            type="checkbox"
+            class="h-4 w-4"
+          />
+          站内通知
+        </label>
+        <label class="flex items-center gap-2 text-sm">
+          <input
+            v-model="form.preferences[pref.notification_type].email"
+            type="checkbox"
+            class="h-4 w-4"
+          />
+          邮件通知
+        </label>
+      </div>
+    </div>
     <Button type="submit" :disabled="form.processing">保存</Button>
   </form>
 </template>

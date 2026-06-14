@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 30.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil)
+    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
@@ -14,6 +14,7 @@ module Community
       @ip_address = ip_address
       @poll_question = poll_question.to_s.strip.presence
       @poll_options = Array(poll_options).map(&:to_s).map(&:strip).reject(&:blank?)
+      @poll_closes_days = poll_closes_days.to_i
     end
 
     def call
@@ -126,10 +127,12 @@ module Community
     end
 
     def create_poll!(topic)
+      closes_at = @poll_closes_days.positive? ? @poll_closes_days.days.from_now : nil
       Community::Poll.create!(
         topic: topic,
         question: @poll_question,
-        options: @poll_options.first(10)
+        options: @poll_options.first(10),
+        closes_at: closes_at
       )
     end
   end

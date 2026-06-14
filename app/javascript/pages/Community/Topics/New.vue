@@ -45,6 +45,14 @@ function saveDraft() {
       title: form.topic.title,
       body: form.topic.body,
       tags: form.topic.tags,
+      prefix: form.topic.prefix,
+      scheduled_at: form.topic.scheduled_at,
+      poll_question: showPoll.value ? form.topic.poll_question : '',
+      poll_options: showPoll.value ? form.topic.poll_options : '',
+      poll_closes_days: showPoll.value ? form.topic.poll_closes_days : '',
+      poll_multiple_choice: showPoll.value ? form.topic.poll_multiple_choice : false,
+      poll_max_choices: form.topic.poll_max_choices,
+      poll_hide_results_until_vote: showPoll.value ? form.topic.poll_hide_results_until_vote : false,
     },
   })
 }

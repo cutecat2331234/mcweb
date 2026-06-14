@@ -3,7 +3,7 @@
 module Commerce
   class OrdersController < ApplicationController
     before_action :require_login
-    before_action :set_order, only: %i[show cancel refund receipt receipt_pdf reorder]
+    before_action :set_order, only: %i[show cancel refund receipt receipt_pdf reorder refresh_download]
 
     def index
       orders_scope = Commerce::Order.where(user: current_user).includes(:items).recent
@@ -87,6 +87,18 @@ module Commerce
         notice = "已将 #{result.value[:added]} 件商品加入购物车。"
         notice += " 跳过：#{result.value[:skipped].join('、')}" if result.value[:skipped].any?
         redirect_to store_cart_path, notice: notice
+      else
+        redirect_to store_order_path(@order), alert: service_error_message(result)
+      end
+    end
+
+    def refresh_download
+      order_item = @order.items.find_by(id: params[:order_item_id])
+      return redirect_to store_order_path(@order), alert: "商品不存在。" unless order_item
+
+      result = Commerce::GenerateDownloadToken.call(order_item: order_item, user: current_user)
+      if result.success?
+        redirect_to store_download_path(result.value[:token])
       else
         redirect_to store_order_path(@order), alert: service_error_message(result)
       end

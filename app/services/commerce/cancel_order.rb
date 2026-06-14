@@ -17,6 +17,14 @@ module Commerce
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_cancelled", "deliver_now", args: [ @order.id ])
 
+      Commerce::NotifyOrderEvent.call(
+        user: @order.user,
+        notification_type: "commerce.order_cancelled",
+        title: "订单已取消",
+        body: "订单 #{@order.order_number} 已取消。",
+        path: "/store/orders/#{@order.public_id}"
+      )
+
       restore_coupon_usage!
       cancel_pending_payments!
 

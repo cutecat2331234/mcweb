@@ -90,6 +90,7 @@ Rails.application.routes.draw do
     get "blocks", to: "blocks#index", as: :blocks
     post "users/:username/block", to: "blocks#create", as: :block_user
     post "users/:username/follow", to: "follows#create", as: :user_follow
+    get "users/:username/followers", to: "followers#index", as: :user_followers
     resources :polls, only: [] do
       member do
         post :vote
@@ -99,6 +100,7 @@ Rails.application.routes.draw do
     get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
     get "sections/:id.rss", to: "rss#section", as: :section_rss, defaults: { format: :rss }
     resources :topics, only: %i[show new create update] do
+      resource :reply_draft, only: %i[update destroy], controller: "reply_drafts"
       member do
         post :moderate
         post :move
@@ -204,6 +206,7 @@ Rails.application.routes.draw do
         get :receipt
         get :receipt_pdf
         post :reorder
+        post :refresh_download
       end
     end
     resource :checkout, only: %i[show create], controller: "checkout" do

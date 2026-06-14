@@ -3,21 +3,30 @@
 module Community
   class FollowsController < ApplicationController
     include BlockedUsersFilterable
+    include Community::TopicListSortable
 
     before_action :require_login
 
     def index
+      tab = params[:tab].presence_in(%w[topics users]) || "topics"
+      sort = params[:sort].presence || "latest"
+
       follows = Community::UserFollow.where(follower: current_user).includes(:followed)
       followed_ids = follows.map(&:followed_id) - blocked_user_ids
-      topics = Community::Topic
+
+      users = follows.reject { |follow| blocked_user_ids.include?(follow.followed_id) }
+      @pagy_users, paged_users = pagy_array(users, limit: 20, page_param: :users_page)
+
+      topics_scope = Community::Topic
         .where(user_id: followed_ids, status: :published)
         .includes(:user, :section)
-        .order(last_posted_at: :desc)
-        .limit(30)
-      topics = filter_blocked_topics(topics)
+      topics_scope = filter_blocked_topics(topics_scope)
+      topics_scope = apply_forum_topic_sort(topics_scope, sort)
+      @pagy_topics, topics = pagy(topics_scope, limit: 20, page_param: :topics_page)
 
       render inertia: "Community/Following/Index", props: {
-        users: follows.map do |follow|
+        tab: tab,
+        users: paged_users.map do |follow|
           user = follow.followed
           {
             username: user.username,
@@ -28,7 +37,11 @@ module Community
             unfollow_url: forum_user_follow_path(user.username)
           }
         end,
-        topics: topics.map { |topic| serialize_topic(topic) }
+        usersPagination: pagy_props(@pagy_users),
+        topics: topics.map { |topic| serialize_topic(topic) },
+        topicsPagination: pagy_props(@pagy_topics),
+        sort: sort,
+        sortOptions: forum_sort_options
       }
     end
 
@@ -41,6 +54,17 @@ module Community
       else
         redirect_back fallback_location: forum_path, alert: service_error_message(result)
       end
+    end
+
+    private
+
+    def forum_sort_options
+      [
+        { value: "latest", label: "最新回复" },
+        { value: "hot", label: "热门" },
+        { value: "replies", label: "回复最多" },
+        { value: "newest", label: "最新发布" }
+      ]
     end
   end
 end

@@ -50,7 +50,15 @@ module Community
         section: section,
         title: draft_params[:title],
         body: draft_params[:body],
-        tag_names: draft_params[:tags]
+        tag_names: draft_params[:tags],
+        prefix: draft_params[:prefix],
+        scheduled_at: draft_params[:scheduled_at],
+        poll_question: draft_params[:poll_question],
+        poll_options: draft_params[:poll_options],
+        poll_closes_days: draft_params[:poll_closes_days],
+        poll_multiple_choice: draft_params[:poll_multiple_choice],
+        poll_max_choices: draft_params[:poll_max_choices],
+        poll_hide_results_until_vote: draft_params[:poll_hide_results_until_vote]
       )
 
       if result.success?
@@ -104,7 +112,11 @@ module Community
     end
 
     def draft_params
-      params.require(:draft).permit(:title, :body, :tags, :scheduled_at, :clear_schedule)
+      params.require(:draft).permit(
+        :title, :body, :tags, :scheduled_at, :clear_schedule, :prefix,
+        :poll_question, :poll_options, :poll_closes_days,
+        :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote
+      )
     end
   end
 end

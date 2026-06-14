@@ -49,6 +49,8 @@ module Community
           forum_signature: user.forum_signature,
           topics_count: topics_scope.count,
           posts_count: posts_count,
+          followers_count: Community::UserFollow.where(followed: user).count,
+          followers_url: forum_user_followers_path(user.username),
           profile_url: forum_user_path(user.username),
           message_url: logged_in? && current_user.id != user.id ? new_forum_conversation_path(to: user.username) : nil,
           block_url: logged_in? && current_user.id != user.id ? forum_block_user_path(user.username) : nil,

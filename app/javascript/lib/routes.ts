@@ -30,6 +30,7 @@ export const routes = {
   forumMessagesGroupNew: '/forum/conversations/new?group=1',
   forumMessage: (id: number) => `/forum/conversations/${id}`,
   forumUser: (username: string) => `/forum/users/${username}`,
+  forumUserFollowers: (username: string) => `/forum/users/${username}/followers`,
   forumTag: (slug: string) => `/forum/tags/${slug}`,
   forumReport: '/forum/reports/new',
   store: '/store/products',

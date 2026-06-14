@@ -35,6 +35,14 @@ module Commerce
         metadata: { refund_id: refund.id }
       )
 
+      Commerce::NotifyOrderEvent.call(
+        user: @order.user,
+        notification_type: "commerce.refund_requested",
+        title: "退款申请已提交",
+        body: "订单 #{@order.order_number} 退款申请正在审核。",
+        path: "/store/orders/#{@order.public_id}"
+      )
+
       ServiceResult.success(refund)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

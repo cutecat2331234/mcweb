@@ -46,6 +46,13 @@ module Commerce
             restore_coupon_usage!
           end
           MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_processed", "deliver_now", args: [ refund.id ])
+          Commerce::NotifyOrderEvent.call(
+            user: @order.user,
+            notification_type: "commerce.refund_processed",
+            title: "退款已完成",
+            body: "订单 #{@order.order_number} 退款 #{format_refund_amount(@amount_cents)} 已处理。",
+            path: "/store/orders/#{@order.public_id}"
+          )
         else
           refund.update!(status: "rejected")
           Commerce::OrderEvent.create!(
@@ -105,6 +112,10 @@ module Commerce
       return unless coupon.used_count.positive?
 
       coupon.decrement!(:used_count)
+    end
+
+    def format_refund_amount(cents)
+      ActionController::Base.helpers.number_to_currency(cents / 100.0, unit: "¥")
     end
   end
 end

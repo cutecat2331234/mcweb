@@ -33,6 +33,8 @@ const props = defineProps<{
     forum_signature?: string | null
     topics_count: number
     posts_count: number
+    followers_count?: number
+    followers_url?: string | null
     profile_url: string
     message_url: string | null
     block_url: string | null
@@ -168,6 +170,9 @@ function uploadAvatar(event: Event) {
       <div class="mt-2 flex gap-6 text-sm">
         <span><strong>{{ profile.topics_count }}</strong> 主题</span>
         <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
+        <Link v-if="profile.followers_url" :href="profile.followers_url" class="hover:underline">
+          <strong>{{ profile.followers_count ?? 0 }}</strong> 粉丝
+        </Link>
         <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
       </div>
       <div v-if="profile.trust_progress" class="mt-3 max-w-md rounded-lg border p-3 text-sm">

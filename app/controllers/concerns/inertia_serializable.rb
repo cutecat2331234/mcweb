@@ -418,7 +418,9 @@ module InertiaSerializable
       status_label: order_status_label(order.status),
       total_label: format_money(order.total_cents, order.currency),
       created_at: l(order.created_at, format: :short),
-      url: store_order_path(order)
+      url: store_order_path(order),
+      can_reorder: order.items.any?,
+      reorder_url: reorder_store_order_path(order)
     }
   end
 
@@ -467,14 +469,17 @@ module InertiaSerializable
         snapshot = item.fulfillment_snapshot || {}
         config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
         download_url = signed_download_url_for(item)
+        refresh_download_url = download_url.present? ? refresh_download_store_order_path(order, order_item_id: item.id) : nil
         {
+          id: item.id,
           product_name: item.product_name,
           variant_name: item.variant_name,
           quantity: item.quantity,
           total_label: format_money(item.total_cents, order.currency),
           fulfillment_status: fulfillment&.status,
           fulfillment_status_label: fulfillment_status_label(fulfillment&.status),
-          download_url: download_url
+          download_url: download_url,
+          refresh_download_url: refresh_download_url
         }
       end,
       downloads: order.items.filter_map do |item|

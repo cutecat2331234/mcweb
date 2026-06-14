@@ -25,6 +25,8 @@ const props = defineProps<{
     total_label: string
     created_at: string
     url: string
+    can_reorder?: boolean
+    reorder_url?: string
   }>
   pagination: PaginationMeta
   query: string
@@ -34,6 +36,10 @@ const props = defineProps<{
 
 const q = ref(props.query)
 const statusFilter = ref(props.status)
+
+function reorder(url: string) {
+  router.post(url)
+}
 
 function search() {
   router.get(routes.storeOrders, {
@@ -68,6 +74,7 @@ function search() {
           <TableHead>状态</TableHead>
           <TableHead>金额</TableHead>
           <TableHead>时间</TableHead>
+          <TableHead>操作</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -76,6 +83,17 @@ function search() {
           <TableCell>{{ order.status_label || order.status }}</TableCell>
           <TableCell>{{ order.total_label }}</TableCell>
           <TableCell>{{ order.created_at }}</TableCell>
+          <TableCell>
+            <Button
+              v-if="order.can_reorder && order.reorder_url"
+              type="button"
+              variant="outline"
+              size="sm"
+              @click="reorder(order.reorder_url!)"
+            >
+              再次购买
+            </Button>
+          </TableCell>
         </TableRow>
       </TableBody>
     </Table>

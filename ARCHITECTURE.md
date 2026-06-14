@@ -473,3 +473,22 @@ app/
 | 导航补全 | 最近浏览 / 对比 / 商城通知 / 拉黑 |
 | 清空浏览记录 | `products#clear_recently_viewed` |
 | 对比页规格行 | `Compare/Show.vue` variants 展示 |
+
+### 第二十四轮（论坛 / 商城全链路通知与体验补齐）
+
+| 功能 | 实现 |
+|------|------|
+| 草稿保存含投票/定时/前缀 | `SaveTopicDraft` + `SyncTopicPoll` + `Topics/New.vue` |
+| 定时发布含投票 | `ScheduleTopic` 支持 poll 参数 |
+| 未读/关注列表分页排序 | `UnreadController` / `WatchedController` + Pagy + hot 排序 |
+| 关注页主题/用户 Tab | `FollowsController` tab + 双分页 |
+| 粉丝列表 | `FollowersController` + `/forum/users/:username/followers` |
+| Markdown 脚注 | `FormatPostBody` 占位符 + `[^n]` 定义语法 |
+| 服务端回复草稿 | `ReplyDraft` + `ReplyDraftsController` + 主题页同步 |
+| 订单取消站内通知 | `CancelOrder` → `NotifyOrderEvent` |
+| 发货完成站内通知 | `SyncOrderFulfillmentStatus` → `NotifyOrderEvent` |
+| 退款申请/完成/拒绝通知 | `RequestRefund` / `ProcessRefund` / `RejectRefund` |
+| 弃购购物车 in_app | `AbandonedCartReminderJob` 双渠道 |
+| 订单列表再次购买 | `serialize_order_list_item` + `Orders/Index.vue` |
+| 下载链接刷新 | `orders#refresh_download` + 订单详情按钮 |
+| 商城退款申请偏好 | `commerce.refund_requested` 通知类型 |

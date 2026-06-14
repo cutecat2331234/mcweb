@@ -2,26 +2,33 @@
 
 module Community
   class WatchedController < ApplicationController
+    include Community::TopicListSortable
+
     before_action :require_login
 
     def index
+      sort = params[:sort].presence || "latest"
       topic_ids = Community::Subscription
         .where(user: current_user, subscribable_type: "Community::Topic")
         .pluck(:subscribable_id)
 
-      topics = Community::Topic
+      topics_scope = Community::Topic
         .where(id: topic_ids, status: :published)
         .includes(:user, :section)
-        .order(last_posted_at: :desc)
-        .limit(50)
-      topics = filter_blocked_topics(topics)
+      topics_scope = filter_blocked_topics(topics_scope)
+      topics_scope = apply_forum_topic_sort(topics_scope, sort)
+
+      @pagy, topics = pagy(topics_scope, limit: 20)
 
       read_states = Community::ReadState
         .where(user: current_user, forum_topic_id: topics.map(&:id))
         .index_by(&:forum_topic_id)
 
       render inertia: "Community/Watched/Index", props: {
-        topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) }
+        topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
+        pagination: pagy_props(@pagy),
+        sort: sort,
+        sortOptions: forum_sort_options
       }
     end
 
@@ -43,6 +50,17 @@ module Community
           }
         end
       }
+    end
+
+    private
+
+    def forum_sort_options
+      [
+        { value: "latest", label: "最新回复" },
+        { value: "hot", label: "热门" },
+        { value: "replies", label: "回复最多" },
+        { value: "newest", label: "最新发布" }
+      ]
     end
   end
 end

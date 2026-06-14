@@ -3,6 +3,7 @@ import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Table from '@/components/ui/Table.vue'
@@ -26,10 +27,17 @@ const props = defineProps<{
     unread_count: number
   }>
   markAllReadUrl: string
+  pagination: PaginationMeta
+  sort: string
+  sortOptions: Array<{ value: string; label: string }>
 }>()
 
 function markAllRead() {
   router.patch(props.markAllReadUrl)
+}
+
+function changeSort(value: string) {
+  router.get(routes.forumUnread, { sort: value }, { preserveState: true })
 }
 </script>
 
@@ -40,11 +48,20 @@ function markAllRead() {
     { label: '未读主题', current: true },
   ]" />
 
-  <div class="mb-4 flex items-center justify-between gap-3">
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <PageHeader title="未读主题" subtitle="你有未读回复的主题" />
-    <Button v-if="topics.length" type="button" variant="outline" size="sm" @click="markAllRead">
-      全部标为已读
-    </Button>
+    <div class="flex flex-wrap items-center gap-2">
+      <select
+        :value="sort"
+        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+        @change="changeSort(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+      <Button v-if="topics.length" type="button" variant="outline" size="sm" @click="markAllRead">
+        全部标为已读
+      </Button>
+    </div>
   </div>
 
   <div v-if="topics.length" class="rounded-lg border">
@@ -72,4 +89,5 @@ function markAllRead() {
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
     没有未读主题，全部已读。
   </p>
+  <Pagination v-if="pagination.pages > 1" :pagination="pagination" :base-path="routes.forumUnread" />
 </template>

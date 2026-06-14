@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3'
+import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -54,6 +54,7 @@ const props = defineProps<{
       created_at: string
     }>
     items: Array<{
+      id?: number
       product_name: string
       variant_name: string | null
       quantity: number
@@ -61,6 +62,7 @@ const props = defineProps<{
       fulfillment_status: string | null
       fulfillment_status_label?: string | null
       download_url?: string | null
+      refresh_download_url?: string | null
     }>
     downloads?: Array<{ product_name: string; url: string }>
     fulfillments: Array<{
@@ -79,6 +81,10 @@ const payForm = useForm({
 const cancelForm = useForm({})
 const refundForm = useForm({ reason: '' })
 const reorderForm = useForm({})
+
+function refreshDownload(url: string) {
+  router.post(url)
+}
 </script>
 
 <template>
@@ -135,6 +141,16 @@ const reorderForm = useForm({})
               {{ item.fulfillment_status_label || item.fulfillment_status }}
             </Badge>
             <a v-if="item.download_url" :href="item.download_url" target="_blank" rel="noopener" class="ml-2 text-xs text-primary hover:underline">下载</a>
+            <Button
+              v-if="item.refresh_download_url"
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="ml-1 h-auto px-1 text-xs"
+              @click="refreshDownload(item.refresh_download_url!)"
+            >
+              刷新链接
+            </Button>
             <span v-else-if="!item.fulfillment_status" class="text-muted-foreground">—</span>
           </TableCell>
         </TableRow>

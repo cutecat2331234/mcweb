@@ -25,6 +25,7 @@ module Community
       "div" => %w[class],
       "input" => %w[type checked disabled class],
       "hr" => %w[class],
+      "sup" => %w[class id],
       "button" => %w[type class data-copy-target],
       "iframe" => %w[src width height frameborder allow allowfullscreen class loading title],
       "a" => %w[href rel class]
@@ -40,8 +41,22 @@ module Community
       filtered = Community::FilterCensoredWords.call(text: @body)
       body = filtered.success? ? filtered.value : @body
 
+      body, footnote_defs = extract_footnote_definitions(body)
+
       placeholders = {}
       text = body.dup
+      footnote_used = []
+
+      text = text.gsub(/\[\^([^\]]+)\]/) do
+        label = Regexp.last_match(1)
+        next Regexp.last_match(0) unless footnote_defs[label]
+
+        footnote_used << label
+        token = placeholder_token(placeholders, "FNREF")
+        safe = ERB::Util.html_escape(label)
+        placeholders[token] = %(<sup class="footnote-ref" id="fnref-#{safe}"><a href="#fn-#{safe}">#{safe}</a></sup>)
+        token
+      end
 
       text = text.gsub(/^([-*]\s+\[(?: |x|X)\]\s+.+)$/) do |line|
         match = line.match(/\A[-*]\s+\[( |x|X)\]\s+(.+)\z/)
@@ -128,11 +143,36 @@ module Community
       sanitized = sanitized.gsub(/(?:<li class="task-item">.*?<\/li>\s*)+/) do |block|
         "<ul class=\"task-list\">#{block}</ul>"
       end
+      sanitized = apply_footnotes(sanitized, footnote_defs, footnote_used)
 
       ServiceResult.success(sanitized)
     end
 
     private
+
+    def extract_footnote_definitions(text)
+      defs = {}
+      kept = []
+      text.each_line do |line|
+        if (match = line.match(/\A\[\^([^\]]+)\]:\s*(.+)\s*\z/))
+          defs[match[1]] = match[2].strip
+        else
+          kept << line
+        end
+      end
+      [ kept.join, defs ]
+    end
+
+    def apply_footnotes(html, footnote_defs, used_labels)
+      labels = used_labels.uniq
+      return html if labels.empty?
+
+      items = labels.map do |label|
+        safe_label = ERB::Util.html_escape(label)
+        %(<li id="fn-#{safe_label}">#{inline_format(footnote_defs[label])} <a href="#fnref-#{safe_label}" class="footnote-back">↩</a></li>)
+      end.join
+      %(#{html}<div class="post-footnotes"><ol>#{items}</ol></div>)
+    end
 
     def placeholder_token(placeholders, prefix)
       "MCWEB#{prefix}#{placeholders.size}END"

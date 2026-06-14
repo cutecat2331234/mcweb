@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
@@ -14,7 +15,7 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const props = defineProps<{
   topics: Array<{
     id: string
     title: string
@@ -25,7 +26,14 @@ defineProps<{
     has_unread: boolean
     unread_count: number
   }>
+  pagination: PaginationMeta
+  sort: string
+  sortOptions: Array<{ value: string; label: string }>
 }>()
+
+function changeSort(value: string) {
+  router.get(routes.forumWatching, { sort: value }, { preserveState: true })
+}
 </script>
 
 <template>
@@ -35,7 +43,16 @@ defineProps<{
     { label: '我的关注', current: true },
   ]" />
 
-  <PageHeader title="我的关注" subtitle="你正在关注的主题" />
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <PageHeader title="我的关注" subtitle="你正在关注的主题" />
+    <select
+      :value="sort"
+      class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+      @change="changeSort(($event.target as HTMLSelectElement).value)"
+    >
+      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+    </select>
+  </div>
 
   <div v-if="topics.length" class="rounded-lg border">
     <Table>
@@ -63,4 +80,5 @@ defineProps<{
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
     你还没有关注任何主题。
   </p>
+  <Pagination v-if="pagination.pages > 1" :pagination="pagination" :base-path="routes.forumWatching" />
 </template>

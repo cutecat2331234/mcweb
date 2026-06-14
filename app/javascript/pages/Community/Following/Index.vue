@@ -3,12 +3,14 @@ import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const props = defineProps<{
+  tab: 'topics' | 'users'
   users: Array<{
     username: string
     display_name: string | null
@@ -17,6 +19,7 @@ defineProps<{
     profile_url: string
     unfollow_url: string
   }>
+  usersPagination: PaginationMeta
   topics: Array<{
     id: string
     title: string
@@ -25,7 +28,18 @@ defineProps<{
     last_posted_at: string | null
     replies_count: number
   }>
+  topicsPagination: PaginationMeta
+  sort: string
+  sortOptions: Array<{ value: string; label: string }>
 }>()
+
+function switchTab(value: 'topics' | 'users') {
+  router.get(routes.forumFollowing, { tab: value, sort: props.sort || undefined }, { preserveState: true })
+}
+
+function changeSort(value: string) {
+  router.get(routes.forumFollowing, { tab: props.tab, sort: value }, { preserveState: true })
+}
 
 function unfollow(url: string) {
   router.post(url, {}, { preserveScroll: true })
@@ -41,9 +55,23 @@ function unfollow(url: string) {
 
   <PageHeader title="我的关注" subtitle="关注用户与其最新主题" />
 
-  <section v-if="topics.length" class="mb-8">
-    <h2 class="mb-3 text-sm font-semibold">关注用户的主题</h2>
-    <div class="space-y-2">
+  <div class="mb-4 flex flex-wrap items-center gap-3">
+    <div class="flex gap-2">
+      <Button :variant="tab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">主题动态</Button>
+      <Button :variant="tab === 'users' ? 'default' : 'outline'" size="sm" @click="switchTab('users')">关注用户</Button>
+    </div>
+    <select
+      v-if="tab === 'topics'"
+      :value="sort"
+      class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+      @change="changeSort(($event.target as HTMLSelectElement).value)"
+    >
+      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+    </select>
+  </div>
+
+  <section v-if="tab === 'topics'">
+    <div v-if="topics.length" class="space-y-2">
       <Link
         v-for="topic in topics"
         :key="topic.id"
@@ -57,10 +85,16 @@ function unfollow(url: string) {
         </p>
       </Link>
     </div>
+    <p v-else class="text-sm text-muted-foreground">关注用户暂无新主题。</p>
+    <Pagination
+      v-if="topicsPagination.pages > 1"
+      :pagination="topicsPagination"
+      :base-path="routes.forumFollowing"
+      page-param="topics_page"
+    />
   </section>
 
-  <section>
-    <h2 class="mb-3 text-sm font-semibold">关注的用户</h2>
+  <section v-else>
     <div v-if="users.length" class="space-y-3">
       <div v-for="user in users" :key="user.username" class="flex items-center gap-3 rounded-lg border p-4">
         <img :src="user.avatar_url" :alt="user.username" class="h-10 w-10 rounded-full" />
@@ -74,5 +108,11 @@ function unfollow(url: string) {
       </div>
     </div>
     <p v-else class="text-sm text-muted-foreground">尚未关注任何用户。</p>
+    <Pagination
+      v-if="usersPagination.pages > 1"
+      :pagination="usersPagination"
+      :base-path="routes.forumFollowing"
+      page-param="users_page"
+    />
   </section>
 </template>

@@ -125,6 +125,8 @@ const props = defineProps<{
     note: string | null
     remind_at_input: string | null
   } | null
+  replyDraft?: string | null
+  replyDraftUrl?: string | null
   meta?: { title: string; description: string | null }
 }>()
 
@@ -163,9 +165,10 @@ const bookmarkRemindAt = ref(props.topicBookmark?.remind_at_input || '')
 const editingPostBookmarkId = ref<number | null>(null)
 const postBookmarkNote = ref('')
 const postBookmarkRemindAt = ref('')
+let draftSaveTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(() => {
-  const saved = localStorage.getItem(draftKey)
+  const saved = props.replyDraft || localStorage.getItem(draftKey)
   if (saved && !replyForm.post.body) {
     replyForm.post.body = saved
   }
@@ -187,8 +190,31 @@ onMounted(() => {
 watch(() => replyForm.post.body, (body) => {
   if (body.trim()) {
     localStorage.setItem(draftKey, body)
+    if (props.replyDraftUrl) {
+      if (draftSaveTimer) clearTimeout(draftSaveTimer)
+      draftSaveTimer = setTimeout(() => {
+        fetch(props.replyDraftUrl!, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+          },
+          body: JSON.stringify({ body }),
+          credentials: 'same-origin',
+        }).catch(() => {})
+      }, 800)
+    }
   } else {
     localStorage.removeItem(draftKey)
+    if (props.replyDraftUrl) {
+      fetch(props.replyDraftUrl, {
+        method: 'DELETE',
+        headers: {
+          'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+        },
+        credentials: 'same-origin',
+      }).catch(() => {})
+    }
   }
 })
 
@@ -202,6 +228,15 @@ function submitReply() {
       quotePreview.value = null
       replyPreview.value = null
       localStorage.removeItem(draftKey)
+      if (props.replyDraftUrl) {
+        fetch(props.replyDraftUrl, {
+          method: 'DELETE',
+          headers: {
+            'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+          },
+          credentials: 'same-origin',
+        }).catch(() => {})
+      }
     },
   })
 }

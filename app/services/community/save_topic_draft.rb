@@ -2,7 +2,7 @@
 
 module Community
   class SaveTopicDraft < ApplicationService
-    def initialize(user:, section:, title:, body: nil, tag_names: nil, topic: nil, scheduled_at: nil, clear_schedule: false)
+    def initialize(user:, section:, title:, body: nil, tag_names: nil, topic: nil, scheduled_at: nil, clear_schedule: false, prefix: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
@@ -11,6 +11,13 @@ module Community
       @topic = topic
       @scheduled_at = scheduled_at
       @clear_schedule = ActiveModel::Type::Boolean.new.cast(clear_schedule)
+      @prefix = prefix.to_s.strip.presence
+      @poll_question = poll_question
+      @poll_options = poll_options
+      @poll_closes_days = poll_closes_days
+      @poll_multiple_choice = poll_multiple_choice
+      @poll_max_choices = poll_max_choices
+      @poll_hide_results_until_vote = poll_hide_results_until_vote
     end
 
     def call
@@ -18,10 +25,12 @@ module Community
 
       draft = @topic || Community::Topic.new(user: @user, section: @section, status: "draft")
       tag_result = nil
+      poll_result = nil
 
       Community::Topic.transaction do
         draft.assign_attributes(
           title: @title,
+          prefix: valid_prefix,
           public_id: draft.public_id || "topic_#{SecureRandom.alphanumeric(16)}",
           last_posted_at: Time.current,
           last_post_user: @user,
@@ -40,9 +49,21 @@ module Community
           tag_result = Community::SyncTopicTags.call(topic: draft, tag_names: @tag_names, user: @user)
           raise ActiveRecord::Rollback unless tag_result.success?
         end
+
+        poll_result = Community::SyncTopicPoll.call(
+          topic: draft,
+          poll_question: @poll_question,
+          poll_options: @poll_options,
+          poll_closes_days: @poll_closes_days,
+          poll_multiple_choice: @poll_multiple_choice,
+          poll_max_choices: @poll_max_choices,
+          poll_hide_results_until_vote: @poll_hide_results_until_vote
+        )
+        raise ActiveRecord::Rollback unless poll_result.success?
       end
 
       return tag_result if tag_result&.failure?
+      return poll_result if poll_result&.failure?
 
       ServiceResult.success(draft)
     rescue ActiveRecord::RecordInvalid => e
@@ -50,6 +71,13 @@ module Community
     end
 
     private
+
+    def valid_prefix
+      return nil if @prefix.blank?
+
+      allowed = Array(@section.prefixes)
+      allowed.include?(@prefix) ? @prefix : nil
+    end
 
     def apply_schedule!(draft)
       if @clear_schedule

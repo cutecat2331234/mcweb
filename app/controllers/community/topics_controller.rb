@@ -77,6 +77,8 @@ module Community
           note: topic_bookmark.note,
           remind_at_input: topic_bookmark.remind_at&.strftime("%Y-%m-%dT%H:%M")
         } : nil,
+        replyDraft: logged_in? ? Community::ReplyDraft.find_by(user: current_user, topic: @topic)&.body : nil,
+        replyDraftUrl: logged_in? ? forum_topic_reply_draft_path(@topic) : nil,
         meta: {
           title: @topic.title,
           description: @topic.posts.first&.body&.truncate(160)
@@ -106,6 +108,12 @@ module Community
             scheduled_at: scheduled_at,
             tag_names: topic_params[:tags],
             prefix: topic_params[:prefix],
+            poll_question: topic_params[:poll_question],
+            poll_options: parse_poll_options(topic_params[:poll_options]),
+            poll_closes_days: topic_params[:poll_closes_days],
+            poll_multiple_choice: topic_params[:poll_multiple_choice],
+            poll_max_choices: topic_params[:poll_max_choices],
+            poll_hide_results_until_vote: topic_params[:poll_hide_results_until_vote],
             ip_address: request.remote_ip
           )
           if result.success?

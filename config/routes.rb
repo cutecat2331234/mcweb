@@ -177,6 +177,7 @@ Rails.application.routes.draw do
     get "tags", to: "tags#index", as: :tags
     get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
+    resources :saved_searches, only: %i[index create destroy]
     get "tags/:slug", to: "tags#show", as: :tag
     post "tags/:slug/subscription", to: "tags#toggle_subscription", as: :tag_subscription
     resources :conversations, only: %i[index show new create] do
@@ -188,13 +189,18 @@ Rails.application.routes.draw do
       resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username
     end
     get "members", to: "members#index", as: :members
-    resources :users, only: %i[show update], param: :id
+    resources :users, only: %i[show update], param: :id do
+      member do
+        get :card
+      end
+    end
   end
 
   get "payments/fake/:id", to: "payments/fake#show", as: :fake_payment
   post "payments/fake/:id", to: "payments/fake#create"
 
     scope module: :commerce, path: "store", as: :store do
+    get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
     get "categories/:slug", to: "categories#show", as: :category
     get "gift_cards", to: "gift_cards#index", as: :gift_cards
     resources :products, only: %i[index show] do

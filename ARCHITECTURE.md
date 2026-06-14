@@ -811,3 +811,17 @@ app/
 | 商品运费开关 | `requires_shipping` + `CalculateShipping` 按购物车计算 |
 | 优惠券免运费 | `store_coupons.free_shipping` + `ApplyCoupon` / `PreviewCoupon` |
 | 购物车 URL 自动应用优惠码 | `CartsController#show` `?coupon=` 参数 |
+
+### 第四十六轮（用户卡片、保存搜索、商品 SEO 与快捷加购）
+
+| 功能 | 实现 |
+|------|------|
+| 帖子作者徽章展示（Discourse） | `serialize_user_badges` + `Topics/Show.vue` |
+| 用户悬停卡片（Discourse User Card） | `UsersController#card` + `UserHoverCard.vue` |
+| 私信内容搜索（XenForo） | `ConversationsController` `?q=` 筛选 |
+| 保存论坛搜索 | `forum_saved_searches` + `SavedSearchesController` |
+| 商品 SEO 元数据 | `store_products.seo` + 管理端 + `Products/Show.vue` Head |
+| 商城 Sitemap | `Commerce::SitemapsController` `/store/sitemap.xml` |
+| 结账页 URL 自动应用优惠码 | `CheckoutController` `?coupon=` |
+| 商品列表快捷加购 | `quick_addable` + `Products/Index.vue` |
+| 购物车总件数上限 | SiteSetting `store.cart_max_items` + `ValidateCartItem` |

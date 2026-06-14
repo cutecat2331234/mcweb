@@ -16,6 +16,7 @@ class User < ApplicationRecord
   has_many :forum_warnings, class_name: "Community::UserWarning", dependent: :destroy
   has_many :forum_staff_notes, class_name: "Community::StaffNote", dependent: :destroy
   has_many :user_silences, class_name: "Community::UserSilence", dependent: :destroy
+  has_many :forum_saved_searches, class_name: "Community::SavedSearch", dependent: :destroy
 
   enum :status, { active: "active", banned: "banned", deleted: "deleted" }, validate: true
 

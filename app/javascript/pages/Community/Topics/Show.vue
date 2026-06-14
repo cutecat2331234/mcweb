@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import ReactionUsersPopover from '@/components/portal/ReactionUsersPopover.vue'
+import UserHoverCard from '@/components/portal/UserHoverCard.vue'
 import { routes } from '@/lib/routes'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
 
@@ -31,6 +32,8 @@ export interface PostItem {
   author_url: string
   avatar_url: string
   author_username: string
+  author_card_url?: string
+  author_badges?: Array<{ name: string; icon: string | null; color: string | null }>
   verified_purchaser?: boolean
   body: string
   body_html: string
@@ -994,7 +997,17 @@ function pollPercent(votes: number) {
               <span class="font-medium text-foreground">#{{ post.floor_number }}</span>
               <span v-if="post.is_solved" class="ml-2 text-xs text-green-600">[已解决]</span>
               <span class="mx-2">·</span>
-              <Link :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
+              <UserHoverCard v-if="post.author_card_url" :username="post.author_username" :card-url="post.author_card_url">
+                <Link :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
+              </UserHoverCard>
+              <Link v-else :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
+              <span
+                v-for="badge in post.author_badges || []"
+                :key="badge.name"
+                class="ml-1 rounded border px-1 text-[10px]"
+                :style="badge.color ? { borderColor: badge.color, color: badge.color } : undefined"
+                :title="badge.name"
+              >{{ badge.icon || badge.name }}</span>
               <span v-if="post.verified_purchaser" class="ml-1 rounded border border-green-300 bg-green-50 px-1 text-[10px] text-green-700">认证买家</span>
               <span class="mx-2">·</span>
               <span>{{ post.created_at }}</span>

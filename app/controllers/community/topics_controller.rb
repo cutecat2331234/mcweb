@@ -18,7 +18,7 @@ module Community
                     else
                       @topic.posts.chronological
                     end
-      posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits)
+      posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits, user: { user_badges: :badge })
       posts_scope = filter_blocked_posts(posts_scope)
       if params[:q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"

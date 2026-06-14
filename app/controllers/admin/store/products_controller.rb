@@ -138,7 +138,7 @@ module Admin
         permitted = params.require(:product).permit(
           :name, :slug, :description, :summary, :product_type, :status,
           :price_cents, :compare_at_price_cents, :currency, :stock, :store_category_id, :purchase_limit, :minimum_quantity, :maximum_quantity, :requires_shipping, :allow_backorder, :image_url, :gallery_urls,
-          :fulfillment_config, :featured, :version, :changelog,
+          :fulfillment_config, :featured, :version, :changelog, :seo_title, :seo_description,
           variants_attributes: [ :id, :name, :sku, :price_cents, :compare_at_price_cents, :stock, :_destroy ]
         )
         if permitted[:gallery_urls].is_a?(String)
@@ -151,6 +151,12 @@ module Admin
           rescue JSON::ParserError
             raise ActionController::BadRequest, "发货配置 JSON 格式无效"
           end
+        end
+        if permitted.key?(:seo_title) || permitted.key?(:seo_description)
+          permitted[:seo] = {
+            "title" => permitted.delete(:seo_title).to_s.presence,
+            "description" => permitted.delete(:seo_description).to_s.presence
+          }.compact
         end
         permitted
       end
@@ -183,6 +189,8 @@ module Admin
             featured: product.featured || false,
             version: product.version || "",
             changelog: product.changelog || "",
+            seo_title: product.seo&.dig("title").to_s,
+            seo_description: product.seo&.dig("description").to_s,
             variants: product.variants.map do |v|
               { id: v.id, name: v.name, sku: v.sku, price_cents: v.price_cents, compare_at_price_cents: v.compare_at_price_cents, stock: v.stock }
             end

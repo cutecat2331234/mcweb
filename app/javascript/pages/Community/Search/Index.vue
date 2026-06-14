@@ -7,6 +7,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Input from '@/components/ui/Input.vue'
+import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -44,6 +45,9 @@ const props = defineProps<{
   posts: SearchPost[]
   topicsPagination: PaginationMeta
   postsPagination: PaginationMeta
+  savedSearches?: Array<{ id: number; name: string; query: string; url: string; delete_url: string }>
+  loggedIn?: boolean
+  saveSearchUrl?: string | null
 }>()
 
 const q = ref(props.query)
@@ -55,6 +59,9 @@ const createdAfter = ref(props.createdAfter || '')
 const createdBefore = ref(props.createdBefore || '')
 const topicSort = ref(props.topicSort || 'recent')
 const postSort = ref(props.postSort || 'recent')
+const saveName = ref('')
+const saving = ref(false)
+const saveError = ref('')
 
 watch(() => props.query, (value) => { q.value = value })
 watch(() => props.author, (value) => { author.value = value })
@@ -73,6 +80,59 @@ function search() {
     topic_sort: topicSort.value !== 'recent' ? topicSort.value : undefined,
     post_sort: postSort.value !== 'recent' ? postSort.value : undefined,
   }, { preserveState: true })
+}
+
+async function saveSearch() {
+  if (!props.saveSearchUrl || !saveName.value.trim()) return
+  saving.value = true
+  saveError.value = ''
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const response = await fetch(props.saveSearchUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': token,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        saved_search: {
+          name: saveName.value.trim(),
+          query: q.value,
+          filters: {
+            section: sectionSlug.value,
+            author: author.value,
+            tag: tagSlug.value,
+            solved: solved.value,
+            created_after: createdAfter.value,
+            created_before: createdBefore.value,
+            topic_sort: topicSort.value,
+            post_sort: postSort.value,
+          },
+        },
+      }),
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      saveError.value = data.error || '保存失败'
+      return
+    }
+    saveName.value = ''
+    router.reload({ only: ['savedSearches'] })
+  } finally {
+    saving.value = false
+  }
+}
+
+async function deleteSavedSearch(deleteUrl: string) {
+  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+  await fetch(deleteUrl, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': token, Accept: 'application/json' },
+    credentials: 'same-origin',
+  })
+  router.reload({ only: ['savedSearches'] })
 }
 </script>
 
@@ -115,6 +175,25 @@ function search() {
     </select>
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">搜索</button>
   </form>
+
+  <div v-if="loggedIn && saveSearchUrl" class="mb-6 flex flex-wrap items-end gap-2 rounded-lg border p-4">
+    <div class="space-y-1">
+      <label class="text-sm font-medium">保存当前搜索</label>
+      <Input v-model="saveName" placeholder="搜索名称" class="w-48" />
+    </div>
+    <Button type="button" variant="outline" :disabled="saving || !saveName.trim()" @click="saveSearch">
+      {{ saving ? '保存中…' : '保存搜索' }}
+    </Button>
+    <p v-if="saveError" class="text-sm text-destructive">{{ saveError }}</p>
+  </div>
+
+  <div v-if="savedSearches?.length" class="mb-6 flex flex-wrap gap-2">
+    <span class="text-sm text-muted-foreground">已保存：</span>
+    <span v-for="search in savedSearches" :key="search.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
+      <Link :href="search.url" class="hover:underline">{{ search.name }}</Link>
+      <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteSavedSearch(search.delete_url)">×</button>
+    </span>
+  </div>
 
   <template v-if="query">
     <h2 class="mb-3 text-sm font-semibold">主题</h2>

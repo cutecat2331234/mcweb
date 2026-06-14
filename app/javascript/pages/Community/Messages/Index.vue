@@ -1,15 +1,17 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
+import { ref } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const props = defineProps<{
   conversations: Array<{
     id: number
     url: string
@@ -24,7 +26,17 @@ defineProps<{
   }>
   showArchived?: boolean
   archivedToggleUrl?: string
+  query?: string
 }>()
+
+const searchQuery = ref(props.query || '')
+
+function searchMessages() {
+  router.get(routes.forumMessages, {
+    q: searchQuery.value || undefined,
+    archived: props.showArchived ? '1' : undefined,
+  }, { preserveState: true })
+}
 </script>
 
 <template>
@@ -48,6 +60,11 @@ defineProps<{
       </Button>
     </div>
   </div>
+
+  <form class="mb-4 flex max-w-md gap-2" @submit.prevent="searchMessages">
+    <Input v-model="searchQuery" placeholder="搜索消息内容…" class="flex-1" />
+    <Button type="submit" variant="outline">搜索</Button>
+  </form>
 
   <div v-if="conversations.length" class="divide-y rounded-lg border">
     <Link

@@ -216,6 +216,8 @@ module InertiaSerializable
       author: forum_author_name(post.user),
       author_username: post.user.username,
       author_url: forum_user_path(post.user.username),
+      author_card_url: card_forum_user_path(post.user.username),
+      author_badges: serialize_user_badges(post.user),
       verified_purchaser: verified_purchaser?(post.user),
       avatar_url: post.user.avatar_url,
       body: post.body,
@@ -331,9 +333,22 @@ module InertiaSerializable
     }
   end
 
+  def serialize_user_badges(user, limit: 3)
+    return [] unless user
+
+    user.user_badges.includes(:badge).order(granted_at: :desc).limit(limit).map do |ub|
+      {
+        name: ub.badge.name,
+        icon: ub.badge.icon,
+        color: ub.badge.color
+      }
+    end
+  end
+
   def serialize_product_list_item(product)
     avg = product.reviews.published.average(:rating)&.round(1)
     {
+      db_id: product.id,
       id: product.public_id,
       name: product.name,
       slug: product.slug,
@@ -349,7 +364,8 @@ module InertiaSerializable
       low_stock: product.low_stock?,
       average_rating: avg,
       image_url: product_image_url(product),
-      url: store_product_path(product)
+      url: store_product_path(product),
+      quick_addable: product.variants.none? && product.purchasable?
     }
   end
 
@@ -391,7 +407,17 @@ module InertiaSerializable
       average_rating: average_rating,
       variants: product.variants.map { |variant| serialize_variant(variant, product) },
       reviews: reviews.map { |review| serialize_review(review, current_user: current_user) }
-    }.merge(product_discussion_props(product))
+    }.merge(product_discussion_props(product)).merge(product_seo_props(product))
+  end
+
+  def product_seo_props(product)
+    seo = product.seo || {}
+    title = seo["title"].presence || product.name
+    description = seo["description"].presence || product.summary.presence || product.description&.truncate(160)
+    {
+      seo_title: title,
+      seo_description: description
+    }
   end
 
   def product_discussion_props(product)

@@ -278,6 +278,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["reviewer_id"], name: "index_forum_reports_on_reviewer_id"
   end
 
+  create_table "forum_saved_searches", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "filters", default: {}, null: false
+    t.string "name", null: false
+    t.text "query", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_forum_saved_searches_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_forum_saved_searches_on_user_id"
+  end
+
   create_table "forum_section_mutes", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "forum_section_id", null: false
@@ -1003,6 +1014,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "public_id", null: false
     t.integer "purchase_limit"
     t.boolean "requires_shipping", default: false, null: false
+    t.jsonb "seo", default: {}, null: false
     t.string "slug", null: false
     t.string "status", default: "draft", null: false
     t.integer "stock"
@@ -1257,6 +1269,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_reply_drafts", "users"
   add_foreign_key "forum_reports", "users", column: "reporter_id"
   add_foreign_key "forum_reports", "users", column: "reviewer_id"
+  add_foreign_key "forum_saved_searches", "users"
   add_foreign_key "forum_section_mutes", "forum_sections"
   add_foreign_key "forum_section_mutes", "users"
   add_foreign_key "forum_sections", "forum_categories"

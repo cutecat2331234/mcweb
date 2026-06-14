@@ -43,6 +43,20 @@ module Commerce
         end
       end
 
+      cart_limit = SiteSetting.get("store.cart_max_items", "0").to_i
+      if cart_limit.positive? && @cart
+        other_qty = @cart.items.where.not(store_product_id: @product.id).sum(:quantity)
+        line_qty = if @replace_quantity
+                     @quantity
+                   else
+                     existing = @cart.items.find_by(store_product_id: @product.id, store_product_variant_id: @variant&.id)
+                     (existing&.quantity || 0) + @quantity
+                   end
+        if other_qty + line_qty > cart_limit
+          return ServiceResult.failure(error: "购物车最多 #{cart_limit} 件商品。")
+        end
+      end
+
       ServiceResult.success
     end
 

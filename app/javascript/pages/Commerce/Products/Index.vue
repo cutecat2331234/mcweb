@@ -7,6 +7,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Input from '@/components/ui/Input.vue'
+import Button from '@/components/ui/Button.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -18,6 +19,7 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 export interface ProductItem {
+  db_id?: number
   id: string
   name: string
   slug: string
@@ -33,6 +35,7 @@ export interface ProductItem {
   image_url: string | null
   summary?: string | null
   url: string
+  quick_addable?: boolean
 }
 
 export interface CategoryItem {
@@ -74,6 +77,11 @@ function search() {
     price_min: priceMin.value || undefined,
     price_max: priceMax.value || undefined,
   }, { preserveState: true })
+}
+
+function quickAdd(product: ProductItem) {
+  if (!product.db_id) return
+  router.post(routes.storeCart, { product_id: product.db_id, quantity: 1 }, { preserveScroll: true })
 }
 </script>
 
@@ -179,6 +187,7 @@ function search() {
           <TableHead>分类</TableHead>
           <TableHead>价格</TableHead>
           <TableHead>状态</TableHead>
+          <TableHead class="w-24">操作</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -212,6 +221,17 @@ function search() {
             <Badge v-if="!product.in_stock" variant="danger">缺货</Badge>
             <Badge v-else-if="product.low_stock" variant="outline" class="border-amber-300 text-amber-700">库存紧张</Badge>
             <Badge v-else variant="success">有货</Badge>
+          </TableCell>
+          <TableCell>
+            <Button
+              v-if="product.quick_addable"
+              type="button"
+              size="sm"
+              variant="outline"
+              @click="quickAdd(product)"
+            >
+              加购
+            </Button>
           </TableCell>
         </TableRow>
       </TableBody>

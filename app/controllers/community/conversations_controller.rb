@@ -10,12 +10,25 @@ module Community
         .for_user(current_user, include_archived: include_archived)
         .includes(participants: :user, messages: :user, creator: [])
         .ordered
-        .limit(50)
+
+      if params[:q].present?
+        q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].to_s.strip)}%"
+        conversation_ids = Community::Message
+          .joins(:conversation)
+          .merge(Community::Conversation.for_user(current_user, include_archived: include_archived))
+          .where("forum_messages.body ILIKE ?", q)
+          .distinct
+          .pluck(:forum_conversation_id)
+        conversations = conversations.where(id: conversation_ids)
+      end
+
+      conversations = conversations.limit(50)
 
       render inertia: "Community/Messages/Index", props: {
         conversations: conversations.map { |conv| serialize_conversation(conv) },
         showArchived: include_archived,
-        archivedToggleUrl: include_archived ? forum_conversations_path : forum_conversations_path(archived: 1)
+        archivedToggleUrl: include_archived ? forum_conversations_path : forum_conversations_path(archived: 1),
+        query: params[:q].to_s
       }
     end
 

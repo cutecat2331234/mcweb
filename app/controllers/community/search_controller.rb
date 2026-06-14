@@ -141,7 +141,10 @@ module Community
         topics: serialize_topics(topics),
         posts: posts.map { |post| serialize_search_post(post) },
         topicsPagination: pagy_props(@pagy_topics),
-        postsPagination: pagy_props(@pagy_posts)
+        postsPagination: pagy_props(@pagy_posts),
+        savedSearches: serialize_saved_searches,
+        loggedIn: logged_in?,
+        saveSearchUrl: logged_in? ? forum_saved_searches_path : nil
       }
     end
 
@@ -197,6 +200,40 @@ module Community
 
     def forum_staff?
       current_user&.permission?("forum.topics.lock")
+    end
+
+    def serialize_saved_searches
+      return [] unless logged_in?
+
+      current_user.forum_saved_searches.recent.limit(10).map do |search|
+        {
+          id: search.id,
+          name: search.name,
+          query: search.query,
+          url: forum_search_path(saved_search_url_params(search)),
+          delete_url: forum_saved_search_path(search)
+        }
+      end
+    end
+
+    def saved_search_url_params(search)
+      filters = search.filters.symbolize_keys
+      {
+        q: search.query.presence,
+        section: filters["section"].presence || filters[:section].presence,
+        author: filters["author"].presence || filters[:author].presence,
+        tag: filters["tag"].presence || filters[:tag].presence,
+        solved: filters["solved"].presence || filters[:solved].presence,
+        locked: filters["locked"].presence || filters[:locked].presence,
+        pinned: filters["pinned"].presence || filters[:pinned].presence,
+        wiki: filters["wiki"].presence || filters[:wiki].presence,
+        featured: filters["featured"].presence || filters[:featured].presence,
+        announcement: filters["announcement"].presence || filters[:announcement].presence,
+        created_after: filters["created_after"].presence || filters[:created_after].presence,
+        created_before: filters["created_before"].presence || filters[:created_before].presence,
+        topic_sort: filters["topic_sort"].presence || filters[:topic_sort].presence,
+        post_sort: filters["post_sort"].presence || filters[:post_sort].presence
+      }.compact
     end
   end
 end

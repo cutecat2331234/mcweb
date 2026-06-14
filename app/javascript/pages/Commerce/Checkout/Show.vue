@@ -37,6 +37,7 @@ const props = defineProps<{
   defaultProvider?: string
   pendingCouponCode?: string | null
   pendingGiftCardCode?: string | null
+  couponAutoApplied?: boolean
   previewCouponUrl: string
   previewGiftCardUrl: string
 }>()
@@ -173,6 +174,10 @@ onMounted(() => {
       <p v-if="giftCardLabel" class="text-green-600">礼品卡：-{{ giftCardLabel }}</p>
       <p class="font-medium">应付：{{ totalLabel }}</p>
     </div>
+
+    <p v-if="couponAutoApplied && pendingCouponCode" class="text-sm text-green-700">
+      已通过链接自动应用优惠码 {{ pendingCouponCode }}
+    </p>
 
     <form class="space-y-4" @submit.prevent="form.post(routes.storeCheckout)">
       <div class="space-y-2">

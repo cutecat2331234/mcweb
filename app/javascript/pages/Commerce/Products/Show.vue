@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Link, router, useForm } from '@inertiajs/vue3'
+import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -62,6 +62,8 @@ export interface ProductDetail {
   purchase_limit: number | null
   minimum_quantity?: number
   maximum_quantity?: number | null
+  seo_title?: string
+  seo_description?: string | null
   image_url: string | null
   gallery_urls: string[]
   version?: string | null
@@ -369,6 +371,14 @@ function submitAnswer(questionId: number, answerUrl: string) {
 </script>
 
 <template>
+  <Head v-if="product.seo_title">
+    <title>{{ product.seo_title }}</title>
+    <meta v-if="product.seo_description" head-key="description" name="description" :content="product.seo_description" />
+    <meta head-key="og:title" property="og:title" :content="product.seo_title" />
+    <meta v-if="product.seo_description" head-key="og:description" property="og:description" :content="product.seo_description" />
+    <meta head-key="og:type" property="og:type" content="product" />
+  </Head>
+
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '商城', href: routes.store },

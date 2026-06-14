@@ -6,6 +6,32 @@ module Community
 
     before_action :require_login, only: %i[update]
 
+    def card
+      user = User.active.find_by!(username: params[:id])
+      trust = Community::TrustLevel.level_info(user)
+      posts_count = Community::Post.where(user: user, status: :published).count
+      badges = user.user_badges.includes(:badge).order(granted_at: :desc).limit(3).map do |ub|
+        {
+          name: ub.badge.name,
+          icon: ub.badge.icon,
+          color: ub.badge.color
+        }
+      end
+
+      render json: {
+        username: user.username,
+        display_name: user.display_name,
+        avatar_url: user.avatar_url,
+        profile_url: forum_user_path(user.username),
+        trust_level: trust[:level],
+        trust_name: trust[:name],
+        posts_count: posts_count,
+        member_since: l(user.created_at, format: :short),
+        badges: badges,
+        message_url: (logged_in? && current_user.id != user.id && Community::TrustLevel.can_send_pm?(current_user)) ? new_forum_conversation_path(to: user.username) : nil
+      }
+    end
+
     def show
       user = User.find_by!(username: params[:id])
       tab = params[:tab].to_s.in?(%w[topics posts store]) ? params[:tab] : "topics"

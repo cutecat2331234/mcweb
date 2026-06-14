@@ -35,6 +35,8 @@ const props = defineProps<{
     featured?: boolean
     version?: string
     changelog?: string
+    seo_title?: string
+    seo_description?: string
     variants: Array<{ id?: number; name: string; sku: string; price_cents: number; stock: number | null }>
   }
   categories: Array<{ id: number; name: string }>
@@ -195,10 +197,18 @@ async function uploadCover(event: Event) {
         <Label for="version">版本号</Label>
         <Input id="version" v-model="form.product.version" placeholder="1.0.0" />
       </div>
-      <div class="space-y-2">
-        <Label for="changelog">更新日志</Label>
-        <Textarea id="changelog" v-model="form.product.changelog" rows="3" placeholder="本次更新内容…" />
-      </div>
+    <div class="space-y-2">
+      <Label for="changelog">更新日志</Label>
+      <Textarea id="changelog" v-model="form.product.changelog" rows="3" placeholder="本次更新内容…" />
+    </div>
+    <div class="space-y-2">
+      <Label for="seo_title">SEO 标题（空=商品名）</Label>
+      <Input id="seo_title" v-model="form.product.seo_title" />
+    </div>
+    <div class="space-y-2">
+      <Label for="seo_description">SEO 描述</Label>
+      <Textarea id="seo_description" v-model="form.product.seo_description" rows="2" />
+    </div>
     </div>
 
     <div class="space-y-3">

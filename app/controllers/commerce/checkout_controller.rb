@@ -10,7 +10,8 @@ module Commerce
       providers = Payments::ProviderConfig.enabled_providers.map { |config| serialize_checkout_provider(config) }
       currency = items.first&.product&.currency || "CNY"
       subtotal_cents = cart&.subtotal_cents.to_i
-      pending_coupon = session[:pending_coupon_code].to_s.presence
+      pending_coupon = apply_coupon_from_url!(items) if params[:coupon].present?
+      pending_coupon ||= session[:pending_coupon_code].to_s.presence
       pending_gift_card = session[:pending_gift_card_code].to_s.presence
       coupon = Commerce::Coupon.find_by(code: pending_coupon) if pending_coupon.present?
 
@@ -27,6 +28,7 @@ module Commerce
         subtotalLabel: format_money(subtotal_cents, currency),
         pendingCouponCode: pending_coupon,
         pendingGiftCardCode: pending_gift_card,
+        couponAutoApplied: params[:coupon].present? && pending_coupon.present?,
         providers: providers,
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path,
@@ -181,6 +183,27 @@ module Commerce
       coupon = Commerce::Coupon.find_by(code: session[:pending_coupon_code]) if session[:pending_coupon_code].present?
       result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
       result.success? ? result.value[:shipping_cents].to_i : 0
+    end
+
+    def apply_coupon_from_url!(cart_items)
+      code = params[:coupon].to_s.strip
+      return nil if code.blank?
+
+      cart = Commerce::Cart.find_by(user: current_user)
+      subtotal_cents = cart&.subtotal_cents.to_i
+      result = Commerce::PreviewCoupon.call(
+        subtotal_cents: subtotal_cents,
+        code: code,
+        cart_items: cart_items,
+        user: current_user
+      )
+      if result.success?
+        session[:pending_coupon_code] = result.value[:code]
+        result.value[:code]
+      else
+        flash[:alert] = result.error
+        nil
+      end
     end
   end
 end

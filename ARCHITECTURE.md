@@ -71,6 +71,12 @@ app/
 | 版主操作 | `ModerateTopic`（锁定/置顶/隐藏） |
 | 分页 | Pagy 应用于主题帖列表 |
 | 反垃圾 | 速率限制、禁言、重复检测 |
+| @提及 | `Community::ProcessMentions` + 通知 |
+| Markdown 渲染 | `Community::FormatPostBody`（粗体/斜体/代码/链接） |
+| 书签 | `Community::ToggleBookmark` |
+| 标签 | `Community::SyncTopicTags`（最多 5 个）+ `/forum/tags/:slug` |
+| 用户资料 | `/forum/users/:username` |
+| 关注列表 | `/forum/watching` |
 
 ## 商城功能
 
@@ -83,5 +89,7 @@ app/
 | 游客购物车合并 | `Commerce::MergeGuestCart`（登录时） |
 | 支付后自动发货 | `ConfirmPayment` → `FulfillOrderJob` |
 | 假支付测试页 | `Payments::FakeController` `/payments/fake/:id` |
-| 订单取消 | `OrdersController#cancel`（待支付状态） |
+| 订单取消 | `Commerce::CancelOrder`（待支付状态，恢复库存） |
 | 发货状态展示 | 订单详情页显示 fulfillment 状态 |
+| 商品搜索/排序 | `?q=`、`price_asc` / `price_desc` |
+| 管理后台退款 | `Commerce::ProcessRefund` 全额退款 |

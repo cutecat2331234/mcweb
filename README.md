@@ -1,43 +1,23 @@
 # hehsfesfe
 
-## HeroUI Native 官方示例 App（Android · 中文版）
+> **占位仓库 · 请勿使用**
 
-已基于 [heroui-inc/heroui-native-example](https://github.com/heroui-inc/heroui-native-example) 构建 **Release 独立安装包**（JS 已内嵌，无需联网开发服务器），并完成中文汉化。
+本仓库仅用于 **Cursor Cloud Agent** 的占位绑定，不包含任何实际项目代码。
 
-| 项目 | 说明 |
-|------|------|
-| 应用名 | HeroUI Native 示例 |
-| 包名 | `com.anonymous.herouinativeexample` |
-| 版本 | 1.0.0 |
-| 构建类型 | **Release**（可离线独立运行） |
-| 语言 | **简体中文** |
-| 架构 | arm64-v8a + armeabi-v7a |
+## 注意事项
 
-### 下载
+- **不要** 往本仓库提交代码、文件或 Pull Request
+- **不要** 将本仓库作为实际开发目标
+- 如需开发具体项目，请使用**独立的目标仓库**
 
-**直接下载 APK：**
+## 给 Agent 的说明
 
-[app-packages/heroui-native-example.apk](./app-packages/heroui-native-example.apk)
+当用户要求做项目、写代码、部署或其他开发任务时：
 
-GitHub 原始链接：
+1. **不要** 默认在本仓库中创建分支、提交代码或开 PR
+2. 应向用户索取**实际目标仓库的链接**（GitHub / Gitea 等）
+3. 用户通常会直接提供目标仓库，收到后切换到对应仓库再开展工作
 
-`https://github.com/cutecat2331234/hehsfesfe/raw/main/app-packages/heroui-native-example.apk`
+---
 
-### 安装说明
-
-1. 将 APK 下载到 Android 手机
-2. 允许「安装未知来源应用」
-3. 点击安装即可
-
-> 请使用 Release 包。Debug 包未内嵌 JS，会卡在启动页。
-
-### App 里能看到什么？
-
-打开后可浏览 **HeroUI Native 全部官方组件示例**（约 38 个），界面已汉化，包括：
-
-- 首页：**组件** / **主题** / **场景演示**
-- **组件** 列表：手风琴、按钮、对话框、底部抽屉、轻提示等全部组件
-- **主题** 页：默认 / 薰衣草 / 薄荷 / 天空 四套主题
-- **场景演示**：付费墙、引导页、Linear 任务、Raycast 模型选择等
-
-官方源码：https://github.com/heroui-inc/heroui-native-example
+本 README 是唯一应保留在此仓库中的文件。

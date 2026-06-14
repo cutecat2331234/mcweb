@@ -113,6 +113,14 @@ app/
 | PostgreSQL 全文搜索 | `to_tsvector` + `plainto_tsquery` |
 | 拉黑过滤完善 | 搜索/标签/书签/关注/未读/帖子列表 |
 | 拉黑禁止私信 | `CreateConversation` / `SendMessage` 校验 |
+| 信任等级 | `Community::TrustLevel`（0–4）新成员禁止发链接 |
+| 帖子级书签 | `Community::TogglePostBookmark` + `forum_post_id` |
+| 私信站内通知 | `Community::NotifyPrivateMessage` + 偏好 `forum.private_message` |
+| 标签 RSS | `/forum/tags/:slug.rss` |
+| 论坛 Sitemap | `/forum/sitemap.xml`（最近 500 主题） |
+| 分区后台 Inertia | `Admin::Forum::SectionsController` + 发帖/回复角色权限 |
+| 主题 OG 元数据 | `Topics/Show.vue` Open Graph title/description |
+| 用户信任等级展示 | 资料页 `trust_level` / `trust_name` |
 
 ## 商城功能
 
@@ -136,3 +144,7 @@ app/
 | 商品图片 | `store_products.image_url` + 列表/详情展示 |
 | 心愿单 | `Commerce::ToggleWishlist` + `/store/wishlist` |
 | 商品评价 | `Commerce::CreateReview` + 星级展示 |
+| 评价后台审核 | `Admin::Store::ReviewsController` 显示/隐藏 |
+| 退款邮件 | `OrderMailer#refund_processed` |
+| 退款审批修复 | `ProcessRefund` 复用 pending 客户申请，避免重复记录 |
+| 商品图库 | `store_products.gallery_urls`（jsonb）+ 详情页轮播展示 |

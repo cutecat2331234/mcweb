@@ -41,6 +41,8 @@ export interface PostItem {
   can_moderate: boolean
   hidden: boolean
   report_url: string | null
+  bookmarked: boolean
+  bookmark_url: string | null
   update_url: string
 }
 
@@ -224,6 +226,11 @@ function hasReacted(post: PostItem, emoji: string) {
   return post.user_reactions.includes(emoji)
 }
 
+function togglePostBookmark(post: PostItem) {
+  if (!post.bookmark_url) return
+  router.post(post.bookmark_url, {}, { preserveScroll: true })
+}
+
 function votePoll(optionIndex: number) {
   if (!props.poll) return
   router.post(props.poll.vote_url, { option_index: optionIndex }, { preserveScroll: true })
@@ -239,6 +246,9 @@ function pollPercent(votes: number) {
   <Head v-if="meta">
     <title>{{ meta.title }}</title>
     <meta v-if="meta.description" head-key="description" name="description" :content="meta.description" />
+    <meta head-key="og:title" property="og:title" :content="meta.title" />
+    <meta v-if="meta.description" head-key="og:description" property="og:description" :content="meta.description" />
+    <meta head-key="og:type" property="og:type" content="article" />
   </Head>
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
@@ -387,6 +397,9 @@ function pollPercent(votes: number) {
             <div class="flex gap-2">
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">回复</button>
+              <button v-if="post.bookmark_url" type="button" class="text-xs hover:underline" @click="togglePostBookmark(post)">
+                {{ post.bookmarked ? '移除书签' : '书签' }}
+              </button>
               <button v-if="canMarkSolved && !post.is_solved" type="button" class="text-xs text-green-600 hover:underline" @click="markSolved(post)">标为已解决</button>
               <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">举报</Link>
               <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">

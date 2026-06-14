@@ -94,11 +94,15 @@ module Admin
       end
 
       def product_params
-        params.require(:product).permit(
+        permitted = params.require(:product).permit(
           :name, :slug, :description, :product_type, :status,
-          :price_cents, :currency, :stock, :store_category_id, :purchase_limit, :image_url,
+          :price_cents, :currency, :stock, :store_category_id, :purchase_limit, :image_url, :gallery_urls,
           variants_attributes: [ :id, :name, :sku, :price_cents, :stock, :_destroy ]
         )
+        if permitted[:gallery_urls].is_a?(String)
+          permitted[:gallery_urls] = permitted[:gallery_urls].lines.map(&:strip).reject(&:blank?)
+        end
+        permitted
       end
 
       def form_props(product)
@@ -118,6 +122,7 @@ module Admin
             store_category_id: product.store_category_id,
             purchase_limit: product.purchase_limit,
             image_url: product.image_url || "",
+            gallery_urls: (product.gallery_urls || []).join("\n"),
             variants: product.variants.map do |v|
               { id: v.id, name: v.name, sku: v.sku, price_cents: v.price_cents, stock: v.stock }
             end

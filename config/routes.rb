@@ -27,7 +27,7 @@ Rails.application.routes.draw do
     resources :roles, only: %i[index show]
     resources :audit_logs, only: %i[index show]
     namespace :forum do
-      resources :sections, only: %i[index show]
+      resources :sections, only: %i[index show new create edit update]
       resources :topics, only: %i[index show]
       resources :reports, only: %i[index show update]
       resources :mutes, only: %i[create destroy]
@@ -86,6 +86,7 @@ Rails.application.routes.draw do
     resources :posts, only: %i[create update destroy] do
       member do
         post :reaction, action: :toggle_reaction
+        post :bookmark, action: :toggle_bookmark
         post :moderate
         get :edits
       end
@@ -108,6 +109,8 @@ Rails.application.routes.draw do
     patch "preferences", to: "preferences#update"
     get "watching", to: "watched#index"
     get "tags", to: "tags#index", as: :tags
+    get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }
+    get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
     get "tags/:slug", to: "tags#show", as: :tag
     resources :conversations, only: %i[index show new create] do
       resources :messages, only: %i[create], controller: "conversation_messages"

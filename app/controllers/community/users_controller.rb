@@ -13,12 +13,15 @@ module Community
         .order(created_at: :desc)
         .limit(20)
       posts_count = Community::Post.where(user: user, status: :published).count
+      trust = Community::TrustLevel.level_info(user)
 
       render inertia: "Community/Users/Show", props: {
         profile: {
           username: user.username,
           avatar_url: user.avatar_url,
           bio: user.bio,
+          trust_level: trust[:level],
+          trust_name: trust[:name],
           member_since: l(user.created_at, format: :long),
           topics_count: topics_scope.count,
           posts_count: posts_count,

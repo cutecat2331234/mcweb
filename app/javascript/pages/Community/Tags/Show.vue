@@ -16,7 +16,7 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 defineProps<{
-  tag: { name: string; slug: string }
+  tag: { name: string; slug: string; rss_url: string }
   topics: Array<{
     id: string
     title: string
@@ -38,6 +38,10 @@ defineProps<{
   ]" />
 
   <PageHeader :title="`#${tag.name}`" subtitle="按标签浏览主题" />
+
+  <p class="mb-4">
+    <a :href="tag.rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
+  </p>
 
   <div v-if="topics.length" class="rounded-lg border">
     <Table>

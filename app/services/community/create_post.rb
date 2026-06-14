@@ -98,6 +98,10 @@ module Community
         return ServiceResult.failure(error: "Duplicate post detected.")
       end
 
+      if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@user)
+        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+      end
+
       ServiceResult.success
     end
 

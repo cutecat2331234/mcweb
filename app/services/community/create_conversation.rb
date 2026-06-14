@@ -18,6 +18,8 @@ module Community
       message = conversation.messages.create!(user: @sender, body: @body)
       conversation.update!(last_message_at: message.created_at)
 
+      Community::NotifyPrivateMessage.call(message: message, conversation: conversation)
+
       ServiceResult.success(conversation: conversation, message: message)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

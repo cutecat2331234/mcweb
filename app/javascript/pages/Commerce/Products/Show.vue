@@ -41,6 +41,7 @@ export interface ProductDetail {
   in_stock: boolean
   purchase_limit: number | null
   image_url: string | null
+  gallery_urls: string[]
   wishlisted: boolean
   average_rating: number | null
   variants: ProductVariant[]
@@ -109,8 +110,18 @@ function submitReview() {
     v-if="product.image_url"
     :src="product.image_url"
     :alt="product.name"
-    class="mb-6 max-h-64 rounded-lg border object-cover"
+    class="mb-4 max-h-64 rounded-lg border object-cover"
   />
+
+  <div v-if="product.gallery_urls.length" class="mb-6 flex flex-wrap gap-2">
+    <img
+      v-for="(url, index) in product.gallery_urls"
+      :key="index"
+      :src="url"
+      :alt="`${product.name} ${index + 1}`"
+      class="h-20 w-20 rounded border object-cover"
+    />
+  </div>
 
   <Card class="max-w-xl">
     <CardContent class="space-y-3 pt-6">

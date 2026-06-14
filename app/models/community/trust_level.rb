@@ -1,0 +1,34 @@
+# frozen_string_literal: true
+
+module Community
+  class TrustLevel
+    LEVELS = [
+      { level: 0, name: "新成员", min_posts: 0 },
+      { level: 1, name: "基本用户", min_posts: 1 },
+      { level: 2, name: "成员", min_posts: 10 },
+      { level: 3, name: "常客", min_posts: 50 },
+      { level: 4, name: "领导者", min_posts: 200 }
+    ].freeze
+
+    def self.level_info(user)
+      return LEVELS.first unless user
+
+      count = Community::Post.where(user: user, status: :published).count
+      LEVELS.reverse.find { |entry| count >= entry[:min_posts] } || LEVELS.first
+    end
+
+    def self.level_for(user)
+      level_info(user)[:level]
+    end
+
+    def self.can_post_links?(user)
+      return true if user&.permission?("forum.topics.lock")
+
+      level_for(user) >= 1
+    end
+
+    def self.contains_link?(text)
+      text.to_s.match?(/https?:\/\//i)
+    end
+  end
+end

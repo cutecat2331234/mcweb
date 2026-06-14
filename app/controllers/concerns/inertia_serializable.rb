@@ -108,6 +108,7 @@ module InertiaSerializable
                      else
                        []
                      end
+    bookmarked = current_user && Community::Bookmark.exists?(user: current_user, post: post)
 
     {
       id: post.id,
@@ -130,6 +131,8 @@ module InertiaSerializable
       can_edit: can_edit_post?(post, current_user),
       can_delete: can_delete_post?(post, current_user),
       can_moderate: can_moderate,
+      bookmarked: bookmarked,
+      bookmark_url: current_user ? bookmark_forum_post_path(post) : nil,
       hidden: post.status == "hidden",
       report_url: current_user ? new_forum_report_path(reportable_type: "Community::Post", reportable_id: post.id) : nil,
       update_url: forum_post_path(post)
@@ -213,6 +216,7 @@ module InertiaSerializable
       in_stock: product.in_stock?,
       purchase_limit: product.purchase_limit,
       image_url: product.image_url,
+      gallery_urls: product.gallery_urls || [],
       wishlisted: wishlisted,
       average_rating: average_rating,
       variants: product.variants.map { |variant| serialize_variant(variant, product) },

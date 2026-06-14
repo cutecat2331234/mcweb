@@ -16,6 +16,8 @@ export const routes = {
   forumDrafts: '/forum/drafts',
   forumLatestRss: '/forum/latest.rss',
   forumSectionRss: (slug: string) => `/forum/sections/${slug}.rss`,
+  forumTagRss: (slug: string) => `/forum/tags/${slug}.rss`,
+  forumSitemap: '/forum/sitemap.xml',
   forumMessages: '/forum/conversations',
   forumMessagesNew: '/forum/conversations/new',
   forumMessage: (id: number) => `/forum/conversations/${id}`,

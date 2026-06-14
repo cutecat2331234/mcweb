@@ -37,7 +37,7 @@ module Community
                     end
 
       render inertia: "Community/Tags/Show", props: {
-        tag: { name: tag.name, slug: tag.slug },
+        tag: { name: tag.name, slug: tag.slug, rss_url: forum_tag_rss_path(tag.slug) },
         topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
         pagination: pagy_props(@pagy),
         sort: sort

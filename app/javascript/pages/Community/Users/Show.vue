@@ -22,6 +22,8 @@ const props = defineProps<{
     username: string
     avatar_url: string
     bio: string | null
+    trust_level: number
+    trust_name: string
     member_since: string
     topics_count: number
     posts_count: number
@@ -79,7 +81,7 @@ function saveBio() {
   <div class="mb-6 flex items-center gap-4">
     <img :src="profile.avatar_url" :alt="profile.username" class="h-16 w-16 rounded-full" />
     <div class="min-w-0 flex-1">
-      <PageHeader :title="profile.username" :subtitle="`加入于 ${profile.member_since}`" />
+      <PageHeader :title="profile.username" :subtitle="`加入于 ${profile.member_since} · ${profile.trust_name} (Lv.${profile.trust_level})`" />
       <div class="mt-2 flex gap-6 text-sm">
         <span><strong>{{ profile.topics_count }}</strong> 主题</span>
         <span><strong>{{ profile.posts_count }}</strong> 帖子</span>

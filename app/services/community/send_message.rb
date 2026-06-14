@@ -21,6 +21,8 @@ module Community
       @conversation.update!(last_message_at: message.created_at)
       @conversation.mark_read_for!(@user)
 
+      Community::NotifyPrivateMessage.call(message: message, conversation: @conversation)
+
       ServiceResult.success(message)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

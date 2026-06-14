@@ -4,7 +4,7 @@ module Community
   class PostsController < ApplicationController
     before_action :require_login
     before_action :set_topic, only: :create
-    before_action :set_post, only: %i[update destroy toggle_reaction moderate edits]
+    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits]
 
     def create
       result = Community::CreatePost.call(
@@ -57,6 +57,16 @@ module Community
 
       if result.success?
         redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}")
+      else
+        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+      end
+    end
+
+    def toggle_bookmark
+      result = Community::TogglePostBookmark.call(user: current_user, post: @post)
+
+      if result.success?
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: result.value[:bookmarked] ? "已加入书签。" : "已移除书签。"
       else
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
       end

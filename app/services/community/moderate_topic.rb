@@ -2,10 +2,11 @@
 
 module Community
   class ModerateTopic < ApplicationService
-    def initialize(user:, topic:, action:)
+    def initialize(user:, topic:, action:, lock_reason: nil)
       @user = user
       @topic = topic
       @action = action.to_s
+      @lock_reason = lock_reason.to_s.strip.presence
     end
 
     def call
@@ -15,9 +16,9 @@ module Community
 
       case @action
       when "lock"
-        @topic.lock_topic!
+        @topic.update!(locked: true, lock_reason: @lock_reason)
       when "unlock"
-        @topic.unlock_topic!
+        @topic.update!(locked: false, lock_reason: nil)
       when "pin"
         @topic.update!(pinned: true, pinned_until: nil)
       when /\Apin_(\d+)\z/

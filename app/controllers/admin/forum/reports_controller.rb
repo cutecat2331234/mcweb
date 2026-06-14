@@ -100,6 +100,8 @@ module Admin
           "主题：#{@report.reportable.title}"
         when ::Community::Post
           "帖子 ##{@report.reportable.floor_number}（#{@report.reportable.topic.title}）"
+        when ::Commerce::Review
+          "评价 ##{@report.reportable.id}（#{@report.reportable.product.name}）"
         else
           "#{@report.reportable_type} ##{@report.reportable_id}"
         end
@@ -111,6 +113,8 @@ module Admin
           [{ label: "查看主题", href: forum_topic_path(@report.reportable) }]
         when ::Community::Post
           [{ label: "查看帖子", href: "#{forum_topic_path(@report.reportable.topic)}#post-#{@report.reportable.id}" }]
+        when ::Commerce::Review
+          [{ label: "查看商品", href: store_product_path(@report.reportable.product) }]
         else
           []
         end

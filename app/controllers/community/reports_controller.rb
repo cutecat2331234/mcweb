@@ -59,7 +59,7 @@ module Community
 
     def find_reportable
       type = report_params[:reportable_type]
-      return unless %w[Community::Topic Community::Post].include?(type)
+      return unless %w[Community::Topic Community::Post Commerce::Review].include?(type)
 
       type.constantize.find_by(id: report_params[:reportable_id])
     end

@@ -39,7 +39,9 @@ const props = defineProps<{
     profile_url: string
     message_url: string | null
     block_url: string | null
+    ignore_url?: string | null
     is_blocked: boolean
+    is_ignored?: boolean
     is_muted: boolean
     can_edit: boolean
     is_following: boolean
@@ -109,6 +111,11 @@ const bioForm = useForm({
 function toggleBlock() {
   if (!props.profile.block_url) return
   router.post(props.profile.block_url, {}, { preserveScroll: true })
+}
+
+function toggleIgnore() {
+  if (!props.profile.ignore_url) return
+  router.post(props.profile.ignore_url, {}, { preserveScroll: true })
 }
 
 function toggleFollow() {
@@ -226,6 +233,15 @@ function switchTab(tab: 'topics' | 'posts') {
           @click="toggleBlock"
         >
           {{ profile.is_blocked ? '取消拉黑' : '拉黑用户' }}
+        </Button>
+        <Button
+          v-if="profile.ignore_url"
+          type="button"
+          size="sm"
+          :variant="profile.is_ignored ? 'outline' : 'secondary'"
+          @click="toggleIgnore"
+        >
+          {{ profile.is_ignored ? '取消忽略' : '忽略用户' }}
         </Button>
         <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="editingTitle = !editingTitle">
           编辑头衔

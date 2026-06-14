@@ -34,6 +34,7 @@ export interface ProductReview {
   helpful_count?: number
   helpful?: boolean
   helpful_url?: string | null
+  report_url?: string | null
   verified_purchaser?: boolean
   photo_urls?: string[]
 }
@@ -588,16 +589,21 @@ function submitAnswer(questionId: number, answerUrl: string) {
         </div>
         <div class="mt-2 flex items-center justify-between gap-2">
           <p class="text-xs text-muted-foreground">{{ review.created_at }}</p>
-          <Button
-            v-if="loggedIn && review.helpful_url"
-            type="button"
-            variant="outline"
-            size="sm"
-            :class="review.helpful ? 'border-primary' : ''"
-            @click="toggleHelpful(review.helpful_url)"
-          >
-            有帮助{{ review.helpful_count ? ` (${review.helpful_count})` : '' }}
-          </Button>
+          <div class="flex gap-2">
+            <Button
+              v-if="loggedIn && review.helpful_url"
+              type="button"
+              variant="outline"
+              size="sm"
+              :class="review.helpful ? 'border-primary' : ''"
+              @click="toggleHelpful(review.helpful_url)"
+            >
+              有帮助{{ review.helpful_count ? ` (${review.helpful_count})` : '' }}
+            </Button>
+            <Button v-if="review.report_url" as-child variant="ghost" size="sm">
+              <Link :href="review.report_url">举报</Link>
+            </Button>
+          </div>
         </div>
       </article>
     </div>

@@ -29,8 +29,11 @@ export interface PostItem {
   author: string
   author_url: string
   avatar_url: string
+  author_username: string
   body: string
   body_html: string
+  body_long?: boolean
+  edit_seconds_remaining?: number | null
   signature_html?: string | null
   created_at: string
   edited_at: string | null
@@ -88,6 +91,7 @@ const props = defineProps<{
     title: string
     author: string | null
     locked: boolean
+    lock_reason?: string | null
     pinned: boolean
     pinned_until?: string | null
     bumped_at?: string | null
@@ -173,6 +177,8 @@ const bookmarkRemindAt = ref(props.topicBookmark?.remind_at_input || '')
 const editingPostBookmarkId = ref<number | null>(null)
 const postBookmarkNote = ref('')
 const postBookmarkRemindAt = ref('')
+const expandedPosts = ref<Record<number, boolean>>({})
+const lockReasonInput = ref('')
 let draftSaveTimer: ReturnType<typeof setTimeout> | null = null
 
 onMounted(() => {
@@ -373,7 +379,26 @@ function removeBookmark() {
 }
 
 function moderate(action: string) {
+  if (action === 'lock' && !props.topic.locked) {
+    const reason = window.prompt('锁定原因（可选）', lockReasonInput.value || '')
+    if (reason === null) return
+    lockReasonInput.value = reason
+    router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: action, lock_reason: reason || undefined }, { preserveScroll: true })
+    return
+  }
   router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: action }, { preserveScroll: true })
+}
+
+function isOwnPost(post: PostItem) {
+  return loggedIn && page.props.auth.user?.username === post.author_username
+}
+
+function togglePostExpand(postId: number) {
+  expandedPosts.value[postId] = !expandedPosts.value[postId]
+}
+
+function isPostExpanded(post: PostItem) {
+  return !post.body_long || expandedPosts.value[post.id]
 }
 
 function moderatePost(post: PostItem, action: string) {
@@ -736,6 +761,7 @@ function pollPercent(votes: number) {
   </p>
   <p v-if="topic.locked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
     此主题已锁定，无法回复。
+    <span v-if="topic.lock_reason" class="mt-1 block font-medium">原因：{{ topic.lock_reason }}</span>
   </p>
 
   <form class="mb-4 flex max-w-md gap-2" @submit.prevent="searchInTopic">
@@ -820,12 +846,29 @@ function pollPercent(votes: number) {
               <Button type="button" size="sm" variant="outline" @click="cancelEdit">取消</Button>
             </div>
           </div>
-          <div v-else class="prose prose-sm mt-2 max-w-none text-sm dark:prose-invert" v-html="post.body_html" />
+          <div v-else class="mt-2">
+            <div
+              class="prose prose-sm max-w-none text-sm dark:prose-invert"
+              :class="post.body_long && !isPostExpanded(post) ? 'max-h-64 overflow-hidden relative' : ''"
+              v-html="post.body_html"
+            />
+            <button
+              v-if="post.body_long"
+              type="button"
+              class="mt-2 text-xs text-primary hover:underline"
+              @click="togglePostExpand(post.id)"
+            >
+              {{ isPostExpanded(post) ? '收起' : '展开全文' }}
+            </button>
+          </div>
+          <p v-if="post.edit_seconds_remaining && post.can_edit" class="mt-1 text-xs text-muted-foreground">
+            编辑窗口剩余 {{ post.edit_seconds_remaining }} 秒
+          </p>
           <div v-if="post.signature_html" class="mt-3 border-t pt-2 text-xs text-muted-foreground prose prose-sm max-w-none" v-html="post.signature_html" />
 
           <div class="mt-3 flex flex-wrap items-center gap-2">
             <span v-if="post.reactions_total" class="text-xs text-muted-foreground">{{ post.reactions_total }} 个反应</span>
-            <template v-if="loggedIn">
+            <template v-if="loggedIn && !isOwnPost(post)">
               <button
                 v-for="emoji in reactionEmojis"
                 :key="emoji"

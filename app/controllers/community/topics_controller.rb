@@ -206,7 +206,8 @@ module Community
       result = Community::ModerateTopic.call(
         user: current_user,
         topic: @topic,
-        action: params[:action_type]
+        action: params[:action_type],
+        lock_reason: params[:lock_reason]
       )
 
       if result.success?

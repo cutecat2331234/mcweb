@@ -22,11 +22,14 @@ module Commerce
             data[:in_stock] = variant.in_stock?
             data[:low_stock] = variant.low_stock?
           end
+          alert = Commerce::PriceAlert.find_by(user: current_user, product: product)
           data.merge(
             wishlist_url: wishlist_store_product_path(product),
             add_to_cart_url: add_wishlist_item_to_cart_store_path(product.public_id),
             saved_variant_id: variant&.id,
-            saved_variant_name: variant&.name
+            saved_variant_name: variant&.name,
+            price_alert_url: price_alert_store_product_path(product),
+            has_price_alert: alert.present?
           )
         end,
         shareUrl: share.success? ? store_public_wishlist_url(share.value[:token]) : nil,

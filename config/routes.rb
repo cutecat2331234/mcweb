@@ -79,6 +79,7 @@ Rails.application.routes.draw do
     resources :sections, only: %i[index show] do
       member do
         post :subscription, action: :toggle_subscription
+        post :mute, action: :toggle_mute
         patch :mark_all_read
       end
     end
@@ -90,6 +91,7 @@ Rails.application.routes.draw do
     end
     get "blocks", to: "blocks#index", as: :blocks
     post "users/:username/block", to: "blocks#create", as: :block_user
+    post "users/:username/ignore", to: "ignores#create", as: :ignore_user
     post "users/:username/follow", to: "follows#create", as: :user_follow
     get "users/:username/followers", to: "followers#index", as: :user_followers
     resources :polls, only: [] do
@@ -179,6 +181,7 @@ Rails.application.routes.draw do
       member do
         post :wishlist, to: "wishlist#toggle"
         post :reorder
+        post :price_alert, to: "price_alerts#create"
         post :stock_alert, to: "stock_alerts#create"
         resources :reviews, only: %i[create destroy], controller: "reviews" do
           member do
@@ -206,6 +209,7 @@ Rails.application.routes.draw do
       post :preview_coupon, on: :member
       delete :clear_coupon, on: :member
       post :move_to_wishlist, on: :member
+      delete :clear, on: :member
     end
     resources :orders, only: %i[index show create] do
       member do

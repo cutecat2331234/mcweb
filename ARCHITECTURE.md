@@ -551,3 +551,20 @@ app/
 | 心愿单促销价 | 列表展示划线价与折扣 |
 | 再次购买 | `ReorderProduct` + `products#reorder` |
 | 优惠券满减提示 | `PreviewCoupon` 最低消费/差额 |
+
+### 第二十九轮（论坛 / 商城精细化）
+
+| 功能 | 实现 |
+|------|------|
+| 分区通知静音 | `SectionMute` + `ToggleSectionMute` + `sections#mute` |
+| 用户忽略 | `UserIgnore` + `ToggleUserIgnore` + `ignores#create` |
+| 锁定原因 | `forum_topics.lock_reason` + 版主锁定弹窗 |
+| 禁止自反应 | `ToggleReaction` 校验 + 前端隐藏按钮 |
+| 长帖折叠 | `body_long` + 展开/收起 |
+| 编辑倒计时 | `edit_seconds_remaining` 展示 |
+| 参与者头像条 | `Topic#participant_users` + 分区列表展示 |
+| 降价提醒 | `PriceAlert` + `SubscribePriceAlert` + `NotifyPriceDropJob` |
+| 清空购物车 | `ClearCart` + `carts#clear` |
+| 购物车交叉销售 | 同分类推荐 `crossSellProducts` |
+| 商品短描述 | `store_products.summary` 列表/管理表单 |
+| 评价举报 | `Commerce::Review` 纳入举报系统 |

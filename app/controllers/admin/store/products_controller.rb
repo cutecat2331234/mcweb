@@ -74,6 +74,9 @@ module Admin
 
       def update
         if @product.update(product_params)
+          if @product.saved_change_to_price_cents? && @product.price_cents < @product.price_cents_before_last_save.to_i
+            Commerce::NotifyPriceDropJob.perform_later(@product.id)
+          end
           if @product.saved_change_to_stock? && @product.stock.to_i.positive?
             Commerce::NotifyStockRestockedJob.perform_later(@product.id)
           end
@@ -103,7 +106,7 @@ module Admin
 
       def product_params
         permitted = params.require(:product).permit(
-          :name, :slug, :description, :product_type, :status,
+          :name, :slug, :description, :summary, :product_type, :status,
           :price_cents, :compare_at_price_cents, :currency, :stock, :store_category_id, :purchase_limit, :image_url, :gallery_urls,
           :fulfillment_config, :featured, :version, :changelog,
           variants_attributes: [ :id, :name, :sku, :price_cents, :stock, :_destroy ]
@@ -131,6 +134,7 @@ module Admin
             name: product.name || "",
             slug: product.slug || "",
             description: product.description || "",
+            summary: product.summary || "",
             product_type: product.product_type || "virtual",
             status: product.status || "draft",
             price_cents: product.price_cents || 0,

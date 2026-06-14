@@ -43,6 +43,18 @@ module Community
       increment!(:views_count)
     end
 
+    def participant_users(limit: 5)
+      ids = posts.where(status: :published)
+        .where.not(user_id: user_id)
+        .order(created_at: :desc)
+        .pluck(:user_id)
+        .uniq
+        .first(limit)
+
+      users_by_id = User.where(id: ids).index_by(&:id)
+      ids.filter_map { |id| users_by_id[id] }
+    end
+
     def related_by_tags(limit: 5)
       tag_ids = tags.pluck(:id)
       return Community::Topic.none if tag_ids.empty?

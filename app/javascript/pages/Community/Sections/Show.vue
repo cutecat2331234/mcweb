@@ -32,6 +32,7 @@ export interface TopicItem {
   prefix?: string | null
   unread_count: number
   has_unread: boolean
+  participant_avatars?: Array<{ username: string; avatar_url: string; profile_url: string }>
 }
 
 const props = defineProps<{
@@ -41,7 +42,9 @@ const props = defineProps<{
     description: string | null
     new_topic_url: string | null
     watching: boolean
+    muted?: boolean
     subscription_url: string
+    mute_url?: string | null
     mark_all_read_url?: string | null
     rss_url: string
   }
@@ -73,6 +76,10 @@ function changeFilter(value: string) {
 function toggleWatch() {
   router.post(props.section.subscription_url, {}, { preserveScroll: true })
 }
+function toggleMute() {
+  if (!props.section.mute_url) return
+  router.post(props.section.mute_url, {}, { preserveScroll: true })
+}
 function markAllRead() {
   if (!props.section.mark_all_read_url) return
   router.patch(props.section.mark_all_read_url)
@@ -91,6 +98,9 @@ function markAllRead() {
     <div class="flex flex-wrap gap-2">
       <Button type="button" variant="outline" size="sm" @click="toggleWatch">
         {{ section.watching ? '取消关注分区' : '关注分区' }}
+      </Button>
+      <Button v-if="section.mute_url" type="button" variant="outline" size="sm" @click="toggleMute">
+        {{ section.muted ? '取消静音分区' : '静音分区' }}
       </Button>
       <Button v-if="section.mark_all_read_url" type="button" variant="outline" size="sm" @click="markAllRead">
         全部标为已读
@@ -160,6 +170,16 @@ function markAllRead() {
               :unread-count="topic.unread_count"
             />
             <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
+            <div v-if="topic.participant_avatars?.length" class="mt-1 flex items-center gap-1">
+              <img
+                v-for="avatar in topic.participant_avatars"
+                :key="avatar.username"
+                :src="avatar.avatar_url"
+                :alt="avatar.username"
+                :title="avatar.username"
+                class="h-5 w-5 rounded-full border"
+              />
+            </div>
           </TableCell>
           <TableCell>{{ topic.author || '—' }}</TableCell>
           <TableCell>{{ topic.replies_count }}</TableCell>

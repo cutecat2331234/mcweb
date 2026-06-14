@@ -34,6 +34,15 @@ const props = defineProps<{
   previewCouponUrl: string
   clearCouponUrl?: string
   moveToWishlistUrl?: string
+  clearCartUrl?: string
+  crossSellProducts?: Array<{
+    id: string
+    name: string
+    price_label: string
+    url: string
+    image_url?: string | null
+    summary?: string | null
+  }>
 }>()
 
 const couponCode = ref(props.pendingCouponCode || '')
@@ -97,6 +106,11 @@ function removeItem(itemId: number) {
 function moveToWishlist(itemId: number) {
   if (!props.moveToWishlistUrl) return
   router.post(props.moveToWishlistUrl, { item_id: itemId })
+}
+
+function clearCart() {
+  if (!props.clearCartUrl || !confirm('确定清空购物车？')) return
+  router.delete(props.clearCartUrl)
 }
 </script>
 
@@ -175,10 +189,11 @@ function moveToWishlist(itemId: number) {
       <p class="text-xs text-muted-foreground">优惠码在结账时正式使用。</p>
     </div>
 
-    <div v-if="loggedIn" class="flex gap-3">
+    <div v-if="loggedIn" class="flex flex-wrap gap-3">
       <Button as-child>
         <Link :href="routes.storeCheckout">去结算</Link>
       </Button>
+      <Button v-if="clearCartUrl" type="button" variant="outline" @click="clearCart">清空购物车</Button>
     </div>
     <div v-else class="space-y-3">
       <p class="text-sm text-muted-foreground">请先登录后再结账。</p>
@@ -186,6 +201,30 @@ function moveToWishlist(itemId: number) {
         <Link :href="routes.signIn">登录</Link>
       </Button>
     </div>
+
+    <section v-if="crossSellProducts?.length" class="mt-8">
+      <h2 class="mb-3 text-sm font-semibold">猜你喜欢</h2>
+      <div class="grid gap-3 sm:grid-cols-2">
+        <Link
+          v-for="product in crossSellProducts"
+          :key="product.id"
+          :href="product.url"
+          class="flex gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+        >
+          <img
+            v-if="product.image_url"
+            :src="product.image_url"
+            :alt="product.name"
+            class="h-14 w-14 shrink-0 rounded object-cover"
+          />
+          <div class="min-w-0">
+            <p class="font-medium">{{ product.name }}</p>
+            <p v-if="product.summary" class="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{{ product.summary }}</p>
+            <p class="mt-1 text-sm font-medium">{{ product.price_label }}</p>
+          </div>
+        </Link>
+      </div>
+    </section>
   </div>
 
   <div v-else class="space-y-4">

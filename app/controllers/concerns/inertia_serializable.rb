@@ -77,7 +77,10 @@ module InertiaSerializable
       featured: topic.featured?,
       solved: topic.solved_post_id.present?,
       unread_count: unread_count,
-      has_unread: unread_count.positive?
+      has_unread: unread_count.positive?,
+      participant_avatars: topic.participant_users(limit: 5).map do |user|
+        { username: user.username, avatar_url: user.avatar_url, profile_url: forum_user_path(user.username) }
+      end
     }
   end
 
@@ -89,6 +92,7 @@ module InertiaSerializable
       author_username: topic.user&.username,
       author_url: topic.user ? forum_user_path(topic.user.username) : nil,
       locked: topic.locked?,
+      lock_reason: topic.lock_reason,
       pinned: topic.pinned?,
       pinned_until: topic.pinned_until ? l(topic.pinned_until, format: :short) : nil,
       bumped_at: topic.bumped_at ? l(topic.bumped_at, format: :short) : nil,
@@ -118,6 +122,7 @@ module InertiaSerializable
   def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil, post_bookmark: nil)
     formatted = Community::FormatPostBody.call(body: post.body)
     body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(post.body)
+    body_long = post.body.length > 800
     reaction_counts = post.reactions.group(:emoji).count
     reaction_users = post.reactions.includes(:user).group_by(&:emoji).transform_values do |reactions|
       reactions.map { |reaction| reaction.user.username }.uniq.first(15)
@@ -155,6 +160,8 @@ module InertiaSerializable
       avatar_url: post.user.avatar_url,
       body: post.body,
       body_html: body_html,
+      body_long: body_long,
+      edit_seconds_remaining: edit_seconds_remaining(post, current_user),
       signature_html: signature_html,
       created_at: l(post.created_at, format: :short),
       edited_at: post.edited_at ? l(post.edited_at, format: :short) : nil,
@@ -187,6 +194,15 @@ module InertiaSerializable
       author: post.user.username,
       excerpt: post.body.truncate(120)
     }
+  end
+
+  def edit_seconds_remaining(post, user)
+    return nil unless user && user.id == post.user_id
+    return nil if user.permission?("forum.topics.lock") || post.topic.wiki?
+
+    expires_at = post.created_at + Community::EditPost::EDIT_WINDOW
+    remaining = (expires_at - Time.current).to_i
+    remaining.positive? ? remaining : nil
   end
 
   def can_edit_post?(post, user)
@@ -251,6 +267,7 @@ module InertiaSerializable
       id: product.public_id,
       name: product.name,
       slug: product.slug,
+      summary: product.summary,
       category_name: product.category&.name,
       price_label: format_price(product),
       compare_at_label: product.on_sale? ? format_money(product.compare_at_price_cents, product.currency) : nil,
@@ -280,6 +297,7 @@ module InertiaSerializable
       name: product.name,
       slug: product.slug,
       description: product.description,
+      summary: product.summary,
       price_label: format_price(product),
       compare_at_label: product.on_sale? ? format_money(product.compare_at_price_cents, product.currency) : nil,
       on_sale: product.on_sale?,
@@ -314,6 +332,7 @@ module InertiaSerializable
       helpful_count: review.helpful_votes.count,
       helpful: helpful,
       helpful_url: current_user && current_user.id != review.user_id ? helpful_store_product_review_path(review.product.public_id, review.id) : nil,
+      report_url: current_user && current_user.id != review.user_id ? new_forum_report_path(reportable_type: "Commerce::Review", reportable_id: review.id) : nil,
       verified_purchaser: verified,
       photo_urls: review.photos.map { |photo| rails_blob_path(photo, only_path: true) }
     }

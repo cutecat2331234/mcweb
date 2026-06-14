@@ -24,6 +24,8 @@ const props = defineProps<{
     wishlist_url?: string
     add_to_cart_url?: string
     saved_variant_name?: string
+    price_alert_url?: string
+    has_price_alert?: boolean
   }>
   shareUrl: string | null
   addAllToCartUrl?: string
@@ -39,6 +41,10 @@ function addToCart(url: string) {
 }
 
 function removeFromWishlist(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
+function togglePriceAlert(url: string) {
   router.post(url, {}, { preserveScroll: true })
 }
 
@@ -80,6 +86,15 @@ function copyShareLink() {
       </div>
       <div class="flex gap-2">
         <Button v-if="product.add_to_cart_url && product.in_stock" type="button" size="sm" @click="addToCart(product.add_to_cart_url)">加入购物车</Button>
+        <Button
+          v-if="product.price_alert_url"
+          type="button"
+          size="sm"
+          :variant="product.has_price_alert ? 'outline' : 'secondary'"
+          @click="togglePriceAlert(product.price_alert_url)"
+        >
+          {{ product.has_price_alert ? '已订阅降价' : '降价提醒' }}
+        </Button>
         <Button v-if="product.wishlist_url" type="button" variant="outline" size="sm" @click="removeFromWishlist(product.wishlist_url)">移除</Button>
         <Button as-child variant="outline" size="sm">
           <Link :href="product.url">查看</Link>

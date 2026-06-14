@@ -31,6 +31,7 @@ export interface ProductItem {
   low_stock: boolean
   average_rating?: number | null
   image_url: string | null
+  summary?: string | null
   url: string
 }
 
@@ -194,6 +195,7 @@ function search() {
                 <Link :href="product.url" class="font-medium hover:underline">
                   {{ product.name }}
                 </Link>
+                <p v-if="product.summary" class="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{{ product.summary }}</p>
                 <span v-if="product.average_rating" class="ml-2 text-xs text-amber-600">★ {{ product.average_rating }}</span>
                 <span class="ml-2 text-xs text-muted-foreground">{{ product.slug }}</span>
               </div>

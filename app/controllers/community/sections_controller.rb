@@ -47,7 +47,9 @@ module Community
           description: section.description,
           new_topic_url: logged_in? ? new_forum_topic_path(section_id: section.slug) : nil,
           watching: logged_in? && Community::Subscription.exists?(user: current_user, subscribable: section),
+          muted: logged_in? && Community::SectionMute.exists?(user: current_user, section: section),
           subscription_url: subscription_forum_section_path(section),
+          mute_url: mute_forum_section_path(section),
           mark_all_read_url: logged_in? ? mark_all_read_forum_section_path(section) : nil,
           rss_url: forum_section_rss_path(section)
         },
@@ -80,6 +82,18 @@ module Community
 
       if result.success?
         redirect_to forum_section_path(section), notice: "分区已全部标为已读。"
+      else
+        redirect_to forum_section_path(section), alert: service_error_message(result)
+      end
+    end
+
+    def toggle_mute
+      require_login
+      section = Community::Section.find_by!(slug: params[:id])
+      result = Community::ToggleSectionMute.call(user: current_user, section: section)
+
+      if result.success?
+        redirect_to forum_section_path(section), notice: result.value[:muted] ? "已静音此分区。" : "已取消静音。"
       else
         redirect_to forum_section_path(section), alert: service_error_message(result)
       end

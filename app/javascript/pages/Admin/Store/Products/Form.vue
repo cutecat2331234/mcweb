@@ -16,6 +16,7 @@ const props = defineProps<{
     name: string
     slug: string
     description: string
+    summary?: string
     product_type: string
     status: string
     price_cents: number
@@ -96,6 +97,10 @@ async function uploadCover(event: Event) {
     <div class="space-y-2">
       <Label for="slug">标识 (slug)</Label>
       <Input id="slug" v-model="form.product.slug" required />
+    </div>
+    <div class="space-y-2">
+      <Label for="summary">短描述</Label>
+      <Textarea id="summary" v-model="form.product.summary" rows="2" placeholder="列表页展示的简短介绍（可选）" />
     </div>
     <div class="space-y-2">
       <Label for="description">描述</Label>

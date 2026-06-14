@@ -16,8 +16,20 @@ module Commerce
         pendingCouponCode: pending_coupon,
         previewCouponUrl: preview_coupon_store_cart_path,
         clearCouponUrl: clear_coupon_store_cart_path,
-        moveToWishlistUrl: move_to_wishlist_store_cart_path
+        moveToWishlistUrl: move_to_wishlist_store_cart_path,
+        clearCartUrl: clear_store_cart_path,
+        crossSellProducts: cross_sell_products(items)
       }
+    end
+
+    def clear
+      result = Commerce::ClearCart.call(cart: @cart)
+
+      if result.success?
+        redirect_to store_cart_path, notice: "购物车已清空。"
+      else
+        redirect_to store_cart_path, alert: service_error_message(result)
+      end
     end
 
     def move_to_wishlist
@@ -136,6 +148,22 @@ module Commerce
         same_site: :lax,
         expires: 30.days
       }
+    end
+
+    def cross_sell_products(items)
+      return [] if items.blank?
+
+      cart_product_ids = items.map(&:store_product_id)
+      category_ids = items.filter_map { |item| item.product&.store_category_id }.uniq
+      return [] if category_ids.empty?
+
+      scope = Commerce::Product.available
+        .where(store_category_id: category_ids)
+        .where.not(id: cart_product_ids)
+        .order(created_at: :desc)
+        .limit(4)
+
+      scope.map { |product| serialize_product_list_item(product) }
     end
   end
 end

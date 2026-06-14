@@ -262,6 +262,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["reviewer_id"], name: "index_forum_reports_on_reviewer_id"
   end
 
+  create_table "forum_section_mutes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_section_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_section_id"], name: "index_forum_section_mutes_on_forum_section_id"
+    t.index ["user_id", "forum_section_id"], name: "index_forum_section_mutes_on_user_id_and_forum_section_id", unique: true
+    t.index ["user_id"], name: "index_forum_section_mutes_on_user_id"
+  end
+
   create_table "forum_sections", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
@@ -327,6 +337,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.bigint "forum_section_id", null: false
     t.bigint "last_post_user_id"
     t.datetime "last_posted_at"
+    t.string "lock_reason"
     t.boolean "locked", default: false, null: false
     t.boolean "pinned", default: false, null: false
     t.datetime "pinned_until"
@@ -384,6 +395,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["followed_id"], name: "index_forum_user_follows_on_followed_id"
     t.index ["follower_id", "followed_id"], name: "index_forum_user_follows_on_follower_id_and_followed_id", unique: true
     t.index ["follower_id"], name: "index_forum_user_follows_on_follower_id"
+  end
+
+  create_table "forum_user_ignores", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "ignored_id", null: false
+    t.bigint "ignorer_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["ignored_id"], name: "index_forum_user_ignores_on_ignored_id"
+    t.index ["ignorer_id", "ignored_id"], name: "index_forum_user_ignores_on_ignorer_id_and_ignored_id", unique: true
+    t.index ["ignorer_id"], name: "index_forum_user_ignores_on_ignorer_id"
   end
 
   create_table "installation_locks", force: :cascade do |t|
@@ -743,6 +764,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["user_id"], name: "index_store_orders_on_user_id"
   end
 
+  create_table "store_price_alerts", force: :cascade do |t|
+    t.integer "baseline_price_cents", null: false
+    t.datetime "created_at", null: false
+    t.datetime "notified_at"
+    t.bigint "store_product_id", null: false
+    t.bigint "store_product_variant_id"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_product_id"], name: "index_store_price_alerts_on_store_product_id"
+    t.index ["store_product_variant_id"], name: "index_store_price_alerts_on_store_product_variant_id"
+    t.index ["user_id", "store_product_id"], name: "index_store_price_alerts_on_user_id_and_store_product_id", unique: true
+    t.index ["user_id"], name: "index_store_price_alerts_on_user_id"
+  end
+
   create_table "store_product_answers", force: :cascade do |t|
     t.text "body", null: false
     t.datetime "created_at", null: false
@@ -810,6 +845,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "status", default: "draft", null: false
     t.integer "stock"
     t.bigint "store_category_id"
+    t.text "summary"
     t.datetime "updated_at", null: false
     t.string "version"
     t.integer "view_count", default: 0, null: false
@@ -1054,6 +1090,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_reply_drafts", "users"
   add_foreign_key "forum_reports", "users", column: "reporter_id"
   add_foreign_key "forum_reports", "users", column: "reviewer_id"
+  add_foreign_key "forum_section_mutes", "forum_sections"
+  add_foreign_key "forum_section_mutes", "users"
   add_foreign_key "forum_sections", "forum_categories"
   add_foreign_key "forum_sections", "forum_sections", column: "parent_id"
   add_foreign_key "forum_subscriptions", "users"
@@ -1071,6 +1109,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_user_blocks", "users", column: "blocker_id"
   add_foreign_key "forum_user_follows", "users", column: "followed_id"
   add_foreign_key "forum_user_follows", "users", column: "follower_id"
+  add_foreign_key "forum_user_ignores", "users", column: "ignored_id"
+  add_foreign_key "forum_user_ignores", "users", column: "ignorer_id"
   add_foreign_key "installation_locks", "users", column: "locked_by_id"
   add_foreign_key "ip_bans", "users", column: "banned_by_id"
   add_foreign_key "minecraft_connector_tasks", "minecraft_servers"
@@ -1101,6 +1141,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_order_items", "store_products"
   add_foreign_key "store_orders", "store_coupons"
   add_foreign_key "store_orders", "users"
+  add_foreign_key "store_price_alerts", "store_product_variants"
+  add_foreign_key "store_price_alerts", "store_products"
+  add_foreign_key "store_price_alerts", "users"
   add_foreign_key "store_product_answers", "store_product_questions"
   add_foreign_key "store_product_answers", "users"
   add_foreign_key "store_product_questions", "store_products"

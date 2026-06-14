@@ -28,6 +28,10 @@ module Community
         return ServiceResult.failure(error: "Your trust level is too low to reply in this section.")
       end
 
+      unless @topic.section.writable_by?(@user, :reply)
+        return ServiceResult.failure(error: "This section is read-only.")
+      end
+
       if Community::TopicReplyBan.active.exists?(forum_topic_id: @topic.id, user_id: @user.id)
         return ServiceResult.failure(error: "You are banned from replying in this topic.")
       end
@@ -97,6 +101,10 @@ module Community
 
       if @user.banned?
         return ServiceResult.failure(error: "Your account is banned.")
+      end
+
+      if Community::UserSilence.silenced?(@user)
+        return ServiceResult.failure(error: "You are silenced and cannot post.")
       end
 
       ip_result = Administration::CheckIpBan.call(ip_address: @ip_address)

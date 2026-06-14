@@ -32,6 +32,7 @@ const props = defineProps<{
   query: string
   status: string
   statusOptions: Array<{ value: string; label: string }>
+  exportUrl?: string
 }>()
 
 const q = ref(props.query)
@@ -54,6 +55,9 @@ function search() {
     <PageHeader title="我的订单" />
     <Button as-child variant="outline" size="sm">
       <Link :href="routes.storePreferences">邮件偏好</Link>
+    </Button>
+    <Button v-if="exportUrl" as-child variant="outline" size="sm">
+      <a :href="exportUrl">导出 CSV</a>
     </Button>
   </div>
 

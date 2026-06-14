@@ -35,6 +35,10 @@ module Community
         return ServiceResult.failure(error: "Your trust level is too low to create topics in this section.")
       end
 
+      unless @section.writable_by?(@user, :create_topic)
+        return ServiceResult.failure(error: "This section is read-only.")
+      end
+
       topic = nil
       tag_result = nil
       Community::Topic.transaction do
@@ -122,6 +126,10 @@ module Community
 
       if @user.banned?
         return ServiceResult.failure(error: "Your account is banned.")
+      end
+
+      if Community::UserSilence.silenced?(@user)
+        return ServiceResult.failure(error: "You are silenced and cannot post.")
       end
 
       ip_result = Administration::CheckIpBan.call(ip_address: @ip_address)

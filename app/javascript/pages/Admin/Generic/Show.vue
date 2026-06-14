@@ -62,6 +62,12 @@ export interface StaffNoteForm {
   action_url: string
 }
 
+export interface SilenceForm {
+  silenced: boolean
+  silence_url: string
+  unsilence_url: string
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -75,6 +81,7 @@ const props = defineProps<{
   badgeForm?: BadgeForm | null
   warningForm?: WarningForm | null
   staffNoteForm?: StaffNoteForm | null
+  silenceForm?: SilenceForm | null
   backUrl: string
 }>()
 
@@ -87,6 +94,11 @@ const warningForm = useForm({
 
 const staffNoteForm = useForm({
   body: '',
+})
+
+const silenceForm = useForm({
+  reason: '',
+  days: 7,
 })
 
 const muteForm = useForm({
@@ -148,6 +160,19 @@ function submitStaffNote() {
     preserveScroll: true,
     onSuccess: () => { staffNoteForm.reset() },
   })
+}
+
+function submitSilence() {
+  if (!props.silenceForm) return
+  silenceForm.post(props.silenceForm.silence_url, {
+    preserveScroll: true,
+    onSuccess: () => { silenceForm.reset() },
+  })
+}
+
+function submitUnsilence() {
+  if (!props.silenceForm) return
+  router.post(props.silenceForm.unsilence_url, {}, { preserveScroll: true })
 }
 </script>
 
@@ -259,6 +284,24 @@ function submitStaffNote() {
     </div>
     <Button type="submit" size="sm" :disabled="staffNoteForm.processing">保存备注</Button>
   </form>
+
+  <div v-if="props.silenceForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4">
+    <h2 class="text-sm font-semibold">用户沉默（XenForo）</h2>
+    <p class="text-xs text-muted-foreground">沉默用户可浏览论坛但无法发帖或回复，与封禁不同。</p>
+    <p v-if="props.silenceForm.silenced" class="text-sm text-amber-700">当前处于沉默状态。</p>
+    <form v-if="!props.silenceForm.silenced" class="space-y-3" @submit.prevent="submitSilence">
+      <div class="space-y-2">
+        <Label>原因</Label>
+        <Input v-model="silenceForm.reason" placeholder="可选" />
+      </div>
+      <div class="space-y-2">
+        <Label>天数（留空为永久）</Label>
+        <Input v-model.number="silenceForm.days" type="number" min="1" placeholder="例如 7" />
+      </div>
+      <Button type="submit" variant="destructive" size="sm" :disabled="silenceForm.processing">施加沉默</Button>
+    </form>
+    <Button v-else type="button" variant="outline" size="sm" @click="submitUnsilence">解除沉默</Button>
+  </div>
 
   <div class="mt-6 flex flex-wrap gap-3">
     <template v-for="action in actions" :key="action.href + action.label">

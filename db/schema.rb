@@ -91,6 +91,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["user_id"], name: "index_forum_bookmarks_on_user_id"
   end
 
+  create_table "forum_canned_responses", force: :cascade do |t|
+    t.bigint "author_id", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_id"], name: "index_forum_canned_responses_on_author_id"
+  end
+
   create_table "forum_categories", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "description"
@@ -287,6 +296,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "position", default: 0, null: false
     t.boolean "prefix_required", default: false, null: false
     t.jsonb "prefixes", default: [], null: false
+    t.boolean "read_only", default: false, null: false
     t.jsonb "required_tag_ids", default: [], null: false
     t.string "slug", null: false
     t.text "topic_template"
@@ -450,6 +460,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["ignored_id"], name: "index_forum_user_ignores_on_ignored_id"
     t.index ["ignorer_id", "ignored_id"], name: "index_forum_user_ignores_on_ignorer_id_and_ignored_id", unique: true
     t.index ["ignorer_id"], name: "index_forum_user_ignores_on_ignorer_id"
+  end
+
+  create_table "forum_user_silences", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.datetime "expires_at"
+    t.text "reason"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["created_by_id"], name: "index_forum_user_silences_on_created_by_id"
+    t.index ["user_id", "expires_at"], name: "index_forum_user_silences_on_user_id_and_expires_at"
+    t.index ["user_id"], name: "index_forum_user_silences_on_user_id"
   end
 
   create_table "forum_user_warnings", force: :cascade do |t|
@@ -719,6 +741,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "store_categories", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.text "description"
     t.string "name", null: false
     t.integer "position", default: 0, null: false
     t.string "slug", null: false
@@ -769,6 +792,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["delivery_id"], name: "index_store_fulfillments_on_delivery_id", unique: true
     t.index ["store_order_id"], name: "index_store_fulfillments_on_store_order_id"
     t.index ["store_order_item_id"], name: "index_store_fulfillments_on_store_order_item_id"
+  end
+
+  create_table "store_gift_card_transactions", force: :cascade do |t|
+    t.integer "amount_cents", null: false
+    t.integer "balance_after_cents", null: false
+    t.datetime "created_at", null: false
+    t.bigint "store_gift_card_id", null: false
+    t.bigint "store_order_id"
+    t.string "transaction_type", null: false
+    t.index ["store_gift_card_id", "created_at"], name: "idx_on_store_gift_card_id_created_at_c26b811dd0"
+    t.index ["store_gift_card_id"], name: "index_store_gift_card_transactions_on_store_gift_card_id"
+    t.index ["store_order_id"], name: "index_store_gift_card_transactions_on_store_order_id"
   end
 
   create_table "store_gift_cards", force: :cascade do |t|
@@ -1160,6 +1195,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_bookmarks", "forum_posts"
   add_foreign_key "forum_bookmarks", "forum_topics"
   add_foreign_key "forum_bookmarks", "users"
+  add_foreign_key "forum_canned_responses", "users", column: "author_id"
   add_foreign_key "forum_conversation_participants", "forum_conversations"
   add_foreign_key "forum_conversation_participants", "users"
   add_foreign_key "forum_conversations", "users", column: "creator_id"
@@ -1213,6 +1249,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_user_follows", "users", column: "follower_id"
   add_foreign_key "forum_user_ignores", "users", column: "ignored_id"
   add_foreign_key "forum_user_ignores", "users", column: "ignorer_id"
+  add_foreign_key "forum_user_silences", "users"
+  add_foreign_key "forum_user_silences", "users", column: "created_by_id"
   add_foreign_key "forum_user_warnings", "users"
   add_foreign_key "forum_user_warnings", "users", column: "issuer_id"
   add_foreign_key "installation_locks", "users", column: "locked_by_id"
@@ -1238,6 +1276,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_fulfillment_attempts", "store_fulfillments"
   add_foreign_key "store_fulfillments", "store_order_items"
   add_foreign_key "store_fulfillments", "store_orders"
+  add_foreign_key "store_gift_card_transactions", "store_gift_cards"
+  add_foreign_key "store_gift_card_transactions", "store_orders"
   add_foreign_key "store_gift_cards", "users", column: "created_by_id"
   add_foreign_key "store_gift_cards", "users", column: "owner_user_id"
   add_foreign_key "store_order_events", "store_orders"

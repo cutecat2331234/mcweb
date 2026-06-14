@@ -13,13 +13,15 @@ module Community
       subscriber_ids = Community::Subscription
         .where(subscribable: @tags)
         .where.not(user_id: @topic.user_id)
-        .pluck(:user_id)
-        .uniq
+        .pluck(:user_id, :notification_level)
+        .uniq { |user_id, _| user_id }
 
       recipient_ids = Community::FilterNotificationRecipients.call(
         actor_id: @topic.user_id,
-        recipient_ids: subscriber_ids
+        recipient_ids: subscriber_ids.map(&:first)
       ).value
+
+      levels_by_user = subscriber_ids.to_h
 
       User.where(id: recipient_ids).find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.tag_topic")

@@ -82,6 +82,8 @@ module Community
         markUnreadUrl: logged_in? ? mark_unread_forum_topic_path(@topic) : nil,
         jumpToUnreadUrl: first_unread_floor ? forum_topic_path(@topic, unread: 1) : nil,
         canReply: can_reply_to_topic?,
+        cannedResponses: can_moderate_topic? ? Community::CannedResponse.ordered.map { |r| { title: r.title, body: r.body } } : [],
+        section_read_only: @topic.section.read_only?,
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
         sections: can_move_topic? ? movable_sections : [],
@@ -444,6 +446,8 @@ module Community
       return false unless @topic.section.allowed?(current_user, :reply)
       return false unless @topic.section.trust_allowed?(current_user, :reply)
       return false if Community::TopicReplyBan.active.exists?(forum_topic_id: @topic.id, user_id: current_user.id)
+
+      return false unless @topic.section.writable_by?(current_user, :reply)
 
       true
     end

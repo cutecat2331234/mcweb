@@ -46,7 +46,9 @@ module Community
           name: section.name,
           slug: section.slug,
           description: section.description,
-          new_topic_url: logged_in? ? new_forum_topic_path(section_id: section.slug) : nil,
+          read_only: section.read_only?,
+          notification_level: logged_in? ? Community::Subscription.find_by(user: current_user, subscribable: section)&.notification_level : nil,
+          new_topic_url: logged_in? && section.writable_by?(current_user, :create_topic) && section.allowed?(current_user, :create_topic) ? new_forum_topic_path(section_id: section.slug) : nil,
           watching: logged_in? && Community::Subscription.exists?(user: current_user, subscribable: section),
           muted: logged_in? && Community::SectionMute.exists?(user: current_user, section: section),
           subscription_url: subscription_forum_section_path(section),
@@ -63,7 +65,7 @@ module Community
         sort: sort,
         filter: filter.to_s,
         filterOptions: topic_filter_options(prefixes: Array(section.prefixes)),
-        canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic),
+        canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic),
       }
     end
 
@@ -73,7 +75,15 @@ module Community
       result = Community::ToggleSectionSubscription.call(user: current_user, section: section)
 
       if result.success?
-        redirect_to forum_section_path(section), notice: result.value[:watching] ? "已关注此分区。" : "已取消关注。"
+        notice = if result.value[:watching]
+                   case result.value[:notification_level]
+                   when "tracking" then "已切换为跟踪此分区（仅站内通知）。"
+                   else "已关注此分区（即时通知）。"
+                   end
+                 else
+                   "已取消关注此分区。"
+                 end
+        redirect_to forum_section_path(section), notice: notice
       else
         redirect_to forum_section_path(section), alert: service_error_message(result)
       end

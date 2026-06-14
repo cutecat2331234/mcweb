@@ -26,6 +26,12 @@ class Community::ToggleSectionSubscriptionTest < ActiveSupport::TestCase
     add = Community::ToggleSectionSubscription.call(user: user, section: section)
     assert add.success?
     assert add.value[:watching]
+    assert_equal "watching", add.value[:notification_level]
+
+    track = Community::ToggleSectionSubscription.call(user: user, section: section)
+    assert track.success?
+    assert track.value[:watching]
+    assert_equal "tracking", track.value[:notification_level]
 
     remove = Community::ToggleSectionSubscription.call(user: user, section: section)
     assert remove.success?

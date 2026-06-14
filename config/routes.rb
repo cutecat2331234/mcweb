@@ -30,6 +30,8 @@ Rails.application.routes.draw do
         post :grant_badge
         post :warn
         post :staff_note
+        post :silence
+        post :unsilence
       end
     end
     resources :roles, only: %i[index show]
@@ -43,6 +45,7 @@ Rails.application.routes.draw do
       resources :censored_words, only: %i[index create destroy]
       resources :badges, only: %i[index new create edit update destroy]
       resources :tags
+      resources :canned_responses
     end
     namespace :store do
       resources :categories
@@ -107,6 +110,7 @@ Rails.application.routes.draw do
       member do
         post :vote
         post :close
+        post :revoke
         get :voters
       end
     end
@@ -237,6 +241,9 @@ Rails.application.routes.draw do
       delete :clear, on: :member
     end
     resources :orders, only: %i[index show create] do
+      collection do
+        get :export
+      end
       member do
         post :cancel
         post :refund

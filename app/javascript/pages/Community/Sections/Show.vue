@@ -18,6 +18,8 @@ const props = defineProps<{
     name: string
     slug: string
     description: string | null
+    read_only?: boolean
+    notification_level?: 'watching' | 'tracking' | null
     new_topic_url: string | null
     watching: boolean
     muted?: boolean
@@ -54,6 +56,12 @@ function changeFilter(value: string) {
   router.get(routes.forumSection(props.section.slug), { sort: props.sort, filter: value || undefined }, { preserveState: true })
 }
 
+function sectionWatchLabel() {
+  if (!props.section.watching) return '关注分区'
+  if (props.section.notification_level === 'tracking') return '跟踪中（点击取消）'
+  return '关注中（点击改为跟踪）'
+}
+
 function toggleWatch() {
   router.post(props.section.subscription_url, {}, { preserveScroll: true })
 }
@@ -78,7 +86,7 @@ function markAllRead() {
     <PageHeader :title="section.name" :subtitle="section.description || undefined" />
     <div class="flex flex-wrap gap-2">
       <Button type="button" variant="outline" size="sm" @click="toggleWatch">
-        {{ section.watching ? '取消关注分区' : '关注分区' }}
+        {{ sectionWatchLabel() }}
       </Button>
       <Button v-if="section.mute_url" type="button" variant="outline" size="sm" @click="toggleMute">
         {{ section.muted ? '取消静音分区' : '静音分区' }}
@@ -94,6 +102,10 @@ function markAllRead() {
       </Button>
     </div>
   </div>
+
+  <p v-if="section.read_only" class="mb-4 rounded-md border border-slate-300 bg-slate-50 px-3 py-2 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+    此分区为只读模式，普通用户无法发帖或回复（版主除外）。
+  </p>
 
   <p v-if="section.required_tags?.length" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
     发帖需包含以下标签之一：

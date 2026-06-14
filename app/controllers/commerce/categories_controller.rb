@@ -23,7 +23,8 @@ module Commerce
       render inertia: "Commerce/Categories/Show", props: {
         category: {
           slug: category.slug,
-          name: category.name
+          name: category.name,
+          description: category.description
         },
         products: products.map { |product| serialize_product_list_item(product) },
         pagination: pagy_props(@pagy),

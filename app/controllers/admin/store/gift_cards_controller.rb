@@ -28,7 +28,7 @@ module Admin
       end
 
       def show
-        card = ::Commerce::GiftCard.find(params[:id])
+        card = ::Commerce::GiftCard.includes(:transactions, :orders).find(params[:id])
         orders = card.orders.order(created_at: :desc).limit(10)
         render inertia: "Admin/Generic/Show", props: {
           title: card.code,
@@ -44,6 +44,13 @@ module Admin
               title: "使用记录",
               items: orders.map do |order|
                 { label: order.order_number, value: "#{format_money(order.gift_card_amount_cents, order.currency)} · #{order.status}" }
+              end.presence || [ { label: "记录", value: "暂无" } ]
+            },
+            {
+              title: "余额流水",
+              items: card.transactions.order(created_at: :desc).limit(15).map do |tx|
+                sign = tx.amount_cents.positive? ? "+" : ""
+                { label: l(tx.created_at, format: :short), value: "#{sign}#{format_money(tx.amount_cents.abs, card.currency)} · 余额 #{format_money(tx.balance_after_cents, card.currency)}" }
               end.presence || [ { label: "记录", value: "暂无" } ]
             }
           ],

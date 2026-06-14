@@ -42,7 +42,8 @@ module Admin
             { label: "允许标签", value: @section.allowed_tags.pluck(:name).join("、").presence || "—" },
             { label: "前缀必填", value: @section.prefix_required? ? "是" : "否" },
             { label: "最低发帖信任等级", value: @section.min_trust_level_create.to_i },
-            { label: "最低回复信任等级", value: @section.min_trust_level_reply.to_i }
+            { label: "最低回复信任等级", value: @section.min_trust_level_reply.to_i },
+            { label: "只读分区", value: @section.read_only? ? "是" : "否" }
           ],
           backUrl: admin_forum_sections_path,
           actions: [{ label: "编辑", href: edit_admin_forum_section_path(@section) }]
@@ -84,7 +85,7 @@ module Admin
         permitted = params.require(:section).permit(
           :name, :slug, :description, :position, :forum_category_id, :parent_id,
           :create_topic_roles, :reply_roles, :prefixes, :prefix_required, :topic_template,
-          :min_trust_level_create, :min_trust_level_reply,
+          :min_trust_level_create, :min_trust_level_reply, :read_only,
           required_tag_ids: [], allowed_tag_ids: []
         )
         prefixes = if permitted[:prefixes].is_a?(String)
@@ -106,6 +107,9 @@ module Admin
           allowed_tag_ids: allowed_tag_ids,
           prefix_required: ActiveModel::Type::Boolean.new.cast(permitted[:prefix_required]),
           topic_template: permitted[:topic_template],
+          min_trust_level_create: permitted[:min_trust_level_create].to_i,
+          min_trust_level_reply: permitted[:min_trust_level_reply].to_i,
+          read_only: ActiveModel::Type::Boolean.new.cast(permitted[:read_only]),
           permissions: {
             "create_topic" => parse_roles(permitted[:create_topic_roles]),
             "reply" => parse_roles(permitted[:reply_roles])
@@ -140,7 +144,8 @@ module Admin
             prefix_required: section.prefix_required?,
             topic_template: section.topic_template || "",
             min_trust_level_create: section.min_trust_level_create.to_i,
-            min_trust_level_reply: section.min_trust_level_reply.to_i
+            min_trust_level_reply: section.min_trust_level_reply.to_i,
+            read_only: section.read_only?
           },
           tags: ::Community::Tag.order(:name).map { |tag| { id: tag.id, name: tag.name } },
           categories: ::Community::Category.order(:name).map { |c| { id: c.id, name: c.name } },

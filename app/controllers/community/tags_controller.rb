@@ -63,8 +63,15 @@ module Community
       result = Community::ToggleTagSubscription.call(user: current_user, tag: tag)
 
       if result.success?
-        redirect_to forum_tag_path(tag.slug),
-                    notice: result.value[:watching] ? "已关注此标签。" : "已取消关注此标签。"
+        notice = if result.value[:watching]
+                   case result.value[:notification_level]
+                   when "tracking" then "已切换为跟踪此标签（仅站内通知）。"
+                   else "已关注此标签（即时通知）。"
+                   end
+                 else
+                   "已取消关注此标签。"
+                 end
+        redirect_to forum_tag_path(tag.slug), notice: notice
       else
         redirect_to forum_tag_path(tag.slug), alert: service_error_message(result)
       end

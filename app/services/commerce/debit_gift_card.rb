@@ -18,6 +18,12 @@ module Commerce
           balance_cents: card.balance_cents - debit,
           active: (card.balance_cents - debit).positive?
         )
+        Commerce::RecordGiftCardTransaction.call(
+          gift_card: card,
+          amount_cents: -debit,
+          transaction_type: :debit,
+          order: @order
+        )
       end
 
       ServiceResult.success

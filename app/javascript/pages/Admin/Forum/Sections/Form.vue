@@ -27,6 +27,7 @@ const props = defineProps<{
     prefix_required: boolean
     min_trust_level_create: number
     min_trust_level_reply: number
+    read_only: boolean
   }
   tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
@@ -123,6 +124,10 @@ function submit() {
         发帖时必须选择前缀
       </label>
     </div>
+    <label class="flex items-center gap-2 text-sm">
+      <input v-model="form.section.read_only" type="checkbox" class="h-4 w-4" />
+      只读分区（普通用户不可发帖/回复）
+    </label>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
         <Label for="min_trust_level_create">最低发帖信任等级 (0-4)</Label>

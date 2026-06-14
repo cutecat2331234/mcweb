@@ -17,6 +17,12 @@ module Commerce
           balance_cents: card.balance_cents + amount,
           active: true
         )
+        Commerce::RecordGiftCardTransaction.call(
+          gift_card: card,
+          amount_cents: amount,
+          transaction_type: :credit,
+          order: @order
+        )
       end
 
       ServiceResult.success

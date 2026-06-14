@@ -15,6 +15,7 @@ class User < ApplicationRecord
   has_many :user_badges, class_name: "Community::UserBadge", dependent: :destroy
   has_many :forum_warnings, class_name: "Community::UserWarning", dependent: :destroy
   has_many :forum_staff_notes, class_name: "Community::StaffNote", dependent: :destroy
+  has_many :user_silences, class_name: "Community::UserSilence", dependent: :destroy
 
   enum :status, { active: "active", banned: "banned", deleted: "deleted" }, validate: true
 
@@ -44,6 +45,10 @@ class User < ApplicationRecord
     return false unless banned?
 
     ban_expires_at.nil? || ban_expires_at > Time.current
+  end
+
+  def silenced?
+    Community::UserSilence.silenced?(self)
   end
 
   def ban!(reason: nil, expires_at: nil)

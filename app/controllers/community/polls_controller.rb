@@ -20,6 +20,17 @@ module Community
       end
     end
 
+    def revoke
+      poll = Community::Poll.find(params[:id])
+      result = Community::RevokePollVote.call(user: current_user, poll: poll)
+
+      if result.success?
+        redirect_to forum_topic_path(poll.topic), notice: "已撤销投票。"
+      else
+        redirect_to forum_topic_path(poll.topic), alert: service_error_message(result)
+      end
+    end
+
     def close
       poll = Community::Poll.find(params[:id])
       result = Community::ClosePoll.call(user: current_user, poll: poll)

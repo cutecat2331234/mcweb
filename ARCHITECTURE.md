@@ -715,3 +715,18 @@ app/
 | 商城分类公开页 | `Commerce::CategoriesController` |
 | 管理端复制商品 | `DuplicateProduct` |
 | 低库存员工通知 | `NotifyLowStockStaffJob` |
+
+### 第三十九轮（只读分区、沉默用户与商城流水）
+
+| 功能 | 实现 |
+|------|------|
+| 分区只读模式（XenForo） | `forum_sections.read_only` + 发帖/回复拦截 |
+| 用户沉默（可浏览不可发帖） | `forum_user_silences` + 管理端沉默/解除 |
+| 罐头回复（Discourse） | `forum_canned_responses` + 管理端 + 主题回复插入 |
+| 撤销投票 | `RevokePollVote` + 投票 UI |
+| 分区/标签订阅级别 | `ToggleSectionSubscription` / `ToggleTagSubscription` 三级循环 |
+| 分区通知邮件级别 | `NotifySectionTopic` 仅 `watching` 发邮件 |
+| 举报驳回自动恢复显示 | `ClearReportableHide` + 管理端 dismiss |
+| 礼品卡余额流水 | `store_gift_card_transactions` + 扣款/退款记录 |
+| 商城分类描述 | `store_categories.description` + 分类页展示 |
+| 用户订单 CSV 导出 | `OrdersController#export` |

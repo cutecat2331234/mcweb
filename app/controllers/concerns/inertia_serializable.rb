@@ -431,6 +431,7 @@ module InertiaSerializable
       user_vote_index: user_vote_indices.first,
       user_vote_indices: user_vote_indices,
       vote_url: forum_poll_vote_path(poll),
+      revoke_url: poll.open? && user_votes.exists? ? revoke_forum_poll_path(poll) : nil,
       voters_url: can_see_voters ? voters_forum_poll_path(poll) : nil,
       close_url: can_close && poll.open? ? close_forum_poll_path(poll) : nil,
       closes_at: poll.closes_at ? l(poll.closes_at, format: :short) : nil

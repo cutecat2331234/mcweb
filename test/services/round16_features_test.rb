@@ -39,10 +39,16 @@ class Community::ToggleTagSubscriptionTest < ActiveSupport::TestCase
     result = Community::ToggleTagSubscription.call(user: @user, tag: @tag)
     assert result.success?
     assert result.value[:watching]
+    assert_equal "watching", result.value[:notification_level]
 
     result2 = Community::ToggleTagSubscription.call(user: @user, tag: @tag)
     assert result2.success?
-    assert_not result2.value[:watching]
+    assert result2.value[:watching]
+    assert_equal "tracking", result2.value[:notification_level]
+
+    result3 = Community::ToggleTagSubscription.call(user: @user, tag: @tag)
+    assert result3.success?
+    assert_not result3.value[:watching]
   end
 end
 

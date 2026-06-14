@@ -22,8 +22,19 @@ module Commerce
         pagination: pagy_props(@pagy),
         query: params[:q].to_s,
         status: params[:status].to_s,
-        statusOptions: Commerce::Order::STATUSES.map { |s| { value: s, label: order_status_label(s) } }
+        statusOptions: Commerce::Order::STATUSES.map { |s| { value: s, label: order_status_label(s) } },
+        exportUrl: export_store_orders_path(format: :csv)
       }
+    end
+
+    def export
+      orders = Commerce::Order.where(user: current_user).order(created_at: :desc).limit(500)
+      lines = [ "order_number,status,total_cents,currency,created_at" ]
+      orders.each do |order|
+        lines << [ order.order_number, order.status, order.total_cents, order.currency, order.created_at.iso8601 ].join(",")
+      end
+
+      send_data lines.join("\n"), filename: "my-orders-#{Date.current}.csv", type: "text/csv", disposition: "attachment"
     end
 
     def show

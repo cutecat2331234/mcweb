@@ -58,8 +58,15 @@ module Community
       Community::Tag.where(id: ids).order(:name)
     end
 
-    def prefix_required?
-      prefix_required == true
+    def read_only?
+      read_only == true
+    end
+
+    def writable_by?(user, action)
+      return true unless read_only?
+      return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
+
+      false
     end
   end
 end

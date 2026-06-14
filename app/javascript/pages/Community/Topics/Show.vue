@@ -89,6 +89,7 @@ export interface PollItem {
   vote_url: string
   voters_url?: string | null
   close_url?: string | null
+  revoke_url?: string | null
   closes_at?: string | null
 }
 
@@ -138,6 +139,8 @@ const props = defineProps<{
   markUnreadUrl?: string | null
   jumpToUnreadUrl?: string | null
   canReply: boolean
+  cannedResponses?: Array<{ title: string; body: string }>
+  section_read_only?: boolean
   canMarkSolved: boolean
   reactionEmojis: string[]
   sections: SectionOption[]
@@ -584,6 +587,16 @@ function closePoll() {
   router.post(props.poll.close_url, {}, { preserveScroll: true })
 }
 
+function revokePoll() {
+  if (!props.poll?.revoke_url) return
+  if (!confirm('确定撤销您的投票？')) return
+  router.post(props.poll.revoke_url, {}, { preserveScroll: true })
+}
+
+function insertCanned(body: string) {
+  replyForm.post.body = replyForm.post.body ? `${replyForm.post.body}\n\n${body}` : body
+}
+
 function searchInTopic() {
   router.get(routes.forumTopic(props.topic.id), { q: topicSearch.value || undefined }, { preserveScroll: true })
 }
@@ -778,9 +791,12 @@ function pollPercent(votes: number) {
       </template>
     </div>
     <p v-if="poll.show_results && poll.total_votes !== null" class="mt-3 text-xs text-muted-foreground">共 {{ poll.total_votes }} 票</p>
-    <Button v-if="poll.voters_url" type="button" variant="outline" size="sm" class="mt-2" @click="loadPollVoters">
-      {{ showPollVoters ? '收起投票者' : '查看投票者' }}
-    </Button>
+    <div class="mt-2 flex flex-wrap gap-2">
+      <Button v-if="poll.revoke_url" type="button" variant="outline" size="sm" @click="revokePoll">撤销投票</Button>
+      <Button v-if="poll.voters_url" type="button" variant="outline" size="sm" @click="loadPollVoters">
+        {{ showPollVoters ? '收起投票者' : '查看投票者' }}
+      </Button>
+    </div>
     <ul v-if="showPollVoters && pollVoters.length" class="mt-2 space-y-2 text-xs">
       <li v-for="group in pollVoters" :key="group.index">
         <span class="font-medium">{{ group.label }}：</span>
@@ -1063,8 +1079,25 @@ function pollPercent(votes: number) {
 
   <Pagination :pagination="pagination" :base-path="routes.forumTopic(topic.id)" />
 
+  <p v-if="section_read_only" class="mb-4 rounded-md border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
+    此分区为只读模式，普通用户无法回复（版主除外）。
+  </p>
+
   <section v-if="effectiveCanReply" id="reply-form" class="mt-8 max-w-2xl">
     <h2 class="mb-3 text-sm font-semibold">回复</h2>
+    <div v-if="cannedResponses?.length" class="mb-3 flex flex-wrap gap-2">
+      <span class="self-center text-xs text-muted-foreground">罐头回复：</span>
+      <Button
+        v-for="(item, index) in cannedResponses"
+        :key="index"
+        type="button"
+        variant="outline"
+        size="sm"
+        @click="insertCanned(item.body)"
+      >
+        {{ item.title }}
+      </Button>
+    </div>
     <div v-if="replyPreview" class="mb-3 rounded-md border bg-muted/40 p-3 text-sm">
       <div class="flex items-start justify-between gap-2">
         <p>回复 #{{ replyPreview.floor_number }} {{ replyPreview.author }}</p>

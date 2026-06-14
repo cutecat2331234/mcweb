@@ -2,9 +2,9 @@
 
 module Community
   class TopicsController < ApplicationController
-    before_action :require_login, only: %i[new create toggle_subscription moderate]
+    before_action :require_login, only: %i[new create toggle_subscription moderate move]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show toggle_subscription moderate]
+    before_action :set_topic, only: %i[show toggle_subscription moderate move]
 
     def show
       @topic.record_view!
@@ -21,10 +21,12 @@ module Community
           watching: watching_topic?,
           can_moderate: can_moderate_topic?
         ),
-        posts: posts.map { |post| serialize_post(post, current_user: current_user) },
+        posts: posts.map { |post| serialize_post(post, current_user: current_user, can_moderate: can_moderate_topic?) },
         pagination: pagy_props(@pagy),
         canReply: logged_in? && !@topic.locked?,
-        reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI
+        reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
+        sections: can_moderate_topic? ? movable_sections : [],
+        reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil
       }
     end
 
@@ -87,6 +89,17 @@ module Community
       end
     end
 
+    def move
+      section = Community::Section.find_by!(slug: params[:section_slug])
+      result = Community::MoveTopic.call(user: current_user, topic: @topic, section: section)
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "主题已移动。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
     private
 
     def set_section
@@ -125,6 +138,12 @@ module Community
 
     def can_moderate_topic?
       current_user&.permission?("forum.topics.lock")
+    end
+
+    def movable_sections
+      Community::Section.ordered.includes(:category).map do |section|
+        { slug: section.slug, name: section.name, category: section.category&.name }
+      end
     end
   end
 end

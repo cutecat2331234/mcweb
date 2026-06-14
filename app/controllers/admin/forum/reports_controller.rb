@@ -39,16 +39,17 @@ module Admin
             { label: "对象", value: "#{@report.reportable_type} ##{@report.reportable_id}" },
             { label: "时间", value: l(@report.created_at, format: :long) }
           ],
-          backUrl: admin_forum_reports_path
+          backUrl: admin_forum_reports_path,
+          actions: report_actions
         }
       end
 
       def update
-        status = report_params[:status].presence&.to_sym || :reviewed
+        status = report_params[:status].presence || params[:status].presence || "reviewed"
         @report.review!(
           reviewer: current_user,
           note: report_params[:review_note],
-          status: status
+          status: status.to_sym
         )
 
         Administration::AuditLogger.call(
@@ -69,7 +70,27 @@ module Admin
       end
 
       def report_params
-        params.expect(report: %i[status review_note])[:report]
+        params.fetch(:report, {}).permit(:status, :review_note)
+      end
+
+      def report_actions
+        return [] unless @report.pending?
+
+        [
+          {
+            label: "标记已审核",
+            href: admin_forum_report_path(@report),
+            method: "patch",
+            data: { report: { status: "reviewed" } }
+          },
+          {
+            label: "驳回举报",
+            href: admin_forum_report_path(@report),
+            method: "patch",
+            variant: "outline",
+            data: { report: { status: "dismissed" } }
+          }
+        ]
       end
     end
   end

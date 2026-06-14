@@ -29,7 +29,7 @@ Rails.application.routes.draw do
     namespace :forum do
       resources :sections, only: %i[index show]
       resources :topics, only: %i[index show]
-      resources :reports, only: %i[index show]
+      resources :reports, only: %i[index show update]
     end
     namespace :store do
       resources :products, only: %i[index show]
@@ -54,22 +54,39 @@ Rails.application.routes.draw do
     resources :topics, only: %i[show new create] do
       member do
         post :moderate
+        post :move
         post :subscription, action: :toggle_subscription
       end
     end
     resources :posts, only: %i[create update destroy] do
       member do
         post :reaction, action: :toggle_reaction
+        post :moderate
       end
     end
     resources :reports, only: %i[new create]
+    resources :notifications, only: %i[index] do
+      member do
+        patch :mark_read
+      end
+      collection do
+        patch :mark_all_read
+      end
+    end
     get "search", to: "search#index"
   end
+
+  get "payments/fake/:id", to: "payments/fake#show", as: :fake_payment
+  post "payments/fake/:id", to: "payments/fake#create"
 
   scope module: :commerce, path: "store", as: :store do
     resources :products, only: %i[index show]
     resource :cart, only: %i[show update]
-    resources :orders, only: %i[index show create]
+    resources :orders, only: %i[index show create] do
+      member do
+        post :cancel
+      end
+    end
     resource :checkout, only: %i[show create], controller: "checkout" do
       post :preview_coupon, on: :member
     end

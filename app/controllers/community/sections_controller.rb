@@ -14,6 +14,11 @@ module Community
     def show
       section = Community::Section.find_by!(slug: params[:id])
       @pagy, topics = pagy(section.topics.pinned_first, limit: 20)
+      read_states = if logged_in?
+                      Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id)).index_by(&:forum_topic_id)
+                    else
+                      {}
+                    end
 
       render inertia: "Community/Sections/Show", props: {
         section: {
@@ -22,7 +27,7 @@ module Community
           description: section.description,
           new_topic_url: logged_in? ? new_forum_topic_path(section_id: section.slug) : nil
         },
-        topics: topics.map { |topic| serialize_topic(topic) },
+        topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
         pagination: pagy_props(@pagy),
         canCreateTopic: logged_in?
       }

@@ -12,7 +12,7 @@ class ApplicationController < ActionController::Base
   inertia_config layout: "inertia"
 
   inertia_share do
-    {
+    share = {
       auth: {
         user: inertia_user
       },
@@ -21,5 +21,14 @@ class ApplicationController < ActionController::Base
         alert: flash[:alert]
       }
     }
+
+    if logged_in?
+      share[:notifications] = {
+        unread_count: current_user.notifications.unread.count,
+        url: forum_notifications_path
+      }
+    end
+
+    share
   end
 end

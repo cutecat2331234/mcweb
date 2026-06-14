@@ -5,6 +5,7 @@ export const routes = {
   forumTopic: (id: string) => `/forum/topics/${id}`,
   newForumTopic: (sectionSlug: string) => `/forum/topics/new?section_id=${sectionSlug}`,
   forumSearch: '/forum/search',
+  forumNotifications: '/forum/notifications',
   forumReport: '/forum/reports/new',
   store: '/store/products',
   storeProduct: (id: string) => `/store/products/${id}`,

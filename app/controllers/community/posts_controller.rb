@@ -4,7 +4,7 @@ module Community
   class PostsController < ApplicationController
     before_action :require_login
     before_action :set_topic, only: :create
-    before_action :set_post, only: %i[update destroy toggle_reaction]
+    before_action :set_post, only: %i[update destroy toggle_reaction moderate]
 
     def create
       result = Community::CreatePost.call(
@@ -56,6 +56,20 @@ module Community
 
       if result.success?
         redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}")
+      else
+        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+      end
+    end
+
+    def moderate
+      result = Community::ModeratePost.call(
+        user: current_user,
+        post: @post,
+        action: params[:action_type]
+      )
+
+      if result.success?
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: "帖子已更新。"
       else
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
       end

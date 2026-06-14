@@ -55,6 +55,8 @@ module Community
         ip_address: @ip_address
       )
 
+      Community::NotifyTopicReply.call(post: post)
+
       ServiceResult.success(post)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
@@ -76,6 +78,10 @@ module Community
 
       if muted_in_section?
         return ServiceResult.failure(error: "You are muted in this section.")
+      end
+
+      if @user.banned?
+        return ServiceResult.failure(error: "Your account is banned.")
       end
 
       recent = Community::Post.where(user: @user).order(created_at: :desc).first

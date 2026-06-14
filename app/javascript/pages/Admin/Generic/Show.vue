@@ -24,6 +24,7 @@ export interface DetailAction {
   method?: 'get' | 'post' | 'patch' | 'delete'
   confirm?: string
   variant?: 'default' | 'outline'
+  data?: Record<string, unknown>
 }
 
 defineProps<{
@@ -75,7 +76,7 @@ defineProps<{
           :href="action.href"
           :method="action.method"
           as="button"
-          :data="{ confirm: action.confirm }"
+          :data="action.data"
         >
           {{ action.label }}
         </Link>

@@ -46,16 +46,27 @@ module InertiaSerializable
     }
   end
 
-  def serialize_topic(topic)
+  def serialize_topic(topic, read_state: nil)
+    unread_count = if read_state
+                     read_state.unread_count
+                   elsif current_user
+                     topic.posts.count
+                   else
+                     0
+                   end
+
     {
       id: topic.public_id,
       title: topic.title,
       url: forum_topic_path(topic),
       author: topic.user&.username,
       replies_count: topic.replies_count,
+      views_count: topic.views_count,
       last_posted_at: topic.last_posted_at ? l(topic.last_posted_at, format: :short) : nil,
       pinned: topic.pinned?,
-      locked: topic.locked?
+      locked: topic.locked?,
+      unread_count: unread_count,
+      has_unread: unread_count.positive?
     }
   end
 
@@ -66,6 +77,8 @@ module InertiaSerializable
       author: topic.user&.username,
       locked: topic.locked?,
       pinned: topic.pinned?,
+      hidden: topic.status == "hidden",
+      views_count: topic.views_count,
       watching: watching,
       can_moderate: can_moderate,
       section: {
@@ -76,7 +89,7 @@ module InertiaSerializable
     }
   end
 
-  def serialize_post(post, current_user: nil)
+  def serialize_post(post, current_user: nil, can_moderate: false)
     reaction_counts = post.reactions.group(:emoji).count
     user_reactions = if current_user
                        post.reactions.where(user: current_user).pluck(:emoji)
@@ -97,6 +110,9 @@ module InertiaSerializable
       user_reactions: user_reactions,
       can_edit: can_edit_post?(post, current_user),
       can_delete: can_delete_post?(post, current_user),
+      can_moderate: can_moderate,
+      hidden: post.status == "hidden",
+      report_url: current_user ? new_forum_report_path(reportable_type: "Community::Post", reportable_id: post.id) : nil,
       update_url: forum_post_path(post)
     }
   end
@@ -220,12 +236,23 @@ module InertiaSerializable
       status: order.status,
       total_label: format_money(order.total_cents, order.currency),
       can_pay: order.pending? || order.awaiting_payment?,
+      can_cancel: order.pending? || order.awaiting_payment?,
+      cancel_url: cancel_store_order_path(order),
       items: order.items.map do |item|
+        fulfillment = order.fulfillments.find_by(order_item: item)
         {
           product_name: item.product_name,
           variant_name: item.variant_name,
           quantity: item.quantity,
-          total_label: format_money(item.total_cents, order.currency)
+          total_label: format_money(item.total_cents, order.currency),
+          fulfillment_status: fulfillment&.status
+        }
+      end,
+      fulfillments: order.fulfillments.map do |f|
+        {
+          delivery_id: f.delivery_id,
+          status: f.status,
+          fulfilled_at: f.fulfilled_at ? l(f.fulfilled_at, format: :short) : nil
         }
       end
     }

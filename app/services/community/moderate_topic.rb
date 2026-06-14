@@ -22,6 +22,10 @@ module Community
         @topic.update!(pinned: true)
       when "unpin"
         @topic.update!(pinned: false)
+      when "hide"
+        @topic.update!(status: "hidden")
+      when "unhide"
+        @topic.update!(status: "published")
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

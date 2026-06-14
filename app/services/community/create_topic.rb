@@ -80,6 +80,10 @@ module Community
         return ServiceResult.failure(error: "You are muted in this section.")
       end
 
+      if @user.banned?
+        return ServiceResult.failure(error: "Your account is banned.")
+      end
+
       recent = Community::Topic.where(user: @user).order(created_at: :desc).first
       if recent&.created_at&.> MIN_INTERVAL.ago
         return ServiceResult.failure(error: "Please wait before creating another topic.")

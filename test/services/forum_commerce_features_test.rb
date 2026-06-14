@@ -86,6 +86,62 @@ class Community::EditPostTest < ActiveSupport::TestCase
   end
 end
 
+class Community::NotifyTopicReplyTest < ActiveSupport::TestCase
+  test "notifies topic subscribers on reply" do
+    author = create_user
+    subscriber = create_user(email: "sub@example.com", username: "subuser")
+    category = Community::Category.find_or_create_by!(slug: "notify-cat") { |c| c.name = "Notify" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "notify-sec") do |s|
+      s.name = "Notify Sec"
+      s.position = 0
+    end
+    topic = Community::CreateTopic.call(
+      user: author,
+      section: section,
+      title: "Notify topic",
+      body: "Opening",
+      ip_address: "127.0.0.1"
+    ).value
+    Community::Subscription.subscribe!(subscriber, topic)
+
+    replier = create_user(email: "reply@example.com", username: "replier")
+    post = Community::CreatePost.call(
+      user: replier,
+      topic: topic,
+      body: "A reply",
+      ip_address: "127.0.0.1"
+    ).value
+
+    assert post.persisted?
+    assert Notification.exists?(user: subscriber, notification_type: "forum.topic_reply")
+    assert_not Notification.exists?(user: replier, notification_type: "forum.topic_reply")
+  end
+end
+
+class Community::MoveTopicTest < ActiveSupport::TestCase
+  test "moves topic when authorized" do
+    user = create_user
+    grant_permission(user, "forum.topics.move")
+    category = Community::Category.find_or_create_by!(slug: "move-cat") { |c| c.name = "Move" }
+    section_a = Community::Section.find_or_create_by!(category: category, slug: "move-a") do |s|
+      s.name = "A"
+      s.position = 0
+    end
+    section_b = Community::Section.create!(category: category, name: "B", slug: "move-b", position: 1)
+    topic = Community::CreateTopic.call(
+      user: user,
+      section: section_a,
+      title: "Move me",
+      body: "Content",
+      ip_address: "127.0.0.1"
+    ).value
+
+    result = Community::MoveTopic.call(user: user, topic: topic, section: section_b)
+    assert result.success?
+    assert_equal section_b.id, topic.reload.forum_section_id
+  end
+end
+
 class Commerce::PreviewCouponTest < ActiveSupport::TestCase
   test "previews percentage coupon" do
     Commerce::Coupon.create!(

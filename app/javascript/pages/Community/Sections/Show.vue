@@ -5,6 +5,7 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Button from '@/components/ui/Button.vue'
+import Badge from '@/components/ui/Badge.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -21,9 +22,12 @@ export interface TopicItem {
   url: string
   author: string | null
   replies_count: number
+  views_count: number
   last_posted_at: string | null
   pinned: boolean
   locked: boolean
+  unread_count: number
+  has_unread: boolean
 }
 
 export interface SectionDetail {
@@ -70,7 +74,10 @@ defineProps<{
           <TableCell>
             <span v-if="topic.pinned" class="mr-1 text-xs text-muted-foreground">[置顶]</span>
             <span v-if="topic.locked" class="mr-1 text-xs text-muted-foreground">[锁定]</span>
-            <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
+            <Link :href="topic.url" class="font-medium hover:underline" :class="topic.has_unread ? 'text-foreground' : ''">
+              {{ topic.title }}
+            </Link>
+            <Badge v-if="topic.has_unread" variant="default" class="ml-2">{{ topic.unread_count }} 未读</Badge>
           </TableCell>
           <TableCell>{{ topic.author || '—' }}</TableCell>
           <TableCell>{{ topic.replies_count }}</TableCell>

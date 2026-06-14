@@ -31,7 +31,16 @@ export interface PostItem {
   user_reactions: string[]
   can_edit: boolean
   can_delete: boolean
+  can_moderate: boolean
+  hidden: boolean
+  report_url: string | null
   update_url: string
+}
+
+export interface SectionOption {
+  slug: string
+  name: string
+  category: string | null
 }
 
 const props = defineProps<{
@@ -41,6 +50,8 @@ const props = defineProps<{
     author: string | null
     locked: boolean
     pinned: boolean
+    hidden: boolean
+    views_count: number
     watching: boolean
     can_moderate: boolean
     section: { name: string; slug: string; url: string }
@@ -49,6 +60,8 @@ const props = defineProps<{
   pagination: PaginationMeta
   canReply: boolean
   reactionEmojis: string[]
+  sections: SectionOption[]
+  reportTopicUrl: string | null
 }>()
 
 const page = usePage<{ auth: { user: { id: string; username: string } | null } }>()
@@ -66,6 +79,7 @@ const replyForm = useForm({
 })
 
 const quotePreview = ref<QuotedPost | null>(null)
+const moveSectionSlug = ref('')
 
 function submitReply() {
   replyForm.post('/forum/posts', {
@@ -128,6 +142,15 @@ function moderate(action: string) {
   router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: action }, { preserveScroll: true })
 }
 
+function moderatePost(post: PostItem, action: string) {
+  router.post(`/forum/posts/${post.id}/moderate`, { action_type: action }, { preserveScroll: true })
+}
+
+function moveTopic() {
+  if (!moveSectionSlug.value) return
+  router.post(`/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
+}
+
 function hasReacted(post: PostItem, emoji: string) {
   return post.user_reactions.includes(emoji)
 }
@@ -144,11 +167,14 @@ function hasReacted(post: PostItem, emoji: string) {
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
     <PageHeader
       :title="`${topic.pinned ? '[置顶] ' : ''}${topic.title}`"
-      :subtitle="topic.author ? `作者 ${topic.author}` : undefined"
+      :subtitle="`${topic.author ? `作者 ${topic.author}` : ''}${topic.author ? ' · ' : ''}${topic.views_count} 次浏览`"
     />
     <div class="flex flex-wrap gap-2">
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleWatch">
         {{ topic.watching ? '取消关注' : '关注主题' }}
+      </Button>
+      <Button v-if="reportTopicUrl" as-child variant="outline" size="sm">
+        <Link :href="reportTopicUrl">举报主题</Link>
       </Button>
       <template v-if="topic.can_moderate">
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.locked ? 'unlock' : 'lock')">
@@ -157,10 +183,27 @@ function hasReacted(post: PostItem, emoji: string) {
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.pinned ? 'unpin' : 'pin')">
           {{ topic.pinned ? '取消置顶' : '置顶' }}
         </Button>
+        <Button type="button" variant="outline" size="sm" @click="moderate(topic.hidden ? 'unhide' : 'hide')">
+          {{ topic.hidden ? '取消隐藏' : '隐藏主题' }}
+        </Button>
       </template>
     </div>
   </div>
 
+  <div v-if="topic.can_moderate && sections.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <label class="text-sm text-muted-foreground">移动到分区：</label>
+    <select v-model="moveSectionSlug" class="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">选择分区…</option>
+      <option v-for="section in sections" :key="section.slug" :value="section.slug">
+        {{ section.category ? `${section.category} / ` : '' }}{{ section.name }}
+      </option>
+    </select>
+    <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">移动</Button>
+  </div>
+
+  <p v-if="topic.hidden" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+    此主题已被版主隐藏。
+  </p>
   <p v-if="topic.locked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
     此主题已锁定，无法回复。
   </p>
@@ -171,6 +214,7 @@ function hasReacted(post: PostItem, emoji: string) {
       :id="`post-${post.id}`"
       :key="post.id"
       class="rounded-lg border p-4"
+      :class="post.hidden ? 'opacity-60 border-dashed' : ''"
     >
       <div class="mb-3 flex items-center justify-between gap-2 text-sm text-muted-foreground">
         <div>
@@ -180,9 +224,14 @@ function hasReacted(post: PostItem, emoji: string) {
           <span class="mx-2">·</span>
           <span>{{ post.created_at }}</span>
           <span v-if="post.edited_at" class="ml-2">（已编辑 {{ post.edited_at }}）</span>
+          <span v-if="post.hidden" class="ml-2 text-amber-600">[已隐藏]</span>
         </div>
         <div class="flex gap-2">
           <button v-if="canReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
+          <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">举报</Link>
+          <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
+            {{ post.hidden ? '显示' : '隐藏' }}
+          </button>
           <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">编辑</button>
           <button v-if="post.can_delete" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">删除</button>
         </div>

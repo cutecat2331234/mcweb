@@ -3,7 +3,7 @@
 module Commerce
   class OrdersController < ApplicationController
     before_action :require_login
-    before_action :set_order, only: %i[show]
+    before_action :set_order, only: %i[show cancel]
 
     def index
       orders = Commerce::Order.where(user: current_user).includes(:items).recent
@@ -17,6 +17,17 @@ module Commerce
       render inertia: "Commerce/Orders/Show", props: {
         order: serialize_order_detail(@order)
       }
+    end
+
+    def cancel
+      unless @order.pending? || @order.awaiting_payment?
+        return redirect_to store_order_path(@order), alert: "此订单无法取消。"
+      end
+
+      @order.cancel! if @order.may_cancel?
+      redirect_to store_order_path(@order), notice: "订单已取消。"
+    rescue AASM::InvalidTransition
+      redirect_to store_order_path(@order), alert: "无法取消此订单。"
     end
 
     def new
@@ -44,7 +55,7 @@ module Commerce
     private
 
     def set_order
-      @order = Commerce::Order.where(user: current_user).find_by!(public_id: params[:id])
+      @order = Commerce::Order.where(user: current_user).includes(:items, :fulfillments).find_by!(public_id: params[:id])
     end
 
     def order_params

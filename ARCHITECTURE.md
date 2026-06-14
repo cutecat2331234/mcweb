@@ -64,8 +64,11 @@ app/
 | 软删除 | `PostsController#destroy` |
 | 表情反应 | `Community::ToggleReaction`（👍❤️😂🎉👀） |
 | 关注主题 | `Community::ToggleSubscription` |
-| 已读追踪 | `Community::ReadState` |
-| 版主操作 | `Community::ModerateTopic`（锁定/置顶） |
+| 已读追踪 / 未读徽章 | `Community::ReadState` + 分区列表展示 |
+| 站内通知 | `Community::NotifyTopicReply` + `/forum/notifications` |
+| 举报闭环 | 主题/帖子举报 + 管理后台审核 |
+| 移动 / 隐藏 | `MoveTopic`、`ModeratePost` |
+| 版主操作 | `ModerateTopic`（锁定/置顶/隐藏） |
 | 分页 | Pagy 应用于主题帖列表 |
 | 反垃圾 | 速率限制、禁言、重复检测 |
 
@@ -79,3 +82,6 @@ app/
 | 优惠券 | `Commerce::PreviewCoupon` + `ApplyCoupon` |
 | 游客购物车合并 | `Commerce::MergeGuestCart`（登录时） |
 | 支付后自动发货 | `ConfirmPayment` → `FulfillOrderJob` |
+| 假支付测试页 | `Payments::FakeController` `/payments/fake/:id` |
+| 订单取消 | `OrdersController#cancel`（待支付状态） |
+| 发货状态展示 | 订单详情页显示 fulfillment 状态 |

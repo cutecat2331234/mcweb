@@ -2,6 +2,7 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
@@ -20,16 +21,25 @@ const props = defineProps<{
     status: string
     total_label: string
     can_pay: boolean
+    can_cancel: boolean
+    cancel_url: string
     items: Array<{
       product_name: string
       variant_name: string | null
       quantity: number
       total_label: string
+      fulfillment_status: string | null
+    }>
+    fulfillments: Array<{
+      delivery_id: string
+      status: string
+      fulfilled_at: string | null
     }>
   }
 }>()
 
 const payForm = useForm({ order_id: props.order.id, checkout: { provider: 'fake' } })
+const cancelForm = useForm({})
 </script>
 
 <template>
@@ -37,7 +47,14 @@ const payForm = useForm({ order_id: props.order.id, checkout: { provider: 'fake'
 
   <div class="mb-6 rounded-lg border">
     <Table>
-      <TableHeader><TableRow><TableHead>商品</TableHead><TableHead>数量</TableHead><TableHead>小计</TableHead></TableRow></TableHeader>
+      <TableHeader>
+        <TableRow>
+          <TableHead>商品</TableHead>
+          <TableHead>数量</TableHead>
+          <TableHead>小计</TableHead>
+          <TableHead>发货</TableHead>
+        </TableRow>
+      </TableHeader>
       <TableBody>
         <TableRow v-for="(item, index) in order.items" :key="index">
           <TableCell>
@@ -46,15 +63,35 @@ const payForm = useForm({ order_id: props.order.id, checkout: { provider: 'fake'
           </TableCell>
           <TableCell>{{ item.quantity }}</TableCell>
           <TableCell>{{ item.total_label }}</TableCell>
+          <TableCell>
+            <Badge v-if="item.fulfillment_status" :variant="item.fulfillment_status === 'fulfilled' ? 'success' : 'default'">
+              {{ item.fulfillment_status }}
+            </Badge>
+            <span v-else class="text-muted-foreground">—</span>
+          </TableCell>
         </TableRow>
       </TableBody>
     </Table>
+  </div>
+
+  <div v-if="order.fulfillments.length" class="mb-6 rounded-lg border p-4">
+    <h2 class="mb-3 text-sm font-semibold">发货记录</h2>
+    <ul class="space-y-2 text-sm">
+      <li v-for="fulfillment in order.fulfillments" :key="fulfillment.delivery_id" class="flex justify-between gap-4">
+        <code class="text-xs">{{ fulfillment.delivery_id }}</code>
+        <span>
+          <Badge :variant="fulfillment.status === 'fulfilled' ? 'success' : 'default'">{{ fulfillment.status }}</Badge>
+          <span v-if="fulfillment.fulfilled_at" class="ml-2 text-muted-foreground">{{ fulfillment.fulfilled_at }}</span>
+        </span>
+      </li>
+    </ul>
   </div>
 
   <p class="mb-6 font-medium">合计：{{ order.total_label }}</p>
 
   <div class="flex gap-3">
     <Button v-if="order.can_pay" type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
+    <Button v-if="order.can_cancel" type="button" variant="outline" @click="cancelForm.post(order.cancel_url)">取消订单</Button>
     <Button as-child variant="outline">
       <Link :href="routes.storeOrders">返回订单列表</Link>
     </Button>

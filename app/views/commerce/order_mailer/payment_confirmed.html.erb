@@ -1,0 +1,4 @@
+<h2>支付成功</h2>
+<p>您好 <%= @order.user.username %>，</p>
+<p>订单 <strong><%= @order.order_number %></strong> 已支付成功。</p>
+<p>金额：<%= number_to_currency(@order.total_cents / 100.0, unit: "¥") %></p>

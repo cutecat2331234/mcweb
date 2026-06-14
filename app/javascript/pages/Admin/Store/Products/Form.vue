@@ -23,6 +23,7 @@ const props = defineProps<{
     stock: number | null
     store_category_id: number | null
     purchase_limit: number | null
+    variants: Array<{ id?: number; name: string; sku: string; price_cents: number; stock: number | null }>
   }
   categories: Array<{ id: number; name: string }>
   submitUrl: string
@@ -30,7 +31,25 @@ const props = defineProps<{
   backUrl: string
 }>()
 
-const form = useForm({ product: { ...props.product } })
+const form = useForm({
+  product: {
+    ...props.product,
+    variants: props.product.variants?.length ? [...props.product.variants] : [],
+  },
+})
+
+function addVariant() {
+  form.product.variants.push({ name: '', sku: '', price_cents: form.product.price_cents, stock: null })
+}
+
+function removeVariant(index: number) {
+  const variant = form.product.variants[index]
+  if (variant.id) {
+    form.product.variants[index] = { ...variant, _destroy: true } as typeof variant & { _destroy: boolean }
+  } else {
+    form.product.variants.splice(index, 1)
+  }
+}
 
 function submit() {
   if (props.method === 'patch') {
@@ -95,6 +114,25 @@ function submit() {
       <Label for="purchase_limit">限购（空=不限）</Label>
       <Input id="purchase_limit" v-model.number="form.product.purchase_limit" type="number" min="1" />
     </div>
+
+    <div class="space-y-3">
+      <div class="flex items-center justify-between">
+        <Label>商品变体</Label>
+        <Button type="button" variant="outline" size="sm" @click="addVariant">添加变体</Button>
+      </div>
+      <div
+        v-for="(variant, index) in form.product.variants.filter((v: { _destroy?: boolean }) => !v._destroy)"
+        :key="index"
+        class="grid grid-cols-2 gap-2 rounded-lg border p-3"
+      >
+        <Input v-model="variant.name" placeholder="名称" />
+        <Input v-model="variant.sku" placeholder="SKU" />
+        <Input v-model.number="variant.price_cents" type="number" placeholder="价格（分）" />
+        <Input v-model.number="variant.stock" type="number" placeholder="库存" />
+        <Button type="button" variant="outline" size="sm" class="col-span-2" @click="removeVariant(index)">删除</Button>
+      </div>
+    </div>
+
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>
       <Button as-child variant="outline">

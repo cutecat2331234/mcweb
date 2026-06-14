@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -26,23 +26,41 @@ export interface TopicItem {
   last_posted_at: string | null
   pinned: boolean
   locked: boolean
+  featured: boolean
   unread_count: number
   has_unread: boolean
 }
 
-export interface SectionDetail {
-  name: string
-  slug: string
-  description: string | null
-  new_topic_url: string | null
-}
-
-defineProps<{
-  section: SectionDetail
+const props = defineProps<{
+  section: {
+    name: string
+    slug: string
+    description: string | null
+    new_topic_url: string | null
+    watching: boolean
+    subscription_url: string
+  }
+  featuredTopics: TopicItem[]
   topics: TopicItem[]
   pagination: PaginationMeta
+  sort: string
   canCreateTopic: boolean
 }>()
+
+const sortOptions = [
+  { value: 'activity', label: '最近活跃' },
+  { value: 'newest', label: '最新发布' },
+  { value: 'replies', label: '最多回复' },
+  { value: 'views', label: '最多浏览' },
+]
+
+function changeSort(value: string) {
+  router.get(routes.forumSection(props.section.slug), { sort: value }, { preserveState: true })
+}
+
+function toggleWatch() {
+  router.post(props.section.subscription_url, {}, { preserveScroll: true })
+}
 </script>
 
 <template>
@@ -52,11 +70,37 @@ defineProps<{
     { label: section.name, current: true },
   ]" />
 
-  <div class="mb-6 flex items-start justify-between gap-4">
+  <div class="mb-6 flex flex-wrap items-start justify-between gap-4">
     <PageHeader :title="section.name" :subtitle="section.description || undefined" />
-    <Button v-if="canCreateTopic && section.new_topic_url" as-child>
-      <Link :href="section.new_topic_url">新建主题</Link>
-    </Button>
+    <div class="flex flex-wrap gap-2">
+      <Button type="button" variant="outline" size="sm" @click="toggleWatch">
+        {{ section.watching ? '取消关注分区' : '关注分区' }}
+      </Button>
+      <Button v-if="canCreateTopic && section.new_topic_url" as-child>
+        <Link :href="section.new_topic_url">新建主题</Link>
+      </Button>
+    </div>
+  </div>
+
+  <div class="mb-4 flex items-center gap-2">
+    <label class="text-sm text-muted-foreground">排序：</label>
+    <select
+      :value="sort"
+      class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+      @change="changeSort(($event.target as HTMLSelectElement).value)"
+    >
+      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+    </select>
+  </div>
+
+  <div v-if="featuredTopics.length" class="mb-6">
+    <h2 class="mb-2 text-sm font-semibold">精选主题</h2>
+    <div class="space-y-2 rounded-lg border p-3">
+      <div v-for="topic in featuredTopics" :key="topic.id" class="flex items-center gap-2 text-sm">
+        <Badge variant="secondary">精选</Badge>
+        <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
+      </div>
+    </div>
   </div>
 
   <div v-if="topics.length" class="rounded-lg border">
@@ -73,11 +117,10 @@ defineProps<{
         <TableRow v-for="topic in topics" :key="topic.id">
           <TableCell>
             <span v-if="topic.pinned" class="mr-1 text-xs text-muted-foreground">[置顶]</span>
+            <span v-if="topic.featured" class="mr-1 text-xs text-amber-600">[精选]</span>
             <span v-if="topic.locked" class="mr-1 text-xs text-muted-foreground">[锁定]</span>
-            <Link :href="topic.url" class="font-medium hover:underline" :class="topic.has_unread ? 'text-foreground' : ''">
-              {{ topic.title }}
-            </Link>
-            <Badge v-if="topic.has_unread" variant="default" class="ml-2">{{ topic.unread_count }} 未读</Badge>
+            <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
+            <Badge v-if="topic.has_unread" class="ml-2">{{ topic.unread_count }} 未读</Badge>
           </TableCell>
           <TableCell>{{ topic.author || '—' }}</TableCell>
           <TableCell>{{ topic.replies_count }}</TableCell>

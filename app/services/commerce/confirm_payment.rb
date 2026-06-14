@@ -46,6 +46,9 @@ module Commerce
       end
 
       Commerce::FulfillOrderJob.perform_later(order_id) if newly_paid && order_id
+      if newly_paid && order_id
+        MailDeliveryJob.perform_later("Commerce::OrderMailer", "payment_confirmed", "deliver_now", args: [ order_id ])
+      end
 
       ServiceResult.success(record: @payment_record.reload, idempotent: false, newly_paid: newly_paid)
     rescue ActiveRecord::RecordInvalid => e

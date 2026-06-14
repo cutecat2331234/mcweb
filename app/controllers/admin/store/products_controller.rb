@@ -15,14 +15,18 @@ module Admin
             admin_column(:name, "名称", link: true),
             admin_column(:slug, "标识"),
             admin_column(:status, "状态"),
-            admin_column(:price, "价格")
+            admin_column(:price, "价格"),
+            admin_column(:stock, "库存")
           ],
           rows: products.map do |product|
+            stock_label = product.stock.nil? ? "∞" : product.stock.to_s
+            stock_label = "#{stock_label} ⚠" if product.stock.present? && product.stock <= 5
             admin_row(
               name: product.name,
               slug: product.slug,
               status: product.status,
               price: format_price(product),
+              stock: stock_label,
               url: admin_store_product_path(product)
             )
           end,
@@ -92,11 +96,13 @@ module Admin
       def product_params
         params.require(:product).permit(
           :name, :slug, :description, :product_type, :status,
-          :price_cents, :currency, :stock, :store_category_id, :purchase_limit
+          :price_cents, :currency, :stock, :store_category_id, :purchase_limit,
+          variants_attributes: [ :id, :name, :sku, :price_cents, :stock, :_destroy ]
         )
       end
 
       def form_props(product)
+        product = product.persisted? ? ::Commerce::Product.includes(:variants).find(product.id) : product
         {
           title: product.persisted? ? "编辑商品" : "新建商品",
           product: {
@@ -110,7 +116,10 @@ module Admin
             currency: product.currency || "CNY",
             stock: product.stock,
             store_category_id: product.store_category_id,
-            purchase_limit: product.purchase_limit
+            purchase_limit: product.purchase_limit,
+            variants: product.variants.map do |v|
+              { id: v.id, name: v.name, sku: v.sku, price_cents: v.price_cents, stock: v.stock }
+            end
           },
           categories: ::Commerce::Category.ordered.map { |c| { id: c.id, name: c.name } },
           submitUrl: product.persisted? ? admin_store_product_path(product) : admin_store_products_path,

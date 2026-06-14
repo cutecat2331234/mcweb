@@ -8,6 +8,8 @@ export const routes = {
   forumSearch: '/forum/search',
   forumWatching: '/forum/watching',
   forumBookmarks: '/forum/bookmarks',
+  forumUnread: '/forum/unread',
+  forumPreview: '/forum/preview',
   forumTags: '/forum/tags',
   forumNotifications: '/forum/notifications',
   forumPreferences: '/forum/preferences',

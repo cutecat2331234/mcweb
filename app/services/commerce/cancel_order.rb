@@ -24,6 +24,8 @@ module Commerce
         actor: @actor
       )
 
+      MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_cancelled", "deliver_now", args: [ @order.id ])
+
       ServiceResult.success(@order)
     rescue ActiveRecord::RecordInvalid, AASM::InvalidTransition => e
       ServiceResult.failure(error: e.message)

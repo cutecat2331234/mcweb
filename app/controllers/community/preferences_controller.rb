@@ -4,7 +4,7 @@ module Community
   class PreferencesController < ApplicationController
     before_action :require_login
 
-    NOTIFICATION_TYPES = %w[forum.topic_reply forum.mention].freeze
+    NOTIFICATION_TYPES = %w[forum.topic_reply forum.mention forum.section_topic].freeze
 
     def show
       prefs = NOTIFICATION_TYPES.map do |type|
@@ -37,7 +37,8 @@ module Community
     def notification_label(type)
       {
         "forum.topic_reply" => "主题回复",
-        "forum.mention" => "@提及"
+        "forum.mention" => "@提及",
+        "forum.section_topic" => "关注分区新主题"
       }[type] || type.humanize
     end
   end

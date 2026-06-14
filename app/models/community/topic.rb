@@ -19,6 +19,20 @@ module Community
 
     scope :pinned_first, -> { order(pinned: :desc, last_posted_at: :desc) }
     scope :recent, -> { order(last_posted_at: :desc) }
+    scope :featured_topics, -> { where(featured: true, status: :published) }
+
+    def self.sorted(sort)
+      case sort.to_s
+      when "views"
+        order(pinned: :desc, views_count: :desc, last_posted_at: :desc)
+      when "replies"
+        order(pinned: :desc, replies_count: :desc, last_posted_at: :desc)
+      when "newest"
+        order(pinned: :desc, created_at: :desc)
+      else
+        pinned_first
+      end
+    end
 
     def record_view!
       increment!(:views_count)

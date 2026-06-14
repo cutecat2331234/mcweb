@@ -88,7 +88,12 @@ class Commerce::CreateReviewTest < ActiveSupport::TestCase
     )
   end
 
-  test "creates product review" do
+  test "creates product review after purchase" do
+    cart = Commerce::Cart.create!(user: @user)
+    cart.items.create!(product: @product, quantity: 1)
+    order = Commerce::CreateOrder.call(cart: cart, user: @user).value
+    order.update!(status: "paid")
+
     result = Commerce::CreateReview.call(user: @user, product: @product, rating: 5, body: "Great!")
     assert result.success?
     assert_equal 5, result.value.rating

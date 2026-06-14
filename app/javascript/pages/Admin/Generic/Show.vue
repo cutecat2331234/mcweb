@@ -1,10 +1,13 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { ref } from 'vue'
+import { Link, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
+import Input from '@/components/ui/Input.vue'
+import Label from '@/components/ui/Label.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -27,15 +30,32 @@ export interface DetailAction {
   data?: Record<string, unknown>
 }
 
-defineProps<{
+export interface MuteForm {
+  user_id: string
+  action_url: string
+}
+
+const props = defineProps<{
   title: string
   subtitle?: string
   fields: DetailField[]
   sections?: DetailSection[]
   preformatted?: { title: string; content: string }
   actions?: DetailAction[]
+  muteForm?: MuteForm | null
   backUrl: string
 }>()
+
+const muteForm = useForm({
+  user_id: props.muteForm?.user_id || '',
+  reason: '',
+  expires_at: '',
+})
+
+function submitMute() {
+  if (!props.muteForm) return
+  muteForm.post(props.muteForm.action_url)
+}
 </script>
 
 <template>
@@ -64,6 +84,19 @@ defineProps<{
     <h2 class="mb-3 text-sm font-semibold">{{ preformatted.title }}</h2>
     <pre class="overflow-auto rounded-lg border bg-muted p-4 text-xs">{{ preformatted.content }}</pre>
   </div>
+
+  <form v-if="props.muteForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitMute">
+    <h2 class="text-sm font-semibold">禁言用户</h2>
+    <div class="space-y-2">
+      <Label>原因</Label>
+      <Input v-model="muteForm.reason" placeholder="禁言原因" />
+    </div>
+    <div class="space-y-2">
+      <Label>到期时间（空=永久）</Label>
+      <Input v-model="muteForm.expires_at" type="datetime-local" />
+    </div>
+    <Button type="submit" variant="destructive" size="sm" :disabled="muteForm.processing">禁言</Button>
+  </form>
 
   <div class="mt-6 flex flex-wrap gap-3">
     <template v-for="action in actions" :key="action.href + action.label">

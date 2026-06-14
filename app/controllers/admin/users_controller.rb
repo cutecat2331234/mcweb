@@ -29,6 +29,21 @@ module Admin
     end
 
     def show
+      mutes = Community::Mute.active.where(user: @user).includes(:section, :created_by)
+      mute_actions = if current_user.permission?("forum.users.mute")
+                       mutes.map do |mute|
+                         {
+                           id: mute.id,
+                           section: mute.section&.name || "全站",
+                           reason: mute.reason,
+                           expires_at: mute.expires_at ? l(mute.expires_at, format: :short) : "永久",
+                           remove_url: admin_forum_mute_path(mute)
+                         }
+                       end
+                     else
+                       []
+                     end
+
       render inertia: "Admin/Generic/Show", props: {
         title: @user.display_name.presence || @user.username,
         subtitle: @user.email,
@@ -39,7 +54,18 @@ module Admin
           { label: "邮箱已验证", value: @user.email_verified? ? "是" : "否" },
           { label: "注册时间", value: l(@user.created_at, format: :long) }
         ],
-        backUrl: admin_users_path
+        sections: mute_actions.any? ? [{
+          title: "当前禁言",
+          items: mute_actions.map { |m| { label: m[:section], value: "#{m[:reason] || '—'} · 到期: #{m[:expires_at]}" } }
+        }] : [],
+        backUrl: admin_users_path,
+        muteForm: current_user.permission?("forum.users.mute") ? {
+          user_id: @user.public_id,
+          action_url: admin_forum_mutes_path
+        } : nil,
+        actions: mute_actions.map do |m|
+          { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
+        end
       }
     end
 

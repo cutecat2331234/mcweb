@@ -96,6 +96,8 @@ module Commerce
         resource: order
       )
 
+      MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_created", "deliver_now", args: [ order.id ])
+
       ServiceResult.success(order)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

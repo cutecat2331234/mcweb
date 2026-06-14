@@ -24,9 +24,10 @@ module Community
 
     def show
       tag = Community::Tag.find_by!(slug: params[:slug])
+      sort = params[:sort].to_s.presence || "activity"
       topic_ids = tag.topics.where(status: :published).pluck(:id)
       @pagy, topics = pagy(
-        Community::Topic.where(id: topic_ids).pinned_first.includes(:user),
+        Community::Topic.where(id: topic_ids).sorted(sort).includes(:user),
         limit: 20
       )
 
@@ -39,7 +40,8 @@ module Community
       render inertia: "Community/Tags/Show", props: {
         tag: { name: tag.name, slug: tag.slug },
         topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
-        pagination: pagy_props(@pagy)
+        pagination: pagy_props(@pagy),
+        sort: sort
       }
     end
   end

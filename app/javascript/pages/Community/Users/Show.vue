@@ -23,6 +23,7 @@ defineProps<{
     posts_count: number
     profile_url: string
     message_url: string | null
+    is_muted: boolean
   }
   topics: Array<{
     id: string
@@ -30,6 +31,14 @@ defineProps<{
     url: string
     replies_count: number
     last_posted_at: string | null
+  }>
+  recent_posts: Array<{
+    id: number
+    body: string
+    floor_number: number
+    topic_title: string
+    topic_url: string
+    created_at: string
   }>
 }>()
 </script>
@@ -40,6 +49,10 @@ defineProps<{
     { label: '论坛', href: routes.forum },
     { label: profile.username, current: true },
   ]" />
+
+  <p v-if="profile.is_muted" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    你当前被禁言，暂时无法发帖。
+  </p>
 
   <div class="mb-6 flex items-center gap-4">
     <img :src="profile.avatar_url" :alt="profile.username" class="h-16 w-16 rounded-full" />
@@ -75,4 +88,14 @@ defineProps<{
     </Table>
   </div>
   <p v-else class="text-sm text-muted-foreground">暂无主题。</p>
+
+  <h2 class="mb-3 mt-8 text-sm font-semibold">最近回复</h2>
+  <div v-if="recent_posts.length" class="space-y-2 rounded-lg border p-4">
+    <div v-for="post in recent_posts" :key="post.id" class="text-sm">
+      <Link :href="post.topic_url" class="font-medium hover:underline">#{{ post.floor_number }} {{ post.topic_title }}</Link>
+      <p class="text-muted-foreground">{{ post.body }}</p>
+      <p class="text-xs text-muted-foreground">{{ post.created_at }}</p>
+    </div>
+  </div>
+  <p v-else class="text-sm text-muted-foreground">暂无回复。</p>
 </template>

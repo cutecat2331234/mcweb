@@ -30,6 +30,7 @@ Rails.application.routes.draw do
       resources :sections, only: %i[index show]
       resources :topics, only: %i[index show]
       resources :reports, only: %i[index show update]
+      resources :mutes, only: %i[create destroy]
     end
     namespace :store do
       resources :products
@@ -51,7 +52,11 @@ Rails.application.routes.draw do
   end
 
   scope module: :community, path: "forum", as: :forum do
-    resources :sections, only: %i[index show]
+    resources :sections, only: %i[index show] do
+      member do
+        post :subscription, action: :toggle_subscription
+      end
+    end
     resources :topics, only: %i[show new create update] do
       member do
         post :moderate
@@ -78,6 +83,8 @@ Rails.application.routes.draw do
     end
     get "search", to: "search#index"
     get "latest", to: "latest#index"
+    get "unread", to: "unread#index"
+    post "preview", to: "previews#create"
     get "bookmarks", to: "bookmarks#index"
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"

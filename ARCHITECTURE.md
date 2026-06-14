@@ -86,6 +86,17 @@ app/
 | Gravatar 头像 | `HasAvatar` concern |
 | 通知偏好 | `/forum/preferences` |
 | 搜索增强 | 分区筛选 + 分页 |
+| 未读主题列表 | `/forum/unread` |
+| 分区关注 | `ToggleSectionSubscription` + 新主题通知 |
+| 精选主题 | `ModerateTopic` feature/unfeature |
+| 主题排序 | `?sort=` activity/newest/replies/views |
+| 禁言管理 | `CreateMute` / `RemoveMute` + 管理后台 |
+| 帖子预览 | `POST /forum/preview` |
+| 用户活动流 | 资料页最近回复 |
+| 订单邮件 | `Commerce::OrderMailer` |
+| 销售统计 | 管理仪表盘营收/低库存 |
+| 评价需购买 | `CreateReview` 校验已付款订单 |
+| 商品变体管理 | 后台嵌套变体 CRUD |
 
 ## 商城功能
 

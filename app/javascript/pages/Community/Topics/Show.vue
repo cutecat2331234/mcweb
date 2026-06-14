@@ -60,6 +60,7 @@ const props = defineProps<{
     bookmarked: boolean
     can_moderate: boolean
     can_edit: boolean
+    featured: boolean
     tags: Array<{ name: string; slug: string; url: string }>
     tags_string: string
     section: { name: string; slug: string; url: string }
@@ -211,6 +212,9 @@ function hasReacted(post: PostItem, emoji: string) {
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.pinned ? 'unpin' : 'pin')">
           {{ topic.pinned ? '取消置顶' : '置顶' }}
+        </Button>
+        <Button type="button" variant="outline" size="sm" @click="moderate(topic.featured ? 'unfeature' : 'feature')">
+          {{ topic.featured ? '取消精选' : '设为精选' }}
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.hidden ? 'unhide' : 'hide')">
           {{ topic.hidden ? '取消隐藏' : '隐藏主题' }}

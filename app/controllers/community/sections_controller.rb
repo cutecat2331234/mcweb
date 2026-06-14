@@ -13,7 +13,11 @@ module Community
 
     def show
       section = Community::Section.find_by!(slug: params[:id])
-      @pagy, topics = pagy(section.topics.pinned_first, limit: 20)
+      sort = params[:sort].to_s.presence || "activity"
+      scope = section.topics.where(status: :published).sorted(sort)
+      featured = section.topics.featured_topics.pinned_first.limit(5)
+
+      @pagy, topics = pagy(scope, limit: 20)
       read_states = if logged_in?
                       Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id)).index_by(&:forum_topic_id)
                     else
@@ -25,12 +29,28 @@ module Community
           name: section.name,
           slug: section.slug,
           description: section.description,
-          new_topic_url: logged_in? ? new_forum_topic_path(section_id: section.slug) : nil
+          new_topic_url: logged_in? ? new_forum_topic_path(section_id: section.slug) : nil,
+          watching: logged_in? && Community::Subscription.exists?(user: current_user, subscribable: section),
+          subscription_url: subscription_forum_section_path(section)
         },
+        featuredTopics: featured.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
         topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
         pagination: pagy_props(@pagy),
+        sort: sort,
         canCreateTopic: logged_in?
       }
+    end
+
+    def toggle_subscription
+      require_login
+      section = Community::Section.find_by!(slug: params[:id])
+      result = Community::ToggleSectionSubscription.call(user: current_user, section: section)
+
+      if result.success?
+        redirect_to forum_section_path(section), notice: result.value[:watching] ? "已关注此分区。" : "已取消关注。"
+      else
+        redirect_to forum_section_path(section), alert: service_error_message(result)
+      end
     end
   end
 end

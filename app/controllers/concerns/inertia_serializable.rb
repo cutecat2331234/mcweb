@@ -65,6 +65,7 @@ module InertiaSerializable
       last_posted_at: topic.last_posted_at ? l(topic.last_posted_at, format: :short) : nil,
       pinned: topic.pinned?,
       locked: topic.locked?,
+      featured: topic.featured?,
       unread_count: unread_count,
       has_unread: unread_count.positive?
     }
@@ -79,6 +80,7 @@ module InertiaSerializable
       locked: topic.locked?,
       pinned: topic.pinned?,
       hidden: topic.status == "hidden",
+      featured: topic.featured?,
       views_count: topic.views_count,
       watching: watching,
       bookmarked: bookmarked,

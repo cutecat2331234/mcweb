@@ -5,6 +5,7 @@ module Community
     has_many :children, class_name: "Community::Section", foreign_key: :parent_id, dependent: :destroy
     has_many :topics, class_name: "Community::Topic", foreign_key: :forum_section_id, dependent: :destroy
     has_many :mutes, class_name: "Community::Mute", foreign_key: :forum_section_id, dependent: :destroy
+    has_many :subscriptions, as: :subscribable, class_name: "Community::Subscription", dependent: :destroy
 
     validates :name, presence: true
     validates :slug, presence: true, uniqueness: { scope: :forum_category_id }

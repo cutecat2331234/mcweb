@@ -26,6 +26,10 @@ module Community
         @topic.update!(status: "hidden")
       when "unhide"
         @topic.update!(status: "published")
+      when "feature"
+        @topic.update!(featured: true)
+      when "unfeature"
+        @topic.update!(featured: false)
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

@@ -3,10 +3,10 @@
 module Community
   class LatestController < ApplicationController
     def index
-      @pagy, topics = pagy(
-        Community::Topic.where(status: :published).pinned_first.includes(:user, :section),
-        limit: 30
-      )
+      sort = params[:sort].to_s.presence || "activity"
+      scope = Community::Topic.where(status: :published).sorted(sort).includes(:user, :section)
+
+      @pagy, topics = pagy(scope, limit: 30)
 
       read_states = if logged_in?
                       Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id)).index_by(&:forum_topic_id)
@@ -16,7 +16,8 @@ module Community
 
       render inertia: "Community/Latest/Index", props: {
         topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
-        pagination: pagy_props(@pagy)
+        pagination: pagy_props(@pagy),
+        sort: sort
       }
     end
   end

@@ -1,0 +1,34 @@
+# frozen_string_literal: true
+
+module Commerce
+  class WebhooksController < ApplicationController
+    skip_before_action :verify_authenticity_token
+
+    def create
+      result = Payments::WebhookProcessor.call(
+        provider: params[:provider],
+        event_id: webhook_event_id,
+        event_type: webhook_event_type,
+        payload: request.raw_post.presence || request.request_parameters,
+        signature: request.headers["X-Webhook-Signature"].to_s,
+        headers: request.headers.env.select { |k, _| k.start_with?("HTTP_") }
+      )
+
+      if result.success?
+        head :ok
+      else
+        head :unprocessable_entity
+      end
+    end
+
+    private
+
+    def webhook_event_id
+      params[:event_id].presence || request.headers["X-Webhook-Id"].presence || SecureRandom.uuid
+    end
+
+    def webhook_event_type
+      params[:event_type].presence || request.headers["X-Webhook-Event"].presence || "unknown"
+    end
+  end
+end

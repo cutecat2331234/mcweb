@@ -1,0 +1,13 @@
+<header class="mc-page-header">
+  <div>
+    <h1 class="mc-page-header-title"><%= title %></h1>
+    <% if subtitle.present? %>
+      <p class="mc-page-header-subtitle"><%= subtitle %></p>
+    <% end %>
+  </div>
+  <% if actions? %>
+    <div class="mc-page-header-actions">
+      <%= actions %>
+    </div>
+  <% end %>
+</header>

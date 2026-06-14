@@ -1,0 +1,25 @@
+<nav aria-label="Pagination">
+  <ul class="mc-pagination">
+    <% if pagy.prev %>
+      <li><%= link_to "‹", url_for(page: pagy.prev), rel: "prev" %></li>
+    <% else %>
+      <li><span class="disabled">‹</span></li>
+    <% end %>
+
+    <% pagy.series.each do |item| %>
+      <% if item == :gap %>
+        <li><span class="disabled">…</span></li>
+      <% elsif item == pagy.page %>
+        <li><span class="current" aria-current="page"><%= item %></span></li>
+      <% else %>
+        <li><%= link_to item, url_for(page: item) %></li>
+      <% end %>
+    <% end %>
+
+    <% if pagy.next %>
+      <li><%= link_to "›", url_for(page: pagy.next), rel: "next" %></li>
+    <% else %>
+      <li><span class="disabled">›</span></li>
+    <% end %>
+  </ul>
+</nav>

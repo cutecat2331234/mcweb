@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>" data-controller="theme">
+  <head>
+    <title><%= content_for(:title) || "Admin — Mcweb" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+    <script>
+      (function () {
+        var key = "mc-theme";
+        var stored = localStorage.getItem(key);
+        var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        if (theme === "dark") document.documentElement.classList.add("dark");
+      })();
+    </script>
+  </head>
+
+  <body class="min-h-dvh">
+    <div class="flex min-h-dvh">
+      <%= render "shared/admin_sidebar" %>
+
+      <div class="flex-1 flex flex-col min-w-0">
+        <header class="flex items-center justify-between px-4 py-2 border-b" style="border-color: var(--mc-border); background-color: var(--mc-bg)">
+          <span class="text-sm font-medium" style="color: var(--mc-fg-muted)">Administration</span>
+          <button type="button" class="mc-theme-toggle" data-action="click->theme#toggle" aria-label="Toggle theme">
+            <span data-theme-label>☾</span>
+          </button>
+        </header>
+
+        <main class="flex-1 p-4 overflow-auto">
+          <%= render "shared/flash" %>
+          <%= yield %>
+        </main>
+      </div>
+    </div>
+  </body>
+</html>

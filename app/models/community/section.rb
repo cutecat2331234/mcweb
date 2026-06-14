@@ -1,0 +1,22 @@
+module Community
+  class Section < ApplicationRecord
+    belongs_to :category, class_name: "Community::Category", foreign_key: :forum_category_id
+    belongs_to :parent, class_name: "Community::Section", optional: true
+    has_many :children, class_name: "Community::Section", foreign_key: :parent_id, dependent: :destroy
+    has_many :topics, class_name: "Community::Topic", foreign_key: :forum_section_id, dependent: :destroy
+    has_many :mutes, class_name: "Community::Mute", foreign_key: :forum_section_id, dependent: :destroy
+
+    validates :name, presence: true
+    validates :slug, presence: true, uniqueness: { scope: :forum_category_id }
+
+    scope :ordered, -> { order(:position) }
+    scope :roots, -> { where(parent_id: nil) }
+
+    def allowed?(user, action)
+      perms = permissions[action.to_s]
+      return true if perms.blank?
+
+      user && perms.any? { |role_key| user.permission?(role_key) }
+    end
+  end
+end

@@ -1,0 +1,28 @@
+<% content_for :title, "Mcweb" %>
+
+<section class="website-gradient-bg website-hero py-24 px-4 text-center">
+  <h1 class="text-4xl font-bold mb-4">Welcome to Mcweb</h1>
+  <p class="text-lg mb-8" style="color: var(--mc-fg-muted)">Community, commerce, and more — all in one place.</p>
+  <div class="flex items-center justify-center gap-4">
+    <%= link_to "Browse Forum", forum_sections_path, class: "website-btn website-btn-primary" %>
+    <%= link_to "Visit Store", store_products_path, class: "website-btn border" %>
+  </div>
+</section>
+
+<section class="website-section max-w-4xl mx-auto px-4 py-16">
+  <h2 class="text-2xl font-semibold mb-6 text-center">Features</h2>
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+    <div class="website-card">
+      <h3 class="font-semibold mb-2">Community</h3>
+      <p class="text-sm" style="color: var(--mc-fg-muted)">Discuss topics, share ideas, and connect with others.</p>
+    </div>
+    <div class="website-card">
+      <h3 class="font-semibold mb-2">Store</h3>
+      <p class="text-sm" style="color: var(--mc-fg-muted)">Purchase digital goods and in-game items.</p>
+    </div>
+    <div class="website-card">
+      <h3 class="font-semibold mb-2">Account</h3>
+      <p class="text-sm" style="color: var(--mc-fg-muted)">Manage your profile, security, and preferences.</p>
+    </div>
+  </div>
+</section>

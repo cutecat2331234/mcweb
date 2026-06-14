@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_ROOT="/opt/mcweb/current"
+cd "${APP_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+
+export RAILS_ENV="${RAILS_ENV:-production}"
+export BUNDLE_WITHOUT="${BUNDLE_WITHOUT:-development:test}"
+
+bundle check || bundle install --jobs 4
+bundle exec rails db:prepare
+bundle exec rails assets:precompile
+bundle exec rails solid_queue:start --help >/dev/null 2>&1 || true
+
+echo "McWeb setup complete."

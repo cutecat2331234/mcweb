@@ -1,0 +1,63 @@
+<% content_for :title, "Admin Dashboard" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Dashboard", subtitle: "System overview") %>
+
+<hr class="mc-divider">
+
+<table class="mc-table max-w-lg">
+  <thead>
+    <tr>
+      <th>Metric</th>
+      <th>Count</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>Users</td>
+      <td><%= @users_count %></td>
+    </tr>
+    <tr>
+      <td>Orders</td>
+      <td><%= @orders_count %></td>
+    </tr>
+    <tr>
+      <td>Pending reports</td>
+      <td><%= @pending_reports_count %></td>
+    </tr>
+  </tbody>
+</table>
+
+<hr class="mc-divider">
+
+<h2 class="text-sm font-semibold mb-2">Recent audit log</h2>
+<% if @recent_audit_logs.any? %>
+  <table class="mc-table">
+    <thead>
+      <tr>
+        <th>Action</th>
+        <th>Actor</th>
+        <th>Time</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @recent_audit_logs.each do |log| %>
+        <tr>
+          <td><%= log.action %></td>
+          <td><%= log.actor&.username || "—" %></td>
+          <td><%= l(log.created_at, format: :short) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "No audit log entries yet.", variant: :info) %>
+<% end %>
+
+<hr class="mc-divider">
+
+<h2 class="text-sm font-semibold mb-2">Quick links</h2>
+<ul class="mc-list max-w-lg">
+  <li class="mc-list-item"><%= link_to "Forum sections", forum_sections_path, class: "no-underline" %></li>
+  <li class="mc-list-item"><%= link_to "Store products", store_products_path, class: "no-underline" %></li>
+  <li class="mc-list-item"><%= link_to "View site", root_path, class: "no-underline" %></li>
+</ul>

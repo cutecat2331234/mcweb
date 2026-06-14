@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_ROOT="/opt/mcweb/current"
+cd "${APP_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+
+"${APP_ROOT}/bin/backup"
+bundle install --jobs 4
+bundle exec rails db:migrate
+bundle exec rails assets:precompile
+systemctl restart mcweb-worker mcweb-web
+"${APP_ROOT}/bin/doctor"
+echo "Update complete."

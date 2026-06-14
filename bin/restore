@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BACKUP_PATH="${1:-$(cat /var/backups/mcweb/latest)}"
+[[ -d "${BACKUP_PATH}" ]] || { echo "Backup not found: ${BACKUP_PATH}" >&2; exit 1; }
+
+psql "${DATABASE_URL:-mcweb_production}" < "${BACKUP_PATH}/database.sql"
+tar -xzf "${BACKUP_PATH}/uploads.tar.gz" -C /var/lib/mcweb 2>/dev/null || true
+echo "Restore complete from ${BACKUP_PATH}"

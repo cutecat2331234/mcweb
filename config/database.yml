@@ -1,0 +1,32 @@
+default: &default
+  adapter: postgresql
+  encoding: unicode
+  max_connections: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+
+development:
+  <<: *default
+  database: mcweb_development
+
+test:
+  <<: *default
+  database: mcweb_test
+
+production:
+  primary: &primary_production
+    <<: *default
+    database: mcweb_production
+    username: <%= ENV.fetch("MCWEB_DATABASE_USERNAME", "mcweb") %>
+    password: <%= ENV["MCWEB_DATABASE_PASSWORD"] %>
+    host: <%= ENV.fetch("MCWEB_DATABASE_HOST", "localhost") %>
+  cache:
+    <<: *primary_production
+    database: mcweb_production_cache
+    migrations_paths: db/cache_migrate
+  queue:
+    <<: *primary_production
+    database: mcweb_production_queue
+    migrations_paths: db/queue_migrate
+  cable:
+    <<: *primary_production
+    database: mcweb_production_cable
+    migrations_paths: db/cable_migrate

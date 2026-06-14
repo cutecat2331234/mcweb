@@ -1,0 +1,121 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_NAME="mcweb"
+APP_USER="mcweb"
+APP_ROOT="/opt/mcweb"
+CONFIG_DIR="/etc/mcweb"
+DATA_DIR="/var/lib/mcweb"
+LOG_DIR="/var/log/mcweb"
+BACKUP_DIR="/var/backups/mcweb"
+RUBY_VERSION="3.4.9"
+
+usage() {
+  cat <<EOF
+McWeb 安装程序
+
+用法:
+  bin/install                 交互式安装
+  bin/install --unattended    无人值守安装（读取 /etc/mcweb/install.env）
+
+环境变量配置文件示例见 config/templates/install.env.example
+EOF
+}
+
+require_root() {
+  if [[ "${EUID}" -ne 0 ]]; then
+    echo "请使用 root 或 sudo 运行安装程序" >&2
+    exit 1
+  fi
+}
+
+detect_os() {
+  if [[ -f /etc/os-release ]]; then
+    # shellcheck disable=SC1091
+    source /etc/os-release
+    echo "${ID}"
+  else
+    echo "unknown"
+  fi
+}
+
+install_dependencies() {
+  local os
+  os="$(detect_os)"
+  case "$os" in
+    ubuntu|debian)
+      apt-get update -qq
+      DEBIAN_FRONTEND=noninteractive apt-get install -y \
+        build-essential libpq-dev libyaml-dev libssl-dev zlib1g-dev \
+        libvips-dev imagemagick curl git postgresql postgresql-contrib \
+        caddy
+      ;;
+    *)
+      echo "不支持的操作系统: $os" >&2
+      exit 1
+      ;;
+  esac
+}
+
+install_ruby() {
+  if ! id -u "${APP_USER}" >/dev/null 2>&1; then
+    useradd --system --create-home --home-dir "/home/${APP_USER}" --shell /bin/bash "${APP_USER}"
+  fi
+
+  sudo -u "${APP_USER}" bash -lc "
+    if ! command -v rbenv >/dev/null; then
+      git clone https://github.com/rbenv/rbenv.git ~/.rbenv
+      git clone https://github.com/rbenv/ruby-build.git ~/.rbenv/plugins/ruby-build
+    fi
+    export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\"
+    eval \"\$(rbenv init - bash)\"
+    rbenv install -s ${RUBY_VERSION}
+    rbenv global ${RUBY_VERSION}
+    gem install bundler --no-document
+  "
+}
+
+deploy_release() {
+  local version
+  version="$(date +%Y%m%d%H%M%S)"
+  local release_dir="${APP_ROOT}/releases/${version}"
+  mkdir -p "${release_dir}" "${CONFIG_DIR}" "${DATA_DIR}/uploads" "${LOG_DIR}" "${BACKUP_DIR}"
+  rsync -a --exclude='.git' --exclude='tmp' --exclude='log' "$(pwd)/" "${release_dir}/"
+  ln -sfn "${release_dir}" "${APP_ROOT}/current"
+  chown -R "${APP_USER}:${APP_USER}" "${APP_ROOT}" "${DATA_DIR}" "${LOG_DIR}"
+}
+
+configure_app() {
+  local env_file="${CONFIG_DIR}/mcweb.env"
+  if [[ ! -f "${env_file}" ]]; then
+    install -m 600 config/templates/mcweb.env.example "${env_file}"
+    echo "请编辑 ${env_file} 后重新运行 bin/setup"
+  fi
+}
+
+write_systemd_units() {
+  install -m 644 config/templates/mcweb-web.service /etc/systemd/system/mcweb-web.service
+  install -m 644 config/templates/mcweb-worker.service /etc/systemd/system/mcweb-worker.service
+  systemctl daemon-reload
+}
+
+write_caddyfile() {
+  install -d -m 755 /etc/caddy
+  if [[ ! -f /etc/caddy/Caddyfile ]]; then
+    install -m 644 config/templates/Caddyfile /etc/caddy/Caddyfile
+  fi
+}
+
+main() {
+  require_root
+  install_dependencies
+  install_ruby
+  deploy_release
+  configure_app
+  write_systemd_units
+  write_caddyfile
+  echo "安装完成。请以 ${APP_USER} 用户运行: ${APP_ROOT}/current/bin/setup"
+  echo "然后启动: systemctl enable --now mcweb-web mcweb-worker caddy"
+}
+
+main "$@"

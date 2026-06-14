@@ -1,0 +1,13 @@
+<nav aria-label="Breadcrumb">
+  <ol class="mc-breadcrumb">
+    <% items.each do |item| %>
+      <li>
+        <% if item.current? || item.href.blank? %>
+          <span aria-current="page"><%= item.label %></span>
+        <% else %>
+          <%= link_to item.label, item.href %>
+        <% end %>
+      </li>
+    <% end %>
+  </ol>
+</nav>

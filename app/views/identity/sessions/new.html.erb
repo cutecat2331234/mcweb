@@ -1,0 +1,30 @@
+<% content_for :title, "Sign in" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Sign in", subtitle: "Access your Mcweb account") %>
+
+<%= form_with url: identity_session_path, scope: :session, class: "max-w-md" do |form| %>
+  <div class="mb-4">
+    <%= form.label :email, "Email", class: "mc-form-label" %>
+    <%= form.email_field :email, class: "mc-input", required: true, autofocus: true, autocomplete: "email" %>
+  </div>
+
+  <div class="mb-4">
+    <%= form.label :password, "Password", class: "mc-form-label" %>
+    <%= form.password_field :password, class: "mc-input", required: true, autocomplete: "current-password" %>
+  </div>
+
+  <div class="mb-4">
+    <%= form.label :totp_code, "2FA code (if enabled)", class: "mc-form-label" %>
+    <%= form.text_field :totp_code, class: "mc-input", autocomplete: "one-time-code" %>
+  </div>
+
+  <div class="mb-6 flex items-center gap-2">
+    <%= form.check_box :remember_me, class: "rounded-none" %>
+    <%= form.label :remember_me, "Remember me", class: "text-sm" %>
+  </div>
+
+  <div class="flex items-center gap-3">
+    <%= render Ui::ButtonComponent.new(label: "Sign in", variant: :primary, type: "submit") %>
+    <%= link_to "Create account", new_identity_registration_path, class: "text-sm" %>
+  </div>
+<% end %>

@@ -1,0 +1,30 @@
+<header class="mc-nav">
+  <div class="flex-1 flex items-center">
+    <%= link_to "Mcweb", root_path, class: "px-4 py-3 text-sm font-semibold no-underline" %>
+
+    <nav class="flex">
+      <%= link_to "Forum", forum_sections_path,
+          class: "mc-nav-link #{'mc-nav-link-active' if controller_path.start_with?('community')}" %>
+      <%= link_to "Store", store_products_path,
+          class: "mc-nav-link #{'mc-nav-link-active' if controller_path.start_with?('commerce')}" %>
+      <% if current_user %>
+        <%= link_to "Account", "#",
+            class: "mc-nav-link" %>
+      <% end %>
+    </nav>
+  </div>
+
+  <div class="flex items-center gap-2 px-4">
+    <button type="button" class="mc-theme-toggle" data-action="click->theme#toggle" aria-label="Toggle theme">
+      <span data-theme-label>☾</span>
+    </button>
+
+    <% if current_user %>
+      <span class="text-sm" style="color: var(--mc-fg-muted)"><%= current_user.username %></span>
+      <%= button_to "Sign out", identity_session_path, method: :delete, class: "mc-btn text-sm" %>
+    <% else %>
+      <%= link_to "Sign in", identity_sign_in_path, class: "mc-btn text-sm no-underline" %>
+      <%= link_to "Register", new_identity_registration_path, class: "mc-btn mc-btn-primary text-sm no-underline" %>
+    <% end %>
+  </div>
+</header>

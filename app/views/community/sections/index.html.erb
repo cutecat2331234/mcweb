@@ -1,0 +1,36 @@
+<% content_for :title, "Forum" %>
+
+<%= render Ui::BreadcrumbComponent.new(items: [
+  { label: "Home", href: root_path },
+  { label: "Forum", current: true }
+]) %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Forum sections", subtitle: "Browse community discussions") %>
+
+<% if @sections.any? %>
+  <table class="mc-table">
+    <thead>
+      <tr>
+        <th>Section</th>
+        <th>Category</th>
+        <th>Description</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @sections.each do |section| %>
+        <tr>
+          <td>
+            <span class="font-medium"><%= section.name %></span>
+            <span class="text-xs ml-2" style="color: var(--mc-fg-subtle)"><%= section.slug %></span>
+          </td>
+          <td><%= section.category&.name || "—" %></td>
+          <td style="color: var(--mc-fg-muted)"><%= truncate(section.description.to_s, length: 80) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <%= render Ui::PaginationComponent.new(pagy: @pagy) %>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "No forum sections yet.", variant: :info) %>
+<% end %>

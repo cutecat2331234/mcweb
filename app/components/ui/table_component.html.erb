@@ -1,0 +1,24 @@
+<table class="<%= css_class %>" <%= html_options.except(:class).map { |k, v| "#{k}=\"#{v}\"" }.join(" ").html_safe %>>
+  <% if columns.any? %>
+    <thead>
+      <tr>
+        <% columns.each do |column| %>
+          <th style="text-align: <%= column.align %>"><%= column.label %></th>
+        <% end %>
+      </tr>
+    </thead>
+  <% end %>
+  <tbody>
+    <% if rows.any? %>
+      <% rows.each do |row| %>
+        <tr>
+          <% row.cells.each do |cell| %>
+            <td style="text-align: <%= cell.align %>"><%= cell %></td>
+          <% end %>
+        </tr>
+      <% end %>
+    <% else %>
+      <%= content %>
+    <% end %>
+  </tbody>
+</table>

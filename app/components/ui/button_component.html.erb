@@ -1,0 +1,9 @@
+<% if link? %>
+  <% if method.present? && method.to_s != "get" %>
+    <%= button_to label, href, method: method, **tag_options %>
+  <% else %>
+    <%= link_to label, href, **tag_options %>
+  <% end %>
+<% else %>
+  <%= tag.button(label, type: type, **tag_options) %>
+<% end %>

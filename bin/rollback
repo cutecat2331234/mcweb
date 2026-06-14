@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+PREV="$(ls -1dt /opt/mcweb/releases/* 2>/dev/null | sed -n '2p')"
+[[ -n "${PREV}" ]] || { echo "No previous release"; exit 1; }
+ln -sfn "${PREV}" /opt/mcweb/current
+systemctl restart mcweb-worker mcweb-web
+echo "Rolled back to ${PREV}"

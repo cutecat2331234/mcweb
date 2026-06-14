@@ -1,0 +1,14 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+APP_ROOT="/opt/mcweb/current"
+cd "${APP_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+
+echo "== McWeb Doctor =="
+ruby -v
+bundle exec rails -v
+bundle exec rails runner "puts 'DB: ' + ActiveRecord::Base.connection.active?.to_s"
+systemctl is-active mcweb-web >/dev/null 2>&1 && echo "Web: running" || echo "Web: not running"
+systemctl is-active mcweb-worker >/dev/null 2>&1 && echo "Worker: running" || echo "Worker: not running"
+curl -fsS http://127.0.0.1:3000/health/live >/dev/null 2>&1 && echo "Health: ok" || echo "Health: failed"
+df -h /var/lib/mcweb 2>/dev/null || df -h .

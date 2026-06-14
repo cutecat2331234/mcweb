@@ -1,0 +1,35 @@
+<aside class="mc-sidebar">
+  <div class="px-4 py-3 border-b" style="border-color: var(--mc-border)">
+    <%= link_to "Mcweb Admin", admin_root_path, class: "text-sm font-semibold no-underline" %>
+  </div>
+
+  <nav class="py-2">
+    <p class="px-4 py-1 text-xs font-semibold uppercase tracking-wide" style="color: var(--mc-fg-subtle)">Overview</p>
+    <%= link_to "Dashboard", admin_root_path,
+        class: "mc-sidebar-link #{'mc-sidebar-link-active' if controller_name == 'dashboard'}" %>
+
+    <hr class="mc-divider mx-4">
+
+    <p class="px-4 py-1 text-xs font-semibold uppercase tracking-wide" style="color: var(--mc-fg-subtle)">Community</p>
+    <%= link_to "Sections", admin_forum_sections_path,
+        class: "mc-sidebar-link" %>
+
+    <hr class="mc-divider mx-4">
+
+    <p class="px-4 py-1 text-xs font-semibold uppercase tracking-wide" style="color: var(--mc-fg-subtle)">Commerce</p>
+    <%= link_to "Products", admin_store_products_path,
+        class: "mc-sidebar-link" %>
+
+    <hr class="mc-divider mx-4">
+
+    <p class="px-4 py-1 text-xs font-semibold uppercase tracking-wide" style="color: var(--mc-fg-subtle)">System</p>
+    <%= link_to "Audit Logs", admin_audit_logs_path, class: "mc-sidebar-link" %>
+    <%= link_to "Settings", admin_system_settings_path, class: "mc-sidebar-link" %>
+  </nav>
+
+  <div class="mt-auto px-4 py-3 border-t text-xs" style="border-color: var(--mc-border); color: var(--mc-fg-muted)">
+    <% if current_user %>
+      <%= current_user.username %>
+    <% end %>
+  </div>
+</aside>

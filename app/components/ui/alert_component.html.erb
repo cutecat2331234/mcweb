@@ -1,0 +1,10 @@
+<%= tag.div(**tag_options) do %>
+  <% if content? %>
+    <%= content %>
+  <% else %>
+    <%= message %>
+  <% end %>
+  <% if dismissible %>
+    <button type="button" class="mc-btn ml-2" data-action="click->flash#dismiss" aria-label="Dismiss">×</button>
+  <% end %>
+<% end %>

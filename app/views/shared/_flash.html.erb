@@ -1,0 +1,13 @@
+<% flash.each do |type, message| %>
+  <% next if message.blank? %>
+  <div class="mc-flash mc-flash-<%= type == "notice" ? "notice" : "alert" %>"
+       data-controller="flash"
+       data-flash-dismiss-after-value="6000"
+       role="alert">
+    <%= message %>
+    <button type="button"
+            class="float-right mc-btn border-0 bg-transparent p-0 min-w-0 h-auto"
+            data-action="click->flash#dismiss"
+            aria-label="Dismiss">×</button>
+  </div>
+<% end %>

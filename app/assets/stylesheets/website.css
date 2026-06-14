@@ -1,0 +1,95 @@
+/*
+ * Website module styles — loaded only in website layout.
+ * Animations and richer visual effects are permitted here.
+ */
+
+@keyframes mc-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes mc-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(1rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes mc-hero-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(2rem);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.website-hero {
+  animation: mc-hero-reveal 0.6s ease-out both;
+}
+
+.website-section {
+  animation: mc-fade-in 0.4s ease-out both;
+}
+
+.website-card {
+  border: 1px solid var(--mc-border, #d4d4d4);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.website-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+.website-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.625rem 1.25rem;
+  font-weight: 500;
+  border-radius: 0.375rem;
+  text-decoration: none;
+  transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.website-btn:hover {
+  transform: scale(1.02);
+}
+
+.website-btn-primary {
+  background-color: var(--mc-accent, #404040);
+  color: var(--mc-accent-fg, #fafafa);
+}
+
+.website-nav-link {
+  position: relative;
+  text-decoration: none;
+  transition: color 0.15s ease;
+}
+
+.website-nav-link::after {
+  content: "";
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background-color: currentColor;
+  transition: width 0.2s ease;
+}
+
+.website-nav-link:hover::after {
+  width: 100%;
+}
+
+.website-gradient-bg {
+  background: linear-gradient(135deg, var(--mc-bg-subtle, #f0f0f0) 0%, var(--mc-bg, #fafafa) 100%);
+}

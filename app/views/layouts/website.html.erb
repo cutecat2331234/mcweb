@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>" data-controller="theme">
+  <head>
+    <title><%= content_for(:title) || "Mcweb" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= stylesheet_link_tag "website", "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+    <script>
+      (function () {
+        var key = "mc-theme";
+        var stored = localStorage.getItem(key);
+        var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        if (theme === "dark") document.documentElement.classList.add("dark");
+      })();
+    </script>
+  </head>
+
+  <body>
+    <header class="border-b" style="border-color: var(--mc-border)">
+      <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+        <%= link_to "Mcweb", root_path, class: "text-lg font-semibold no-underline" %>
+        <nav class="flex items-center gap-4">
+          <%= link_to "Home", root_path, class: "website-nav-link" %>
+          <%= link_to "Forum", forum_sections_path, class: "website-nav-link" %>
+          <%= link_to "Store", store_products_path, class: "website-nav-link" %>
+          <button type="button" class="mc-theme-toggle" data-action="click->theme#toggle" aria-label="Toggle theme">
+            <span data-theme-label>☾</span>
+          </button>
+        </nav>
+      </div>
+    </header>
+
+    <main>
+      <%= yield %>
+    </main>
+  </body>
+</html>

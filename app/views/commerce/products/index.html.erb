@@ -1,0 +1,44 @@
+<% content_for :title, "Store" %>
+
+<%= render Ui::BreadcrumbComponent.new(items: [
+  { label: "Home", href: root_path },
+  { label: "Store", current: true }
+]) %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Products", subtitle: "Browse available items") %>
+
+<% if @products.any? %>
+  <table class="mc-table">
+    <thead>
+      <tr>
+        <th>Product</th>
+        <th>Category</th>
+        <th>Price</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @products.each do |product| %>
+        <tr>
+          <td>
+            <span class="font-medium"><%= product.name %></span>
+            <span class="text-xs ml-2" style="color: var(--mc-fg-subtle)"><%= product.slug %></span>
+          </td>
+          <td><%= product.category&.name || "—" %></td>
+          <td><%= number_to_currency(product.price, unit: product.currency == "CNY" ? "¥" : "$") %></td>
+          <td>
+            <% if product.in_stock? %>
+              <%= render Ui::BadgeComponent.new(label: "In stock", variant: :success) %>
+            <% else %>
+              <%= render Ui::BadgeComponent.new(label: "Out of stock", variant: :danger) %>
+            <% end %>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+
+  <%= render Ui::PaginationComponent.new(pagy: @pagy) %>
+<% else %>
+  <%= render Ui::AlertComponent.new(message: "No products available.", variant: :info) %>
+<% end %>

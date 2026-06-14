@@ -1,0 +1,30 @@
+<% content_for :title, "Register" %>
+
+<%= render Ui::PageHeaderComponent.new(title: "Create account", subtitle: "Join the Mcweb community") %>
+
+<%= form_with url: identity_registrations_path, scope: :registration, class: "max-w-md" do |form| %>
+  <div class="mb-4">
+    <%= form.label :email, "Email", class: "mc-form-label" %>
+    <%= form.email_field :email, class: "mc-input", required: true, autofocus: true, autocomplete: "email" %>
+  </div>
+
+  <div class="mb-4">
+    <%= form.label :username, "Username", class: "mc-form-label" %>
+    <%= form.text_field :username, class: "mc-input", required: true, autocomplete: "username" %>
+  </div>
+
+  <div class="mb-4">
+    <%= form.label :display_name, "Display name", class: "mc-form-label" %>
+    <%= form.text_field :display_name, class: "mc-input", autocomplete: "name" %>
+  </div>
+
+  <div class="mb-4">
+    <%= form.label :password, "Password", class: "mc-form-label" %>
+    <%= form.password_field :password, class: "mc-input", required: true, autocomplete: "new-password" %>
+  </div>
+
+  <div class="flex items-center gap-3 mt-6">
+    <%= render Ui::ButtonComponent.new(label: "Register", variant: :primary, type: "submit") %>
+    <%= link_to "Already have an account?", identity_sign_in_path, class: "text-sm" %>
+  </div>
+<% end %>

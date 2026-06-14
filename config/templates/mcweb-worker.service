@@ -1,0 +1,15 @@
+[Unit]
+Description=McWeb Solid Queue Worker
+After=network.target postgresql.service mcweb-web.service
+
+[Service]
+Type=simple
+User=mcweb
+WorkingDirectory=/opt/mcweb/current
+EnvironmentFile=/etc/mcweb/mcweb.env
+ExecStart=/home/mcweb/.rbenv/shims/bundle exec rails solid_queue:start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+BACKUP_DIR="${MCWEB_BACKUP_DIR:-/var/backups/mcweb}"
+STAMP="$(date +%Y%m%d%H%M%S)"
+TARGET="${BACKUP_DIR}/${STAMP}"
+mkdir -p "${TARGET}"
+
+pg_dump "${DATABASE_URL:-mcweb_production}" > "${TARGET}/database.sql"
+tar -czf "${TARGET}/uploads.tar.gz" -C /var/lib/mcweb uploads 2>/dev/null || true
+cp /etc/mcweb/mcweb.env "${TARGET}/mcweb.env" 2>/dev/null || true
+echo "${TARGET}" > "${BACKUP_DIR}/latest"
+echo "Backup saved to ${TARGET}"

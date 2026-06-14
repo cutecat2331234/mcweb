@@ -1,0 +1,21 @@
+<div class="mb-4">
+  <%= form.label attribute, field_label, class: "mc-form-label", for: field_id %>
+  <% case type %>
+  <% when :password %>
+    <%= form.password_field attribute, input_options.merge(id: field_id) %>
+  <% when :email %>
+    <%= form.email_field attribute, input_options.merge(id: field_id) %>
+  <% when :textarea %>
+    <%= form.text_area attribute, input_options.merge(class: "mc-textarea #{html_options[:class]}".strip, id: field_id) %>
+  <% when :select %>
+    <%= form.select attribute, html_options.delete(:collection) || [], {}, input_options.merge(id: field_id) %>
+  <% else %>
+    <%= form.text_field attribute, input_options.merge(id: field_id) %>
+  <% end %>
+  <% if hint.present? %>
+    <p class="mc-form-hint"><%= hint %></p>
+  <% end %>
+  <% errors.each do |error| %>
+    <p class="mc-form-error"><%= error %></p>
+  <% end %>
+</div>

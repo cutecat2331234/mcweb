@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+set -euo pipefail
+systemctl stop mcweb-web mcweb-worker 2>/dev/null || true
+echo "McWeb services stopped. Application files preserved in /opt/mcweb"

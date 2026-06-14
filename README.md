@@ -1,35 +1,68 @@
-# hehsfesfe
+# McWeb
 
-> **占位仓库 · 非开发项目仓库**
+面向 Minecraft 服务器服主的开源官网系统：前后端一体的 Ruby on Rails 模块化单体应用，包含展示型官网、论坛、商城、用户中心、Minecraft 服务器联动、后台管理、安装升级与运维能力。
 
-本仓库主要用于 **Cursor Cloud Agent** 的占位绑定，不作为实际项目的开发仓库。
+## 功能
 
-## 可以做什么
+- **身份系统**：注册、登录、邮箱验证、密码重置、会话管理、TOTP 二步验证、RBAC 细粒度权限、审计日志
+- **官网**：区块化页面构建、主题令牌、新闻公告、SEO、动画隔离
+- **论坛**：分区、主题、楼层、搜索、举报审核、禁言
+- **商城**：虚拟商品、订单、优惠券、支付适配器（含 Fake Provider）、幂等回调、发货
+- **Minecraft Connector**：账号绑定、任务拉取、幂等发货协议
+- **运维**：原生安装脚本、systemd、Caddy、备份恢复、健康检查
 
-- 可以上传一些**方便下载的文件**（如 APK、安装包、构建产物、压缩包等）
-- 上传时**必须直接提交到 `main` 主分支**，不要创建功能分支或 Pull Request
-- 建议在 README 中补充下载说明和文件路径
+## 技术栈
 
-## 不要做什么
+| 类别 | 选型 |
+|------|------|
+| 语言 | Ruby 3.4.9（规范要求 Ruby 4.0.x，当前生态以 3.4.x 为稳定选择） |
+| 框架 | Rails 8.1.x |
+| 数据库 | PostgreSQL |
+| 队列/缓存 | Solid Queue、Solid Cache、Solid Cable |
+| 前端 | ERB、Hotwire、ViewComponent、Tailwind CSS 4、Importmap |
 
-- **不要** 将本仓库作为代码开发、迭代的目标仓库
-- **不要** 创建分支、开 PR 来做项目开发
-- 如需开发具体项目，请使用**独立的目标仓库**
+## 支持环境
 
-## 给 Agent 的说明
+- Ubuntu LTS x86_64
+- Debian Stable x86_64
 
-当用户要求做项目、写代码、部署或其他开发任务时：
+## 快速安装
 
-1. **不要** 默认在本仓库中创建分支、提交代码或开 PR
-2. 应向用户索取**实际目标仓库的链接**（GitHub / Gitea 等）
-3. 用户通常会直接提供目标仓库，收到后切换到对应仓库再开展工作
+```bash
+git clone https://github.com/cutecat2331234/mcweb.git
+cd mcweb
+sudo bin/install
+sudo -u mcweb /opt/mcweb/current/bin/setup
+sudo systemctl enable --now mcweb-web mcweb-worker caddy
+```
 
-若用户明确要求在本仓库**上传可供下载的文件**：
+首次访问 `https://your-domain/setup` 完成初始化向导。
 
-1. 直接提交到 **`main` 分支**
-2. 更新 README，写清文件用途与下载方式
-3. 不要为此单独开分支或 PR
+详细说明见 [INSTALL.md](INSTALL.md)。
 
----
+## 开发环境
 
-除 README 外，本仓库仅保留用于下载的静态文件即可。
+```bash
+bundle install
+bin/rails db:prepare
+bin/rails db:seed
+bin/dev
+```
+
+访问 http://localhost:3000
+
+## 安全说明
+
+- 支付密钥与 Connector 密钥使用 Lockbox 加密存储
+- 生产环境必须配置 HTTPS、强 `SECRET_KEY_BASE` 与 `LOCKBOX_MASTER_KEY`
+- 详见 [SECURITY.md](SECURITY.md)
+
+## 许可证
+
+MIT License — 见 [LICENSE](LICENSE)
+
+## 当前限制（v0.1.0）
+
+- 支付适配器首版仅完整实现 Fake Provider，支付宝/微信/Stripe 为扩展骨架
+- Minecraft Connector Java 插件为协议文档 + Fake 测试适配器
+- 多语言 UI 部分完成，数据结构已支持翻译字段

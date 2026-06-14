@@ -1,0 +1,79 @@
+#!/usr/bin/env bash
+# 构建可部署发布包：含 vendor gems、预编译前端资源、quick-install.sh
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+cd "$ROOT"
+
+VERSION="${RELEASE_VERSION:-${1:-$(git describe --tags --always 2>/dev/null || date +%Y%m%d%H%M%S)}}"
+DIST="${ROOT}/dist"
+STAGE="${DIST}/mcweb-${VERSION}"
+
+echo "==> McWeb release build: ${VERSION}"
+
+rm -rf "${STAGE}"
+mkdir -p "${STAGE}"
+
+echo "==> Copying sources…"
+rsync -a \
+  --exclude='.git' \
+  --exclude='tmp' \
+  --exclude='log' \
+  --exclude='node_modules' \
+  --exclude='dist' \
+  --exclude='storage' \
+  --exclude='coverage' \
+  --exclude='.bundle' \
+  "${ROOT}/" "${STAGE}/"
+
+cd "${STAGE}"
+
+export RAILS_ENV=production
+export BUNDLE_WITHOUT=development:test
+export BUNDLE_DEPLOYMENT=1
+export SECRET_KEY_BASE="${SECRET_KEY_BASE:-build-$(openssl rand -hex 32 2>/dev/null || echo placeholder)}"
+export LOCKBOX_MASTER_KEY="${LOCKBOX_MASTER_KEY:-$(openssl rand -hex 32 2>/dev/null || echo placeholder)}"
+export MCWEB_DATABASE_USERNAME="${MCWEB_DATABASE_USERNAME:-postgres}"
+export MCWEB_DATABASE_PASSWORD="${MCWEB_DATABASE_PASSWORD:-postgres}"
+
+echo "==> Installing Ruby gems (deployment)…"
+bundle config set --local deployment 'true'
+bundle config set --local without 'development test'
+bundle config set --local path 'vendor/bundle'
+bundle install --jobs 4 --retry 3
+
+echo "==> Installing Node dependencies & building frontend…"
+npm ci --no-audit --no-fund
+bundle exec rails tailwindcss:build
+bin/vite build
+
+if [[ -n "${DATABASE_URL:-}" ]]; then
+  echo "==> Preparing database for asset pipeline…"
+  bundle exec rails db:prepare 2>/dev/null || true
+fi
+
+echo "==> Precompiling assets…"
+bundle exec rails assets:precompile
+
+echo "==> Cleaning build-only files…"
+rm -rf node_modules tmp/cache spec .github
+
+install -m 755 packaging/quick-install.sh "${STAGE}/quick-install.sh"
+echo "${VERSION}" > VERSION
+
+mkdir -p "${DIST}"
+ARCHIVE="${DIST}/mcweb-${VERSION}.tar.gz"
+tar -czf "${ARCHIVE}" -C "${DIST}" "mcweb-${VERSION}"
+
+if command -v sha256sum >/dev/null; then
+  sha256sum "${ARCHIVE}" > "${ARCHIVE}.sha256"
+elif command -v shasum >/dev/null; then
+  shasum -a 256 "${ARCHIVE}" > "${ARCHIVE}.sha256"
+fi
+
+echo ""
+echo "==> Release ready:"
+ls -lh "${ARCHIVE}"
+[[ -f "${ARCHIVE}.sha256" ]] && cat "${ARCHIVE}.sha256"
+echo ""
+echo "Deploy: tar -xzf $(basename "${ARCHIVE}") && cd mcweb-${VERSION} && sudo ./quick-install.sh"

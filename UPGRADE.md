@@ -40,3 +40,17 @@ sudo bin/rollback
 ```
 
 保留最近若干 `releases` 目录以便快速回退。
+
+## CI 自动构建
+
+推送到 `main` 或手动触发 **Release Build** 工作流后，可在 Actions 产物中下载：
+
+- `mcweb-<version>.tar.gz` — 完整可部署包（含 gems 与静态资源）
+- `mcweb-<version>.tar.gz.sha256` — 校验文件
+
+本地构建：
+
+```bash
+chmod +x bin/build-release packaging/quick-install.sh
+RELEASE_VERSION=dev-local bin/build-release
+```

@@ -1,0 +1,121 @@
+name: Release Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      release_version:
+        description: "发布版本号（留空则使用 git SHA）"
+        required: false
+        type: string
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      RAILS_ENV: test
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/mcweb_test
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      - name: Prepare database
+        run: bin/rails db:prepare
+
+      - name: Run tests
+        run: bin/rails test
+
+      - name: Schema consistency
+        run: bin/rails db:schema:dump && git diff --exit-code db/schema.rb
+
+  build-release:
+    needs: test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/mcweb_build
+      MCWEB_DATABASE_USERNAME: postgres
+      MCWEB_DATABASE_PASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.4"
+          bundler-cache: true
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Set release version
+        id: version
+        run: |
+          if [[ -n "${{ github.event.inputs.release_version }}" ]]; then
+            echo "value=${{ github.event.inputs.release_version }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref_type }}" == "tag" ]]; then
+            echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build release tarball
+        run: |
+          chmod +x bin/build-release packaging/quick-install.sh
+          RELEASE_VERSION="${{ steps.version.outputs.value }}" bin/build-release
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: mcweb-release-${{ steps.version.outputs.value }}
+          path: |
+            dist/mcweb-*.tar.gz
+            dist/mcweb-*.tar.gz.sha256
+          retention-days: 90
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release (tags only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/mcweb-*.tar.gz
+            dist/mcweb-*.tar.gz.sha256
+          generate_release_notes: true

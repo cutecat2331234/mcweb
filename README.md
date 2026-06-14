@@ -28,9 +28,26 @@
 
 ## 快速安装
 
+### 方式一：GitHub 发布包（推荐）
+
+在 [Actions → Release Build](https://github.com/cutecat2331234/mcweb/actions/workflows/release.yml) 下载最新 `mcweb-*.tar.gz` 产物，或打 `v*` 标签自动附带到 Release：
+
+```bash
+tar -xzf mcweb-<version>.tar.gz
+cd mcweb-<version>
+sudo ./quick-install.sh --fresh   # 全新服务器
+# 或已装过 McWeb：
+sudo ./quick-install.sh           # 仅升级应用
+```
+
+发布包已包含 `vendor/bundle`、预编译前端资源，无需在服务器上 `bundle install` / `npm build`。
+
+### 方式二：从源码安装
+
 ```bash
 git clone https://github.com/cutecat2331234/mcweb.git
 cd mcweb
+git checkout main
 sudo bin/install
 sudo -u mcweb /opt/mcweb/current/bin/setup
 sudo systemctl enable --now mcweb-web mcweb-worker caddy
@@ -42,8 +59,14 @@ sudo systemctl enable --now mcweb-web mcweb-worker caddy
 
 ## 开发环境
 
+基于 **main** 分支开发：
+
 ```bash
+git clone https://github.com/cutecat2331234/mcweb.git
+cd mcweb
+git checkout main
 bundle install
+npm ci
 bin/rails db:prepare
 bin/rails db:seed
 bin/dev

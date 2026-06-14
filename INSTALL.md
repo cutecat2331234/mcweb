@@ -7,7 +7,27 @@
 - 域名已解析到服务器
 - 开放 80、443 端口
 
-## 交互式安装
+## 发布包快速安装（推荐）
+
+从 GitHub Actions **Release Build** 工作流下载 `mcweb-*.tar.gz`：
+
+```bash
+tar -xzf mcweb-*.tar.gz
+cd mcweb-*
+sha256sum -c mcweb-*.tar.gz.sha256   # 可选：校验完整性
+sudo ./quick-install.sh --fresh      # 全新安装
+sudo -u mcweb /opt/mcweb/current/bin/setup
+sudo systemctl enable --now mcweb-web mcweb-worker caddy
+```
+
+已部署过的服务器升级：
+
+```bash
+tar -xzf mcweb-*.tar.gz && cd mcweb-*
+sudo ./quick-install.sh
+```
+
+## 从源码交互式安装
 
 ```bash
 sudo bin/install

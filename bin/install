@@ -93,6 +93,7 @@ configure_app() {
   fi
   grep -q '^RAILS_SERVE_STATIC_FILES=' "${env_file}" || echo 'RAILS_SERVE_STATIC_FILES=1' >> "${env_file}"
   grep -q '^BUNDLE_WITHOUT=' "${env_file}" || echo 'BUNDLE_WITHOUT=development:test' >> "${env_file}"
+  grep -q '^BUNDLE_DEPLOYMENT=' "${env_file}" || echo 'BUNDLE_DEPLOYMENT=true' >> "${env_file}"
 }
 
 write_systemd_units() {

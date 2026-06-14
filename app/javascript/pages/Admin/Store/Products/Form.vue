@@ -19,6 +19,7 @@ const props = defineProps<{
     product_type: string
     status: string
     price_cents: number
+    compare_at_price_cents?: number | null
     currency: string
     stock: number | null
     store_category_id: number | null
@@ -121,6 +122,10 @@ async function uploadCover(event: Event) {
       <div class="space-y-2">
         <Label for="price_cents">价格（分）</Label>
         <Input id="price_cents" v-model.number="form.product.price_cents" type="number" min="0" required />
+      </div>
+      <div class="space-y-2">
+        <Label for="compare_at_price_cents">原价（分，促销时填写）</Label>
+        <Input id="compare_at_price_cents" v-model.number="form.product.compare_at_price_cents" type="number" min="0" placeholder="留空表示无促销" />
       </div>
       <div class="space-y-2">
         <Label for="stock">库存（空=无限）</Label>

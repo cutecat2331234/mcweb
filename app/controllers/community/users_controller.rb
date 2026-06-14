@@ -6,13 +6,12 @@ module Community
 
     def show
       user = User.find_by!(username: params[:id])
-      topics_scope = Community::Topic.where(user: user, status: :published)
-      topics = topics_scope.order(created_at: :desc).limit(20)
-      posts = Community::Post.where(user: user, status: :published)
-        .includes(:topic)
-        .order(created_at: :desc)
-        .limit(20)
-      posts_count = Community::Post.where(user: user, status: :published).count
+      tab = params[:tab].to_s.in?(%w[topics posts]) ? params[:tab] : "topics"
+      topics_scope = Community::Topic.where(user: user, status: :published).order(created_at: :desc)
+      posts_scope = Community::Post.where(user: user, status: :published).includes(:topic).order(created_at: :desc)
+      posts_count = posts_scope.count
+      @pagy_topics, topics = pagy(topics_scope, limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
+      @pagy_posts, posts = pagy(posts_scope, limit: 20, page: [ params[:posts_page].to_i, 1 ].max)
       trust = Community::TrustLevel.level_info(user)
       progress = Community::TrustLevel.progress_for(user)
       liked_posts = Community::Post.where(user: user, status: :published)
@@ -71,6 +70,7 @@ module Community
           }
         end,
         topics: topics.map { |topic| serialize_topic(topic) },
+        topicsPagination: pagy_props(@pagy_topics),
         recent_posts: posts.map do |post|
           {
             id: post.id,
@@ -81,6 +81,8 @@ module Community
             created_at: l(post.created_at, format: :short)
           }
         end,
+        postsPagination: pagy_props(@pagy_posts),
+        activeTab: tab,
         liked_posts: liked_posts
       }
     end

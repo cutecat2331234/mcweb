@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000034) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -247,6 +247,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000034) do
   create_table "forum_reports", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "reason", null: false
+    t.string "reason_code"
     t.bigint "reportable_id", null: false
     t.string "reportable_type", null: false
     t.bigint "reporter_id", null: false
@@ -255,6 +256,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000034) do
     t.bigint "reviewer_id"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
+    t.index ["reason_code"], name: "index_forum_reports_on_reason_code"
     t.index ["reportable_type", "reportable_id"], name: "index_forum_reports_on_reportable_type_and_reportable_id"
     t.index ["reporter_id"], name: "index_forum_reports_on_reporter_id"
     t.index ["reviewer_id"], name: "index_forum_reports_on_reviewer_id"
@@ -780,6 +782,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000034) do
 
   create_table "store_products", force: :cascade do |t|
     t.text "changelog"
+    t.integer "compare_at_price_cents"
     t.datetime "created_at", null: false
     t.string "currency", default: "CNY", null: false
     t.text "description"

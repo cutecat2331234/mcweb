@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import { routes } from '@/lib/routes'
+import { highlightCodeBlocks } from '@/lib/highlightCode'
 
 defineOptions({ layout: PortalLayout })
 
@@ -172,6 +173,7 @@ onMounted(() => {
   if (saved && !replyForm.post.body) {
     replyForm.post.body = saved
   }
+  highlightCodeBlocks(document)
   document.querySelectorAll('.code-copy-btn').forEach((button) => {
     button.addEventListener('click', () => {
       const wrap = button.closest('.code-block-wrap')
@@ -376,6 +378,15 @@ function mergeTopic() {
   if (!mergeTargetId.value.trim()) return
   if (!confirm('确定将此主题合并到目标主题？源主题将被隐藏。')) return
   router.post(`/forum/topics/${props.topic.id}/merge`, { target_topic_id: mergeTargetId.value.trim() })
+}
+
+function splitPost(post: PostItem) {
+  if (!confirm(`确定从 #${post.floor_number} 起拆分为新主题？`)) return
+  const title = window.prompt('新主题标题（留空使用默认）', '')
+  router.post(`/forum/topics/${props.topic.id}/split`, {
+    post_id: post.id,
+    title: title || undefined,
+  })
 }
 
 function saveTopicEdit() {
@@ -722,6 +733,7 @@ function pollPercent(votes: number) {
               </button>
               <button v-if="post.bookmarked && post.bookmark_url" type="button" class="text-xs hover:underline" @click="removePostBookmark(post)">移除书签</button>
               <button v-if="canMarkSolved && !post.is_solved" type="button" class="text-xs text-green-600 hover:underline" @click="markSolved(post)">标为已解决</button>
+              <button v-if="topic.can_move && post.floor_number > 1" type="button" class="text-xs hover:underline" @click="splitPost(post)">拆分主题</button>
               <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">举报</Link>
               <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
                 {{ post.hidden ? '显示' : '隐藏' }}

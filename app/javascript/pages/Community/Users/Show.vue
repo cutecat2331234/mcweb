@@ -13,6 +13,7 @@ import TableRow from '@/components/ui/TableRow.vue'
 import Button from '@/components/ui/Button.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import Label from '@/components/ui/Label.vue'
+import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -66,6 +67,7 @@ const props = defineProps<{
     replies_count: number
     last_posted_at: string | null
   }>
+  topicsPagination: PaginationMeta
   recent_posts: Array<{
     id: number
     body: string
@@ -74,6 +76,8 @@ const props = defineProps<{
     topic_url: string
     created_at: string
   }>
+  postsPagination: PaginationMeta
+  activeTab: 'topics' | 'posts'
   liked_posts: Array<{
     id: number
     body: string
@@ -143,6 +147,10 @@ function uploadAvatar(event: Event) {
       if (avatarInput.value) avatarInput.value.value = ''
     },
   })
+}
+
+function switchTab(tab: 'topics' | 'posts') {
+  router.get(`/forum/users/${props.profile.username}`, { tab }, { preserveState: true })
 }
 </script>
 
@@ -272,6 +280,16 @@ function uploadAvatar(event: Event) {
     </div>
   </form>
 
+  <div class="mb-4 flex gap-2">
+    <Button :variant="activeTab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">
+      主题 ({{ profile.topics_count }})
+    </Button>
+    <Button :variant="activeTab === 'posts' ? 'default' : 'outline'" size="sm" @click="switchTab('posts')">
+      回复 ({{ profile.posts_count }})
+    </Button>
+  </div>
+
+  <section v-if="activeTab === 'topics'">
   <h2 class="mb-3 text-sm font-semibold">最近主题</h2>
   <div v-if="topics.length" class="rounded-lg border">
     <Table>
@@ -292,8 +310,16 @@ function uploadAvatar(event: Event) {
     </Table>
   </div>
   <p v-else class="text-sm text-muted-foreground">暂无主题。</p>
+  <Pagination
+    v-if="topicsPagination.pages > 1"
+    :pagination="topicsPagination"
+    :base-path="profile.profile_url"
+    page-param="topics_page"
+  />
+  </section>
 
-  <h2 class="mb-3 mt-8 text-sm font-semibold">最近回复</h2>
+  <section v-else>
+  <h2 class="mb-3 text-sm font-semibold">最近回复</h2>
   <div v-if="recent_posts.length" class="space-y-2 rounded-lg border p-4">
     <div v-for="post in recent_posts" :key="post.id" class="text-sm">
       <Link :href="post.topic_url" class="font-medium hover:underline">#{{ post.floor_number }} {{ post.topic_title }}</Link>
@@ -302,6 +328,13 @@ function uploadAvatar(event: Event) {
     </div>
   </div>
   <p v-else class="text-sm text-muted-foreground">暂无回复。</p>
+  <Pagination
+    v-if="postsPagination.pages > 1"
+    :pagination="postsPagination"
+    :base-path="profile.profile_url"
+    page-param="posts_page"
+  />
+  </section>
 
   <h2 class="mb-3 mt-8 text-sm font-semibold">获赞帖子</h2>
   <div v-if="liked_posts.length" class="space-y-2 rounded-lg border p-4">

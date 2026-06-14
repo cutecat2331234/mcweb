@@ -33,6 +33,7 @@ const props = defineProps<{
   pendingCouponCode?: string | null
   previewCouponUrl: string
   clearCouponUrl?: string
+  moveToWishlistUrl?: string
 }>()
 
 const couponCode = ref(props.pendingCouponCode || '')
@@ -90,6 +91,11 @@ function updateQuantity(itemId: number, quantity: number) {
 function removeItem(itemId: number) {
   router.patch(routes.storeCart, { item_id: itemId, quantity: 0 })
 }
+
+function moveToWishlist(itemId: number) {
+  if (!props.moveToWishlistUrl) return
+  router.post(props.moveToWishlistUrl, { item_id: itemId })
+}
 </script>
 
 <template>
@@ -126,7 +132,18 @@ function removeItem(itemId: number) {
             <TableCell>{{ item.unit_price_label }}</TableCell>
             <TableCell>{{ item.total_label }}</TableCell>
             <TableCell>
-              <Button variant="ghost" size="sm" type="button" @click="removeItem(item.id)">移除</Button>
+              <div class="flex gap-1">
+                <Button variant="ghost" size="sm" type="button" @click="removeItem(item.id)">移除</Button>
+                <Button
+                  v-if="loggedIn && moveToWishlistUrl"
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  @click="moveToWishlist(item.id)"
+                >
+                  移入心愿单
+                </Button>
+              </div>
             </TableCell>
           </TableRow>
         </TableBody>

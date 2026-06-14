@@ -15,8 +15,24 @@ module Commerce
         loggedIn: logged_in?,
         pendingCouponCode: pending_coupon,
         previewCouponUrl: preview_coupon_store_cart_path,
-        clearCouponUrl: clear_coupon_store_cart_path
+        clearCouponUrl: clear_coupon_store_cart_path,
+        moveToWishlistUrl: move_to_wishlist_store_cart_path
       }
+    end
+
+    def move_to_wishlist
+      return redirect_to store_cart_path, alert: "请先登录。" unless logged_in?
+
+      item = @cart.items.find(params[:item_id])
+      result = Commerce::MoveCartItemToWishlist.call(user: current_user, cart_item: item)
+
+      if result.success?
+        redirect_to store_cart_path, notice: "已移入心愿单。"
+      else
+        redirect_to store_cart_path, alert: service_error_message(result)
+      end
+    rescue ActiveRecord::RecordNotFound
+      redirect_to store_cart_path, alert: "购物车项不存在。"
     end
 
     def preview_coupon

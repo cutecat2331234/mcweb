@@ -7,7 +7,8 @@ module Community
     def new
       render inertia: "Community/Reports/New", props: {
         reportableType: params[:reportable_type].to_s,
-        reportableId: params[:reportable_id].to_s
+        reportableId: params[:reportable_id].to_s,
+        reasonOptions: Community::Report::REASONS.map { |code, label| { value: code, label: label } }
       }
     end
 
@@ -15,10 +16,20 @@ module Community
       reportable = find_reportable
       return redirect_back fallback_location: root_path, alert: "Content not found." unless reportable
 
+      reason_code = report_params[:reason_code].presence
+      detail = report_params[:reason_detail].to_s.strip
+      reason_text = if reason_code.present?
+                      label = Community::Report::REASONS[reason_code] || reason_code
+                      detail.present? ? "#{label}：#{detail}" : label
+                    else
+                      report_params[:reason]
+                    end
+
       report = Community::Report.create!(
         reporter: current_user,
         reportable: reportable,
-        reason: report_params[:reason],
+        reason: reason_text,
+        reason_code: reason_code,
         status: :pending
       )
 
@@ -33,7 +44,8 @@ module Community
       render inertia: "Community/Reports/New",
              props: {
                reportableType: report_params[:reportable_type],
-               reportableId: report_params[:reportable_id]
+               reportableId: report_params[:reportable_id],
+               reasonOptions: Community::Report::REASONS.map { |code, label| { value: code, label: label } }
              },
              status: :unprocessable_entity,
              errors: { reason: e.record.errors.full_messages.to_sentence }
@@ -42,7 +54,7 @@ module Community
     private
 
     def report_params
-      params.require(:report).permit(:reportable_type, :reportable_id, :reason)
+      params.require(:report).permit(:reportable_type, :reportable_id, :reason, :reason_code, :reason_detail)
     end
 
     def find_reportable

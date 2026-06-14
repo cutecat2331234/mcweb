@@ -105,6 +105,7 @@ Rails.application.routes.draw do
         post :moderate
         post :move
         post :merge
+        post :split
         post :mark_solved
         post :unsolve
         patch :slow_mode, action: :update_slow_mode
@@ -174,7 +175,7 @@ Rails.application.routes.draw do
       member do
         post :wishlist, to: "wishlist#toggle"
         post :stock_alert, to: "stock_alerts#create"
-        resources :reviews, only: %i[create], controller: "reviews" do
+        resources :reviews, only: %i[create destroy], controller: "reviews" do
           member do
             post :helpful, action: :toggle_helpful
           end
@@ -199,6 +200,7 @@ Rails.application.routes.draw do
     resource :cart, only: %i[show update] do
       post :preview_coupon, on: :member
       delete :clear_coupon, on: :member
+      post :move_to_wishlist, on: :member
     end
     resources :orders, only: %i[index show create] do
       member do

@@ -19,7 +19,7 @@ module Admin
           ],
           rows: reports.map do |report|
             admin_row(
-              reason: report.reason.truncate(60),
+              reason: report.reason_label.present? ? "#{report.reason_label} — #{report.reason.truncate(40)}" : report.reason.truncate(60),
               reporter: report.reporter&.username,
               status: report.status,
               time: l(report.created_at, format: :short),
@@ -33,6 +33,7 @@ module Admin
         render inertia: "Admin/Generic/Show", props: {
           title: "举报详情",
           fields: [
+            { label: "类型", value: @report.reason_label || "—" },
             { label: "原因", value: @report.reason },
             { label: "举报人", value: @report.reporter&.username || "—" },
             { label: "状态", value: @report.status },

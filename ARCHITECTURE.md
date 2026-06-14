@@ -519,3 +519,18 @@ app/
 | 订单完成通知 | `SyncOrderFulfillmentStatus` → `commerce.order_completed` |
 | 对比页加入购物车 | `Compare/Show.vue` + `db_id` |
 | 导航修复 | `routes.storeWishlist` + 标签主题链接 |
+
+### 第二十七轮（论坛 / 商城精细化体验）
+
+| 功能 | 实现 |
+|------|------|
+| 拆分主题 | `Community::SplitTopic` + `topics#split` |
+| 举报预设原因 | `Report::REASONS` + `reason_code` 迁移 |
+| 代码块语法高亮 | `highlight.js` + `lib/highlightCode.ts` |
+| 用户资料分页 | `UsersController` topics/posts Pagy + Tab |
+| 通知分组与分类 Tab | 按 `order_public_id` 分组 + forum/commerce 筛选 |
+| 促销原价 | `compare_at_price_cents` + 列表/详情展示 |
+| 价格区间筛选 | `products#index` price_min/price_max |
+| 购物车移入心愿单 | `MoveCartItemToWishlist` + `carts#move_to_wishlist` |
+| 删除自己的评价 | `DeleteReview` + `reviews#destroy` |
+| 已购买徽章 | `products#show` purchased 标记 |

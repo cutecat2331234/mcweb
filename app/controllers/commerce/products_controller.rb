@@ -23,6 +23,15 @@ module Commerce
         scope = scope.where(store_category_id: category.id)
       end
 
+      if params[:price_min].present?
+        min_cents = (params[:price_min].to_f * 100).to_i
+        scope = scope.where("price_cents >= ?", min_cents) if min_cents.positive?
+      end
+      if params[:price_max].present?
+        max_cents = (params[:price_max].to_f * 100).to_i
+        scope = scope.where("price_cents <= ?", max_cents) if max_cents.positive?
+      end
+
       featured_scope = Commerce::Product.available.where(featured: true)
       featured_scope = featured_scope.with_stock if params[:in_stock] == "1"
       featured = featured_scope.order(created_at: :desc).limit(6)
@@ -49,6 +58,8 @@ module Commerce
         query: params[:q].to_s,
         sort: params[:sort].to_s.presence || "newest",
         inStock: params[:in_stock] == "1",
+        priceMin: params[:price_min].to_s,
+        priceMax: params[:price_max].to_s,
         compareCount: compare_product_count,
         pagination: pagy_props(@pagy)
       }
@@ -113,10 +124,11 @@ module Commerce
                        {}
                      end
       stock_alert_variant_ids = stock_alerts.keys
-      user_review = logged_in? ? product.reviews.find_by(user: current_user) : nil
+      user_review = logged_in? ? product.reviews.published.find_by(user: current_user) : nil
       purchased = logged_in? && Commerce::CreateReview.purchased?(user: current_user, product: product)
       can_review = logged_in? && purchased && user_review.nil?
       can_edit_review = logged_in? && purchased && user_review.present?
+      can_delete_review = logged_in? && user_review.present? && user_review.user_id == current_user.id
       related = if product.store_category_id
                   product.category.products.available.where.not(id: product.id).order(created_at: :desc).limit(4)
                 else
@@ -133,7 +145,8 @@ module Commerce
 
       render inertia: "Commerce/Products/Show", props: {
         product: serialize_product_detail(product, wishlisted: wishlisted, reviews: reviews, average_rating: avg).merge(
-          saved_variant_id: wishlist_item&.variant_id
+          saved_variant_id: wishlist_item&.variant_id,
+          purchased: purchased
         ),
         reviewsCount: reviews_count,
         ratingBreakdown: (1..5).map { |rating| { rating: rating, count: rating_breakdown[rating] || 0 } },
@@ -146,6 +159,8 @@ module Commerce
         stockAlertVariantIds: stock_alert_variant_ids,
         canReview: can_review,
         canEditReview: can_edit_review,
+        canDeleteReview: can_delete_review,
+        deleteReviewUrl: can_delete_review ? store_product_review_path(product, user_review) : nil,
         userReview: user_review ? serialize_review(user_review, current_user: current_user) : nil,
         reviewSort: review_sort.presence || "newest",
         reviewRating: (1..5).cover?(review_rating) ? review_rating : nil,
@@ -170,7 +185,9 @@ module Commerce
       {
         q: params[:q].presence,
         sort: params[:sort].presence,
-        in_stock: params[:in_stock] == "1" ? "1" : nil
+        in_stock: params[:in_stock] == "1" ? "1" : nil,
+        price_min: params[:price_min].presence,
+        price_max: params[:price_max].presence
       }.compact
     end
 

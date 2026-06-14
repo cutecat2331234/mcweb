@@ -23,6 +23,8 @@ export interface ProductItem {
   slug: string
   category_name: string | null
   price_label: string
+  compare_at_label?: string | null
+  on_sale?: boolean
   in_stock: boolean
   low_stock: boolean
   average_rating?: number | null
@@ -45,6 +47,8 @@ const props = defineProps<{
   query: string
   sort: string
   inStock?: boolean
+  priceMin?: string
+  priceMax?: string
   pagination: PaginationMeta
   compareCount?: number
 }>()
@@ -52,6 +56,8 @@ const props = defineProps<{
 const q = ref(props.query)
 const sort = ref(props.sort)
 const inStock = ref(props.inStock ?? false)
+const priceMin = ref(props.priceMin ?? '')
+const priceMax = ref(props.priceMax ?? '')
 
 function search() {
   router.get(routes.store, {
@@ -59,6 +65,8 @@ function search() {
     sort: sort.value !== 'newest' ? sort.value : undefined,
     category: props.activeCategory || undefined,
     in_stock: inStock.value ? '1' : undefined,
+    price_min: priceMin.value || undefined,
+    price_max: priceMax.value || undefined,
   }, { preserveState: true })
 }
 </script>
@@ -128,6 +136,8 @@ function search() {
       <input v-model="inStock" type="checkbox" class="rounded border" />
       仅看有货
     </label>
+    <Input v-model="priceMin" type="number" min="0" step="0.01" placeholder="最低价" class="w-24" />
+    <Input v-model="priceMax" type="number" min="0" step="0.01" placeholder="最高价" class="w-24" />
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">筛选</button>
   </form>
 
@@ -180,7 +190,11 @@ function search() {
             </div>
           </TableCell>
           <TableCell>{{ product.category_name || '—' }}</TableCell>
-          <TableCell>{{ product.price_label }}</TableCell>
+          <TableCell>
+            <span class="font-medium">{{ product.price_label }}</span>
+            <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs text-muted-foreground line-through">{{ product.compare_at_label }}</span>
+            <Badge v-if="product.on_sale" variant="default" class="ml-2 text-[10px]">促销</Badge>
+          </TableCell>
           <TableCell>
             <Badge v-if="!product.in_stock" variant="danger">缺货</Badge>
             <Badge v-else-if="product.low_stock" variant="outline" class="border-amber-300 text-amber-700">库存紧张</Badge>

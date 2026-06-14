@@ -45,6 +45,9 @@ export interface ProductDetail {
   slug: string
   description: string | null
   price_label: string
+  compare_at_label?: string | null
+  on_sale?: boolean
+  purchased?: boolean
   product_type: string
   category_name: string | null
   in_stock: boolean
@@ -82,6 +85,8 @@ const props = defineProps<{
   stockAlertUnsubscribeUrls?: Array<{ variant_id: number | null; unsubscribe_url: string }>
   canReview?: boolean
   canEditReview?: boolean
+  canDeleteReview?: boolean
+  deleteReviewUrl?: string | null
   userReview?: ProductReview | null
   ratingBreakdown?: Array<{ rating: number; count: number }>
   reviewSort?: string
@@ -246,6 +251,11 @@ function startEditReview() {
   editingReview.value = true
 }
 
+function deleteReview() {
+  if (!props.deleteReviewUrl || !confirm('确定删除你的评价？')) return
+  router.delete(props.deleteReviewUrl)
+}
+
 function loadMoreReviews() {
   const nextPage = (props.reviewsPagination?.page || 1) + 1
   if (!props.reviewsPagination || nextPage > props.reviewsPagination.pages) return
@@ -314,6 +324,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
   ]" />
 
   <PageHeader :title="product.name" :subtitle="product.description || undefined" />
+  <div v-if="product.purchased" class="mb-4">
+    <Badge variant="default">你已购买此商品</Badge>
+  </div>
 
   <section v-if="product.version || product.changelog" class="mb-6 max-w-xl rounded-lg border p-4">
     <h2 class="mb-2 text-sm font-semibold">版本信息</h2>
@@ -372,7 +385,11 @@ function submitAnswer(questionId: number, answerUrl: string) {
 
       <div class="flex justify-between text-sm">
         <span class="text-muted-foreground">价格</span>
-        <span class="font-medium">{{ displayPrice }}</span>
+        <span class="font-medium">
+          {{ displayPrice }}
+          <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs font-normal text-muted-foreground line-through">{{ product.compare_at_label }}</span>
+          <Badge v-if="product.on_sale" variant="default" class="ml-2 text-[10px]">促销</Badge>
+        </span>
       </div>
       <div class="flex justify-between text-sm">
         <span class="text-muted-foreground">类型</span>
@@ -535,7 +552,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <div v-if="userReview && !editingReview" class="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
       <div class="mb-2 flex items-center justify-between">
         <p class="text-sm font-medium">你的评价</p>
-        <Button v-if="canEditReview" type="button" size="sm" variant="outline" @click="startEditReview">编辑</Button>
+        <div class="flex gap-2">
+          <Button v-if="canEditReview" type="button" size="sm" variant="outline" @click="startEditReview">编辑</Button>
+          <Button v-if="canDeleteReview" type="button" size="sm" variant="destructive" @click="deleteReview">删除</Button>
+        </div>
       </div>
       <div class="mb-1 flex items-center justify-between text-sm">
         <span class="text-amber-500">{{ '★'.repeat(userReview.rating) }}</span>

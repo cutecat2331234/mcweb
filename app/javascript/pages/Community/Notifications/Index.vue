@@ -13,6 +13,7 @@ defineOptions({ layout: PortalLayout })
 export interface NotificationGroup {
   key: string
   notification_type: string
+  category: 'forum' | 'commerce'
   title: string
   body: string | null
   count: number
@@ -28,11 +29,13 @@ export interface NotificationGroup {
     visit_url: string
     mark_read_url: string
     read: boolean
+    category: 'forum' | 'commerce'
   }>
 }
 
-defineProps<{
+const props = defineProps<{
   notifications: NotificationGroup[]
+  activeCategory: 'all' | 'forum' | 'commerce'
 }>()
 
 const expanded = ref<Record<string, boolean>>({})
@@ -48,6 +51,14 @@ function toggleExpand(key: string) {
 function markRead(url: string) {
   router.patch(url, {}, { preserveScroll: true })
 }
+
+function switchCategory(category: 'all' | 'forum' | 'commerce') {
+  router.get(routes.forumNotifications, { category: category === 'all' ? undefined : category }, { preserveState: true })
+}
+
+function categoryLabel(category: string) {
+  return category === 'commerce' ? '商城' : '论坛'
+}
 </script>
 
 <template>
@@ -57,9 +68,15 @@ function markRead(url: string) {
     { label: '通知', current: true },
   ]" />
 
-  <div class="mb-4 flex items-center justify-between gap-4">
-    <PageHeader title="通知" subtitle="主题回复与系统消息" />
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+    <PageHeader title="通知" subtitle="论坛与商城消息" />
     <Button type="button" variant="outline" size="sm" @click="markAllRead">全部已读</Button>
+  </div>
+
+  <div class="mb-4 flex gap-2">
+    <Button :variant="activeCategory === 'all' ? 'default' : 'outline'" size="sm" @click="switchCategory('all')">全部</Button>
+    <Button :variant="activeCategory === 'forum' ? 'default' : 'outline'" size="sm" @click="switchCategory('forum')">论坛</Button>
+    <Button :variant="activeCategory === 'commerce' ? 'default' : 'outline'" size="sm" @click="switchCategory('commerce')">商城</Button>
   </div>
 
   <div v-if="notifications.length" class="space-y-2">
@@ -72,6 +89,7 @@ function markRead(url: string) {
       <div class="flex items-start justify-between gap-3">
         <div class="min-w-0 flex-1">
           <div class="flex items-center gap-2">
+            <Badge variant="outline" class="text-[10px]">{{ categoryLabel(group.category) }}</Badge>
             <h3 class="text-sm font-medium">{{ group.title }}</h3>
             <Badge v-if="group.count > 1">{{ group.count }}</Badge>
             <Badge v-if="group.unread_count" variant="default">{{ group.unread_count }} 未读</Badge>

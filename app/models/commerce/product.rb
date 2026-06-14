@@ -17,7 +17,13 @@ module Commerce
     validates :slug, presence: true, uniqueness: true
     validates :product_type, presence: true
     validates :price_cents, numericality: { greater_than_or_equal_to: 0 }
+    validates :compare_at_price_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+    validate :compare_at_price_valid
     validates :currency, presence: true
+
+    def on_sale?
+      compare_at_price_cents.present? && compare_at_price_cents > price_cents
+    end
 
     scope :available, -> { where(status: :active) }
 
@@ -60,6 +66,16 @@ module Commerce
 
     def price
       price_cents / 100.0
+    end
+
+    private
+
+    def compare_at_price_valid
+      return if compare_at_price_cents.blank?
+
+      if compare_at_price_cents < price_cents
+        errors.add(:compare_at_price_cents, "must be greater than or equal to sale price")
+      end
     end
   end
 end

@@ -3,8 +3,8 @@
 module Commerce
   class ReviewsController < ApplicationController
     before_action :require_login
-    before_action :set_product, only: %i[create toggle_helpful]
-    before_action :set_review, only: %i[toggle_helpful]
+    before_action :set_product, only: %i[create destroy toggle_helpful]
+    before_action :set_review, only: %i[destroy toggle_helpful]
 
     def create
       result = Commerce::CreateReview.call(
@@ -27,6 +27,16 @@ module Commerce
 
       if result.success?
         redirect_to store_product_path(@product), notice: result.value[:helpful] ? "已标记为有帮助。" : "已取消标记。"
+      else
+        redirect_to store_product_path(@product), alert: service_error_message(result)
+      end
+    end
+
+    def destroy
+      result = Commerce::DeleteReview.call(user: current_user, review: @review)
+
+      if result.success?
+        redirect_to store_product_path(@product), notice: "评价已删除。"
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end

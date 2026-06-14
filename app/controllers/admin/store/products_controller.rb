@@ -104,7 +104,7 @@ module Admin
       def product_params
         permitted = params.require(:product).permit(
           :name, :slug, :description, :product_type, :status,
-          :price_cents, :currency, :stock, :store_category_id, :purchase_limit, :image_url, :gallery_urls,
+          :price_cents, :compare_at_price_cents, :currency, :stock, :store_category_id, :purchase_limit, :image_url, :gallery_urls,
           :fulfillment_config, :featured, :version, :changelog,
           variants_attributes: [ :id, :name, :sku, :price_cents, :stock, :_destroy ]
         )
@@ -134,6 +134,7 @@ module Admin
             product_type: product.product_type || "virtual",
             status: product.status || "draft",
             price_cents: product.price_cents || 0,
+            compare_at_price_cents: product.compare_at_price_cents,
             currency: product.currency || "CNY",
             stock: product.stock,
             store_category_id: product.store_category_id,

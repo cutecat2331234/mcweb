@@ -1,0 +1,186 @@
+"zh-CN":
+  activerecord:
+    models:
+      user: 用户
+      role: 角色
+      permission: 权限
+      session: 会话
+      community/topic: 主题
+      community/post: 回复
+      community/section: 分区
+      community/category: 分类
+      community/report: 举报
+      commerce/product: 商品
+      commerce/order: 订单
+      commerce/coupon: 优惠券
+      website/page: 页面
+      website/article: 文章
+      minecraft/server: 服务器
+    attributes:
+      user:
+        email: 邮箱
+        username: 用户名
+        password: 密码
+        password_confirmation: 确认密码
+        display_name: 显示名称
+        locale: 语言
+        time_zone: 时区
+        status: 状态
+      community/topic:
+        title: 标题
+      community/post:
+        body: 内容
+      community/section:
+        name: 名称
+        slug: 标识
+        description: 描述
+      commerce/product:
+        name: 名称
+        slug: 标识
+        price_cents: 价格
+        currency: 货币
+      commerce/order:
+        order_number: 订单号
+        status: 状态
+        notes: 备注
+      website/page:
+        title: 标题
+        slug: 标识
+        status: 状态
+    errors:
+      messages:
+        blank: 不能为空
+        present: 必须为空
+        taken: 已被占用
+        too_short: 过短（至少 %{count} 个字符）
+        too_long: 过长（最多 %{count} 个字符）
+        wrong_length: 长度必须为 %{count} 个字符
+        invalid: 格式无效
+        confirmation: 与确认内容不一致
+        accepted: 必须接受
+        empty: 不能为空
+        equal_to: 必须等于 %{count}
+        even: 必须为偶数
+        exclusion: 已被保留
+        greater_than: 必须大于 %{count}
+        greater_than_or_equal_to: 必须大于或等于 %{count}
+        inclusion: 不在允许的范围内
+        less_than: 必须小于 %{count}
+        less_than_or_equal_to: 必须小于或等于 %{count}
+        model_invalid: "验证失败：%{errors}"
+        not_a_number: 不是数字
+        not_an_integer: 必须是整数
+        odd: 必须为奇数
+        other_than: 必须不等于 %{count}
+        required: 必须存在
+        record_invalid: "验证失败：%{errors}"
+        restrict_dependent_destroy:
+          has_one: 由于存在关联的 %{record}，无法删除
+          has_many: 由于存在关联的 %{record}，无法删除
+      models:
+        user:
+          attributes:
+            email:
+              blank: 不能为空
+              invalid: 格式无效
+              taken: 已被注册
+            username:
+              blank: 不能为空
+              invalid: 只能包含字母、数字和下划线
+              taken: 已被占用
+              too_short: 过短（至少 %{count} 个字符）
+              too_long: 过长（最多 %{count} 个字符）
+            password:
+              blank: 不能为空
+              too_short: 过短（至少 %{count} 个字符）
+            locale:
+              blank: 不能为空
+            time_zone:
+              blank: 不能为空
+
+  errors:
+    format: "%{attribute}%{message}"
+    messages:
+      blank: 不能为空
+      taken: 已被占用
+      invalid: 格式无效
+      too_short: 过短（至少 %{count} 个字符）
+      too_long: 过长（最多 %{count} 个字符）
+      confirmation: 与确认内容不一致
+    attributes:
+      password:
+        blank: 不能为空
+
+  mcweb:
+    flash:
+      setup_complete: 安装完成，请使用管理员账号登录。
+      sign_in_required: 请先登录。
+      permission_denied: 没有权限执行此操作。
+    setup:
+      password_required: 请填写密码。
+      password_too_short: 密码至少需要 6 个字符。
+
+  datetime:
+    distance_in_words:
+      about_x_hours:
+        one: 约 1 小时
+        other: 约 %{count} 小时
+      about_x_months:
+        one: 约 1 个月
+        other: 约 %{count} 个月
+      about_x_years:
+        one: 约 1 年
+        other: 约 %{count} 年
+      almost_x_years:
+        one: 将近 1 年
+        other: 将近 %{count} 年
+      half_a_minute: 半分钟
+      less_than_x_seconds:
+        one: 不到 1 秒
+        other: 不到 %{count} 秒
+      less_than_x_minutes:
+        one: 不到 1 分钟
+        other: 不到 %{count} 分钟
+      over_x_years:
+        one: 超过 1 年
+        other: 超过 %{count} 年
+      x_seconds:
+        one: 1 秒
+        other: "%{count} 秒"
+      x_minutes:
+        one: 1 分钟
+        other: "%{count} 分钟"
+      x_hours:
+        one: 1 小时
+        other: "%{count} 小时"
+      x_days:
+        one: 1 天
+        other: "%{count} 天"
+      x_months:
+        one: 1 个月
+        other: "%{count} 个月"
+      x_years:
+        one: 1 年
+        other: "%{count} 年"
+
+  date:
+    formats:
+      default: "%Y-%m-%d"
+      long: "%Y年%m月%d日"
+      short: "%m月%d日"
+    order:
+      - :year
+      - :month
+      - :day
+
+  time:
+    formats:
+      default: "%Y-%m-%d %H:%M"
+      long: "%Y年%m月%d日 %H:%M"
+      short: "%m月%d日 %H:%M"
+
+  helpers:
+    submit:
+      create: 创建%{model}
+      update: 更新%{model}
+      submit: 保存%{model}

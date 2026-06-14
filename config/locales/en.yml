@@ -1,31 +1,35 @@
-# Files in the config/locales directory are used for internationalization and
-# are automatically loaded by Rails. If you want to use locales other than
-# English, add the necessary files in this directory.
-#
-# To use the locales, use `I18n.t`:
-#
-#     I18n.t "hello"
-#
-# In views, this is aliased to just `t`:
-#
-#     <%= t("hello") %>
-#
-# To use a different locale, set it with `I18n.locale`:
-#
-#     I18n.locale = :es
-#
-# This would use the information in config/locales/es.yml.
-#
-# To learn more about the API, please read the Rails Internationalization guide
-# at https://guides.rubyonrails.org/i18n.html.
-#
-# Be aware that YAML interprets the following case-insensitive strings as
-# booleans: `true`, `false`, `on`, `off`, `yes`, `no`. Therefore, these strings
-# must be quoted to be interpreted as strings. For example:
-#
-#     en:
-#       "yes": yup
-#       enabled: "ON"
-
 en:
-  hello: "Hello world"
+  activerecord:
+    models:
+      user: User
+    attributes:
+      user:
+        email: Email
+        username: Username
+        password: Password
+        password_confirmation: Password confirmation
+        display_name: Display name
+        locale: Locale
+        time_zone: Time zone
+    errors:
+      messages:
+        blank: can't be blank
+        taken: has already been taken
+        too_short: is too short (minimum is %{count} characters)
+        too_long: is too long (maximum is %{count} characters)
+        invalid: is invalid
+        confirmation: doesn't match confirmation
+      models:
+        user:
+          attributes:
+            password:
+              blank: can't be blank
+
+  mcweb:
+    flash:
+      setup_complete: Setup complete. Sign in with your administrator account.
+      sign_in_required: Please sign in first.
+      permission_denied: You do not have permission to perform this action.
+    setup:
+      password_required: Password is required.
+      password_too_short: Password must be at least 6 characters.

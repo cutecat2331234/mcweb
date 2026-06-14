@@ -6,7 +6,10 @@ module ServiceResponder
   private
 
   def service_error_message(result)
-    result.error.presence || result.errors.values.flatten.first
+    return result.error if result.error.present?
+    return nil if result.errors.blank?
+
+    result.errors.flat_map { |_, msgs| Array(msgs) }.join("；")
   end
 
   def flash_service_errors(result)

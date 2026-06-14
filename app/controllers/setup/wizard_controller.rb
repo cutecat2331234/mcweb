@@ -28,6 +28,16 @@ module Setup
       data = wizard_session_data
       admin_data = data["admin"] || {}
 
+      if admin_data["password"].blank?
+        flash[:alert] = t("mcweb.setup.password_required")
+        return redirect_to setup_step_path("admin")
+      end
+
+      if admin_data["password"].to_s.length < 6
+        flash[:alert] = t("mcweb.setup.password_too_short")
+        return redirect_to setup_step_path("admin")
+      end
+
       result = Identity::RegisterUser.call(
         email: admin_data["email"],
         username: admin_data["username"],
@@ -53,7 +63,7 @@ module Setup
       InstallationLock.lock!(user: user)
       session.delete(:setup_wizard)
 
-      redirect_to identity_sign_in_path, notice: "Setup complete. Sign in with your administrator account."
+      redirect_to identity_sign_in_path, notice: t("mcweb.flash.setup_complete")
     end
 
     private

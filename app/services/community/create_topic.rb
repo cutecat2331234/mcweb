@@ -107,6 +107,10 @@ module Community
         return ServiceResult.failure(error: "You are muted in this section.")
       end
 
+      if section_requires_tags? && @tag_names.blank?
+        return ServiceResult.failure(error: required_tags_message)
+      end
+
       if @user.banned?
         return ServiceResult.failure(error: "Your account is banned.")
       end
@@ -132,6 +136,15 @@ module Community
 
     def muted_in_section?
       Community::Mute.muted?(@user, section: @section)
+    end
+
+    def section_requires_tags?
+      Array(@section.required_tag_ids).map(&:to_i).reject(&:zero?).any?
+    end
+
+    def required_tags_message
+      names = @section.required_tags.pluck(:name).join("、")
+      "此分区要求至少包含以下标签之一：#{names.presence || '指定标签'}"
     end
 
     def duplicate_title?

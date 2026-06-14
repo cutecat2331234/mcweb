@@ -148,6 +148,7 @@ const page = usePage<{ auth: { user: { id: string; username: string } | null } }
 const loggedIn = !!page.props.auth.user
 
 const editingPostId = ref<number | null>(null)
+const copiedPostId = ref<number | null>(null)
 const editBody = ref('')
 const editReason = ref('')
 const editingTopic = ref(false)
@@ -314,7 +315,12 @@ function reactionTitle(post: PostItem, emoji: string) {
 
 function copyPermalink(post: PostItem) {
   const url = `${window.location.origin}${routes.forumTopic(props.topic.id)}#post-${post.id}`
-  navigator.clipboard.writeText(url)
+  navigator.clipboard.writeText(url).then(() => {
+    copiedPostId.value = post.id
+    window.setTimeout(() => {
+      if (copiedPostId.value === post.id) copiedPostId.value = null
+    }, 2000)
+  })
 }
 
 function markUnread() {
@@ -828,7 +834,9 @@ function pollPercent(votes: number) {
             </div>
             <div class="flex gap-2">
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
-              <button type="button" class="text-xs hover:underline" @click="copyPermalink(post)">复制链接</button>
+              <button type="button" class="text-xs hover:underline" @click="copyPermalink(post)">
+                {{ copiedPostId === post.id ? '已复制' : '复制链接' }}
+              </button>
               <button v-if="canReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">回复</button>
               <a v-if="post.raw_url" :href="post.raw_url" target="_blank" rel="noopener" class="text-xs hover:underline">原文</a>
               <button v-if="post.bookmark_url" type="button" class="text-xs hover:underline" @click="togglePostBookmark(post)">

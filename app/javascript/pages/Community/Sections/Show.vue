@@ -25,6 +25,7 @@ const props = defineProps<{
     mute_url?: string | null
     mark_all_read_url?: string | null
     rss_url: string
+    required_tags?: Array<{ name: string; slug: string; url: string }>
   }
   featuredTopics: TopicItem[]
   topics: TopicItem[]
@@ -91,6 +92,13 @@ function markAllRead() {
       </Button>
     </div>
   </div>
+
+  <p v-if="section.required_tags?.length" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+    发帖需包含以下标签之一：
+    <template v-for="(tag, index) in section.required_tags" :key="tag.slug">
+      <Link :href="tag.url" class="font-medium underline">{{ tag.name }}</Link><span v-if="index < section.required_tags.length - 1">、</span>
+    </template>
+  </p>
 
   <div class="mb-4 flex flex-wrap items-center gap-4">
     <div class="flex items-center gap-2">

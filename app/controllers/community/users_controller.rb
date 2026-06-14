@@ -98,7 +98,7 @@ module Community
             color: ub.badge.color
           }
         end,
-        topics: topics.map { |topic| serialize_topic(topic) },
+        topics: serialize_topics(topics),
         topicsPagination: pagy_props(@pagy_topics),
         recent_posts: posts.map do |post|
           {

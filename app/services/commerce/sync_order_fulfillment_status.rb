@@ -48,6 +48,7 @@ module Commerce
     private
 
     def notify_completed!
+      MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_completed", "deliver_now", args: [ @order.id ])
       Commerce::NotifyOrderEvent.call(
         user: @order.user,
         notification_type: "commerce.order_completed",

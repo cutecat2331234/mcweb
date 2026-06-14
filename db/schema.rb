@@ -281,6 +281,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.jsonb "permissions", default: {}, null: false
     t.integer "position", default: 0, null: false
     t.jsonb "prefixes", default: [], null: false
+    t.jsonb "required_tag_ids", default: [], null: false
     t.string "slug", null: false
     t.datetime "updated_at", null: false
     t.index ["forum_category_id", "slug"], name: "index_forum_sections_on_forum_category_id_and_slug", unique: true

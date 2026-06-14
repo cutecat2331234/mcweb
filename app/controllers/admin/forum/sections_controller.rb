@@ -37,7 +37,8 @@ module Admin
             { label: "描述", value: @section.description || "—" },
             { label: "排序", value: @section.position.to_s },
             { label: "发帖权限", value: permission_label(@section.permissions["create_topic"]) },
-            { label: "回复权限", value: permission_label(@section.permissions["reply"]) }
+            { label: "回复权限", value: permission_label(@section.permissions["reply"]) },
+            { label: "必填标签", value: @section.required_tags.pluck(:name).join("、").presence || "—" }
           ],
           backUrl: admin_forum_sections_path,
           actions: [{ label: "编辑", href: edit_admin_forum_section_path(@section) }]
@@ -78,13 +79,14 @@ module Admin
       def section_params
         permitted = params.require(:section).permit(
           :name, :slug, :description, :position, :forum_category_id, :parent_id,
-          :create_topic_roles, :reply_roles, :prefixes
+          :create_topic_roles, :reply_roles, :prefixes, required_tag_ids: []
         )
         prefixes = if permitted[:prefixes].is_a?(String)
                      permitted[:prefixes].lines.map(&:strip).reject(&:blank?)
                    else
                      Array(permitted[:prefixes])
                    end
+        required_tag_ids = Array(permitted[:required_tag_ids]).map(&:to_i).reject(&:zero?).uniq
         {
           name: permitted[:name],
           slug: permitted[:slug],
@@ -93,6 +95,7 @@ module Admin
           forum_category_id: permitted[:forum_category_id],
           parent_id: permitted[:parent_id],
           prefixes: prefixes,
+          required_tag_ids: required_tag_ids,
           permissions: {
             "create_topic" => parse_roles(permitted[:create_topic_roles]),
             "reply" => parse_roles(permitted[:reply_roles])
@@ -121,8 +124,10 @@ module Admin
             parent_id: section.parent_id,
             prefixes: Array(section.prefixes).join("\n"),
             create_topic_roles: Array(section.permissions["create_topic"]).join(", "),
-            reply_roles: Array(section.permissions["reply"]).join(", ")
+            reply_roles: Array(section.permissions["reply"]).join(", "),
+            required_tag_ids: Array(section.required_tag_ids).map(&:to_i)
           },
+          tags: ::Community::Tag.order(:name).map { |tag| { id: tag.id, name: tag.name } },
           categories: ::Community::Category.order(:name).map { |c| { id: c.id, name: c.name } },
           parentSections: ::Community::Section.roots.where.not(id: section.id).order(:name).map { |s| { id: s.id, name: s.name } },
           submitUrl: section.persisted? ? admin_forum_section_path(section) : admin_forum_sections_path,

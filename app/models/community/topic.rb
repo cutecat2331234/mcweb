@@ -44,7 +44,13 @@ module Community
       increment!(:views_count)
     end
 
+    attr_writer :participant_users_preloaded
+
     def participant_users(limit: 5)
+      if @participant_users_preloaded
+        return @participant_users_preloaded.first(limit)
+      end
+
       ids = posts.where(status: :published)
         .where.not(user_id: user_id)
         .order(created_at: :desc)

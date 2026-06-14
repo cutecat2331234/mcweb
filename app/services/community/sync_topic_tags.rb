@@ -26,6 +26,13 @@ module Community
       tags.each do |tag|
         Community::TopicTag.find_or_create_by!(topic: @topic, tag: tag)
       end
+
+      required_result = Community::ValidateSectionRequiredTags.call(
+        section: @topic.section,
+        tag_ids: tags.map(&:id)
+      )
+      return required_result if required_result.failure?
+
       ServiceResult.success(tags: tags)
     end
 

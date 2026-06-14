@@ -631,3 +631,15 @@ app/
 | 员工新提问通知 | `NotifyNewProductQuestion` |
 | 资料页订单历史 | 本人 store tab 显示订单 |
 | SiteSetting 种子 | bump 冷却 + 商品讨论分区 |
+
+### 第三十四轮（列表补全与商城邮件）
+
+| 功能 | 实现 |
+|------|------|
+| 参与者头像批量预加载 | `attach_participant_users!` + `serialize_topics` 消除 N+1 |
+| 关注标签/关注用户列表统一 | `TagTopics.vue`、`Following/Index.vue` 接入 `TopicListTable` |
+| 书签主题富展示 | `TopicTitleBadges` + 浏览数/最后回复 |
+| 分区必填标签（XenForo） | `required_tag_ids` + `ValidateSectionRequiredTags` + 管理端多选 |
+| 复制帖子链接反馈 | `Topics/Show.vue` 复制后显示「已复制」 |
+| 订单处理/发货/完成邮件 | `OrderMailer#order_processing/fulfilling/completed` |
+| 反应通知忽略过滤确认 | `NotifyPostReaction` 已接入 `FilterNotificationRecipients` |

@@ -22,7 +22,9 @@ const props = defineProps<{
     prefixes: string
     create_topic_roles: string
     reply_roles: string
+    required_tag_ids: number[]
   }
+  tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
   parentSections: Array<{ id: number; name: string }>
   submitUrl: string
@@ -30,7 +32,17 @@ const props = defineProps<{
   backUrl: string
 }>()
 
-const form = useForm({ section: { ...props.section } })
+const form = useForm({ section: { ...props.section, required_tag_ids: [ ...props.section.required_tag_ids ] } })
+
+function toggleRequiredTag(tagId: number) {
+  const ids = form.section.required_tag_ids
+  const index = ids.indexOf(tagId)
+  if (index >= 0) {
+    ids.splice(index, 1)
+  } else {
+    ids.push(tagId)
+  }
+}
 
 function submit() {
   if (props.method === 'patch') {
@@ -86,6 +98,21 @@ function submit() {
     <div class="space-y-2">
       <Label for="prefixes">主题前缀（每行一个，如：公告、求助）</Label>
       <Textarea id="prefixes" v-model="form.section.prefixes" rows="3" placeholder="公告&#10;求助&#10;分享" />
+    </div>
+    <div v-if="tags.length" class="space-y-2">
+      <Label>必填标签（发帖时至少选一个，XenForo 风格）</Label>
+      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
+        <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            class="h-4 w-4"
+            :checked="form.section.required_tag_ids.includes(tag.id)"
+            @change="toggleRequiredTag(tag.id)"
+          />
+          {{ tag.name }}
+        </label>
+      </div>
+      <p class="text-xs text-muted-foreground">勾选后，用户在此分区发帖必须包含至少一个所选标签。</p>
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

@@ -22,7 +22,7 @@ module Community
       states_by_topic = read_states.index_by(&:forum_topic_id)
 
       render inertia: "Community/Unread/Index", props: {
-        topics: topics.map { |topic| serialize_topic(topic, read_state: states_by_topic[topic.id]) },
+        topics: serialize_topics(topics, read_states: states_by_topic),
         markAllReadUrl: forum_unread_mark_all_read_path,
         pagination: pagy_props(@pagy),
         sort: sort,

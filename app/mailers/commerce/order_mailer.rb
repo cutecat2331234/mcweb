@@ -39,6 +39,27 @@ module Commerce
       mail(to: @order.user.email, subject: "退款申请未通过 #{@order.order_number}")
     end
 
+    def order_processing(order_id)
+      @order = Commerce::Order.find(order_id)
+      return unless commerce_email_enabled?(@order.user, "commerce.order_processing")
+
+      mail(to: @order.user.email, subject: "订单处理中 #{@order.order_number}")
+    end
+
+    def order_fulfilling(order_id)
+      @order = Commerce::Order.find(order_id)
+      return unless commerce_email_enabled?(@order.user, "commerce.order_fulfilling")
+
+      mail(to: @order.user.email, subject: "订单发货处理中 #{@order.order_number}")
+    end
+
+    def order_completed(order_id)
+      @order = Commerce::Order.find(order_id)
+      return unless commerce_email_enabled?(@order.user, "commerce.order_completed")
+
+      mail(to: @order.user.email, subject: "订单已完成 #{@order.order_number}")
+    end
+
     def order_fulfilled(order_id)
       @order = Commerce::Order.find(order_id)
       return unless commerce_email_enabled?(@order.user, "commerce.order_fulfilled")

@@ -37,7 +37,7 @@ module Community
           }
         end,
         usersPagination: pagy_props(@pagy_users),
-        topics: topics.map { |topic| serialize_topic(topic) },
+        topics: serialize_topics(topics),
         topicsPagination: pagy_props(@pagy_topics),
         sort: sort,
         sortOptions: forum_sort_options

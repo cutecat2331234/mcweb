@@ -36,7 +36,7 @@ module Community
 
       @pagy, topics = pagy(scope, limit: 20)
       read_states = if logged_in?
-                      Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id)).index_by(&:forum_topic_id)
+                      Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id) + featured.map(&:id)).index_by(&:forum_topic_id)
                     else
                       {}
                     end
@@ -52,10 +52,11 @@ module Community
           subscription_url: subscription_forum_section_path(section),
           mute_url: mute_forum_section_path(section),
           mark_all_read_url: logged_in? ? mark_all_read_forum_section_path(section) : nil,
-          rss_url: forum_section_rss_path(section)
+          rss_url: forum_section_rss_path(section),
+          required_tags: section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } }
         },
-        featuredTopics: featured.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
-        topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
+        featuredTopics: serialize_topics(featured, read_states: read_states),
+        topics: serialize_topics(topics, read_states: read_states),
         pagination: pagy_props(@pagy),
         sort: sort,
         filter: filter.to_s,

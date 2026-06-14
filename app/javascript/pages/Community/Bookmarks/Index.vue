@@ -4,7 +4,8 @@ import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
-import Badge from '@/components/ui/Badge.vue'
+import type { TopicListItem } from '@/components/portal/TopicListTable.vue'
+import TopicTitleBadges from '@/components/portal/TopicTitleBadges.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Textarea from '@/components/ui/Textarea.vue'
@@ -25,16 +26,7 @@ defineProps<{
     note: string | null
     remind_at: string | null
     remind_at_input?: string | null
-    topic: {
-      id: string
-      title: string
-      url: string
-      author: string | null
-      replies_count: number
-      last_posted_at: string | null
-      has_unread: boolean
-      unread_count: number
-    }
+    topic: TopicListItem
   }>
   postBookmarks: Array<{
     id: number
@@ -129,10 +121,24 @@ function saveBookmark(url: string) {
       <article v-for="item in topics" :key="item.bookmark_id" class="rounded-lg border p-4">
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div>
+            <TopicTitleBadges
+              :prefix="item.topic.prefix"
+              :pinned="item.topic.pinned"
+              :featured="item.topic.featured"
+              :locked="item.topic.locked"
+              :solved="item.topic.solved"
+              :has-unread="item.topic.has_unread"
+              :unread-count="item.topic.unread_count"
+              :linked-product="item.topic.linked_product"
+              :linked-product-name="item.topic.linked_product_name"
+              :linked-product-url="item.topic.linked_product_url"
+              :tags="item.topic.tags"
+            />
             <Link :href="item.topic.url" class="font-medium hover:underline">{{ item.topic.title }}</Link>
-            <Badge v-if="item.topic.has_unread" class="ml-2">{{ item.topic.unread_count }} 未读</Badge>
             <p class="mt-1 text-xs text-muted-foreground">
-              {{ item.topic.author || '—' }} · {{ item.topic.replies_count }} 回复 · {{ item.topic.last_posted_at || '—' }}
+              {{ item.topic.author || '—' }} · {{ item.topic.replies_count }} 回复
+              <span v-if="item.topic.views_count != null"> · {{ item.topic.views_count }} 浏览</span>
+              <span v-if="item.topic.last_posted_at"> · {{ item.topic.last_posted_at }}</span>
             </p>
             <p v-if="item.note" class="mt-2 text-sm text-muted-foreground">备注：{{ item.note }}</p>
             <p v-if="item.remind_at" class="text-xs text-muted-foreground">提醒：{{ item.remind_at }}</p>

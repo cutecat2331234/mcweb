@@ -14,7 +14,7 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  section: { name: string; slug: string; url: string; prefixes?: string[] }
+  section: { name: string; slug: string; url: string; prefixes?: string[]; required_tags?: Array<{ name: string; slug: string; url: string }> }
 }>()
 
 const form = useForm({
@@ -90,6 +90,12 @@ function saveDraft() {
     <div class="space-y-2">
       <Label for="tags">标签（逗号分隔，最多 5 个）</Label>
       <Input id="tags" v-model="form.topic.tags" placeholder="例如：公告,活动" />
+      <p v-if="section.required_tags?.length" class="text-xs text-muted-foreground">
+        此分区要求至少包含以下标签之一：
+        <template v-for="(tag, index) in section.required_tags" :key="tag.slug">
+          <Link :href="tag.url" class="underline">{{ tag.name }}</Link><span v-if="index < section.required_tags.length - 1">、</span>
+        </template>
+      </p>
     </div>
 
     <div class="space-y-2">

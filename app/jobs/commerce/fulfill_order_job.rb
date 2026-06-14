@@ -30,6 +30,7 @@ module Commerce
     private
 
     def notify_processing!(order)
+      MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_processing", "deliver_now", args: [ order.id ])
       Commerce::NotifyOrderEvent.call(
         user: order.user,
         notification_type: "commerce.order_processing",
@@ -40,6 +41,7 @@ module Commerce
     end
 
     def notify_fulfilling!(order)
+      MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_fulfilling", "deliver_now", args: [ order.id ])
       Commerce::NotifyOrderEvent.call(
         user: order.user,
         notification_type: "commerce.order_fulfilling",

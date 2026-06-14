@@ -24,7 +24,7 @@ module Community
         .index_by(&:forum_topic_id)
 
       render inertia: "Community/Watched/Index", props: {
-        topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
+        topics: serialize_topics(topics, read_states: read_states),
         pagination: pagy_props(@pagy),
         sort: sort,
         sortOptions: forum_sort_options
@@ -69,7 +69,7 @@ module Community
         .index_by(&:forum_topic_id)
 
       render inertia: "Community/Watched/TagTopics", props: {
-        topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
+        topics: serialize_topics(topics, read_states: read_states),
         pagination: pagy_props(@pagy),
         sort: sort,
         sortOptions: forum_sort_options

@@ -4,6 +4,7 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
+import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
@@ -20,14 +21,7 @@ const props = defineProps<{
     unfollow_url: string
   }>
   usersPagination: PaginationMeta
-  topics: Array<{
-    id: string
-    title: string
-    url: string
-    author: string | null
-    last_posted_at: string | null
-    replies_count: number
-  }>
+  topics: TopicListItem[]
   topicsPagination: PaginationMeta
   sort: string
   sortOptions: Array<{ value: string; label: string }>
@@ -71,20 +65,7 @@ function unfollow(url: string) {
   </div>
 
   <section v-if="tab === 'topics'">
-    <div v-if="topics.length" class="space-y-2">
-      <Link
-        v-for="topic in topics"
-        :key="topic.id"
-        :href="topic.url"
-        class="block rounded-lg border p-4 transition-colors hover:bg-muted/50"
-      >
-        <p class="font-medium">{{ topic.title }}</p>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ topic.author }} · {{ topic.replies_count }} 回复
-          <span v-if="topic.last_posted_at"> · {{ topic.last_posted_at }}</span>
-        </p>
-      </Link>
-    </div>
+    <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants />
     <p v-else class="text-sm text-muted-foreground">关注用户暂无新主题。</p>
     <Pagination
       v-if="topicsPagination.pages > 1"

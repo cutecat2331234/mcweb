@@ -23,5 +23,12 @@ module Community
     def to_param
       slug
     end
+
+    def required_tags
+      ids = Array(required_tag_ids).map(&:to_i).reject(&:zero?)
+      return Community::Tag.none if ids.empty?
+
+      Community::Tag.where(id: ids).order(:name)
+    end
   end
 end

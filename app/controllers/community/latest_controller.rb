@@ -21,7 +21,7 @@ module Community
                     end
 
       render inertia: "Community/Latest/Index", props: {
-        topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
+        topics: serialize_topics(topics, read_states: read_states),
         pagination: pagy_props(@pagy),
         sort: sort,
         filter: filter.to_s,

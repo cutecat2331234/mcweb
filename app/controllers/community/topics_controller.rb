@@ -3,6 +3,7 @@
 module Community
   class TopicsController < ApplicationController
     include Community::TopicVisibility
+    include Community::TopicListPreloadable
 
     before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread]
     before_action :set_section, only: %i[new create]
@@ -69,7 +70,7 @@ module Community
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
         sections: can_move_topic? ? movable_sections : [],
-        relatedTopics: @topic.similar_topics.map { |t| serialize_topic(t) },
+        relatedTopics: serialize_topics(@topic.similar_topics),
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
         poll: @topic.poll ? serialize_poll(@topic.poll) : nil,
         topicSearchQuery: params[:q].to_s,
@@ -329,7 +330,8 @@ module Community
         name: @section.name,
         slug: @section.slug,
         url: forum_section_path(@section),
-        prefixes: Array(@section.prefixes)
+        prefixes: Array(@section.prefixes),
+        required_tags: @section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } }
       }
     end
 

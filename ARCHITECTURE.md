@@ -97,6 +97,13 @@ app/
 | 销售统计 | 管理仪表盘营收/低库存 |
 | 评价需购买 | `CreateReview` 校验已付款订单 |
 | 商品变体管理 | 后台嵌套变体 CRUD |
+| 用户拉黑 | `Community::ToggleUserBlock` + 过滤被拉黑用户主题 |
+| 主题投票 | `Community::Poll` + `VotePoll`（2–10 选项） |
+| 主题草稿 | `SaveTopicDraft` / `PublishTopicDraft` + `/forum/drafts` |
+| RSS 订阅 | `/forum/latest.rss`、`/forum/sections/:slug.rss` |
+| SEO 元数据 | 主题页 Inertia `<Head>` title/description |
+| 发帖预览 | 新建主题页 Markdown 实时预览 |
+| 发帖含投票 | 新建主题可选投票问题与选项 |
 
 ## 商城功能
 
@@ -112,8 +119,11 @@ app/
 | 订单取消 | `Commerce::CancelOrder`（待支付状态，恢复库存） |
 | 发货状态展示 | 订单详情页显示 fulfillment 状态 |
 | 商品搜索/排序 | `?q=`、`price_asc` / `price_desc` |
-| 管理后台退款 | `Commerce::ProcessRefund` 全额退款（恢复库存） |
+| 管理后台退款 | `Commerce::ProcessRefund` 全额/部分退款（恢复库存） |
+| 客户退款申请 | `Commerce::RequestRefund` + 订单页申请 UI |
 | 后台商品 CRUD | `Admin::Store::ProductsController` + Inertia 表单 |
+| 后台分类 CRUD | `Admin::Store::CategoriesController` |
 | 后台优惠券 CRUD | `Admin::Store::CouponsController` |
+| 商品图片 | `store_products.image_url` + 列表/详情展示 |
 | 心愿单 | `Commerce::ToggleWishlist` + `/store/wishlist` |
 | 商品评价 | `Commerce::CreateReview` + 星级展示 |

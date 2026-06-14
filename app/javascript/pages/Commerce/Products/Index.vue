@@ -24,6 +24,7 @@ export interface ProductItem {
   category_name: string | null
   price_label: string
   in_stock: boolean
+  image_url: string | null
   url: string
 }
 
@@ -104,10 +105,20 @@ function search() {
       <TableBody>
         <TableRow v-for="product in products" :key="product.id">
           <TableCell>
-            <Link :href="product.url" class="font-medium hover:underline">
-              {{ product.name }}
-            </Link>
-            <span class="ml-2 text-xs text-muted-foreground">{{ product.slug }}</span>
+            <div class="flex items-center gap-3">
+              <img
+                v-if="product.image_url"
+                :src="product.image_url"
+                :alt="product.name"
+                class="h-10 w-10 rounded object-cover"
+              />
+              <div>
+                <Link :href="product.url" class="font-medium hover:underline">
+                  {{ product.name }}
+                </Link>
+                <span class="ml-2 text-xs text-muted-foreground">{{ product.slug }}</span>
+              </div>
+            </div>
           </TableCell>
           <TableCell>{{ product.category_name || '—' }}</TableCell>
           <TableCell>{{ product.price_label }}</TableCell>

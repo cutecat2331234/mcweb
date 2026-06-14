@@ -33,6 +33,7 @@ Rails.application.routes.draw do
       resources :mutes, only: %i[create destroy]
     end
     namespace :store do
+      resources :categories
       resources :products
       resources :coupons
       resources :orders, only: %i[index show update]
@@ -57,6 +58,20 @@ Rails.application.routes.draw do
         post :subscription, action: :toggle_subscription
       end
     end
+    resources :drafts, only: %i[index create update destroy], param: :id do
+      member do
+        get :edit
+        post :publish
+      end
+    end
+    post "users/:username/block", to: "blocks#create", as: :block_user
+    resources :polls, only: [] do
+      member do
+        post :vote
+      end
+    end
+    get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
+    get "sections/:id.rss", to: "rss#section", as: :section_rss, defaults: { format: :rss }
     resources :topics, only: %i[show new create update] do
       member do
         post :moderate
@@ -112,6 +127,7 @@ Rails.application.routes.draw do
     resources :orders, only: %i[index show create] do
       member do
         post :cancel
+        post :refund
       end
     end
     resource :checkout, only: %i[show create], controller: "checkout" do

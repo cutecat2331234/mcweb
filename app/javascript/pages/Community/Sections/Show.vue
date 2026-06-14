@@ -39,6 +39,7 @@ const props = defineProps<{
     new_topic_url: string | null
     watching: boolean
     subscription_url: string
+    rss_url: string
   }
   featuredTopics: TopicItem[]
   topics: TopicItem[]
@@ -78,6 +79,9 @@ function toggleWatch() {
       </Button>
       <Button v-if="canCreateTopic && section.new_topic_url" as-child>
         <Link :href="section.new_topic_url">新建主题</Link>
+      </Button>
+      <Button as-child variant="outline" size="sm">
+        <a :href="section.rss_url" target="_blank" rel="noopener">RSS</a>
       </Button>
     </div>
   </div>

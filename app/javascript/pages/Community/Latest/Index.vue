@@ -28,6 +28,7 @@ const props = defineProps<{
   }>
   pagination: PaginationMeta
   sort: string
+  rss_url: string
 }>()
 
 const sortOptions = [
@@ -51,7 +52,7 @@ function changeSort(value: string) {
 
   <PageHeader title="最新主题" subtitle="全站最近活跃的主题" />
 
-  <div class="mb-4 flex items-center gap-2">
+  <div class="mb-4 flex flex-wrap items-center gap-2">
     <label class="text-sm text-muted-foreground">排序：</label>
     <select
       :value="sort"
@@ -60,6 +61,7 @@ function changeSort(value: string) {
     >
       <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
     </select>
+    <a :href="rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
   </div>
 
   <div v-if="topics.length" class="rounded-lg border">

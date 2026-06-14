@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { Link, useForm } from '@inertiajs/vue3'
+import { Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -35,6 +34,12 @@ export interface MuteForm {
   action_url: string
 }
 
+export interface RefundForm {
+  action_url: string
+  max_cents: number
+  max_label: string
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -43,6 +48,7 @@ const props = defineProps<{
   preformatted?: { title: string; content: string }
   actions?: DetailAction[]
   muteForm?: MuteForm | null
+  refundForm?: RefundForm | null
   backUrl: string
 }>()
 
@@ -52,9 +58,23 @@ const muteForm = useForm({
   expires_at: '',
 })
 
+const refundForm = useForm({
+  amount_cents: props.refundForm?.max_cents || 0,
+  reason: '',
+})
+
 function submitMute() {
   if (!props.muteForm) return
   muteForm.post(props.muteForm.action_url)
+}
+
+function submitRefund() {
+  if (!props.refundForm) return
+  router.patch(props.refundForm.action_url, {
+    refund: true,
+    amount_cents: refundForm.amount_cents,
+    reason: refundForm.reason,
+  })
 }
 </script>
 
@@ -96,6 +116,20 @@ function submitMute() {
       <Input v-model="muteForm.expires_at" type="datetime-local" />
     </div>
     <Button type="submit" variant="destructive" size="sm" :disabled="muteForm.processing">禁言</Button>
+  </form>
+
+  <form v-if="props.refundForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitRefund">
+    <h2 class="text-sm font-semibold">部分退款</h2>
+    <p class="text-xs text-muted-foreground">最多可退 {{ props.refundForm.max_label }}</p>
+    <div class="space-y-2">
+      <Label>退款金额（分）</Label>
+      <Input v-model.number="refundForm.amount_cents" type="number" :max="props.refundForm.max_cents" min="1" required />
+    </div>
+    <div class="space-y-2">
+      <Label>原因</Label>
+      <Input v-model="refundForm.reason" placeholder="退款原因" />
+    </div>
+    <Button type="submit" size="sm" :disabled="refundForm.processing">处理退款</Button>
   </form>
 
   <div class="mt-6 flex flex-wrap gap-3">

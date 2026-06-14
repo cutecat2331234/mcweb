@@ -62,7 +62,8 @@ module Admin
             }
           ],
           backUrl: admin_store_orders_path,
-          actions: refund_actions(payment)
+          actions: refund_actions(payment),
+          refundForm: refund_form_props(payment)
         }
       end
 
@@ -97,8 +98,8 @@ module Admin
         result = Commerce::ProcessRefund.call(
           order: @order,
           payment_record: payment,
-          amount_cents: payment.amount_cents,
-          reason: "Admin refund",
+          amount_cents: refund_amount_cents(payment),
+          reason: params[:reason].presence || "Admin refund",
           approved_by: current_user
         )
 
@@ -110,14 +111,34 @@ module Admin
       end
 
       def refund_actions(payment)
-        return [] unless payment && @order.status == "paid" && current_user.permission?("store.orders.refund")
+        return [] unless payment && %w[paid fulfilled].include?(@order.status) && current_user.permission?("store.orders.refund")
 
         [{
           label: "全额退款",
           href: admin_store_order_path(@order),
           method: "patch",
-          data: { refund: true }
+          data: { refund: true, amount_cents: payment.amount_cents }
         }]
+      end
+
+      def refund_form_props(payment)
+        return nil unless payment && %w[paid fulfilled].include?(@order.status) && current_user.permission?("store.orders.refund")
+
+        refunded_cents = @order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
+        remaining = [ payment.amount_cents - refunded_cents, 0 ].max
+        return nil if remaining <= 0
+
+        {
+          action_url: admin_store_order_path(@order),
+          max_cents: remaining,
+          max_label: format_money(remaining, @order.currency)
+        }
+      end
+
+      def refund_amount_cents(payment)
+        cents = params[:amount_cents].to_i
+        cents = payment.amount_cents if cents <= 0
+        [ cents, payment.amount_cents ].min
       end
     end
   end

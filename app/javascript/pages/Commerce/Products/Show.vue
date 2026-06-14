@@ -40,6 +40,7 @@ export interface ProductDetail {
   category_name: string | null
   in_stock: boolean
   purchase_limit: number | null
+  image_url: string | null
   wishlisted: boolean
   average_rating: number | null
   variants: ProductVariant[]
@@ -103,6 +104,13 @@ function submitReview() {
   ]" />
 
   <PageHeader :title="product.name" :subtitle="product.description || undefined" />
+
+  <img
+    v-if="product.image_url"
+    :src="product.image_url"
+    :alt="product.name"
+    class="mb-6 max-h-64 rounded-lg border object-cover"
+  />
 
   <Card class="max-w-xl">
     <CardContent class="space-y-3 pt-6">

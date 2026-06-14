@@ -5,13 +5,15 @@ module Community
     MIN_INTERVAL = 30.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil)
+    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
       @body = body.to_s.strip
       @tag_names = tag_names
       @ip_address = ip_address
+      @poll_question = poll_question.to_s.strip.presence
+      @poll_options = Array(poll_options).map(&:to_s).map(&:strip).reject(&:blank?)
     end
 
     def call
@@ -46,6 +48,7 @@ module Community
         Community::Subscription.subscribe!(@user, topic)
         Community::ReadState.mark_read!(@user, topic, floor: 1)
         Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names) if @tag_names.present?
+        create_poll!(topic) if @poll_question && @poll_options.size >= 2
       end
 
       Administration::AuditLogger.call(
@@ -116,6 +119,14 @@ module Community
 
     def generate_public_id
       "topic_#{SecureRandom.alphanumeric(16)}"
+    end
+
+    def create_poll!(topic)
+      Community::Poll.create!(
+        topic: topic,
+        question: @poll_question,
+        options: @poll_options.first(10)
+      )
     end
   end
 end

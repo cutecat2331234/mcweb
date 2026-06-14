@@ -3,7 +3,7 @@
 module Commerce
   class OrdersController < ApplicationController
     before_action :require_login
-    before_action :set_order, only: %i[show cancel]
+    before_action :set_order, only: %i[show cancel refund]
 
     def index
       orders = Commerce::Order.where(user: current_user).includes(:items).recent
@@ -24,6 +24,20 @@ module Commerce
 
       if result.success?
         redirect_to store_order_path(@order), notice: "订单已取消。"
+      else
+        redirect_to store_order_path(@order), alert: service_error_message(result)
+      end
+    end
+
+    def refund
+      result = Commerce::RequestRefund.call(
+        order: @order,
+        user: current_user,
+        reason: params[:reason]
+      )
+
+      if result.success?
+        redirect_to store_order_path(@order), notice: "退款申请已提交，请等待审核。"
       else
         redirect_to store_order_path(@order), alert: service_error_message(result)
       end

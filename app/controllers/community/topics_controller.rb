@@ -28,7 +28,12 @@ module Community
         canReply: logged_in? && !@topic.locked?,
         reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
         sections: can_moderate_topic? ? movable_sections : [],
-        reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil
+        reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
+        poll: @topic.poll ? serialize_poll(@topic.poll) : nil,
+        meta: {
+          title: @topic.title,
+          description: @topic.posts.first&.body&.truncate(160)
+        }
       }
     end
 
@@ -49,6 +54,8 @@ module Community
         title: topic_params[:title],
         body: topic_params[:body],
         tag_names: topic_params[:tags],
+        poll_question: topic_params[:poll_question],
+        poll_options: parse_poll_options(topic_params[:poll_options]),
         ip_address: request.remote_ip
       )
 
@@ -135,11 +142,15 @@ module Community
     end
 
     def set_topic
-      @topic = Community::Topic.includes(:section, :user, :tags).find_by!(public_id: params[:id])
+      @topic = Community::Topic.includes(:section, :user, :tags, :poll).find_by!(public_id: params[:id])
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags)
+      params.require(:topic).permit(:title, :body, :tags, :poll_question, :poll_options)
+    end
+
+    def parse_poll_options(raw)
+      raw.to_s.lines.map(&:strip).reject(&:blank?)
     end
 
     def topic_errors(result)

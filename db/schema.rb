@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2025_06_15_000002) do
+ActiveRecord::Schema[8.1].define(version: 2025_06_15_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -93,6 +93,27 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000002) do
     t.index ["created_by_id"], name: "index_forum_mutes_on_created_by_id"
     t.index ["forum_section_id"], name: "index_forum_mutes_on_forum_section_id"
     t.index ["user_id"], name: "index_forum_mutes_on_user_id"
+  end
+
+  create_table "forum_poll_votes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_poll_id", null: false
+    t.integer "option_index", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_poll_id", "user_id"], name: "index_forum_poll_votes_on_forum_poll_id_and_user_id", unique: true
+    t.index ["forum_poll_id"], name: "index_forum_poll_votes_on_forum_poll_id"
+    t.index ["user_id"], name: "index_forum_poll_votes_on_user_id"
+  end
+
+  create_table "forum_polls", force: :cascade do |t|
+    t.datetime "closes_at"
+    t.datetime "created_at", null: false
+    t.bigint "forum_topic_id", null: false
+    t.jsonb "options", default: [], null: false
+    t.string "question", null: false
+    t.datetime "updated_at", null: false
+    t.index ["forum_topic_id"], name: "index_forum_polls_on_forum_topic_id", unique: true
   end
 
   create_table "forum_post_edits", force: :cascade do |t|
@@ -227,6 +248,16 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000002) do
     t.index ["last_post_user_id"], name: "index_forum_topics_on_last_post_user_id"
     t.index ["public_id"], name: "index_forum_topics_on_public_id", unique: true
     t.index ["user_id"], name: "index_forum_topics_on_user_id"
+  end
+
+  create_table "forum_user_blocks", force: :cascade do |t|
+    t.bigint "blocked_id", null: false
+    t.bigint "blocker_id", null: false
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["blocked_id"], name: "index_forum_user_blocks_on_blocked_id"
+    t.index ["blocker_id", "blocked_id"], name: "index_forum_user_blocks_on_blocker_id_and_blocked_id", unique: true
+    t.index ["blocker_id"], name: "index_forum_user_blocks_on_blocker_id"
   end
 
   create_table "installation_locks", force: :cascade do |t|
@@ -587,6 +618,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000002) do
     t.string "currency", default: "CNY", null: false
     t.text "description"
     t.jsonb "fulfillment_config", default: {}, null: false
+    t.string "image_url"
     t.jsonb "metadata", default: {}, null: false
     t.string "name", null: false
     t.integer "price_cents", default: 0, null: false
@@ -609,6 +641,7 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000002) do
     t.datetime "created_at", null: false
     t.bigint "payment_record_id", null: false
     t.string "reason"
+    t.boolean "requested_by_customer", default: false, null: false
     t.bigint "requested_by_id"
     t.string "status", default: "pending", null: false
     t.bigint "store_order_id", null: false
@@ -787,6 +820,9 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000002) do
   add_foreign_key "forum_mutes", "forum_sections"
   add_foreign_key "forum_mutes", "users"
   add_foreign_key "forum_mutes", "users", column: "created_by_id"
+  add_foreign_key "forum_poll_votes", "forum_polls"
+  add_foreign_key "forum_poll_votes", "users"
+  add_foreign_key "forum_polls", "forum_topics"
   add_foreign_key "forum_post_edits", "forum_posts"
   add_foreign_key "forum_post_edits", "users", column: "editor_id"
   add_foreign_key "forum_posts", "forum_posts", column: "quoted_post_id"
@@ -806,6 +842,8 @@ ActiveRecord::Schema[8.1].define(version: 2025_06_15_000002) do
   add_foreign_key "forum_topics", "forum_sections"
   add_foreign_key "forum_topics", "users"
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"
+  add_foreign_key "forum_user_blocks", "users", column: "blocked_id"
+  add_foreign_key "forum_user_blocks", "users", column: "blocker_id"
   add_foreign_key "installation_locks", "users", column: "locked_by_id"
   add_foreign_key "minecraft_connector_tasks", "minecraft_servers"
   add_foreign_key "minecraft_connector_tasks", "store_fulfillments"

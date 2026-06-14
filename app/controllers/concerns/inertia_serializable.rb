@@ -179,6 +179,7 @@ module InertiaSerializable
       category_name: product.category&.name,
       price_label: format_price(product),
       in_stock: product.in_stock?,
+      image_url: product.image_url,
       url: store_product_path(product)
     }
   end
@@ -195,6 +196,7 @@ module InertiaSerializable
       category_name: product.category&.name,
       in_stock: product.in_stock?,
       purchase_limit: product.purchase_limit,
+      image_url: product.image_url,
       wishlisted: wishlisted,
       average_rating: average_rating,
       variants: product.variants.map { |variant| serialize_variant(variant, product) },
@@ -209,6 +211,19 @@ module InertiaSerializable
       rating: review.rating,
       body: review.body,
       created_at: l(review.created_at, format: :short)
+    }
+  end
+
+  def serialize_poll(poll)
+    user_vote = poll.votes.find_by(user: current_user)
+    {
+      id: poll.id,
+      question: poll.question,
+      open: poll.open?,
+      results: poll.results,
+      total_votes: poll.total_votes,
+      user_vote_index: user_vote&.option_index,
+      vote_url: forum_poll_vote_path(poll)
     }
   end
 
@@ -263,6 +278,16 @@ module InertiaSerializable
       total_label: format_money(order.total_cents, order.currency),
       can_pay: order.pending? || order.awaiting_payment?,
       can_cancel: order.pending? || order.awaiting_payment?,
+      can_request_refund: refundable_order?(order),
+      refund_url: refund_store_order_path(order),
+      refunds: order.refunds.order(created_at: :desc).map do |refund|
+        {
+          amount_label: format_money(refund.amount_cents, order.currency),
+          status: refund.status,
+          created_at: l(refund.created_at, format: :short),
+          customer_requested: refund.requested_by_customer?
+        }
+      end,
       cancel_url: cancel_store_order_path(order),
       items: order.items.map do |item|
         fulfillment = order.fulfillments.find_by(order_item: item)
@@ -323,6 +348,12 @@ module InertiaSerializable
 
   def serialize_checkout_provider(config)
     { value: config.provider, label: config.provider.humanize }
+  end
+
+  def refundable_order?(order)
+    return false unless %w[paid fulfilled].include?(order.status)
+
+    !order.refunds.where(status: %w[pending completed]).exists?
   end
 
   def format_price(product)

@@ -4,6 +4,8 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+import Label from '@/components/ui/Label.vue'
+import Textarea from '@/components/ui/Textarea.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -22,7 +24,15 @@ const props = defineProps<{
     total_label: string
     can_pay: boolean
     can_cancel: boolean
+    can_request_refund: boolean
     cancel_url: string
+    refund_url: string
+    refunds: Array<{
+      amount_label: string
+      status: string
+      created_at: string
+      customer_requested: boolean
+    }>
     items: Array<{
       product_name: string
       variant_name: string | null
@@ -40,6 +50,7 @@ const props = defineProps<{
 
 const payForm = useForm({ order_id: props.order.id, checkout: { provider: 'fake' } })
 const cancelForm = useForm({})
+const refundForm = useForm({ reason: '' })
 </script>
 
 <template>
@@ -87,7 +98,30 @@ const cancelForm = useForm({})
     </ul>
   </div>
 
+  <div v-if="order.refunds.length" class="mb-6 rounded-lg border p-4">
+    <h2 class="mb-3 text-sm font-semibold">退款记录</h2>
+    <ul class="space-y-2 text-sm">
+      <li v-for="(refund, index) in order.refunds" :key="index" class="flex justify-between gap-4">
+        <span>{{ refund.amount_label }}</span>
+        <span>
+          <Badge>{{ refund.status }}</Badge>
+          <span v-if="refund.customer_requested" class="ml-2 text-xs text-muted-foreground">客户申请</span>
+          <span class="ml-2 text-muted-foreground">{{ refund.created_at }}</span>
+        </span>
+      </li>
+    </ul>
+  </div>
+
   <p class="mb-6 font-medium">合计：{{ order.total_label }}</p>
+
+  <form v-if="order.can_request_refund" class="mb-6 max-w-md space-y-3 rounded-lg border p-4" @submit.prevent="refundForm.post(order.refund_url)">
+    <h2 class="text-sm font-semibold">申请退款</h2>
+    <div class="space-y-2">
+      <Label for="reason">退款原因（可选）</Label>
+      <Textarea id="reason" v-model="refundForm.reason" rows="3" placeholder="请说明退款原因…" />
+    </div>
+    <Button type="submit" variant="outline" :disabled="refundForm.processing">提交退款申请</Button>
+  </form>
 
   <div class="flex gap-3">
     <Button v-if="order.can_pay" type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>

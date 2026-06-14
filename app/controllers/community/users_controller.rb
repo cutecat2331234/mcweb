@@ -21,6 +21,8 @@ module Community
           posts_count: posts_count,
           profile_url: forum_user_path(user.username),
           message_url: logged_in? && current_user.id != user.id ? new_forum_conversation_path(to: user.username) : nil,
+          block_url: logged_in? && current_user.id != user.id ? forum_block_user_path(user.username) : nil,
+          is_blocked: logged_in? && current_user.id != user.id && Community::UserBlock.exists?(blocker: current_user, blocked: user),
           is_muted: logged_in? && current_user.id == user.id && Community::Mute.muted?(user)
         },
         topics: topics.map { |topic| serialize_topic(topic) },

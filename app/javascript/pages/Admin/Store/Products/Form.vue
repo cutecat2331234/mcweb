@@ -23,6 +23,7 @@ const props = defineProps<{
     stock: number | null
     store_category_id: number | null
     purchase_limit: number | null
+    image_url: string
     variants: Array<{ id?: number; name: string; sku: string; price_cents: number; stock: number | null }>
   }
   categories: Array<{ id: number; name: string }>
@@ -113,6 +114,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="purchase_limit">限购（空=不限）</Label>
       <Input id="purchase_limit" v-model.number="form.product.purchase_limit" type="number" min="1" />
+    </div>
+    <div class="space-y-2">
+      <Label for="image_url">商品图片 URL</Label>
+      <Input id="image_url" v-model="form.product.image_url" placeholder="https://example.com/image.png" />
     </div>
 
     <div class="space-y-3">

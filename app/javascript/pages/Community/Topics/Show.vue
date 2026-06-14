@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Link, router, useForm, usePage } from '@inertiajs/vue3'
+import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -47,6 +47,16 @@ export interface SectionOption {
   category: string | null
 }
 
+export interface PollItem {
+  id: number
+  question: string
+  open: boolean
+  results: Array<{ label: string; index: number; votes: number }>
+  total_votes: number
+  user_vote_index: number | null
+  vote_url: string
+}
+
 const props = defineProps<{
   topic: {
     id: string
@@ -71,6 +81,8 @@ const props = defineProps<{
   reactionEmojis: string[]
   sections: SectionOption[]
   reportTopicUrl: string | null
+  poll: PollItem | null
+  meta?: { title: string; description: string | null }
 }>()
 
 const page = usePage<{ auth: { user: { id: string; username: string } | null } }>()
@@ -178,9 +190,23 @@ function saveTopicEdit() {
 function hasReacted(post: PostItem, emoji: string) {
   return post.user_reactions.includes(emoji)
 }
+
+function votePoll(optionIndex: number) {
+  if (!props.poll) return
+  router.post(props.poll.vote_url, { option_index: optionIndex }, { preserveScroll: true })
+}
+
+function pollPercent(votes: number) {
+  if (!props.poll || props.poll.total_votes === 0) return 0
+  return Math.round((votes / props.poll.total_votes) * 100)
+}
 </script>
 
 <template>
+  <Head v-if="meta">
+    <title>{{ meta.title }}</title>
+    <meta v-if="meta.description" head-key="description" name="description" :content="meta.description" />
+  </Head>
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '论坛', href: routes.forum },
@@ -242,6 +268,33 @@ function hasReacted(post: PostItem, emoji: string) {
       #{{ tag.name }}
     </Link>
   </div>
+
+  <section v-if="poll" class="mb-6 max-w-xl rounded-lg border p-4">
+    <h2 class="mb-3 text-sm font-semibold">{{ poll.question }}</h2>
+    <p v-if="!poll.open" class="mb-3 text-xs text-muted-foreground">投票已结束</p>
+    <div class="space-y-2">
+      <div v-for="option in poll.results" :key="option.index" class="space-y-1">
+        <div class="flex items-center justify-between gap-2 text-sm">
+          <span>{{ option.label }}</span>
+          <span class="text-muted-foreground">{{ option.votes }} 票 ({{ pollPercent(option.votes) }}%)</span>
+        </div>
+        <div class="h-2 overflow-hidden rounded-full bg-muted">
+          <div class="h-full bg-primary transition-all" :style="{ width: `${pollPercent(option.votes)}%` }" />
+        </div>
+        <Button
+          v-if="poll.open && loggedIn && poll.user_vote_index !== option.index"
+          type="button"
+          size="sm"
+          variant="outline"
+          @click="votePoll(option.index)"
+        >
+          {{ poll.user_vote_index === null ? '投票' : '改投此项' }}
+        </Button>
+        <span v-else-if="poll.user_vote_index === option.index" class="text-xs text-primary">你已投票</span>
+      </div>
+    </div>
+    <p class="mt-3 text-xs text-muted-foreground">共 {{ poll.total_votes }} 票</p>
+  </section>
 
   <div v-if="topic.can_moderate && sections.length" class="mb-4 flex flex-wrap items-center gap-2">
     <label class="text-sm text-muted-foreground">移动到分区：</label>

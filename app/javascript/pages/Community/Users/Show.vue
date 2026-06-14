@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -14,7 +14,7 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const props = defineProps<{
   profile: {
     username: string
     avatar_url: string
@@ -23,6 +23,8 @@ defineProps<{
     posts_count: number
     profile_url: string
     message_url: string | null
+    block_url: string | null
+    is_blocked: boolean
     is_muted: boolean
   }
   topics: Array<{
@@ -41,6 +43,11 @@ defineProps<{
     created_at: string
   }>
 }>()
+
+function toggleBlock() {
+  if (!props.profile.block_url) return
+  router.post(props.profile.block_url, {}, { preserveScroll: true })
+}
 </script>
 
 <template>
@@ -62,9 +69,20 @@ defineProps<{
         <span><strong>{{ profile.topics_count }}</strong> 主题</span>
         <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
       </div>
-      <Button v-if="profile.message_url" as-child size="sm" class="mt-3">
-        <Link :href="profile.message_url">发私信</Link>
-      </Button>
+      <div class="mt-3 flex flex-wrap gap-2">
+        <Button v-if="profile.message_url" as-child size="sm">
+          <Link :href="profile.message_url">发私信</Link>
+        </Button>
+        <Button
+          v-if="profile.block_url"
+          type="button"
+          size="sm"
+          :variant="profile.is_blocked ? 'outline' : 'destructive'"
+          @click="toggleBlock"
+        >
+          {{ profile.is_blocked ? '取消拉黑' : '拉黑用户' }}
+        </Button>
+      </div>
     </div>
   </div>
 

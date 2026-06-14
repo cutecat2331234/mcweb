@@ -15,6 +15,7 @@ module Community
       section = Community::Section.find_by!(slug: params[:id])
       sort = params[:sort].to_s.presence || "activity"
       scope = section.topics.where(status: :published).sorted(sort)
+      scope = filter_blocked_topics(scope)
       featured = section.topics.featured_topics.pinned_first.limit(5)
 
       @pagy, topics = pagy(scope, limit: 20)
@@ -31,7 +32,8 @@ module Community
           description: section.description,
           new_topic_url: logged_in? ? new_forum_topic_path(section_id: section.slug) : nil,
           watching: logged_in? && Community::Subscription.exists?(user: current_user, subscribable: section),
-          subscription_url: subscription_forum_section_path(section)
+          subscription_url: subscription_forum_section_path(section),
+          rss_url: forum_section_rss_path(section)
         },
         featuredTopics: featured.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },
         topics: topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) },

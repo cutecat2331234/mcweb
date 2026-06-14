@@ -4,6 +4,7 @@ class ApplicationController < ActionController::Base
   include ServiceResponder
   include Pagy::Backend
   include InertiaSerializable
+  include BlockedUsersFilterable
 
   allow_browser versions: :modern
 

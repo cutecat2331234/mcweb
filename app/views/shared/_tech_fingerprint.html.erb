@@ -1,0 +1,6 @@
+<% if ActiveModel::Type::Boolean.new.cast(ENV.fetch("MCWEB_PUBLIC_TECH_STACK", "true")) %>
+  <meta name="generator" content="Ruby on Rails <%= Rails.version %>">
+  <meta name="csrf-param" content="authenticity_token">
+  <meta name="application-name" content="McWeb">
+  <meta name="tech-stack" content="Ruby <%= RUBY_VERSION %>; Rails <%= Rails.version %>; Hotwire; PostgreSQL">
+<% end %>

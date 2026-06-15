@@ -22,6 +22,9 @@ module Admin
         forum.allow_op_close
         forum.min_trust_level_reaction
         forum.saved_search_webhook_secret
+        webhook.failure_alert_threshold
+        webhook.failure_alert_email
+        webhook.failure_alert_cooldown_hours
       ].freeze
 
       def show
@@ -78,6 +81,9 @@ module Admin
         when "forum.allow_op_close" then "true"
         when "forum.min_trust_level_reaction" then "0"
         when "forum.saved_search_webhook_secret" then ""
+        when "webhook.failure_alert_threshold" then "5"
+        when "webhook.failure_alert_email" then ""
+        when "webhook.failure_alert_cooldown_hours" then "6"
         else "0"
         end
       end
@@ -99,7 +105,10 @@ module Admin
           "forum.digest_hour" => "论坛通知摘要发送时间（小时）",
           "forum.allow_op_close" => "允许楼主关闭自己的主题",
           "forum.min_trust_level_reaction" => "使用反应所需的最低信任等级",
-          "forum.saved_search_webhook_secret" => "保存搜索 Webhook 密钥"
+          "forum.saved_search_webhook_secret" => "保存搜索 Webhook 密钥",
+          "webhook.failure_alert_threshold" => "Webhook 失败告警阈值（24h）",
+          "webhook.failure_alert_email" => "Webhook 失败告警邮箱",
+          "webhook.failure_alert_cooldown_hours" => "Webhook 告警冷却（小时）"
         }[key] || key
       end
 
@@ -114,7 +123,10 @@ module Admin
           "forum.digest_hour" => "每日发送论坛通知摘要邮件的小时（0–23）。任务每小时检查一次。",
           "forum.allow_op_close" => "设为 false 时楼主无法自行关闭主题。",
           "forum.min_trust_level_reaction" => "信任等级低于此值的用户无法对帖子添加反应。",
-          "forum.saved_search_webhook_secret" => "用于 X-McWeb-Signature HMAC 签名的密钥，可选。"
+          "forum.saved_search_webhook_secret" => "用于 X-McWeb-Signature HMAC 签名的密钥，可选。",
+          "webhook.failure_alert_threshold" => "近 24 小时论坛或商城 Webhook 失败次数达到此值时发送告警邮件，0 表示关闭。",
+          "webhook.failure_alert_email" => "接收 Webhook 失败告警的管理员邮箱。",
+          "webhook.failure_alert_cooldown_hours" => "两次告警之间的最短间隔，避免重复打扰。"
         }[key]
       end
 
@@ -122,6 +134,7 @@ module Admin
         return "boolean" if key == "forum.group_pm_creator_only_add"
         return "boolean" if key == "forum.allow_op_close"
         return "text" if key == "forum.saved_search_webhook_secret"
+        return "text" if key == "webhook.failure_alert_email"
 
         "text"
       end

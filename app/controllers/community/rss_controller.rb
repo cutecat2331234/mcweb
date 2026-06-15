@@ -28,15 +28,25 @@ module Community
     end
 
     def ad_hoc_search
-      permitted = Community::SearchRssToken.verify(params[:token])
-      raise Community::SearchRssToken::InvalidToken if permitted != Community::SearchRssToken.normalize(params.except(:controller, :action, :token, :format))
-
+      permitted = verified_ad_hoc_search_params
       result = Community::BuildAdHocSearchTopicScope.call(params: permitted, user: current_user)
       topics = result.value[:scope].limit(30).to_a
       query = permitted["q"].to_s
       title = query.present? ? "搜索：#{query}" : "论坛搜索"
       url = forum_search_url(permitted.symbolize_keys)
       render xml: build_feed(topics, title: title, url: url), content_type: "application/rss+xml"
+    rescue Community::SearchRssToken::InvalidToken
+      head :not_found
+    end
+
+    def ad_hoc_search_opml
+      permitted = verified_ad_hoc_search_params
+      query = permitted["q"].to_s
+      title = query.present? ? "搜索：#{query}" : "论坛搜索"
+      rss_url = forum_search_rss_url(permitted.symbolize_keys.merge(token: Community::SearchRssToken.generate(permitted)))
+      html_url = forum_search_url(permitted.symbolize_keys)
+      outline = opml_outline(title, rss_url: rss_url, html_url: html_url)
+      render xml: wrap_opml(title: title, outlines: outline), content_type: "application/xml"
     rescue Community::SearchRssToken::InvalidToken
       head :not_found
     end
@@ -71,6 +81,13 @@ module Community
     end
 
     private
+
+    def verified_ad_hoc_search_params
+      permitted = Community::SearchRssToken.verify(params[:token])
+      raise Community::SearchRssToken::InvalidToken if permitted != Community::SearchRssToken.normalize(params.except(:controller, :action, :token, :format))
+
+      permitted
+    end
 
     def build_feed(topics, title:, url:)
       items = topics.map { |topic| feed_item(topic) }.join("\n")
@@ -138,6 +155,17 @@ module Community
           "标签 #{tag.name}",
           rss_url: forum_tag_rss_url(slug: tag.slug),
           html_url: forum_tag_url(tag.slug)
+        )
+      end
+
+      Community::Subscription.where(user: user, subscribable_type: "Community::Topic").find_each do |sub|
+        topic = Community::Topic.find_by(id: sub.subscribable_id)
+        next unless topic&.published?
+
+        outlines << opml_outline(
+          topic.title,
+          rss_url: forum_topic_url(topic),
+          html_url: forum_topic_url(topic)
         )
       end
 

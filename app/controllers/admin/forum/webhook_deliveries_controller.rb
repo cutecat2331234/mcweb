@@ -3,6 +3,8 @@
 module Admin
   module Forum
     class WebhookDeliveriesController < BaseController
+      include Admin::WebhookDeliveryFilterable
+
       before_action -> { require_permission("system.settings.manage") }
       before_action :set_delivery, only: %i[show retry]
 
@@ -10,12 +12,14 @@ module Admin
         scope = Community::SavedSearchWebhookDelivery.includes(saved_search: :user).recent
         scope = scope.where(status: params[:status]) if params[:status].present?
         scope = scope.where(event_type: params[:event]) if params[:event].present?
+        scope = apply_webhook_date_scope(scope)
         @pagy, deliveries = pagy(scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: "保存搜索 Webhook 投递",
           statusTabs: webhook_status_tabs,
           eventTabs: webhook_event_tabs,
+          dateFilter: webhook_date_filter_props,
           bulkRetry: bulk_retry_props(deliveries),
           columns: [
             admin_column(:search, "搜索", link: true),
@@ -61,10 +65,10 @@ module Admin
       def bulk_retry
         result = Community::BulkRetrySavedSearchWebhooks.call(delivery_ids: params[:ids])
         if result.success?
-          redirect_to admin_forum_webhook_deliveries_path(status: params[:status], event: params[:event]),
+          redirect_to admin_forum_webhook_deliveries_path(webhook_filter_params),
                       notice: "已重试 #{result.value[:queued]} 条失败投递。"
         else
-          redirect_to admin_forum_webhook_deliveries_path(status: params[:status], event: params[:event]),
+          redirect_to admin_forum_webhook_deliveries_path(webhook_filter_params),
                       alert: result.error || "批量重试失败。"
         end
       end
@@ -76,7 +80,7 @@ module Admin
       end
 
       def webhook_status_tabs
-        base_params = { event: params[:event].presence }.compact
+        base_params = webhook_filter_params.except(:status)
         base = admin_forum_webhook_deliveries_path(base_params)
         current = params[:status].to_s
         [
@@ -88,7 +92,7 @@ module Admin
       end
 
       def webhook_event_tabs
-        base_params = { status: params[:status].presence }.compact
+        base_params = webhook_filter_params.except(:event)
         base = admin_forum_webhook_deliveries_path(base_params)
         current = params[:event].to_s
         [
@@ -148,7 +152,7 @@ module Admin
 
         {
           label: "重试本页失败项 (#{failed_ids.size})",
-          href: bulk_retry_admin_forum_webhook_deliveries_path(status: params[:status], event: params[:event]),
+          href: bulk_retry_admin_forum_webhook_deliveries_path(webhook_filter_params),
           ids: failed_ids
         }
       end

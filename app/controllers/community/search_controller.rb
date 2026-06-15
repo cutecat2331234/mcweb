@@ -207,7 +207,8 @@ module Community
         savedSearchCount: logged_in? ? current_user.forum_saved_searches.count : 0,
         savedSearchesOpmlUrl: logged_in? ? Community::SavedSearchPresenter.opml_path(current_user) : nil,
         suggestUrl: forum_search_suggest_path,
-        searchRssUrl: query.present? ? search_rss_url_for(query) : nil
+        searchRssUrl: query.present? ? search_rss_url_for(query) : nil,
+        searchOpmlUrl: query.present? ? search_opml_url_for(query) : nil
       }
     end
 
@@ -441,7 +442,19 @@ module Community
     end
 
     def search_rss_url_for(query)
-      rss_params = {
+      rss_params = search_rss_params_for(query)
+      token = Community::SearchRssToken.generate(rss_params)
+      forum_search_rss_path(rss_params.merge(token: token))
+    end
+
+    def search_opml_url_for(query)
+      opml_params = search_rss_params_for(query)
+      token = Community::SearchRssToken.generate(opml_params)
+      forum_search_opml_path(opml_params.merge(token: token))
+    end
+
+    def search_rss_params_for(query)
+      {
         q: query,
         section: params[:section],
         category: params[:category],
@@ -468,8 +481,6 @@ module Community
         title_only: params[:title_only],
         posts_only: params[:posts_only]
       }.compact
-      token = Community::SearchRssToken.generate(rss_params)
-      forum_search_rss_path(rss_params.merge(token: token))
     end
   end
 end

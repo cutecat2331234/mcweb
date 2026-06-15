@@ -73,3 +73,7 @@ production:
     class: Community::RetryFailedSavedSearchWebhooksJob
     queue: maintenance
     schedule: every 15 minutes
+  webhook_failure_alert:
+    class: WebhookFailureAlertJob
+    queue: mailers
+    schedule: every hour at minute 45

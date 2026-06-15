@@ -1289,6 +1289,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "forum_signature"
     t.string "forum_title"
     t.integer "forum_trust_level_override"
+    t.string "forum_watch_email_mode", default: "instant", null: false
     t.datetime "last_seen_at"
     t.datetime "last_sign_in_at"
     t.string "last_sign_in_ip"

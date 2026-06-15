@@ -6,6 +6,7 @@ module Admin
       metrics_result = Commerce::SalesMetrics.call
       metrics_data = metrics_result.value
       webhook_stats = WebhookDeliveryStats.summary
+      failed_since = 24.hours.ago.to_date.to_s
 
       render inertia: "Admin/Dashboard/Index", props: {
         metrics: [
@@ -23,6 +24,10 @@ module Admin
         webhookStats: {
           forum: webhook_stats[:forum],
           store: webhook_stats[:store]
+        },
+        webhookFailedLinks: {
+          forum: admin_forum_webhook_deliveries_path(status: "failed", created_from: failed_since),
+          store: admin_store_webhook_deliveries_path(status: "failed", created_from: failed_since)
         },
         recentAuditLogs: AuditLog.recent.limit(10).map do |log|
           {

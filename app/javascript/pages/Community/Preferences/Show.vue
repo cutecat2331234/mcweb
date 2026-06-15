@@ -34,6 +34,8 @@ const props = defineProps<{
   digest_frequency: string
   digest_watched_only?: boolean
   digest_options: Array<{ value: string; label: string }>
+  watch_email_mode: string
+  watch_email_mode_options: Array<{ value: string; label: string }>
   savedSearches?: SavedSearchItem[]
   savedSearchesOpmlUrl?: string | null
   watchingOpmlUrl?: string | null
@@ -57,6 +59,7 @@ const form = useForm({
   ) as Record<string, { in_app: boolean; email: boolean }>,
   digest_frequency: props.digest_frequency,
   digest_watched_only: props.digest_watched_only ?? false,
+  watch_email_mode: props.watch_email_mode,
 })
 
 const togglingId = ref<number | null>(null)
@@ -178,6 +181,14 @@ async function saveRenameSearch(search: SavedSearchItem) {
           邮件通知
         </label>
       </div>
+    </div>
+
+    <div class="rounded-lg border p-4">
+      <Label for="watch-email-mode" class="mb-2 block text-sm font-medium">关注即时邮件</Label>
+      <select id="watch-email-mode" v-model="form.watch_email_mode" class="h-9 w-full rounded-md border px-2 text-sm">
+        <option v-for="opt in watch_email_mode_options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+      <p class="mt-2 text-xs text-muted-foreground">控制关注主题/分区时是否立即收到邮件（对标 Discourse 通知级别）。</p>
     </div>
 
     <div class="rounded-lg border p-4">

@@ -25,6 +25,7 @@ module Community
     ].freeze
 
     DIGEST_OPTIONS = %w[none daily weekly].freeze
+    WATCH_EMAIL_MODES = %w[instant digest_only none].freeze
 
     CHANNELS = %w[in_app email].freeze
 
@@ -43,6 +44,8 @@ module Community
         digest_frequency: current_user.forum_digest_frequency,
         digest_watched_only: current_user.forum_digest_watched_only?,
         digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } },
+        watch_email_mode: current_user.forum_watch_email_mode,
+        watch_email_mode_options: WATCH_EMAIL_MODES.map { |v| { value: v, label: watch_email_mode_label(v) } },
         savedSearches: serialize_saved_searches_for_preferences,
         savedSearchesOpmlUrl: Community::SavedSearchPresenter.opml_path(current_user),
         watchingOpmlUrl: forum_watching_opml_path(token: Community::WatchingOpmlToken.generate(current_user)),
@@ -53,12 +56,14 @@ module Community
     def update
       NOTIFICATION_TYPES.each do |type|
         CHANNELS.each do |channel|
-          enabled = ActiveModel::Type::Boolean.new.cast(params.dig(:preferences, type, channel))
+          enabled = params.dig(:preferences, type, channel)
+          next if enabled.nil?
+
           NotificationPreference.set!(
             current_user,
             channel: channel,
             notification_type: type,
-            enabled: enabled
+            enabled: ActiveModel::Type::Boolean.new.cast(enabled)
           )
         end
       end
@@ -69,6 +74,10 @@ module Community
 
       if params.key?(:digest_watched_only)
         current_user.update!(forum_digest_watched_only: ActiveModel::Type::Boolean.new.cast(params[:digest_watched_only]))
+      end
+
+      if params[:watch_email_mode].present? && WATCH_EMAIL_MODES.include?(params[:watch_email_mode])
+        current_user.update!(forum_watch_email_mode: params[:watch_email_mode])
       end
 
       redirect_to forum_preferences_path, notice: "通知偏好已保存。"
@@ -100,6 +109,14 @@ module Community
 
     def digest_label(value)
       { "none" => "关闭摘要", "daily" => "每日摘要", "weekly" => "每周摘要" }[value] || value
+    end
+
+    def watch_email_mode_label(value)
+      {
+        "instant" => "即时邮件（关注时立即通知）",
+        "digest_only" => "仅摘要（不发送即时关注邮件）",
+        "none" => "关闭关注邮件（仍可通过摘要或站内通知）"
+      }[value] || value
     end
 
     def serialize_saved_searches_for_preferences

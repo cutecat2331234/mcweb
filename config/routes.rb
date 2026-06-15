@@ -198,6 +198,7 @@ Rails.application.routes.draw do
       end
     end
     get "search.rss", to: "rss#ad_hoc_search", as: :search_rss, defaults: { format: :rss }
+    get "search.opml", to: "rss#ad_hoc_search_opml", as: :search_opml, defaults: { format: :xml }
     get "search", to: "search#index"
     get "search/suggest", to: "search#suggest", as: :search_suggest
     get "mentions/search", to: "mentions#search", as: :mention_search

@@ -37,7 +37,9 @@ module Community
         )
 
         level = levels_by_user[user.id] || "watching"
-        if level == "watching" && NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.topic_reply")
+        if level == "watching" &&
+            Community::WatchEmailDelivery.allowed?(user) &&
+            NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.topic_reply")
           MailDeliveryJob.perform_later(
             "Community::ForumMailer",
             "topic_reply",

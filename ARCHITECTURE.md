@@ -1297,3 +1297,13 @@ app/
 | 帖子高亮修复 | 搜索页帖子结果使用 `body_html` 而非纯文本 |
 | Webhook 投递统计 | `WebhookDeliveryStats` 24h 成功率 + 管理仪表盘卡片 |
 | 批量重试失败 Webhook | `BulkRetrySavedSearchWebhooks` / `BulkRetryOrderWebhooks` + 管理列表按钮 |
+
+### 第八十四轮（搜索 OPML、Webhook 告警、关注邮件模式、日期筛选）
+
+| 功能 | 实现 |
+|------|------|
+| 即时搜索 OPML | `GET search.opml` + 搜索页 OPML 链接 |
+| Webhook 失败邮件告警 | `WebhookFailureAlertCheck` + `WebhookFailureAlertJob` + 论坛设置阈值/邮箱 |
+| 关注即时邮件模式 | `forum_watch_email_mode`（instant/digest_only/none）+ `WatchEmailDelivery` |
+| 管理 Webhook 日期筛选 | `created_from` / `created_to` + `Admin::WebhookDeliveryFilterable` |
+| 仪表盘失败链接 | 预筛选近 24h 失败投递 + 关注 OPML 含主题订阅 |

@@ -37,6 +37,10 @@ defineProps<{
     forum: WebhookStatBlock
     store: WebhookStatBlock
   }
+  webhookFailedLinks: {
+    forum: string
+    store: string
+  }
   recentAuditLogs: AuditLogItem[]
 }>()
 </script>
@@ -61,7 +65,8 @@ defineProps<{
       <p v-if="webhookStats.forum.success_rate != null" class="mt-1 text-lg font-semibold">
         成功率 {{ webhookStats.forum.success_rate }}%
       </p>
-      <Link :href="adminRoutes.forumWebhookDeliveries" class="mt-2 inline-block text-sm text-primary hover:underline">查看投递日志</Link>
+      <Link :href="webhookFailedLinks.forum" class="mt-2 mr-3 inline-block text-sm text-primary hover:underline">查看失败记录</Link>
+      <Link :href="adminRoutes.forumWebhookDeliveries" class="mt-2 inline-block text-sm text-muted-foreground hover:underline">全部投递日志</Link>
     </div>
     <div class="rounded-lg border p-4">
       <p class="mb-2 text-sm font-medium">商城订单</p>
@@ -71,7 +76,8 @@ defineProps<{
       <p v-if="webhookStats.store.success_rate != null" class="mt-1 text-lg font-semibold">
         成功率 {{ webhookStats.store.success_rate }}%
       </p>
-      <Link :href="adminRoutes.storeWebhookDeliveries" class="mt-2 inline-block text-sm text-primary hover:underline">查看投递日志</Link>
+      <Link :href="webhookFailedLinks.store" class="mt-2 mr-3 inline-block text-sm text-primary hover:underline">查看失败记录</Link>
+      <Link :href="adminRoutes.storeWebhookDeliveries" class="mt-2 inline-block text-sm text-muted-foreground hover:underline">全部投递日志</Link>
     </div>
   </div>
 

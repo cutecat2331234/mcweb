@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
+import { ref, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination from '@/components/portal/Pagination.vue'
@@ -45,7 +46,13 @@ export interface BulkRetryAction {
   ids: number[]
 }
 
-defineProps<{
+export interface DateFilterProps {
+  created_from: string
+  created_to: string
+  action: string
+}
+
+const props = defineProps<{
   title: string
   subtitle?: string
   exportUrl?: string
@@ -55,12 +62,35 @@ defineProps<{
   statusTabs?: StatusTab[]
   eventTabs?: StatusTab[]
   bulkRetry?: BulkRetryAction | null
+  dateFilter?: DateFilterProps | null
   pagination?: PaginationMeta
 }>()
+
+const dateFrom = ref('')
+const dateTo = ref('')
+
+watch(
+  () => props.dateFilter,
+  (filter) => {
+    dateFrom.value = filter?.created_from || ''
+    dateTo.value = filter?.created_to || ''
+  },
+  { immediate: true }
+)
 
 function submitBulkRetry(action: BulkRetryAction) {
   if (!confirm(`确定要${action.label}吗？`)) return
   router.post(action.href, { ids: action.ids })
+}
+
+function applyDateFilter() {
+  if (!props.dateFilter) return
+  const params = new URLSearchParams(window.location.search)
+  if (dateFrom.value) params.set('created_from', dateFrom.value)
+  else params.delete('created_from')
+  if (dateTo.value) params.set('created_to', dateTo.value)
+  else params.delete('created_to')
+  window.location.href = `${props.dateFilter.action}?${params.toString()}`
 }
 </script>
 
@@ -111,6 +141,18 @@ function submitBulkRetry(action: BulkRetryAction) {
       {{ tab.label }}
     </Link>
   </div>
+
+  <form v-if="dateFilter" class="mb-4 flex flex-wrap items-end gap-2" @submit.prevent="applyDateFilter">
+    <label class="text-sm">
+      <span class="mb-1 block text-muted-foreground">起始日期</span>
+      <input v-model="dateFrom" type="date" class="h-9 rounded-md border px-2 text-sm">
+    </label>
+    <label class="text-sm">
+      <span class="mb-1 block text-muted-foreground">结束日期</span>
+      <input v-model="dateTo" type="date" class="h-9 rounded-md border px-2 text-sm">
+    </label>
+    <button type="submit" class="h-9 rounded-md border px-3 text-sm hover:bg-muted">筛选</button>
+  </form>
 
   <div v-if="rows.length" class="rounded-lg border">
     <Table>

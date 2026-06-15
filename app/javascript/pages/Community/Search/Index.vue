@@ -79,6 +79,7 @@ const props = defineProps<{
   savedSearchesOpmlUrl?: string | null
   suggestUrl?: string | null
   searchRssUrl?: string | null
+  searchOpmlUrl?: string | null
 }>()
 
 const atSavedSearchLimit = computed(() => {
@@ -738,15 +739,26 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
   <template v-if="query">
     <div class="mb-3 flex items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">主题</h2>
-      <a
-        v-if="searchRssUrl"
-        :href="searchRssUrl"
-        class="text-xs text-primary hover:underline"
-        target="_blank"
-        rel="noopener noreferrer"
-      >
-        RSS 订阅此搜索
-      </a>
+      <div class="flex gap-3">
+        <a
+          v-if="searchRssUrl"
+          :href="searchRssUrl"
+          class="text-xs text-primary hover:underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          RSS 订阅此搜索
+        </a>
+        <a
+          v-if="searchOpmlUrl"
+          :href="searchOpmlUrl"
+          class="text-xs text-primary hover:underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          OPML 导出
+        </a>
+      </div>
     </div>
     <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants class="mb-4" />
     <Pagination v-if="topics.length" :pagination="topicsPagination" :base-path="routes.forumSearch" page-param="topic_page" class="mb-8" />

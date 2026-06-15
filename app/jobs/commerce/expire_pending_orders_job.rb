@@ -10,7 +10,7 @@ module Commerce
         .where(status: %w[pending awaiting_payment])
         .where("created_at < ?", window.ago)
         .find_each do |order|
-          Commerce::CancelOrder.call(order: order)
+          Commerce::CancelOrder.call(order: order, reason: "expired")
         end
     end
 

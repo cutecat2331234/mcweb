@@ -67,6 +67,7 @@ Rails.application.routes.draw do
     namespace :store do
       resource :settings, only: %i[show update] do
         post :test_webhook
+        post :test_all_webhooks
         get :webhook_test_status
       end
       resources :categories
@@ -150,6 +151,7 @@ Rails.application.routes.draw do
     end
     get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
     get "sections/:id.rss", to: "rss#section", as: :section_rss, defaults: { format: :rss }
+    get "topics/:id.rss", to: "rss#topic", as: :topic_rss, defaults: { format: :rss }
     get "categories/:slug.rss", to: "rss#category", as: :category_rss, defaults: { format: :rss }
     get "categories/:slug", to: "categories#show", as: :category
     resources :topics, only: %i[show new create update] do

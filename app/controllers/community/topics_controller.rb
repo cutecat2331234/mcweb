@@ -616,7 +616,7 @@ module Community
     def mark_topic_notifications_read!
       return unless logged_in?
 
-      types = %w[forum.topic_reply forum.mention forum.section_topic forum.reaction forum.tag_topic forum.followed_topic forum.quote forum.topic_solved]
+      types = %w[forum.topic_reply forum.mention forum.section_topic forum.reaction forum.tag_topic forum.followed_topic forum.followed_reply forum.quote forum.topic_solved]
       current_user.notifications.unread.where(notification_type: types).find_each do |notification|
         topic_id = notification.metadata["topic_id"]
         notification.mark_read! if topic_id == @topic.public_id

@@ -176,6 +176,7 @@ module InertiaSerializable
         color_hex: topic.section.color_hex,
         icon: topic.section.icon
       },
+      rss_url: forum_topic_rss_path(id: topic.public_id),
       source_topic: source_topic_props(topic)
     }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate)).merge(slow_mode_props(topic, user: viewer)).merge(reading_time_props(topic))
   end
@@ -714,10 +715,13 @@ module InertiaSerializable
       total_label: format_money(order.total_cents, order.currency),
       receipt_url: receipt_store_order_path(order),
       receipt_pdf_url: receipt_pdf_store_order_path(order),
-      can_pay: (order.pending? || order.awaiting_payment?) && order.total_cents.positive?,
-      can_confirm_free: (order.pending? || order.awaiting_payment?) && order.total_cents.zero?,
-      can_cancel: order.pending? || order.awaiting_payment?,
+      can_pay: payment_actionable?(order) && order.total_cents.positive?,
+      can_confirm_free: payment_actionable?(order) && order.total_cents.zero?,
+      can_cancel: payment_actionable?(order),
       can_request_refund: refundable_order?(order),
+      payment_expires_at: payment_expires_at(order)&.iso8601,
+      payment_expires_label: payment_expires_label(order),
+      payment_expired: payment_expired?(order),
       refund_window_expires_at: refund_window_expires_at(order),
       refund_window_expires_label: refund_window_expires_label(order),
       max_refund_cents: max_refundable_cents(order),
@@ -926,6 +930,30 @@ module InertiaSerializable
     return nil unless expires
 
     expires.future? ? l(expires, format: :short) : nil
+  end
+
+  def payment_expires_at(order)
+    return nil unless order.pending? || order.awaiting_payment?
+
+    minutes = SiteSetting.get("store.pending_order_expiry_minutes", "30").to_i
+    minutes = 30 if minutes <= 0
+    order.created_at + minutes.minutes
+  end
+
+  def payment_expired?(order)
+    expires = payment_expires_at(order)
+    expires.present? && expires.past?
+  end
+
+  def payment_expires_label(order)
+    expires = payment_expires_at(order)
+    return nil unless expires
+
+    payment_expired?(order) ? "已于 #{l(expires, format: :short)} 过期" : l(expires, format: :short)
+  end
+
+  def payment_actionable?(order)
+    (order.pending? || order.awaiting_payment?) && !payment_expired?(order)
   end
 
   def fulfillment_status_label(status)

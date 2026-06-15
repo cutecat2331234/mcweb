@@ -20,6 +20,14 @@ module Community
       render xml: build_feed(topics, title: "标签 #{tag.name} - Mcweb 论坛", url: forum_tag_url(tag.slug)), content_type: "application/rss+xml"
     end
 
+    def topic
+      topic = Community::Topic.find_by!(public_id: params[:id])
+      return head :not_found unless topic.published?
+
+      posts = topic.posts.chronological.includes(:user).limit(50)
+      render xml: build_topic_feed(topic, posts), content_type: "application/rss+xml"
+    end
+
     def category
       category = Community::Category.find_by!(slug: params[:slug])
       section_ids = category.sections.pluck(:id)
@@ -135,6 +143,35 @@ module Community
       XML
     end
 
+    def build_topic_feed(topic, posts)
+      items = posts.map { |post| topic_post_feed_item(topic, post) }.join("\n")
+      <<~XML
+        <?xml version="1.0" encoding="UTF-8"?>
+        <rss version="2.0">
+          <channel>
+            <title>#{escape_xml(topic.title)} - Mcweb 论坛</title>
+            <link>#{escape_xml(forum_topic_url(topic))}</link>
+            <description>#{escape_xml(topic.title)}</description>
+            <lastBuildDate>#{Time.current.rfc2822}</lastBuildDate>
+            #{items}
+          </channel>
+        </rss>
+      XML
+    end
+
+    def topic_post_feed_item(topic, post)
+      link = "#{forum_topic_url(topic)}#post-#{post.id}"
+      <<~XML
+        <item>
+          <title>#{escape_xml("#{post.user.username} — #{topic.title}")}</title>
+          <link>#{escape_xml(link)}</link>
+          <pubDate>#{post.created_at.rfc2822}</pubDate>
+          <description>#{escape_xml(post.body.truncate(500))}</description>
+          <guid isPermaLink="true">#{escape_xml(link)}</guid>
+        </item>
+      XML
+    end
+
     def escape_xml(text)
       ERB::Util.html_escape(text.to_s)
     end
@@ -219,7 +256,7 @@ module Community
 
         outlines << opml_outline(
           topic.title,
-          rss_url: forum_topic_url(topic),
+          rss_url: forum_topic_rss_path(id: topic.public_id),
           html_url: forum_topic_url(topic)
         )
       end

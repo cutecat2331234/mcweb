@@ -49,6 +49,9 @@ const props = defineProps<{
     can_confirm_free?: boolean
     can_cancel: boolean
     can_request_refund: boolean
+    payment_expires_at?: string | null
+    payment_expires_label?: string | null
+    payment_expired?: boolean
     refund_window_expires_at?: string | null
     refund_window_expires_label?: string | null
     max_refund_cents?: number
@@ -192,6 +195,13 @@ function refreshDownload(url: string) {
       </li>
     </ol>
   </div>
+
+  <p v-if="order.payment_expires_label && (order.can_pay || order.can_confirm_free)" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    请在 {{ order.payment_expires_label }} 前完成支付，超时订单将自动取消。
+  </p>
+  <p v-else-if="order.payment_expired" class="mb-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900">
+    支付已超时（{{ order.payment_expires_label }}），订单可能已被自动取消。
+  </p>
 
   <p v-if="order.refund_window_expires_label && order.can_request_refund" class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
   退款窗口将于 {{ order.refund_window_expires_label }} 关闭，请尽快申请。

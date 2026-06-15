@@ -1360,3 +1360,17 @@ app/
 | 订单取消 Webhook | `CancelOrder` 发 `order.cancelled`（含 `cancel_reason`） |
 | 订单履约 Webhook | `NotifyOrderStatusChange` 对 fulfilled 发 `order.fulfilled` |
 | 商城投递筛选 | 管理后台事件 Tab 增加 `order.cancelled`、`order.fulfilled` |
+
+### 第九十轮（关注用户回复、主题 RSS、订单生命周期 Webhook 完善）
+
+| 功能 | 实现 |
+|------|------|
+| 关注用户回复通知 | `NotifyFollowedUserReply` + `forum.followed_reply` 偏好 |
+| 关注用户新主题邮件 | `NotifyFollowedUserTopic` 即时邮件（对标分区/标签） |
+| 主题 RSS | `/forum/topics/:id.rss` 按楼层输出 + OPML 修正 |
+| 订单创建 Webhook | `CreateOrder` 发 `order.created` |
+| 支付 Webhook 规范化 | `mark_paid` → `order.paid`；取消避免重复 `order.cancel` |
+| 过期取消原因 | `ExpirePendingOrdersJob` 传 `reason: expired` |
+| 支付倒计时 | 订单页 `payment_expires_at` / 超时提示 |
+| 商城 Webhook 测试筛选 | 投递日志 `kindTabs`（测试/正式） |
+| 批量订单 Webhook 测试 | `BatchTestOrderWebhooks` + 管理后台按钮 |

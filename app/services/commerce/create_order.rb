@@ -151,6 +151,13 @@ module Commerce
         path: "/store/orders/#{order.public_id}"
       )
 
+      Commerce::DispatchOrderWebhook.call(
+        order: order,
+        event_type: "order.created",
+        from_status: nil,
+        to_status: "pending"
+      )
+
       ServiceResult.success(order)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

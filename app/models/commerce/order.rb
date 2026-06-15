@@ -84,17 +84,27 @@ module Commerce
       self.order_number ||= "ORD-#{Time.current.strftime('%Y%m%d')}-#{SecureRandom.hex(4).upcase}"
     end
 
+    WEBHOOK_EVENT_MAP = {
+      "mark_paid" => "order.paid",
+      "cancel" => nil
+    }.freeze
+
     def record_transition_event
       from = aasm.from_state.to_s
       to = aasm.to_state.to_s
+      event_name = aasm.current_event.to_s.sub(/!$/, "")
       events.create!(
-        event_type: aasm.current_event.to_s.sub(/!$/, ""),
+        event_type: event_name,
         from_status: from,
         to_status: to
       )
+
+      webhook_event = WEBHOOK_EVENT_MAP.fetch(event_name) { "order.#{event_name}" }
+      return if webhook_event.nil?
+
       Commerce::DispatchOrderWebhook.call(
         order: self,
-        event_type: "order.#{aasm.current_event.to_s.sub(/!$/, '')}",
+        event_type: webhook_event,
         from_status: from,
         to_status: to
       )

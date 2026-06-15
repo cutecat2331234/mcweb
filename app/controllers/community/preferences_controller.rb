@@ -10,6 +10,7 @@ module Community
       forum.section_topic
       forum.private_message
       forum.followed_topic
+      forum.followed_reply
       forum.tag_topic
       forum.reaction
       forum.quote
@@ -93,6 +94,7 @@ module Community
         "forum.section_topic" => "关注分区新主题",
         "forum.private_message" => "私信",
         "forum.followed_topic" => "关注用户新主题",
+        "forum.followed_reply" => "关注用户回复",
         "forum.tag_topic" => "关注标签新主题",
         "forum.reaction" => "帖子反应",
         "forum.quote" => "帖子引用",

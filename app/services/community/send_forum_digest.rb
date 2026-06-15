@@ -5,7 +5,7 @@ module Community
     FREQUENCIES = %w[daily weekly].freeze
     NOTIFICATION_TYPES = %w[
       forum.topic_reply forum.mention forum.section_topic forum.private_message
-      forum.followed_topic forum.tag_topic forum.reaction
+      forum.followed_topic forum.followed_reply forum.tag_topic forum.reaction
     ].freeze
 
     def initialize(user:)

@@ -12,6 +12,7 @@ module Admin
         scope = Commerce::OrderWebhookDelivery.order(created_at: :desc)
         scope = scope.where(status: params[:status]) if params[:status].present?
         scope = scope.where(event_type: params[:event]) if params[:event].present?
+        scope = apply_webhook_kind_scope(scope)
         scope = apply_webhook_date_scope(scope)
         @pagy, deliveries = pagy(scope, limit: 50)
 
@@ -19,6 +20,7 @@ module Admin
           title: "订单 Webhook 投递",
           statusTabs: webhook_status_tabs,
           eventTabs: webhook_event_tabs,
+          kindTabs: webhook_kind_tabs,
           dateFilter: webhook_date_filter_props,
           bulkRetry: bulk_retry_props(deliveries),
           columns: [
@@ -105,6 +107,17 @@ module Admin
           }
         end
         tabs
+      end
+
+      def webhook_kind_tabs
+        base_params = webhook_filter_params.except(:kind)
+        base = admin_store_webhook_deliveries_path(base_params)
+        current = params[:kind].to_s
+        [
+          { label: "全部来源", href: base, active: current.blank? },
+          { label: "测试", href: admin_store_webhook_deliveries_path(base_params.merge(kind: "test")), active: current == "test" },
+          { label: "正式", href: admin_store_webhook_deliveries_path(base_params.merge(kind: "production")), active: current == "production" }
+        ]
       end
 
       def serialize_index_row(delivery)

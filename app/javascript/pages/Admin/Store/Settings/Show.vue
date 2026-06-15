@@ -37,6 +37,7 @@ const props = defineProps<{
   settings: StoreSettingItem[]
   shippingMethods: ShippingMethodItem[]
   testWebhookUrl?: string | null
+  testAllWebhooksUrl?: string | null
   testWebhookStatusUrl?: string | null
   testWebhookEvents?: string[]
   lastTestWebhook?: LastTestWebhook | null
@@ -121,6 +122,13 @@ function sendTestWebhook() {
     onSuccess: () => startPollingWebhookStatus(),
   })
 }
+
+function sendTestAllWebhooks() {
+  if (!props.testAllWebhooksUrl || !confirm('向配置的 Webhook URL 批量发送全部订单 Webhook 测试事件？')) return
+  router.post(props.testAllWebhooksUrl, {}, {
+    onSuccess: () => startPollingWebhookStatus(),
+  })
+}
 </script>
 
 <template>
@@ -192,6 +200,15 @@ function sendTestWebhook() {
         @click="sendTestWebhook"
       >
         发送 Webhook 测试
+      </Button>
+      <Button
+        v-if="testAllWebhooksUrl"
+        type="button"
+        variant="outline"
+        class="ml-2"
+        @click="sendTestAllWebhooks"
+      >
+        批量测试全部事件
       </Button>
       <p v-if="lastTestWebhookDisplay" class="mt-2 text-xs text-muted-foreground">
         最近测试：{{ lastTestWebhookDisplay.event_type }} · {{ lastTestWebhookDisplay.status }}

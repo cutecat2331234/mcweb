@@ -27,6 +27,7 @@ module Admin
           settings: store_settings_props,
           shippingMethods: Commerce::ShippingMethods.stored_list,
           testWebhookUrl: test_webhook_admin_store_settings_path,
+          testAllWebhooksUrl: test_all_webhooks_admin_store_settings_path,
           testWebhookStatusUrl: webhook_test_status_admin_store_settings_path,
           testWebhookEvents: Commerce::DispatchTestOrderWebhook::EVENT_TYPES,
           lastTestWebhook: WebhookTestDeliveryStatus.store_last
@@ -62,6 +63,16 @@ module Admin
           redirect_to admin_store_settings_path, notice: "测试 Webhook 已加入发送队列（#{result.value[:event_type]}）。"
         else
           redirect_to admin_store_settings_path, alert: result.error || "测试发送失败。"
+        end
+      end
+
+      def test_all_webhooks
+        result = Commerce::BatchTestOrderWebhooks.call
+        if result.success?
+          redirect_to admin_store_settings_path,
+                      notice: "已加入 #{result.value[:queued]}/#{result.value[:total]} 条订单 Webhook 测试队列。"
+        else
+          redirect_to admin_store_settings_path, alert: result.error || "批量测试失败。"
         end
       end
 

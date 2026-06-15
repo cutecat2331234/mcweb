@@ -155,6 +155,7 @@ const props = defineProps<{
     tags: Array<{ name: string; slug: string; url: string; color_hex?: string | null; group_color_hex?: string | null }>
     tags_string: string
     section: { name: string; slug: string; url: string; color_hex?: string | null; icon?: string | null }
+    rss_url?: string
     section_prefixes?: string[]
     tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }>
     linked_product_name?: string
@@ -940,6 +941,9 @@ function pollPercent(votes: number) {
       :subtitle="`${topic.author ? `作者 ${topic.author}` : ''}${topic.author ? ' · ' : ''}${topic.views_count} 次浏览${topic.reading_time_minutes ? ` · 约 ${topic.reading_time_minutes} 分钟阅读` : ''}`"
     />
     <div class="flex flex-wrap gap-2">
+      <Button v-if="topic.rss_url" as-child variant="outline" size="sm">
+        <a :href="topic.rss_url" target="_blank" rel="noopener">RSS</a>
+      </Button>
       <Button v-if="topic.can_edit" type="button" variant="outline" size="sm" @click="editingTopic = !editingTopic">
         编辑主题
       </Button>

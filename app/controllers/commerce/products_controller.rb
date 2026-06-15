@@ -110,6 +110,34 @@ module Commerce
       redirect_to recently_viewed_store_products_path, notice: "浏览记录已清空。"
     end
 
+    def preview
+      product = Commerce::Product.upcoming.includes(:category).find_by!(public_id: params[:id])
+      alert = logged_in? ? Commerce::ProductAvailabilityAlert.find_by(user: current_user, product: product) : nil
+
+      render inertia: "Commerce/Products/Preview", props: {
+        product: {
+          id: product.public_id,
+          name: product.name,
+          slug: product.slug,
+          description: product.description,
+          summary: product.summary,
+          price_label: format_price(product),
+          compare_at_label: product.on_sale? ? format_money(product.compare_at_price_cents, product.currency) : nil,
+          on_sale: product.on_sale?,
+          discount_label: product.discount_percent ? "-#{product.discount_percent}%" : nil,
+          category_name: product.category&.name,
+          image_url: product_image_url(product),
+          gallery_urls: product.gallery_urls || [],
+          available_at_label: product.available_at ? l(product.available_at, format: :short) : nil,
+          coming_soon_label: product.coming_soon_label
+        },
+        hasAvailabilityAlert: alert.present?,
+        availabilityAlertUrl: logged_in? ? availability_alert_store_product_path(product) : nil,
+        availabilityAlertUnsubscribeUrl: alert ? store_availability_alert_path(alert) : nil,
+        loggedIn: logged_in?
+      }
+    end
+
     def show
       product = Commerce::Product.available.includes(:variants, :category, :forum_topic).find_by!(public_id: params[:id])
       product.increment!(:view_count)

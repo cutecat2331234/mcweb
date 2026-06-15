@@ -45,6 +45,11 @@ module Commerce
             refund_amount_cents: @amount_cents,
             payment_amount_cents: @payment_record.amount_cents
           )
+          Commerce::RestoreStockPartial.call(
+            order: @order,
+            refund_amount_cents: @amount_cents,
+            payment_amount_cents: @payment_record.amount_cents
+          )
           if full_refund?(@amount_cents, refunded_cents)
             @order.update!(status: "refunded")
             restore_stock!
@@ -110,7 +115,11 @@ module Commerce
         target = item.variant || item.product
         next if target.stock.nil?
 
-        target.update!(stock: target.stock + item.quantity)
+        remaining = item.quantity - item.stock_restored_quantity.to_i
+        next unless remaining.positive?
+
+        target.update!(stock: target.stock + remaining)
+        item.update!(stock_restored_quantity: item.quantity)
       end
     end
 

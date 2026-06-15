@@ -44,7 +44,7 @@ export const routes = {
   storeStockAlerts: '/store/stock_alerts',
   storePriceAlerts: '/store/price_alerts',
   storeAvailabilityAlerts: '/store/availability_alerts',
-  storeProduct: (id: string) => `/store/products/${id}`,
+  storeProductPreview: (id: string) => `/store/products/${id}/preview`,
   storeCart: '/store/cart',
   storeCheckout: '/store/checkout',
   storeOrders: '/store/orders',

@@ -8,13 +8,14 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; required_tag_groups?: Array<{ name: string; slug: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
+  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; required_tag_groups?: Array<{ name: string; slug: string }>; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
   similarTitlesUrl?: string
 }>()
 
@@ -122,8 +123,8 @@ function saveDraft() {
       <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
     </div>
     <div class="space-y-2">
-      <Label for="tags">标签（逗号分隔，最多 5 个）</Label>
-      <Input id="tags" v-model="form.topic.tags" placeholder="例如：公告,活动" />
+      <Label for="tags">标签（最多 5 个）</Label>
+      <TagGroupPicker v-model="form.topic.tags" :tag-groups="section.tag_groups" :max-tags="5" />
       <p v-if="section.required_tags?.length" class="text-xs text-muted-foreground">
         此分区要求至少包含以下标签之一：
         <template v-for="(tag, index) in section.required_tags" :key="tag.slug">

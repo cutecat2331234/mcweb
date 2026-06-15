@@ -940,6 +940,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.jsonb "fulfillment_snapshot", default: {}, null: false
     t.string "product_name", null: false
     t.integer "quantity", default: 1, null: false
+    t.integer "stock_restored_quantity", default: 0, null: false
     t.bigint "store_order_id", null: false
     t.bigint "store_product_id"
     t.bigint "store_product_variant_id"

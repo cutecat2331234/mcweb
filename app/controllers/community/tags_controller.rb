@@ -7,6 +7,7 @@ module Community
     before_action :require_login, only: %i[toggle_subscription]
 
     def index
+      usable_ids = Community::Tag.usable_by(current_user).pluck(:id).to_set
       tags = Community::Tag.usable_by(current_user)
         .left_joins(:topic_tags)
         .group(:id)
@@ -14,16 +15,42 @@ module Community
         .order("topics_count DESC")
         .limit(100)
 
+      grouped_tag_ids = Set.new
+      tag_groups = Community::TagGroup.includes(:tags).ordered.filter_map do |group|
+        group_tags = group.tags.select { |tag| usable_ids.include?(tag.id) }
+        next if group_tags.empty?
+
+        group_tags.each { |tag| grouped_tag_ids.add(tag.id) }
+        {
+          name: group.name,
+          slug: group.slug,
+          color_hex: group.color_hex,
+          tags: group_tags.map do |tag|
+            count = tags.find { |t| t.id == tag.id }&.topics_count.to_i
+            {
+              name: tag.name,
+              slug: tag.slug,
+              topics_count: count,
+              color_hex: tag.color_hex,
+              url: forum_tag_path(tag.slug)
+            }
+          end.sort_by { |t| -t[:topics_count] }
+        }
+      end
+
+      ungrouped = tags.reject { |tag| grouped_tag_ids.include?(tag.id) }.map do |tag|
+        {
+          name: tag.name,
+          slug: tag.slug,
+          topics_count: tag.topics_count.to_i,
+          color_hex: tag.color_hex,
+          url: forum_tag_path(tag.slug)
+        }
+      end
+
       render inertia: "Community/Tags/Index", props: {
-        tags: tags.map do |tag|
-          {
-            name: tag.name,
-            slug: tag.slug,
-            topics_count: tag.topics_count.to_i,
-            color_hex: tag.color_hex,
-            url: forum_tag_path(tag.slug)
-          }
-        end
+        tagGroups: tag_groups,
+        ungroupedTags: ungrouped
       }
     end
 

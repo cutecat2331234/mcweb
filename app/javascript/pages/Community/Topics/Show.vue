@@ -150,7 +150,7 @@ const props = defineProps<{
     auto_bump_at?: string | null
     auto_archive_at?: string | null
     solved_post_id: number | null
-    tags: Array<{ name: string; slug: string; url: string }>
+    tags: Array<{ name: string; slug: string; url: string; color_hex?: string | null }>
     tags_string: string
     section: { name: string; slug: string; url: string; color_hex?: string | null; icon?: string | null }
     section_prefixes?: string[]
@@ -1046,6 +1046,8 @@ function pollPercent(votes: number) {
       :key="tag.slug"
       :href="tag.url"
       class="rounded-full border px-2 py-0.5 text-xs hover:bg-muted"
+      :class="tag.color_hex ? '' : 'text-sky-700'"
+      :style="tag.color_hex ? { borderColor: tag.color_hex, color: tag.color_hex } : undefined"
     >
       #{{ tag.name }}
     </Link>

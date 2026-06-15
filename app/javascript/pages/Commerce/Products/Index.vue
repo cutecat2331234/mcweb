@@ -36,7 +36,8 @@ export interface ProductItem {
   summary?: string | null
   url: string
   quick_addable?: boolean
-  coming_soon?: boolean
+  preview_url?: string | null
+  coming_soon_label?: string | null
   available_at_label?: string | null
   has_availability_alert?: boolean
   availability_alert_url?: string | null
@@ -153,9 +154,11 @@ function quickAdd(product: ProductItem) {
         :key="product.id"
         class="flex gap-3 rounded-lg border border-dashed p-3 opacity-90"
       >
-        <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover grayscale" />
+        <Link :href="product.preview_url || product.url" class="shrink-0">
+          <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover grayscale hover:opacity-90" />
+        </Link>
         <div class="min-w-0 flex-1">
-          <p class="font-medium">{{ product.name }}</p>
+          <Link :href="product.preview_url || product.url" class="font-medium hover:underline">{{ product.name }}</Link>
           <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
           <Badge v-if="product.available_at_label" class="mt-1">{{ product.available_at_label }}</Badge>
           <div v-if="loggedIn && product.availability_alert_url" class="mt-2">

@@ -433,6 +433,8 @@ module InertiaSerializable
     serialize_product_list_item(product).merge(
       coming_soon: true,
       available_at_label: product.available_at ? l(product.available_at, format: :short) : nil,
+      coming_soon_label: product.coming_soon_label,
+      preview_url: preview_store_product_path(product),
       has_availability_alert: availability_alert,
       availability_alert_url: logged_in? ? availability_alert_store_product_path(product) : nil,
       availability_alert_unsubscribe_url: availability_alert_id ? store_availability_alert_path(availability_alert_id) : nil
@@ -441,11 +443,15 @@ module InertiaSerializable
 
   def serialize_topic_tag(tag)
     effective = tag.effective_tag
+    group = effective.tag_groups.first
     {
       name: effective.name,
       slug: effective.slug,
       url: forum_tag_path(effective.slug),
-      color_hex: effective.color_hex.presence
+      color_hex: effective.color_hex.presence,
+      group_name: group&.name,
+      group_slug: group&.slug,
+      group_color_hex: group&.color_hex.presence
     }
   end
 

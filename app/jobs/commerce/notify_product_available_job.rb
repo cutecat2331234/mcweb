@@ -28,6 +28,15 @@ module Commerce
             )
           end
 
+          if NotificationPreference.enabled?(user, channel: "email", notification_type: "commerce.product_available")
+            MailDeliveryJob.perform_later(
+              "Commerce::AvailabilityMailer",
+              "product_available",
+              "deliver_now",
+              args: [ alert.id ]
+            )
+          end
+
           alert.update!(notified_at: Time.current)
         end
     end

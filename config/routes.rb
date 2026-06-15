@@ -241,6 +241,7 @@ Rails.application.routes.draw do
         post :price_alert, to: "price_alerts#create"
         post :stock_alert, to: "stock_alerts#create"
         post :availability_alert, to: "availability_alerts#create"
+        get :preview
         resources :reviews, only: %i[create destroy], controller: "reviews" do
           member do
             post :helpful, action: :toggle_helpful

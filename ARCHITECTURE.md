@@ -1025,3 +1025,15 @@ app/
 | 搜索指派筛选 UI | `Search/Index.vue` assigned/assignee 控件 |
 | 用户资料页商店余额 | `Users/Show` + `/store/wallet` 链接 |
 | 上架通知管理页 | `/store/availability_alerts` |
+
+### 第六十轮（商品预览、部分退款库存、标签组选择与搜索增强）
+
+| 功能 | 实现 |
+|------|------|
+| 即将上架商品预览页 | `/store/products/:id/preview` + `Preview.vue` |
+| 部分退款按比例恢复库存 | `RestoreStockPartial` + `stock_restored_quantity` |
+| 搜索高级筛选 UI | bookmarks/watching/unread、mine、locked、wiki、poll、noreplies |
+| 商品上架通知偏好 | `commerce.product_available` + 邮件 |
+| XenForo 标签组选择器 | `TagGroupPicker` + 发帖页分组点选 |
+| 标签云按组展示 | `Tags/Index` 分组 + 标签/组颜色 |
+| 主题详情标签颜色 | `Topics/Show` color_hex 样式 |

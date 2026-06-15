@@ -16,7 +16,7 @@ module Commerce
           {
             id: alert.id,
             product_name: product.name,
-            product_url: store_product_path(product),
+            product_url: alert.product.coming_soon? ? preview_store_product_path(alert.product) : store_product_path(alert.product),
             available: product.available? && !product.coming_soon?,
             subscribed_at: l(alert.created_at, format: :short),
             unsubscribe_url: store_availability_alert_path(alert)

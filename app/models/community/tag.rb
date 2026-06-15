@@ -6,6 +6,8 @@ module Community
     has_many :synonyms, class_name: "Community::Tag", foreign_key: :canonical_tag_id, dependent: :nullify
     has_many :topic_tags, class_name: "Community::TopicTag", foreign_key: :forum_tag_id, dependent: :destroy
     has_many :topics, through: :topic_tags, source: :topic
+    has_many :tag_group_memberships, class_name: "Community::TagGroupMembership", foreign_key: :forum_tag_id, dependent: :destroy
+    has_many :tag_groups, through: :tag_group_memberships, source: :tag_group
 
     validates :name, presence: true
     validates :slug, presence: true, uniqueness: true

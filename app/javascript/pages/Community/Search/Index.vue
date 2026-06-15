@@ -39,6 +39,13 @@ const props = defineProps<{
   solved: string
   assigned?: string
   assignee?: string
+  locked?: string
+  pinned?: string
+  wiki?: string
+  mine?: string
+  scope?: string
+  poll?: string
+  noreplies?: string
   images?: string
   createdAfter?: string
   createdBefore?: string
@@ -65,6 +72,13 @@ const tagSlug = ref(props.tag)
 const solved = ref(props.solved)
 const assignedFilter = ref(props.assigned || '')
 const assignee = ref(props.assignee || '')
+const lockedFilter = ref(props.locked || '')
+const pinnedFilter = ref(props.pinned || '')
+const wikiFilter = ref(props.wiki || '')
+const mineFilter = ref(props.mine || '')
+const scopeFilter = ref(props.scope || '')
+const pollFilter = ref(props.poll || '')
+const norepliesFilter = ref(props.noreplies || '')
 const imagesOnly = ref(props.images === 'images')
 const createdAfter = ref(props.createdAfter || '')
 const createdBefore = ref(props.createdBefore || '')
@@ -110,6 +124,13 @@ function search() {
     solved: solved.value || undefined,
     assigned: assignedFilter.value || undefined,
     assignee: assignee.value || undefined,
+    locked: lockedFilter.value || undefined,
+    pinned: pinnedFilter.value || undefined,
+    wiki: wikiFilter.value || undefined,
+    mine: mineFilter.value || undefined,
+    scope: scopeFilter.value || undefined,
+    poll: pollFilter.value || undefined,
+    noreplies: norepliesFilter.value || undefined,
     images: imagesOnly.value ? 'images' : undefined,
     created_after: createdAfter.value || undefined,
     created_before: createdBefore.value || undefined,
@@ -144,6 +165,13 @@ async function saveSearch() {
             solved: solved.value,
             assigned: assignedFilter.value,
             assignee: assignee.value,
+            locked: lockedFilter.value,
+            pinned: pinnedFilter.value,
+            wiki: wikiFilter.value,
+            mine: mineFilter.value,
+            scope: scopeFilter.value,
+            poll: pollFilter.value,
+            noreplies: norepliesFilter.value,
             images: imagesOnly.value ? 'images' : '',
             created_after: createdAfter.value,
             created_before: createdBefore.value,
@@ -228,6 +256,37 @@ async function deleteSavedSearch(deleteUrl: string) {
       <option value="unassigned">未指派</option>
     </select>
     <Input v-model="assignee" placeholder="指派人（me 或用户名）" class="w-40" />
+    <select v-if="loggedIn" v-model="scopeFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">全部主题</option>
+      <option value="bookmarks">我的书签</option>
+      <option value="watching">我的关注</option>
+      <option value="unread">未读</option>
+    </select>
+    <select v-if="loggedIn" v-model="mineFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">不限作者</option>
+      <option value="mine">我的主题</option>
+    </select>
+    <select v-model="lockedFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">锁定状态</option>
+      <option value="locked">已锁定</option>
+      <option value="unlocked">未锁定</option>
+    </select>
+    <select v-model="pinnedFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">置顶状态</option>
+      <option value="pinned">已置顶</option>
+    </select>
+    <select v-model="wikiFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">全部类型</option>
+      <option value="wiki">Wiki</option>
+    </select>
+    <select v-model="pollFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">投票</option>
+      <option value="poll">含投票</option>
+    </select>
+    <select v-model="norepliesFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">回复数</option>
+      <option value="noreplies">零回复</option>
+    </select>
     <label class="flex h-9 items-center gap-2 text-sm">
       <input v-model="imagesOnly" type="checkbox" class="rounded border" />
       含图片

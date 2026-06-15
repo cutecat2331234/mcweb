@@ -3,7 +3,7 @@
 module Admin
   class UsersController < BaseController
     before_action -> { require_permission("system.settings.manage") }
-    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note silence unsilence set_trust_level]
+    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note silence unsilence set_trust_level adjust_store_credit]
 
     def index
       users = User.order(created_at: :desc)
@@ -58,7 +58,8 @@ module Admin
           { label: "警告积分", value: Community::UserWarning.total_points_for(@user).to_s },
           { label: "沉默状态", value: @user.silenced? ? "是（可浏览不可发帖）" : "否" },
           { label: "信任等级", value: trust_level_label(@user) },
-          { label: "信任等级覆盖", value: @user.forum_trust_level_override.present? ? "TL#{@user.forum_trust_level_override}" : "自动（按发帖数）" }
+          { label: "信任等级覆盖", value: @user.forum_trust_level_override.present? ? "TL#{@user.forum_trust_level_override}" : "自动（按发帖数）" },
+          { label: "商店余额", value: format_money(@user.store_credit_cents.to_i, "CNY") }
         ],
         sections: [
           mute_actions.any? ? {
@@ -110,6 +111,11 @@ module Admin
           current_level: Community::TrustLevel.level_for(@user),
           override: @user.forum_trust_level_override,
           levels: Community::TrustLevel::LEVELS.map { |entry| { value: entry[:level], label: "TL#{entry[:level]} · #{entry[:name]}" } }
+        } : nil,
+        storeCreditForm: current_user.permission?("store.orders.read") || current_user.permission?("admin.access") ? {
+          action_url: adjust_store_credit_admin_user_path(@user),
+          balance_cents: @user.store_credit_cents.to_i,
+          balance_label: format_money(@user.store_credit_cents.to_i, "CNY")
         } : nil,
         actions: mute_actions.map do |m|
           { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
@@ -235,6 +241,20 @@ module Admin
 
         @user.update!(forum_trust_level_override: level)
         redirect_to admin_user_path(@user), notice: "信任等级已设为 TL#{level}。"
+      end
+    end
+
+    def adjust_store_credit
+      result = Commerce::AdjustStoreCredit.call(
+        actor: current_user,
+        user: @user,
+        amount_cents: params[:amount_cents],
+        note: params[:note]
+      )
+      if result.success?
+        redirect_to admin_user_path(@user), notice: "商店余额已更新为 #{format_money(result.value[:balance_cents], 'CNY')}。"
+      else
+        redirect_to admin_user_path(@user), alert: service_error_message(result)
       end
     end
 

@@ -65,6 +65,13 @@ module Community
       Community::Tag.where(id: ids).order(:name)
     end
 
+    def required_tag_groups
+      ids = Array(required_tag_group_ids).map(&:to_i).reject(&:zero?)
+      return Community::TagGroup.none if ids.empty?
+
+      Community::TagGroup.where(id: ids).order(:name)
+    end
+
     def read_only?
       read_only == true
     end

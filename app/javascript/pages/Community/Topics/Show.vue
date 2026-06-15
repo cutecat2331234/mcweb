@@ -148,6 +148,7 @@ const props = defineProps<{
     auto_close_at?: string | null
     auto_open_at?: string | null
     auto_bump_at?: string | null
+    auto_archive_at?: string | null
     solved_post_id: number | null
     tags: Array<{ name: string; slug: string; url: string }>
     tags_string: string
@@ -237,6 +238,7 @@ let slowModeTimer: ReturnType<typeof setInterval> | null = null
 const autoCloseAt = ref('')
 const autoOpenAt = ref('')
 const autoBumpAt = ref('')
+const autoArchiveAt = ref('')
 const draftKey = `forum-reply-draft-${props.topic.id}`
 const topicSearch = ref(props.topicSearchQuery || '')
 const postSort = ref(props.postSort || 'oldest')
@@ -434,6 +436,10 @@ function updateAutoOpen() {
 
 function updateAutoBump() {
   router.patch(`/forum/topics/${props.topic.id}/auto_bump`, { auto_bump_at: autoBumpAt.value || null })
+}
+
+function updateAutoArchive() {
+  router.patch(`/forum/topics/${props.topic.id}/auto_archive`, { auto_archive_at: autoArchiveAt.value || null })
 }
 
 function restorePost(post: PostItem) {
@@ -1177,6 +1183,8 @@ function pollPercent(votes: number) {
       <Button type="button" size="sm" variant="outline" @click="updateAutoOpen">定时开放</Button>
       <Input v-model="autoBumpAt" type="datetime-local" class="h-8 w-48" />
       <Button type="button" size="sm" variant="outline" @click="updateAutoBump">定时提升</Button>
+      <Input v-model="autoArchiveAt" type="datetime-local" class="h-8 w-48" />
+      <Button type="button" size="sm" variant="outline" @click="updateAutoArchive">定时归档</Button>
     </template>
   </div>
 
@@ -1219,6 +1227,9 @@ function pollPercent(votes: number) {
   </p>
   <p v-if="topic.auto_bump_at" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
     将于 {{ topic.auto_bump_at }} 自动提升。
+  </p>
+  <p v-if="topic.auto_archive_at" class="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+    将于 {{ topic.auto_archive_at }} 自动归档。
   </p>
   <p v-if="topic.locked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
     此主题已锁定，无法回复。

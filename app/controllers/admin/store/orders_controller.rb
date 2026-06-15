@@ -131,7 +131,8 @@ module Admin
         result = Commerce::CreateOrderStaffNote.call(
           actor: current_user,
           order: @order,
-          body: params[:body]
+          body: params[:body],
+          visible_to_customer: params[:visible_to_customer]
         )
 
         if result.success?

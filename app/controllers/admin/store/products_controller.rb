@@ -138,7 +138,7 @@ module Admin
         permitted = params.require(:product).permit(
           :name, :slug, :description, :summary, :product_type, :status,
           :price_cents, :compare_at_price_cents, :currency, :stock, :store_category_id, :purchase_limit, :minimum_quantity, :maximum_quantity, :requires_shipping, :allow_backorder, :image_url, :gallery_urls,
-          :fulfillment_config, :featured, :version, :changelog, :seo_title, :seo_description,
+          :fulfillment_config, :featured, :version, :changelog, :seo_title, :seo_description, :available_at, :unavailable_at,
           variants_attributes: [ :id, :name, :sku, :price_cents, :compare_at_price_cents, :stock, :_destroy ]
         )
         if permitted[:gallery_urls].is_a?(String)
@@ -191,6 +191,8 @@ module Admin
             changelog: product.changelog || "",
             seo_title: product.seo&.dig("title").to_s,
             seo_description: product.seo&.dig("description").to_s,
+            available_at: product.available_at&.strftime("%Y-%m-%dT%H:%M"),
+            unavailable_at: product.unavailable_at&.strftime("%Y-%m-%dT%H:%M"),
             variants: product.variants.map do |v|
               { id: v.id, name: v.name, sku: v.sku, price_cents: v.price_cents, compare_at_price_cents: v.compare_at_price_cents, stock: v.stock }
             end

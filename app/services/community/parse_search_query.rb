@@ -3,6 +3,7 @@
 module Community
   class ParseSearchQuery < ApplicationService
     IN_PATTERN = /\bin:(\S+)/i
+    CATEGORY_PATTERN = /\bcategory:(\S+)/i
     TAG_PATTERN = /\btag:(\S+)/i
     IS_PATTERN = /\bis:(\S+)\b/i
     HAS_PATTERN = /\bhas:(\S+)\b/i
@@ -12,7 +13,7 @@ module Community
 
     VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived mine assigned unassigned].freeze
     RESERVED_IN_SCOPES = %w[bookmarks watching unread].freeze
-    VALID_HAS_FLAGS = %w[poll noreplies].freeze
+    VALID_HAS_FLAGS = %w[poll noreplies images].freeze
 
     def initialize(query:)
       @query = query.to_s.strip
@@ -20,6 +21,7 @@ module Community
 
     def call
       section_slug = nil
+      category_slug = nil
       scope_filter = nil
       tag_slug = nil
       topic_flags = {}
@@ -35,6 +37,11 @@ module Community
         else
           section_slug = match[1]
         end
+        text = text.gsub(match[0], "").strip
+      end
+
+      if (match = text.match(CATEGORY_PATTERN))
+        category_slug = match[1]
         text = text.gsub(match[0], "").strip
       end
 
@@ -81,6 +88,7 @@ module Community
       ServiceResult.success(
         query: text.squish,
         section_slug: section_slug,
+        category_slug: category_slug,
         tag_slug: tag_slug,
         solved_filter: solved_filter,
         locked_filter: topic_flags["locked"] ? "locked" : (topic_flags["unlocked"] ? "unlocked" : nil),
@@ -100,6 +108,7 @@ module Community
         scope_filter: scope_filter,
         poll_filter: has_flags["poll"] ? "poll" : nil,
         noreplies_filter: has_flags["noreplies"] ? "noreplies" : nil,
+        images_filter: has_flags["images"] ? "images" : nil,
         author: author
       )
     end

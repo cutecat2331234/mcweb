@@ -26,9 +26,12 @@ module Community
       parsed_scope = parsed.success? ? parsed.value[:scope_filter] : nil
       parsed_poll = parsed.success? ? parsed.value[:poll_filter] : nil
       parsed_noreplies = parsed.success? ? parsed.value[:noreplies_filter] : nil
+      parsed_images = parsed.success? ? parsed.value[:images_filter] : nil
+      parsed_category = parsed.success? ? parsed.value[:category_slug] : nil
 
       query = parsed_query
       section_slug = params[:section].to_s.presence || parsed_section
+      category_slug = params[:category].to_s.presence || parsed_category
       author = params[:author].to_s.strip.presence || parsed_author
       tag_slug = params[:tag].to_s.strip.presence || parsed_tag
       solved_filter = params[:solved].to_s.presence || parsed_solved
@@ -45,6 +48,7 @@ module Community
       scope_filter = params[:scope].to_s.presence || parsed_scope
       poll_filter = params[:poll].to_s.presence || parsed_poll
       noreplies_filter = params[:noreplies].to_s.presence || parsed_noreplies
+      images_filter = params[:images].to_s.presence || parsed_images
       topics = Community::Topic.none
       posts = Community::Post.none
 
@@ -54,8 +58,9 @@ module Community
         topics = search_topic_base_scope(unlisted_filter: unlisted_filter, archived_filter: archived_filter)
         topics = apply_user_search_scope(topics, mine_filter: mine_filter, scope_filter: scope_filter)
         topics = topics.joins(:section).where(forum_sections: { slug: section_slug }) if section_slug
+        topics = apply_category_filter(topics, category_slug) if category_slug
         topics = topics.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
-        topics = topics.joins(:tags).where(forum_tags: { slug: tag_slug }) if tag_slug
+        topics = apply_tag_filter(topics, tag_slug) if tag_slug
         topics = apply_search_topic_filters(
           topics,
           solved_filter: solved_filter,
@@ -95,8 +100,10 @@ module Community
         posts = Community::Post.where(status: :published).joins(:topic).where(forum_topics: { status: :published, unlisted: false })
         posts = apply_user_search_scope(posts, mine_filter: mine_filter, scope_filter: scope_filter, on_posts: true)
         posts = posts.joins(topic: :section).where(forum_sections: { slug: section_slug }) if section_slug
+        posts = apply_category_filter_on_posts(posts, category_slug) if category_slug
         posts = posts.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
-        posts = posts.joins(topic: :tags).where(forum_tags: { slug: tag_slug }) if tag_slug
+        posts = apply_tag_filter_on_posts(posts, tag_slug) if tag_slug
+        posts = apply_images_filter(posts) if images_filter == "images"
         posts = apply_search_topic_filters_on_posts(
           posts,
           solved_filter: solved_filter,
@@ -142,9 +149,14 @@ module Community
 
       tags = Community::Tag.usable_by(current_user).order(:name).limit(50).map { |tag| { slug: tag.slug, name: tag.name } }
 
+      categories = Community::Category.ordered.map do |category|
+        { slug: category.slug, name: category.name }
+      end
+
       render inertia: "Community/Search/Index", props: {
         query: raw_query,
         section: section_slug,
+        category: category_slug.to_s,
         author: author.to_s,
         tag: tag_slug.to_s,
         solved: solved_filter.to_s,
@@ -161,11 +173,13 @@ module Community
         scope: scope_filter.to_s,
         poll: poll_filter.to_s,
         noreplies: noreplies_filter.to_s,
+        images: images_filter.to_s,
         createdAfter: params[:created_after].to_s,
         createdBefore: params[:created_before].to_s,
         topicSort: params[:topic_sort].to_s.presence || "recent",
         postSort: params[:post_sort].to_s.presence || "recent",
         sections: sections,
+        categories: categories,
         tags: tags,
         topics: serialize_topics(topics),
         posts: posts.map { |post| serialize_search_post(post, query: query) },
@@ -310,6 +324,48 @@ module Community
       current_user&.permission?("forum.topics.lock")
     end
 
+    def apply_category_filter(scope, category_slug)
+      category = Community::Category.find_by(slug: category_slug)
+      return scope.none unless category
+
+      section_ids = Community::Section.where(forum_category_id: category.id).select(:id)
+      scope.where(forum_section_id: section_ids)
+    end
+
+    def apply_category_filter_on_posts(scope, category_slug)
+      category = Community::Category.find_by(slug: category_slug)
+      return scope.none unless category
+
+      section_ids = Community::Section.where(forum_category_id: category.id).select(:id)
+      scope.where(forum_topics: { forum_section_id: section_ids })
+    end
+
+    def apply_tag_filter(scope, tag_slug)
+      tag_ids = resolved_tag_ids(tag_slug)
+      return scope.none if tag_ids.empty?
+
+      scope.joins(:tags).where(forum_tags: { id: tag_ids })
+    end
+
+    def apply_tag_filter_on_posts(scope, tag_slug)
+      tag_ids = resolved_tag_ids(tag_slug)
+      return scope.none if tag_ids.empty?
+
+      scope.joins(topic: :tags).where(forum_tags: { id: tag_ids })
+    end
+
+    def resolved_tag_ids(tag_slug)
+      tag = Community::Tag.resolve_by_slug(tag_slug) || Community::Tag.find_by(slug: tag_slug)
+      return [] unless tag
+
+      canonical = tag.canonical_tag || tag
+      [ canonical.id ] + Community::Tag.where(canonical_tag_id: canonical.id).pluck(:id)
+    end
+
+    def apply_images_filter(scope)
+      scope.where("forum_posts.body LIKE ? OR forum_posts.body LIKE ?", "%![%", "%/rails/active_storage/%")
+    end
+
     def serialize_saved_searches
       return [] unless logged_in?
 
@@ -329,6 +385,7 @@ module Community
       {
         q: search.query.presence,
         section: filters["section"].presence || filters[:section].presence,
+        category: filters["category"].presence || filters[:category].presence,
         author: filters["author"].presence || filters[:author].presence,
         tag: filters["tag"].presence || filters[:tag].presence,
         solved: filters["solved"].presence || filters[:solved].presence,
@@ -345,6 +402,7 @@ module Community
         scope: filters["scope"].presence || filters[:scope].presence,
         poll: filters["poll"].presence || filters[:poll].presence,
         noreplies: filters["noreplies"].presence || filters[:noreplies].presence,
+        images: filters["images"].presence || filters[:images].presence,
         created_after: filters["created_after"].presence || filters[:created_after].presence,
         created_before: filters["created_before"].presence || filters[:created_before].presence,
         topic_sort: filters["topic_sort"].presence || filters[:topic_sort].presence,

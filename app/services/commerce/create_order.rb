@@ -2,12 +2,13 @@
 
 module Commerce
   class CreateOrder < ApplicationService
-    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil, shipping_address: nil, shipping_method: nil, gift_wrap: false)
+    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil, use_store_credit: true, shipping_address: nil, shipping_method: nil, gift_wrap: false)
       @cart = cart
       @user = user
       @notes = notes
       @coupon_code = coupon_code
       @gift_card_code = gift_card_code
+      @use_store_credit = use_store_credit != false
       @shipping_address = shipping_address
       @shipping_method = shipping_method.presence || "standard"
       @gift_wrap = gift_wrap
@@ -110,6 +111,14 @@ module Commerce
           gift_result = Commerce::ApplyGiftCard.call(order: order, code: @gift_card_code)
           unless gift_result.success?
             coupon_error = gift_result.error
+            raise ActiveRecord::Rollback
+          end
+        end
+
+        if @use_store_credit
+          credit_result = Commerce::ApplyStoreCredit.call(order: order, user: @user)
+          unless credit_result.success?
+            coupon_error = credit_result.error
             raise ActiveRecord::Rollback
           end
         end

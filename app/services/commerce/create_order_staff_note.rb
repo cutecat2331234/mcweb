@@ -2,10 +2,11 @@
 
 module Commerce
   class CreateOrderStaffNote < ApplicationService
-    def initialize(actor:, order:, body:)
+    def initialize(actor:, order:, body:, visible_to_customer: false)
       @actor = actor
       @order = order
       @body = body.to_s.strip
+      @visible_to_customer = ActiveModel::Type::Boolean.new.cast(visible_to_customer)
     end
 
     def call
@@ -15,7 +16,8 @@ module Commerce
       note = Commerce::OrderStaffNote.create!(
         order: @order,
         author: @actor,
-        body: @body
+        body: @body,
+        visible_to_customer: @visible_to_customer
       )
 
       ServiceResult.success(note)

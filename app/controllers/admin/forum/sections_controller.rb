@@ -39,6 +39,7 @@ module Admin
             { label: "发帖权限", value: permission_label(@section.permissions["create_topic"]) },
             { label: "回复权限", value: permission_label(@section.permissions["reply"]) },
             { label: "必填标签", value: @section.required_tags.pluck(:name).join("、").presence || "—" },
+            { label: "必填标签组", value: @section.required_tag_groups.pluck(:name).join("、").presence || "—" },
             { label: "允许标签", value: @section.allowed_tags.pluck(:name).join("、").presence || "—" },
             { label: "前缀必填", value: @section.prefix_required? ? "是" : "否" },
             { label: "最低发帖信任等级", value: @section.min_trust_level_create.to_i },
@@ -92,7 +93,7 @@ module Admin
           :create_topic_roles, :reply_roles, :prefixes, :prefix_required, :topic_template,
           :min_trust_level_create, :min_trust_level_reply, :read_only, :color_hex, :icon, :banner_text, :link_url, :link_label,
           :default_notification_level, :seo_title, :seo_description,
-          required_tag_ids: [], allowed_tag_ids: [], default_tag_ids: []
+          required_tag_ids: [], allowed_tag_ids: [], default_tag_ids: [], required_tag_group_ids: []
         )
         prefixes = if permitted[:prefixes].is_a?(String)
                      permitted[:prefixes].lines.map(&:strip).reject(&:blank?)
@@ -102,6 +103,7 @@ module Admin
         required_tag_ids = Array(permitted[:required_tag_ids]).map(&:to_i).reject(&:zero?).uniq
         allowed_tag_ids = Array(permitted[:allowed_tag_ids]).map(&:to_i).reject(&:zero?).uniq
         default_tag_ids = Array(permitted[:default_tag_ids]).map(&:to_i).reject(&:zero?).uniq
+        required_tag_group_ids = Array(permitted[:required_tag_group_ids]).map(&:to_i).reject(&:zero?).uniq
         {
           name: permitted[:name],
           slug: permitted[:slug],
@@ -113,6 +115,7 @@ module Admin
           required_tag_ids: required_tag_ids,
           allowed_tag_ids: allowed_tag_ids,
           default_tag_ids: default_tag_ids,
+          required_tag_group_ids: required_tag_group_ids,
           prefix_required: ActiveModel::Type::Boolean.new.cast(permitted[:prefix_required]),
           topic_template: permitted[:topic_template],
           min_trust_level_create: permitted[:min_trust_level_create].to_i,
@@ -160,6 +163,7 @@ module Admin
             required_tag_ids: Array(section.required_tag_ids).map(&:to_i),
             allowed_tag_ids: Array(section.allowed_tag_ids).map(&:to_i),
             default_tag_ids: Array(section.default_tag_ids).map(&:to_i),
+            required_tag_group_ids: Array(section.required_tag_group_ids).map(&:to_i),
             prefix_required: section.prefix_required?,
             topic_template: section.topic_template || "",
             min_trust_level_create: section.min_trust_level_create.to_i,
@@ -175,6 +179,7 @@ module Admin
             default_notification_level: section.default_notification_level.presence || "watching"
           },
           tags: ::Community::Tag.order(:name).map { |tag| { id: tag.id, name: tag.name } },
+          tagGroups: ::Community::TagGroup.ordered.map { |g| { id: g.id, name: g.name } },
           categories: ::Community::Category.order(:name).map { |c| { id: c.id, name: c.name } },
           parentSections: ::Community::Section.roots.where.not(id: section.id).order(:name).map { |s| { id: s.id, name: s.name } },
           submitUrl: section.persisted? ? admin_forum_section_path(section) : admin_forum_sections_path,

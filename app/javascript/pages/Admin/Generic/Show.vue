@@ -75,6 +75,12 @@ export interface TrustLevelForm {
   levels: Array<{ value: number; label: string }>
 }
 
+export interface StoreCreditForm {
+  action_url: string
+  balance_cents: number
+  balance_label: string
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -90,6 +96,7 @@ const props = defineProps<{
   staffNoteForm?: StaffNoteForm | null
   silenceForm?: SilenceForm | null
   trustLevelForm?: TrustLevelForm | null
+  storeCreditForm?: StoreCreditForm | null
   backUrl: string
 }>()
 
@@ -104,6 +111,12 @@ const warningForm = useForm({
 
 const staffNoteForm = useForm({
   body: '',
+  visible_to_customer: false,
+})
+
+const storeCreditForm = useForm({
+  amount_cents: 0,
+  note: '',
 })
 
 const silenceForm = useForm({
@@ -168,7 +181,15 @@ function submitStaffNote() {
   if (!props.staffNoteForm) return
   staffNoteForm.post(props.staffNoteForm.action_url, {
     preserveScroll: true,
-    onSuccess: () => { staffNoteForm.reset() },
+    onSuccess: () => { staffNoteForm.reset('body'); staffNoteForm.visible_to_customer = false },
+  })
+}
+
+function submitStoreCredit() {
+  if (!props.storeCreditForm) return
+  storeCreditForm.post(props.storeCreditForm.action_url, {
+    preserveScroll: true,
+    onSuccess: () => { storeCreditForm.reset() },
   })
 }
 
@@ -294,12 +315,30 @@ function submitTrustLevel() {
 
   <form v-if="props.staffNoteForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitStaffNote">
     <h2 class="text-sm font-semibold">添加员工备注</h2>
-    <p class="text-xs text-muted-foreground">仅管理员可见，用户无法查看。</p>
+    <p class="text-xs text-muted-foreground">默认仅管理员可见；勾选后买家可在订单页查看。</p>
     <div class="space-y-2">
       <Label>备注内容</Label>
       <Input v-model="staffNoteForm.body" placeholder="内部备注" required />
     </div>
+    <label class="flex items-center gap-2 text-sm">
+      <input v-model="staffNoteForm.visible_to_customer" type="checkbox" class="rounded border" />
+      对买家可见
+    </label>
     <Button type="submit" size="sm" :disabled="staffNoteForm.processing">保存备注</Button>
+  </form>
+
+  <form v-if="props.storeCreditForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitStoreCredit">
+    <h2 class="text-sm font-semibold">调整商店余额</h2>
+    <p class="text-xs text-muted-foreground">当前余额：{{ props.storeCreditForm.balance_label }}</p>
+    <div class="space-y-2">
+      <Label>调整金额（分，正数增加负数扣减）</Label>
+      <Input v-model.number="storeCreditForm.amount_cents" type="number" required />
+    </div>
+    <div class="space-y-2">
+      <Label>备注</Label>
+      <Input v-model="storeCreditForm.note" placeholder="可选" />
+    </div>
+    <Button type="submit" size="sm" :disabled="storeCreditForm.processing">保存余额</Button>
   </form>
 
   <div v-if="props.silenceForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4">

@@ -37,8 +37,8 @@ class Community::HereMentionTest < ActiveSupport::TestCase
   end
 
   test "@here notifies topic participants except author" do
-    assert Notification.exists?(user: @participant, notification_type: "forum.mention")
-    assert_not Notification.exists?(user: @author, notification_type: "forum.mention")
+    assert Notification.exists?(user: @participant, notification_type: "forum.here")
+    assert_not Notification.exists?(user: @author, notification_type: "forum.here")
   end
 end
 

@@ -22,9 +22,11 @@ module Community
       return ServiceResult.success(mentioned: []) if tokens.empty?
 
       mentioned_users = []
+      group_tokens = []
       tokens.each do |token|
         method = GROUP_MENTION_METHODS[token.downcase]
         if method
+          group_tokens << token.downcase
           mentioned_users.concat(send(method).to_a)
         else
           user = User.find_by(username: token)
@@ -33,7 +35,7 @@ module Community
       end
 
       mentioned_users.uniq.each do |user|
-        notify_user!(user)
+        notify_user!(user, group_mention: group_tokens.include?("here"))
       end
 
       ServiceResult.success(mentioned: mentioned_users.map(&:username).uniq)
@@ -57,13 +59,16 @@ module Community
       User.where(id: user_ids.uniq).where.not(id: @author.id)
     end
 
-    def notify_user!(user)
-      return unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.mention")
+    def notify_user!(user, group_mention: false)
+      notification_type = group_mention ? "forum.here" : "forum.mention"
+      return unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: notification_type)
+
+      title = group_mention ? "#{@author.username} 在主题中 @here 提及了你" : "#{@author.username} 在主题中提到了你"
 
       Notification.notify!(
         user: user,
-        notification_type: "forum.mention",
-        title: "#{@author.username} 在主题中提到了你",
+        notification_type: notification_type,
+        title: title,
         body: @body.truncate(120),
         metadata: {
           topic_id: @topic.public_id,
@@ -72,7 +77,7 @@ module Community
         }
       )
 
-      if NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.mention")
+      if NotificationPreference.enabled?(user, channel: "email", notification_type: notification_type)
         MailDeliveryJob.perform_later(
           "Community::ForumMailer",
           "mention",

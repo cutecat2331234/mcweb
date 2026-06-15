@@ -321,6 +321,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.boolean "prefix_required", default: false, null: false
     t.jsonb "prefixes", default: [], null: false
     t.boolean "read_only", default: false, null: false
+    t.jsonb "required_tag_group_ids", default: [], null: false
     t.jsonb "required_tag_ids", default: [], null: false
     t.jsonb "seo", default: {}, null: false
     t.string "slug", null: false
@@ -350,6 +351,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.bigint "user_id", null: false
     t.index ["user_id", "subscribable_type", "subscribable_id"], name: "idx_on_user_id_subscribable_type_subscribable_id_8ef4ba5a1f", unique: true
     t.index ["user_id"], name: "index_forum_subscriptions_on_user_id"
+  end
+
+  create_table "forum_tag_group_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_tag_group_id", null: false
+    t.bigint "forum_tag_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["forum_tag_group_id", "forum_tag_id"], name: "idx_tag_group_membership_unique", unique: true
+    t.index ["forum_tag_group_id"], name: "index_forum_tag_group_memberships_on_forum_tag_group_id"
+    t.index ["forum_tag_id"], name: "index_forum_tag_group_memberships_on_forum_tag_id"
+  end
+
+  create_table "forum_tag_groups", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.boolean "one_per_topic", default: false, null: false
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_forum_tag_groups_on_slug", unique: true
   end
 
   create_table "forum_tags", force: :cascade do |t|
@@ -424,6 +445,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   create_table "forum_topics", force: :cascade do |t|
     t.datetime "archived_at"
     t.bigint "assigned_to_id"
+    t.datetime "auto_archive_at"
     t.datetime "auto_bump_at"
     t.datetime "auto_close_at"
     t.datetime "auto_open_at"
@@ -456,6 +478,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index "to_tsvector('simple'::regconfig, (COALESCE(title, ''::character varying))::text)", name: "index_forum_topics_on_title_tsvector", using: :gin
     t.index ["archived_at"], name: "index_forum_topics_on_archived_at"
     t.index ["assigned_to_id"], name: "index_forum_topics_on_assigned_to_id"
+    t.index ["auto_archive_at"], name: "index_forum_topics_on_auto_archive_at"
     t.index ["auto_bump_at"], name: "index_forum_topics_on_auto_bump_at"
     t.index ["auto_close_at"], name: "index_forum_topics_on_auto_close_at"
     t.index ["auto_open_at"], name: "index_forum_topics_on_auto_open_at"
@@ -829,6 +852,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["code"], name: "index_store_coupons_on_code", unique: true
   end
 
+  create_table "store_credit_transactions", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.integer "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "note"
+    t.bigint "store_order_id"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["actor_id"], name: "index_store_credit_transactions_on_actor_id"
+    t.index ["store_order_id"], name: "index_store_credit_transactions_on_store_order_id"
+    t.index ["user_id"], name: "index_store_credit_transactions_on_user_id"
+  end
+
   create_table "store_fulfillment_attempts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "request_data", default: {}, null: false
@@ -921,6 +957,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "created_at", null: false
     t.bigint "store_order_id", null: false
     t.datetime "updated_at", null: false
+    t.boolean "visible_to_customer", default: false, null: false
     t.index ["author_id"], name: "index_store_order_staff_notes_on_author_id"
     t.index ["store_order_id"], name: "index_store_order_staff_notes_on_store_order_id"
   end
@@ -956,6 +993,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "shipping_method"
     t.string "status", default: "pending", null: false
     t.bigint "store_coupon_id"
+    t.integer "store_credit_amount_cents", default: 0, null: false
     t.bigint "store_gift_card_id"
     t.integer "subtotal_cents", default: 0, null: false
     t.integer "total_cents", default: 0, null: false
@@ -1046,6 +1084,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "store_products", force: :cascade do |t|
     t.boolean "allow_backorder", default: false, null: false
+    t.datetime "available_at"
     t.text "changelog"
     t.string "changelog_notified_version"
     t.integer "compare_at_price_cents"
@@ -1072,13 +1111,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "stock"
     t.bigint "store_category_id"
     t.text "summary"
+    t.datetime "unavailable_at"
     t.datetime "updated_at", null: false
     t.string "version"
     t.integer "view_count", default: 0, null: false
+    t.index ["available_at"], name: "index_store_products_on_available_at"
     t.index ["forum_topic_id"], name: "index_store_products_on_forum_topic_id"
     t.index ["public_id"], name: "index_store_products_on_public_id", unique: true
     t.index ["slug"], name: "index_store_products_on_slug", unique: true
     t.index ["store_category_id"], name: "index_store_products_on_store_category_id"
+    t.index ["unavailable_at"], name: "index_store_products_on_unavailable_at"
   end
 
   create_table "store_refunds", force: :cascade do |t|
@@ -1213,6 +1255,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "recovery_codes_ciphertext"
     t.boolean "require_totp", default: false, null: false
     t.string "status", default: "active", null: false
+    t.integer "store_credit_cents", default: 0, null: false
     t.string "time_zone", default: "Asia/Shanghai", null: false
     t.boolean "totp_enabled", default: false, null: false
     t.string "totp_secret_ciphertext"
@@ -1355,6 +1398,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_staff_notes", "users"
   add_foreign_key "forum_staff_notes", "users", column: "author_id"
   add_foreign_key "forum_subscriptions", "users"
+  add_foreign_key "forum_tag_group_memberships", "forum_tag_groups"
+  add_foreign_key "forum_tag_group_memberships", "forum_tags"
   add_foreign_key "forum_tags", "forum_tags", column: "canonical_tag_id"
   add_foreign_key "forum_topic_invites", "forum_topics"
   add_foreign_key "forum_topic_invites", "users"
@@ -1406,6 +1451,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_cart_items", "store_product_variants"
   add_foreign_key "store_cart_items", "store_products"
   add_foreign_key "store_carts", "users"
+  add_foreign_key "store_credit_transactions", "store_orders"
+  add_foreign_key "store_credit_transactions", "users"
+  add_foreign_key "store_credit_transactions", "users", column: "actor_id"
   add_foreign_key "store_fulfillment_attempts", "store_fulfillments"
   add_foreign_key "store_fulfillments", "store_order_items"
   add_foreign_key "store_fulfillments", "store_orders"

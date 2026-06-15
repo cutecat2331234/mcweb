@@ -118,6 +118,18 @@ module Community
         token
       end
 
+      text = text.gsub(%r{\A(/forum/sections/[\w-]+)\s*\z}i) do |path|
+        token = placeholder_token(placeholders, "ONEBOX")
+        placeholders[token] = section_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
+        token
+      end
+
+      text = text.gsub(%r{\A(/forum/tags/[\w-]+)\s*\z}i) do |path|
+        token = placeholder_token(placeholders, "ONEBOX")
+        placeholders[token] = tag_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
+        token
+      end
+
       text = text.gsub(%r{\A(/forum/users/[\w-]+)\s*\z}i) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = user_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
@@ -162,6 +174,10 @@ module Community
           placeholders[token] = coupon_box
         elsif (gift_card_box = gift_card_onebox_html(url))
           placeholders[token] = gift_card_box
+        elsif (section_box = section_onebox_html(url))
+          placeholders[token] = section_box
+        elsif (tag_box = tag_onebox_html(url))
+          placeholders[token] = tag_box
         else
           preview = Community::FetchLinkPreview.call(url: url)
           if preview.success? && preview.value
@@ -276,6 +292,25 @@ module Community
       %(<aside class="onebox gift-card-onebox"><a href="#{ERB::Util.html_escape(g[:url])}" class="onebox-link"><strong class="onebox-title">礼品卡 #{ERB::Util.html_escape(g[:code])}</strong><span class="onebox-price">余额 #{ERB::Util.html_escape(status)}</span></a></aside>)
     end
 
+    def section_onebox_html(url)
+      result = Community::FetchSectionOnebox.call(url: url)
+      return nil unless result.success? && result.value
+
+      s = result.value
+      desc = s[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(s[:description])}</p>) : ""
+      meta = s[:meta].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(s[:meta])}</p>) : ""
+      %(<aside class="onebox section-onebox"><a href="#{ERB::Util.html_escape(s[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(s[:name])}</strong>#{desc}#{meta}</a></aside>)
+    end
+
+    def tag_onebox_html(url)
+      result = Community::FetchTagOnebox.call(url: url)
+      return nil unless result.success? && result.value
+
+      t = result.value
+      desc = t[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(t[:description])}</p>) : ""
+      %(<aside class="onebox tag-onebox"><a href="#{ERB::Util.html_escape(t[:url])}" class="onebox-link"><strong class="onebox-title">##{ERB::Util.html_escape(t[:name])}</strong>#{desc}<span class="onebox-price">#{t[:topics_count]} 主题</span></a></aside>)
+    end
+
     def markdown_to_html(text)
       lines = text.split(/\r\n|\r|\n/)
       html_lines = []
@@ -376,6 +411,10 @@ module Community
           coupon_box
         elsif (gift_card_box = gift_card_onebox_html(url))
           gift_card_box
+        elsif (section_box = section_onebox_html(url))
+          section_box
+        elsif (tag_box = tag_onebox_html(url))
+          tag_box
         else
           %(<a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener">#{ERB::Util.html_escape(label)}</a>)
         end

@@ -41,11 +41,22 @@ module Community
         Community::TopicTag.find_or_create_by!(topic: @topic, tag: tag)
       end
 
+      tag_ids = tags.map(&:id)
+
       required_result = Community::ValidateSectionRequiredTags.call(
         section: @topic.section,
-        tag_ids: tags.map(&:id)
+        tag_ids: tag_ids
       )
       return required_result if required_result.failure?
+
+      group_result = Community::ValidateTagGroups.call(tag_ids: tag_ids)
+      return group_result if group_result.failure?
+
+      section_group_result = Community::ValidateSectionTagGroups.call(
+        section: @topic.section,
+        tag_ids: tag_ids
+      )
+      return section_group_result if section_group_result.failure?
 
       ServiceResult.success(tags: tags)
     end

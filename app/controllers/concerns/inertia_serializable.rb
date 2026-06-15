@@ -152,6 +152,7 @@ module InertiaSerializable
       auto_close_at: topic.auto_close_at ? l(topic.auto_close_at, format: :short) : nil,
       auto_open_at: topic.auto_open_at ? l(topic.auto_open_at, format: :short) : nil,
       auto_bump_at: topic.auto_bump_at ? l(topic.auto_bump_at, format: :short) : nil,
+      auto_archive_at: topic.auto_archive_at ? l(topic.auto_archive_at, format: :short) : nil,
       solved_post_id: topic.solved_post_id,
       assigned_username: topic.assigned_to&.username,
       assigned_url: topic.assigned_to ? forum_user_path(topic.assigned_to.username) : nil,
@@ -673,6 +674,14 @@ module InertiaSerializable
       coupon_code: order.coupon&.code,
       gift_card_code: order.gift_card&.code,
       gift_card_amount_label: order.gift_card_amount_cents.positive? ? format_money(order.gift_card_amount_cents, order.currency) : nil,
+      store_credit_amount_label: order.store_credit_amount_cents.positive? ? format_money(order.store_credit_amount_cents, order.currency) : nil,
+      customer_notes: order.staff_notes.where(visible_to_customer: true).recent.map do |note|
+        {
+          body: note.body,
+          author: note.author.username,
+          created_at: l(note.created_at, format: :short)
+        }
+      end,
       gift_wrap: order.gift_wrap?,
       gift_wrap_label: order.gift_wrap_cents.positive? ? format_money(order.gift_wrap_cents, order.currency) : nil,
       total_label: format_money(order.total_cents, order.currency),

@@ -39,6 +39,8 @@ const props = defineProps<{
     coupon_code?: string | null
     gift_card_code?: string | null
     gift_card_amount_label?: string | null
+    store_credit_amount_label?: string | null
+    customer_notes?: Array<{ body: string; author: string; created_at: string }>
     gift_wrap_label?: string | null
     total_label: string
     receipt_url: string
@@ -251,6 +253,16 @@ function refreshDownload(url: string) {
     </Table>
   </div>
 
+  <div v-if="order.customer_notes?.length" class="mb-6 rounded-lg border p-4">
+    <h2 class="mb-3 text-sm font-semibold">商家留言</h2>
+    <ul class="space-y-2 text-sm">
+      <li v-for="(note, index) in order.customer_notes" :key="index">
+        <p>{{ note.body }}</p>
+        <p class="mt-1 text-xs text-muted-foreground">{{ note.author }} · {{ note.created_at }}</p>
+      </li>
+    </ul>
+  </div>
+
   <div v-if="order.fulfillments.length" class="mb-6 rounded-lg border p-4">
     <h2 class="mb-3 text-sm font-semibold">发货记录</h2>
     <ul class="space-y-2 text-sm">
@@ -284,6 +296,7 @@ function refreshDownload(url: string) {
   <p v-if="order.gift_wrap_label" class="mb-1 text-sm text-muted-foreground">礼品包装：{{ order.gift_wrap_label }}</p>
   <p v-if="order.discount_label" class="mb-1 text-sm text-green-700">优惠{{ order.coupon_code ? ` (${order.coupon_code})` : '' }}：−{{ order.discount_label }}</p>
   <p v-if="order.gift_card_amount_label" class="mb-1 text-sm text-green-700">礼品卡{{ order.gift_card_code ? ` (${order.gift_card_code})` : '' }}：−{{ order.gift_card_amount_label }}</p>
+  <p v-if="order.store_credit_amount_label" class="mb-1 text-sm text-green-700">商店余额抵扣：−{{ order.store_credit_amount_label }}</p>
   <p class="mb-6 font-medium">合计：{{ order.total_label }}</p>
 
   <form v-if="order.can_request_refund" class="mb-6 max-w-md space-y-3 rounded-lg border p-4" @submit.prevent="refundForm.post(order.refund_url)">

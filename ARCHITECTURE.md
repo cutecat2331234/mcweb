@@ -983,3 +983,18 @@ app/
 | 成员 TL 筛选尊重覆盖 | `MembersController#apply_trust_level_filter` |
 | 商城最新商品 RSS | `store/latest.rss` |
 | 收货地址编辑 | `shipping_addresses#update` + `UpsertShippingAddress` |
+
+### 第五十七轮（标签组、商店余额、定时归档与商城运营）
+
+| 功能 | 实现 |
+|------|------|
+| 标签组（XenForo Tag Groups） | `TagGroup` + `one_per_topic` + 分区必填组 |
+| 商店余额钱包 | `store_credit_cents` + 结账抵扣 + 管理端调整 |
+| 客户可见订单备注 | `visible_to_customer` + 订单页展示 |
+| 主题定时归档 | `auto_archive_at` + `ArchiveScheduledTopicsJob` |
+| 警告积分后果 | `CheckWarningRestrictions` 限制发帖/链接/私信 |
+| 搜索 `category:` / `has:images` | `ParseSearchQuery` + 同义词标签解析 |
+| 分区/标签 Onebox | `FetchSectionOnebox` / `FetchTagOnebox` |
+| 商品定时上架/下架 | `available_at` / `unavailable_at` + Job |
+| `@here` 通知偏好 | `forum.here` + `ProcessMentions` 门控 |
+| 管理端警告列表 | `admin/forum/warnings#index` |

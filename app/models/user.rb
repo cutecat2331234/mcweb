@@ -18,6 +18,7 @@ class User < ApplicationRecord
   has_many :user_silences, class_name: "Community::UserSilence", dependent: :destroy
     has_many :forum_saved_searches, class_name: "Community::SavedSearch", dependent: :destroy
     has_many :shipping_addresses, class_name: "Commerce::ShippingAddress", dependent: :destroy
+    has_many :store_credit_transactions, class_name: "Commerce::StoreCreditTransaction", dependent: :destroy
 
   enum :status, { active: "active", banned: "banned", deleted: "deleted" }, validate: true
 

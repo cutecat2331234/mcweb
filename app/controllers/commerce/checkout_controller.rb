@@ -19,6 +19,7 @@ module Commerce
       saved_addresses = current_user.shipping_addresses.ordered.map { |address| serialize_saved_address(address) }
       gift_wrap_cents = SiteSetting.get("store.gift_wrap_cents", "500").to_i
       min_checkout_cents = SiteSetting.get("store.min_checkout_subtotal_cents", "0").to_i
+      store_credit_balance = current_user.store_credit_cents.to_i
 
       render inertia: "Commerce/Checkout/Show", props: {
         items: items.map { |item|
@@ -48,6 +49,9 @@ module Commerce
         minCheckoutCents: min_checkout_cents,
         minCheckoutLabel: min_checkout_cents.positive? ? format_money(min_checkout_cents, currency) : nil,
         belowMinCheckout: min_checkout_cents.positive? && subtotal_cents < min_checkout_cents,
+        storeCreditBalanceCents: store_credit_balance,
+        storeCreditBalanceLabel: store_credit_balance.positive? ? format_money(store_credit_balance, currency) : nil,
+        previewStoreCreditUrl: preview_store_credit_store_checkout_path,
         **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon, shipping_method_code: params[:shipping_method])
       }
     end
@@ -178,6 +182,60 @@ module Commerce
           total_cents: result.value[:total_cents],
           balance_cents: result.value[:balance_cents],
           gift_card_amount_label: format_money(result.value[:gift_card_amount_cents], currency),
+          total_label: format_money(result.value[:total_cents], currency)
+        }
+      else
+        render json: { error: service_error_message(result) }, status: :unprocessable_entity
+      end
+    end
+
+    def preview_store_credit
+      cart = Commerce::Cart.find_by(user: current_user)
+      subtotal_cents = cart&.subtotal_cents.to_i
+      cart_items = cart&.items&.includes(:product) || []
+      currency = cart_items.first&.product&.currency || "CNY"
+      discount_cents = 0
+      shipping_cents = shipping_cents_for_preview(subtotal_cents)
+      gift_card_amount_cents = 0
+
+      if params[:coupon_code].present?
+        preview = Commerce::PreviewCoupon.call(
+          subtotal_cents: subtotal_cents,
+          code: params[:coupon_code],
+          cart_items: cart_items,
+          user: current_user
+        )
+        if preview.success?
+          discount_cents = preview.value[:discount_cents]
+          shipping_cents = preview.value[:shipping_cents].to_i
+        end
+      end
+
+      if params[:gift_card_code].present?
+        gift_preview = Commerce::PreviewGiftCard.call(
+          subtotal_cents: subtotal_cents,
+          code: params[:gift_card_code],
+          discount_cents: discount_cents,
+          shipping_cents: shipping_cents
+        )
+        gift_card_amount_cents = gift_preview.success? ? gift_preview.value[:gift_card_amount_cents] : 0
+      end
+
+      result = Commerce::PreviewStoreCredit.call(
+        user: current_user,
+        subtotal_cents: subtotal_cents,
+        discount_cents: discount_cents,
+        shipping_cents: shipping_cents,
+        gift_card_amount_cents: gift_card_amount_cents
+      )
+
+      if result.success?
+        render json: {
+          balance_cents: result.value[:balance_cents],
+          store_credit_amount_cents: result.value[:store_credit_amount_cents],
+          total_cents: result.value[:total_cents],
+          balance_label: format_money(result.value[:balance_cents], currency),
+          store_credit_amount_label: format_money(result.value[:store_credit_amount_cents], currency),
           total_label: format_money(result.value[:total_cents], currency)
         }
       else

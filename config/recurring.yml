@@ -41,6 +41,10 @@ production:
     class: Community::BumpScheduledTopicsJob
     queue: default
     schedule: every 5 minutes
+  archive_scheduled_topics:
+    class: Community::ArchiveScheduledTopicsJob
+    queue: default
+    schedule: every 5 minutes
   bookmark_reminders:
     class: Community::BookmarkReminderJob
     queue: notifications
@@ -57,3 +61,7 @@ production:
     class: Commerce::GiftCardExpiryReminderJob
     queue: mailers
     schedule: at 9am every day
+  activate_scheduled_products:
+    class: Commerce::ActivateScheduledProductsJob
+    queue: maintenance
+    schedule: every 5 minutes

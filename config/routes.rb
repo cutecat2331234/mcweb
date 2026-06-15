@@ -33,6 +33,7 @@ Rails.application.routes.draw do
         post :silence
         post :unsilence
         post :set_trust_level
+        post :adjust_store_credit
       end
     end
     resources :roles, only: %i[index show]
@@ -46,6 +47,8 @@ Rails.application.routes.draw do
       resources :censored_words, only: %i[index create destroy]
       resources :badges, only: %i[index new create edit update destroy]
       resources :tags
+      resources :tag_groups
+      resources :warnings, only: %i[index]
       resources :canned_responses
     end
     namespace :store do
@@ -139,6 +142,7 @@ Rails.application.routes.draw do
         patch :auto_close, action: :update_auto_close
         patch :auto_open, action: :update_auto_open
         patch :auto_bump, action: :update_auto_bump
+        patch :auto_archive, action: :update_auto_archive
         post :mark_unread
         post :subscription, action: :toggle_subscription
         post :mute, action: :toggle_mute
@@ -289,6 +293,7 @@ Rails.application.routes.draw do
     resource :checkout, only: %i[show create], controller: "checkout" do
       post :preview_coupon, on: :member
       post :preview_gift_card, on: :member
+      post :preview_store_credit, on: :member
     end
     get "coupons/:code", to: "coupons#show", as: :coupon
     post "coupons/:code/apply", to: "coupons#apply", as: :apply_coupon

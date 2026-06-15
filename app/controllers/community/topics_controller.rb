@@ -5,9 +5,9 @@ module Community
     include Community::TopicVisibility
     include Community::TopicListPreloadable
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
 
     def show
       @topic.record_view!
@@ -412,6 +412,16 @@ module Community
       redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动提升。" : "自动提升已取消。"
     rescue ArgumentError
       redirect_to forum_topic_path(@topic), alert: "无效的提升时间。"
+    end
+
+    def update_auto_archive
+      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+
+      at = params[:auto_archive_at].present? ? Time.zone.parse(params[:auto_archive_at].to_s) : nil
+      @topic.update!(auto_archive_at: at)
+      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动归档。" : "自动归档已取消。"
+    rescue ArgumentError
+      redirect_to forum_topic_path(@topic), alert: "无效的归档时间。"
     end
 
     def mark_unread

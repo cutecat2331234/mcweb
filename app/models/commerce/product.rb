@@ -37,7 +37,12 @@ module Commerce
       ((compare_at_price_cents - price_cents).to_f / compare_at_price_cents * 100).round
     end
 
-    scope :available, -> { where(status: :active) }
+    scope :available, -> {
+      now = Time.current
+      where(status: :active)
+        .where("available_at IS NULL OR available_at <= ?", now)
+        .where("unavailable_at IS NULL OR unavailable_at > ?", now)
+    }
 
     scope :with_stock, -> {
       where(

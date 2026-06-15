@@ -49,6 +49,7 @@ module Commerce
       if newly_paid && order_id
         order = Commerce::Order.find(order_id)
         Commerce::DebitGiftCard.call(order: order)
+        Commerce::DebitStoreCredit.call(order: order)
         MailDeliveryJob.perform_later("Commerce::OrderMailer", "payment_confirmed", "deliver_now", args: [ order_id ])
         Commerce::NotifyOrderEvent.call(
           user: order.user,

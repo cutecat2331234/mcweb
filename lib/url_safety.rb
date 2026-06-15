@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "ipaddr"
+require "net/http"
 require "uri"
 
 module UrlSafety
@@ -40,6 +41,30 @@ module UrlSafety
     addresses.all? { |address| public_ip?(address) }
   rescue URI::InvalidURIError, SocketError
     false
+  end
+
+  def safe_http_get(uri, open_timeout: 5, read_timeout: 5, headers: {})
+    return nil unless uri.is_a?(URI::HTTP) && uri.host.present?
+
+    host = uri.host.downcase.delete_prefix("[").delete_suffix("]")
+    return nil if BLOCKED_HOSTS.include?(host)
+
+    addresses = resolved_addresses(host)
+    return nil if addresses.empty?
+    return nil unless addresses.all? { |address| public_ip?(address) }
+
+    http = Net::HTTP.new(uri.host, uri.port)
+    http.ipaddr = addresses.first.to_s
+    http.use_ssl = uri.scheme == "https"
+    http.open_timeout = open_timeout
+    http.read_timeout = read_timeout
+
+    request = Net::HTTP::Get.new(uri)
+    headers.each { |key, value| request[key] = value }
+
+    http.request(request)
+  rescue StandardError
+    nil
   end
 
   def resolved_addresses(host)

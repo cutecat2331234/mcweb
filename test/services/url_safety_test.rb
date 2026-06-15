@@ -47,6 +47,11 @@ class UrlSafetyTest < ActiveSupport::TestCase
     assert UrlSafety.safe_image_src?("/rails/active_storage/blobs/abc/image.png")
     assert_not UrlSafety.safe_image_src?("javascript:alert(1)")
   end
+
+  test "safe_http_get returns nil for blocked hosts" do
+    uri = URI.parse("http://127.0.0.1/secret")
+    assert_nil UrlSafety.safe_http_get(uri)
+  end
 end
 
 class Community::FetchLinkPreviewTest < ActiveSupport::TestCase

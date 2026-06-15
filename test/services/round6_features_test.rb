@@ -314,6 +314,40 @@ class Community::HiddenTopicNotificationDisplayTest < ActionDispatch::Integratio
   end
 end
 
+class Community::HiddenTopicEnumerationTest < ActionDispatch::IntegrationTest
+  setup do
+    @author = create_user
+    @other = create_user(username: "hidden_enum_user")
+    category = Community::Category.find_or_create_by!(slug: "enum-hidden-cat") { |c| c.name = "Enum Hidden" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "enum-hidden-sec") do |s|
+      s.name = "Enum Hidden Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @author,
+      section: section,
+      title: "Hidden enum topic",
+      body: "Opening",
+      ip_address: "127.0.0.1"
+    ).value
+    @topic.update!(status: "hidden")
+  end
+
+  test "create post on hidden topic returns not found for other users" do
+    sign_in_as(@other)
+    post forum_posts_path, params: { post: { topic_id: @topic.public_id, body: "probe" } }
+
+    assert_response :not_found
+  end
+
+  test "reply draft on hidden topic returns not found for other users" do
+    sign_in_as(@other)
+    patch forum_topic_reply_draft_path(@topic), params: { body: "probe" }
+
+    assert_response :not_found
+  end
+end
+
 class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
   setup do
     @author = create_user

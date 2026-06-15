@@ -43,6 +43,7 @@ module Community
         next if topic.nil? || topic.status != "published"
         next if topic.unlisted?
         next if blocked_user_ids.include?(topic.user_id)
+        next unless Community::PostAccess.readable?(post: post, user: current_user)
 
         {
           id: post.id,

@@ -34,8 +34,19 @@ module Commerce
       nil
     end
 
-    def applicable_amount_cents(order_total_cents)
-      [ balance_cents, order_total_cents ].min
+    def applicable_amount_cents(order_total_cents, excluding_order: nil)
+      available = available_balance_cents(excluding_order: excluding_order)
+      [ available, order_total_cents ].min
+    end
+
+    def available_balance_cents(excluding_order: nil)
+      balance_cents - pending_reserved_cents(excluding_order: excluding_order)
+    end
+
+    def pending_reserved_cents(excluding_order: nil)
+      scope = orders.where(status: "pending")
+      scope = scope.where.not(id: excluding_order.id) if excluding_order&.persisted?
+      scope.sum(:gift_card_amount_cents)
     end
 
     private

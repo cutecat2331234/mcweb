@@ -18,7 +18,7 @@ module Commerce
 
       payable = [ @subtotal_cents - @discount_cents + @shipping_cents, 0 ].max
       amount = card.applicable_amount_cents(payable)
-      return ServiceResult.failure(error: "当前订单无需使用礼品卡。") unless amount.positive?
+      return ServiceResult.failure(error: "礼品卡余额不足。") unless amount.positive?
 
       ServiceResult.success(
         code: card.code,

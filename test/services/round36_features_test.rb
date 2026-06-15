@@ -131,6 +131,18 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
     assert result.failure?
     assert_match(/过期/, result.error.to_s)
   end
+
+  test "prevents applying same gift card to multiple pending orders" do
+    first = Commerce::CreateOrder.call(cart: @cart, user: @user, gift_card_code: @gift_card.code)
+    assert first.success?
+
+    cart2 = Commerce::Cart.create!(user: @user)
+    Commerce::CartItem.create!(cart: cart2, product: @product, quantity: 1)
+    second = Commerce::CreateOrder.call(cart: cart2, user: @user, gift_card_code: @gift_card.code)
+
+    assert second.failure?
+    assert_match(/余额不足/, second.error.to_s)
+  end
 end
 
 class Commerce::NewProductQuestionEmailTest < ActionMailer::TestCase

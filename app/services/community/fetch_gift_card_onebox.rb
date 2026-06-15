@@ -19,24 +19,10 @@ module Community
       match = path.match(GIFT_CARD_PATH)
       return ServiceResult.success(nil) unless match
 
-      card = Commerce::GiftCard.find_by(code: match[1].upcase)
-      return ServiceResult.success(nil) unless card
-
-      ServiceResult.success(
-        code: card.code,
-        balance_label: format_money(card.balance_cents, card.currency),
-        redeemable: card.redeemable?,
-        url: "/store/gift_cards/#{card.code}"
-      )
+      # Gift card codes and balances must not be exposed in public post oneboxes.
+      ServiceResult.success(nil)
     rescue URI::InvalidURIError
       ServiceResult.success(nil)
-    end
-
-    private
-
-    def format_money(cents, currency)
-      unit = currency == "CNY" ? "¥" : "$"
-      ActionController::Base.helpers.number_to_currency(cents / 100.0, unit: unit)
     end
   end
 end

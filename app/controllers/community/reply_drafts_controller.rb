@@ -2,6 +2,8 @@
 
 module Community
   class ReplyDraftsController < ApplicationController
+    include Community::TopicVisibility
+
     before_action :require_login
     before_action :set_topic
 
@@ -28,6 +30,7 @@ module Community
 
     def set_topic
       @topic = Community::Topic.find_by!(public_id: params[:topic_id])
+      ensure_topic_visible!(@topic)
     end
   end
 end

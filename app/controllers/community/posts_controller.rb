@@ -2,6 +2,8 @@
 
 module Community
   class PostsController < ApplicationController
+    include Community::TopicVisibility
+
     before_action :require_login, except: %i[raw edits]
     before_action :set_topic, only: :create
     before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit raw restore fork_topic]
@@ -174,6 +176,7 @@ module Community
     def set_topic
       topic_id = params[:topic_id].presence || params.dig(:post, :topic_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
+      ensure_topic_visible!(@topic)
     end
 
     def set_post

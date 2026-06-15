@@ -36,9 +36,12 @@ module Community
       return nil unless UrlSafety.public_http_url?(@url)
 
       uri = URI.parse(@url)
-      response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: TIMEOUT, read_timeout: TIMEOUT) do |http|
-        http.get(uri.request_uri, { "User-Agent" => "McWebBot/1.0" })
-      end
+      response = UrlSafety.safe_http_get(
+        uri,
+        open_timeout: TIMEOUT,
+        read_timeout: TIMEOUT,
+        headers: { "User-Agent" => "McWebBot/1.0" }
+      )
       return nil unless response.is_a?(Net::HTTPSuccess)
 
       body = response.body.to_s.byteslice(0, MAX_BODY)

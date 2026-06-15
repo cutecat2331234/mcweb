@@ -39,3 +39,39 @@ class SafeRedirectTest < ActiveSupport::TestCase
     assert_equal "/fallback", tester.send(:safe_referer_path, fallback: "/fallback")
   end
 end
+
+class StoreReturnLocationTest < ActiveSupport::TestCase
+  Controller = Class.new do
+    include SafeRedirect
+
+    attr_reader :request, :session
+
+    def initialize(fullpath)
+      @request = Struct.new(:fullpath, :get?, :xhr?).new(fullpath, true, false)
+      @session = {}
+    end
+
+    def store_return_location
+      return unless request.get? && !request.xhr?
+
+      path = safe_local_redirect_path(request.fullpath, fallback: nil)
+      session[:return_to] = path if path.present?
+    end
+  end
+
+  test "does not store protocol-relative paths" do
+    controller = Controller.new("//evil.com")
+
+    controller.store_return_location
+
+    assert_nil controller.session[:return_to]
+  end
+
+  test "stores safe relative paths" do
+    controller = Controller.new("/forum/topics/abc")
+
+    controller.store_return_location
+
+    assert_equal "/forum/topics/abc", controller.session[:return_to]
+  end
+end

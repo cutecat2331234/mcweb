@@ -46,7 +46,7 @@ module Community
         url: @url,
         title: meta_content(body, "og:title") || meta_content(body, "title") || uri.host,
         description: meta_content(body, "og:description") || meta_content(body, "description"),
-        image_url: meta_content(body, "og:image")
+        image_url: safe_preview_image_url(meta_content(body, "og:image"))
       }
     end
 
@@ -58,6 +58,11 @@ module Community
       elsif property == "title" && (match = html.match(/<title[^>]*>([^<]+)<\/title>/i))
         CGI.unescapeHTML(match[1].strip)
       end
+    end
+
+    def safe_preview_image_url(url)
+      src = url.to_s.strip
+      UrlSafety.http_https_url?(src) ? src : nil
     end
   end
 end

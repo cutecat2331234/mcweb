@@ -98,8 +98,8 @@ module Community
         token = placeholder_token(placeholders, "IMG")
         alt = Regexp.last_match(1)
         url = Regexp.last_match(2)
-        next Regexp.last_match(0) unless url.start_with?("http://", "https://", "/rails/active_storage/")
-        placeholders[token] = %(<img src="#{ERB::Util.html_escape(url)}" alt="#{ERB::Util.html_escape(alt)}" loading="lazy" class="post-image" />)
+        next Regexp.last_match(0) unless UrlSafety.safe_image_src?(url)
+        placeholders[token] = safe_onebox_image_html(url, "post-image", alt: alt)
         token
       end
 
@@ -167,12 +167,7 @@ module Community
           if preview.success? && preview.value
             p = preview.value
             image_url = p[:image_url].to_s.strip
-            img =
-              if UrlSafety.http_https_url?(image_url)
-                %(<img src="#{ERB::Util.html_escape(image_url)}" alt="" class="onebox-image" loading="lazy" />)
-              else
-                ""
-              end
+            img = safe_onebox_image_html(image_url, "onebox-image")
             desc = p[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(p[:description].to_s.truncate(200))}</p>) : ""
             placeholders[token] = %(<aside class="onebox"><a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener" class="onebox-link">#{img}<strong class="onebox-title">#{ERB::Util.html_escape(p[:title].to_s)}</strong>#{desc}</a></aside>)
           else
@@ -224,6 +219,14 @@ module Community
       "MCWEB#{prefix}#{placeholders.size}END"
     end
 
+    def safe_onebox_image_html(url, css_class, alt: "")
+      src = url.to_s.strip
+      return "" unless UrlSafety.safe_image_src?(src)
+
+      alt_attr = alt.present? ? %( alt="#{ERB::Util.html_escape(alt)}") : %( alt="")
+      %(<img src="#{ERB::Util.html_escape(src)}"#{alt_attr} class="#{css_class}" loading="lazy" />)
+    end
+
     def video_embed_html(url)
       case url
       when %r{\Ahttps?://(?:www\.)?youtube\.com/watch\?v=([\w-]+)}i,
@@ -241,7 +244,7 @@ module Community
       return nil unless result.success? && result.value
 
       p = result.value
-      img = p[:image_url].present? ? %(<img src="#{ERB::Util.html_escape(p[:image_url])}" alt="" class="onebox-image product-onebox-image" loading="lazy" />) : ""
+      img = safe_onebox_image_html(p[:image_url], "onebox-image product-onebox-image")
       summary = p[:summary].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(p[:summary].to_s.truncate(120))}</p>) : ""
       %(<aside class="onebox product-onebox"><a href="#{ERB::Util.html_escape(p[:url])}" class="onebox-link">#{img}<strong class="onebox-title">#{ERB::Util.html_escape(p[:name])}</strong>#{summary}<span class="onebox-price">#{ERB::Util.html_escape(p[:price_label])}</span></a></aside>)
     end
@@ -260,7 +263,7 @@ module Community
       return nil unless result.success? && result.value
 
       u = result.value
-      avatar = u[:avatar_url].present? ? %(<img src="#{ERB::Util.html_escape(u[:avatar_url])}" alt="" class="onebox-image user-onebox-avatar" loading="lazy" />) : ""
+      avatar = safe_onebox_image_html(u[:avatar_url], "onebox-image user-onebox-avatar")
       meta = [ u[:trust_name], "#{u[:posts_count]} 帖" ].join(" · ")
       %(<aside class="onebox user-onebox"><a href="#{ERB::Util.html_escape(u[:url])}" class="onebox-link">#{avatar}<strong class="onebox-title">#{ERB::Util.html_escape(u[:display_name])}</strong><p class="onebox-desc">@#{ERB::Util.html_escape(u[:username])} · #{ERB::Util.html_escape(meta)}</p></a></aside>)
     end

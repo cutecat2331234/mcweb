@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- `UrlSafety.safe_image_src?` 统一校验帖子/onebox 图片 URL，修复商品 onebox 与头像的 XSS 风险
+- `store_return_location` 写入 session 前过滤协议相对路径等不安全跳转
+- `FetchLinkPreview` 缓存预览图前过滤非 http/https URL
+- Connector API 认证失败显式 `false` 终止 filter chain
+- 移除重复的 `ostruct` gem，消除测试中的常量重复加载警告
+
+### Previously
+
 - 新增 `SafeRedirect`，修复购物车 `referer` 与登录 `return_to` 的开放重定向
 - 论坛 onebox 预览图仅允许 `http/https`，拒绝 `javascript:` 等危险 scheme
 - `FetchLinkPreview` 发起 HTTP 前二次校验 URL，降低 DNS rebinding 风险

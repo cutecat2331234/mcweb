@@ -208,7 +208,6 @@ GEM
       racc (~> 1.4)
     nokogiri (1.19.3-x86_64-linux-musl)
       racc (~> 1.4)
-    ostruct (0.6.1)
     pagy (9.4.0)
     parallel (2.1.0)
     parser (3.3.11.1)
@@ -436,7 +435,6 @@ DEPENDENCIES
   minitest (~> 5.25)
   minitest-reporters
   mission_control-jobs (~> 1.0)
-  ostruct
   pagy (~> 9.3)
   pg (~> 1.1)
   prawn (~> 2.5)

@@ -82,7 +82,10 @@ module Authentication
   alias_method :sign_out_user, :sign_out
 
   def store_return_location
-    session[:return_to] = request.fullpath if request.get? && !request.xhr?
+    return unless request.get? && !request.xhr?
+
+    path = safe_local_redirect_path(request.fullpath, fallback: nil)
+    session[:return_to] = path if path.present?
   end
 
   def secure_session_cookies?

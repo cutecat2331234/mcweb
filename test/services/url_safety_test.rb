@@ -39,6 +39,12 @@ class UrlSafetyTest < ActiveSupport::TestCase
     assert_not UrlSafety.http_https_url?("data:text/html,<script>alert(1)</script>")
     assert_not UrlSafety.http_https_url?("//evil.com/image.png")
   end
+
+  test "safe_image_src allows active storage paths and https urls" do
+    assert UrlSafety.safe_image_src?("https://cdn.example.com/image.png")
+    assert UrlSafety.safe_image_src?("/rails/active_storage/blobs/abc/image.png")
+    assert_not UrlSafety.safe_image_src?("javascript:alert(1)")
+  end
 end
 
 class Community::FetchLinkPreviewTest < ActiveSupport::TestCase
@@ -66,6 +72,24 @@ class Community::FormatPostBodyOneboxSafetyTest < ActiveSupport::TestCase
     Rails.cache.write("forum/link_preview/#{Digest::SHA256.hexdigest('https://example.com')}", preview)
 
     result = Community::FormatPostBody.call(body: "https://example.com")
+    assert result.success?
+    assert_not_includes result.value, "javascript:"
+    assert_not_includes result.value, "<img"
+  end
+
+  test "product onebox omits unsafe image urls" do
+    product = Commerce::Product.create!(
+      public_id: "prod_xss_test",
+      name: "XSS Product",
+      slug: "xss-product-#{SecureRandom.hex(4)}",
+      product_type: "virtual",
+      price_cents: 100,
+      currency: "CNY",
+      status: "active",
+      image_url: "javascript:alert(1)"
+    )
+
+    result = Community::FormatPostBody.call(body: "/store/products/#{product.public_id}")
     assert result.success?
     assert_not_includes result.value, "javascript:"
     assert_not_includes result.value, "<img"

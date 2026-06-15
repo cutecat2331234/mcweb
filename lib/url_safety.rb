@@ -16,6 +16,14 @@ module UrlSafety
     false
   end
 
+  def safe_image_src?(url)
+    location = url.to_s.strip
+    return false if location.blank?
+    return true if location.start_with?("/rails/active_storage/")
+
+    http_https_url?(location)
+  end
+
   def public_http_url?(url)
     uri = URI.parse(url.to_s.strip)
     return false unless uri.is_a?(URI::HTTP) && uri.host.present?

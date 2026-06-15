@@ -1419,3 +1419,19 @@ app/
 | 帖子书签提醒列 | 书签页帖子表显示提醒时间 |
 | 商城批量订单 | `BulkUpdateOrders` 批量取消待支付/标记发货完成 |
 | 摘要类型扩展 | `SendForumDigest` 含 `forum.quote`、`forum.topic_solved` |
+
+### 第九十五轮（主题邀请邮件、投票关闭通知、帖子徽章日期、商城订单增强）
+
+| 功能 | 实现 |
+|------|------|
+| 主题邀请邮件 | `ForumMailer#topic_invite` + `NotifyTopicInvite` 双通道 |
+| 投票关闭通知 | `FinalizePollClosed` + `NotifyPollClosed` + small-action 帖 |
+| 过期投票任务 | `CloseExpiredPollsJob` 通知 + 小操作帖（幂等） |
+| 手动关闭投票 | `ClosePoll` 调用 `FinalizePollClosed` |
+| 投票关闭偏好 | `forum.poll_closed` + `PreferencesController` |
+| 帖子内联徽章日期 | `serialize_user_badges` `granted_at` + `Topics/Show.vue` |
+| 管理订单状态标签 | `statusTabs` + `ORDER_STATUS_LABELS` 中文显示 |
+| 批量标记已支付 | `BulkUpdateOrders#mark_paid` |
+| 搜索排除词芯片 | `excludeTerms` props + 红色芯片展示 |
+| 保存搜索排除标签 | `SavedSearchFilterSummary` 排除词 chips |
+| 订单导出筛选修复 | `export` 尊重 `q`/`status` 参数 |

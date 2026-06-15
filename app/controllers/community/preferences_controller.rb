@@ -23,6 +23,7 @@ module Community
       forum.user_warning
       forum.topic_invite
       forum.topic_assigned
+      forum.poll_closed
       forum.here
     ].freeze
 
@@ -108,6 +109,7 @@ module Community
         "forum.user_warning" => "社区警告",
         "forum.topic_invite" => "主题邀请关注",
         "forum.topic_assigned" => "主题指派",
+        "forum.poll_closed" => "投票关闭",
         "forum.here" => "@here 提及"
       }[type] || type.humanize
     end

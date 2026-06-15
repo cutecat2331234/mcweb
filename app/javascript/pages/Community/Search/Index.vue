@@ -95,6 +95,7 @@ const props = defineProps<{
   clearSearchHistoryUrl?: string | null
   searchHistoriesOpmlUrl?: string | null
   searchFeedsOpmlUrl?: string | null
+  excludeTerms?: string[]
 }>()
 
 const atSavedSearchLimit = computed(() => {
@@ -665,6 +666,17 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
     排除语法：在关键词前加 <code class="rounded bg-muted px-1">-</code> 可排除包含该词的主题/帖子，例如
     <code class="rounded bg-muted px-1">ruby tutorial -spam -offtopic</code>
   </p>
+
+  <div v-if="excludeTerms?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">排除词：</span>
+    <span
+      v-for="term in excludeTerms"
+      :key="term"
+      class="inline-flex items-center rounded-full border border-destructive/30 bg-destructive/5 px-2.5 py-0.5 text-xs text-destructive"
+    >
+      −{{ term }}
+    </span>
+  </div>
 
   <div v-if="showAdvanced" class="mb-6 flex max-w-2xl flex-wrap gap-2 rounded-lg border p-4">
     <select v-if="categories?.length" v-model="categorySlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">

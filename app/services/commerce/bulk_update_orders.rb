@@ -2,7 +2,7 @@
 
 module Commerce
   class BulkUpdateOrders < ApplicationService
-    ALLOWED_ACTIONS = %w[cancel_pending mark_fulfilled].freeze
+    ALLOWED_ACTIONS = %w[cancel_pending mark_fulfilled mark_paid].freeze
 
     def initialize(actor:, order_public_ids:, action:)
       @actor = actor
@@ -43,6 +43,15 @@ module Commerce
         previous_status = order.status
         order.mark_fulfilled!
         Commerce::NotifyOrderStatusChange.call(order: order, from_status: previous_status)
+        ServiceResult.success
+      when "mark_paid"
+        return ServiceResult.failure(error: "订单不可标记已支付") unless order.pending? || order.awaiting_payment?
+
+        order.submit_payment! if order.pending? && order.may_submit_payment?
+        return ServiceResult.failure(error: "订单不可标记已支付") unless order.awaiting_payment? && order.may_mark_paid?
+
+        order.mark_paid!
+        Commerce::FulfillOrderJob.perform_later(order.id)
         ServiceResult.success
       else
         ServiceResult.failure(error: "不支持的操作")

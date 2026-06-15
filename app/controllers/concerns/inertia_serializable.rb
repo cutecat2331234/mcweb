@@ -404,7 +404,8 @@ module InertiaSerializable
       {
         name: ub.badge.name,
         icon: ub.badge.icon,
-        color: ub.badge.color
+        color: ub.badge.color,
+        granted_at: l(ub.granted_at, format: :short)
       }
     end
   end

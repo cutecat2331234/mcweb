@@ -40,7 +40,7 @@ export interface PostItem {
   author_flair_color?: string | null
   author_forum_title?: string | null
   author_card_url?: string
-  author_badges?: Array<{ name: string; icon: string | null; color: string | null }>
+  author_badges?: Array<{ name: string; icon: string | null; color: string | null; granted_at?: string }>
   verified_purchaser?: boolean
   body: string
   body_html: string
@@ -1399,8 +1399,8 @@ function pollPercent(votes: number) {
                 :key="badge.name"
                 class="ml-1 rounded border px-1 text-[10px]"
                 :style="badge.color ? { borderColor: badge.color, color: badge.color } : undefined"
-                :title="badge.name"
-              >{{ badge.icon || badge.name }}</span>
+                :title="badge.granted_at ? `${badge.name} · ${badge.granted_at}` : badge.name"
+              >{{ badge.icon || badge.name }}<span v-if="badge.granted_at" class="opacity-70">·{{ badge.granted_at }}</span></span>
               <span v-if="post.verified_purchaser" class="ml-1 rounded border border-green-300 bg-green-50 px-1 text-[10px] text-green-700">认证买家</span>
               <span class="mx-2">·</span>
               <span>{{ post.created_at }}</span>

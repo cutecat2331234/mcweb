@@ -174,6 +174,23 @@ module Community
       mail(to: @user.email, subject: "你的主题已标记为已解决")
     end
 
+    def topic_invite(user_id, topic_id, inviter_id)
+      @user = User.find(user_id)
+      @topic = Community::Topic.find_by!(public_id: topic_id)
+      @inviter = User.find(inviter_id)
+      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      mail(to: @user.email, subject: "#{@inviter.username} 邀请你关注主题")
+    end
+
+    def poll_closed(user_id, poll_id, actor_id)
+      @user = User.find(user_id)
+      @poll = Community::Poll.find(poll_id)
+      @topic = @poll.topic
+      @actor = User.find(actor_id)
+      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      mail(to: @user.email, subject: "投票已关闭：#{@poll.question.truncate(60)}")
+    end
+
   private
 
     def search_url_for(search)

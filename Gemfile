@@ -20,6 +20,7 @@ gem "diff-lcs", "~> 1.6"
 gem "lockbox", "~> 1.4"
 gem "mission_control-jobs", "~> 1.0"
 gem "aasm", "~> 5.5"
+gem "csv"
 
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 

@@ -54,10 +54,21 @@ module Community
         append_mapped_label(chips, key)
       end
 
+      append_exclude_terms(chips)
+
       chips
     end
 
   private
+
+    def append_exclude_terms(chips)
+      parsed = Community::ParseSearchQuery.call(query: @saved_search.query.to_s)
+      return unless parsed.success?
+
+      parsed.value[:exclude_terms].each do |term|
+        chips << "排除：#{term}"
+      end
+    end
 
     def append_lookup_label(chips, key, prefix)
       value = @filters[key].presence

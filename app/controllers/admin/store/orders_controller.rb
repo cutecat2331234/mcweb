@@ -20,6 +20,7 @@ module Admin
         render inertia: "Admin/Generic/Index", props: {
           title: "订单",
           exportUrl: export_admin_store_orders_path(q: params[:q], status: params[:status]),
+          statusTabs: order_status_tabs,
           columns: [
             admin_column(:order_number, "订单号", link: true),
             admin_column(:customer, "客户"),
@@ -30,7 +31,7 @@ module Admin
             admin_row(
               order_number: order.order_number,
               customer: order.user.username,
-              status: order.status,
+              status: ORDER_STATUS_LABELS[order.status] || order.status,
               total: format_money(order.total_cents, order.currency),
               url: admin_store_order_path(order),
               publicId: order.public_id
@@ -63,15 +64,23 @@ module Admin
 
       def export
         require_permission("store.orders.read")
-        orders = ::Commerce::Order.recent.includes(:user, :items).limit(5000)
+        orders_scope = ::Commerce::Order.recent.includes(:user, :items)
+        if params[:q].present?
+          q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
+          orders_scope = orders_scope.where("order_number ILIKE ?", q)
+        end
+        if params[:status].present?
+          orders_scope = orders_scope.where(status: params[:status])
+        end
+        orders = orders_scope.limit(5000)
 
-        csv = CSV.generate(headers: true) do |rows|
+        csv = ::CSV.generate(headers: true) do |rows|
           rows << %w[订单号 客户 状态 金额 创建时间]
           orders.each do |order|
             rows << [
               order.order_number,
               order.user.username,
-              order.status,
+              ORDER_STATUS_LABELS[order.status] || order.status,
               order.total_cents / 100.0,
               order.created_at.iso8601
             ]
@@ -348,8 +357,23 @@ module Admin
       def bulk_order_actions
         actions = []
         actions << { label: "批量取消待支付", action: "cancel_pending" } if current_user.permission?("store.orders.read")
+        actions << { label: "批量标记已支付", action: "mark_paid" } if current_user.permission?("store.orders.read")
         actions << { label: "批量标记发货完成", action: "mark_fulfilled" } if current_user.permission?("store.orders.read")
         actions
+      end
+
+      def order_status_tabs
+        base_params = { q: params[:q].presence }.compact
+        current = params[:status].to_s
+        tabs = [ { label: "全部", href: admin_store_orders_path(base_params), active: current.blank? } ]
+        ORDER_STATUS_LABELS.each do |status, label|
+          tabs << {
+            label: label,
+            href: admin_store_orders_path(base_params.merge(status: status)),
+            active: current == status
+          }
+        end
+        tabs
       end
     end
   end

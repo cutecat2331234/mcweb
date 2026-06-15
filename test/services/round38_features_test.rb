@@ -212,6 +212,57 @@ class Commerce::GiftCardShowTest < ActionDispatch::IntegrationTest
   end
 end
 
+class Community::ReportAccessControlTest < ActionDispatch::IntegrationTest
+  setup do
+    @author = create_user
+    @other = create_user(username: "report_other")
+    category = Community::Category.find_or_create_by!(slug: "report-access-cat") { |c| c.name = "Report Access" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "report-access-sec") do |s|
+      s.name = "Report Access Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @author,
+      section: section,
+      title: "Hidden report topic",
+      body: "Opening",
+      ip_address: "127.0.0.1"
+    ).value
+    @topic.update!(status: "hidden")
+    @post = @topic.posts.first
+  end
+
+  test "reporting hidden topic returns not found" do
+    sign_in_as(@other)
+    post forum_reports_path, params: {
+      report: {
+        reportable_type: "Community::Topic",
+        reportable_id: @topic.id,
+        reason_code: "spam"
+      }
+    }
+
+    assert_redirected_to root_path
+    assert_equal "Content not found.", flash[:alert]
+    assert_not Community::Report.exists?(reportable: @topic, reporter: @other)
+  end
+
+  test "reporting hidden post returns not found" do
+    sign_in_as(@other)
+    post forum_reports_path, params: {
+      report: {
+        reportable_type: "Community::Post",
+        reportable_id: @post.id,
+        reason_code: "spam"
+      }
+    }
+
+    assert_redirected_to root_path
+    assert_equal "Content not found.", flash[:alert]
+    assert_not Community::Report.exists?(reportable: @post, reporter: @other)
+  end
+end
+
 class Commerce::ProductVariantCompareAtTest < ActiveSupport::TestCase
   test "variant on_sale when compare_at higher" do
     product = Commerce::Product.create!(

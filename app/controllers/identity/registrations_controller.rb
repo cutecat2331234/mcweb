@@ -18,23 +18,12 @@ module Identity
         username: registration_params[:username],
         password: registration_params[:password],
         display_name: registration_params[:display_name],
-        locale: registration_params[:locale],
-        time_zone: registration_params[:time_zone]
+        locale: registration_params[:locale].presence || "zh-CN",
+        time_zone: registration_params[:time_zone].presence || "Asia/Shanghai"
       )
 
       if result.success?
-        user = result.value[:user]
-        session_result = Identity::SessionManager.call(
-          user: user,
-          ip_address: request.remote_ip,
-          user_agent: request.user_agent,
-          remember_me: false
-        )
-        if session_result.success?
-          sign_in(session_record: session_result.value[:session], token: session_result.value[:token])
-          merge_guest_cart!
-        end
-        redirect_to root_path, notice: "注册成功。请查收邮件验证邮箱地址。"
+        redirect_to identity_sign_in_path, notice: "注册成功。请查收邮件验证邮箱地址。"
       else
         render inertia: "Identity/Registrations/New",
                status: :unprocessable_entity,

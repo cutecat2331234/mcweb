@@ -23,8 +23,7 @@ module Commerce
       ServiceResult.success(
         code: card.code,
         gift_card_amount_cents: amount,
-        total_cents: payable - amount,
-        balance_cents: card.balance_cents
+        total_cents: payable - amount
       )
     end
   end

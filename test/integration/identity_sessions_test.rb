@@ -60,4 +60,20 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to root_path
   end
+
+  test "registration does not auto sign in before email verification" do
+    suffix = SecureRandom.hex(4)
+    post identity_registrations_path, params: {
+      registration: {
+        email: "regflow-#{suffix}@example.com",
+        username: "regflow#{suffix}",
+        password: "password123",
+        display_name: "Reg Flow"
+      }
+    }
+
+    assert_redirected_to identity_sign_in_path
+    assert_not session[:session_token].present?
+    assert_not cookies[:session_token].present?
+  end
 end

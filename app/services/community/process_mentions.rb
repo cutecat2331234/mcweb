@@ -17,7 +17,7 @@ module Community
 
       users = User.where(username: usernames).where.not(id: @author.id)
       users.find_each do |user|
-        next unless PollParticipation.visible?(topic: @topic, user: user)
+        next unless mention_visible_to?(user)
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.mention")
 
         Notification.notify!(
@@ -43,6 +43,15 @@ module Community
       end
 
       ServiceResult.success(mentioned: users.pluck(:username))
+    end
+
+    private
+
+    def mention_visible_to?(user)
+      return false unless PollParticipation.visible?(topic: @topic, user: user)
+      return true unless @topic.unlisted?
+
+      user.id == @topic.user_id || user.permission?("forum.topics.lock")
     end
   end
 end

@@ -190,6 +190,24 @@ class Community::ProcessMentionsTest < ActiveSupport::TestCase
     Community::ProcessMentions.call(body: "Hello @mentioned", author: author, post: post, topic: topic)
     assert Notification.exists?(user: mentioned, notification_type: "forum.mention")
   end
+
+  test "does not notify mentions on unlisted topics for non staff" do
+    author = create_user
+    mentioned = create_user(email: "unlisted@example.com", username: "unlisteduser")
+    category = Community::Category.find_or_create_by!(slug: "men-unlisted-cat") { |c| c.name = "Men Unlisted" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "men-unlisted-sec") do |s|
+      s.name = "Men Unlisted Sec"
+      s.position = 0
+    end
+    topic = Community::CreateTopic.call(
+      user: author, section: section, title: "Unlisted mention", body: "Hi", ip_address: "127.0.0.1"
+    ).value
+    topic.update!(unlisted: true)
+    post = topic.posts.first
+
+    Community::ProcessMentions.call(body: "Hello @unlisteduser", author: author, post: post, topic: topic)
+    assert_not Notification.exists?(user: mentioned, notification_type: "forum.mention")
+  end
 end
 
 class Commerce::CancelOrderTest < ActiveSupport::TestCase

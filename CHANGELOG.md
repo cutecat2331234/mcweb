@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- 注册后不再自动登录，需先验证邮箱
+- 礼品卡 preview API 不再返回 balance_cents
+- 未列出主题的 @提及 不再通知非作者/版主
+- 举报不可见主题/帖子时统一返回 Content not found
+- ApplyCoupon 加锁防止 usage_limit 并发竞态
+
+### Previously
+
 - 礼品卡详情页仅持卡人可见余额
 - 优惠券首单/每人限次统计包含 pending 订单，防止多单绕过
 - 已支付订单不可再次发起 checkout

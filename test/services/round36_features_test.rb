@@ -109,6 +109,7 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal 300, result.value[:gift_card_amount_cents]
     assert_equal 700, result.value[:total_cents]
+    assert_not result.value.key?(:balance_cents)
   end
 
   test "create order with gift card reduces total" do

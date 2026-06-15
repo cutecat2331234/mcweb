@@ -63,7 +63,24 @@ module Community
       type = report_params[:reportable_type]
       return unless %w[Community::Topic Community::Post Commerce::Review].include?(type)
 
-      type.constantize.find_by(id: report_params[:reportable_id])
+      record = type.constantize.find_by(id: report_params[:reportable_id])
+      return unless record
+      return unless reportable_accessible?(record)
+
+      record
+    end
+
+    def reportable_accessible?(record)
+      case record
+      when Community::Topic
+        PollParticipation.visible?(topic: record, user: current_user)
+      when Community::Post
+        PostAccess.readable?(post: record, user: current_user)
+      when Commerce::Review
+        record.published?
+      else
+        false
+      end
     end
   end
 end

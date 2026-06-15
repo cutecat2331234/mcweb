@@ -166,7 +166,6 @@ module Commerce
           code: result.value[:code],
           gift_card_amount_cents: result.value[:gift_card_amount_cents],
           total_cents: result.value[:total_cents],
-          balance_cents: result.value[:balance_cents],
           gift_card_amount_label: format_money(result.value[:gift_card_amount_cents], currency),
           total_label: format_money(result.value[:total_cents], currency)
         }

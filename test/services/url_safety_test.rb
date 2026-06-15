@@ -42,10 +42,11 @@ class UrlSafetyTest < ActiveSupport::TestCase
     assert_not UrlSafety.http_https_url?("//evil.com/image.png")
   end
 
-  test "safe_image_src allows active storage paths and https urls" do
-    assert UrlSafety.safe_image_src?("https://cdn.example.com/image.png")
+  test "safe_image_src allows active storage paths and public https urls" do
+    assert UrlSafety.safe_image_src?("https://1.1.1.1/image.png")
     assert UrlSafety.safe_image_src?("/rails/active_storage/blobs/abc/image.png")
     assert_not UrlSafety.safe_image_src?("javascript:alert(1)")
+    assert_not UrlSafety.safe_image_src?("http://127.0.0.1/image.png")
   end
 
   test "safe_http_get returns nil for blocked hosts" do
@@ -93,7 +94,7 @@ class Community::FormatPostBodyOneboxSafetyTest < ActiveSupport::TestCase
       price_cents: 100,
       currency: "CNY",
       status: "active",
-      image_url: "https://cdn.example.com/safe.png"
+      image_url: "https://1.1.1.1/safe.png"
     )
     product.update_column(:image_url, "javascript:alert(1)")
 

@@ -65,7 +65,7 @@ module Community
 
     def safe_preview_image_url(url)
       src = url.to_s.strip
-      UrlSafety.http_https_url?(src) ? src : nil
+      UrlSafety.public_http_url?(src) ? src : nil
     end
   end
 end

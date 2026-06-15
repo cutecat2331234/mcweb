@@ -135,6 +135,26 @@ class Commerce::CouponLimitsTest < ActiveSupport::TestCase
     assert result.failure?
   end
 
+  test "first order only rejects users with pending orders" do
+    Commerce::Order.create!(
+      user: @user,
+      order_number: "ORD-FO-PEND-#{SecureRandom.hex(4)}",
+      status: "pending",
+      subtotal_cents: 500,
+      discount_cents: 0,
+      total_cents: 500,
+      currency: "CNY"
+    )
+    result = Commerce::PreviewCoupon.call(
+      subtotal_cents: @cart.subtotal_cents,
+      code: @coupon.code,
+      cart_items: @cart.items.includes(:product),
+      user: @user
+    )
+    assert result.failure?
+    assert_equal "仅限首单使用", result.error
+  end
+
   test "max discount cap" do
     coupon = Commerce::Coupon.create!(
       code: "CAP50",

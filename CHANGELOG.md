@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- 礼品卡详情页仅持卡人可见余额
+- 优惠券首单/每人限次统计包含 pending 订单，防止多单绕过
+- 已支付订单不可再次发起 checkout
+- 下载跳转与预览/onebox 图片 URL 需通过 public_http_url 校验
+
+### Previously
+
 - 礼品卡 pending 订单预留余额，防止多张 pending 订单重复抵扣
 - 帖子礼品卡 onebox 不再泄露卡号与余额
 - 书签页隐藏帖不再展示正文摘要

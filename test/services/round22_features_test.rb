@@ -136,6 +136,22 @@ class Commerce::CouponChineseReasonTest < ActiveSupport::TestCase
     assert result.failure?
     assert_equal "已达到每人限用次数", result.error
   end
+
+  test "per user limit counts pending orders" do
+    Commerce::Order.create!(
+      user: @user,
+      order_number: "ORD-PU-PEND-#{SecureRandom.hex(4)}",
+      status: "pending",
+      subtotal_cents: 500,
+      discount_cents: 100,
+      total_cents: 400,
+      currency: "CNY",
+      store_coupon_id: @coupon.id
+    )
+
+    reason = @coupon.inapplicable_reason(subtotal_cents: 1000, user: @user)
+    assert_equal "已达到每人限用次数", reason
+  end
 end
 
 class Commerce::AddWishlistItemToCartTest < ActiveSupport::TestCase

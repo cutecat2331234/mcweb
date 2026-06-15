@@ -65,11 +65,11 @@ module Commerce
     private
 
     def first_order?(user)
-      !Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed]).exists?
+      !Commerce::Order.where(user: user).where.not(status: %w[cancelled failed]).exists?
     end
 
     def user_usage_count(user)
-      Commerce::Order.where(user: user, store_coupon_id: id).where.not(status: %w[pending cancelled failed]).count
+      Commerce::Order.where(user: user, store_coupon_id: id).where.not(status: %w[cancelled failed]).count
     end
 
     def matches_cart_restrictions?(cart_items)

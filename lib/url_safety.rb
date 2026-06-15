@@ -22,7 +22,7 @@ module UrlSafety
     return false if location.blank?
     return true if location.start_with?("/rails/active_storage/")
 
-    http_https_url?(location)
+    public_http_url?(location)
   end
 
   def public_http_url?(url)

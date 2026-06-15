@@ -74,6 +74,9 @@ module Commerce
         end
       else
         order = Commerce::Order.find_by!(public_id: params[:order_id], user: current_user)
+        unless order.pending? || order.awaiting_payment?
+          return redirect_to store_order_path(order), alert: "该订单无法继续支付。"
+        end
       end
 
       provider_name = checkout_params[:provider].presence || default_provider

@@ -27,18 +27,10 @@ module Commerce
       end
 
       render inertia: "Commerce/GiftCards/Show", props: {
-        gift_card: {
-          code: card.code,
-          balance_label: format_money(card.balance_cents, card.currency),
-          initial_balance_label: format_money(card.initial_balance_cents, card.currency),
-          expires_at: card.expires_at ? l(card.expires_at, format: :short) : nil,
-          redeemable: card.redeemable?,
-          status_label: card_status_label(card),
-          owned: logged_in? && card.owner_user_id == current_user&.id
-        },
+        gift_card: serialize_gift_card_detail(card, for_owner: gift_card_owner?(card)),
         code: code,
         loggedIn: logged_in?,
-        applyUrl: apply_store_gift_card_path(code: card.code)
+        applyUrl: store_apply_gift_card_path(code: card.code)
       }
     end
 
@@ -67,6 +59,32 @@ module Commerce
         status_label: card_status_label(card),
         url: store_gift_card_path(code: card.code)
       }
+    end
+
+    def serialize_gift_card_detail(card, for_owner:)
+      detail = {
+        code: card.code,
+        redeemable: card.redeemable?,
+        status_label: for_owner ? card_status_label(card) : public_card_status_label(card),
+        owned: for_owner
+      }
+      return detail unless for_owner
+
+      detail.merge(
+        balance_label: format_money(card.balance_cents, card.currency),
+        initial_balance_label: format_money(card.initial_balance_cents, card.currency),
+        expires_at: card.expires_at ? l(card.expires_at, format: :short) : nil
+      )
+    end
+
+    def gift_card_owner?(card)
+      logged_in? && card.owner_user_id == current_user.id
+    end
+
+    def public_card_status_label(card)
+      return "已绑定" if card.owner_user_id.present?
+
+      card.redeemable? ? "可领取" : card_status_label(card)
     end
 
     def card_status_label(card)

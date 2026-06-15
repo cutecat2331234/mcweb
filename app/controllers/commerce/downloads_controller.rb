@@ -17,6 +17,7 @@ module Commerce
       config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
       url = config["download_url"] || config[:download_url]
       return head :not_found if url.blank?
+      return head :not_found unless UrlSafety.public_http_url?(url)
 
       redirect_to url, allow_other_host: true
     rescue ActiveSupport::MessageVerifier::InvalidSignature

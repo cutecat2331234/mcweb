@@ -182,6 +182,36 @@ class Commerce::ClaimGiftCardTest < ActiveSupport::TestCase
   end
 end
 
+class Commerce::GiftCardShowTest < ActionDispatch::IntegrationTest
+  setup do
+    @owner = create_user
+    @other = create_user(username: "gift_card_other")
+    @card = Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.alphanumeric(8).upcase}",
+      balance_cents: 500,
+      initial_balance_cents: 500,
+      currency: "CNY",
+      active: true,
+      owner_user: @owner
+    )
+  end
+
+  test "gift card show hides balance from non owners" do
+    get store_gift_card_path(code: @card.code)
+
+    assert_response :success
+    assert_not_includes response.body, "¥5.00"
+  end
+
+  test "gift card show shows balance to owner" do
+    sign_in_as(@owner)
+    get store_gift_card_path(code: @card.code)
+
+    assert_response :success
+    assert_includes response.body, "¥5.00"
+  end
+end
+
 class Commerce::ProductVariantCompareAtTest < ActiveSupport::TestCase
   test "variant on_sale when compare_at higher" do
     product = Commerce::Product.create!(

@@ -32,6 +32,8 @@ export interface TopicListItem {
   linked_product?: boolean
   linked_product_name?: string | null
   linked_product_url?: string | null
+  assigned_username?: string | null
+  assigned_url?: string | null
   tags?: Array<{ name: string; slug: string; url: string }>
   participant_avatars?: Array<{ username: string; avatar_url: string; profile_url: string }>
   excerpt?: string | null
@@ -83,6 +85,8 @@ defineProps<{
               :linked-product="topic.linked_product"
               :linked-product-name="topic.linked_product_name"
               :linked-product-url="topic.linked_product_url"
+              :assigned-username="topic.assigned_username"
+              :assigned-url="topic.assigned_url"
               :tags="topic.tags"
             />
             <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>

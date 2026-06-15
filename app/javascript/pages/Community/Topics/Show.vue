@@ -134,6 +134,9 @@ const props = defineProps<{
     can_invite?: boolean
     invite_url?: string | null
     share_as_pm_url?: string | null
+    export_url?: string | null
+    assigned_username?: string | null
+    assigned_url?: string | null
     can_edit_poll?: boolean
     can_move: boolean
     can_edit: boolean
@@ -563,6 +566,12 @@ function removeBookmark() {
 }
 
 function moderate(action: string) {
+  if (action === 'assign') {
+    const username = window.prompt('输入指派员工用户名（Discourse Assign）', props.topic.assigned_username || '')
+    if (!username?.trim()) return
+    router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: 'assign', assignee_username: username.trim() }, { preserveScroll: true })
+    return
+  }
   if (action === 'lock' && !props.topic.locked) {
     const reason = window.prompt('锁定原因（可选）', lockReasonInput.value || '')
     if (reason === null) return
@@ -838,6 +847,11 @@ function pollPercent(votes: number) {
     （{{ topic.source_topic.title }}）
   </p>
 
+  <p v-if="topic.assigned_username && topic.assigned_url" class="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900 dark:border-orange-900 dark:bg-orange-950/30">
+    已指派给
+    <Link :href="topic.assigned_url" class="font-medium hover:underline">@{{ topic.assigned_username }}</Link>
+  </p>
+
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
     <PageHeader
       :title="`${topic.prefix ? `[${topic.prefix}] ` : ''}${topic.pinned ? '[置顶] ' : ''}${topic.title}`"
@@ -908,6 +922,15 @@ function pollPercent(votes: number) {
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.archived_at ? 'unarchive' : 'archive')">
           {{ topic.archived_at ? '取消归档' : '归档主题' }}
+        </Button>
+        <Button v-if="topic.assigned_username" type="button" variant="outline" size="sm" @click="moderate('unassign')">
+          取消指派
+        </Button>
+        <Button v-else type="button" variant="outline" size="sm" @click="moderate('assign')">
+          指派员工
+        </Button>
+        <Button v-if="topic.export_url" as-child variant="outline" size="sm">
+          <a :href="topic.export_url" download>导出帖子 CSV</a>
         </Button>
       </template>
     </div>

@@ -20,6 +20,7 @@ module Community
       forum.post_edited
       forum.user_warning
       forum.topic_invite
+      forum.topic_assigned
     ].freeze
 
     DIGEST_OPTIONS = %w[none daily weekly].freeze
@@ -86,7 +87,8 @@ module Community
         "forum.bookmark_reminder" => "书签提醒",
         "forum.post_edited" => "帖子编辑通知",
         "forum.user_warning" => "社区警告",
-        "forum.topic_invite" => "主题邀请关注"
+        "forum.topic_invite" => "主题邀请关注",
+        "forum.topic_assigned" => "主题指派"
       }[type] || type.humanize
     end
 

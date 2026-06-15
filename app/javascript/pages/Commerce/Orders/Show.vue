@@ -47,6 +47,8 @@ const props = defineProps<{
     can_confirm_free?: boolean
     can_cancel: boolean
     can_request_refund: boolean
+    refund_window_expires_at?: string | null
+    refund_window_expires_label?: string | null
     max_refund_cents?: number
     max_refund_label?: string | null
     can_download_receipt: boolean
@@ -75,6 +77,7 @@ const props = defineProps<{
       product_name: string
       variant_name: string | null
       quantity: number
+      gift_note?: string | null
       total_label: string
       product_url?: string | null
       product_public_id?: string | null
@@ -155,6 +158,13 @@ function refreshDownload(url: string) {
     <a v-if="order.tracking_url" :href="order.tracking_url" target="_blank" rel="noopener" class="ml-2 text-primary hover:underline">查询物流</a>
   </p>
 
+  <p v-if="order.refund_window_expires_label && order.can_request_refund" class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+  退款窗口将于 {{ order.refund_window_expires_label }} 关闭，请尽快申请。
+  </p>
+  <p v-else-if="order.refund_window_expires_label && !order.can_request_refund && order.status === 'paid'" class="mb-4 rounded-lg border px-4 py-3 text-sm text-muted-foreground">
+  退款窗口已于 {{ order.refund_window_expires_label }} 关闭。
+  </p>
+
   <p v-if="order.refund_pending" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
     退款申请审核中，请耐心等待。
   </p>
@@ -195,6 +205,7 @@ function refreshDownload(url: string) {
             <Link v-if="item.product_url" :href="item.product_url" class="hover:underline">{{ item.product_name }}</Link>
             <template v-else>{{ item.product_name }}</template>
             <span v-if="item.variant_name" class="text-muted-foreground"> — {{ item.variant_name }}</span>
+            <p v-if="item.gift_note" class="mt-1 text-xs text-muted-foreground">赠言：{{ item.gift_note }}</p>
             <div v-if="item.ask_question_url || item.discussion_url" class="mt-1 flex gap-2">
               <Link v-if="item.discussion_url" :href="item.discussion_url" class="text-xs text-primary hover:underline">参与讨论</Link>
             </div>

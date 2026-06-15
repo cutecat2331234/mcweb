@@ -954,3 +954,18 @@ app/
 | 可配置反应表情 | `forum.reaction_emojis` + `ToggleReaction` |
 | 购后评价邀请 | `SendReviewRequest` + Job + 邮件 + 偏好 |
 | Webhook 投递日志 | `OrderWebhookDelivery` + Job 记录响应 |
+
+### 第五十五轮（主题指派、地址簿与商城细节）
+
+| 功能 | 实现 |
+|------|------|
+| 主题指派（Discourse Assign） | `assigned_to` + `ModerateTopic` assign/unassign + 通知 |
+| 导出主题帖子 CSV | `ExportTopicPosts` + `topics#export` |
+| 搜索 `is:assigned` | `ParseSearchQuery` + `ApplyTopicSearchFilters` |
+| 信任等级手动覆盖 | `forum_trust_level_override` + 管理端设置 |
+| 收货地址簿 | `ShippingAddress` + CRUD + 结账选择 |
+| 商城分类 RSS | `Commerce::RssController#category` |
+| 购物车赠言 | `store_cart_items.gift_note` + 订单快照 |
+| 退款窗口到期展示 | `refund_window_expires_label` + 订单页 |
+| 主题指派通知偏好 | `forum.topic_assigned` |
+| 管理端 Webhook 投递记录 | 订单详情 sections |

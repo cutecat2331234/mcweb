@@ -3,7 +3,7 @@
 module Admin
   class UsersController < BaseController
     before_action -> { require_permission("system.settings.manage") }
-    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note silence unsilence]
+    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note silence unsilence set_trust_level]
 
     def index
       users = User.order(created_at: :desc)
@@ -56,7 +56,9 @@ module Admin
           { label: "邮箱已验证", value: @user.email_verified? ? "是" : "否" },
           { label: "注册时间", value: l(@user.created_at, format: :long) },
           { label: "警告积分", value: Community::UserWarning.total_points_for(@user).to_s },
-          { label: "沉默状态", value: @user.silenced? ? "是（可浏览不可发帖）" : "否" }
+          { label: "沉默状态", value: @user.silenced? ? "是（可浏览不可发帖）" : "否" },
+          { label: "信任等级", value: trust_level_label(@user) },
+          { label: "信任等级覆盖", value: @user.forum_trust_level_override.present? ? "TL#{@user.forum_trust_level_override}" : "自动（按发帖数）" }
         ],
         sections: [
           mute_actions.any? ? {
@@ -102,6 +104,12 @@ module Admin
           silenced: @user.silenced?,
           silence_url: silence_admin_user_path(@user),
           unsilence_url: unsilence_admin_user_path(@user)
+        } : nil,
+        trustLevelForm: current_user.permission?("admin.access") || current_user.permission?("system.settings.manage") ? {
+          action_url: set_trust_level_admin_user_path(@user),
+          current_level: Community::TrustLevel.level_for(@user),
+          override: @user.forum_trust_level_override,
+          levels: Community::TrustLevel::LEVELS.map { |entry| { value: entry[:level], label: "TL#{entry[:level]} · #{entry[:name]}" } }
         } : nil,
         actions: mute_actions.map do |m|
           { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
@@ -213,7 +221,30 @@ module Admin
       end
     end
 
+    def set_trust_level
+      override = params[:forum_trust_level_override]
+      value = override.to_s.strip
+      if value.blank? || value == "auto"
+        @user.update!(forum_trust_level_override: nil)
+        redirect_to admin_user_path(@user), notice: "信任等级已恢复为自动计算。"
+      else
+        level = value.to_i
+        unless level.between?(0, 4)
+          return redirect_to admin_user_path(@user), alert: "信任等级必须在 0-4 之间。"
+        end
+
+        @user.update!(forum_trust_level_override: level)
+        redirect_to admin_user_path(@user), notice: "信任等级已设为 TL#{level}。"
+      end
+    end
+
     private
+
+    def trust_level_label(user)
+      level = Community::TrustLevel.level_for(user)
+      info = Community::TrustLevel::LEVELS.find { |entry| entry[:level] == level }
+      "TL#{level} · #{info&.dig(:name) || '未知'}"
+    end
 
     def set_user
       @user = User.find_by!(public_id: params[:id])

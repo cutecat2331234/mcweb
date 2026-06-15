@@ -4,7 +4,7 @@ module Community
   module TopicListPreloadable
     extend ActiveSupport::Concern
 
-    TOPIC_LIST_INCLUDES = [ :user, :section, :last_post_user, :tags, :linked_product ].freeze
+    TOPIC_LIST_INCLUDES = [ :user, :section, :last_post_user, :tags, :linked_product, :assigned_to ].freeze
 
     private
 

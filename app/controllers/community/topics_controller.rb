@@ -5,9 +5,9 @@ module Community
     include Community::TopicVisibility
     include Community::TopicListPreloadable
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
 
     def show
       @topic.record_view!
@@ -74,6 +74,7 @@ module Community
           can_invite: can_invite_topic?,
           invite_url: can_invite_topic? ? invite_forum_topic_path(@topic) : nil,
           share_as_pm_url: logged_in? ? share_as_pm_forum_topic_path(@topic) : nil,
+          export_url: can_moderate_topic? ? export_forum_topic_path(@topic, format: :csv) : nil,
           can_edit_poll: can_edit_topic?
         ),
         posts: posts.map do |post|
@@ -250,7 +251,8 @@ module Community
         user: current_user,
         topic: @topic,
         action: params[:action_type],
-        lock_reason: params[:lock_reason]
+        lock_reason: params[:lock_reason],
+        assignee_username: params[:assignee_username]
       )
 
       if result.success?
@@ -258,6 +260,15 @@ module Community
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
+    end
+
+    def export
+      unless can_moderate_topic?
+        return redirect_to forum_topic_path(@topic), alert: "无权导出此主题。"
+      end
+
+      result = Community::ExportTopicPosts.call(topic: @topic)
+      send_data result.value[:csv], filename: "topic-#{@topic.public_id}.csv", type: "text/csv", disposition: "attachment"
     end
 
     def share_as_pm

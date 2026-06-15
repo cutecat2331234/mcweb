@@ -166,7 +166,7 @@ async function deleteSavedSearch(deleteUrl: string) {
     { label: '搜索', current: true },
   ]" />
 
-  <PageHeader title="搜索论坛" subtitle="支持 in:分区、in:bookmarks、is:mine、is:solved、tag:标签、is:archived 等语法" />
+  <PageHeader title="搜索论坛" subtitle="支持 in:分区、in:bookmarks、is:mine、is:assigned、is:solved、tag:标签、is:archived 等语法" />
 
   <form class="mb-8 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
     <div class="relative min-w-[200px] flex-1">

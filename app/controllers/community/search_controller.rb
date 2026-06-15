@@ -20,6 +20,7 @@ module Community
       parsed_announcement = parsed.success? ? parsed.value[:announcement_filter] : nil
       parsed_unlisted = parsed.success? ? parsed.value[:unlisted_filter] : nil
       parsed_archived = parsed.success? ? parsed.value[:archived_filter] : nil
+      parsed_assigned = parsed.success? ? parsed.value[:assigned_filter] : nil
       parsed_mine = parsed.success? ? parsed.value[:mine_filter] : nil
       parsed_scope = parsed.success? ? parsed.value[:scope_filter] : nil
       parsed_poll = parsed.success? ? parsed.value[:poll_filter] : nil
@@ -37,6 +38,7 @@ module Community
       announcement_filter = params[:announcement].to_s.presence || parsed_announcement
       unlisted_filter = params[:unlisted].to_s.presence || parsed_unlisted
       archived_filter = params[:archived].to_s.presence || parsed_archived
+      assigned_filter = params[:assigned].to_s.presence || parsed_assigned
       mine_filter = params[:mine].to_s.presence || parsed_mine
       scope_filter = params[:scope].to_s.presence || parsed_scope
       poll_filter = params[:poll].to_s.presence || parsed_poll
@@ -60,6 +62,7 @@ module Community
           announcement_filter: announcement_filter,
           unlisted_filter: effective_unlisted_filter(unlisted_filter),
           archived_filter: effective_archived_filter(archived_filter),
+          assigned_filter: assigned_filter,
           poll_filter: poll_filter,
           noreplies_filter: noreplies_filter
         )
@@ -99,6 +102,7 @@ module Community
           announcement_filter: announcement_filter,
           unlisted_filter: effective_unlisted_filter(unlisted_filter),
           archived_filter: effective_archived_filter(archived_filter),
+          assigned_filter: assigned_filter,
           poll_filter: poll_filter,
           noreplies_filter: noreplies_filter
         )
@@ -211,7 +215,7 @@ module Community
       scope
     end
 
-    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, poll_filter: nil, noreplies_filter: nil)
+    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, assigned_filter: nil, poll_filter: nil, noreplies_filter: nil)
       result = Community::ApplyTopicSearchFilters.call(
         scope: scope,
         solved_filter: solved_filter,
@@ -222,14 +226,15 @@ module Community
         announcement_filter: announcement_filter,
         unlisted_filter: unlisted_filter,
         archived_filter: archived_filter,
+        assigned_filter: assigned_filter,
         poll_filter: poll_filter,
         noreplies_filter: noreplies_filter
       )
       result.success? ? result.value : scope
     end
 
-    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, poll_filter: nil, noreplies_filter: nil)
-      needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter, unlisted_filter, archived_filter, poll_filter, noreplies_filter ].any?(&:present?)
+    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, assigned_filter: nil, poll_filter: nil, noreplies_filter: nil)
+      needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter, unlisted_filter, archived_filter, assigned_filter, poll_filter, noreplies_filter ].any?(&:present?)
       scope = scope.joins(:topic) if needs_join
       apply_search_topic_filters(
         scope,
@@ -241,6 +246,7 @@ module Community
         announcement_filter: announcement_filter,
         unlisted_filter: unlisted_filter,
         archived_filter: archived_filter,
+        assigned_filter: assigned_filter,
         poll_filter: poll_filter,
         noreplies_filter: noreplies_filter
       )

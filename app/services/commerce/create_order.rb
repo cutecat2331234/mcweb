@@ -71,7 +71,9 @@ module Commerce
             unit_price_cents: unit_price_cents,
             quantity: item.quantity,
             total_cents: line_total,
-            fulfillment_snapshot: snapshot_fulfillment(product, variant)
+            fulfillment_snapshot: snapshot_fulfillment(product, variant).merge(
+              gift_note: item.gift_note.to_s.presence
+            ).compact
           )
 
           stock_result = decrement_stock!(product, variant, item.quantity)

@@ -19,6 +19,7 @@ const props = defineProps<{
     color_hex?: string | null
     seo_title?: string
     seo_description?: string | null
+    rss_url?: string
   }
   products: Array<{
     public_id: string
@@ -68,6 +69,7 @@ function applyFilter(key: 'in_stock' | 'on_sale', value: boolean) {
     <Button type="button" size="sm" :variant="filters.on_sale ? 'default' : 'outline'" @click="applyFilter('on_sale', !filters.on_sale)">
       促销中
     </Button>
+    <a v-if="category.rss_url" :href="category.rss_url" target="_blank" rel="noopener" class="self-center text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
   </div>
 
   <div v-if="products.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -52,6 +52,8 @@ export const routes = {
   storeGiftCard: (code: string) => `/store/gift_cards/${code}`,
   storeGiftCards: '/store/gift_cards',
   storeCategory: (slug: string) => `/store/categories/${slug}`,
+  storeCategoryRss: (slug: string) => `/store/categories/${slug}.rss`,
+  storeShippingAddresses: '/store/shipping_addresses',
   storePreferences: '/store/preferences',
   storeWishlistShare: '/store/wishlist/share',
   storePublicWishlist: (token: string) => `/store/wishlist/${token}`,

@@ -68,6 +68,13 @@ export interface SilenceForm {
   unsilence_url: string
 }
 
+export interface TrustLevelForm {
+  action_url: string
+  current_level: number
+  override: number | null
+  levels: Array<{ value: number; label: string }>
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -82,8 +89,11 @@ const props = defineProps<{
   warningForm?: WarningForm | null
   staffNoteForm?: StaffNoteForm | null
   silenceForm?: SilenceForm | null
+  trustLevelForm?: TrustLevelForm | null
   backUrl: string
 }>()
+
+const trustLevelOverride = ref(props.trustLevelForm?.override?.toString() ?? 'auto')
 
 const badgeSlug = ref('')
 
@@ -173,6 +183,13 @@ function submitSilence() {
 function submitUnsilence() {
   if (!props.silenceForm) return
   router.post(props.silenceForm.unsilence_url, {}, { preserveScroll: true })
+}
+
+function submitTrustLevel() {
+  if (!props.trustLevelForm) return
+  router.post(props.trustLevelForm.action_url, {
+    forum_trust_level_override: trustLevelOverride.value,
+  }, { preserveScroll: true })
 }
 </script>
 
@@ -302,6 +319,21 @@ function submitUnsilence() {
     </form>
     <Button v-else type="button" variant="outline" size="sm" @click="submitUnsilence">解除沉默</Button>
   </div>
+
+  <form v-if="props.trustLevelForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitTrustLevel">
+    <h2 class="text-sm font-semibold">论坛信任等级覆盖（Discourse TL）</h2>
+    <p class="text-xs text-muted-foreground">当前有效等级：TL{{ props.trustLevelForm.current_level }}</p>
+    <div class="space-y-2">
+      <Label>手动覆盖</Label>
+      <select v-model="trustLevelOverride" class="h-9 w-full rounded-md border px-2 text-sm">
+        <option value="auto">自动（按发帖数计算）</option>
+        <option v-for="level in props.trustLevelForm.levels" :key="level.value" :value="String(level.value)">
+          {{ level.label }}
+        </option>
+      </select>
+    </div>
+    <Button type="submit" size="sm">保存信任等级</Button>
+  </form>
 
   <div class="mt-6 flex flex-wrap gap-3">
     <template v-for="action in actions" :key="action.href + action.label">

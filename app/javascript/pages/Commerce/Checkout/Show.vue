@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -48,6 +48,21 @@ const props = defineProps<{
     province: string
     postal_code: string
   } | null
+  savedAddresses?: Array<{
+    id: number
+    label: string | null
+    summary: string
+    address: {
+      name: string
+      phone: string
+      line1: string
+      line2: string
+      city: string
+      province: string
+      postal_code: string
+    }
+  }>
+  shippingAddressesUrl?: string
   shippingLabel?: string | null
   freeShipping?: boolean
   shippingMethods?: Array<{ code: string; label: string; cents: number; label_with_price: string }>
@@ -95,6 +110,25 @@ const giftCardLabel = ref<string | null>(null)
 const totalLabel = ref<string | null>(props.subtotalLabel)
 const previewing = ref(false)
 const previewingGiftCard = ref(false)
+const selectedAddressId = ref<number | ''>('')
+
+function applySavedAddress(id: number | '') {
+  if (!id) return
+  const saved = props.savedAddresses?.find((entry) => entry.id === id)
+  if (!saved) return
+  const address = saved.address
+  form.checkout.shipping_address.name = address.name
+  form.checkout.shipping_address.phone = address.phone
+  form.checkout.shipping_address.line1 = address.line1
+  form.checkout.shipping_address.line2 = address.line2
+  form.checkout.shipping_address.city = address.city
+  form.checkout.shipping_address.province = address.province
+  form.checkout.shipping_address.postal_code = address.postal_code
+}
+
+watch(selectedAddressId, (id) => {
+  if (id) applySavedAddress(id)
+})
 
 async function previewGiftCard() {
   giftCardMessage.value = null
@@ -249,7 +283,19 @@ onMounted(() => {
         </label>
       </div>
       <div v-if="requiresShipping" class="space-y-3 rounded-lg border p-4">
-        <h2 class="text-sm font-semibold">收货地址</h2>
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <h2 class="text-sm font-semibold">收货地址</h2>
+          <Link v-if="shippingAddressesUrl" :href="shippingAddressesUrl" class="text-xs text-primary hover:underline">管理地址簿</Link>
+        </div>
+        <div v-if="savedAddresses?.length" class="space-y-2">
+          <Label for="saved_address">使用已保存地址</Label>
+          <select id="saved_address" v-model="selectedAddressId" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
+            <option value="">手动填写</option>
+            <option v-for="saved in savedAddresses" :key="saved.id" :value="saved.id">
+              {{ saved.summary }}{{ saved.label ? `（${saved.label}）` : '' }}
+            </option>
+          </select>
+        </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="space-y-2">
             <Label for="ship_name">收件人</Label>

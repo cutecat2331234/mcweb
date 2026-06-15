@@ -32,6 +32,7 @@ Rails.application.routes.draw do
         post :staff_note
         post :silence
         post :unsilence
+        post :set_trust_level
       end
     end
     resources :roles, only: %i[index show]
@@ -149,6 +150,7 @@ Rails.application.routes.draw do
         post :close_own
         post :reopen_own
         post :share_as_pm
+        get :export
       end
     end
     resources :posts, only: %i[create update destroy] do
@@ -218,6 +220,7 @@ Rails.application.routes.draw do
 
     scope module: :commerce, path: "store", as: :store do
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
+    get "categories/:slug.rss", to: "rss#category", as: :category_rss, defaults: { format: :rss }
     get "categories/:slug", to: "categories#show", as: :category
     get "gift_cards", to: "gift_cards#index", as: :gift_cards
     resources :products, only: %i[index show] do
@@ -293,6 +296,11 @@ Rails.application.routes.draw do
     get "downloads/:token", to: "downloads#show", as: :download
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
+    resources :shipping_addresses, only: %i[index create destroy] do
+      member do
+        post :make_default
+      end
+    end
   end
 
   scope module: :website, as: :website do

@@ -5,6 +5,7 @@ module Community
 
     belongs_to :section, class_name: "Community::Section", foreign_key: :forum_section_id
     belongs_to :user
+    belongs_to :assigned_to, class_name: "User", optional: true
     belongs_to :last_post_user, class_name: "User", optional: true
     has_many :posts, class_name: "Community::Post", foreign_key: :forum_topic_id, dependent: :destroy
     has_many :read_states, class_name: "Community::ReadState", foreign_key: :forum_topic_id, dependent: :destroy

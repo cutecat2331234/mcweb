@@ -87,6 +87,8 @@ module InertiaSerializable
       unlisted: topic.unlisted?,
       archived: topic.archived_at.present?,
       solved: topic.solved_post_id.present?,
+      assigned_username: topic.assigned_to&.username,
+      assigned_url: topic.assigned_to ? forum_user_path(topic.assigned_to.username) : nil,
       unread_count: unread_count,
       has_unread: unread_count.positive?,
       participant_avatars: topic.participant_users(limit: 5).map do |user|
@@ -151,6 +153,8 @@ module InertiaSerializable
       auto_open_at: topic.auto_open_at ? l(topic.auto_open_at, format: :short) : nil,
       auto_bump_at: topic.auto_bump_at ? l(topic.auto_bump_at, format: :short) : nil,
       solved_post_id: topic.solved_post_id,
+      assigned_username: topic.assigned_to&.username,
+      assigned_url: topic.assigned_to ? forum_user_path(topic.assigned_to.username) : nil,
       views_count: topic.views_count,
       watching: watching,
       notification_level: notification_level,
@@ -583,6 +587,7 @@ module InertiaSerializable
       unit_price_label: number_to_currency(unit_cents / 100.0, unit: unit),
       total_label: number_to_currency(item.total_cents / 100.0, unit: unit),
       product_url: store_product_path(item.product),
+      gift_note: item.gift_note,
       update_url: store_cart_path
     }
   end
@@ -677,6 +682,8 @@ module InertiaSerializable
       can_confirm_free: (order.pending? || order.awaiting_payment?) && order.total_cents.zero?,
       can_cancel: order.pending? || order.awaiting_payment?,
       can_request_refund: refundable_order?(order),
+      refund_window_expires_at: refund_window_expires_at(order),
+      refund_window_expires_label: refund_window_expires_label(order),
       max_refund_cents: max_refundable_cents(order),
       max_refund_label: format_money(max_refundable_cents(order), order.currency),
       refund_pending: order.refunds.pending.exists?,
@@ -705,6 +712,7 @@ module InertiaSerializable
       items: order.items.map do |item|
         fulfillment = order.fulfillments.find_by(order_item: item)
         snapshot = item.fulfillment_snapshot || {}
+        gift_note = snapshot["gift_note"].presence || snapshot[:gift_note].presence
         config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
         download_url = signed_download_url_for(item)
         refresh_download_url = download_url.present? ? refresh_download_store_order_path(order, order_item_id: item.id) : nil
@@ -716,6 +724,7 @@ module InertiaSerializable
           product_name: item.product_name,
           variant_name: item.variant_name,
           quantity: item.quantity,
+          gift_note: gift_note,
           total_label: format_money(item.total_cents, order.currency),
           product_url: product ? store_product_path(product) : nil,
           product_public_id: product&.public_id,
@@ -824,6 +833,23 @@ module InertiaSerializable
 
     refunded = order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
     [ payment.amount_cents - refunded, 0 ].max
+  end
+
+  def refund_window_expires_at(order)
+    window_days = SiteSetting.get("store.refund_window_days", "0").to_i
+    return nil if window_days <= 0
+
+    payment = order.payment_records.where(status: "succeeded").order(created_at: :asc).first
+    return nil unless payment
+
+    payment.created_at + window_days.days
+  end
+
+  def refund_window_expires_label(order)
+    expires = refund_window_expires_at(order)
+    return nil unless expires
+
+    expires.future? ? l(expires, format: :short) : nil
   end
 
   def fulfillment_status_label(status)

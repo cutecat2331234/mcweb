@@ -9,7 +9,7 @@ module Community
     AUTHOR_AT_PATTERN = /\B@([a-zA-Z0-9_]+)/
     AUTHOR_COLON_PATTERN = /\bauthor:([a-zA-Z0-9_]+)/i
 
-    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived mine].freeze
+    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived mine assigned].freeze
     RESERVED_IN_SCOPES = %w[bookmarks].freeze
     VALID_HAS_FLAGS = %w[poll noreplies].freeze
 
@@ -83,6 +83,7 @@ module Community
         announcement_filter: announcement_filter,
         unlisted_filter: topic_flags["unlisted"] ? "unlisted" : nil,
         archived_filter: topic_flags["archived"] ? "archived" : nil,
+        assigned_filter: topic_flags["assigned"] ? "assigned" : nil,
         mine_filter: topic_flags["mine"] ? "mine" : nil,
         scope_filter: scope_filter,
         poll_filter: has_flags["poll"] ? "poll" : nil,

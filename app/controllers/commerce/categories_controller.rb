@@ -28,7 +28,8 @@ module Commerce
           icon: category.icon,
           color_hex: category.color_hex,
           seo_title: category.seo["title"].presence || category.name,
-          seo_description: category.seo["description"].presence || category.description
+          seo_description: category.seo["description"].presence || category.description,
+          rss_url: store_category_rss_path(category.slug)
         },
         products: products.map { |product| serialize_product_list_item(product) },
         pagination: pagy_props(@pagy),

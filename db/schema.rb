@@ -423,6 +423,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "forum_topics", force: :cascade do |t|
     t.datetime "archived_at"
+    t.bigint "assigned_to_id"
     t.datetime "auto_bump_at"
     t.datetime "auto_close_at"
     t.datetime "auto_open_at"
@@ -454,6 +455,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.boolean "wiki", default: false, null: false
     t.index "to_tsvector('simple'::regconfig, (COALESCE(title, ''::character varying))::text)", name: "index_forum_topics_on_title_tsvector", using: :gin
     t.index ["archived_at"], name: "index_forum_topics_on_archived_at"
+    t.index ["assigned_to_id"], name: "index_forum_topics_on_assigned_to_id"
     t.index ["auto_bump_at"], name: "index_forum_topics_on_auto_bump_at"
     t.index ["auto_close_at"], name: "index_forum_topics_on_auto_close_at"
     t.index ["auto_open_at"], name: "index_forum_topics_on_auto_open_at"
@@ -767,6 +769,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "store_cart_items", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "gift_note", limit: 200
     t.integer "quantity", default: 1, null: false
     t.bigint "store_cart_id", null: false
     t.bigint "store_product_id", null: false
@@ -1121,6 +1124,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["user_id"], name: "index_store_reviews_on_user_id"
   end
 
+  create_table "store_shipping_addresses", force: :cascade do |t|
+    t.string "city", null: false
+    t.datetime "created_at", null: false
+    t.boolean "default_address", default: false, null: false
+    t.string "label", limit: 50
+    t.string "line1", null: false
+    t.string "line2"
+    t.string "name", null: false
+    t.string "phone", null: false
+    t.string "postal_code"
+    t.string "province", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "default_address"], name: "index_store_shipping_addresses_on_user_id_and_default_address"
+    t.index ["user_id"], name: "index_store_shipping_addresses_on_user_id"
+  end
+
   create_table "store_stock_alerts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "notified_at"
@@ -1180,6 +1200,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "forum_flair_color_hex"
     t.text "forum_signature"
     t.string "forum_title"
+    t.integer "forum_trust_level_override"
     t.datetime "last_seen_at"
     t.datetime "last_sign_in_at"
     t.string "last_sign_in_ip"
@@ -1351,6 +1372,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_topics", "forum_posts", column: "source_post_id"
   add_foreign_key "forum_topics", "forum_sections"
   add_foreign_key "forum_topics", "users"
+  add_foreign_key "forum_topics", "users", column: "assigned_to_id"
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"
   add_foreign_key "forum_user_badges", "forum_badges"
   add_foreign_key "forum_user_badges", "users"
@@ -1426,6 +1448,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_reviews", "forum_posts"
   add_foreign_key "store_reviews", "store_products"
   add_foreign_key "store_reviews", "users"
+  add_foreign_key "store_shipping_addresses", "users"
   add_foreign_key "store_stock_alerts", "store_product_variants"
   add_foreign_key "store_stock_alerts", "store_products"
   add_foreign_key "store_stock_alerts", "users"

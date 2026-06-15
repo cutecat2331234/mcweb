@@ -21,6 +21,7 @@ export interface CartItem {
   product_name: string
   variant_name: string | null
   quantity: number
+  gift_note?: string | null
   minimum_quantity?: number
   maximum_quantity?: number | null
   purchase_limit_remaining?: number | null
@@ -175,6 +176,10 @@ function clearCart() {
   if (!props.clearCartUrl || !confirm('确定清空购物车？')) return
   router.delete(props.clearCartUrl)
 }
+
+function updateGiftNote(itemId: number, giftNote: string) {
+  router.patch(routes.storeCart, { item_id: itemId, gift_note: giftNote }, { preserveScroll: true })
+}
 </script>
 
 <template>
@@ -205,6 +210,16 @@ function clearCart() {
               <p v-if="item.minimum_quantity && item.minimum_quantity > 1" class="text-xs text-muted-foreground">最少购买 {{ item.minimum_quantity }} 件</p>
               <p v-if="item.maximum_quantity" class="text-xs text-muted-foreground">单次最多 {{ item.maximum_quantity }} 件</p>
               <p v-if="item.purchase_limit_remaining != null" class="text-xs text-muted-foreground">还可购买 {{ item.purchase_limit_remaining }} 件</p>
+              <div class="mt-2 max-w-xs space-y-1">
+                <Label :for="`gift-note-${item.id}`" class="text-xs">赠言（可选）</Label>
+                <Input
+                  :id="`gift-note-${item.id}`"
+                  :model-value="item.gift_note || ''"
+                  placeholder="送给朋友的留言"
+                  class="h-8 text-xs"
+                  @change="updateGiftNote(item.id, ($event.target as HTMLInputElement).value)"
+                />
+              </div>
             </TableCell>
             <TableCell>
               <input

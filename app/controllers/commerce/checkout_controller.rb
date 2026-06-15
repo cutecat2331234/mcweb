@@ -15,7 +15,8 @@ module Commerce
       pending_gift_card = session[:pending_gift_card_code].to_s.presence
       coupon = Commerce::Coupon.find_by(code: pending_coupon) if pending_coupon.present?
       requires_shipping = items.any? { |item| item.product&.requires_shipping? || item.product&.product_type == "physical" }
-      default_shipping_address = last_shipping_address_for(current_user)
+      default_shipping_address = default_shipping_address_for(current_user)
+      saved_addresses = current_user.shipping_addresses.ordered.map { |address| serialize_saved_address(address) }
       gift_wrap_cents = SiteSetting.get("store.gift_wrap_cents", "500").to_i
       min_checkout_cents = SiteSetting.get("store.min_checkout_subtotal_cents", "0").to_i
 
@@ -35,6 +36,8 @@ module Commerce
         couponAutoApplied: params[:coupon].present? && pending_coupon.present?,
         requiresShipping: requires_shipping,
         defaultShippingAddress: default_shipping_address,
+        savedAddresses: saved_addresses,
+        shippingAddressesUrl: store_shipping_addresses_path,
         providers: providers,
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path,
@@ -196,6 +199,9 @@ module Commerce
     end
 
     def last_shipping_address_for(user)
+      saved = user.shipping_addresses.find_by(default_address: true) || user.shipping_addresses.ordered.first
+      return saved.to_address_hash if saved
+
       order = Commerce::Order.where(user: user)
         .where.not(shipping_address: [ nil, {} ])
         .where.not(status: %w[cancelled failed pending awaiting_payment])
@@ -214,6 +220,31 @@ module Commerce
         city: address["city"].to_s,
         province: address["province"].to_s,
         postal_code: address["postal_code"].to_s
+      }
+    end
+
+    def default_shipping_address_for(user)
+      hash = last_shipping_address_for(user)
+      return nil unless hash.is_a?(Hash) && hash.values.any?(&:present?)
+
+      normalized = hash.with_indifferent_access
+      {
+        name: normalized[:name].to_s,
+        phone: normalized[:phone].to_s,
+        line1: normalized[:line1].to_s,
+        line2: normalized[:line2].to_s,
+        city: normalized[:city].to_s,
+        province: normalized[:province].to_s,
+        postal_code: normalized[:postal_code].to_s
+      }
+    end
+
+    def serialize_saved_address(address)
+      {
+        id: address.id,
+        label: address.label,
+        summary: address.summary_label,
+        address: address.to_address_hash
       }
     end
 

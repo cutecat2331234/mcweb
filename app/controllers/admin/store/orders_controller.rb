@@ -64,6 +64,7 @@ module Admin
         payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
 
         pending_refunds = @order.refunds.pending
+        webhook_deliveries = Commerce::OrderWebhookDelivery.where(order_public_id: @order.public_id).order(created_at: :desc).limit(20)
         render inertia: "Admin/Generic/Show", props: {
           title: "订单 #{@order.order_number}",
           subtitle: @order.status,
@@ -107,6 +108,15 @@ module Admin
               items: @order.staff_notes.includes(:author).recent.limit(10).map do |note|
                 { label: "#{note.author.username} · #{l(note.created_at, format: :short)}", value: note.body }
               end.presence || [ { label: "暂无员工备注", value: nil } ]
+            },
+            {
+              title: "Webhook 投递记录",
+              items: webhook_deliveries.map do |delivery|
+                {
+                  label: "#{delivery.event_type} · #{l(delivery.created_at, format: :short)}",
+                  value: "#{delivery.status} · HTTP #{delivery.response_code || '—'} · #{delivery.url.truncate(60)}"
+                }
+              end.presence || [ { label: "暂无投递记录", value: nil } ]
             }
           ],
           backUrl: admin_store_orders_path,

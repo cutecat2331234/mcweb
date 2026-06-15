@@ -17,6 +17,8 @@ defineProps<{
   linkedProduct?: boolean
   linkedProductName?: string | null
   linkedProductUrl?: string | null
+  assignedUsername?: string | null
+  assignedUrl?: string | null
   tags?: Array<{ name: string; slug: string; url: string }>
 }>()
 </script>
@@ -31,6 +33,7 @@ defineProps<{
   <span v-if="unlisted" class="mr-1 text-xs text-violet-600">[未列出]</span>
   <span v-if="archived" class="mr-1 text-xs text-slate-600">[归档]</span>
   <span v-if="solved" class="mr-1 text-xs text-green-600">[已解决]</span>
+  <Link v-if="assignedUsername && assignedUrl" :href="assignedUrl" class="mr-1 text-xs text-orange-600 hover:underline" @click.stop>[@{{ assignedUsername }}]</Link>
   <Link v-if="linkedProduct && linkedProductUrl" :href="linkedProductUrl" class="mr-1 text-xs text-emerald-600 hover:underline" @click.stop>[商品]</Link>
   <Link
     v-for="tag in tags || []"

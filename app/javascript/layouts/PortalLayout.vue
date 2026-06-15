@@ -87,6 +87,7 @@ async function dismissAnnouncement(topicId: string) {
             <Link v-if="auth.user" :href="routes.storeCompare" class="hover:text-foreground transition-colors">对比</Link>
             <Link v-if="auth.user" :href="routes.storeStockAlerts" class="hover:text-foreground transition-colors">到货通知</Link>
             <Link v-if="auth.user" :href="routes.storePriceAlerts" class="hover:text-foreground transition-colors">降价提醒</Link>
+            <Link v-if="auth.user" :href="routes.storeShippingAddresses" class="hover:text-foreground transition-colors">收货地址</Link>
             <Link v-if="auth.user" :href="routes.storePreferences" class="hover:text-foreground transition-colors">商城通知</Link>
             <Link v-if="auth.user" :href="routes.storeOrders" class="hover:text-foreground transition-colors">我的订单</Link>
             <Link v-if="auth.user" :href="routes.storeGiftCards" class="hover:text-foreground transition-colors">礼品卡</Link>

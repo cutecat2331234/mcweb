@@ -19,9 +19,11 @@ const props = defineProps<{
   sort: string
   filter: string
   section: string
+  tag: string
   sortOptions: Array<{ value: string; label: string }>
   filterOptions: Array<{ value: string; label: string }>
   sectionOptions: Array<{ value: string; label: string }>
+  tagOptions: Array<{ value: string; label: string }>
   activeFilters?: Array<{ param: string; label: string; value?: string }>
 }>()
 
@@ -32,6 +34,7 @@ function listParams(overrides: Record<string, string | undefined> = {}) {
     sort: overrides.sort ?? (props.sort === 'latest' ? undefined : props.sort),
     filter: overrides.filter ?? (props.filter || undefined),
     section: overrides.section ?? (props.section || undefined),
+    tag: overrides.tag ?? (props.tag || undefined),
   }
 }
 
@@ -58,11 +61,16 @@ function changeSection(value: string) {
   router.get(routes.forumUnread, listParams({ section: value || undefined }), { preserveState: true })
 }
 
+function changeTag(value: string) {
+  router.get(routes.forumUnread, listParams({ tag: value || undefined }), { preserveState: true })
+}
+
 function removeFilter(chip: { param: string }) {
   const overrides: Record<string, string | undefined> = {}
   if (chip.param === 'sort') overrides.sort = undefined
   if (chip.param === 'filter') overrides.filter = undefined
   if (chip.param === 'section') overrides.section = undefined
+  if (chip.param === 'tag') overrides.tag = undefined
   router.get(routes.forumUnread, listParams(overrides), { preserveState: true })
 }
 </script>
@@ -97,6 +105,13 @@ function removeFilter(chip: { param: string }) {
         @change="changeSection(($event.target as HTMLSelectElement).value)"
       >
         <option v-for="opt in sectionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+      <select
+        :value="tag"
+        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+        @change="changeTag(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="opt in tagOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
       <Button
         v-if="markSelectedReadUrl && selectedIds.length"

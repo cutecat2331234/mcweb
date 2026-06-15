@@ -707,6 +707,8 @@ module Community
         meta[:twitter_card] = "summary"
         meta[:twitter_title] = meta[:title]
         meta[:twitter_description] = meta[:description]
+        meta[:og_locale] = "zh_CN"
+        meta[:og_site_name] = "Mcweb"
       end
 
       meta

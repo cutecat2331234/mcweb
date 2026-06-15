@@ -2,3 +2,4 @@
 <p>你关注的用户 <strong><%= @post.user.username %></strong> 回复了主题「<%= @topic.title %>」。</p>
 <p><%= @post.body.truncate(200) %></p>
 <p><a href="<%= @url %>">查看回复</a></p>
+<%= render "notification_unsubscribe" %>

@@ -9,6 +9,7 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      assign_notification_unsubscribe("forum.topic_reply")
 
       mail(to: @user.email, subject: "主题有新回复：#{@topic.title.truncate(60)}")
     end
@@ -28,7 +29,8 @@ module Community
       @post = Community::Post.find(post_id)
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
       @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
-      @mention_unsubscribe_url = mention_unsubscribe_url_for(@user)
+      @mention_unsubscribe_url = notification_type_unsubscribe_url_for(@user, "forum.mention")
+      @notification_unsubscribe_url = @mention_unsubscribe_url
 
       mail(to: @user.email, subject: "#{@post.user.username} 在主题中提到了你")
     end
@@ -73,6 +75,7 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      assign_notification_unsubscribe("forum.followed_reply")
 
       mail(to: @user.email, subject: "#{@post.user.username} 回复了主题：#{@topic.title.truncate(60)}")
     end
@@ -166,6 +169,7 @@ module Community
       @emoji = emoji
       @topic = @post.topic
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      assign_notification_unsubscribe("forum.reaction")
       mail(to: @user.email, subject: "#{@reactor.username} 对你的帖子做出了反应 #{@emoji}")
     end
 
@@ -210,12 +214,21 @@ module Community
     end
 
     def mention_unsubscribe_url_for(user)
-      token = Community::NotificationTypeUnsubscribeToken.generate(user, notification_type: "forum.mention")
+      notification_type_unsubscribe_url_for(user, "forum.mention")
+    end
+
+    def notification_type_unsubscribe_url_for(user, notification_type)
+      token = Community::NotificationTypeUnsubscribeToken.generate(user, notification_type: notification_type)
       "#{root_url.chomp('/')}#{forum_unsubscribe_notification_type_path(token: token)}"
     end
-    helper_method :notification_url_for, :mention_unsubscribe_url_for
+    helper_method :notification_url_for, :mention_unsubscribe_url_for, :notification_type_unsubscribe_url_for
 
   private
+
+    def assign_notification_unsubscribe(notification_type)
+      @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
+      @notification_unsubscribe_url = notification_type_unsubscribe_url_for(@user, notification_type)
+    end
 
     def search_url_for(search)
       Community::SavedSearchPresenter.url_params(search)

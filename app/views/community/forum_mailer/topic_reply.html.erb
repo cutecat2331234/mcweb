@@ -2,3 +2,4 @@
 <p><strong><%= @post.user.username %></strong> 在主题「<%= @topic.title %>」中回复了：</p>
 <blockquote><%= simple_format(@post.body.truncate(500)) %></blockquote>
 <p><a href="<%= @url %>">查看回复</a></p>
+<%= render "notification_unsubscribe" %>

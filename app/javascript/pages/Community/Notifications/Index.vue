@@ -33,11 +33,20 @@ export interface NotificationGroup {
   }>
 }
 
+interface TimelineSection {
+  key: string
+  label: string
+  count: number
+  groups: NotificationGroup[]
+  default_expanded: boolean
+}
+
 interface NotificationSection {
   key: string
   label: string
   count: number
   groups: NotificationGroup[]
+  timeline_sections?: TimelineSection[]
   default_expanded: boolean
 }
 
@@ -74,6 +83,21 @@ const props = defineProps<{
 
 const expanded = ref<Record<string, boolean>>({})
 const sectionExpanded = ref<Record<string, boolean>>({})
+const timelineExpanded = ref<Record<string, boolean>>({})
+
+function isTimelineExpanded(sectionKey: string, timeline: TimelineSection) {
+  const key = `${sectionKey}-${timeline.key}`
+  if (timelineExpanded.value[key] != null) {
+    return timelineExpanded.value[key]
+  }
+  return timeline.default_expanded
+}
+
+function toggleTimeline(sectionKey: string, timeline: TimelineSection) {
+  const key = `${sectionKey}-${timeline.key}`
+  const current = timelineExpanded.value[key] ?? timeline.default_expanded
+  timelineExpanded.value[key] = !current
+}
 
 function isSectionExpanded(section: NotificationSection) {
   if (sectionExpanded.value[section.key] != null) {
@@ -138,6 +162,19 @@ const displaySections = () => {
     label: '全部',
     count: props.notifications.length,
     groups: props.notifications,
+    timeline_sections: [],
+    default_expanded: true,
+  }]
+}
+
+function sectionTimelines(section: NotificationSection): TimelineSection[] {
+  if (section.timeline_sections?.length) return section.timeline_sections
+  if (!section.groups.length) return []
+  return [{
+    key: 'all',
+    label: '全部',
+    count: section.groups.length,
+    groups: section.groups,
     default_expanded: true,
   }]
 }
@@ -219,49 +256,61 @@ const displaySections = () => {
         <span>{{ section.label }} ({{ section.count }})</span>
         <span class="text-xs text-muted-foreground">{{ isSectionExpanded(section) ? '收起' : '展开' }}</span>
       </button>
-      <div v-if="isSectionExpanded(section)" class="space-y-2 border-t p-3">
-        <article
-          v-for="group in section.groups"
-          :key="group.key"
-          class="rounded-lg border p-4"
-          :class="group.read ? 'opacity-70' : 'border-primary/30 bg-primary/5'"
-        >
-          <div class="flex items-start justify-between gap-3">
-            <div class="min-w-0 flex-1">
-              <div class="flex items-center gap-2">
-                <Badge variant="outline" class="text-[10px]">{{ categoryLabel(group.category) }}</Badge>
-                <h3 class="text-sm font-medium">{{ group.title }}</h3>
-                <Badge v-if="group.count > 1">{{ group.count }}</Badge>
-                <Badge v-if="group.unread_count" variant="default">{{ group.unread_count }} 未读</Badge>
+      <div v-if="isSectionExpanded(section)" class="space-y-3 border-t p-3">
+        <div v-for="timeline in sectionTimelines(section)" :key="`${section.key}-${timeline.key}`" class="rounded-md border">
+          <button
+            type="button"
+            class="flex w-full items-center justify-between px-3 py-2 text-left text-xs font-medium text-muted-foreground hover:bg-muted/40"
+            @click="toggleTimeline(section.key, timeline)"
+          >
+            <span>{{ timeline.label }} ({{ timeline.count }})</span>
+            <span>{{ isTimelineExpanded(section.key, timeline) ? '收起' : '展开' }}</span>
+          </button>
+          <div v-if="isTimelineExpanded(section.key, timeline)" class="space-y-2 border-t p-2">
+            <article
+              v-for="group in timeline.groups"
+              :key="group.key"
+              class="rounded-lg border p-4"
+              :class="group.read ? 'opacity-70' : 'border-primary/30 bg-primary/5'"
+            >
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0 flex-1">
+                  <div class="flex items-center gap-2">
+                    <Badge variant="outline" class="text-[10px]">{{ categoryLabel(group.category) }}</Badge>
+                    <h3 class="text-sm font-medium">{{ group.title }}</h3>
+                    <Badge v-if="group.count > 1">{{ group.count }}</Badge>
+                    <Badge v-if="group.unread_count" variant="default">{{ group.unread_count }} 未读</Badge>
+                  </div>
+                  <p v-if="group.body" class="mt-1 text-sm text-muted-foreground">{{ group.body }}</p>
+                  <p class="mt-2 text-xs text-muted-foreground">{{ group.latest_at }}</p>
+                </div>
+                <div class="flex shrink-0 gap-2">
+                  <Button v-if="group.count > 1" type="button" variant="outline" size="sm" @click="toggleExpand(group.key)">
+                    {{ expanded[group.key] ? '收起' : '展开' }}
+                  </Button>
+                  <Button v-if="group.visit_url" as-child size="sm">
+                    <Link :href="group.visit_url">查看</Link>
+                  </Button>
+                </div>
               </div>
-              <p v-if="group.body" class="mt-1 text-sm text-muted-foreground">{{ group.body }}</p>
-              <p class="mt-2 text-xs text-muted-foreground">{{ group.latest_at }}</p>
-            </div>
-            <div class="flex shrink-0 gap-2">
-              <Button v-if="group.count > 1" type="button" variant="outline" size="sm" @click="toggleExpand(group.key)">
-                {{ expanded[group.key] ? '收起' : '展开' }}
-              </Button>
-              <Button v-if="group.visit_url" as-child size="sm">
-                <Link :href="group.visit_url">查看</Link>
-              </Button>
-            </div>
+              <ul v-if="expanded[group.key] && group.items.length" class="mt-3 space-y-2 border-t pt-3">
+                <li v-for="item in group.items" :key="item.id" class="flex items-start justify-between gap-2 text-sm">
+                  <div :class="item.read ? 'text-muted-foreground' : ''">
+                    <p class="font-medium">{{ item.title }}</p>
+                    <p v-if="item.body" class="text-xs text-muted-foreground">{{ item.body }}</p>
+                    <p class="text-xs text-muted-foreground">{{ item.created_at }}</p>
+                  </div>
+                  <div class="flex gap-1">
+                    <Button v-if="!item.read" type="button" variant="outline" size="sm" @click="markRead(item.mark_read_url)">已读</Button>
+                    <Button as-child size="sm" variant="outline">
+                      <Link :href="item.visit_url">查看</Link>
+                    </Button>
+                  </div>
+                </li>
+              </ul>
+            </article>
           </div>
-          <ul v-if="expanded[group.key] && group.items.length" class="mt-3 space-y-2 border-t pt-3">
-            <li v-for="item in group.items" :key="item.id" class="flex items-start justify-between gap-2 text-sm">
-              <div :class="item.read ? 'text-muted-foreground' : ''">
-                <p class="font-medium">{{ item.title }}</p>
-                <p v-if="item.body" class="text-xs text-muted-foreground">{{ item.body }}</p>
-                <p class="text-xs text-muted-foreground">{{ item.created_at }}</p>
-              </div>
-              <div class="flex gap-1">
-                <Button v-if="!item.read" type="button" variant="outline" size="sm" @click="markRead(item.mark_read_url)">已读</Button>
-                <Button as-child size="sm" variant="outline">
-                  <Link :href="item.visit_url">查看</Link>
-                </Button>
-              </div>
-            </li>
-          </ul>
-        </article>
+        </div>
       </div>
     </section>
   </div>

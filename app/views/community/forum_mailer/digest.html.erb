@@ -3,7 +3,12 @@
 <p>以下是您订阅的论坛摘要（<%= @notifications.count %> 条）：</p>
 
 <% @digest_sections.each do |section| %>
-  <h3 style="font-size:14px;margin:16px 0 8px;color:#333;"><%= section[:label] %> (<%= section[:notifications].size %>)</h3>
+  <h3 style="font-size:14px;margin:16px 0 8px;color:#333;">
+    <%= section[:label] %> (<%= section[:notifications].size %>)
+    <span style="font-size:12px;font-weight:normal;">
+      · <a href="<%= notification_type_unsubscribe_url_for(@user, section[:type]) %>" style="color:#666;">关闭此类邮件</a>
+    </span>
+  </h3>
   <ul>
     <% section[:notifications].each do |notification| %>
       <% url = notification_url_for(notification) %>

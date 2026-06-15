@@ -16,24 +16,25 @@ module Community
 
       sections = []
       if unread.any?
-        sections << {
-          key: "unread",
-          label: "未读",
-          count: unread.size,
-          groups: unread,
-          default_expanded: true
-        }
+        sections << read_state_section("unread", "未读", unread, default_expanded: true)
       end
       if read.any?
-        sections << {
-          key: "read",
-          label: "已读",
-          count: read.size,
-          groups: read,
-          default_expanded: false
-        }
+        sections << read_state_section("read", "已读", read, default_expanded: false)
       end
       sections
+    end
+
+  private
+
+    def read_state_section(key, label, groups, default_expanded:)
+      {
+        key: key,
+        label: label,
+        count: groups.size,
+        groups: groups,
+        timeline_sections: GroupNotificationTimeline.call(groups),
+        default_expanded: default_expanded
+      }
     end
   end
 end

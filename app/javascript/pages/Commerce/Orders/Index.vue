@@ -41,6 +41,8 @@ const props = defineProps<{
   status: string
   createdAfter?: string
   createdBefore?: string
+  minTotal?: string
+  maxTotal?: string
   statusOptions: Array<{ value: string; label: string }>
   statusTabs?: StatusTab[]
   activeFilters?: Array<{ param: string; label: string; value?: string }>
@@ -51,6 +53,8 @@ const q = ref(props.query)
 const statusFilter = ref(props.status)
 const createdAfter = ref(props.createdAfter || '')
 const createdBefore = ref(props.createdBefore || '')
+const minTotal = ref(props.minTotal || '')
+const maxTotal = ref(props.maxTotal || '')
 
 watch(() => props.status, (value) => {
   statusFilter.value = value
@@ -68,12 +72,22 @@ watch(() => props.createdBefore, (value) => {
   createdBefore.value = value || ''
 })
 
+watch(() => props.minTotal, (value) => {
+  minTotal.value = value || ''
+})
+
+watch(() => props.maxTotal, (value) => {
+  maxTotal.value = value || ''
+})
+
 function orderParams(overrides: Record<string, string | undefined> = {}) {
   return {
     q: overrides.q ?? (q.value || undefined),
     status: overrides.status ?? (statusFilter.value || undefined),
     created_after: overrides.created_after ?? (createdAfter.value || undefined),
     created_before: overrides.created_before ?? (createdBefore.value || undefined),
+    min_total: overrides.min_total ?? (minTotal.value || undefined),
+    max_total: overrides.max_total ?? (maxTotal.value || undefined),
   }
 }
 
@@ -102,6 +116,14 @@ function removeFilter(filter: { param: string }) {
   if (filter.param === 'created_before') {
     createdBefore.value = ''
     overrides.created_before = undefined
+  }
+  if (filter.param === 'min_total') {
+    minTotal.value = ''
+    overrides.min_total = undefined
+  }
+  if (filter.param === 'max_total') {
+    maxTotal.value = ''
+    overrides.max_total = undefined
   }
   router.get(routes.storeOrders, orderParams(overrides), { preserveState: true })
 }
@@ -144,6 +166,8 @@ function switchStatusTab(tab: StatusTab) {
     </select>
     <Input v-model="createdAfter" type="date" class="max-w-[10rem]" title="起始日期" />
     <Input v-model="createdBefore" type="date" class="max-w-[10rem]" title="截止日期" />
+    <Input v-model="minTotal" type="number" min="0" step="0.01" placeholder="最低金额" class="max-w-[8rem]" title="最低金额" />
+    <Input v-model="maxTotal" type="number" min="0" step="0.01" placeholder="最高金额" class="max-w-[8rem]" title="最高金额" />
     <Button type="submit" size="sm">筛选</Button>
   </form>
 

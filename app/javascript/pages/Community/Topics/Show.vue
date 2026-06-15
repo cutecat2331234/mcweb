@@ -201,7 +201,7 @@ const props = defineProps<{
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
   subscriptionLevels?: SubscriptionLevelOption[]
   subscriptionUrl?: string | null
-  meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null; poll_question?: string | null; twitter_card?: string | null; twitter_title?: string | null; twitter_description?: string | null }
+  meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null; poll_question?: string | null; twitter_card?: string | null; twitter_title?: string | null; twitter_description?: string | null; og_locale?: string | null; og_site_name?: string | null }
 }>()
 
 const page = usePage<{ auth: { user: { id: string; username: string } | null } }>()
@@ -934,6 +934,8 @@ async function copyPollShareLink() {
     <meta v-if="meta.twitter_description" head-key="twitter:description" name="twitter:description" :content="meta.twitter_description" />
     <link v-if="meta.url" head-key="canonical" rel="canonical" :href="meta.url" />
     <meta v-if="meta.image" head-key="og:image" property="og:image" :content="meta.image" />
+    <meta v-if="meta.og_locale" head-key="og:locale" property="og:locale" :content="meta.og_locale" />
+    <meta v-if="meta.og_site_name" head-key="og:site_name" property="og:site_name" :content="meta.og_site_name" />
   </Head>
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },

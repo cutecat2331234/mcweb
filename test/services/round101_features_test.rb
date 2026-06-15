@@ -70,7 +70,7 @@ class Round101MentionUnsubscribeTest < ActionDispatch::IntegrationTest
   test "mention email includes unsubscribe link" do
     email = Community::ForumMailer.mention(@user.id, @topic.public_id, @post.id)
     body = email.html_part&.body&.decoded || email.body.decoded
-    assert_includes body, "关闭 @提及 邮件通知"
+    assert_includes body, "关闭此类邮件通知"
   end
 
   test "unsubscribe disables mention email preference" do

@@ -1505,3 +1505,14 @@ app/
 | 订单日期筛选 | `created_after`/`created_before` + `CustomerOrderActiveFilters` |
 | @提及邮件退订 | `NotificationTypeUnsubscribeToken` + 一键退订链接 |
 | 摘要提及退订 | digest 邮件底部「关闭 @提及 邮件」链接 |
+
+### 第一百零二轮（通知时间线、未读标签筛选、投票 OG 增强、订单金额、邮件退订扩展）
+
+| 功能 | 实现 |
+|------|------|
+| 通知时间线分组 | `GroupNotificationTimeline` 今天/昨天/更早 + `timeline_sections` 嵌套折叠 |
+| 未读主题标签筛选 | `UnreadController` `tag` 参数 + `tagOptions` + 筛选芯片 |
+| 投票 OG 增强 | `topic_meta_props` `og_locale`/`og_site_name` + `Topics/Show.vue` meta |
+| 订单金额区间 | `min_total`/`max_total` + `CustomerOrderActiveFilters` + 导出同步 |
+| 邮件类型退订 | `_notification_unsubscribe` 局部 + topic_reply/followed_reply/reaction/mention |
+| 摘要按类型退订 | digest 每类型「关闭此类邮件」链接 |

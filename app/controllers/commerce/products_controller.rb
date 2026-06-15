@@ -137,6 +137,9 @@ module Commerce
         availabilityAlertUnsubscribeUrl: alert ? store_availability_alert_path(alert) : nil,
         wishlistUrl: logged_in? ? wishlist_store_product_path(product) : nil,
         wishlisted: wishlist_item.present?,
+        compareUrl: store_toggle_compare_path(product_id: product.public_id),
+        compared: Array(session[:compare_product_ids]).include?(product.public_id),
+        compareCount: compare_product_count,
         loggedIn: logged_in?
       }
     end

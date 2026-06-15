@@ -31,6 +31,9 @@ const props = defineProps<{
   availabilityAlertUnsubscribeUrl?: string | null
   wishlistUrl?: string | null
   wishlisted?: boolean
+  compareUrl?: string | null
+  compared?: boolean
+  compareCount?: number
   loggedIn?: boolean
 }>()
 
@@ -47,6 +50,11 @@ function subscribe() {
 function unsubscribe() {
   if (!props.availabilityAlertUnsubscribeUrl) return
   router.delete(props.availabilityAlertUnsubscribeUrl, { preserveScroll: true })
+}
+
+function toggleCompare() {
+  if (!props.compareUrl) return
+  router.post(props.compareUrl, {}, { preserveScroll: true })
 }
 </script>
 
@@ -93,6 +101,9 @@ function unsubscribe() {
       <div v-if="loggedIn" class="flex flex-wrap gap-2 pt-2">
         <Button v-if="wishlistUrl" type="button" :variant="wishlisted ? 'outline' : 'secondary'" @click="toggleWishlist">
           {{ wishlisted ? '已在心愿单' : '加入心愿单' }}
+        </Button>
+        <Button v-if="compareUrl" type="button" variant="outline" @click="toggleCompare">
+          {{ compared ? '移出对比' : '加入对比' }}{{ compareCount ? ` (${compareCount})` : '' }}
         </Button>
         <Button v-if="!hasAvailabilityAlert && availabilityAlertUrl" type="button" @click="subscribe">订阅上架通知</Button>
         <Button v-else-if="hasAvailabilityAlert && availabilityAlertUnsubscribeUrl" type="button" variant="outline" @click="unsubscribe">已订阅 · 取消</Button>

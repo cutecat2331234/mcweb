@@ -1212,6 +1212,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["user_id"], name: "index_store_stock_alerts_on_user_id"
   end
 
+  create_table "store_wishlist_filter_presets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "filters", default: {}, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_store_wishlist_filter_presets_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_store_wishlist_filter_presets_on_user_id"
+  end
+
   create_table "store_wishlist_items", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.text "note"
@@ -1518,6 +1528,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_stock_alerts", "store_product_variants"
   add_foreign_key "store_stock_alerts", "store_products"
   add_foreign_key "store_stock_alerts", "users"
+  add_foreign_key "store_wishlist_filter_presets", "users"
   add_foreign_key "store_wishlist_items", "store_product_variants", column: "variant_id"
   add_foreign_key "store_wishlist_items", "store_products"
   add_foreign_key "store_wishlist_items", "users"

@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { reactive, watch } from 'vue'
+import { reactive, watch, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -45,7 +46,13 @@ const props = defineProps<{
   filters?: { in_stock: boolean; on_sale: boolean; coming_soon: boolean; sort: string }
   totalCount?: number
   filteredCount?: number
+  savedFilterPresets?: Array<{ id: number; name: string; url: string; delete_url: string }>
+  saveFilterPresetUrl?: string
 }>()
+
+const saveName = ref('')
+const saving = ref(false)
+const saveError = ref('')
 
 const noteDrafts = reactive<Record<string, string>>({})
 
@@ -75,7 +82,60 @@ function clearFilters() {
 
 function toggleFilter(key: 'in_stock' | 'on_sale' | 'coming_soon') {
   const f = props.filters || { in_stock: false, on_sale: false, coming_soon: false, sort: 'newest' }
-  applyFilters({ [key]: !f[key] })
+  const next = !f[key]
+  const overrides: Partial<{ in_stock: boolean; on_sale: boolean; coming_soon: boolean }> = { [key]: next }
+  if (key === 'coming_soon' && next) overrides.in_stock = false
+  if (key === 'in_stock' && next) overrides.coming_soon = false
+  applyFilters(overrides)
+}
+
+async function saveFilterPreset() {
+  if (!props.saveFilterPresetUrl || !saveName.value.trim()) return
+  saving.value = true
+  saveError.value = ''
+  const f = props.filters || { in_stock: false, on_sale: false, coming_soon: false, sort: 'newest' }
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const response = await fetch(props.saveFilterPresetUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': token,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        wishlist_filter_preset: {
+          name: saveName.value.trim(),
+          filters: {
+            in_stock: f.in_stock,
+            on_sale: f.on_sale,
+            coming_soon: f.coming_soon,
+            sort: f.sort,
+          },
+        },
+      }),
+    })
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}))
+      saveError.value = data.error || '保存失败'
+      return
+    }
+    saveName.value = ''
+    router.reload({ only: ['savedFilterPresets'] })
+  } finally {
+    saving.value = false
+  }
+}
+
+async function deleteFilterPreset(deleteUrl: string) {
+  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+  await fetch(deleteUrl, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': token, Accept: 'application/json' },
+    credentials: 'same-origin',
+  })
+  router.reload({ only: ['savedFilterPresets'] })
 }
 
 function importToCompare() {
@@ -180,6 +240,25 @@ async function copyShareLink() {
     <Button v-if="hasActiveFilters()" type="button" size="sm" variant="ghost" @click="clearFilters">清除筛选</Button>
     <span v-if="totalCount !== undefined && filteredCount !== undefined && hasActiveFilters()" class="text-xs text-muted-foreground">
       显示 {{ filteredCount }} / {{ totalCount }} 件
+    </span>
+  </div>
+
+  <div v-if="saveFilterPresetUrl && hasActiveFilters()" class="mb-4 flex flex-wrap items-end gap-2 rounded-lg border p-3">
+    <div class="space-y-1">
+      <label class="text-sm font-medium">保存当前筛选</label>
+      <Input v-model="saveName" placeholder="筛选名称" class="w-48" />
+    </div>
+    <Button type="button" variant="outline" size="sm" :disabled="saving || !saveName.trim()" @click="saveFilterPreset">
+      {{ saving ? '保存中…' : '保存筛选' }}
+    </Button>
+    <p v-if="saveError" class="text-sm text-destructive">{{ saveError }}</p>
+  </div>
+
+  <div v-if="savedFilterPresets?.length" class="mb-4 flex flex-wrap gap-2">
+    <span class="text-sm text-muted-foreground">已保存：</span>
+    <span v-for="preset in savedFilterPresets" :key="preset.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
+      <Link :href="preset.url" class="hover:underline">{{ preset.name }}</Link>
+      <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteFilterPreset(preset.delete_url)">×</button>
     </span>
   </div>
 

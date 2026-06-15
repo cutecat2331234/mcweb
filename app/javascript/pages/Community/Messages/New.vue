@@ -42,7 +42,7 @@ const bodyHasBlockedLink = computed(() =>
 
 const canSend = computed(() =>
   !pmBlocked.value &&
-  (props.group || props.canSendPm !== false) &&
+  props.canSendPm !== false &&
   !bodyHasBlockedLink.value
 )
 
@@ -75,12 +75,16 @@ function submitMessage() {
     </Button>
   </div>
 
-  <p v-if="!group && canSendPm === false" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+  <p v-if="canSendPm === false" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
     新成员（信任等级 0）暂时无法发送私信，多发帖参与社区即可解锁。
   </p>
 
   <p v-if="pmBlocked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
     {{ warningRestrictions?.pm }}
+  </p>
+
+  <p v-if="group && warningRestrictions?.link" class="mb-4 max-w-lg rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    {{ warningRestrictions.link }}
   </p>
 
   <form class="max-w-lg space-y-4" @submit.prevent="submitMessage">

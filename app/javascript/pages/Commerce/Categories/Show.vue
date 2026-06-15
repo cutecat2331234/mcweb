@@ -44,6 +44,15 @@ function applyFilter(key: 'in_stock' | 'on_sale', value: boolean) {
     sort: props.filters.sort || undefined,
   }, { preserveState: true })
 }
+
+function applySort(sort: string) {
+  router.get(routes.storeCategory(props.category.slug), {
+    q: props.query || undefined,
+    in_stock: props.filters.in_stock ? '1' : undefined,
+    on_sale: props.filters.on_sale ? '1' : undefined,
+    sort: sort || undefined,
+  }, { preserveState: true })
+}
 </script>
 
 <template>
@@ -69,6 +78,16 @@ function applyFilter(key: 'in_stock' | 'on_sale', value: boolean) {
     <Button type="button" size="sm" :variant="filters.on_sale ? 'default' : 'outline'" @click="applyFilter('on_sale', !filters.on_sale)">
       促销中
     </Button>
+    <select
+      :value="filters.sort || ''"
+      class="h-8 rounded-md border px-2 text-xs"
+      @change="applySort(($event.target as HTMLSelectElement).value)"
+    >
+      <option value="">最新上架</option>
+      <option value="price_asc">价格从低到高</option>
+      <option value="price_desc">价格从高到低</option>
+      <option value="popular">最热</option>
+    </select>
     <a v-if="category.rss_url" :href="category.rss_url" target="_blank" rel="noopener" class="self-center text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
   </div>
 

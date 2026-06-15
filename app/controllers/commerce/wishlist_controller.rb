@@ -65,7 +65,9 @@ module Commerce
         wishlistImportableCount: wishlist_importable_compare_count(compared_ids),
         filters: wishlist_filters_props,
         totalCount: total_count,
-        filteredCount: items.size
+        filteredCount: items.size,
+        savedFilterPresets: serialize_wishlist_filter_presets,
+        saveFilterPresetUrl: store_wishlist_filter_presets_path
       }
     end
 
@@ -190,6 +192,29 @@ module Commerce
       else
         items
       end
+    end
+
+    def serialize_wishlist_filter_presets
+      current_user.store_wishlist_filter_presets.recent.limit(10).map do |preset|
+        filters = preset.filters.symbolize_keys
+        {
+          id: preset.id,
+          name: preset.name,
+          url: store_wishlist_path(
+            {
+              in_stock: truthy_filter?(filters[:in_stock]) ? "1" : nil,
+              on_sale: truthy_filter?(filters[:on_sale]) ? "1" : nil,
+              coming_soon: truthy_filter?(filters[:coming_soon]) ? "1" : nil,
+              sort: filters[:sort].presence
+            }.compact
+          ),
+          delete_url: store_wishlist_filter_preset_path(preset)
+        }
+      end
+    end
+
+    def truthy_filter?(value)
+      value == true || value == "1" || value == "true"
     end
   end
 end

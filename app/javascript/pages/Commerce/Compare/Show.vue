@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref, computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -14,6 +15,7 @@ const props = defineProps<{
     db_id: number
     name: string
     url: string
+    coming_soon?: boolean
     price_label: string
     category_name: string | null
     in_stock: boolean
@@ -59,6 +61,12 @@ function rowHasDiff(row: (typeof compareRows)[number]) {
 function cellDiffClass(row: (typeof compareRows)[number]) {
   return rowHasDiff(row) ? 'bg-amber-50 dark:bg-amber-950/30 font-medium' : ''
 }
+
+const onlyDiffRows = ref(false)
+
+const visibleRows = computed(() =>
+  onlyDiffRows.value ? compareRows.filter((row) => rowHasDiff(row)) : compareRows
+)
 
 function importWishlist() {
   if (!props.wishlistImportUrl) return
@@ -114,6 +122,10 @@ function addToCart(product: { db_id: number; add_to_cart_url: string; variants: 
       </Button>
       <Button v-if="shareUrl && products.length" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
       <Button v-if="products.length" type="button" variant="outline" size="sm" @click="clearAll">清空对比</Button>
+      <label v-if="products.length >= 2" class="flex items-center gap-1.5 text-xs text-muted-foreground">
+        <input v-model="onlyDiffRows" type="checkbox" class="rounded border">
+        仅差异行
+      </label>
     </div>
   </div>
 
@@ -124,11 +136,12 @@ function addToCart(product: { db_id: number; add_to_cart_url: string; variants: 
           <th class="p-3 text-left">属性</th>
           <th v-for="product in products" :key="product.id" class="p-3 text-left">
             <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
+            <span v-if="product.coming_soon" class="ml-1 text-[10px] text-muted-foreground">(即将上架)</span>
           </th>
         </tr>
       </thead>
       <tbody>
-        <tr v-for="row in compareRows" :key="row.key" class="border-b">
+        <tr v-for="row in visibleRows" :key="row.key" class="border-b">
           <td class="p-3 text-muted-foreground">
             {{ row.label }}
             <span v-if="rowHasDiff(row)" class="ml-1 text-[10px] text-amber-600">≠</span>

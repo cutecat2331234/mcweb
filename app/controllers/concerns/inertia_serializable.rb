@@ -958,7 +958,7 @@ module InertiaSerializable
 
   def compare_product_count
     ids = Array(session[:compare_product_ids])
-    Commerce::Product.available.where(public_id: ids).count
+    Commerce::Product.active.where(public_id: ids).count
   end
 
   def format_price(product)

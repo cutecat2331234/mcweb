@@ -1118,3 +1118,17 @@ app/
 | 商品详情 sticky 购买栏 | `IntersectionObserver` 底部固定加购/收藏/对比 |
 | 心愿单备注本地 state | `noteDrafts` 避免直接 mutate props |
 | 心愿单重复徽章修复 | 移除重复的「未开售」徽章 |
+
+### 第六十八轮（筛选预设、预览对比、群组私信校验、分类排序）
+
+| 功能 | 实现 |
+|------|------|
+| 心愿单保存筛选预设 | `WishlistFilterPreset` + CRUD + 芯片 UI |
+| 分类页排序 UI | 价格升降 / 最热下拉 |
+| 对比仅差异行开关 | `onlyDiffRows` / `visibleRows` |
+| 即将上架商品加入对比 | 预览页按钮 + compare 支持 `coming_soon` |
+| 对比 session 清理 | 移除已下架商品 ID |
+| 群组私信链接/警告校验 | `CreateGroupConversation` + `SendMessage` |
+| 群组私信 TL0 / 链接横幅 | `Messages/New` 修复 `canSend` |
+| 保存搜索 URL 参数补全 | `SavedSearchesController` 同步 filters |
+| 心愿单互斥筛选 | `in_stock` 与 `coming_soon` 互斥 |

@@ -43,6 +43,7 @@ export const routes = {
   storeToggleCompare: (productId: string) => `/store/compare/toggle?product_id=${productId}`,
   storeImportWishlistCompare: '/store/compare/import_wishlist',
   storeWishlist: '/store/wishlist',
+  storeWishlistFilterPresets: '/store/wishlist/filter_presets',
   storeStockAlerts: '/store/stock_alerts',
   storePriceAlerts: '/store/price_alerts',
   storeAvailabilityAlerts: '/store/availability_alerts',

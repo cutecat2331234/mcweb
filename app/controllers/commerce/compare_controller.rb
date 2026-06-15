@@ -8,7 +8,11 @@ module Commerce
 
     def show
       ids = Array(session[:compare_product_ids])
-      products_by_id = Commerce::Product.available.where(public_id: ids).includes(:variants, :category).index_by(&:public_id)
+      active_ids = Commerce::Product.active.where(public_id: ids).pluck(:public_id)
+      session[:compare_product_ids] = ids.filter { |id| active_ids.include?(id) }
+      ids = session[:compare_product_ids]
+
+      products_by_id = Commerce::Product.active.where(public_id: ids).includes(:variants, :category).index_by(&:public_id)
       products = ids.filter_map { |id| products_by_id[id] }
       share_url = compare_share_url_for(current_user, ids)
 
@@ -23,14 +27,18 @@ module Commerce
     end
 
     def toggle
-      product = Commerce::Product.available.find_by!(public_id: params[:product_id])
+      product = Commerce::Product.active.find_by!(public_id: params[:product_id])
+      unless product.available? || product.coming_soon?
+        return redirect_back fallback_location: store_products_path, alert: "商品不可加入对比。"
+      end
+
       result = Commerce::ToggleCompare.call(session: session, product: product)
 
       if result.success?
         notice = result.value[:compared] ? "已加入对比。" : "已从对比移除。"
-        redirect_back fallback_location: store_compare_path, notice: notice
+        redirect_back fallback_location: compare_fallback_path(product), notice: notice
       else
-        redirect_back fallback_location: store_product_path(product), alert: service_error_message(result)
+        redirect_back fallback_location: compare_fallback_path(product), alert: service_error_message(result)
       end
     end
 
@@ -66,7 +74,7 @@ module Commerce
     def public_show
       user = User.find_by!(compare_share_token: params[:token])
       ids = Array(user.compare_product_ids)
-      products_by_id = Commerce::Product.available.where(public_id: ids).includes(:variants, :category).index_by(&:public_id)
+      products_by_id = Commerce::Product.active.where(public_id: ids).includes(:variants, :category).index_by(&:public_id)
       products = ids.filter_map { |id| products_by_id[id] }
 
       render inertia: "Commerce/Compare/Public", props: {
@@ -90,7 +98,8 @@ module Commerce
         id: product.public_id,
         db_id: product.id,
         name: product.name,
-        url: store_product_path(product),
+        url: product.coming_soon? ? preview_store_product_path(product) : store_product_path(product),
+        coming_soon: product.coming_soon?,
         price_label: format_price(product),
         category_name: product.category&.name,
         in_stock: product.in_stock?,
@@ -100,6 +109,10 @@ module Commerce
         toggle_url: store_toggle_compare_path(product_id: product.public_id),
         add_to_cart_url: store_cart_path
       }
+    end
+
+    def compare_fallback_path(product)
+      product.coming_soon? ? preview_store_product_path(product) : store_product_path(product)
     end
 
   end

@@ -1211,3 +1211,13 @@ app/
 | 摘要邮件管理链接 | `saved_search_digest` 链接至通知偏好页 |
 | 分类页 newest 排序 | `sort=newest` 与商城首页参数统一 |
 | 配送方式种子 | `db/seeds.rb` 默认 JSON |
+
+### 第七十六轮（搜索上限、邮件一键退订、偏好页重命名、配送可视化）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索数量上限 | `forum.saved_search_limit` + 模型校验 + 搜索页计数 |
+| 摘要邮件一键退订 | `SavedSearchUnsubscribeToken` + 签名链接 |
+| 偏好页搜索重命名 | 与搜索页一致的内联 ✎ 重命名 |
+| 配送方式可视化 | 商城设置表单编辑 + `stored_list` |
+| 论坛设置上限配置 | 管理后台 `forum.saved_search_limit` |

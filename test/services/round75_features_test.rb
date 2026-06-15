@@ -71,31 +71,35 @@ class Round75StoreShippingMethodsSettingsTest < ActionDispatch::IntegrationTest
     SiteSetting.set("store.shipping_methods", @previous) if @previous
   end
 
-  test "store settings page includes shipping methods json" do
+  test "store settings page includes shipping methods" do
     sign_in_as(@admin)
     get admin_store_settings_path
     assert_response :success
-    assert_includes response.body, "store.shipping_methods"
-    assert_includes response.body, "配送方式"
+    assert_includes response.body, "shippingMethods"
+    assert_includes response.body, "标准配送"
   end
 
-  test "store settings rejects invalid shipping json" do
+  test "store settings rejects empty shipping methods" do
     sign_in_as(@admin)
     patch admin_store_settings_path, params: {
-      settings: { "store.shipping_methods" => "not-json" }
+      settings: {},
+      shipping_methods: []
     }
     assert_redirected_to admin_store_settings_path
     assert_match(/失败/, flash[:alert].to_s)
   end
 
-  test "store settings accepts valid shipping json" do
-    json = [{ code: "pickup", label: "自提", cents: 0 }].to_json
+  test "store settings accepts valid shipping array" do
     sign_in_as(@admin)
     patch admin_store_settings_path, params: {
-      settings: { "store.shipping_methods" => json }
+      settings: {},
+      shipping_methods: [
+        { code: "pickup", label: "自提", cents: 0, delivery_days_min: 0, delivery_days_max: 0 }
+      ]
     }
     assert_redirected_to admin_store_settings_path
-    assert_equal JSON.parse(json), JSON.parse(SiteSetting.get("store.shipping_methods"))
+    methods = JSON.parse(SiteSetting.get("store.shipping_methods"))
+    assert_equal "pickup", methods.first["code"]
   end
 end
 

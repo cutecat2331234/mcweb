@@ -52,6 +52,7 @@ module Community
       @topics = Community::Topic.where(id: topic_ids).order(created_at: :desc)
       @url = "#{root_url.chomp('/')}#{forum_search_path(search_url_for(@search))}"
       @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
+      @unsubscribe_url = "#{root_url.chomp('/')}#{unsubscribe_forum_saved_searches_path(token: Community::SavedSearchUnsubscribeToken.generate(@search))}"
 
       mail(to: @user.email, subject: "保存的搜索有新结果：#{@search.name}")
     end

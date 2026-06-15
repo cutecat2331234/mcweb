@@ -9,10 +9,10 @@ module Commerce
 
     module_function
 
-    def list
+    def stored_list
       raw = SiteSetting.get("store.shipping_methods", nil)
       parsed = raw.present? ? JSON.parse(raw) : DEFAULT_JSON
-      methods = Array(parsed).filter_map do |entry|
+      Array(parsed).filter_map do |entry|
         next unless entry.is_a?(Hash) && entry["code"].present?
 
         {
@@ -23,9 +23,12 @@ module Commerce
           "delivery_days_max" => entry["delivery_days_max"].presence&.to_i
         }
       end.presence || DEFAULT_JSON.map(&:dup)
-      apply_flat_shipping_to_standard!(methods)
     rescue JSON::ParserError
-      apply_flat_shipping_to_standard!(DEFAULT_JSON.map(&:dup))
+      DEFAULT_JSON.map(&:dup)
+    end
+
+    def list
+      apply_flat_shipping_to_standard!(stored_list.map(&:dup))
     end
 
     def apply_flat_shipping_to_standard!(methods)

@@ -2,7 +2,7 @@
 
 module Community
   class SavedSearchesController < ApplicationController
-    before_action :require_login
+    before_action :require_login, except: :unsubscribe
 
     def index
       searches = current_user.forum_saved_searches.recent.limit(20)
@@ -31,6 +31,15 @@ module Community
       search = current_user.forum_saved_searches.find(params[:id])
       search.destroy!
       head :no_content
+    end
+
+    def unsubscribe
+      search_id = Community::SavedSearchUnsubscribeToken.verify(params[:token])
+      search = Community::SavedSearch.find(search_id)
+      search.update!(notify_daily: false)
+      redirect_to forum_preferences_path, notice: "已关闭「#{search.name}」的每日邮件提醒。"
+    rescue Community::SavedSearchUnsubscribeToken::InvalidToken, ActiveRecord::RecordNotFound
+      redirect_to forum_search_path, alert: "取消提醒链接无效或已过期。"
     end
 
     private

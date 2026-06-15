@@ -4,6 +4,7 @@ import { ref } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Label from '@/components/ui/Label.vue'
 import { routes } from '@/lib/routes'
@@ -45,6 +46,9 @@ const form = useForm({
 })
 
 const togglingId = ref<number | null>(null)
+const editingSearchId = ref<number | null>(null)
+const editingSearchName = ref('')
+const renamingSearchId = ref<number | null>(null)
 
 function submit() {
   form.patch(routes.forumPreferences)
@@ -82,6 +86,43 @@ async function deleteSavedSearch(deleteUrl: string) {
     credentials: 'same-origin',
   })
   router.reload({ only: ['savedSearches'] })
+}
+
+function startRenameSearch(search: SavedSearchItem) {
+  editingSearchId.value = search.id
+  editingSearchName.value = search.name
+}
+
+function cancelRenameSearch() {
+  editingSearchId.value = null
+  editingSearchName.value = ''
+}
+
+async function saveRenameSearch(search: SavedSearchItem) {
+  if (!search.update_url || !editingSearchName.value.trim()) return
+  renamingSearchId.value = search.id
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const response = await fetch(search.update_url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': token,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        saved_search: { name: editingSearchName.value.trim() },
+      }),
+    })
+    if (response.ok) {
+      editingSearchId.value = null
+      editingSearchName.value = ''
+      router.reload({ only: ['savedSearches'] })
+    }
+  } finally {
+    renamingSearchId.value = null
+  }
 }
 </script>
 
@@ -145,9 +186,24 @@ async function deleteSavedSearch(deleteUrl: string) {
         :key="search.id"
         class="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
       >
-        <div class="min-w-0">
-          <Link :href="search.url" class="font-medium hover:underline">{{ search.name }}</Link>
-          <p v-if="search.query" class="truncate text-xs text-muted-foreground">关键词：{{ search.query }}</p>
+        <div class="min-w-0 flex-1">
+          <template v-if="editingSearchId === search.id">
+            <div class="flex flex-wrap items-center gap-2">
+              <Input
+                v-model="editingSearchName"
+                class="h-8 max-w-xs text-sm"
+                @keydown.enter="saveRenameSearch(search)"
+                @keydown.escape="cancelRenameSearch"
+              />
+              <Button type="button" size="sm" variant="outline" :disabled="renamingSearchId === search.id" @click="saveRenameSearch(search)">保存</Button>
+              <Button type="button" size="sm" variant="ghost" @click="cancelRenameSearch">取消</Button>
+            </div>
+          </template>
+          <template v-else>
+            <Link :href="search.url" class="font-medium hover:underline">{{ search.name }}</Link>
+            <button type="button" class="ml-2 text-xs text-muted-foreground hover:text-foreground" title="重命名" @click="startRenameSearch(search)">✎</button>
+          </template>
+          <p v-if="search.query && editingSearchId !== search.id" class="truncate text-xs text-muted-foreground">关键词：{{ search.query }}</p>
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
           <label class="flex items-center gap-2 text-xs">

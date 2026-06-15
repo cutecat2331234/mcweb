@@ -11,5 +11,24 @@ module Community
 
     scope :recent, -> { order(created_at: :desc) }
     scope :notify_daily, -> { where(notify_daily: true) }
+
+    validate :within_user_limit, on: :create
+
+    def self.limit_for_user(user)
+      limit = SiteSetting.get("forum.saved_search_limit", "20").to_i
+      return Float::INFINITY if limit <= 0
+
+      limit
+    end
+
+  private
+
+    def within_user_limit
+      limit = self.class.limit_for_user(user)
+      return if limit == Float::INFINITY
+
+      count = user.forum_saved_searches.count
+      errors.add(:base, "保存搜索已达上限（#{limit.to_i}）") if count >= limit
+    end
   end
 end

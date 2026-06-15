@@ -19,25 +19,30 @@ module Admin
         store.cart_max_items
         store.abandoned_cart_coupon_code
         store.order_webhook_secret
-        store.shipping_methods
       ].freeze
 
       def show
         render inertia: "Admin/Store/Settings/Show", props: {
-          settings: store_settings_props
+          settings: store_settings_props,
+          shippingMethods: Commerce::ShippingMethods.stored_list
         }
       end
 
       def update
+        if params[:shipping_methods].present?
+          json = normalize_shipping_methods(params[:shipping_methods]).to_json
+          validate_shipping_methods!(json)
+          SiteSetting.set("store.shipping_methods", json)
+        end
+
         settings_params.each do |key, value|
-          validate_setting!(key, value)
           SiteSetting.set(key, value)
         end
 
         Administration::AuditLogger.call(
           actor: current_user,
           action: "admin.store_settings_updated",
-          metadata: { keys: settings_params.keys }
+          metadata: { keys: settings_params.keys + (params[:shipping_methods].present? ? [ "store.shipping_methods" ] : []) }
         )
 
         redirect_to admin_store_settings_path, notice: "商城设置已保存。"
@@ -49,19 +54,9 @@ module Admin
 
       def store_settings_props
         STORE_SETTING_KEYS.map do |key|
-          value = SiteSetting.get(key, default_for(key)).to_s
-          value = JSON.pretty_generate(JSON.parse(value)) if key == "store.shipping_methods" && value.present?
           {
             key: key,
-            value: value,
-            label: setting_label(key),
-            hint: setting_hint(key),
-            input_type: setting_input_type(key)
-          }
-        rescue JSON::ParserError
-          {
-            key: key,
-            value: value,
+            value: SiteSetting.get(key, default_for(key)).to_s,
             label: setting_label(key),
             hint: setting_hint(key),
             input_type: setting_input_type(key)
@@ -74,9 +69,25 @@ module Admin
         params.fetch(:settings, {}).permit(*allowed.keys).to_h
       end
 
-      def default_for(key)
-        return Commerce::ShippingMethods::DEFAULT_JSON.to_json if key == "store.shipping_methods"
+      def normalize_shipping_methods(raw)
+        Array(raw).filter_map do |entry|
+          next unless entry.is_a?(ActionController::Parameters) || entry.is_a?(Hash)
 
+          data = entry.to_unsafe_h.symbolize_keys
+          code = data[:code].to_s.strip
+          next if code.blank?
+
+          {
+            "code" => code,
+            "label" => data[:label].to_s.strip.presence || code,
+            "cents" => data[:cents].to_i,
+            "delivery_days_min" => data[:delivery_days_min].presence&.to_i,
+            "delivery_days_max" => data[:delivery_days_max].presence&.to_i
+          }
+        end
+      end
+
+      def default_for(key)
         {
           "store.gift_wrap_cents" => "500",
           "store.pending_order_expiry_minutes" => "30",
@@ -100,8 +111,7 @@ module Admin
           "store.compare_max_items" => "对比列表上限",
           "store.cart_max_items" => "购物车商品种类上限",
           "store.abandoned_cart_coupon_code" => "弃购提醒优惠券代码",
-          "store.order_webhook_secret" => "订单 Webhook 密钥",
-          "store.shipping_methods" => "配送方式（JSON）"
+          "store.order_webhook_secret" => "订单 Webhook 密钥"
         }[key] || key
       end
 
@@ -112,21 +122,19 @@ module Admin
           "store.compare_max_items" => "用户可同时对比的商品数量（对标 XenForo 资源对比）。",
           "store.cart_max_items" => "购物车中不同商品种类上限，0 表示不限制。",
           "store.abandoned_cart_coupon_code" => "弃购邮件中附带的优惠券，留空则不发放。",
-          "store.shipping_methods" => "JSON 数组，每项含 code、label、cents、delivery_days_min、delivery_days_max。标准配送运费会同步 flat_shipping_cents。"
+          "store.flat_shipping_cents" => "结账时「标准配送」的实际运费（分），会覆盖下方配送方式中 standard 的价格。"
         }[key]
       end
 
       def setting_input_type(key)
-        return "json" if key == "store.shipping_methods"
         return "text" if %w[store.seo_title store.seo_description store.abandoned_cart_coupon_code store.order_webhook_secret].include?(key)
 
         "number"
       end
 
-      def validate_setting!(key, value)
-        return unless key == "store.shipping_methods" && value.present?
-
-        parsed = JSON.parse(value)
+      def validate_shipping_methods!(json)
+        parsed = JSON.parse(json)
+        raise ArgumentError, "至少保留一种配送方式" if parsed.blank?
         raise ArgumentError, "配送方式必须是 JSON 数组" unless parsed.is_a?(Array)
       end
     end

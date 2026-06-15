@@ -203,7 +203,11 @@ Rails.application.routes.draw do
     get "tags", to: "tags#index", as: :tags
     get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
-    resources :saved_searches, only: %i[index create update destroy]
+    resources :saved_searches, only: %i[index create update destroy] do
+      collection do
+        get :unsubscribe
+      end
+    end
     get "tags/:slug", to: "tags#show", as: :tag
     post "tags/:slug/subscription", to: "tags#toggle_subscription", as: :tag_subscription
     resources :conversations, only: %i[index show new create] do

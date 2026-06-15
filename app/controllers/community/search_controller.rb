@@ -189,6 +189,8 @@ module Community
         loggedIn: logged_in?,
         forumStaff: forum_staff?,
         saveSearchUrl: logged_in? ? forum_saved_searches_path : nil,
+        savedSearchLimit: Community::SavedSearch.limit_for_user(current_user).finite? ? Community::SavedSearch.limit_for_user(current_user).to_i : nil,
+        savedSearchCount: logged_in? ? current_user.forum_saved_searches.count : 0,
         suggestUrl: forum_search_suggest_path
       }
     end

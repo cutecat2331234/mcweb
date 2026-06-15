@@ -60,8 +60,15 @@ const props = defineProps<{
   loggedIn?: boolean
   forumStaff?: boolean
   saveSearchUrl?: string | null
+  savedSearchLimit?: number | null
+  savedSearchCount?: number
   suggestUrl?: string | null
 }>()
+
+const atSavedSearchLimit = computed(() => {
+  if (!props.savedSearchLimit) return false
+  return (props.savedSearchCount ?? 0) >= props.savedSearchLimit
+})
 
 const q = ref(props.query)
 const sectionSlug = ref(props.section || '')
@@ -507,13 +514,17 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
   <div v-if="loggedIn && saveSearchUrl" class="mb-6 flex flex-wrap items-end gap-2 rounded-lg border p-4">
     <div class="space-y-1">
       <label class="text-sm font-medium">保存当前搜索</label>
-      <Input v-model="saveName" placeholder="搜索名称" class="w-48" />
+      <Input v-model="saveName" placeholder="搜索名称" class="w-48" :disabled="atSavedSearchLimit" />
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input v-model="saveNotifyDaily" type="checkbox" class="rounded border-input" />
+        <input v-model="saveNotifyDaily" type="checkbox" class="rounded border-input" :disabled="atSavedSearchLimit" />
         每日邮件提醒新结果
       </label>
+      <p v-if="savedSearchLimit" class="text-xs text-muted-foreground">
+        已保存 {{ savedSearchCount ?? 0 }} / {{ savedSearchLimit }}
+      </p>
+      <p v-if="atSavedSearchLimit" class="text-xs text-destructive">已达保存搜索上限，请删除旧搜索后再保存。</p>
     </div>
-    <Button type="button" variant="outline" :disabled="saving || !saveName.trim()" @click="saveSearch">
+    <Button type="button" variant="outline" :disabled="saving || !saveName.trim() || atSavedSearchLimit" @click="saveSearch">
       {{ saving ? '保存中…' : '保存搜索' }}
     </Button>
     <p v-if="saveError" class="text-sm text-destructive">{{ saveError }}</p>

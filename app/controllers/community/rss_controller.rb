@@ -48,6 +48,14 @@ module Community
       head :not_found
     end
 
+    def watching_opml
+      user_id = Community::WatchingOpmlToken.verify(params[:token])
+      user = User.find(user_id)
+      render xml: build_watching_opml(user), content_type: "application/xml"
+    rescue Community::WatchingOpmlToken::InvalidToken, ActiveRecord::RecordNotFound
+      head :not_found
+    end
+
     private
 
     def build_feed(topics, title:, url:)
@@ -88,16 +96,52 @@ module Community
       outlines = searches.map do |search|
         rss_url = forum_saved_search_rss_url(id: search.id, token: Community::SavedSearchRssToken.generate(search))
         html_url = forum_search_url(Community::SavedSearchPresenter.url_params(search))
-        <<~XML
-          <outline type="rss" text="#{escape_xml(search.name)}" title="#{escape_xml(search.name)}" xmlUrl="#{escape_xml(rss_url)}" htmlUrl="#{escape_xml(html_url)}" />
-        XML
+        opml_outline(search.name, rss_url: rss_url, html_url: html_url)
       end.join("\n")
 
+      wrap_opml(title: "#{user.username} 的保存搜索", outlines: outlines)
+    end
+
+    def build_watching_opml(user)
+      outlines = []
+
+      Community::Subscription.where(user: user, subscribable_type: "Community::Section").find_each do |sub|
+        section = Community::Section.find_by(id: sub.subscribable_id)
+        next unless section
+
+        outlines << opml_outline(
+          section.name,
+          rss_url: forum_section_rss_url(id: section.slug),
+          html_url: forum_section_url(section)
+        )
+      end
+
+      Community::Subscription.where(user: user, subscribable_type: "Community::Tag").find_each do |sub|
+        tag = Community::Tag.find_by(id: sub.subscribable_id)
+        next unless tag
+
+        outlines << opml_outline(
+          "标签 #{tag.name}",
+          rss_url: forum_tag_rss_url(slug: tag.slug),
+          html_url: forum_tag_url(tag.slug)
+        )
+      end
+
+      wrap_opml(title: "#{user.username} 的关注订阅", outlines: outlines.join("\n"))
+    end
+
+    def opml_outline(title, rss_url:, html_url:)
+      <<~XML
+        <outline type="rss" text="#{escape_xml(title)}" title="#{escape_xml(title)}" xmlUrl="#{escape_xml(rss_url)}" htmlUrl="#{escape_xml(html_url)}" />
+      XML
+    end
+
+    def wrap_opml(title:, outlines:)
       <<~XML
         <?xml version="1.0" encoding="UTF-8"?>
         <opml version="2.0">
           <head>
-            <title>#{escape_xml("#{user.username} 的保存搜索")}</title>
+            <title>#{escape_xml(title)}</title>
             <dateCreated>#{Time.current.rfc2822}</dateCreated>
           </head>
           <body>

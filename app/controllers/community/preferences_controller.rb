@@ -44,7 +44,9 @@ module Community
         digest_watched_only: current_user.forum_digest_watched_only?,
         digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } },
         savedSearches: serialize_saved_searches_for_preferences,
-        savedSearchesOpmlUrl: Community::SavedSearchPresenter.opml_path(current_user)
+        savedSearchesOpmlUrl: Community::SavedSearchPresenter.opml_path(current_user),
+        watchingOpmlUrl: forum_watching_opml_path(token: Community::WatchingOpmlToken.generate(current_user)),
+        savedSearchWebhookDeliveries: serialize_saved_search_webhook_deliveries
       }
     end
 
@@ -119,6 +121,28 @@ module Community
 
     def saved_search_url_params(search)
       Community::SavedSearchPresenter.url_params(search)
+    end
+
+    def serialize_saved_search_webhook_deliveries
+      search_ids = current_user.forum_saved_searches.pluck(:id)
+      return [] if search_ids.empty?
+
+      searches_by_id = current_user.forum_saved_searches.index_by(&:id)
+      Community::SavedSearchWebhookDelivery
+        .where(saved_search_id: search_ids)
+        .recent
+        .limit(20)
+        .map do |delivery|
+          search = searches_by_id[delivery.saved_search_id]
+          {
+            id: delivery.id,
+            search_name: search&.name,
+            event_type: delivery.event_type,
+            status: delivery.status,
+            response_code: delivery.response_code,
+            created_at: l(delivery.created_at, format: :short)
+          }
+        end
     end
   end
 end

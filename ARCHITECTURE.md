@@ -1245,3 +1245,14 @@ app/
 | 论坛管理设置补全 | `forum.allow_op_close` / `forum.min_trust_level_reaction` |
 | 商城 Webhook URL 管理 | 管理后台 `store.order_webhook_url` |
 | 订单邮件送达预估 | `_order_details` 展示 `delivery_estimate_label` |
+
+### 第七十九轮（Webhook 投递日志、关注 OPML、搜索建议增强、发货物流链接）
+
+| 功能 | 实现 |
+|------|------|
+| Webhook 投递日志 | `SavedSearchWebhookDelivery` + Job 记录响应 |
+| 偏好页投递记录 | `savedSearchWebhookDeliveries` 最近 20 条 |
+| 关注订阅 OPML | `WatchingOpmlToken` + `RssController#watching_opml` |
+| 搜索建议增强 | 分区 + 保存的搜索自动补全 |
+| 发货邮件物流链接 | `Commerce::TrackingUrl` + `order_shipped` 可点击查询 |
+| 物流 URL 复用 | `InertiaSerializable` 委托 `TrackingUrl` |

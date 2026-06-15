@@ -90,6 +90,7 @@ module Commerce
       @order = Commerce::Order.includes(:items, :coupon, :gift_card).find(order_id)
       return unless commerce_email_enabled?(@order.user, "commerce.order_shipped")
 
+      @tracking_url = Commerce::TrackingUrl.for_order(@order)
       mail(to: @order.user.email, subject: "订单已发货 #{@order.order_number}")
     end
 

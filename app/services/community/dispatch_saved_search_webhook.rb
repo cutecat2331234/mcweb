@@ -27,7 +27,7 @@ module Community
         end
       }
 
-      Community::DispatchSavedSearchWebhookJob.perform_later(url, payload)
+      Community::DispatchSavedSearchWebhookJob.perform_later(@saved_search.id, url, payload)
       ServiceResult.success(queued: true)
     end
   end

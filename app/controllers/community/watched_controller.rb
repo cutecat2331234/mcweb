@@ -48,7 +48,8 @@ module Community
             subscription_url: forum_tag_subscription_path(tag.slug)
           }
         end,
-        tagTopicsUrl: forum_watched_tag_topics_path
+        tagTopicsUrl: forum_watched_tag_topics_path,
+        watchingOpmlUrl: forum_watching_opml_path(token: Community::WatchingOpmlToken.generate(current_user))
       }
     end
 

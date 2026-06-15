@@ -6,6 +6,8 @@ module Community
 
     belongs_to :user
 
+    has_many :webhook_deliveries, class_name: "Community::SavedSearchWebhookDelivery", foreign_key: :saved_search_id, dependent: :destroy
+
     validates :name, presence: true
     validates :query, presence: true, allow_blank: true
 

@@ -17,6 +17,7 @@ defineProps<{
     subscription_url: string
   }>
   tagTopicsUrl: string
+  watchingOpmlUrl?: string | null
 }>()
 
 function unsubscribe(url: string) {
@@ -31,11 +32,22 @@ function unsubscribe(url: string) {
     { label: '关注标签', current: true },
   ]" />
 
-  <div class="mb-4 flex items-center justify-between gap-3">
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <PageHeader title="关注的标签" subtitle="有新主题使用这些标签时会通知你" />
-    <Button as-child variant="outline" size="sm">
-      <Link :href="tagTopicsUrl">标签主题流</Link>
-    </Button>
+    <div class="flex flex-wrap items-center gap-2">
+      <a
+        v-if="watchingOpmlUrl"
+        :href="watchingOpmlUrl"
+        class="text-xs text-primary hover:underline"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        导出关注 OPML
+      </a>
+      <Button as-child variant="outline" size="sm">
+        <Link :href="tagTopicsUrl">标签主题流</Link>
+      </Button>
+    </div>
   </div>
 
   <div v-if="tags.length" class="space-y-3">

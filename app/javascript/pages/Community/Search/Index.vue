@@ -111,20 +111,29 @@ const saveWebhookUrl = ref('')
 const saving = ref(false)
 const saveError = ref('')
 
-type SuggestItem = { title?: string; name?: string; username?: string; url: string }
+type SuggestItem = { title?: string; name?: string; username?: string; category?: string | null; url: string }
 const suggestOpen = ref(false)
 const suggestLoading = ref(false)
 const suggestTopics = ref<SuggestItem[]>([])
 const suggestTags = ref<SuggestItem[]>([])
 const suggestUsers = ref<SuggestItem[]>([])
+const suggestSections = ref<SuggestItem[]>([])
+const suggestSavedSearches = ref<SuggestItem[]>([])
 const suggestActiveIndex = ref(-1)
 let suggestTimer: ReturnType<typeof setTimeout> | null = null
+
+type SuggestSection = 'topics' | 'tags' | 'users' | 'sections' | 'saved_searches'
 
 const flatSuggestions = computed(() => {
   const items: Array<{ url: string; label: string }> = []
   suggestTopics.value.forEach((item) => items.push({ url: item.url, label: item.title || '' }))
   suggestTags.value.forEach((item) => items.push({ url: item.url, label: `#${item.name}` }))
   suggestUsers.value.forEach((item) => items.push({ url: item.url, label: `@${item.username}` }))
+  suggestSections.value.forEach((item) => items.push({
+    url: item.url,
+    label: item.category ? `${item.category} / ${item.name}` : (item.name || ''),
+  }))
+  suggestSavedSearches.value.forEach((item) => items.push({ url: item.url, label: `保存：${item.name}` }))
   return items
 })
 
@@ -154,8 +163,16 @@ async function fetchSuggestions(query: string) {
     suggestTopics.value = data.topics || []
     suggestTags.value = data.tags || []
     suggestUsers.value = data.users || []
+    suggestSections.value = data.sections || []
+    suggestSavedSearches.value = data.saved_searches || []
     suggestActiveIndex.value = -1
-    suggestOpen.value = !!(suggestTopics.value.length || suggestTags.value.length || suggestUsers.value.length)
+    suggestOpen.value = !!(
+      suggestTopics.value.length
+      || suggestTags.value.length
+      || suggestUsers.value.length
+      || suggestSections.value.length
+      || suggestSavedSearches.value.length
+    )
   } finally {
     suggestLoading.value = false
   }
@@ -174,13 +191,20 @@ function hideSuggestions() {
   }, 150)
 }
 
-function suggestGlobalIndex(section: 'topics' | 'tags' | 'users', localIndex: number) {
-  if (section === 'topics') return localIndex
-  if (section === 'tags') return suggestTopics.value.length + localIndex
-  return suggestTopics.value.length + suggestTags.value.length + localIndex
+function suggestGlobalIndex(section: SuggestSection, localIndex: number) {
+  let offset = 0
+  if (section === 'topics') return offset + localIndex
+  offset += suggestTopics.value.length
+  if (section === 'tags') return offset + localIndex
+  offset += suggestTags.value.length
+  if (section === 'users') return offset + localIndex
+  offset += suggestUsers.value.length
+  if (section === 'sections') return offset + localIndex
+  offset += suggestSections.value.length
+  return offset + localIndex
 }
 
-function isSuggestActive(section: 'topics' | 'tags' | 'users', localIndex: number) {
+function isSuggestActive(section: SuggestSection, localIndex: number) {
   return suggestActiveIndex.value === suggestGlobalIndex(section, localIndex)
 }
 
@@ -429,7 +453,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
               #{{ item.name }}
             </button>
           </div>
-          <div v-if="suggestUsers.length" class="px-2 py-1">
+          <div v-if="suggestUsers.length" class="border-b px-2 py-1">
             <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">用户</p>
             <button
               v-for="(item, index) in suggestUsers"
@@ -440,6 +464,32 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
               @mousedown.prevent="pickSuggestion(item.url)"
             >
               @{{ item.username }}
+            </button>
+          </div>
+          <div v-if="suggestSections.length" class="border-b px-2 py-1">
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">分区</p>
+            <button
+              v-for="(item, index) in suggestSections"
+              :key="item.url"
+              type="button"
+              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              :class="{ 'bg-muted': isSuggestActive('sections', index) }"
+              @mousedown.prevent="pickSuggestion(item.url)"
+            >
+              {{ item.category ? `${item.category} / ${item.name}` : item.name }}
+            </button>
+          </div>
+          <div v-if="suggestSavedSearches.length" class="px-2 py-1">
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">保存的搜索</p>
+            <button
+              v-for="(item, index) in suggestSavedSearches"
+              :key="item.url"
+              type="button"
+              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              :class="{ 'bg-muted': isSuggestActive('saved_searches', index) }"
+              @mousedown.prevent="pickSuggestion(item.url)"
+            >
+              {{ item.name }}
             </button>
           </div>
         </template>

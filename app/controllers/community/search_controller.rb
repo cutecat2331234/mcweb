@@ -224,7 +224,34 @@ module Community
         .limit(5)
         .map { |user| { username: user.username, url: forum_user_path(user.username) } }
 
-      render json: { topics: topics, tags: tags, users: users }
+      sections = Community::Section.joins(:category)
+        .where("forum_sections.name ILIKE ? OR forum_sections.slug ILIKE ?", needle, needle)
+        .order("forum_sections.name")
+        .limit(5)
+        .map do |section|
+          {
+            name: section.name,
+            category: section.category&.name,
+            url: forum_section_path(section)
+          }
+        end
+
+      saved_searches = if logged_in?
+        current_user.forum_saved_searches
+          .where("name ILIKE ?", needle)
+          .recent
+          .limit(5)
+          .map do |search|
+            {
+              name: search.name,
+              url: forum_search_path(Community::SavedSearchPresenter.url_params(search))
+            }
+          end
+      else
+        []
+      end
+
+      render json: { topics: topics, tags: tags, users: users, sections: sections, saved_searches: saved_searches }
     end
 
     private

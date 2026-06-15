@@ -36,6 +36,15 @@ const props = defineProps<{
   digest_options: Array<{ value: string; label: string }>
   savedSearches?: SavedSearchItem[]
   savedSearchesOpmlUrl?: string | null
+  watchingOpmlUrl?: string | null
+  savedSearchWebhookDeliveries?: Array<{
+    id: number
+    search_name: string | null
+    event_type: string
+    status: string
+    response_code: number | null
+    created_at: string
+  }>
 }>()
 
 const form = useForm({
@@ -262,6 +271,30 @@ async function saveRenameSearch(search: SavedSearchItem) {
     <p class="mt-3 text-xs text-muted-foreground">
       <Link :href="routes.forumSearch" class="text-primary hover:underline">前往搜索页</Link>
       创建或管理更多保存的搜索。
+      <template v-if="savedSearchesOpmlUrl">
+        ·
+        <a :href="savedSearchesOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">导出保存搜索 OPML</a>
+      </template>
+      <template v-if="watchingOpmlUrl">
+        ·
+        <a :href="watchingOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">导出关注订阅 OPML</a>
+      </template>
     </p>
+  </section>
+
+  <section v-if="savedSearchWebhookDeliveries?.length" class="mt-8 max-w-lg">
+    <h2 class="mb-3 text-sm font-semibold">保存搜索 Webhook 投递记录</h2>
+    <ul class="space-y-2 text-xs">
+      <li
+        v-for="delivery in savedSearchWebhookDeliveries"
+        :key="delivery.id"
+        class="rounded-lg border px-3 py-2"
+      >
+        <span class="font-medium">{{ delivery.search_name || '搜索' }}</span>
+        — {{ delivery.status }}
+        <span v-if="delivery.response_code" class="text-muted-foreground">({{ delivery.response_code }})</span>
+        <span class="ml-2 text-muted-foreground">{{ delivery.created_at }}</span>
+      </li>
+    </ul>
   </section>
 </template>

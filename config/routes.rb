@@ -197,6 +197,7 @@ Rails.application.routes.draw do
     patch "bookmarks/:id", to: "bookmarks#update", as: :bookmark
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
+    get "watching.opml", to: "rss#watching_opml", as: :watching_opml, defaults: { format: :xml }
     get "watching", to: "watched#index"
     get "watching/tags", to: "watched#tags", as: :watched_tags
     get "watching/tag-topics", to: "watched#tag_topics", as: :watched_tag_topics

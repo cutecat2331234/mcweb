@@ -45,6 +45,8 @@ module Community
         scope.where(global_announcement: true)
       when "unlisted"
         scope.where(unlisted: true)
+      when "archived"
+        user&.permission?("forum.topics.lock") ? scope.where.not(archived_at: nil) : scope.none
       when "has_poll"
         scope.where(id: Community::Poll.select(:forum_topic_id))
       when /\Aprefix:(.+)\z/
@@ -73,6 +75,7 @@ module Community
         { value: "has_poll", label: "含投票" }
       ]
       options << { value: "unlisted", label: "未列出" } if staff
+      options << { value: "archived", label: "已归档" } if staff
       prefixes.each do |prefix|
         options << { value: "prefix:#{prefix}", label: "前缀：#{prefix}" }
       end

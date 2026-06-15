@@ -50,19 +50,29 @@ module Commerce
       in_app_enabled = NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.abandoned_cart")
       return unless email_enabled || in_app_enabled
 
-      MailDeliveryJob.perform_later("Commerce::CartMailer", "abandoned_cart", "deliver_now", args: [ cart.id, second ]) if email_enabled
+      coupon_code = SiteSetting.get("store.abandoned_cart_coupon_code", "").to_s.strip.presence
+      if email_enabled
+        MailDeliveryJob.perform_later(
+          "Commerce::CartMailer",
+          "abandoned_cart",
+          "deliver_now",
+          args: [ cart.id, second, coupon_code ]
+        )
+      end
 
       if in_app_enabled
         item_count = cart.items.sum(:quantity)
         cart.ensure_recovery_token!
         title = second ? "购物车再次提醒" : "购物车提醒"
         body = second ? "你的购物车仍有 #{item_count} 件商品等待结账。" : "你的购物车中有 #{item_count} 件商品尚未结账。"
+        recovery_path = "/store/cart?recovery=#{cart.recovery_token}"
+        recovery_path += "&coupon=#{ERB::Util.url_encode(coupon_code)}" if coupon_code.present?
         Commerce::NotifyOrderEvent.call(
           user: user,
           notification_type: "commerce.abandoned_cart",
           title: title,
           body: body,
-          path: "/store/cart?recovery=#{cart.recovery_token}"
+          path: recovery_path
         )
       end
     end

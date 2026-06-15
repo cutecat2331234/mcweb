@@ -903,3 +903,20 @@ app/
 | 订单状态 Webhook | `store.order_webhook_url` + `DispatchOrderWebhook` |
 | 管理端改状态用户通知 | `NotifyOrderStatusChange` + 管理订单更新 |
 | 订单页商品 Q&A | 订单详情展示已提交问题 + 快捷提问表单 |
+
+### 第五十二轮（公告关闭、搜索高亮、定时开放与商城 Webhook 增强）
+
+| 功能 | 实现 |
+|------|------|
+| 归档主题筛选/搜索 `is:archived` | `TopicFilterable` + `ParseSearchQuery` + `[归档]` 徽章 |
+| 全站公告可关闭（Discourse） | `dismissed_global_announcement_ids` + `PortalLayout` + `DismissGlobalAnnouncement` |
+| 主题 SEO 增强 | `og:url` / `canonical` / `og:image`（首帖图片） |
+| 搜索关键词高亮 | `HighlightSearchText` + 帖子结果 `<mark>` |
+| 用户卡片快速关注 | `UserHoverCard` + `users#card` follow 字段 |
+| 定时自动重新开放 | `auto_open_at` + `OpenScheduledTopicsJob` |
+| 配送预计送达天数 | `ShippingMethods` delivery_days + 结账展示 |
+| 客户部分退款申请 | `RequestRefund` amount_cents + 订单页金额输入 |
+| Webhook HMAC 签名 | `store.order_webhook_secret` + `X-McWeb-Signature` |
+| 发货 Webhook `order.shipped` | `UpdateOrderShipping` 触发 |
+| 弃购恢复专属优惠码 | `store.abandoned_cart_coupon_code` + 恢复链接 |
+| 商家评价回复 | `merchant_reply` + 管理端 + 商品页展示 |

@@ -32,7 +32,9 @@ module Commerce
     end
 
     def reset_abandoned_reminder!
-      update_column(:abandoned_reminder_sent_at, nil) if abandoned_reminder_sent_at.present?
+      return unless abandoned_reminder_sent_at.present? || abandoned_second_reminder_sent_at.present?
+
+      update_columns(abandoned_reminder_sent_at: nil, abandoned_second_reminder_sent_at: nil)
     end
 
     def ensure_recovery_token!
@@ -41,10 +43,11 @@ module Commerce
       update_column(:recovery_token, generate_recovery_token)
     end
 
-    def recovery_cart_url
+    def recovery_cart_url(coupon: nil)
       ensure_recovery_token!
       options = Rails.application.config.action_mailer.default_url_options.symbolize_keys
       options[:recovery] = recovery_token
+      options[:coupon] = coupon if coupon.present?
       options[:host] ||= "localhost"
       Rails.application.routes.url_helpers.store_cart_url(**options)
     end

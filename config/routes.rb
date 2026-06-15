@@ -131,6 +131,7 @@ Rails.application.routes.draw do
         post :unsolve
         patch :slow_mode, action: :update_slow_mode
         patch :auto_close, action: :update_auto_close
+        patch :auto_open, action: :update_auto_open
         patch :auto_bump, action: :update_auto_bump
         post :mark_unread
         post :subscription, action: :toggle_subscription
@@ -172,6 +173,7 @@ Rails.application.routes.draw do
     get "latest", to: "latest#index"
     get "activity", to: "activity#index"
     get "following", to: "follows#index"
+    post "announcements/dismiss", to: "announcements#dismiss", as: :dismiss_announcement
     get "unread", to: "unread#index"
     patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read
     post "preview", to: "previews#create"

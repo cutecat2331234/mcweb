@@ -85,6 +85,7 @@ module InertiaSerializable
       wiki: topic.wiki?,
       global_announcement: topic.global_announcement?,
       unlisted: topic.unlisted?,
+      archived: topic.archived_at.present?,
       solved: topic.solved_post_id.present?,
       unread_count: unread_count,
       has_unread: unread_count.positive?,
@@ -126,6 +127,7 @@ module InertiaSerializable
       global_announcement: topic.global_announcement?,
       slow_mode_seconds: topic.slow_mode_seconds,
       auto_close_at: topic.auto_close_at ? l(topic.auto_close_at, format: :short) : nil,
+      auto_open_at: topic.auto_open_at ? l(topic.auto_open_at, format: :short) : nil,
       auto_bump_at: topic.auto_bump_at ? l(topic.auto_bump_at, format: :short) : nil,
       solved_post_id: topic.solved_post_id,
       views_count: topic.views_count,
@@ -335,13 +337,16 @@ module InertiaSerializable
     }
   end
 
-  def serialize_search_post(post)
+  def serialize_search_post(post, query: nil)
+    excerpt = post.body.truncate(120)
+    highlight = Community::HighlightSearchText.call(text: excerpt, query: query) if query.present?
     {
       id: post.id,
-      body: post.body.truncate(120),
+      body: excerpt,
+      body_html: highlight&.success? ? highlight.value[:html] : nil,
       author: post.user.username,
       topic_title: post.topic.title,
-      topic_url: "#{forum_topic_path(post.topic)}#post-#{post.id}",
+      topic_url: Community::PostPermalink.path(post.topic, post),
       created_at: l(post.created_at, format: :short)
     }
   end
@@ -478,6 +483,8 @@ module InertiaSerializable
       helpful_url: current_user && current_user.id != review.user_id ? helpful_store_product_review_path(review.product.public_id, review.id) : nil,
       report_url: current_user && current_user.id != review.user_id ? new_forum_report_path(reportable_type: "Commerce::Review", reportable_id: review.id) : nil,
       verified_purchaser: verified,
+      merchant_reply: review.merchant_reply,
+      merchant_replied_at: review.merchant_replied_at ? l(review.merchant_replied_at, format: :short) : nil,
       photo_urls: review.photos.map { |photo| rails_blob_path(photo, only_path: true) },
       forum_post_url: review.forum_post ? "#{forum_topic_path(review.forum_post.topic)}#post-#{review.forum_post_id}" : nil,
       can_share_to_forum: current_user && current_user.id == review.user_id && review.forum_post_id.blank?,
@@ -648,6 +655,8 @@ module InertiaSerializable
       can_confirm_free: (order.pending? || order.awaiting_payment?) && order.total_cents.zero?,
       can_cancel: order.pending? || order.awaiting_payment?,
       can_request_refund: refundable_order?(order),
+      max_refund_cents: max_refundable_cents(order),
+      max_refund_label: format_money(max_refundable_cents(order), order.currency),
       refund_pending: order.refunds.pending.exists?,
       can_download_receipt: %w[paid processing fulfilling fulfilled completed refunded].include?(order.status),
       refund_url: refund_store_order_path(order),
@@ -771,8 +780,17 @@ module InertiaSerializable
 
   def refundable_order?(order)
     return false unless %w[paid fulfilled completed].include?(order.status)
+    return false if max_refundable_cents(order) <= 0
 
-    !order.refunds.where(status: %w[pending completed]).exists?
+    !order.refunds.pending.exists?
+  end
+
+  def max_refundable_cents(order)
+    payment = order.payment_records.where(status: "succeeded").order(created_at: :desc).first
+    return 0 unless payment
+
+    refunded = order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
+    [ payment.amount_cents - refunded, 0 ].max
   end
 
   def fulfillment_status_label(status)
@@ -802,11 +820,14 @@ module InertiaSerializable
       shippingMethodCode: value[:shipping_method_code],
       shippingMethodLabel: value[:shipping_method_label],
       shippingMethods: Commerce::ShippingMethods.list.map do |method|
+        estimate = Commerce::ShippingMethods.delivery_estimate_label(method)
+        price_label = format_money(method["cents"], currency)
         {
           code: method["code"],
           label: method["label"],
           cents: method["cents"],
-          label_with_price: "#{method['label']} (#{format_money(method['cents'], currency)})"
+          delivery_estimate: estimate,
+          label_with_price: estimate.present? ? "#{method['label']} (#{price_label}) · #{estimate}" : "#{method['label']} (#{price_label})"
         }
       end
     }

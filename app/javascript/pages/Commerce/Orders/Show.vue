@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Label from '@/components/ui/Label.vue'
+import Input from '@/components/ui/Input.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
@@ -46,6 +47,8 @@ const props = defineProps<{
     can_confirm_free?: boolean
     can_cancel: boolean
     can_request_refund: boolean
+    max_refund_cents?: number
+    max_refund_label?: string | null
     can_download_receipt: boolean
     cancel_url: string
     refund_url: string
@@ -105,7 +108,13 @@ const payForm = useForm({
   checkout: { provider: props.order.default_provider || 'fake' },
 })
 const cancelForm = useForm({})
-const refundForm = useForm({ reason: '' })
+const refundForm = useForm({ reason: '', amount_cents: 0 as number | '' })
+
+onMounted(() => {
+  if (props.order.max_refund_cents) {
+    refundForm.amount_cents = props.order.max_refund_cents
+  }
+})
 const questionForms = ref<Record<number, string>>({})
 
 function submitItemQuestion(item: { product_public_id?: string | null; id?: number; ask_question_return_order_id?: string }) {
@@ -268,6 +277,11 @@ function refreshDownload(url: string) {
 
   <form v-if="order.can_request_refund" class="mb-6 max-w-md space-y-3 rounded-lg border p-4" @submit.prevent="refundForm.post(order.refund_url)">
     <h2 class="text-sm font-semibold">申请退款</h2>
+    <p v-if="order.max_refund_label" class="text-xs text-muted-foreground">最多可退 {{ order.max_refund_label }}</p>
+    <div class="space-y-2">
+      <Label for="amount">退款金额（分）</Label>
+      <Input id="amount" v-model.number="refundForm.amount_cents" type="number" min="1" :max="order.max_refund_cents" required />
+    </div>
     <div class="space-y-2">
       <Label for="reason">退款原因（可选）</Label>
       <Textarea id="reason" v-model="refundForm.reason" rows="3" placeholder="请说明退款原因…" />

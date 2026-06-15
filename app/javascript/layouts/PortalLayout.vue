@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { Moon, Sun, Bell } from '@lucide/vue'
 import { routes } from '@/lib/routes'
@@ -16,12 +16,41 @@ const messagesUnread = computed(() => page.props.messages_unread as { count: num
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
 
+const dismissedLocal = ref<string[]>(loadDismissedLocal())
+
+function loadDismissedLocal(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem('mc-dismissed-announcements') || '[]')
+  } catch {
+    return []
+  }
+}
+
+const visibleAnnouncements = computed(() => {
+  const items = globalAnnouncements.value || []
+  return items.filter((item) => !dismissedLocal.value.includes(item.id))
+})
+
 const isDark = computed(() => document.documentElement.classList.contains('dark'))
 
 function toggleTheme() {
   const next = isDark.value ? 'light' : 'dark'
   document.documentElement.classList.toggle('dark', next === 'dark')
   localStorage.setItem('mc-theme', next)
+}
+
+async function dismissAnnouncement(topicId: string) {
+  dismissedLocal.value = [ ...dismissedLocal.value, topicId ]
+  localStorage.setItem('mc-dismissed-announcements', JSON.stringify(dismissedLocal.value))
+  if (auth.value.user) {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    await fetch('/forum/announcements/dismiss', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
+      credentials: 'same-origin',
+      body: JSON.stringify({ topic_id: topicId }),
+    })
+  }
 }
 </script>
 
@@ -119,17 +148,24 @@ function toggleTheme() {
       </div>
     </header>
 
-    <div v-if="globalAnnouncements?.length" class="border-b bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+    <div v-if="visibleAnnouncements.length" class="border-b bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm">
         <span class="font-medium shrink-0">全站公告</span>
         <Link
-          v-for="item in globalAnnouncements"
+          v-for="item in visibleAnnouncements"
           :key="item.id"
           :href="item.url"
           class="truncate hover:underline"
         >
           {{ item.title }}
         </Link>
+        <button
+          type="button"
+          class="ml-auto shrink-0 text-xs underline opacity-80 hover:opacity-100"
+          @click="visibleAnnouncements.forEach((item) => dismissAnnouncement(item.id))"
+        >
+          全部关闭
+        </button>
       </div>
     </div>
 

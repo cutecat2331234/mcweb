@@ -57,7 +57,8 @@ module Commerce
       result = Commerce::RequestRefund.call(
         order: @order,
         user: current_user,
-        reason: params[:reason]
+        reason: params[:reason],
+        amount_cents: params[:amount_cents]
       )
 
       if result.success?

@@ -9,7 +9,7 @@ module Community
     AUTHOR_AT_PATTERN = /\B@([a-zA-Z0-9_]+)/
     AUTHOR_COLON_PATTERN = /\bauthor:([a-zA-Z0-9_]+)/i
 
-    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted].freeze
+    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived].freeze
     VALID_HAS_FLAGS = %w[poll noreplies].freeze
 
     def initialize(query:)
@@ -75,6 +75,7 @@ module Community
         featured_filter: topic_flags["featured"] ? "featured" : nil,
         announcement_filter: announcement_filter,
         unlisted_filter: topic_flags["unlisted"] ? "unlisted" : nil,
+        archived_filter: topic_flags["archived"] ? "archived" : nil,
         poll_filter: has_flags["poll"] ? "poll" : nil,
         noreplies_filter: has_flags["noreplies"] ? "noreplies" : nil,
         author: author

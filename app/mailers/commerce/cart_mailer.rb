@@ -2,14 +2,15 @@
 
 module Commerce
   class CartMailer < ApplicationMailer
-    def abandoned_cart(cart_id, second = false)
+    def abandoned_cart(cart_id, second = false, coupon_code = nil)
       @cart = Commerce::Cart.includes(items: :product).find(cart_id)
       @user = @cart.user
       return unless @user
       return unless NotificationPreference.enabled?(@user, channel: "email", notification_type: "commerce.abandoned_cart")
 
       @cart.ensure_recovery_token!
-      @recovery_url = @cart.recovery_cart_url
+      @recovery_url = @cart.recovery_cart_url(coupon: coupon_code.presence)
+      @coupon_code = coupon_code.presence
       @second_reminder = ActiveModel::Type::Boolean.new.cast(second)
 
       subject = @second_reminder ? "您的购物车仍在等待结账" : "您的购物车还有未结算商品"

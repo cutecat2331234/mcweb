@@ -33,6 +33,16 @@ module Commerce
           actor: @actor,
           metadata: { tracking_number: @order.tracking_number, shipping_carrier: @order.shipping_carrier }
         )
+        Commerce::DispatchOrderWebhook.call(
+          order: @order,
+          event_type: "order.shipped",
+          to_status: @order.status,
+          extra: {
+            tracking_number: @order.tracking_number,
+            shipping_carrier: @order.shipping_carrier,
+            shipped_at: @order.shipped_at&.iso8601
+          }
+        )
         MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_shipped", "deliver_now", args: [ @order.id ])
         Commerce::NotifyOrderEvent.call(
           user: @order.user,

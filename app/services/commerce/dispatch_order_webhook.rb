@@ -2,11 +2,12 @@
 
 module Commerce
   class DispatchOrderWebhook < ApplicationService
-    def initialize(order:, event_type:, from_status: nil, to_status: nil)
+    def initialize(order:, event_type:, from_status: nil, to_status: nil, extra: {})
       @order = order
       @event_type = event_type.to_s
       @from_status = from_status
       @to_status = to_status
+      @extra = extra || {}
     end
 
     def call
@@ -23,9 +24,10 @@ module Commerce
         currency: @order.currency,
         user_id: @order.user_id,
         occurred_at: Time.current.iso8601
-      }
+      }.merge(@extra.symbolize_keys)
 
-      Commerce::DispatchOrderWebhookJob.perform_later(url, payload)
+      secret = SiteSetting.get("store.order_webhook_secret", "").to_s.strip.presence
+      Commerce::DispatchOrderWebhookJob.perform_later(url, payload, secret)
       ServiceResult.success(queued: true)
     end
   end

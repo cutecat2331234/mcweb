@@ -33,6 +33,10 @@ production:
     class: Community::CloseScheduledTopicsJob
     queue: default
     schedule: every 5 minutes
+  open_scheduled_topics:
+    class: Community::OpenScheduledTopicsJob
+    queue: default
+    schedule: every 5 minutes
   bump_scheduled_topics:
     class: Community::BumpScheduledTopicsJob
     queue: default

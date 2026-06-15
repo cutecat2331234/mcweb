@@ -54,6 +54,10 @@ class ApplicationController < ActionController::Base
     end
 
     announcements = Community::Topic.global_announcements.order(last_posted_at: :desc).limit(3)
+    if logged_in?
+      dismissed = Array(current_user.dismissed_global_announcement_ids).map(&:to_s)
+      announcements = announcements.reject { |topic| dismissed.include?(topic.public_id) }
+    end
     if announcements.any?
       share[:global_announcements] = announcements.map do |topic|
         {

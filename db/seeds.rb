@@ -107,6 +107,8 @@ SiteSetting.set("store.free_shipping_min_order_cents", "0") unless SiteSetting.e
 SiteSetting.set("store.flat_shipping_cents", "0") unless SiteSetting.exists?(key: "store.flat_shipping_cents")
 SiteSetting.set("store.gift_wrap_cents", "500") unless SiteSetting.exists?(key: "store.gift_wrap_cents")
 SiteSetting.set("store.min_checkout_subtotal_cents", "0") unless SiteSetting.exists?(key: "store.min_checkout_subtotal_cents")
+SiteSetting.set("store.order_webhook_secret", "") unless SiteSetting.exists?(key: "store.order_webhook_secret")
+SiteSetting.set("store.abandoned_cart_coupon_code", "") unless SiteSetting.exists?(key: "store.abandoned_cart_coupon_code")
 SiteSetting.set("store.compare_max_items", "4") unless SiteSetting.exists?(key: "store.compare_max_items")
 SiteSetting.set("store.cart_max_items", "99") unless SiteSetting.exists?(key: "store.cart_max_items")
 

@@ -37,6 +37,7 @@ module Admin
             { label: "评分", value: "#{@review.rating}★" },
             { label: "状态", value: @review.status },
             { label: "内容", value: @review.body || "—" },
+            { label: "商家回复", value: @review.merchant_reply || "—" },
             { label: "时间", value: l(@review.created_at, format: :long) }
           ],
           backUrl: admin_store_reviews_path,
@@ -45,6 +46,17 @@ module Admin
       end
 
       def update
+        if review_params[:merchant_reply].present?
+          result = Commerce::ReplyToReview.call(
+            review: @review,
+            actor: current_user,
+            body: review_params[:merchant_reply]
+          )
+          return redirect_to admin_store_review_path(@review), notice: "商家回复已发布。" if result.success?
+
+          return redirect_to admin_store_review_path(@review), alert: service_error_message(result)
+        end
+
         status = review_params[:status]
         if status.present? && @review.update(status: status)
           redirect_to admin_store_reviews_path, notice: "评价已更新。"
@@ -60,7 +72,7 @@ module Admin
       end
 
       def review_params
-        params.fetch(:review, {}).permit(:status)
+        params.fetch(:review, {}).permit(:status, :merchant_reply)
       end
 
       def review_actions

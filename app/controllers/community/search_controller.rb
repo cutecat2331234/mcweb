@@ -19,6 +19,7 @@ module Community
       parsed_featured = parsed.success? ? parsed.value[:featured_filter] : nil
       parsed_announcement = parsed.success? ? parsed.value[:announcement_filter] : nil
       parsed_unlisted = parsed.success? ? parsed.value[:unlisted_filter] : nil
+      parsed_archived = parsed.success? ? parsed.value[:archived_filter] : nil
       parsed_poll = parsed.success? ? parsed.value[:poll_filter] : nil
       parsed_noreplies = parsed.success? ? parsed.value[:noreplies_filter] : nil
 
@@ -33,13 +34,14 @@ module Community
       featured_filter = params[:featured].to_s.presence || parsed_featured
       announcement_filter = params[:announcement].to_s.presence || parsed_announcement
       unlisted_filter = params[:unlisted].to_s.presence || parsed_unlisted
+      archived_filter = params[:archived].to_s.presence || parsed_archived
       poll_filter = params[:poll].to_s.presence || parsed_poll
       noreplies_filter = params[:noreplies].to_s.presence || parsed_noreplies
       topics = Community::Topic.none
       posts = Community::Post.none
 
       if query.present?
-        topics = search_topic_base_scope(unlisted_filter: unlisted_filter)
+        topics = search_topic_base_scope(unlisted_filter: unlisted_filter, archived_filter: archived_filter)
         topics = topics.joins(:section).where(forum_sections: { slug: section_slug }) if section_slug
         topics = topics.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
         topics = topics.joins(:tags).where(forum_tags: { slug: tag_slug }) if tag_slug
@@ -52,6 +54,7 @@ module Community
           featured_filter: featured_filter,
           announcement_filter: announcement_filter,
           unlisted_filter: effective_unlisted_filter(unlisted_filter),
+          archived_filter: effective_archived_filter(archived_filter),
           poll_filter: poll_filter,
           noreplies_filter: noreplies_filter
         )
@@ -87,6 +90,7 @@ module Community
           featured_filter: featured_filter,
           announcement_filter: announcement_filter,
           unlisted_filter: effective_unlisted_filter(unlisted_filter),
+          archived_filter: effective_archived_filter(archived_filter),
           poll_filter: poll_filter,
           noreplies_filter: noreplies_filter
         )
@@ -130,6 +134,7 @@ module Community
         featured: featured_filter.to_s,
         announcement: announcement_filter.to_s,
         unlisted: unlisted_filter.to_s,
+        archived: archived_filter.to_s,
         poll: poll_filter.to_s,
         noreplies: noreplies_filter.to_s,
         createdAfter: params[:created_after].to_s,
@@ -139,7 +144,7 @@ module Community
         sections: sections,
         tags: tags,
         topics: serialize_topics(topics),
-        posts: posts.map { |post| serialize_search_post(post) },
+        posts: posts.map { |post| serialize_search_post(post, query: query) },
         topicsPagination: pagy_props(@pagy_topics),
         postsPagination: pagy_props(@pagy_posts),
         savedSearches: serialize_saved_searches,
@@ -150,7 +155,7 @@ module Community
 
     private
 
-    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, poll_filter: nil, noreplies_filter: nil)
+    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, poll_filter: nil, noreplies_filter: nil)
       result = Community::ApplyTopicSearchFilters.call(
         scope: scope,
         solved_filter: solved_filter,
@@ -160,14 +165,15 @@ module Community
         featured_filter: featured_filter,
         announcement_filter: announcement_filter,
         unlisted_filter: unlisted_filter,
+        archived_filter: archived_filter,
         poll_filter: poll_filter,
         noreplies_filter: noreplies_filter
       )
       result.success? ? result.value : scope
     end
 
-    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, poll_filter: nil, noreplies_filter: nil)
-      needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter, unlisted_filter, poll_filter, noreplies_filter ].any?(&:present?)
+    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, poll_filter: nil, noreplies_filter: nil)
+      needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter, unlisted_filter, archived_filter, poll_filter, noreplies_filter ].any?(&:present?)
       scope = scope.joins(:topic) if needs_join
       apply_search_topic_filters(
         scope,
@@ -178,13 +184,16 @@ module Community
         featured_filter: featured_filter,
         announcement_filter: announcement_filter,
         unlisted_filter: unlisted_filter,
+        archived_filter: archived_filter,
         poll_filter: poll_filter,
         noreplies_filter: noreplies_filter
       )
     end
 
-    def search_topic_base_scope(unlisted_filter:)
-      if unlisted_filter == "unlisted" && forum_staff?
+    def search_topic_base_scope(unlisted_filter:, archived_filter: nil)
+      if archived_filter == "archived" && forum_staff?
+        Community::Topic.where(status: :published).where.not(archived_at: nil)
+      elsif unlisted_filter == "unlisted" && forum_staff?
         Community::Topic.where(status: :published, unlisted: true)
       else
         Community::Topic.published_listed
@@ -194,6 +203,13 @@ module Community
     def effective_unlisted_filter(unlisted_filter)
       return nil unless unlisted_filter == "unlisted"
       return "unlisted" if forum_staff?
+
+      nil
+    end
+
+    def effective_archived_filter(archived_filter)
+      return nil unless archived_filter == "archived"
+      return "archived" if forum_staff?
 
       nil
     end

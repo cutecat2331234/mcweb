@@ -11,6 +11,7 @@ defineProps<{
   wiki?: boolean
   globalAnnouncement?: boolean
   unlisted?: boolean
+  archived?: boolean
   hasUnread?: boolean
   unreadCount?: number
   linkedProduct?: boolean
@@ -28,6 +29,7 @@ defineProps<{
   <span v-if="wiki" class="mr-1 text-xs text-cyan-600">[Wiki]</span>
   <span v-if="globalAnnouncement" class="mr-1 text-xs text-rose-600">[公告]</span>
   <span v-if="unlisted" class="mr-1 text-xs text-violet-600">[未列出]</span>
+  <span v-if="archived" class="mr-1 text-xs text-slate-600">[归档]</span>
   <span v-if="solved" class="mr-1 text-xs text-green-600">[已解决]</span>
   <Link v-if="linkedProduct && linkedProductUrl" :href="linkedProductUrl" class="mr-1 text-xs text-emerald-600 hover:underline" @click.stop>[商品]</Link>
   <Link

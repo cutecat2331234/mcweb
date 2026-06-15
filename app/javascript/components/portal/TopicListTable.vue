@@ -25,6 +25,7 @@ export interface TopicListItem {
   wiki?: boolean
   global_announcement?: boolean
   unlisted?: boolean
+  archived?: boolean
   prefix?: string | null
   has_unread?: boolean
   unread_count?: number
@@ -66,6 +67,7 @@ defineProps<{
               :wiki="topic.wiki"
               :global-announcement="topic.global_announcement"
               :unlisted="topic.unlisted"
+              :archived="topic.archived"
               :has-unread="topic.has_unread"
               :unread-count="topic.unread_count"
               :linked-product="topic.linked_product"

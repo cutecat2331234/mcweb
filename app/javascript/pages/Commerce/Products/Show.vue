@@ -40,6 +40,8 @@ export interface ProductReview {
   share_to_forum_url?: string | null
   forum_post_url?: string | null
   photo_urls?: string[]
+  merchant_reply?: string | null
+  merchant_replied_at?: string | null
 }
 
 export interface ProductDetail {
@@ -710,6 +712,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
           <span class="text-amber-500">{{ '★'.repeat(review.rating) }}</span>
         </div>
         <p v-if="review.body" class="text-sm">{{ review.body }}</p>
+        <div v-if="review.merchant_reply" class="mt-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-3 text-sm">
+          <p class="text-xs font-medium text-emerald-800">商家回复<span v-if="review.merchant_replied_at" class="ml-2 font-normal text-muted-foreground">{{ review.merchant_replied_at }}</span></p>
+          <p class="mt-1">{{ review.merchant_reply }}</p>
+        </div>
         <div v-if="review.photo_urls?.length" class="mt-2 flex flex-wrap gap-2">
           <a v-for="(url, i) in review.photo_urls" :key="i" :href="url" target="_blank" rel="noopener">
             <img :src="url" alt="" class="h-20 w-20 rounded object-cover ring-1 ring-border hover:opacity-90" />

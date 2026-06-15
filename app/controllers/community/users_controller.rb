@@ -18,6 +18,7 @@ module Community
         }
       end
       likes_received = Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count
+      following = logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user)
 
       render json: {
         username: user.username,
@@ -33,7 +34,9 @@ module Community
         last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
         online: user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago,
         badges: badges,
-        message_url: (logged_in? && current_user.id != user.id && Community::TrustLevel.can_send_pm?(current_user)) ? new_forum_conversation_path(to: user.username) : nil
+        message_url: (logged_in? && current_user.id != user.id && Community::TrustLevel.can_send_pm?(current_user)) ? new_forum_conversation_path(to: user.username) : nil,
+        follow_url: (logged_in? && current_user.id != user.id) ? forum_user_follow_path(user.username) : nil,
+        following: following
       }
     end
 

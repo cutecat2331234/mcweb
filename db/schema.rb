@@ -424,6 +424,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "archived_at"
     t.datetime "auto_bump_at"
     t.datetime "auto_close_at"
+    t.datetime "auto_open_at"
     t.datetime "bumped_at"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
@@ -454,6 +455,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["archived_at"], name: "index_forum_topics_on_archived_at"
     t.index ["auto_bump_at"], name: "index_forum_topics_on_auto_bump_at"
     t.index ["auto_close_at"], name: "index_forum_topics_on_auto_close_at"
+    t.index ["auto_open_at"], name: "index_forum_topics_on_auto_open_at"
     t.index ["deleted_at"], name: "index_forum_topics_on_deleted_at"
     t.index ["forum_section_id", "last_posted_at"], name: "index_forum_topics_on_forum_section_id_and_last_posted_at"
     t.index ["forum_section_id"], name: "index_forum_topics_on_forum_section_id"
@@ -1090,6 +1092,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "body"
     t.datetime "created_at", null: false
     t.bigint "forum_post_id"
+    t.datetime "merchant_replied_at"
+    t.text "merchant_reply"
     t.integer "rating", null: false
     t.string "status", default: "published", null: false
     t.bigint "store_product_id", null: false
@@ -1147,6 +1151,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "compare_share_token"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
+    t.jsonb "dismissed_global_announcement_ids", default: [], null: false
     t.string "display_name"
     t.string "email", null: false
     t.datetime "email_verification_sent_at"

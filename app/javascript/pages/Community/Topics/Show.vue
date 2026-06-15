@@ -143,6 +143,7 @@ const props = defineProps<{
     archived_at?: string | null
     slow_mode_seconds: number | null
     auto_close_at?: string | null
+    auto_open_at?: string | null
     auto_bump_at?: string | null
     solved_post_id: number | null
     tags: Array<{ name: string; slug: string; url: string }>
@@ -187,7 +188,7 @@ const props = defineProps<{
   } | null
   replyDraft?: string | null
   replyDraftUrl?: string | null
-  meta?: { title: string; description: string | null; noindex?: boolean }
+  meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null }
 }>()
 
 const page = usePage<{ auth: { user: { id: string; username: string } | null } }>()
@@ -231,6 +232,7 @@ const slowModeRemaining = ref(props.topic.slow_mode_remaining_seconds || 0)
 const effectiveCanReply = computed(() => props.canReply && slowModeRemaining.value <= 0)
 let slowModeTimer: ReturnType<typeof setInterval> | null = null
 const autoCloseAt = ref('')
+const autoOpenAt = ref('')
 const autoBumpAt = ref('')
 const draftKey = `forum-reply-draft-${props.topic.id}`
 const topicSearch = ref(props.topicSearchQuery || '')
@@ -417,6 +419,10 @@ function updateSlowMode() {
 
 function updateAutoClose() {
   router.patch(`/forum/topics/${props.topic.id}/auto_close`, { auto_close_at: autoCloseAt.value || null })
+}
+
+function updateAutoOpen() {
+  router.patch(`/forum/topics/${props.topic.id}/auto_open`, { auto_open_at: autoOpenAt.value || null })
 }
 
 function updateAutoBump() {
@@ -807,6 +813,9 @@ function pollPercent(votes: number) {
     <meta head-key="og:title" property="og:title" :content="meta.title" />
     <meta v-if="meta.description" head-key="og:description" property="og:description" :content="meta.description" />
     <meta head-key="og:type" property="og:type" content="article" />
+    <meta v-if="meta.url" head-key="og:url" property="og:url" :content="meta.url" />
+    <link v-if="meta.url" head-key="canonical" rel="canonical" :href="meta.url" />
+    <meta v-if="meta.image" head-key="og:image" property="og:image" :content="meta.image" />
   </Head>
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
@@ -1068,6 +1077,8 @@ function pollPercent(votes: number) {
       <Button type="button" size="sm" variant="outline" @click="updateSlowMode">设置慢速</Button>
       <Input v-model="autoCloseAt" type="datetime-local" class="h-8 w-48" />
       <Button type="button" size="sm" variant="outline" @click="updateAutoClose">定时关闭</Button>
+      <Input v-model="autoOpenAt" type="datetime-local" class="h-8 w-48" />
+      <Button type="button" size="sm" variant="outline" @click="updateAutoOpen">定时开放</Button>
       <Input v-model="autoBumpAt" type="datetime-local" class="h-8 w-48" />
       <Button type="button" size="sm" variant="outline" @click="updateAutoBump">定时提升</Button>
     </template>
@@ -1106,6 +1117,9 @@ function pollPercent(votes: number) {
 
   <p v-if="topic.auto_close_at" class="mb-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
     将于 {{ topic.auto_close_at }} 自动关闭。
+  </p>
+  <p v-if="topic.auto_open_at" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+    将于 {{ topic.auto_open_at }} 自动重新开放。
   </p>
   <p v-if="topic.auto_bump_at" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
     将于 {{ topic.auto_bump_at }} 自动提升。

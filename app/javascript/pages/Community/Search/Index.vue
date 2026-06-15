@@ -17,6 +17,7 @@ export type SearchTopic = TopicListItem
 export interface SearchPost {
   id: number
   body: string
+  body_html?: string | null
   author: string
   topic_title: string
   topic_url: string
@@ -213,7 +214,10 @@ async function deleteSavedSearch(deleteUrl: string) {
         </thead>
         <tbody>
           <tr v-for="post in posts" :key="post.id" class="border-b">
-            <td class="p-3">{{ post.body }}</td>
+            <td class="p-3">
+              <span v-if="post.body_html" v-html="post.body_html" />
+              <span v-else>{{ post.body }}</span>
+            </td>
             <td class="p-3"><Link :href="post.topic_url" class="hover:underline">{{ post.topic_title }}</Link></td>
             <td class="p-3">{{ post.author }}</td>
           </tr>

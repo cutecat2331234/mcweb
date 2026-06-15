@@ -1526,3 +1526,13 @@ app/
 | 订单金额预设 | `CustomerOrderTotalPresets` ¥100以下/¥100–500/¥500以上快捷按钮 |
 | 私信/分区退订 | `private_message`/`section_topic` 邮件退订链接 |
 | 通知仅今日 | `period=today` 参数 + `NotificationPeriodFilters` 时间快捷筛选 |
+
+### 第一百零四轮（本月时间线、标签 OR 模式、订单预设联动、关注邮件退订、本周通知）
+
+| 功能 | 实现 |
+|------|------|
+| 通知本月桶 | `GroupNotificationTimeline` 增加 `this_month`（本月）分组 |
+| 未读标签 OR 模式 | `tag_match=any|all` + 多标签时切换全部/任意匹配 |
+| 订单预设状态联动 | `CustomerOrderTotalPresets` 保留 status/q/日期参数 |
+| 关注标签/用户退订 | `tag_topic`/`followed_topic` 邮件退订链接 |
+| 通知本周筛选 | `period=this_week` + 时间快捷筛选入口 |

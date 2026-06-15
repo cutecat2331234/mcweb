@@ -8,7 +8,7 @@ class Round102GroupNotificationTimelineTest < ActiveSupport::TestCase
     groups = [
       { key: "a", latest_at_ts: now.to_i },
       { key: "b", latest_at_ts: (now - 1.day).to_i },
-      { key: "c", latest_at_ts: (now - 10.days).to_i }
+      { key: "c", latest_at_ts: (now - 40.days).to_i }
     ]
     sections = Community::GroupNotificationTimeline.call(groups)
     assert_equal 3, sections.size
@@ -24,7 +24,7 @@ class Round102NotificationTimelineSectionsTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
     Notification.create!(user: @user, notification_type: "forum.mention", title: "Today", body: "b", created_at: Time.zone.now)
-    Notification.create!(user: @user, notification_type: "forum.reaction", title: "Earlier", body: "b", created_at: 3.days.ago)
+    Notification.create!(user: @user, notification_type: "forum.reaction", title: "Earlier", body: "b", created_at: 40.days.ago)
     sign_in_as(@user)
   end
 

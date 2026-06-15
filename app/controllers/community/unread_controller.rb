@@ -13,6 +13,7 @@ module Community
       filter = params[:filter].to_s.presence
       section_slug = params[:section].to_s.presence
       tag_slugs = unread_tag_slugs
+      tag_match = unread_tag_match
       scope = Community::ReadState
         .with_unread_for(current_user)
         .includes(topic: TOPIC_LIST_INCLUDES)
@@ -34,7 +35,7 @@ module Community
       end
 
       if tag_slugs.any?
-        scope = apply_unread_tag_filters(scope, tag_slugs)
+        scope = apply_unread_tag_filters(scope, tag_slugs, match: tag_match)
       end
 
       scope = scope.where.not(forum_topics: { user_id: blocked_user_ids }) if blocked_user_ids.any?
@@ -53,11 +54,13 @@ module Community
         filter: filter.to_s,
         section: section_slug.to_s,
         tags: tag_slugs.join(","),
+        tagMatch: tag_match,
+        tagMatchOptions: unread_tag_match_options,
         sortOptions: forum_sort_options,
         filterOptions: topic_filter_options,
         sectionOptions: unread_section_options,
         tagOptions: unread_tag_options,
-        activeFilters: unread_active_filters(sort: sort, filter: filter, section: section_slug, tag_slugs: tag_slugs)
+        activeFilters: unread_active_filters(sort: sort, filter: filter, section: section_slug, tag_slugs: tag_slugs, tag_match: tag_match)
       }
     end
 
@@ -134,8 +137,34 @@ module Community
       raw.to_s.split(",").map(&:strip).reject(&:blank?).uniq
     end
 
-    def apply_unread_tag_filters(scope, tag_slugs)
+    def unread_tag_match
+      match = params[:tag_match].to_s.presence || "all"
+      %w[all any].include?(match) ? match : "all"
+    end
+
+    def unread_tag_match_options
+      [
+        { value: "all", label: "全部标签" },
+        { value: "any", label: "任意标签" }
+      ]
+    end
+
+    def apply_unread_tag_filters(scope, tag_slugs, match:)
       unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
+
+      if match == "any"
+        all_tag_ids = tag_slugs.flat_map { |slug| unread_tag_ids_for(slug) }.uniq
+        return scope.none if all_tag_ids.empty?
+
+        topic_ids = Community::TopicTag
+          .where(forum_tag_id: all_tag_ids, forum_topic_id: unread_topic_ids)
+          .distinct
+          .pluck(:forum_topic_id)
+        return scope.none if topic_ids.empty?
+
+        return scope.where(forum_topic_id: topic_ids)
+      end
+
       filtered_topic_ids = nil
 
       tag_slugs.each do |slug|
@@ -154,12 +183,17 @@ module Community
       scope.where(forum_topic_id: filtered_topic_ids)
     end
 
-    def unread_active_filters(sort:, filter:, section:, tag_slugs:)
+    def unread_active_filters(sort:, filter:, section:, tag_slugs:, tag_match:)
       chips = Community::TopicListActiveFilters.call(filter: filter) +
         Community::TopicListSortActiveFilters.call(sort: sort, default: "latest")
       if section.present?
         name = Community::Section.find_by(slug: section)&.name || section
         chips << { param: "section", label: "分区：#{name}", value: section }
+      end
+      if tag_slugs.many? && tag_match == "any"
+        chips << { param: "tag_match", label: "标签匹配：任意", value: "any" }
+      elsif tag_slugs.many?
+        chips << { param: "tag_match", label: "标签匹配：全部", value: "all" }
       end
       tag_slugs.each do |slug|
         name = Community::Tag.find_by(slug: slug)&.name || slug

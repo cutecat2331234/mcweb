@@ -20,11 +20,22 @@ module Community
         items << { param: "category", label: label, value: @category }
       end
       items << { param: "read", label: "仅未读", value: "unread" } if @read == "unread"
-      items << { param: "period", label: "仅今日", value: "today" } if @period == "today"
+      items << { param: "period", label: period_label(@period), value: @period } if @period.present?
       if @type.present?
         items << { param: "type", label: NotificationTypeLabels.label_for(@type), value: @type }
       end
       items
+    end
+
+  private
+
+    def period_label(period)
+      case period
+      when "today" then "仅今日"
+      when "this_week" then "本周"
+      when "this_month" then "本月"
+      else period
+      end
     end
   end
 end

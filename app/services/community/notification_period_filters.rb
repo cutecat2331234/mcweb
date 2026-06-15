@@ -3,7 +3,8 @@
 module Community
   class NotificationPeriodFilters
     FILTERS = [
-      { key: "today", label: "仅今日", period: "today" }
+      { key: "today", label: "仅今日", period: "today" },
+      { key: "this_week", label: "本周", period: "this_week" }
     ].freeze
 
     def self.call(user:, category: nil, read: nil, type: nil, active_period: nil)
@@ -50,6 +51,8 @@ module Community
       case period
       when "today"
         scope.where("created_at >= ?", Time.zone.now.beginning_of_day).count
+      when "this_week"
+        scope.where("created_at >= ?", Time.zone.now.beginning_of_week).count
       else
         0
       end

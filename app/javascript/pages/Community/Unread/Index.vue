@@ -20,6 +20,8 @@ const props = defineProps<{
   filter: string
   section: string
   tags: string
+  tagMatch: string
+  tagMatchOptions: Array<{ value: string; label: string }>
   sortOptions: Array<{ value: string; label: string }>
   filterOptions: Array<{ value: string; label: string }>
   sectionOptions: Array<{ value: string; label: string }>
@@ -37,11 +39,13 @@ const selectedTagSlugs = computed(() =>
 
 function listParams(overrides: Record<string, string | undefined> = {}) {
   const tagsValue = overrides.tags ?? (selectedTagSlugs.value.length ? selectedTagSlugs.value.join(',') : undefined)
+  const tagMatchValue = overrides.tag_match ?? (props.tagMatch === 'all' ? undefined : props.tagMatch)
   return {
     sort: overrides.sort ?? (props.sort === 'latest' ? undefined : props.sort),
     filter: overrides.filter ?? (props.filter || undefined),
     section: overrides.section ?? (props.section || undefined),
     tags: tagsValue,
+    tag_match: tagMatchValue,
   }
 }
 
@@ -76,11 +80,16 @@ function addTag(value: string) {
   router.get(routes.forumUnread, listParams({ tags: next.join(',') }), { preserveState: true })
 }
 
+function changeTagMatch(value: string) {
+  router.get(routes.forumUnread, listParams({ tag_match: value === 'all' ? undefined : value }), { preserveState: true })
+}
+
 function removeFilter(chip: { param: string; value?: string }) {
   const overrides: Record<string, string | undefined> = {}
   if (chip.param === 'sort') overrides.sort = undefined
   if (chip.param === 'filter') overrides.filter = undefined
   if (chip.param === 'section') overrides.section = undefined
+  if (chip.param === 'tag_match') overrides.tag_match = undefined
   if (chip.param === 'tags' && chip.value) {
     const next = selectedTagSlugs.value.filter((slug) => slug !== chip.value)
     overrides.tags = next.length ? next.join(',') : undefined
@@ -132,6 +141,14 @@ function removeFilter(chip: { param: string; value?: string }) {
         >
           {{ opt.label }}
         </option>
+      </select>
+      <select
+        v-if="selectedTagSlugs.length > 1"
+        :value="tagMatch"
+        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+        @change="changeTagMatch(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="opt in tagMatchOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
       <Button
         v-if="markSelectedReadUrl && selectedIds.length"

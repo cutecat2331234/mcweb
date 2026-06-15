@@ -59,6 +59,7 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @tag_names = tag_names
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      assign_notification_unsubscribe("forum.tag_topic")
 
       mail(to: @user.email, subject: "关注标签有新主题：#{@topic.title.truncate(60)}")
     end
@@ -68,6 +69,7 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @author = @topic.user
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      assign_notification_unsubscribe("forum.followed_topic")
 
       mail(to: @user.email, subject: "#{@author.username} 发布了新主题")
     end

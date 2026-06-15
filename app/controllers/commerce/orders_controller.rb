@@ -238,7 +238,11 @@ module Commerce
     def customer_order_total_presets
       Commerce::CustomerOrderTotalPresets.call(
         min_total: params[:min_total],
-        max_total: params[:max_total]
+        max_total: params[:max_total],
+        query: params[:q],
+        status: params[:status],
+        created_after: params[:created_after],
+        created_before: params[:created_before]
       )
     end
 

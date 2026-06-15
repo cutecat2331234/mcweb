@@ -101,6 +101,8 @@ module Community
       case period.to_s
       when "today"
         scope.where("created_at >= ?", Time.zone.now.beginning_of_day)
+      when "this_week"
+        scope.where("created_at >= ?", Time.zone.now.beginning_of_week)
       else
         scope
       end

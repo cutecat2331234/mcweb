@@ -34,7 +34,7 @@ export interface TopicListItem {
   linked_product_url?: string | null
   assigned_username?: string | null
   assigned_url?: string | null
-  tags?: Array<{ name: string; slug: string; url: string; color_hex?: string | null }>
+  tags?: Array<{ name: string; slug: string; url: string; color_hex?: string | null; group_color_hex?: string | null }>
   participant_avatars?: Array<{ username: string; avatar_url: string; profile_url: string }>
   excerpt?: string | null
   thumbnail_url?: string | null

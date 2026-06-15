@@ -28,6 +28,8 @@ const props = defineProps<{
     has_price_alert?: boolean
     note?: string
     update_note_url?: string
+    coming_soon?: boolean
+    available_at_label?: string | null
   }>
   shareUrl: string | null
   addAllToCartUrl?: string
@@ -82,6 +84,7 @@ function copyShareLink() {
     <div v-for="product in products" :key="product.id" class="flex items-center justify-between gap-4 p-4">
       <div>
         <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
+        <Badge v-if="product.coming_soon" variant="outline" class="ml-2 text-[10px]">即将上架</Badge>
         <p class="text-sm">
           <span class="font-medium">{{ product.price_label }}</span>
           <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs text-muted-foreground line-through">{{ product.compare_at_label }}</span>
@@ -98,11 +101,13 @@ function copyShareLink() {
           >
           <Button type="button" size="sm" variant="outline" @click="saveNote(product)">保存备注</Button>
         </div>
-        <Badge v-if="!product.in_stock" variant="default" class="mt-1">缺货</Badge>
+        <p v-if="product.coming_soon && product.available_at_label" class="text-xs text-muted-foreground">上架时间：{{ product.available_at_label }}</p>
+        <Badge v-if="product.coming_soon" variant="outline" class="mt-1">未开售</Badge>
+        <Badge v-else-if="!product.in_stock" variant="default" class="mt-1">缺货</Badge>
         <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>
       </div>
       <div class="flex gap-2">
-        <Button v-if="product.add_to_cart_url && product.in_stock" type="button" size="sm" @click="addToCart(product.add_to_cart_url)">加入购物车</Button>
+        <Button v-if="product.add_to_cart_url && product.in_stock && !product.coming_soon" type="button" size="sm" @click="addToCart(product.add_to_cart_url)">加入购物车</Button>
         <Button
           v-if="product.price_alert_url"
           type="button"

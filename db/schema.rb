@@ -983,6 +983,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "currency", default: "CNY", null: false
     t.integer "discount_cents", default: 0, null: false
     t.integer "gift_card_amount_cents", default: 0, null: false
+    t.integer "gift_card_restored_cents", default: 0, null: false
     t.boolean "gift_wrap", default: false, null: false
     t.integer "gift_wrap_cents", default: 0, null: false
     t.text "notes"

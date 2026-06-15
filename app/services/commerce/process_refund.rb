@@ -56,6 +56,11 @@ module Commerce
             payment_amount_cents: @payment_record.amount_cents,
             already_refunded_cents: refunded_cents
           )
+          Commerce::RestoreGiftCardPartial.call(
+            order: @order,
+            refund_amount_cents: @amount_cents,
+            payment_amount_cents: @payment_record.amount_cents
+          )
           if full_refund?(@amount_cents, refunded_cents)
             @order.update!(status: "refunded")
             restore_stock!

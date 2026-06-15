@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Link } from '@inertiajs/vue3'
 
 export interface TagOption {
   name: string
@@ -13,6 +12,7 @@ export interface TagGroupOption {
   slug: string
   color_hex?: string | null
   one_per_topic: boolean
+  required?: boolean
   tags: TagOption[]
 }
 
@@ -33,6 +33,17 @@ const selectedNames = computed(() =>
     .filter(Boolean)
 )
 
+const missingRequiredGroups = computed(() => {
+  if (!props.tagGroups?.length) return []
+  return props.tagGroups.filter((group) => {
+    if (!group.required) return false
+    const groupNames = new Set(group.tags.map((t) => t.name))
+    return !selectedNames.value.some((name) => groupNames.has(name))
+  })
+})
+
+const atMaxTags = computed(() => selectedNames.value.length >= (props.maxTags ?? 5))
+
 function isSelected(name: string) {
   return selectedNames.value.includes(name)
 }
@@ -48,8 +59,7 @@ function toggleTag(name: string, group?: TagGroupOption) {
       const groupNames = new Set(group.tags.map((t) => t.name))
       names = names.filter((n) => !groupNames.has(n))
     }
-    const max = props.maxTags ?? 5
-    if (names.length >= max) return
+    if (names.length >= (props.maxTags ?? 5)) return
     names.push(name)
   }
 
@@ -59,7 +69,11 @@ function toggleTag(name: string, group?: TagGroupOption) {
 
 <template>
   <div class="space-y-3">
-    <div v-for="group in tagGroups || []" :key="group.slug" class="rounded-md border p-3">
+    <p v-if="missingRequiredGroups.length" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+      请从以下必填标签组中至少选一个标签：{{ missingRequiredGroups.map((g) => g.name).join('、') }}
+    </p>
+    <p v-if="atMaxTags" class="text-xs text-muted-foreground">已达标签上限（{{ maxTags ?? 5 }} 个）</p>
+    <div v-for="group in tagGroups || []" :key="group.slug" class="rounded-md border p-3" :class="group.required ? 'border-amber-300/60' : ''">
       <div class="mb-2 flex items-center gap-2">
         <span
           v-if="group.color_hex"
@@ -67,7 +81,8 @@ function toggleTag(name: string, group?: TagGroupOption) {
           :style="{ backgroundColor: group.color_hex }"
         />
         <span class="text-sm font-medium">{{ group.name }}</span>
-        <span v-if="group.one_per_topic" class="text-xs text-muted-foreground">（每组限选一个）</span>
+        <span v-if="group.required" class="text-xs text-amber-600">（必填组）</span>
+        <span v-else-if="group.one_per_topic" class="text-xs text-muted-foreground">（每组限选一个）</span>
       </div>
       <div class="flex flex-wrap gap-2">
         <button

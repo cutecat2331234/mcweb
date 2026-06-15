@@ -449,8 +449,6 @@ module InertiaSerializable
       slug: effective.slug,
       url: forum_tag_path(effective.slug),
       color_hex: effective.color_hex.presence,
-      group_name: group&.name,
-      group_slug: group&.slug,
       group_color_hex: group&.color_hex.presence
     }
   end

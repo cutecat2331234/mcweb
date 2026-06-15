@@ -1048,3 +1048,13 @@ app/
 | 搜索精选/公告/归档筛选 | `Search/Index` featured/announcement + 员工 unlisted/archived |
 | 员工低库存通知偏好 | `commerce.low_stock` 商城通知设置 |
 | 即将上架商品心愿单 | `Wishlist#toggle` 支持 `coming_soon` + 预览页按钮 |
+
+### 第六十二轮（礼品卡部分退款、必填标签组提示、心愿单即将上架）
+
+| 功能 | 实现 |
+|------|------|
+| 部分退款按比例恢复礼品卡 | `RestoreGiftCardPartial` + `gift_card_restored_cents` |
+| 必填标签组前端提示 | `TagGroupPicker` required 标记 + 缺失警告 |
+| 标签组色点展示 | `TopicTitleBadges` group_color_hex 圆点 |
+| 心愿单即将上架展示 | 徽章 + 预览链接 + 上架时间 |
+| 心愿单批量加购跳过未上架 | `AddWishlistToCart` 跳过 `coming_soon` |

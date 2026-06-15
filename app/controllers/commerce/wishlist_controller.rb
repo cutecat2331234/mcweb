@@ -17,6 +17,12 @@ module Commerce
           product = item.product
           variant = item.variant
           data = serialize_product_list_item(product)
+          if product.coming_soon?
+            data[:url] = preview_store_product_path(product)
+            data[:coming_soon] = true
+            data[:available_at_label] = product.available_at ? l(product.available_at, format: :short) : nil
+            data[:in_stock] = false
+          end
           if variant
             data[:price_label] = format_money(variant.price_cents, product.currency)
             data[:in_stock] = variant.in_stock?
@@ -25,9 +31,9 @@ module Commerce
           alert = Commerce::PriceAlert.find_by(user: current_user, product: product)
           data.merge(
             wishlist_url: wishlist_store_product_path(product),
-            update_note_url: note_store_wishlist_path(product.public_id),
+            update_note_url: store_note_wishlist_path(product.public_id),
             note: item.note.to_s,
-            add_to_cart_url: add_wishlist_item_to_cart_store_path(product.public_id),
+            add_to_cart_url: store_add_wishlist_item_to_cart_path(product.public_id),
             saved_variant_id: variant&.id,
             saved_variant_name: variant&.name,
             price_alert_url: price_alert_store_product_path(product),
@@ -35,7 +41,7 @@ module Commerce
           )
         end,
         shareUrl: share.success? ? store_public_wishlist_url(share.value[:token]) : nil,
-        addAllToCartUrl: add_all_to_cart_store_wishlist_path
+        addAllToCartUrl: store_add_all_to_cart_wishlist_path
       }
     end
 

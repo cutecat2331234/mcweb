@@ -14,8 +14,11 @@ module Community
 
       unread_count = current_user.notifications.unread.count
 
+      grouped = group_notifications(notifications)
+
       render inertia: "Community/Notifications/Index", props: {
-        notifications: group_notifications(notifications),
+        notifications: grouped,
+        notificationSections: Community::GroupNotificationsByReadState.call(grouped),
         flat_notifications: notifications.limit(50).map { |n| serialize_notification(n) },
         activeCategory: category.presence || "all",
         activeRead: read_filter.presence || "all",

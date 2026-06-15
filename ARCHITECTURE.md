@@ -1494,3 +1494,14 @@ app/
 | 排序筛选芯片 | `TopicListSortActiveFilters` 最新/分区/未读页可移除 |
 | 投票 OG 元数据 | `topic_meta_props` 含 `poll_question` + `#poll` URL |
 | 订单 tab 联动 | `statusTabs` 含 `status`，点击同步 `q` 与下拉框 |
+
+### 第一百零一轮（通知分组、未读分区筛选、投票 Twitter、订单日期、提及退订）
+
+| 功能 | 实现 |
+|------|------|
+| 通知未读/已读分组 | `GroupNotificationsByReadState` + 可折叠 `notificationSections` |
+| 未读主题分区筛选 | `UnreadController` `section` 参数 + `sectionOptions` |
+| 投票 Twitter Card | `topic_meta_props` twitter 字段 + `Topics/Show.vue` meta |
+| 订单日期筛选 | `created_after`/`created_before` + `CustomerOrderActiveFilters` |
+| @提及邮件退订 | `NotificationTypeUnsubscribeToken` + 一键退订链接 |
+| 摘要提及退订 | digest 邮件底部「关闭 @提及 邮件」链接 |

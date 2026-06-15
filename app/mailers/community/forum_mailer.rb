@@ -27,6 +27,8 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
+      @mention_unsubscribe_url = mention_unsubscribe_url_for(@user)
 
       mail(to: @user.email, subject: "#{@post.user.username} 在主题中提到了你")
     end
@@ -81,6 +83,7 @@ module Community
       @digest_sections = Community::GroupDigestNotifications.call(@notifications)
       @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
       @unread_notifications_url = "#{root_url.chomp('/')}#{forum_notifications_path(read: 'unread')}"
+      @mention_unsubscribe_url = mention_unsubscribe_url_for(@user)
       @unsubscribe_url = "#{root_url.chomp('/')}#{forum_unsubscribe_forum_digest_path(token: Community::ForumDigestUnsubscribeToken.generate(@user))}"
 
       mail(to: @user.email, subject: "论坛摘要 — #{@notifications.count} 条新动态")
@@ -205,7 +208,12 @@ module Community
     def notification_url_for(notification)
       Community::NotificationDestinationUrl.for(notification, root_url: root_url)
     end
-    helper_method :notification_url_for
+
+    def mention_unsubscribe_url_for(user)
+      token = Community::NotificationTypeUnsubscribeToken.generate(user, notification_type: "forum.mention")
+      "#{root_url.chomp('/')}#{forum_unsubscribe_notification_type_path(token: token)}"
+    end
+    helper_method :notification_url_for, :mention_unsubscribe_url_for
 
   private
 

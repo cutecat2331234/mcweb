@@ -243,6 +243,7 @@ Rails.application.routes.draw do
     get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
     get "digest/unsubscribe", to: "digest_unsubscribes#show", as: :unsubscribe_forum_digest
+    get "notifications/email/unsubscribe", to: "notification_type_unsubscribes#show", as: :unsubscribe_notification_type
     get "saved_searches.opml", to: "rss#saved_searches_opml", as: :saved_searches_opml, defaults: { format: :xml }
     get "saved_searches/:id.rss", to: "rss#saved_search", as: :saved_search_rss, defaults: { format: :rss }
     post "webhook_deliveries/:id/retry", to: "saved_search_webhook_deliveries#retry", as: :retry_saved_search_webhook_delivery

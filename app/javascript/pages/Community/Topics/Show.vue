@@ -201,7 +201,7 @@ const props = defineProps<{
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
   subscriptionLevels?: SubscriptionLevelOption[]
   subscriptionUrl?: string | null
-  meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null; poll_question?: string | null }
+  meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null; poll_question?: string | null; twitter_card?: string | null; twitter_title?: string | null; twitter_description?: string | null }
 }>()
 
 const page = usePage<{ auth: { user: { id: string; username: string } | null } }>()
@@ -929,6 +929,9 @@ async function copyPollShareLink() {
     <meta v-if="meta.description" head-key="og:description" property="og:description" :content="meta.description" />
     <meta head-key="og:type" property="og:type" content="article" />
     <meta v-if="meta.url" head-key="og:url" property="og:url" :content="meta.url" />
+    <meta v-if="meta.twitter_card" head-key="twitter:card" name="twitter:card" :content="meta.twitter_card" />
+    <meta v-if="meta.twitter_title" head-key="twitter:title" name="twitter:title" :content="meta.twitter_title" />
+    <meta v-if="meta.twitter_description" head-key="twitter:description" name="twitter:description" :content="meta.twitter_description" />
     <link v-if="meta.url" head-key="canonical" rel="canonical" :href="meta.url" />
     <meta v-if="meta.image" head-key="og:image" property="og:image" :content="meta.image" />
   </Head>

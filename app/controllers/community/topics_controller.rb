@@ -704,6 +704,9 @@ module Community
         meta[:description] = "投票：#{poll.question}"
         meta[:url] = "#{request.base_url}#{forum_topic_path(topic)}#poll"
         meta[:poll_question] = poll.question
+        meta[:twitter_card] = "summary"
+        meta[:twitter_title] = meta[:title]
+        meta[:twitter_description] = meta[:description]
       end
 
       meta

@@ -39,6 +39,8 @@ const props = defineProps<{
   pagination: PaginationMeta
   query: string
   status: string
+  createdAfter?: string
+  createdBefore?: string
   statusOptions: Array<{ value: string; label: string }>
   statusTabs?: StatusTab[]
   activeFilters?: Array<{ param: string; label: string; value?: string }>
@@ -47,6 +49,8 @@ const props = defineProps<{
 
 const q = ref(props.query)
 const statusFilter = ref(props.status)
+const createdAfter = ref(props.createdAfter || '')
+const createdBefore = ref(props.createdBefore || '')
 
 watch(() => props.status, (value) => {
   statusFilter.value = value
@@ -56,32 +60,55 @@ watch(() => props.query, (value) => {
   q.value = value
 })
 
+watch(() => props.createdAfter, (value) => {
+  createdAfter.value = value || ''
+})
+
+watch(() => props.createdBefore, (value) => {
+  createdBefore.value = value || ''
+})
+
+function orderParams(overrides: Record<string, string | undefined> = {}) {
+  return {
+    q: overrides.q ?? (q.value || undefined),
+    status: overrides.status ?? (statusFilter.value || undefined),
+    created_after: overrides.created_after ?? (createdAfter.value || undefined),
+    created_before: overrides.created_before ?? (createdBefore.value || undefined),
+  }
+}
+
 function reorder(url: string) {
   router.post(url)
 }
 
 function search() {
-  router.get(routes.storeOrders, {
-    q: q.value || undefined,
-    status: statusFilter.value || undefined,
-  }, { preserveState: true })
+  router.get(routes.storeOrders, orderParams(), { preserveState: true })
 }
 
 function removeFilter(filter: { param: string }) {
-  if (filter.param === 'q') q.value = ''
-  if (filter.param === 'status') statusFilter.value = ''
-  router.get(routes.storeOrders, {
-    q: q.value || undefined,
-    status: statusFilter.value || undefined,
-  }, { preserveState: true })
+  const overrides: Record<string, string | undefined> = {}
+  if (filter.param === 'q') {
+    q.value = ''
+    overrides.q = undefined
+  }
+  if (filter.param === 'status') {
+    statusFilter.value = ''
+    overrides.status = undefined
+  }
+  if (filter.param === 'created_after') {
+    createdAfter.value = ''
+    overrides.created_after = undefined
+  }
+  if (filter.param === 'created_before') {
+    createdBefore.value = ''
+    overrides.created_before = undefined
+  }
+  router.get(routes.storeOrders, orderParams(overrides), { preserveState: true })
 }
 
 function switchStatusTab(tab: StatusTab) {
   statusFilter.value = tab.status || ''
-  router.get(routes.storeOrders, {
-    q: q.value || undefined,
-    status: tab.status || undefined,
-  }, { preserveState: true })
+  router.get(routes.storeOrders, orderParams({ status: tab.status || undefined }), { preserveState: true })
 }
 </script>
 
@@ -115,6 +142,8 @@ function switchStatusTab(tab: StatusTab) {
       <option value="">全部状态</option>
       <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
     </select>
+    <Input v-model="createdAfter" type="date" class="max-w-[10rem]" title="起始日期" />
+    <Input v-model="createdBefore" type="date" class="max-w-[10rem]" title="截止日期" />
     <Button type="submit" size="sm">筛选</Button>
   </form>
 

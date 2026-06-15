@@ -14,6 +14,7 @@ module Commerce
       if params[:status].present?
         orders_scope = orders_scope.where(status: params[:status])
       end
+      orders_scope = apply_created_at_filters(orders_scope)
 
       @pagy, orders = pagy(orders_scope, limit: 20)
 
@@ -22,10 +23,18 @@ module Commerce
         pagination: pagy_props(@pagy),
         query: params[:q].to_s,
         status: params[:status].to_s,
+        createdAfter: params[:created_after].to_s,
+        createdBefore: params[:created_before].to_s,
         statusOptions: Commerce::Order::STATUSES.map { |s| { value: s, label: order_status_label(s) } },
         statusTabs: customer_order_status_tabs,
         activeFilters: customer_order_active_filters,
-        exportUrl: export_store_orders_path(format: :csv, q: params[:q].presence, status: params[:status].presence)
+        exportUrl: export_store_orders_path(
+          format: :csv,
+          q: params[:q].presence,
+          status: params[:status].presence,
+          created_after: params[:created_after].presence,
+          created_before: params[:created_before].presence
+        )
       }
     end
 
@@ -38,6 +47,7 @@ module Commerce
       if params[:status].present?
         orders_scope = orders_scope.where(status: params[:status])
       end
+      orders_scope = apply_created_at_filters(orders_scope)
       orders = orders_scope.limit(500)
       lines = [ "order_number,status,total_cents,currency,created_at" ]
       orders.each do |order|
@@ -173,7 +183,11 @@ module Commerce
     end
 
     def customer_order_status_tabs
-      base_params = { q: params[:q].presence }.compact
+      base_params = {
+        q: params[:q].presence,
+        created_after: params[:created_after].presence,
+        created_before: params[:created_before].presence
+      }.compact
       current = params[:status].to_s
       counts = Commerce::Order.where(user: current_user).group(:status).count
       total = counts.values.sum
@@ -201,17 +215,25 @@ module Commerce
     end
 
     def customer_order_active_filters
-      chips = []
-      q = params[:q].to_s.strip
-      chips << { param: "q", label: "订单号：#{q}", value: q } if q.present?
-      if params[:status].present?
-        chips << {
-          param: "status",
-          label: order_status_label(params[:status]),
-          value: params[:status].to_s
-        }
+      Commerce::CustomerOrderActiveFilters.call(
+        query: params[:q],
+        status: params[:status],
+        created_after: params[:created_after],
+        created_before: params[:created_before],
+        status_label: params[:status].present? ? order_status_label(params[:status]) : nil
+      )
+    end
+
+    def apply_created_at_filters(scope)
+      if params[:created_after].present?
+        after = Time.zone.parse(params[:created_after].to_s) rescue nil
+        scope = scope.where("created_at >= ?", after.beginning_of_day) if after
       end
-      chips
+      if params[:created_before].present?
+        before = Time.zone.parse(params[:created_before].to_s) rescue nil
+        scope = scope.where("created_at <= ?", before.end_of_day) if before
+      end
+      scope
     end
   end
 end

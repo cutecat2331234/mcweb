@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -18,12 +18,22 @@ const props = defineProps<{
   pagination: PaginationMeta
   sort: string
   filter: string
+  section: string
   sortOptions: Array<{ value: string; label: string }>
   filterOptions: Array<{ value: string; label: string }>
+  sectionOptions: Array<{ value: string; label: string }>
   activeFilters?: Array<{ param: string; label: string; value?: string }>
 }>()
 
 const selectedIds = ref<string[]>([])
+
+function listParams(overrides: Record<string, string | undefined> = {}) {
+  return {
+    sort: overrides.sort ?? (props.sort === 'latest' ? undefined : props.sort),
+    filter: overrides.filter ?? (props.filter || undefined),
+    section: overrides.section ?? (props.section || undefined),
+  }
+}
 
 function markAllRead() {
   router.patch(props.markAllReadUrl)
@@ -37,18 +47,23 @@ function markSelectedRead() {
 }
 
 function changeSort(value: string) {
-  router.get(routes.forumUnread, { sort: value, filter: props.filter || undefined }, { preserveState: true })
+  router.get(routes.forumUnread, listParams({ sort: value || undefined }), { preserveState: true })
 }
 
 function changeFilter(value: string) {
-  router.get(routes.forumUnread, { sort: props.sort, filter: value || undefined }, { preserveState: true })
+  router.get(routes.forumUnread, listParams({ filter: value || undefined }), { preserveState: true })
+}
+
+function changeSection(value: string) {
+  router.get(routes.forumUnread, listParams({ section: value || undefined }), { preserveState: true })
 }
 
 function removeFilter(chip: { param: string }) {
-  router.get(routes.forumUnread, {
-    sort: chip.param === 'sort' ? undefined : (props.sort === 'latest' ? undefined : props.sort),
-    filter: chip.param === 'filter' ? undefined : (props.filter || undefined),
-  }, { preserveState: true })
+  const overrides: Record<string, string | undefined> = {}
+  if (chip.param === 'sort') overrides.sort = undefined
+  if (chip.param === 'filter') overrides.filter = undefined
+  if (chip.param === 'section') overrides.section = undefined
+  router.get(routes.forumUnread, listParams(overrides), { preserveState: true })
 }
 </script>
 
@@ -75,6 +90,13 @@ function removeFilter(chip: { param: string }) {
         @change="changeFilter(($event.target as HTMLSelectElement).value)"
       >
         <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
+      <select
+        :value="section"
+        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+        @change="changeSection(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="opt in sectionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
       <Button
         v-if="markSelectedReadUrl && selectedIds.length"

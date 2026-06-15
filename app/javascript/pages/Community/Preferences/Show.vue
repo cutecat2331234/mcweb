@@ -68,14 +68,8 @@ function submit() {
   form.patch(routes.forumPreferences)
 }
 
-async function retryWebhook(url: string) {
-  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
-  await fetch(url, {
-    method: 'POST',
-    headers: { 'X-CSRF-Token': token, Accept: 'text/html' },
-    credentials: 'same-origin',
-  })
-  router.reload({ only: ['savedSearchWebhookDeliveries'] })
+function retryWebhook(url: string) {
+  router.post(url, {}, { preserveScroll: true, onSuccess: () => router.reload({ only: ['savedSearchWebhookDeliveries'] }) })
 }
 
 async function toggleSavedSearchNotify(search: SavedSearchItem) {

@@ -4,15 +4,33 @@ module Community
   class DispatchSavedSearchWebhookJob < ApplicationJob
     queue_as :default
 
-    def perform(saved_search_id, url, payload)
-      delivery = Community::SavedSearchWebhookDelivery.create!(
-        saved_search_id: saved_search_id,
-        event_type: payload["event"].to_s,
-        url: url,
-        status: "pending",
-        request_payload: payload
-      )
+    MAX_ATTEMPTS = 3
 
+    def perform(saved_search_id, url, payload, delivery_id: nil, attempt: 1)
+      delivery = find_or_create_delivery(saved_search_id, url, payload, delivery_id, attempt)
+      execute_request(delivery, url, payload, saved_search_id, attempt)
+    end
+
+  private
+
+    def find_or_create_delivery(saved_search_id, url, payload, delivery_id, attempt)
+      if delivery_id.present?
+        delivery = Community::SavedSearchWebhookDelivery.find(delivery_id)
+        delivery.update!(status: "pending", attempt_count: attempt) if delivery.status != "pending"
+        delivery
+      else
+        Community::SavedSearchWebhookDelivery.create!(
+          saved_search_id: saved_search_id,
+          event_type: payload["event"].to_s,
+          url: url,
+          status: "pending",
+          request_payload: payload,
+          attempt_count: attempt
+        )
+      end
+    end
+
+    def execute_request(delivery, url, payload, saved_search_id, attempt)
       uri = URI.parse(url)
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = uri.scheme == "https"
@@ -24,14 +42,36 @@ module Community
       request["Content-Type"] = "application/json"
       request.body = body
       response = http.request(request)
+      success = response.code.to_i.between?(200, 299)
       delivery.update!(
         response_code: response.code.to_i,
         response_body: response.body.to_s.truncate(4000),
-        status: response.code.to_i.between?(200, 299) ? "success" : "failed"
+        status: success ? "success" : "failed",
+        attempt_count: attempt
       )
+      schedule_retry(saved_search_id, url, payload, delivery, attempt) unless success
     rescue StandardError => e
-      delivery&.update!(status: "failed", response_body: "#{e.class}: #{e.message}".truncate(4000))
+      delivery&.update!(
+        status: "failed",
+        response_body: "#{e.class}: #{e.message}".truncate(4000),
+        attempt_count: attempt
+      )
+      schedule_retry(saved_search_id, url, payload, delivery, attempt) if delivery
       Rails.logger.warn("[DispatchSavedSearchWebhookJob] #{e.class}: #{e.message}")
+    end
+
+    def schedule_retry(saved_search_id, url, payload, delivery, attempt)
+      return if attempt >= MAX_ATTEMPTS
+
+      next_attempt = attempt + 1
+      wait = (2**attempt).minutes
+      self.class.set(wait: wait).perform_later(
+        saved_search_id,
+        url,
+        payload,
+        delivery_id: delivery.id,
+        attempt: next_attempt
+      )
     end
   end
 end

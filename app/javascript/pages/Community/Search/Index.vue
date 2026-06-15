@@ -42,6 +42,7 @@ const props = defineProps<{
   featured?: string
   poll?: string
   noreplies?: string
+  titleOnly?: boolean
   assigned?: string
   mine?: string
   scope?: string
@@ -94,6 +95,7 @@ const wiki = ref(props.wiki || '')
 const featured = ref(props.featured || '')
 const poll = ref(props.poll || '')
 const noreplies = ref(props.noreplies || '')
+const titleOnly = ref(!!props.titleOnly)
 const assigned = ref(props.assigned || '')
 const mine = ref(props.mine || '')
 const scope = ref(props.scope || '')
@@ -248,6 +250,7 @@ function searchParams() {
     featured: featured.value || undefined,
     poll: poll.value || undefined,
     noreplies: noreplies.value || undefined,
+    title_only: titleOnly.value ? '1' : undefined,
     assigned: assigned.value || undefined,
     mine: mine.value || undefined,
     scope: scope.value || undefined,
@@ -296,6 +299,7 @@ function saveFilters() {
     featured: featured.value,
     poll: poll.value,
     noreplies: noreplies.value,
+    title_only: titleOnly.value ? '1' : '',
     assigned: assigned.value,
     mine: mine.value,
     scope: scope.value,
@@ -429,7 +433,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
     { label: '搜索', current: true },
   ]" />
 
-  <PageHeader title="搜索论坛" subtitle="支持 in:分区、tag:标签、is:solved/is:locked/is:featured/is:unlisted、has:poll/has:noreplies 等语法" />
+  <PageHeader title="搜索论坛" subtitle="支持 in:分区、in:title 仅标题、tag:标签、is:solved/is:locked 等语法" />
 
   <form class="mb-4 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
     <div class="relative min-w-[200px] flex-1">
@@ -538,10 +542,14 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       <option value="recent">主题：最新</option>
       <option value="oldest">主题：最早</option>
     </select>
-    <select v-model="postSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+    <select v-model="postSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm" :disabled="titleOnly">
       <option value="recent">帖子：最新</option>
       <option value="oldest">帖子：最早</option>
     </select>
+    <label class="flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
+      <input v-model="titleOnly" type="checkbox" class="rounded border" />
+      仅标题
+    </label>
     <button type="button" class="rounded-md border px-3 py-2 text-sm" @click="showAdvanced = !showAdvanced">
       {{ showAdvanced ? '收起高级' : '高级筛选' }}
     </button>

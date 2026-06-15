@@ -6,6 +6,11 @@ module Community
 
     def retry
       delivery = Community::SavedSearchWebhookDelivery.find(params[:id])
+      unless delivery.status == "failed"
+        redirect_to forum_preferences_path, alert: "仅失败记录可重试。"
+        return
+      end
+
       result = Community::RetrySavedSearchWebhook.call(delivery: delivery, actor: current_user)
 
       if result.success?

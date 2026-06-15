@@ -2,6 +2,7 @@
 import { Link } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Pagination from '@/components/portal/Pagination.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -22,6 +23,22 @@ export interface AdminAction {
   href: string
 }
 
+export interface StatusTab {
+  label: string
+  href: string
+  active: boolean
+}
+
+export interface PaginationMeta {
+  page: number
+  pages: number
+  count: number
+  from: number
+  to: number
+  prev: string | null
+  next: string | null
+}
+
 defineProps<{
   title: string
   subtitle?: string
@@ -29,6 +46,8 @@ defineProps<{
   columns: AdminColumn[]
   rows: Array<Record<string, string>>
   actions?: AdminAction[]
+  statusTabs?: StatusTab[]
+  pagination?: PaginationMeta
 }>()
 </script>
 
@@ -46,6 +65,18 @@ defineProps<{
         {{ action.label }}
       </Link>
     </div>
+  </div>
+
+  <div v-if="statusTabs?.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      v-for="tab in statusTabs"
+      :key="tab.href"
+      :href="tab.href"
+      class="rounded-md border px-3 py-1.5 text-sm no-underline"
+      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ tab.label }}
+    </Link>
   </div>
 
   <div v-if="rows.length" class="rounded-lg border">
@@ -77,4 +108,6 @@ defineProps<{
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
     暂无数据。
   </p>
+
+  <Pagination v-if="pagination && pagination.pages > 1" :meta="pagination" class="mt-4" />
 </template>

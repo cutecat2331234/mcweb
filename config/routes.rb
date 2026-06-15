@@ -51,7 +51,11 @@ Rails.application.routes.draw do
       resources :tag_groups
       resources :warnings, only: %i[index]
       resources :canned_responses
-      resources :webhook_deliveries, only: %i[index]
+      resources :webhook_deliveries, only: %i[index show] do
+        member do
+          post :retry
+        end
+      end
     end
     namespace :store do
       resource :settings, only: %i[show update]
@@ -73,6 +77,7 @@ Rails.application.routes.draw do
       end
       resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
+      resources :webhook_deliveries, only: %i[index]
       resources :product_questions, only: %i[index destroy] do
         member do
           patch :hide

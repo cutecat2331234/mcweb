@@ -69,3 +69,7 @@ production:
     class: Commerce::ActivateScheduledProductsJob
     queue: maintenance
     schedule: every 5 minutes
+  retry_failed_saved_search_webhooks:
+    class: Community::RetryFailedSavedSearchWebhooksJob
+    queue: maintenance
+    schedule: every 15 minutes

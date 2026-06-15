@@ -12,7 +12,7 @@ module Community
     ASSIGNED_PATTERN = /\bassigned:([a-zA-Z0-9_]+)/i
 
     VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived mine assigned unassigned].freeze
-    RESERVED_IN_SCOPES = %w[bookmarks watching unread].freeze
+    RESERVED_IN_SCOPES = %w[bookmarks watching unread title].freeze
     VALID_HAS_FLAGS = %w[poll noreplies images].freeze
 
     def initialize(query:)
@@ -23,6 +23,7 @@ module Community
       section_slug = nil
       category_slug = nil
       scope_filter = nil
+      title_only_filter = nil
       tag_slug = nil
       topic_flags = {}
       has_flags = {}
@@ -32,7 +33,9 @@ module Community
 
       if (match = text.match(IN_PATTERN))
         scope = match[1].downcase
-        if RESERVED_IN_SCOPES.include?(scope)
+        if scope == "title"
+          title_only_filter = true
+        elsif RESERVED_IN_SCOPES.include?(scope)
           scope_filter = scope
         else
           section_slug = match[1]
@@ -109,6 +112,7 @@ module Community
         poll_filter: has_flags["poll"] ? "poll" : nil,
         noreplies_filter: has_flags["noreplies"] ? "noreplies" : nil,
         images_filter: has_flags["images"] ? "images" : nil,
+        title_only_filter: title_only_filter,
         author: author
       )
     end

@@ -30,7 +30,8 @@ module Community
         created_after: filters[:created_after].presence,
         created_before: filters[:created_before].presence,
         topic_sort: filters[:topic_sort].presence,
-        post_sort: filters[:post_sort].presence
+        post_sort: filters[:post_sort].presence,
+        title_only: filters[:title_only].presence
       }.compact
     end
 

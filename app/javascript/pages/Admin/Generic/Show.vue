@@ -87,6 +87,7 @@ const props = defineProps<{
   fields: DetailField[]
   sections?: DetailSection[]
   preformatted?: { title: string; content: string }
+  preformattedSections?: Array<{ title: string; content: string }>
   actions?: DetailAction[]
   muteForm?: MuteForm | null
   banForm?: BanForm | null
@@ -239,6 +240,11 @@ function submitTrustLevel() {
   <div v-if="preformatted" class="mt-6 max-w-3xl">
     <h2 class="mb-3 text-sm font-semibold">{{ preformatted.title }}</h2>
     <pre class="overflow-auto rounded-lg border bg-muted p-4 text-xs">{{ preformatted.content }}</pre>
+  </div>
+
+  <div v-for="section in preformattedSections" :key="section.title" class="mt-6 max-w-3xl">
+    <h2 class="mb-3 text-sm font-semibold">{{ section.title }}</h2>
+    <pre class="overflow-auto rounded-lg border bg-muted p-4 text-xs">{{ section.content }}</pre>
   </div>
 
   <form v-if="props.muteForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitMute">

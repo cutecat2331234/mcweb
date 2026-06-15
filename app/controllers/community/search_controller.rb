@@ -28,8 +28,10 @@ module Community
       parsed_noreplies = parsed.success? ? parsed.value[:noreplies_filter] : nil
       parsed_images = parsed.success? ? parsed.value[:images_filter] : nil
       parsed_category = parsed.success? ? parsed.value[:category_slug] : nil
+      parsed_title_only = parsed.success? ? parsed.value[:title_only_filter] : nil
 
       query = parsed_query
+      title_only = ActiveModel::Type::Boolean.new.cast(params[:title_only]) || parsed_title_only.present?
       section_slug = params[:section].to_s.presence || parsed_section
       category_slug = params[:category].to_s.presence || parsed_category
       author = params[:author].to_s.strip.presence || parsed_author
@@ -97,7 +99,12 @@ module Community
         topics = filter_blocked_topics(topics)
         topics = preload_topics(topics)
 
-        posts = Community::Post.where(status: :published).joins(:topic).where(forum_topics: { status: :published, unlisted: false })
+        posts = if title_only
+          Community::Post.none
+        else
+          Community::Post.where(status: :published).joins(:topic).where(forum_topics: { status: :published, unlisted: false })
+        end
+        unless title_only
         posts = apply_user_search_scope(posts, mine_filter: mine_filter, scope_filter: scope_filter, on_posts: true)
         posts = posts.joins(topic: :section).where(forum_sections: { slug: section_slug }) if section_slug
         posts = apply_category_filter_on_posts(posts, category_slug) if category_slug
@@ -138,6 +145,7 @@ module Community
         else posts.order(created_at: :desc)
         end
         posts = filter_blocked_posts(posts)
+        end
       end
 
       @pagy_topics, topics = pagy(topics, limit: 15, page_param: :topic_page)
@@ -173,6 +181,7 @@ module Community
         scope: scope_filter.to_s,
         poll: poll_filter.to_s,
         noreplies: noreplies_filter.to_s,
+        titleOnly: title_only,
         images: images_filter.to_s,
         createdAfter: params[:created_after].to_s,
         createdBefore: params[:created_before].to_s,

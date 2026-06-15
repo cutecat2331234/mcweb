@@ -1266,3 +1266,14 @@ app/
 | 管理后台投递日志 | `Admin::Forum::WebhookDeliveriesController#index` + 状态筛选 |
 | 订单物流时间线 | `Commerce::OrderShippingTimeline` + 订单详情进度条 |
 | 搜索实时刷新 | 搜索页输入 ≥2 字后 450ms 防抖自动 `router.get` |
+
+### 第八十一轮（仅标题搜索、Webhook 自动重试、管理详情、商城投递日志）
+
+| 功能 | 实现 |
+|------|------|
+| 仅标题搜索 | `title_only` 参数 + `in:title` 语法 + 搜索页复选框 |
+| Webhook 自动重试 | Job 指数退避最多 3 次 + `RetryFailedSavedSearchWebhooksJob` 清理超时 pending |
+| 论坛投递详情 | `Admin::Forum::WebhookDeliveriesController#show` + 管理重试 |
+| 商城投递日志 | `Admin::Store::WebhookDeliveriesController#index` + `request_payload` |
+| 物流时间线修复 | 已送达订单正确标记「运输中」完成 |
+| 管理列表增强 | 状态 Tab 筛选 + 分页 + 行链接详情 |

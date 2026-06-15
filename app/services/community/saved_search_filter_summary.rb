@@ -22,7 +22,8 @@ module Community
       noreplies: { "noreplies" => "无回复" },
       images: { "images" => "含图片" },
       topic_sort: { "recent" => "主题：最新", "oldest" => "主题：最早" },
-      post_sort: { "recent" => "帖子：最新", "oldest" => "帖子：最早" }
+      post_sort: { "recent" => "帖子：最新", "oldest" => "帖子：最早" },
+      title_only: { "1" => "仅标题", "true" => "仅标题" }
     }.freeze
 
     def self.call(saved_search)

@@ -75,9 +75,9 @@ module Commerce
 
     def in_transit_at
       return nil if @order.shipped_at.blank?
-      return nil if @order.status.in?(%w[fulfilled completed])
+      return @order.shipped_at if @order.status.in?(%w[processing fulfilling fulfilled completed])
 
-      @order.shipped_at
+      nil
     end
 
     def delivered_at

@@ -970,6 +970,23 @@ module InertiaSerializable
     }
   end
 
+  def wishlisted_product_ids
+    @wishlisted_product_ids ||= if logged_in?
+                                  Commerce::WishlistItem.where(user: current_user).pluck(:store_product_id).to_set
+    else
+                                  Set.new
+    end
+  end
+
+  def product_wishlist_props(product)
+    return {} unless logged_in?
+
+    {
+      wishlist_url: wishlist_store_product_path(product),
+      wishlisted: wishlisted_product_ids.include?(product.id)
+    }
+  end
+
   def format_price(product)
     format_money(product.price_cents, product.currency)
   end

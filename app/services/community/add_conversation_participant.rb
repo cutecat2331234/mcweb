@@ -18,7 +18,13 @@ module Community
       user = User.find_by(username: @username)
       return ServiceResult.failure(error: "User not found.") unless user
       return ServiceResult.failure(error: "User is already a participant.") if @conversation.participant?(user)
+      return ServiceResult.failure(error: "Cannot add yourself.") if user.id == @actor.id
       return ServiceResult.failure(error: "Cannot message blocked user.") if Community::UserBlock.blocked?(@actor, user)
+      return ServiceResult.failure(error: "User is silenced.") if Community::UserSilence.silenced?(user)
+      return ServiceResult.failure(error: "User cannot participate in private messages.") unless Community::TrustLevel.can_send_pm?(user)
+
+      pm_restriction = Community::CheckWarningRestrictions.call(user: user, action: :pm)
+      return pm_restriction if pm_restriction.failure?
 
       @conversation.participants.create!(user: user)
       ServiceResult.success(@conversation)

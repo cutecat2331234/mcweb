@@ -44,6 +44,8 @@ export interface ProductItem {
   availability_alert_unsubscribe_url?: string | null
   compare_url?: string
   compared?: boolean
+  wishlist_url?: string
+  wishlisted?: boolean
 }
 
 export interface CategoryItem {
@@ -107,6 +109,10 @@ function quickAdd(product: ProductItem) {
 }
 
 function toggleCompare(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
+function toggleWishlist(url: string) {
   router.post(url, {}, { preserveScroll: true })
 }
 
@@ -204,6 +210,16 @@ function clearFilters() {
               @click="toggleCompare(product.compare_url!)"
             >
               {{ product.compared ? '移出对比' : '加入对比' }}
+            </Button>
+          </div>
+          <div v-if="loggedIn && product.wishlist_url" class="mt-2">
+            <Button
+              type="button"
+              size="sm"
+              :variant="product.wishlisted ? 'outline' : 'secondary'"
+              @click="toggleWishlist(product.wishlist_url!)"
+            >
+              {{ product.wishlisted ? '心愿单' : '收藏' }}
             </Button>
           </div>
         </div>
@@ -344,6 +360,15 @@ function clearFilters() {
                 @click="toggleCompare(product.compare_url!)"
               >
                 {{ product.compared ? '对比中' : '对比' }}
+              </Button>
+              <Button
+                v-if="loggedIn && product.wishlist_url"
+                type="button"
+                size="sm"
+                :variant="product.wishlisted ? 'outline' : 'secondary'"
+                @click="toggleWishlist(product.wishlist_url!)"
+              >
+                {{ product.wishlisted ? '心愿单' : '收藏' }}
               </Button>
             </div>
           </TableCell>

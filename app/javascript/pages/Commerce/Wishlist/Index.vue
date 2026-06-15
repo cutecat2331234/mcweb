@@ -46,7 +46,7 @@ const props = defineProps<{
   filters?: { in_stock: boolean; on_sale: boolean; coming_soon: boolean; sort: string }
   totalCount?: number
   filteredCount?: number
-  savedFilterPresets?: Array<{ id: number; name: string; url: string; delete_url: string }>
+  savedFilterPresets?: Array<{ id: number; name: string; url: string; public_share_url?: string | null; delete_url: string }>
   saveFilterPresetUrl?: string
 }>()
 
@@ -136,6 +136,15 @@ async function deleteFilterPreset(deleteUrl: string) {
     credentials: 'same-origin',
   })
   router.reload({ only: ['savedFilterPresets'] })
+}
+
+async function copyPublicShare(url: string) {
+  try {
+    await navigator.clipboard.writeText(new URL(url, window.location.origin).href)
+    alert('公开筛选分享链接已复制')
+  } catch {
+    prompt('复制分享链接：', url)
+  }
 }
 
 function importToCompare() {
@@ -258,6 +267,15 @@ async function copyShareLink() {
     <span class="text-sm text-muted-foreground">已保存：</span>
     <span v-for="preset in savedFilterPresets" :key="preset.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <Link :href="preset.url" class="hover:underline">{{ preset.name }}</Link>
+      <button
+        v-if="preset.public_share_url"
+        type="button"
+        class="text-muted-foreground hover:text-primary"
+        title="复制公开分享链接"
+        @click="copyPublicShare(preset.public_share_url!)"
+      >
+        分享
+      </button>
       <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteFilterPreset(preset.delete_url)">×</button>
     </span>
   </div>

@@ -31,11 +31,15 @@ module Commerce
     end
 
     def serialize_preset(preset)
+      share_token = Commerce::EnsureWishlistShareToken.call(user: current_user).value&.dig(:token)
+      query = wishlist_url_params(preset)
+
       {
         id: preset.id,
         name: preset.name,
         filters: preset.filters,
-        url: store_wishlist_path(wishlist_url_params(preset)),
+        url: store_wishlist_path(query),
+        public_share_url: share_token ? store_public_wishlist_url(share_token, query) : nil,
         delete_url: store_wishlist_filter_preset_path(preset)
       }
     end

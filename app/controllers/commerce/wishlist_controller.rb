@@ -82,7 +82,9 @@ module Commerce
 
     def public_show
       user = User.find_by!(wishlist_share_token: params[:token])
-      items = Commerce::WishlistItem.where(user: user).includes(:product, :variant).order(created_at: :desc)
+      all_items = Commerce::WishlistItem.where(user: user).includes(:product, :variant).order(created_at: :desc).to_a
+      total_count = all_items.size
+      items = sort_wishlist_items(filter_wishlist_items(all_items))
 
       render inertia: "Commerce/Wishlist/Public", props: {
         owner: user.display_name || user.username,
@@ -96,7 +98,10 @@ module Commerce
             data[:coming_soon_label] = product.coming_soon_label
           end
           data.merge(saved_variant_name: item.variant&.name, note: item.note.to_s)
-        end
+        end,
+        filters: wishlist_filters_props,
+        totalCount: total_count,
+        filteredCount: items.size
       }
     end
 
@@ -195,19 +200,21 @@ module Commerce
     end
 
     def serialize_wishlist_filter_presets
+      share_token = Commerce::EnsureWishlistShareToken.call(user: current_user).value&.dig(:token)
+
       current_user.store_wishlist_filter_presets.recent.limit(10).map do |preset|
         filters = preset.filters.symbolize_keys
+        query = {
+          in_stock: truthy_filter?(filters[:in_stock]) ? "1" : nil,
+          on_sale: truthy_filter?(filters[:on_sale]) ? "1" : nil,
+          coming_soon: truthy_filter?(filters[:coming_soon]) ? "1" : nil,
+          sort: filters[:sort].presence
+        }.compact
         {
           id: preset.id,
           name: preset.name,
-          url: store_wishlist_path(
-            {
-              in_stock: truthy_filter?(filters[:in_stock]) ? "1" : nil,
-              on_sale: truthy_filter?(filters[:on_sale]) ? "1" : nil,
-              coming_soon: truthy_filter?(filters[:coming_soon]) ? "1" : nil,
-              sort: filters[:sort].presence
-            }.compact
-          ),
+          url: store_wishlist_path(query),
+          public_share_url: share_token ? store_public_wishlist_url(share_token, query) : nil,
           delete_url: store_wishlist_filter_preset_path(preset)
         }
       end

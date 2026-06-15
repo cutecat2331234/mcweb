@@ -69,10 +69,16 @@ const canSend = computed(() =>
   !bodyHasBlockedLink.value
 )
 
+const canAddParticipant = computed(() =>
+  !!props.addParticipantUrl &&
+  props.canSendPm !== false &&
+  !pmBlocked.value
+)
+
 const addUsername = ref('')
 
 function addParticipant() {
-  if (!props.addParticipantUrl || !addUsername.value.trim()) return
+  if (!canAddParticipant.value || !props.addParticipantUrl || !addUsername.value.trim()) return
   router.post(props.addParticipantUrl, { username: addUsername.value.trim() }, {
     preserveScroll: true,
     onSuccess: () => { addUsername.value = '' },
@@ -140,10 +146,16 @@ function submit() {
         </button>
       </span>
     </div>
-    <form v-if="addParticipantUrl" class="mt-3 flex max-w-sm gap-2" @submit.prevent="addParticipant">
+    <form v-if="addParticipantUrl && canAddParticipant" class="mt-3 flex max-w-sm gap-2" @submit.prevent="addParticipant">
       <Input v-model="addUsername" placeholder="用户名" class="flex-1" />
       <Button type="submit" variant="outline" size="sm">添加成员</Button>
     </form>
+    <p v-else-if="conversation.is_group && addParticipantUrl === null && canSendPm === false" class="mt-3 text-xs text-muted-foreground">
+      新成员暂时无法添加群组成员。
+    </p>
+    <p v-else-if="conversation.is_group && addParticipantUrl === null && pmBlocked" class="mt-3 text-xs text-amber-700">
+      当前账号暂时无法添加群组成员。
+    </p>
   </div>
 
   <div class="mb-6 max-h-[50vh] space-y-3 overflow-y-auto rounded-lg border p-4">
@@ -168,7 +180,7 @@ function submit() {
     </div>
   </div>
 
-  <Pagination v-if="pagination.pages > 1" class="mb-4" :pagination="pagination" :base-path="`/forum/conversations/${conversation.id}`" />
+  <Pagination v-if="pagination.pages > 1" class="mb-4" :pagination="pagination" :base-path="`/forum/conversations/${conversation.id}`" page-param="page" />
 
   <p v-if="canSendPm === false" class="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
     新成员（信任等级 0）暂时无法发送私信，多发帖参与社区即可解锁。

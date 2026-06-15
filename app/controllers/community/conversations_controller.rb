@@ -52,7 +52,7 @@ module Community
         messages: messages.map { |msg| serialize_message(msg, conversation: conversation, participants_by_user: participants_by_user) },
         pagination: pagy_props(@pagy),
         participants: conversation.is_group? ? serialize_group_participants(conversation) : [],
-        addParticipantUrl: conversation.is_group? ? forum_conversation_participants_path(conversation) : nil,
+        addParticipantUrl: group_add_participant_url(conversation),
         archiveUrl: archive_forum_conversation_path(conversation),
         unarchiveUrl: unarchive_forum_conversation_path(conversation),
         archived: conversation.participants.find_by(user: current_user)&.archived_at.present?,
@@ -121,6 +121,18 @@ module Community
 
     def conversation_params
       params.require(:conversation).permit(:recipient, :recipients, :title, :body, :is_group)
+    end
+
+    def group_add_participant_url(conversation)
+      return nil unless conversation.is_group?
+      return nil unless conversation.participant?(current_user)
+      return nil if conversation.participants.count >= Community::AddConversationParticipant::MAX_PARTICIPANTS
+      return nil unless Community::TrustLevel.can_send_pm?(current_user)
+
+      pm_restriction = Community::CheckWarningRestrictions.call(user: current_user, action: :pm)
+      return nil if pm_restriction.failure?
+
+      forum_conversation_participants_path(conversation)
     end
 
     def serialize_conversation(conversation, include_other: false)

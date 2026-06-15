@@ -1143,3 +1143,17 @@ app/
 | 商品列表加入对比 | `product_compare_props` + 表格对比按钮 |
 | 即将上架区加入对比 | 商城首页 upcoming 对比按钮 |
 | 保存搜索集成测试 | POST 返回含 `assigned` 的 URL |
+
+### 第七十轮（搜索分页修复、列表心愿单、群组邀请校验、公开筛选分享）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索帖子分页修复 | `page-param="post_page"` 替换错误 `query-param` |
+| 搜索高级筛选 UI | locked/pinned/wiki/featured/poll/noreplies/assigned 等 |
+| 保存搜索筛选同步 | `saveSearch` 含全部高级筛选字段 |
+| 商品列表心愿单 | `product_wishlist_props` + 列表/即将上架收藏按钮 |
+| 群组添加成员校验 | TL0/禁言/警告用户不可被邀请 |
+| 添加成员 UI 限制 | `canAddParticipant` + 群组满员/警告时隐藏表单 |
+| 私信对话分页 | `page-param="page"` 显式声明 |
+| 公开心愿单筛选 | `public_show` 支持 in_stock/on_sale/coming_soon/sort |
+| 筛选预设公开分享 | `public_share_url` + 复制分享链接 |

@@ -23,9 +23,9 @@ module Community
       when "published"
         true
       when "draft"
-        user&.id == topic.user_id
+        user.present? && user.id == topic.user_id
       when "hidden"
-        user&.permission?("forum.topics.lock")
+        user.present? && (user.id == topic.user_id || user.permission?("forum.topics.lock"))
       else
         false
       end

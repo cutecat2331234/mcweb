@@ -175,12 +175,35 @@ class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
-  test "edit post rejects hidden topics for topic author" do
+  test "edit post allows author on hidden topic" do
     publish = Community::PublishTopicDraft.call(user: @author, topic: @topic)
     assert publish.success?
     @topic.update!(status: "hidden")
 
     result = Community::EditPost.call(user: @author, post: @post, body: "Updated hidden topic body")
+
+    assert result.success?
+  end
+
+  test "edit post rejects hidden topics for other users" do
+    publish = Community::PublishTopicDraft.call(user: @author, topic: @topic)
+    assert publish.success?
+    @topic.update!(status: "hidden")
+    other = create_user
+
+    result = Community::EditPost.call(user: other, post: @post, body: "Attempted edit text")
+
+    assert result.failure?
+    assert_match(/not available/i, result.error)
+  end
+
+  test "fork topic rejects hidden source posts for other users" do
+    publish = Community::PublishTopicDraft.call(user: @author, topic: @topic)
+    assert publish.success?
+    @topic.update!(status: "hidden")
+    other = create_user
+
+    result = Community::CreateTopicFromPost.call(user: other, post: @post, ip_address: "127.0.0.1")
 
     assert result.failure?
     assert_match(/not available/i, result.error)

@@ -39,6 +39,10 @@ module Community
     end
 
     def destroy
+      unless PollParticipation.visible?(topic: @post.topic, user: current_user)
+        return redirect_to root_path, alert: "主题不可用。"
+      end
+
       unless can_delete_post?(@post, current_user)
         return redirect_to forum_topic_path(@post.topic), alert: "无权删除此帖子。"
       end

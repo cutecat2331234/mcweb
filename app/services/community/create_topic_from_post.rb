@@ -13,6 +13,8 @@ module Community
     end
 
     def call
+      return ServiceResult.failure(error: "Topic not available.") unless PollParticipation.visible?(topic: @source_topic, user: @user)
+
       unless @section.allowed?(@user, :create_topic)
         return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
       end

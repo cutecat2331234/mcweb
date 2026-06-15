@@ -9,6 +9,7 @@ module Community
     end
 
     def call
+      return ServiceResult.failure(error: "Topic not available.") unless PollParticipation.visible?(topic: @post.topic, user: @user)
       return ServiceResult.failure(error: "Not allowed.") unless can_restore?
 
       body = @edit.body_before.to_s

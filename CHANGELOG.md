@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- 统一 `PollParticipation.visible?` 与 `TopicVisibility`，隐藏主题作者可正常访问自己的内容
+- `CreateTopicFromPost` / `RestorePostEdit` / 删帖增加主题可见性校验，防止引用隐藏帖内容泄露
+
+### Previously
+
 - 帖子 raw/edits 与 EditPost 统一校验主题可见性，修复草稿与隐藏主题内容泄露
 - 投票者列表、帖子反应与书签操作校验主题可见性，防止隐藏主题信息泄露
 - UrlSafety 拒绝 IPv6 回环地址 `[::1]`

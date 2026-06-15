@@ -29,7 +29,7 @@ module Community
 
     scope :with_unread_for, ->(user) {
       joins(:topic)
-        .where(user: user, forum_topics: { status: :published })
+        .where(user: user, forum_topics: { status: :published, unlisted: false })
         .where(<<~SQL.squish)
           EXISTS (
             SELECT 1 FROM forum_posts

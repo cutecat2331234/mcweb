@@ -214,4 +214,15 @@ class Community::NotifyIgnoreFilterTest < ActiveSupport::TestCase
       Community::NotifyTopicReply.call(post: @reply)
     end
   end
+
+  test "unlisted topic reply does not notify subscribers" do
+    subscriber = create_user(username: "unlisted_sub_notify")
+    Community::Subscription.create!(user: subscriber, subscribable: @topic)
+    NotificationPreference.set!(subscriber, channel: "in_app", notification_type: "forum.topic_reply", enabled: true)
+    @topic.update!(unlisted: true)
+
+    assert_no_difference -> { Notification.where(user: subscriber, notification_type: "forum.topic_reply").count } do
+      Community::NotifyTopicReply.call(post: @reply)
+    end
+  end
 end

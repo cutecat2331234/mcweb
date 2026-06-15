@@ -8,6 +8,8 @@ module Community
     end
 
     def call
+      return ServiceResult.success if @topic.unlisted?
+
       subscriber_ids = Community::Subscription
         .where(subscribable: @topic)
         .where.not(user_id: @post.user_id)

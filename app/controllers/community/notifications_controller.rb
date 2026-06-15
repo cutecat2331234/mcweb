@@ -66,7 +66,11 @@ module Community
 
     def notification_content_visible?(notification)
       topic = notification_topic(notification)
-      topic.nil? || PollParticipation.visible?(topic: topic, user: current_user)
+      return true if topic.nil?
+      return false unless PollParticipation.visible?(topic: topic, user: current_user)
+      return true unless topic.unlisted?
+
+      current_user.id == topic.user_id || current_user.permission?("forum.topics.lock")
     end
 
     def notification_topic(notification)

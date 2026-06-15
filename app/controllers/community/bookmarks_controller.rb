@@ -24,6 +24,7 @@ module Community
       topic_items = topic_bookmarks.filter_map do |bookmark|
         topic = bookmark.topic
         next if topic.nil? || topic.status != "published"
+        next if topic.unlisted?
         next if blocked_user_ids.include?(topic.user_id)
 
         {
@@ -40,6 +41,7 @@ module Community
         post = bookmark.post
         topic = bookmark.topic
         next if topic.nil? || topic.status != "published"
+        next if topic.unlisted?
         next if blocked_user_ids.include?(topic.user_id)
 
         {

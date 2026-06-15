@@ -21,7 +21,7 @@ module Community
     belongs_to :solved_post, class_name: "Community::Post", optional: true
     belongs_to :source_post, class_name: "Community::Post", optional: true
 
-    scope :global_announcements, -> { where(global_announcement: true, status: :published) }
+    scope :global_announcements, -> { where(global_announcement: true, status: :published, unlisted: false) }
 
     enum :status, { draft: "draft", published: "published", hidden: "hidden", deleted: "deleted" }, validate: true
 

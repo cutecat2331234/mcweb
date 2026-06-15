@@ -30,6 +30,27 @@ class Community::UnlistedTopicTest < ActiveSupport::TestCase
     Community::ModerateTopic.call(user: @mod, topic: @topic, action: "list")
     assert_not @topic.reload.unlisted?
   end
+
+  test "unlisted topic excluded from global announcements" do
+    @topic.update!(global_announcement: true)
+
+    assert_not_includes Community::Topic.global_announcements.pluck(:id), @topic.id
+  end
+
+  test "with_unread_for excludes unlisted topics" do
+    subscriber = create_user
+    Community::ReadState.mark_read!(subscriber, @topic, floor: @topic.posts.maximum(:floor_number))
+    Community::CreatePost.call(
+      user: @user,
+      topic: @topic,
+      body: "New reply on unlisted",
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    )
+
+    assert Community::ReadState.find_by(user: subscriber, topic: @topic).unread_count.positive?
+    assert_not_includes Community::ReadState.with_unread_for(subscriber).map(&:forum_topic_id), @topic.id
+  end
 end
 
 class Community::TagColorTest < ActiveSupport::TestCase

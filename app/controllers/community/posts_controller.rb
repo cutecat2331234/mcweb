@@ -89,6 +89,8 @@ module Community
     end
 
     def edits
+      return head :not_found unless PollParticipation.visible?(topic: @post.topic, user: current_user)
+
       unless can_view_edits?
         return redirect_to forum_topic_path(@post.topic), alert: "无权查看编辑历史。"
       end
@@ -158,7 +160,7 @@ module Community
     end
 
     def raw
-      return head :not_found unless topic_visible_to_user?(@post.topic)
+      return head :not_found unless PollParticipation.visible?(topic: @post.topic, user: current_user)
 
       render plain: @post.body, content_type: "text/plain; charset=utf-8"
     end
@@ -195,13 +197,6 @@ module Community
       return true if @post.topic.wiki?
       return true if current_user&.permission?("forum.topics.lock")
       return true if current_user&.id == @post.user_id
-
-      false
-    end
-
-    def topic_visible_to_user?(topic)
-      return true unless topic.status == "hidden"
-      return true if current_user&.permission?("forum.topics.lock")
 
       false
     end

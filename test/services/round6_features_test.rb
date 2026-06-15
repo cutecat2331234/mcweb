@@ -152,6 +152,41 @@ class Community::ToggleReactionVisibilityTest < ActiveSupport::TestCase
   end
 end
 
+class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
+  setup do
+    @author = create_user
+    category = Community::Category.find_or_create_by!(slug: "post-access-cat") { |c| c.name = "Post Access" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "post-access-sec") do |s|
+      s.name = "Post Access Sec"
+      s.position = 0
+    end
+    @topic = Community::SaveTopicDraft.call(
+      user: @author,
+      section: section,
+      title: "Draft post access",
+      body: "Secret draft body"
+    ).value
+    @post = @topic.posts.first
+  end
+
+  test "raw post body is unavailable for draft topics to guests" do
+    get raw_forum_post_path(@post)
+
+    assert_response :not_found
+  end
+
+  test "edit post rejects hidden topics for topic author" do
+    publish = Community::PublishTopicDraft.call(user: @author, topic: @topic)
+    assert publish.success?
+    @topic.update!(status: "hidden")
+
+    result = Community::EditPost.call(user: @author, post: @post, body: "Updated hidden topic body")
+
+    assert result.failure?
+    assert_match(/not available/i, result.error)
+  end
+end
+
 class Community::CreateTopicPollTest < ActiveSupport::TestCase
   setup do
     @user = create_user

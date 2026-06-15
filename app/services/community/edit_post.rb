@@ -26,6 +26,7 @@ module Community
     end
 
     def call
+      return ServiceResult.failure(error: "Topic not available.") unless PollParticipation.visible?(topic: @post.topic, user: @user)
       return ServiceResult.failure(error: "Post body is too short.") if @body.length < CreatePost::MIN_BODY_LENGTH
       return ServiceResult.failure(error: "You cannot edit this post.") unless can_edit?
 

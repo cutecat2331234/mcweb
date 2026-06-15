@@ -32,7 +32,8 @@ module Commerce
         end
         if ids.size >= max_items
           limit_reached = true
-          break
+          skipped << "#{product.name}（对比已满）"
+          next
         end
 
         ids << public_id

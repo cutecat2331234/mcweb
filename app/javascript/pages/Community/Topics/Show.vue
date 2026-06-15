@@ -212,6 +212,7 @@ const editPrefix = ref(props.topic.prefix || '')
 const editTagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
 const editTagError = ref('')
 const replyLinkError = ref('')
+const editLinkError = ref('')
 
 function missingRequiredGroups(tags: string, groups?: Array<{ required?: boolean; tags: Array<{ name: string }> }>) {
   const names = tags.split(',').map((t) => t.trim()).filter(Boolean)
@@ -239,6 +240,16 @@ const replyForm = useForm({
     whisper: false,
   },
 })
+
+const replyBodyHasBlockedLink = computed(() =>
+  !!(props.warningRestrictions?.link && containsLink(replyForm.post.body))
+)
+
+const editBodyHasBlockedLink = computed(() =>
+  !!(props.warningRestrictions?.link && containsLink(editBody.value))
+)
+
+const canSubmitReply = computed(() => !postBlocked.value && !replyBodyHasBlockedLink.value)
 
 const sharePmOpen = ref(false)
 const sharePmUsername = ref('')
@@ -507,6 +518,11 @@ function cancelEdit() {
 }
 
 function saveEdit(post: PostItem) {
+  editLinkError.value = ''
+  if (props.warningRestrictions?.link && containsLink(editBody.value)) {
+    editLinkError.value = props.warningRestrictions.link
+    return
+  }
   router.patch(post.update_url, { post: { body: editBody.value, reason: editReason.value } }, {
     preserveScroll: true,
     onSuccess: () => cancelEdit(),
@@ -1466,8 +1482,10 @@ function pollPercent(votes: number) {
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
             <MarkdownEditor v-model="editBody" :rows="6" />
             <Input v-model="editReason" placeholder="编辑说明（可选）" class="h-8" />
+            <p v-if="editLinkError" class="text-sm text-destructive">{{ editLinkError }}</p>
+            <p v-else-if="editBodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
             <div class="flex gap-2">
-              <Button type="button" size="sm" @click="saveEdit(post)">保存</Button>
+              <Button type="button" size="sm" :disabled="editBodyHasBlockedLink" @click="saveEdit(post)">保存</Button>
               <Button type="button" size="sm" variant="outline" @click="cancelEdit">取消</Button>
             </div>
           </div>
@@ -1594,12 +1612,13 @@ function pollPercent(votes: number) {
     <form class="space-y-3" @submit.prevent="submitReply">
       <MarkdownEditor v-model="replyForm.post.body" :rows="6" placeholder="写下你的回复… 输入 @ 可提及用户" required />
       <p v-if="replyLinkError" class="text-sm text-destructive">{{ replyLinkError }}</p>
+      <p v-else-if="replyBodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
       <label v-if="topic.can_moderate" class="flex items-center gap-2 text-sm">
         <input v-model="replyForm.post.whisper" type="checkbox">
         员工私语（仅员工可见）
       </label>
-      <Button type="submit" :disabled="replyForm.processing">发表回复</Button>
+      <Button type="submit" :disabled="replyForm.processing || !canSubmitReply">发表回复</Button>
     </form>
   </section>
 

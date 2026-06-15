@@ -41,6 +41,12 @@ module Community
         return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
       end
 
+      link_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :link)
+      return link_restriction if link_restriction.failure? && Community::TrustLevel.contains_link?(post.body)
+
+      post_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :post)
+      return post_restriction if post_restriction.failure?
+
       Community::Topic.transaction do
         @topic.update!(status: "published", last_posted_at: Time.current, last_post_user: @user)
         Community::Subscription.subscribe!(@user, @topic)

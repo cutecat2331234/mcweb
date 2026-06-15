@@ -2,6 +2,8 @@
 
 module Commerce
   class CompareController < ApplicationController
+    include Commerce::WishlistCompareImportable
+
     before_action :require_login, only: %i[share import_wishlist]
 
     def show
@@ -55,9 +57,9 @@ module Commerce
       if result.success?
         notice = "已从心愿单添加 #{result.value[:added]} 件商品到对比。"
         notice += " 跳过：#{result.value[:skipped].join('、')}" if result.value[:skipped].any?
-        redirect_to store_compare_path, notice: notice
+        redirect_back fallback_location: store_compare_path, notice: notice
       else
-        redirect_to store_compare_path, alert: service_error_message(result)
+        redirect_back fallback_location: store_compare_path, alert: service_error_message(result)
       end
     end
 
@@ -100,15 +102,5 @@ module Commerce
       }
     end
 
-    def wishlist_importable_compare_count(compare_ids)
-      compare_set = Array(compare_ids).to_set
-      Commerce::WishlistItem
-        .where(user: current_user)
-        .includes(:product)
-        .count do |item|
-          product = item.product
-          product.available? && !compare_set.include?(product.public_id)
-        end
-    end
   end
 end

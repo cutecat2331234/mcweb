@@ -2,6 +2,8 @@
 
 module Commerce
   class WishlistController < ApplicationController
+    include Commerce::WishlistCompareImportable
+
     before_action :require_login, except: %i[public_show]
 
     def index
@@ -54,7 +56,9 @@ module Commerce
         end,
         shareUrl: share.success? ? store_public_wishlist_url(share.value[:token]) : nil,
         addAllToCartUrl: store_add_all_to_cart_wishlist_path,
-        compareCount: compare_product_count
+        compareCount: compare_product_count,
+        wishlistImportCompareUrl: store_import_wishlist_compare_path,
+        wishlistImportableCount: wishlist_importable_compare_count(compared_ids)
       }
     end
 

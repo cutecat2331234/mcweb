@@ -26,16 +26,6 @@ function containsLink(text: string) {
   return /https?:\/\/|www\./i.test(text)
 }
 
-function submitMessage() {
-  linkError.value = ''
-  if (pmBlocked.value) return
-  if (props.warningRestrictions?.link && containsLink(form.conversation.body)) {
-    linkError.value = props.warningRestrictions.link
-    return
-  }
-  form.post(routes.forumMessages)
-}
-
 const form = useForm({
   conversation: {
     is_group: props.group ? '1' : '0',
@@ -45,6 +35,26 @@ const form = useForm({
     body: '',
   },
 })
+
+const bodyHasBlockedLink = computed(() =>
+  !!(props.warningRestrictions?.link && containsLink(form.conversation.body))
+)
+
+const canSend = computed(() =>
+  !pmBlocked.value &&
+  (props.group || props.canSendPm !== false) &&
+  !bodyHasBlockedLink.value
+)
+
+function submitMessage() {
+  linkError.value = ''
+  if (pmBlocked.value) return
+  if (props.warningRestrictions?.link && containsLink(form.conversation.body)) {
+    linkError.value = props.warningRestrictions.link
+    return
+  }
+  form.post(routes.forumMessages)
+}
 </script>
 
 <template>
@@ -92,10 +102,11 @@ const form = useForm({
       <Label>消息内容</Label>
       <MarkdownEditor v-model="form.conversation.body" :show-mention="false" />
       <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
+      <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
     </div>
     <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing || (!group && canSendPm === false) || pmBlocked">发送</Button>
+      <Button type="submit" :disabled="form.processing || !canSend">发送</Button>
       <Button as-child variant="outline">
         <Link :href="routes.forumMessages">取消</Link>
       </Button>

@@ -39,7 +39,14 @@ const props = defineProps<{
   shareUrl: string | null
   addAllToCartUrl?: string
   compareCount?: number
+  wishlistImportCompareUrl?: string
+  wishlistImportableCount?: number
 }>()
+
+function importToCompare() {
+  if (!props.wishlistImportCompareUrl) return
+  router.post(props.wishlistImportCompareUrl, {}, { preserveScroll: true })
+}
 
 function addAllToCart() {
   if (!props.addAllToCartUrl) return
@@ -75,9 +82,14 @@ function saveNote(product: { update_note_url?: string; note?: string }) {
   router.patch(product.update_note_url, { note: product.note || '' }, { preserveScroll: true })
 }
 
-function copyShareLink() {
+async function copyShareLink() {
   if (!props.shareUrl) return
-  navigator.clipboard.writeText(props.shareUrl)
+  try {
+    await navigator.clipboard.writeText(props.shareUrl)
+    alert('分享链接已复制')
+  } catch {
+    prompt('复制此链接', props.shareUrl)
+  }
 }
 </script>
 
@@ -91,8 +103,17 @@ function copyShareLink() {
   <div class="mb-4 flex items-center justify-between gap-3">
     <PageHeader title="我的心愿单" />
     <div class="flex gap-2">
-      <Button v-if="compareCount" as-child variant="outline" size="sm">
-        <Link :href="routes.storeCompare">对比 ({{ compareCount }})</Link>
+      <Button
+        v-if="wishlistImportCompareUrl && wishlistImportableCount"
+        type="button"
+        variant="secondary"
+        size="sm"
+        @click="importToCompare"
+      >
+        导入对比 ({{ wishlistImportableCount }})
+      </Button>
+      <Button as-child variant="outline" size="sm">
+        <Link :href="routes.storeCompare">商品对比{{ compareCount ? ` (${compareCount})` : '' }}</Link>
       </Button>
       <Button v-if="addAllToCartUrl && products.length" type="button" size="sm" @click="addAllToCart">全部加入购物车</Button>
       <Button v-if="shareUrl" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
@@ -174,7 +195,15 @@ function copyShareLink() {
       </div>
     </div>
   </div>
-  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    心愿单是空的。浏览商城添加喜欢的商品吧。
-  </p>
+  <div v-else class="rounded-lg border border-dashed p-8 text-center">
+    <p class="text-sm text-muted-foreground">心愿单是空的。浏览商城添加喜欢的商品吧。</p>
+    <div class="mt-4 flex flex-wrap justify-center gap-2">
+      <Button as-child size="sm">
+        <Link :href="routes.store">浏览商城</Link>
+      </Button>
+      <Button as-child variant="outline" size="sm">
+        <Link :href="routes.storeCompare">商品对比</Link>
+      </Button>
+    </div>
+  </div>
 </template>

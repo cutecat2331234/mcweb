@@ -153,7 +153,24 @@ function addToCart(product: { db_id: number; add_to_cart_url: string; variants: 
       </tbody>
     </table>
   </div>
-  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    对比列表为空。在商品页点击「加入对比」添加商品。
-  </p>
+  <div v-else class="rounded-lg border border-dashed p-8 text-center">
+    <p class="text-sm text-muted-foreground">对比列表为空。在商品页点击「加入对比」，或从心愿单一键导入。</p>
+    <div class="mt-4 flex flex-wrap justify-center gap-2">
+      <Button as-child variant="outline" size="sm">
+        <Link :href="routes.store">浏览商城</Link>
+      </Button>
+      <Button as-child variant="outline" size="sm">
+        <Link :href="routes.storeWishlist">我的心愿单</Link>
+      </Button>
+      <Button
+        v-if="wishlistImportUrl && wishlistImportableCount"
+        type="button"
+        variant="secondary"
+        size="sm"
+        @click="importWishlist"
+      >
+        从心愿单导入 ({{ wishlistImportableCount }})
+      </Button>
+    </div>
+  </div>
 </template>

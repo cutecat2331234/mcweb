@@ -32,11 +32,17 @@ const props = defineProps<{
       hide_results_until_vote: boolean
     } | null
   }
+  warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
 }>()
 
 const showPoll = ref(!!props.draft.poll)
 const tagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
 const tagGroupError = ref('')
+const linkError = ref('')
+
+function containsLink(text: string) {
+  return /https?:\/\/|www\./i.test(text)
+}
 
 const form = useForm({
   draft: {
@@ -66,6 +72,12 @@ function missingRequiredGroups(tags: string) {
 
 const tagsReady = computed(() => missingRequiredGroups(form.draft.tags).length === 0)
 
+const bodyHasBlockedLink = computed(() =>
+  !!(props.warningRestrictions?.link && containsLink(form.draft.body))
+)
+
+const canPublish = computed(() => tagsReady.value && !props.warningRestrictions?.post && !bodyHasBlockedLink.value)
+
 function tagsValid() {
   if (!tagsReady.value) {
     tagGroupError.value = '请从必填标签组中至少选择一个标签。'
@@ -86,6 +98,11 @@ function save() {
 
 function publish() {
   if (!tagsValid()) return
+  if (props.warningRestrictions?.post) return
+  if (props.warningRestrictions?.link && containsLink(form.draft.body)) {
+    linkError.value = props.warningRestrictions.link
+    return
+  }
   router.post(`/forum/drafts/${props.draft.id}/publish`)
 }
 
@@ -111,6 +128,10 @@ function clearSchedule() {
 
   <PageHeader title="编辑草稿" :subtitle="draft.section.name" />
 
+  <p v-if="warningRestrictions?.post" class="mb-4 max-w-lg rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    {{ warningRestrictions.post }}
+  </p>
+
   <form class="max-w-lg space-y-4" @submit.prevent="save">
     <div class="space-y-2">
       <Label for="title">标题</Label>
@@ -126,6 +147,9 @@ function clearSchedule() {
     <div class="space-y-2">
       <Label for="body">内容</Label>
       <MarkdownEditor v-model="form.draft.body" :rows="10" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名、[^脚注]" />
+      <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
+      <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
+      <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
     </div>
     <div class="space-y-2">
       <Label for="tags">标签（最多 5 个）</Label>
@@ -167,7 +191,7 @@ function clearSchedule() {
     </div>
     <div class="flex flex-wrap gap-2">
       <Button type="submit" :disabled="form.processing || !tagsReady">保存草稿</Button>
-      <Button type="button" :disabled="!form.draft.body || !tagsReady" @click="publish">发布主题</Button>
+      <Button type="button" :disabled="!form.draft.body || !canPublish" @click="publish">发布主题</Button>
       <Button type="button" variant="destructive" @click="destroy">删除</Button>
       <Button as-child variant="outline">
         <Link :href="routes.forumDrafts">返回</Link>

@@ -3,6 +3,7 @@
 module Community
   class DraftsController < ApplicationController
     include Community::SectionTagGroupsSerializable
+    include Community::WarningRestrictionsSerializable
 
     before_action :require_login
 
@@ -57,7 +58,8 @@ module Community
             max_choices: poll.max_choices,
             hide_results_until_vote: poll.hide_results_until_vote
           } : nil
-        }
+        },
+        warningRestrictions: warning_restrictions_props
       }
     end
 

@@ -1090,3 +1090,18 @@ app/
 | 必填标签组实时禁用 | `tagsReady` / `canPublish` 禁用发布与保存按钮 |
 | 草稿保存必填组校验 | `SaveTopicDraft` 拦截缺失必填标签组 |
 | 对比页可导入数量 | `wishlistImportableCount` 展示 |
+
+### 第六十六轮（空状态引导、链接限制完善、心愿单导入对比对称）
+
+| 功能 | 实现 |
+|------|------|
+| 对比/心愿单空状态引导 | 空列表 CTA 链到商城、心愿单、对比 |
+| 心愿单页一键导入对比 | `wishlistImportCompareUrl` + 导入按钮 |
+| 回复/编辑链接实时禁用 | `replyBodyHasBlockedLink` / `editBodyHasBlockedLink` |
+| 草稿编辑警告限制 | `Drafts/Edit` 横幅 + `canPublish` |
+| 私信链接实时禁用 | `Messages/New` `bodyHasBlockedLink` |
+| 草稿发布警告校验 | `PublishTopicDraft` CheckWarningRestrictions |
+| 编辑帖子链接校验 | `EditPost` 链接限制 |
+| 私信链接服务端校验 | `CreateConversation` 链接限制 |
+| 对比导入上限跳过提示 | `AddWishlistToCompare` 满额逐件标记 |
+| 对比导入 redirect_back | 心愿单导入后返回来源页 |

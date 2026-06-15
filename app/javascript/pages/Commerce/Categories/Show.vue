@@ -52,10 +52,11 @@ const priceMax = ref(props.priceMax ?? '')
 
 const hasActiveFilters = !!(
   props.query || props.filters.in_stock || props.filters.on_sale ||
-  props.priceMin || props.priceMax || (props.filters.sort && props.filters.sort !== '')
+  props.priceMin || props.priceMax || (props.filters.sort && props.filters.sort !== 'newest')
 )
 
 const sortLabels: Record<string, string> = {
+  newest: '最新',
   price_asc: '价格升序',
   price_desc: '价格降序',
   popular: '最热',
@@ -68,7 +69,7 @@ function filterParams(overrides: Record<string, string | undefined> = {}) {
     q: overrides.q ?? (q.value || undefined),
     in_stock: props.filters.in_stock ? '1' : undefined,
     on_sale: props.filters.on_sale ? '1' : undefined,
-    sort: props.filters.sort || undefined,
+    sort: props.filters.sort !== 'newest' ? props.filters.sort : undefined,
     price_min: overrides.price_min ?? (priceMin.value || undefined),
     price_max: overrides.price_max ?? (priceMax.value || undefined),
   }
@@ -93,7 +94,7 @@ function applyFilter(key: 'in_stock' | 'on_sale', value: boolean) {
 function applySort(sort: string) {
   router.get(routes.storeCategory(props.category.slug), {
     ...filterParams(),
-    sort: sort || undefined,
+    sort: sort && sort !== 'newest' ? sort : undefined,
   }, { preserveState: true })
 }
 
@@ -130,11 +131,11 @@ function toggleWishlist(url: string) {
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
     <Input v-model="q" placeholder="搜索本分类商品…" class="max-w-xs" />
     <select
-      :value="filters.sort || ''"
+      :value="filters.sort || 'newest'"
       class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
       @change="applySort(($event.target as HTMLSelectElement).value)"
     >
-      <option value="">最新上架</option>
+      <option value="newest">最新上架</option>
       <option value="popular">最热</option>
       <option value="rating">评分最高</option>
       <option value="price_asc">价格从低到高</option>
@@ -172,7 +173,7 @@ function toggleWishlist(url: string) {
     <Badge v-if="filters.in_stock" variant="outline">仅有货</Badge>
     <Badge v-if="filters.on_sale" variant="outline">促销中</Badge>
     <Badge v-if="priceMin || priceMax" variant="outline">价格区间</Badge>
-    <Badge v-if="filters.sort" variant="outline">排序：{{ sortLabels[filters.sort] || filters.sort }}</Badge>
+    <Badge v-if="filters.sort && filters.sort !== 'newest'" variant="outline">排序：{{ sortLabels[filters.sort] || filters.sort }}</Badge>
   </div>
 
   <div v-if="products.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

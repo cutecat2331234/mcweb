@@ -288,6 +288,9 @@ async function deleteSavedSearch(deleteUrl: string) {
 }
 
 const togglingNotifyId = ref<number | null>(null)
+const editingSearchId = ref<number | null>(null)
+const editingSearchName = ref('')
+const renamingSearchId = ref<number | null>(null)
 
 async function toggleSavedSearchNotify(search: { id: number; notify_daily?: boolean; update_url?: string }) {
   if (!search.update_url) return
@@ -311,6 +314,43 @@ async function toggleSavedSearchNotify(search: { id: number; notify_daily?: bool
     }
   } finally {
     togglingNotifyId.value = null
+  }
+}
+
+function startRenameSearch(search: { id: number; name: string }) {
+  editingSearchId.value = search.id
+  editingSearchName.value = search.name
+}
+
+function cancelRenameSearch() {
+  editingSearchId.value = null
+  editingSearchName.value = ''
+}
+
+async function saveRenameSearch(search: { id: number; update_url?: string }) {
+  if (!search.update_url || !editingSearchName.value.trim()) return
+  renamingSearchId.value = search.id
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const response = await fetch(search.update_url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': token,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        saved_search: { name: editingSearchName.value.trim() },
+      }),
+    })
+    if (response.ok) {
+      editingSearchId.value = null
+      editingSearchName.value = ''
+      router.reload({ only: ['savedSearches'] })
+    }
+  } finally {
+    renamingSearchId.value = null
   }
 }
 </script>
@@ -482,19 +522,47 @@ async function toggleSavedSearchNotify(search: { id: number; notify_daily?: bool
   <div v-if="savedSearches?.length" class="mb-6 flex flex-wrap gap-2">
     <span class="text-sm text-muted-foreground">已保存：</span>
     <span v-for="search in savedSearches" :key="search.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
-      <Link :href="search.url" class="hover:underline">{{ search.name }}</Link>
-      <button
-        v-if="search.update_url"
-        type="button"
-        class="text-[10px] transition-opacity"
-        :class="search.notify_daily ? 'text-primary' : 'text-muted-foreground opacity-50 hover:opacity-100'"
-        :disabled="togglingNotifyId === search.id"
-        :title="search.notify_daily ? '关闭每日邮件提醒' : '开启每日邮件提醒'"
-        @click="toggleSavedSearchNotify(search)"
-      >
-        📧
-      </button>
-      <button type="button" class="text-muted-foreground hover:text-destructive" title="删除" @click="deleteSavedSearch(search.delete_url)">×</button>
+      <template v-if="editingSearchId === search.id">
+        <Input
+          v-model="editingSearchName"
+          class="h-7 w-32 text-sm"
+          @keydown.enter="saveRenameSearch(search)"
+          @keydown.escape="cancelRenameSearch"
+        />
+        <button
+          type="button"
+          class="text-primary hover:underline"
+          :disabled="renamingSearchId === search.id || !editingSearchName.trim()"
+          @click="saveRenameSearch(search)"
+        >
+          保存
+        </button>
+        <button type="button" class="text-muted-foreground" @click="cancelRenameSearch">取消</button>
+      </template>
+      <template v-else>
+        <Link :href="search.url" class="hover:underline">{{ search.name }}</Link>
+        <button
+          v-if="search.update_url"
+          type="button"
+          class="text-muted-foreground hover:text-foreground"
+          title="重命名"
+          @click="startRenameSearch(search)"
+        >
+          ✎
+        </button>
+        <button
+          v-if="search.update_url"
+          type="button"
+          class="text-[10px] transition-opacity"
+          :class="search.notify_daily ? 'text-primary' : 'text-muted-foreground opacity-50 hover:opacity-100'"
+          :disabled="togglingNotifyId === search.id"
+          :title="search.notify_daily ? '关闭每日邮件提醒' : '开启每日邮件提醒'"
+          @click="toggleSavedSearchNotify(search)"
+        >
+          📧
+        </button>
+        <button type="button" class="text-muted-foreground hover:text-destructive" title="删除" @click="deleteSavedSearch(search.delete_url)">×</button>
+      </template>
     </span>
   </div>
 

@@ -4,6 +4,7 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+import Textarea from '@/components/ui/Textarea.vue'
 import Label from '@/components/ui/Label.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 
@@ -14,7 +15,7 @@ export interface StoreSettingItem {
   value: string
   label: string
   hint?: string | null
-  input_type: 'text' | 'number'
+  input_type: 'text' | 'number' | 'json'
 }
 
 const props = defineProps<{
@@ -37,7 +38,15 @@ function submit() {
     <div v-for="setting in settings" :key="setting.key" class="rounded-lg border p-4 space-y-2">
       <Label :for="setting.key" class="text-sm font-medium">{{ setting.label }}</Label>
       <p v-if="setting.hint" class="text-xs text-muted-foreground">{{ setting.hint }}</p>
+      <Textarea
+        v-if="setting.input_type === 'json'"
+        :id="setting.key"
+        v-model="form.settings[setting.key]"
+        rows="8"
+        class="font-mono text-xs"
+      />
       <Input
+        v-else
         :id="setting.key"
         v-model="form.settings[setting.key]"
         :type="setting.input_type === 'number' ? 'number' : 'text'"

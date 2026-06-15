@@ -2,6 +2,8 @@
 
 module Community
   class ForumMailer < ApplicationMailer
+    include Rails.application.routes.url_helpers
+
     def topic_reply(user_id, topic_id, post_id)
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
@@ -49,6 +51,7 @@ module Community
       @user = @search.user
       @topics = Community::Topic.where(id: topic_ids).order(created_at: :desc)
       @url = "#{root_url.chomp('/')}#{forum_search_path(search_url_for(@search))}"
+      @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
 
       mail(to: @user.email, subject: "保存的搜索有新结果：#{@search.name}")
     end

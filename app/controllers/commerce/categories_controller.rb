@@ -58,7 +58,7 @@ module Commerce
         filters: {
           in_stock: params[:in_stock] == "1",
           on_sale: params[:on_sale] == "1",
-          sort: params[:sort].to_s
+          sort: params[:sort].presence || "newest"
         }
       }
     end

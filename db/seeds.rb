@@ -119,6 +119,9 @@ SiteSetting.set("forum.reaction_emojis", "👍,❤️,😂,🎉,👀") unless Si
 SiteSetting.set("forum.group_pm_creator_only_add", "false") unless SiteSetting.exists?(key: "forum.group_pm_creator_only_add")
 SiteSetting.set("store.compare_max_items", "4") unless SiteSetting.exists?(key: "store.compare_max_items")
 SiteSetting.set("store.cart_max_items", "99") unless SiteSetting.exists?(key: "store.cart_max_items")
+unless SiteSetting.exists?(key: "store.shipping_methods")
+  SiteSetting.set("store.shipping_methods", Commerce::ShippingMethods::DEFAULT_JSON.to_json)
+end
 
 if Rails.env.development?
   unless InstallationLock.locked?

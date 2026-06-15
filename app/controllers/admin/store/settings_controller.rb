@@ -19,6 +19,7 @@ module Admin
         store.cart_max_items
         store.abandoned_cart_coupon_code
         store.order_webhook_secret
+        store.shipping_methods
       ].freeze
 
       def show
@@ -29,6 +30,7 @@ module Admin
 
       def update
         settings_params.each do |key, value|
+          validate_setting!(key, value)
           SiteSetting.set(key, value)
         end
 
@@ -39,15 +41,27 @@ module Admin
         )
 
         redirect_to admin_store_settings_path, notice: "商城设置已保存。"
+      rescue ArgumentError, JSON::ParserError => e
+        redirect_to admin_store_settings_path, alert: "保存失败：#{e.message}"
       end
 
     private
 
       def store_settings_props
         STORE_SETTING_KEYS.map do |key|
+          value = SiteSetting.get(key, default_for(key)).to_s
+          value = JSON.pretty_generate(JSON.parse(value)) if key == "store.shipping_methods" && value.present?
           {
             key: key,
-            value: SiteSetting.get(key, default_for(key)).to_s,
+            value: value,
+            label: setting_label(key),
+            hint: setting_hint(key),
+            input_type: setting_input_type(key)
+          }
+        rescue JSON::ParserError
+          {
+            key: key,
+            value: value,
             label: setting_label(key),
             hint: setting_hint(key),
             input_type: setting_input_type(key)
@@ -61,6 +75,8 @@ module Admin
       end
 
       def default_for(key)
+        return Commerce::ShippingMethods::DEFAULT_JSON.to_json if key == "store.shipping_methods"
+
         {
           "store.gift_wrap_cents" => "500",
           "store.pending_order_expiry_minutes" => "30",
@@ -84,7 +100,8 @@ module Admin
           "store.compare_max_items" => "对比列表上限",
           "store.cart_max_items" => "购物车商品种类上限",
           "store.abandoned_cart_coupon_code" => "弃购提醒优惠券代码",
-          "store.order_webhook_secret" => "订单 Webhook 密钥"
+          "store.order_webhook_secret" => "订单 Webhook 密钥",
+          "store.shipping_methods" => "配送方式（JSON）"
         }[key] || key
       end
 
@@ -94,12 +111,23 @@ module Admin
           "store.refund_window_days" => "0 表示不允许用户自助申请退款。",
           "store.compare_max_items" => "用户可同时对比的商品数量（对标 XenForo 资源对比）。",
           "store.cart_max_items" => "购物车中不同商品种类上限，0 表示不限制。",
-          "store.abandoned_cart_coupon_code" => "弃购邮件中附带的优惠券，留空则不发放。"
+          "store.abandoned_cart_coupon_code" => "弃购邮件中附带的优惠券，留空则不发放。",
+          "store.shipping_methods" => "JSON 数组，每项含 code、label、cents、delivery_days_min、delivery_days_max。标准配送运费会同步 flat_shipping_cents。"
         }[key]
       end
 
       def setting_input_type(key)
-        %w[store.seo_title store.seo_description store.abandoned_cart_coupon_code store.order_webhook_secret].include?(key) ? "text" : "number"
+        return "json" if key == "store.shipping_methods"
+        return "text" if %w[store.seo_title store.seo_description store.abandoned_cart_coupon_code store.order_webhook_secret].include?(key)
+
+        "number"
+      end
+
+      def validate_setting!(key, value)
+        return unless key == "store.shipping_methods" && value.present?
+
+        parsed = JSON.parse(value)
+        raise ArgumentError, "配送方式必须是 JSON 数组" unless parsed.is_a?(Array)
       end
     end
   end

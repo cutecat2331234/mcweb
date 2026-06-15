@@ -1201,3 +1201,13 @@ app/
 | 搜索页提醒切换 | 已保存搜索 📧 按钮一键开关 `notify_daily` |
 | 偏好页删除搜索 | `delete_url` + 删除按钮 |
 | 分类页排序对齐 | `rating` / `discount_desc` 与商城首页一致 |
+
+### 第七十五轮（搜索重命名、配送方式编辑、摘要邮件管理链接、分类 newest 排序）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索内联重命名 | 搜索页 ✎ 按钮 + PATCH `name` |
+| 配送方式 JSON 编辑 | 商城设置 `store.shipping_methods` 文本域 + 校验 |
+| 摘要邮件管理链接 | `saved_search_digest` 链接至通知偏好页 |
+| 分类页 newest 排序 | `sort=newest` 与商城首页参数统一 |
+| 配送方式种子 | `db/seeds.rb` 默认 JSON |

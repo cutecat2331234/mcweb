@@ -26,7 +26,14 @@ const props = defineProps<{
   compareCount: number
   compareMaxItems?: number
   shareUrl?: string | null
+  wishlistImportUrl?: string | null
+  wishlistImportableCount?: number
 }>()
+
+function importWishlist() {
+  if (!props.wishlistImportUrl) return
+  router.post(props.wishlistImportUrl, {}, { preserveScroll: true })
+}
 
 function remove(product: { toggle_url: string }) {
   router.post(product.toggle_url, {}, { preserveScroll: true })
@@ -65,9 +72,18 @@ function addToCart(product: { db_id: number; add_to_cart_url: string; variants: 
 
   <div class="mb-4 flex items-center justify-between gap-3">
     <PageHeader title="商品对比" :subtitle="`已选 ${compareCount} / ${compareMaxItems ?? 4} 件`" />
-    <div v-if="products.length" class="flex gap-2">
-      <Button v-if="shareUrl" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
-      <Button type="button" variant="outline" size="sm" @click="clearAll">清空对比</Button>
+    <div v-if="products.length || wishlistImportUrl" class="flex gap-2">
+      <Button
+        v-if="wishlistImportUrl && wishlistImportableCount"
+        type="button"
+        variant="secondary"
+        size="sm"
+        @click="importWishlist"
+      >
+        从心愿单导入 ({{ wishlistImportableCount }})
+      </Button>
+      <Button v-if="shareUrl && products.length" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
+      <Button v-if="products.length" type="button" variant="outline" size="sm" @click="clearAll">清空对比</Button>
     </div>
   </div>
 

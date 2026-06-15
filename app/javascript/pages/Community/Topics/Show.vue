@@ -213,6 +213,17 @@ const editTagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
 const editTagError = ref('')
 const replyLinkError = ref('')
 
+function missingRequiredGroups(tags: string, groups?: Array<{ required?: boolean; tags: Array<{ name: string }> }>) {
+  const names = tags.split(',').map((t) => t.trim()).filter(Boolean)
+  return (groups || []).filter((group) => {
+    if (!group.required) return false
+    const groupNames = new Set(group.tags.map((t) => t.name))
+    return !names.some((name) => groupNames.has(name))
+  })
+}
+
+const editTagsReady = computed(() => missingRequiredGroups(editTags.value, props.topic.tag_groups).length === 0)
+
 function containsLink(text: string) {
   return /https?:\/\/|www\./i.test(text)
 }
@@ -712,7 +723,7 @@ async function loadPollVoters() {
 
 function saveTopicEdit() {
   editTagError.value = ''
-  if (editTagPickerRef.value?.hasMissingRequired) {
+  if (!editTagsReady.value) {
     editTagError.value = '请从必填标签组中至少选择一个标签。'
     return
   }
@@ -1048,7 +1059,7 @@ function pollPercent(votes: number) {
       <Input v-model="editPollClosesDays" type="number" min="0" placeholder="关闭天数（0=不限）" />
     </template>
     <div class="flex gap-2">
-      <Button type="button" size="sm" @click="saveTopicEdit">保存</Button>
+      <Button type="button" size="sm" :disabled="!editTagsReady" @click="saveTopicEdit">保存</Button>
       <Button type="button" size="sm" variant="outline" @click="editingTopic = false">取消</Button>
     </div>
   </div>

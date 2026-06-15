@@ -43,9 +43,10 @@ const missingRequiredGroups = computed(() => {
 })
 
 const hasMissingRequired = computed(() => missingRequiredGroups.value.length > 0)
+const isValid = computed(() => !hasMissingRequired.value)
 const atMaxTags = computed(() => selectedNames.value.length >= (props.maxTags ?? 5))
 
-defineExpose({ hasMissingRequired, missingRequiredGroups })
+defineExpose({ hasMissingRequired, isValid, missingRequiredGroups })
 
 function isSelected(name: string) {
   return selectedNames.value.includes(name)

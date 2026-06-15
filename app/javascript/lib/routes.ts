@@ -41,6 +41,7 @@ export const routes = {
   storeRecentlyViewed: '/store/products/recently_viewed',
   storeCompare: '/store/compare',
   storeToggleCompare: (productId: string) => `/store/compare/toggle?product_id=${productId}`,
+  storeImportWishlistCompare: '/store/compare/import_wishlist',
   storeWishlist: '/store/wishlist',
   storeStockAlerts: '/store/stock_alerts',
   storePriceAlerts: '/store/price_alerts',

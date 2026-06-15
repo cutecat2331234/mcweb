@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -22,7 +22,7 @@ const props = defineProps<{
     tags: string
     prefix?: string | null
     scheduled_at_input?: string | null
-    section: { name: string; slug: string; prefixes?: string[]; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }> }
+    section: { name: string; slug: string; prefixes?: string[]; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; required?: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }> }
     poll?: {
       question: string
       options: string
@@ -37,15 +37,6 @@ const props = defineProps<{
 const showPoll = ref(!!props.draft.poll)
 const tagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
 const tagGroupError = ref('')
-
-function tagsValid() {
-  if (tagPickerRef.value?.hasMissingRequired) {
-    tagGroupError.value = '请从必填标签组中至少选择一个标签。'
-    return false
-  }
-  tagGroupError.value = ''
-  return true
-}
 
 const form = useForm({
   draft: {
@@ -63,6 +54,26 @@ const form = useForm({
     poll_hide_results_until_vote: props.draft.poll?.hide_results_until_vote || false,
   },
 })
+
+function missingRequiredGroups(tags: string) {
+  const names = tags.split(',').map((t) => t.trim()).filter(Boolean)
+  return (props.draft.section.tag_groups || []).filter((group) => {
+    if (!group.required) return false
+    const groupNames = new Set(group.tags.map((t) => t.name))
+    return !names.some((name) => groupNames.has(name))
+  })
+}
+
+const tagsReady = computed(() => missingRequiredGroups(form.draft.tags).length === 0)
+
+function tagsValid() {
+  if (!tagsReady.value) {
+    tagGroupError.value = '请从必填标签组中至少选择一个标签。'
+    return false
+  }
+  tagGroupError.value = ''
+  return true
+}
 
 function save() {
   if (!tagsValid()) return
@@ -155,8 +166,8 @@ function clearSchedule() {
       <Button v-if="draft.scheduled_at_input" type="button" variant="outline" size="sm" @click="clearSchedule">取消定时</Button>
     </div>
     <div class="flex flex-wrap gap-2">
-      <Button type="submit" :disabled="form.processing">保存草稿</Button>
-      <Button type="button" :disabled="!form.draft.body" @click="publish">发布主题</Button>
+      <Button type="submit" :disabled="form.processing || !tagsReady">保存草稿</Button>
+      <Button type="button" :disabled="!form.draft.body || !tagsReady" @click="publish">发布主题</Button>
       <Button type="button" variant="destructive" @click="destroy">删除</Button>
       <Button as-child variant="outline">
         <Link :href="routes.forumDrafts">返回</Link>

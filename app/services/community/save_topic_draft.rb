@@ -23,6 +23,10 @@ module Community
     def call
       return ServiceResult.failure(error: "Title is required.") if @title.blank?
 
+      if @section.requires_tags_or_groups? && @tag_names.blank?
+        return ServiceResult.failure(error: @section.tag_requirements_message)
+      end
+
       draft = @topic || Community::Topic.new(user: @user, section: @section, status: "draft")
       tag_result = nil
       poll_result = nil

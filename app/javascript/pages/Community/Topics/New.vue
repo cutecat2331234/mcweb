@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -30,19 +30,13 @@ function containsLink(text: string) {
   return /https?:\/\/|www\./i.test(text)
 }
 
-function validateBeforeSubmit() {
-  tagGroupError.value = ''
-  linkError.value = ''
-  if (tagPickerRef.value?.hasMissingRequired) {
-    tagGroupError.value = '请从必填标签组中至少选择一个标签后再发布。'
-    return false
-  }
-  if (props.warningRestrictions?.post) return false
-  if (props.warningRestrictions?.link && containsLink(form.topic.body)) {
-    linkError.value = props.warningRestrictions.link
-    return false
-  }
-  return true
+function missingRequiredGroups(tags: string) {
+  const names = tags.split(',').map((t) => t.trim()).filter(Boolean)
+  return (props.section.tag_groups || []).filter((group) => {
+    if (!group.required) return false
+    const groupNames = new Set(group.tags.map((t) => t.name))
+    return !names.some((name) => groupNames.has(name))
+  })
 }
 
 const form = useForm({
@@ -60,6 +54,27 @@ const form = useForm({
     scheduled_at: '',
   },
 })
+
+const tagsReady = computed(() => missingRequiredGroups(form.topic.tags).length === 0)
+const bodyHasBlockedLink = computed(() =>
+  !!(props.warningRestrictions?.link && containsLink(form.topic.body))
+)
+const canPublish = computed(() => tagsReady.value && !props.warningRestrictions?.post && !bodyHasBlockedLink.value)
+
+function validateBeforeSubmit() {
+  tagGroupError.value = ''
+  linkError.value = ''
+  if (!tagsReady.value) {
+    tagGroupError.value = '请从必填标签组中至少选择一个标签后再发布。'
+    return false
+  }
+  if (props.warningRestrictions?.post) return false
+  if (props.warningRestrictions?.link && containsLink(form.topic.body)) {
+    linkError.value = props.warningRestrictions.link
+    return false
+  }
+  return true
+}
 
 watch(() => form.topic.title, (title) => {
   if (!props.similarTitlesUrl || title.length < 3) {
@@ -91,7 +106,7 @@ function submit() {
 }
 
 function saveDraft() {
-  if (tagPickerRef.value?.hasMissingRequired) {
+  if (!tagsReady.value) {
     tagGroupError.value = '请从必填标签组中至少选择一个标签后再保存。'
     return
   }
@@ -214,8 +229,8 @@ function saveDraft() {
     </div>
 
     <div class="flex flex-wrap gap-3">
-      <Button type="submit" :disabled="form.processing || !!warningRestrictions?.post">发布</Button>
-      <Button type="button" variant="outline" :disabled="!form.topic.title" @click="saveDraft">保存草稿</Button>
+      <Button type="submit" :disabled="form.processing || !canPublish">发布</Button>
+      <Button type="button" variant="outline" :disabled="!form.topic.title || !tagsReady" @click="saveDraft">保存草稿</Button>
       <Button as-child variant="outline">
         <Link :href="section.url">取消</Link>
       </Button>

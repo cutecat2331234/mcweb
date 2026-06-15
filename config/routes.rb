@@ -255,6 +255,7 @@ Rails.application.routes.draw do
     end
     get "compare", to: "compare#show"
     post "compare/toggle", to: "compare#toggle", as: :toggle_compare
+    post "compare/import_wishlist", to: "compare#import_wishlist", as: :import_wishlist_compare
     delete "compare", to: "compare#clear"
     get "compare/share", to: "compare#share"
     get "compare/:token", to: "compare#public_show", as: :public_compare

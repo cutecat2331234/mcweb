@@ -2,7 +2,7 @@
 
 module Commerce
   class CompareController < ApplicationController
-    before_action :require_login, only: %i[share]
+    before_action :require_login, only: %i[share import_wishlist]
 
     def show
       ids = Array(session[:compare_product_ids])
@@ -14,7 +14,9 @@ module Commerce
         products: products.map { |product| serialize_compare_product(product) },
         compareCount: products.size,
         compareMaxItems: Commerce::ToggleCompare.compare_max_items,
-        shareUrl: share_url
+        shareUrl: share_url,
+        wishlistImportUrl: logged_in? ? store_import_wishlist_compare_path : nil,
+        wishlistImportableCount: logged_in? ? wishlist_importable_compare_count(ids) : 0
       }
     end
 
@@ -42,6 +44,18 @@ module Commerce
       result = Commerce::EnsureCompareShareToken.call(user: current_user, product_ids: ids)
       if result.success?
         redirect_to store_compare_path, notice: "分享链接已生成。"
+      else
+        redirect_to store_compare_path, alert: service_error_message(result)
+      end
+    end
+
+    def import_wishlist
+      result = Commerce::AddWishlistToCompare.call(user: current_user, session: session)
+
+      if result.success?
+        notice = "已从心愿单添加 #{result.value[:added]} 件商品到对比。"
+        notice += " 跳过：#{result.value[:skipped].join('、')}" if result.value[:skipped].any?
+        redirect_to store_compare_path, notice: notice
       else
         redirect_to store_compare_path, alert: service_error_message(result)
       end
@@ -84,6 +98,17 @@ module Commerce
         toggle_url: store_toggle_compare_path(product_id: product.public_id),
         add_to_cart_url: store_cart_path
       }
+    end
+
+    def wishlist_importable_compare_count(compare_ids)
+      compare_set = Array(compare_ids).to_set
+      Commerce::WishlistItem
+        .where(user: current_user)
+        .includes(:product)
+        .count do |item|
+          product = item.product
+          product.available? && !compare_set.include?(product.public_id)
+        end
     end
   end
 end

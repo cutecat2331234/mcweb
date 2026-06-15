@@ -6,6 +6,7 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
+import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
@@ -74,6 +75,8 @@ const props = defineProps<{
   }>
   loggedIn?: boolean
   forumStaff?: boolean
+  canBulkModerate?: boolean
+  bulkModerateUrl?: string | null
   saveSearchUrl?: string | null
   savedSearchLimit?: number | null
   savedSearchCount?: number
@@ -127,6 +130,17 @@ const showAdvanced = ref(
 const saveName = ref('')
 const saveNotifyDaily = ref(false)
 const saveWebhookUrl = ref('')
+const selectedTopicIds = ref<string[]>([])
+
+function bulkModerate(action: string) {
+  if (!props.bulkModerateUrl || selectedTopicIds.value.length === 0) return
+  router.patch(props.bulkModerateUrl, {
+    topic_ids: selectedTopicIds.value,
+    action_type: action,
+  }, {
+    onSuccess: () => { selectedTopicIds.value = [] },
+  })
+}
 const saving = ref(false)
 const saveError = ref('')
 const shareCopied = ref(false)
@@ -874,7 +888,19 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         </a>
       </div>
     </div>
-    <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants class="mb-4" />
+    <div v-if="canBulkModerate && bulkModerateUrl && topics.length" class="mb-3 flex flex-wrap gap-2">
+      <BulkModerateToolbar :count="selectedTopicIds.length" @moderate="bulkModerate" />
+    </div>
+    <TopicListTable
+      v-if="topics.length"
+      :topics="topics"
+      show-views
+      show-participants
+      class="mb-4"
+      :selectable="!!(canBulkModerate && bulkModerateUrl)"
+      :selected-ids="selectedTopicIds"
+      @update:selected-ids="selectedTopicIds = $event"
+    />
     <Pagination v-if="topics.length" :pagination="topicsPagination" :base-path="routes.forumSearch" page-param="topic_page" class="mb-8" />
     <p v-else class="mb-8 text-sm text-muted-foreground">未找到相关主题。</p>
 

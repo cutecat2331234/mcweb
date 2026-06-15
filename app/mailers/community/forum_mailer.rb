@@ -121,6 +121,29 @@ module Community
       mail(to: @user.email, subject: "社区警告通知")
     end
 
+    def badge_earned(user_id, badge_id)
+      @user = User.find(user_id)
+      @badge = Community::Badge.find(badge_id)
+      @url = "#{root_url.chomp('/')}#{forum_badge_path(@badge.slug)}"
+      mail(to: @user.email, subject: "你获得了徽章：#{@badge.name}")
+    end
+
+    def topic_assigned(user_id, topic_id, actor_id)
+      @user = User.find(user_id)
+      @topic = Community::Topic.find_by!(public_id: topic_id)
+      @actor = User.find(actor_id)
+      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      mail(to: @user.email, subject: "主题已指派给你：#{@topic.title.truncate(60)}")
+    end
+
+    def trust_level_up(user_id, level, level_name)
+      @user = User.find(user_id)
+      @level = level
+      @level_name = level_name
+      @url = "#{root_url.chomp('/')}#{forum_user_path(@user.username)}"
+      mail(to: @user.email, subject: "信任等级提升：#{@level_name}")
+    end
+
   private
 
     def search_url_for(search)

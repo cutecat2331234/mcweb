@@ -6,7 +6,7 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
-import Button from '@/components/ui/Button.vue'
+import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -54,14 +54,11 @@ function bulkModerate(action: string) {
       >
         <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
-      <template v-if="canBulkModerate && bulkModerateUrl && selectedIds.length">
-        <Button type="button" variant="outline" size="sm" @click="bulkModerate('lock')">
-          锁定选中（{{ selectedIds.length }}）
-        </Button>
-        <Button type="button" variant="outline" size="sm" @click="bulkModerate('archive')">
-          归档选中
-        </Button>
-      </template>
+      <BulkModerateToolbar
+        v-if="canBulkModerate && bulkModerateUrl"
+        :count="selectedIds.length"
+        @moderate="bulkModerate"
+      />
     </div>
   </div>
 

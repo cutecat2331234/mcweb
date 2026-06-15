@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Badge from '@/components/ui/Badge.vue'
 import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
+import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -128,14 +129,11 @@ function bulkModerate(action: string) {
       <Button v-if="section.mark_all_read_url" type="button" variant="outline" size="sm" @click="markAllRead">
         全部标为已读
       </Button>
-      <template v-if="canBulkModerate && bulkModerateUrl && selectedIds.length">
-        <Button type="button" variant="outline" size="sm" @click="bulkModerate('lock')">
-          锁定选中（{{ selectedIds.length }}）
-        </Button>
-        <Button type="button" variant="outline" size="sm" @click="bulkModerate('archive')">
-          归档选中
-        </Button>
-      </template>
+      <BulkModerateToolbar
+        v-if="canBulkModerate && bulkModerateUrl"
+        :count="selectedIds.length"
+        @moderate="bulkModerate"
+      />
       <Button v-if="canCreateTopic && section.new_topic_url" as-child>
         <Link :href="section.new_topic_url">新建主题</Link>
       </Button>

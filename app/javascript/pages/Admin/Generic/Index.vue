@@ -9,7 +9,7 @@ import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
+import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -52,12 +52,17 @@ export interface DateFilterProps {
   action: string
 }
 
+export interface AdminRow extends Record<string, string> {
+  url?: string
+  publicId?: string
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
   exportUrl?: string
   columns: AdminColumn[]
-  rows: Array<Record<string, string>>
+  rows: Array<AdminRow>
   actions?: AdminAction[]
   statusTabs?: StatusTab[]
   eventTabs?: StatusTab[]
@@ -65,7 +70,11 @@ const props = defineProps<{
   bulkRetry?: BulkRetryAction | null
   dateFilter?: DateFilterProps | null
   pagination?: PaginationMeta
+  selectable?: boolean
+  bulkModerateUrl?: string | null
 }>()
+
+const selectedPublicIds = ref<string[]>([])
 
 const dateFrom = ref('')
 const dateTo = ref('')
@@ -93,6 +102,35 @@ function applyDateFilter() {
   else params.delete('created_to')
   window.location.href = `${props.dateFilter.action}?${params.toString()}`
 }
+
+function toggleRowSelection(publicId: string, checked: boolean) {
+  if (!publicId) return
+  if (checked) {
+    if (!selectedPublicIds.value.includes(publicId)) {
+      selectedPublicIds.value = [ ...selectedPublicIds.value, publicId ]
+    }
+  } else {
+    selectedPublicIds.value = selectedPublicIds.value.filter((id) => id !== publicId)
+  }
+}
+
+function toggleSelectAll(checked: boolean) {
+  if (!checked) {
+    selectedPublicIds.value = []
+    return
+  }
+  selectedPublicIds.value = props.rows.map((row) => row.publicId).filter((id): id is string => !!id)
+}
+
+function bulkModerate(action: string) {
+  if (!props.bulkModerateUrl || selectedPublicIds.value.length === 0) return
+  router.patch(props.bulkModerateUrl, {
+    topic_ids: selectedPublicIds.value,
+    action_type: action,
+  }, {
+    onSuccess: () => { selectedPublicIds.value = [] },
+  })
+}
 </script>
 
 <template>
@@ -116,6 +154,11 @@ function applyDateFilter() {
       >
         {{ bulkRetry.label }}
       </button>
+      <BulkModerateToolbar
+        v-if="selectable && bulkModerateUrl"
+        :count="selectedPublicIds.length"
+        @moderate="bulkModerate"
+      />
     </div>
   </div>
 
@@ -171,6 +214,14 @@ function applyDateFilter() {
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead v-if="selectable" class="w-10">
+            <input
+              type="checkbox"
+              class="rounded border"
+              :checked="rows.length > 0 && selectedPublicIds.length === rows.filter((r) => r.publicId).length"
+              @change="toggleSelectAll(($event.target as HTMLInputElement).checked)"
+            >
+          </TableHead>
           <TableHead v-for="column in columns" :key="column.key">
             {{ column.label }}
           </TableHead>
@@ -178,6 +229,15 @@ function applyDateFilter() {
       </TableHeader>
       <TableBody>
         <TableRow v-for="(row, index) in rows" :key="index">
+          <TableCell v-if="selectable">
+            <input
+              v-if="row.publicId"
+              type="checkbox"
+              class="rounded border"
+              :checked="selectedPublicIds.includes(row.publicId)"
+              @change="toggleRowSelection(row.publicId, ($event.target as HTMLInputElement).checked)"
+            >
+          </TableCell>
           <TableCell v-for="column in columns" :key="column.key">
             <Link
               v-if="column.link && row.url"

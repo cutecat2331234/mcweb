@@ -15,7 +15,8 @@ module Commerce
         .where("created_at > ?", window.ago)
         .includes(:user)
         .find_each do |order|
-          deliver_reminder(order)
+          next unless deliver_reminder(order)
+
           order.update_column(:payment_reminder_sent_at, Time.current)
         end
     end
@@ -30,11 +31,11 @@ module Commerce
 
     def deliver_reminder(order)
       user = order.user
-      return unless user
+      return false unless user
 
       email_enabled = NotificationPreference.enabled?(user, channel: "email", notification_type: "commerce.payment_reminder")
       in_app_enabled = NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.payment_reminder")
-      return unless email_enabled || in_app_enabled
+      return false unless email_enabled || in_app_enabled
 
       if email_enabled
         MailDeliveryJob.perform_later(
@@ -45,16 +46,18 @@ module Commerce
         )
       end
 
-      return unless in_app_enabled
+      if in_app_enabled
+        expires_label = payment_expires_label(order)
+        Commerce::NotifyOrderEvent.call(
+          user: user,
+          notification_type: "commerce.payment_reminder",
+          title: "订单待支付提醒",
+          body: "订单 #{order.order_number} 请在 #{expires_label} 前完成支付。",
+          path: "/store/orders/#{order.public_id}"
+        )
+      end
 
-      expires_label = payment_expires_label(order)
-      Commerce::NotifyOrderEvent.call(
-        user: user,
-        notification_type: "commerce.payment_reminder",
-        title: "订单待支付提醒",
-        body: "订单 #{order.order_number} 请在 #{expires_label} 前完成支付。",
-        path: "/store/orders/#{order.public_id}"
-      )
+      true
     end
 
     def payment_expires_label(order)

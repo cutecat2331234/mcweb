@@ -26,7 +26,9 @@ module Community
         sort: sort,
         filter: filter.to_s,
         filterOptions: topic_filter_options,
-        rss_url: forum_latest_rss_path
+        rss_url: forum_latest_rss_path,
+        canBulkModerate: logged_in? && current_user.permission?("forum.topics.lock"),
+        bulkModerateUrl: logged_in? && current_user.permission?("forum.topics.lock") ? bulk_moderate_forum_topics_path : nil
       }
     end
   end

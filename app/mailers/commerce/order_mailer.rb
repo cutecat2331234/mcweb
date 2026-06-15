@@ -6,6 +6,7 @@ module Commerce
       @order = Commerce::Order.includes(:items, :coupon, :gift_card).find(order_id)
       return unless commerce_email_enabled?(@order.user, "commerce.order_created")
 
+      assign_payment_deadline!(@order)
       mail(to: @order.user.email, subject: "订单确认 #{@order.order_number}")
     end
 
@@ -13,11 +14,7 @@ module Commerce
       @order = Commerce::Order.includes(:items, :coupon, :gift_card).find(order_id)
       return unless commerce_email_enabled?(@order.user, "commerce.payment_reminder")
 
-      minutes = SiteSetting.get("store.pending_order_expiry_minutes", "30").to_i
-      minutes = 30 if minutes <= 0
-      expires = @order.created_at + minutes.minutes
-      @expires_label = expires.future? ? I18n.l(expires, format: :short) : nil
-      @pay_url = "#{root_url.chomp('/')}#{"/store/orders/#{@order.public_id}"}"
+      assign_payment_deadline!(@order)
       mail(to: @order.user.email, subject: "请尽快支付订单 #{@order.order_number}")
     end
 
@@ -158,6 +155,17 @@ module Commerce
 
     def commerce_email_enabled?(user, notification_type)
       NotificationPreference.enabled?(user, channel: "email", notification_type: notification_type)
+    end
+
+    def assign_payment_deadline!(order)
+      return unless order.pending? || order.awaiting_payment?
+      return if order.total_cents.to_i <= 0
+
+      minutes = SiteSetting.get("store.pending_order_expiry_minutes", "30").to_i
+      minutes = 30 if minutes <= 0
+      expires = order.created_at + minutes.minutes
+      @expires_label = expires.future? ? I18n.l(expires, format: :short) : nil
+      @pay_url = "#{root_url.chomp('/')}#{"/store/orders/#{order.public_id}"}"
     end
   end
 end

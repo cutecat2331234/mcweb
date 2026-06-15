@@ -207,6 +207,8 @@ module Community
         savedSearches: serialize_saved_searches,
         loggedIn: logged_in?,
         forumStaff: forum_staff?,
+        canBulkModerate: logged_in? && current_user.permission?("forum.topics.lock"),
+        bulkModerateUrl: logged_in? && current_user.permission?("forum.topics.lock") ? bulk_moderate_forum_topics_path : nil,
         saveSearchUrl: logged_in? ? forum_saved_searches_path : nil,
         savedSearchLimit: Community::SavedSearch.limit_for_user(current_user).finite? ? Community::SavedSearch.limit_for_user(current_user).to_i : nil,
         savedSearchCount: logged_in? ? current_user.forum_saved_searches.count : 0,

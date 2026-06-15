@@ -1394,3 +1394,16 @@ app/
 | 资料页徽章日期 | `granted_at` 序列化 + 链接至徽章详情 |
 | 待支付订单提醒 | `PendingOrderPaymentReminderJob` + `commerce.payment_reminder` 偏好 |
 | 搜索排除 UI | 输入框占位符 + 排除语法说明 |
+
+### 第九十三轮（邮件通知补全、批量版主完善、订单邮件强化）
+
+| 功能 | 实现 |
+|------|------|
+| 徽章获得邮件 | `ForumMailer#badge_earned` + `NotifyBadgeEarned` 双通道 |
+| 主题指派邮件 | `ForumMailer#topic_assigned` + `NotifyTopicAssigned` 双通道 |
+| 信任等级邮件 | `ForumMailer#trust_level_up` + `NotifyTrustLevelUp` 双通道 |
+| 订单确认邮件强化 | `order_created` 含支付截止时间与立即支付链接 |
+| 支付提醒 bug 修复 | 通知关闭时不写入 `payment_reminder_sent_at` |
+| 最新/搜索批量版主 | Latest + Search 列表多选锁定/归档/解锁/取消归档 |
+| 批量反向操作 | `BulkModerateToolbar` 组件（解锁/取消归档） |
+| 管理后台批量版主 | Admin 主题列表分页 + 多选批量版主操作 |

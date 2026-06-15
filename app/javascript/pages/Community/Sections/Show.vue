@@ -70,8 +70,11 @@ function changeFilter(value: string) {
   router.get(routes.forumSection(props.section.slug), { sort: props.sort, filter: value || undefined }, { preserveState: true })
 }
 
-function removeFilter() {
-  router.get(routes.forumSection(props.section.slug), { sort: props.sort }, { preserveState: true })
+function removeFilter(chip: { param: string }) {
+  router.get(routes.forumSection(props.section.slug), {
+    sort: chip.param === 'sort' ? undefined : (props.sort === 'activity' ? undefined : props.sort),
+    filter: chip.param === 'filter' ? undefined : (props.filter || undefined),
+  }, { preserveState: true })
 }
 
 function toggleMute() {
@@ -210,7 +213,7 @@ function bulkModerate(action: string) {
       class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
     >
       {{ chip.label }}
-      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter">×</button>
+      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(chip)">×</button>
     </span>
   </div>
 

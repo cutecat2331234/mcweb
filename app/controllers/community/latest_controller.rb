@@ -26,11 +26,18 @@ module Community
         sort: sort,
         filter: filter.to_s,
         filterOptions: topic_filter_options,
-        activeFilters: Community::TopicListActiveFilters.call(filter: filter),
+        activeFilters: topic_list_active_filters(sort: sort, filter: filter),
         rss_url: forum_latest_rss_path,
         canBulkModerate: logged_in? && current_user.permission?("forum.topics.lock"),
         bulkModerateUrl: logged_in? && current_user.permission?("forum.topics.lock") ? bulk_moderate_forum_topics_path : nil
       }
+    end
+
+    private
+
+    def topic_list_active_filters(sort:, filter:)
+      Community::TopicListActiveFilters.call(filter: filter) +
+        Community::TopicListSortActiveFilters.call(sort: sort, default: "activity")
     end
   end
 end

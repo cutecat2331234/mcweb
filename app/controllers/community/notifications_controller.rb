@@ -21,6 +21,7 @@ module Community
         activeRead: read_filter.presence || "all",
         activeType: type_filter.to_s,
         typeTabs: notification_type_tabs(base_scope, category: category, read: read_filter),
+        quickFilters: notification_quick_filters(category: category, read: read_filter, type: type_filter),
         activeFilters: notification_active_filters(category: category, read: read_filter, type: type_filter),
         unreadCount: unread_count
       }
@@ -91,17 +92,20 @@ module Community
     def notification_type_tabs(base_scope, category:, read:)
       scope = apply_notification_filters(base_scope.unscope(:order), category: category, read: read, type: nil)
       counts = scope.group(:notification_type).count
+      unread_counts = scope.unread.group(:notification_type).count
       current = params[:type].to_s
 
-      tabs = counts.sort_by { |(_type, count)| -count }.map do |type, count|
+      tabs = counts.map do |type, count|
+        unread = unread_counts[type].to_i
         {
           type: type,
           label: NotificationTypeLabels.label_for(type),
           href: forum_notifications_path(notification_tab_params(category: category, read: read, type: type)),
           active: current == type,
-          count: count
+          count: count,
+          unread_count: unread
         }
-      end
+      end.sort_by { |tab| [ -tab[:unread_count], -tab[:count], tab[:label] ] }
 
       if current.present? && tabs.none? { |tab| tab[:type] == current }
         tabs.unshift({
@@ -109,11 +113,21 @@ module Community
           label: NotificationTypeLabels.label_for(current),
           href: forum_notifications_path(notification_tab_params(category: category, read: read, type: current)),
           active: true,
-          count: scope.where(notification_type: current).count
+          count: scope.where(notification_type: current).count,
+          unread_count: scope.unread.where(notification_type: current).count
         })
       end
 
       tabs.first(12)
+    end
+
+    def notification_quick_filters(category:, read:, type:)
+      Community::NotificationQuickFilters.call(
+        user: current_user,
+        category: category,
+        read: read,
+        active_type: type
+      )
     end
 
     def notification_tab_params(category:, read:, type:)

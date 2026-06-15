@@ -1482,3 +1482,15 @@ app/
 | 摘要未读入口 | digest 邮件「查看全部未读通知」链接 |
 | 投票分享链接 | `serialize_poll` `share_url` + 主题页复制按钮 |
 | 订单 tab 同步 | `Orders/Index.vue` watch props 同步下拉框状态 |
+
+### 第一百轮（通知快捷筛选、未读筛选、投票 OG、订单 tab 联动）
+
+| 功能 | 实现 |
+|------|------|
+| 通知快捷筛选 | `NotificationQuickFilters` @提及/回复/反应/支付快捷入口 |
+| 类型 tab 未读优先 | `typeTabs` 含 `unread_count`，按未读数排序高亮 |
+| 清除全部筛选 | 通知页「清除全部」按钮 |
+| 未读主题筛选 | `UnreadController` 支持 `filter` + 排序/筛选芯片 |
+| 排序筛选芯片 | `TopicListSortActiveFilters` 最新/分区/未读页可移除 |
+| 投票 OG 元数据 | `topic_meta_props` 含 `poll_question` + `#poll` URL |
+| 订单 tab 联动 | `statusTabs` 含 `status`，点击同步 `q` 与下拉框 |

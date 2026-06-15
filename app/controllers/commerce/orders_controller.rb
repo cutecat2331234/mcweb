@@ -182,7 +182,8 @@ module Commerce
         label: "全部",
         href: store_orders_path(base_params),
         active: current.blank?,
-        count: total
+        count: total,
+        status: ""
       } ]
       Commerce::Order::STATUSES.each do |status|
         count = counts[status].to_i
@@ -192,7 +193,8 @@ module Commerce
           label: order_status_label(status),
           href: store_orders_path(base_params.merge(status: status)),
           active: current == status,
-          count: count
+          count: count,
+          status: status
         }
       end
       tabs

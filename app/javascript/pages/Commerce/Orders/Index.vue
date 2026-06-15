@@ -21,6 +21,7 @@ interface StatusTab {
   href: string
   active: boolean
   count?: number
+  status?: string
 }
 
 const props = defineProps<{
@@ -74,6 +75,14 @@ function removeFilter(filter: { param: string }) {
     status: statusFilter.value || undefined,
   }, { preserveState: true })
 }
+
+function switchStatusTab(tab: StatusTab) {
+  statusFilter.value = tab.status || ''
+  router.get(routes.storeOrders, {
+    q: q.value || undefined,
+    status: tab.status || undefined,
+  }, { preserveState: true })
+}
 </script>
 
 <template>
@@ -88,15 +97,16 @@ function removeFilter(filter: { param: string }) {
   </div>
 
   <div v-if="statusTabs?.length" class="mb-4 flex flex-wrap gap-2">
-    <Link
+    <button
       v-for="tab in statusTabs"
       :key="tab.href"
-      :href="tab.href"
-      class="rounded-md border px-3 py-1.5 text-sm no-underline"
+      type="button"
+      class="rounded-md border px-3 py-1.5 text-sm"
       :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+      @click="switchStatusTab(tab)"
     >
       {{ tab.label }}<span v-if="tab.count != null" class="ml-1 opacity-80">({{ tab.count }})</span>
-    </Link>
+    </button>
   </div>
 
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">

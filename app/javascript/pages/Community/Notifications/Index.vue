@@ -39,6 +39,17 @@ interface TypeTab {
   href: string
   active: boolean
   count: number
+  unread_count?: number
+}
+
+interface QuickFilter {
+  key: string
+  label: string
+  type: string
+  href: string
+  active: boolean
+  count: number
+  unread_count?: number
 }
 
 const props = defineProps<{
@@ -47,6 +58,7 @@ const props = defineProps<{
   activeRead?: 'all' | 'unread'
   activeType?: string
   typeTabs?: TypeTab[]
+  quickFilters?: QuickFilter[]
   activeFilters?: Array<{ param: string; label: string; value?: string }>
   unreadCount?: number
 }>()
@@ -88,6 +100,10 @@ function removeFilter(filter: { param: string }) {
   router.get(routes.forumNotifications, filterParams(overrides), { preserveState: true })
 }
 
+function clearAllFilters() {
+  router.get(routes.forumNotifications, {}, { preserveState: true })
+}
+
 function categoryLabel(category: string) {
   return category === 'commerce' ? '商城' : '论坛'
 }
@@ -116,15 +132,33 @@ function categoryLabel(category: string) {
     </Button>
   </div>
 
+  <div v-if="quickFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">快捷筛选：</span>
+    <Link
+      v-for="qf in quickFilters"
+      :key="qf.key"
+      :href="qf.href"
+      class="rounded-md border px-2.5 py-1 text-xs no-underline"
+      :class="qf.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ qf.label }}<span class="ml-1 opacity-80">({{ qf.count }})</span>
+      <span v-if="qf.unread_count" class="ml-1 font-semibold">· {{ qf.unread_count }} 未读</span>
+    </Link>
+  </div>
+
   <div v-if="typeTabs?.length" class="mb-4 flex flex-wrap gap-2">
     <Link
       v-for="tab in typeTabs"
       :key="tab.type"
       :href="tab.href"
       class="rounded-md border px-2.5 py-1 text-xs no-underline"
-      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+      :class="[
+        tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted',
+        tab.unread_count ? 'font-semibold' : '',
+      ]"
     >
       {{ tab.label }}<span class="ml-1 opacity-80">({{ tab.count }})</span>
+      <span v-if="tab.unread_count" class="ml-1 text-orange-600 dark:text-orange-400">{{ tab.unread_count }} 未读</span>
     </Link>
   </div>
 
@@ -138,6 +172,7 @@ function categoryLabel(category: string) {
       {{ filter.label }}
       <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(filter)">×</button>
     </span>
+    <Button type="button" variant="ghost" size="sm" class="h-6 text-xs" @click="clearAllFilters">清除全部</Button>
   </div>
 
   <div v-if="notifications.length" class="space-y-2">

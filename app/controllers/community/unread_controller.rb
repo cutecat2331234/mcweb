@@ -2,6 +2,7 @@
 
 module Community
   class UnreadController < ApplicationController
+    include Community::TopicFilterable
     include Community::TopicListSortable
     include Community::TopicListPreloadable
 
@@ -9,10 +10,21 @@ module Community
 
     def index
       sort = params[:sort].presence || "latest"
+      filter = params[:filter].to_s.presence
       scope = Community::ReadState
         .with_unread_for(current_user)
         .includes(topic: TOPIC_LIST_INCLUDES)
         .joins(:topic)
+
+      if filter.present?
+        unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
+        filtered_ids = apply_topic_filter(
+          Community::Topic.where(id: unread_topic_ids),
+          filter: filter,
+          user: current_user
+        ).select(:id)
+        scope = scope.where(forum_topic_id: filtered_ids)
+      end
 
       scope = scope.where.not(forum_topics: { user_id: blocked_user_ids }) if blocked_user_ids.any?
       scope = apply_forum_topic_sort(scope, sort)
@@ -27,7 +39,10 @@ module Community
         markSelectedReadUrl: forum_unread_mark_selected_read_path,
         pagination: pagy_props(@pagy),
         sort: sort,
-        sortOptions: forum_sort_options
+        filter: filter.to_s,
+        sortOptions: forum_sort_options,
+        filterOptions: topic_filter_options,
+        activeFilters: unread_active_filters(sort: sort, filter: filter)
       }
     end
 
@@ -64,6 +79,11 @@ module Community
         { value: "replies", label: "回复最多" },
         { value: "newest", label: "最新发布" }
       ]
+    end
+
+    def unread_active_filters(sort:, filter:)
+      Community::TopicListActiveFilters.call(filter: filter) +
+        Community::TopicListSortActiveFilters.call(sort: sort, default: "latest")
     end
   end
 end

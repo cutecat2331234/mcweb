@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -17,7 +17,10 @@ const props = defineProps<{
   markSelectedReadUrl?: string
   pagination: PaginationMeta
   sort: string
+  filter: string
   sortOptions: Array<{ value: string; label: string }>
+  filterOptions: Array<{ value: string; label: string }>
+  activeFilters?: Array<{ param: string; label: string; value?: string }>
 }>()
 
 const selectedIds = ref<string[]>([])
@@ -34,7 +37,18 @@ function markSelectedRead() {
 }
 
 function changeSort(value: string) {
-  router.get(routes.forumUnread, { sort: value }, { preserveState: true })
+  router.get(routes.forumUnread, { sort: value, filter: props.filter || undefined }, { preserveState: true })
+}
+
+function changeFilter(value: string) {
+  router.get(routes.forumUnread, { sort: props.sort, filter: value || undefined }, { preserveState: true })
+}
+
+function removeFilter(chip: { param: string }) {
+  router.get(routes.forumUnread, {
+    sort: chip.param === 'sort' ? undefined : (props.sort === 'latest' ? undefined : props.sort),
+    filter: chip.param === 'filter' ? undefined : (props.filter || undefined),
+  }, { preserveState: true })
 }
 </script>
 
@@ -55,6 +69,13 @@ function changeSort(value: string) {
       >
         <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
+      <select
+        :value="filter"
+        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
+        @change="changeFilter(($event.target as HTMLSelectElement).value)"
+      >
+        <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+      </select>
       <Button
         v-if="markSelectedReadUrl && selectedIds.length"
         type="button"
@@ -68,6 +89,18 @@ function changeSort(value: string) {
         全部标为已读
       </Button>
     </div>
+  </div>
+
+  <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span
+      v-for="chip in activeFilters"
+      :key="`${chip.param}-${chip.value || chip.label}`"
+      class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
+    >
+      {{ chip.label }}
+      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(chip)">×</button>
+    </span>
   </div>
 
   <TopicListTable

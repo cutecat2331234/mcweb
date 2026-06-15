@@ -691,13 +691,22 @@ module Community
       first_post = topic.posts.first
       description = first_post&.body&.truncate(160)
       image = first_post&.body.to_s[/!\[[^\]]*\]\(([^)]+)\)/, 1]
-      {
+      meta = {
         title: topic.title,
         description: description,
         noindex: topic.unlisted?,
         url: "#{request.base_url}#{forum_topic_path(topic)}",
         image: image.presence
       }
+
+      if (poll = topic.poll)
+        meta[:title] = "#{topic.title} — 投票"
+        meta[:description] = "投票：#{poll.question}"
+        meta[:url] = "#{request.base_url}#{forum_topic_path(topic)}#poll"
+        meta[:poll_question] = poll.question
+      end
+
+      meta
     end
 
     def bulk_moderate_destination

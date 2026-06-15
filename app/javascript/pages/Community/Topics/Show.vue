@@ -201,7 +201,7 @@ const props = defineProps<{
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
   subscriptionLevels?: SubscriptionLevelOption[]
   subscriptionUrl?: string | null
-  meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null }
+  meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null; poll_question?: string | null }
 }>()
 
 const page = usePage<{ auth: { user: { id: string; username: string } | null } }>()

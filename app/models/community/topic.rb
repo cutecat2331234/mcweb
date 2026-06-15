@@ -31,7 +31,7 @@ module Community
     scope :recent, -> { order(last_posted_at: :desc) }
     scope :featured_topics, -> { where(featured: true, status: :published, unlisted: false) }
     scope :listed, -> { where(unlisted: false) }
-    scope :published_listed, -> { where(status: :published, unlisted: false) }
+    scope :published_listed, -> { where(status: :published, unlisted: false, archived_at: nil) }
 
     def unlisted?
       unlisted == true

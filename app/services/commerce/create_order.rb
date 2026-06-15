@@ -32,6 +32,12 @@ module Commerce
       )
       return address_result if address_result.failure?
 
+      subtotal_preview = @cart.items.includes(:product, :variant).sum { |item| item.total_cents }
+      min_cents = SiteSetting.get("store.min_checkout_subtotal_cents", "0").to_i
+      if min_cents.positive? && subtotal_preview < min_cents
+        return ServiceResult.failure(error: "订单未满最低消费金额（#{min_cents / 100.0} 元）。")
+      end
+
       order = nil
       coupon_error = nil
 

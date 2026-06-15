@@ -17,6 +17,7 @@ module Commerce
       requires_shipping = items.any? { |item| item.product&.requires_shipping? || item.product&.product_type == "physical" }
       default_shipping_address = last_shipping_address_for(current_user)
       gift_wrap_cents = SiteSetting.get("store.gift_wrap_cents", "500").to_i
+      min_checkout_cents = SiteSetting.get("store.min_checkout_subtotal_cents", "0").to_i
 
       render inertia: "Commerce/Checkout/Show", props: {
         items: items.map { |item|
@@ -41,6 +42,9 @@ module Commerce
         giftWrapAvailable: requires_shipping && gift_wrap_cents.positive?,
         giftWrapCents: gift_wrap_cents,
         giftWrapLabel: format_money(gift_wrap_cents, currency),
+        minCheckoutCents: min_checkout_cents,
+        minCheckoutLabel: min_checkout_cents.positive? ? format_money(min_checkout_cents, currency) : nil,
+        belowMinCheckout: min_checkout_cents.positive? && subtotal_cents < min_checkout_cents,
         **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon, shipping_method_code: params[:shipping_method])
       }
     end

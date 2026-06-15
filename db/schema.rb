@@ -421,6 +421,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_topics", force: :cascade do |t|
+    t.datetime "archived_at"
     t.datetime "auto_bump_at"
     t.datetime "auto_close_at"
     t.datetime "bumped_at"
@@ -450,6 +451,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "views_count", default: 0, null: false
     t.boolean "wiki", default: false, null: false
     t.index "to_tsvector('simple'::regconfig, (COALESCE(title, ''::character varying))::text)", name: "index_forum_topics_on_title_tsvector", using: :gin
+    t.index ["archived_at"], name: "index_forum_topics_on_archived_at"
     t.index ["auto_bump_at"], name: "index_forum_topics_on_auto_bump_at"
     t.index ["auto_close_at"], name: "index_forum_topics_on_auto_close_at"
     t.index ["deleted_at"], name: "index_forum_topics_on_deleted_at"
@@ -775,6 +777,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "store_carts", force: :cascade do |t|
     t.datetime "abandoned_reminder_sent_at"
+    t.datetime "abandoned_second_reminder_sent_at"
     t.datetime "created_at", null: false
     t.string "recovery_token"
     t.string "session_token"
@@ -1153,6 +1156,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "failed_login_count", default: 0, null: false
     t.string "forum_digest_frequency", default: "none", null: false
     t.datetime "forum_digest_last_sent_at"
+    t.boolean "forum_digest_watched_only", default: false, null: false
     t.string "forum_flair_color_hex"
     t.text "forum_signature"
     t.string "forum_title"

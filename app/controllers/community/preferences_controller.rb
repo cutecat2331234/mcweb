@@ -39,6 +39,7 @@ module Community
       render inertia: "Community/Preferences/Show", props: {
         preferences: prefs,
         digest_frequency: current_user.forum_digest_frequency,
+        digest_watched_only: current_user.forum_digest_watched_only?,
         digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } }
       }
     end
@@ -58,6 +59,10 @@ module Community
 
       if params[:digest_frequency].present? && DIGEST_OPTIONS.include?(params[:digest_frequency])
         current_user.update!(forum_digest_frequency: params[:digest_frequency])
+      end
+
+      if params.key?(:digest_watched_only)
+        current_user.update!(forum_digest_watched_only: ActiveModel::Type::Boolean.new.cast(params[:digest_watched_only]))
       end
 
       redirect_to forum_preferences_path, notice: "通知偏好已保存。"

@@ -85,10 +85,18 @@ module Commerce
     end
 
     def record_transition_event
+      from = aasm.from_state.to_s
+      to = aasm.to_state.to_s
       events.create!(
         event_type: aasm.current_event.to_s.sub(/!$/, ""),
-        from_status: aasm.from_state.to_s,
-        to_status: aasm.to_state.to_s
+        from_status: from,
+        to_status: to
+      )
+      Commerce::DispatchOrderWebhook.call(
+        order: self,
+        event_type: "order.#{aasm.current_event.to_s.sub(/!$/, '')}",
+        from_status: from,
+        to_status: to
       )
     end
   end

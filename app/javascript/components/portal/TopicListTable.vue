@@ -22,6 +22,9 @@ export interface TopicListItem {
   featured?: boolean
   locked?: boolean
   solved?: boolean
+  wiki?: boolean
+  global_announcement?: boolean
+  unlisted?: boolean
   prefix?: string | null
   has_unread?: boolean
   unread_count?: number
@@ -60,6 +63,9 @@ defineProps<{
               :featured="topic.featured"
               :locked="topic.locked"
               :solved="topic.solved"
+              :wiki="topic.wiki"
+              :global-announcement="topic.global_announcement"
+              :unlisted="topic.unlisted"
               :has-unread="topic.has_unread"
               :unread-count="topic.unread_count"
               :linked-product="topic.linked_product"

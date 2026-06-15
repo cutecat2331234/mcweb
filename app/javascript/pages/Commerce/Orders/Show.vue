@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -73,7 +74,15 @@ const props = defineProps<{
       quantity: number
       total_label: string
       product_url?: string | null
+      product_public_id?: string | null
       ask_question_url?: string | null
+      ask_question_return_order_id?: string | null
+      questions?: Array<{
+        id: number
+        body: string
+        created_at: string
+        answers: Array<{ body: string; author: string; official: boolean; created_at: string }>
+      }>
       discussion_url?: string | null
       fulfillment_status: string | null
       fulfillment_status_label?: string | null
@@ -97,6 +106,21 @@ const payForm = useForm({
 })
 const cancelForm = useForm({})
 const refundForm = useForm({ reason: '' })
+const questionForms = ref<Record<number, string>>({})
+
+function submitItemQuestion(item: { product_public_id?: string | null; id?: number; ask_question_return_order_id?: string }) {
+  if (!item.product_public_id || !item.id) return
+  const body = questionForms.value[item.id]?.trim()
+  if (!body) return
+  router.post(`/store/products/${item.product_public_id}/questions`, {
+    question: { body },
+    order_item_id: item.id,
+    return_order_id: item.ask_question_return_order_id,
+  }, {
+    preserveScroll: true,
+    onSuccess: () => { if (item.id) questionForms.value[item.id] = '' },
+  })
+}
 const reorderForm = useForm({})
 
 function refreshDownload(url: string) {
@@ -163,8 +187,19 @@ function refreshDownload(url: string) {
             <template v-else>{{ item.product_name }}</template>
             <span v-if="item.variant_name" class="text-muted-foreground"> — {{ item.variant_name }}</span>
             <div v-if="item.ask_question_url || item.discussion_url" class="mt-1 flex gap-2">
-              <Link v-if="item.ask_question_url" :href="item.ask_question_url" class="text-xs text-primary hover:underline">提问</Link>
               <Link v-if="item.discussion_url" :href="item.discussion_url" class="text-xs text-primary hover:underline">参与讨论</Link>
+            </div>
+            <div v-if="item.product_public_id && item.id" class="mt-2 space-y-2">
+              <div v-for="q in item.questions || []" :key="q.id" class="rounded border bg-muted/30 p-2 text-xs">
+                <p class="font-medium">Q: {{ q.body }}</p>
+                <p v-for="(a, ai) in q.answers" :key="ai" class="mt-1 text-muted-foreground">
+                  {{ a.official ? '官方' : a.author }}：{{ a.body }}
+                </p>
+              </div>
+              <div class="flex gap-2">
+                <Textarea v-model="questionForms[item.id]" rows="2" placeholder="就此商品提问…" class="text-xs" />
+                <Button type="button" size="sm" variant="outline" @click="submitItemQuestion(item)">提问</Button>
+              </div>
             </div>
             <ul v-if="item.issued_gift_cards?.length" class="mt-2 space-y-1 text-xs text-green-700">
               <li v-for="card in item.issued_gift_cards" :key="card.code">

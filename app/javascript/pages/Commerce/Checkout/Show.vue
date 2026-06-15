@@ -57,6 +57,9 @@ const props = defineProps<{
   giftWrapAvailable?: boolean
   giftWrapCents?: number
   giftWrapLabel?: string
+  minCheckoutCents?: number
+  minCheckoutLabel?: string | null
+  belowMinCheckout?: boolean
   previewCouponUrl: string
   previewGiftCardUrl: string
 }>()
@@ -181,6 +184,10 @@ onMounted(() => {
 <template>
   <PageHeader title="结账" />
 
+  <p v-if="belowMinCheckout && minCheckoutLabel" class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    订单未满最低消费 {{ minCheckoutLabel }}，请继续选购后再结账。
+  </p>
+
   <div v-if="items.length" class="max-w-2xl space-y-6">
     <div class="rounded-lg border">
       <Table>
@@ -293,7 +300,7 @@ onMounted(() => {
           <option v-for="provider in providers" :key="provider.value" :value="provider.value">{{ provider.label }}</option>
         </select>
       </div>
-      <Button type="submit" :disabled="form.processing">立即支付</Button>
+      <Button type="submit" :disabled="form.processing || belowMinCheckout">立即支付</Button>
     </form>
   </div>
 

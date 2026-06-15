@@ -17,6 +17,7 @@ const props = defineProps<{
     email: boolean
   }>
   digest_frequency: string
+  digest_watched_only?: boolean
   digest_options: Array<{ value: string; label: string }>
 }>()
 
@@ -28,6 +29,7 @@ const form = useForm({
     ])
   ) as Record<string, { in_app: boolean; email: boolean }>,
   digest_frequency: props.digest_frequency,
+  digest_watched_only: props.digest_watched_only ?? false,
 })
 
 function submit() {
@@ -77,6 +79,10 @@ function submit() {
         <option v-for="opt in digest_options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
       <p class="mt-2 text-xs text-muted-foreground">摘要将汇总未读的论坛通知，减少即时邮件打扰。</p>
+      <label v-if="form.digest_frequency !== 'none'" class="mt-3 flex items-center gap-2 text-sm">
+        <input v-model="form.digest_watched_only" type="checkbox">
+        仅包含我关注的分区/主题/标签
+      </label>
     </div>
 
     <Button type="submit" :disabled="form.processing">保存</Button>

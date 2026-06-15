@@ -160,7 +160,11 @@ module Admin
           return update_shipping
         end
 
+        previous_status = @order.status
         if @order.update(order_params)
+          if order_params[:status].present? && @order.status != previous_status
+            Commerce::NotifyOrderStatusChange.call(order: @order, from_status: previous_status)
+          end
           redirect_to admin_store_order_path(@order), notice: "Order updated."
         else
           redirect_to admin_store_order_path(@order), alert: @order.errors.full_messages.to_sentence

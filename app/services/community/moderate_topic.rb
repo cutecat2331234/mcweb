@@ -16,7 +16,9 @@ module Community
       "global_announcement" => "此主题已设为全站公告。",
       "remove_global_announcement" => "此主题已取消全站公告。",
       "unlist" => "此主题已设为未列出（仅链接可访问）。",
-      "list" => "此主题已恢复公开列表显示。"
+      "list" => "此主题已恢复公开列表显示。",
+      "archive" => "此主题已归档。",
+      "unarchive" => "此主题已取消归档。"
     }.freeze
 
     def initialize(user:, topic:, action:, lock_reason: nil)
@@ -70,6 +72,10 @@ module Community
         @topic.update!(unlisted: true)
       when "list"
         @topic.update!(unlisted: false)
+      when "archive"
+        @topic.update!(archived_at: Time.current)
+      when "unarchive"
+        @topic.update!(archived_at: nil)
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

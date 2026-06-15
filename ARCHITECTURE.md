@@ -887,3 +887,19 @@ app/
 | 商品对比分享链接 | `compare_share_token` + `Compare/Public.vue` |
 | 结账礼品包装 | `store.gift_wrap_cents` + `CalculateGiftWrap` + 结账勾选 |
 | PDF 收据字段增强 | 备注/配送/物流/礼品包装/礼品卡行 |
+
+### 第五十一轮（主题归档、楼层锚点、最低消费与订单 Webhook）
+
+| 功能 | 实现 |
+|------|------|
+| 「我已解决」筛选（Discourse） | `TopicFilterable#solved_mine` |
+| 列表 Wiki/公告/未列出徽章 | `TopicTitleBadges` + `serialize_topic_list_item` |
+| 楼层 permalink `#p-{floor}` | `PostPermalink` + 主题页滚动定位 |
+| 主题归档/取消归档（Discourse） | `forum_topics.archived_at` + `ModerateTopic` + 可见性规则 |
+| `@staff` / `@moderators` 群组提及 | `ProcessMentions::GROUP_MENTIONS` |
+| 摘要仅关注内容（Discourse watched） | `users.forum_digest_watched_only` + `SendForumDigest` 过滤 |
+| 结账最低消费门槛（Shop） | `store.min_checkout_subtotal_cents` + `CreateOrder` 校验 + 结账页禁用 |
+| 弃购二次提醒（72h） | `abandoned_second_reminder_sent_at` + `AbandonedCartReminderJob` |
+| 订单状态 Webhook | `store.order_webhook_url` + `DispatchOrderWebhook` |
+| 管理端改状态用户通知 | `NotifyOrderStatusChange` + 管理订单更新 |
+| 订单页商品 Q&A | 订单详情展示已提交问题 + 快捷提问表单 |

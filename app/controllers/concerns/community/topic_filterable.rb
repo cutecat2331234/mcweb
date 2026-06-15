@@ -12,6 +12,8 @@ module Community
         scope.where(solved_post_id: nil)
       when "solved"
         scope.where.not(solved_post_id: nil)
+      when "solved_mine"
+        user ? scope.where(user: user).where.not(solved_post_id: nil) : scope.none
       when "mine"
         user ? scope.where(user: user) : scope.none
       when "participated"
@@ -57,6 +59,7 @@ module Community
         { value: "", label: "全部" },
         { value: "unsolved", label: "未解决" },
         { value: "solved", label: "已解决" },
+        { value: "solved_mine", label: "我已解决" },
         { value: "mine", label: "我的主题" },
         { value: "participated", label: "我参与的" },
         { value: "unread", label: "未读" },

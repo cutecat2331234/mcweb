@@ -7,6 +7,10 @@ module Community
     private
 
     def topic_visible?(topic, user: current_user)
+      if topic.archived_at.present?
+        return false unless user.present? && (topic.user_id == user.id || user.permission?("forum.topics.lock"))
+      end
+
       case topic.status
       when "published"
         true

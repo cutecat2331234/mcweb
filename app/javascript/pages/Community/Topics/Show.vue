@@ -140,6 +140,7 @@ const props = defineProps<{
     featured: boolean
     wiki: boolean
     unlisted?: boolean
+    archived_at?: string | null
     slow_mode_seconds: number | null
     auto_close_at?: string | null
     auto_bump_at?: string | null
@@ -267,6 +268,14 @@ onMounted(() => {
     setTimeout(() => {
       document.querySelector(hash)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 100)
+  } else if (hash.startsWith('#p-')) {
+    const floor = Number(hash.replace('#p-', ''))
+    if (floor > 0) {
+      setTimeout(() => {
+        const el = document.querySelector(`[data-floor="${floor}"]`)
+        el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      }, 100)
+    }
   }
   if (slowModeRemaining.value > 0) {
     slowModeTimer = setInterval(() => {
@@ -425,7 +434,7 @@ function reactionTitle(post: PostItem, emoji: string) {
 }
 
 function copyPermalink(post: PostItem) {
-  const url = `${window.location.origin}${routes.forumTopic(props.topic.id)}#post-${post.id}`
+  const url = `${window.location.origin}${routes.forumTopic(props.topic.id)}#p-${post.floor_number}`
   navigator.clipboard.writeText(url).then(() => {
     copiedPostId.value = post.id
     window.setTimeout(() => {
@@ -882,6 +891,9 @@ function pollPercent(votes: number) {
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.unlisted ? 'list' : 'unlist')">
           {{ topic.unlisted ? '恢复列表显示' : '设为未列出' }}
         </Button>
+        <Button type="button" variant="outline" size="sm" @click="moderate(topic.archived_at ? 'unarchive' : 'archive')">
+          {{ topic.archived_at ? '取消归档' : '归档主题' }}
+        </Button>
       </template>
     </div>
   </div>
@@ -1085,6 +1097,9 @@ function pollPercent(votes: number) {
     慢速模式：同一用户需间隔 {{ topic.slow_mode_seconds }} 秒才能再次回复。
   </template>
   </p>
+  <p v-if="topic.archived_at" class="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+    此主题已于 {{ topic.archived_at }} 归档，仅作者与版主可见。
+  </p>
   <p v-if="topic.unlisted" class="mb-4 rounded-md border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
     此主题为未列出状态，不会出现在公开列表中，但持有链接的用户仍可访问。
   </p>
@@ -1165,6 +1180,7 @@ function pollPercent(votes: number) {
       </div>
       <article
         :id="`post-${post.id}`"
+        :data-floor="post.floor_number"
         class="rounded-lg border p-4"
         :class="[
           post.small_action ? 'border-dashed bg-muted/20 text-sm italic' : '',

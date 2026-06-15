@@ -82,6 +82,9 @@ module InertiaSerializable
       prefix: topic.prefix,
       locked: topic.locked?,
       featured: topic.featured?,
+      wiki: topic.wiki?,
+      global_announcement: topic.global_announcement?,
+      unlisted: topic.unlisted?,
       solved: topic.solved_post_id.present?,
       unread_count: unread_count,
       has_unread: unread_count.positive?,
@@ -119,6 +122,8 @@ module InertiaSerializable
       featured: topic.featured?,
       wiki: topic.wiki?,
       unlisted: topic.unlisted?,
+      archived_at: topic.archived_at ? l(topic.archived_at, format: :short) : nil,
+      global_announcement: topic.global_announcement?,
       slow_mode_seconds: topic.slow_mode_seconds,
       auto_close_at: topic.auto_close_at ? l(topic.auto_close_at, format: :short) : nil,
       auto_bump_at: topic.auto_bump_at ? l(topic.auto_bump_at, format: :short) : nil,
@@ -673,6 +678,7 @@ module InertiaSerializable
         download_url = signed_download_url_for(item)
         refresh_download_url = download_url.present? ? refresh_download_store_order_path(order, order_item_id: item.id) : nil
         product = item.product
+        item_questions = Commerce::ProductQuestion.where(order_item: item).includes(:answers).order(created_at: :desc)
         issued_cards = Commerce::GiftCard.where(source_order_item_id: item.id).order(:id)
         {
           id: item.id,
@@ -681,7 +687,10 @@ module InertiaSerializable
           quantity: item.quantity,
           total_label: format_money(item.total_cents, order.currency),
           product_url: product ? store_product_path(product) : nil,
+          product_public_id: product&.public_id,
           ask_question_url: product ? store_product_path(product, ask: 1, order_item_id: item.id) : nil,
+          ask_question_return_order_id: order.public_id,
+          questions: item_questions.map { |q| serialize_order_item_question(q) },
           discussion_url: product&.forum_topic ? forum_topic_path(product.forum_topic) : nil,
           fulfillment_status: fulfillment&.status,
           fulfillment_status_label: fulfillment_status_label(fulfillment&.status),
@@ -870,5 +879,21 @@ module InertiaSerializable
     return false unless user
 
     Commerce::Order.where(user: user, status: %w[paid processing fulfilling fulfilled completed]).exists?
+  end
+
+  def serialize_order_item_question(question)
+    {
+      id: question.id,
+      body: question.body,
+      created_at: l(question.created_at, format: :short),
+      answers: question.answers.order(created_at: :asc).map do |answer|
+        {
+          body: answer.body,
+          author: answer.user.username,
+          official: answer.official,
+          created_at: l(answer.created_at, format: :short)
+        }
+      end
+    }
   end
 end

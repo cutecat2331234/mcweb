@@ -1,7 +1,22 @@
-import { createInertiaApp } from '@inertiajs/vue3'
+import { createInertiaApp, router } from '@inertiajs/vue3'
 import { createApp, h, type DefineComponent } from 'vue'
 
 import '@/styles/portal.css'
+import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'
+
+router.on('before', (event) => {
+  const headers = csrfHeaders()
+  if (Object.keys(headers).length === 0) return
+
+  event.detail.visit.headers = {
+    ...event.detail.visit.headers,
+    ...headers,
+  }
+})
+
+document.addEventListener('inertia:success', () => {
+  syncCsrfMetaTag()
+})
 
 // Wappalyzer 等工具用于识别 Ruby on Rails 的 JS 指纹（Inertia 入口也需设置）
 if (typeof window !== 'undefined') {

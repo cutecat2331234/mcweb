@@ -57,7 +57,7 @@ module Authentication
     cookie_options = {
       value: token,
       httponly: true,
-      secure: Rails.env.production?,
+      secure: secure_session_cookies?,
       same_site: :lax,
       expires: session_record.expires_at
     }
@@ -82,6 +82,12 @@ module Authentication
 
   def store_return_location
     session[:return_to] = request.fullpath if request.get? && !request.xhr?
+  end
+
+  def secure_session_cookies?
+    return false unless Rails.env.production?
+
+    request.get_header("HTTP_X_FORWARDED_PROTO") == "https" || request.ssl?
   end
 
   def redirect_after_login(default: root_path, notice: nil)

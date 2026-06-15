@@ -35,4 +35,20 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
 
     assert_response :unprocessable_entity
   end
+
+  test "sign in without csrf token is rejected when forgery protection enabled" do
+    @old_forgery = ActionController::Base.allow_forgery_protection
+    ActionController::Base.allow_forgery_protection = true
+
+    begin
+      post identity_session_path,
+           params: { session: { email: @user.email, password: "password123" } },
+           headers: { "X-CSRF-Token" => "invalid" }
+
+      assert_response :unprocessable_entity
+      assert_match(/rejected|Invalid|authenticity/i, response.body)
+    ensure
+      ActionController::Base.allow_forgery_protection = @old_forgery
+    end
+  end
 end

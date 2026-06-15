@@ -2,6 +2,11 @@
 
 module Commerce
   class RssController < ApplicationController
+    def latest
+      products = Commerce::Product.available.order(created_at: :desc).limit(30)
+      render xml: build_feed(products, title: "Mcweb 商城最新商品", url: store_products_path), content_type: "application/rss+xml"
+    end
+
     def category
       category = Commerce::Category.find_by!(slug: params[:slug])
       products = Commerce::Product.available.where(store_category_id: category.id).order(created_at: :desc).limit(30)

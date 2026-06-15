@@ -2,15 +2,16 @@
 
 module Commerce
   class UpsertShippingAddress < ApplicationService
-    def initialize(user:, params:, make_default: false)
+    def initialize(user:, params:, address: nil, make_default: false)
       @user = user
       @params = params
+      @address = address
       @make_default = make_default
     end
 
     def call
-      address = Commerce::ShippingAddress.new(
-        user: @user,
+      address = @address || Commerce::ShippingAddress.new(user: @user)
+      address.assign_attributes(
         label: @params[:label].to_s.strip.presence,
         name: @params[:name].to_s.strip,
         phone: @params[:phone].to_s.strip,
@@ -25,7 +26,7 @@ module Commerce
 
       Commerce::ShippingAddress.transaction do
         if @make_default
-          @user.shipping_addresses.update_all(default_address: false)
+          @user.shipping_addresses.where.not(id: address.id).update_all(default_address: false)
           address.default_address = true
         end
         address.save!

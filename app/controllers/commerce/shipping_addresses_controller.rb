@@ -3,7 +3,7 @@
 module Commerce
   class ShippingAddressesController < ApplicationController
     before_action :require_login
-    before_action :set_address, only: %i[destroy make_default]
+    before_action :set_address, only: %i[update destroy make_default]
 
     def index
       addresses = current_user.shipping_addresses.ordered
@@ -21,6 +21,21 @@ module Commerce
 
       if result.success?
         redirect_to store_shipping_addresses_path, notice: "地址已保存。"
+      else
+        redirect_to store_shipping_addresses_path, alert: service_error_message(result)
+      end
+    end
+
+    def update
+      result = Commerce::UpsertShippingAddress.call(
+        user: current_user,
+        params: address_params,
+        address: @address,
+        make_default: params[:make_default] == "1" || params[:make_default] == true
+      )
+
+      if result.success?
+        redirect_to store_shipping_addresses_path, notice: "地址已更新。"
       else
         redirect_to store_shipping_addresses_path, alert: service_error_message(result)
       end
@@ -63,6 +78,7 @@ module Commerce
         postal_code: address.postal_code,
         default_address: address.default_address?,
         make_default_url: make_default_store_shipping_address_path(address),
+        update_url: store_shipping_address_path(address),
         delete_url: store_shipping_address_path(address)
       }
     end

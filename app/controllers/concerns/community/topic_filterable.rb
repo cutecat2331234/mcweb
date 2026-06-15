@@ -49,6 +49,12 @@ module Community
         user&.permission?("forum.topics.lock") ? scope.where.not(archived_at: nil) : scope.none
       when "has_poll"
         scope.where(id: Community::Poll.select(:forum_topic_id))
+      when "assigned"
+        scope.where.not(assigned_to_id: nil)
+      when "unassigned"
+        scope.where(assigned_to_id: nil)
+      when "assigned_mine"
+        user ? scope.where(assigned_to: user) : scope.none
       when /\Aprefix:(.+)\z/
         scope.where(prefix: Regexp.last_match(1))
       else
@@ -74,6 +80,13 @@ module Community
         { value: "announcement", label: "全站公告" },
         { value: "has_poll", label: "含投票" }
       ]
+      if staff
+        options += [
+          { value: "assigned", label: "已指派" },
+          { value: "unassigned", label: "未指派" },
+          { value: "assigned_mine", label: "指派给我" }
+        ]
+      end
       options << { value: "unlisted", label: "未列出" } if staff
       options << { value: "archived", label: "已归档" } if staff
       prefixes.each do |prefix|

@@ -17,6 +17,13 @@ module Community
         .where.not(id: current_user.id)
         .where.not(id: blocked_ids)
         .where.not(id: blocked_by_ids)
+
+      if params[:staff] == "1" && current_user.permission?("forum.topics.lock")
+        staff_role_ids = Role.joins(:permissions).where(permissions: { key: "forum.topics.lock" }).select(:id)
+        users = users.joins(:user_roles).where(user_roles: { role_id: staff_role_ids }).distinct
+      end
+
+      users = users
         .order(:username)
         .limit(8)
 

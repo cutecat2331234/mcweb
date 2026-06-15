@@ -69,7 +69,8 @@ module Commerce
         compareCount: compare_product_count,
         pagination: pagy_props(@pagy),
         seo_title: SiteSetting.get("store.seo_title", "").presence || "商城",
-        seo_description: SiteSetting.get("store.seo_description", "").presence
+        seo_description: SiteSetting.get("store.seo_description", "").presence,
+        rss_url: store_latest_rss_path
       }
     end
 

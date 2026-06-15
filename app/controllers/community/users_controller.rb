@@ -42,7 +42,7 @@ module Community
 
     def show
       user = User.find_by!(username: params[:id])
-      tab = params[:tab].to_s.in?(%w[topics posts store]) ? params[:tab] : "topics"
+      tab = params[:tab].to_s.in?(%w[topics posts store assigned]) ? params[:tab] : "topics"
       topics_scope = if logged_in? && (current_user.id == user.id || current_user.permission?("forum.topics.lock"))
                        Community::Topic.where(user: user, status: :published)
       else
@@ -52,6 +52,8 @@ module Community
       posts_count = posts_scope.count
       @pagy_topics, topics = pagy(preload_topics(topics_scope), limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
       @pagy_posts, posts = pagy(posts_scope, limit: 20, page: [ params[:posts_page].to_i, 1 ].max)
+      assigned_scope = Community::Topic.published_listed.where(assigned_to: user).order(last_posted_at: :desc)
+      @pagy_assigned, assigned_topics = pagy(preload_topics(assigned_scope), limit: 20, page: [ params[:assigned_page].to_i, 1 ].max)
       trust = Community::TrustLevel.level_info(user)
       progress = Community::TrustLevel.progress_for(user)
       liked_posts = Community::Post.where(user: user, status: :published)
@@ -116,6 +118,7 @@ module Community
           topics_count: topics_scope.count,
           posts_count: posts_count,
           orders_count: orders_count,
+          assigned_count: assigned_scope.count,
           followers_count: Community::UserFollow.where(followed: user).count,
           followers_url: forum_user_followers_path(user.username),
           profile_url: forum_user_path(user.username),
@@ -150,6 +153,8 @@ module Community
         end,
         topics: serialize_topics(topics),
         topicsPagination: pagy_props(@pagy_topics),
+        assigned_topics: serialize_topics(assigned_topics),
+        assignedPagination: pagy_props(@pagy_assigned),
         recent_posts: posts.map do |post|
           {
             id: post.id,

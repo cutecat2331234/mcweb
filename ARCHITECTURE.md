@@ -969,3 +969,17 @@ app/
 | 退款窗口到期展示 | `refund_window_expires_label` + 订单页 |
 | 主题指派通知偏好 | `forum.topic_assigned` |
 | 管理端 Webhook 投递记录 | 订单详情 sections |
+
+### 第五十六轮（指派收件箱、搜索扩展与商城 RSS）
+
+| 功能 | 实现 |
+|------|------|
+| 指派收件箱 `/forum/assigned` | `AssignedController` + 导航徽章 |
+| 搜索 `is:unassigned` / `assigned:me` | `ParseSearchQuery` + `assignee_id` 过滤 |
+| 搜索 `in:watching` / `in:unread` | `SearchController` 用户范围扩展 |
+| 分区列表指派筛选 | `TopicFilterable` assigned/unassigned/assigned_mine |
+| 用户资料指派主题 Tab | `users#show` tab=assigned |
+| 指派员工选择器 | `mentions#search?staff=1` + `Topics/Show.vue` |
+| 成员 TL 筛选尊重覆盖 | `MembersController#apply_trust_level_filter` |
+| 商城最新商品 RSS | `store/latest.rss` |
+| 收货地址编辑 | `shipping_addresses#update` + `UpsertShippingAddress` |

@@ -183,6 +183,7 @@ Rails.application.routes.draw do
     get "following", to: "follows#index"
     post "announcements/dismiss", to: "announcements#dismiss", as: :dismiss_announcement
     get "unread", to: "unread#index"
+    get "assigned", to: "assigned#index"
     patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read
     post "preview", to: "previews#create"
     post "uploads", to: "uploads#create"
@@ -220,6 +221,7 @@ Rails.application.routes.draw do
 
     scope module: :commerce, path: "store", as: :store do
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
+    get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
     get "categories/:slug.rss", to: "rss#category", as: :category_rss, defaults: { format: :rss }
     get "categories/:slug", to: "categories#show", as: :category
     get "gift_cards", to: "gift_cards#index", as: :gift_cards
@@ -296,7 +298,7 @@ Rails.application.routes.draw do
     get "downloads/:token", to: "downloads#show", as: :download
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
-    resources :shipping_addresses, only: %i[index create destroy] do
+    resources :shipping_addresses, only: %i[index create update destroy] do
       member do
         post :make_default
       end

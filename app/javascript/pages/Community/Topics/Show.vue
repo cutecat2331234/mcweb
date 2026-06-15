@@ -251,6 +251,10 @@ const postBookmarkRemindAt = ref('')
 const expandedPosts = ref<Record<number, boolean>>({})
 const expandedDiffs = ref<Record<number, boolean>>({})
 const lockReasonInput = ref('')
+const assignPickerOpen = ref(false)
+const assignQuery = ref('')
+const assignSuggestions = ref<Array<{ username: string; display_name: string | null; avatar_url: string }>>([])
+let assignSearchTimer: ReturnType<typeof setTimeout> | null = null
 let draftSaveTimer: ReturnType<typeof setTimeout> | null = null
 
 let topicKeydownHandler: ((event: KeyboardEvent) => void) | null = null
@@ -567,9 +571,9 @@ function removeBookmark() {
 
 function moderate(action: string) {
   if (action === 'assign') {
-    const username = window.prompt('输入指派员工用户名（Discourse Assign）', props.topic.assigned_username || '')
-    if (!username?.trim()) return
-    router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: 'assign', assignee_username: username.trim() }, { preserveScroll: true })
+    assignPickerOpen.value = true
+    assignQuery.value = props.topic.assigned_username || ''
+    searchAssignees(assignQuery.value)
     return
   }
   if (action === 'lock' && !props.topic.locked) {
@@ -580,6 +584,36 @@ function moderate(action: string) {
     return
   }
   router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: action }, { preserveScroll: true })
+}
+
+function searchAssignees(query: string) {
+  if (assignSearchTimer) clearTimeout(assignSearchTimer)
+  assignSearchTimer = setTimeout(async () => {
+    if (query.length < 1) {
+      assignSuggestions.value = []
+      return
+    }
+    try {
+      const response = await fetch(`${routes.forumMentionSearch}?q=${encodeURIComponent(query)}&staff=1`, {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+      })
+      const data = await response.json()
+      assignSuggestions.value = data.users || []
+    } catch {
+      assignSuggestions.value = []
+    }
+  }, 200)
+}
+
+function confirmAssign(username: string) {
+  router.post(`/forum/topics/${props.topic.id}/moderate`, {
+    action_type: 'assign',
+    assignee_username: username,
+  }, {
+    preserveScroll: true,
+    onSuccess: () => { assignPickerOpen.value = false },
+  })
 }
 
 function isOwnPost(post: PostItem) {
@@ -933,6 +967,39 @@ function pollPercent(votes: number) {
           <a :href="topic.export_url" download>导出帖子 CSV</a>
         </Button>
       </template>
+    </div>
+  </div>
+
+  <div v-if="assignPickerOpen" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
+    <p class="text-sm font-medium">指派给员工（Discourse Assign）</p>
+    <Input
+      v-model="assignQuery"
+      placeholder="搜索员工用户名"
+      @input="searchAssignees(assignQuery)"
+    />
+    <ul v-if="assignSuggestions.length" class="max-h-40 overflow-auto rounded border text-sm">
+      <li v-for="user in assignSuggestions" :key="user.username">
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 px-3 py-2 hover:bg-muted"
+          @click="confirmAssign(user.username)"
+        >
+          <img v-if="user.avatar_url" :src="user.avatar_url" alt="" class="h-6 w-6 rounded-full">
+          <span>@{{ user.username }}</span>
+          <span v-if="user.display_name" class="text-muted-foreground">{{ user.display_name }}</span>
+        </button>
+      </li>
+    </ul>
+    <div class="flex gap-2">
+      <Button
+        type="button"
+        size="sm"
+        :disabled="!assignQuery.trim()"
+        @click="confirmAssign(assignQuery.trim())"
+      >
+        确认指派
+      </Button>
+      <Button type="button" size="sm" variant="outline" @click="assignPickerOpen = false">取消</Button>
     </div>
   </div>
 

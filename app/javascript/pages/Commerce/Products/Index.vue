@@ -61,6 +61,7 @@ const props = defineProps<{
   compareCount?: number
   seo_title?: string
   seo_description?: string | null
+  rss_url?: string
 }>()
 
 const q = ref(props.query)
@@ -102,6 +103,7 @@ function quickAdd(product: ProductItem) {
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <PageHeader title="商品列表" subtitle="浏览可购买的数字商品" />
+    <a v-if="rss_url" :href="rss_url" target="_blank" rel="noopener" class="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground">RSS 订阅最新商品</a>
     <Link v-if="compareCount" :href="routes.storeCompare" class="text-sm text-primary hover:underline">
       对比列表 ({{ compareCount }})
     </Link>

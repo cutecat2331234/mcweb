@@ -47,6 +47,13 @@ class ApplicationController < ActionController::Base
         count: Community::ReadState.with_unread_for(current_user).count,
         url: forum_unread_path
       }
+      assigned_count = Community::Topic.published_listed.where(assigned_to: current_user).count
+      if assigned_count.positive? || current_user.permission?("forum.topics.lock")
+        share[:forum_assigned] = {
+          count: assigned_count,
+          url: forum_assigned_path
+        }
+      end
       share[:messages_unread] = {
         count: Community::Conversation.for_user(current_user).sum { |c| c.unread_count_for(current_user) },
         url: forum_conversations_path

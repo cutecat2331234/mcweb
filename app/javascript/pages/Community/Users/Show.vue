@@ -36,6 +36,7 @@ const props = defineProps<{
     forum_signature?: string | null
     topics_count: number
     posts_count: number
+    assigned_count?: number
     orders_count?: number
     followers_count?: number
     followers_url?: string | null
@@ -74,6 +75,8 @@ const props = defineProps<{
   }>
   topics: TopicListItem[]
   topicsPagination: PaginationMeta
+  assigned_topics?: TopicListItem[]
+  assignedPagination?: PaginationMeta
   recent_posts: Array<{
     id: number
     body: string
@@ -83,7 +86,7 @@ const props = defineProps<{
     created_at: string
   }>
   postsPagination: PaginationMeta
-  activeTab: 'topics' | 'posts' | 'store'
+  activeTab: 'topics' | 'posts' | 'store' | 'assigned'
   liked_posts: Array<{
     id: number
     body: string
@@ -176,7 +179,7 @@ function uploadAvatar(event: Event) {
   })
 }
 
-function switchTab(tab: 'topics' | 'posts' | 'store') {
+function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
   router.get(`/forum/users/${props.profile.username}`, { tab }, { preserveState: true })
 }
 </script>
@@ -339,6 +342,14 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
     <Button :variant="activeTab === 'store' ? 'default' : 'outline'" size="sm" @click="switchTab('store')">
       商城 ({{ profile.orders_count ?? 0 }})
     </Button>
+    <Button
+      v-if="profile.assigned_count"
+      :variant="activeTab === 'assigned' ? 'default' : 'outline'"
+      size="sm"
+      @click="switchTab('assigned')"
+    >
+      指派 ({{ profile.assigned_count }})
+    </Button>
   </div>
 
   <section v-if="activeTab === 'topics'">
@@ -374,6 +385,19 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
       </div>
     </div>
     <p v-else class="text-sm text-muted-foreground">暂无商城评价。</p>
+  </section>
+
+  <section v-else-if="activeTab === 'assigned'">
+    <h2 class="mb-3 text-sm font-semibold">指派给此用户的主题</h2>
+    <TopicListTable v-if="assigned_topics?.length" :topics="assigned_topics" show-views />
+    <Pagination
+      v-if="assigned_topics?.length && assignedPagination"
+      :pagination="assignedPagination"
+      :base-path="profile.profile_url"
+      page-param="assigned_page"
+      :query="{ tab: 'assigned' }"
+    />
+    <p v-else class="text-sm text-muted-foreground">暂无指派主题。</p>
   </section>
 
   <section v-else>

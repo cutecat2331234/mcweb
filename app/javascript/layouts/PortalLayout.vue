@@ -12,6 +12,7 @@ const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const notifications = computed(() => page.props.notifications as { unread_count: number; url: string } | undefined)
 const forumUnread = computed(() => page.props.forum_unread as { count: number; url: string } | undefined)
+const forumAssigned = computed(() => page.props.forum_assigned as { count: number; url: string } | undefined)
 const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
@@ -78,6 +79,7 @@ async function dismissAnnouncement(topicId: string) {
             <Link v-if="auth.user" :href="routes.forumMuted" class="hover:text-foreground transition-colors">静音</Link>
             <Link :href="routes.forumMembers" class="hover:text-foreground transition-colors">成员</Link>
             <Link v-if="auth.user" :href="routes.forumUnread" class="hover:text-foreground transition-colors">未读</Link>
+            <Link v-if="auth.user && forumAssigned" :href="forumAssigned.url" class="hover:text-foreground transition-colors">指派</Link>
             <Link v-if="auth.user" :href="routes.forumMessages" class="hover:text-foreground transition-colors">私信</Link>
             <Link v-if="auth.user" :href="routes.forumPreferences" class="hover:text-foreground transition-colors">偏好</Link>
             <Link v-if="auth.user" :href="routes.forumDrafts" class="hover:text-foreground transition-colors">草稿</Link>
@@ -135,6 +137,18 @@ async function dismissAnnouncement(topicId: string) {
                 class="ml-1 h-4 min-w-4 px-1 text-[10px]"
               >
                 {{ forumUnread.count > 99 ? '99+' : forumUnread.count }}
+              </Badge>
+            </Link>
+          </Button>
+          <Button v-if="auth.user && forumAssigned" as-child variant="ghost" size="sm" class="relative hidden md:inline-flex">
+            <Link :href="forumAssigned.url">
+              指派
+              <Badge
+                v-if="forumAssigned.count > 0"
+                variant="danger"
+                class="ml-1 h-4 min-w-4 px-1 text-[10px]"
+              >
+                {{ forumAssigned.count > 99 ? '99+' : forumAssigned.count }}
               </Badge>
             </Link>
           </Button>

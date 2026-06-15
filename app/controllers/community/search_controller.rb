@@ -21,6 +21,7 @@ module Community
       parsed_unlisted = parsed.success? ? parsed.value[:unlisted_filter] : nil
       parsed_archived = parsed.success? ? parsed.value[:archived_filter] : nil
       parsed_assigned = parsed.success? ? parsed.value[:assigned_filter] : nil
+      parsed_assignee = parsed.success? ? parsed.value[:assignee_filter] : nil
       parsed_mine = parsed.success? ? parsed.value[:mine_filter] : nil
       parsed_scope = parsed.success? ? parsed.value[:scope_filter] : nil
       parsed_poll = parsed.success? ? parsed.value[:poll_filter] : nil
@@ -39,12 +40,15 @@ module Community
       unlisted_filter = params[:unlisted].to_s.presence || parsed_unlisted
       archived_filter = params[:archived].to_s.presence || parsed_archived
       assigned_filter = params[:assigned].to_s.presence || parsed_assigned
+      assignee_filter = params[:assignee].to_s.presence || parsed_assignee
       mine_filter = params[:mine].to_s.presence || parsed_mine
       scope_filter = params[:scope].to_s.presence || parsed_scope
       poll_filter = params[:poll].to_s.presence || parsed_poll
       noreplies_filter = params[:noreplies].to_s.presence || parsed_noreplies
       topics = Community::Topic.none
       posts = Community::Post.none
+
+      assignee_id = resolve_assignee_id(assignee_filter)
 
       if query.present?
         topics = search_topic_base_scope(unlisted_filter: unlisted_filter, archived_filter: archived_filter)
@@ -63,6 +67,7 @@ module Community
           unlisted_filter: effective_unlisted_filter(unlisted_filter),
           archived_filter: effective_archived_filter(archived_filter),
           assigned_filter: assigned_filter,
+          assignee_id: assignee_id,
           poll_filter: poll_filter,
           noreplies_filter: noreplies_filter
         )
@@ -103,6 +108,7 @@ module Community
           unlisted_filter: effective_unlisted_filter(unlisted_filter),
           archived_filter: effective_archived_filter(archived_filter),
           assigned_filter: assigned_filter,
+          assignee_id: assignee_id,
           poll_filter: poll_filter,
           noreplies_filter: noreplies_filter
         )
@@ -149,6 +155,8 @@ module Community
         announcement: announcement_filter.to_s,
         unlisted: unlisted_filter.to_s,
         archived: archived_filter.to_s,
+        assigned: assigned_filter.to_s,
+        assignee: assignee_filter.to_s,
         mine: mine_filter.to_s,
         scope: scope_filter.to_s,
         poll: poll_filter.to_s,
@@ -212,10 +220,30 @@ module Community
         return on_posts ? scope.where(forum_topic_id: bookmark_topic_ids) : scope.where(id: bookmark_topic_ids)
       end
 
+      if scope_filter == "watching"
+        topic_ids = Community::Subscription.where(user: current_user, subscribable_type: "Community::Topic").select(:subscribable_id)
+        return on_posts ? scope.where(forum_topic_id: topic_ids) : scope.where(id: topic_ids)
+      end
+
+      if scope_filter == "unread"
+        unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
+        return on_posts ? scope.where(forum_topic_id: unread_topic_ids) : scope.where(id: unread_topic_ids)
+      end
+
       scope
     end
 
-    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, assigned_filter: nil, poll_filter: nil, noreplies_filter: nil)
+    def resolve_assignee_id(assignee_filter)
+      return nil if assignee_filter.blank?
+
+      if assignee_filter == "me"
+        return current_user&.id
+      end
+
+      User.find_by(username: assignee_filter)&.id
+    end
+
+    def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, assigned_filter: nil, assignee_id: nil, poll_filter: nil, noreplies_filter: nil)
       result = Community::ApplyTopicSearchFilters.call(
         scope: scope,
         solved_filter: solved_filter,
@@ -227,14 +255,15 @@ module Community
         unlisted_filter: unlisted_filter,
         archived_filter: archived_filter,
         assigned_filter: assigned_filter,
+        assignee_id: assignee_id,
         poll_filter: poll_filter,
         noreplies_filter: noreplies_filter
       )
       result.success? ? result.value : scope
     end
 
-    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, assigned_filter: nil, poll_filter: nil, noreplies_filter: nil)
-      needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter, unlisted_filter, archived_filter, assigned_filter, poll_filter, noreplies_filter ].any?(&:present?)
+    def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, assigned_filter: nil, assignee_id: nil, poll_filter: nil, noreplies_filter: nil)
+      needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter, unlisted_filter, archived_filter, assigned_filter, assignee_id, poll_filter, noreplies_filter ].any?(&:present?)
       scope = scope.joins(:topic) if needs_join
       apply_search_topic_filters(
         scope,
@@ -247,6 +276,7 @@ module Community
         unlisted_filter: unlisted_filter,
         archived_filter: archived_filter,
         assigned_filter: assigned_filter,
+        assignee_id: assignee_id,
         poll_filter: poll_filter,
         noreplies_filter: noreplies_filter
       )
@@ -307,6 +337,14 @@ module Community
         wiki: filters["wiki"].presence || filters[:wiki].presence,
         featured: filters["featured"].presence || filters[:featured].presence,
         announcement: filters["announcement"].presence || filters[:announcement].presence,
+        assigned: filters["assigned"].presence || filters[:assigned].presence,
+        assignee: filters["assignee"].presence || filters[:assignee].presence,
+        unlisted: filters["unlisted"].presence || filters[:unlisted].presence,
+        archived: filters["archived"].presence || filters[:archived].presence,
+        mine: filters["mine"].presence || filters[:mine].presence,
+        scope: filters["scope"].presence || filters[:scope].presence,
+        poll: filters["poll"].presence || filters[:poll].presence,
+        noreplies: filters["noreplies"].presence || filters[:noreplies].presence,
         created_after: filters["created_after"].presence || filters[:created_after].presence,
         created_before: filters["created_before"].presence || filters[:created_before].presence,
         topic_sort: filters["topic_sort"].presence || filters[:topic_sort].presence,

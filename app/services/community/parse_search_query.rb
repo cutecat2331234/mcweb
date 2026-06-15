@@ -8,9 +8,10 @@ module Community
     HAS_PATTERN = /\bhas:(\S+)\b/i
     AUTHOR_AT_PATTERN = /\B@([a-zA-Z0-9_]+)/
     AUTHOR_COLON_PATTERN = /\bauthor:([a-zA-Z0-9_]+)/i
+    ASSIGNED_PATTERN = /\bassigned:([a-zA-Z0-9_]+)/i
 
-    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived mine assigned].freeze
-    RESERVED_IN_SCOPES = %w[bookmarks].freeze
+    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived mine assigned unassigned].freeze
+    RESERVED_IN_SCOPES = %w[bookmarks watching unread].freeze
     VALID_HAS_FLAGS = %w[poll noreplies].freeze
 
     def initialize(query:)
@@ -24,6 +25,7 @@ module Community
       topic_flags = {}
       has_flags = {}
       author = nil
+      assignee = nil
       text = @query.dup
 
       if (match = text.match(IN_PATTERN))
@@ -50,6 +52,11 @@ module Community
       while (match = text.match(HAS_PATTERN))
         flag = match[1].downcase
         has_flags[flag] = true if VALID_HAS_FLAGS.include?(flag)
+        text = text.gsub(match[0], "").strip
+      end
+
+      if (match = text.match(ASSIGNED_PATTERN))
+        assignee = match[1].downcase
         text = text.gsub(match[0], "").strip
       end
 
@@ -83,7 +90,12 @@ module Community
         announcement_filter: announcement_filter,
         unlisted_filter: topic_flags["unlisted"] ? "unlisted" : nil,
         archived_filter: topic_flags["archived"] ? "archived" : nil,
-        assigned_filter: topic_flags["assigned"] ? "assigned" : nil,
+        assigned_filter: if topic_flags["assigned"]
+                           "assigned"
+                         elsif topic_flags["unassigned"]
+                           "unassigned"
+                         end,
+        assignee_filter: assignee,
         mine_filter: topic_flags["mine"] ? "mine" : nil,
         scope_filter: scope_filter,
         poll_filter: has_flags["poll"] ? "poll" : nil,

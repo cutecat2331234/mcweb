@@ -2,7 +2,7 @@
 
 module Community
   class ApplyTopicSearchFilters < ApplicationService
-    def initialize(scope:, solved_filter: nil, locked_filter: nil, pinned_filter: nil, wiki_filter: nil, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, assigned_filter: nil, poll_filter: nil, noreplies_filter: nil)
+    def initialize(scope:, solved_filter: nil, locked_filter: nil, pinned_filter: nil, wiki_filter: nil, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, assigned_filter: nil, assignee_id: nil, poll_filter: nil, noreplies_filter: nil)
       @scope = scope
       @solved_filter = solved_filter
       @locked_filter = locked_filter
@@ -13,6 +13,7 @@ module Community
       @unlisted_filter = unlisted_filter
       @archived_filter = archived_filter
       @assigned_filter = assigned_filter
+      @assignee_id = assignee_id
       @poll_filter = poll_filter
       @noreplies_filter = noreplies_filter
     end
@@ -30,6 +31,8 @@ module Community
       scope = scope.where(unlisted: true) if @unlisted_filter == "unlisted"
       scope = scope.where.not(archived_at: nil) if @archived_filter == "archived"
       scope = scope.where.not(assigned_to_id: nil) if @assigned_filter == "assigned"
+      scope = scope.where(assigned_to_id: nil) if @assigned_filter == "unassigned"
+      scope = scope.where(assigned_to_id: @assignee_id) if @assignee_id.present?
       scope = scope.where(id: Community::Poll.select(:forum_topic_id)) if @poll_filter == "poll"
       scope = scope.where(replies_count: 0) if @noreplies_filter == "noreplies"
       ServiceResult.success(scope)

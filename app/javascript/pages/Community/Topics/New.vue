@@ -14,14 +14,14 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }> }
+  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
 }>()
 
 const form = useForm({
   topic: {
     title: '',
     body: props.section.topic_template || '',
-    tags: '',
+    tags: (props.section.default_tags || []).join(', '),
     prefix: '',
     poll_question: '',
     poll_options: '',
@@ -101,6 +101,9 @@ function saveDraft() {
         <template v-for="(tag, index) in section.allowed_tags" :key="`allowed-${tag.slug}`">
           <Link :href="tag.url" class="underline">{{ tag.name }}</Link><span v-if="index < section.allowed_tags.length - 1">、</span>
         </template>
+      </p>
+      <p v-if="section.default_tags?.length" class="text-xs text-muted-foreground">
+        默认标签：{{ section.default_tags.join('、') }}
       </p>
     </div>
 

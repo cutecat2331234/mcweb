@@ -51,6 +51,13 @@ module Community
       Community::Tag.where(id: ids).order(:name)
     end
 
+    def default_tags
+      ids = Array(default_tag_ids).map(&:to_i).reject(&:zero?)
+      return Community::Tag.none if ids.empty?
+
+      Community::Tag.where(id: ids).order(:name)
+    end
+
     def allowed_tags
       ids = Array(allowed_tag_ids).map(&:to_i).reject(&:zero?)
       return Community::Tag.none if ids.empty?

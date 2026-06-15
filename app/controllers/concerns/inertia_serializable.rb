@@ -92,8 +92,29 @@ module InertiaSerializable
       participant_avatars: topic.participant_users(limit: 5).map do |user|
         { username: user.username, avatar_url: user.avatar_url, profile_url: forum_user_path(user.username) }
       end,
-      tags: topic.association(:tags).loaded? ? topic.tags.first(3).map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } } : []
+      tags: topic.association(:tags).loaded? ? topic.tags.first(3).map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } } : [],
+      excerpt: topic_list_excerpt(topic),
+      thumbnail_url: topic_list_thumbnail(topic)
     }.merge(linked_product_props(topic))
+  end
+
+  def topic_list_excerpt(topic)
+    body = topic_first_post_body(topic)
+    body&.truncate(120)
+  end
+
+  def topic_list_thumbnail(topic)
+    body = topic_first_post_body(topic).to_s
+    match = body.match(/!\[[^\]]*\]\(([^)]+)\)/)
+    match&.[](1)
+  end
+
+  def topic_first_post_body(topic)
+    if topic.association(:posts).loaded?
+      topic.posts.min_by(&:floor_number)&.body
+    else
+      topic.posts.order(:floor_number).pick(:body)
+    end
   end
 
   def linked_product_props(topic)
@@ -541,6 +562,7 @@ module InertiaSerializable
       name: category.name,
       icon: category.icon,
       color_hex: category.color_hex,
+      product_count: Commerce::Product.available.where(store_category_id: category.id).count,
       url: store_category_path(category.slug, **query.compact)
     }
   end
@@ -781,8 +803,19 @@ module InertiaSerializable
   def refundable_order?(order)
     return false unless %w[paid fulfilled completed].include?(order.status)
     return false if max_refundable_cents(order) <= 0
+    return false unless within_refund_window?(order)
 
     !order.refunds.pending.exists?
+  end
+
+  def within_refund_window?(order)
+    window_days = SiteSetting.get("store.refund_window_days", "0").to_i
+    return true if window_days <= 0
+
+    payment = order.payment_records.where(status: "succeeded").order(created_at: :asc).first
+    return false unless payment
+
+    Time.current <= payment.created_at + window_days.days
   end
 
   def max_refundable_cents(order)

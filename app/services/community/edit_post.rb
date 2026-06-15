@@ -38,6 +38,7 @@ module Community
         post: @post,
         topic: @post.topic
       )
+      Community::ProcessHashtags.call(topic: @post.topic, body: @body, user: @user)
       Community::NotifyPostEdited.call(post: @post) if @old_body != @body
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e

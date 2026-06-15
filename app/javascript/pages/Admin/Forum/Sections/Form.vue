@@ -24,6 +24,7 @@ const props = defineProps<{
     reply_roles: string
     required_tag_ids: number[]
     allowed_tag_ids: number[]
+    default_tag_ids: number[]
     prefix_required: boolean
     min_trust_level_create: number
     min_trust_level_reply: number
@@ -50,6 +51,7 @@ const form = useForm({
     ...props.section,
     required_tag_ids: [ ...props.section.required_tag_ids ],
     allowed_tag_ids: [ ...props.section.allowed_tag_ids ],
+    default_tag_ids: [ ...props.section.default_tag_ids ],
   },
 })
 
@@ -65,6 +67,16 @@ function toggleRequiredTag(tagId: number) {
 
 function toggleAllowedTag(tagId: number) {
   const ids = form.section.allowed_tag_ids
+  const index = ids.indexOf(tagId)
+  if (index >= 0) {
+    ids.splice(index, 1)
+  } else {
+    ids.push(tagId)
+  }
+}
+
+function toggleDefaultTag(tagId: number) {
+  const ids = form.section.default_tag_ids
   const index = ids.indexOf(tagId)
   if (index >= 0) {
     ids.splice(index, 1)
@@ -216,6 +228,21 @@ function submit() {
         </label>
       </div>
       <p class="text-xs text-muted-foreground">勾选后，仅可使用列表中的标签；留空表示不限制。</p>
+    </div>
+    <div v-if="tags.length" class="space-y-2">
+      <Label>默认标签（发帖时预填，Discourse/XenForo）</Label>
+      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
+        <label v-for="tag in tags" :key="`default-${tag.id}`" class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            class="h-4 w-4"
+            :checked="form.section.default_tag_ids.includes(tag.id)"
+            @change="toggleDefaultTag(tag.id)"
+          />
+          {{ tag.name }}
+        </label>
+      </div>
+      <p class="text-xs text-muted-foreground">勾选后，用户在此分区新建主题时标签栏将自动预填这些标签。</p>
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

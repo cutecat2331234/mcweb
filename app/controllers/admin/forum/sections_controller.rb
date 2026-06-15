@@ -92,7 +92,7 @@ module Admin
           :create_topic_roles, :reply_roles, :prefixes, :prefix_required, :topic_template,
           :min_trust_level_create, :min_trust_level_reply, :read_only, :color_hex, :icon, :banner_text, :link_url, :link_label,
           :default_notification_level, :seo_title, :seo_description,
-          required_tag_ids: [], allowed_tag_ids: []
+          required_tag_ids: [], allowed_tag_ids: [], default_tag_ids: []
         )
         prefixes = if permitted[:prefixes].is_a?(String)
                      permitted[:prefixes].lines.map(&:strip).reject(&:blank?)
@@ -101,6 +101,7 @@ module Admin
         end
         required_tag_ids = Array(permitted[:required_tag_ids]).map(&:to_i).reject(&:zero?).uniq
         allowed_tag_ids = Array(permitted[:allowed_tag_ids]).map(&:to_i).reject(&:zero?).uniq
+        default_tag_ids = Array(permitted[:default_tag_ids]).map(&:to_i).reject(&:zero?).uniq
         {
           name: permitted[:name],
           slug: permitted[:slug],
@@ -111,6 +112,7 @@ module Admin
           prefixes: prefixes,
           required_tag_ids: required_tag_ids,
           allowed_tag_ids: allowed_tag_ids,
+          default_tag_ids: default_tag_ids,
           prefix_required: ActiveModel::Type::Boolean.new.cast(permitted[:prefix_required]),
           topic_template: permitted[:topic_template],
           min_trust_level_create: permitted[:min_trust_level_create].to_i,
@@ -157,6 +159,7 @@ module Admin
             reply_roles: Array(section.permissions["reply"]).join(", "),
             required_tag_ids: Array(section.required_tag_ids).map(&:to_i),
             allowed_tag_ids: Array(section.allowed_tag_ids).map(&:to_i),
+            default_tag_ids: Array(section.default_tag_ids).map(&:to_i),
             prefix_required: section.prefix_required?,
             topic_template: section.topic_template || "",
             min_trust_level_create: section.min_trust_level_create.to_i,

@@ -4,9 +4,10 @@ module Community
   class ProcessMentions < ApplicationService
     MENTION_PATTERN = /@([a-zA-Z0-9_]{3,32})/
 
-    GROUP_MENTIONS = {
-      "staff" => -> { staff_users },
-      "moderators" => -> { staff_users }
+    GROUP_MENTION_METHODS = {
+      "staff" => :staff_users,
+      "moderators" => :staff_users,
+      "here" => :topic_participants
     }.freeze
 
     def initialize(body:, author:, post:, topic:)
@@ -22,8 +23,9 @@ module Community
 
       mentioned_users = []
       tokens.each do |token|
-        if GROUP_MENTIONS.key?(token.downcase)
-          mentioned_users.concat(GROUP_MENTIONS[token.downcase].call.to_a)
+        method = GROUP_MENTION_METHODS[token.downcase]
+        if method
+          mentioned_users.concat(send(method).to_a)
         else
           user = User.find_by(username: token)
           mentioned_users << user if user && user.id != @author.id
@@ -47,6 +49,12 @@ module Community
 
     def staff_users
       self.class.staff_users
+    end
+
+    def topic_participants
+      user_ids = @topic.posts.where(status: :published).distinct.pluck(:user_id)
+      user_ids << @topic.user_id
+      User.where(id: user_ids.uniq).where.not(id: @author.id)
     end
 
     def notify_user!(user)

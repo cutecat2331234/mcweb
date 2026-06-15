@@ -122,6 +122,16 @@ module Commerce
       mail(to: @user.email, subject: "新商品提问：#{@product.name}")
     end
 
+    def merchant_review_reply(review_id)
+      @review = Commerce::Review.includes(:product, :user).find(review_id)
+      @user = @review.user
+      @product = @review.product
+      return unless commerce_email_enabled?(@user, "commerce.merchant_review_reply")
+
+      @url = "#{root_url.chomp('/')}#{"/store/products/#{@product.public_id}"}"
+      mail(to: @user.email, subject: "商家回复了你的评价：#{@product.name}")
+    end
+
     private
 
     def commerce_email_enabled?(user, notification_type)

@@ -79,6 +79,7 @@ module Community
       unless @whisper
         Community::NotifyTopicReply.call(post: post)
         Community::ProcessMentions.call(body: @body, author: @user, post: post, topic: @topic)
+        Community::ProcessHashtags.call(topic: @topic, body: @body, user: @user)
         Community::NotifyPostQuoted.call(post: post, quoter: @user, quoted_post: @quoted_post) if @quoted_post
       end
       Community::CheckAutoBadges.call(user: @user)

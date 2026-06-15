@@ -12,6 +12,7 @@ module Commerce
     def call
       return ServiceResult.failure(error: "Not your order.") unless @order.user_id == @user.id
       return ServiceResult.failure(error: "Order is not refundable.") unless %w[paid fulfilled completed].include?(@order.status)
+      return ServiceResult.failure(error: "Refund window has expired.") unless within_refund_window?
 
       payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
       return ServiceResult.failure(error: "No payment found.") unless payment
@@ -62,6 +63,16 @@ module Commerce
     def refundable_cents(payment)
       refunded = Commerce::Refund.where(order: @order, status: %w[pending completed]).sum(:amount_cents)
       [ payment.amount_cents - refunded, 0 ].max
+    end
+
+    def within_refund_window?
+      window_days = SiteSetting.get("store.refund_window_days", "0").to_i
+      return true if window_days <= 0
+
+      payment = @order.payment_records.where(status: "succeeded").order(created_at: :asc).first
+      return false unless payment
+
+      Time.current <= payment.created_at + window_days.days
     end
   end
 end

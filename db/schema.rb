@@ -306,6 +306,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "color_hex"
     t.datetime "created_at", null: false
     t.string "default_notification_level", default: "watching", null: false
+    t.jsonb "default_tag_ids", default: [], null: false
     t.text "description"
     t.bigint "forum_category_id", null: false
     t.string "icon"

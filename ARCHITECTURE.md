@@ -920,3 +920,20 @@ app/
 | 发货 Webhook `order.shipped` | `UpdateOrderShipping` 触发 |
 | 弃购恢复专属优惠码 | `store.abandoned_cart_coupon_code` + 恢复链接 |
 | 商家评价回复 | `merchant_reply` + 管理端 + 商品页展示 |
+
+### 第五十三轮（@here 提及、正文标签、分类 RSS 与商城运营增强）
+
+| 功能 | 实现 |
+|------|------|
+| `@here` 提及主题参与者（Discourse） | `ProcessMentions` + `topic_participants` |
+| 正文 `#标签` 自动同步（XenForo） | `ProcessHashtags` + 发帖/编辑接入 |
+| 论坛分类 RSS | `rss#category` + `categories/:slug.rss` |
+| 论坛分类页 | `categories#show` + `forum_category_path` |
+| 分区默认标签预填 | `default_tag_ids` + 发帖页 + 管理端 |
+| 主题列表摘要/缩略图 | `excerpt` + `thumbnail_url` + `TopicListTable` |
+| 商家回复评价通知 | `NotifyMerchantReviewReply` + 邮件 + 偏好 |
+| 退款时间窗口 | `store.refund_window_days` + `RequestRefund` |
+| 待支付订单过期可配置 | `store.pending_order_expiry_minutes` + Job |
+| 商城分类商品数量 | `serialize_category.product_count` |
+| Webhook 含行项目 | `DispatchOrderWebhook` items[] + subtotal |
+| 商城通知偏好 | `commerce.merchant_review_reply` |

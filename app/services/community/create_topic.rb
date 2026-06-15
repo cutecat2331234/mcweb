@@ -82,6 +82,7 @@ module Community
 
       opening_post = topic.posts.first
       Community::ProcessMentions.call(body: @body, author: @user, post: opening_post, topic: topic) if opening_post
+      Community::ProcessHashtags.call(topic: topic, body: @body, user: @user) if opening_post
       Community::NotifySectionTopic.call(topic: topic)
       Community::NotifyFollowedUserTopic.call(topic: topic)
       if @tag_names.present? && topic.tags.any?

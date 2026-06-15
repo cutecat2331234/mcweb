@@ -20,6 +20,13 @@ module Community
       render xml: build_feed(topics, title: "标签 #{tag.name} - Mcweb 论坛", url: forum_tag_url(tag.slug)), content_type: "application/rss+xml"
     end
 
+    def category
+      category = Community::Category.find_by!(slug: params[:slug])
+      section_ids = category.sections.pluck(:id)
+      topics = Community::Topic.published_listed.where(forum_section_id: section_ids).sorted("activity").limit(30)
+      render xml: build_feed(topics, title: "#{category.name} - Mcweb 论坛", url: forum_category_url(slug: category.slug)), content_type: "application/rss+xml"
+    end
+
     private
 
     def build_feed(topics, title:, url:)

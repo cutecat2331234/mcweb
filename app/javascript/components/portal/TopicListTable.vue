@@ -34,6 +34,8 @@ export interface TopicListItem {
   linked_product_url?: string | null
   tags?: Array<{ name: string; slug: string; url: string }>
   participant_avatars?: Array<{ username: string; avatar_url: string; profile_url: string }>
+  excerpt?: string | null
+  thumbnail_url?: string | null
 }
 
 defineProps<{
@@ -58,6 +60,14 @@ defineProps<{
       <TableBody>
         <TableRow v-for="topic in topics" :key="topic.id">
           <TableCell>
+            <div class="flex gap-3">
+              <img
+                v-if="topic.thumbnail_url"
+                :src="topic.thumbnail_url"
+                alt=""
+                class="mt-0.5 h-12 w-12 shrink-0 rounded object-cover"
+              />
+              <div class="min-w-0 flex-1">
             <TopicTitleBadges
               :prefix="topic.prefix"
               :pinned="topic.pinned"
@@ -76,6 +86,7 @@ defineProps<{
               :tags="topic.tags"
             />
             <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
+            <p v-if="topic.excerpt" class="mt-1 line-clamp-2 text-xs text-muted-foreground">{{ topic.excerpt }}</p>
             <div v-if="showParticipants && topic.participant_avatars?.length" class="mt-1 flex items-center gap-1">
               <img
                 v-for="avatar in topic.participant_avatars"
@@ -85,6 +96,8 @@ defineProps<{
                 :title="avatar.username"
                 class="h-5 w-5 rounded-full border"
               />
+            </div>
+              </div>
             </div>
           </TableCell>
           <TableCell>{{ topic.author || '—' }}</TableCell>

@@ -1,0 +1,4 @@
+<p>您好 <%= @user.username %>，</p>
+<p>商家已回复您对「<%= @product.name %>」的评价：</p>
+<blockquote><%= @review.merchant_reply %></blockquote>
+<p><a href="<%= @url %>">查看商品评价</a></p>

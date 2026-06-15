@@ -15,6 +15,7 @@ module Commerce
       end
 
       @review.update!(merchant_reply: @body, merchant_replied_at: Time.current)
+      Commerce::NotifyMerchantReviewReply.call(review: @review)
       ServiceResult.success(@review)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

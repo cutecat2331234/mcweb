@@ -42,6 +42,7 @@ export interface CategoryItem {
   slug: string
   name: string
   url: string
+  product_count?: number
 }
 
 const props = defineProps<{
@@ -183,7 +184,7 @@ function quickAdd(product: ProductItem) {
       class="rounded-full border px-3 py-1 text-sm transition-colors"
       :class="activeCategory === category.slug ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
     >
-      {{ category.name }}
+      {{ category.name }}<span v-if="category.product_count != null" class="ml-1 text-muted-foreground">({{ category.product_count }})</span>
     </Link>
   </div>
 

@@ -224,6 +224,7 @@ Rails.application.routes.draw do
     get "unread", to: "unread#index"
     get "assigned", to: "assigned#index"
     patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read
+    patch "unread/mark_selected_read", to: "unread#mark_selected_read", as: :unread_mark_selected_read
     post "preview", to: "previews#create"
     post "uploads", to: "uploads#create"
     get "bookmarks", to: "bookmarks#index"
@@ -253,6 +254,8 @@ Rails.application.routes.draw do
       member do
         post :archive
         post :unarchive
+        post :mute
+        post :unmute
       end
       resources :messages, only: %i[create], controller: "conversation_messages"
       resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username

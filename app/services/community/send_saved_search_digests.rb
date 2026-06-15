@@ -32,9 +32,33 @@ module Community
         "deliver_now",
         args: [ search.id, topics.map(&:id) ]
       )
+      notify_in_app!(search, topics)
       Community::DispatchSavedSearchWebhook.call(saved_search: search, topics: topics)
       search.update!(last_notified_at: Time.current)
       ServiceResult.success(sent: true, count: topics.size)
+    end
+
+    def notify_in_app!(search, topics)
+      return unless search.notify_in_app?
+
+      user = search.user
+      return unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.saved_search_match")
+
+      Notification.notify!(
+        user: user,
+        notification_type: "forum.saved_search_match",
+        title: "保存的搜索有新结果：#{search.name}",
+        body: topics.map(&:title).join("；").truncate(200),
+        metadata: {
+          search_id: search.id,
+          path: saved_search_notification_path(search)
+        }
+      )
+    end
+
+    def saved_search_notification_path(search)
+      params = Community::SavedSearchPresenter.url_params(search).compact
+      "/forum/search?#{params.to_query}"
     end
   end
 end

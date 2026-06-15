@@ -57,6 +57,9 @@ module Community
         archiveUrl: archive_forum_conversation_path(conversation),
         unarchiveUrl: unarchive_forum_conversation_path(conversation),
         archived: conversation.participants.find_by(user: current_user)&.archived_at.present?,
+        muted: conversation.participants.find_by(user: current_user)&.muted_at.present?,
+        muteUrl: mute_forum_conversation_path(conversation),
+        unmuteUrl: unmute_forum_conversation_path(conversation),
         currentUsername: current_user.username,
         canSendPm: Community::TrustLevel.can_send_pm?(current_user),
         warningRestrictions: warning_restrictions_props
@@ -115,6 +118,28 @@ module Community
         redirect_to forum_conversation_path(conversation), notice: "会话已恢复。"
       else
         redirect_to forum_conversations_path(archived: 1), alert: service_error_message(result)
+      end
+    end
+
+    def mute
+      conversation = Community::Conversation.for_user(current_user).find(params[:id])
+      result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
+
+      if result.success?
+        redirect_to forum_conversation_path(conversation), notice: "已静音此会话。"
+      else
+        redirect_to forum_conversation_path(conversation), alert: result.error || "操作失败"
+      end
+    end
+
+    def unmute
+      conversation = Community::Conversation.for_user(current_user).find(params[:id])
+      result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
+
+      if result.success?
+        redirect_to forum_conversation_path(conversation), notice: "已取消静音。"
+      else
+        redirect_to forum_conversation_path(conversation), alert: result.error || "操作失败"
       end
     end
 

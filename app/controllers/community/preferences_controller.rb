@@ -18,6 +18,7 @@ module Community
       forum.badge
       forum.trust_level
       forum.bookmark_reminder
+      forum.saved_search_match
       forum.post_edited
       forum.user_warning
       forum.topic_invite
@@ -102,6 +103,7 @@ module Community
         "forum.badge" => "获得徽章",
         "forum.trust_level" => "信任等级提升",
         "forum.bookmark_reminder" => "书签提醒",
+        "forum.saved_search_match" => "保存搜索新结果",
         "forum.post_edited" => "帖子编辑通知",
         "forum.user_warning" => "社区警告",
         "forum.topic_invite" => "主题邀请关注",
@@ -129,6 +131,7 @@ module Community
           name: search.name,
           query: search.query,
           notify_daily: search.notify_daily?,
+          notify_in_app: search.notify_in_app?,
           filter_labels: Community::SavedSearchFilterSummary.call(search),
           url: forum_search_path(Community::SavedSearchPresenter.url_params(search)),
           rss_url: Community::SavedSearchPresenter.rss_path(search),

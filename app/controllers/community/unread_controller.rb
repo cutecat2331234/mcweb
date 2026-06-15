@@ -24,6 +24,7 @@ module Community
       render inertia: "Community/Unread/Index", props: {
         topics: serialize_topics(topics, read_states: states_by_topic),
         markAllReadUrl: forum_unread_mark_all_read_path,
+        markSelectedReadUrl: forum_unread_mark_selected_read_path,
         pagination: pagy_props(@pagy),
         sort: sort,
         sortOptions: forum_sort_options
@@ -37,6 +38,19 @@ module Community
         redirect_to forum_unread_path, notice: "全部主题已标记为已读。"
       else
         redirect_to forum_unread_path, alert: service_error_message(result)
+      end
+    end
+
+    def mark_selected_read
+      result = Community::MarkTopicsRead.call(
+        user: current_user,
+        topic_public_ids: params[:topic_ids]
+      )
+
+      if result.success?
+        redirect_to forum_unread_path, notice: "已标记 #{result.value[:marked]} 个主题为已读。"
+      else
+        redirect_to forum_unread_path, alert: result.error || "操作失败"
       end
     end
 

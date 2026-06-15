@@ -43,6 +43,9 @@ const props = defineProps<{
   archiveUrl?: string
   unarchiveUrl?: string
   archived?: boolean
+  muted?: boolean
+  muteUrl?: string
+  unmuteUrl?: string
   currentUsername?: string
   canSendPm?: boolean
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
@@ -126,6 +129,12 @@ function submit() {
     </Button>
     <Button v-else-if="!archived && archiveUrl" type="button" size="sm" variant="outline" @click="router.post(archiveUrl)">
       归档会话
+    </Button>
+    <Button v-if="muted && unmuteUrl" type="button" size="sm" variant="outline" @click="router.post(unmuteUrl)">
+      取消静音
+    </Button>
+    <Button v-else-if="!muted && muteUrl" type="button" size="sm" variant="outline" @click="router.post(muteUrl)">
+      静音会话
     </Button>
   </div>
 

@@ -41,11 +41,31 @@ export interface TopicListItem {
   thumbnail_url?: string | null
 }
 
-defineProps<{
+const props = defineProps<{
   topics: TopicListItem[]
   showViews?: boolean
   showParticipants?: boolean
+  selectable?: boolean
+  selectedIds?: string[]
 }>()
+
+const emit = defineEmits<{
+  'update:selectedIds': [ids: string[]]
+}>()
+
+function toggleRow(id: string, checked: boolean) {
+  const current = new Set(props.selectedIds || [])
+  if (checked) current.add(id)
+  else current.delete(id)
+  emit('update:selectedIds', Array.from(current))
+}
+
+function toggleAll(checked: boolean) {
+  emit('update:selectedIds', checked ? props.topics.map((t) => t.id) : [])
+}
+
+const allSelected = () =>
+  props.topics.length > 0 && props.topics.every((t) => (props.selectedIds || []).includes(t.id))
 </script>
 
 <template>
@@ -53,6 +73,14 @@ defineProps<{
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead v-if="selectable" class="w-10">
+            <input
+              type="checkbox"
+              class="h-4 w-4"
+              :checked="allSelected()"
+              @change="toggleAll(($event.target as HTMLInputElement).checked)"
+            />
+          </TableHead>
           <TableHead>主题</TableHead>
           <TableHead>作者</TableHead>
           <TableHead>回复</TableHead>
@@ -62,6 +90,14 @@ defineProps<{
       </TableHeader>
       <TableBody>
         <TableRow v-for="topic in topics" :key="topic.id">
+          <TableCell v-if="selectable" class="w-10">
+            <input
+              type="checkbox"
+              class="h-4 w-4"
+              :checked="(selectedIds || []).includes(topic.id)"
+              @change="toggleRow(topic.id, ($event.target as HTMLInputElement).checked)"
+            />
+          </TableCell>
           <TableCell>
             <div class="flex gap-3">
               <img

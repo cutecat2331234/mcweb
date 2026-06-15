@@ -1374,3 +1374,13 @@ app/
 | 支付倒计时 | 订单页 `payment_expires_at` / 超时提示 |
 | 商城 Webhook 测试筛选 | 投递日志 `kindTabs`（测试/正式） |
 | 批量订单 Webhook 测试 | `BatchTestOrderWebhooks` + 管理后台按钮 |
+
+### 第九十一轮（保存搜索站内通知、搜索排除、私信静音、未读选择性标已读）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索站内通知 | `notify_in_app` 列 + `forum.saved_search_match` 偏好 + 摘要时推送 |
+| 搜索排除语法 | `ParseSearchQuery` 解析 `-词` + `ApplySearchExclusions` |
+| 私信会话静音 | `muted_at` + `ToggleConversationMute` + 通知跳过静音参与者 |
+| 未读选择性标已读 | `MarkTopicsRead` + 未读页多选 + `mark_selected_read` 路由 |
+| 商城 Webhook 维护 | `RetryFailedOrderWebhooksJob` 重试卡住 pending 投递 |

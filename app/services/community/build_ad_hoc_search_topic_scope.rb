@@ -27,6 +27,7 @@ module Community
         "to_tsvector('simple', coalesce(forum_topics.title, '')) @@ plainto_tsquery('simple', ?)",
         query
       )
+      scope = apply_exclusions(scope, filters[:exclude_terms])
       scope = apply_sort(scope, filters[:topic_sort])
       ServiceResult.success(scope: scope)
     end
@@ -60,7 +61,8 @@ module Community
         noreplies: @params["noreplies"].presence || value[:noreplies_filter],
         created_after: @params["created_after"],
         created_before: @params["created_before"],
-        topic_sort: @params["topic_sort"].presence || "recent"
+        topic_sort: @params["topic_sort"].presence || "recent",
+        exclude_terms: value[:exclude_terms] || []
       }
     end
 
@@ -164,6 +166,11 @@ module Community
         scope.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_topics.title, '')), plainto_tsquery('simple', #{ActiveRecord::Base.connection.quote(query)})) DESC"))
       else scope.order(last_posted_at: :desc)
       end
+    end
+
+    def apply_exclusions(scope, exclude_terms)
+      result = Community::ApplySearchExclusions.call(scope: scope, exclude_terms: exclude_terms)
+      result.success? ? result.value : scope
     end
   end
 end

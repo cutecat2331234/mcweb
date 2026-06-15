@@ -10,6 +10,7 @@ module Community
     AUTHOR_AT_PATTERN = /\B@([a-zA-Z0-9_]+)/
     AUTHOR_COLON_PATTERN = /\bauthor:([a-zA-Z0-9_]+)/i
     ASSIGNED_PATTERN = /\bassigned:([a-zA-Z0-9_]+)/i
+    EXCLUDE_PATTERN = /(?:^|\s)-(\S+)/
 
     VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived mine assigned unassigned].freeze
     RESERVED_IN_SCOPES = %w[bookmarks watching unread title posts].freeze
@@ -30,7 +31,13 @@ module Community
       has_flags = {}
       author = nil
       assignee = nil
+      exclude_terms = []
       text = @query.dup
+
+      while (match = text.match(EXCLUDE_PATTERN))
+        exclude_terms << match[1]
+        text = text.gsub(match[0], " ").strip
+      end
 
       if (match = text.match(IN_PATTERN))
         scope = match[1].downcase
@@ -117,7 +124,8 @@ module Community
         images_filter: has_flags["images"] ? "images" : nil,
         title_only_filter: title_only_filter,
         posts_only_filter: posts_only_filter,
-        author: author
+        author: author,
+        exclude_terms: exclude_terms
       )
     end
   end

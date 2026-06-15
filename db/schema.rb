@@ -126,10 +126,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "created_at", null: false
     t.bigint "forum_conversation_id", null: false
     t.datetime "last_read_at"
+    t.datetime "muted_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["forum_conversation_id", "user_id"], name: "idx_forum_conv_participants_unique", unique: true
     t.index ["forum_conversation_id"], name: "index_forum_conversation_participants_on_forum_conversation_id"
+    t.index ["muted_at"], name: "index_forum_conversation_participants_on_muted_at"
     t.index ["user_id"], name: "index_forum_conversation_participants_on_user_id"
   end
 
@@ -300,6 +302,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "last_notified_at"
     t.string "name", null: false
     t.boolean "notify_daily", default: false, null: false
+    t.boolean "notify_in_app", default: true, null: false
     t.text "query", default: "", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false

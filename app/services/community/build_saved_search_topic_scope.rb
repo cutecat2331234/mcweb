@@ -24,6 +24,7 @@ module Community
       scope = apply_user_scope(scope, filters)
       scope = apply_dates(scope, filters)
       scope = apply_query(scope, query) if query.present?
+      scope = apply_exclusions(scope, filters[:exclude_terms])
       scope = apply_sort(scope, filters[:topic_sort])
 
       ServiceResult.success(scope)
@@ -60,7 +61,8 @@ module Community
         noreplies: @stored_filters[:noreplies].presence || parsed[:noreplies_filter],
         created_after: @stored_filters[:created_after].presence,
         created_before: @stored_filters[:created_before].presence,
-        topic_sort: @stored_filters[:topic_sort].presence
+        topic_sort: @stored_filters[:topic_sort].presence,
+        exclude_terms: parsed[:exclude_terms] || []
       }
     end
 
@@ -172,6 +174,11 @@ module Community
         "to_tsvector('simple', coalesce(forum_topics.title, '')) @@ plainto_tsquery('simple', ?)",
         query
       )
+    end
+
+    def apply_exclusions(scope, exclude_terms)
+      result = Community::ApplySearchExclusions.call(scope: scope, exclude_terms: exclude_terms)
+      result.success? ? result.value : scope
     end
 
     def apply_sort(scope, topic_sort)

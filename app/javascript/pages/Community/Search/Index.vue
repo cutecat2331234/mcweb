@@ -69,6 +69,7 @@ const props = defineProps<{
     update_url?: string
     delete_url: string
     notify_daily?: boolean
+    notify_in_app?: boolean
     webhook_url?: string | null
   }>
   loggedIn?: boolean
@@ -445,6 +446,31 @@ async function toggleSavedSearchNotify(search: { id: number; notify_daily?: bool
   }
 }
 
+async function toggleSavedSearchNotifyInApp(search: { id: number; notify_in_app?: boolean; update_url?: string }) {
+  if (!search.update_url) return
+  togglingNotifyId.value = search.id
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const response = await fetch(search.update_url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': token,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        saved_search: { notify_in_app: !search.notify_in_app },
+      }),
+    })
+    if (response.ok) {
+      router.reload({ only: ['savedSearches'] })
+    }
+  } finally {
+    togglingNotifyId.value = null
+  }
+}
+
 function startRenameSearch(search: { id: number; name: string }) {
   editingSearchId.value = search.id
   editingSearchName.value = search.name
@@ -490,7 +516,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
     { label: '搜索', current: true },
   ]" />
 
-  <PageHeader title="搜索论坛" subtitle="支持 in:分区、in:title 仅标题、in:posts 仅帖子、tag:标签 等语法" />
+  <PageHeader title="搜索论坛" subtitle="支持 in:分区、tag:标签、is:solved、-排除词 等语法（对标 Discourse）" />
 
   <form class="mb-4 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
     <div class="relative min-w-[200px] flex-1">
@@ -785,6 +811,17 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           @click="toggleSavedSearchNotify(search)"
         >
           📧
+        </button>
+        <button
+          v-if="search.update_url"
+          type="button"
+          class="text-[10px] transition-opacity"
+          :class="search.notify_in_app !== false ? 'text-primary' : 'text-muted-foreground opacity-50 hover:opacity-100'"
+          :disabled="togglingNotifyId === search.id"
+          :title="search.notify_in_app !== false ? '关闭站内通知' : '开启站内通知'"
+          @click="toggleSavedSearchNotifyInApp(search)"
+        >
+          🔔
         </button>
         <a
           v-if="search.rss_url"

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -13,13 +14,23 @@ defineOptions({ layout: PortalLayout })
 const props = defineProps<{
   topics: TopicListItem[]
   markAllReadUrl: string
+  markSelectedReadUrl?: string
   pagination: PaginationMeta
   sort: string
   sortOptions: Array<{ value: string; label: string }>
 }>()
 
+const selectedIds = ref<string[]>([])
+
 function markAllRead() {
   router.patch(props.markAllReadUrl)
+}
+
+function markSelectedRead() {
+  if (!props.markSelectedReadUrl || selectedIds.value.length === 0) return
+  router.patch(props.markSelectedReadUrl, { topic_ids: selectedIds.value }, {
+    onSuccess: () => { selectedIds.value = [] },
+  })
 }
 
 function changeSort(value: string) {
@@ -44,13 +55,28 @@ function changeSort(value: string) {
       >
         <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
+      <Button
+        v-if="markSelectedReadUrl && selectedIds.length"
+        type="button"
+        variant="outline"
+        size="sm"
+        @click="markSelectedRead"
+      >
+        标选中为已读（{{ selectedIds.length }}）
+      </Button>
       <Button v-if="topics.length" type="button" variant="outline" size="sm" @click="markAllRead">
         全部标为已读
       </Button>
     </div>
   </div>
 
-  <TopicListTable :topics="topics" show-views />
+  <TopicListTable
+    :topics="topics"
+    show-views
+    selectable
+    :selected-ids="selectedIds"
+    @update:selected-ids="selectedIds = $event"
+  />
 
   <Pagination v-if="pagination.pages > 1" :pagination="pagination" :base-path="routes.forumUnread" />
 </template>

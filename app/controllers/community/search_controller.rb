@@ -30,6 +30,7 @@ module Community
       parsed_category = parsed.success? ? parsed.value[:category_slug] : nil
       parsed_title_only = parsed.success? ? parsed.value[:title_only_filter] : nil
       parsed_posts_only = parsed.success? ? parsed.value[:posts_only_filter] : nil
+      parsed_exclude_terms = parsed.success? ? parsed.value[:exclude_terms] : []
 
       query = parsed_query
       title_only = !parsed_posts_only && (ActiveModel::Type::Boolean.new.cast(params[:title_only]) || parsed_title_only.present?)
@@ -95,6 +96,7 @@ module Community
           "to_tsvector('simple', coalesce(forum_topics.title, '')) @@ plainto_tsquery('simple', ?)",
           query
         )
+        topics = Community::ApplySearchExclusions.call(scope: topics, exclude_terms: parsed_exclude_terms).value
         topics = case params[:topic_sort]
         when "oldest" then topics.order(created_at: :asc)
         when "relevance"
@@ -144,6 +146,7 @@ module Community
           "to_tsvector('simple', coalesce(forum_posts.body, '')) @@ plainto_tsquery('simple', ?)",
           query
         ).includes(:user, topic: :section)
+        posts = Community::ApplySearchExclusions.on_posts(posts, exclude_terms: parsed_exclude_terms)
         posts = case params[:post_sort]
         when "oldest" then posts.order(created_at: :asc)
         when "relevance"
@@ -450,6 +453,7 @@ module Community
           name: search.name,
           query: search.query,
           notify_daily: search.notify_daily?,
+          notify_in_app: search.notify_in_app?,
           filter_labels: Community::SavedSearchFilterSummary.call(search),
           url: forum_search_path(Community::SavedSearchPresenter.url_params(search)),
           rss_url: Community::SavedSearchPresenter.rss_path(search),

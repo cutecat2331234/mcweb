@@ -6,6 +6,7 @@ module Community
     NOTIFICATION_TYPES = %w[
       forum.topic_reply forum.mention forum.section_topic forum.private_message
       forum.followed_topic forum.followed_reply forum.tag_topic forum.reaction
+      forum.saved_search_match
     ].freeze
 
     def initialize(user:)

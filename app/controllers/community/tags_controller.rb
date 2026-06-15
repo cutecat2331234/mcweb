@@ -28,7 +28,10 @@ module Community
     end
 
     def show
-      tag = Community::Tag.usable_by(current_user).find_by!(slug: params[:slug])
+      tag = Community::Tag.resolve_by_slug(params[:slug])
+      return head :not_found unless tag
+
+      tag = Community::Tag.usable_by(current_user).find_by!(id: tag.id)
       sort = params[:sort].to_s.presence || "activity"
       topic_ids = tag.topics.published_listed.pluck(:id)
       scope = preload_topics(Community::Topic.where(id: topic_ids).sorted(sort))

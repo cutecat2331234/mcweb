@@ -54,6 +54,9 @@ const props = defineProps<{
   shippingMethodCode?: string | null
   freeShippingMinLabel?: string | null
   freeShippingRemainingLabel?: string | null
+  giftWrapAvailable?: boolean
+  giftWrapCents?: number
+  giftWrapLabel?: string
   previewCouponUrl: string
   previewGiftCardUrl: string
 }>()
@@ -65,6 +68,7 @@ const form = useForm({
     gift_card_code: props.pendingGiftCardCode || '',
     notes: '',
     shipping_method: props.shippingMethodCode || props.shippingMethods?.[0]?.code || 'standard',
+    gift_wrap: false,
     shipping_address: {
       name: props.defaultShippingAddress?.name || '',
       phone: props.defaultShippingAddress?.phone || '',
@@ -272,6 +276,11 @@ onMounted(() => {
           </div>
         </div>
       </div>
+
+      <label v-if="giftWrapAvailable" class="flex items-center gap-2 rounded-lg border p-4 text-sm">
+        <input v-model="form.checkout.gift_wrap" type="checkbox">
+        礼品包装（{{ giftWrapLabel }}）
+      </label>
 
       <div class="space-y-2">
         <Label for="notes">订单备注（可选）</Label>

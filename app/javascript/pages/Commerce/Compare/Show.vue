@@ -25,6 +25,7 @@ const props = defineProps<{
   }>
   compareCount: number
   compareMaxItems?: number
+  shareUrl?: string | null
 }>()
 
 function remove(product: { toggle_url: string }) {
@@ -33,6 +34,16 @@ function remove(product: { toggle_url: string }) {
 
 function clearAll() {
   router.delete(routes.storeCompare)
+}
+
+async function copyShareLink() {
+  if (!props.shareUrl) return
+  try {
+    await navigator.clipboard.writeText(props.shareUrl)
+    alert('分享链接已复制')
+  } catch {
+    prompt('复制此链接', props.shareUrl)
+  }
 }
 
 function addToCart(product: { db_id: number; add_to_cart_url: string; variants: Array<{ id: number; in_stock: boolean }> }) {
@@ -54,7 +65,10 @@ function addToCart(product: { db_id: number; add_to_cart_url: string; variants: 
 
   <div class="mb-4 flex items-center justify-between gap-3">
     <PageHeader title="商品对比" :subtitle="`已选 ${compareCount} / ${compareMaxItems ?? 4} 件`" />
-    <Button v-if="products.length" type="button" variant="outline" size="sm" @click="clearAll">清空对比</Button>
+    <div v-if="products.length" class="flex gap-2">
+      <Button v-if="shareUrl" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
+      <Button type="button" variant="outline" size="sm" @click="clearAll">清空对比</Button>
+    </div>
   </div>
 
   <div v-if="products.length" class="overflow-x-auto">

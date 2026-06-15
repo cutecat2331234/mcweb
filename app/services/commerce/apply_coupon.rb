@@ -28,7 +28,7 @@ module Commerce
         coupon: coupon
       )
       shipping_cents = shipping_result.success? ? shipping_result.value[:shipping_cents].to_i : @order.shipping_cents.to_i
-      total_cents = [ @order.subtotal_cents - discount_cents + shipping_cents, 0 ].max
+      total_cents = [ @order.subtotal_cents - discount_cents + shipping_cents + @order.gift_wrap_cents.to_i, 0 ].max
 
       Commerce::Order.transaction do
         @order.update!(

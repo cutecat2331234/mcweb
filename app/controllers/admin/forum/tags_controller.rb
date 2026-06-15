@@ -68,10 +68,13 @@ module Admin
       end
 
       def tag_params
-        params.require(:tag).permit(:name, :slug, :description, :staff_only, :color_hex)
+        params.require(:tag).permit(:name, :slug, :description, :staff_only, :color_hex, :canonical_tag_id)
       end
 
       def form_props(tag)
+        canonical_options = Community::Tag.where.not(id: tag.id).where(canonical_tag_id: nil).ordered.map do |t|
+          { id: t.id, name: t.name }
+        end
         {
           title: tag.persisted? ? "编辑标签" : "新建标签",
           tag: {
@@ -80,8 +83,10 @@ module Admin
             slug: tag.slug || "",
             description: tag.description || "",
             staff_only: tag.staff_only || false,
-            color_hex: tag.color_hex || ""
+            color_hex: tag.color_hex || "",
+            canonical_tag_id: tag.canonical_tag_id
           },
+          canonicalTags: canonical_options,
           submitUrl: tag.persisted? ? admin_forum_tag_path(tag) : admin_forum_tags_path,
           method: tag.persisted? ? "patch" : "post",
           backUrl: admin_forum_tags_path

@@ -105,6 +105,7 @@ SiteSetting.set("forum.report_auto_hide_threshold", "5") unless SiteSetting.exis
 SiteSetting.set("forum.auto_close_on_solved", "0") unless SiteSetting.exists?(key: "forum.auto_close_on_solved")
 SiteSetting.set("store.free_shipping_min_order_cents", "0") unless SiteSetting.exists?(key: "store.free_shipping_min_order_cents")
 SiteSetting.set("store.flat_shipping_cents", "0") unless SiteSetting.exists?(key: "store.flat_shipping_cents")
+SiteSetting.set("store.gift_wrap_cents", "500") unless SiteSetting.exists?(key: "store.gift_wrap_cents")
 SiteSetting.set("store.compare_max_items", "4") unless SiteSetting.exists?(key: "store.compare_max_items")
 SiteSetting.set("store.cart_max_items", "99") unless SiteSetting.exists?(key: "store.cart_max_items")
 

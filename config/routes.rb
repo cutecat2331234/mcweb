@@ -60,6 +60,9 @@ Rails.application.routes.draw do
         collection do
           get :export
         end
+        member do
+          post :staff_note
+        end
       end
       resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
@@ -112,6 +115,7 @@ Rails.application.routes.draw do
         post :close
         post :revoke
         get :voters
+        get :export
       end
     end
     get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
@@ -127,6 +131,7 @@ Rails.application.routes.draw do
         post :unsolve
         patch :slow_mode, action: :update_slow_mode
         patch :auto_close, action: :update_auto_close
+        patch :auto_bump, action: :update_auto_bump
         post :mark_unread
         post :subscription, action: :toggle_subscription
         post :mute, action: :toggle_mute
@@ -232,6 +237,8 @@ Rails.application.routes.draw do
     get "compare", to: "compare#show"
     post "compare/toggle", to: "compare#toggle", as: :toggle_compare
     delete "compare", to: "compare#clear"
+    get "compare/share", to: "compare#share"
+    get "compare/:token", to: "compare#public_show", as: :public_compare
     get "wishlist", to: "wishlist#index"
     post "wishlist/add_all_to_cart", to: "wishlist#add_all_to_cart", as: :add_all_to_cart_wishlist
     patch "wishlist/:product_id/note", to: "wishlist#update_note", as: :note_wishlist

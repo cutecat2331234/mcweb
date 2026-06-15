@@ -14,8 +14,9 @@ module Commerce
       pending_coupon ||= session[:pending_coupon_code].to_s.presence
       pending_gift_card = session[:pending_gift_card_code].to_s.presence
       coupon = Commerce::Coupon.find_by(code: pending_coupon) if pending_coupon.present?
-      requires_shipping = items.any? { |item| item.product&.requires_shipping? }
+      requires_shipping = items.any? { |item| item.product&.requires_shipping? || item.product&.product_type == "physical" }
       default_shipping_address = last_shipping_address_for(current_user)
+      gift_wrap_cents = SiteSetting.get("store.gift_wrap_cents", "500").to_i
 
       render inertia: "Commerce/Checkout/Show", props: {
         items: items.map { |item|
@@ -37,6 +38,9 @@ module Commerce
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path,
         previewGiftCardUrl: preview_gift_card_store_checkout_path,
+        giftWrapAvailable: requires_shipping && gift_wrap_cents.positive?,
+        giftWrapCents: gift_wrap_cents,
+        giftWrapLabel: format_money(gift_wrap_cents, currency),
         **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon, shipping_method_code: params[:shipping_method])
       }
     end
@@ -55,7 +59,8 @@ module Commerce
           gift_card_code: checkout_params[:gift_card_code].presence || session.delete(:pending_gift_card_code),
           notes: checkout_params[:notes],
           shipping_address: shipping_address_params,
-          shipping_method: checkout_params[:shipping_method]
+          shipping_method: checkout_params[:shipping_method],
+          gift_wrap: checkout_params[:gift_wrap]
         )
         unless order_result.success?
           return redirect_to store_checkout_path, alert: service_error_message(order_result)
@@ -176,7 +181,7 @@ module Commerce
     private
 
     def checkout_params
-      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes, :shipping_method)
+      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes, :shipping_method, :gift_wrap)
     end
 
     def shipping_address_params

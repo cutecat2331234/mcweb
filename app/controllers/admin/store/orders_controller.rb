@@ -4,7 +4,7 @@ module Admin
   module Store
     class OrdersController < BaseController
       before_action -> { require_permission("store.orders.read") }
-      before_action :set_order, only: %i[show update]
+      before_action :set_order, only: %i[show update staff_note]
 
       def index
         orders_scope = ::Commerce::Order.recent.includes(:user)
@@ -78,6 +78,8 @@ module Admin
             { label: "发货时间", value: @order.shipped_at ? l(@order.shipped_at, format: :long) : "—" },
             { label: "优惠", value: @order.discount_cents.positive? ? "-#{format_money(@order.discount_cents, @order.currency)}#{@order.coupon ? " (#{@order.coupon.code})" : ""}" : "—" },
             { label: "礼品卡", value: @order.gift_card_amount_cents.positive? ? "-#{format_money(@order.gift_card_amount_cents, @order.currency)}#{@order.gift_card ? " (#{@order.gift_card.code})" : ""}" : "—" },
+            { label: "礼品包装", value: @order.gift_wrap_cents.positive? ? format_money(@order.gift_wrap_cents, @order.currency) : "—" },
+            { label: "买家备注", value: @order.notes.presence || "—" },
             { label: "总额", value: format_money(@order.total_cents, @order.currency) },
             { label: "创建时间", value: l(@order.created_at, format: :long) }
           ],
@@ -99,13 +101,34 @@ module Admin
               items: @order.refunds.map do |refund|
                 { label: l(refund.created_at, format: :short), value: "#{format_money(refund.amount_cents, @order.currency)} · #{refund.status}" }
               end.presence || [ { label: "暂无退款", value: nil } ]
+            },
+            {
+              title: "员工备注",
+              items: @order.staff_notes.includes(:author).recent.limit(10).map do |note|
+                { label: "#{note.author.username} · #{l(note.created_at, format: :short)}", value: note.body }
+              end.presence || [ { label: "暂无员工备注", value: nil } ]
             }
           ],
           backUrl: admin_store_orders_path,
           actions: refund_actions(payment) + pending_refund_actions(pending_refunds) + shipping_actions,
           refundForm: refund_form_props(payment),
-          shippingForm: shipping_form_props
+          shippingForm: shipping_form_props,
+          staffNoteForm: { action_url: staff_note_admin_store_order_path(@order) }
         }
+      end
+
+      def staff_note
+        result = Commerce::CreateOrderStaffNote.call(
+          actor: current_user,
+          order: @order,
+          body: params[:body]
+        )
+
+        if result.success?
+          redirect_to admin_store_order_path(@order), notice: "员工备注已添加。"
+        else
+          redirect_to admin_store_order_path(@order), alert: service_error_message(result)
+        end
       end
 
       def update_shipping

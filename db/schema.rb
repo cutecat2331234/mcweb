@@ -352,6 +352,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_tags", force: :cascade do |t|
+    t.bigint "canonical_tag_id"
     t.string "color_hex"
     t.datetime "created_at", null: false
     t.text "description"
@@ -359,6 +360,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "slug", null: false
     t.boolean "staff_only", default: false, null: false
     t.datetime "updated_at", null: false
+    t.index ["canonical_tag_id"], name: "index_forum_tags_on_canonical_tag_id"
     t.index ["slug"], name: "index_forum_tags_on_slug", unique: true
   end
 
@@ -419,6 +421,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_topics", force: :cascade do |t|
+    t.datetime "auto_bump_at"
     t.datetime "auto_close_at"
     t.datetime "bumped_at"
     t.datetime "created_at", null: false
@@ -447,6 +450,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "views_count", default: 0, null: false
     t.boolean "wiki", default: false, null: false
     t.index "to_tsvector('simple'::regconfig, (COALESCE(title, ''::character varying))::text)", name: "index_forum_topics_on_title_tsvector", using: :gin
+    t.index ["auto_bump_at"], name: "index_forum_topics_on_auto_bump_at"
     t.index ["auto_close_at"], name: "index_forum_topics_on_auto_close_at"
     t.index ["deleted_at"], name: "index_forum_topics_on_deleted_at"
     t.index ["forum_section_id", "last_posted_at"], name: "index_forum_topics_on_forum_section_id_and_last_posted_at"
@@ -902,11 +906,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["store_product_variant_id"], name: "index_store_order_items_on_store_product_variant_id"
   end
 
+  create_table "store_order_staff_notes", force: :cascade do |t|
+    t.bigint "author_id", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.bigint "store_order_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_id"], name: "index_store_order_staff_notes_on_author_id"
+    t.index ["store_order_id"], name: "index_store_order_staff_notes_on_store_order_id"
+  end
+
   create_table "store_orders", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "currency", default: "CNY", null: false
     t.integer "discount_cents", default: 0, null: false
     t.integer "gift_card_amount_cents", default: 0, null: false
+    t.boolean "gift_wrap", default: false, null: false
+    t.integer "gift_wrap_cents", default: 0, null: false
     t.text "notes"
     t.string "order_number", null: false
     t.string "public_id", null: false
@@ -1124,6 +1140,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "ban_reason"
     t.datetime "banned_at"
     t.text "bio"
+    t.jsonb "compare_product_ids", default: [], null: false
+    t.string "compare_share_token"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
     t.string "display_name"
@@ -1135,6 +1153,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "failed_login_count", default: 0, null: false
     t.string "forum_digest_frequency", default: "none", null: false
     t.datetime "forum_digest_last_sent_at"
+    t.string "forum_flair_color_hex"
     t.text "forum_signature"
     t.string "forum_title"
     t.datetime "last_seen_at"
@@ -1155,6 +1174,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "updated_at", null: false
     t.string "username", null: false
     t.string "wishlist_share_token"
+    t.index ["compare_share_token"], name: "index_users_on_compare_share_token", unique: true
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
@@ -1290,6 +1310,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_staff_notes", "users"
   add_foreign_key "forum_staff_notes", "users", column: "author_id"
   add_foreign_key "forum_subscriptions", "users"
+  add_foreign_key "forum_tags", "forum_tags", column: "canonical_tag_id"
   add_foreign_key "forum_topic_invites", "forum_topics"
   add_foreign_key "forum_topic_invites", "users"
   add_foreign_key "forum_topic_invites", "users", column: "invited_by_id"
@@ -1352,6 +1373,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_order_items", "store_orders"
   add_foreign_key "store_order_items", "store_product_variants"
   add_foreign_key "store_order_items", "store_products"
+  add_foreign_key "store_order_staff_notes", "store_orders"
+  add_foreign_key "store_order_staff_notes", "users", column: "author_id"
   add_foreign_key "store_orders", "store_coupons"
   add_foreign_key "store_orders", "store_gift_cards"
   add_foreign_key "store_orders", "users"

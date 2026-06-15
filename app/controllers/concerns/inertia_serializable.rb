@@ -121,6 +121,7 @@ module InertiaSerializable
       unlisted: topic.unlisted?,
       slow_mode_seconds: topic.slow_mode_seconds,
       auto_close_at: topic.auto_close_at ? l(topic.auto_close_at, format: :short) : nil,
+      auto_bump_at: topic.auto_bump_at ? l(topic.auto_bump_at, format: :short) : nil,
       solved_post_id: topic.solved_post_id,
       views_count: topic.views_count,
       watching: watching,
@@ -231,6 +232,8 @@ module InertiaSerializable
       is_solved: solved_post_id == post.id,
       author: forum_author_name(post.user),
       author_username: post.user.username,
+      author_flair_color: post.user.forum_flair_color_hex.presence,
+      author_forum_title: post.user.forum_title.presence,
       author_url: forum_user_path(post.user.username),
       author_card_url: card_forum_user_path(post.user.username),
       author_badges: serialize_user_badges(post.user),
@@ -500,6 +503,7 @@ module InertiaSerializable
       vote_url: forum_poll_vote_path(poll),
       revoke_url: poll.open? && user_votes.exists? ? revoke_forum_poll_path(poll) : nil,
       voters_url: can_see_voters ? voters_forum_poll_path(poll) : nil,
+      export_url: can_close ? export_forum_poll_path(poll) : nil,
       close_url: can_close && poll.open? ? close_forum_poll_path(poll) : nil,
       closes_at: poll.closes_at ? l(poll.closes_at, format: :short) : nil
     }
@@ -630,6 +634,8 @@ module InertiaSerializable
       coupon_code: order.coupon&.code,
       gift_card_code: order.gift_card&.code,
       gift_card_amount_label: order.gift_card_amount_cents.positive? ? format_money(order.gift_card_amount_cents, order.currency) : nil,
+      gift_wrap: order.gift_wrap?,
+      gift_wrap_label: order.gift_wrap_cents.positive? ? format_money(order.gift_wrap_cents, order.currency) : nil,
       total_label: format_money(order.total_cents, order.currency),
       receipt_url: receipt_store_order_path(order),
       receipt_pdf_url: receipt_pdf_store_order_path(order),

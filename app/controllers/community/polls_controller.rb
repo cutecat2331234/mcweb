@@ -61,5 +61,19 @@ module Community
 
       render json: { voters_by_option: voters_by_option }
     end
+
+    def export
+      poll = Community::Poll.find(params[:id])
+      topic = poll.topic
+      can_export = current_user && (current_user.id == topic.user_id || current_user.permission?("forum.topics.lock"))
+      return head :forbidden unless can_export
+
+      result = Community::ExportPollResults.call(poll: poll)
+      return head :unprocessable_entity unless result.success?
+
+      send_data result.value[:csv],
+                filename: "poll-#{poll.id}-#{Time.current.strftime('%Y%m%d')}.csv",
+                type: "text/csv; charset=utf-8"
+    end
   end
 end

@@ -5,9 +5,9 @@ module Community
     include Community::TopicVisibility
     include Community::TopicListPreloadable
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_bump mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_bump mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm]
 
     def show
       @topic.record_view!
@@ -378,6 +378,16 @@ module Community
       redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动关闭。" : "自动关闭已取消。"
     rescue ArgumentError
       redirect_to forum_topic_path(@topic), alert: "无效的关闭时间。"
+    end
+
+    def update_auto_bump
+      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+
+      at = params[:auto_bump_at].present? ? Time.zone.parse(params[:auto_bump_at].to_s) : nil
+      @topic.update!(auto_bump_at: at)
+      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动提升。" : "自动提升已取消。"
+    rescue ArgumentError
+      redirect_to forum_topic_path(@topic), alert: "无效的提升时间。"
     end
 
     def mark_unread

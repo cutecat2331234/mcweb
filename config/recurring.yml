@@ -33,6 +33,10 @@ production:
     class: Community::CloseScheduledTopicsJob
     queue: default
     schedule: every 5 minutes
+  bump_scheduled_topics:
+    class: Community::BumpScheduledTopicsJob
+    queue: default
+    schedule: every 5 minutes
   bookmark_reminders:
     class: Community::BookmarkReminderJob
     queue: notifications

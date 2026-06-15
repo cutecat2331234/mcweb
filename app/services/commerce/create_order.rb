@@ -2,7 +2,7 @@
 
 module Commerce
   class CreateOrder < ApplicationService
-    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil, shipping_address: nil, shipping_method: nil)
+    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil, shipping_address: nil, shipping_method: nil, gift_wrap: false)
       @cart = cart
       @user = user
       @notes = notes
@@ -10,6 +10,7 @@ module Commerce
       @gift_card_code = gift_card_code
       @shipping_address = shipping_address
       @shipping_method = shipping_method.presence || "standard"
+      @gift_wrap = gift_wrap
     end
 
     def call
@@ -74,10 +75,18 @@ module Commerce
           end
         end
 
+        cart_items = @cart.items.includes(:product)
+        shipping_cents = shipping_cents_for(subtotal_cents, cart_items: cart_items)
+        wrap_result = Commerce::CalculateGiftWrap.call(enabled: @gift_wrap, cart_items: cart_items)
+        gift_wrap = wrap_result.success? && wrap_result.value[:gift_wrap]
+        gift_wrap_cents = wrap_result.success? ? wrap_result.value[:gift_wrap_cents].to_i : 0
+
         order.update!(
           subtotal_cents: subtotal_cents,
-          shipping_cents: shipping_cents_for(subtotal_cents, cart_items: @cart.items.includes(:product)),
-          total_cents: subtotal_cents + shipping_cents_for(subtotal_cents, cart_items: @cart.items.includes(:product)),
+          shipping_cents: shipping_cents,
+          gift_wrap: gift_wrap,
+          gift_wrap_cents: gift_wrap_cents,
+          total_cents: subtotal_cents + shipping_cents + gift_wrap_cents,
           discount_cents: 0
         )
 

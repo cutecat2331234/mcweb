@@ -873,3 +873,17 @@ app/
 | 管理端发货录入 | `UpdateOrderShipping` + 管理订单详情 |
 | 发货邮件与装箱单 | `order_shipped` 邮件 + `packing_slip` 打印页 |
 | 订单邮件详情增强 | `_order_details` 部分模板复用 |
+
+### 第五十轮（标签同义词、定时提升、礼品包装与对比分享）
+
+| 功能 | 实现 |
+|------|------|
+| 标签同义词（XenForo） | `forum_tags.canonical_tag_id` + `SyncTopicTags` 归并 + 管理端 |
+| 主题定时自动提升（Discourse bump） | `forum_topics.auto_bump_at` + `BumpScheduledTopicsJob` |
+| 用户头衔颜色（XenForo flair） | `users.forum_flair_color_hex` + 帖子作者彩色头衔 |
+| 投票结果 CSV 导出 | `ExportPollResults` + `polls#export` |
+| 订单员工备注（Shop） | `store_order_staff_notes` + 管理端 `staff_note` |
+| 管理端买家备注展示 | 订单详情显示 `store_orders.notes` |
+| 商品对比分享链接 | `compare_share_token` + `Compare/Public.vue` |
+| 结账礼品包装 | `store.gift_wrap_cents` + `CalculateGiftWrap` + 结账勾选 |
+| PDF 收据字段增强 | 备注/配送/物流/礼品包装/礼品卡行 |

@@ -100,6 +100,7 @@ module Community
           username: user.username,
           display_name: user.display_name,
           forum_title: user.forum_title,
+          forum_flair_color_hex: user.forum_flair_color_hex,
           avatar_url: user.avatar_url,
           bio: user.bio,
           trust_level: trust[:level],
@@ -180,7 +181,7 @@ module Community
     private
 
     def user_params
-      params.require(:user).permit(:bio, :forum_title, :forum_signature)
+      params.require(:user).permit(:bio, :forum_title, :forum_signature, :forum_flair_color_hex)
     end
 
     def attach_forum_avatar!(user)

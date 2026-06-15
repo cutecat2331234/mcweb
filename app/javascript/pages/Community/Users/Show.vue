@@ -24,6 +24,7 @@ const props = defineProps<{
     username: string
     display_name: string | null
     forum_title: string | null
+    forum_flair_color_hex?: string | null
     avatar_url: string
     bio: string | null
     trust_level: number
@@ -122,6 +123,7 @@ const bioForm = useForm({
   user: {
     bio: props.profile.bio || '',
     forum_title: props.profile.forum_title || '',
+    forum_flair_color_hex: props.profile.forum_flair_color_hex || '',
     forum_signature: props.profile.forum_signature || '',
   },
 })
@@ -293,6 +295,8 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
   <form v-if="editingTitle" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
     <Label for="forum_title">论坛头衔</Label>
     <input id="forum_title" v-model="bioForm.user.forum_title" class="h-9 w-full rounded-md border px-2 text-sm" placeholder="如：资深玩家" />
+    <Label for="forum_flair_color_hex">头衔颜色（Hex，可选）</Label>
+    <input id="forum_flair_color_hex" v-model="bioForm.user.forum_flair_color_hex" class="h-9 w-full rounded-md border px-2 text-sm" placeholder="#6366f1" />
     <div class="flex gap-2">
       <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
       <Button type="button" size="sm" variant="outline" @click="editingTitle = false">取消</Button>

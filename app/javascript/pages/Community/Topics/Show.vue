@@ -35,6 +35,8 @@ export interface PostItem {
   author_url: string
   avatar_url: string
   author_username: string
+  author_flair_color?: string | null
+  author_forum_title?: string | null
   author_card_url?: string
   author_badges?: Array<{ name: string; icon: string | null; color: string | null }>
   verified_purchaser?: boolean
@@ -100,6 +102,7 @@ export interface PollItem {
   user_vote_indices?: number[]
   vote_url: string
   voters_url?: string | null
+  export_url?: string | null
   close_url?: string | null
   revoke_url?: string | null
   closes_at?: string | null
@@ -139,6 +142,7 @@ const props = defineProps<{
     unlisted?: boolean
     slow_mode_seconds: number | null
     auto_close_at?: string | null
+    auto_bump_at?: string | null
     solved_post_id: number | null
     tags: Array<{ name: string; slug: string; url: string }>
     tags_string: string
@@ -226,6 +230,7 @@ const slowModeRemaining = ref(props.topic.slow_mode_remaining_seconds || 0)
 const effectiveCanReply = computed(() => props.canReply && slowModeRemaining.value <= 0)
 let slowModeTimer: ReturnType<typeof setInterval> | null = null
 const autoCloseAt = ref('')
+const autoBumpAt = ref('')
 const draftKey = `forum-reply-draft-${props.topic.id}`
 const topicSearch = ref(props.topicSearchQuery || '')
 const postSort = ref(props.postSort || 'oldest')
@@ -403,6 +408,10 @@ function updateSlowMode() {
 
 function updateAutoClose() {
   router.patch(`/forum/topics/${props.topic.id}/auto_close`, { auto_close_at: autoCloseAt.value || null })
+}
+
+function updateAutoBump() {
+  router.patch(`/forum/topics/${props.topic.id}/auto_bump`, { auto_bump_at: autoBumpAt.value || null })
 }
 
 function restorePost(post: PostItem) {
@@ -995,6 +1004,9 @@ function pollPercent(votes: number) {
       <Button v-if="poll.voters_url" type="button" variant="outline" size="sm" @click="loadPollVoters">
         {{ showPollVoters ? '收起投票者' : '查看投票者' }}
       </Button>
+      <Button v-if="poll.export_url" as-child variant="outline" size="sm">
+        <a :href="poll.export_url" download>导出 CSV</a>
+      </Button>
     </div>
     <ul v-if="showPollVoters && pollVoters.length" class="mt-2 space-y-2 text-xs">
       <li v-for="group in pollVoters" :key="group.index">
@@ -1044,6 +1056,8 @@ function pollPercent(votes: number) {
       <Button type="button" size="sm" variant="outline" @click="updateSlowMode">设置慢速</Button>
       <Input v-model="autoCloseAt" type="datetime-local" class="h-8 w-48" />
       <Button type="button" size="sm" variant="outline" @click="updateAutoClose">定时关闭</Button>
+      <Input v-model="autoBumpAt" type="datetime-local" class="h-8 w-48" />
+      <Button type="button" size="sm" variant="outline" @click="updateAutoBump">定时提升</Button>
     </template>
   </div>
 
@@ -1077,6 +1091,9 @@ function pollPercent(votes: number) {
 
   <p v-if="topic.auto_close_at" class="mb-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
     将于 {{ topic.auto_close_at }} 自动关闭。
+  </p>
+  <p v-if="topic.auto_bump_at" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+    将于 {{ topic.auto_bump_at }} 自动提升。
   </p>
   <p v-if="topic.locked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
     此主题已锁定，无法回复。
@@ -1176,6 +1193,11 @@ function pollPercent(votes: number) {
                 <Link :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
               </UserHoverCard>
               <Link v-else :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
+              <span
+                v-if="post.author_forum_title && post.author_flair_color"
+                class="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+                :style="{ backgroundColor: post.author_flair_color }"
+              >{{ post.author_forum_title }}</span>
               <span
                 v-for="badge in post.author_badges || []"
                 :key="badge.name"

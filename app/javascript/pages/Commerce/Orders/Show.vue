@@ -37,6 +37,7 @@ const props = defineProps<{
     coupon_code?: string | null
     gift_card_code?: string | null
     gift_card_amount_label?: string | null
+    gift_wrap_label?: string | null
     total_label: string
     receipt_url: string
     receipt_pdf_url: string
@@ -225,6 +226,7 @@ function refreshDownload(url: string) {
 
   <p v-if="order.subtotal_label" class="mb-1 text-sm text-muted-foreground">小计：{{ order.subtotal_label }}</p>
   <p v-if="order.shipping_label" class="mb-1 text-sm text-muted-foreground">运费：{{ order.free_shipping ? '免运费' : order.shipping_label }}</p>
+  <p v-if="order.gift_wrap_label" class="mb-1 text-sm text-muted-foreground">礼品包装：{{ order.gift_wrap_label }}</p>
   <p v-if="order.discount_label" class="mb-1 text-sm text-green-700">优惠{{ order.coupon_code ? ` (${order.coupon_code})` : '' }}：−{{ order.discount_label }}</p>
   <p v-if="order.gift_card_amount_label" class="mb-1 text-sm text-green-700">礼品卡{{ order.gift_card_code ? ` (${order.gift_card_code})` : '' }}：−{{ order.gift_card_amount_label }}</p>
   <p class="mb-6 font-medium">合计：{{ order.total_label }}</p>

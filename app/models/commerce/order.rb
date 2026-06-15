@@ -16,6 +16,7 @@ module Commerce
     has_many :fulfillments, class_name: "Commerce::Fulfillment", foreign_key: :store_order_id, dependent: :destroy
     has_many :refunds, class_name: "Commerce::Refund", foreign_key: :store_order_id, dependent: :destroy
     has_many :payment_records, class_name: "Payments::Record", foreign_key: :store_order_id, dependent: :destroy
+    has_many :staff_notes, class_name: "Commerce::OrderStaffNote", foreign_key: :store_order_id, dependent: :destroy
 
     validates :order_number, presence: true, uniqueness: true
     validates :status, inclusion: { in: STATUSES }

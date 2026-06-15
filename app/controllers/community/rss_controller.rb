@@ -27,6 +27,18 @@ module Community
       render xml: build_feed(topics, title: "#{category.name} - Mcweb 论坛", url: forum_category_url(slug: category.slug)), content_type: "application/rss+xml"
     end
 
+    def saved_search
+      search_id = Community::SavedSearchRssToken.verify(params[:token])
+      search = Community::SavedSearch.find(search_id)
+      raise ActiveRecord::RecordNotFound unless search.id.to_s == params[:id].to_s
+
+      topics = Community::SavedSearchMatcher.new(search).matching_topics.limit(30).to_a
+      url = forum_search_path(Community::SavedSearchPresenter.url_params(search))
+      render xml: build_feed(topics, title: "#{search.name} - 保存的搜索", url: url), content_type: "application/rss+xml"
+    rescue Community::SavedSearchRssToken::InvalidToken, ActiveRecord::RecordNotFound
+      head :not_found
+    end
+
     private
 
     def build_feed(topics, title:, url:)

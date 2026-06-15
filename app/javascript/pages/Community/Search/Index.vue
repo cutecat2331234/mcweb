@@ -56,7 +56,17 @@ const props = defineProps<{
   posts: SearchPost[]
   topicsPagination: PaginationMeta
   postsPagination: PaginationMeta
-  savedSearches?: Array<{ id: number; name: string; query: string; url: string; update_url?: string; delete_url: string; notify_daily?: boolean }>
+  savedSearches?: Array<{
+    id: number
+    name: string
+    query: string
+    url: string
+    rss_url?: string
+    filter_labels?: string[]
+    update_url?: string
+    delete_url: string
+    notify_daily?: boolean
+  }>
   loggedIn?: boolean
   forumStaff?: boolean
   saveSearchUrl?: string | null
@@ -572,6 +582,16 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         >
           📧
         </button>
+        <a
+          v-if="search.rss_url"
+          :href="search.rss_url"
+          class="text-[10px] text-muted-foreground hover:text-foreground"
+          title="RSS 订阅"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          RSS
+        </a>
         <button type="button" class="text-muted-foreground hover:text-destructive" title="删除" @click="deleteSavedSearch(search.delete_url)">×</button>
       </template>
     </span>

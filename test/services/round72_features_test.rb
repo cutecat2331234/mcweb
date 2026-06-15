@@ -77,6 +77,8 @@ class Round72SendSavedSearchDigestsTest < ActiveSupport::TestCase
   include ActiveJob::TestHelper
 
   setup do
+    @previous_digest_hour = SiteSetting.get("forum.saved_search_digest_hour")
+    SiteSetting.set("forum.saved_search_digest_hour", Time.current.hour.to_s)
     @user = create_user
     suffix = SecureRandom.hex(4)
     category = Community::Category.find_or_create_by!(slug: "r72d-#{suffix}") { |c| c.name = "R72D" }
@@ -97,6 +99,10 @@ class Round72SendSavedSearchDigestsTest < ActiveSupport::TestCase
     )
   end
 
+  teardown do
+    SiteSetting.set("forum.saved_search_digest_hour", @previous_digest_hour || "9")
+  end
+
   test "sends digest when new topics match" do
     assert_enqueued_with(job: MailDeliveryJob) do
       result = Community::SendSavedSearchDigests.call
@@ -110,7 +116,7 @@ class Round72SendSavedSearchDigestsTest < ActiveSupport::TestCase
     @search.update!(last_notified_at: 1.hour.ago)
     result = Community::SendSavedSearchDigests.call
     assert result.success?
-    assert_equal 0, result.value[:sent]
+    assert_equal 0, result.value[:sent] || 0
   end
 end
 

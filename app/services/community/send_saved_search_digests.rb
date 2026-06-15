@@ -3,6 +3,9 @@
 module Community
   class SendSavedSearchDigests < ApplicationService
     def call
+      hour = SiteSetting.get("forum.saved_search_digest_hour", "9").to_i
+      return ServiceResult.success(skipped: true, reason: :wrong_hour) unless Time.current.hour == hour
+
       sent = 0
       Community::SavedSearch.notify_daily.includes(:user).find_each do |search|
         result = send_for_search(search)

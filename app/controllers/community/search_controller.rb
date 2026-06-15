@@ -383,7 +383,9 @@ module Community
           name: search.name,
           query: search.query,
           notify_daily: search.notify_daily?,
-          url: forum_search_path(saved_search_url_params(search)),
+          filter_labels: Community::SavedSearchFilterSummary.call(search),
+          url: forum_search_path(Community::SavedSearchPresenter.url_params(search)),
+          rss_url: Community::SavedSearchPresenter.rss_path(search),
           update_url: forum_saved_search_path(search),
           delete_url: forum_saved_search_path(search)
         }
@@ -391,33 +393,7 @@ module Community
     end
 
     def saved_search_url_params(search)
-      filters = search.filters.symbolize_keys
-      {
-        q: search.query.presence,
-        section: filters["section"].presence || filters[:section].presence,
-        category: filters["category"].presence || filters[:category].presence,
-        author: filters["author"].presence || filters[:author].presence,
-        tag: filters["tag"].presence || filters[:tag].presence,
-        solved: filters["solved"].presence || filters[:solved].presence,
-        locked: filters["locked"].presence || filters[:locked].presence,
-        pinned: filters["pinned"].presence || filters[:pinned].presence,
-        wiki: filters["wiki"].presence || filters[:wiki].presence,
-        featured: filters["featured"].presence || filters[:featured].presence,
-        announcement: filters["announcement"].presence || filters[:announcement].presence,
-        assigned: filters["assigned"].presence || filters[:assigned].presence,
-        assignee: filters["assignee"].presence || filters[:assignee].presence,
-        unlisted: filters["unlisted"].presence || filters[:unlisted].presence,
-        archived: filters["archived"].presence || filters[:archived].presence,
-        mine: filters["mine"].presence || filters[:mine].presence,
-        scope: filters["scope"].presence || filters[:scope].presence,
-        poll: filters["poll"].presence || filters[:poll].presence,
-        noreplies: filters["noreplies"].presence || filters[:noreplies].presence,
-        images: filters["images"].presence || filters[:images].presence,
-        created_after: filters["created_after"].presence || filters[:created_after].presence,
-        created_before: filters["created_before"].presence || filters[:created_before].presence,
-        topic_sort: filters["topic_sort"].presence || filters[:topic_sort].presence,
-        post_sort: filters["post_sort"].presence || filters[:post_sort].presence
-      }.compact
+      Community::SavedSearchPresenter.url_params(search)
     end
   end
 end

@@ -17,6 +17,8 @@ export interface SavedSearchItem {
   query: string
   notify_daily: boolean
   url: string
+  rss_url?: string
+  filter_labels?: string[]
   update_url: string
   delete_url: string
 }
@@ -204,6 +206,15 @@ async function saveRenameSearch(search: SavedSearchItem) {
             <button type="button" class="ml-2 text-xs text-muted-foreground hover:text-foreground" title="重命名" @click="startRenameSearch(search)">✎</button>
           </template>
           <p v-if="search.query && editingSearchId !== search.id" class="truncate text-xs text-muted-foreground">关键词：{{ search.query }}</p>
+          <p v-if="search.filter_labels?.length && editingSearchId !== search.id" class="mt-1 flex flex-wrap gap-1">
+            <span
+              v-for="label in search.filter_labels"
+              :key="label"
+              class="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+            >
+              {{ label }}
+            </span>
+          </p>
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
           <label class="flex items-center gap-2 text-xs">
@@ -215,6 +226,15 @@ async function saveRenameSearch(search: SavedSearchItem) {
             />
             每日邮件
           </label>
+          <a
+            v-if="search.rss_url"
+            :href="search.rss_url"
+            class="text-xs text-primary hover:underline"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            RSS
+          </a>
           <button
             type="button"
             class="text-xs text-destructive hover:underline"

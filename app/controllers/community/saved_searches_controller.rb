@@ -59,40 +59,16 @@ module Community
         query: search.query,
         filters: search.filters,
         notify_daily: search.notify_daily?,
-        url: forum_search_path(search_url_params(search)),
+        filter_labels: Community::SavedSearchFilterSummary.call(search),
+        url: forum_search_path(Community::SavedSearchPresenter.url_params(search)),
+        rss_url: Community::SavedSearchPresenter.rss_path(search),
         update_url: forum_saved_search_path(search),
         delete_url: forum_saved_search_path(search)
       }
     end
 
     def search_url_params(search)
-      filters = search.filters.symbolize_keys
-      {
-        q: search.query.presence,
-        section: filters[:section].presence,
-        category: filters[:category].presence,
-        author: filters[:author].presence,
-        tag: filters[:tag].presence,
-        solved: filters[:solved].presence,
-        locked: filters[:locked].presence,
-        pinned: filters[:pinned].presence,
-        wiki: filters[:wiki].presence,
-        featured: filters[:featured].presence,
-        announcement: filters[:announcement].presence,
-        assigned: filters[:assigned].presence,
-        assignee: filters[:assignee].presence,
-        unlisted: filters[:unlisted].presence,
-        archived: filters[:archived].presence,
-        mine: filters[:mine].presence,
-        scope: filters[:scope].presence,
-        poll: filters[:poll].presence,
-        noreplies: filters[:noreplies].presence,
-        images: filters[:images].presence,
-        created_after: filters[:created_after].presence,
-        created_before: filters[:created_before].presence,
-        topic_sort: filters[:topic_sort].presence,
-        post_sort: filters[:post_sort].presence
-      }.compact
+      Community::SavedSearchPresenter.url_params(search)
     end
   end
 end

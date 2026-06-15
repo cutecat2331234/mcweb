@@ -50,9 +50,11 @@ module Community
       @search = Community::SavedSearch.find(saved_search_id)
       @user = @search.user
       @topics = Community::Topic.where(id: topic_ids).order(created_at: :desc)
+      @filter_labels = Community::SavedSearchFilterSummary.call(@search)
       @url = "#{root_url.chomp('/')}#{forum_search_path(search_url_for(@search))}"
       @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
       @unsubscribe_url = "#{root_url.chomp('/')}#{unsubscribe_forum_saved_searches_path(token: Community::SavedSearchUnsubscribeToken.generate(@search))}"
+      @rss_url = "#{root_url.chomp('/')}#{Community::SavedSearchPresenter.rss_path(@search)}"
 
       mail(to: @user.email, subject: "保存的搜索有新结果：#{@search.name}")
     end

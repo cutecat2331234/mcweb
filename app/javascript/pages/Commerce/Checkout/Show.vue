@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted, watch, computed } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -65,7 +65,7 @@ const props = defineProps<{
   shippingAddressesUrl?: string
   shippingLabel?: string | null
   freeShipping?: boolean
-  shippingMethods?: Array<{ code: string; label: string; cents: number; label_with_price: string }>
+  shippingMethods?: Array<{ code: string; label: string; cents: number; delivery_estimate?: string | null; label_with_price: string }>
   shippingMethodCode?: string | null
   freeShippingMinLabel?: string | null
   freeShippingRemainingLabel?: string | null
@@ -116,6 +116,11 @@ const totalLabel = ref<string | null>(props.subtotalLabel)
 const previewing = ref(false)
 const previewingGiftCard = ref(false)
 const selectedAddressId = ref<number | ''>('')
+
+const selectedShippingEstimate = computed(() => {
+  const method = props.shippingMethods?.find((item) => item.code === form.checkout.shipping_method)
+  return method?.delivery_estimate ?? null
+})
 
 function applySavedAddress(id: number | '') {
   if (!id) return
@@ -325,6 +330,9 @@ onMounted(() => {
           <input v-model="form.checkout.shipping_method" type="radio" :value="method.code">
           {{ method.label_with_price }}
         </label>
+        <p v-if="selectedShippingEstimate" class="text-xs text-muted-foreground">
+          预计送达：{{ selectedShippingEstimate }}
+        </p>
       </div>
       <div v-if="requiresShipping" class="space-y-3 rounded-lg border p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">

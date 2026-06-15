@@ -1221,3 +1221,14 @@ app/
 | 偏好页搜索重命名 | 与搜索页一致的内联 ✎ 重命名 |
 | 配送方式可视化 | 商城设置表单编辑 + `stored_list` |
 | 论坛设置上限配置 | 管理后台 `forum.saved_search_limit` |
+
+### 第七十七轮（筛选摘要邮件、保存搜索 RSS、结账送达预估、摘要发送时间）
+
+| 功能 | 实现 |
+|------|------|
+| 摘要邮件筛选 chips | `SavedSearchFilterSummary` + digest 模板展示 |
+| 保存搜索 RSS | `SavedSearchRssToken` + `RssController#saved_search` |
+| 搜索/偏好页 RSS 链接 | `SavedSearchPresenter.rss_path` + 前端 RSS 按钮 |
+| 结账配送预计送达 | `selectedShippingEstimate` 展示所选方式 `delivery_estimate` |
+| 摘要发送时间配置 | `forum.saved_search_digest_hour` + 每小时任务检查 |
+| 序列化复用 | `SavedSearchPresenter` 统一 url/rss 参数 |

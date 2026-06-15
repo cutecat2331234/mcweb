@@ -17,6 +17,7 @@ module Admin
         forum.reaction_emojis
         forum.group_pm_creator_only_add
         forum.saved_search_limit
+        forum.saved_search_digest_hour
       ].freeze
 
       def show
@@ -68,6 +69,7 @@ module Admin
         when "forum.report_auto_hide_threshold" then "5"
         when "forum.reaction_emojis" then "👍,❤️,😂,🎉,👀"
         when "forum.saved_search_limit" then "20"
+        when "forum.saved_search_digest_hour" then "9"
         else "0"
         end
       end
@@ -84,7 +86,8 @@ module Admin
           "forum.auto_close_on_solved" => "解决后自动关闭主题",
           "forum.reaction_emojis" => "可用反应表情（逗号分隔）",
           "forum.group_pm_creator_only_add" => "仅群主可添加群成员",
-          "forum.saved_search_limit" => "保存搜索数量上限"
+          "forum.saved_search_limit" => "保存搜索数量上限",
+          "forum.saved_search_digest_hour" => "保存搜索摘要发送时间（小时）"
         }[key] || key
       end
 
@@ -94,7 +97,8 @@ module Admin
           "forum.auto_close_on_solved" => "设为 1 时，主题标记为已解决后自动锁定。",
           "forum.report_auto_hide_threshold" => "帖子被举报达到此次数后自动隐藏待审。",
           "forum.reaction_emojis" => "用户可对帖子使用的表情列表。",
-          "forum.saved_search_limit" => "每位用户可保存的搜索数量，0 表示不限制。"
+          "forum.saved_search_limit" => "每位用户可保存的搜索数量，0 表示不限制。",
+          "forum.saved_search_digest_hour" => "每日发送保存搜索摘要邮件的小时（0–23，服务器时区）。任务每小时检查一次。"
         }[key]
       end
 

@@ -106,7 +106,9 @@ module Community
           name: search.name,
           query: search.query,
           notify_daily: search.notify_daily?,
-          url: forum_search_path(saved_search_url_params(search)),
+          filter_labels: Community::SavedSearchFilterSummary.call(search),
+          url: forum_search_path(Community::SavedSearchPresenter.url_params(search)),
+          rss_url: Community::SavedSearchPresenter.rss_path(search),
           update_url: forum_saved_search_path(search),
           delete_url: forum_saved_search_path(search)
         }
@@ -114,15 +116,7 @@ module Community
     end
 
     def saved_search_url_params(search)
-      filters = search.filters.symbolize_keys
-      {
-        q: search.query.presence,
-        section: filters[:section].presence,
-        category: filters[:category].presence,
-        author: filters[:author].presence,
-        tag: filters[:tag].presence,
-        solved: filters[:solved].presence
-      }.compact
+      Community::SavedSearchPresenter.url_params(search)
     end
   end
 end

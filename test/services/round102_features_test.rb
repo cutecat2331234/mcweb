@@ -8,7 +8,7 @@ class Round102GroupNotificationTimelineTest < ActiveSupport::TestCase
     groups = [
       { key: "a", latest_at_ts: now.to_i },
       { key: "b", latest_at_ts: (now - 1.day).to_i },
-      { key: "c", latest_at_ts: (now - 3.days).to_i }
+      { key: "c", latest_at_ts: (now - 10.days).to_i }
     ]
     sections = Community::GroupNotificationTimeline.call(groups)
     assert_equal 3, sections.size

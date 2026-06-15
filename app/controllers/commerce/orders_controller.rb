@@ -31,6 +31,7 @@ module Commerce
         statusOptions: Commerce::Order::STATUSES.map { |s| { value: s, label: order_status_label(s) } },
         statusTabs: customer_order_status_tabs,
         activeFilters: customer_order_active_filters,
+        totalPresets: customer_order_total_presets,
         exportUrl: export_store_orders_path(
           format: :csv,
           q: params[:q].presence,
@@ -231,6 +232,13 @@ module Commerce
         min_total: params[:min_total],
         max_total: params[:max_total],
         status_label: params[:status].present? ? order_status_label(params[:status]) : nil
+      )
+    end
+
+    def customer_order_total_presets
+      Commerce::CustomerOrderTotalPresets.call(
+        min_total: params[:min_total],
+        max_total: params[:max_total]
       )
     end
 

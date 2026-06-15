@@ -24,6 +24,15 @@ interface StatusTab {
   status?: string
 }
 
+interface TotalPreset {
+  key: string
+  label: string
+  min_total: string | null
+  max_total: string | null
+  active: boolean
+  href: string
+}
+
 const props = defineProps<{
   orders: Array<{
     id: string
@@ -45,6 +54,7 @@ const props = defineProps<{
   maxTotal?: string
   statusOptions: Array<{ value: string; label: string }>
   statusTabs?: StatusTab[]
+  totalPresets?: TotalPreset[]
   activeFilters?: Array<{ param: string; label: string; value?: string }>
   exportUrl?: string
 }>()
@@ -128,6 +138,15 @@ function removeFilter(filter: { param: string }) {
   router.get(routes.storeOrders, orderParams(overrides), { preserveState: true })
 }
 
+function applyTotalPreset(preset: TotalPreset) {
+  minTotal.value = preset.min_total || ''
+  maxTotal.value = preset.max_total || ''
+  router.get(routes.storeOrders, orderParams({
+    min_total: preset.min_total || undefined,
+    max_total: preset.max_total || undefined,
+  }), { preserveState: true })
+}
+
 function switchStatusTab(tab: StatusTab) {
   statusFilter.value = tab.status || ''
   router.get(routes.storeOrders, orderParams({ status: tab.status || undefined }), { preserveState: true })
@@ -155,6 +174,20 @@ function switchStatusTab(tab: StatusTab) {
       @click="switchStatusTab(tab)"
     >
       {{ tab.label }}<span v-if="tab.count != null" class="ml-1 opacity-80">({{ tab.count }})</span>
+    </button>
+  </div>
+
+  <div v-if="totalPresets?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">金额快捷：</span>
+    <button
+      v-for="preset in totalPresets"
+      :key="preset.key"
+      type="button"
+      class="rounded-md border px-2.5 py-1 text-xs"
+      :class="preset.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+      @click="applyTotalPreset(preset)"
+    >
+      {{ preset.label }}
     </button>
   </div>
 

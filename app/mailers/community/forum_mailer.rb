@@ -19,6 +19,7 @@ module Community
       @conversation = Community::Conversation.find(conversation_id)
       @message = Community::Message.find(message_id)
       @url = "#{root_url.chomp('/')}#{"/forum/conversations/#{@conversation.id}"}"
+      assign_notification_unsubscribe("forum.private_message")
 
       mail(to: @user.email, subject: "来自 #{@message.user.username} 的私信")
     end
@@ -48,6 +49,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      assign_notification_unsubscribe("forum.section_topic")
 
       mail(to: @user.email, subject: "分区有新主题：#{@topic.title.truncate(60)}")
     end

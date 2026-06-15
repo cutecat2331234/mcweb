@@ -14,6 +14,7 @@ module Community
       buckets = {
         "today" => [],
         "yesterday" => [],
+        "this_week" => [],
         "earlier" => []
       }
 
@@ -25,6 +26,7 @@ module Community
       [
         section("today", "今天", buckets["today"], default_expanded: true),
         section("yesterday", "昨天", buckets["yesterday"], default_expanded: true),
+        section("this_week", "本周", buckets["this_week"], default_expanded: true),
         section("earlier", "更早", buckets["earlier"], default_expanded: false)
       ].compact
     end
@@ -33,9 +35,11 @@ module Community
 
     def bucket_for(timestamp)
       time = Time.zone.at(timestamp.to_i)
+      date = time.to_date
       today = Time.zone.today
-      return "today" if time.to_date == today
-      return "yesterday" if time.to_date == today - 1
+      return "today" if date == today
+      return "yesterday" if date == today - 1
+      return "this_week" if date >= today.beginning_of_week
 
       "earlier"
     end

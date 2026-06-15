@@ -69,14 +69,25 @@ interface QuickFilter {
   unread_count?: number
 }
 
+interface PeriodFilter {
+  key: string
+  label: string
+  period: string
+  href: string
+  active: boolean
+  count: number
+}
+
 const props = defineProps<{
   notifications: NotificationGroup[]
   notificationSections?: NotificationSection[]
   activeCategory: 'all' | 'forum' | 'commerce'
   activeRead?: 'all' | 'unread'
   activeType?: string
+  activePeriod?: string
   typeTabs?: TypeTab[]
   quickFilters?: QuickFilter[]
+  periodFilters?: PeriodFilter[]
   activeFilters?: Array<{ param: string; label: string; value?: string }>
   unreadCount?: number
 }>()
@@ -115,7 +126,8 @@ function filterParams(overrides: Record<string, string | undefined> = {}) {
   const category = overrides.category ?? (props.activeCategory === 'all' ? undefined : props.activeCategory)
   const read = overrides.read ?? (props.activeRead === 'unread' ? 'unread' : undefined)
   const type = overrides.type ?? (props.activeType || undefined)
-  return { category, read, type }
+  const period = overrides.period ?? (props.activePeriod || undefined)
+  return { category, read, type, period }
 }
 
 function markAllRead() {
@@ -142,6 +154,7 @@ function removeFilter(filter: { param: string }) {
   const overrides: Record<string, string | undefined> = {}
   if (filter.param === 'category') overrides.category = undefined
   if (filter.param === 'read') overrides.read = undefined
+  if (filter.param === 'period') overrides.period = undefined
   if (filter.param === 'type') overrides.type = undefined
   router.get(routes.forumNotifications, filterParams(overrides), { preserveState: true })
 }
@@ -201,6 +214,19 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
     <Button :variant="activeRead === 'unread' ? 'default' : 'outline'" size="sm" @click="switchRead('unread')">
       未读<span v-if="unreadCount != null && unreadCount > 0"> ({{ unreadCount }})</span>
     </Button>
+  </div>
+
+  <div v-if="periodFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">时间筛选：</span>
+    <Link
+      v-for="pf in periodFilters"
+      :key="pf.key"
+      :href="pf.href"
+      class="rounded-md border px-2.5 py-1 text-xs no-underline"
+      :class="pf.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ pf.label }}<span class="ml-1 opacity-80">({{ pf.count }})</span>
+    </Link>
   </div>
 
   <div v-if="quickFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">

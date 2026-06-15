@@ -9,15 +9,16 @@ module Community
       { key: "payment", label: "支付确认", type: "commerce.payment_confirmed" }
     ].freeze
 
-    def self.call(user:, category: nil, read: nil, active_type: nil)
-      new(user: user, category: category, read: read, active_type: active_type).filters
+    def self.call(user:, category: nil, read: nil, active_type: nil, period: nil)
+      new(user: user, category: category, read: read, active_type: active_type, period: period).filters
     end
 
-    def initialize(user:, category:, read:, active_type:)
+    def initialize(user:, category:, read:, active_type:, period: nil)
       @user = user
       @category = category.to_s
       @read = read.to_s
       @active_type = active_type.to_s
+      @period = period.to_s
     end
 
     def filters
@@ -61,7 +62,8 @@ module Community
       {
         category: @category.presence,
         read: @read == "unread" ? "unread" : nil,
-        type: type
+        type: type,
+        period: @period.presence
       }.compact
     end
   end

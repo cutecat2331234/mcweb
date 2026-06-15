@@ -8,8 +8,15 @@ module Community
       read_filter = params[:read].to_s.presence
       category = params[:category].to_s.presence
       type_filter = params[:type].to_s.presence
+      period_filter = params[:period].to_s.presence
       base_scope = current_user.notifications.recent
-      filtered_scope = apply_notification_filters(base_scope, category: category, read: read_filter, type: type_filter)
+      filtered_scope = apply_notification_filters(
+        base_scope,
+        category: category,
+        read: read_filter,
+        type: type_filter,
+        period: period_filter
+      )
       notifications = filtered_scope.limit(100)
 
       unread_count = current_user.notifications.unread.count
@@ -23,9 +30,11 @@ module Community
         activeCategory: category.presence || "all",
         activeRead: read_filter.presence || "all",
         activeType: type_filter.to_s,
-        typeTabs: notification_type_tabs(base_scope, category: category, read: read_filter),
-        quickFilters: notification_quick_filters(category: category, read: read_filter, type: type_filter),
-        activeFilters: notification_active_filters(category: category, read: read_filter, type: type_filter),
+        activePeriod: period_filter.to_s,
+        typeTabs: notification_type_tabs(base_scope, category: category, read: read_filter, period: period_filter),
+        quickFilters: notification_quick_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
+        periodFilters: notification_period_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
+        activeFilters: notification_active_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
         unreadCount: unread_count
       }
     end
@@ -47,10 +56,16 @@ module Community
       category = params[:category].to_s.presence
       read_filter = params[:read].to_s.presence
       type_filter = params[:type].to_s.presence
+      period_filter = params[:period].to_s.presence
       scope = current_user.notifications.unread
-      scope = apply_notification_filters(scope, category: category, read: read_filter, type: type_filter)
+      scope = apply_notification_filters(scope, category: category, read: read_filter, type: type_filter, period: period_filter)
       scope.update_all(read_at: Time.current)
-      redirect_to forum_notifications_path(category: category, read: read_filter, type: type_filter), notice: "已标记为已读。"
+      redirect_to forum_notifications_path(
+        category: category,
+        read: read_filter,
+        type: type_filter,
+        period: period_filter
+      ), notice: "已标记为已读。"
     end
 
     private
@@ -74,11 +89,21 @@ module Community
       notification.notification_type.to_s.start_with?("commerce.") ? "commerce" : "forum"
     end
 
-    def apply_notification_filters(scope, category:, read:, type:)
+    def apply_notification_filters(scope, category:, read:, type:, period: nil)
       scope = filter_notifications_by_category(scope, category) if category.present?
       scope = scope.unread if read == "unread"
       scope = scope.where(notification_type: type) if type.present?
+      scope = apply_notification_period(scope, period) if period.present?
       scope
+    end
+
+    def apply_notification_period(scope, period)
+      case period.to_s
+      when "today"
+        scope.where("created_at >= ?", Time.zone.now.beginning_of_day)
+      else
+        scope
+      end
     end
 
     def filter_notifications_by_category(scope, category)
@@ -92,8 +117,8 @@ module Community
       end
     end
 
-    def notification_type_tabs(base_scope, category:, read:)
-      scope = apply_notification_filters(base_scope.unscope(:order), category: category, read: read, type: nil)
+    def notification_type_tabs(base_scope, category:, read:, period: nil)
+      scope = apply_notification_filters(base_scope.unscope(:order), category: category, read: read, type: nil, period: period)
       counts = scope.group(:notification_type).count
       unread_counts = scope.unread.group(:notification_type).count
       current = params[:type].to_s
@@ -103,7 +128,7 @@ module Community
         {
           type: type,
           label: NotificationTypeLabels.label_for(type),
-          href: forum_notifications_path(notification_tab_params(category: category, read: read, type: type)),
+          href: forum_notifications_path(notification_tab_params(category: category, read: read, type: type, period: period)),
           active: current == type,
           count: count,
           unread_count: unread
@@ -114,7 +139,7 @@ module Community
         tabs.unshift({
           type: current,
           label: NotificationTypeLabels.label_for(current),
-          href: forum_notifications_path(notification_tab_params(category: category, read: read, type: current)),
+          href: forum_notifications_path(notification_tab_params(category: category, read: read, type: current, period: period)),
           active: true,
           count: scope.where(notification_type: current).count,
           unread_count: scope.unread.where(notification_type: current).count
@@ -124,25 +149,37 @@ module Community
       tabs.first(12)
     end
 
-    def notification_quick_filters(category:, read:, type:)
+    def notification_quick_filters(category:, read:, type:, period: nil)
       Community::NotificationQuickFilters.call(
         user: current_user,
         category: category,
         read: read,
-        active_type: type
+        active_type: type,
+        period: period
       )
     end
 
-    def notification_tab_params(category:, read:, type:)
+    def notification_period_filters(category:, read:, type:, period: nil)
+      Community::NotificationPeriodFilters.call(
+        user: current_user,
+        category: category,
+        read: read,
+        type: type,
+        active_period: period
+      )
+    end
+
+    def notification_tab_params(category:, read:, type:, period: nil)
       {
         category: category.presence,
         read: read == "unread" ? "unread" : nil,
-        type: type.presence
+        type: type.presence,
+        period: period.presence
       }.compact
     end
 
-    def notification_active_filters(category:, read:, type:)
-      NotificationActiveFilters.call(category: category.presence || "all", read: read, type: type)
+    def notification_active_filters(category:, read:, type:, period: nil)
+      NotificationActiveFilters.call(category: category.presence || "all", read: read, type: type, period: period)
     end
 
     def group_notifications(notifications)

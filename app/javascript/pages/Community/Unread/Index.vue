@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -19,7 +19,7 @@ const props = defineProps<{
   sort: string
   filter: string
   section: string
-  tag: string
+  tags: string
   sortOptions: Array<{ value: string; label: string }>
   filterOptions: Array<{ value: string; label: string }>
   sectionOptions: Array<{ value: string; label: string }>
@@ -29,12 +29,19 @@ const props = defineProps<{
 
 const selectedIds = ref<string[]>([])
 
+const selectedTagSlugs = computed(() =>
+  props.tags
+    ? props.tags.split(',').map((slug) => slug.trim()).filter(Boolean)
+    : [],
+)
+
 function listParams(overrides: Record<string, string | undefined> = {}) {
+  const tagsValue = overrides.tags ?? (selectedTagSlugs.value.length ? selectedTagSlugs.value.join(',') : undefined)
   return {
     sort: overrides.sort ?? (props.sort === 'latest' ? undefined : props.sort),
     filter: overrides.filter ?? (props.filter || undefined),
     section: overrides.section ?? (props.section || undefined),
-    tag: overrides.tag ?? (props.tag || undefined),
+    tags: tagsValue,
   }
 }
 
@@ -61,16 +68,23 @@ function changeSection(value: string) {
   router.get(routes.forumUnread, listParams({ section: value || undefined }), { preserveState: true })
 }
 
-function changeTag(value: string) {
-  router.get(routes.forumUnread, listParams({ tag: value || undefined }), { preserveState: true })
+function addTag(value: string) {
+  if (!value) return
+  const next = selectedTagSlugs.value.includes(value)
+    ? selectedTagSlugs.value
+    : [ ...selectedTagSlugs.value, value ]
+  router.get(routes.forumUnread, listParams({ tags: next.join(',') }), { preserveState: true })
 }
 
-function removeFilter(chip: { param: string }) {
+function removeFilter(chip: { param: string; value?: string }) {
   const overrides: Record<string, string | undefined> = {}
   if (chip.param === 'sort') overrides.sort = undefined
   if (chip.param === 'filter') overrides.filter = undefined
   if (chip.param === 'section') overrides.section = undefined
-  if (chip.param === 'tag') overrides.tag = undefined
+  if (chip.param === 'tags' && chip.value) {
+    const next = selectedTagSlugs.value.filter((slug) => slug !== chip.value)
+    overrides.tags = next.length ? next.join(',') : undefined
+  }
   router.get(routes.forumUnread, listParams(overrides), { preserveState: true })
 }
 </script>
@@ -107,11 +121,17 @@ function removeFilter(chip: { param: string }) {
         <option v-for="opt in sectionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
       <select
-        :value="tag"
         class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-        @change="changeTag(($event.target as HTMLSelectElement).value)"
+        @change="addTag(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
       >
-        <option v-for="opt in tagOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
+        <option value="">添加标签筛选…</option>
+        <option
+          v-for="opt in tagOptions.filter((o) => o.value && !selectedTagSlugs.includes(o.value))"
+          :key="opt.value"
+          :value="opt.value"
+        >
+          {{ opt.label }}
+        </option>
       </select>
       <Button
         v-if="markSelectedReadUrl && selectedIds.length"

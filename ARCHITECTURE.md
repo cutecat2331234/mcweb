@@ -1516,3 +1516,13 @@ app/
 | 订单金额区间 | `min_total`/`max_total` + `CustomerOrderActiveFilters` + 导出同步 |
 | 邮件类型退订 | `_notification_unsubscribe` 局部 + topic_reply/followed_reply/reaction/mention |
 | 摘要按类型退订 | digest 每类型「关闭此类邮件」链接 |
+
+### 第一百零三轮（本周时间线、多标签未读、订单金额预设、私信分区退订、仅今日通知）
+
+| 功能 | 实现 |
+|------|------|
+| 通知本周桶 | `GroupNotificationTimeline` 增加 `this_week`（本周）分组 |
+| 未读多标签 AND | `UnreadController` `tags` 逗号分隔 + 多标签芯片 + 添加标签下拉 |
+| 订单金额预设 | `CustomerOrderTotalPresets` ¥100以下/¥100–500/¥500以上快捷按钮 |
+| 私信/分区退订 | `private_message`/`section_topic` 邮件退订链接 |
+| 通知仅今日 | `period=today` 参数 + `NotificationPeriodFilters` 时间快捷筛选 |

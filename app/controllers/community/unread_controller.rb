@@ -12,7 +12,7 @@ module Community
       sort = params[:sort].presence || "latest"
       filter = params[:filter].to_s.presence
       section_slug = params[:section].to_s.presence
-      tag_slug = params[:tag].to_s.presence
+      tag_slugs = unread_tag_slugs
       scope = Community::ReadState
         .with_unread_for(current_user)
         .includes(topic: TOPIC_LIST_INCLUDES)
@@ -33,16 +33,8 @@ module Community
         scope = scope.where(forum_topics: { forum_section_id: section.id }) if section
       end
 
-      if tag_slug.present?
-        tag_ids = unread_tag_ids_for(tag_slug)
-        if tag_ids.any?
-          unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
-          filtered_topic_ids = Community::TopicTag
-            .where(forum_tag_id: tag_ids, forum_topic_id: unread_topic_ids)
-            .distinct
-            .pluck(:forum_topic_id)
-          scope = scope.where(forum_topic_id: filtered_topic_ids)
-        end
+      if tag_slugs.any?
+        scope = apply_unread_tag_filters(scope, tag_slugs)
       end
 
       scope = scope.where.not(forum_topics: { user_id: blocked_user_ids }) if blocked_user_ids.any?
@@ -60,12 +52,12 @@ module Community
         sort: sort,
         filter: filter.to_s,
         section: section_slug.to_s,
-        tag: tag_slug.to_s,
+        tags: tag_slugs.join(","),
         sortOptions: forum_sort_options,
         filterOptions: topic_filter_options,
         sectionOptions: unread_section_options,
         tagOptions: unread_tag_options,
-        activeFilters: unread_active_filters(sort: sort, filter: filter, section: section_slug, tag: tag_slug)
+        activeFilters: unread_active_filters(sort: sort, filter: filter, section: section_slug, tag_slugs: tag_slugs)
       }
     end
 
@@ -135,16 +127,43 @@ module Community
       [ canonical.id ] + Community::Tag.where(canonical_tag_id: canonical.id).pluck(:id)
     end
 
-    def unread_active_filters(sort:, filter:, section:, tag:)
+    def unread_tag_slugs
+      raw = params[:tags].presence || params[:tag].presence
+      return [] unless raw
+
+      raw.to_s.split(",").map(&:strip).reject(&:blank?).uniq
+    end
+
+    def apply_unread_tag_filters(scope, tag_slugs)
+      unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
+      filtered_topic_ids = nil
+
+      tag_slugs.each do |slug|
+        tag_ids = unread_tag_ids_for(slug)
+        return scope.none if tag_ids.empty?
+
+        topic_ids = Community::TopicTag
+          .where(forum_tag_id: tag_ids, forum_topic_id: unread_topic_ids)
+          .distinct
+          .pluck(:forum_topic_id)
+
+        filtered_topic_ids = filtered_topic_ids.nil? ? topic_ids : (filtered_topic_ids & topic_ids)
+        return scope.none if filtered_topic_ids.empty?
+      end
+
+      scope.where(forum_topic_id: filtered_topic_ids)
+    end
+
+    def unread_active_filters(sort:, filter:, section:, tag_slugs:)
       chips = Community::TopicListActiveFilters.call(filter: filter) +
         Community::TopicListSortActiveFilters.call(sort: sort, default: "latest")
       if section.present?
         name = Community::Section.find_by(slug: section)&.name || section
         chips << { param: "section", label: "分区：#{name}", value: section }
       end
-      if tag.present?
-        name = Community::Tag.find_by(slug: tag)&.name || tag
-        chips << { param: "tag", label: "标签：#{name}", value: tag }
+      tag_slugs.each do |slug|
+        name = Community::Tag.find_by(slug: slug)&.name || slug
+        chips << { param: "tags", label: "标签：#{name}", value: slug }
       end
       chips
     end

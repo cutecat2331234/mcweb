@@ -32,8 +32,15 @@ module Commerce
 
       order = nil
       coupon_error = nil
+      empty_cart = false
 
       Commerce::Order.transaction do
+        @cart.lock!
+        if @cart.items.reload.empty?
+          empty_cart = true
+          raise ActiveRecord::Rollback
+        end
+
         subtotal_cents = 0
 
         order = Commerce::Order.create!(
@@ -99,6 +106,7 @@ module Commerce
       end
 
       return ServiceResult.failure(error: coupon_error) if coupon_error.present?
+      return ServiceResult.failure(error: "购物车为空。") if empty_cart
       return ServiceResult.failure(error: "无法创建订单。") unless order&.persisted?
 
       Commerce::OrderEvent.create!(

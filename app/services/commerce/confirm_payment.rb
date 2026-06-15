@@ -20,32 +20,40 @@ module Commerce
           return ServiceResult.success(record: record, idempotent: true, newly_paid: false)
         end
 
-        order = record.order
+        unless %w[pending processing].include?(record.status)
+          payment_error = "Payment is no longer valid."
+          raise ActiveRecord::Rollback
+        end
+
+        order = Commerce::Order.lock.find(record.store_order_id)
         order_id = order.id
 
-        if %w[pending awaiting_payment].include?(order.status)
-          if order.gift_card_amount_cents.to_i.positive?
-            debit_result = Commerce::DebitGiftCard.call(order: order)
-            unless debit_result.success?
-              payment_error = debit_result.error || "礼品卡扣款失败。"
-              raise ActiveRecord::Rollback
-            end
-          end
-
-          from_status = order.status
-          order.submit_payment! if order.pending? && order.may_submit_payment?
-          order.mark_paid! if order.awaiting_payment? && order.may_mark_paid?
-          order.update!(status: "paid") if order.status != "paid"
-
-          Commerce::OrderEvent.create!(
-            order: order,
-            event_type: "payment_confirmed",
-            from_status: from_status,
-            to_status: "paid",
-            metadata: { payment_record_id: record.id }
-          )
-          newly_paid = true
+        unless %w[pending awaiting_payment].include?(order.status)
+          payment_error = "Order is not payable."
+          raise ActiveRecord::Rollback
         end
+
+        if order.gift_card_amount_cents.to_i.positive?
+          debit_result = Commerce::DebitGiftCard.call(order: order)
+          unless debit_result.success?
+            payment_error = debit_result.error || "礼品卡扣款失败。"
+            raise ActiveRecord::Rollback
+          end
+        end
+
+        from_status = order.status
+        order.submit_payment! if order.pending? && order.may_submit_payment?
+        order.mark_paid! if order.awaiting_payment? && order.may_mark_paid?
+        order.update!(status: "paid") if order.status != "paid"
+
+        Commerce::OrderEvent.create!(
+          order: order,
+          event_type: "payment_confirmed",
+          from_status: from_status,
+          to_status: "paid",
+          metadata: { payment_record_id: record.id }
+        )
+        newly_paid = true
 
         record.update!(
           status: "succeeded",

@@ -7,7 +7,7 @@ module Payments
     enum :status, { pending: "pending", processing: "processing", succeeded: "succeeded", failed: "failed", cancelled: "cancelled" }, validate: true
 
     validates :provider, presence: true
-    validates :amount_cents, numericality: { greater_than: 0 }
+    validates :amount_cents, numericality: { greater_than_or_equal_to: 0 }
     validates :currency, presence: true
     validates :provider_payment_id, uniqueness: { scope: :provider }, allow_nil: true
 

@@ -5,13 +5,18 @@ module Commerce
     queue_as :minecraft
 
     def perform(order_id)
-      order = Commerce::Order.find(order_id)
-      return unless order.status == "paid"
+      Commerce::Order.transaction do
+        order = Commerce::Order.lock.find(order_id)
+        return unless %w[paid processing].include?(order.status)
 
-      if order.may_start_processing?
-        order.start_processing!
-        notify_processing!(order)
+        if order.paid? && order.may_start_processing?
+          order.start_processing!
+          notify_processing!(order)
+        end
       end
+
+      order = Commerce::Order.find(order_id)
+      return unless %w[processing fulfilling].include?(order.status)
 
       order.items.find_each do |order_item|
         snapshot = order_item.fulfillment_snapshot || {}

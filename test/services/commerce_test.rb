@@ -43,6 +43,37 @@ class Commerce::ConfirmPaymentTest < ActiveSupport::TestCase
     assert result.value[:idempotent]
     assert_equal 1, Payments::Record.where(order: @order, status: "succeeded").count
   end
+
+  test "rejects payment confirmation for cancelled order" do
+    @order.update!(status: "cancelled")
+
+    result = Commerce::ConfirmPayment.call(payment_record: @payment, provider_payment_id: "late_pay")
+
+    assert result.failure?
+    assert_equal "pending", @payment.reload.status
+    assert_equal "cancelled", @order.reload.status
+  end
+
+  test "rejects payment confirmation for failed payment record" do
+    @payment.update!(status: "failed")
+
+    result = Commerce::ConfirmPayment.call(payment_record: @payment, provider_payment_id: "late_pay")
+
+    assert result.failure?
+    assert_equal "failed", @payment.reload.status
+  end
+
+  test "allows zero amount payment records" do
+    payment = Payments::Record.new(
+      order: @order,
+      provider: "fake",
+      status: "pending",
+      amount_cents: 0,
+      currency: "CNY"
+    )
+
+    assert payment.valid?
+  end
 end
 
 class Commerce::CreateFulfillmentTest < ActiveSupport::TestCase

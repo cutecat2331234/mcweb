@@ -4,6 +4,14 @@
 
 ### Fixed
 
+- 已取消/不可支付订单拒绝支付确认，避免 payment 误标 succeeded
+- CreateOrder 锁定购物车防止并发空单/重复下单
+- FulfillOrderJob / FulfillGiftCardItem 加锁防止重复履约
+- 零元订单允许 amount_cents 为 0 的支付记录
+- ProcessRefund 加锁防止并发重复退款
+
+### Previously
+
 - 限购统计包含 pending 订单，防止多单绕过商品限购
 - 礼品卡领取加锁，防止并发重复绑定
 - 支付确认前扣减礼品卡余额，余额不足则支付失败

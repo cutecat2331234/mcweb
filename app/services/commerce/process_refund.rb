@@ -15,12 +15,17 @@ module Commerce
     def call
       return ServiceResult.failure(error: "Payment is not refundable.") unless @payment_record.status == "succeeded"
 
-      refunded_cents = @order.refunds.where(status: %w[pending completed]).where.not(id: @existing_refund&.id).sum(:amount_cents)
-      remaining = @payment_record.amount_cents - refunded_cents
-      return ServiceResult.failure(error: "Refund amount exceeds remaining balance.") if @amount_cents > remaining
-
       refund = nil
       Commerce::Refund.transaction do
+        @order.lock!
+        @payment_record.lock!
+
+        refunded_cents = @order.refunds.where(status: %w[pending completed]).where.not(id: @existing_refund&.id).sum(:amount_cents)
+        remaining = @payment_record.amount_cents - refunded_cents
+        if @amount_cents > remaining
+          return ServiceResult.failure(error: "Refund amount exceeds remaining balance.")
+        end
+
         refund = find_or_build_refund
         refund.assign_attributes(
           amount_cents: @amount_cents,

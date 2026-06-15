@@ -141,6 +141,22 @@ class Commerce::ZeroTotalCheckoutTest < ActiveSupport::TestCase
     assert_equal 0, @order.total_cents
     assert_equal 100, @order.gift_card_amount_cents
   end
+
+  test "zero total order can complete free checkout payment" do
+    payment = Payments::Record.create!(
+      order: @order,
+      provider: "fake",
+      amount_cents: 0,
+      currency: "CNY",
+      status: "pending"
+    )
+
+    result = Commerce::ConfirmPayment.call(payment_record: payment, provider_payment_id: "free-#{@order.public_id}")
+    assert result.success?
+    assert_equal "paid", @order.reload.status
+    assert_equal "succeeded", payment.reload.status
+    assert_equal 100, @gift_card.reload.balance_cents
+  end
 end
 
 class Community::SectionTopicTemplateTest < ActiveSupport::TestCase

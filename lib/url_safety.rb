@@ -9,6 +9,13 @@ module UrlSafety
 
   module_function
 
+  def http_https_url?(url)
+    uri = URI.parse(url.to_s.strip)
+    uri.is_a?(URI::HTTP) && uri.host.present? && uri.userinfo.blank?
+  rescue URI::InvalidURIError
+    false
+  end
+
   def public_http_url?(url)
     uri = URI.parse(url.to_s.strip)
     return false unless uri.is_a?(URI::HTTP) && uri.host.present?

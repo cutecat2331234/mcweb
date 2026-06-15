@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- 新增 `SafeRedirect`，修复购物车 `referer` 与登录 `return_to` 的开放重定向
+- 论坛 onebox 预览图仅允许 `http/https`，拒绝 `javascript:` 等危险 scheme
+- `FetchLinkPreview` 发起 HTTP 前二次校验 URL，降低 DNS rebinding 风险
+- 清理 Connector 签名中已无用的无时间戳分支
+
+### Previously
+
 - UrlSafety 拒绝空 DNS 结果、CGNAT 地址（100.64.0.0/10）及带凭据的 URL
 - Minecraft Connector 认证必须提供有效时间戳，防止重放
 

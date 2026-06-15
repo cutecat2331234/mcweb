@@ -27,8 +27,6 @@ module Minecraft
     private
 
     def signed_payload
-      return @payload if @timestamp.blank?
-
       "#{@timestamp}.#{@payload}"
     end
 

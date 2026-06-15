@@ -152,7 +152,7 @@ module Commerce
           cart: @cart
         )
         unless validation.success?
-          return redirect_to request.referer.presence || store_cart_path, alert: service_error_message(validation)
+          return redirect_to safe_referer_path(fallback: store_cart_path), alert: service_error_message(validation)
         end
 
         @cart.add_item!(product: product, variant: variant, quantity: quantity)

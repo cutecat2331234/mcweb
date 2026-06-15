@@ -33,6 +33,8 @@ module Community
     end
 
     def scrape_preview
+      return nil unless UrlSafety.public_http_url?(@url)
+
       uri = URI.parse(@url)
       response = Net::HTTP.start(uri.host, uri.port, use_ssl: uri.scheme == "https", open_timeout: TIMEOUT, read_timeout: TIMEOUT) do |http|
         http.get(uri.request_uri, { "User-Agent" => "McWebBot/1.0" })

@@ -2,6 +2,7 @@
 
 module Authentication
   extend ActiveSupport::Concern
+  include SafeRedirect
 
   SESSION_COOKIE = :session_token
 
@@ -91,7 +92,8 @@ module Authentication
   end
 
   def redirect_after_login(default: root_path, notice: nil)
-    destination = session.delete(:return_to).presence || default
+    stored = session.delete(:return_to)
+    destination = safe_local_redirect_path(stored, fallback: default)
     redirect_to destination, notice: notice
   end
 end

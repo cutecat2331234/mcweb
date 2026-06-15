@@ -166,7 +166,13 @@ module Community
           preview = Community::FetchLinkPreview.call(url: url)
           if preview.success? && preview.value
             p = preview.value
-            img = p[:image_url].present? ? %(<img src="#{ERB::Util.html_escape(p[:image_url])}" alt="" class="onebox-image" loading="lazy" />) : ""
+            image_url = p[:image_url].to_s.strip
+            img =
+              if UrlSafety.http_https_url?(image_url)
+                %(<img src="#{ERB::Util.html_escape(image_url)}" alt="" class="onebox-image" loading="lazy" />)
+              else
+                ""
+              end
             desc = p[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(p[:description].to_s.truncate(200))}</p>) : ""
             placeholders[token] = %(<aside class="onebox"><a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener" class="onebox-link">#{img}<strong class="onebox-title">#{ERB::Util.html_escape(p[:title].to_s)}</strong>#{desc}</a></aside>)
           else

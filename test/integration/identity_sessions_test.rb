@@ -51,4 +51,13 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
       ActionController::Base.allow_forgery_protection = @old_forgery
     end
   end
+
+  test "sign in ignores unsafe return_to destinations" do
+    get identity_sign_in_path
+    session[:return_to] = "//evil.com"
+
+    post identity_session_path, params: { session: { email: @user.email, password: "password123" } }
+
+    assert_redirected_to root_path
+  end
 end

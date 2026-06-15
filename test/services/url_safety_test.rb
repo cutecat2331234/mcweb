@@ -28,6 +28,17 @@ class UrlSafetyTest < ActiveSupport::TestCase
   test "blocks cgnat addresses" do
     assert_not UrlSafety.public_http_url?("http://100.64.0.1/status")
   end
+
+  test "http_https_url allows public http and https urls" do
+    assert UrlSafety.http_https_url?("https://cdn.example.com/image.png")
+    assert UrlSafety.http_https_url?("http://cdn.example.com/image.png")
+  end
+
+  test "http_https_url rejects javascript and other schemes" do
+    assert_not UrlSafety.http_https_url?("javascript:alert(1)")
+    assert_not UrlSafety.http_https_url?("data:text/html,<script>alert(1)</script>")
+    assert_not UrlSafety.http_https_url?("//evil.com/image.png")
+  end
 end
 
 class Community::FetchLinkPreviewTest < ActiveSupport::TestCase
@@ -35,5 +46,28 @@ class Community::FetchLinkPreviewTest < ActiveSupport::TestCase
     result = Community::FetchLinkPreview.call(url: "http://127.0.0.1/admin")
     assert result.failure?
     assert_equal "Invalid URL.", result.error
+  end
+
+  test "scrape_preview returns nil for unsafe urls" do
+    service = Community::FetchLinkPreview.new(url: "http://127.0.0.1/secret")
+    assert_nil service.send(:scrape_preview)
+  end
+end
+
+class Community::FormatPostBodyOneboxSafetyTest < ActiveSupport::TestCase
+  test "onebox omits unsafe preview image urls" do
+    preview = {
+      url: "https://example.com",
+      title: "Example",
+      description: "Desc",
+      image_url: "javascript:alert(1)"
+    }
+
+    Rails.cache.write("forum/link_preview/#{Digest::SHA256.hexdigest('https://example.com')}", preview)
+
+    result = Community::FormatPostBody.call(body: "https://example.com")
+    assert result.success?
+    assert_not_includes result.value, "javascript:"
+    assert_not_includes result.value, "<img"
   end
 end

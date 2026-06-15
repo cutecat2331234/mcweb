@@ -47,7 +47,8 @@ module Community
       if product.cover_image.attached?
         Rails.application.routes.url_helpers.rails_blob_path(product.cover_image, only_path: true)
       else
-        product.image_url
+        src = product.image_url.to_s.strip
+        UrlSafety.safe_image_src?(src) ? src : nil
       end
     end
   end

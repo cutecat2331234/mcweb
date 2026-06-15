@@ -86,12 +86,28 @@ class Community::FormatPostBodyOneboxSafetyTest < ActiveSupport::TestCase
       price_cents: 100,
       currency: "CNY",
       status: "active",
-      image_url: "javascript:alert(1)"
+      image_url: "https://cdn.example.com/safe.png"
     )
+    product.update_column(:image_url, "javascript:alert(1)")
 
     result = Community::FormatPostBody.call(body: "/store/products/#{product.public_id}")
     assert result.success?
     assert_not_includes result.value, "javascript:"
     assert_not_includes result.value, "<img"
+  end
+
+  test "product model rejects unsafe image urls" do
+    product = Commerce::Product.new(
+      name: "Bad Image",
+      slug: "bad-image-#{SecureRandom.hex(4)}",
+      product_type: "virtual",
+      price_cents: 100,
+      currency: "CNY",
+      status: "active",
+      image_url: "javascript:alert(1)"
+    )
+
+    assert_not product.valid?
+    assert_includes product.errors[:image_url], "must be a safe http(s) or uploaded image URL"
   end
 end

@@ -19,7 +19,7 @@ module Community
     def visit
       notification = current_user.notifications.find(params[:id])
       notification.mark_read!
-      destination = notification.metadata["path"] || notification.metadata["url"] || forum_notifications_path
+      destination = safe_notification_path(notification.metadata)
       redirect_to destination
     end
 
@@ -39,6 +39,11 @@ module Community
 
     private
 
+    def safe_notification_path(metadata)
+      raw = metadata["path"].presence || metadata["url"].presence
+      safe_local_redirect_path(raw, fallback: forum_notifications_path)
+    end
+
     def serialize_notification(notification)
       {
         id: notification.id,
@@ -48,7 +53,7 @@ module Community
         category: notification_category(notification),
         read: notification.read?,
         created_at: l(notification.created_at, format: :short),
-        url: notification.metadata["path"] || notification.metadata["url"],
+        url: safe_notification_path(notification.metadata),
         visit_url: visit_forum_notification_path(notification),
         mark_read_url: mark_read_forum_notification_path(notification)
       }

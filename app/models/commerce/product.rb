@@ -24,6 +24,8 @@ module Commerce
     validates :minimum_quantity, numericality: { only_integer: true, greater_than: 0 }
     validates :maximum_quantity, numericality: { only_integer: true, greater_than: 0 }, allow_nil: true
     validate :maximum_quantity_valid
+    validate :image_url_safe
+    validate :gallery_urls_safe
 
     def on_sale?
       compare_at_price_cents.present? && compare_at_price_cents > price_cents
@@ -107,6 +109,23 @@ module Commerce
 
       if compare_at_price_cents < price_cents
         errors.add(:compare_at_price_cents, "must be greater than or equal to sale price")
+      end
+    end
+
+    def image_url_safe
+      return if image_url.blank?
+      return if UrlSafety.safe_image_src?(image_url)
+
+      errors.add(:image_url, "must be a safe http(s) or uploaded image URL")
+    end
+
+    def gallery_urls_safe
+      Array(gallery_urls).each do |url|
+        next if url.blank?
+        next if UrlSafety.safe_image_src?(url)
+
+        errors.add(:gallery_urls, "contains an unsafe URL")
+        break
       end
     end
   end

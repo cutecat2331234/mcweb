@@ -393,8 +393,17 @@ module InertiaSerializable
     if product.cover_image.attached?
       rails_blob_path(product.cover_image, only_path: true)
     else
-      product.image_url
+      safe_product_image_url(product.image_url)
     end
+  end
+
+  def safe_product_image_url(url)
+    src = url.to_s.strip
+    UrlSafety.safe_image_src?(src) ? src : nil
+  end
+
+  def safe_gallery_urls(product)
+    Array(product.gallery_urls).filter_map { |url| safe_product_image_url(url) }
   end
 
   def serialize_product_detail(product, wishlisted: false, reviews: [], average_rating: nil)
@@ -419,7 +428,7 @@ module InertiaSerializable
       minimum_quantity: [ product.minimum_quantity.to_i, 1 ].max,
       maximum_quantity: product.maximum_quantity,
       image_url: product_image_url(product),
-      gallery_urls: product.gallery_urls || [],
+      gallery_urls: safe_gallery_urls(product),
       version: product.version,
       changelog: product.changelog,
       view_count: product.view_count,
@@ -434,8 +443,8 @@ module InertiaSerializable
     seo = product.seo || {}
     title = seo["title"].presence || product.name
     description = seo["description"].presence || product.summary.presence || product.description&.truncate(160)
-    image = product.image_url.presence
-    image ||= url_for(product.cover_image) if product.cover_image.attached?
+    image = safe_product_image_url(product.image_url)
+    image ||= rails_blob_path(product.cover_image, only_path: true) if product.cover_image.attached?
     {
       seo_title: title,
       seo_description: description,

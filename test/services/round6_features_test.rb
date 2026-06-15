@@ -79,6 +79,16 @@ class Community::VotePollTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal 1, @poll.votes.find_by(user: @user).option_index
   end
+
+  test "user cannot vote on poll in hidden topic" do
+    @topic.update!(status: "hidden")
+    other = create_user
+
+    result = Community::VotePoll.call(user: other, poll: @poll, option_index: 0)
+
+    assert result.failure?
+    assert_match(/not allowed/i, result.error)
+  end
 end
 
 class Community::CreateTopicPollTest < ActiveSupport::TestCase

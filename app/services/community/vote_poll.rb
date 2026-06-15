@@ -10,6 +10,7 @@ module Community
     end
 
     def call
+      return ServiceResult.failure(error: "You are not allowed to vote in this topic.") unless PollParticipation.allowed?(user: @user, poll: @poll)
       return ServiceResult.failure(error: "Poll is closed.") unless @poll.open?
       return ServiceResult.failure(error: "No options selected.") if @option_indices.empty?
 

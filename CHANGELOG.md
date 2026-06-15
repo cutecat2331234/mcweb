@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- 通知跳转 `visit` 使用 `SafeRedirect`，拒绝 metadata 中的开放重定向
+- 投票/撤销投票校验主题可见性与分区权限，防止隐藏主题 IDOR
+- 商品 `image_url` / `gallery_urls` 模型校验与前端序列化过滤危险 URL
+
+### Previously
+
 - `UrlSafety.safe_image_src?` 统一校验帖子/onebox 图片 URL，修复商品 onebox 与头像的 XSS 风险
 - `store_return_location` 写入 session 前过滤协议相对路径等不安全跳转
 - `FetchLinkPreview` 缓存预览图前过滤非 http/https URL

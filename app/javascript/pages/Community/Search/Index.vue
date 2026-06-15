@@ -96,6 +96,7 @@ const props = defineProps<{
   searchHistoriesOpmlUrl?: string | null
   searchFeedsOpmlUrl?: string | null
   excludeTerms?: string[]
+  activeFilters?: Array<{ param: string; label: string; value?: string | null }>
 }>()
 
 const atSavedSearchLimit = computed(() => {
@@ -313,6 +314,38 @@ function removeExcludeTerm(term: string) {
     .replace(new RegExp(`(^|\\s)-${escaped}(?=\\s|$)`, 'g'), ' ')
     .replace(/\s+/g, ' ')
     .trim()
+  router.get(routes.forumSearch, searchParams(), { preserveState: true })
+}
+
+function removeActiveFilter(filter: { param: string; value?: string | null }) {
+  if (filter.param === 'exclude') {
+    if (filter.value) removeExcludeTerm(filter.value)
+    return
+  }
+  const clear: Record<string, () => void> = {
+    q: () => { q.value = '' },
+    section: () => { sectionSlug.value = '' },
+    category: () => { categorySlug.value = '' },
+    author: () => { author.value = '' },
+    tag: () => { tagSlug.value = '' },
+    solved: () => { solved.value = '' },
+    locked: () => { locked.value = '' },
+    pinned: () => { pinned.value = '' },
+    wiki: () => { wiki.value = '' },
+    featured: () => { featured.value = '' },
+    poll: () => { poll.value = '' },
+    noreplies: () => { noreplies.value = '' },
+    assigned: () => { assigned.value = '' },
+    mine: () => { mine.value = '' },
+    scope: () => { scope.value = '' },
+    created_after: () => { createdAfter.value = '' },
+    created_before: () => { createdBefore.value = '' },
+    title_only: () => { titleOnly.value = false },
+    posts_only: () => { postsOnly.value = false },
+    topic_sort: () => { topicSort.value = 'recent' },
+    post_sort: () => { postSort.value = 'recent' },
+  }
+  clear[filter.param]?.()
   router.get(routes.forumSearch, searchParams(), { preserveState: true })
 }
 
@@ -671,12 +704,30 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
     </button>
   </form>
 
+  <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span
+      v-for="filter in activeFilters"
+      :key="`${filter.param}-${filter.value || filter.label}`"
+      class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
+      :class="filter.param === 'exclude' ? 'border-destructive/30 bg-destructive/5 text-destructive' : ''"
+    >
+      {{ filter.label }}
+      <button
+        type="button"
+        class="hover:opacity-70"
+        title="移除此筛选"
+        @click="removeActiveFilter(filter)"
+      >×</button>
+    </span>
+  </div>
+
   <p class="mb-4 max-w-2xl text-xs text-muted-foreground">
     排除语法：在关键词前加 <code class="rounded bg-muted px-1">-</code> 可排除包含该词的主题/帖子，例如
     <code class="rounded bg-muted px-1">ruby tutorial -spam -offtopic</code>
   </p>
 
-  <div v-if="excludeTerms?.length" class="mb-4 flex flex-wrap items-center gap-2">
+  <div v-if="excludeTerms?.length && !activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
     <span class="text-xs text-muted-foreground">排除词：</span>
     <span
       v-for="term in excludeTerms"

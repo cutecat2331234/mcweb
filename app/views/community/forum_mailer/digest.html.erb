@@ -2,17 +2,20 @@
 
 <p>以下是您订阅的论坛摘要（<%= @notifications.count %> 条）：</p>
 
-<ul>
-  <% @notifications.each do |notification| %>
-    <li>
-      <strong><%= notification.title %></strong>
-      <span style="color:#666;font-size:12px;">(<%= l(notification.created_at, format: :short) %>)</span>
-      <% if notification.body.present? %>
-        <br><span style="color:#444;"><%= notification.body.truncate(100) %></span>
-      <% end %>
-    </li>
-  <% end %>
-</ul>
+<% @digest_sections.each do |section| %>
+  <h3 style="font-size:14px;margin:16px 0 8px;color:#333;"><%= section[:label] %> (<%= section[:notifications].size %>)</h3>
+  <ul>
+    <% section[:notifications].each do |notification| %>
+      <li style="margin-bottom:8px;">
+        <strong><%= notification.title %></strong>
+        <span style="color:#666;font-size:12px;">(<%= l(notification.created_at, format: :short) %>)</span>
+        <% if notification.body.present? %>
+          <br><span style="color:#444;"><%= notification.body.truncate(100) %></span>
+        <% end %>
+      </li>
+    <% end %>
+  </ul>
+<% end %>
 
 <p><a href="<%= root_url.chomp('/') %><%= forum_latest_path %>">访问论坛</a></p>
 

@@ -220,7 +220,35 @@ module Community
         searchHistoriesOpmlUrl: logged_in? ? forum_search_histories_opml_path(token: Community::SearchHistoryOpmlToken.generate(current_user)) : nil,
         searchFeedsOpmlUrl: logged_in? ? forum_search_feeds_opml_path(token: Community::SearchFeedsOpmlToken.generate(current_user)) : nil,
         clearSearchHistoryUrl: logged_in? ? forum_clear_search_histories_path : nil,
-        excludeTerms: parsed_exclude_terms
+        excludeTerms: parsed_exclude_terms,
+        activeFilters: serialize_search_active_filters(
+          query: raw_query,
+          section: section_slug,
+          category: category_slug,
+          author: author,
+          tag: tag_slug,
+          solved: solved_filter,
+          locked: locked_filter,
+          pinned: pinned_filter,
+          wiki: wiki_filter,
+          featured: featured_filter,
+          announcement: announcement_filter,
+          unlisted: unlisted_filter,
+          archived: archived_filter,
+          assigned: assigned_filter,
+          images: images_filter,
+          assignee: assignee_filter,
+          mine: mine_filter,
+          scope: scope_filter,
+          poll: poll_filter,
+          noreplies: noreplies_filter,
+          title_only: title_only ? "1" : nil,
+          posts_only: posts_only ? "1" : nil,
+          created_after: params[:created_after],
+          created_before: params[:created_before],
+          topic_sort: params[:topic_sort],
+          post_sort: params[:post_sort]
+        )
       }
     end
 
@@ -428,6 +456,10 @@ module Community
 
     def apply_images_filter(scope)
       scope.where("forum_posts.body LIKE ? OR forum_posts.body LIKE ?", "%![%", "%/rails/active_storage/%")
+    end
+
+    def serialize_search_active_filters(**filters)
+      Community::SearchActiveFilters.call(filters)
     end
 
     def serialize_search_histories

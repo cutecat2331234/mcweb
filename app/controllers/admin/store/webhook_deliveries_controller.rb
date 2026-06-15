@@ -85,12 +85,32 @@ module Admin
         base_params = webhook_filter_params.except(:status)
         base = admin_store_webhook_deliveries_path(base_params)
         current = params[:status].to_s
-        [
-          { label: "全部", href: base, active: current.blank? },
-          { label: "失败", href: admin_store_webhook_deliveries_path(base_params.merge(status: "failed")), active: current == "failed" },
-          { label: "成功", href: admin_store_webhook_deliveries_path(base_params.merge(status: "success")), active: current == "success" },
-          { label: "进行中", href: admin_store_webhook_deliveries_path(base_params.merge(status: "pending")), active: current == "pending" }
-        ]
+        counts = webhook_counts_scope.group(:status).count
+        total = counts.values.sum
+        tabs = [ { label: "全部", href: base, active: current.blank?, count: total } ]
+        {
+          "failed" => "失败",
+          "success" => "成功",
+          "pending" => "进行中"
+        }.each do |status, label|
+          count = counts[status].to_i
+          next if count.zero? && current != status
+
+          tabs << {
+            label: label,
+            href: admin_store_webhook_deliveries_path(base_params.merge(status: status)),
+            active: current == status,
+            count: count
+          }
+        end
+        tabs
+      end
+
+      def webhook_counts_scope
+        scope = Commerce::OrderWebhookDelivery.all
+        scope = scope.where(event_type: params[:event]) if params[:event].present?
+        scope = apply_webhook_kind_scope(scope)
+        apply_webhook_date_scope(scope)
       end
 
       def webhook_event_tabs

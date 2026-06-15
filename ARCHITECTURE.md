@@ -1448,3 +1448,13 @@ app/
 | 批量 mark_paid 通知 | 批量/管理后台标记已支付触发邮件与站内通知 |
 | 订单状态标签计数 | `statusTabs` 显示各状态订单数量 |
 | 排除词可移除 | 搜索页排除芯片 × 按钮即时更新查询 |
+
+### 第九十七轮（搜索筛选芯片、投票关闭横幅、摘要分组、后台计数优化）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索活跃筛选芯片 | `SearchActiveFilters` + 可移除筛选 chips |
+| 投票关闭状态横幅 | `closed_at` + `Topics/Show.vue` 醒目提示条 |
+| 摘要按类型分组 | `GroupDigestNotifications` + digest 邮件模板 |
+| 订单 tab 隐藏空状态 | 仅显示有订单的状态标签 |
+| Webhook tab 计数 | 投递列表 statusTabs 显示各状态数量 |

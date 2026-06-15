@@ -78,6 +78,7 @@ module Community
     def digest(user_id, notification_ids)
       @user = User.find(user_id)
       @notifications = Notification.where(id: notification_ids, user: @user).order(created_at: :desc)
+      @digest_sections = Community::GroupDigestNotifications.call(@notifications)
       @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
       @unsubscribe_url = "#{root_url.chomp('/')}#{forum_unsubscribe_forum_digest_path(token: Community::ForumDigestUnsubscribeToken.generate(@user))}"
 

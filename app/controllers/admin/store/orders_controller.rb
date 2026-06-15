@@ -379,11 +379,14 @@ module Admin
           count: total
         } ]
         ORDER_STATUS_LABELS.each do |status, label|
+          count = counts[status].to_i
+          next if count.zero?
+
           tabs << {
             label: label,
             href: admin_store_orders_path(base_params.merge(status: status)),
             active: current == status,
-            count: counts[status].to_i
+            count: count
           }
         end
         tabs

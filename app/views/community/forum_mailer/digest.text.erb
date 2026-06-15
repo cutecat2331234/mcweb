@@ -1,12 +1,15 @@
 您好 <%= @user.username %>，
 
-以下是您订阅的论坛摘要：
+以下是您订阅的论坛摘要（<%= @notifications.count %> 条）：
 
-<% @notifications.each do |notification| %>
+<% @digest_sections.each do |section| %>
+## <%= section[:label] %> (<%= section[:notifications].size %>)
+<% section[:notifications].each do |notification| %>
 - <%= notification.title %> (<%= l(notification.created_at, format: :short) %>)
   <% if notification.body.present? %><%= notification.body.truncate(100) %><% end %>
 <% end %>
 
+<% end %>
 访问论坛：<%= root_url %>forum/latest
 
 一键关闭论坛邮件摘要：<%= @unsubscribe_url %>

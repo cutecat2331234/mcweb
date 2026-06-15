@@ -567,12 +567,13 @@ module InertiaSerializable
       total_votes: show_results ? poll.total_votes : nil,
       user_vote_index: user_vote_indices.first,
       user_vote_indices: user_vote_indices,
-      vote_url: forum_poll_vote_path(poll),
+      vote_url: vote_forum_poll_path(poll),
       revoke_url: poll.open? && user_votes.exists? ? revoke_forum_poll_path(poll) : nil,
       voters_url: can_see_voters ? voters_forum_poll_path(poll) : nil,
       export_url: can_close ? export_forum_poll_path(poll) : nil,
       close_url: can_close && poll.open? ? close_forum_poll_path(poll) : nil,
-      closes_at: poll.closes_at ? l(poll.closes_at, format: :short) : nil
+      closes_at: poll.closes_at ? l(poll.closes_at, format: :short) : nil,
+      closed_at: !poll.open? && poll.closes_at ? l(poll.closes_at, format: :short) : nil
     }
   end
 

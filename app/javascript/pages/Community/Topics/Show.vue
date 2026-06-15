@@ -107,6 +107,7 @@ export interface PollItem {
   export_url?: string | null
   close_url?: string | null
   revoke_url?: string | null
+  closed_at?: string | null
   closes_at?: string | null
 }
 
@@ -1121,6 +1122,12 @@ function pollPercent(votes: number) {
   </div>
 
   <section v-if="poll" class="mb-6 max-w-xl rounded-lg border p-4">
+    <div
+      v-if="!poll.open"
+      class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+    >
+      投票已结束<span v-if="poll.closed_at">（{{ poll.closed_at }}）</span>，以下为最终结果。
+    </div>
     <div class="mb-3 flex items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">{{ poll.question }}</h2>
       <Button v-if="poll.close_url" type="button" variant="outline" size="sm" @click="closePoll">关闭投票</Button>

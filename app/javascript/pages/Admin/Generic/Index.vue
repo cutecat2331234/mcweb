@@ -209,7 +209,7 @@ function bulkOrder(action: string) {
       class="rounded-md border px-3 py-1.5 text-xs no-underline"
       :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
     >
-      {{ tab.label }}
+      {{ tab.label }}<span v-if="tab.count != null" class="ml-1 opacity-80">({{ tab.count }})</span>
     </Link>
   </div>
 

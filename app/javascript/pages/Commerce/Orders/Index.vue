@@ -16,6 +16,13 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
+interface StatusTab {
+  label: string
+  href: string
+  active: boolean
+  count?: number
+}
+
 const props = defineProps<{
   orders: Array<{
     id: string
@@ -32,6 +39,8 @@ const props = defineProps<{
   query: string
   status: string
   statusOptions: Array<{ value: string; label: string }>
+  statusTabs?: StatusTab[]
+  activeFilters?: Array<{ param: string; label: string; value?: string }>
   exportUrl?: string
 }>()
 
@@ -43,6 +52,15 @@ function reorder(url: string) {
 }
 
 function search() {
+  router.get(routes.storeOrders, {
+    q: q.value || undefined,
+    status: statusFilter.value || undefined,
+  }, { preserveState: true })
+}
+
+function removeFilter(filter: { param: string }) {
+  if (filter.param === 'q') q.value = ''
+  if (filter.param === 'status') statusFilter.value = ''
   router.get(routes.storeOrders, {
     q: q.value || undefined,
     status: statusFilter.value || undefined,
@@ -61,6 +79,18 @@ function search() {
     </Button>
   </div>
 
+  <div v-if="statusTabs?.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      v-for="tab in statusTabs"
+      :key="tab.href"
+      :href="tab.href"
+      class="rounded-md border px-3 py-1.5 text-sm no-underline"
+      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ tab.label }}<span v-if="tab.count != null" class="ml-1 opacity-80">({{ tab.count }})</span>
+    </Link>
+  </div>
+
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
     <Input v-model="q" placeholder="搜索订单号…" class="max-w-xs" />
     <select v-model="statusFilter" class="h-9 rounded-md border border-input bg-transparent px-3 text-sm">
@@ -70,6 +100,18 @@ function search() {
     <Button type="submit" size="sm">筛选</Button>
   </form>
 
+  <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span
+      v-for="filter in activeFilters"
+      :key="`${filter.param}-${filter.value || filter.label}`"
+      class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
+    >
+      {{ filter.label }}
+      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(filter)">×</button>
+    </span>
+  </div>
+
   <div v-if="orders.length" class="rounded-lg border">
     <Table>
       <TableHeader>
@@ -78,23 +120,19 @@ function search() {
           <TableHead>状态</TableHead>
           <TableHead>金额</TableHead>
           <TableHead>时间</TableHead>
-          <TableHead>操作</TableHead>
+          <TableHead class="text-right">操作</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         <TableRow v-for="order in orders" :key="order.id">
-          <TableCell><Link :href="order.url" class="font-medium hover:underline">{{ order.order_number }}</Link></TableCell>
-          <TableCell>{{ order.status_label || order.status }}</TableCell>
-          <TableCell>{{ order.total_label }}</TableCell>
-          <TableCell>{{ order.created_at }}</TableCell>
           <TableCell>
-            <Button
-              v-if="order.can_reorder && order.reorder_url"
-              type="button"
-              variant="outline"
-              size="sm"
-              @click="reorder(order.reorder_url!)"
-            >
+            <Link :href="order.url" class="font-medium text-primary hover:underline">{{ order.order_number }}</Link>
+          </TableCell>
+          <TableCell>{{ order.status_label }}</TableCell>
+          <TableCell>{{ order.total_label }}</TableCell>
+          <TableCell class="text-muted-foreground">{{ order.created_at }}</TableCell>
+          <TableCell class="text-right">
+            <Button v-if="order.can_reorder && order.reorder_url" type="button" variant="outline" size="sm" @click="reorder(order.reorder_url!)">
               再次购买
             </Button>
           </TableCell>
@@ -102,6 +140,7 @@ function search() {
       </TableBody>
     </Table>
   </div>
-  <Pagination v-if="orders.length" :pagination="pagination" :base-path="routes.storeOrders" />
   <p v-else class="text-sm text-muted-foreground">暂无订单。</p>
+
+  <Pagination v-if="pagination.pages > 1" :meta="pagination" class="mt-6" />
 </template>

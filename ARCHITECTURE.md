@@ -1458,3 +1458,15 @@ app/
 | 摘要按类型分组 | `GroupDigestNotifications` + digest 邮件模板 |
 | 订单 tab 隐藏空状态 | 仅显示有订单的状态标签 |
 | Webhook tab 计数 | 投递列表 statusTabs 显示各状态数量 |
+
+### 第九十八轮（摘要直达链接、商城订单筛选、Webhook 事件计数）
+
+| 功能 | 实现 |
+|------|------|
+| 通知直达路径 | `Notification#destination_path` + `NotificationDestinationUrl` |
+| 摘要邮件链接 | digest 模板每条通知附可点击直达 URL |
+| 用户订单状态标签 | `statusTabs` 计数 + 隐藏空状态 |
+| 用户订单筛选芯片 | `activeFilters` 可移除 q/status |
+| 用户订单导出筛选 | export 尊重 q/status 参数 |
+| Webhook 事件 tab 计数 | `eventTabs` 显示各事件类型数量 |
+| 投票关闭 UI 强化 | 关闭后禁用投票交互、去除重复文案 |

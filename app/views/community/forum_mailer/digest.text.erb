@@ -5,7 +5,8 @@
 <% @digest_sections.each do |section| %>
 ## <%= section[:label] %> (<%= section[:notifications].size %>)
 <% section[:notifications].each do |notification| %>
-- <%= notification.title %> (<%= l(notification.created_at, format: :short) %>)
+<% url = notification_url_for(notification) %>
+- <%= notification.title %> (<%= l(notification.created_at, format: :short) %>)<% if url.present? %> — <%= url %><% end %>
   <% if notification.body.present? %><%= notification.body.truncate(100) %><% end %>
 <% end %>
 

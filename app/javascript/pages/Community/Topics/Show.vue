@@ -1135,11 +1135,10 @@ function pollPercent(votes: number) {
     <p v-if="poll.multiple_choice" class="mb-2 text-xs text-muted-foreground">多选（最多 {{ poll.max_choices }} 项）</p>
     <p v-if="poll.anonymous" class="mb-2 text-xs text-muted-foreground">匿名投票：不公开投票者名单</p>
     <p v-if="poll.closes_at && poll.open" class="mb-2 text-xs text-muted-foreground">投票将于 {{ poll.closes_at }} 结束</p>
-    <p v-if="!poll.open" class="mb-3 text-xs text-muted-foreground">投票已结束</p>
-    <p v-if="poll.hide_results_until_vote && !poll.show_results" class="mb-3 text-xs text-muted-foreground">
+    <p v-if="poll.hide_results_until_vote && !poll.show_results && poll.open" class="mb-3 text-xs text-muted-foreground">
       投票后可查看结果
     </p>
-    <div v-if="poll.show_results" class="space-y-2">
+    <div v-if="poll.show_results" class="space-y-2" :class="{ 'pointer-events-none opacity-75': !poll.open }">
       <div v-for="option in poll.results" :key="option.index" class="space-y-1">
         <div class="flex items-center justify-between gap-2 text-sm">
           <span>{{ option.label }}</span>

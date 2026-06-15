@@ -23,12 +23,22 @@ module Commerce
         query: params[:q].to_s,
         status: params[:status].to_s,
         statusOptions: Commerce::Order::STATUSES.map { |s| { value: s, label: order_status_label(s) } },
-        exportUrl: export_store_orders_path(format: :csv)
+        statusTabs: customer_order_status_tabs,
+        activeFilters: customer_order_active_filters,
+        exportUrl: export_store_orders_path(format: :csv, q: params[:q].presence, status: params[:status].presence)
       }
     end
 
     def export
-      orders = Commerce::Order.where(user: current_user).order(created_at: :desc).limit(500)
+      orders_scope = Commerce::Order.where(user: current_user).order(created_at: :desc)
+      if params[:q].present?
+        q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
+        orders_scope = orders_scope.where("order_number ILIKE ?", q)
+      end
+      if params[:status].present?
+        orders_scope = orders_scope.where(status: params[:status])
+      end
+      orders = orders_scope.limit(500)
       lines = [ "order_number,status,total_cents,currency,created_at" ]
       orders.each do |order|
         lines << [ order.order_number, order.status, order.total_cents, order.currency, order.created_at.iso8601 ].join(",")
@@ -160,6 +170,46 @@ module Commerce
 
     def order_params
       params.fetch(:order, {}).permit(:notes)
+    end
+
+    def customer_order_status_tabs
+      base_params = { q: params[:q].presence }.compact
+      current = params[:status].to_s
+      counts = Commerce::Order.where(user: current_user).group(:status).count
+      total = counts.values.sum
+
+      tabs = [ {
+        label: "全部",
+        href: store_orders_path(base_params),
+        active: current.blank?,
+        count: total
+      } ]
+      Commerce::Order::STATUSES.each do |status|
+        count = counts[status].to_i
+        next if count.zero?
+
+        tabs << {
+          label: order_status_label(status),
+          href: store_orders_path(base_params.merge(status: status)),
+          active: current == status,
+          count: count
+        }
+      end
+      tabs
+    end
+
+    def customer_order_active_filters
+      chips = []
+      q = params[:q].to_s.strip
+      chips << { param: "q", label: "订单号：#{q}", value: q } if q.present?
+      if params[:status].present?
+        chips << {
+          param: "status",
+          label: order_status_label(params[:status]),
+          value: params[:status].to_s
+        }
+      end
+      chips
     end
   end
 end

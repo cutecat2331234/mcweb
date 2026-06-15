@@ -6,8 +6,13 @@
   <h3 style="font-size:14px;margin:16px 0 8px;color:#333;"><%= section[:label] %> (<%= section[:notifications].size %>)</h3>
   <ul>
     <% section[:notifications].each do |notification| %>
+      <% url = notification_url_for(notification) %>
       <li style="margin-bottom:8px;">
-        <strong><%= notification.title %></strong>
+        <% if url.present? %>
+          <a href="<%= url %>" style="font-weight:600;color:#2563eb;text-decoration:none;"><%= notification.title %></a>
+        <% else %>
+          <strong><%= notification.title %></strong>
+        <% end %>
         <span style="color:#666;font-size:12px;">(<%= l(notification.created_at, format: :short) %>)</span>
         <% if notification.body.present? %>
           <br><span style="color:#444;"><%= notification.body.truncate(100) %></span>

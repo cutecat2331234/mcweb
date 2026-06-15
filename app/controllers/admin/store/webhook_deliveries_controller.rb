@@ -85,7 +85,7 @@ module Admin
         base_params = webhook_filter_params.except(:status)
         base = admin_store_webhook_deliveries_path(base_params)
         current = params[:status].to_s
-        counts = webhook_counts_scope.group(:status).count
+        counts = webhook_status_counts_scope.group(:status).count
         total = counts.values.sum
         tabs = [ { label: "全部", href: base, active: current.blank?, count: total } ]
         {
@@ -108,7 +108,22 @@ module Admin
 
       def webhook_counts_scope
         scope = Commerce::OrderWebhookDelivery.all
+        scope = scope.where(status: params[:status]) if params[:status].present?
         scope = scope.where(event_type: params[:event]) if params[:event].present?
+        scope = apply_webhook_kind_scope(scope)
+        apply_webhook_date_scope(scope)
+      end
+
+      def webhook_status_counts_scope
+        scope = Commerce::OrderWebhookDelivery.all
+        scope = scope.where(event_type: params[:event]) if params[:event].present?
+        scope = apply_webhook_kind_scope(scope)
+        apply_webhook_date_scope(scope)
+      end
+
+      def webhook_event_counts_scope
+        scope = Commerce::OrderWebhookDelivery.all
+        scope = scope.where(status: params[:status]) if params[:status].present?
         scope = apply_webhook_kind_scope(scope)
         apply_webhook_date_scope(scope)
       end
@@ -117,13 +132,19 @@ module Admin
         base_params = webhook_filter_params.except(:event)
         base = admin_store_webhook_deliveries_path(base_params)
         current = params[:event].to_s
+        counts = webhook_event_counts_scope.group(:event_type).count
+        total = counts.values.sum
         events = %w[order.created order.paid order.status_changed order.shipped order.fulfilled order.cancelled order.refunded order.test]
-        tabs = [{ label: "全部事件", href: base, active: current.blank? }]
+        tabs = [ { label: "全部事件", href: base, active: current.blank?, count: total } ]
         events.each do |event|
+          count = counts[event].to_i
+          next if count.zero? && current != event
+
           tabs << {
             label: event,
             href: admin_store_webhook_deliveries_path(base_params.merge(event: event)),
-            active: current == event
+            active: current == event,
+            count: count
           }
         end
         tabs

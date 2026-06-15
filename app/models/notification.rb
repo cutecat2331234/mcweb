@@ -16,6 +16,11 @@ class Notification < ApplicationRecord
     update!(read_at: Time.current) unless read?
   end
 
+  def destination_path
+    metadata["path"].presence || metadata[:path].presence ||
+      metadata["url"].presence || metadata[:url].presence
+  end
+
   def self.notify!(user:, notification_type:, title:, body: nil, metadata: {})
     create!(
       user: user,

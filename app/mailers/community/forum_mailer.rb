@@ -201,6 +201,11 @@ module Community
       mail(to: @user.email, subject: "投票已关闭：#{@poll.question.truncate(60)}")
     end
 
+    def notification_url_for(notification)
+      Community::NotificationDestinationUrl.for(notification, root_url: root_url)
+    end
+    helper_method :notification_url_for
+
   private
 
     def search_url_for(search)

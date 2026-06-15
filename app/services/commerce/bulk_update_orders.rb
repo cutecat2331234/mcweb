@@ -47,11 +47,12 @@ module Commerce
       when "mark_paid"
         return ServiceResult.failure(error: "订单不可标记已支付") unless order.pending? || order.awaiting_payment?
 
+        from_status = order.status
         order.submit_payment! if order.pending? && order.may_submit_payment?
         return ServiceResult.failure(error: "订单不可标记已支付") unless order.awaiting_payment? && order.may_mark_paid?
 
         order.mark_paid!
-        Commerce::FulfillOrderJob.perform_later(order.id)
+        Commerce::CompleteOrderPayment.call(order: order, from_status: from_status, staff_marked: true)
         ServiceResult.success
       else
         ServiceResult.failure(error: "不支持的操作")

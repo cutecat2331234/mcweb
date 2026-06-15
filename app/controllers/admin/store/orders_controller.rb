@@ -212,7 +212,11 @@ module Admin
         previous_status = @order.status
         if @order.update(order_params)
           if order_params[:status].present? && @order.status != previous_status
-            Commerce::NotifyOrderStatusChange.call(order: @order, from_status: previous_status)
+            if @order.status == "paid" && %w[pending awaiting_payment].include?(previous_status)
+              Commerce::CompleteOrderPayment.call(order: @order, from_status: previous_status, staff_marked: true)
+            else
+              Commerce::NotifyOrderStatusChange.call(order: @order, from_status: previous_status)
+            end
           end
           redirect_to admin_store_order_path(@order), notice: "Order updated."
         else
@@ -365,15 +369,33 @@ module Admin
       def order_status_tabs
         base_params = { q: params[:q].presence }.compact
         current = params[:status].to_s
-        tabs = [ { label: "全部", href: admin_store_orders_path(base_params), active: current.blank? } ]
+        counts = order_counts_scope.group(:status).count
+        total = counts.values.sum
+
+        tabs = [ {
+          label: "全部",
+          href: admin_store_orders_path(base_params),
+          active: current.blank?,
+          count: total
+        } ]
         ORDER_STATUS_LABELS.each do |status, label|
           tabs << {
             label: label,
             href: admin_store_orders_path(base_params.merge(status: status)),
-            active: current == status
+            active: current == status,
+            count: counts[status].to_i
           }
         end
         tabs
+      end
+
+      def order_counts_scope
+        scope = ::Commerce::Order.all
+        if params[:q].present?
+          q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
+          scope = scope.where("order_number ILIKE ?", q)
+        end
+        scope
       end
     end
   end

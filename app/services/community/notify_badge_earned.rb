@@ -8,7 +8,7 @@ module Community
     end
 
     def call
-      email_enabled = NotificationPreference.enabled?(@user, channel: "email", notification_type: "forum.badge")
+      email_enabled = Community::InstantEmailDelivery.allowed?(@user, notification_type: "forum.badge")
       in_app_enabled = NotificationPreference.enabled?(@user, channel: "in_app", notification_type: "forum.badge")
       return ServiceResult.success unless email_enabled || in_app_enabled
 

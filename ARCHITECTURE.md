@@ -1435,3 +1435,16 @@ app/
 | 搜索排除词芯片 | `excludeTerms` props + 红色芯片展示 |
 | 保存搜索排除标签 | `SavedSearchFilterSummary` 排除词 chips |
 | 订单导出筛选修复 | `export` 尊重 `q`/`status` 参数 |
+
+### 第九十六轮（摘要补全、支付通知、订单计数、排除词可移除）
+
+| 功能 | 实现 |
+|------|------|
+| 摘要类型补全 | `SendForumDigest` 含 badge/trust/assigned/invite/poll/post_edited/here |
+| 摘要仅关注修复 | 非主题通知（徽章等）在 watched-only 模式下仍纳入摘要 |
+| 即时邮件与摘要互斥 | 各 `Notify*` 服务使用 `InstantEmailDelivery` / `WatchEmailDelivery` |
+| @here 专用邮件 | `ForumMailer#here` + `ProcessMentions` 区分 mailer |
+| 支付完成统一 | `CompleteOrderPayment` 共享支付后副作用 |
+| 批量 mark_paid 通知 | 批量/管理后台标记已支付触发邮件与站内通知 |
+| 订单状态标签计数 | `statusTabs` 显示各状态订单数量 |
+| 排除词可移除 | 搜索页排除芯片 × 按钮即时更新查询 |

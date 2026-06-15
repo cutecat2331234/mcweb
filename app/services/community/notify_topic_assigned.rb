@@ -11,7 +11,7 @@ module Community
     def call
       return ServiceResult.success(skipped: true) if @assignee.id == @actor.id
 
-      email_enabled = NotificationPreference.enabled?(@assignee, channel: "email", notification_type: "forum.topic_assigned")
+      email_enabled = Community::InstantEmailDelivery.allowed?(@assignee, notification_type: "forum.topic_assigned")
       in_app_enabled = NotificationPreference.enabled?(@assignee, channel: "in_app", notification_type: "forum.topic_assigned")
       return ServiceResult.success(skipped: true) unless email_enabled || in_app_enabled
 

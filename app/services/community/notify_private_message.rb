@@ -25,7 +25,7 @@ module Community
           }
         )
 
-        if NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.private_message")
+        if Community::InstantEmailDelivery.allowed?(user, notification_type: "forum.private_message")
           next if participant.muted_at.present?
 
           MailDeliveryJob.perform_later(

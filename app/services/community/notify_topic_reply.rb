@@ -48,7 +48,7 @@ module Community
           level: level,
           user: user,
           notification_type: "forum.topic_reply"
-        ) && NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.topic_reply")
+        ) && Community::WatchEmailDelivery.email_allowed?(user, notification_type: "forum.topic_reply")
           MailDeliveryJob.perform_later(
             "Community::ForumMailer",
             "topic_reply",

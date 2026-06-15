@@ -17,7 +17,7 @@ module Community
     private
 
     def notify_user(user)
-      email_enabled = NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.topic_solved")
+      email_enabled = Community::InstantEmailDelivery.allowed?(user, notification_type: "forum.topic_solved")
       in_app_enabled = NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.topic_solved")
       return unless email_enabled || in_app_enabled
 

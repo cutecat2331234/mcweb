@@ -17,7 +17,7 @@ module Community
         recipient_ids: [ author.id ]
       ).value.include?(author.id)
 
-      email_enabled = NotificationPreference.enabled?(author, channel: "email", notification_type: "forum.reaction")
+      email_enabled = Community::InstantEmailDelivery.allowed?(author, notification_type: "forum.reaction")
       in_app_enabled = NotificationPreference.enabled?(author, channel: "in_app", notification_type: "forum.reaction")
       return ServiceResult.success unless email_enabled || in_app_enabled
 

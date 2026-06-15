@@ -77,11 +77,11 @@ module Community
         }
       )
 
-      if NotificationPreference.enabled?(user, channel: "email", notification_type: notification_type) &&
-         Community::InstantEmailDelivery.allowed?(user, notification_type: notification_type)
+      if Community::InstantEmailDelivery.allowed?(user, notification_type: notification_type)
+        mailer_action = group_mention ? "here" : "mention"
         MailDeliveryJob.perform_later(
           "Community::ForumMailer",
-          "mention",
+          mailer_action,
           "deliver_now",
           args: [ user.id, @topic.public_id, @post.id ]
         )

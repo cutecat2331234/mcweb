@@ -7,6 +7,8 @@ module Community
       forum.topic_reply forum.mention forum.section_topic forum.private_message
       forum.followed_topic forum.followed_reply forum.tag_topic forum.reaction
       forum.quote forum.topic_solved forum.saved_search_match
+      forum.badge forum.trust_level forum.topic_assigned forum.post_edited
+      forum.topic_invite forum.poll_closed forum.here
     ].freeze
 
     def initialize(user:)
@@ -58,6 +60,8 @@ module Community
     end
 
     def filter_watched_notifications(notifications)
+      topic_notifications, other_notifications = notifications.partition { |notification| topic_notification?(notification) }
+
       watched_topic_ids = Community::Subscription.where(user: @user, subscribable_type: "Community::Topic")
         .pluck(:subscribable_id)
       watched_section_ids = Community::Subscription.where(user: @user, subscribable_type: "Community::Section")
@@ -65,9 +69,9 @@ module Community
       watched_tag_ids = Community::Subscription.where(user: @user, subscribable_type: "Community::Tag")
         .pluck(:subscribable_id)
 
-      return [] if watched_topic_ids.empty? && watched_section_ids.empty? && watched_tag_ids.empty?
+      return other_notifications if watched_topic_ids.empty? && watched_section_ids.empty? && watched_tag_ids.empty?
 
-      notifications.select do |notification|
+      filtered = topic_notifications.select do |notification|
         metadata = notification.metadata || {}
         topic_public_id = metadata["topic_id"] || metadata[:topic_id]
         next false if topic_public_id.blank?
@@ -79,6 +83,13 @@ module Community
           watched_section_ids.include?(topic.forum_section_id) ||
           topic.tags.where(id: watched_tag_ids).exists?
       end
+
+      filtered + other_notifications
+    end
+
+    def topic_notification?(notification)
+      metadata = notification.metadata || {}
+      (metadata["topic_id"] || metadata[:topic_id]).present?
     end
   end
 end

@@ -34,7 +34,7 @@ module Community
           }
         )
 
-        if NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.post_edited")
+        if Community::InstantEmailDelivery.allowed?(user, notification_type: "forum.post_edited")
           MailDeliveryJob.perform_later(
             "Community::ForumMailer",
             "post_edited",

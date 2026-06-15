@@ -307,6 +307,15 @@ function search() {
   router.get(routes.forumSearch, searchParams(), { preserveState: true })
 }
 
+function removeExcludeTerm(term: string) {
+  const escaped = term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  q.value = q.value
+    .replace(new RegExp(`(^|\\s)-${escaped}(?=\\s|$)`, 'g'), ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+  router.get(routes.forumSearch, searchParams(), { preserveState: true })
+}
+
 async function copySearchLink() {
   const params = new URLSearchParams()
   const data = searchParams()
@@ -672,9 +681,15 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
     <span
       v-for="term in excludeTerms"
       :key="term"
-      class="inline-flex items-center rounded-full border border-destructive/30 bg-destructive/5 px-2.5 py-0.5 text-xs text-destructive"
+      class="inline-flex items-center gap-1 rounded-full border border-destructive/30 bg-destructive/5 px-2.5 py-0.5 text-xs text-destructive"
     >
       −{{ term }}
+      <button
+        type="button"
+        class="hover:text-destructive/80"
+        title="移除此排除词"
+        @click="removeExcludeTerm(term)"
+      >×</button>
     </span>
   </div>
 

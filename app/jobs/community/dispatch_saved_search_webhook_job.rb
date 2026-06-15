@@ -6,12 +6,17 @@ module Community
 
     MAX_ATTEMPTS = 3
 
-    def perform(saved_search_id, url, payload, delivery_id: nil, attempt: 1)
+    def perform(saved_search_id, url, payload, delivery_id: nil, attempt: 1, secret: nil)
+      secret = secret.presence || forum_webhook_secret
       delivery = find_or_create_delivery(saved_search_id, url, payload, delivery_id, attempt)
-      execute_request(delivery, url, payload, saved_search_id, attempt)
+      execute_request(delivery, url, payload, saved_search_id, attempt, secret)
     end
 
   private
+
+    def forum_webhook_secret
+      SiteSetting.get("forum.saved_search_webhook_secret", "").to_s.strip.presence
+    end
 
     def find_or_create_delivery(saved_search_id, url, payload, delivery_id, attempt)
       if delivery_id.present?
@@ -30,7 +35,7 @@ module Community
       end
     end
 
-    def execute_request(delivery, url, payload, saved_search_id, attempt)
+    def execute_request(delivery, url, payload, saved_search_id, attempt, secret)
       uri = URI.parse(url)
       http = Net::HTTP.new(uri.host, uri.port)
       http.use_ssl = uri.scheme == "https"
@@ -41,6 +46,9 @@ module Community
       request = Net::HTTP::Post.new(uri.request_uri)
       request["Content-Type"] = "application/json"
       request.body = body
+      signature = WebhookSignature.header_for(secret, body)
+      request["X-McWeb-Signature"] = signature if signature.present?
+
       response = http.request(request)
       success = response.code.to_i.between?(200, 299)
       delivery.update!(
@@ -49,18 +57,18 @@ module Community
         status: success ? "success" : "failed",
         attempt_count: attempt
       )
-      schedule_retry(saved_search_id, url, payload, delivery, attempt) unless success
+      schedule_retry(saved_search_id, url, payload, delivery, attempt, secret) unless success
     rescue StandardError => e
       delivery&.update!(
         status: "failed",
         response_body: "#{e.class}: #{e.message}".truncate(4000),
         attempt_count: attempt
       )
-      schedule_retry(saved_search_id, url, payload, delivery, attempt) if delivery
+      schedule_retry(saved_search_id, url, payload, delivery, attempt, secret) if delivery
       Rails.logger.warn("[DispatchSavedSearchWebhookJob] #{e.class}: #{e.message}")
     end
 
-    def schedule_retry(saved_search_id, url, payload, delivery, attempt)
+    def schedule_retry(saved_search_id, url, payload, delivery, attempt, secret)
       return if attempt >= MAX_ATTEMPTS
 
       next_attempt = attempt + 1
@@ -70,7 +78,8 @@ module Community
         url,
         payload,
         delivery_id: delivery.id,
-        attempt: next_attempt
+        attempt: next_attempt,
+        secret: secret
       )
     end
   end

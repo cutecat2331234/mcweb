@@ -29,9 +29,11 @@ module Community
       parsed_images = parsed.success? ? parsed.value[:images_filter] : nil
       parsed_category = parsed.success? ? parsed.value[:category_slug] : nil
       parsed_title_only = parsed.success? ? parsed.value[:title_only_filter] : nil
+      parsed_posts_only = parsed.success? ? parsed.value[:posts_only_filter] : nil
 
       query = parsed_query
-      title_only = ActiveModel::Type::Boolean.new.cast(params[:title_only]) || parsed_title_only.present?
+      title_only = !parsed_posts_only && (ActiveModel::Type::Boolean.new.cast(params[:title_only]) || parsed_title_only.present?)
+      posts_only = !title_only && (ActiveModel::Type::Boolean.new.cast(params[:posts_only]) || parsed_posts_only.present?)
       section_slug = params[:section].to_s.presence || parsed_section
       category_slug = params[:category].to_s.presence || parsed_category
       author = params[:author].to_s.strip.presence || parsed_author
@@ -57,6 +59,7 @@ module Community
       assignee_id = resolve_assignee_id(assignee_filter)
 
       if query.present?
+        unless posts_only
         topics = search_topic_base_scope(unlisted_filter: unlisted_filter, archived_filter: archived_filter)
         topics = apply_user_search_scope(topics, mine_filter: mine_filter, scope_filter: scope_filter)
         topics = topics.joins(:section).where(forum_sections: { slug: section_slug }) if section_slug
@@ -98,6 +101,7 @@ module Community
         end
         topics = filter_blocked_topics(topics)
         topics = preload_topics(topics)
+        end
 
         posts = if title_only
           Community::Post.none
@@ -182,6 +186,7 @@ module Community
         poll: poll_filter.to_s,
         noreplies: noreplies_filter.to_s,
         titleOnly: title_only,
+        postsOnly: posts_only,
         images: images_filter.to_s,
         createdAfter: params[:created_after].to_s,
         createdBefore: params[:created_before].to_s,

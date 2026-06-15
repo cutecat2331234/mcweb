@@ -21,6 +21,7 @@ module Admin
         forum.digest_hour
         forum.allow_op_close
         forum.min_trust_level_reaction
+        forum.saved_search_webhook_secret
       ].freeze
 
       def show
@@ -76,6 +77,7 @@ module Admin
         when "forum.digest_hour" then "8"
         when "forum.allow_op_close" then "true"
         when "forum.min_trust_level_reaction" then "0"
+        when "forum.saved_search_webhook_secret" then ""
         else "0"
         end
       end
@@ -96,7 +98,8 @@ module Admin
           "forum.saved_search_digest_hour" => "保存搜索摘要发送时间（小时）",
           "forum.digest_hour" => "论坛通知摘要发送时间（小时）",
           "forum.allow_op_close" => "允许楼主关闭自己的主题",
-          "forum.min_trust_level_reaction" => "使用反应所需的最低信任等级"
+          "forum.min_trust_level_reaction" => "使用反应所需的最低信任等级",
+          "forum.saved_search_webhook_secret" => "保存搜索 Webhook 密钥"
         }[key] || key
       end
 
@@ -110,13 +113,15 @@ module Admin
           "forum.saved_search_digest_hour" => "每日发送保存搜索摘要邮件的小时（0–23，服务器时区）。任务每小时检查一次。",
           "forum.digest_hour" => "每日发送论坛通知摘要邮件的小时（0–23）。任务每小时检查一次。",
           "forum.allow_op_close" => "设为 false 时楼主无法自行关闭主题。",
-          "forum.min_trust_level_reaction" => "信任等级低于此值的用户无法对帖子添加反应。"
+          "forum.min_trust_level_reaction" => "信任等级低于此值的用户无法对帖子添加反应。",
+          "forum.saved_search_webhook_secret" => "用于 X-McWeb-Signature HMAC 签名的密钥，可选。"
         }[key]
       end
 
       def setting_input_type(key)
         return "boolean" if key == "forum.group_pm_creator_only_add"
         return "boolean" if key == "forum.allow_op_close"
+        return "text" if key == "forum.saved_search_webhook_secret"
 
         "text"
       end

@@ -27,7 +27,8 @@ module Community
         end
       }
 
-      Community::DispatchSavedSearchWebhookJob.perform_later(@saved_search.id, url, payload)
+      secret = SiteSetting.get("forum.saved_search_webhook_secret", "").to_s.strip.presence
+      Community::DispatchSavedSearchWebhookJob.perform_later(@saved_search.id, url, payload, secret: secret)
       ServiceResult.success(queued: true)
     end
   end

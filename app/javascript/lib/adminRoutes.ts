@@ -50,6 +50,7 @@ export const adminRoutes = {
   storeOrder: (id: string) => `/admin/store/orders/${id}`,
   storeFulfillments: '/admin/store/fulfillments',
   storeWebhookDeliveries: '/admin/store/webhook_deliveries',
+  storeWebhookDelivery: (id: number | string) => `/admin/store/webhook_deliveries/${id}`,
   storeSettings: '/admin/store/settings',
   storeFulfillment: (id: string | number) => `/admin/store/fulfillments/${id}`,
   websitePages: '/admin/website/pages',

@@ -43,6 +43,7 @@ const props = defineProps<{
   poll?: string
   noreplies?: string
   titleOnly?: boolean
+  postsOnly?: boolean
   assigned?: string
   mine?: string
   scope?: string
@@ -96,6 +97,7 @@ const featured = ref(props.featured || '')
 const poll = ref(props.poll || '')
 const noreplies = ref(props.noreplies || '')
 const titleOnly = ref(!!props.titleOnly)
+const postsOnly = ref(!!props.postsOnly)
 const assigned = ref(props.assigned || '')
 const mine = ref(props.mine || '')
 const scope = ref(props.scope || '')
@@ -112,6 +114,14 @@ const saveNotifyDaily = ref(false)
 const saveWebhookUrl = ref('')
 const saving = ref(false)
 const saveError = ref('')
+const shareCopied = ref(false)
+
+watch(titleOnly, (value) => {
+  if (value) postsOnly.value = false
+})
+watch(postsOnly, (value) => {
+  if (value) titleOnly.value = false
+})
 
 type SuggestItem = { title?: string; name?: string; username?: string; category?: string | null; url: string }
 const suggestOpen = ref(false)
@@ -251,6 +261,7 @@ function searchParams() {
     poll: poll.value || undefined,
     noreplies: noreplies.value || undefined,
     title_only: titleOnly.value ? '1' : undefined,
+    posts_only: postsOnly.value ? '1' : undefined,
     assigned: assigned.value || undefined,
     mine: mine.value || undefined,
     scope: scope.value || undefined,
@@ -263,6 +274,22 @@ function searchParams() {
 
 function search() {
   router.get(routes.forumSearch, searchParams(), { preserveState: true })
+}
+
+async function copySearchLink() {
+  const params = new URLSearchParams()
+  const data = searchParams()
+  Object.entries(data).forEach(([key, value]) => {
+    if (value !== undefined && value !== '') params.set(key, String(value))
+  })
+  const url = `${window.location.origin}${routes.forumSearch}?${params.toString()}`
+  try {
+    await navigator.clipboard.writeText(url)
+    shareCopied.value = true
+    setTimeout(() => { shareCopied.value = false }, 2000)
+  } catch {
+    window.prompt('复制搜索链接', url)
+  }
 }
 
 const liveSearch = ref(true)
@@ -300,6 +327,7 @@ function saveFilters() {
     poll: poll.value,
     noreplies: noreplies.value,
     title_only: titleOnly.value ? '1' : '',
+    posts_only: postsOnly.value ? '1' : '',
     assigned: assigned.value,
     mine: mine.value,
     scope: scope.value,
@@ -433,7 +461,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
     { label: '搜索', current: true },
   ]" />
 
-  <PageHeader title="搜索论坛" subtitle="支持 in:分区、in:title 仅标题、tag:标签、is:solved/is:locked 等语法" />
+  <PageHeader title="搜索论坛" subtitle="支持 in:分区、in:title 仅标题、in:posts 仅帖子、tag:标签 等语法" />
 
   <form class="mb-4 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
     <div class="relative min-w-[200px] flex-1">
@@ -538,7 +566,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       <option value="unsolved">未解决</option>
       <option value="solved">已解决</option>
     </select>
-    <select v-model="topicSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+    <select v-model="topicSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm" :disabled="postsOnly">
       <option value="recent">主题：最新</option>
       <option value="oldest">主题：最早</option>
     </select>
@@ -550,10 +578,17 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       <input v-model="titleOnly" type="checkbox" class="rounded border" />
       仅标题
     </label>
+    <label class="flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
+      <input v-model="postsOnly" type="checkbox" class="rounded border" />
+      仅帖子
+    </label>
     <button type="button" class="rounded-md border px-3 py-2 text-sm" @click="showAdvanced = !showAdvanced">
       {{ showAdvanced ? '收起高级' : '高级筛选' }}
     </button>
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">搜索</button>
+    <button type="button" class="rounded-md border px-3 py-2 text-sm" @click="copySearchLink">
+      {{ shareCopied ? '已复制' : '复制链接' }}
+    </button>
   </form>
 
   <div v-if="showAdvanced" class="mb-6 flex max-w-2xl flex-wrap gap-2 rounded-lg border p-4">

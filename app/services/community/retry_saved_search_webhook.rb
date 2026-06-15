@@ -17,7 +17,8 @@ module Community
       return ServiceResult.failure(error: "未配置 Webhook URL") if url.blank?
 
       payload = @delivery.request_payload.deep_stringify_keys
-      Community::DispatchSavedSearchWebhookJob.perform_later(search.id, url, payload)
+      secret = SiteSetting.get("forum.saved_search_webhook_secret", "").to_s.strip.presence
+      Community::DispatchSavedSearchWebhookJob.perform_later(search.id, url, payload, secret: secret)
       ServiceResult.success(queued: true)
     end
   end

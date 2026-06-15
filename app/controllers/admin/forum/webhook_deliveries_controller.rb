@@ -9,11 +9,13 @@ module Admin
       def index
         scope = Community::SavedSearchWebhookDelivery.includes(saved_search: :user).recent
         scope = scope.where(status: params[:status]) if params[:status].present?
+        scope = scope.where(event_type: params[:event]) if params[:event].present?
         @pagy, deliveries = pagy(scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: "保存搜索 Webhook 投递",
           statusTabs: webhook_status_tabs,
+          eventTabs: webhook_event_tabs,
           columns: [
             admin_column(:search, "搜索", link: true),
             admin_column(:user, "用户"),
@@ -62,13 +64,28 @@ module Admin
       end
 
       def webhook_status_tabs
-        base = admin_forum_webhook_deliveries_path
+        base_params = { event: params[:event].presence }.compact
+        base = admin_forum_webhook_deliveries_path(base_params)
         current = params[:status].to_s
         [
           { label: "全部", href: base, active: current.blank? },
-          { label: "失败", href: "#{base}?status=failed", active: current == "failed" },
-          { label: "成功", href: "#{base}?status=success", active: current == "success" },
-          { label: "进行中", href: "#{base}?status=pending", active: current == "pending" }
+          { label: "失败", href: admin_forum_webhook_deliveries_path(base_params.merge(status: "failed")), active: current == "failed" },
+          { label: "成功", href: admin_forum_webhook_deliveries_path(base_params.merge(status: "success")), active: current == "success" },
+          { label: "进行中", href: admin_forum_webhook_deliveries_path(base_params.merge(status: "pending")), active: current == "pending" }
+        ]
+      end
+
+      def webhook_event_tabs
+        base_params = { status: params[:status].presence }.compact
+        base = admin_forum_webhook_deliveries_path(base_params)
+        current = params[:event].to_s
+        [
+          { label: "全部事件", href: base, active: current.blank? },
+          {
+            label: "saved_search.match",
+            href: admin_forum_webhook_deliveries_path(base_params.merge(event: "saved_search.match")),
+            active: current == "saved_search.match"
+          }
         ]
       end
 
@@ -80,7 +97,7 @@ module Admin
           code: delivery.response_code&.to_s || "—",
           attempts: delivery.attempt_count.to_s,
           created_at: l(delivery.created_at, format: :short),
-          url: admin_forum_webhook_delivery_path(delivery, status: params[:status])
+          url: admin_forum_webhook_delivery_path(delivery, status: params[:status], event: params[:event])
         )
       end
 

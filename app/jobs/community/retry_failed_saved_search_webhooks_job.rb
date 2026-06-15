@@ -35,12 +35,14 @@ module Community
       payload = delivery.request_payload.deep_stringify_keys
       attempt = delivery.attempt_count + 1
       delivery.update!(attempt_count: attempt)
+      secret = SiteSetting.get("forum.saved_search_webhook_secret", "").to_s.strip.presence
       Community::DispatchSavedSearchWebhookJob.perform_later(
         search.id,
         url,
         payload,
         delivery_id: delivery.id,
-        attempt: attempt
+        attempt: attempt,
+        secret: secret
       )
     end
   end

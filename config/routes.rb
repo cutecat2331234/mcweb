@@ -77,7 +77,11 @@ Rails.application.routes.draw do
       end
       resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
-      resources :webhook_deliveries, only: %i[index]
+      resources :webhook_deliveries, only: %i[index show] do
+        member do
+          post :retry
+        end
+      end
       resources :product_questions, only: %i[index destroy] do
         member do
           patch :hide

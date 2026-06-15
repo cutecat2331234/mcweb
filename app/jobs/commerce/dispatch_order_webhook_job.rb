@@ -41,10 +41,8 @@ module Commerce
       request = Net::HTTP::Post.new(uri.request_uri)
       request["Content-Type"] = "application/json"
       request.body = body
-      if secret.present?
-        signature = OpenSSL::HMAC.hexdigest("SHA256", secret, body)
-        request["X-McWeb-Signature"] = "sha256=#{signature}"
-      end
+      signature = WebhookSignature.header_for(secret, body)
+      request["X-McWeb-Signature"] = signature if signature.present?
 
       response = http.request(request)
       success = response.code.to_i.between?(200, 299)

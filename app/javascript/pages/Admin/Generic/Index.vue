@@ -47,6 +47,7 @@ defineProps<{
   rows: Array<Record<string, string>>
   actions?: AdminAction[]
   statusTabs?: StatusTab[]
+  eventTabs?: StatusTab[]
   pagination?: PaginationMeta
 }>()
 </script>
@@ -70,9 +71,21 @@ defineProps<{
   <div v-if="statusTabs?.length" class="mb-4 flex flex-wrap gap-2">
     <Link
       v-for="tab in statusTabs"
-      :key="tab.href"
+      :key="'status-' + tab.href"
       :href="tab.href"
       class="rounded-md border px-3 py-1.5 text-sm no-underline"
+      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ tab.label }}
+    </Link>
+  </div>
+
+  <div v-if="eventTabs?.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      v-for="tab in eventTabs"
+      :key="'event-' + tab.href"
+      :href="tab.href"
+      class="rounded-md border px-3 py-1.5 text-xs no-underline"
       :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
     >
       {{ tab.label }}

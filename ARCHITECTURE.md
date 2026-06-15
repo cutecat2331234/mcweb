@@ -1277,3 +1277,13 @@ app/
 | 商城投递日志 | `Admin::Store::WebhookDeliveriesController#index` + `request_payload` |
 | 物流时间线修复 | 已送达订单正确标记「运输中」完成 |
 | 管理列表增强 | 状态 Tab 筛选 + 分页 + 行链接详情 |
+
+### 第八十二轮（Webhook HMAC、仅帖子搜索、商城详情重试、事件筛选、分享链接）
+
+| 功能 | 实现 |
+|------|------|
+| 论坛 Webhook HMAC | `forum.saved_search_webhook_secret` + `WebhookSignature` |
+| 仅帖子搜索 | `posts_only` + `in:posts` + 与仅标题互斥 |
+| 搜索链接分享 | 搜索页「复制链接」按钮 |
+| 商城 Webhook 详情 | `Admin::Store::WebhookDeliveriesController#show` + 重试 |
+| 管理事件筛选 | 论坛/商城 Webhook 列表 `eventTabs` |

@@ -89,6 +89,7 @@ module Community
         sort: sort,
         filter: filter.to_s,
         filterOptions: topic_filter_options(prefixes: Array(section.prefixes), staff: staff),
+        activeFilters: Community::TopicListActiveFilters.call(filter: filter, prefixes: Array(section.prefixes), staff: staff),
         canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic),
         canBulkModerate: logged_in? && current_user.permission?("forum.topics.lock"),
         bulkModerateUrl: logged_in? && current_user.permission?("forum.topics.lock") ? bulk_moderate_forum_topics_path : nil,

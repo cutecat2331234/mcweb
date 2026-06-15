@@ -33,27 +33,39 @@ export interface NotificationGroup {
   }>
 }
 
+interface TypeTab {
+  type: string
+  label: string
+  href: string
+  active: boolean
+  count: number
+}
+
 const props = defineProps<{
   notifications: NotificationGroup[]
   activeCategory: 'all' | 'forum' | 'commerce'
   activeRead?: 'all' | 'unread'
+  activeType?: string
+  typeTabs?: TypeTab[]
+  activeFilters?: Array<{ param: string; label: string; value?: string }>
   unreadCount?: number
 }>()
 
 const expanded = ref<Record<string, boolean>>({})
 
+function filterParams(overrides: Record<string, string | undefined> = {}) {
+  const category = overrides.category ?? (props.activeCategory === 'all' ? undefined : props.activeCategory)
+  const read = overrides.read ?? (props.activeRead === 'unread' ? 'unread' : undefined)
+  const type = overrides.type ?? (props.activeType || undefined)
+  return { category, read, type }
+}
+
 function markAllRead() {
-  router.patch('/forum/notifications/mark_all_read', {
-    category: props.activeCategory === 'all' ? undefined : props.activeCategory,
-    read: props.activeRead === 'unread' ? 'unread' : undefined,
-  })
+  router.patch('/forum/notifications/mark_all_read', filterParams())
 }
 
 function switchRead(read: 'all' | 'unread') {
-  router.get(routes.forumNotifications, {
-    category: props.activeCategory === 'all' ? undefined : props.activeCategory,
-    read: read === 'unread' ? 'unread' : undefined,
-  }, { preserveState: true })
+  router.get(routes.forumNotifications, filterParams({ read: read === 'unread' ? 'unread' : undefined }), { preserveState: true })
 }
 
 function toggleExpand(key: string) {
@@ -65,7 +77,15 @@ function markRead(url: string) {
 }
 
 function switchCategory(category: 'all' | 'forum' | 'commerce') {
-  router.get(routes.forumNotifications, { category: category === 'all' ? undefined : category }, { preserveState: true })
+  router.get(routes.forumNotifications, filterParams({ category: category === 'all' ? undefined : category, type: undefined }), { preserveState: true })
+}
+
+function removeFilter(filter: { param: string }) {
+  const overrides: Record<string, string | undefined> = {}
+  if (filter.param === 'category') overrides.category = undefined
+  if (filter.param === 'read') overrides.read = undefined
+  if (filter.param === 'type') overrides.type = undefined
+  router.get(routes.forumNotifications, filterParams(overrides), { preserveState: true })
 }
 
 function categoryLabel(category: string) {
@@ -94,6 +114,30 @@ function categoryLabel(category: string) {
     <Button :variant="activeRead === 'unread' ? 'default' : 'outline'" size="sm" @click="switchRead('unread')">
       未读<span v-if="unreadCount != null && unreadCount > 0"> ({{ unreadCount }})</span>
     </Button>
+  </div>
+
+  <div v-if="typeTabs?.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      v-for="tab in typeTabs"
+      :key="tab.type"
+      :href="tab.href"
+      class="rounded-md border px-2.5 py-1 text-xs no-underline"
+      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ tab.label }}<span class="ml-1 opacity-80">({{ tab.count }})</span>
+    </Link>
+  </div>
+
+  <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span
+      v-for="filter in activeFilters"
+      :key="`${filter.param}-${filter.value || filter.label}`"
+      class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
+    >
+      {{ filter.label }}
+      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(filter)">×</button>
+    </span>
   </div>
 
   <div v-if="notifications.length" class="space-y-2">

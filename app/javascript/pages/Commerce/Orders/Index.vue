@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -46,6 +46,14 @@ const props = defineProps<{
 
 const q = ref(props.query)
 const statusFilter = ref(props.status)
+
+watch(() => props.status, (value) => {
+  statusFilter.value = value
+})
+
+watch(() => props.query, (value) => {
+  q.value = value
+})
 
 function reorder(url: string) {
   router.post(url)

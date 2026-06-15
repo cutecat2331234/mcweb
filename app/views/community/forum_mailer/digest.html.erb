@@ -22,7 +22,11 @@
   </ul>
 <% end %>
 
-<p><a href="<%= root_url.chomp('/') %><%= forum_latest_path %>">访问论坛</a></p>
+<p>
+  <a href="<%= @unread_notifications_url %>">查看全部未读通知</a>
+  ·
+  <a href="<%= root_url.chomp('/') %><%= forum_latest_path %>">访问论坛</a>
+</p>
 
 <p style="font-size:12px;color:#666;margin-top:24px;">
   <a href="<%= @unsubscribe_url %>">一键关闭论坛邮件摘要</a>

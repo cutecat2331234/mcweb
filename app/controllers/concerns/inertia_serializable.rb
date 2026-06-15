@@ -573,7 +573,8 @@ module InertiaSerializable
       export_url: can_close ? export_forum_poll_path(poll) : nil,
       close_url: can_close && poll.open? ? close_forum_poll_path(poll) : nil,
       closes_at: poll.closes_at ? l(poll.closes_at, format: :short) : nil,
-      closed_at: !poll.open? && poll.closes_at ? l(poll.closes_at, format: :short) : nil
+      closed_at: !poll.open? && poll.closes_at ? l(poll.closes_at, format: :short) : nil,
+      share_url: "#{forum_topic_path(poll.topic)}#poll"
     }
   end
 

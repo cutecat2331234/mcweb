@@ -80,6 +80,7 @@ module Community
       @notifications = Notification.where(id: notification_ids, user: @user).order(created_at: :desc)
       @digest_sections = Community::GroupDigestNotifications.call(@notifications)
       @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
+      @unread_notifications_url = "#{root_url.chomp('/')}#{forum_notifications_path(read: 'unread')}"
       @unsubscribe_url = "#{root_url.chomp('/')}#{forum_unsubscribe_forum_digest_path(token: Community::ForumDigestUnsubscribeToken.generate(@user))}"
 
       mail(to: @user.email, subject: "论坛摘要 — #{@notifications.count} 条新动态")

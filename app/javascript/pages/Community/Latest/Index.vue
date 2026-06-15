@@ -17,6 +17,7 @@ const props = defineProps<{
   sort: string
   filter: string
   filterOptions: Array<{ value: string; label: string }>
+  activeFilters?: Array<{ param: string; label: string; value?: string }>
   rss_url: string
   canBulkModerate?: boolean
   bulkModerateUrl?: string | null
@@ -38,6 +39,10 @@ function changeSort(value: string) {
 
 function changeFilter(value: string) {
   router.get(routes.forumLatest, { sort: props.sort, filter: value || undefined }, { preserveState: true })
+}
+
+function removeFilter() {
+  router.get(routes.forumLatest, { sort: props.sort }, { preserveState: true })
 }
 
 function bulkModerate(action: string) {
@@ -88,6 +93,18 @@ function bulkModerate(action: string) {
       @moderate="bulkModerate"
     />
     <a :href="rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
+  </div>
+
+  <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span
+      v-for="chip in activeFilters"
+      :key="`${chip.param}-${chip.value || chip.label}`"
+      class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
+    >
+      {{ chip.label }}
+      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter">×</button>
+    </span>
   </div>
 
   <TopicListTable

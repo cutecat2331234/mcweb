@@ -7,9 +7,10 @@ module Community
     def index
       read_filter = params[:read].to_s.presence
       category = params[:category].to_s.presence
-      notifications = current_user.notifications.recent.limit(100)
-      notifications = filter_notifications_by_category(notifications, category)
-      notifications = notifications.unread if read_filter == "unread"
+      type_filter = params[:type].to_s.presence
+      base_scope = current_user.notifications.recent
+      filtered_scope = apply_notification_filters(base_scope, category: category, read: read_filter, type: type_filter)
+      notifications = filtered_scope.limit(100)
 
       unread_count = current_user.notifications.unread.count
 
@@ -18,6 +19,9 @@ module Community
         flat_notifications: notifications.limit(50).map { |n| serialize_notification(n) },
         activeCategory: category.presence || "all",
         activeRead: read_filter.presence || "all",
+        activeType: type_filter.to_s,
+        typeTabs: notification_type_tabs(base_scope, category: category, read: read_filter),
+        activeFilters: notification_active_filters(category: category, read: read_filter, type: type_filter),
         unreadCount: unread_count
       }
     end
@@ -38,11 +42,11 @@ module Community
     def mark_all_read
       category = params[:category].to_s.presence
       read_filter = params[:read].to_s.presence
+      type_filter = params[:type].to_s.presence
       scope = current_user.notifications.unread
-      scope = filter_notifications_by_category(scope, category) if category.present?
-      scope = scope.unread if read_filter == "unread"
+      scope = apply_notification_filters(scope, category: category, read: read_filter, type: type_filter)
       scope.update_all(read_at: Time.current)
-      redirect_to forum_notifications_path(category: category, read: read_filter), notice: "已标记为已读。"
+      redirect_to forum_notifications_path(category: category, read: read_filter, type: type_filter), notice: "已标记为已读。"
     end
 
     private
@@ -66,6 +70,13 @@ module Community
       notification.notification_type.to_s.start_with?("commerce.") ? "commerce" : "forum"
     end
 
+    def apply_notification_filters(scope, category:, read:, type:)
+      scope = filter_notifications_by_category(scope, category) if category.present?
+      scope = scope.unread if read == "unread"
+      scope = scope.where(notification_type: type) if type.present?
+      scope
+    end
+
     def filter_notifications_by_category(scope, category)
       case category
       when "forum"
@@ -75,6 +86,46 @@ module Community
       else
         scope
       end
+    end
+
+    def notification_type_tabs(base_scope, category:, read:)
+      scope = apply_notification_filters(base_scope.unscope(:order), category: category, read: read, type: nil)
+      counts = scope.group(:notification_type).count
+      current = params[:type].to_s
+
+      tabs = counts.sort_by { |(_type, count)| -count }.map do |type, count|
+        {
+          type: type,
+          label: NotificationTypeLabels.label_for(type),
+          href: forum_notifications_path(notification_tab_params(category: category, read: read, type: type)),
+          active: current == type,
+          count: count
+        }
+      end
+
+      if current.present? && tabs.none? { |tab| tab[:type] == current }
+        tabs.unshift({
+          type: current,
+          label: NotificationTypeLabels.label_for(current),
+          href: forum_notifications_path(notification_tab_params(category: category, read: read, type: current)),
+          active: true,
+          count: scope.where(notification_type: current).count
+        })
+      end
+
+      tabs.first(12)
+    end
+
+    def notification_tab_params(category:, read:, type:)
+      {
+        category: category.presence,
+        read: read == "unread" ? "unread" : nil,
+        type: type.presence
+      }.compact
+    end
+
+    def notification_active_filters(category:, read:, type:)
+      NotificationActiveFilters.call(category: category.presence || "all", read: read, type: type)
     end
 
     def group_notifications(notifications)

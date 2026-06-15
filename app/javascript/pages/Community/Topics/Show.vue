@@ -109,6 +109,7 @@ export interface PollItem {
   revoke_url?: string | null
   closed_at?: string | null
   closes_at?: string | null
+  share_url?: string | null
 }
 
 const props = defineProps<{
@@ -270,6 +271,7 @@ const mergeTargetId = ref('')
 const splitSectionSlug = ref('')
 const showPollVoters = ref(false)
 const pollVoters = ref<Array<{ label: string; index: number; voters: string[] }>>([])
+const pollShareCopied = ref(false)
 const slowModeSeconds = ref(props.topic.slow_mode_seconds || 0)
 const slowModeRemaining = ref(props.topic.slow_mode_remaining_seconds || 0)
 const effectiveCanReply = computed(() => props.canReply && slowModeRemaining.value <= 0 && !postBlocked.value)
@@ -900,6 +902,20 @@ function pollPercent(votes: number) {
   if (!props.poll || !props.poll.show_results || !props.poll.total_votes) return 0
   return Math.round((votes / props.poll.total_votes) * 100)
 }
+
+async function copyPollShareLink() {
+  if (!props.poll?.share_url) return
+  const url = props.poll.share_url.startsWith('http')
+    ? props.poll.share_url
+    : `${window.location.origin}${props.poll.share_url}`
+  try {
+    await navigator.clipboard.writeText(url)
+    pollShareCopied.value = true
+    window.setTimeout(() => { pollShareCopied.value = false }, 2000)
+  } catch {
+    // ignore clipboard errors
+  }
+}
 </script>
 
 <template>
@@ -1121,7 +1137,7 @@ function pollPercent(votes: number) {
     </div>
   </div>
 
-  <section v-if="poll" class="mb-6 max-w-xl rounded-lg border p-4">
+  <section v-if="poll" id="poll" class="mb-6 max-w-xl rounded-lg border p-4">
     <div
       v-if="!poll.open"
       class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
@@ -1194,6 +1210,9 @@ function pollPercent(votes: number) {
       </Button>
       <Button v-if="poll.export_url" as-child variant="outline" size="sm">
         <a :href="poll.export_url" download>导出 CSV</a>
+      </Button>
+      <Button v-if="poll.share_url" type="button" variant="outline" size="sm" @click="copyPollShareLink">
+        {{ pollShareCopied ? '已复制链接' : '复制投票链接' }}
       </Button>
     </div>
     <ul v-if="showPollVoters && pollVoters.length" class="mt-2 space-y-2 text-xs">

@@ -1470,3 +1470,15 @@ app/
 | 用户订单导出筛选 | export 尊重 q/status 参数 |
 | Webhook 事件 tab 计数 | `eventTabs` 显示各事件类型数量 |
 | 投票关闭 UI 强化 | 关闭后禁用投票交互、去除重复文案 |
+
+### 第九十九轮（通知类型筛选、主题列表芯片、订单同步、投票分享）
+
+| 功能 | 实现 |
+|------|------|
+| 通知类型标签 | `NotificationTypeLabels` 统一论坛/商城类型中文名 |
+| 通知按类型筛选 | `NotificationsController` `type` 参数 + `typeTabs` 计数标签 |
+| 通知筛选芯片 | `NotificationActiveFilters` + 可移除 category/read/type |
+| 主题列表筛选芯片 | `TopicListActiveFilters` + 最新/分区页 `activeFilters` |
+| 摘要未读入口 | digest 邮件「查看全部未读通知」链接 |
+| 投票分享链接 | `serialize_poll` `share_url` + 主题页复制按钮 |
+| 订单 tab 同步 | `Orders/Index.vue` watch props 同步下拉框状态 |

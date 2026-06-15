@@ -194,6 +194,7 @@ module Community
       @post = Community::Post.find(post_id)
       @actor = User.find(actor_id)
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      assign_notification_unsubscribe("forum.topic_solved")
       mail(to: @user.email, subject: "你的主题已标记为已解决")
     end
 
@@ -202,6 +203,8 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @inviter = User.find(inviter_id)
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      assign_notification_unsubscribe("forum.topic_invite")
+
       mail(to: @user.email, subject: "#{@inviter.username} 邀请你关注主题")
     end
 

@@ -17,6 +17,7 @@ class User < ApplicationRecord
   has_many :forum_staff_notes, class_name: "Community::StaffNote", dependent: :destroy
   has_many :user_silences, class_name: "Community::UserSilence", dependent: :destroy
     has_many :forum_saved_searches, class_name: "Community::SavedSearch", dependent: :destroy
+    has_many :forum_unread_filter_presets, class_name: "Community::UnreadFilterPreset", dependent: :destroy
     has_many :forum_search_histories, class_name: "Community::SearchHistory", dependent: :destroy
     has_many :store_wishlist_filter_presets, class_name: "Commerce::WishlistFilterPreset", dependent: :destroy
     has_many :shipping_addresses, class_name: "Commerce::ShippingAddress", dependent: :destroy

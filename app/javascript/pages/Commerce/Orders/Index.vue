@@ -65,6 +65,7 @@ const createdAfter = ref(props.createdAfter || '')
 const createdBefore = ref(props.createdBefore || '')
 const minTotal = ref(props.minTotal || '')
 const maxTotal = ref(props.maxTotal || '')
+const exportCopied = ref(false)
 
 watch(() => props.status, (value) => {
   statusFilter.value = value
@@ -151,6 +152,17 @@ function switchStatusTab(tab: StatusTab) {
   statusFilter.value = tab.status || ''
   router.get(routes.storeOrders, orderParams({ status: tab.status || undefined }), { preserveState: true })
 }
+
+async function copyExportUrl() {
+  if (!props.exportUrl) return
+  try {
+    await navigator.clipboard.writeText(new URL(props.exportUrl, window.location.origin).href)
+    exportCopied.value = true
+    window.setTimeout(() => { exportCopied.value = false }, 2000)
+  } catch {
+    prompt('复制导出链接：', props.exportUrl)
+  }
+}
 </script>
 
 <template>
@@ -161,6 +173,9 @@ function switchStatusTab(tab: StatusTab) {
     </Button>
     <Button v-if="exportUrl" as-child variant="outline" size="sm">
       <a :href="exportUrl">导出 CSV</a>
+    </Button>
+    <Button v-if="exportUrl" type="button" variant="outline" size="sm" @click="copyExportUrl">
+      {{ exportCopied ? '已复制链接' : '复制导出链接' }}
     </Button>
   </div>
 

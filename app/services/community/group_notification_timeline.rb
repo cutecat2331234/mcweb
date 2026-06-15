@@ -17,6 +17,7 @@ module Community
         "this_week" => [],
         "this_month" => [],
         "last_month" => [],
+        "last_year" => [],
         "earlier" => []
       }
 
@@ -31,6 +32,7 @@ module Community
         section("this_week", "本周", buckets["this_week"], default_expanded: true),
         section("this_month", "本月", buckets["this_month"], default_expanded: false),
         section("last_month", "上月", buckets["last_month"], default_expanded: false),
+        section("last_year", "去年", buckets["last_year"], default_expanded: false),
         section("earlier", "更早", buckets["earlier"], default_expanded: false)
       ].compact
     end
@@ -46,6 +48,7 @@ module Community
       return "this_week" if date >= today.beginning_of_week
       return "this_month" if date >= today.beginning_of_month
       return "last_month" if date >= today.beginning_of_month.prev_month
+      return "last_year" if date >= today.beginning_of_year.prev_year && date < today.beginning_of_year
 
       "earlier"
     end

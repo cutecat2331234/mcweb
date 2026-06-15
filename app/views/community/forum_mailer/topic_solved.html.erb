@@ -1,3 +1,4 @@
 <p>你好 <%= @user.username %>，</p>
 <p><strong><%= @actor.username %></strong> 将你的主题「<%= @topic.title %>」标记为已解决。</p>
 <p><a href="<%= @url %>">查看答案</a></p>
+<%= render "notification_unsubscribe" %>

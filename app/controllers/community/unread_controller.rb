@@ -61,6 +61,8 @@ module Community
         sectionOptions: unread_section_options,
         tagOptions: unread_tag_options,
         filterBookmarkUrl: unread_filter_bookmark_url(sort: sort, filter: filter, section: section_slug, tag_slugs: tag_slugs, tag_match: tag_match),
+        savedFilterPresets: serialize_unread_filter_presets,
+        saveFilterPresetUrl: forum_unread_filter_presets_path,
         activeFilters: unread_active_filters(sort: sort, filter: filter, section: section_slug, tag_slugs: tag_slugs, tag_match: tag_match)
       }
     end
@@ -212,6 +214,32 @@ module Community
         chips << { param: "tags", label: "标签：#{name}", value: slug }
       end
       chips
+    end
+
+    def serialize_unread_filter_presets
+      current_user.forum_unread_filter_presets.recent.limit(10).map do |preset|
+        filters = preset.filters.symbolize_keys
+        query = unread_preset_url_params(filters)
+        {
+          id: preset.id,
+          name: preset.name,
+          url: forum_unread_path(query),
+          delete_url: forum_unread_filter_preset_path(preset)
+        }
+      end
+    end
+
+    def unread_preset_url_params(filters)
+      query = {
+        sort: filters[:sort].presence,
+        filter: filters[:filter].presence,
+        section: filters[:section].presence,
+        tags: filters[:tags].presence
+      }
+      if filters[:tag_match].present? && filters[:tag_match] != "all"
+        query[:tag_match] = filters[:tag_match]
+      end
+      query.compact
     end
   end
 end

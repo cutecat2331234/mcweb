@@ -227,6 +227,7 @@ Rails.application.routes.draw do
     get "assigned", to: "assigned#index"
     patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read
     patch "unread/mark_selected_read", to: "unread#mark_selected_read", as: :unread_mark_selected_read
+    resources :unread_filter_presets, only: %i[create destroy], path: "unread/filter_presets"
     post "preview", to: "previews#create"
     post "uploads", to: "uploads#create"
     get "bookmarks", to: "bookmarks#index"

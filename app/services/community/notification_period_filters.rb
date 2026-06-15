@@ -5,7 +5,8 @@ module Community
     FILTERS = [
       { key: "today", label: "仅今日", period: "today" },
       { key: "this_week", label: "本周", period: "this_week" },
-      { key: "this_month", label: "本月", period: "this_month" }
+      { key: "this_month", label: "本月", period: "this_month" },
+      { key: "last_month", label: "上月", period: "last_month" }
     ].freeze
 
     def self.call(user:, category: nil, read: nil, type: nil, active_period: nil)
@@ -56,6 +57,8 @@ module Community
         scope.where("created_at >= ?", Time.zone.now.beginning_of_week).count
       when "this_month"
         scope.where("created_at >= ?", Time.zone.now.beginning_of_month).count
+      when "last_month"
+        scope.where(created_at: last_month_range).count
       else
         0
       end
@@ -79,6 +82,12 @@ module Community
         type: @type.presence,
         period: period
       }.compact
+    end
+
+    def last_month_range
+      start = Time.zone.now.beginning_of_month.prev_month
+      finish = Time.zone.now.beginning_of_month
+      start...finish
     end
   end
 end

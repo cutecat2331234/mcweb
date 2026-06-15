@@ -1546,3 +1546,13 @@ app/
 | 未读筛选书签 | `UnreadFilterBookmarkUrl` + 复制筛选链接按钮 |
 | 引用邮件退订 | `post_quoted` 邮件 `forum.quote` 退订链接 |
 | 导出金额预设 | CSV 导出尊重 `min_total`/`max_total` 预设参数 |
+
+### 第一百零六轮（去年时间线、上月通知筛选、未读命名预设、主题邮件退订、导出链接复制）
+
+| 功能 | 实现 |
+|------|------|
+| 通知去年桶 | `GroupNotificationTimeline` 增加 `last_year`（去年）分组 |
+| 通知上月筛选 | `period=last_month` + `NotificationPeriodFilters` 快捷入口 |
+| 未读命名预设 | `UnreadFilterPreset` + 保存/加载命名筛选（对标心愿单） |
+| 主题邮件退订 | `topic_solved`/`topic_invite` 邮件退订链接 |
+| 导出链接复制 | 订单页「复制导出链接」按钮（保留当前筛选参数） |

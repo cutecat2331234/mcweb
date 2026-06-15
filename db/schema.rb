@@ -529,6 +529,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["user_id"], name: "index_forum_topics_on_user_id"
   end
 
+  create_table "forum_unread_filter_presets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "filters", default: {}, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_forum_unread_filter_presets_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_forum_unread_filter_presets_on_user_id"
+  end
+
   create_table "forum_user_badges", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "forum_badge_id", null: false
@@ -1485,6 +1495,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_topics", "users"
   add_foreign_key "forum_topics", "users", column: "assigned_to_id"
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"
+  add_foreign_key "forum_unread_filter_presets", "users"
   add_foreign_key "forum_user_badges", "forum_badges"
   add_foreign_key "forum_user_badges", "users"
   add_foreign_key "forum_user_blocks", "users", column: "blocked_id"

@@ -105,6 +105,10 @@ module Community
         scope.where("created_at >= ?", Time.zone.now.beginning_of_week)
       when "this_month"
         scope.where("created_at >= ?", Time.zone.now.beginning_of_month)
+      when "last_month"
+        start = Time.zone.now.beginning_of_month.prev_month
+        finish = Time.zone.now.beginning_of_month
+        scope.where(created_at: start...finish)
       else
         scope
       end

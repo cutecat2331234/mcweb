@@ -11,9 +11,9 @@ module Community
     def call
       path = if @url.start_with?("/")
                @url
-             else
+      else
                URI.parse(@url).path
-             end
+      end
       return ServiceResult.success(nil) unless path
 
       match = path.match(COUPON_PATH)
@@ -23,13 +23,13 @@ module Community
       return ServiceResult.success(nil) unless coupon
 
       label = case coupon.discount_type
-              when "percentage"
+      when "percentage"
                 "#{coupon.discount_value}% 折扣"
-              when "fixed"
+      when "fixed"
                 "减 #{format_money(coupon.discount_value)}"
-              else
+      else
                 coupon.code
-              end
+      end
 
       ServiceResult.success(
         code: coupon.code,

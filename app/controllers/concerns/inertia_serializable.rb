@@ -62,11 +62,11 @@ module InertiaSerializable
   def serialize_topic(topic, read_state: nil)
     unread_count = if read_state
                      read_state.unread_count
-                   elsif current_user
+    elsif current_user
                      0
-                   else
+    else
                      0
-                   end
+    end
 
     {
       id: topic.public_id,
@@ -182,9 +182,9 @@ module InertiaSerializable
     cooldown_hours = SiteSetting.get("forum.bump_cooldown_hours", "24").to_i
     remaining = if cooldown_hours.positive? && topic.bumped_at && topic.bumped_at > cooldown_hours.hours.ago
                   ((topic.bumped_at + cooldown_hours.hours) - Time.current).to_i
-                else
+    else
                   0
-                end
+    end
     { bump_cooldown_remaining_seconds: remaining.positive? ? remaining : nil }
   end
 
@@ -198,9 +198,9 @@ module InertiaSerializable
     end
     user_reactions = if current_user
                        post.reactions.where(user: current_user).pluck(:emoji)
-                     else
+    else
                        []
-                     end
+    end
     bookmarked = post_bookmark.present? || (current_user && Community::Bookmark.exists?(user: current_user, post: post))
     bookmark_meta = if post_bookmark
                       {
@@ -209,7 +209,7 @@ module InertiaSerializable
                         note: post_bookmark.note,
                         remind_at_input: post_bookmark.remind_at&.strftime("%Y-%m-%dT%H:%M")
                       }
-                    end
+    end
 
     signature_html = nil
     if post.user.forum_signature.present?
@@ -221,7 +221,7 @@ module InertiaSerializable
     edit_diff_lines = if last_edit
                         diff = Community::DiffLines.call(before_text: last_edit.body_before, after_text: last_edit.body_after)
                         diff.success? ? diff.value : nil
-                      end
+    end
 
     {
       id: post.id,

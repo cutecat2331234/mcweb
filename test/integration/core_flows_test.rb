@@ -4,7 +4,7 @@ require "test_helper"
 
 class Website::BlockSanitizerTest < ActiveSupport::TestCase
   test "strips script tags" do
-    html = '<p>Hello</p><script>alert(1)</script>'
+    html = "<p>Hello</p><script>alert(1)</script>"
     result = Website::BlockSanitizer.call(html: html)
     assert result.success?
     assert_not_includes result.value.to_s, "script"

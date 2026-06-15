@@ -67,9 +67,9 @@ module Community
 
       read_states = if logged_in?
                       Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id)).index_by(&:forum_topic_id)
-                    else
+      else
                       {}
-                    end
+      end
 
       render inertia: "Community/Activity/Index", props: activity_props(
         tab: tab,

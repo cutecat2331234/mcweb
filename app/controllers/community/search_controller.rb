@@ -68,9 +68,9 @@ module Community
           query
         )
         topics = case params[:topic_sort]
-                 when "oldest" then topics.order(created_at: :asc)
-                 else topics.order(last_posted_at: :desc)
-                 end
+        when "oldest" then topics.order(created_at: :asc)
+        else topics.order(last_posted_at: :desc)
+        end
         topics = filter_blocked_topics(topics)
         topics = preload_topics(topics)
 
@@ -103,9 +103,9 @@ module Community
           query
         ).includes(:user, topic: :section)
         posts = case params[:post_sort]
-                when "oldest" then posts.order(created_at: :asc)
-                else posts.order(created_at: :desc)
-                end
+        when "oldest" then posts.order(created_at: :asc)
+        else posts.order(created_at: :desc)
+        end
         posts = filter_blocked_posts(posts)
       end
 

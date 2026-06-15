@@ -48,10 +48,10 @@ module Commerce
         other_qty = @cart.items.where.not(store_product_id: @product.id).sum(:quantity)
         line_qty = if @replace_quantity
                      @quantity
-                   else
+        else
                      existing = @cart.items.find_by(store_product_id: @product.id, store_product_variant_id: @variant&.id)
                      (existing&.quantity || 0) + @quantity
-                   end
+        end
         if other_qty + line_qty > cart_limit
           return ServiceResult.failure(error: "购物车最多 #{cart_limit} 件商品。")
         end

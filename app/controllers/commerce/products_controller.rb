@@ -11,14 +11,14 @@ module Commerce
         scope = scope.where("name ILIKE ? OR slug ILIKE ?", q, q)
       end
       scope = case params[:sort]
-              when "price_asc" then scope.order(price_cents: :asc)
-              when "price_desc" then scope.order(price_cents: :desc)
-              when "discount_desc" then scope.on_sale.order(Arel.sql("((compare_at_price_cents - price_cents)::float / NULLIF(compare_at_price_cents, 0)) DESC"))
-              when "popular" then scope.order(view_count: :desc, created_at: :desc)
-              when "rating" then scope.left_joins(:reviews).where(store_reviews: { status: "published" })
+      when "price_asc" then scope.order(price_cents: :asc)
+      when "price_desc" then scope.order(price_cents: :desc)
+      when "discount_desc" then scope.on_sale.order(Arel.sql("((compare_at_price_cents - price_cents)::float / NULLIF(compare_at_price_cents, 0)) DESC"))
+      when "popular" then scope.order(view_count: :desc, created_at: :desc)
+      when "rating" then scope.left_joins(:reviews).where(store_reviews: { status: "published" })
                 .group("store_products.id").order(Arel.sql("COALESCE(AVG(store_reviews.rating), 0) DESC"))
-              else scope.order(created_at: :desc)
-              end
+      else scope.order(created_at: :desc)
+      end
 
       if params[:category].present?
         category = Commerce::Category.find_by!(slug: params[:category])
@@ -43,9 +43,9 @@ module Commerce
                             .includes(:product)
                             .limit(6)
                             .filter_map { |view| view.product if view.product&.active? }
-                        else
+      else
                           []
-                        end
+      end
 
       @pagy, products = pagy(scope, limit: 20)
       categories = Commerce::Category.ordered
@@ -102,15 +102,15 @@ module Commerce
       reviews_scope = reviews_scope.where(rating: review_rating) if (1..5).cover?(review_rating)
       reviews_scope = reviews_scope.where.not(user_id: current_user.id) if logged_in?
       reviews_scope = case review_sort
-                      when "helpful"
+      when "helpful"
                         reviews_scope.left_joins(:helpful_votes)
                           .group("store_reviews.id")
                           .order(Arel.sql("COUNT(store_review_helpful_votes.id) DESC, store_reviews.created_at DESC"))
-                      when "rating"
+      when "rating"
                         reviews_scope.order(rating: :desc, created_at: :desc)
-                      else
+      else
                         reviews_scope.order(created_at: :desc)
-                      end
+      end
 
       review_page = [ params[:review_page].to_i, 1 ].max
       per_page = 10
@@ -125,9 +125,9 @@ module Commerce
       compared = Array(session[:compare_product_ids]).include?(product.public_id)
       stock_alerts = if logged_in?
                        Commerce::StockAlert.where(user: current_user, product: product).index_by(&:store_product_variant_id)
-                     else
+      else
                        {}
-                     end
+      end
       stock_alert_variant_ids = stock_alerts.keys
       user_review = logged_in? ? product.reviews.published.find_by(user: current_user) : nil
       purchased = logged_in? && Commerce::CreateReview.purchased?(user: current_user, product: product)
@@ -136,9 +136,9 @@ module Commerce
       can_delete_review = logged_in? && user_review.present? && user_review.user_id == current_user.id
       related = if product.store_category_id
                   product.category.products.available.where.not(id: product.id).order(created_at: :desc).limit(4)
-                else
+      else
                   Commerce::Product.none
-                end
+      end
 
       questions_scope = product.questions.visible.includes(:user, answers: :helpful_votes).recent
       if params[:question_q].present?

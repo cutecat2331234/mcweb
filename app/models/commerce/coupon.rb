@@ -31,13 +31,13 @@ module Commerce
       return 0 unless applicable?(subtotal_cents: subtotal_cents, cart_items: cart_items, user: user)
 
       amount = case discount_type
-               when "percentage"
+      when "percentage"
                  (subtotal_cents * discount_value / 100.0).round
-               when "fixed"
+      when "fixed"
                  [ discount_value, subtotal_cents ].min
-               else
+      else
                  0
-               end
+      end
 
       if max_discount_cents.present? && max_discount_cents.positive?
         amount = [ amount, max_discount_cents ].min

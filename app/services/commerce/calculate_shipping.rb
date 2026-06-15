@@ -28,9 +28,9 @@ module Commerce
       shipping_cents = free ? 0 : flat_cents
       remaining_cents = if min_cents.positive? && !free
                           [ min_cents - @subtotal_cents, 0 ].max
-                        else
+      else
                           0
-                        end
+      end
 
       ServiceResult.success(
         shipping_cents: shipping_cents,

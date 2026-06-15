@@ -42,9 +42,9 @@ module Community
       tab = params[:tab].to_s.in?(%w[topics posts store]) ? params[:tab] : "topics"
       topics_scope = if logged_in? && (current_user.id == user.id || current_user.permission?("forum.topics.lock"))
                        Community::Topic.where(user: user, status: :published)
-                     else
+      else
                        Community::Topic.where(user: user, status: :published, unlisted: false)
-                     end.order(created_at: :desc)
+      end.order(created_at: :desc)
       posts_scope = Community::Post.where(user: user, status: :published).includes(:topic).order(created_at: :desc)
       posts_count = posts_scope.count
       @pagy_topics, topics = pagy(preload_topics(topics_scope), limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
@@ -91,9 +91,9 @@ module Community
                            created_at: l(order.created_at, format: :short)
                          }
                        end
-                     else
+      else
                        []
-                     end
+      end
 
       render inertia: "Community/Users/Show", props: {
         profile: {

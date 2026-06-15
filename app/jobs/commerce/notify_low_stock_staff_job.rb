@@ -11,9 +11,9 @@ module Commerce
       low_stock = if variant_id
                     variant = product.variants.find_by(id: variant_id)
                     variant&.low_stock?
-                  else
+      else
                     product.low_stock?
-                  end
+      end
       return unless low_stock
 
       staff_ids = User.joins(roles: :permissions)

@@ -35,7 +35,8 @@ module Admin
       private
 
       def settings_params
-        params.fetch(:settings, {}).permit!.to_h
+        allowed_keys = SiteSetting.pluck(:key)
+        params.fetch(:settings, {}).permit(*allowed_keys).to_h
       end
     end
   end

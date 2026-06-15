@@ -62,9 +62,9 @@ module Community
 
       @url = if @bookmark.forum_post_id.present? && @bookmark.post
                "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@bookmark.post.id}"}"
-             else
+      else
                "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
-             end
+      end
       @note = @bookmark.note
 
       mail(to: @user.email, subject: "书签提醒：#{@topic.title.truncate(60)}")

@@ -24,7 +24,7 @@ module Admin
               url: admin_store_category_path(category)
             )
           end,
-          actions: [{ label: "新建分类", href: new_admin_store_category_path }]
+          actions: [ { label: "新建分类", href: new_admin_store_category_path } ]
         }
       end
 
@@ -41,7 +41,7 @@ module Admin
             { label: "SEO 描述", value: @category.seo["description"].presence || "—" }
           ],
           backUrl: admin_store_categories_path,
-          actions: [{ label: "编辑", href: edit_admin_store_category_path(@category) }]
+          actions: [ { label: "编辑", href: edit_admin_store_category_path(@category) } ]
         }
       end
 

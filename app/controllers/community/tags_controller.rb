@@ -37,9 +37,9 @@ module Community
 
       read_states = if logged_in?
                       Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id)).index_by(&:forum_topic_id)
-                    else
+      else
                       {}
-                    end
+      end
 
       watching = logged_in? && Community::Subscription.exists?(user: current_user, subscribable: tag)
 
@@ -70,9 +70,9 @@ module Community
                    when "tracking" then "已切换为跟踪此标签（仅站内通知）。"
                    else "已关注此标签（即时通知）。"
                    end
-                 else
+        else
                    "已取消关注此标签。"
-                 end
+        end
         redirect_to forum_tag_path(tag.slug), notice: notice
       else
         redirect_to forum_tag_path(tag.slug), alert: service_error_message(result)

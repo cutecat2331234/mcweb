@@ -14,9 +14,9 @@ module Community
 
       path = if @bookmark.forum_post_id.present? && @bookmark.post
                "/forum/topics/#{topic.public_id}#post-#{@bookmark.post.id}"
-             else
+      else
                "/forum/topics/#{topic.public_id}"
-             end
+      end
 
       title = topic.title
       body = @bookmark.note.presence || "你设置的书签提醒时间到了。"

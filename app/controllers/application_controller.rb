@@ -26,10 +26,10 @@ class ApplicationController < ActionController::Base
 
     cart = if logged_in?
              Commerce::Cart.find_by(user: current_user)
-           else
+    else
              token = cookies.signed[:cart_token]
              Commerce::Cart.find_by(session_token: token) if token.present?
-           end
+    end
 
     if cart
       share[:cart] = {

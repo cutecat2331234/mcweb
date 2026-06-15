@@ -40,9 +40,9 @@ module Admin
                            remove_url: admin_forum_mute_path(mute)
                          }
                        end
-                     else
+      else
                        []
-                     end
+      end
 
       render inertia: "Admin/Generic/Show", props: {
         title: @user.display_name.presence || @user.username,

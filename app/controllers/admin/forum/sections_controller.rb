@@ -24,7 +24,7 @@ module Admin
               url: admin_forum_section_path(section)
             )
           end,
-          actions: [{ label: "新建板块", href: new_admin_forum_section_path }]
+          actions: [ { label: "新建板块", href: new_admin_forum_section_path } ]
         }
       end
 
@@ -51,7 +51,7 @@ module Admin
             { label: "默认订阅级别", value: @section.default_notification_level == "tracking" ? "跟踪" : "关注" }
           ],
           backUrl: admin_forum_sections_path,
-          actions: [{ label: "编辑", href: edit_admin_forum_section_path(@section) }]
+          actions: [ { label: "编辑", href: edit_admin_forum_section_path(@section) } ]
         }
       end
 
@@ -96,9 +96,9 @@ module Admin
         )
         prefixes = if permitted[:prefixes].is_a?(String)
                      permitted[:prefixes].lines.map(&:strip).reject(&:blank?)
-                   else
+        else
                      Array(permitted[:prefixes])
-                   end
+        end
         required_tag_ids = Array(permitted[:required_tag_ids]).map(&:to_i).reject(&:zero?).uniq
         allowed_tag_ids = Array(permitted[:allowed_tag_ids]).map(&:to_i).reject(&:zero?).uniq
         {

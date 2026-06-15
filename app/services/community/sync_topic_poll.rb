@@ -7,9 +7,9 @@ module Community
       @poll_question = poll_question.to_s.strip.presence
       @poll_options = if poll_options.is_a?(String)
                         poll_options.lines.map(&:strip).reject(&:blank?)
-                      else
+      else
                         Array(poll_options).map(&:to_s).map(&:strip).reject(&:blank?)
-                      end
+      end
       @poll_closes_days = poll_closes_days.to_i
       @poll_multiple_choice = ActiveModel::Type::Boolean.new.cast(poll_multiple_choice) || false
       @poll_max_choices = [ poll_max_choices.to_i, 1 ].max

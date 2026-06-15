@@ -21,9 +21,9 @@ module Community
       reason_text = if reason_code.present?
                       label = Community::Report::REASONS[reason_code] || reason_code
                       detail.present? ? "#{label}：#{detail}" : label
-                    else
+      else
                       report_params[:reason]
-                    end
+      end
 
       report = Community::Report.create!(
         reporter: current_user,

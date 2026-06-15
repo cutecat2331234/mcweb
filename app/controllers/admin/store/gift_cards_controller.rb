@@ -23,7 +23,7 @@ module Admin
               url: admin_store_gift_card_path(card)
             )
           end,
-          actions: [{ label: "新建礼品卡", href: new_admin_store_gift_card_path }]
+          actions: [ { label: "新建礼品卡", href: new_admin_store_gift_card_path } ]
         }
       end
 

@@ -11,9 +11,9 @@ module Community
     def call
       path = if @url.start_with?("/")
                @url
-             else
+      else
                URI.parse(@url).path
-             end
+      end
       return ServiceResult.success(nil) unless path
 
       match = path.match(USER_PATH)

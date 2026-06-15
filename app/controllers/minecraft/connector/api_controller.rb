@@ -62,7 +62,7 @@ module Minecraft
       end
 
       def task_result_params
-        params.fetch(:result, {}).permit!.to_h
+        params.fetch(:result, {}).permit(:success, :status, :message, :error, :output, :detail, data: {}).to_h
       end
 
       def serialize_task(task)

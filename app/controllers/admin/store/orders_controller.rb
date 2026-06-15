@@ -88,13 +88,13 @@ module Admin
               title: "发货",
               items: fulfillments.map do |fulfillment|
                 { label: fulfillment.delivery_id, value: "#{fulfillment.status} — #{fulfillment.order_item.product_name}" }
-              end.presence || [{ label: "暂无发货记录", value: nil }]
+              end.presence || [ { label: "暂无发货记录", value: nil } ]
             },
             {
               title: "退款记录",
               items: @order.refunds.map do |refund|
                 { label: l(refund.created_at, format: :short), value: "#{format_money(refund.amount_cents, @order.currency)} · #{refund.status}" }
-              end.presence || [{ label: "暂无退款", value: nil }]
+              end.presence || [ { label: "暂无退款", value: nil } ]
             }
           ],
           backUrl: admin_store_orders_path,
@@ -154,12 +154,12 @@ module Admin
       def refund_actions(payment)
         return [] unless payment && refundable_admin_status? && current_user.permission?("store.orders.refund")
 
-        [{
+        [ {
           label: "全额退款",
           href: admin_store_order_path(@order),
           method: "patch",
           data: { refund: true, amount_cents: payment.amount_cents }
-        }]
+        } ]
       end
 
       def refund_form_props(payment)
@@ -196,12 +196,12 @@ module Admin
 
       def pending_refund_actions(pending_refunds)
         pending_refunds.flat_map do |refund|
-          actions = [{
+          actions = [ {
             label: "批准退款申请 #{format_money(refund.amount_cents, @order.currency)}",
             href: admin_store_order_path(@order),
             method: "patch",
             data: { refund: true, refund_id: refund.id, amount_cents: refund.amount_cents }
-          }]
+          } ]
           if current_user.permission?("store.orders.refund")
             actions << {
               label: "拒绝退款申请",

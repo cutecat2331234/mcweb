@@ -15,15 +15,15 @@ module Community
 
       posts_scope = if can_moderate_topic?
                       @topic.posts.with_discarded.chronological
-                    else
+      else
                       @topic.posts.chronological
-                    end
+      end
       posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits, :forked_topics, user: { user_badges: :badge })
       posts_scope = filter_blocked_posts(posts_scope)
       posts_scope = case params[:post_sort]
-                    when "recent" then posts_scope.reorder(floor_number: :desc)
-                    else posts_scope
-                    end
+      when "recent" then posts_scope.reorder(floor_number: :desc)
+      else posts_scope
+      end
       if params[:q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
         posts_scope = posts_scope.where("body ILIKE ?", q)
@@ -42,12 +42,12 @@ module Community
       last_read_floor = logged_in? ? Community::ReadState.find_by(user: current_user, topic: @topic)&.last_read_floor.to_i : 0
       topic_bookmark = if logged_in?
                          Community::Bookmark.find_by(user: current_user, topic: @topic, forum_post_id: nil)
-                       end
+      end
       post_bookmarks = if logged_in?
                          Community::Bookmark.where(user: current_user, forum_post_id: posts.map(&:id)).index_by(&:forum_post_id)
-                       else
+      else
                          {}
-                       end
+      end
 
       render inertia: "Community/Topics/Show", props: {
         topic: serialize_topic_detail(
@@ -209,9 +209,9 @@ module Community
                    when "tracking" then "已切换为跟踪（仅站内通知）。"
                    else "已关注此主题（即时通知）。"
                    end
-                 else
+        else
                    "已取消关注。"
-                 end
+        end
         redirect_to forum_topic_path(@topic), notice: notice
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)

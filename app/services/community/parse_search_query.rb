@@ -56,13 +56,13 @@ module Community
 
       solved_filter = if topic_flags["solved"]
                         "solved"
-                      elsif topic_flags["unsolved"]
+      elsif topic_flags["unsolved"]
                         "unsolved"
-                      end
+      end
 
       announcement_filter = if topic_flags["announcement"] || topic_flags["global"]
                               "announcement"
-                            end
+      end
 
       ServiceResult.success(
         query: text.squish,

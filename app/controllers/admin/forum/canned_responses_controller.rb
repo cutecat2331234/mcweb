@@ -22,7 +22,7 @@ module Admin
               url: edit_admin_forum_canned_response_path(response)
             )
           end,
-          actions: [{ label: "新建罐头回复", href: new_admin_forum_canned_response_path }]
+          actions: [ { label: "新建罐头回复", href: new_admin_forum_canned_response_path } ]
         }
       end
 

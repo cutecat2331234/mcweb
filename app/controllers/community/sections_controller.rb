@@ -14,9 +14,9 @@ module Community
                          hash[child.id] = Community::ReadState.unread_count_for_section(current_user, child)
                        end
                      end
-                   else
+      else
                      {}
-                   end
+      end
 
       render inertia: "Community/Sections/Index", props: {
         sections: sections.map { |section| serialize_section(section, unread_map: unread_map) },
@@ -40,9 +40,9 @@ module Community
       staff = forum_staff?
       base_scope = if filter == "unlisted" && staff
                      section.topics.where(status: :published, unlisted: true)
-                   else
+      else
                      section.topics.published_listed
-                   end
+      end
       scope = preload_topics(base_scope.sorted(sort))
       scope = filter_blocked_topics(scope)
       scope = apply_topic_filter(scope, filter: filter, user: current_user)
@@ -52,9 +52,9 @@ module Community
       @pagy, topics = pagy(scope, limit: 20)
       read_states = if logged_in?
                       Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id) + featured.map(&:id)).index_by(&:forum_topic_id)
-                    else
+      else
                       {}
-                    end
+      end
 
       render inertia: "Community/Sections/Show", props: {
         section: {
@@ -85,7 +85,7 @@ module Community
         sort: sort,
         filter: filter.to_s,
         filterOptions: topic_filter_options(prefixes: Array(section.prefixes), staff: staff),
-        canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic),
+        canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic)
       }
     end
 
@@ -100,9 +100,9 @@ module Community
                    when "tracking" then "已切换为跟踪此分区（仅站内通知）。"
                    else "已关注此分区（即时通知）。"
                    end
-                 else
+        else
                    "已取消关注此分区。"
-                 end
+        end
         redirect_to forum_section_path(section), notice: notice
       else
         redirect_to forum_section_path(section), alert: service_error_message(result)

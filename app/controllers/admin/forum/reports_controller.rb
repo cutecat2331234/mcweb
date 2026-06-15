@@ -112,11 +112,11 @@ module Admin
       def reportable_actions
         case @report.reportable
         when ::Community::Topic
-          [{ label: "查看主题", href: forum_topic_path(@report.reportable) }]
+          [ { label: "查看主题", href: forum_topic_path(@report.reportable) } ]
         when ::Community::Post
-          [{ label: "查看帖子", href: "#{forum_topic_path(@report.reportable.topic)}#post-#{@report.reportable.id}" }]
+          [ { label: "查看帖子", href: "#{forum_topic_path(@report.reportable.topic)}#post-#{@report.reportable.id}" } ]
         when ::Commerce::Review
-          [{ label: "查看商品", href: store_product_path(@report.reportable.product) }]
+          [ { label: "查看商品", href: store_product_path(@report.reportable.product) } ]
         else
           []
         end

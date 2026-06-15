@@ -26,7 +26,7 @@ module Admin
               url: admin_store_coupon_path(coupon)
             )
           end,
-          actions: [{ label: "新建优惠券", href: new_admin_store_coupon_path }]
+          actions: [ { label: "新建优惠券", href: new_admin_store_coupon_path } ]
         }
       end
 
@@ -41,7 +41,7 @@ module Admin
             { label: "状态", value: @coupon.active? ? "启用" : "禁用" }
           ],
           backUrl: admin_store_coupons_path,
-          actions: [{ label: "编辑", href: edit_admin_store_coupon_path(@coupon) }]
+          actions: [ { label: "编辑", href: edit_admin_store_coupon_path(@coupon) } ]
         }
       end
 

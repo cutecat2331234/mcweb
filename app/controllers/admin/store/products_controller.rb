@@ -30,7 +30,7 @@ module Admin
               url: admin_store_product_path(product)
             )
           end,
-          actions: [{ label: "新建商品", href: new_admin_store_product_path }]
+          actions: [ { label: "新建商品", href: new_admin_store_product_path } ]
         }
       end
 

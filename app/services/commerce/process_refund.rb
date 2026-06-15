@@ -20,6 +20,7 @@ module Commerce
       return ServiceResult.failure(error: "Refund amount exceeds remaining balance.") if @amount_cents > remaining
 
       refund = nil
+      previous_status = @order.status
       Commerce::Refund.transaction do
         refund = find_or_build_refund
         refund.assign_attributes(
@@ -76,6 +77,13 @@ module Commerce
             title: "退款已完成",
             body: "订单 #{@order.order_number} 退款 #{format_refund_amount(@amount_cents)} 已处理。",
             path: "/store/orders/#{@order.public_id}"
+          )
+          Commerce::DispatchOrderWebhook.call(
+            order: @order,
+            event_type: "order.refunded",
+            from_status: previous_status,
+            to_status: @order.status,
+            extra: { refund_amount_cents: @amount_cents, refund_id: refund.id }
           )
         else
           refund.update!(status: "rejected")

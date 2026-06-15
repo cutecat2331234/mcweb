@@ -49,7 +49,7 @@ module Admin
             { label: "图标", value: @section.icon.presence || "—" },
             { label: "公告横幅", value: @section.banner_text.presence || "—" },
             { label: "外链", value: @section.link_url.presence || "—" },
-            { label: "默认订阅级别", value: @section.default_notification_level == "tracking" ? "跟踪" : "关注" }
+            { label: "默认订阅级别", value: { "tracking" => "跟踪", "normal" => "普通" }.fetch(@section.default_notification_level, "关注") }
           ],
           backUrl: admin_forum_sections_path,
           actions: [ { label: "编辑", href: edit_admin_forum_section_path(@section) } ]

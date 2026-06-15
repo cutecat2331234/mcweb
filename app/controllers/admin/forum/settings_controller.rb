@@ -23,6 +23,8 @@ module Admin
         forum.min_trust_level_reaction
         forum.saved_search_webhook_secret
         forum.saved_search_webhook_url
+        forum.search_feeds_opml_saved_limit
+        forum.search_feeds_opml_history_limit
         webhook.failure_alert_threshold
         webhook.failure_alert_forum_threshold
         webhook.failure_alert_store_threshold
@@ -34,6 +36,7 @@ module Admin
         render inertia: "Admin/Forum/Settings/Show", props: {
           settings: forum_settings_props,
           testWebhookUrl: test_webhook_admin_forum_settings_path,
+          testWebhookStatusUrl: webhook_test_status_admin_forum_settings_path,
           savedSearchesForTest: saved_searches_for_test_props,
           lastTestWebhook: WebhookTestDeliveryStatus.forum_last
         }
@@ -62,6 +65,10 @@ module Admin
         else
           redirect_to admin_forum_settings_path, alert: result.error || "测试发送失败。"
         end
+      end
+
+      def webhook_test_status
+        render json: { lastTestWebhook: WebhookTestDeliveryStatus.forum_last }
       end
 
     private
@@ -99,6 +106,8 @@ module Admin
         when "forum.min_trust_level_reaction" then "0"
         when "forum.saved_search_webhook_secret" then ""
         when "forum.saved_search_webhook_url" then ""
+        when "forum.search_feeds_opml_saved_limit" then "50"
+        when "forum.search_feeds_opml_history_limit" then "20"
         when "webhook.failure_alert_threshold" then "5"
         when "webhook.failure_alert_forum_threshold" then "5"
         when "webhook.failure_alert_store_threshold" then "5"
@@ -127,6 +136,8 @@ module Admin
           "forum.min_trust_level_reaction" => "使用反应所需的最低信任等级",
           "forum.saved_search_webhook_secret" => "保存搜索 Webhook 密钥",
           "forum.saved_search_webhook_url" => "保存搜索 Webhook URL（测试/全局）",
+          "forum.search_feeds_opml_saved_limit" => "合并 OPML 保存搜索上限",
+          "forum.search_feeds_opml_history_limit" => "合并 OPML 搜索历史上限",
           "webhook.failure_alert_threshold" => "Webhook 失败告警阈值（24h，兼容）",
           "webhook.failure_alert_forum_threshold" => "论坛 Webhook 失败告警阈值（24h）",
           "webhook.failure_alert_store_threshold" => "商城 Webhook 失败告警阈值（24h）",
@@ -148,6 +159,8 @@ module Admin
           "forum.min_trust_level_reaction" => "信任等级低于此值的用户无法对帖子添加反应。",
           "forum.saved_search_webhook_secret" => "用于 X-McWeb-Signature HMAC 签名的密钥，可选。",
           "forum.saved_search_webhook_url" => "用于管理后台测试投递与全局 Hook，留空则无法发送测试。",
+          "forum.search_feeds_opml_saved_limit" => "合并 OPML 导出时最多包含的保存搜索数量（1–100）。",
+          "forum.search_feeds_opml_history_limit" => "合并 OPML 导出时最多包含的搜索历史数量（1–50）。",
           "webhook.failure_alert_threshold" => "旧版统一阈值，论坛/商城未单独配置时回退使用。0 表示关闭。",
           "webhook.failure_alert_forum_threshold" => "近 24 小时论坛 Webhook 失败达到此值时告警，0 表示不检查论坛。",
           "webhook.failure_alert_store_threshold" => "近 24 小时商城 Webhook 失败达到此值时告警，0 表示不检查商城。",

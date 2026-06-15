@@ -163,13 +163,16 @@ module Community
     end
 
     def build_search_feeds_opml(user)
-      saved_outlines = user.forum_saved_searches.recent.limit(50).map do |search|
+      saved_limit = SiteSetting.get("forum.search_feeds_opml_saved_limit", "50").to_i.clamp(1, 100)
+      history_limit = SiteSetting.get("forum.search_feeds_opml_history_limit", "20").to_i.clamp(1, 50)
+
+      saved_outlines = user.forum_saved_searches.recent.limit(saved_limit).map do |search|
         rss_url = forum_saved_search_rss_url(id: search.id, token: Community::SavedSearchRssToken.generate(search))
         html_url = forum_search_url(Community::SavedSearchPresenter.url_params(search))
         opml_outline(search.name, rss_url: rss_url, html_url: html_url)
       end.join("\n")
 
-      history_outlines = user.forum_search_histories.recent.limit(20).map do |history|
+      history_outlines = user.forum_search_histories.recent.limit(history_limit).map do |history|
         params = history.rss_params
         token = Community::SearchRssToken.generate(params)
         title = history.query.presence || "筛选搜索"

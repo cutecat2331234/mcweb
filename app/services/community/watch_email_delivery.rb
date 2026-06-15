@@ -12,5 +12,9 @@ module Community
     def self.allowed?(user)
       instant?(user)
     end
+
+    def self.email_allowed?(user, notification_type:)
+      allowed?(user) && InstantEmailDelivery.allowed?(user, notification_type: notification_type)
+    end
   end
 end

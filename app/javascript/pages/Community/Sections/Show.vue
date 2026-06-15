@@ -25,7 +25,7 @@ const props = defineProps<{
     link_url?: string | null
     link_label?: string | null
     read_only?: boolean
-    notification_level?: 'watching' | 'tracking' | null
+    notification_level?: 'watching' | 'tracking' | 'normal' | null
     new_topic_url: string | null
     watching: boolean
     muted?: boolean
@@ -65,7 +65,8 @@ function changeFilter(value: string) {
 
 function sectionWatchLabel() {
   if (!props.section.watching) return '关注分区'
-  if (props.section.notification_level === 'tracking') return '跟踪中（点击取消）'
+  if (props.section.notification_level === 'tracking') return '跟踪中（点击切换）'
+  if (props.section.notification_level === 'normal') return '普通（点击切换）'
   return '关注中（点击改为跟踪）'
 }
 

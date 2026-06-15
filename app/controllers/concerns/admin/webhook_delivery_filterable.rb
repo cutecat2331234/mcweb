@@ -10,6 +10,7 @@ module Admin
       {
         status: params[:status].presence,
         event: params[:event].presence,
+        kind: params[:kind].presence,
         created_from: params[:created_from].presence,
         created_to: params[:created_to].presence
       }.compact
@@ -25,6 +26,17 @@ module Admin
         scope = scope.where("created_at <= ?", to.end_of_day) if to
       end
       scope
+    end
+
+    def apply_webhook_kind_scope(scope)
+      case params[:kind].to_s
+      when "test"
+        scope.where("request_payload @> ?", { test: true }.to_json)
+      when "production"
+        scope.where("NOT (request_payload @> ?)", { test: true }.to_json)
+      else
+        scope
+      end
     end
 
     def webhook_date_filter_props

@@ -105,6 +105,7 @@ module Community
         notice = if result.value[:watching]
                    case result.value[:notification_level]
                    when "tracking" then "已切换为跟踪此分区（仅站内通知）。"
+                   when "normal" then "已切换为普通（不接收分区新主题通知）。"
                    else "已关注此分区（即时通知）。"
                    end
         else

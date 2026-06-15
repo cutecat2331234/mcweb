@@ -1,6 +1,6 @@
 module Community
   class Subscription < ApplicationRecord
-    NOTIFICATION_LEVELS = %w[watching tracking].freeze
+    NOTIFICATION_LEVELS = %w[watching tracking normal].freeze
 
     belongs_to :user
     belongs_to :subscribable, polymorphic: true

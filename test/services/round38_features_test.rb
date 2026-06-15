@@ -32,15 +32,18 @@ class Community::ToggleSubscriptionLevelTest < ActiveSupport::TestCase
     Community::Subscription.where(user: @user, subscribable: @topic).delete_all
   end
 
-  test "cycles watching tracking and unsubscribe" do
+  test "cycles watching tracking normal and unsubscribe" do
     r1 = Community::ToggleSubscription.call(user: @user, topic: @topic)
-    assert r1.value[:notification_level] == "watching"
+    assert_equal "watching", r1.value[:notification_level]
 
     r2 = Community::ToggleSubscription.call(user: @user, topic: @topic)
-    assert r2.value[:notification_level] == "tracking"
+    assert_equal "tracking", r2.value[:notification_level]
 
     r3 = Community::ToggleSubscription.call(user: @user, topic: @topic)
-    assert_not r3.value[:watching]
+    assert_equal "normal", r3.value[:notification_level]
+
+    r4 = Community::ToggleSubscription.call(user: @user, topic: @topic)
+    assert_not r4.value[:watching]
   end
 end
 

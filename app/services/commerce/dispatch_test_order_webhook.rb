@@ -2,7 +2,7 @@
 
 module Commerce
   class DispatchTestOrderWebhook < ApplicationService
-    EVENT_TYPES = %w[order.test order.created order.paid order.status_changed order.shipped].freeze
+    EVENT_TYPES = %w[order.test order.created order.paid order.status_changed order.shipped order.refunded].freeze
 
     def initialize(event_type: "order.test")
       @event_type = event_type.to_s
@@ -53,6 +53,8 @@ module Commerce
         base.merge(from_status: "paid", to_status: "processing")
       when "order.shipped"
         base.merge(from_status: "processing", to_status: "shipped", tracking_number: "TEST-TRACK-001")
+      when "order.refunded"
+        base.merge(from_status: "paid", to_status: "refunded", refund_amount_cents: 1000, refund_id: "test_refund_#{SecureRandom.hex(4)}")
       else
         base.merge(from_status: nil, to_status: "test")
       end

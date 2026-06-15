@@ -1336,3 +1336,15 @@ app/
 | Webhook 测试状态 | `WebhookTestDeliveryStatus` 在论坛/商城设置页展示最近测试投递 |
 | 商城 Webhook 按事件统计 | `WebhookDeliveryStats#store_stats_by_event` + 仪表盘展示 |
 | @提及与摘要互斥 | `InstantEmailDelivery` 开启 digest 时跳过即时提及邮件 |
+
+### 第八十八轮（Normal 通知级别、退款 Webhook、测试筛选与轮询）
+
+| 功能 | 实现 |
+|------|------|
+| Normal 通知级别 | `SubscriptionLevelCycler` 四级循环 watching→tracking→normal→取消 |
+| 普通级别过滤 | `NotificationLevelFilter` + `TopicParticipant` 仅参与/提及时通知 |
+| 关注邮件 digest 互斥 | `WatchEmailDelivery#email_allowed?` 结合 `InstantEmailDelivery` |
+| 退款 Webhook | `order.refunded` 事件 + `ProcessRefund` 触发 |
+| Webhook 测试/正式筛选 | 论坛投递日志 `kind` 筛选 + `kindTabs` |
+| Webhook 测试轮询 | `webhook_test_status` JSON + 设置页自动刷新 |
+| OPML 导出上限 | `forum.search_feeds_opml_*_limit` 站点设置 |

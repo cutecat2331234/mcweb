@@ -27,6 +27,7 @@ module Admin
           settings: store_settings_props,
           shippingMethods: Commerce::ShippingMethods.stored_list,
           testWebhookUrl: test_webhook_admin_store_settings_path,
+          testWebhookStatusUrl: webhook_test_status_admin_store_settings_path,
           testWebhookEvents: Commerce::DispatchTestOrderWebhook::EVENT_TYPES,
           lastTestWebhook: WebhookTestDeliveryStatus.store_last
         }
@@ -62,6 +63,10 @@ module Admin
         else
           redirect_to admin_store_settings_path, alert: result.error || "测试发送失败。"
         end
+      end
+
+      def webhook_test_status
+        render json: { lastTestWebhook: WebhookTestDeliveryStatus.store_last }
       end
 
     private

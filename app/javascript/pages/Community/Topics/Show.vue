@@ -124,7 +124,7 @@ const props = defineProps<{
     hidden: boolean
     views_count: number
     watching: boolean
-    notification_level?: 'watching' | 'tracking' | null
+    notification_level?: 'watching' | 'tracking' | 'normal' | null
     muted?: boolean
     bookmarked: boolean
     can_moderate: boolean
@@ -546,7 +546,8 @@ const replyBanReason = ref('')
 
 function watchLabel() {
   if (!props.topic.watching) return '关注主题'
-  if (props.topic.notification_level === 'tracking') return '跟踪中（点击取消）'
+  if (props.topic.notification_level === 'tracking') return '跟踪中（点击切换）'
+  if (props.topic.notification_level === 'normal') return '普通（点击切换）'
   return '关注中（点击改为跟踪）'
 }
 

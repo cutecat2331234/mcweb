@@ -33,6 +33,11 @@ class Community::ToggleSectionSubscriptionTest < ActiveSupport::TestCase
     assert track.value[:watching]
     assert_equal "tracking", track.value[:notification_level]
 
+    normal = Community::ToggleSectionSubscription.call(user: user, section: section)
+    assert normal.success?
+    assert normal.value[:watching]
+    assert_equal "normal", normal.value[:notification_level]
+
     remove = Community::ToggleSectionSubscription.call(user: user, section: section)
     assert remove.success?
     assert_not remove.value[:watching]

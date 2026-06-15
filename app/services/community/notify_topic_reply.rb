@@ -22,6 +22,14 @@ module Community
       levels_by_user = subscriber_ids.to_h
 
       User.where(id: recipient_ids).find_each do |user|
+        level = levels_by_user[user.id] || "watching"
+        next unless NotificationLevelFilter.deliver_in_app?(
+          level: level,
+          user: user,
+          topic: @topic,
+          post: @post,
+          context: :topic_reply
+        )
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.topic_reply")
 
         Notification.notify!(
@@ -36,10 +44,11 @@ module Community
           }
         )
 
-        level = levels_by_user[user.id] || "watching"
-        if level == "watching" &&
-            Community::WatchEmailDelivery.allowed?(user) &&
-            NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.topic_reply")
+        if NotificationLevelFilter.deliver_watch_email?(
+          level: level,
+          user: user,
+          notification_type: "forum.topic_reply"
+        ) && NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.topic_reply")
           MailDeliveryJob.perform_later(
             "Community::ForumMailer",
             "topic_reply",

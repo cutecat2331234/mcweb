@@ -41,6 +41,7 @@ Rails.application.routes.draw do
     namespace :forum do
       resource :settings, only: %i[show update] do
         post :test_webhook
+        get :webhook_test_status
       end
       resources :categories
       resources :sections, only: %i[index show new create edit update]
@@ -65,6 +66,7 @@ Rails.application.routes.draw do
     namespace :store do
       resource :settings, only: %i[show update] do
         post :test_webhook
+        get :webhook_test_status
       end
       resources :categories
       resources :products do

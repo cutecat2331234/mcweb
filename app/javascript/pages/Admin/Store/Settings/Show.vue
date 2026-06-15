@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useForm, router } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { ref, onBeforeUnmount } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -37,11 +37,40 @@ const props = defineProps<{
   settings: StoreSettingItem[]
   shippingMethods: ShippingMethodItem[]
   testWebhookUrl?: string | null
+  testWebhookStatusUrl?: string | null
   testWebhookEvents?: string[]
   lastTestWebhook?: LastTestWebhook | null
 }>()
 
 const selectedTestEvent = ref(props.testWebhookEvents?.[0] || 'order.test')
+const lastTestWebhookDisplay = ref<LastTestWebhook | null>(props.lastTestWebhook ?? null)
+let pollTimer: ReturnType<typeof setInterval> | null = null
+
+onBeforeUnmount(() => {
+  if (pollTimer) clearInterval(pollTimer)
+})
+
+async function pollWebhookStatus() {
+  if (!props.testWebhookStatusUrl) return
+  try {
+    const response = await fetch(props.testWebhookStatusUrl, { headers: { Accept: 'application/json' } })
+    if (!response.ok) return
+    const data = await response.json()
+    if (data.lastTestWebhook) lastTestWebhookDisplay.value = data.lastTestWebhook
+  } catch {
+    // ignore polling errors
+  }
+}
+
+function startPollingWebhookStatus() {
+  if (pollTimer) clearInterval(pollTimer)
+  pollTimer = setInterval(pollWebhookStatus, 2000)
+  void pollWebhookStatus()
+  setTimeout(() => {
+    if (pollTimer) clearInterval(pollTimer)
+    pollTimer = null
+  }, 30000)
+}
 
 const form = useForm({
   settings: Object.fromEntries(props.settings.map((s) => [s.key, s.value])),
@@ -88,7 +117,9 @@ function submit() {
 
 function sendTestWebhook() {
   if (!props.testWebhookUrl || !confirm(`向配置的 Webhook URL 发送 ${selectedTestEvent.value} 测试事件？`)) return
-  router.post(props.testWebhookUrl, { event: selectedTestEvent.value })
+  router.post(props.testWebhookUrl, { event: selectedTestEvent.value }, {
+    onSuccess: () => startPollingWebhookStatus(),
+  })
 }
 </script>
 
@@ -162,10 +193,10 @@ function sendTestWebhook() {
       >
         发送 Webhook 测试
       </Button>
-      <p v-if="lastTestWebhook" class="mt-2 text-xs text-muted-foreground">
-        最近测试：{{ lastTestWebhook.event_type }} · {{ lastTestWebhook.status }}
-        <span v-if="lastTestWebhook.response_code != null"> · HTTP {{ lastTestWebhook.response_code }}</span>
-        · {{ lastTestWebhook.created_at }}
+      <p v-if="lastTestWebhookDisplay" class="mt-2 text-xs text-muted-foreground">
+        最近测试：{{ lastTestWebhookDisplay.event_type }} · {{ lastTestWebhookDisplay.status }}
+        <span v-if="lastTestWebhookDisplay.response_code != null"> · HTTP {{ lastTestWebhookDisplay.response_code }}</span>
+        · {{ lastTestWebhookDisplay.created_at }}
       </p>
     </template>
   </form>

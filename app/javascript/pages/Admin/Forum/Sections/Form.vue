@@ -206,6 +206,7 @@ function submit() {
       <select id="default_notification_level" v-model="form.section.default_notification_level" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
         <option value="watching">关注（邮件+站内）</option>
         <option value="tracking">跟踪（仅站内）</option>
+        <option value="normal">普通（仅参与/提及）</option>
       </select>
     </div>
     <div class="space-y-2">

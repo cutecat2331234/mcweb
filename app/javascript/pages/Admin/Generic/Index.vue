@@ -61,6 +61,7 @@ const props = defineProps<{
   actions?: AdminAction[]
   statusTabs?: StatusTab[]
   eventTabs?: StatusTab[]
+  kindTabs?: StatusTab[]
   bulkRetry?: BulkRetryAction | null
   dateFilter?: DateFilterProps | null
   pagination?: PaginationMeta
@@ -134,6 +135,18 @@ function applyDateFilter() {
     <Link
       v-for="tab in eventTabs"
       :key="'event-' + tab.href"
+      :href="tab.href"
+      class="rounded-md border px-3 py-1.5 text-xs no-underline"
+      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ tab.label }}
+    </Link>
+  </div>
+
+  <div v-if="kindTabs?.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      v-for="tab in kindTabs"
+      :key="'kind-' + tab.href"
       :href="tab.href"
       class="rounded-md border px-3 py-1.5 text-xs no-underline"
       :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"

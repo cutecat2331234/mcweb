@@ -95,7 +95,7 @@ module Admin
         base_params = webhook_filter_params.except(:event)
         base = admin_store_webhook_deliveries_path(base_params)
         current = params[:event].to_s
-        events = %w[order.created order.paid order.status_changed order.shipped order.test]
+        events = %w[order.created order.paid order.status_changed order.shipped order.refunded order.test]
         tabs = [{ label: "全部事件", href: base, active: current.blank? }]
         events.each do |event|
           tabs << {

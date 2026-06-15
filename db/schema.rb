@@ -282,7 +282,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   create_table "forum_saved_searches", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "filters", default: {}, null: false
+    t.datetime "last_notified_at"
     t.string "name", null: false
+    t.boolean "notify_daily", default: false, null: false
     t.text "query", default: "", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false

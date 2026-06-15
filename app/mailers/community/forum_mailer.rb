@@ -44,6 +44,15 @@ module Community
       mail(to: @user.email, subject: "论坛摘要 — #{@notifications.count} 条新动态")
     end
 
+    def saved_search_digest(saved_search_id, topic_ids)
+      @search = Community::SavedSearch.find(saved_search_id)
+      @user = @search.user
+      @topics = Community::Topic.where(id: topic_ids).order(created_at: :desc)
+      @url = "#{root_url.chomp('/')}#{forum_search_path(search_url_for(@search))}"
+
+      mail(to: @user.email, subject: "保存的搜索有新结果：#{@search.name}")
+    end
+
     def post_edited(user_id, topic_id, post_id)
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
@@ -75,6 +84,18 @@ module Community
       @warning = Community::UserWarning.find(warning_id)
       @url = "#{root_url.chomp('/')}#{"/forum/users/#{@user.username}"}"
       mail(to: @user.email, subject: "社区警告通知")
+    end
+
+  private
+
+    def search_url_for(search)
+      filters = search.filters.symbolize_keys
+      {
+        q: search.query.presence,
+        section: filters[:section].presence,
+        category: filters[:category].presence,
+        solved: filters[:solved].presence
+      }.compact
     end
   end
 end

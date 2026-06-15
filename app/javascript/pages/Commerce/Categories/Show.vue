@@ -22,7 +22,7 @@ const props = defineProps<{
     rss_url?: string
   }
   products: Array<{
-    public_id: string
+    id: string
     name: string
     url: string
     price_label: string
@@ -30,9 +30,15 @@ const props = defineProps<{
     on_sale?: boolean
     in_stock: boolean
     low_stock: boolean
+    compare_url?: string
+    compared?: boolean
+    wishlist_url?: string
+    wishlisted?: boolean
   }>
   pagination: PaginationMeta
   query: string
+  compareCount?: number
+  loggedIn?: boolean
   filters: { in_stock: boolean; on_sale: boolean; sort: string }
 }>()
 
@@ -53,6 +59,14 @@ function applySort(sort: string) {
     sort: sort || undefined,
   }, { preserveState: true })
 }
+
+function toggleCompare(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
+function toggleWishlist(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
 </script>
 
 <template>
@@ -68,7 +82,12 @@ function applySort(sort: string) {
     { label: category.name, current: true },
   ]" />
 
-  <PageHeader :title="`${category.icon ? category.icon + ' ' : ''}${category.name}`" :subtitle="category.description || '分类商品'" />
+  <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+    <PageHeader :title="`${category.icon ? category.icon + ' ' : ''}${category.name}`" :subtitle="category.description || '分类商品'" />
+    <Link v-if="compareCount" :href="routes.storeCompare" class="text-sm text-primary hover:underline">
+      对比列表 ({{ compareCount }})
+    </Link>
+  </div>
   <div v-if="category.color_hex" class="mb-4 h-1 w-full max-w-xl rounded-full" :style="{ backgroundColor: category.color_hex }" />
 
   <div class="mb-4 flex flex-wrap gap-2">
@@ -92,23 +111,42 @@ function applySort(sort: string) {
   </div>
 
   <div v-if="products.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-    <Link
+    <div
       v-for="product in products"
-      :key="product.public_id"
-      :href="product.url"
-      class="rounded-lg border p-4 no-underline transition-colors hover:bg-muted/40"
+      :key="product.id"
+      class="rounded-lg border p-4"
     >
-      <h3 class="font-medium text-foreground">{{ product.name }}</h3>
+      <Link :href="product.url" class="font-medium text-foreground hover:underline">{{ product.name }}</Link>
       <p class="mt-2 text-sm">
         <span class="font-semibold text-primary">{{ product.price_label }}</span>
         <span v-if="product.compare_at_label" class="ml-2 text-muted-foreground line-through">{{ product.compare_at_label }}</span>
       </p>
-      <div class="mt-2 flex gap-2">
+      <div class="mt-2 flex flex-wrap gap-2">
         <Badge v-if="!product.in_stock" variant="secondary">缺货</Badge>
         <Badge v-else-if="product.low_stock" variant="outline">库存紧张</Badge>
         <Badge v-if="product.on_sale" variant="default">促销</Badge>
       </div>
-    </Link>
+      <div v-if="loggedIn" class="mt-3 flex flex-wrap gap-1">
+        <Button
+          v-if="product.compare_url"
+          type="button"
+          size="sm"
+          variant="outline"
+          @click="toggleCompare(product.compare_url!)"
+        >
+          {{ product.compared ? '对比中' : '对比' }}
+        </Button>
+        <Button
+          v-if="product.wishlist_url"
+          type="button"
+          size="sm"
+          :variant="product.wishlisted ? 'outline' : 'secondary'"
+          @click="toggleWishlist(product.wishlist_url!)"
+        >
+          {{ product.wishlisted ? '心愿单' : '收藏' }}
+        </Button>
+      </div>
+    </div>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">该分类暂无商品。</p>
 

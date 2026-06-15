@@ -1167,3 +1167,17 @@ app/
 | 群主专属邀请 | `forum.group_pm_creator_only_add` SiteSetting |
 | 添加成员限制提示 | `addParticipantRestrictedReason` 中文说明 |
 | 搜索帖子分页集成测试 | `post_page=2` 端到端验证 |
+
+### 第七十二轮（保存搜索每日提醒、建议键盘导航、分类/浏览页心愿单）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索每日邮件提醒 | `notify_daily` + `last_notified_at` 迁移 |
+| 保存搜索匹配服务 | `SavedSearchMatcher` 按筛选与关键词匹配新主题 |
+| 每日摘要任务 | `SavedSearchDigestJob` + `recurring.yml` 每天 9am |
+| 摘要邮件 | `ForumMailer#saved_search_digest` |
+| 搜索建议键盘导航 | ↑↓ Enter Esc + 高亮当前项 |
+| 保存搜索 UI | `saveNotifyDaily` 复选框 + 已保存项 📧 标记 |
+| 最近浏览 compare+wishlist | `RecentlyViewed/Index` 对比/收藏按钮 |
+| 分类页 compare+wishlist | `Categories/Show` 对比/收藏 + 筛选 chips |
+| 群主设置种子 | `db/seeds.rb` 默认 `forum.group_pm_creator_only_add` |

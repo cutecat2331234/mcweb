@@ -116,6 +116,7 @@ SiteSetting.set("store.refund_window_days", "0") unless SiteSetting.exists?(key:
 SiteSetting.set("store.pending_order_expiry_minutes", "30") unless SiteSetting.exists?(key: "store.pending_order_expiry_minutes")
 SiteSetting.set("store.review_request_delay_days", "3") unless SiteSetting.exists?(key: "store.review_request_delay_days")
 SiteSetting.set("forum.reaction_emojis", "👍,❤️,😂,🎉,👀") unless SiteSetting.exists?(key: "forum.reaction_emojis")
+SiteSetting.set("forum.group_pm_creator_only_add", "false") unless SiteSetting.exists?(key: "forum.group_pm_creator_only_add")
 SiteSetting.set("store.compare_max_items", "4") unless SiteSetting.exists?(key: "store.compare_max_items")
 SiteSetting.set("store.cart_max_items", "99") unless SiteSetting.exists?(key: "store.cart_max_items")
 

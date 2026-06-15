@@ -112,7 +112,13 @@ module Commerce
         .filter_map { |view| view.product if view.product&.active? }
 
       render inertia: "Commerce/RecentlyViewed/Index", props: {
-        products: products.map { |product| serialize_product_list_item(product) },
+        products: products.map { |product|
+          serialize_product_list_item(product)
+            .merge(product_compare_props(product))
+            .merge(product_wishlist_props(product))
+        },
+        compareCount: compare_product_count,
+        loggedIn: true,
         clearUrl: clear_recently_viewed_store_products_path
       }
     end

@@ -31,8 +31,14 @@ module Commerce
           seo_description: category.seo["description"].presence || category.description,
           rss_url: store_category_rss_path(category.slug)
         },
-        products: products.map { |product| serialize_product_list_item(product) },
+        products: products.map { |product|
+          serialize_product_list_item(product)
+            .merge(product_compare_props(product))
+            .merge(product_wishlist_props(product))
+        },
         pagination: pagy_props(@pagy),
+        compareCount: compare_product_count,
+        loggedIn: logged_in?,
         query: params[:q].to_s,
         filters: {
           in_stock: params[:in_stock] == "1",

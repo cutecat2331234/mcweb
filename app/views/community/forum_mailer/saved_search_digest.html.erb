@@ -1,0 +1,11 @@
+<p>你好 <%= @user.username %>，</p>
+
+<p>你保存的搜索「<%= @search.name %>」有 <%= @topics.size %> 条新主题：</p>
+
+<ul>
+  <% @topics.each do |topic| %>
+    <li><a href="<%= root_url.chomp('/') %><%= forum_topic_path(topic) %>"><%= topic.title %></a></li>
+  <% end %>
+</ul>
+
+<p><a href="<%= @url %>">查看完整搜索结果</a></p>

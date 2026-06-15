@@ -380,6 +380,7 @@ module Community
           id: search.id,
           name: search.name,
           query: search.query,
+          notify_daily: search.notify_daily?,
           url: forum_search_path(saved_search_url_params(search)),
           delete_url: forum_saved_search_path(search)
         }

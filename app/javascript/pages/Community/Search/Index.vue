@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
-import { ref, watch, onBeforeUnmount } from 'vue'
+import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -56,7 +56,7 @@ const props = defineProps<{
   posts: SearchPost[]
   topicsPagination: PaginationMeta
   postsPagination: PaginationMeta
-  savedSearches?: Array<{ id: number; name: string; query: string; url: string; delete_url: string }>
+  savedSearches?: Array<{ id: number; name: string; query: string; url: string; delete_url: string; notify_daily?: boolean }>
   loggedIn?: boolean
   forumStaff?: boolean
   saveSearchUrl?: string | null
@@ -87,6 +87,7 @@ const showAdvanced = ref(
     props.noreplies || props.assigned || props.mine || props.scope || props.category)
 )
 const saveName = ref('')
+const saveNotifyDaily = ref(false)
 const saving = ref(false)
 const saveError = ref('')
 
@@ -96,7 +97,16 @@ const suggestLoading = ref(false)
 const suggestTopics = ref<SuggestItem[]>([])
 const suggestTags = ref<SuggestItem[]>([])
 const suggestUsers = ref<SuggestItem[]>([])
+const suggestActiveIndex = ref(-1)
 let suggestTimer: ReturnType<typeof setTimeout> | null = null
+
+const flatSuggestions = computed(() => {
+  const items: Array<{ url: string; label: string }> = []
+  suggestTopics.value.forEach((item) => items.push({ url: item.url, label: item.title || '' }))
+  suggestTags.value.forEach((item) => items.push({ url: item.url, label: `#${item.name}` }))
+  suggestUsers.value.forEach((item) => items.push({ url: item.url, label: `@${item.username}` }))
+  return items
+})
 
 watch(q, (value) => {
   if (!props.suggestUrl || value.trim().length < 2) {
@@ -124,6 +134,7 @@ async function fetchSuggestions(query: string) {
     suggestTopics.value = data.topics || []
     suggestTags.value = data.tags || []
     suggestUsers.value = data.users || []
+    suggestActiveIndex.value = -1
     suggestOpen.value = !!(suggestTopics.value.length || suggestTags.value.length || suggestUsers.value.length)
   } finally {
     suggestLoading.value = false
@@ -132,11 +143,46 @@ async function fetchSuggestions(query: string) {
 
 function pickSuggestion(url: string) {
   suggestOpen.value = false
+  suggestActiveIndex.value = -1
   router.visit(url)
 }
 
 function hideSuggestions() {
-  setTimeout(() => { suggestOpen.value = false }, 150)
+  setTimeout(() => {
+    suggestOpen.value = false
+    suggestActiveIndex.value = -1
+  }, 150)
+}
+
+function suggestGlobalIndex(section: 'topics' | 'tags' | 'users', localIndex: number) {
+  if (section === 'topics') return localIndex
+  if (section === 'tags') return suggestTopics.value.length + localIndex
+  return suggestTopics.value.length + suggestTags.value.length + localIndex
+}
+
+function isSuggestActive(section: 'topics' | 'tags' | 'users', localIndex: number) {
+  return suggestActiveIndex.value === suggestGlobalIndex(section, localIndex)
+}
+
+function onSuggestKeydown(event: KeyboardEvent) {
+  if (!suggestOpen.value || !flatSuggestions.value.length) return
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    const next = suggestActiveIndex.value < 0 ? 0 : suggestActiveIndex.value + 1
+    suggestActiveIndex.value = Math.min(next, flatSuggestions.value.length - 1)
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    const next = suggestActiveIndex.value < 0 ? flatSuggestions.value.length - 1 : suggestActiveIndex.value - 1
+    suggestActiveIndex.value = Math.max(next, 0)
+  } else if (event.key === 'Enter' && suggestActiveIndex.value >= 0) {
+    event.preventDefault()
+    pickSuggestion(flatSuggestions.value[suggestActiveIndex.value].url)
+  } else if (event.key === 'Escape') {
+    event.preventDefault()
+    suggestOpen.value = false
+    suggestActiveIndex.value = -1
+  }
 }
 
 watch(() => props.query, (value) => { q.value = value })
@@ -213,6 +259,7 @@ async function saveSearch() {
         saved_search: {
           name: saveName.value.trim(),
           query: q.value,
+          notify_daily: saveNotifyDaily.value,
           filters: saveFilters(),
         },
       }),
@@ -223,6 +270,7 @@ async function saveSearch() {
       return
     }
     saveName.value = ''
+    saveNotifyDaily.value = false
     router.reload({ only: ['savedSearches'] })
   } finally {
     saving.value = false
@@ -258,6 +306,7 @@ async function deleteSavedSearch(deleteUrl: string) {
         autocomplete="off"
         @focus="q.trim().length >= 2 && suggestUrl && fetchSuggestions(q.trim())"
         @blur="hideSuggestions"
+        @keydown="onSuggestKeydown"
       />
       <div
         v-if="suggestOpen && suggestUrl"
@@ -268,10 +317,11 @@ async function deleteSavedSearch(deleteUrl: string) {
           <div v-if="suggestTopics.length" class="border-b px-2 py-1">
             <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">主题</p>
             <button
-              v-for="item in suggestTopics"
+              v-for="(item, index) in suggestTopics"
               :key="item.url"
               type="button"
               class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              :class="{ 'bg-muted': isSuggestActive('topics', index) }"
               @mousedown.prevent="pickSuggestion(item.url)"
             >
               {{ item.title }}
@@ -280,10 +330,11 @@ async function deleteSavedSearch(deleteUrl: string) {
           <div v-if="suggestTags.length" class="border-b px-2 py-1">
             <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">标签</p>
             <button
-              v-for="item in suggestTags"
+              v-for="(item, index) in suggestTags"
               :key="item.url"
               type="button"
               class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              :class="{ 'bg-muted': isSuggestActive('tags', index) }"
               @mousedown.prevent="pickSuggestion(item.url)"
             >
               #{{ item.name }}
@@ -292,10 +343,11 @@ async function deleteSavedSearch(deleteUrl: string) {
           <div v-if="suggestUsers.length" class="px-2 py-1">
             <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">用户</p>
             <button
-              v-for="item in suggestUsers"
+              v-for="(item, index) in suggestUsers"
               :key="item.url"
               type="button"
               class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              :class="{ 'bg-muted': isSuggestActive('users', index) }"
               @mousedown.prevent="pickSuggestion(item.url)"
             >
               @{{ item.username }}
@@ -389,6 +441,10 @@ async function deleteSavedSearch(deleteUrl: string) {
     <div class="space-y-1">
       <label class="text-sm font-medium">保存当前搜索</label>
       <Input v-model="saveName" placeholder="搜索名称" class="w-48" />
+      <label class="flex items-center gap-2 text-sm text-muted-foreground">
+        <input v-model="saveNotifyDaily" type="checkbox" class="rounded border-input" />
+        每日邮件提醒新结果
+      </label>
     </div>
     <Button type="button" variant="outline" :disabled="saving || !saveName.trim()" @click="saveSearch">
       {{ saving ? '保存中…' : '保存搜索' }}
@@ -400,6 +456,7 @@ async function deleteSavedSearch(deleteUrl: string) {
     <span class="text-sm text-muted-foreground">已保存：</span>
     <span v-for="search in savedSearches" :key="search.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <Link :href="search.url" class="hover:underline">{{ search.name }}</Link>
+      <span v-if="search.notify_daily" class="text-[10px] text-primary" title="已开启每日邮件提醒">📧</span>
       <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteSavedSearch(search.delete_url)">×</button>
     </span>
   </div>

@@ -27,7 +27,7 @@ module Community
     private
 
     def saved_search_params
-      params.require(:saved_search).permit(:name, :query, filters: {})
+      params.require(:saved_search).permit(:name, :query, :notify_daily, filters: {})
     end
 
     def serialize_saved_search(search)
@@ -36,6 +36,7 @@ module Community
         name: search.name,
         query: search.query,
         filters: search.filters,
+        notify_daily: search.notify_daily?,
         url: forum_search_path(search_url_params(search)),
         delete_url: forum_saved_search_path(search)
       }

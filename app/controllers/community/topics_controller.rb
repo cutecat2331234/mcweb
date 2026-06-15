@@ -16,7 +16,7 @@ module Community
       posts_scope = if can_moderate_topic?
                       @topic.posts.with_discarded.chronological
       else
-                      @topic.posts.chronological
+                      @topic.posts.published.chronological
       end
       posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits, :forked_topics, user: { user_badges: :badge })
       posts_scope = filter_blocked_posts(posts_scope)

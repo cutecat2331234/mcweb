@@ -190,6 +190,59 @@ class Community::PostRawAccessTest < ActionDispatch::IntegrationTest
   end
 end
 
+class Community::HiddenPostTopicListTest < ActionDispatch::IntegrationTest
+  setup do
+    @author = create_user
+    @other = create_user
+    category = Community::Category.find_or_create_by!(slug: "hidden-list-cat") { |c| c.name = "Hidden List" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "hidden-list-sec") do |s|
+      s.name = "Hidden List Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @author,
+      section: section,
+      title: "Hidden list topic",
+      body: "Opening post",
+      ip_address: "127.0.0.1"
+    ).value
+    @reply = Community::CreatePost.call(
+      user: @other,
+      topic: @topic,
+      body: "Visible reply",
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    ).value
+    @reply.update!(status: :hidden)
+  end
+
+  test "topic page omits hidden posts for regular users" do
+    sign_in_as(@author)
+
+    get forum_topic_path(@topic)
+
+    assert_response :success
+    assert_includes response.body, "Opening post"
+    assert_not_includes response.body, "Visible reply"
+  end
+
+  test "create post rejects quoting hidden posts" do
+    sign_in_as(@author)
+
+    result = Community::CreatePost.call(
+      user: @author,
+      topic: @topic,
+      body: "Quote attempt",
+      quoted_post: @reply,
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    )
+
+    assert result.failure?
+    assert_match(/quoted post is not available/i, result.error)
+  end
+end
+
 class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
   setup do
     @author = create_user

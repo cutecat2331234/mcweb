@@ -188,13 +188,15 @@ module Community
     def find_quoted_post
       return if post_params[:quoted_post_id].blank?
 
-      Community::Post.find_by(id: post_params[:quoted_post_id], forum_topic_id: @topic.id)
+      post = Community::Post.find_by(id: post_params[:quoted_post_id], forum_topic_id: @topic.id)
+      post if post && PostAccess.readable?(post: post, user: current_user)
     end
 
     def find_parent_post
       return if post_params[:parent_post_id].blank?
 
-      Community::Post.find_by(id: post_params[:parent_post_id], forum_topic_id: @topic.id)
+      post = Community::Post.find_by(id: post_params[:parent_post_id], forum_topic_id: @topic.id)
+      post if post && PostAccess.readable?(post: post, user: current_user)
     end
 
     def can_view_edits?

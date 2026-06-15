@@ -42,6 +42,14 @@ module Community
         return ServiceResult.failure(error: "Invalid parent post.")
       end
 
+      if @quoted_post && !PostAccess.readable?(post: @quoted_post, user: @user)
+        return ServiceResult.failure(error: "Quoted post is not available.")
+      end
+
+      if @parent_post && !PostAccess.readable?(post: @parent_post, user: @user)
+        return ServiceResult.failure(error: "Parent post is not available.")
+      end
+
       old_trust_level = Community::TrustLevel.level_for(@user)
       post = nil
       @topic.with_lock do

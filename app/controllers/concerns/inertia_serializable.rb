@@ -247,7 +247,7 @@ module InertiaSerializable
       last_edit_reason: last_edit&.reason.presence,
       edit_count: post.edits.count,
       edits_url: post.edits.any? ? edits_forum_post_path(post) : nil,
-      quoted_post: serialize_quoted_post(post.quoted_post),
+      quoted_post: serialize_quoted_post(post.quoted_post, current_user: current_user),
       reaction_counts: reaction_counts,
       reaction_users: reaction_users,
       reactions_total: reaction_counts.values.sum,
@@ -274,8 +274,9 @@ module InertiaSerializable
     }
   end
 
-  def serialize_quoted_post(post)
+  def serialize_quoted_post(post, current_user: nil)
     return nil unless post
+    return nil unless PostAccess.readable?(post: post, user: current_user)
 
     {
       id: post.id,

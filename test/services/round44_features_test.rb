@@ -122,4 +122,28 @@ class Commerce::PurchaseLimitRemainingTest < ActiveSupport::TestCase
     assert_equal 3, result.value[:remaining]
     assert_equal 5, result.value[:limit]
   end
+
+  test "pending orders count toward purchase limit" do
+    pending = Commerce::Order.create!(
+      public_id: "ord_#{SecureRandom.alphanumeric(16)}",
+      user: @user,
+      order_number: "ORD#{SecureRandom.hex(6).upcase}",
+      status: "pending",
+      subtotal_cents: 500,
+      total_cents: 500,
+      currency: "CNY"
+    )
+    Commerce::OrderItem.create!(
+      order: pending,
+      product: @product,
+      product_name: @product.name,
+      quantity: 3,
+      unit_price_cents: 500,
+      total_cents: 1500
+    )
+
+    result = Commerce::ValidateCartItem.call(user: @user, product: @product, quantity: 1)
+    assert result.failure?
+    assert_match(/限购/, result.error.to_s)
+  end
 end

@@ -26,6 +26,7 @@ class User < ApplicationRecord
                        format: { with: /\A[a-zA-Z0-9_]+\z/ }, length: { minimum: 3, maximum: 32 }
   validates :locale, presence: true
   validates :time_zone, presence: true
+  validates :password, length: { minimum: 6 }, allow_nil: true
 
   scope :verified, -> { where(email_verified: true) }
   scope :not_banned, -> { where(status: :active) }

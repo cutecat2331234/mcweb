@@ -13,14 +13,19 @@ module Commerce
 
       Commerce::GiftCard.transaction do
         card.lock!
-        debit = [ amount, card.balance_cents ].min
+        reason = card.inapplicable_reason
+        return ServiceResult.failure(error: reason) if reason
+
+        available = card.available_balance_cents(excluding_order: @order)
+        return ServiceResult.failure(error: "礼品卡余额不足。") if amount > available
+
         card.update!(
-          balance_cents: card.balance_cents - debit,
-          active: (card.balance_cents - debit).positive?
+          balance_cents: card.balance_cents - amount,
+          active: (card.balance_cents - amount).positive?
         )
         Commerce::RecordGiftCardTransaction.call(
           gift_card: card,
-          amount_cents: -debit,
+          amount_cents: -amount,
           transaction_type: :debit,
           order: @order
         )

@@ -34,7 +34,7 @@ module Commerce
         purchased = Commerce::OrderItem
           .joins(:order)
           .where(store_orders: { user_id: @user.id })
-          .where.not(store_orders: { status: %w[cancelled failed refunded pending awaiting_payment] })
+          .where.not(store_orders: { status: %w[cancelled failed refunded] })
           .where(store_product_id: @product.id)
           .sum(:quantity)
 

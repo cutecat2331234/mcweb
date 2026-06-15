@@ -180,6 +180,15 @@ class Commerce::ClaimGiftCardTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal @user.id, @card.reload.owner_user_id
   end
+
+  test "cannot claim gift card owned by another user" do
+    other = create_user(username: "gift_owner_other")
+    @card.update!(owner_user: other)
+
+    result = Commerce::ClaimGiftCard.call(user: @user, gift_card: @card)
+    assert result.failure?
+    assert_match(/其他账户/, result.error.to_s)
+  end
 end
 
 class Commerce::GiftCardShowTest < ActionDispatch::IntegrationTest

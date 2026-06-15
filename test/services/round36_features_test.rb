@@ -126,6 +126,15 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
     assert_not @gift_card.active?
   end
 
+  test "debit gift card fails when balance is insufficient" do
+    order = Commerce::CreateOrder.call(cart: @cart, user: @user, gift_card_code: @gift_card.code).value
+    @gift_card.update!(balance_cents: 0, active: false)
+
+    result = Commerce::DebitGiftCard.call(order: order)
+    assert result.failure?
+    assert_match(/余额不足|无效|停用/, result.error.to_s)
+  end
+
   test "rejects expired gift card" do
     @gift_card.update!(expires_at: 1.day.ago)
     result = Commerce::PreviewGiftCard.call(subtotal_cents: 1000, code: @gift_card.code)

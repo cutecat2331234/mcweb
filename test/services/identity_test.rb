@@ -18,6 +18,17 @@ class Identity::RegisterUserTest < ActiveSupport::TestCase
       assert result.value[:verification_token].present?
     end
   end
+
+  test "rejects passwords shorter than six characters" do
+    result = Identity::RegisterUser.call(
+      email: "short@example.com",
+      username: "shortpw",
+      password: "12345"
+    )
+
+    assert result.failure?
+    assert result.errors[:password].present?
+  end
 end
 
 class Identity::AuthenticateUserTest < ActiveSupport::TestCase

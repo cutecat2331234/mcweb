@@ -11,6 +11,7 @@ module Commerce
     def call
       newly_paid = false
       order_id = nil
+      payment_error = nil
 
       Payments::Record.transaction do
         record = Payments::Record.lock.find(@payment_record.id)
@@ -19,16 +20,18 @@ module Commerce
           return ServiceResult.success(record: record, idempotent: true, newly_paid: false)
         end
 
-        record.update!(
-          status: "succeeded",
-          provider_payment_id: @provider_payment_id || record.provider_payment_id,
-          metadata: record.metadata.merge(@metadata)
-        )
-
         order = record.order
         order_id = order.id
 
         if %w[pending awaiting_payment].include?(order.status)
+          if order.gift_card_amount_cents.to_i.positive?
+            debit_result = Commerce::DebitGiftCard.call(order: order)
+            unless debit_result.success?
+              payment_error = debit_result.error || "礼品卡扣款失败。"
+              raise ActiveRecord::Rollback
+            end
+          end
+
           from_status = order.status
           order.submit_payment! if order.pending? && order.may_submit_payment?
           order.mark_paid! if order.awaiting_payment? && order.may_mark_paid?
@@ -43,12 +46,19 @@ module Commerce
           )
           newly_paid = true
         end
+
+        record.update!(
+          status: "succeeded",
+          provider_payment_id: @provider_payment_id || record.provider_payment_id,
+          metadata: record.metadata.merge(@metadata)
+        )
       end
+
+      return ServiceResult.failure(error: payment_error) if payment_error.present?
 
       Commerce::FulfillOrderJob.perform_later(order_id) if newly_paid && order_id
       if newly_paid && order_id
         order = Commerce::Order.find(order_id)
-        Commerce::DebitGiftCard.call(order: order)
         MailDeliveryJob.perform_later("Commerce::OrderMailer", "payment_confirmed", "deliver_now", args: [ order_id ])
         Commerce::NotifyOrderEvent.call(
           user: order.user,

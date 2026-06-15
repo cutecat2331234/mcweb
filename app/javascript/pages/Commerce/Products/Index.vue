@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -42,6 +42,8 @@ export interface ProductItem {
   has_availability_alert?: boolean
   availability_alert_url?: string | null
   availability_alert_unsubscribe_url?: string | null
+  compare_url?: string
+  compared?: boolean
 }
 
 export interface CategoryItem {
@@ -102,6 +104,19 @@ function unsubscribeAvailabilityAlert(url: string) {
 function quickAdd(product: ProductItem) {
   if (!product.db_id) return
   router.post(routes.storeCart, { product_id: product.db_id, quantity: 1 }, { preserveScroll: true })
+}
+
+function toggleCompare(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
+const hasActiveFilters = computed(() =>
+  !!(props.query || props.activeCategory || props.inStock || props.onSale ||
+    props.priceMin || props.priceMax || (props.sort && props.sort !== 'newest'))
+)
+
+function clearFilters() {
+  router.get(routes.store, {}, { preserveState: true })
 }
 </script>
 
@@ -181,6 +196,16 @@ function quickAdd(product: ProductItem) {
               已订阅上架
             </Button>
           </div>
+          <div v-if="loggedIn && product.compare_url" class="mt-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              @click="toggleCompare(product.compare_url!)"
+            >
+              {{ product.compared ? '移出对比' : '加入对比' }}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
@@ -225,7 +250,18 @@ function quickAdd(product: ProductItem) {
     <Input v-model="priceMin" type="number" min="0" step="0.01" placeholder="最低价" class="w-24" />
     <Input v-model="priceMax" type="number" min="0" step="0.01" placeholder="最高价" class="w-24" />
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">筛选</button>
+    <Button v-if="hasActiveFilters" type="button" variant="outline" size="sm" @click="clearFilters">清除筛选</Button>
   </form>
+
+  <div v-if="hasActiveFilters" class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+    <span class="text-muted-foreground">当前筛选：</span>
+    <Badge v-if="query" variant="outline">关键词：{{ query }}</Badge>
+    <Badge v-if="activeCategory" variant="outline">分类</Badge>
+    <Badge v-if="inStock" variant="outline">仅有货</Badge>
+    <Badge v-if="onSale" variant="outline">促销中</Badge>
+    <Badge v-if="priceMin || priceMax" variant="outline">价格区间</Badge>
+    <Badge v-if="sort && sort !== 'newest'" variant="outline">排序：{{ sort }}</Badge>
+  </div>
 
   <div v-if="categories.length" class="mb-4 flex flex-wrap gap-2">
     <Link
@@ -290,15 +326,26 @@ function quickAdd(product: ProductItem) {
             <Badge v-else variant="success">有货</Badge>
           </TableCell>
           <TableCell>
-            <Button
-              v-if="product.quick_addable"
-              type="button"
-              size="sm"
-              variant="outline"
-              @click="quickAdd(product)"
-            >
-              加购
-            </Button>
+            <div class="flex flex-col gap-1">
+              <Button
+                v-if="product.quick_addable"
+                type="button"
+                size="sm"
+                variant="outline"
+                @click="quickAdd(product)"
+              >
+                加购
+              </Button>
+              <Button
+                v-if="loggedIn && product.compare_url"
+                type="button"
+                size="sm"
+                :variant="product.compared ? 'outline' : 'secondary'"
+                @click="toggleCompare(product.compare_url!)"
+              >
+                {{ product.compared ? '对比中' : '对比' }}
+              </Button>
+            </div>
           </TableCell>
         </TableRow>
       </TableBody>

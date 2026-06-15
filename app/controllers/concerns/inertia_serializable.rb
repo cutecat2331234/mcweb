@@ -961,6 +961,15 @@ module InertiaSerializable
     Commerce::Product.active.where(public_id: ids).count
   end
 
+  def product_compare_props(product)
+    return {} unless logged_in?
+
+    {
+      compare_url: store_toggle_compare_path(product_id: product.public_id),
+      compared: Array(session[:compare_product_ids]).include?(product.public_id)
+    }
+  end
+
   def format_price(product)
     format_money(product.price_cents, product.currency)
   end

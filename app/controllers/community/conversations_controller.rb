@@ -53,10 +53,12 @@ module Community
         pagination: pagy_props(@pagy),
         participants: conversation.is_group? ? serialize_group_participants(conversation) : [],
         addParticipantUrl: conversation.is_group? ? forum_conversation_participants_path(conversation) : nil,
-        archiveUrl: forum_archive_conversation_path(conversation),
-        unarchiveUrl: forum_unarchive_conversation_path(conversation),
+        archiveUrl: archive_forum_conversation_path(conversation),
+        unarchiveUrl: unarchive_forum_conversation_path(conversation),
         archived: conversation.participants.find_by(user: current_user)&.archived_at.present?,
-        currentUsername: current_user.username
+        currentUsername: current_user.username,
+        canSendPm: Community::TrustLevel.can_send_pm?(current_user),
+        warningRestrictions: warning_restrictions_props
       }
     end
 

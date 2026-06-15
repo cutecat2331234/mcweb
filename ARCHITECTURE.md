@@ -1132,3 +1132,14 @@ app/
 | 群组私信 TL0 / 链接横幅 | `Messages/New` 修复 `canSend` |
 | 保存搜索 URL 参数补全 | `SavedSearchesController` 同步 filters |
 | 心愿单互斥筛选 | `in_stock` 与 `coming_soon` 互斥 |
+
+### 第六十九轮（私信回复限制、商城筛选 chips、列表对比）
+
+| 功能 | 实现 |
+|------|------|
+| 私信对话页链接/警告限制 | `Messages/Show` 实时禁用 + 横幅 |
+| 对比仅差异行记忆 | `localStorage` `mcweb_compare_only_diff` |
+| 商城列表筛选 chips | 当前筛选徽章 + 清除筛选 |
+| 商品列表加入对比 | `product_compare_props` + 表格对比按钮 |
+| 即将上架区加入对比 | 商城首页 upcoming 对比按钮 |
+| 保存搜索集成测试 | POST 返回含 `assigned` 的 URL |

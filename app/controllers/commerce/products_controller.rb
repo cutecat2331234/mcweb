@@ -65,12 +65,13 @@ module Commerce
       category_query = index_filter_params
 
       render inertia: "Commerce/Products/Index", props: {
-        products: products.map { |product| serialize_product_list_item(product) },
+        products: products.map { |product| serialize_product_list_item(product).merge(product_compare_props(product)) },
         featured_products: featured.map { |product| serialize_product_list_item(product) },
         recently_viewed: recently_viewed.map { |product| serialize_product_list_item(product) },
         upcoming_products: upcoming.map do |product|
           alert_id = availability_alert_ids[product.id]
           serialize_upcoming_product(product, availability_alert: alert_id.present?, availability_alert_id: alert_id)
+            .merge(product_compare_props(product))
         end,
         loggedIn: logged_in?,
         categories: categories.map { |category| serialize_category(category, **category_query) },

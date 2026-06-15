@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -62,7 +62,13 @@ function cellDiffClass(row: (typeof compareRows)[number]) {
   return rowHasDiff(row) ? 'bg-amber-50 dark:bg-amber-950/30 font-medium' : ''
 }
 
-const onlyDiffRows = ref(false)
+const ONLY_DIFF_KEY = 'mcweb_compare_only_diff'
+
+const onlyDiffRows = ref(localStorage.getItem(ONLY_DIFF_KEY) === '1')
+
+watch(onlyDiffRows, (value) => {
+  localStorage.setItem(ONLY_DIFF_KEY, value ? '1' : '0')
+})
 
 const visibleRows = computed(() =>
   onlyDiffRows.value ? compareRows.filter((row) => rowHasDiff(row)) : compareRows

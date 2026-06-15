@@ -1348,3 +1348,15 @@ app/
 | Webhook 测试/正式筛选 | 论坛投递日志 `kind` 筛选 + `kindTabs` |
 | Webhook 测试轮询 | `webhook_test_status` JSON + 设置页自动刷新 |
 | OPML 导出上限 | `forum.search_feeds_opml_*_limit` 站点设置 |
+
+### 第八十九轮（Discourse 风格通知下拉、批量 Webhook 测试、订单取消/履约事件）
+
+| 功能 | 实现 |
+|------|------|
+| 通知级别下拉 | `SubscriptionLevelOptions` + `SetSubscriptionLevel` + `PATCH subscription` 路由 |
+| 共享下拉组件 | `SubscriptionLevelSelect.vue`（主题/分区/标签页） |
+| 通知说明 | 偏好页 `notificationLevelGuide` 四级说明 |
+| 批量 Webhook 测试 | `BatchTestSavedSearchWebhooks` + 管理后台「批量测试保存搜索」 |
+| 订单取消 Webhook | `CancelOrder` 发 `order.cancelled`（含 `cancel_reason`） |
+| 订单履约 Webhook | `NotifyOrderStatusChange` 对 fulfilled 发 `order.fulfilled` |
+| 商城投递筛选 | 管理后台事件 Tab 增加 `order.cancelled`、`order.fulfilled` |

@@ -4,7 +4,9 @@ module Community
   class TagsController < ApplicationController
     include Community::TopicListPreloadable
 
-    before_action :require_login, only: %i[toggle_subscription]
+    include Community::SubscriptionNoticeable
+
+    before_action :require_login, only: %i[toggle_subscription update_subscription]
 
     def index
       usable_ids = Community::Tag.usable_by(current_user).pluck(:id).to_set
@@ -71,7 +73,7 @@ module Community
                       {}
       end
 
-      watching = logged_in? && Community::Subscription.exists?(user: current_user, subscribable: tag)
+      subscription = logged_in? ? Community::Subscription.find_by(user: current_user, subscribable: tag) : nil
 
       render inertia: "Community/Tags/Show", props: {
         tag: {
@@ -80,13 +82,15 @@ module Community
           description: tag.description,
           color_hex: tag.color_hex,
           rss_url: forum_tag_rss_path(tag.slug),
-          watching: watching,
+          watching: subscription.present?,
+          notification_level: subscription&.notification_level,
           subscription_url: forum_tag_subscription_path(tag.slug)
         },
         topics: serialize_topics(topics, read_states: read_states),
         pagination: pagy_props(@pagy),
         sort: sort,
-        loggedIn: logged_in?
+        loggedIn: logged_in?,
+        subscriptionLevels: Community::SubscriptionLevelOptions.for(:tag)
       }
     end
 
@@ -95,18 +99,26 @@ module Community
       result = Community::ToggleTagSubscription.call(user: current_user, tag: tag)
 
       if result.success?
-        notice = if result.value[:watching]
-                   case result.value[:notification_level]
-                   when "tracking" then "已切换为跟踪此标签（仅站内通知）。"
-                   when "normal" then "已切换为普通（不接收标签新主题通知）。"
-                   else "已关注此标签（即时通知）。"
-                   end
-        else
-                   "已取消关注此标签。"
-        end
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :tag)
         redirect_to forum_tag_path(tag.slug), notice: notice
       else
         redirect_to forum_tag_path(tag.slug), alert: service_error_message(result)
+      end
+    end
+
+    def update_subscription
+      tag = Community::Tag.usable_by(current_user).find_by!(slug: params[:slug])
+      result = Community::SetSubscriptionLevel.call(
+        user: current_user,
+        subscribable: tag,
+        level: params[:level]
+      )
+
+      if result.success?
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :tag)
+        redirect_to forum_tag_path(tag.slug), notice: notice
+      else
+        redirect_to forum_tag_path(tag.slug), alert: result.error || "更新失败"
       end
     end
   end

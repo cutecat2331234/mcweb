@@ -8,6 +8,7 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import Button from '@/components/ui/Button.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Badge from '@/components/ui/Badge.vue'
+import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -44,6 +45,7 @@ const props = defineProps<{
   filter: string
   filterOptions: Array<{ value: string; label: string }>
   canCreateTopic: boolean
+  subscriptionLevels?: SubscriptionLevelOption[]
   meta?: { title: string; description?: string | null }
 }>()
 
@@ -63,16 +65,6 @@ function changeFilter(value: string) {
   router.get(routes.forumSection(props.section.slug), { sort: props.sort, filter: value || undefined }, { preserveState: true })
 }
 
-function sectionWatchLabel() {
-  if (!props.section.watching) return '关注分区'
-  if (props.section.notification_level === 'tracking') return '跟踪中（点击切换）'
-  if (props.section.notification_level === 'normal') return '普通（点击切换）'
-  return '关注中（点击改为跟踪）'
-}
-
-function toggleWatch() {
-  router.post(props.section.subscription_url, {}, { preserveScroll: true })
-}
 function toggleMute() {
   if (!props.section.mute_url) return
   router.post(props.section.mute_url, {}, { preserveScroll: true })
@@ -108,9 +100,13 @@ function markAllRead() {
       :subtitle="section.description || undefined"
     />
     <div class="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" size="sm" @click="toggleWatch">
-        {{ sectionWatchLabel() }}
-      </Button>
+      <SubscriptionLevelSelect
+        v-if="subscriptionLevels?.length"
+        :options="subscriptionLevels"
+        :subscription-url="section.subscription_url"
+        :watching="section.watching"
+        :notification-level="section.notification_level"
+      />
       <Button v-if="section.mute_url" type="button" variant="outline" size="sm" @click="toggleMute">
         {{ section.muted ? '取消静音分区' : '静音分区' }}
       </Button>

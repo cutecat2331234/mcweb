@@ -36,6 +36,7 @@ module Admin
         render inertia: "Admin/Forum/Settings/Show", props: {
           settings: forum_settings_props,
           testWebhookUrl: test_webhook_admin_forum_settings_path,
+          testAllWebhooksUrl: test_all_webhooks_admin_forum_settings_path,
           testWebhookStatusUrl: webhook_test_status_admin_forum_settings_path,
           savedSearchesForTest: saved_searches_for_test_props,
           lastTestWebhook: WebhookTestDeliveryStatus.forum_last
@@ -64,6 +65,16 @@ module Admin
           redirect_to admin_forum_settings_path, notice: "测试 Webhook 已加入发送队列（#{label}）。"
         else
           redirect_to admin_forum_settings_path, alert: result.error || "测试发送失败。"
+        end
+      end
+
+      def test_all_webhooks
+        result = Community::BatchTestSavedSearchWebhooks.call(user: current_user)
+        if result.success?
+          redirect_to admin_forum_settings_path,
+                      notice: "已加入 #{result.value[:queued]}/#{result.value[:total]} 条保存搜索 Webhook 测试队列。"
+        else
+          redirect_to admin_forum_settings_path, alert: result.error || "批量测试失败。"
         end
       end
 

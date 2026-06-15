@@ -11,6 +11,11 @@ module Commerce
       "refunded" => { mailer: :order_cancelled, preference: "commerce.order_cancelled" }
     }.freeze
 
+    WEBHOOK_EVENTS = {
+      "cancelled" => "order.cancelled",
+      "fulfilled" => "order.fulfilled"
+    }.freeze
+
     def initialize(order:, from_status: nil)
       @order = order
       @from_status = from_status
@@ -19,12 +24,7 @@ module Commerce
     def call
       return ServiceResult.success(skipped: true) if @from_status == @order.status
 
-      Commerce::DispatchOrderWebhook.call(
-        order: @order,
-        event_type: "order.status_changed",
-        from_status: @from_status,
-        to_status: @order.status
-      )
+      dispatch_webhook!
 
       config = STATUS_CONFIG[@order.status]
       return ServiceResult.success unless config
@@ -44,6 +44,18 @@ module Commerce
       end
 
       ServiceResult.success
+    end
+
+  private
+
+    def dispatch_webhook!
+      event_type = WEBHOOK_EVENTS[@order.status] || "order.status_changed"
+      Commerce::DispatchOrderWebhook.call(
+        order: @order,
+        event_type: event_type,
+        from_status: @from_status,
+        to_status: @order.status
+      )
     end
   end
 end

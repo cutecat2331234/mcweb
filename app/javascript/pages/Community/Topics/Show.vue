@@ -14,6 +14,7 @@ import ReactionUsersPopover from '@/components/portal/ReactionUsersPopover.vue'
 import UserHoverCard from '@/components/portal/UserHoverCard.vue'
 import ReadingProgress from '@/components/portal/ReadingProgress.vue'
 import ImageLightbox from '@/components/portal/ImageLightbox.vue'
+import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
 import { routes } from '@/lib/routes'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
 
@@ -195,6 +196,8 @@ const props = defineProps<{
   replyDraft?: string | null
   replyDraftUrl?: string | null
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
+  subscriptionLevels?: SubscriptionLevelOption[]
+  subscriptionUrl?: string | null
   meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null }
 }>()
 
@@ -543,17 +546,6 @@ const replyBanUsername = ref('')
 const staffNoticePostId = ref<number | null>(null)
 const staffNoticeText = ref('')
 const replyBanReason = ref('')
-
-function watchLabel() {
-  if (!props.topic.watching) return '关注主题'
-  if (props.topic.notification_level === 'tracking') return '跟踪中（点击切换）'
-  if (props.topic.notification_level === 'normal') return '普通（点击切换）'
-  return '关注中（点击改为跟踪）'
-}
-
-function toggleWatch() {
-  router.post(`/forum/topics/${props.topic.id}/subscription`, {}, { preserveScroll: true })
-}
 
 function submitStaffNote() {
   if (!props.topic.staff_note_url || !staffNoteBody.value.trim()) return
@@ -957,8 +949,13 @@ function pollPercent(votes: number) {
       <Button v-if="loggedIn && topic.bookmarked" type="button" variant="outline" size="sm" @click="removeBookmark">
         移除书签
       </Button>
-      <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleWatch">
-        {{ watchLabel() }}
+      <Button v-if="loggedIn && subscriptionLevels?.length && subscriptionUrl" type="button" variant="outline" size="sm" class="px-1">
+        <SubscriptionLevelSelect
+          :options="subscriptionLevels"
+          :subscription-url="subscriptionUrl"
+          :watching="topic.watching"
+          :notification-level="topic.notification_level"
+        />
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleMute">
         {{ topic.muted ? '取消静音' : '静音主题' }}

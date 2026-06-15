@@ -41,6 +41,7 @@ Rails.application.routes.draw do
     namespace :forum do
       resource :settings, only: %i[show update] do
         post :test_webhook
+        post :test_all_webhooks
         get :webhook_test_status
       end
       resources :categories
@@ -120,6 +121,7 @@ Rails.application.routes.draw do
     resources :sections, only: %i[index show] do
       member do
         post :subscription, action: :toggle_subscription
+        patch :subscription, action: :update_subscription
         post :mute, action: :toggle_mute
         patch :mark_all_read
       end
@@ -169,6 +171,7 @@ Rails.application.routes.draw do
         patch :auto_archive, action: :update_auto_archive
         post :mark_unread
         post :subscription, action: :toggle_subscription
+        patch :subscription, action: :update_subscription
         post :mute, action: :toggle_mute
         post :bookmark, action: :toggle_bookmark
         post :staff_note
@@ -243,6 +246,7 @@ Rails.application.routes.draw do
     end
     get "tags/:slug", to: "tags#show", as: :tag
     post "tags/:slug/subscription", to: "tags#toggle_subscription", as: :tag_subscription
+    patch "tags/:slug/subscription", to: "tags#update_subscription", as: :tag_subscription_level
     resources :conversations, only: %i[index show new create] do
       member do
         post :archive

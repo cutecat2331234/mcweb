@@ -10,7 +10,7 @@ module Community
 
     def self.subscribe!(user, subscribable, level: "watching")
       record = find_or_initialize_by(user: user, subscribable: subscribable)
-      record.notification_level = level if record.new_record? || record.notification_level.blank?
+      record.notification_level = level
       record.save!
       record
     end

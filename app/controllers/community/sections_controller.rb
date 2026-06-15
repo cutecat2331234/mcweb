@@ -4,6 +4,7 @@ module Community
   class SectionsController < ApplicationController
     include Community::TopicFilterable
     include Community::TopicListPreloadable
+    include Community::SubscriptionNoticeable
 
     def index
       @pagy, sections = pagy(Community::Section.roots.ordered.includes(:category, :children), limit: 20)
@@ -89,6 +90,7 @@ module Community
         filter: filter.to_s,
         filterOptions: topic_filter_options(prefixes: Array(section.prefixes), staff: staff),
         canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic),
+        subscriptionLevels: Community::SubscriptionLevelOptions.for(:section),
         meta: {
           title: section.seo["title"].presence || section.name,
           description: section.seo["description"].presence || section.description&.truncate(160)
@@ -102,18 +104,27 @@ module Community
       result = Community::ToggleSectionSubscription.call(user: current_user, section: section)
 
       if result.success?
-        notice = if result.value[:watching]
-                   case result.value[:notification_level]
-                   when "tracking" then "已切换为跟踪此分区（仅站内通知）。"
-                   when "normal" then "已切换为普通（不接收分区新主题通知）。"
-                   else "已关注此分区（即时通知）。"
-                   end
-        else
-                   "已取消关注此分区。"
-        end
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :section)
         redirect_to forum_section_path(section), notice: notice
       else
         redirect_to forum_section_path(section), alert: service_error_message(result)
+      end
+    end
+
+    def update_subscription
+      require_login
+      section = Community::Section.find_by!(slug: params[:id])
+      result = Community::SetSubscriptionLevel.call(
+        user: current_user,
+        subscribable: section,
+        level: params[:level]
+      )
+
+      if result.success?
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :section)
+        redirect_to forum_section_path(section), notice: notice
+      else
+        redirect_to forum_section_path(section), alert: result.error || "更新失败"
       end
     end
 

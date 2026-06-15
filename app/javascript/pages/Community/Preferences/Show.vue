@@ -36,6 +36,7 @@ const props = defineProps<{
   digest_options: Array<{ value: string; label: string }>
   watch_email_mode: string
   watch_email_mode_options: Array<{ value: string; label: string }>
+  notificationLevelGuide?: Array<{ value: string; label: string; description: string }>
   savedSearches?: SavedSearchItem[]
   savedSearchesOpmlUrl?: string | null
   watchingOpmlUrl?: string | null
@@ -189,6 +190,15 @@ async function saveRenameSearch(search: SavedSearchItem) {
         <option v-for="opt in watch_email_mode_options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
       </select>
       <p class="mt-2 text-xs text-muted-foreground">控制关注主题/分区时是否立即收到邮件（对标 Discourse 通知级别）。</p>
+    </div>
+
+    <div v-if="notificationLevelGuide?.length" class="rounded-lg border p-4">
+      <p class="mb-3 text-sm font-medium">主题/分区/标签通知级别说明</p>
+      <ul class="space-y-2 text-sm text-muted-foreground">
+        <li v-for="item in notificationLevelGuide" :key="item.value">
+          <span class="font-medium text-foreground">{{ item.label }}</span> — {{ item.description }}
+        </li>
+      </ul>
     </div>
 
     <div class="rounded-lg border p-4">

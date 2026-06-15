@@ -46,6 +46,7 @@ module Community
         digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } },
         watch_email_mode: current_user.forum_watch_email_mode,
         watch_email_mode_options: WATCH_EMAIL_MODES.map { |v| { value: v, label: watch_email_mode_label(v) } },
+        notificationLevelGuide: Community::SubscriptionLevelOptions::GUIDE,
         savedSearches: serialize_saved_searches_for_preferences,
         savedSearchesOpmlUrl: Community::SavedSearchPresenter.opml_path(current_user),
         watchingOpmlUrl: forum_watching_opml_path(token: Community::WatchingOpmlToken.generate(current_user)),

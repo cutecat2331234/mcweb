@@ -11,6 +11,7 @@ module Commerce
     def call
       return ServiceResult.failure(error: "Order cannot be cancelled.") unless @order.pending? || @order.awaiting_payment?
 
+      previous_status = @order.status
       Commerce::Order.transaction do
         @order.cancel! if @order.may_cancel?
         restore_stock!
@@ -31,6 +32,14 @@ module Commerce
         title: "订单已取消",
         body: "订单 #{@order.order_number} 已取消。",
         path: "/store/orders/#{@order.public_id}"
+      )
+
+      Commerce::DispatchOrderWebhook.call(
+        order: @order,
+        event_type: "order.cancelled",
+        from_status: previous_status,
+        to_status: "cancelled",
+        extra: { cancel_reason: @reason }
       )
 
       restore_coupon_usage!

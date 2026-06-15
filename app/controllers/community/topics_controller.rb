@@ -6,10 +6,11 @@ module Community
     include Community::TopicListPreloadable
     include Community::SectionTagGroupsSerializable
     include Community::WarningRestrictionsSerializable
+    include Community::SubscriptionNoticeable
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :require_login, only: %i[new create update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :set_topic, only: %i[show update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
 
     def show
       @topic.record_view!
@@ -115,6 +116,8 @@ module Community
         replyDraft: logged_in? ? Community::ReplyDraft.find_by(user: current_user, topic: @topic)&.body : nil,
         replyDraftUrl: logged_in? ? forum_topic_reply_draft_path(@topic) : nil,
         warningRestrictions: warning_restrictions_props,
+        subscriptionLevels: Community::SubscriptionLevelOptions.for(:topic),
+        subscriptionUrl: logged_in? ? subscription_forum_topic_path(@topic) : nil,
         meta: topic_meta_props(@topic)
       }
     end
@@ -217,18 +220,25 @@ module Community
       result = Community::ToggleSubscription.call(user: current_user, topic: @topic)
 
       if result.success?
-        notice = if result.value[:watching]
-                   case result.value[:notification_level]
-                   when "tracking" then "已切换为跟踪（仅站内通知）。"
-                   when "normal" then "已切换为普通（仅参与或被提及时通知）。"
-                   else "已关注此主题（即时通知）。"
-                   end
-        else
-                   "已取消关注。"
-        end
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :topic)
         redirect_to forum_topic_path(@topic), notice: notice
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def update_subscription
+      result = Community::SetSubscriptionLevel.call(
+        user: current_user,
+        subscribable: @topic,
+        level: params[:level]
+      )
+
+      if result.success?
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :topic)
+        redirect_to forum_topic_path(@topic), notice: notice
+      else
+        redirect_to forum_topic_path(@topic), alert: result.error || "更新失败"
       end
     end
 

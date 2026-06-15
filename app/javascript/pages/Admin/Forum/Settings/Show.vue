@@ -33,6 +33,7 @@ export interface LastTestWebhook {
 const props = defineProps<{
   settings: ForumSettingItem[]
   testWebhookUrl?: string | null
+  testAllWebhooksUrl?: string | null
   testWebhookStatusUrl?: string | null
   savedSearchesForTest?: SavedSearchForTest[]
   lastTestWebhook?: LastTestWebhook | null
@@ -83,6 +84,13 @@ function sendTestWebhook() {
     onSuccess: () => startPollingWebhookStatus(),
   })
 }
+
+function sendTestAllWebhooks() {
+  if (!props.testAllWebhooksUrl || !confirm('向配置的 Webhook URL 批量发送最多 20 条保存搜索测试事件？')) return
+  router.post(props.testAllWebhooksUrl, {}, {
+    onSuccess: () => startPollingWebhookStatus(),
+  })
+}
 </script>
 
 <template>
@@ -119,6 +127,15 @@ function sendTestWebhook() {
       </select>
       <Button type="button" variant="outline" class="ml-2" @click="sendTestWebhook">
         发送 Webhook 测试
+      </Button>
+      <Button
+        v-if="testAllWebhooksUrl && savedSearchesForTest?.length"
+        type="button"
+        variant="outline"
+        class="ml-2"
+        @click="sendTestAllWebhooks"
+      >
+        批量测试保存搜索
       </Button>
       <p v-if="lastTestWebhookDisplay" class="mt-2 text-xs text-muted-foreground">
         最近测试：{{ lastTestWebhookDisplay.event_type }} · {{ lastTestWebhookDisplay.status }}

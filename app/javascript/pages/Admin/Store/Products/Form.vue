@@ -37,6 +37,8 @@ const props = defineProps<{
     changelog?: string
     seo_title?: string
     seo_description?: string
+    available_at?: string
+    unavailable_at?: string
     variants: Array<{ id?: number; name: string; sku: string; price_cents: number; stock: number | null }>
   }
   categories: Array<{ id: number; name: string }>
@@ -143,6 +145,16 @@ async function uploadCover(event: Event) {
       <div class="space-y-2">
         <Label for="stock">库存（空=无限）</Label>
         <Input id="stock" v-model.number="form.product.stock" type="number" min="0" />
+      </div>
+    </div>
+    <div class="grid grid-cols-2 gap-4">
+      <div class="space-y-2">
+        <Label for="available_at">定时上架</Label>
+        <Input id="available_at" v-model="form.product.available_at" type="datetime-local" />
+      </div>
+      <div class="space-y-2">
+        <Label for="unavailable_at">定时下架</Label>
+        <Input id="unavailable_at" v-model="form.product.unavailable_at" type="datetime-local" />
       </div>
     </div>
     <div class="space-y-2">

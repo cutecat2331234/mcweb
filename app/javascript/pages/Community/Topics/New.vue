@@ -14,7 +14,7 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
+  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; required_tag_groups?: Array<{ name: string; slug: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
   similarTitlesUrl?: string
 }>()
 
@@ -129,6 +129,10 @@ function saveDraft() {
         <template v-for="(tag, index) in section.required_tags" :key="tag.slug">
           <Link :href="tag.url" class="underline">{{ tag.name }}</Link><span v-if="index < section.required_tags.length - 1">、</span>
         </template>
+      </p>
+      <p v-if="section.required_tag_groups?.length" class="text-xs text-muted-foreground">
+        此分区要求从以下标签组中至少选一个标签：
+        {{ section.required_tag_groups.map((g) => g.name).join('、') }}
       </p>
       <p v-if="section.allowed_tags?.length" class="text-xs text-muted-foreground">
         此分区仅允许使用：

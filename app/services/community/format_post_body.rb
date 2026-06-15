@@ -118,6 +118,12 @@ module Community
         token
       end
 
+      text = text.gsub(%r{\A(/forum/categories/[\w-]+)\s*\z}i) do |path|
+        token = placeholder_token(placeholders, "ONEBOX")
+        placeholders[token] = category_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
+        token
+      end
+
       text = text.gsub(%r{\A(/forum/sections/[\w-]+)\s*\z}i) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = section_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
@@ -178,6 +184,8 @@ module Community
           placeholders[token] = section_box
         elsif (tag_box = tag_onebox_html(url))
           placeholders[token] = tag_box
+        elsif (category_box = category_onebox_html(url))
+          placeholders[token] = category_box
         else
           preview = Community::FetchLinkPreview.call(url: url)
           if preview.success? && preview.value
@@ -311,6 +319,15 @@ module Community
       %(<aside class="onebox tag-onebox"><a href="#{ERB::Util.html_escape(t[:url])}" class="onebox-link"><strong class="onebox-title">##{ERB::Util.html_escape(t[:name])}</strong>#{desc}<span class="onebox-price">#{t[:topics_count]} 主题</span></a></aside>)
     end
 
+    def category_onebox_html(url)
+      result = Community::FetchCategoryOnebox.call(url: url)
+      return nil unless result.success? && result.value
+
+      c = result.value
+      desc = c[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(c[:description])}</p>) : ""
+      %(<aside class="onebox category-onebox"><a href="#{ERB::Util.html_escape(c[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(c[:name])}</strong>#{desc}<span class="onebox-price">#{c[:section_count]} 分区</span></a></aside>)
+    end
+
     def markdown_to_html(text)
       lines = text.split(/\r\n|\r|\n/)
       html_lines = []
@@ -415,6 +432,8 @@ module Community
           section_box
         elsif (tag_box = tag_onebox_html(url))
           tag_box
+        elsif (category_box = category_onebox_html(url))
+          category_box
         else
           %(<a href="#{ERB::Util.html_escape(url)}" rel="nofollow noopener">#{ERB::Util.html_escape(label)}</a>)
         end

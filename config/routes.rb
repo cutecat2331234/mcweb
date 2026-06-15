@@ -301,6 +301,7 @@ Rails.application.routes.draw do
     post "gift_cards/:code/apply", to: "gift_cards#apply", as: :apply_gift_card
     post "webhooks/:provider", to: "webhooks#create", as: :webhook
     get "downloads/:token", to: "downloads#show", as: :download
+    get "wallet", to: "wallet#show"
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
     resources :shipping_addresses, only: %i[index create update destroy] do

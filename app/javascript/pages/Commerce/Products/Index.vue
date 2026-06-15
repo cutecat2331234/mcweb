@@ -36,6 +36,8 @@ export interface ProductItem {
   summary?: string | null
   url: string
   quick_addable?: boolean
+  coming_soon?: boolean
+  available_at_label?: string | null
 }
 
 export interface CategoryItem {
@@ -49,6 +51,7 @@ const props = defineProps<{
   products: ProductItem[]
   featured_products?: ProductItem[]
   recently_viewed?: ProductItem[]
+  upcoming_products?: ProductItem[]
   categories: CategoryItem[]
   activeCategory: string | null
   query: string
@@ -127,6 +130,24 @@ function quickAdd(product: ProductItem) {
           <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
         </div>
       </Link>
+    </div>
+  </section>
+
+  <section v-if="upcoming_products?.length" class="mb-8">
+    <h2 class="mb-3 text-sm font-semibold">即将上架</h2>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        v-for="product in upcoming_products"
+        :key="product.id"
+        class="flex gap-3 rounded-lg border border-dashed p-3 opacity-90"
+      >
+        <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover grayscale" />
+        <div>
+          <p class="font-medium">{{ product.name }}</p>
+          <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+          <Badge v-if="product.available_at_label" class="mt-1">{{ product.available_at_label }}</Badge>
+        </div>
+      </div>
     </div>
   </section>
 

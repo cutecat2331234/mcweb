@@ -33,14 +33,17 @@ export interface SectionOption {
 const props = defineProps<{
   query: string
   section: string | null
+  category?: string
   author: string
   tag: string
   solved: string
+  images?: string
   createdAfter?: string
   createdBefore?: string
   topicSort?: string
   postSort?: string
   sections: SectionOption[]
+  categories?: Array<{ slug: string; name: string }>
   tags: Array<{ slug: string; name: string }>
   topics: SearchTopic[]
   posts: SearchPost[]
@@ -54,9 +57,11 @@ const props = defineProps<{
 
 const q = ref(props.query)
 const sectionSlug = ref(props.section || '')
+const categorySlug = ref(props.category || '')
 const author = ref(props.author)
 const tagSlug = ref(props.tag)
 const solved = ref(props.solved)
+const imagesOnly = ref(props.images === 'images')
 const createdAfter = ref(props.createdAfter || '')
 const createdBefore = ref(props.createdBefore || '')
 const topicSort = ref(props.topicSort || 'recent')
@@ -95,9 +100,11 @@ function search() {
   router.get(routes.forumSearch, {
     q: q.value,
     section: sectionSlug.value || undefined,
+    category: categorySlug.value || undefined,
     author: author.value || undefined,
     tag: tagSlug.value || undefined,
     solved: solved.value || undefined,
+    images: imagesOnly.value ? 'images' : undefined,
     created_after: createdAfter.value || undefined,
     created_before: createdBefore.value || undefined,
     topic_sort: topicSort.value !== 'recent' ? topicSort.value : undefined,
@@ -125,9 +132,11 @@ async function saveSearch() {
           query: q.value,
           filters: {
             section: sectionSlug.value,
+            category: categorySlug.value,
             author: author.value,
             tag: tagSlug.value,
             solved: solved.value,
+            images: imagesOnly.value ? 'images' : '',
             created_after: createdAfter.value,
             created_before: createdBefore.value,
             topic_sort: topicSort.value,
@@ -189,6 +198,10 @@ async function deleteSavedSearch(deleteUrl: string) {
         {{ sec.category ? `${sec.category} / ` : '' }}{{ sec.name }}
       </option>
     </select>
+    <select v-if="categories?.length" v-model="categorySlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">全部分类</option>
+      <option v-for="cat in categories" :key="cat.slug" :value="cat.slug">{{ cat.name }}</option>
+    </select>
     <Input v-model="author" placeholder="作者用户名" class="w-36" />
     <Input v-model="createdAfter" type="date" class="w-36" title="起始日期" />
     <Input v-model="createdBefore" type="date" class="w-36" title="截止日期" />
@@ -201,6 +214,10 @@ async function deleteSavedSearch(deleteUrl: string) {
       <option value="unsolved">未解决</option>
       <option value="solved">已解决</option>
     </select>
+    <label class="flex h-9 items-center gap-2 text-sm">
+      <input v-model="imagesOnly" type="checkbox" class="rounded border" />
+      含图片
+    </label>
     <select v-model="topicSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
       <option value="recent">主题：最新</option>
       <option value="oldest">主题：最早</option>

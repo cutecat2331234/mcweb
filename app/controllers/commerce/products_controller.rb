@@ -50,6 +50,8 @@ module Commerce
                           []
       end
 
+      upcoming = Commerce::Product.upcoming.includes(:category).limit(8)
+
       @pagy, products = pagy(scope, limit: 20)
       categories = Commerce::Category.ordered
       category_query = index_filter_params
@@ -58,6 +60,7 @@ module Commerce
         products: products.map { |product| serialize_product_list_item(product) },
         featured_products: featured.map { |product| serialize_product_list_item(product) },
         recently_viewed: recently_viewed.map { |product| serialize_product_list_item(product) },
+        upcoming_products: upcoming.map { |product| serialize_upcoming_product(product) },
         categories: categories.map { |category| serialize_category(category, **category_query) },
         activeCategory: params[:category],
         query: params[:q].to_s,

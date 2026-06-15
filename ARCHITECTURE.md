@@ -998,3 +998,18 @@ app/
 | 商品定时上架/下架 | `available_at` / `unavailable_at` + Job |
 | `@here` 通知偏好 | `forum.here` + `ProcessMentions` 门控 |
 | 管理端警告列表 | `admin/forum/warnings#index` |
+
+### 第五十八轮（R57 前端补全、钱包页与运营增强）
+
+| 功能 | 实现 |
+|------|------|
+| 结账商店余额 UI | `Checkout/Show.vue` 余额展示 + 可选抵扣 |
+| 商店余额钱包页 | `/store/wallet` + 交易记录 |
+| 即将上架商品区 | `Product.upcoming` + 商城首页展示 |
+| 分类 Onebox | `FetchCategoryOnebox` + `FormatPostBody` |
+| 搜索分类/含图筛选 UI | `Search/Index.vue` 下拉与复选框 |
+| 搜索建议同义词标签 | `search#suggest` effective_tag 去重 |
+| 管理端警告 CSV 导出 | `warnings#index` format=csv |
+| 分区必填标签组 UI | `Sections/Form.vue` + 发帖页提示 |
+| 商品定时上下架表单 | `Products/Form.vue` datetime 字段 |
+| 结账可关闭余额抵扣 | `use_store_credit` 参数 |

@@ -68,6 +68,7 @@ module Commerce
           user: current_user,
           coupon_code: checkout_params[:coupon_code].presence || session.delete(:pending_coupon_code),
           gift_card_code: checkout_params[:gift_card_code].presence || session.delete(:pending_gift_card_code),
+          use_store_credit: checkout_params[:use_store_credit],
           notes: checkout_params[:notes],
           shipping_address: shipping_address_params,
           shipping_method: checkout_params[:shipping_method],
@@ -246,7 +247,7 @@ module Commerce
     private
 
     def checkout_params
-      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes, :shipping_method, :gift_wrap)
+      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes, :shipping_method, :gift_wrap, :use_store_credit)
     end
 
     def shipping_address_params

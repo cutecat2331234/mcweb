@@ -208,7 +208,10 @@ module Community
       tags = Community::Tag.usable_by(current_user)
         .where("name ILIKE ? OR slug ILIKE ?", needle, needle)
         .order(:name)
-        .limit(5)
+        .limit(10)
+        .map(&:effective_tag)
+        .uniq
+        .first(5)
         .map { |tag| { name: tag.name, url: forum_tag_path(tag.slug) } }
 
       users = User.where(status: :active)

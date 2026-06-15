@@ -56,6 +56,7 @@ export const routes = {
   storeCategoryRss: (slug: string) => `/store/categories/${slug}.rss`,
   storeLatestRss: '/store/latest.rss',
   storeShippingAddresses: '/store/shipping_addresses',
+  storeWallet: '/store/wallet',
   storePreferences: '/store/preferences',
   storeWishlistShare: '/store/wishlist/share',
   storePublicWishlist: (token: string) => `/store/wishlist/${token}`,

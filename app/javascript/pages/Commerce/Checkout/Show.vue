@@ -77,6 +77,9 @@ const props = defineProps<{
   belowMinCheckout?: boolean
   previewCouponUrl: string
   previewGiftCardUrl: string
+  storeCreditBalanceCents?: number
+  storeCreditBalanceLabel?: string | null
+  previewStoreCreditUrl?: string
 }>()
 
 const form = useForm({
@@ -87,6 +90,7 @@ const form = useForm({
     notes: '',
     shipping_method: props.shippingMethodCode || props.shippingMethods?.[0]?.code || 'standard',
     gift_wrap: false,
+    use_store_credit: true,
     shipping_address: {
       name: props.defaultShippingAddress?.name || '',
       phone: props.defaultShippingAddress?.phone || '',
@@ -107,6 +111,7 @@ const giftCardMessage = ref<string | null>(null)
 const giftCardError = ref<string | null>(null)
 const discountLabel = ref<string | null>(null)
 const giftCardLabel = ref<string | null>(null)
+const storeCreditLabel = ref<string | null>(null)
 const totalLabel = ref<string | null>(props.subtotalLabel)
 const previewing = ref(false)
 const previewingGiftCard = ref(false)
@@ -129,6 +134,33 @@ function applySavedAddress(id: number | '') {
 watch(selectedAddressId, (id) => {
   if (id) applySavedAddress(id)
 })
+
+async function refreshStoreCredit() {
+  storeCreditLabel.value = null
+  if (!props.previewStoreCreditUrl || !form.checkout.use_store_credit) return
+  if (!props.storeCreditBalanceCents) return
+
+  try {
+    const response = await fetch(props.previewStoreCreditUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+      },
+      body: JSON.stringify({
+        coupon_code: form.checkout.coupon_code,
+        gift_card_code: form.checkout.gift_card_code,
+      }),
+    })
+    const data = await response.json()
+    if (response.ok && data.store_credit_amount_cents > 0) {
+      storeCreditLabel.value = data.store_credit_amount_label
+      totalLabel.value = data.total_label
+    }
+  } catch {
+    // ignore preview errors
+  }
+}
 
 async function previewGiftCard() {
   giftCardMessage.value = null
@@ -156,6 +188,7 @@ async function previewGiftCard() {
       giftCardMessage.value = `礼品卡 ${data.code} 已应用`
       giftCardLabel.value = data.gift_card_amount_label
       totalLabel.value = data.total_label
+      await refreshStoreCredit()
     } else {
       giftCardError.value = data.error || '礼品卡无效'
     }
@@ -195,6 +228,8 @@ async function previewCoupon() {
       couponRemainingHint.value = data.amount_remaining_label ? `还差 ${data.amount_remaining_label} 可用` : null
       if (form.checkout.gift_card_code.trim()) {
         await previewGiftCard()
+      } else {
+        await refreshStoreCredit()
       }
     } else {
       couponError.value = data.error || '优惠码无效'
@@ -211,6 +246,8 @@ onMounted(() => {
     previewCoupon()
   } else if (props.pendingGiftCardCode) {
     previewGiftCard()
+  } else {
+    refreshStoreCredit()
   }
 })
 </script>
@@ -245,8 +282,15 @@ onMounted(() => {
       <p v-if="freeShippingRemainingLabel" class="text-xs text-amber-600">还差 {{ freeShippingRemainingLabel }} 可享免运费</p>
       <p v-if="discountLabel" class="text-green-600">优惠：-{{ discountLabel }}</p>
       <p v-if="giftCardLabel" class="text-green-600">礼品卡：-{{ giftCardLabel }}</p>
+      <p v-if="storeCreditBalanceLabel" class="text-muted-foreground">商店余额：{{ storeCreditBalanceLabel }}</p>
+      <p v-if="storeCreditLabel" class="text-green-600">余额抵扣：-{{ storeCreditLabel }}</p>
       <p class="font-medium">应付：{{ totalLabel }}</p>
     </div>
+
+    <label v-if="storeCreditBalanceCents" class="flex items-center gap-2 text-sm">
+      <input v-model="form.checkout.use_store_credit" type="checkbox" class="rounded border" @change="refreshStoreCredit" />
+      使用商店余额抵扣
+    </label>
 
     <p v-if="couponAutoApplied && pendingCouponCode" class="text-sm text-green-700">
       已通过链接自动应用优惠码 {{ pendingCouponCode }}

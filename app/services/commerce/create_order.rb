@@ -8,7 +8,7 @@ module Commerce
       @notes = notes
       @coupon_code = coupon_code
       @gift_card_code = gift_card_code
-      @use_store_credit = use_store_credit != false
+      @use_store_credit = ActiveModel::Type::Boolean.new.cast(use_store_credit)
       @shipping_address = shipping_address
       @shipping_method = shipping_method.presence || "standard"
       @gift_wrap = gift_wrap

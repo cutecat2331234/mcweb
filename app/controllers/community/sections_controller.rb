@@ -78,6 +78,7 @@ module Community
           mark_all_read_url: logged_in? ? mark_all_read_forum_section_path(section) : nil,
           rss_url: forum_section_rss_path(section),
           required_tags: section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
+          required_tag_groups: section.required_tag_groups.map { |g| { name: g.name, slug: g.slug } },
           allowed_tags: section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
           prefix_required: section.prefix_required?
         },

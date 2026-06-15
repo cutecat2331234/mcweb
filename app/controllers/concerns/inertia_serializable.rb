@@ -429,6 +429,13 @@ module InertiaSerializable
     }
   end
 
+  def serialize_upcoming_product(product)
+    serialize_product_list_item(product).merge(
+      coming_soon: true,
+      available_at_label: product.available_at ? l(product.available_at, format: :short) : nil
+    )
+  end
+
   def product_image_url(product)
     if product.cover_image.attached?
       rails_blob_path(product.cover_image, only_path: true)

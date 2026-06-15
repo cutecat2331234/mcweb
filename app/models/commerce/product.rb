@@ -44,6 +44,22 @@ module Commerce
         .where("unavailable_at IS NULL OR unavailable_at > ?", now)
     }
 
+    scope :upcoming, -> {
+      where(status: :active)
+        .where("available_at IS NOT NULL AND available_at > ?", Time.current)
+        .order(:available_at)
+    }
+
+    def coming_soon?
+      available_at.present? && available_at > Time.current
+    end
+
+    def coming_soon_label
+      return nil unless coming_soon?
+
+      "将于 #{I18n.l(available_at, format: :short)} 上架"
+    end
+
     scope :with_stock, -> {
       where(
         <<~SQL.squish

@@ -533,6 +533,7 @@ module Community
         prefix_required: @section.prefix_required?,
         topic_template: @section.topic_template,
         required_tags: @section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
+        required_tag_groups: @section.required_tag_groups.map { |g| { name: g.name, slug: g.slug } },
         allowed_tags: @section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
         default_tags: @section.default_tags.map { |tag| tag.name }
       }

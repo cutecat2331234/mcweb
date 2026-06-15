@@ -23,6 +23,7 @@ const props = defineProps<{
     create_topic_roles: string
     reply_roles: string
     required_tag_ids: number[]
+    required_tag_group_ids: number[]
     allowed_tag_ids: number[]
     default_tag_ids: number[]
     prefix_required: boolean
@@ -39,6 +40,7 @@ const props = defineProps<{
     seo_description: string
   }
   tags: Array<{ id: number; name: string }>
+  tagGroups?: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
   parentSections: Array<{ id: number; name: string }>
   submitUrl: string
@@ -50,6 +52,7 @@ const form = useForm({
   section: {
     ...props.section,
     required_tag_ids: [ ...props.section.required_tag_ids ],
+    required_tag_group_ids: [ ...(props.section.required_tag_group_ids || []) ],
     allowed_tag_ids: [ ...props.section.allowed_tag_ids ],
     default_tag_ids: [ ...props.section.default_tag_ids ],
   },
@@ -82,6 +85,16 @@ function toggleDefaultTag(tagId: number) {
     ids.splice(index, 1)
   } else {
     ids.push(tagId)
+  }
+}
+
+function toggleRequiredTagGroup(groupId: number) {
+  const ids = form.section.required_tag_group_ids
+  const index = ids.indexOf(groupId)
+  if (index >= 0) {
+    ids.splice(index, 1)
+  } else {
+    ids.push(groupId)
   }
 }
 
@@ -213,6 +226,20 @@ function submit() {
         </label>
       </div>
       <p class="text-xs text-muted-foreground">勾选后，用户在此分区发帖必须包含至少一个所选标签。</p>
+    </div>
+    <div v-if="tagGroups?.length" class="space-y-2">
+      <Label>必填标签组（至少从组内选一个标签）</Label>
+      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
+        <label v-for="group in tagGroups" :key="`group-${group.id}`" class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            class="h-4 w-4"
+            :checked="form.section.required_tag_group_ids.includes(group.id)"
+            @change="toggleRequiredTagGroup(group.id)"
+          />
+          {{ group.name }}
+        </label>
+      </div>
     </div>
     <div v-if="tags.length" class="space-y-2">
       <Label>允许标签（白名单，空=不限制）</Label>

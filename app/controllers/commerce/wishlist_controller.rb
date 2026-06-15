@@ -11,6 +11,9 @@ module Commerce
         .order(created_at: :desc)
 
       share = Commerce::EnsureWishlistShareToken.call(user: current_user)
+      availability_alerts = Commerce::ProductAvailabilityAlert
+        .where(user: current_user, store_product_id: items.map(&:store_product_id))
+        .index_by(&:store_product_id)
 
       render inertia: "Commerce/Wishlist/Index", props: {
         products: items.map do |item|
@@ -22,6 +25,10 @@ module Commerce
             data[:coming_soon] = true
             data[:available_at_label] = product.available_at ? l(product.available_at, format: :short) : nil
             data[:in_stock] = false
+            alert = availability_alerts[product.id]
+            data[:availability_alert_url] = availability_alert_store_product_path(product)
+            data[:has_availability_alert] = alert.present?
+            data[:availability_alert_unsubscribe_url] = alert ? store_availability_alert_path(alert) : nil
           end
           if variant
             data[:price_label] = format_money(variant.price_cents, product.currency)
@@ -61,7 +68,14 @@ module Commerce
       render inertia: "Commerce/Wishlist/Public", props: {
         owner: user.display_name || user.username,
         products: items.map do |item|
-          data = serialize_product_list_item(item.product)
+          product = item.product
+          data = serialize_product_list_item(product)
+          if product.coming_soon?
+            data[:url] = preview_store_product_path(product)
+            data[:coming_soon] = true
+            data[:available_at_label] = product.available_at ? l(product.available_at, format: :short) : nil
+            data[:coming_soon_label] = product.coming_soon_label
+          end
           data.merge(saved_variant_name: item.variant&.name, note: item.note.to_s)
         end
       }
@@ -108,7 +122,10 @@ module Commerce
     end
 
     def update_note
-      product = Commerce::Product.available.find_by!(public_id: params[:product_id])
+      product = Commerce::Product.active.find_by!(public_id: params[:product_id])
+      unless product.available? || product.coming_soon?
+        return redirect_to store_wishlist_path, alert: "商品不可编辑备注。"
+      end
       result = Commerce::UpdateWishlistNote.call(user: current_user, product: product, note: params[:note])
 
       if result.success?

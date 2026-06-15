@@ -1058,3 +1058,16 @@ app/
 | 标签组色点展示 | `TopicTitleBadges` group_color_hex 圆点 |
 | 心愿单即将上架展示 | 徽章 + 预览链接 + 上架时间 |
 | 心愿单批量加购跳过未上架 | `AddWishlistToCart` 跳过 `coming_soon` |
+
+### 第六十三轮（必填标签组发布校验、心愿单完善、退款恢复明细）
+
+| 功能 | 实现 |
+|------|------|
+| 必填标签组发布拦截 | `Section#requires_tags_or_groups?` + `CreateTopic` / `ScheduleTopic` / `PublishTopicDraft` / `PublishScheduledTopic` |
+| 主题详情标签组色点 | `Topics/Show` 标签 `group_color_hex` 圆点 |
+| 心愿单即将上架通知 | `Wishlist#index` 上架通知订阅按钮 |
+| 心愿单备注支持未上架 | `update_note` 允许 `coming_soon` 商品 |
+| 公开心愿单即将上架 | `public_show` 预览链接 + `Public.vue` 徽章 |
+| 订单退款恢复明细 | `serialize_order_restorations` + `Orders/Show` |
+| 搜索全站公告文案 | `Search/Index` 「仅全站公告」 |
+| 修复 storeProduct 路由 | `routes.ts` `storeProduct` helper |

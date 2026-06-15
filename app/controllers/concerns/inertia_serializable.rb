@@ -722,6 +722,7 @@ module InertiaSerializable
       refund_pending: order.refunds.pending.exists?,
       can_download_receipt: %w[paid processing fulfilling fulfilled completed refunded].include?(order.status),
       refund_url: refund_store_order_path(order),
+      restorations: serialize_order_restorations(order),
       refunds: order.refunds.order(created_at: :desc).map do |refund|
         {
           amount_label: format_money(refund.amount_cents, order.currency),
@@ -795,6 +796,36 @@ module InertiaSerializable
       payment_providers: providers,
       default_provider: providers.first&.dig(:value) || "fake"
     }
+  end
+
+  def serialize_order_restorations(order)
+    items = []
+    if order.store_credit_restored_cents.to_i.positive?
+      items << {
+        label: "商店余额已恢复",
+        amount_label: format_money(order.store_credit_restored_cents, order.currency)
+      }
+    end
+    if order.gift_card_restored_cents.to_i.positive?
+      items << {
+        label: "礼品卡余额已恢复",
+        amount_label: format_money(order.gift_card_restored_cents, order.currency)
+      }
+    end
+    if order.coupon_usage_restored? && order.coupon
+      items << {
+        label: "优惠券使用次数已恢复",
+        amount_label: order.coupon.code
+      }
+    end
+    stock_qty = order.items.sum { |item| item.stock_restored_quantity.to_i }
+    if stock_qty.positive?
+      items << {
+        label: "库存已恢复",
+        amount_label: "#{stock_qty} 件"
+      }
+    end
+    items
   end
 
   def order_status_label(status)

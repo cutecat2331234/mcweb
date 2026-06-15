@@ -69,6 +69,7 @@ const props = defineProps<{
       created_at: string
       customer_requested: boolean
     }>
+    restorations?: Array<{ label: string; amount_label: string }>
     events: Array<{
       event_type: string
       label: string
@@ -287,6 +288,16 @@ function refreshDownload(url: string) {
           <span v-if="refund.customer_requested" class="ml-2 text-xs text-muted-foreground">客户申请</span>
           <span class="ml-2 text-muted-foreground">{{ refund.created_at }}</span>
         </span>
+      </li>
+    </ul>
+  </div>
+
+  <div v-if="order.restorations?.length" class="mb-6 rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-900 dark:bg-green-950">
+    <h2 class="mb-3 text-sm font-semibold text-green-900 dark:text-green-100">退款恢复明细</h2>
+    <ul class="space-y-1 text-sm text-green-800 dark:text-green-200">
+      <li v-for="(item, index) in order.restorations" :key="index" class="flex justify-between gap-4">
+        <span>{{ item.label }}</span>
+        <span class="font-medium">{{ item.amount_label }}</span>
       </li>
     </ul>
   </div>

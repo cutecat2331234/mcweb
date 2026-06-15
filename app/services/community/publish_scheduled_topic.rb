@@ -11,11 +11,18 @@ module Community
       return ServiceResult.failure(error: "Topic is not ready.") unless @topic.scheduled_at <= Time.current
       return ServiceResult.failure(error: "Topic already published.") unless @topic.draft?
 
+      tag_ids = @topic.tags.pluck(:id)
       required_result = Community::ValidateSectionRequiredTags.call(
         section: @topic.section,
-        tag_ids: @topic.tags.pluck(:id)
+        tag_ids: tag_ids
       )
       return required_result if required_result.failure?
+
+      group_result = Community::ValidateSectionTagGroups.call(
+        section: @topic.section,
+        tag_ids: tag_ids
+      )
+      return group_result if group_result.failure?
 
       if @topic.section.prefix_required? && @topic.prefix.blank?
         return ServiceResult.failure(error: "此分区要求选择主题前缀。")

@@ -54,6 +54,14 @@ module Commerce
       available_at.present? && available_at > Time.current
     end
 
+    def available?
+      return false unless active?
+
+      now = Time.current
+      (available_at.nil? || available_at <= now) &&
+        (unavailable_at.nil? || unavailable_at > now)
+    end
+
     def coming_soon_label
       return nil unless coming_soon?
 

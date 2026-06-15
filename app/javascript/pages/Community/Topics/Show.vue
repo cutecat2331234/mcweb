@@ -151,7 +151,7 @@ const props = defineProps<{
     auto_bump_at?: string | null
     auto_archive_at?: string | null
     solved_post_id: number | null
-    tags: Array<{ name: string; slug: string; url: string; color_hex?: string | null }>
+    tags: Array<{ name: string; slug: string; url: string; color_hex?: string | null; group_color_hex?: string | null }>
     tags_string: string
     section: { name: string; slug: string; url: string; color_hex?: string | null; icon?: string | null }
     section_prefixes?: string[]
@@ -1047,10 +1047,15 @@ function pollPercent(votes: number) {
       v-for="tag in topic.tags"
       :key="tag.slug"
       :href="tag.url"
-      class="rounded-full border px-2 py-0.5 text-xs hover:bg-muted"
+      class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs hover:bg-muted"
       :class="tag.color_hex ? '' : 'text-sky-700'"
       :style="tag.color_hex ? { borderColor: tag.color_hex, color: tag.color_hex } : undefined"
     >
+      <span
+        v-if="tag.group_color_hex"
+        class="h-2 w-2 shrink-0 rounded-full"
+        :style="{ backgroundColor: tag.group_color_hex }"
+      />
       #{{ tag.name }}
     </Link>
   </div>

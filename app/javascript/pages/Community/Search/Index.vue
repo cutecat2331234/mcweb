@@ -310,7 +310,7 @@ async function deleteSavedSearch(deleteUrl: string) {
     </select>
     <select v-model="announcementFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
       <option value="">公告</option>
-      <option value="announcement">仅公告</option>
+      <option value="announcement">仅全站公告</option>
     </select>
     <template v-if="forumStaff">
       <select v-model="unlistedFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">

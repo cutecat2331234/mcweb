@@ -30,6 +30,9 @@ const props = defineProps<{
     update_note_url?: string
     coming_soon?: boolean
     available_at_label?: string | null
+    availability_alert_url?: string
+    has_availability_alert?: boolean
+    availability_alert_unsubscribe_url?: string
   }>
   shareUrl: string | null
   addAllToCartUrl?: string
@@ -50,6 +53,14 @@ function removeFromWishlist(url: string) {
 
 function togglePriceAlert(url: string) {
   router.post(url, {}, { preserveScroll: true })
+}
+
+function subscribeAvailabilityAlert(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
+function unsubscribeAvailabilityAlert(url: string) {
+  router.delete(url, { preserveScroll: true })
 }
 
 function saveNote(product: { update_note_url?: string; note?: string }) {
@@ -102,6 +113,26 @@ function copyShareLink() {
           <Button type="button" size="sm" variant="outline" @click="saveNote(product)">保存备注</Button>
         </div>
         <p v-if="product.coming_soon && product.available_at_label" class="text-xs text-muted-foreground">上架时间：{{ product.available_at_label }}</p>
+        <div v-if="product.coming_soon && product.availability_alert_url" class="mt-2">
+          <Button
+            v-if="!product.has_availability_alert"
+            type="button"
+            size="sm"
+            variant="secondary"
+            @click="subscribeAvailabilityAlert(product.availability_alert_url!)"
+          >
+            上架通知
+          </Button>
+          <Button
+            v-else-if="product.availability_alert_unsubscribe_url"
+            type="button"
+            size="sm"
+            variant="outline"
+            @click="unsubscribeAvailabilityAlert(product.availability_alert_unsubscribe_url!)"
+          >
+            已订阅上架
+          </Button>
+        </div>
         <Badge v-if="product.coming_soon" variant="outline" class="mt-1">未开售</Badge>
         <Badge v-else-if="!product.in_stock" variant="default" class="mt-1">缺货</Badge>
         <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>

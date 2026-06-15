@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- `CreatePost` 与 `SaveReplyDraft` 增加主题可见性校验，防止向隐藏/草稿主题回复
+- UrlSafety 拒绝云元数据 IP `169.254.169.254`
+
+### Previously
+
 - 统一 `PollParticipation.visible?` 与 `TopicVisibility`，隐藏主题作者可正常访问自己的内容
 - `CreateTopicFromPost` / `RestorePostEdit` / 删帖增加主题可见性校验，防止引用隐藏帖内容泄露
 

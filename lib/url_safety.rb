@@ -4,7 +4,7 @@ require "ipaddr"
 require "uri"
 
 module UrlSafety
-  BLOCKED_HOSTS = %w[localhost metadata.google.internal].freeze
+  BLOCKED_HOSTS = %w[localhost metadata.google.internal 169.254.169.254].freeze
   CGNAT_NETWORK = IPAddr.new("100.64.0.0/10")
 
   module_function

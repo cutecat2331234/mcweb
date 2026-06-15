@@ -9,6 +9,8 @@ module Community
     end
 
     def call
+      return ServiceResult.failure(error: "Topic not available.") unless PollParticipation.visible?(topic: @topic, user: @user)
+
       if @body.strip.blank?
         Community::ReplyDraft.where(user: @user, topic: @topic).delete_all
         return ServiceResult.success(nil)

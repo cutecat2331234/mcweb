@@ -20,6 +20,7 @@ class UrlSafetyTest < ActiveSupport::TestCase
 
   test "blocks metadata host" do
     assert_not UrlSafety.public_http_url?("http://metadata.google.internal/computeMetadata/v1/")
+    assert_not UrlSafety.public_http_url?("http://169.254.169.254/latest/meta-data/")
   end
 
   test "blocks urls with embedded credentials" do

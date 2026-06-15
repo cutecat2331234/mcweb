@@ -208,6 +208,30 @@ class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
     assert result.failure?
     assert_match(/not available/i, result.error)
   end
+
+  test "create post rejects hidden topics for other users" do
+    publish = Community::PublishTopicDraft.call(user: @author, topic: @topic)
+    assert publish.success?
+    @topic.update!(status: "hidden")
+    other = create_user
+
+    result = Community::CreatePost.call(user: other, topic: @topic, body: "Sneaky reply", ip_address: "127.0.0.1", skip_interval_check: true)
+
+    assert result.failure?
+    assert_match(/not available/i, result.error)
+  end
+
+  test "save reply draft rejects hidden topics for other users" do
+    publish = Community::PublishTopicDraft.call(user: @author, topic: @topic)
+    assert publish.success?
+    @topic.update!(status: "hidden")
+    other = create_user
+
+    result = Community::SaveReplyDraft.call(user: other, topic: @topic, body: "Draft reply")
+
+    assert result.failure?
+    assert_match(/not available/i, result.error)
+  end
 end
 
 class Community::CreateTopicPollTest < ActiveSupport::TestCase

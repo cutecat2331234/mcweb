@@ -20,6 +20,8 @@ module Community
       spam_result = check_spam
       return spam_result if spam_result.failure?
 
+      return ServiceResult.failure(error: "Topic not available.") unless PollParticipation.visible?(topic: @topic, user: @user)
+
       unless @topic.section.allowed?(@user, :reply)
         return ServiceResult.failure(error: "You are not allowed to reply in this section.")
       end

@@ -117,6 +117,25 @@ class AdminIntegrationTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "read-only admin cannot change order status" do
+    customer = create_user
+    order = Commerce::Order.create!(
+      public_id: "ord_admin_status_#{SecureRandom.hex(4)}",
+      order_number: "ORD-ADMIN-#{SecureRandom.hex(4)}",
+      user: customer,
+      status: "pending",
+      subtotal_cents: 1000,
+      total_cents: 1000,
+      discount_cents: 0,
+      currency: "CNY"
+    )
+
+    patch admin_store_order_path(order), params: { order: { status: "paid", notes: "free order" } }
+    assert_redirected_to admin_store_order_path(order)
+    assert_equal "pending", order.reload.status
+    assert_equal "free order", order.notes
+  end
+
   test "non-admin cannot access admin" do
     delete identity_session_path
     other = create_user

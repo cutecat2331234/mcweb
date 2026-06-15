@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- 管理员只读订单权限不再允许直接修改订单状态
+- 封禁/删除用户后立即失效全部 session，登录拒绝已删除账号
+- Stripe/Fake webhook 未配置 secret 时拒绝验签（生产环境 Fake 必须配置密钥）
+- 邮箱验证链接 24 小时过期
+
+### Previously
+
 - 已取消/不可支付订单拒绝支付确认，避免 payment 误标 succeeded
 - CreateOrder 锁定购物车防止并发空单/重复下单
 - FulfillOrderJob / FulfillGiftCardItem 加锁防止重复履约

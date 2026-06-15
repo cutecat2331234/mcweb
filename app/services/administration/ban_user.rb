@@ -13,6 +13,7 @@ module Administration
       return ServiceResult.failure(error: "Cannot ban yourself.") if @actor.id == @user.id
 
       @user.ban!(reason: @reason, expires_at: @expires_at)
+      Session.where(user: @user, revoked_at: nil).find_each(&:revoke!)
       AuditLogger.call(actor: @actor, action: "admin.user_banned", resource: @user)
       ServiceResult.success(@user)
     rescue ActiveRecord::RecordInvalid => e

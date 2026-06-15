@@ -11,7 +11,8 @@ class Identity::VerifyEmailTest < ActiveSupport::TestCase
       password: "password123",
       password_confirmation: "password123",
       email_verified: false,
-      email_verification_token_digest: Digest::SHA256.hexdigest(token)
+      email_verification_token_digest: Digest::SHA256.hexdigest(token),
+      email_verification_sent_at: Time.current
     )
 
     result = Identity::VerifyEmail.call(token: token)

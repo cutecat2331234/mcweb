@@ -9,7 +9,10 @@ module Payments
     end
 
     def verify_webhook_signature(payload:, signature:, headers: {})
-      expected = OpenSSL::HMAC.hexdigest("SHA256", webhook_secret, payload)
+      secret = webhook_secret
+      return false if secret.blank?
+
+      expected = OpenSSL::HMAC.hexdigest("SHA256", secret, payload)
       ActiveSupport::SecurityUtils.secure_compare(expected, signature.to_s)
     end
 
@@ -37,7 +40,10 @@ module Payments
     private
 
     def webhook_secret
-      Rails.application.credentials.dig(:payments, :fake, :webhook_secret) || "fake_webhook_secret"
+      secret = Rails.application.credentials.dig(:payments, :fake, :webhook_secret)
+      return secret if secret.present?
+
+      "fake_webhook_secret" unless Rails.env.production?
     end
   end
 end

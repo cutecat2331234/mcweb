@@ -25,7 +25,19 @@ module Authentication
     return @session_record = nil if token.blank?
 
     record = Session.find_by(token_digest: Session.digest_token(token))
-    @session_record = record&.active? ? record.tap(&:touch_activity!) : nil
+    unless record&.active?
+      @session_record = nil
+      return
+    end
+
+    user = record.user
+    if user.deleted? || user.banned?
+      record.revoke!
+      @session_record = nil
+      return
+    end
+
+    @session_record = record.tap(&:touch_activity!)
   end
 
   def logged_in?

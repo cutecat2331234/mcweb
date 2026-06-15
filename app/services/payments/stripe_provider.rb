@@ -26,7 +26,7 @@ module Payments
 
     def verify_webhook_signature(payload:, signature:, headers: {})
       secret = webhook_secret
-      return true if secret.blank?
+      return false if secret.blank?
 
       stripe_sig = headers["HTTP_STRIPE_SIGNATURE"].to_s.presence || signature.to_s
       return false if stripe_sig.blank?

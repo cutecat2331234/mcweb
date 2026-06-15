@@ -126,7 +126,7 @@ module Admin
       end
 
       def order_params
-        params.fetch(:order, {}).permit(:status, :notes)
+        params.fetch(:order, {}).permit(:notes)
       end
 
       def process_refund

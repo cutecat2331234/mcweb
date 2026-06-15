@@ -2,6 +2,8 @@
 
 module Identity
   class VerifyEmail < ApplicationService
+    TOKEN_TTL = 24.hours
+
     def initialize(token:)
       @token = token.to_s
     end
@@ -9,6 +11,7 @@ module Identity
     def call
       user = User.find_by(email_verification_token_digest: digest_token(@token))
       return ServiceResult.failure(error: "Invalid or expired verification token.") unless user
+      return ServiceResult.failure(error: "Invalid or expired verification token.") if token_expired?(user)
       return ServiceResult.success(user) if user.email_verified?
 
       user.update!(
@@ -31,6 +34,10 @@ module Identity
 
     def digest_token(token)
       Digest::SHA256.hexdigest(token)
+    end
+
+    def token_expired?(user)
+      user.email_verification_sent_at.blank? || user.email_verification_sent_at < TOKEN_TTL.ago
     end
   end
 end

@@ -26,6 +26,7 @@ module Identity
       return generic_failure unless user
 
       return ServiceResult.failure(error: "Account is banned.") if banned?(user)
+      return ServiceResult.failure(error: "Account has been deleted.") if user.deleted?
       return ServiceResult.failure(error: "Account is temporarily locked.") if locked?(user)
 
       unless user.authenticate(@password)

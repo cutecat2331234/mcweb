@@ -51,6 +51,14 @@ module Commerce
       end
 
       upcoming = Commerce::Product.upcoming.includes(:category).limit(8)
+      availability_alert_ids = if logged_in?
+                                 Commerce::ProductAvailabilityAlert
+                                   .where(user: current_user, store_product_id: upcoming.map(&:id))
+                                   .pluck(:store_product_id, :id)
+                                   .to_h
+      else
+                                 {}
+      end
 
       @pagy, products = pagy(scope, limit: 20)
       categories = Commerce::Category.ordered
@@ -60,7 +68,11 @@ module Commerce
         products: products.map { |product| serialize_product_list_item(product) },
         featured_products: featured.map { |product| serialize_product_list_item(product) },
         recently_viewed: recently_viewed.map { |product| serialize_product_list_item(product) },
-        upcoming_products: upcoming.map { |product| serialize_upcoming_product(product) },
+        upcoming_products: upcoming.map do |product|
+          alert_id = availability_alert_ids[product.id]
+          serialize_upcoming_product(product, availability_alert: alert_id.present?, availability_alert_id: alert_id)
+        end,
+        loggedIn: logged_in?,
         categories: categories.map { |category| serialize_category(category, **category_query) },
         activeCategory: params[:category],
         query: params[:q].to_s,

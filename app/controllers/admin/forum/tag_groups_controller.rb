@@ -15,7 +15,8 @@ module Admin
             { key: "name", label: "名称" },
             { key: "slug", label: "标识" },
             { key: "tags_count", label: "标签数" },
-            { key: "one_per_topic", label: "每主题限一" }
+            { key: "one_per_topic", label: "每主题限一" },
+            { key: "color_hex", label: "颜色" }
           ],
           rows: groups.map do |group|
             {
@@ -24,6 +25,7 @@ module Admin
               slug: group.slug,
               tags_count: group.tags.count,
               one_per_topic: group.one_per_topic? ? "是" : "否",
+              color_hex: group.color_hex.presence || "—",
               url: edit_admin_forum_tag_group_path(group)
             }
           end,
@@ -70,7 +72,7 @@ module Admin
       end
 
       def tag_group_params
-        params.require(:tag_group).permit(:name, :slug, :description, :one_per_topic)
+        params.require(:tag_group).permit(:name, :slug, :description, :one_per_topic, :color_hex)
       end
 
       def sync_tags!(group)
@@ -90,6 +92,7 @@ module Admin
             slug: group.slug || "",
             description: group.description || "",
             one_per_topic: group.one_per_topic || false,
+            color_hex: group.color_hex || "",
             tag_ids: group.persisted? ? group.tag_ids : []
           },
           tags: Community::Tag.ordered.map { |t| { id: t.id, name: t.name } },

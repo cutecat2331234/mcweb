@@ -133,7 +133,9 @@ module Community
           is_following: logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user),
           follow_url: logged_in? && current_user.id != user.id ? forum_user_follow_path(user.username) : nil,
           trust_progress: progress,
-          warning_points: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? Community::UserWarning.total_points_for(user) : nil
+          warning_points: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? Community::UserWarning.total_points_for(user) : nil,
+          store_credit_label: (logged_in? && current_user.id == user.id && user.store_credit_cents.to_i.positive?) ? format_money(user.store_credit_cents.to_i, "CNY") : nil,
+          store_wallet_url: (logged_in? && current_user.id == user.id) ? store_wallet_path : nil
         },
         warnings: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? user.forum_warnings.recent.limit(10).map do |warning|
           {

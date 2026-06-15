@@ -37,6 +37,8 @@ const props = defineProps<{
   author: string
   tag: string
   solved: string
+  assigned?: string
+  assignee?: string
   images?: string
   createdAfter?: string
   createdBefore?: string
@@ -61,6 +63,8 @@ const categorySlug = ref(props.category || '')
 const author = ref(props.author)
 const tagSlug = ref(props.tag)
 const solved = ref(props.solved)
+const assignedFilter = ref(props.assigned || '')
+const assignee = ref(props.assignee || '')
 const imagesOnly = ref(props.images === 'images')
 const createdAfter = ref(props.createdAfter || '')
 const createdBefore = ref(props.createdBefore || '')
@@ -104,6 +108,8 @@ function search() {
     author: author.value || undefined,
     tag: tagSlug.value || undefined,
     solved: solved.value || undefined,
+    assigned: assignedFilter.value || undefined,
+    assignee: assignee.value || undefined,
     images: imagesOnly.value ? 'images' : undefined,
     created_after: createdAfter.value || undefined,
     created_before: createdBefore.value || undefined,
@@ -136,6 +142,8 @@ async function saveSearch() {
             author: author.value,
             tag: tagSlug.value,
             solved: solved.value,
+            assigned: assignedFilter.value,
+            assignee: assignee.value,
             images: imagesOnly.value ? 'images' : '',
             created_after: createdAfter.value,
             created_before: createdBefore.value,
@@ -214,6 +222,12 @@ async function deleteSavedSearch(deleteUrl: string) {
       <option value="unsolved">未解决</option>
       <option value="solved">已解决</option>
     </select>
+    <select v-model="assignedFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">指派状态</option>
+      <option value="assigned">已指派</option>
+      <option value="unassigned">未指派</option>
+    </select>
+    <Input v-model="assignee" placeholder="指派人（me 或用户名）" class="w-40" />
     <label class="flex h-9 items-center gap-2 text-sm">
       <input v-model="imagesOnly" type="checkbox" class="rounded border" />
       含图片

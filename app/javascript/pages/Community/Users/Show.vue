@@ -66,6 +66,8 @@ const props = defineProps<{
       can_post_links: boolean
     } | null
     warning_points?: number | null
+    store_credit_label?: string | null
+    store_wallet_url?: string | null
   }
   warnings?: Array<{
     reason: string
@@ -214,6 +216,10 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
         </Link>
         <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
         <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> 警告积分</span>
+        <span v-if="profile.store_credit_label">
+          商店余额 <strong>{{ profile.store_credit_label }}</strong>
+          <Link v-if="profile.store_wallet_url" :href="profile.store_wallet_url" class="ml-1 text-primary hover:underline">钱包</Link>
+        </span>
       </div>
       <div v-if="warnings?.length" class="mt-4 max-w-xl rounded-lg border p-4">
         <h3 class="mb-2 text-sm font-semibold">社区警告记录</h3>

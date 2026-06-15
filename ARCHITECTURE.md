@@ -1013,3 +1013,15 @@ app/
 | 分区必填标签组 UI | `Sections/Form.vue` + 发帖页提示 |
 | 商品定时上下架表单 | `Products/Form.vue` datetime 字段 |
 | 结账可关闭余额抵扣 | `use_store_credit` 参数 |
+
+### 第五十九轮（标签色展示、部分退款余额、上架通知与搜索指派）
+
+| 功能 | 实现 |
+|------|------|
+| 主题列表标签颜色 | `serialize_topic_tag` + `TopicTitleBadges` color_hex |
+| 标签组颜色 | `forum_tag_groups.color_hex` + 管理端表单 |
+| 部分退款按比例退还余额 | `RestoreStoreCreditPartial` + `store_credit_restored_cents` |
+| 即将上架到货通知 | `ProductAvailabilityAlert` + `NotifyProductAvailableJob` |
+| 搜索指派筛选 UI | `Search/Index.vue` assigned/assignee 控件 |
+| 用户资料页商店余额 | `Users/Show` + `/store/wallet` 链接 |
+| 上架通知管理页 | `/store/availability_alerts` |

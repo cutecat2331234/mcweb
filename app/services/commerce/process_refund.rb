@@ -40,6 +40,11 @@ module Commerce
             event_type: "refund_processed",
             metadata: { refund_id: refund.id, amount_cents: @amount_cents }
           )
+          Commerce::RestoreStoreCreditPartial.call(
+            order: @order,
+            refund_amount_cents: @amount_cents,
+            payment_amount_cents: @payment_record.amount_cents
+          )
           if full_refund?(@amount_cents, refunded_cents)
             @order.update!(status: "refunded")
             restore_stock!

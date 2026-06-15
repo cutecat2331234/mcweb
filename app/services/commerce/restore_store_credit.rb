@@ -7,7 +7,9 @@ module Commerce
     end
 
     def call
-      amount = @order.store_credit_amount_cents.to_i
+      original = @order.store_credit_amount_cents.to_i
+      already_restored = @order.store_credit_restored_cents.to_i
+      amount = original - already_restored
       return ServiceResult.success unless amount.positive?
 
       user = @order.user
@@ -20,7 +22,7 @@ module Commerce
           amount_cents: amount,
           note: "订单 #{@order.order_number} 退还余额"
         )
-        @order.update!(store_credit_amount_cents: 0)
+        @order.update!(store_credit_amount_cents: 0, store_credit_restored_cents: original)
       end
 
       ServiceResult.success

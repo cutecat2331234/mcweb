@@ -18,6 +18,7 @@ const props = defineProps<{
     slug: string
     description: string
     one_per_topic: boolean
+    color_hex?: string
     tag_ids: number[]
   }
   tags: Array<{ id: number; name: string }>
@@ -34,6 +35,7 @@ const form = useForm({
     slug: props.tagGroup.slug,
     description: props.tagGroup.description,
     one_per_topic: props.tagGroup.one_per_topic,
+    color_hex: props.tagGroup.color_hex || '',
     tag_ids: selectedTagIds.value,
   },
 })
@@ -73,6 +75,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="description">描述</Label>
       <Textarea id="description" v-model="form.tag_group.description" rows="3" />
+    </div>
+    <div class="space-y-2">
+      <Label for="color_hex">组颜色（Hex，可选）</Label>
+      <Input id="color_hex" v-model="form.tag_group.color_hex" placeholder="#6366f1" />
     </div>
     <label class="flex items-center gap-2 text-sm">
       <input v-model="form.tag_group.one_per_topic" type="checkbox" class="rounded border" />

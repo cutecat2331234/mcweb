@@ -38,6 +38,9 @@ export interface ProductItem {
   quick_addable?: boolean
   coming_soon?: boolean
   available_at_label?: string | null
+  has_availability_alert?: boolean
+  availability_alert_url?: string | null
+  availability_alert_unsubscribe_url?: string | null
 }
 
 export interface CategoryItem {
@@ -65,6 +68,7 @@ const props = defineProps<{
   seo_title?: string
   seo_description?: string | null
   rss_url?: string
+  loggedIn?: boolean
 }>()
 
 const q = ref(props.query)
@@ -84,6 +88,14 @@ function search() {
     price_min: priceMin.value || undefined,
     price_max: priceMax.value || undefined,
   }, { preserveState: true })
+}
+
+function subscribeAvailabilityAlert(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
+function unsubscribeAvailabilityAlert(url: string) {
+  router.delete(url, { preserveScroll: true })
 }
 
 function quickAdd(product: ProductItem) {
@@ -142,10 +154,30 @@ function quickAdd(product: ProductItem) {
         class="flex gap-3 rounded-lg border border-dashed p-3 opacity-90"
       >
         <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover grayscale" />
-        <div>
+        <div class="min-w-0 flex-1">
           <p class="font-medium">{{ product.name }}</p>
           <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
           <Badge v-if="product.available_at_label" class="mt-1">{{ product.available_at_label }}</Badge>
+          <div v-if="loggedIn && product.availability_alert_url" class="mt-2">
+            <Button
+              v-if="!product.has_availability_alert"
+              type="button"
+              size="sm"
+              variant="secondary"
+              @click="subscribeAvailabilityAlert(product.availability_alert_url!)"
+            >
+              上架通知
+            </Button>
+            <Button
+              v-else-if="product.availability_alert_unsubscribe_url"
+              type="button"
+              size="sm"
+              variant="outline"
+              @click="unsubscribeAvailabilityAlert(product.availability_alert_unsubscribe_url!)"
+            >
+              已订阅上架
+            </Button>
+          </div>
         </div>
       </div>
     </div>

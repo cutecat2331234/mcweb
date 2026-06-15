@@ -19,7 +19,7 @@ defineProps<{
   linkedProductUrl?: string | null
   assignedUsername?: string | null
   assignedUrl?: string | null
-  tags?: Array<{ name: string; slug: string; url: string }>
+  tags?: Array<{ name: string; slug: string; url: string; color_hex?: string | null }>
 }>()
 </script>
 
@@ -39,7 +39,9 @@ defineProps<{
     v-for="tag in tags || []"
     :key="tag.slug"
     :href="tag.url"
-    class="mr-1 text-xs text-sky-600 hover:underline"
+    class="mr-1 text-xs hover:underline"
+    :class="tag.color_hex ? '' : 'text-sky-600'"
+    :style="tag.color_hex ? { color: tag.color_hex } : undefined"
     @click.stop
   >#{{ tag.name }}</Link>
   <Badge v-if="hasUnread" class="ml-2">{{ unreadCount }} 未读</Badge>

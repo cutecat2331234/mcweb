@@ -94,7 +94,7 @@ module InertiaSerializable
       participant_avatars: topic.participant_users(limit: 5).map do |user|
         { username: user.username, avatar_url: user.avatar_url, profile_url: forum_user_path(user.username) }
       end,
-      tags: topic.association(:tags).loaded? ? topic.tags.first(3).map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } } : [],
+      tags: topic.association(:tags).loaded? ? topic.tags.first(3).map { |tag| serialize_topic_tag(tag) } : [],
       excerpt: topic_list_excerpt(topic),
       thumbnail_url: topic_list_thumbnail(topic)
     }.merge(linked_product_props(topic))
@@ -164,7 +164,7 @@ module InertiaSerializable
       can_moderate: can_moderate,
       can_move: can_move,
       can_edit: can_edit,
-      tags: topic.tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
+      tags: topic.tags.map { |tag| serialize_topic_tag(tag) },
       tags_string: topic.tags.map(&:name).join(", "),
       section: {
         name: topic.section.name,
@@ -429,11 +429,24 @@ module InertiaSerializable
     }
   end
 
-  def serialize_upcoming_product(product)
+  def serialize_upcoming_product(product, availability_alert: false, availability_alert_id: nil)
     serialize_product_list_item(product).merge(
       coming_soon: true,
-      available_at_label: product.available_at ? l(product.available_at, format: :short) : nil
+      available_at_label: product.available_at ? l(product.available_at, format: :short) : nil,
+      has_availability_alert: availability_alert,
+      availability_alert_url: logged_in? ? availability_alert_store_product_path(product) : nil,
+      availability_alert_unsubscribe_url: availability_alert_id ? store_availability_alert_path(availability_alert_id) : nil
     )
+  end
+
+  def serialize_topic_tag(tag)
+    effective = tag.effective_tag
+    {
+      name: effective.name,
+      slug: effective.slug,
+      url: forum_tag_path(effective.slug),
+      color_hex: effective.color_hex.presence
+    }
   end
 
   def product_image_url(product)

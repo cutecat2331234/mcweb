@@ -43,6 +43,7 @@ export const routes = {
   storeWishlist: '/store/wishlist',
   storeStockAlerts: '/store/stock_alerts',
   storePriceAlerts: '/store/price_alerts',
+  storeAvailabilityAlerts: '/store/availability_alerts',
   storeProduct: (id: string) => `/store/products/${id}`,
   storeCart: '/store/cart',
   storeCheckout: '/store/checkout',

@@ -364,6 +364,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_tag_groups", force: :cascade do |t|
+    t.string "color_hex"
     t.datetime "created_at", null: false
     t.text "description"
     t.string "name", null: false
@@ -994,6 +995,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "status", default: "pending", null: false
     t.bigint "store_coupon_id"
     t.integer "store_credit_amount_cents", default: 0, null: false
+    t.integer "store_credit_restored_cents", default: 0, null: false
     t.bigint "store_gift_card_id"
     t.integer "subtotal_cents", default: 0, null: false
     t.integer "total_cents", default: 0, null: false
@@ -1041,6 +1043,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.bigint "user_id", null: false
     t.index ["store_product_question_id"], name: "index_store_product_answers_on_store_product_question_id"
     t.index ["user_id"], name: "index_store_product_answers_on_user_id"
+  end
+
+  create_table "store_product_availability_alerts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "notified_at"
+    t.bigint "store_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_product_id"], name: "index_store_product_availability_alerts_on_store_product_id"
+    t.index ["user_id", "store_product_id"], name: "index_availability_alerts_on_user_and_product", unique: true
+    t.index ["user_id"], name: "index_store_product_availability_alerts_on_user_id"
   end
 
   create_table "store_product_questions", force: :cascade do |t|
@@ -1479,6 +1492,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_product_answer_helpful_votes", "users"
   add_foreign_key "store_product_answers", "store_product_questions"
   add_foreign_key "store_product_answers", "users"
+  add_foreign_key "store_product_availability_alerts", "store_products"
+  add_foreign_key "store_product_availability_alerts", "users"
   add_foreign_key "store_product_questions", "store_order_items"
   add_foreign_key "store_product_questions", "store_products"
   add_foreign_key "store_product_questions", "users"

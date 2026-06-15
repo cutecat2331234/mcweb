@@ -12,6 +12,7 @@ module Commerce
         .find_each do |product|
           product.update!(status: :active, available_at: nil)
           Commerce::EnsureProductDiscussionTopic.call(product: product) if product.forum_topic_id.blank?
+          Commerce::NotifyProductAvailableJob.perform_later(product.id)
         end
 
       Commerce::Product

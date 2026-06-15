@@ -240,6 +240,7 @@ Rails.application.routes.draw do
         post :discussion, action: :create_discussion
         post :price_alert, to: "price_alerts#create"
         post :stock_alert, to: "stock_alerts#create"
+        post :availability_alert, to: "availability_alerts#create"
         resources :reviews, only: %i[create destroy], controller: "reviews" do
           member do
             post :helpful, action: :toggle_helpful
@@ -268,6 +269,7 @@ Rails.application.routes.draw do
       end
     end
     resources :price_alerts, only: %i[index destroy]
+    resources :availability_alerts, only: %i[index destroy]
     resource :cart, only: %i[show update] do
       post :preview_coupon, on: :member
       post :preview_gift_card, on: :member

@@ -282,8 +282,8 @@ module Community
     def apply_search_topic_filters_on_posts(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, assigned_filter: nil, assignee_id: nil, poll_filter: nil, noreplies_filter: nil)
       needs_join = [ solved_filter, locked_filter, pinned_filter, wiki_filter, featured_filter, announcement_filter, unlisted_filter, archived_filter, assigned_filter, assignee_id, poll_filter, noreplies_filter ].any?(&:present?)
       scope = scope.joins(:topic) if needs_join
-      apply_search_topic_filters(
-        scope,
+      result = Community::ApplyTopicSearchFilters.call(
+        scope: scope,
         solved_filter: solved_filter,
         locked_filter: locked_filter,
         pinned_filter: pinned_filter,
@@ -295,8 +295,10 @@ module Community
         assigned_filter: assigned_filter,
         assignee_id: assignee_id,
         poll_filter: poll_filter,
-        noreplies_filter: noreplies_filter
+        noreplies_filter: noreplies_filter,
+        table_prefix: "forum_topics"
       )
+      result.success? ? result.value : scope
     end
 
     def search_topic_base_scope(unlisted_filter:, archived_filter: nil)

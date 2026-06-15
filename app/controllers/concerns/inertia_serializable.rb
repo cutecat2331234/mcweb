@@ -261,6 +261,7 @@ module InertiaSerializable
       hidden: post.status == "hidden",
       deleted: post.deleted_at.present?,
       small_action: post.small_action?,
+      whisper: post.whisper?,
       wiki: post.wiki_post?,
       staff_notice: post.staff_notice.presence,
       restore_url: (can_moderate && post.deleted_at.present?) ? restore_forum_post_path(post) : nil,
@@ -615,6 +616,13 @@ module InertiaSerializable
       notes: order.notes,
       shipping_address: order.shipping_address.presence,
       shipping_address_label: format_shipping_address(order.shipping_address),
+      shipping_method: order.shipping_method,
+      shipping_method_label: Commerce::ShippingMethods.label_for(order.shipping_method),
+      tracking_number: order.tracking_number,
+      shipping_carrier: order.shipping_carrier,
+      shipped_at: order.shipped_at ? l(order.shipped_at, format: :short) : nil,
+      tracking_url: tracking_url_for(order),
+      packing_slip_url: packing_slip_store_order_path(order),
       subtotal_label: format_money(order.subtotal_cents, order.currency),
       shipping_label: order.shipping_cents.positive? ? format_money(order.shipping_cents, order.currency) : nil,
       free_shipping: order.shipping_cents.zero? && order.subtotal_cents.positive?,
@@ -758,8 +766,13 @@ module InertiaSerializable
     FULFILLMENT_STATUS_LABELS[status.to_s] || status.to_s.humanize
   end
 
-  def serialize_shipping_quote(subtotal_cents, currency: "CNY", cart_items: nil, coupon: nil)
-    result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
+  def serialize_shipping_quote(subtotal_cents, currency: "CNY", cart_items: nil, coupon: nil, shipping_method_code: nil)
+    result = Commerce::CalculateShipping.call(
+      subtotal_cents: subtotal_cents,
+      cart_items: cart_items,
+      coupon: coupon,
+      shipping_method_code: shipping_method_code
+    )
     return {} unless result.success?
 
     value = result.value
@@ -770,7 +783,17 @@ module InertiaSerializable
       noShippableItems: value[:no_shippable_items] == true,
       couponFreeShipping: value[:coupon_free_shipping] == true,
       freeShippingMinLabel: value[:free_shipping_min_cents].positive? ? format_money(value[:free_shipping_min_cents], currency) : nil,
-      freeShippingRemainingLabel: value[:amount_remaining_cents].positive? ? format_money(value[:amount_remaining_cents], currency) : nil
+      freeShippingRemainingLabel: value[:amount_remaining_cents].positive? ? format_money(value[:amount_remaining_cents], currency) : nil,
+      shippingMethodCode: value[:shipping_method_code],
+      shippingMethodLabel: value[:shipping_method_label],
+      shippingMethods: Commerce::ShippingMethods.list.map do |method|
+        {
+          code: method["code"],
+          label: method["label"],
+          cents: method["cents"],
+          label_with_price: "#{method['label']} (#{format_money(method['cents'], currency)})"
+        }
+      end
     }
   end
 
@@ -781,6 +804,22 @@ module InertiaSerializable
 
   def format_price(product)
     format_money(product.price_cents, product.currency)
+  end
+
+  def tracking_url_for(order)
+    return nil if order.tracking_number.blank?
+
+    carrier = order.shipping_carrier.to_s.downcase
+    case carrier
+    when "sf", "shunfeng", "顺丰"
+      "https://www.sf-express.com/cn/sc/dynamic_function/waybill/#search/bill-number/#{ERB::Util.url_encode(order.tracking_number)}"
+    when "yt", "yuantong", "圆通"
+      "https://www.yto.net.cn/tracesearch.html?#{order.tracking_number}"
+    when "sto", "shentong", "申通"
+      "https://www.sto.cn/querybill?billcode=#{ERB::Util.url_encode(order.tracking_number)}"
+    else
+      "https://www.kuaidi100.com/chaxun?nu=#{ERB::Util.url_encode(order.tracking_number)}"
+    end
   end
 
   def format_shipping_address(address)

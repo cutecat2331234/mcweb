@@ -72,6 +72,10 @@ module Admin
             { label: "小计", value: format_money(@order.subtotal_cents, @order.currency) },
             { label: "运费", value: @order.shipping_cents.positive? ? format_money(@order.shipping_cents, @order.currency) : (@order.shipping_cents.zero? && @order.subtotal_cents.positive? ? "免运费" : "—") },
             { label: "收货地址", value: format_shipping_address(@order.shipping_address).presence || "—" },
+            { label: "配送方式", value: Commerce::ShippingMethods.label_for(@order.shipping_method).presence || "—" },
+            { label: "物流单号", value: @order.tracking_number.presence || "—" },
+            { label: "承运商", value: @order.shipping_carrier.presence || "—" },
+            { label: "发货时间", value: @order.shipped_at ? l(@order.shipped_at, format: :long) : "—" },
             { label: "优惠", value: @order.discount_cents.positive? ? "-#{format_money(@order.discount_cents, @order.currency)}#{@order.coupon ? " (#{@order.coupon.code})" : ""}" : "—" },
             { label: "礼品卡", value: @order.gift_card_amount_cents.positive? ? "-#{format_money(@order.gift_card_amount_cents, @order.currency)}#{@order.gift_card ? " (#{@order.gift_card.code})" : ""}" : "—" },
             { label: "总额", value: format_money(@order.total_cents, @order.currency) },
@@ -98,9 +102,26 @@ module Admin
             }
           ],
           backUrl: admin_store_orders_path,
-          actions: refund_actions(payment) + pending_refund_actions(pending_refunds),
-          refundForm: refund_form_props(payment)
+          actions: refund_actions(payment) + pending_refund_actions(pending_refunds) + shipping_actions,
+          refundForm: refund_form_props(payment),
+          shippingForm: shipping_form_props
         }
+      end
+
+      def update_shipping
+        result = Commerce::UpdateOrderShipping.call(
+          order: @order,
+          actor: current_user,
+          tracking_number: params[:tracking_number],
+          shipping_carrier: params[:shipping_carrier],
+          mark_shipped: params[:mark_shipped]
+        )
+
+        if result.success?
+          redirect_to admin_store_order_path(@order), notice: "物流信息已更新。"
+        else
+          redirect_to admin_store_order_path(@order), alert: service_error_message(result)
+        end
       end
 
       def update
@@ -110,6 +131,10 @@ module Admin
 
         if params[:refund].present?
           return process_refund
+        end
+
+        if params[:shipping].present?
+          return update_shipping
         end
 
         if @order.update(order_params)
@@ -127,28 +152,6 @@ module Admin
 
       def order_params
         params.fetch(:order, {}).permit(:status, :notes)
-      end
-
-      def process_refund
-        return redirect_to admin_store_order_path(@order), alert: "Not authorized." unless current_user.permission?("store.orders.refund")
-
-        payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
-        return redirect_to admin_store_order_path(@order), alert: "No refundable payment." unless payment
-
-        result = Commerce::ProcessRefund.call(
-          order: @order,
-          payment_record: payment,
-          amount_cents: refund_amount_cents(payment),
-          reason: params[:reason].presence || "Admin refund",
-          approved_by: current_user,
-          existing_refund: find_existing_refund
-        )
-
-        if result.success?
-          redirect_to admin_store_order_path(@order), notice: "Refund processed."
-        else
-          redirect_to admin_store_order_path(@order), alert: service_error_message(result)
-        end
       end
 
       def refund_actions(payment)
@@ -225,6 +228,50 @@ module Admin
         else
           redirect_to admin_store_order_path(@order), alert: service_error_message(result)
         end
+      end
+
+      def process_refund
+        return redirect_to admin_store_order_path(@order), alert: "Not authorized." unless current_user.permission?("store.orders.refund")
+
+        payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
+        return redirect_to admin_store_order_path(@order), alert: "No refundable payment." unless payment
+
+        result = Commerce::ProcessRefund.call(
+          order: @order,
+          payment_record: payment,
+          amount_cents: refund_amount_cents(payment),
+          reason: params[:reason].presence || "Admin refund",
+          approved_by: current_user,
+          existing_refund: find_existing_refund
+        )
+
+        if result.success?
+          redirect_to admin_store_order_path(@order), notice: "Refund processed."
+        else
+          redirect_to admin_store_order_path(@order), alert: service_error_message(result)
+        end
+      end
+
+      def shipping_actions
+        return [] unless current_user.permission?("store.orders.read")
+
+        [ {
+          label: @order.shipped_at.present? ? "更新物流" : "标记发货",
+          href: admin_store_order_path(@order),
+          method: "patch",
+          data: { shipping: true }
+        } ]
+      end
+
+      def shipping_form_props
+        return nil unless current_user.permission?("store.orders.read")
+
+        {
+          action_url: admin_store_order_path(@order),
+          tracking_number: @order.tracking_number.to_s,
+          shipping_carrier: @order.shipping_carrier.to_s,
+          shipped: @order.shipped_at.present?
+        }
       end
 
       def refundable_admin_status?

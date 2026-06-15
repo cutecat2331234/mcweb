@@ -137,6 +137,7 @@ Rails.application.routes.draw do
         post :invite
         post :close_own
         post :reopen_own
+        post :share_as_pm
       end
     end
     resources :posts, only: %i[create update destroy] do
@@ -260,6 +261,7 @@ Rails.application.routes.draw do
         post :refund
         get :receipt
         get :receipt_pdf
+        get :packing_slip
         post :reorder
         post :refresh_download
       end

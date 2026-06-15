@@ -50,6 +50,8 @@ const props = defineProps<{
   } | null
   shippingLabel?: string | null
   freeShipping?: boolean
+  shippingMethods?: Array<{ code: string; label: string; cents: number; label_with_price: string }>
+  shippingMethodCode?: string | null
   freeShippingMinLabel?: string | null
   freeShippingRemainingLabel?: string | null
   previewCouponUrl: string
@@ -62,6 +64,7 @@ const form = useForm({
     coupon_code: props.pendingCouponCode || '',
     gift_card_code: props.pendingGiftCardCode || '',
     notes: '',
+    shipping_method: props.shippingMethodCode || props.shippingMethods?.[0]?.code || 'standard',
     shipping_address: {
       name: props.defaultShippingAddress?.name || '',
       phone: props.defaultShippingAddress?.phone || '',
@@ -227,6 +230,13 @@ onMounted(() => {
         <p v-if="giftCardError" class="text-sm text-destructive">{{ giftCardError }}</p>
       </div>
 
+      <div v-if="requiresShipping && shippingMethods?.length" class="space-y-2 rounded-lg border p-4">
+        <p class="text-sm font-medium">配送方式</p>
+        <label v-for="method in shippingMethods" :key="method.code" class="flex items-center gap-2 text-sm">
+          <input v-model="form.checkout.shipping_method" type="radio" :value="method.code">
+          {{ method.label_with_price }}
+        </label>
+      </div>
       <div v-if="requiresShipping" class="space-y-3 rounded-lg border p-4">
         <h2 class="text-sm font-semibold">收货地址</h2>
         <div class="grid gap-3 sm:grid-cols-2">

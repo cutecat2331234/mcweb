@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
+import { Head } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -43,6 +44,7 @@ const props = defineProps<{
   filter: string
   filterOptions: Array<{ value: string; label: string }>
   canCreateTopic: boolean
+  meta?: { title: string; description?: string | null }
 }>()
 
 const sortOptions = [
@@ -81,6 +83,12 @@ function markAllRead() {
 </script>
 
 <template>
+  <Head v-if="meta">
+    <title>{{ meta.title }}</title>
+    <meta v-if="meta.description" name="description" :content="meta.description" />
+    <meta property="og:title" :content="meta.title" />
+    <meta v-if="meta.description" property="og:description" :content="meta.description" />
+  </Head>
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '论坛', href: routes.forum },

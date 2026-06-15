@@ -3,7 +3,7 @@
 module Commerce
   class OrdersController < ApplicationController
     before_action :require_login
-    before_action :set_order, only: %i[show cancel refund receipt receipt_pdf reorder refresh_download]
+    before_action :set_order, only: %i[show cancel refund receipt receipt_pdf packing_slip reorder refresh_download]
 
     def index
       orders_scope = Commerce::Order.where(user: current_user).includes(:items).recent
@@ -89,6 +89,14 @@ module Commerce
       else
         redirect_to store_order_path(@order), alert: service_error_message(result)
       end
+    end
+
+    def packing_slip
+      unless %w[paid processing fulfilling fulfilled completed].include?(@order.status)
+        return redirect_to store_order_path(@order), alert: "该订单暂无装箱单。"
+      end
+
+      render "commerce/orders/packing_slip", layout: false
     end
 
     def reorder

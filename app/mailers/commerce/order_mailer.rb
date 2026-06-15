@@ -3,14 +3,14 @@
 module Commerce
   class OrderMailer < ApplicationMailer
     def order_created(order_id)
-      @order = Commerce::Order.find(order_id)
+      @order = Commerce::Order.includes(:items, :coupon, :gift_card).find(order_id)
       return unless commerce_email_enabled?(@order.user, "commerce.order_created")
 
       mail(to: @order.user.email, subject: "订单确认 #{@order.order_number}")
     end
 
     def payment_confirmed(order_id)
-      @order = Commerce::Order.find(order_id)
+      @order = Commerce::Order.includes(:items, :coupon, :gift_card).find(order_id)
       return unless commerce_email_enabled?(@order.user, "commerce.payment_confirmed")
 
       mail(to: @order.user.email, subject: "支付成功 #{@order.order_number}")
@@ -84,6 +84,13 @@ module Commerce
       return unless commerce_email_enabled?(@order.user, "commerce.order_fulfilled")
 
       mail(to: @order.user.email, subject: "商品已发货 #{@order.order_number}")
+    end
+
+    def order_shipped(order_id)
+      @order = Commerce::Order.includes(:items, :coupon, :gift_card).find(order_id)
+      return unless commerce_email_enabled?(@order.user, "commerce.order_shipped")
+
+      mail(to: @order.user.email, subject: "订单已发货 #{@order.order_number}")
     end
 
     def question_answered(user_id, question_id, answer_id)

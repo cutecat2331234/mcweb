@@ -91,7 +91,7 @@ module Admin
           :name, :slug, :description, :position, :forum_category_id, :parent_id,
           :create_topic_roles, :reply_roles, :prefixes, :prefix_required, :topic_template,
           :min_trust_level_create, :min_trust_level_reply, :read_only, :color_hex, :icon, :banner_text, :link_url, :link_label,
-          :default_notification_level,
+          :default_notification_level, :seo_title, :seo_description,
           required_tag_ids: [], allowed_tag_ids: []
         )
         prefixes = if permitted[:prefixes].is_a?(String)
@@ -122,6 +122,10 @@ module Admin
           link_url: permitted[:link_url].to_s.strip.presence,
           link_label: permitted[:link_label].to_s.strip.presence,
           default_notification_level: permitted[:default_notification_level].presence_in(Community::Subscription::NOTIFICATION_LEVELS) || "watching",
+          seo: {
+            "title" => permitted[:seo_title].to_s.strip.presence,
+            "description" => permitted[:seo_description].to_s.strip.presence
+          }.compact,
           permissions: {
             "create_topic" => parse_roles(permitted[:create_topic_roles]),
             "reply" => parse_roles(permitted[:reply_roles])
@@ -163,6 +167,8 @@ module Admin
             banner_text: section.banner_text || "",
             link_url: section.link_url || "",
             link_label: section.link_label || "",
+            seo_title: section.seo["title"].to_s,
+            seo_description: section.seo["description"].to_s,
             default_notification_level: section.default_notification_level.presence || "watching"
           },
           tags: ::Community::Tag.order(:name).map { |tag| { id: tag.id, name: tag.name } },

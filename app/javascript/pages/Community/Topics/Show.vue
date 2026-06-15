@@ -7,6 +7,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+import Textarea from '@/components/ui/Textarea.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import ReactionUsersPopover from '@/components/portal/ReactionUsersPopover.vue'
 import UserHoverCard from '@/components/portal/UserHoverCard.vue'
@@ -58,6 +59,7 @@ export interface PostItem {
   hidden: boolean
   deleted?: boolean
   small_action?: boolean
+  whisper?: boolean
   wiki?: boolean
   staff_notice?: string | null
   restore_url?: string | null
@@ -128,6 +130,8 @@ const props = defineProps<{
     reply_bans?: Array<{ username: string; reason: string | null; expires_at: string | null }>
     can_invite?: boolean
     invite_url?: string | null
+    share_as_pm_url?: string | null
+    can_edit_poll?: boolean
     can_move: boolean
     can_edit: boolean
     featured: boolean
@@ -199,8 +203,16 @@ const replyForm = useForm({
     body: '',
     quoted_post_id: null as number | null,
     parent_post_id: null as number | null,
+    whisper: false,
   },
 })
+
+const sharePmOpen = ref(false)
+const sharePmUsername = ref('')
+const sharePmMessage = ref('')
+const editPollQuestion = ref(props.poll?.question || '')
+const editPollOptions = ref(props.poll?.options?.map((o) => o.label).join('\n') || '')
+const editPollClosesDays = ref('')
 
 const quotePreviews = ref<QuotedPost[]>([])
 const replyPreview = ref<{ id: number; floor_number: number; author: string } | null>(null)
@@ -230,6 +242,8 @@ const expandedDiffs = ref<Record<number, boolean>>({})
 const lockReasonInput = ref('')
 let draftSaveTimer: ReturnType<typeof setTimeout> | null = null
 
+let topicKeydownHandler: ((event: KeyboardEvent) => void) | null = null
+
 onMounted(() => {
   const saved = props.replyDraft || localStorage.getItem(draftKey)
   if (saved && !replyForm.post.body) {
@@ -254,10 +268,20 @@ onMounted(() => {
       if (slowModeRemaining.value > 0) slowModeRemaining.value -= 1
     }, 1000)
   }
+  topicKeydownHandler = (event: KeyboardEvent) => {
+    const target = event.target as HTMLElement | null
+    if (target && ['INPUT', 'TEXTAREA', 'SELECT'].includes(target.tagName)) return
+    if (event.key === 'r' && effectiveCanReply.value) {
+      event.preventDefault()
+      document.getElementById('reply-form')?.scrollIntoView({ behavior: 'smooth' })
+    }
+  }
+  document.addEventListener('keydown', topicKeydownHandler)
 })
 
 onUnmounted(() => {
   if (slowModeTimer) clearInterval(slowModeTimer)
+  if (topicKeydownHandler) document.removeEventListener('keydown', topicKeydownHandler)
 })
 
 watch(() => replyForm.post.body, (body) => {
@@ -591,10 +615,32 @@ async function loadPollVoters() {
 }
 
 function saveTopicEdit() {
-  router.patch(`/forum/topics/${props.topic.id}`, {
-    topic: { title: editTitle.value, tags: editTags.value, prefix: editPrefix.value },
-  }, {
+  const payload: Record<string, unknown> = {
+    title: editTitle.value,
+    tags: editTags.value,
+    prefix: editPrefix.value,
+  }
+  if (props.topic.can_edit_poll && props.poll) {
+    payload.poll_question = editPollQuestion.value
+    payload.poll_options = editPollOptions.value
+    payload.poll_closes_days = editPollClosesDays.value
+  }
+  router.patch(`/forum/topics/${props.topic.id}`, { topic: payload }, {
     onSuccess: () => { editingTopic.value = false },
+  })
+}
+
+function shareAsPm() {
+  if (!props.topic.share_as_pm_url) return
+  router.post(props.topic.share_as_pm_url, {
+    recipient_username: sharePmUsername.value,
+    message: sharePmMessage.value,
+  }, {
+    onSuccess: () => {
+      sharePmOpen.value = false
+      sharePmUsername.value = ''
+      sharePmMessage.value = ''
+    },
   })
 }
 
@@ -786,6 +832,9 @@ function pollPercent(votes: number) {
       <Button v-if="jumpToUnreadUrl" as-child variant="outline" size="sm">
         <Link :href="jumpToUnreadUrl">跳到未读</Link>
       </Button>
+      <Button v-if="topic.share_as_pm_url" type="button" variant="outline" size="sm" @click="sharePmOpen = !sharePmOpen">
+        私信分享
+      </Button>
       <Button v-if="reportTopicUrl" as-child variant="outline" size="sm">
         <Link :href="reportTopicUrl">举报主题</Link>
       </Button>
@@ -838,9 +887,24 @@ function pollPercent(votes: number) {
       </select>
     </div>
     <Input v-model="editTags" placeholder="标签（逗号分隔，最多5个）" />
+    <template v-if="topic.can_edit_poll && poll">
+      <Input v-model="editPollQuestion" placeholder="投票问题" />
+      <Textarea v-model="editPollOptions" rows="4" placeholder="每行一个选项" />
+      <Input v-model="editPollClosesDays" type="number" min="0" placeholder="关闭天数（0=不限）" />
+    </template>
     <div class="flex gap-2">
       <Button type="button" size="sm" @click="saveTopicEdit">保存</Button>
       <Button type="button" size="sm" variant="outline" @click="editingTopic = false">取消</Button>
+    </div>
+  </div>
+
+  <div v-if="sharePmOpen && topic.share_as_pm_url" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
+    <p class="text-sm font-medium">通过私信分享主题</p>
+    <Input v-model="sharePmUsername" placeholder="收件人用户名" />
+    <Textarea v-model="sharePmMessage" rows="2" placeholder="附言（可选）" />
+    <div class="flex gap-2">
+      <Button type="button" size="sm" @click="shareAsPm">发送</Button>
+      <Button type="button" size="sm" variant="outline" @click="sharePmOpen = false">取消</Button>
     </div>
   </div>
 
@@ -1087,12 +1151,14 @@ function pollPercent(votes: number) {
         class="rounded-lg border p-4"
         :class="[
           post.small_action ? 'border-dashed bg-muted/20 text-sm italic' : '',
+          post.whisper ? 'border-amber-400 bg-amber-50/40 dark:bg-amber-950/20' : '',
           post.hidden ? 'opacity-60 border-dashed' : '',
           post.deleted ? 'opacity-50 border-dashed bg-muted/30' : '',
           post.is_solved ? 'border-green-400 bg-green-50/50 dark:bg-green-950/20' : '',
         ]"
         :style="{ marginLeft: `${post.depth * 1.5}rem` }"
       >
+      <div v-if="post.whisper" class="mb-2 text-xs font-medium text-amber-700 dark:text-amber-300">员工私语（仅员工可见）</div>
       <div v-if="post.small_action" class="mb-2 text-xs font-medium text-muted-foreground">系统操作</div>
       <div v-if="post.small_action" class="text-sm text-muted-foreground">
         {{ post.body }}
@@ -1322,6 +1388,10 @@ function pollPercent(votes: number) {
     </div>
     <form class="space-y-3" @submit.prevent="submitReply">
       <MarkdownEditor v-model="replyForm.post.body" :rows="6" placeholder="写下你的回复… 输入 @ 可提及用户" required />
+      <label v-if="topic.can_moderate" class="flex items-center gap-2 text-sm">
+        <input v-model="replyForm.post.whisper" type="checkbox">
+        员工私语（仅员工可见）
+      </label>
       <Button type="submit" :disabled="replyForm.processing">发表回复</Button>
     </form>
   </section>

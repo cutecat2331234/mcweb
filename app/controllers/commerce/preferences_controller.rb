@@ -10,6 +10,7 @@ module Commerce
       commerce.order_processing
       commerce.order_fulfilling
       commerce.order_fulfilled
+      commerce.order_shipped
       commerce.order_completed
       commerce.order_cancelled
       commerce.refund_requested
@@ -65,6 +66,7 @@ module Commerce
         "commerce.order_processing" => "订单处理中",
         "commerce.order_fulfilling" => "发货处理中",
         "commerce.order_fulfilled" => "发货完成",
+        "commerce.order_shipped" => "物流发货",
         "commerce.order_completed" => "订单完成",
         "commerce.order_cancelled" => "订单取消",
         "commerce.refund_requested" => "退款申请提交",

@@ -37,7 +37,7 @@ module Commerce
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path,
         previewGiftCardUrl: preview_gift_card_store_checkout_path,
-        **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon)
+        **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon, shipping_method_code: params[:shipping_method])
       }
     end
 
@@ -54,7 +54,8 @@ module Commerce
           coupon_code: checkout_params[:coupon_code].presence || session.delete(:pending_coupon_code),
           gift_card_code: checkout_params[:gift_card_code].presence || session.delete(:pending_gift_card_code),
           notes: checkout_params[:notes],
-          shipping_address: shipping_address_params
+          shipping_address: shipping_address_params,
+          shipping_method: checkout_params[:shipping_method]
         )
         unless order_result.success?
           return redirect_to store_checkout_path, alert: service_error_message(order_result)
@@ -175,7 +176,7 @@ module Commerce
     private
 
     def checkout_params
-      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes)
+      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes, :shipping_method)
     end
 
     def shipping_address_params
@@ -211,11 +212,16 @@ module Commerce
       Payments::ProviderConfig.enabled_providers.pick(:provider) || "fake"
     end
 
-    def shipping_cents_for_preview(subtotal_cents)
+    def shipping_cents_for_preview(subtotal_cents, shipping_method_code: nil)
       cart = Commerce::Cart.find_by(user: current_user)
       cart_items = cart&.items&.includes(:product) || []
       coupon = Commerce::Coupon.find_by(code: session[:pending_coupon_code]) if session[:pending_coupon_code].present?
-      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
+      result = Commerce::CalculateShipping.call(
+        subtotal_cents: subtotal_cents,
+        cart_items: cart_items,
+        coupon: coupon,
+        shipping_method_code: shipping_method_code || params[:shipping_method]
+      )
       result.success? ? result.value[:shipping_cents].to_i : 0
     end
 

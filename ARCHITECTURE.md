@@ -857,3 +857,19 @@ app/
 | 商品 og:image | `product_seo_props.seo_image` + `Products/Show.vue` |
 | 弃购恢复提示横幅 | `cartRecovered` + `Carts/Show.vue` |
 | 多选引用移除同步 | 移除引用时同步清理回复正文 |
+
+### 第四十九轮（员工私语、主题分享、配送方式与物流追踪）
+
+| 功能 | 实现 |
+|------|------|
+| 论坛分类/分区 SEO（Discourse/XenForo） | `forum_categories.seo` / `forum_sections.seo` + 管理端表单 + 分区页 Head |
+| 员工私语帖（Discourse whisper） | `forum_posts.whisper` + `CreatePost` 权限校验 + 主题页仅员工可见 |
+| 投票编辑（延长关闭时间等） | `EditTopicPoll` + `EditTopic` 联动 + 主题编辑 UI |
+| 主题私信分享（Discourse share） | `ShareTopicAsConversation` + `topics#share_as_pm` |
+| 论坛键盘快捷键（Discourse） | `ForumShortcuts.vue` + `PortalLayout` 全局监听 |
+| 配送方式选择（标准/加急） | `ShippingMethods` + `CalculateShipping` + 结账页选择 |
+| 运费与 flat_shipping 兼容 | `store.flat_shipping_cents` 同步标准配送单价 |
+| 订单物流追踪 | `store_orders.shipping_method` / `tracking_number` / `shipping_carrier` / `shipped_at` |
+| 管理端发货录入 | `UpdateOrderShipping` + 管理订单详情 |
+| 发货邮件与装箱单 | `order_shipped` 邮件 + `packing_slip` 打印页 |
+| 订单邮件详情增强 | `_order_details` 部分模板复用 |

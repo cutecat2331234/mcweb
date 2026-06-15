@@ -12,7 +12,7 @@ module Community
     has_many :forked_topics, class_name: "Community::Topic", foreign_key: :source_post_id, dependent: :nullify
 
     enum :status, { published: "published", hidden: "hidden", deleted: "deleted" }, validate: true
-    enum :post_type, { regular: "regular", small_action: "small_action" }, validate: true, prefix: true
+    enum :post_type, { regular: "regular", small_action: "small_action", whisper: "whisper" }, validate: true, prefix: true
 
     validates :body, presence: true
     validates :floor_number, presence: true, uniqueness: { scope: :forum_topic_id }
@@ -21,6 +21,10 @@ module Community
 
     def small_action?
       post_type == "small_action"
+    end
+
+    def whisper?
+      post_type == "whisper"
     end
 
     def wiki_post?

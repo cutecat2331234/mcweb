@@ -26,7 +26,9 @@ module Community
             name: category.name,
             description: category.description,
             icon: category.icon,
-            color_hex: category.color_hex
+            color_hex: category.color_hex,
+            seo_title: category.seo["title"],
+            seo_description: category.seo["description"]
           }
         end,
         pagination: pagy_props(@pagy)
@@ -85,7 +87,11 @@ module Community
         sort: sort,
         filter: filter.to_s,
         filterOptions: topic_filter_options(prefixes: Array(section.prefixes), staff: staff),
-        canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic)
+        canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic),
+        meta: {
+          title: section.seo["title"].presence || section.name,
+          description: section.seo["description"].presence || section.description&.truncate(160)
+        }
       }
     end
 

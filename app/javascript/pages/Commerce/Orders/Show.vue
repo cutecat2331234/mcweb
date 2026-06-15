@@ -24,6 +24,12 @@ const props = defineProps<{
     status_label: string
     notes: string | null
     shipping_address_label?: string | null
+    shipping_method_label?: string | null
+    tracking_number?: string | null
+    shipping_carrier?: string | null
+    shipped_at?: string | null
+    tracking_url?: string | null
+    packing_slip_url?: string | null
     subtotal_label?: string | null
     shipping_label?: string | null
     free_shipping?: boolean
@@ -106,6 +112,13 @@ function refreshDownload(url: string) {
 
   <p v-if="order.shipping_address_label" class="mb-4 rounded-lg border p-4 text-sm">
     <span class="font-medium">收货地址：</span>{{ order.shipping_address_label }}
+    <span v-if="order.shipping_method_label" class="mt-1 block text-muted-foreground">配送方式：{{ order.shipping_method_label }}</span>
+  </p>
+  <p v-if="order.tracking_number" class="mb-4 rounded-lg border p-4 text-sm">
+    <span class="font-medium">物流信息：</span>
+    {{ order.shipping_carrier || '快递' }} — {{ order.tracking_number }}
+    <span v-if="order.shipped_at" class="text-muted-foreground">（{{ order.shipped_at }} 发货）</span>
+    <a v-if="order.tracking_url" :href="order.tracking_url" target="_blank" rel="noopener" class="ml-2 text-primary hover:underline">查询物流</a>
   </p>
 
   <p v-if="order.refund_pending" class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
@@ -240,6 +253,7 @@ function refreshDownload(url: string) {
     <Button v-if="order.can_reorder && order.reorder_url" type="button" variant="outline" @click="reorderForm.post(order.reorder_url)">再次购买</Button>
     <Button v-if="order.can_download_receipt" as-child variant="outline">
       <a :href="order.receipt_url" target="_blank" rel="noopener">HTML 收据</a>
+      <a v-if="order.packing_slip_url" :href="order.packing_slip_url" target="_blank" rel="noopener" class="ml-3">装箱单</a>
     </Button>
     <Button v-if="order.can_download_receipt" as-child variant="outline">
       <a :href="order.receipt_pdf_url">PDF 收据</a>

@@ -13,7 +13,8 @@ module Community
         body: post_params[:body],
         quoted_post: find_quoted_post,
         parent_post: find_parent_post,
-        ip_address: request.remote_ip
+        ip_address: request.remote_ip,
+        whisper: post_params[:whisper] == "1" || post_params[:whisper] == true
       )
 
       if result.success?
@@ -176,7 +177,7 @@ module Community
     end
 
     def post_params
-      params.require(:post).permit(:body, :quoted_post_id, :parent_post_id, :reason)
+      params.require(:post).permit(:body, :quoted_post_id, :parent_post_id, :reason, :whisper)
     end
 
     def find_quoted_post

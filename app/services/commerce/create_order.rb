@@ -2,13 +2,14 @@
 
 module Commerce
   class CreateOrder < ApplicationService
-    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil, shipping_address: nil)
+    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil, shipping_address: nil, shipping_method: nil)
       @cart = cart
       @user = user
       @notes = notes
       @coupon_code = coupon_code
       @gift_card_code = gift_card_code
       @shipping_address = shipping_address
+      @shipping_method = shipping_method.presence || "standard"
     end
 
     def call
@@ -43,7 +44,8 @@ module Commerce
           status: "pending",
           currency: "CNY",
           notes: @notes,
-          shipping_address: normalized_shipping_address
+          shipping_address: normalized_shipping_address,
+          shipping_method: @shipping_method
         )
 
         @cart.items.includes(:product, :variant).find_each do |item|
@@ -170,7 +172,12 @@ module Commerce
     end
 
     def shipping_cents_for(subtotal_cents, cart_items: nil, coupon: nil)
-      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
+      result = Commerce::CalculateShipping.call(
+        subtotal_cents: subtotal_cents,
+        cart_items: cart_items,
+        coupon: coupon,
+        shipping_method_code: @shipping_method
+      )
       result.success? ? result.value[:shipping_cents].to_i : 0
     end
 

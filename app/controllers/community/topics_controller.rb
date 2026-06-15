@@ -5,9 +5,9 @@ module Community
     include Community::TopicVisibility
     include Community::TopicListPreloadable
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm]
 
     def show
       @topic.record_view!
@@ -20,6 +20,7 @@ module Community
       end
       posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits, :forked_topics, user: { user_badges: :badge })
       posts_scope = filter_blocked_posts(posts_scope)
+      posts_scope = posts_scope.where.not(post_type: "whisper") unless can_moderate_topic?
       posts_scope = case params[:post_sort]
       when "recent" then posts_scope.reorder(floor_number: :desc)
       else posts_scope
@@ -71,7 +72,9 @@ module Community
             { username: ban.user.username, reason: ban.reason, expires_at: ban.expires_at ? l(ban.expires_at, format: :short) : nil }
           } : [],
           can_invite: can_invite_topic?,
-          invite_url: can_invite_topic? ? invite_forum_topic_path(@topic) : nil
+          invite_url: can_invite_topic? ? invite_forum_topic_path(@topic) : nil,
+          share_as_pm_url: logged_in? ? share_as_pm_forum_topic_path(@topic) : nil,
+          can_edit_poll: can_edit_topic?
         ),
         posts: posts.map do |post|
           serialize_post(
@@ -190,7 +193,8 @@ module Community
         topic: @topic,
         title: topic_params[:title],
         tag_names: topic_params[:tags],
-        prefix: topic_params[:prefix]
+        prefix: topic_params[:prefix],
+        poll_params: poll_edit_params
       )
 
       if result.success?
@@ -248,6 +252,22 @@ module Community
 
       if result.success?
         redirect_to forum_topic_path(@topic), notice: "主题已更新。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def share_as_pm
+      result = Community::ShareTopicAsConversation.call(
+        sender: current_user,
+        topic: @topic,
+        recipient_username: params[:recipient_username],
+        message: params[:message]
+      )
+
+      if result.success?
+        conversation = result.value[:conversation]
+        redirect_to forum_conversation_path(conversation), notice: "主题已通过私信分享。"
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -439,7 +459,25 @@ module Community
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days, :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :poll_anonymous, :scheduled_at)
+      params.require(:topic).permit(
+        :title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days,
+        :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :poll_anonymous,
+        :scheduled_at, :remove_poll
+      )
+    end
+
+    def poll_edit_params
+      return nil unless params[:topic].key?(:poll_question) || params[:topic].key?(:poll_options) || params[:topic][:remove_poll].present?
+
+      {
+        poll_question: topic_params[:poll_question],
+        poll_options: parse_poll_options(topic_params[:poll_options]),
+        poll_closes_days: topic_params[:poll_closes_days],
+        poll_multiple_choice: topic_params[:poll_multiple_choice],
+        poll_max_choices: topic_params[:poll_max_choices],
+        poll_hide_results_until_vote: topic_params[:poll_hide_results_until_vote],
+        remove_poll: topic_params[:remove_poll]
+      }
     end
 
     def section_props

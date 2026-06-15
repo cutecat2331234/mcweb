@@ -4,6 +4,7 @@ import { Link, usePage } from '@inertiajs/vue3'
 import { Moon, Sun, Bell } from '@lucide/vue'
 import { routes } from '@/lib/routes'
 import FlashMessages from '@/components/portal/FlashMessages.vue'
+import ForumShortcuts from '@/components/portal/ForumShortcuts.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 
@@ -136,5 +137,6 @@ function toggleTheme() {
       <FlashMessages />
       <slot />
     </main>
+    <ForumShortcuts />
   </div>
 </template>

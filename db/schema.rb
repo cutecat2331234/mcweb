@@ -107,6 +107,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "icon"
     t.string "name", null: false
     t.integer "position", default: 0, null: false
+    t.jsonb "seo", default: {}, null: false
     t.string "slug", null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_forum_categories_on_slug", unique: true
@@ -320,6 +321,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.jsonb "prefixes", default: [], null: false
     t.boolean "read_only", default: false, null: false
     t.jsonb "required_tag_ids", default: [], null: false
+    t.jsonb "seo", default: {}, null: false
     t.string "slug", null: false
     t.text "topic_template"
     t.datetime "updated_at", null: false
@@ -908,13 +910,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "notes"
     t.string "order_number", null: false
     t.string "public_id", null: false
+    t.datetime "shipped_at"
     t.jsonb "shipping_address", default: {}, null: false
+    t.string "shipping_carrier"
     t.integer "shipping_cents", default: 0, null: false
+    t.string "shipping_method"
     t.string "status", default: "pending", null: false
     t.bigint "store_coupon_id"
     t.bigint "store_gift_card_id"
     t.integer "subtotal_cents", default: 0, null: false
     t.integer "total_cents", default: 0, null: false
+    t.string "tracking_number"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["order_number"], name: "index_store_orders_on_order_number", unique: true

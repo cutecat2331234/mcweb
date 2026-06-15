@@ -34,6 +34,8 @@ const props = defineProps<{
     link_url: string
     link_label: string
     default_notification_level: string
+    seo_title: string
+    seo_description: string
   }
   tags: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
@@ -154,6 +156,14 @@ function submit() {
       <div class="space-y-2">
         <Label for="link_label">外链显示文字</Label>
         <Input id="link_label" v-model="form.section.link_label" placeholder="查看版规全文" />
+      </div>
+      <div class="space-y-2">
+        <Label for="seo_title">SEO 标题</Label>
+        <Input id="seo_title" v-model="form.section.seo_title" />
+      </div>
+      <div class="space-y-2">
+        <Label for="seo_description">SEO 描述</Label>
+        <Textarea id="seo_description" v-model="form.section.seo_description" rows="2" />
       </div>
     </div>
     <div class="grid grid-cols-2 gap-4">

@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 10.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, topic:, body:, quoted_post: nil, parent_post: nil, ip_address: nil, skip_interval_check: false)
+    def initialize(user:, topic:, body:, quoted_post: nil, parent_post: nil, ip_address: nil, skip_interval_check: false, whisper: false)
       @user = user
       @topic = topic
       @body = body.to_s.strip
@@ -14,11 +14,16 @@ module Community
       @parent_post = parent_post
       @ip_address = ip_address
       @skip_interval_check = skip_interval_check
+      @whisper = ActiveModel::Type::Boolean.new.cast(whisper)
     end
 
     def call
       spam_result = check_spam
       return spam_result if spam_result.failure?
+
+      if @whisper && !@user.permission?("forum.topics.lock")
+        return ServiceResult.failure(error: "You are not allowed to post staff whispers.")
+      end
 
       unless @topic.section.allowed?(@user, :reply)
         return ServiceResult.failure(error: "You are not allowed to reply in this section.")
@@ -56,7 +61,8 @@ module Community
           body: @body,
           quoted_post: @quoted_post,
           parent_post: @parent_post,
-          status: "published"
+          status: "published",
+          post_type: @whisper ? "whisper" : "regular"
         )
       end
 
@@ -70,9 +76,11 @@ module Community
         ip_address: @ip_address
       )
 
-      Community::NotifyTopicReply.call(post: post)
-      Community::ProcessMentions.call(body: @body, author: @user, post: post, topic: @topic)
-      Community::NotifyPostQuoted.call(post: post, quoter: @user, quoted_post: @quoted_post) if @quoted_post
+      unless @whisper
+        Community::NotifyTopicReply.call(post: post)
+        Community::ProcessMentions.call(body: @body, author: @user, post: post, topic: @topic)
+        Community::NotifyPostQuoted.call(post: post, quoter: @user, quoted_post: @quoted_post) if @quoted_post
+      end
       Community::CheckAutoBadges.call(user: @user)
       notify_trust_level_up!(old_trust_level)
 

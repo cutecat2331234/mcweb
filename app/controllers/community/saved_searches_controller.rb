@@ -18,6 +18,15 @@ module Community
       end
     end
 
+    def update
+      search = current_user.forum_saved_searches.find(params[:id])
+      if search.update(saved_search_update_params)
+        render json: serialize_saved_search(search)
+      else
+        render json: { error: search.errors.full_messages.to_sentence }, status: :unprocessable_entity
+      end
+    end
+
     def destroy
       search = current_user.forum_saved_searches.find(params[:id])
       search.destroy!
@@ -30,6 +39,10 @@ module Community
       params.require(:saved_search).permit(:name, :query, :notify_daily, filters: {})
     end
 
+    def saved_search_update_params
+      params.require(:saved_search).permit(:notify_daily, :name)
+    end
+
     def serialize_saved_search(search)
       {
         id: search.id,
@@ -38,6 +51,7 @@ module Community
         filters: search.filters,
         notify_daily: search.notify_daily?,
         url: forum_search_path(search_url_params(search)),
+        update_url: forum_saved_search_path(search),
         delete_url: forum_saved_search_path(search)
       }
     end

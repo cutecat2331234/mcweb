@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3'
+import { ref } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
+import Input from '@/components/ui/Input.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -37,25 +39,58 @@ const props = defineProps<{
   }>
   pagination: PaginationMeta
   query: string
+  priceMin?: string
+  priceMax?: string
   compareCount?: number
   loggedIn?: boolean
   filters: { in_stock: boolean; on_sale: boolean; sort: string }
 }>()
 
+const q = ref(props.query)
+const priceMin = ref(props.priceMin ?? '')
+const priceMax = ref(props.priceMax ?? '')
+
+const hasActiveFilters = !!(
+  props.query || props.filters.in_stock || props.filters.on_sale ||
+  props.priceMin || props.priceMax || (props.filters.sort && props.filters.sort !== '')
+)
+
+const sortLabels: Record<string, string> = {
+  price_asc: '价格升序',
+  price_desc: '价格降序',
+  popular: '最热',
+}
+
+function filterParams(overrides: Record<string, string | undefined> = {}) {
+  return {
+    q: overrides.q ?? (q.value || undefined),
+    in_stock: props.filters.in_stock ? '1' : undefined,
+    on_sale: props.filters.on_sale ? '1' : undefined,
+    sort: props.filters.sort || undefined,
+    price_min: overrides.price_min ?? (priceMin.value || undefined),
+    price_max: overrides.price_max ?? (priceMax.value || undefined),
+  }
+}
+
+function search() {
+  router.get(routes.storeCategory(props.category.slug), filterParams(), { preserveState: true })
+}
+
+function clearFilters() {
+  router.get(routes.storeCategory(props.category.slug), {}, { preserveState: true })
+}
+
 function applyFilter(key: 'in_stock' | 'on_sale', value: boolean) {
   router.get(routes.storeCategory(props.category.slug), {
-    q: props.query || undefined,
+    ...filterParams(),
     in_stock: key === 'in_stock' ? (value ? '1' : undefined) : (props.filters.in_stock ? '1' : undefined),
     on_sale: key === 'on_sale' ? (value ? '1' : undefined) : (props.filters.on_sale ? '1' : undefined),
-    sort: props.filters.sort || undefined,
   }, { preserveState: true })
 }
 
 function applySort(sort: string) {
   router.get(routes.storeCategory(props.category.slug), {
-    q: props.query || undefined,
-    in_stock: props.filters.in_stock ? '1' : undefined,
-    on_sale: props.filters.on_sale ? '1' : undefined,
+    ...filterParams(),
     sort: sort || undefined,
   }, { preserveState: true })
 }
@@ -90,16 +125,11 @@ function toggleWishlist(url: string) {
   </div>
   <div v-if="category.color_hex" class="mb-4 h-1 w-full max-w-xl rounded-full" :style="{ backgroundColor: category.color_hex }" />
 
-  <div class="mb-4 flex flex-wrap gap-2">
-    <Button type="button" size="sm" :variant="filters.in_stock ? 'default' : 'outline'" @click="applyFilter('in_stock', !filters.in_stock)">
-      仅有货
-    </Button>
-    <Button type="button" size="sm" :variant="filters.on_sale ? 'default' : 'outline'" @click="applyFilter('on_sale', !filters.on_sale)">
-      促销中
-    </Button>
+  <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
+    <Input v-model="q" placeholder="搜索本分类商品…" class="max-w-xs" />
     <select
       :value="filters.sort || ''"
-      class="h-8 rounded-md border px-2 text-xs"
+      class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
       @change="applySort(($event.target as HTMLSelectElement).value)"
     >
       <option value="">最新上架</option>
@@ -107,7 +137,38 @@ function toggleWishlist(url: string) {
       <option value="price_desc">价格从高到低</option>
       <option value="popular">最热</option>
     </select>
-    <a v-if="category.rss_url" :href="category.rss_url" target="_blank" rel="noopener" class="self-center text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
+    <label class="flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        class="rounded border"
+        :checked="filters.in_stock"
+        @change="applyFilter('in_stock', !filters.in_stock)"
+      />
+      仅看有货
+    </label>
+    <label class="flex items-center gap-2 text-sm">
+      <input
+        type="checkbox"
+        class="rounded border"
+        :checked="filters.on_sale"
+        @change="applyFilter('on_sale', !filters.on_sale)"
+      />
+      仅促销
+    </label>
+    <Input v-model="priceMin" type="number" min="0" step="0.01" placeholder="最低价" class="w-24" />
+    <Input v-model="priceMax" type="number" min="0" step="0.01" placeholder="最高价" class="w-24" />
+    <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">筛选</button>
+    <Button v-if="hasActiveFilters" type="button" variant="outline" size="sm" @click="clearFilters">清除筛选</Button>
+    <a v-if="category.rss_url" :href="category.rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS</a>
+  </form>
+
+  <div v-if="hasActiveFilters" class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+    <span class="text-muted-foreground">当前筛选：</span>
+    <Badge v-if="query" variant="outline">关键词：{{ query }}</Badge>
+    <Badge v-if="filters.in_stock" variant="outline">仅有货</Badge>
+    <Badge v-if="filters.on_sale" variant="outline">促销中</Badge>
+    <Badge v-if="priceMin || priceMax" variant="outline">价格区间</Badge>
+    <Badge v-if="filters.sort" variant="outline">排序：{{ sortLabels[filters.sort] || filters.sort }}</Badge>
   </div>
 
   <div v-if="products.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

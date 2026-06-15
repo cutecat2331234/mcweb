@@ -42,7 +42,8 @@ module Community
         preferences: prefs,
         digest_frequency: current_user.forum_digest_frequency,
         digest_watched_only: current_user.forum_digest_watched_only?,
-        digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } }
+        digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } },
+        savedSearches: serialize_saved_searches_for_preferences
       }
     end
 
@@ -96,6 +97,31 @@ module Community
 
     def digest_label(value)
       { "none" => "关闭摘要", "daily" => "每日摘要", "weekly" => "每周摘要" }[value] || value
+    end
+
+    def serialize_saved_searches_for_preferences
+      current_user.forum_saved_searches.recent.limit(20).map do |search|
+        {
+          id: search.id,
+          name: search.name,
+          query: search.query,
+          notify_daily: search.notify_daily?,
+          url: forum_search_path(saved_search_url_params(search)),
+          update_url: forum_saved_search_path(search)
+        }
+      end
+    end
+
+    def saved_search_url_params(search)
+      filters = search.filters.symbolize_keys
+      {
+        q: search.query.presence,
+        section: filters[:section].presence,
+        category: filters[:category].presence,
+        author: filters[:author].presence,
+        tag: filters[:tag].presence,
+        solved: filters[:solved].presence
+      }.compact
     end
   end
 end

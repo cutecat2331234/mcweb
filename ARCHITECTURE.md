@@ -1181,3 +1181,14 @@ app/
 | 最近浏览 compare+wishlist | `RecentlyViewed/Index` 对比/收藏按钮 |
 | 分类页 compare+wishlist | `Categories/Show` 对比/收藏 + 筛选 chips |
 | 群主设置种子 | `db/seeds.rb` 默认 `forum.group_pm_creator_only_add` |
+
+### 第七十三轮（论坛设置后台、偏好页搜索提醒、分类页筛选对齐）
+
+| 功能 | 实现 |
+|------|------|
+| 管理后台论坛设置 | `Admin::Forum::SettingsController` 专用 UI |
+| 群主邀请策略 | `forum.group_pm_creator_only_add` 复选框 + 中文说明 |
+| 保存搜索 PATCH | `notify_daily` 开关更新 |
+| 偏好页保存搜索 | 列表展示 + 每日邮件切换 |
+| 分类页价格筛选 | `price_min` / `price_max` 后端筛选 |
+| 分类页筛选 chips | 与商城首页一致的筛选表单与徽章 |

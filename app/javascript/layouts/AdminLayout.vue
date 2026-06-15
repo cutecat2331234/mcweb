@@ -26,6 +26,7 @@ const nav = [
     { label: '举报', href: adminRoutes.forumReports },
     { label: '徽章', href: adminRoutes.forumBadges },
     { label: '标签', href: adminRoutes.forumTags },
+    { label: '论坛设置', href: adminRoutes.forumSettings },
   ]},
   { label: '商城', items: [
     { label: '商品', href: adminRoutes.storeProducts },

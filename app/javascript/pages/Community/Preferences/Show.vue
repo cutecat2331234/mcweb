@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3'
+import { Link, router, useForm } from '@inertiajs/vue3'
+import { ref } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -8,6 +9,15 @@ import Label from '@/components/ui/Label.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+export interface SavedSearchItem {
+  id: number
+  name: string
+  query: string
+  notify_daily: boolean
+  url: string
+  update_url: string
+}
 
 const props = defineProps<{
   preferences: Array<{
@@ -19,6 +29,7 @@ const props = defineProps<{
   digest_frequency: string
   digest_watched_only?: boolean
   digest_options: Array<{ value: string; label: string }>
+  savedSearches?: SavedSearchItem[]
 }>()
 
 const form = useForm({
@@ -32,8 +43,34 @@ const form = useForm({
   digest_watched_only: props.digest_watched_only ?? false,
 })
 
+const togglingId = ref<number | null>(null)
+
 function submit() {
   form.patch(routes.forumPreferences)
+}
+
+async function toggleSavedSearchNotify(search: SavedSearchItem) {
+  togglingId.value = search.id
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const response = await fetch(search.update_url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': token,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        saved_search: { notify_daily: !search.notify_daily },
+      }),
+    })
+    if (response.ok) {
+      router.reload({ only: ['savedSearches'] })
+    }
+  } finally {
+    togglingId.value = null
+  }
 }
 </script>
 
@@ -87,4 +124,34 @@ function submit() {
 
     <Button type="submit" :disabled="form.processing">保存</Button>
   </form>
+
+  <section v-if="savedSearches?.length" class="mt-8 max-w-lg">
+    <h2 class="mb-3 text-sm font-semibold">保存的搜索与每日提醒</h2>
+    <p class="mb-4 text-xs text-muted-foreground">开启后，当搜索条件匹配到新主题时，每天会收到一封邮件摘要（对标 Discourse 保存搜索提醒）。</p>
+    <ul class="space-y-2">
+      <li
+        v-for="search in savedSearches"
+        :key="search.id"
+        class="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
+      >
+        <div class="min-w-0">
+          <Link :href="search.url" class="font-medium hover:underline">{{ search.name }}</Link>
+          <p v-if="search.query" class="truncate text-xs text-muted-foreground">关键词：{{ search.query }}</p>
+        </div>
+        <label class="flex shrink-0 items-center gap-2 text-xs">
+          <input
+            type="checkbox"
+            :checked="search.notify_daily"
+            :disabled="togglingId === search.id"
+            @change="toggleSavedSearchNotify(search)"
+          />
+          每日邮件
+        </label>
+      </li>
+    </ul>
+    <p class="mt-3 text-xs text-muted-foreground">
+      <Link :href="routes.forumSearch" class="text-primary hover:underline">前往搜索页</Link>
+      创建或管理更多保存的搜索。
+    </p>
+  </section>
 </template>

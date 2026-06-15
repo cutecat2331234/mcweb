@@ -59,7 +59,7 @@ module InertiaSerializable
     data
   end
 
-  def serialize_topic(topic, read_state: nil)
+  def serialize_topic(topic, read_state: nil, highlight_query: nil)
     unread_count = if read_state
                      read_state.unread_count
     elsif current_user
@@ -68,9 +68,12 @@ module InertiaSerializable
                      0
     end
 
+    title_highlight = Community::HighlightSearchText.call(text: topic.title, query: highlight_query) if highlight_query.present?
+
     {
       id: topic.public_id,
       title: topic.title,
+      title_html: title_highlight&.success? ? title_highlight.value[:html] : nil,
       url: forum_topic_path(topic),
       author: topic.user&.username,
       replies_count: topic.replies_count,

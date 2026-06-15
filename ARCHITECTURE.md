@@ -1287,3 +1287,13 @@ app/
 | 搜索链接分享 | 搜索页「复制链接」按钮 |
 | 商城 Webhook 详情 | `Admin::Store::WebhookDeliveriesController#show` + 重试 |
 | 管理事件筛选 | 论坛/商城 Webhook 列表 `eventTabs` |
+
+### 第八十三轮（即时搜索 RSS、主题高亮、Webhook 统计、批量重试）
+
+| 功能 | 实现 |
+|------|------|
+| 即时搜索 RSS | `Community::SearchRssToken` + `GET search.rss` + 搜索页 RSS 链接 |
+| 搜索主题高亮 | `serialize_topic` 增加 `title_html` + `TopicListTable` 渲染 |
+| 帖子高亮修复 | 搜索页帖子结果使用 `body_html` 而非纯文本 |
+| Webhook 投递统计 | `WebhookDeliveryStats` 24h 成功率 + 管理仪表盘卡片 |
+| 批量重试失败 Webhook | `BulkRetrySavedSearchWebhooks` / `BulkRetryOrderWebhooks` + 管理列表按钮 |

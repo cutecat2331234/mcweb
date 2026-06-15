@@ -195,7 +195,7 @@ module Community
         sections: sections,
         categories: categories,
         tags: tags,
-        topics: serialize_topics(topics),
+        topics: serialize_topics(topics, highlight_query: query),
         posts: posts.map { |post| serialize_search_post(post, query: query) },
         topicsPagination: pagy_props(@pagy_topics),
         postsPagination: pagy_props(@pagy_posts),
@@ -206,7 +206,8 @@ module Community
         savedSearchLimit: Community::SavedSearch.limit_for_user(current_user).finite? ? Community::SavedSearch.limit_for_user(current_user).to_i : nil,
         savedSearchCount: logged_in? ? current_user.forum_saved_searches.count : 0,
         savedSearchesOpmlUrl: logged_in? ? Community::SavedSearchPresenter.opml_path(current_user) : nil,
-        suggestUrl: forum_search_suggest_path
+        suggestUrl: forum_search_suggest_path,
+        searchRssUrl: query.present? ? search_rss_url_for(query) : nil
       }
     end
 
@@ -437,6 +438,38 @@ module Community
 
     def saved_search_url_params(search)
       Community::SavedSearchPresenter.url_params(search)
+    end
+
+    def search_rss_url_for(query)
+      rss_params = {
+        q: query,
+        section: params[:section],
+        category: params[:category],
+        author: params[:author],
+        tag: params[:tag],
+        solved: params[:solved],
+        locked: params[:locked],
+        pinned: params[:pinned],
+        wiki: params[:wiki],
+        featured: params[:featured],
+        announcement: params[:announcement],
+        unlisted: params[:unlisted],
+        archived: params[:archived],
+        assigned: params[:assigned],
+        assignee: params[:assignee],
+        mine: params[:mine],
+        scope: params[:scope],
+        poll: params[:poll],
+        noreplies: params[:noreplies],
+        images: params[:images],
+        created_after: params[:created_after],
+        created_before: params[:created_before],
+        topic_sort: params[:topic_sort],
+        title_only: params[:title_only],
+        posts_only: params[:posts_only]
+      }.compact
+      token = Community::SearchRssToken.generate(rss_params)
+      forum_search_rss_path(rss_params.merge(token: token))
     end
   end
 end

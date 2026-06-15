@@ -14,7 +14,15 @@ defineOptions({ layout: AdminLayout })
 
 export interface Metric {
   label: string
-  value: number
+  value: number | string
+}
+
+export interface WebhookStatBlock {
+  total: number
+  success: number
+  failed: number
+  pending: number
+  success_rate: number | null
 }
 
 export interface AuditLogItem {
@@ -25,6 +33,10 @@ export interface AuditLogItem {
 
 defineProps<{
   metrics: Metric[]
+  webhookStats: {
+    forum: WebhookStatBlock
+    store: WebhookStatBlock
+  }
   recentAuditLogs: AuditLogItem[]
 }>()
 </script>
@@ -36,6 +48,30 @@ defineProps<{
     <div v-for="metric in metrics" :key="metric.label" class="rounded-lg border p-4">
       <p class="text-sm text-muted-foreground">{{ metric.label }}</p>
       <p class="mt-1 text-2xl font-semibold">{{ metric.value }}</p>
+    </div>
+  </div>
+
+  <h2 class="mb-3 text-sm font-semibold">Webhook 投递（24 小时）</h2>
+  <div class="mb-8 grid gap-4 md:grid-cols-2">
+    <div class="rounded-lg border p-4">
+      <p class="mb-2 text-sm font-medium">论坛保存搜索</p>
+      <p class="text-sm text-muted-foreground">
+        共 {{ webhookStats.forum.total }} 次 · 成功 {{ webhookStats.forum.success }} · 失败 {{ webhookStats.forum.failed }} · 进行中 {{ webhookStats.forum.pending }}
+      </p>
+      <p v-if="webhookStats.forum.success_rate != null" class="mt-1 text-lg font-semibold">
+        成功率 {{ webhookStats.forum.success_rate }}%
+      </p>
+      <Link :href="adminRoutes.forumWebhookDeliveries" class="mt-2 inline-block text-sm text-primary hover:underline">查看投递日志</Link>
+    </div>
+    <div class="rounded-lg border p-4">
+      <p class="mb-2 text-sm font-medium">商城订单</p>
+      <p class="text-sm text-muted-foreground">
+        共 {{ webhookStats.store.total }} 次 · 成功 {{ webhookStats.store.success }} · 失败 {{ webhookStats.store.failed }} · 进行中 {{ webhookStats.store.pending }}
+      </p>
+      <p v-if="webhookStats.store.success_rate != null" class="mt-1 text-lg font-semibold">
+        成功率 {{ webhookStats.store.success_rate }}%
+      </p>
+      <Link :href="adminRoutes.storeWebhookDeliveries" class="mt-2 inline-block text-sm text-primary hover:underline">查看投递日志</Link>
     </div>
   </div>
 

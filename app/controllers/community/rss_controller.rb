@@ -27,6 +27,20 @@ module Community
       render xml: build_feed(topics, title: "#{category.name} - Mcweb 论坛", url: forum_category_url(slug: category.slug)), content_type: "application/rss+xml"
     end
 
+    def ad_hoc_search
+      permitted = Community::SearchRssToken.verify(params[:token])
+      raise Community::SearchRssToken::InvalidToken if permitted != Community::SearchRssToken.normalize(params.except(:controller, :action, :token, :format))
+
+      result = Community::BuildAdHocSearchTopicScope.call(params: permitted, user: current_user)
+      topics = result.value[:scope].limit(30).to_a
+      query = permitted["q"].to_s
+      title = query.present? ? "搜索：#{query}" : "论坛搜索"
+      url = forum_search_url(permitted.symbolize_keys)
+      render xml: build_feed(topics, title: title, url: url), content_type: "application/rss+xml"
+    rescue Community::SearchRssToken::InvalidToken
+      head :not_found
+    end
+
     def saved_search
       search_id = Community::SavedSearchRssToken.verify(params[:token])
       search = Community::SavedSearch.find(search_id)

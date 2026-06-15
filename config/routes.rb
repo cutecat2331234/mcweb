@@ -52,6 +52,9 @@ Rails.application.routes.draw do
       resources :warnings, only: %i[index]
       resources :canned_responses
       resources :webhook_deliveries, only: %i[index show] do
+        collection do
+          post :bulk_retry
+        end
         member do
           post :retry
         end
@@ -78,6 +81,9 @@ Rails.application.routes.draw do
       resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
       resources :webhook_deliveries, only: %i[index show] do
+        collection do
+          post :bulk_retry
+        end
         member do
           post :retry
         end
@@ -191,6 +197,7 @@ Rails.application.routes.draw do
         patch :mark_all_read
       end
     end
+    get "search.rss", to: "rss#ad_hoc_search", as: :search_rss, defaults: { format: :rss }
     get "search", to: "search#index"
     get "search/suggest", to: "search#suggest", as: :search_suggest
     get "mentions/search", to: "mentions#search", as: :mention_search

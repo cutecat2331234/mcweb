@@ -42,9 +42,9 @@ module Community
       topics
     end
 
-    def serialize_topics(topics, read_states: {})
+    def serialize_topics(topics, read_states: {}, highlight_query: nil)
       topics = attach_participant_users!(topics)
-      topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id]) }
+      topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id], highlight_query: highlight_query) }
     end
   end
 end

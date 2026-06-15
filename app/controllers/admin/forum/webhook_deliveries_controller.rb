@@ -16,6 +16,7 @@ module Admin
           title: "保存搜索 Webhook 投递",
           statusTabs: webhook_status_tabs,
           eventTabs: webhook_event_tabs,
+          bulkRetry: bulk_retry_props(deliveries),
           columns: [
             admin_column(:search, "搜索", link: true),
             admin_column(:user, "用户"),
@@ -54,6 +55,17 @@ module Admin
           redirect_to admin_forum_webhook_delivery_path(@delivery), notice: "Webhook 已重新加入发送队列。"
         else
           redirect_to admin_forum_webhook_delivery_path(@delivery), alert: result.error || "重试失败。"
+        end
+      end
+
+      def bulk_retry
+        result = Community::BulkRetrySavedSearchWebhooks.call(delivery_ids: params[:ids])
+        if result.success?
+          redirect_to admin_forum_webhook_deliveries_path(status: params[:status], event: params[:event]),
+                      notice: "已重试 #{result.value[:queued]} 条失败投递。"
+        else
+          redirect_to admin_forum_webhook_deliveries_path(status: params[:status], event: params[:event]),
+                      alert: result.error || "批量重试失败。"
         end
       end
 
@@ -128,6 +140,17 @@ module Admin
             method: "post"
           }
         ]
+      end
+
+      def bulk_retry_props(deliveries)
+        failed_ids = deliveries.select { |d| d.status == "failed" && d.request_payload.present? }.map(&:id)
+        return nil if failed_ids.empty?
+
+        {
+          label: "重试本页失败项 (#{failed_ids.size})",
+          href: bulk_retry_admin_forum_webhook_deliveries_path(status: params[:status], event: params[:event]),
+          ids: failed_ids
+        }
       end
     end
   end

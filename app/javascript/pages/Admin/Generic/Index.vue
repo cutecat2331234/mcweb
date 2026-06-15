@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination from '@/components/portal/Pagination.vue'
@@ -39,6 +39,12 @@ export interface PaginationMeta {
   next: string | null
 }
 
+export interface BulkRetryAction {
+  label: string
+  href: string
+  ids: number[]
+}
+
 defineProps<{
   title: string
   subtitle?: string
@@ -48,8 +54,14 @@ defineProps<{
   actions?: AdminAction[]
   statusTabs?: StatusTab[]
   eventTabs?: StatusTab[]
+  bulkRetry?: BulkRetryAction | null
   pagination?: PaginationMeta
 }>()
+
+function submitBulkRetry(action: BulkRetryAction) {
+  if (!confirm(`确定要${action.label}吗？`)) return
+  router.post(action.href, { ids: action.ids })
+}
 </script>
 
 <template>
@@ -65,6 +77,14 @@ defineProps<{
       >
         {{ action.label }}
       </Link>
+      <button
+        v-if="bulkRetry"
+        type="button"
+        class="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+        @click="submitBulkRetry(bulkRetry)"
+      >
+        {{ bulkRetry.label }}
+      </button>
     </div>
   </div>
 

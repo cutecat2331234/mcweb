@@ -17,6 +17,7 @@ export type SearchTopic = TopicListItem
 export interface SearchPost {
   id: number
   body: string
+  body_html?: string | null
   author: string
   topic_title: string
   topic_url: string
@@ -77,6 +78,7 @@ const props = defineProps<{
   savedSearchCount?: number
   savedSearchesOpmlUrl?: string | null
   suggestUrl?: string | null
+  searchRssUrl?: string | null
 }>()
 
 const atSavedSearchLimit = computed(() => {
@@ -734,7 +736,18 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
   </div>
 
   <template v-if="query">
-    <h2 class="mb-3 text-sm font-semibold">主题</h2>
+    <div class="mb-3 flex items-center justify-between gap-2">
+      <h2 class="text-sm font-semibold">主题</h2>
+      <a
+        v-if="searchRssUrl"
+        :href="searchRssUrl"
+        class="text-xs text-primary hover:underline"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        RSS 订阅此搜索
+      </a>
+    </div>
     <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants class="mb-4" />
     <Pagination v-if="topics.length" :pagination="topicsPagination" :base-path="routes.forumSearch" page-param="topic_page" class="mb-8" />
     <p v-else class="mb-8 text-sm text-muted-foreground">未找到相关主题。</p>
@@ -751,7 +764,10 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         </thead>
         <tbody>
           <tr v-for="post in posts" :key="post.id" class="border-b">
-            <td class="p-3">{{ post.body }}</td>
+            <td class="p-3">
+              <span v-if="post.body_html" v-html="post.body_html" />
+              <span v-else>{{ post.body }}</span>
+            </td>
             <td class="p-3"><Link :href="post.topic_url" class="hover:underline">{{ post.topic_title }}</Link></td>
             <td class="p-3">{{ post.author }}</td>
           </tr>

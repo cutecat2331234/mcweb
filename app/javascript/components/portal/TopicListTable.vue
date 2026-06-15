@@ -11,6 +11,7 @@ import TableRow from '@/components/ui/TableRow.vue'
 export interface TopicListItem {
   id: string
   title: string
+  title_html?: string | null
   url: string
   author: string | null
   replies_count: number
@@ -89,7 +90,8 @@ defineProps<{
               :assigned-url="topic.assigned_url"
               :tags="topic.tags"
             />
-            <Link :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
+            <Link v-if="!topic.title_html" :href="topic.url" class="font-medium hover:underline">{{ topic.title }}</Link>
+            <Link v-else :href="topic.url" class="font-medium hover:underline"><span v-html="topic.title_html" /></Link>
             <p v-if="topic.excerpt" class="mt-1 line-clamp-2 text-xs text-muted-foreground">{{ topic.excerpt }}</p>
             <div v-if="showParticipants && topic.participant_avatars?.length" class="mt-1 flex items-center gap-1">
               <img

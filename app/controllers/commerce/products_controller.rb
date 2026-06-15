@@ -70,8 +70,16 @@ module Commerce
             .merge(product_compare_props(product))
             .merge(product_wishlist_props(product))
         },
-        featured_products: featured.map { |product| serialize_product_list_item(product) },
-        recently_viewed: recently_viewed.map { |product| serialize_product_list_item(product) },
+        featured_products: featured.map { |product|
+          serialize_product_list_item(product)
+            .merge(product_compare_props(product))
+            .merge(product_wishlist_props(product))
+        },
+        recently_viewed: recently_viewed.map { |product|
+          serialize_product_list_item(product)
+            .merge(product_compare_props(product))
+            .merge(product_wishlist_props(product))
+        },
         upcoming_products: upcoming.map do |product|
           alert_id = availability_alert_ids[product.id]
           serialize_upcoming_product(product, availability_alert: alert_id.present?, availability_alert_id: alert_id)

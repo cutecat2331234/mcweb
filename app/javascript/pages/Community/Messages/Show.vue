@@ -39,6 +39,7 @@ const props = defineProps<{
     remove_url?: string | null
   }>
   addParticipantUrl?: string | null
+  addParticipantRestrictedReason?: string | null
   archiveUrl?: string
   unarchiveUrl?: string
   archived?: boolean
@@ -150,11 +151,8 @@ function submit() {
       <Input v-model="addUsername" placeholder="用户名" class="flex-1" />
       <Button type="submit" variant="outline" size="sm">添加成员</Button>
     </form>
-    <p v-else-if="conversation.is_group && addParticipantUrl === null && canSendPm === false" class="mt-3 text-xs text-muted-foreground">
-      新成员暂时无法添加群组成员。
-    </p>
-    <p v-else-if="conversation.is_group && addParticipantUrl === null && pmBlocked" class="mt-3 text-xs text-amber-700">
-      当前账号暂时无法添加群组成员。
+    <p v-else-if="conversation.is_group && addParticipantRestrictedReason" class="mt-3 text-xs text-muted-foreground">
+      {{ addParticipantRestrictedReason }}
     </p>
   </div>
 

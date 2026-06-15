@@ -14,6 +14,7 @@ module Community
       return ServiceResult.failure(error: "Not a group conversation.") unless @conversation.is_group?
       return ServiceResult.failure(error: "Only participants can add members.") unless @conversation.participant?(@actor)
       return ServiceResult.failure(error: "Group is full.") if @conversation.participants.count >= MAX_PARTICIPANTS
+      return ServiceResult.failure(error: "Only the group creator can add members.") unless can_add_member?(@actor)
 
       user = User.find_by(username: @username)
       return ServiceResult.failure(error: "User not found.") unless user
@@ -30,6 +31,20 @@ module Community
       ServiceResult.success(@conversation)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    def self.can_add_member?(actor, conversation)
+      return true unless conversation.is_group?
+      return true unless SiteSetting.get("forum.group_pm_creator_only_add", "false") == "true"
+
+      staff = actor.permission?("forum.topics.lock") || actor.permission?("admin.access")
+      staff || actor.id == conversation.creator_id
+    end
+
+    private
+
+    def can_add_member?(actor)
+      self.class.can_add_member?(actor, @conversation)
     end
   end
 end

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
+import { ref, watch, onBeforeUnmount } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -60,6 +60,7 @@ const props = defineProps<{
   loggedIn?: boolean
   forumStaff?: boolean
   saveSearchUrl?: string | null
+  suggestUrl?: string | null
 }>()
 
 const q = ref(props.query)
@@ -88,6 +89,55 @@ const showAdvanced = ref(
 const saveName = ref('')
 const saving = ref(false)
 const saveError = ref('')
+
+type SuggestItem = { title?: string; name?: string; username?: string; url: string }
+const suggestOpen = ref(false)
+const suggestLoading = ref(false)
+const suggestTopics = ref<SuggestItem[]>([])
+const suggestTags = ref<SuggestItem[]>([])
+const suggestUsers = ref<SuggestItem[]>([])
+let suggestTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(q, (value) => {
+  if (!props.suggestUrl || value.trim().length < 2) {
+    suggestOpen.value = false
+    return
+  }
+  if (suggestTimer) clearTimeout(suggestTimer)
+  suggestTimer = setTimeout(() => fetchSuggestions(value.trim()), 250)
+})
+
+onBeforeUnmount(() => {
+  if (suggestTimer) clearTimeout(suggestTimer)
+})
+
+async function fetchSuggestions(query: string) {
+  if (!props.suggestUrl) return
+  suggestLoading.value = true
+  try {
+    const response = await fetch(`${props.suggestUrl}?q=${encodeURIComponent(query)}`, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    })
+    if (!response.ok) return
+    const data = await response.json()
+    suggestTopics.value = data.topics || []
+    suggestTags.value = data.tags || []
+    suggestUsers.value = data.users || []
+    suggestOpen.value = !!(suggestTopics.value.length || suggestTags.value.length || suggestUsers.value.length)
+  } finally {
+    suggestLoading.value = false
+  }
+}
+
+function pickSuggestion(url: string) {
+  suggestOpen.value = false
+  router.visit(url)
+}
+
+function hideSuggestions() {
+  setTimeout(() => { suggestOpen.value = false }, 150)
+}
 
 watch(() => props.query, (value) => { q.value = value })
 watch(() => props.author, (value) => { author.value = value })
@@ -200,7 +250,60 @@ async function deleteSavedSearch(deleteUrl: string) {
   <PageHeader title="搜索论坛" subtitle="支持 in:分区、tag:标签、is:solved/is:locked/is:featured/is:unlisted、has:poll/has:noreplies 等语法" />
 
   <form class="mb-4 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
-    <Input v-model="q" placeholder="输入关键词..." class="min-w-[200px] flex-1" />
+    <div class="relative min-w-[200px] flex-1">
+      <Input
+        v-model="q"
+        placeholder="输入关键词..."
+        class="w-full"
+        autocomplete="off"
+        @focus="q.trim().length >= 2 && suggestUrl && fetchSuggestions(q.trim())"
+        @blur="hideSuggestions"
+      />
+      <div
+        v-if="suggestOpen && suggestUrl"
+        class="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border bg-background shadow-md"
+      >
+        <p v-if="suggestLoading" class="px-3 py-2 text-xs text-muted-foreground">搜索建议…</p>
+        <template v-else>
+          <div v-if="suggestTopics.length" class="border-b px-2 py-1">
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">主题</p>
+            <button
+              v-for="item in suggestTopics"
+              :key="item.url"
+              type="button"
+              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              @mousedown.prevent="pickSuggestion(item.url)"
+            >
+              {{ item.title }}
+            </button>
+          </div>
+          <div v-if="suggestTags.length" class="border-b px-2 py-1">
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">标签</p>
+            <button
+              v-for="item in suggestTags"
+              :key="item.url"
+              type="button"
+              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              @mousedown.prevent="pickSuggestion(item.url)"
+            >
+              #{{ item.name }}
+            </button>
+          </div>
+          <div v-if="suggestUsers.length" class="px-2 py-1">
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">用户</p>
+            <button
+              v-for="item in suggestUsers"
+              :key="item.url"
+              type="button"
+              class="block w-full rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+              @mousedown.prevent="pickSuggestion(item.url)"
+            >
+              @{{ item.username }}
+            </button>
+          </div>
+        </template>
+      </div>
+    </div>
     <select v-model="sectionSlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
       <option value="">全部分区</option>
       <option v-for="sec in sections" :key="sec.slug" :value="sec.slug">

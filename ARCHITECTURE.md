@@ -1157,3 +1157,13 @@ app/
 | 私信对话分页 | `page-param="page"` 显式声明 |
 | 公开心愿单筛选 | `public_show` 支持 in_stock/on_sale/coming_soon/sort |
 | 筛选预设公开分享 | `public_share_url` + 复制分享链接 |
+
+### 第七十一轮（搜索建议、精选区心愿单、群主邀请限制）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索建议下拉 | `suggestUrl` + 主题/标签/用户实时建议 |
+| 精选/最近浏览 compare+wishlist | 商城首页区块加入对比与收藏按钮 |
+| 群主专属邀请 | `forum.group_pm_creator_only_add` SiteSetting |
+| 添加成员限制提示 | `addParticipantRestrictedReason` 中文说明 |
+| 搜索帖子分页集成测试 | `post_page=2` 端到端验证 |

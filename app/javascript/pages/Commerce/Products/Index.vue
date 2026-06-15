@@ -152,18 +152,39 @@ function clearFilters() {
       <Link :href="routes.storeRecentlyViewed" class="text-xs text-primary hover:underline">查看全部</Link>
     </div>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Link
+      <div
         v-for="product in recently_viewed"
         :key="product.id"
-        :href="product.url"
-        class="flex gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+        class="flex gap-3 rounded-lg border p-3"
       >
-        <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover" />
-        <div>
-          <p class="font-medium">{{ product.name }}</p>
+        <Link :href="product.url" class="shrink-0">
+          <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover" />
+        </Link>
+        <div class="min-w-0 flex-1">
+          <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
           <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+          <div v-if="loggedIn" class="mt-2 flex flex-wrap gap-1">
+            <Button
+              v-if="product.compare_url"
+              type="button"
+              size="sm"
+              variant="outline"
+              @click="toggleCompare(product.compare_url!)"
+            >
+              {{ product.compared ? '对比中' : '对比' }}
+            </Button>
+            <Button
+              v-if="product.wishlist_url"
+              type="button"
+              size="sm"
+              :variant="product.wishlisted ? 'outline' : 'secondary'"
+              @click="toggleWishlist(product.wishlist_url!)"
+            >
+              {{ product.wishlisted ? '心愿单' : '收藏' }}
+            </Button>
+          </div>
         </div>
-      </Link>
+      </div>
     </div>
   </section>
 
@@ -230,18 +251,39 @@ function clearFilters() {
   <section v-if="featured_products?.length" class="mb-8">
     <h2 class="mb-3 text-sm font-semibold">精选商品</h2>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Link
+      <div
         v-for="product in featured_products"
         :key="product.id"
-        :href="product.url"
-        class="flex gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+        class="flex gap-3 rounded-lg border p-3"
       >
-        <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover" />
-        <div>
-          <p class="font-medium">{{ product.name }}</p>
+        <Link :href="product.url" class="shrink-0">
+          <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover" />
+        </Link>
+        <div class="min-w-0 flex-1">
+          <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
           <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+          <div v-if="loggedIn" class="mt-2 flex flex-wrap gap-1">
+            <Button
+              v-if="product.compare_url"
+              type="button"
+              size="sm"
+              variant="outline"
+              @click="toggleCompare(product.compare_url!)"
+            >
+              {{ product.compared ? '对比中' : '对比' }}
+            </Button>
+            <Button
+              v-if="product.wishlist_url"
+              type="button"
+              size="sm"
+              :variant="product.wishlisted ? 'outline' : 'secondary'"
+              @click="toggleWishlist(product.wishlist_url!)"
+            >
+              {{ product.wishlisted ? '心愿单' : '收藏' }}
+            </Button>
+          </div>
         </div>
-      </Link>
+      </div>
     </div>
   </section>
 

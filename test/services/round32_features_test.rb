@@ -26,6 +26,18 @@ class Community::TopicOneboxTest < ActiveSupport::TestCase
     assert_includes result.value, "topic-onebox"
     assert_includes result.value, @topic.title
   end
+
+  test "unlisted topic does not render onebox" do
+    @topic.update!(unlisted: true)
+
+    result = Community::FetchTopicOnebox.call(url: "/forum/topics/#{@topic.public_id}")
+    assert result.success?
+    assert_nil result.value
+
+    formatted = Community::FormatPostBody.call(body: "/forum/topics/#{@topic.public_id}")
+    assert formatted.success?
+    assert_not_includes formatted.value, "topic-onebox"
+  end
 end
 
 class Community::FilterNotificationRecipientsTest < ActiveSupport::TestCase
@@ -44,6 +56,29 @@ class Community::FilterNotificationRecipientsTest < ActiveSupport::TestCase
     assert result.success?
     assert_includes result.value, @recipient.id
     assert_not_includes result.value, @ignorer.id
+  end
+
+  test "filters recipients who cannot view hidden topic" do
+    author = create_user(username: "hidden_author_r32")
+    subscriber = create_user(username: "hidden_sub_r32")
+    category = Community::Category.find_or_create_by!(slug: "r32-hidden-notify") { |c| c.name = "R32 Hidden Notify" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "r32-hidden-notify-sec") do |s|
+      s.name = "Hidden Notify Sec"
+      s.position = 0
+    end
+    topic = Community::CreateTopic.call(user: author, section: section, title: "Hidden notify", body: "OP").value
+    topic.update!(status: "hidden")
+    Community::Subscription.create!(user: subscriber, subscribable: topic)
+
+    result = Community::FilterNotificationRecipients.call(
+      actor_id: author.id,
+      recipient_ids: [ subscriber.id, author.id ],
+      topic: topic
+    )
+
+    assert result.success?
+    assert_includes result.value, author.id
+    assert_not_includes result.value, subscriber.id
   end
 end
 
@@ -165,6 +200,17 @@ class Community::NotifyIgnoreFilterTest < ActiveSupport::TestCase
 
   test "ignored author does not trigger reply notification" do
     assert_no_difference -> { Notification.where(user: @ignorer, notification_type: "forum.topic_reply").count } do
+      Community::NotifyTopicReply.call(post: @reply)
+    end
+  end
+
+  test "hidden topic reply does not notify subscribers who cannot view topic" do
+    subscriber = create_user(username: "hidden_sub_notify")
+    Community::Subscription.create!(user: subscriber, subscribable: @topic)
+    NotificationPreference.set!(subscriber, channel: "in_app", notification_type: "forum.topic_reply", enabled: true)
+    @topic.update!(status: "hidden")
+
+    assert_no_difference -> { Notification.where(user: subscriber, notification_type: "forum.topic_reply").count } do
       Community::NotifyTopicReply.call(post: @reply)
     end
   end

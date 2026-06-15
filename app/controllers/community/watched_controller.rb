@@ -13,7 +13,7 @@ module Community
         .where(user: current_user, subscribable_type: "Community::Topic")
         .pluck(:subscribable_id)
 
-      topics_scope = preload_topics(Community::Topic.where(id: topic_ids, status: :published))
+      topics_scope = preload_topics(Community::Topic.where(id: topic_ids, status: :published, unlisted: false))
       topics_scope = filter_blocked_topics(topics_scope)
       topics_scope = apply_forum_topic_sort(topics_scope, sort)
 
@@ -59,7 +59,7 @@ module Community
         .pluck(:subscribable_id)
 
       topic_ids = Community::TopicTag.where(forum_tag_id: tag_ids).distinct.pluck(:forum_topic_id)
-      topics_scope = preload_topics(Community::Topic.where(id: topic_ids, status: :published))
+      topics_scope = preload_topics(Community::Topic.where(id: topic_ids, status: :published, unlisted: false))
       topics_scope = filter_blocked_topics(topics_scope)
       topics_scope = apply_forum_topic_sort(topics_scope, sort)
       @pagy, topics = pagy(topics_scope, limit: 20)

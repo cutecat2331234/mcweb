@@ -276,6 +276,44 @@ class Community::HiddenTopicActivityFeedTest < ActionDispatch::IntegrationTest
   end
 end
 
+class Community::HiddenTopicNotificationDisplayTest < ActionDispatch::IntegrationTest
+  setup do
+    @author = create_user
+    @subscriber = create_user(username: "notif_subscriber")
+    category = Community::Category.find_or_create_by!(slug: "notif-hidden-cat") { |c| c.name = "Notif Hidden" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "notif-hidden-sec") do |s|
+      s.name = "Notif Hidden Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @author,
+      section: section,
+      title: "Secret hidden notification topic",
+      body: "Opening",
+      ip_address: "127.0.0.1"
+    ).value
+    Community::Subscription.subscribe!(@subscriber, @topic)
+    @topic.update!(status: "hidden")
+    Notification.notify!(
+      user: @subscriber,
+      notification_type: "forum.topic_reply",
+      title: "主题有新回复：Secret hidden notification topic",
+      body: "leaked reply excerpt",
+      metadata: { topic_id: @topic.public_id, path: "/forum/topics/#{@topic.public_id}" }
+    )
+  end
+
+  test "notification list redacts hidden topic content for subscriber" do
+    sign_in_as(@subscriber)
+    get forum_notifications_path
+
+    assert_response :success
+    assert_not_includes response.body, "Secret hidden notification topic"
+    assert_not_includes response.body, "leaked reply excerpt"
+    assert_includes response.body, "内容不可用"
+  end
+end
+
 class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
   setup do
     @author = create_user

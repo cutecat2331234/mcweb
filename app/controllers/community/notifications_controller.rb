@@ -19,6 +19,10 @@ module Community
     def visit
       notification = current_user.notifications.find(params[:id])
       notification.mark_read!
+      unless notification_content_visible?(notification)
+        redirect_to forum_notifications_path, alert: "此通知关联的内容已不可用。"
+        return
+      end
       destination = safe_notification_path(notification.metadata)
       redirect_to destination
     end
@@ -45,18 +49,31 @@ module Community
     end
 
     def serialize_notification(notification)
+      visible = notification_content_visible?(notification)
       {
         id: notification.id,
-        title: notification.title,
-        body: notification.body,
+        title: visible ? notification.title : "内容不可用",
+        body: visible ? notification.body : "此通知关联的内容已不可用。",
         notification_type: notification.notification_type,
         category: notification_category(notification),
         read: notification.read?,
         created_at: l(notification.created_at, format: :short),
-        url: safe_notification_path(notification.metadata),
-        visit_url: visit_forum_notification_path(notification),
+        url: visible ? safe_notification_path(notification.metadata) : nil,
+        visit_url: visible ? visit_forum_notification_path(notification) : nil,
         mark_read_url: mark_read_forum_notification_path(notification)
       }
+    end
+
+    def notification_content_visible?(notification)
+      topic = notification_topic(notification)
+      topic.nil? || PollParticipation.visible?(topic: topic, user: current_user)
+    end
+
+    def notification_topic(notification)
+      public_id = notification.metadata["topic_id"]
+      return nil unless public_id.present?
+
+      Community::Topic.find_by(public_id: public_id.to_s)
     end
 
     def notification_category(notification)
@@ -95,14 +112,14 @@ module Community
           key: "#{type}-#{group_key}",
           notification_type: type == "commerce_order" ? latest.notification_type : type,
           category: notification_category(latest),
-          title: type == "commerce_order" ? "订单 #{group_key.to_s.sub(/\Aord_/, '').truncate(8)}" : latest.title,
-          body: items.size > 1 ? "共 #{items.size} 条相关通知" : latest.body,
+          title: type == "commerce_order" ? "订单 #{group_key.to_s.sub(/\Aord_/, '').truncate(8)}" : (notification_content_visible?(latest) ? latest.title : "内容不可用"),
+          body: items.size > 1 ? "共 #{items.size} 条相关通知" : (notification_content_visible?(latest) ? latest.body : "此通知关联的内容已不可用。"),
           count: items.size,
           unread_count: unread,
           read: unread.zero?,
           latest_at: l(latest.created_at, format: :short),
           latest_at_ts: latest.created_at.to_i,
-          visit_url: latest.metadata["path"].present? ? visit_forum_notification_path(latest) : nil,
+          visit_url: notification_content_visible?(latest) && latest.metadata["path"].present? ? visit_forum_notification_path(latest) : nil,
           items: items.first(5).map { |n| serialize_notification(n) }
         }
       end.sort_by { |g| -g[:latest_at_ts] }.first(30)

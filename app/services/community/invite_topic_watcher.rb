@@ -17,6 +17,9 @@ module Community
       user = User.find_by("LOWER(username) = ?", @username.downcase)
       return ServiceResult.failure(error: "用户不存在。") unless user
       return ServiceResult.failure(error: "不能邀请自己。") if user.id == @inviter.id
+      unless PollParticipation.visible?(topic: @topic, user: user)
+        return ServiceResult.failure(error: "该用户无法访问此主题。")
+      end
 
       invite = Community::TopicInvite.find_or_initialize_by(topic: @topic, user: user)
       if invite.persisted?

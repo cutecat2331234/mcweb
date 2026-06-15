@@ -139,17 +139,19 @@ module InertiaSerializable
         color_hex: topic.section.color_hex,
         icon: topic.section.icon
       },
-      source_topic: source_topic_props(topic)
+      source_topic: source_topic_props(topic, viewer: viewer)
     }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate)).merge(slow_mode_props(topic, user: viewer)).merge(reading_time_props(topic))
   end
 
-  def source_topic_props(topic)
+  def source_topic_props(topic, viewer: nil)
     return nil unless topic.source_post_id.present?
 
     source_post = topic.association(:source_post).loaded? ? topic.source_post : Community::Post.find_by(id: topic.source_post_id)
     return nil unless source_post
 
     source = source_post.topic
+    return nil unless PollParticipation.visible?(topic: source, user: viewer)
+
     {
       title: source.title,
       url: forum_topic_path(source, anchor: "post-#{source_post.id}"),
@@ -267,7 +269,7 @@ module InertiaSerializable
       report_url: current_user ? new_forum_report_path(reportable_type: "Community::Post", reportable_id: post.id) : nil,
       raw_url: raw_forum_post_path(post),
       fork_topic_url: current_user ? fork_topic_forum_post_path(post) : nil,
-      forked_topics: post.forked_topics.map { |topic|
+      forked_topics: visible_forked_topics(post, current_user).map { |topic|
         { id: topic.public_id, title: topic.title, url: forum_topic_path(topic) }
       },
       update_url: forum_post_path(post)
@@ -284,6 +286,15 @@ module InertiaSerializable
       author: post.user.username,
       excerpt: post.body.truncate(120)
     }
+  end
+
+  def visible_forked_topics(post, viewer)
+    post.forked_topics.select do |topic|
+      next false unless topic.status == "published"
+      next false if topic.unlisted? && !(viewer&.permission?("forum.topics.lock") || viewer&.id == topic.user_id)
+
+      PollParticipation.visible?(topic: topic, user: viewer)
+    end
   end
 
   def edit_seconds_remaining(post, user)

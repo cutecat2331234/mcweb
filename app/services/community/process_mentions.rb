@@ -17,6 +17,7 @@ module Community
 
       users = User.where(username: usernames).where.not(id: @author.id)
       users.find_each do |user|
+        next unless PollParticipation.visible?(topic: @topic, user: user)
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.mention")
 
         Notification.notify!(

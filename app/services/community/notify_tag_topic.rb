@@ -9,6 +9,7 @@ module Community
 
     def call
       return ServiceResult.success if @tags.empty?
+      return ServiceResult.success if @topic.unlisted? || @topic.status != "published"
 
       subscriber_ids = Community::Subscription
         .where(subscribable: @tags)
@@ -18,7 +19,8 @@ module Community
 
       recipient_ids = Community::FilterNotificationRecipients.call(
         actor_id: @topic.user_id,
-        recipient_ids: subscriber_ids.map(&:first)
+        recipient_ids: subscriber_ids.map(&:first),
+        topic: @topic
       ).value
 
       levels_by_user = subscriber_ids.to_h

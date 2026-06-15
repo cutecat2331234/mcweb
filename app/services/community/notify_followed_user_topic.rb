@@ -7,10 +7,13 @@ module Community
     end
 
     def call
+      return ServiceResult.success if @topic.unlisted? || @topic.status != "published"
+
       followers = Community::UserFollow.where(followed: @topic.user).includes(:follower)
       recipient_ids = Community::FilterNotificationRecipients.call(
         actor_id: @topic.user_id,
-        recipient_ids: followers.map(&:follower_id).uniq - [ @topic.user_id ]
+        recipient_ids: followers.map(&:follower_id).uniq - [ @topic.user_id ],
+        topic: @topic
       ).value
 
       Community::UserFollow.where(followed: @topic.user, follower_id: recipient_ids).includes(:follower).find_each do |follow|

@@ -8,6 +8,8 @@ module Community
     end
 
     def call
+      return ServiceResult.success if @topic.unlisted? || @topic.status != "published"
+
       subscriber_ids = Community::Subscription
         .where(subscribable: @section)
         .where.not(user_id: @topic.user_id)
@@ -15,8 +17,13 @@ module Community
 
       muted_ids = Community::SectionMute.where(forum_section_id: @section.id, user_id: subscriber_ids.map(&:first)).pluck(:user_id)
       levels_by_user = subscriber_ids.to_h
+      recipient_ids = Community::FilterNotificationRecipients.call(
+        actor_id: @topic.user_id,
+        recipient_ids: subscriber_ids.map(&:first) - muted_ids,
+        topic: @topic
+      ).value
 
-      User.where(id: subscriber_ids.map(&:first) - muted_ids).find_each do |user|
+      User.where(id: recipient_ids).find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.section_topic")
 
         Notification.notify!(

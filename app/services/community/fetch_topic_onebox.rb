@@ -19,7 +19,7 @@ module Community
       match = path.match(TOPIC_PATH)
       return ServiceResult.success(nil) unless match
 
-      topic = Community::Topic.where(status: :published).find_by(public_id: match[1])
+      topic = Community::Topic.published_listed.find_by(public_id: match[1])
       return ServiceResult.success(nil) unless topic
 
       ServiceResult.success(

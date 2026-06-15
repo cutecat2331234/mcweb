@@ -16,7 +16,8 @@ module Community
       muted_ids = Community::TopicMute.where(forum_topic_id: @topic.id, user_id: subscriber_ids.map(&:first)).pluck(:user_id)
       recipient_ids = Community::FilterNotificationRecipients.call(
         actor_id: @post.user_id,
-        recipient_ids: subscriber_ids.map(&:first) - muted_ids
+        recipient_ids: subscriber_ids.map(&:first) - muted_ids,
+        topic: @topic
       ).value
 
       levels_by_user = subscriber_ids.to_h

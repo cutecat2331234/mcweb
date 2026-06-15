@@ -1037,3 +1037,14 @@ app/
 | XenForo 标签组选择器 | `TagGroupPicker` + 发帖页分组点选 |
 | 标签云按组展示 | `Tags/Index` 分组 + 标签/组颜色 |
 | 主题详情标签颜色 | `Topics/Show` color_hex 样式 |
+
+### 第六十一轮（标签组编辑扩展、优惠券恢复、员工搜索与心愿单）
+
+| 功能 | 实现 |
+|------|------|
+| 草稿编辑标签组选择器 | `Drafts/Edit` + `SectionTagGroupsSerializable` |
+| 主题编辑标签组选择器 | `Topics/Show` 编辑区 `TagGroupPicker` |
+| 累计全额退款恢复优惠券 | `RestoreCouponPartial` + `coupon_usage_restored` |
+| 搜索精选/公告/归档筛选 | `Search/Index` featured/announcement + 员工 unlisted/archived |
+| 员工低库存通知偏好 | `commerce.low_stock` 商城通知设置 |
+| 即将上架商品心愿单 | `Wishlist#toggle` 支持 `coming_soon` + 预览页按钮 |

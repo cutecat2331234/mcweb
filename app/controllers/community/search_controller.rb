@@ -187,6 +187,7 @@ module Community
         postsPagination: pagy_props(@pagy_posts),
         savedSearches: serialize_saved_searches,
         loggedIn: logged_in?,
+        forumStaff: forum_staff?,
         saveSearchUrl: logged_in? ? forum_saved_searches_path : nil,
         suggestUrl: forum_search_suggest_path
       }

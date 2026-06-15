@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -21,7 +22,7 @@ const props = defineProps<{
     tags: string
     prefix?: string | null
     scheduled_at_input?: string | null
-    section: { name: string; slug: string; prefixes?: string[] }
+    section: { name: string; slug: string; prefixes?: string[]; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }> }
     poll?: {
       question: string
       options: string
@@ -103,8 +104,8 @@ function clearSchedule() {
       <MarkdownEditor v-model="form.draft.body" :rows="10" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名、[^脚注]" />
     </div>
     <div class="space-y-2">
-      <Label for="tags">标签（逗号分隔）</Label>
-      <Input id="tags" v-model="form.draft.tags" />
+      <Label for="tags">标签（最多 5 个）</Label>
+      <TagGroupPicker v-model="form.draft.tags" :tag-groups="draft.section.tag_groups" :max-tags="5" />
     </div>
 
     <div class="space-y-2">

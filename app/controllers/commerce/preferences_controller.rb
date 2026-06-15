@@ -39,11 +39,23 @@ module Commerce
         }
       end
 
+      if staff_notifications?
+        prefs << {
+          notification_type: "commerce.low_stock",
+          label: "低库存提醒（员工）",
+          email: NotificationPreference.enabled?(current_user, channel: "email", notification_type: "commerce.low_stock"),
+          in_app: NotificationPreference.enabled?(current_user, channel: "in_app", notification_type: "commerce.low_stock")
+        }
+      end
+
       render inertia: "Commerce/Preferences/Show", props: { preferences: prefs }
     end
 
     def update
-      NOTIFICATION_TYPES.each do |type|
+      types = NOTIFICATION_TYPES.dup
+      types << "commerce.low_stock" if staff_notifications?
+
+      types.each do |type|
         CHANNELS.each do |channel|
           enabled = ActiveModel::Type::Boolean.new.cast(params.dig(:preferences, type, channel))
           next if enabled.nil?
@@ -61,6 +73,10 @@ module Commerce
     end
 
     private
+
+    def staff_notifications?
+      current_user.permission?("store.products.read") || current_user.permission?("admin.access")
+    end
 
     def notification_label(type)
       {

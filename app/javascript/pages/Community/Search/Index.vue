@@ -46,6 +46,10 @@ const props = defineProps<{
   scope?: string
   poll?: string
   noreplies?: string
+  featured?: string
+  announcement?: string
+  unlisted?: string
+  archived?: string
   images?: string
   createdAfter?: string
   createdBefore?: string
@@ -60,6 +64,7 @@ const props = defineProps<{
   postsPagination: PaginationMeta
   savedSearches?: Array<{ id: number; name: string; query: string; url: string; delete_url: string }>
   loggedIn?: boolean
+  forumStaff?: boolean
   saveSearchUrl?: string | null
   suggestUrl?: string
 }>()
@@ -79,6 +84,10 @@ const mineFilter = ref(props.mine || '')
 const scopeFilter = ref(props.scope || '')
 const pollFilter = ref(props.poll || '')
 const norepliesFilter = ref(props.noreplies || '')
+const featuredFilter = ref(props.featured || '')
+const announcementFilter = ref(props.announcement || '')
+const unlistedFilter = ref(props.unlisted || '')
+const archivedFilter = ref(props.archived || '')
 const imagesOnly = ref(props.images === 'images')
 const createdAfter = ref(props.createdAfter || '')
 const createdBefore = ref(props.createdBefore || '')
@@ -131,6 +140,10 @@ function search() {
     scope: scopeFilter.value || undefined,
     poll: pollFilter.value || undefined,
     noreplies: norepliesFilter.value || undefined,
+    featured: featuredFilter.value || undefined,
+    announcement: announcementFilter.value || undefined,
+    unlisted: unlistedFilter.value || undefined,
+    archived: archivedFilter.value || undefined,
     images: imagesOnly.value ? 'images' : undefined,
     created_after: createdAfter.value || undefined,
     created_before: createdBefore.value || undefined,
@@ -172,6 +185,10 @@ async function saveSearch() {
             scope: scopeFilter.value,
             poll: pollFilter.value,
             noreplies: norepliesFilter.value,
+            featured: featuredFilter.value,
+            announcement: announcementFilter.value,
+            unlisted: unlistedFilter.value,
+            archived: archivedFilter.value,
             images: imagesOnly.value ? 'images' : '',
             created_after: createdAfter.value,
             created_before: createdBefore.value,
@@ -287,6 +304,24 @@ async function deleteSavedSearch(deleteUrl: string) {
       <option value="">回复数</option>
       <option value="noreplies">零回复</option>
     </select>
+    <select v-model="featuredFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">精选</option>
+      <option value="featured">仅精选</option>
+    </select>
+    <select v-model="announcementFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+      <option value="">公告</option>
+      <option value="announcement">仅公告</option>
+    </select>
+    <template v-if="forumStaff">
+      <select v-model="unlistedFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+        <option value="">列出状态</option>
+        <option value="unlisted">未列出</option>
+      </select>
+      <select v-model="archivedFilter" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
+        <option value="">归档</option>
+        <option value="archived">已归档</option>
+      </select>
+    </template>
     <label class="flex h-9 items-center gap-2 text-sm">
       <input v-model="imagesOnly" type="checkbox" class="rounded border" />
       含图片

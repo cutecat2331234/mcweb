@@ -2,6 +2,8 @@
 
 module Community
   class DraftsController < ApplicationController
+    include Community::SectionTagGroupsSerializable
+
     before_action :require_login
 
     def index
@@ -44,7 +46,8 @@ module Community
           section: {
             name: draft.section.name,
             slug: draft.section.slug,
-            prefixes: Array(draft.section.prefixes)
+            prefixes: Array(draft.section.prefixes),
+            tag_groups: section_tag_groups_for(draft.section)
           },
           poll: poll ? {
             question: poll.question,

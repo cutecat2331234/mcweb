@@ -62,7 +62,11 @@ module Commerce
     end
 
     def toggle
-      product = Commerce::Product.available.find_by!(public_id: params[:id])
+      product = Commerce::Product.active.find_by!(public_id: params[:id])
+      unless product.available? || product.coming_soon?
+        return redirect_back fallback_location: store_products_path, alert: "商品不可加入心愿单。"
+      end
+
       variant = product.variants.find_by(id: params[:variant_id]) if params[:variant_id].present?
       result = Commerce::ToggleWishlist.call(user: current_user, product: product, variant: variant)
 

@@ -29,8 +29,15 @@ const props = defineProps<{
   hasAvailabilityAlert?: boolean
   availabilityAlertUrl?: string | null
   availabilityAlertUnsubscribeUrl?: string | null
+  wishlistUrl?: string | null
+  wishlisted?: boolean
   loggedIn?: boolean
 }>()
+
+function toggleWishlist() {
+  if (!props.wishlistUrl) return
+  router.post(props.wishlistUrl, {}, { preserveScroll: true })
+}
 
 function subscribe() {
   if (!props.availabilityAlertUrl) return
@@ -83,9 +90,12 @@ function unsubscribe() {
       <p v-if="product.summary" class="text-sm text-muted-foreground">{{ product.summary }}</p>
       <div v-if="product.description" class="prose prose-sm max-w-none dark:prose-invert" v-html="product.description" />
 
-      <div v-if="loggedIn && availabilityAlertUrl" class="flex flex-wrap gap-2 pt-2">
-        <Button v-if="!hasAvailabilityAlert" type="button" @click="subscribe">订阅上架通知</Button>
-        <Button v-else type="button" variant="outline" @click="unsubscribe">已订阅 · 取消</Button>
+      <div v-if="loggedIn" class="flex flex-wrap gap-2 pt-2">
+        <Button v-if="wishlistUrl" type="button" :variant="wishlisted ? 'outline' : 'secondary'" @click="toggleWishlist">
+          {{ wishlisted ? '已在心愿单' : '加入心愿单' }}
+        </Button>
+        <Button v-if="!hasAvailabilityAlert && availabilityAlertUrl" type="button" @click="subscribe">订阅上架通知</Button>
+        <Button v-else-if="hasAvailabilityAlert && availabilityAlertUnsubscribeUrl" type="button" variant="outline" @click="unsubscribe">已订阅 · 取消</Button>
       </div>
       <p v-else-if="!loggedIn" class="text-sm text-muted-foreground">
         <a :href="routes.signIn" class="text-primary hover:underline">登录</a> 后可订阅上架通知

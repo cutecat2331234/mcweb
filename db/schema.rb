@@ -978,6 +978,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "store_orders", force: :cascade do |t|
+    t.boolean "coupon_usage_restored", default: false, null: false
     t.datetime "created_at", null: false
     t.string "currency", default: "CNY", null: false
     t.integer "discount_cents", default: 0, null: false

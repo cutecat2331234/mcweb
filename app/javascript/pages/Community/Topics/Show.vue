@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import ReactionUsersPopover from '@/components/portal/ReactionUsersPopover.vue'
 import UserHoverCard from '@/components/portal/UserHoverCard.vue'
 import ReadingProgress from '@/components/portal/ReadingProgress.vue'
@@ -154,6 +155,7 @@ const props = defineProps<{
     tags_string: string
     section: { name: string; slug: string; url: string; color_hex?: string | null; icon?: string | null }
     section_prefixes?: string[]
+    tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }>
     linked_product_name?: string
     linked_product_url?: string
     bump_cooldown_remaining_seconds?: number | null
@@ -1018,7 +1020,7 @@ function pollPercent(votes: number) {
         <option v-for="p in topic.section_prefixes" :key="p" :value="p">{{ p }}</option>
       </select>
     </div>
-    <Input v-model="editTags" placeholder="标签（逗号分隔，最多5个）" />
+    <TagGroupPicker v-model="editTags" :tag-groups="topic.tag_groups" :max-tags="5" />
     <template v-if="topic.can_edit_poll && poll">
       <Input v-model="editPollQuestion" placeholder="投票问题" />
       <Textarea v-model="editPollOptions" rows="4" placeholder="每行一个选项" />

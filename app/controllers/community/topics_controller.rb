@@ -4,6 +4,7 @@ module Community
   class TopicsController < ApplicationController
     include Community::TopicVisibility
     include Community::TopicListPreloadable
+    include Community::SectionTagGroupsSerializable
 
     before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
@@ -63,6 +64,7 @@ module Community
           viewer: current_user
         ).merge(
           section_prefixes: Array(@topic.section.prefixes),
+          tag_groups: section_tag_groups_for(@topic.section),
           global_announcement: @topic.global_announcement?,
           staff_notes: can_moderate_topic? ? @topic.staff_notes.includes(:author).order(created_at: :desc).map { |note|
             { id: note.id, body: note.body, author: note.author.username, created_at: l(note.created_at, format: :short) }
@@ -534,31 +536,10 @@ module Community
         topic_template: @section.topic_template,
         required_tags: @section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
         required_tag_groups: @section.required_tag_groups.map { |g| { name: g.name, slug: g.slug } },
-        tag_groups: section_tag_groups_props,
+        tag_groups: section_tag_groups_for(@section),
         allowed_tags: @section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
         default_tags: @section.default_tags.map { |tag| tag.name }
       }
-    end
-
-    def section_tag_groups_props
-      allowed_ids = @section.allowed_tag_ids.presence
-      allowed_set = allowed_ids ? allowed_ids.map(&:to_i).to_set : nil
-      usable_ids = Community::Tag.usable_by(current_user).pluck(:id).to_set
-
-      Community::TagGroup.includes(:tags).ordered.filter_map do |group|
-        tags = group.tags.select do |tag|
-          usable_ids.include?(tag.id) && (allowed_set.nil? || allowed_set.include?(tag.id))
-        end
-        next if tags.empty?
-
-        {
-          name: group.name,
-          slug: group.slug,
-          color_hex: group.color_hex,
-          one_per_topic: group.one_per_topic?,
-          tags: tags.map { |tag| { name: tag.name, slug: tag.slug, color_hex: tag.color_hex } }
-        }
-      end
     end
 
     def parse_poll_options(raw)

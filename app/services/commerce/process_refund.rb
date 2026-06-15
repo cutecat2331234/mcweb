@@ -50,6 +50,12 @@ module Commerce
             refund_amount_cents: @amount_cents,
             payment_amount_cents: @payment_record.amount_cents
           )
+          Commerce::RestoreCouponPartial.call(
+            order: @order,
+            refund_amount_cents: @amount_cents,
+            payment_amount_cents: @payment_record.amount_cents,
+            already_refunded_cents: refunded_cents
+          )
           if full_refund?(@amount_cents, refunded_cents)
             @order.update!(status: "refunded")
             restore_stock!
@@ -126,9 +132,10 @@ module Commerce
     def restore_coupon_usage!
       coupon = @order.coupon
       return unless coupon
-      return unless coupon.used_count.positive?
+      return if @order.coupon_usage_restored?
 
-      coupon.decrement!(:used_count)
+      coupon.decrement!(:used_count) if coupon.used_count.positive?
+      @order.update!(coupon_usage_restored: true)
     end
 
     def restore_gift_card_balance!

@@ -113,6 +113,7 @@ module Commerce
     def preview
       product = Commerce::Product.upcoming.includes(:category).find_by!(public_id: params[:id])
       alert = logged_in? ? Commerce::ProductAvailabilityAlert.find_by(user: current_user, product: product) : nil
+      wishlist_item = logged_in? ? Commerce::WishlistItem.find_by(user: current_user, product: product) : nil
 
       render inertia: "Commerce/Products/Preview", props: {
         product: {
@@ -134,6 +135,8 @@ module Commerce
         hasAvailabilityAlert: alert.present?,
         availabilityAlertUrl: logged_in? ? availability_alert_store_product_path(product) : nil,
         availabilityAlertUnsubscribeUrl: alert ? store_availability_alert_path(alert) : nil,
+        wishlistUrl: logged_in? ? wishlist_store_product_path(product) : nil,
+        wishlisted: wishlist_item.present?,
         loggedIn: logged_in?
       }
     end

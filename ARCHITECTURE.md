@@ -1326,3 +1326,13 @@ app/
 | 商城 Webhook 事件模拟 | `DispatchTestOrderWebhook` 支持多事件类型选择 |
 | 标签关注邮件 | `NotifyTagTopic` watching 级别即时邮件 + `ForumMailer#tag_topic` |
 | 搜索历史去重修复 | `SearchHistoryFingerprint` 唯一指纹索引 |
+
+### 第八十七轮（合并 OPML、Webhook 测试增强、摘要邮件互斥、事件统计）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索合并 OPML | `SearchFeedsOpmlToken` + `GET search/feeds.opml` 分组导出保存搜索与历史 |
+| 论坛 Webhook 绑定保存搜索 | `DispatchTestSavedSearchWebhook` 支持 `saved_search` 参数 + 管理后台下拉选择 |
+| Webhook 测试状态 | `WebhookTestDeliveryStatus` 在论坛/商城设置页展示最近测试投递 |
+| 商城 Webhook 按事件统计 | `WebhookDeliveryStats#store_stats_by_event` + 仪表盘展示 |
+| @提及与摘要互斥 | `InstantEmailDelivery` 开启 digest 时跳过即时提及邮件 |

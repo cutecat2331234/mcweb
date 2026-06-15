@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { useForm, router } from '@inertiajs/vue3'
+import { ref } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -17,10 +18,26 @@ export interface ForumSettingItem {
   input_type: 'text' | 'boolean'
 }
 
+export interface SavedSearchForTest {
+  id: number
+  name: string
+}
+
+export interface LastTestWebhook {
+  event_type: string
+  status: string
+  response_code: number | null
+  created_at: string
+}
+
 const props = defineProps<{
   settings: ForumSettingItem[]
   testWebhookUrl?: string | null
+  savedSearchesForTest?: SavedSearchForTest[]
+  lastTestWebhook?: LastTestWebhook | null
 }>()
+
+const selectedSavedSearchId = ref<string>('')
 
 const form = useForm({
   settings: Object.fromEntries(props.settings.map((s) => [s.key, s.value])),
@@ -32,7 +49,8 @@ function submit() {
 
 function sendTestWebhook() {
   if (!props.testWebhookUrl || !confirm('向配置的 Webhook URL 发送 saved_search.match 测试事件？')) return
-  router.post(props.testWebhookUrl)
+  const data = selectedSavedSearchId.value ? { saved_search_id: selectedSavedSearchId.value } : {}
+  router.post(props.testWebhookUrl, data)
 }
 </script>
 
@@ -57,14 +75,25 @@ function sendTestWebhook() {
       <Input v-else :id="setting.key" v-model="form.settings[setting.key]" />
     </div>
     <Button type="submit" :disabled="form.processing">保存论坛设置</Button>
-    <Button
-      v-if="testWebhookUrl"
-      type="button"
-      variant="outline"
-      class="ml-2"
-      @click="sendTestWebhook"
-    >
-      发送 Webhook 测试
-    </Button>
+    <template v-if="testWebhookUrl">
+      <select
+        v-if="savedSearchesForTest?.length"
+        v-model="selectedSavedSearchId"
+        class="ml-2 h-9 rounded-md border border-input bg-transparent px-3 text-sm"
+      >
+        <option value="">通用测试载荷</option>
+        <option v-for="search in savedSearchesForTest" :key="search.id" :value="String(search.id)">
+          {{ search.name }}
+        </option>
+      </select>
+      <Button type="button" variant="outline" class="ml-2" @click="sendTestWebhook">
+        发送 Webhook 测试
+      </Button>
+      <p v-if="lastTestWebhook" class="mt-2 text-xs text-muted-foreground">
+        最近测试：{{ lastTestWebhook.event_type }} · {{ lastTestWebhook.status }}
+        <span v-if="lastTestWebhook.response_code != null"> · HTTP {{ lastTestWebhook.response_code }}</span>
+        · {{ lastTestWebhook.created_at }}
+      </p>
+    </template>
   </form>
 </template>

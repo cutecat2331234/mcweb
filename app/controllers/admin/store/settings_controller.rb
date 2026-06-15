@@ -27,7 +27,8 @@ module Admin
           settings: store_settings_props,
           shippingMethods: Commerce::ShippingMethods.stored_list,
           testWebhookUrl: test_webhook_admin_store_settings_path,
-          testWebhookEvents: Commerce::DispatchTestOrderWebhook::EVENT_TYPES
+          testWebhookEvents: Commerce::DispatchTestOrderWebhook::EVENT_TYPES,
+          lastTestWebhook: WebhookTestDeliveryStatus.store_last
         }
       end
 

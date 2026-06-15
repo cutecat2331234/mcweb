@@ -77,7 +77,8 @@ module Community
         }
       )
 
-      if NotificationPreference.enabled?(user, channel: "email", notification_type: notification_type)
+      if NotificationPreference.enabled?(user, channel: "email", notification_type: notification_type) &&
+         Community::InstantEmailDelivery.allowed?(user, notification_type: notification_type)
         MailDeliveryJob.perform_later(
           "Community::ForumMailer",
           "mention",

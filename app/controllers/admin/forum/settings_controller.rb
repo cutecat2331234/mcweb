@@ -33,7 +33,9 @@ module Admin
       def show
         render inertia: "Admin/Forum/Settings/Show", props: {
           settings: forum_settings_props,
-          testWebhookUrl: test_webhook_admin_forum_settings_path
+          testWebhookUrl: test_webhook_admin_forum_settings_path,
+          savedSearchesForTest: saved_searches_for_test_props,
+          lastTestWebhook: WebhookTestDeliveryStatus.forum_last
         }
       end
 
@@ -52,9 +54,11 @@ module Admin
       end
 
       def test_webhook
-        result = Community::DispatchTestSavedSearchWebhook.call
+        saved_search = find_saved_search_for_test(params[:saved_search_id])
+        result = Community::DispatchTestSavedSearchWebhook.call(saved_search: saved_search)
         if result.success?
-          redirect_to admin_forum_settings_path, notice: "测试 Webhook 已加入发送队列（saved_search.match）。"
+          label = saved_search ? "「#{saved_search.name}」" : "saved_search.match"
+          redirect_to admin_forum_settings_path, notice: "测试 Webhook 已加入发送队列（#{label}）。"
         else
           redirect_to admin_forum_settings_path, alert: result.error || "测试发送失败。"
         end
@@ -160,6 +164,18 @@ module Admin
         return "text" if key == "webhook.failure_alert_email"
 
         "text"
+      end
+
+      def saved_searches_for_test_props
+        current_user.forum_saved_searches.recent.limit(20).map do |search|
+          { id: search.id, name: search.name }
+        end
+      end
+
+      def find_saved_search_for_test(id)
+        return nil if id.blank?
+
+        current_user.forum_saved_searches.find_by(id: id)
       end
     end
   end

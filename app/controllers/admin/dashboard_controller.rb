@@ -23,7 +23,8 @@ module Admin
         ],
         webhookStats: {
           forum: webhook_stats[:forum],
-          store: webhook_stats[:store]
+          store: webhook_stats[:store],
+          storeByEvent: webhook_stats[:store_by_event]
         },
         webhookFailedLinks: {
           forum: admin_forum_webhook_deliveries_path(status: "failed", created_from: failed_since),

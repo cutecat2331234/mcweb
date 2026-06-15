@@ -213,6 +213,7 @@ module Community
         searchOpmlUrl: query.present? ? search_opml_url_for(query) : nil,
         searchHistories: serialize_search_histories,
         searchHistoriesOpmlUrl: logged_in? ? forum_search_histories_opml_path(token: Community::SearchHistoryOpmlToken.generate(current_user)) : nil,
+        searchFeedsOpmlUrl: logged_in? ? forum_search_feeds_opml_path(token: Community::SearchFeedsOpmlToken.generate(current_user)) : nil,
         clearSearchHistoryUrl: logged_in? ? forum_clear_search_histories_path : nil
       }
     end

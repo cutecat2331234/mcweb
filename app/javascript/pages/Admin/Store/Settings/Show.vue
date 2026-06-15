@@ -26,11 +26,19 @@ export interface ShippingMethodItem {
   delivery_days_max?: number | null
 }
 
+export interface LastTestWebhook {
+  event_type: string
+  status: string
+  response_code: number | null
+  created_at: string
+}
+
 const props = defineProps<{
   settings: StoreSettingItem[]
   shippingMethods: ShippingMethodItem[]
   testWebhookUrl?: string | null
   testWebhookEvents?: string[]
+  lastTestWebhook?: LastTestWebhook | null
 }>()
 
 const selectedTestEvent = ref(props.testWebhookEvents?.[0] || 'order.test')
@@ -154,6 +162,11 @@ function sendTestWebhook() {
       >
         发送 Webhook 测试
       </Button>
+      <p v-if="lastTestWebhook" class="mt-2 text-xs text-muted-foreground">
+        最近测试：{{ lastTestWebhook.event_type }} · {{ lastTestWebhook.status }}
+        <span v-if="lastTestWebhook.response_code != null"> · HTTP {{ lastTestWebhook.response_code }}</span>
+        · {{ lastTestWebhook.created_at }}
+      </p>
     </template>
   </form>
 </template>

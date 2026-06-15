@@ -80,6 +80,14 @@ module Community
       head :not_found
     end
 
+    def search_feeds_opml
+      user_id = Community::SearchFeedsOpmlToken.verify(params[:token])
+      user = User.find(user_id)
+      render xml: build_search_feeds_opml(user), content_type: "application/xml"
+    rescue Community::SearchFeedsOpmlToken::InvalidToken, ActiveRecord::RecordNotFound
+      head :not_found
+    end
+
     def watching_opml
       user_id = Community::WatchingOpmlToken.verify(params[:token])
       user = User.find(user_id)
@@ -154,6 +162,29 @@ module Community
       wrap_opml(title: "#{user.username} 的搜索历史", outlines: outlines)
     end
 
+    def build_search_feeds_opml(user)
+      saved_outlines = user.forum_saved_searches.recent.limit(50).map do |search|
+        rss_url = forum_saved_search_rss_url(id: search.id, token: Community::SavedSearchRssToken.generate(search))
+        html_url = forum_search_url(Community::SavedSearchPresenter.url_params(search))
+        opml_outline(search.name, rss_url: rss_url, html_url: html_url)
+      end.join("\n")
+
+      history_outlines = user.forum_search_histories.recent.limit(20).map do |history|
+        params = history.rss_params
+        token = Community::SearchRssToken.generate(params)
+        title = history.query.presence || "筛选搜索"
+        rss_url = forum_search_rss_url(params.symbolize_keys.merge(token: token))
+        html_url = forum_search_url(history.url_params)
+        opml_outline("#{title} (#{l(history.updated_at, format: :short)})", rss_url: rss_url, html_url: html_url)
+      end.join("\n")
+
+      groups = []
+      groups << nested_opml_group("保存的搜索", saved_outlines) if saved_outlines.present?
+      groups << nested_opml_group("搜索历史", history_outlines) if history_outlines.present?
+
+      wrap_opml(title: "#{user.username} 的搜索订阅", outlines: groups.join("\n"))
+    end
+
     def build_watching_opml(user)
       outlines = []
 
@@ -196,6 +227,14 @@ module Community
     def opml_outline(title, rss_url:, html_url:)
       <<~XML
         <outline type="rss" text="#{escape_xml(title)}" title="#{escape_xml(title)}" xmlUrl="#{escape_xml(rss_url)}" htmlUrl="#{escape_xml(html_url)}" />
+      XML
+    end
+
+    def nested_opml_group(title, inner_outlines)
+      <<~XML
+        <outline text="#{escape_xml(title)}" title="#{escape_xml(title)}">
+          #{inner_outlines}
+        </outline>
       XML
     end
 

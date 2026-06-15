@@ -31,11 +31,20 @@ export interface AuditLogItem {
   created_at: string
 }
 
+export interface StoreEventStat {
+  event_type: string
+  total: number
+  success: number
+  failed: number
+  success_rate: number | null
+}
+
 defineProps<{
   metrics: Metric[]
   webhookStats: {
     forum: WebhookStatBlock
     store: WebhookStatBlock
+    storeByEvent?: StoreEventStat[]
   }
   webhookFailedLinks: {
     forum: string
@@ -78,6 +87,17 @@ defineProps<{
       </p>
       <Link :href="webhookFailedLinks.store" class="mt-2 mr-3 inline-block text-sm text-primary hover:underline">查看失败记录</Link>
       <Link :href="adminRoutes.storeWebhookDeliveries" class="mt-2 inline-block text-sm text-muted-foreground hover:underline">全部投递日志</Link>
+      <div v-if="webhookStats.storeByEvent?.length" class="mt-3 space-y-1 border-t pt-3">
+        <p class="text-xs font-medium text-muted-foreground">按事件类型</p>
+        <p
+          v-for="row in webhookStats.storeByEvent.filter((r) => r.total > 0)"
+          :key="row.event_type"
+          class="text-xs text-muted-foreground"
+        >
+          {{ row.event_type }}：{{ row.total }} 次
+          <span v-if="row.success_rate != null">（成功率 {{ row.success_rate }}%）</span>
+        </p>
+      </div>
     </div>
   </div>
 

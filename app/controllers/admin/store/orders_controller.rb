@@ -70,6 +70,8 @@ module Admin
           fields: [
             { label: "客户", value: @order.user.username },
             { label: "小计", value: format_money(@order.subtotal_cents, @order.currency) },
+            { label: "运费", value: @order.shipping_cents.positive? ? format_money(@order.shipping_cents, @order.currency) : (@order.shipping_cents.zero? && @order.subtotal_cents.positive? ? "免运费" : "—") },
+            { label: "收货地址", value: format_shipping_address(@order.shipping_address).presence || "—" },
             { label: "优惠", value: @order.discount_cents.positive? ? "-#{format_money(@order.discount_cents, @order.currency)}#{@order.coupon ? " (#{@order.coupon.code})" : ""}" : "—" },
             { label: "礼品卡", value: @order.gift_card_amount_cents.positive? ? "-#{format_money(@order.gift_card_amount_cents, @order.currency)}#{@order.gift_card ? " (#{@order.gift_card.code})" : ""}" : "—" },
             { label: "总额", value: format_money(@order.total_cents, @order.currency) },

@@ -20,6 +20,9 @@
   <% if order.notes.present? %>
     <p>备注：<%= order.notes %></p>
   <% end %>
+  <% if order.shipping_address.present? && order.shipping_address.values.any?(&:present?) %>
+    <p>收货地址：<%= format_shipping_address(order.shipping_address) %></p>
+  <% end %>
 
   <table>
     <thead>
@@ -48,6 +51,12 @@
   <% end %>
   <% if order.gift_card_amount_cents.positive? %>
     <p class="total">礼品卡<%= order.gift_card ? " (#{order.gift_card.code})" : "" %>：−<%= number_to_currency(order.gift_card_amount_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+  <% end %>
+  <p class="total">小计：<%= number_to_currency(order.subtotal_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+  <% if order.shipping_cents.positive? %>
+    <p class="total">运费：<%= number_to_currency(order.shipping_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+  <% elsif order.shipping_cents.zero? && order.subtotal_cents.positive? %>
+    <p class="total">运费：免运费</p>
   <% end %>
   <p class="total">合计：<%= number_to_currency(order.total_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
 

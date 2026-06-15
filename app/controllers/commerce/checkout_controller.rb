@@ -15,6 +15,7 @@ module Commerce
       pending_gift_card = session[:pending_gift_card_code].to_s.presence
       coupon = Commerce::Coupon.find_by(code: pending_coupon) if pending_coupon.present?
       requires_shipping = items.any? { |item| item.product&.requires_shipping? }
+      default_shipping_address = last_shipping_address_for(current_user)
 
       render inertia: "Commerce/Checkout/Show", props: {
         items: items.map { |item|
@@ -31,6 +32,7 @@ module Commerce
         pendingGiftCardCode: pending_gift_card,
         couponAutoApplied: params[:coupon].present? && pending_coupon.present?,
         requiresShipping: requires_shipping,
+        defaultShippingAddress: default_shipping_address,
         providers: providers,
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path,
@@ -181,6 +183,28 @@ module Commerce
         :name, :phone, :line1, :line2, :city, :province, :postal_code
       )
       raw.to_h
+    end
+
+    def last_shipping_address_for(user)
+      order = Commerce::Order.where(user: user)
+        .where.not(shipping_address: [ nil, {} ])
+        .where.not(status: %w[cancelled failed pending awaiting_payment])
+        .order(created_at: :desc)
+        .first
+      return nil unless order
+
+      address = order.shipping_address
+      return nil unless address.is_a?(Hash) && address.values.any?(&:present?)
+
+      {
+        name: address["name"].to_s,
+        phone: address["phone"].to_s,
+        line1: address["line1"].to_s,
+        line2: address["line2"].to_s,
+        city: address["city"].to_s,
+        province: address["province"].to_s,
+        postal_code: address["postal_code"].to_s
+      }
     end
 
     def default_provider

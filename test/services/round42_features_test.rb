@@ -119,7 +119,17 @@ class Commerce::OrderShippingTest < ActiveSupport::TestCase
     SiteSetting.set("store.flat_shipping_cents", "600")
     cart = Commerce::Cart.create!(user: @user)
     cart.add_item!(product: @product, quantity: 1)
-    @order = Commerce::CreateOrder.call(cart: cart, user: @user).value
+    @order = Commerce::CreateOrder.call(
+      cart: cart,
+      user: @user,
+      shipping_address: {
+        "name" => "测试",
+        "phone" => "13800000000",
+        "line1" => "地址 1",
+        "city" => "上海",
+        "province" => "上海"
+      }
+    ).value
   end
 
   teardown do

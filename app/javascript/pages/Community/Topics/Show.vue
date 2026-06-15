@@ -11,6 +11,7 @@ import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import ReactionUsersPopover from '@/components/portal/ReactionUsersPopover.vue'
 import UserHoverCard from '@/components/portal/UserHoverCard.vue'
 import ReadingProgress from '@/components/portal/ReadingProgress.vue'
+import ImageLightbox from '@/components/portal/ImageLightbox.vue'
 import { routes } from '@/lib/routes'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
 
@@ -71,6 +72,7 @@ export interface PostItem {
     remind_at_input: string | null
   } | null
   fork_topic_url?: string | null
+  forked_topics?: Array<{ id: string; title: string; url: string }>
   update_url: string
 }
 
@@ -106,6 +108,7 @@ const props = defineProps<{
     id: string
     title: string
     author: string | null
+    author_username?: string | null
     locked: boolean
     lock_reason?: string | null
     pinned: boolean
@@ -165,6 +168,8 @@ const props = defineProps<{
   reportTopicUrl: string | null
   poll: PollItem | null
   topicSearchQuery?: string
+  postSort?: string
+  canCloseOwn?: boolean
   topicBookmark?: {
     id: number
     update_url: string
@@ -211,6 +216,8 @@ let slowModeTimer: ReturnType<typeof setInterval> | null = null
 const autoCloseAt = ref('')
 const draftKey = `forum-reply-draft-${props.topic.id}`
 const topicSearch = ref(props.topicSearchQuery || '')
+const postSort = ref(props.postSort || 'oldest')
+const selectionQuote = ref<{ post: PostItem; text: string; top: number; left: number } | null>(null)
 const selectedPollOptions = ref<number[]>(props.poll?.user_vote_indices || [])
 const editingBookmark = ref(false)
 const bookmarkNote = ref(props.topicBookmark?.note || '')
@@ -330,7 +337,13 @@ function quotePost(post: PostItem) {
 }
 
 function removeQuote(id: number) {
+  const removed = quotePreviews.value.find((item) => item.id === id)
   quotePreviews.value = quotePreviews.value.filter((item) => item.id !== id)
+  if (removed) {
+    const marker = `#${removed.floor_number} ${removed.author}`
+    const parts = replyForm.post.body.split(/\n\n+/)
+    replyForm.post.body = parts.filter((part) => !part.includes(marker)).join('\n\n').trim()
+  }
   if (replyForm.post.quoted_post_id === id) {
     replyForm.post.quoted_post_id = quotePreviews.value.at(-1)?.id ?? null
   }
@@ -658,7 +671,53 @@ function insertCanned(body: string) {
 }
 
 function searchInTopic() {
-  router.get(routes.forumTopic(props.topic.id), { q: topicSearch.value || undefined }, { preserveScroll: true })
+  router.get(routes.forumTopic(props.topic.id), { q: topicSearch.value || undefined, post_sort: postSort.value !== 'oldest' ? postSort.value : undefined }, { preserveScroll: true })
+}
+
+function changePostSort() {
+  router.get(routes.forumTopic(props.topic.id), { q: topicSearch.value || undefined, post_sort: postSort.value !== 'oldest' ? postSort.value : undefined }, { preserveScroll: true })
+}
+
+function closeOwnTopic() {
+  const reason = window.prompt('关闭原因（可选）', '') || undefined
+  router.post(`/forum/topics/${props.topic.id}/close_own`, { lock_reason: reason }, { preserveScroll: true })
+}
+
+function reopenOwnTopic() {
+  router.post(`/forum/topics/${props.topic.id}/reopen_own`, {}, { preserveScroll: true })
+}
+
+function onPostMouseUp(post: PostItem, event: MouseEvent) {
+  const selection = window.getSelection()
+  const text = selection?.toString().trim()
+  if (!text || text.length < 2) {
+    selectionQuote.value = null
+    return
+  }
+  const target = event.currentTarget as HTMLElement
+  if (!target.contains(selection?.anchorNode || null)) return
+  const rect = selection?.getRangeAt(0).getBoundingClientRect()
+  if (!rect) return
+  selectionQuote.value = { post, text, top: rect.top + window.scrollY - 40, left: rect.left }
+}
+
+function quoteSelection() {
+  if (!selectionQuote.value) return
+  const { post, text } = selectionQuote.value
+  replyForm.post.quoted_post_id = post.id
+  if (!quotePreviews.value.find((item) => item.id === post.id)) {
+    quotePreviews.value.push({
+      id: post.id,
+      floor_number: post.floor_number,
+      author: post.author,
+      excerpt: text.slice(0, 120),
+    })
+  }
+  const block = `> **#${post.floor_number} ${post.author}：**\n${text.split('\n').map((line) => `> ${line}`).join('\n')}\n\n`
+  replyForm.post.body = replyForm.post.body ? `${replyForm.post.body}\n\n${block}` : block
+  selectionQuote.value = null
+  window.getSelection()?.removeAllRanges()
+  document.getElementById('reply-form')?.scrollIntoView({ behavior: 'smooth' })
 }
 
 function pollVoted(index: number) {
@@ -676,6 +735,7 @@ function pollPercent(votes: number) {
 
 <template>
   <ReadingProgress />
+  <ImageLightbox />
   <Head v-if="meta">
     <title>{{ meta.title }}</title>
     <meta v-if="meta.description" head-key="description" name="description" :content="meta.description" />
@@ -721,6 +781,8 @@ function pollPercent(votes: number) {
         {{ topic.muted ? '取消静音' : '静音主题' }}
       </Button>
       <Button v-if="markUnreadUrl" type="button" variant="outline" size="sm" @click="markUnread">标为未读</Button>
+      <Button v-if="canCloseOwn && !topic.locked" type="button" variant="outline" size="sm" @click="closeOwnTopic">关闭主题</Button>
+      <Button v-if="canCloseOwn && topic.locked" type="button" variant="outline" size="sm" @click="reopenOwnTopic">重新打开</Button>
       <Button v-if="jumpToUnreadUrl" as-child variant="outline" size="sm">
         <Link :href="jumpToUnreadUrl">跳到未读</Link>
       </Button>
@@ -1001,8 +1063,12 @@ function pollPercent(votes: number) {
     </div>
   </section>
 
-  <form class="mb-4 flex max-w-md gap-2" @submit.prevent="searchInTopic">
-    <Input v-model="topicSearch" placeholder="在此主题内搜索帖子…" class="flex-1" />
+  <form class="mb-4 flex max-w-md flex-wrap items-center gap-2" @submit.prevent="searchInTopic">
+    <Input v-model="topicSearch" placeholder="在此主题内搜索帖子…" class="min-w-[12rem] flex-1" />
+    <select v-model="postSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm" @change="changePostSort">
+      <option value="oldest">最早优先</option>
+      <option value="recent">最新优先</option>
+    </select>
     <Button type="submit" variant="outline">搜索</Button>
   </form>
 
@@ -1114,6 +1180,12 @@ function pollPercent(votes: number) {
               {{ post.quoted_post.excerpt }}
             </a>
           </blockquote>
+          <div v-if="post.forked_topics?.length" class="mb-2 text-xs text-muted-foreground">
+            已衍生主题：
+            <template v-for="(forked, index) in post.forked_topics" :key="forked.id">
+              <Link :href="forked.url" class="text-primary hover:underline">{{ forked.title }}</Link><span v-if="index < post.forked_topics!.length - 1">、</span>
+            </template>
+          </div>
 
           <div v-if="editingPostBookmarkId === post.id && post.bookmark" class="mt-2 space-y-2 rounded border bg-muted/30 p-3">
             <textarea v-model="postBookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="书签备注" />
@@ -1149,6 +1221,7 @@ function pollPercent(votes: number) {
               class="prose prose-sm max-w-none text-sm dark:prose-invert"
               :class="post.body_long && !isPostExpanded(post) ? 'max-h-64 overflow-hidden relative' : ''"
               v-html="post.body_html"
+              @mouseup="(event) => onPostMouseUp(post, event)"
             />
             <button
               v-if="post.body_long"
@@ -1252,4 +1325,15 @@ function pollPercent(votes: number) {
       <Button type="submit" :disabled="replyForm.processing">发表回复</Button>
     </form>
   </section>
+
+  <button
+    v-if="selectionQuote && effectiveCanReply"
+    type="button"
+    class="fixed z-40 rounded-md border bg-popover px-2 py-1 text-xs shadow-md"
+    :style="{ top: `${selectionQuote.top}px`, left: `${selectionQuote.left}px` }"
+    @mousedown.prevent
+    @click="quoteSelection"
+  >
+    引用选中
+  </button>
 </template>

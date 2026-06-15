@@ -17,6 +17,7 @@ module Community
           color: ub.badge.color
         }
       end
+      likes_received = Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count
 
       render json: {
         username: user.username,
@@ -26,7 +27,11 @@ module Community
         trust_level: trust[:level],
         trust_name: trust[:name],
         posts_count: posts_count,
+        likes_received: likes_received,
+        bio: user.bio.presence,
         member_since: l(user.created_at, format: :short),
+        last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
+        online: user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago,
         badges: badges,
         message_url: (logged_in? && current_user.id != user.id && Community::TrustLevel.can_send_pm?(current_user)) ? new_forum_conversation_path(to: user.username) : nil
       }

@@ -15,7 +15,11 @@ export interface UserCardData {
   trust_level: number
   trust_name: string
   posts_count: number
+  likes_received?: number
+  bio?: string | null
   member_since: string
+  last_seen_at?: string | null
+  online?: boolean
   badges: Array<{ name: string; icon: string | null; color: string | null }>
   message_url: string | null
 }
@@ -71,11 +75,13 @@ onBeforeUnmount(() => {
           <img :src="card.avatar_url" :alt="card.username" class="h-10 w-10 rounded-full" />
           <div class="min-w-0">
             <p class="font-medium">{{ card.display_name || card.username }}</p>
-            <p class="text-xs text-muted-foreground">@{{ card.username }} · {{ card.trust_name }}</p>
+            <p class="text-xs text-muted-foreground">@{{ card.username }} · {{ card.trust_name }}<span v-if="card.online" class="ml-1 text-green-600">· 在线</span></p>
           </div>
         </div>
+        <p v-if="card.bio" class="mt-2 line-clamp-2 text-xs text-muted-foreground">{{ card.bio }}</p>
         <p class="mt-2 text-xs text-muted-foreground">
-          {{ card.posts_count }} 帖 · 加入于 {{ card.member_since }}
+          {{ card.posts_count }} 帖<span v-if="card.likes_received != null"> · {{ card.likes_received }} 获赞</span> · 加入于 {{ card.member_since }}
+          <span v-if="card.last_seen_at && !card.online"> · 最后在线 {{ card.last_seen_at }}</span>
         </p>
         <div v-if="card.badges.length" class="mt-2 flex flex-wrap gap-1">
           <span

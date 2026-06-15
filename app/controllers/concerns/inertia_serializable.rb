@@ -267,6 +267,9 @@ module InertiaSerializable
       report_url: current_user ? new_forum_report_path(reportable_type: "Community::Post", reportable_id: post.id) : nil,
       raw_url: raw_forum_post_path(post),
       fork_topic_url: current_user ? fork_topic_forum_post_path(post) : nil,
+      forked_topics: post.forked_topics.map { |topic|
+        { id: topic.public_id, title: topic.title, url: forum_topic_path(topic) }
+      },
       update_url: forum_post_path(post)
     }
   end
@@ -431,9 +434,12 @@ module InertiaSerializable
     seo = product.seo || {}
     title = seo["title"].presence || product.name
     description = seo["description"].presence || product.summary.presence || product.description&.truncate(160)
+    image = product.image_url.presence
+    image ||= url_for(product.cover_image) if product.cover_image.attached?
     {
       seo_title: title,
-      seo_description: description
+      seo_description: description,
+      seo_image: image
     }
   end
 

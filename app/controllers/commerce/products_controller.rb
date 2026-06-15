@@ -64,7 +64,9 @@ module Commerce
         priceMin: params[:price_min].to_s,
         priceMax: params[:price_max].to_s,
         compareCount: compare_product_count,
-        pagination: pagy_props(@pagy)
+        pagination: pagy_props(@pagy),
+        seo_title: SiteSetting.get("store.seo_title", "").presence || "商城",
+        seo_description: SiteSetting.get("store.seo_description", "").presence
       }
     end
 

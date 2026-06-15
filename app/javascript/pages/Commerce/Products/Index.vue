@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { Head, Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -58,6 +58,8 @@ const props = defineProps<{
   priceMax?: string
   pagination: PaginationMeta
   compareCount?: number
+  seo_title?: string
+  seo_description?: string | null
 }>()
 
 const q = ref(props.query)
@@ -86,6 +88,12 @@ function quickAdd(product: ProductItem) {
 </script>
 
 <template>
+  <Head v-if="seo_title">
+    <title>{{ seo_title }}</title>
+    <meta v-if="seo_description" head-key="description" name="description" :content="seo_description" />
+    <meta head-key="og:title" property="og:title" :content="seo_title" />
+    <meta v-if="seo_description" head-key="og:description" property="og:description" :content="seo_description" />
+  </Head>
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '商城', current: true },

@@ -838,3 +838,22 @@ app/
 | 订单收货地址 | `store_orders.shipping_address` + 结账表单 + `CreateOrder` |
 | 弃购购物车深链 | `store_carts.recovery_token` + 邮件/通知恢复 URL |
 | 再次购买跳过原因 | `ReorderFromOrder` 详细 `skipped` + 订单页提示 |
+
+### 第四十八轮（分叉回溯、楼主关帖与商城结账完善）
+
+| 功能 | 实现 |
+|------|------|
+| 原帖分叉回溯链接（Discourse） | `Post#forked_topics` + `Topics/Show.vue` 衍生主题列表 |
+| 楼主关闭/重开主题（XenForo） | `CloseOwnTopic` + `topics#close_own` / `reopen_own` |
+| 帖子图片灯箱（Discourse） | `ImageLightbox.vue` 点击放大 |
+| 主题回复排序 | `TopicsController` `post_sort` + 最早/最新切换 |
+| 选中文字引用（Discourse） | `Topics/Show.vue` 划词引用浮层 |
+| 用户卡片增强 | `UsersController#card` bio/获赞/在线状态 |
+| 收货地址服务端校验 | `ValidateShippingAddress` + `CreateOrder` |
+| 结账页运费展示 | `Checkout/Show.vue` 运费行与免运费提示 |
+| 结账地址预填 | 上次订单 `shipping_address` 自动填充 |
+| 收据/管理端地址 | `receipt.html.erb` / PDF / 管理订单详情 |
+| 商城首页 SEO | SiteSetting `store.seo_title` + `Products/Index.vue` |
+| 商品 og:image | `product_seo_props.seo_image` + `Products/Show.vue` |
+| 弃购恢复提示横幅 | `cartRecovered` + `Carts/Show.vue` |
+| 多选引用移除同步 | 移除引用时同步清理回复正文 |

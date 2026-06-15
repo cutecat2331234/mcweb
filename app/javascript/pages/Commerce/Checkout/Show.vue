@@ -39,6 +39,19 @@ const props = defineProps<{
   pendingGiftCardCode?: string | null
   couponAutoApplied?: boolean
   requiresShipping?: boolean
+  defaultShippingAddress?: {
+    name: string
+    phone: string
+    line1: string
+    line2: string
+    city: string
+    province: string
+    postal_code: string
+  } | null
+  shippingLabel?: string | null
+  freeShipping?: boolean
+  freeShippingMinLabel?: string | null
+  freeShippingRemainingLabel?: string | null
   previewCouponUrl: string
   previewGiftCardUrl: string
 }>()
@@ -50,13 +63,13 @@ const form = useForm({
     gift_card_code: props.pendingGiftCardCode || '',
     notes: '',
     shipping_address: {
-      name: '',
-      phone: '',
-      line1: '',
-      line2: '',
-      city: '',
-      province: '',
-      postal_code: '',
+      name: props.defaultShippingAddress?.name || '',
+      phone: props.defaultShippingAddress?.phone || '',
+      line1: props.defaultShippingAddress?.line1 || '',
+      line2: props.defaultShippingAddress?.line2 || '',
+      city: props.defaultShippingAddress?.city || '',
+      province: props.defaultShippingAddress?.province || '',
+      postal_code: props.defaultShippingAddress?.postal_code || '',
     },
   },
 })
@@ -180,6 +193,8 @@ onMounted(() => {
 
     <div class="space-y-1 text-sm">
       <p>小计：{{ subtotalLabel }}</p>
+      <p v-if="shippingLabel">运费：{{ freeShipping ? '免运费' : shippingLabel }}</p>
+      <p v-if="freeShippingRemainingLabel" class="text-xs text-amber-600">还差 {{ freeShippingRemainingLabel }} 可享免运费</p>
       <p v-if="discountLabel" class="text-green-600">优惠：-{{ discountLabel }}</p>
       <p v-if="giftCardLabel" class="text-green-600">礼品卡：-{{ giftCardLabel }}</p>
       <p class="font-medium">应付：{{ totalLabel }}</p>

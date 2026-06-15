@@ -24,6 +24,12 @@ module Commerce
         return validation if validation.failure?
       end
 
+      address_result = Commerce::ValidateShippingAddress.call(
+        cart_items: @cart.items.includes(:product),
+        shipping_address: @shipping_address
+      )
+      return address_result if address_result.failure?
+
       order = nil
       coupon_error = nil
 

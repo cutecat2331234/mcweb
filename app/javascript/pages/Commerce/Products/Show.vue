@@ -64,6 +64,7 @@ export interface ProductDetail {
   maximum_quantity?: number | null
   seo_title?: string
   seo_description?: string | null
+  seo_image?: string | null
   image_url: string | null
   gallery_urls: string[]
   version?: string | null
@@ -376,6 +377,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <meta v-if="product.seo_description" head-key="description" name="description" :content="product.seo_description" />
     <meta head-key="og:title" property="og:title" :content="product.seo_title" />
     <meta v-if="product.seo_description" head-key="og:description" property="og:description" :content="product.seo_description" />
+    <meta v-if="product.seo_image" head-key="og:image" property="og:image" :content="product.seo_image" />
     <meta head-key="og:type" property="og:type" content="product" />
   </Head>
 

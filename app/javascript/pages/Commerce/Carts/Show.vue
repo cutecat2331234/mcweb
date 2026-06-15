@@ -57,6 +57,7 @@ const props = defineProps<{
     image_url?: string | null
     summary?: string | null
   }>
+  cartRecovered?: boolean
 }>()
 
 const couponCode = ref(props.pendingCouponCode || '')
@@ -178,6 +179,10 @@ function clearCart() {
 
 <template>
   <PageHeader title="购物车" />
+
+  <p v-if="cartRecovered" class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+    已通过提醒链接恢复你的购物车，可以继续结账。
+  </p>
 
   <div v-if="items.length" class="space-y-6">
     <div class="rounded-lg border">

@@ -5,9 +5,9 @@ module Community
     include Community::TopicVisibility
     include Community::TopicListPreloadable
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite]
+    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite]
+    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own]
 
     def show
       @topic.record_view!
@@ -18,8 +18,12 @@ module Community
                     else
                       @topic.posts.chronological
                     end
-      posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits, user: { user_badges: :badge })
+      posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits, :forked_topics, user: { user_badges: :badge })
       posts_scope = filter_blocked_posts(posts_scope)
+      posts_scope = case params[:post_sort]
+                    when "recent" then posts_scope.reorder(floor_number: :desc)
+                    else posts_scope
+                    end
       if params[:q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
         posts_scope = posts_scope.where("body ILIKE ?", q)
@@ -93,6 +97,8 @@ module Community
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
         poll: @topic.poll ? serialize_poll(@topic.poll) : nil,
         topicSearchQuery: params[:q].to_s,
+        postSort: params[:post_sort].to_s.presence || "oldest",
+        canCloseOwn: can_close_own_topic?,
         topicBookmark: topic_bookmark ? {
           id: topic_bookmark.id,
           update_url: forum_bookmark_path(topic_bookmark),
@@ -242,6 +248,31 @@ module Community
 
       if result.success?
         redirect_to forum_topic_path(@topic), notice: "主题已更新。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def close_own
+      result = Community::CloseOwnTopic.call(
+        user: current_user,
+        topic: @topic,
+        action: "close",
+        lock_reason: params[:lock_reason]
+      )
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "主题已关闭。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def reopen_own
+      result = Community::CloseOwnTopic.call(user: current_user, topic: @topic, action: "reopen")
+
+      if result.success?
+        redirect_to forum_topic_path(@topic), notice: "主题已重新打开。"
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -509,6 +540,13 @@ module Community
       return false unless current_user
 
       current_user.id == @topic.user_id || current_user.permission?("forum.topics.lock")
+    end
+
+    def can_close_own_topic?
+      return false unless current_user
+      return false unless SiteSetting.get("forum.allow_op_close", "true") == "true"
+
+      current_user.id == @topic.user_id
     end
 
     def movable_sections

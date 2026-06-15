@@ -16,6 +16,9 @@ module Commerce
       pdf.text "Order: #{@order.order_number}"
       pdf.text "Date: #{@order.created_at.strftime('%Y-%m-%d %H:%M')}"
       pdf.text "Status: #{@order.status}"
+      if @order.shipping_address.present? && @order.shipping_address.values.any?(&:present?)
+        pdf.text "Shipping: #{format_address(@order.shipping_address)}"
+      end
       pdf.move_down 16
       pdf.text "Items", style: :bold
       pdf.move_down 8
@@ -34,6 +37,9 @@ module Commerce
         code = @order.gift_card&.code
         pdf.text "Gift card#{code ? " (#{code})" : ""}: -#{format_money(@order.gift_card_amount_cents, @order.currency)}"
       end
+      if @order.shipping_cents.positive?
+        pdf.text "Shipping: #{format_money(@order.shipping_cents, @order.currency)}"
+      end
 
       pdf.move_down 8
       pdf.text "Total: #{format_money(@order.total_cents, @order.currency)}", style: :bold
@@ -48,6 +54,18 @@ module Commerce
     def format_money(cents, currency)
       amount = cents / 100.0
       "#{currency} #{format('%.2f', amount)}"
+    end
+
+    def format_address(address)
+      return "" unless address.is_a?(Hash)
+
+      [
+        address["name"],
+        address["phone"],
+        [ address["province"], address["city"] ].compact.join(" "),
+        [ address["line1"], address["line2"] ].compact.join(" "),
+        address["postal_code"]
+      ].map(&:presence).compact.join(", ")
     end
   end
 end

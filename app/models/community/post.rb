@@ -9,6 +9,7 @@ module Community
     has_many :child_posts, class_name: "Community::Post", foreign_key: :parent_post_id, dependent: :nullify
     has_many :edits, class_name: "Community::PostEdit", foreign_key: :forum_post_id, dependent: :destroy
     has_many :reactions, class_name: "Community::Reaction", foreign_key: :forum_post_id, dependent: :destroy
+    has_many :forked_topics, class_name: "Community::Topic", foreign_key: :source_post_id, dependent: :nullify
 
     enum :status, { published: "published", hidden: "hidden", deleted: "deleted" }, validate: true
     enum :post_type, { regular: "regular", small_action: "small_action" }, validate: true, prefix: true

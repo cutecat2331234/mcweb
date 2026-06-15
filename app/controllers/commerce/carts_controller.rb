@@ -28,6 +28,7 @@ module Commerce
         moveToWishlistUrl: move_to_wishlist_store_cart_path,
         clearCartUrl: clear_store_cart_path,
         crossSellProducts: cross_sell_products(items),
+        cartRecovered: params[:recovery].present? && @cart.recovery_token == params[:recovery].to_s,
         **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon)
       }
     end

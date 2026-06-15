@@ -262,6 +262,27 @@ function search() {
   router.get(routes.forumSearch, searchParams(), { preserveState: true })
 }
 
+const liveSearch = ref(true)
+let liveSearchTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(q, (value) => {
+  if (!liveSearch.value) return
+  const trimmed = value.trim()
+  if (trimmed.length < 2) return
+  if (liveSearchTimer) clearTimeout(liveSearchTimer)
+  liveSearchTimer = setTimeout(() => {
+    router.get(routes.forumSearch, searchParams(), {
+      preserveState: true,
+      preserveScroll: true,
+      only: ['query', 'topics', 'posts', 'topicsPagination', 'postsPagination'],
+    })
+  }, 450)
+})
+
+onBeforeUnmount(() => {
+  if (liveSearchTimer) clearTimeout(liveSearchTimer)
+})
+
 function saveFilters() {
   return {
     section: sectionSlug.value,

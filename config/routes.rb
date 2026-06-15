@@ -51,6 +51,7 @@ Rails.application.routes.draw do
       resources :tag_groups
       resources :warnings, only: %i[index]
       resources :canned_responses
+      resources :webhook_deliveries, only: %i[index]
     end
     namespace :store do
       resource :settings, only: %i[show update]
@@ -207,6 +208,7 @@ Rails.application.routes.draw do
     get "digest/unsubscribe", to: "digest_unsubscribes#show", as: :unsubscribe_forum_digest
     get "saved_searches.opml", to: "rss#saved_searches_opml", as: :saved_searches_opml, defaults: { format: :xml }
     get "saved_searches/:id.rss", to: "rss#saved_search", as: :saved_search_rss, defaults: { format: :rss }
+    post "webhook_deliveries/:id/retry", to: "saved_search_webhook_deliveries#retry", as: :retry_saved_search_webhook_delivery
     resources :saved_searches, only: %i[index create update destroy] do
       collection do
         get :unsubscribe

@@ -282,6 +282,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   create_table "forum_saved_search_webhook_deliveries", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "event_type", null: false
+    t.jsonb "request_payload", default: {}, null: false
     t.text "response_body"
     t.integer "response_code"
     t.bigint "saved_search_id", null: false

@@ -27,6 +27,7 @@ const nav = [
     { label: '徽章', href: adminRoutes.forumBadges },
     { label: '标签', href: adminRoutes.forumTags },
     { label: '论坛设置', href: adminRoutes.forumSettings },
+    { label: 'Webhook 投递', href: adminRoutes.forumWebhookDeliveries },
   ]},
   { label: '商城', items: [
     { label: '商品', href: adminRoutes.storeProducts },

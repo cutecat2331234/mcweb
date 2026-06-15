@@ -1256,3 +1256,13 @@ app/
 | 搜索建议增强 | 分区 + 保存的搜索自动补全 |
 | 发货邮件物流链接 | `Commerce::TrackingUrl` + `order_shipped` 可点击查询 |
 | 物流 URL 复用 | `InertiaSerializable` 委托 `TrackingUrl` |
+
+### 第八十轮（Webhook 重试、管理投递日志、物流时间线、搜索实时刷新）
+
+| 功能 | 实现 |
+|------|------|
+| Webhook 请求体存储 | `forum_saved_search_webhook_deliveries.request_payload` |
+| Webhook 手动重试 | `RetrySavedSearchWebhook` + 偏好页「重试发送」 |
+| 管理后台投递日志 | `Admin::Forum::WebhookDeliveriesController#index` + 状态筛选 |
+| 订单物流时间线 | `Commerce::OrderShippingTimeline` + 订单详情进度条 |
+| 搜索实时刷新 | 搜索页输入 ≥2 字后 450ms 防抖自动 `router.get` |

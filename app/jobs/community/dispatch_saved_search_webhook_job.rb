@@ -9,7 +9,8 @@ module Community
         saved_search_id: saved_search_id,
         event_type: payload["event"].to_s,
         url: url,
-        status: "pending"
+        status: "pending",
+        request_payload: payload
       )
 
       uri = URI.parse(url)

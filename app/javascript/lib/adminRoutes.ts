@@ -23,6 +23,7 @@ export const adminRoutes = {
   editForumBadge: (id: number) => `/admin/forum/badges/${id}/edit`,
   forumTags: '/admin/forum/tags',
   forumSettings: '/admin/forum/settings',
+  forumWebhookDeliveries: '/admin/forum/webhook_deliveries',
   newForumTag: '/admin/forum/tags/new',
   editForumTag: (id: number) => `/admin/forum/tags/${id}/edit`,
   ipBans: '/admin/system/ip_bans',

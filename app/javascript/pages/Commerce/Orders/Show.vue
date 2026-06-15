@@ -75,6 +75,13 @@ const props = defineProps<{
       label: string
       created_at: string
     }>
+    shipping_timeline?: Array<{
+      key: string
+      label: string
+      state: 'done' | 'current' | 'pending'
+      at: string | null
+    }>
+    delivery_estimate?: string | null
     items: Array<{
       id?: number
       product_name: string
@@ -158,8 +165,33 @@ function refreshDownload(url: string) {
     <span class="font-medium">物流信息：</span>
     {{ order.shipping_carrier || '快递' }} — {{ order.tracking_number }}
     <span v-if="order.shipped_at" class="text-muted-foreground">（{{ order.shipped_at }} 发货）</span>
+    <span v-if="order.delivery_estimate" class="text-muted-foreground"> · {{ order.delivery_estimate }}</span>
     <a v-if="order.tracking_url" :href="order.tracking_url" target="_blank" rel="noopener" class="ml-2 text-primary hover:underline">查询物流</a>
   </p>
+
+  <div v-if="order.shipping_timeline?.length" class="mb-6 rounded-lg border p-4">
+    <h2 class="mb-4 text-sm font-semibold">物流进度</h2>
+    <ol class="flex flex-wrap gap-2 sm:flex-nowrap sm:justify-between">
+      <li
+        v-for="step in order.shipping_timeline"
+        :key="step.key"
+        class="flex min-w-[4.5rem] flex-1 flex-col items-center text-center text-xs"
+      >
+        <span
+          class="mb-2 flex h-8 w-8 items-center justify-center rounded-full border-2"
+          :class="{
+            'border-primary bg-primary text-primary-foreground': step.state === 'done',
+            'border-primary bg-background text-primary': step.state === 'current',
+            'border-muted-foreground/30 text-muted-foreground': step.state === 'pending',
+          }"
+        >
+          {{ step.state === 'done' ? '✓' : step.state === 'current' ? '…' : '○' }}
+        </span>
+        <span :class="step.state === 'pending' ? 'text-muted-foreground' : 'font-medium'">{{ step.label }}</span>
+        <span v-if="step.at" class="mt-1 text-[10px] text-muted-foreground">{{ step.at }}</span>
+      </li>
+    </ol>
+  </div>
 
   <p v-if="order.refund_window_expires_label && order.can_request_refund" class="mb-4 rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
   退款窗口将于 {{ order.refund_window_expires_label }} 关闭，请尽快申请。

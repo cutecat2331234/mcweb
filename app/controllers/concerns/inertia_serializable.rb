@@ -740,6 +740,15 @@ module InertiaSerializable
           created_at: l(event.created_at, format: :short)
         }
       end,
+      shipping_timeline: Commerce::OrderShippingTimeline.call(order).map do |step|
+        {
+          key: step[:key],
+          label: step[:label],
+          state: step[:state],
+          at: step[:at] ? l(step[:at], format: :short) : nil
+        }
+      end,
+      delivery_estimate: order.shipping_method.present? ? Commerce::ShippingMethods.delivery_estimate_label(Commerce::ShippingMethods.find(order.shipping_method)) : nil,
       cancel_url: cancel_store_order_path(order),
       reorder_url: reorder_store_order_path(order),
       can_reorder: order.items.any?,

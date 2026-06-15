@@ -140,7 +140,8 @@ module Community
             event_type: delivery.event_type,
             status: delivery.status,
             response_code: delivery.response_code,
-            created_at: l(delivery.created_at, format: :short)
+            created_at: l(delivery.created_at, format: :short),
+            retry_url: delivery.status == "failed" && delivery.request_payload.present? ? forum_retry_saved_search_webhook_delivery_path(delivery) : nil
           }
         end
     end

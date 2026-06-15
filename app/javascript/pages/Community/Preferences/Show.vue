@@ -44,6 +44,7 @@ const props = defineProps<{
     status: string
     response_code: number | null
     created_at: string
+    retry_url?: string | null
   }>
 }>()
 
@@ -65,6 +66,16 @@ const renamingSearchId = ref<number | null>(null)
 
 function submit() {
   form.patch(routes.forumPreferences)
+}
+
+async function retryWebhook(url: string) {
+  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+  await fetch(url, {
+    method: 'POST',
+    headers: { 'X-CSRF-Token': token, Accept: 'text/html' },
+    credentials: 'same-origin',
+  })
+  router.reload({ only: ['savedSearchWebhookDeliveries'] })
 }
 
 async function toggleSavedSearchNotify(search: SavedSearchItem) {
@@ -294,6 +305,14 @@ async function saveRenameSearch(search: SavedSearchItem) {
         — {{ delivery.status }}
         <span v-if="delivery.response_code" class="text-muted-foreground">({{ delivery.response_code }})</span>
         <span class="ml-2 text-muted-foreground">{{ delivery.created_at }}</span>
+        <button
+          v-if="delivery.retry_url"
+          type="button"
+          class="mt-1 block text-xs text-primary hover:underline"
+          @click="retryWebhook(delivery.retry_url)"
+        >
+          重试发送
+        </button>
       </li>
     </ul>
   </section>

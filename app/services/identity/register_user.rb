@@ -34,6 +34,13 @@ module Identity
         metadata: { email: @email, username: @username }
       )
 
+      MailDeliveryJob.perform_later(
+        "Identity::Mailer",
+        "verification_email",
+        "deliver_now",
+        args: [ user.id, verification_token ]
+      )
+
       ServiceResult.success(user: user, verification_token: verification_token)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

@@ -2,10 +2,12 @@ ENV["RAILS_ENV"] ||= "test"
 require_relative "../config/environment"
 require "rails/test_help"
 require "minitest/reporters"
+require "active_job/test_helper"
 Minitest::Reporters.use! Minitest::Reporters::ProgressReporter.new
 
 module ActiveSupport
   class TestCase
+    include ActiveJob::TestHelper
     parallelize(workers: :number_of_processors)
 
     setup do

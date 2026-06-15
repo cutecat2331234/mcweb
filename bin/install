@@ -48,7 +48,7 @@ install_dependencies() {
       DEBIAN_FRONTEND=noninteractive apt-get install -y \
         build-essential libpq-dev libyaml-dev libssl-dev zlib1g-dev \
         libvips-dev imagemagick curl git postgresql postgresql-contrib \
-        caddy
+        caddy nodejs
       ;;
     *)
       echo "不支持的操作系统: $os" >&2
@@ -111,14 +111,42 @@ write_caddyfile() {
 
 main() {
   require_root
+
+  local unattended=0
+  for arg in "$@"; do
+    case "$arg" in
+      --unattended) unattended=1 ;;
+      -h|--help) usage; exit 0 ;;
+    esac
+  done
+
+  if [[ "${unattended}" -eq 1 ]]; then
+    local install_env="/etc/mcweb/install.env"
+    if [[ ! -f "${install_env}" ]]; then
+      echo "缺少 ${install_env}，请先复制 config/templates/install.env.example" >&2
+      exit 1
+    fi
+    # shellcheck disable=SC1090
+    source "${install_env}"
+  fi
+
   install_dependencies
   install_ruby
   deploy_release
   configure_app
   write_systemd_units
   write_caddyfile
-  echo "安装完成。请以 ${APP_USER} 用户运行: ${APP_ROOT}/current/bin/setup"
-  echo "然后启动: systemctl enable --now mcweb-web mcweb-worker caddy"
+
+  sudo -u "${APP_USER}" bash -lc "
+    export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\"
+    eval \"\$(rbenv init - bash)\"
+    cd ${APP_ROOT}/current
+    npm ci
+    bin/setup
+  "
+
+  echo "安装完成。请访问 https://\${MCWEB_DOMAIN:-your-domain}/setup 完成初始化。"
+  echo "服务启动: systemctl enable --now mcweb-web mcweb-worker caddy"
 }
 
 main "$@"

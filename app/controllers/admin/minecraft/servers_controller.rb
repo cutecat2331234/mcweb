@@ -13,14 +13,14 @@ module Admin
           title: "Minecraft 服务器",
           columns: [
             admin_column(:name, "名称", link: true),
-            admin_column(:host, "主机"),
+            admin_column(:address, "地址"),
             admin_column(:port, "端口"),
             admin_column(:status, "状态")
           ],
           rows: servers.map do |server|
             admin_row(
               name: server.name,
-              host: server.host,
+              address: server.address.to_s,
               port: server.port.to_s,
               status: server.status,
               url: admin_minecraft_server_path(server)
@@ -33,7 +33,7 @@ module Admin
         render inertia: "Admin/Generic/Show", props: {
           title: @server.name,
           fields: [
-            { label: "主机", value: @server.host },
+            { label: "地址", value: @server.address.to_s },
             { label: "端口", value: @server.port.to_s },
             { label: "状态", value: @server.status }
           ],
@@ -78,7 +78,7 @@ module Admin
       end
 
       def server_params
-        params.expect(server: %i[name host port status])[:server]
+        params.expect(server: %i[name address port status])[:server]
       end
     end
   end

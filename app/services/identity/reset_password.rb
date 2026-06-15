@@ -38,6 +38,13 @@ module Identity
         resource: user
       )
 
+      MailDeliveryJob.perform_later(
+        "Identity::Mailer",
+        "password_reset_email",
+        "deliver_now",
+        args: [ user.id, reset_token ]
+      )
+
       ServiceResult.success(user: user, reset_token: reset_token)
     end
 

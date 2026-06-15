@@ -5,9 +5,19 @@ APP_ROOT="/opt/mcweb/current"
 cd "${APP_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 export RAILS_ENV="${RAILS_ENV:-production}"
-export BUNDLE_WITHOUT="${BUNDLE_WITHOUT:-development:test}"
+
+if [[ "${RAILS_ENV}" == "test" || "${RAILS_ENV}" == "development" ]]; then
+  export BUNDLE_WITHOUT="${BUNDLE_WITHOUT:-}"
+else
+  export BUNDLE_WITHOUT="${BUNDLE_WITHOUT:-development:test}"
+fi
 
 bundle check || bundle install --jobs 4
+
+if command -v npm >/dev/null 2>&1 && [[ -f package-lock.json ]]; then
+  npm ci
+fi
+
 bundle exec rails db:prepare
 bundle exec rails tailwindcss:build
 bin/vite build

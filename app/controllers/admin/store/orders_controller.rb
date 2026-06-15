@@ -32,11 +32,33 @@ module Admin
               customer: order.user.username,
               status: order.status,
               total: format_money(order.total_cents, order.currency),
-              url: admin_store_order_path(order)
+              url: admin_store_order_path(order),
+              publicId: order.public_id
             )
           end,
-          pagination: pagy_props(@pagy)
+          pagination: pagy_props(@pagy),
+          selectable: current_user.permission?("store.orders.read"),
+          bulkOrderUrl: current_user.permission?("store.orders.read") ? bulk_update_admin_store_orders_path : nil,
+          bulkOrderActions: bulk_order_actions
         }
+      end
+
+      def bulk_update
+        require_permission("store.orders.read")
+        result = Commerce::BulkUpdateOrders.call(
+          actor: current_user,
+          order_public_ids: params[:order_ids],
+          action: params[:action_type]
+        )
+
+        destination = safe_local_path(params[:return_to]) || admin_store_orders_path
+        if result.success?
+          notice = "已处理 #{result.value[:processed]} 个订单"
+          notice += "，#{result.value[:failed]} 个失败" if result.value[:failed].positive?
+          redirect_to destination, notice: notice
+        else
+          redirect_to destination, alert: result.error || "操作失败"
+        end
       end
 
       def export
@@ -321,6 +343,13 @@ module Admin
 
       def refundable_admin_status?
         %w[paid fulfilled completed].include?(@order.status)
+      end
+
+      def bulk_order_actions
+        actions = []
+        actions << { label: "批量取消待支付", action: "cancel_pending" } if current_user.permission?("store.orders.read")
+        actions << { label: "批量标记发货完成", action: "mark_fulfilled" } if current_user.permission?("store.orders.read")
+        actions
       end
     end
   end

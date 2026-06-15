@@ -110,6 +110,7 @@ module Community
                "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
       end
       @note = @bookmark.note
+      @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
 
       mail(to: @user.email, subject: "书签提醒：#{@topic.title.truncate(60)}")
     end
@@ -142,6 +143,35 @@ module Community
       @level_name = level_name
       @url = "#{root_url.chomp('/')}#{forum_user_path(@user.username)}"
       mail(to: @user.email, subject: "信任等级提升：#{@level_name}")
+    end
+
+    def post_reaction(user_id, post_id, reactor_id, emoji)
+      @user = User.find(user_id)
+      @post = Community::Post.find(post_id)
+      @reactor = User.find(reactor_id)
+      @emoji = emoji
+      @topic = @post.topic
+      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      mail(to: @user.email, subject: "#{@reactor.username} 对你的帖子做出了反应 #{@emoji}")
+    end
+
+    def post_quoted(user_id, post_id, quoter_id, quoted_post_id)
+      @user = User.find(user_id)
+      @post = Community::Post.find(post_id)
+      @quoter = User.find(quoter_id)
+      @quoted_post = Community::Post.find(quoted_post_id)
+      @topic = @post.topic
+      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      mail(to: @user.email, subject: "#{@quoter.username} 引用了你的帖子")
+    end
+
+    def topic_solved(user_id, topic_id, post_id, actor_id)
+      @user = User.find(user_id)
+      @topic = Community::Topic.find_by!(public_id: topic_id)
+      @post = Community::Post.find(post_id)
+      @actor = User.find(actor_id)
+      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      mail(to: @user.email, subject: "你的主题已标记为已解决")
     end
 
   private

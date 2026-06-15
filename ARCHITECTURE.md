@@ -1407,3 +1407,15 @@ app/
 | 最新/搜索批量版主 | Latest + Search 列表多选锁定/归档/解锁/取消归档 |
 | 批量反向操作 | `BulkModerateToolbar` 组件（解锁/取消归档） |
 | 管理后台批量版主 | Admin 主题列表分页 + 多选批量版主操作 |
+
+### 第九十四轮（反应/引用邮件、书签修复、批量重定向、商城批量订单）
+
+| 功能 | 实现 |
+|------|------|
+| 反应/引用/已解决邮件 | `ForumMailer` + 双通道通知服务 |
+| 书签提醒修复 | 邮件-only 用户可收到；未发布/关闭通知时清除 `remind_at` |
+| 批量版主 return_to | `safe_local_path` + 各列表传 `return_to` 参数 |
+| 用户卡片徽章日期 | `UserHoverCard` 显示 `granted_at` |
+| 帖子书签提醒列 | 书签页帖子表显示提醒时间 |
+| 商城批量订单 | `BulkUpdateOrders` 批量取消待支付/标记发货完成 |
+| 摘要类型扩展 | `SendForumDigest` 含 `forum.quote`、`forum.topic_solved` |

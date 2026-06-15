@@ -137,6 +137,7 @@ function bulkModerate(action: string) {
   router.patch(props.bulkModerateUrl, {
     topic_ids: selectedTopicIds.value,
     action_type: action,
+    return_to: window.location.pathname + window.location.search,
   }, {
     onSuccess: () => { selectedTopicIds.value = [] },
   })

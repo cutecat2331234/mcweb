@@ -20,7 +20,7 @@ export interface UserCardData {
   member_since: string
   last_seen_at?: string | null
   online?: boolean
-  badges: Array<{ name: string; icon: string | null; color: string | null }>
+  badges: Array<{ name: string; icon: string | null; color: string | null; granted_at?: string }>
   message_url: string | null
   follow_url?: string | null
   following?: boolean
@@ -101,8 +101,10 @@ onBeforeUnmount(() => {
             :key="badge.name"
             class="rounded border px-1.5 py-0.5 text-[10px]"
             :style="badge.color ? { borderColor: badge.color, color: badge.color } : undefined"
+            :title="badge.granted_at ? `${badge.name} · ${badge.granted_at}` : badge.name"
           >
             {{ badge.icon ? `${badge.icon} ` : '' }}{{ badge.name }}
+            <span v-if="badge.granted_at" class="opacity-70">· {{ badge.granted_at }}</span>
           </span>
         </div>
         <div class="mt-3 flex flex-wrap gap-2">

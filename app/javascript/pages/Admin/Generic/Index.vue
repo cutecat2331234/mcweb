@@ -72,6 +72,8 @@ const props = defineProps<{
   pagination?: PaginationMeta
   selectable?: boolean
   bulkModerateUrl?: string | null
+  bulkOrderUrl?: string | null
+  bulkOrderActions?: Array<{ label: string; action: string }>
 }>()
 
 const selectedPublicIds = ref<string[]>([])
@@ -127,6 +129,19 @@ function bulkModerate(action: string) {
   router.patch(props.bulkModerateUrl, {
     topic_ids: selectedPublicIds.value,
     action_type: action,
+    return_to: window.location.pathname + window.location.search,
+  }, {
+    onSuccess: () => { selectedPublicIds.value = [] },
+  })
+}
+
+function bulkOrder(action: string) {
+  if (!props.bulkOrderUrl || selectedPublicIds.value.length === 0) return
+  if (!confirm('确定执行此批量操作吗？')) return
+  router.patch(props.bulkOrderUrl, {
+    order_ids: selectedPublicIds.value,
+    action_type: action,
+    return_to: window.location.pathname + window.location.search,
   }, {
     onSuccess: () => { selectedPublicIds.value = [] },
   })
@@ -159,6 +174,17 @@ function bulkModerate(action: string) {
         :count="selectedPublicIds.length"
         @moderate="bulkModerate"
       />
+      <template v-if="selectable && bulkOrderUrl && bulkOrderActions?.length && selectedPublicIds.length">
+        <button
+          v-for="item in bulkOrderActions"
+          :key="item.action"
+          type="button"
+          class="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+          @click="bulkOrder(item.action)"
+        >
+          {{ item.label }}（{{ selectedPublicIds.length }}）
+        </button>
+      </template>
     </div>
   </div>
 

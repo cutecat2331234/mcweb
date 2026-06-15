@@ -81,6 +81,7 @@ Rails.application.routes.draw do
       resources :orders, only: %i[index show update] do
         collection do
           get :export
+          patch :bulk_update
         end
         member do
           post :staff_note

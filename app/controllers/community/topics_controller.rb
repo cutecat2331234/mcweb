@@ -293,9 +293,9 @@ module Community
       if result.success?
         notice = "已处理 #{result.value[:moderated]} 个主题"
         notice += "，#{result.value[:failed]} 个失败" if result.value[:failed].positive?
-        redirect_back fallback_location: forum_latest_path, notice: notice
+        redirect_to bulk_moderate_destination, notice: notice
       else
-        redirect_back fallback_location: forum_latest_path, alert: result.error || "操作失败"
+        redirect_to bulk_moderate_destination, alert: result.error || "操作失败"
       end
     end
 
@@ -698,6 +698,10 @@ module Community
         url: "#{request.base_url}#{forum_topic_path(topic)}",
         image: image.presence
       }
+    end
+
+    def bulk_moderate_destination
+      safe_local_path(params[:return_to]) || safe_local_path(request.referer) || forum_latest_path
     end
   end
 end

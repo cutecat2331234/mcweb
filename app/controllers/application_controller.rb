@@ -77,4 +77,13 @@ class ApplicationController < ActionController::Base
 
     share
   end
+
+  def safe_local_path(path)
+    value = path.to_s
+    return nil if value.blank?
+    return nil unless value.start_with?("/")
+    return nil if value.start_with?("//")
+
+    value
+  end
 end

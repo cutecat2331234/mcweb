@@ -288,6 +288,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "query", default: "", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.string "webhook_url"
     t.index ["user_id", "created_at"], name: "index_forum_saved_searches_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_forum_saved_searches_on_user_id"
   end

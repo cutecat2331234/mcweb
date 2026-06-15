@@ -32,6 +32,7 @@ module Community
         "deliver_now",
         args: [ search.id, topics.map(&:id) ]
       )
+      Community::DispatchSavedSearchWebhook.call(saved_search: search, topics: topics)
       search.update!(last_notified_at: Time.current)
       ServiceResult.success(sent: true, count: topics.size)
     end

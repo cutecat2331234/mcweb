@@ -119,6 +119,8 @@ SiteSetting.set("forum.reaction_emojis", "👍,❤️,😂,🎉,👀") unless Si
 SiteSetting.set("forum.group_pm_creator_only_add", "false") unless SiteSetting.exists?(key: "forum.group_pm_creator_only_add")
 SiteSetting.set("forum.saved_search_limit", "20") unless SiteSetting.exists?(key: "forum.saved_search_limit")
 SiteSetting.set("forum.saved_search_digest_hour", "9") unless SiteSetting.exists?(key: "forum.saved_search_digest_hour")
+SiteSetting.set("forum.digest_hour", "8") unless SiteSetting.exists?(key: "forum.digest_hour")
+SiteSetting.set("store.order_webhook_url", "") unless SiteSetting.exists?(key: "store.order_webhook_url")
 SiteSetting.set("store.compare_max_items", "4") unless SiteSetting.exists?(key: "store.compare_max_items")
 SiteSetting.set("store.cart_max_items", "99") unless SiteSetting.exists?(key: "store.cart_max_items")
 unless SiteSetting.exists?(key: "store.shipping_methods")

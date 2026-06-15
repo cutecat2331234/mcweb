@@ -24,7 +24,7 @@ production:
   forum_digest:
     class: Community::ForumDigestJob
     queue: mailers
-    schedule: at 8am every day
+    schedule: every hour at minute 10
   saved_search_digest:
     class: Community::SavedSearchDigestJob
     queue: mailers

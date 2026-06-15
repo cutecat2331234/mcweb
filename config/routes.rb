@@ -203,6 +203,8 @@ Rails.application.routes.draw do
     get "tags", to: "tags#index", as: :tags
     get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
+    get "digest/unsubscribe", to: "digest_unsubscribes#show", as: :unsubscribe_forum_digest
+    get "saved_searches.opml", to: "rss#saved_searches_opml", as: :saved_searches_opml, defaults: { format: :xml }
     get "saved_searches/:id.rss", to: "rss#saved_search", as: :saved_search_rss, defaults: { format: :rss }
     resources :saved_searches, only: %i[index create update destroy] do
       collection do

@@ -43,7 +43,8 @@ module Community
         digest_frequency: current_user.forum_digest_frequency,
         digest_watched_only: current_user.forum_digest_watched_only?,
         digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } },
-        savedSearches: serialize_saved_searches_for_preferences
+        savedSearches: serialize_saved_searches_for_preferences,
+        savedSearchesOpmlUrl: Community::SavedSearchPresenter.opml_path(current_user)
       }
     end
 
@@ -109,6 +110,7 @@ module Community
           filter_labels: Community::SavedSearchFilterSummary.call(search),
           url: forum_search_path(Community::SavedSearchPresenter.url_params(search)),
           rss_url: Community::SavedSearchPresenter.rss_path(search),
+          webhook_url: search.webhook_url,
           update_url: forum_saved_search_path(search),
           delete_url: forum_saved_search_path(search)
         }

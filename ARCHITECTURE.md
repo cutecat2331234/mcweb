@@ -1232,3 +1232,16 @@ app/
 | 结账配送预计送达 | `selectedShippingEstimate` 展示所选方式 `delivery_estimate` |
 | 摘要发送时间配置 | `forum.saved_search_digest_hour` + 每小时任务检查 |
 | 序列化复用 | `SavedSearchPresenter` 统一 url/rss 参数 |
+
+### 第七十八轮（筛选匹配修复、OPML、Webhook、论坛摘要退订、管理设置补全）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索筛选完整匹配 | `BuildSavedSearchTopicScope` 对齐搜索页全部筛选条件 |
+| 保存搜索 OPML 导出 | `SavedSearchOpmlToken` + `RssController#saved_searches_opml` |
+| 保存搜索 Webhook | `webhook_url` 字段 + `DispatchSavedSearchWebhook` |
+| 论坛摘要 HTML + 退订 | `digest.html.erb` + `ForumDigestUnsubscribeToken` |
+| 论坛摘要发送时间 | `forum.digest_hour` + 每小时任务检查 |
+| 论坛管理设置补全 | `forum.allow_op_close` / `forum.min_trust_level_reaction` |
+| 商城 Webhook URL 管理 | 管理后台 `store.order_webhook_url` |
+| 订单邮件送达预估 | `_order_details` 展示 `delivery_estimate_label` |

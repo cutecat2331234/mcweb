@@ -19,6 +19,7 @@ module Admin
         store.cart_max_items
         store.abandoned_cart_coupon_code
         store.order_webhook_secret
+        store.order_webhook_url
       ].freeze
 
       def show
@@ -111,7 +112,8 @@ module Admin
           "store.compare_max_items" => "对比列表上限",
           "store.cart_max_items" => "购物车商品种类上限",
           "store.abandoned_cart_coupon_code" => "弃购提醒优惠券代码",
-          "store.order_webhook_secret" => "订单 Webhook 密钥"
+          "store.order_webhook_secret" => "订单 Webhook 密钥",
+          "store.order_webhook_url" => "订单 Webhook URL"
         }[key] || key
       end
 
@@ -122,12 +124,14 @@ module Admin
           "store.compare_max_items" => "用户可同时对比的商品数量（对标 XenForo 资源对比）。",
           "store.cart_max_items" => "购物车中不同商品种类上限，0 表示不限制。",
           "store.abandoned_cart_coupon_code" => "弃购邮件中附带的优惠券，留空则不发放。",
-          "store.flat_shipping_cents" => "结账时「标准配送」的实际运费（分），会覆盖下方配送方式中 standard 的价格。"
+          "store.flat_shipping_cents" => "结账时「标准配送」的实际运费（分），会覆盖下方配送方式中 standard 的价格。",
+          "store.order_webhook_url" => "订单状态变更时 POST JSON 的目标 URL，留空则不发送。",
+          "store.order_webhook_secret" => "用于 X-McWeb-Signature HMAC 签名的密钥，可选。"
         }[key]
       end
 
       def setting_input_type(key)
-        return "text" if %w[store.seo_title store.seo_description store.abandoned_cart_coupon_code store.order_webhook_secret].include?(key)
+        return "text" if %w[store.seo_title store.seo_description store.abandoned_cart_coupon_code store.order_webhook_secret store.order_webhook_url].include?(key)
 
         "number"
       end

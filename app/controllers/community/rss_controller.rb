@@ -39,6 +39,15 @@ module Community
       head :not_found
     end
 
+    def saved_searches_opml
+      user_id = Community::SavedSearchOpmlToken.verify(params[:token])
+      user = User.find(user_id)
+      searches = user.forum_saved_searches.recent.limit(50)
+      render xml: build_opml(user, searches), content_type: "application/xml"
+    rescue Community::SavedSearchOpmlToken::InvalidToken, ActiveRecord::RecordNotFound
+      head :not_found
+    end
+
     private
 
     def build_feed(topics, title:, url:)
@@ -73,6 +82,29 @@ module Community
 
     def escape_xml(text)
       ERB::Util.html_escape(text.to_s)
+    end
+
+    def build_opml(user, searches)
+      outlines = searches.map do |search|
+        rss_url = forum_saved_search_rss_url(id: search.id, token: Community::SavedSearchRssToken.generate(search))
+        html_url = forum_search_url(Community::SavedSearchPresenter.url_params(search))
+        <<~XML
+          <outline type="rss" text="#{escape_xml(search.name)}" title="#{escape_xml(search.name)}" xmlUrl="#{escape_xml(rss_url)}" htmlUrl="#{escape_xml(html_url)}" />
+        XML
+      end.join("\n")
+
+      <<~XML
+        <?xml version="1.0" encoding="UTF-8"?>
+        <opml version="2.0">
+          <head>
+            <title>#{escape_xml("#{user.username} 的保存搜索")}</title>
+            <dateCreated>#{Time.current.rfc2822}</dateCreated>
+          </head>
+          <body>
+            #{outlines}
+          </body>
+        </opml>
+      XML
     end
   end
 end

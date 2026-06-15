@@ -18,6 +18,7 @@ export interface SavedSearchItem {
   notify_daily: boolean
   url: string
   rss_url?: string
+  webhook_url?: string | null
   filter_labels?: string[]
   update_url: string
   delete_url: string
@@ -34,6 +35,7 @@ const props = defineProps<{
   digest_watched_only?: boolean
   digest_options: Array<{ value: string; label: string }>
   savedSearches?: SavedSearchItem[]
+  savedSearchesOpmlUrl?: string | null
 }>()
 
 const form = useForm({
@@ -180,7 +182,18 @@ async function saveRenameSearch(search: SavedSearchItem) {
   </form>
 
   <section v-if="savedSearches?.length" class="mt-8 max-w-lg">
-    <h2 class="mb-3 text-sm font-semibold">保存的搜索与每日提醒</h2>
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-sm font-semibold">保存的搜索与每日提醒</h2>
+      <a
+        v-if="savedSearchesOpmlUrl"
+        :href="savedSearchesOpmlUrl"
+        class="text-xs text-primary hover:underline"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        导出 OPML
+      </a>
+    </div>
     <p class="mb-4 text-xs text-muted-foreground">开启后，当搜索条件匹配到新主题时，每天会收到一封邮件摘要（对标 Discourse 保存搜索提醒）。</p>
     <ul class="space-y-2">
       <li
@@ -235,6 +248,7 @@ async function saveRenameSearch(search: SavedSearchItem) {
           >
             RSS
           </a>
+          <span v-if="search.webhook_url" class="text-xs text-muted-foreground" title="已配置 Webhook">Webhook</span>
           <button
             type="button"
             class="text-xs text-destructive hover:underline"

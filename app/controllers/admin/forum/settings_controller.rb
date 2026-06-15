@@ -18,6 +18,9 @@ module Admin
         forum.group_pm_creator_only_add
         forum.saved_search_limit
         forum.saved_search_digest_hour
+        forum.digest_hour
+        forum.allow_op_close
+        forum.min_trust_level_reaction
       ].freeze
 
       def show
@@ -70,6 +73,9 @@ module Admin
         when "forum.reaction_emojis" then "👍,❤️,😂,🎉,👀"
         when "forum.saved_search_limit" then "20"
         when "forum.saved_search_digest_hour" then "9"
+        when "forum.digest_hour" then "8"
+        when "forum.allow_op_close" then "true"
+        when "forum.min_trust_level_reaction" then "0"
         else "0"
         end
       end
@@ -87,7 +93,10 @@ module Admin
           "forum.reaction_emojis" => "可用反应表情（逗号分隔）",
           "forum.group_pm_creator_only_add" => "仅群主可添加群成员",
           "forum.saved_search_limit" => "保存搜索数量上限",
-          "forum.saved_search_digest_hour" => "保存搜索摘要发送时间（小时）"
+          "forum.saved_search_digest_hour" => "保存搜索摘要发送时间（小时）",
+          "forum.digest_hour" => "论坛通知摘要发送时间（小时）",
+          "forum.allow_op_close" => "允许楼主关闭自己的主题",
+          "forum.min_trust_level_reaction" => "使用反应所需的最低信任等级"
         }[key] || key
       end
 
@@ -98,12 +107,18 @@ module Admin
           "forum.report_auto_hide_threshold" => "帖子被举报达到此次数后自动隐藏待审。",
           "forum.reaction_emojis" => "用户可对帖子使用的表情列表。",
           "forum.saved_search_limit" => "每位用户可保存的搜索数量，0 表示不限制。",
-          "forum.saved_search_digest_hour" => "每日发送保存搜索摘要邮件的小时（0–23，服务器时区）。任务每小时检查一次。"
+          "forum.saved_search_digest_hour" => "每日发送保存搜索摘要邮件的小时（0–23，服务器时区）。任务每小时检查一次。",
+          "forum.digest_hour" => "每日发送论坛通知摘要邮件的小时（0–23）。任务每小时检查一次。",
+          "forum.allow_op_close" => "设为 false 时楼主无法自行关闭主题。",
+          "forum.min_trust_level_reaction" => "信任等级低于此值的用户无法对帖子添加反应。"
         }[key]
       end
 
       def setting_input_type(key)
-        key == "forum.group_pm_creator_only_add" ? "boolean" : "text"
+        return "boolean" if key == "forum.group_pm_creator_only_add"
+        return "boolean" if key == "forum.allow_op_close"
+
+        "text"
       end
     end
   end

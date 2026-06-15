@@ -42,6 +42,8 @@ module Community
     def digest(user_id, notification_ids)
       @user = User.find(user_id)
       @notifications = Notification.where(id: notification_ids, user: @user).order(created_at: :desc)
+      @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
+      @unsubscribe_url = "#{root_url.chomp('/')}#{forum_unsubscribe_forum_digest_path(token: Community::ForumDigestUnsubscribeToken.generate(@user))}"
 
       mail(to: @user.email, subject: "论坛摘要 — #{@notifications.count} 条新动态")
     end
@@ -95,13 +97,7 @@ module Community
   private
 
     def search_url_for(search)
-      filters = search.filters.symbolize_keys
-      {
-        q: search.query.presence,
-        section: filters[:section].presence,
-        category: filters[:category].presence,
-        solved: filters[:solved].presence
-      }.compact
+      Community::SavedSearchPresenter.url_params(search)
     end
   end
 end

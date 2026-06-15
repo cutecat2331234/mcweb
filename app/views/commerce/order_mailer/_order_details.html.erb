@@ -26,6 +26,10 @@
 
 <% if order.shipping_method.present? %>
   <p><strong>配送方式：</strong><%= Commerce::ShippingMethods.label_for(order.shipping_method) %></p>
+  <% estimate = Commerce::ShippingMethods.delivery_estimate_label(Commerce::ShippingMethods.find(order.shipping_method)) %>
+  <% if estimate.present? %>
+    <p><strong>预计送达：</strong><%= estimate %></p>
+  <% end %>
 <% end %>
 
 <% if order.discount_cents.positive? %>

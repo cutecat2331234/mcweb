@@ -66,12 +66,14 @@ const props = defineProps<{
     update_url?: string
     delete_url: string
     notify_daily?: boolean
+    webhook_url?: string | null
   }>
   loggedIn?: boolean
   forumStaff?: boolean
   saveSearchUrl?: string | null
   savedSearchLimit?: number | null
   savedSearchCount?: number
+  savedSearchesOpmlUrl?: string | null
   suggestUrl?: string | null
 }>()
 
@@ -105,6 +107,7 @@ const showAdvanced = ref(
 )
 const saveName = ref('')
 const saveNotifyDaily = ref(false)
+const saveWebhookUrl = ref('')
 const saving = ref(false)
 const saveError = ref('')
 
@@ -277,6 +280,7 @@ async function saveSearch() {
           name: saveName.value.trim(),
           query: q.value,
           notify_daily: saveNotifyDaily.value,
+          webhook_url: saveWebhookUrl.value.trim() || null,
           filters: saveFilters(),
         },
       }),
@@ -288,6 +292,7 @@ async function saveSearch() {
     }
     saveName.value = ''
     saveNotifyDaily.value = false
+    saveWebhookUrl.value = ''
     router.reload({ only: ['savedSearches'] })
   } finally {
     saving.value = false
@@ -529,6 +534,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         <input v-model="saveNotifyDaily" type="checkbox" class="rounded border-input" :disabled="atSavedSearchLimit" />
         每日邮件提醒新结果
       </label>
+      <Input v-model="saveWebhookUrl" placeholder="Webhook URL（可选）" class="w-64" :disabled="atSavedSearchLimit" />
       <p v-if="savedSearchLimit" class="text-xs text-muted-foreground">
         已保存 {{ savedSearchCount ?? 0 }} / {{ savedSearchLimit }}
       </p>
@@ -542,6 +548,15 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
 
   <div v-if="savedSearches?.length" class="mb-6 flex flex-wrap gap-2">
     <span class="text-sm text-muted-foreground">已保存：</span>
+    <a
+      v-if="savedSearchesOpmlUrl"
+      :href="savedSearchesOpmlUrl"
+      class="text-xs text-primary hover:underline"
+      target="_blank"
+      rel="noopener noreferrer"
+    >
+      导出 OPML
+    </a>
     <span v-for="search in savedSearches" :key="search.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <template v-if="editingSearchId === search.id">
         <Input
@@ -592,6 +607,13 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         >
           RSS
         </a>
+        <span
+          v-if="search.webhook_url"
+          class="text-[10px] text-muted-foreground"
+          title="已配置 Webhook"
+        >
+          Hook
+        </span>
         <button type="button" class="text-muted-foreground hover:text-destructive" title="删除" @click="deleteSavedSearch(search.delete_url)">×</button>
       </template>
     </span>

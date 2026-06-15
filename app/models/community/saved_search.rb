@@ -12,6 +12,8 @@ module Community
     scope :recent, -> { order(created_at: :desc) }
     scope :notify_daily, -> { where(notify_daily: true) }
 
+    validates :webhook_url, allow_blank: true, format: { with: %r{\Ahttps?://.+\z}i, message: "必须是有效的 http(s) URL" }
+
     validate :within_user_limit, on: :create
 
     def self.limit_for_user(user)

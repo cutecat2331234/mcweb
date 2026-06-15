@@ -45,11 +45,11 @@ module Community
     private
 
     def saved_search_params
-      params.require(:saved_search).permit(:name, :query, :notify_daily, filters: {})
+      params.require(:saved_search).permit(:name, :query, :notify_daily, :webhook_url, filters: {})
     end
 
     def saved_search_update_params
-      params.require(:saved_search).permit(:notify_daily, :name)
+      params.require(:saved_search).permit(:notify_daily, :name, :webhook_url)
     end
 
     def serialize_saved_search(search)
@@ -62,6 +62,7 @@ module Community
         filter_labels: Community::SavedSearchFilterSummary.call(search),
         url: forum_search_path(Community::SavedSearchPresenter.url_params(search)),
         rss_url: Community::SavedSearchPresenter.rss_path(search),
+        webhook_url: search.webhook_url,
         update_url: forum_saved_search_path(search),
         delete_url: forum_saved_search_path(search)
       }

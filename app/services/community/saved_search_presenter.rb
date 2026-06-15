@@ -40,5 +40,11 @@ module Community
         token: Community::SavedSearchRssToken.generate(search)
       )
     end
+
+    def opml_path(user)
+      Rails.application.routes.url_helpers.forum_saved_searches_opml_path(
+        token: Community::SavedSearchOpmlToken.generate(user)
+      )
+    end
   end
 end

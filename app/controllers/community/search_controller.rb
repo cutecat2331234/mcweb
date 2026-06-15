@@ -191,6 +191,7 @@ module Community
         saveSearchUrl: logged_in? ? forum_saved_searches_path : nil,
         savedSearchLimit: Community::SavedSearch.limit_for_user(current_user).finite? ? Community::SavedSearch.limit_for_user(current_user).to_i : nil,
         savedSearchCount: logged_in? ? current_user.forum_saved_searches.count : 0,
+        savedSearchesOpmlUrl: logged_in? ? Community::SavedSearchPresenter.opml_path(current_user) : nil,
         suggestUrl: forum_search_suggest_path
       }
     end
@@ -386,6 +387,7 @@ module Community
           filter_labels: Community::SavedSearchFilterSummary.call(search),
           url: forum_search_path(Community::SavedSearchPresenter.url_params(search)),
           rss_url: Community::SavedSearchPresenter.rss_path(search),
+          webhook_url: search.webhook_url,
           update_url: forum_saved_search_path(search),
           delete_url: forum_saved_search_path(search)
         }

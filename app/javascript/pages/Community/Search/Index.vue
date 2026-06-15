@@ -385,7 +385,7 @@ async function deleteSavedSearch(deleteUrl: string) {
           </tr>
         </tbody>
       </table>
-      <Pagination :pagination="postsPagination" :base-path="routes.forumSearch" query-param="post_page" />
+      <Pagination :pagination="postsPagination" :base-path="routes.forumSearch" page-param="post_page" />
     </div>
     <p v-else class="text-sm text-muted-foreground">未找到相关帖子。</p>
   </template>

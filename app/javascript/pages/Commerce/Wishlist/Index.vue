@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { reactive, watch } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -41,7 +42,41 @@ const props = defineProps<{
   compareCount?: number
   wishlistImportCompareUrl?: string
   wishlistImportableCount?: number
+  filters?: { in_stock: boolean; on_sale: boolean; coming_soon: boolean; sort: string }
+  totalCount?: number
+  filteredCount?: number
 }>()
+
+const noteDrafts = reactive<Record<string, string>>({})
+
+watch(() => props.products, (list) => {
+  for (const product of list) {
+    if (!(product.id in noteDrafts)) noteDrafts[product.id] = product.note || ''
+  }
+}, { immediate: true })
+
+const hasActiveFilters = () =>
+  !!(props.filters?.in_stock || props.filters?.on_sale || props.filters?.coming_soon || (props.filters?.sort && props.filters.sort !== 'newest'))
+
+function applyFilters(overrides: Partial<{ in_stock: boolean; on_sale: boolean; coming_soon: boolean; sort: string }> = {}) {
+  const f = props.filters || { in_stock: false, on_sale: false, coming_soon: false, sort: 'newest' }
+  const next = { ...f, ...overrides }
+  router.get(routes.storeWishlist, {
+    in_stock: next.in_stock ? '1' : undefined,
+    on_sale: next.on_sale ? '1' : undefined,
+    coming_soon: next.coming_soon ? '1' : undefined,
+    sort: next.sort !== 'newest' ? next.sort : undefined,
+  }, { preserveState: true })
+}
+
+function clearFilters() {
+  router.get(routes.storeWishlist, {}, { preserveState: true })
+}
+
+function toggleFilter(key: 'in_stock' | 'on_sale' | 'coming_soon') {
+  const f = props.filters || { in_stock: false, on_sale: false, coming_soon: false, sort: 'newest' }
+  applyFilters({ [key]: !f[key] })
+}
 
 function importToCompare() {
   if (!props.wishlistImportCompareUrl) return
@@ -77,9 +112,9 @@ function toggleCompare(url: string) {
   router.post(url, {}, { preserveScroll: true })
 }
 
-function saveNote(product: { update_note_url?: string; note?: string }) {
+function saveNote(product: { id: string; update_note_url?: string }) {
   if (!product.update_note_url) return
-  router.patch(product.update_note_url, { note: product.note || '' }, { preserveScroll: true })
+  router.patch(product.update_note_url, { note: noteDrafts[product.id] || '' }, { preserveScroll: true })
 }
 
 async function copyShareLink() {
@@ -122,6 +157,32 @@ async function copyShareLink() {
   </div>
   <p v-if="shareUrl" class="mb-4 text-xs text-muted-foreground break-all">{{ shareUrl }}</p>
 
+  <div class="mb-4 flex flex-wrap items-center gap-2">
+    <Button type="button" size="sm" :variant="filters?.in_stock ? 'default' : 'outline'" @click="toggleFilter('in_stock')">
+      仅有货
+    </Button>
+    <Button type="button" size="sm" :variant="filters?.on_sale ? 'default' : 'outline'" @click="toggleFilter('on_sale')">
+      促销中
+    </Button>
+    <Button type="button" size="sm" :variant="filters?.coming_soon ? 'default' : 'outline'" @click="toggleFilter('coming_soon')">
+      即将上架
+    </Button>
+    <select
+      :value="filters?.sort || 'newest'"
+      class="h-8 rounded-md border px-2 text-xs"
+      @change="applyFilters({ sort: ($event.target as HTMLSelectElement).value })"
+    >
+      <option value="newest">最近添加</option>
+      <option value="price_asc">价格从低到高</option>
+      <option value="price_desc">价格从高到低</option>
+      <option value="name">名称 A-Z</option>
+    </select>
+    <Button v-if="hasActiveFilters()" type="button" size="sm" variant="ghost" @click="clearFilters">清除筛选</Button>
+    <span v-if="totalCount !== undefined && filteredCount !== undefined && hasActiveFilters()" class="text-xs text-muted-foreground">
+      显示 {{ filteredCount }} / {{ totalCount }} 件
+    </span>
+  </div>
+
   <div v-if="products.length" class="divide-y rounded-lg border">
     <div v-for="product in products" :key="product.id" class="flex items-center justify-between gap-4 p-4">
       <div>
@@ -135,7 +196,7 @@ async function copyShareLink() {
         <p v-if="product.saved_variant_name" class="text-xs text-muted-foreground">规格：{{ product.saved_variant_name }}</p>
         <div v-if="product.update_note_url" class="mt-2 flex max-w-md gap-2">
           <input
-            v-model="product.note"
+            v-model="noteDrafts[product.id]"
             type="text"
             placeholder="添加备注…"
             class="h-8 flex-1 rounded-md border px-2 text-xs"
@@ -164,7 +225,6 @@ async function copyShareLink() {
             已订阅上架
           </Button>
         </div>
-        <Badge v-if="product.coming_soon" variant="outline" class="mt-1">未开售</Badge>
         <Badge v-else-if="!product.in_stock" variant="default" class="mt-1">缺货</Badge>
         <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>
       </div>
@@ -196,8 +256,11 @@ async function copyShareLink() {
     </div>
   </div>
   <div v-else class="rounded-lg border border-dashed p-8 text-center">
-    <p class="text-sm text-muted-foreground">心愿单是空的。浏览商城添加喜欢的商品吧。</p>
+    <p class="text-sm text-muted-foreground">
+      {{ hasActiveFilters() ? '没有符合筛选条件的商品。' : '心愿单是空的。浏览商城添加喜欢的商品吧。' }}
+    </p>
     <div class="mt-4 flex flex-wrap justify-center gap-2">
+      <Button v-if="hasActiveFilters()" type="button" size="sm" variant="outline" @click="clearFilters">清除筛选</Button>
       <Button as-child size="sm">
         <Link :href="routes.store">浏览商城</Link>
       </Button>

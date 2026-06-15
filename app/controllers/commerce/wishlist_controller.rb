@@ -7,14 +7,18 @@ module Commerce
     before_action :require_login, except: %i[public_show]
 
     def index
-      items = Commerce::WishlistItem
+      all_items = Commerce::WishlistItem
         .where(user: current_user)
         .includes(product: %i[category variants], variant: [])
         .order(created_at: :desc)
+        .to_a
+
+      total_count = all_items.size
+      items = sort_wishlist_items(filter_wishlist_items(all_items))
 
       share = Commerce::EnsureWishlistShareToken.call(user: current_user)
       availability_alerts = Commerce::ProductAvailabilityAlert
-        .where(user: current_user, store_product_id: items.map(&:store_product_id))
+        .where(user: current_user, store_product_id: all_items.map(&:store_product_id))
         .index_by(&:store_product_id)
 
       compared_ids = Array(session[:compare_product_ids])
@@ -58,7 +62,10 @@ module Commerce
         addAllToCartUrl: store_add_all_to_cart_wishlist_path,
         compareCount: compare_product_count,
         wishlistImportCompareUrl: store_import_wishlist_compare_path,
-        wishlistImportableCount: wishlist_importable_compare_count(compared_ids)
+        wishlistImportableCount: wishlist_importable_compare_count(compared_ids),
+        filters: wishlist_filters_props,
+        totalCount: total_count,
+        filteredCount: items.size
       }
     end
 
@@ -142,6 +149,46 @@ module Commerce
         redirect_to store_wishlist_path, notice: "备注已保存。"
       else
         redirect_to store_wishlist_path, alert: service_error_message(result)
+      end
+    end
+
+    private
+
+    def wishlist_filters_props
+      {
+        in_stock: params[:in_stock] == "1",
+        on_sale: params[:on_sale] == "1",
+        coming_soon: params[:coming_soon] == "1",
+        sort: params[:sort].presence || "newest"
+      }
+    end
+
+    def filter_wishlist_items(items)
+      list = items
+      if params[:in_stock] == "1"
+        list = list.select do |item|
+          product = item.product
+          next false if product.coming_soon?
+
+          variant = item.variant
+          variant ? variant.in_stock? : product.in_stock?
+        end
+      end
+      list = list.select { |item| item.product.on_sale? } if params[:on_sale] == "1"
+      list = list.select { |item| item.product.coming_soon? } if params[:coming_soon] == "1"
+      list
+    end
+
+    def sort_wishlist_items(items)
+      case params[:sort]
+      when "price_asc"
+        items.sort_by { |item| item.variant&.price_cents || item.product.price_cents }
+      when "price_desc"
+        items.sort_by { |item| -(item.variant&.price_cents || item.product.price_cents) }
+      when "name"
+        items.sort_by { |item| item.product.name }
+      else
+        items
       end
     end
   end

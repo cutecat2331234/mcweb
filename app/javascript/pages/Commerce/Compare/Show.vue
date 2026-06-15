@@ -30,6 +30,36 @@ const props = defineProps<{
   wishlistImportableCount?: number
 }>()
 
+type CompareProduct = (typeof props)['products'][number]
+
+const compareRows = [
+  { key: 'price', label: '价格', get: (p: CompareProduct) => p.price_label },
+  { key: 'category', label: '分类', get: (p: CompareProduct) => p.category_name || '—' },
+  { key: 'stock', label: '库存', get: (p: CompareProduct) => p.in_stock ? '有货' : '缺货' },
+  { key: 'rating', label: '评分', get: (p: CompareProduct) => String(p.average_rating ?? '—') },
+  { key: 'views', label: '浏览量', get: (p: CompareProduct) => String(p.view_count) },
+  {
+    key: 'sku',
+    label: 'SKU',
+    get: (p: CompareProduct) => p.variants.map((v) => v.sku || '—').join(' / ') || '—',
+  },
+  {
+    key: 'variants',
+    label: '规格',
+    get: (p: CompareProduct) =>
+      p.variants.map((v) => `${v.name} · ${v.price_label}`).join(' / ') || '—',
+  },
+] as const
+
+function rowHasDiff(row: (typeof compareRows)[number]) {
+  if (props.products.length < 2) return false
+  return new Set(props.products.map(row.get)).size > 1
+}
+
+function cellDiffClass(row: (typeof compareRows)[number]) {
+  return rowHasDiff(row) ? 'bg-amber-50 dark:bg-amber-950/30 font-medium' : ''
+}
+
 function importWishlist() {
   if (!props.wishlistImportUrl) return
   router.post(props.wishlistImportUrl, {}, { preserveScroll: true })
@@ -98,42 +128,26 @@ function addToCart(product: { db_id: number; add_to_cart_url: string; variants: 
         </tr>
       </thead>
       <tbody>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">价格</td>
-          <td v-for="product in products" :key="`${product.id}-price`" class="p-3">{{ product.price_label }}</td>
-        </tr>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">分类</td>
-          <td v-for="product in products" :key="`${product.id}-cat`" class="p-3">{{ product.category_name || '—' }}</td>
-        </tr>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">库存</td>
-          <td v-for="product in products" :key="`${product.id}-stock`" class="p-3">{{ product.in_stock ? '有货' : '缺货' }}</td>
-        </tr>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">评分</td>
-          <td v-for="product in products" :key="`${product.id}-rating`" class="p-3">{{ product.average_rating ?? '—' }}</td>
-        </tr>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">浏览量</td>
-          <td v-for="product in products" :key="`${product.id}-views`" class="p-3">{{ product.view_count }}</td>
-        </tr>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">SKU</td>
-          <td v-for="product in products" :key="`${product.id}-sku`" class="p-3 text-xs">
-            <div v-if="product.variants.length">
-              <div v-for="variant in product.variants" :key="`sku-${variant.id}`">{{ variant.sku || '—' }}</div>
-            </div>
-            <span v-else>—</span>
+        <tr v-for="row in compareRows" :key="row.key" class="border-b">
+          <td class="p-3 text-muted-foreground">
+            {{ row.label }}
+            <span v-if="rowHasDiff(row)" class="ml-1 text-[10px] text-amber-600">≠</span>
           </td>
-        </tr>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">规格</td>
-          <td v-for="product in products" :key="`${product.id}-variants`" class="p-3 text-xs">
-            <div v-if="product.variants.length">
-              <div v-for="variant in product.variants" :key="variant.id">{{ variant.name }} · {{ variant.sku ? `${variant.sku} · ` : '' }}{{ variant.price_label }} · {{ variant.in_stock ? '有货' : '缺货' }}</div>
-            </div>
-            <span v-else>—</span>
+          <td
+            v-for="product in products"
+            :key="`${product.id}-${row.key}`"
+            class="p-3 text-xs"
+            :class="cellDiffClass(row)"
+          >
+            <template v-if="row.key === 'sku' && product.variants.length">
+              <div v-for="variant in product.variants" :key="`sku-${variant.id}`">{{ variant.sku || '—' }}</div>
+            </template>
+            <template v-else-if="row.key === 'variants' && product.variants.length">
+              <div v-for="variant in product.variants" :key="variant.id">
+                {{ variant.name }} · {{ variant.sku ? `${variant.sku} · ` : '' }}{{ variant.price_label }} · {{ variant.in_stock ? '有货' : '缺货' }}
+              </div>
+            </template>
+            <template v-else>{{ row.get(product) }}</template>
           </td>
         </tr>
         <tr>

@@ -1105,3 +1105,16 @@ app/
 | 私信链接服务端校验 | `CreateConversation` 链接限制 |
 | 对比导入上限跳过提示 | `AddWishlistToCompare` 满额逐件标记 |
 | 对比导入 redirect_back | 心愿单导入后返回来源页 |
+
+### 第六十七轮（分页修复、心愿单筛选、对比差异高亮、sticky 购买栏）
+
+| 功能 | 实现 |
+|------|------|
+| 评价/搜索分页 prop 修复 | `page-param` 替代错误的 `query-param` |
+| 分类页分页修复 | `:pagination` + `:base-path` 替代 `:meta` |
+| 发帖页链接实时提示 | `watch` body + `bodyHasBlockedLink` 红色提示 |
+| 心愿单 URL 筛选 | `in_stock` / `on_sale` / `coming_soon` / `sort` |
+| 对比表差异高亮 | `rowHasDiff` / `cellDiffClass` 琥珀色背景 |
+| 商品详情 sticky 购买栏 | `IntersectionObserver` 底部固定加购/收藏/对比 |
+| 心愿单备注本地 state | `noteDrafts` 避免直接 mutate props |
+| 心愿单重复徽章修复 | 移除重复的「未开售」徽章 |

@@ -93,5 +93,10 @@ function applyFilter(key: 'in_stock' | 'on_sale', value: boolean) {
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">该分类暂无商品。</p>
 
-  <Pagination v-if="pagination" class="mt-6" :meta="pagination" />
+  <Pagination
+    v-if="pagination?.pages > 1"
+    class="mt-6"
+    :pagination="pagination"
+    :base-path="routes.storeCategory(category.slug)"
+  />
 </template>

@@ -98,6 +98,13 @@ watch(() => form.topic.title, (title) => {
   }, 400)
 })
 
+watch(() => form.topic.body, (body) => {
+  linkError.value =
+    props.warningRestrictions?.link && containsLink(body)
+      ? props.warningRestrictions.link
+      : ''
+})
+
 const showPoll = ref(false)
 
 function submit() {
@@ -168,6 +175,7 @@ function saveDraft() {
       <Label for="body">首帖内容</Label>
       <MarkdownEditor v-model="form.topic.body" :rows="8" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名" />
       <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
+      <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
       <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
     </div>

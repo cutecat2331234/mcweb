@@ -15,12 +15,35 @@ import { routes } from '@/lib/routes'
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; required_tag_groups?: Array<{ name: string; slug: string }>; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
+  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; required_tag_groups?: Array<{ name: string; slug: string }>; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; required?: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
   similarTitlesUrl?: string
+  warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
 }>()
 
 const similarTitles = ref<Array<{ title: string; url: string }>>([])
+const tagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
+const tagGroupError = ref('')
+const linkError = ref('')
 let similarTimer: ReturnType<typeof setTimeout> | null = null
+
+function containsLink(text: string) {
+  return /https?:\/\/|www\./i.test(text)
+}
+
+function validateBeforeSubmit() {
+  tagGroupError.value = ''
+  linkError.value = ''
+  if (tagPickerRef.value?.hasMissingRequired) {
+    tagGroupError.value = '请从必填标签组中至少选择一个标签后再发布。'
+    return false
+  }
+  if (props.warningRestrictions?.post) return false
+  if (props.warningRestrictions?.link && containsLink(form.topic.body)) {
+    linkError.value = props.warningRestrictions.link
+    return false
+  }
+  return true
+}
 
 const form = useForm({
   topic: {
@@ -63,10 +86,15 @@ watch(() => form.topic.title, (title) => {
 const showPoll = ref(false)
 
 function submit() {
+  if (!validateBeforeSubmit()) return
   form.post(`/forum/topics?section_id=${props.section.slug}`)
 }
 
 function saveDraft() {
+  if (tagPickerRef.value?.hasMissingRequired) {
+    tagGroupError.value = '请从必填标签组中至少选择一个标签后再保存。'
+    return
+  }
   router.post(`/forum/drafts?section_id=${props.section.slug}`, {
     draft: {
       title: form.topic.title,
@@ -96,6 +124,10 @@ function saveDraft() {
 
   <PageHeader title="新建主题" :subtitle="section.name" />
 
+  <p v-if="warningRestrictions?.post" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    {{ warningRestrictions.post }}
+  </p>
+
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
       <Label for="title">标题</Label>
@@ -120,11 +152,14 @@ function saveDraft() {
     <div class="space-y-2">
       <Label for="body">首帖内容</Label>
       <MarkdownEditor v-model="form.topic.body" :rows="8" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名" />
+      <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
+      <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
       <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
     </div>
     <div class="space-y-2">
       <Label for="tags">标签（最多 5 个）</Label>
-      <TagGroupPicker v-model="form.topic.tags" :tag-groups="section.tag_groups" :max-tags="5" />
+      <TagGroupPicker ref="tagPickerRef" v-model="form.topic.tags" :tag-groups="section.tag_groups" :max-tags="5" />
+      <p v-if="tagGroupError" class="text-sm text-destructive">{{ tagGroupError }}</p>
       <p v-if="section.required_tags?.length" class="text-xs text-muted-foreground">
         此分区要求至少包含以下标签之一：
         <template v-for="(tag, index) in section.required_tags" :key="tag.slug">
@@ -179,7 +214,7 @@ function saveDraft() {
     </div>
 
     <div class="flex flex-wrap gap-3">
-      <Button type="submit" :disabled="form.processing">发布</Button>
+      <Button type="submit" :disabled="form.processing || !!warningRestrictions?.post">发布</Button>
       <Button type="button" variant="outline" :disabled="!form.topic.title" @click="saveDraft">保存草稿</Button>
       <Button as-child variant="outline">
         <Link :href="section.url">取消</Link>

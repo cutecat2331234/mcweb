@@ -15,6 +15,8 @@ module Commerce
         .where(user: current_user, store_product_id: items.map(&:store_product_id))
         .index_by(&:store_product_id)
 
+      compared_ids = Array(session[:compare_product_ids])
+
       render inertia: "Commerce/Wishlist/Index", props: {
         products: items.map do |item|
           product = item.product
@@ -29,6 +31,9 @@ module Commerce
             data[:availability_alert_url] = availability_alert_store_product_path(product)
             data[:has_availability_alert] = alert.present?
             data[:availability_alert_unsubscribe_url] = alert ? store_availability_alert_path(alert) : nil
+          elsif product.available?
+            data[:compare_url] = store_toggle_compare_path(product_id: product.public_id)
+            data[:compared] = compared_ids.include?(product.public_id)
           end
           if variant
             data[:price_label] = format_money(variant.price_cents, product.currency)
@@ -48,7 +53,8 @@ module Commerce
           )
         end,
         shareUrl: share.success? ? store_public_wishlist_url(share.value[:token]) : nil,
-        addAllToCartUrl: store_add_all_to_cart_wishlist_path
+        addAllToCartUrl: store_add_all_to_cart_wishlist_path,
+        compareCount: compare_product_count
       }
     end
 

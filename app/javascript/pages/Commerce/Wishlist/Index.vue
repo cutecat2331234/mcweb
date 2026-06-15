@@ -33,9 +33,12 @@ const props = defineProps<{
     availability_alert_url?: string
     has_availability_alert?: boolean
     availability_alert_unsubscribe_url?: string
+    compare_url?: string
+    compared?: boolean
   }>
   shareUrl: string | null
   addAllToCartUrl?: string
+  compareCount?: number
 }>()
 
 function addAllToCart() {
@@ -63,6 +66,10 @@ function unsubscribeAvailabilityAlert(url: string) {
   router.delete(url, { preserveScroll: true })
 }
 
+function toggleCompare(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
 function saveNote(product: { update_note_url?: string; note?: string }) {
   if (!product.update_note_url) return
   router.patch(product.update_note_url, { note: product.note || '' }, { preserveScroll: true })
@@ -84,6 +91,9 @@ function copyShareLink() {
   <div class="mb-4 flex items-center justify-between gap-3">
     <PageHeader title="我的心愿单" />
     <div class="flex gap-2">
+      <Button v-if="compareCount" as-child variant="outline" size="sm">
+        <Link :href="routes.storeCompare">对比 ({{ compareCount }})</Link>
+      </Button>
       <Button v-if="addAllToCartUrl && products.length" type="button" size="sm" @click="addAllToCart">全部加入购物车</Button>
       <Button v-if="shareUrl" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
       <Button type="button" variant="outline" size="sm" @click="router.post(routes.storeWishlistShare)">生成分享链接</Button>
@@ -138,6 +148,15 @@ function copyShareLink() {
         <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>
       </div>
       <div class="flex gap-2">
+        <Button
+          v-if="product.compare_url"
+          type="button"
+          size="sm"
+          :variant="product.compared ? 'outline' : 'secondary'"
+          @click="toggleCompare(product.compare_url)"
+        >
+          {{ product.compared ? '移出对比' : '加入对比' }}
+        </Button>
         <Button v-if="product.add_to_cart_url && product.in_stock && !product.coming_soon" type="button" size="sm" @click="addToCart(product.add_to_cart_url)">加入购物车</Button>
         <Button
           v-if="product.price_alert_url"

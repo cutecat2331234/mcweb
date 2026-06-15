@@ -2,6 +2,8 @@
 
 module Community
   class ConversationsController < ApplicationController
+    include Community::WarningRestrictionsSerializable
+
     before_action :require_login
 
     def index
@@ -62,7 +64,8 @@ module Community
       render inertia: "Community/Messages/New", props: {
         recipient: params[:to].to_s.presence,
         group: params[:group] == "1",
-        canSendPm: Community::TrustLevel.can_send_pm?(current_user)
+        canSendPm: Community::TrustLevel.can_send_pm?(current_user),
+        warningRestrictions: warning_restrictions_props
       }
     end
 

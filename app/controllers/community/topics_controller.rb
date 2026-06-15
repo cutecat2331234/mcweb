@@ -5,6 +5,7 @@ module Community
     include Community::TopicVisibility
     include Community::TopicListPreloadable
     include Community::SectionTagGroupsSerializable
+    include Community::WarningRestrictionsSerializable
 
     before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
@@ -113,6 +114,7 @@ module Community
         } : nil,
         replyDraft: logged_in? ? Community::ReplyDraft.find_by(user: current_user, topic: @topic)&.body : nil,
         replyDraftUrl: logged_in? ? forum_topic_reply_draft_path(@topic) : nil,
+        warningRestrictions: warning_restrictions_props,
         meta: topic_meta_props(@topic)
       }
     end
@@ -124,7 +126,8 @@ module Community
 
       render inertia: "Community/Topics/New", props: {
         section: section_props,
-        similarTitlesUrl: similar_titles_forum_topics_path(section_id: @section.slug)
+        similarTitlesUrl: similar_titles_forum_topics_path(section_id: @section.slug),
+        warningRestrictions: warning_restrictions_props
       }
     end
 

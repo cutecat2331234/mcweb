@@ -79,6 +79,7 @@ module Admin
             { label: "发货时间", value: @order.shipped_at ? l(@order.shipped_at, format: :long) : "—" },
             { label: "优惠", value: @order.discount_cents.positive? ? "-#{format_money(@order.discount_cents, @order.currency)}#{@order.coupon ? " (#{@order.coupon.code})" : ""}" : "—" },
             { label: "礼品卡", value: @order.gift_card_amount_cents.positive? ? "-#{format_money(@order.gift_card_amount_cents, @order.currency)}#{@order.gift_card ? " (#{@order.gift_card.code})" : ""}" : "—" },
+            { label: "商店余额抵扣", value: @order.store_credit_amount_cents.positive? ? "-#{format_money(@order.store_credit_amount_cents, @order.currency)}" : "—" },
             { label: "礼品包装", value: @order.gift_wrap_cents.positive? ? format_money(@order.gift_wrap_cents, @order.currency) : "—" },
             { label: "买家备注", value: @order.notes.presence || "—" },
             { label: "总额", value: format_money(@order.total_cents, @order.currency) },
@@ -102,6 +103,12 @@ module Admin
               items: @order.refunds.map do |refund|
                 { label: l(refund.created_at, format: :short), value: "#{format_money(refund.amount_cents, @order.currency)} · #{refund.status}" }
               end.presence || [ { label: "暂无退款", value: nil } ]
+            },
+            {
+              title: "退款恢复明细",
+              items: serialize_order_restorations(@order).map do |item|
+                { label: item[:label], value: item[:amount_label] }
+              end.presence || [ { label: "暂无恢复记录", value: nil } ]
             },
             {
               title: "员工备注",

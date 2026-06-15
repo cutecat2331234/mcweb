@@ -1071,3 +1071,13 @@ app/
 | 订单退款恢复明细 | `serialize_order_restorations` + `Orders/Show` |
 | 搜索全站公告文案 | `Search/Index` 「仅全站公告」 |
 | 修复 storeProduct 路由 | `routes.ts` `storeProduct` helper |
+
+### 第六十四轮（警告限制 UX、标签组提交拦截、心愿单对比）
+
+| 功能 | 实现 |
+|------|------|
+| 警告积分发帖/链接/私信提示 | `WarningRestrictionsSerializable` + 发帖/回复/私信页横幅 |
+| 必填标签组前端提交拦截 | `TagGroupPicker` expose + New/Drafts/Show 发布校验 |
+| 心愿单商品对比 | `compare_url` / `compared` + 对比列表入口 |
+| 管理端退款恢复明细 | 员工订单页「退款恢复明细」区块 |
+| 管理端商店余额字段 | 订单详情展示余额抵扣 |

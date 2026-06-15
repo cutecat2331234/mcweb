@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed, ref } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -15,7 +16,25 @@ const props = defineProps<{
   group?: boolean
   recipient?: string | null
   canSendPm?: boolean
+  warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
 }>()
+
+const pmBlocked = computed(() => !!props.warningRestrictions?.pm)
+const linkError = ref('')
+
+function containsLink(text: string) {
+  return /https?:\/\/|www\./i.test(text)
+}
+
+function submitMessage() {
+  linkError.value = ''
+  if (pmBlocked.value) return
+  if (props.warningRestrictions?.link && containsLink(form.conversation.body)) {
+    linkError.value = props.warningRestrictions.link
+    return
+  }
+  form.post(routes.forumMessages)
+}
 
 const form = useForm({
   conversation: {
@@ -50,7 +69,11 @@ const form = useForm({
     新成员（信任等级 0）暂时无法发送私信，多发帖参与社区即可解锁。
   </p>
 
-  <form class="max-w-lg space-y-4" @submit.prevent="form.post(routes.forumMessages)">
+  <p v-if="pmBlocked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    {{ warningRestrictions?.pm }}
+  </p>
+
+  <form class="max-w-lg space-y-4" @submit.prevent="submitMessage">
     <template v-if="group">
       <div class="space-y-2">
         <Label for="title">群组名称</Label>
@@ -68,9 +91,11 @@ const form = useForm({
     <div class="space-y-2">
       <Label>消息内容</Label>
       <MarkdownEditor v-model="form.conversation.body" :show-mention="false" />
+      <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
+      <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
     </div>
     <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing || (!group && canSendPm === false)">发送</Button>
+      <Button type="submit" :disabled="form.processing || (!group && canSendPm === false) || pmBlocked">发送</Button>
       <Button as-child variant="outline">
         <Link :href="routes.forumMessages">取消</Link>
       </Button>

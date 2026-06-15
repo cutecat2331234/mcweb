@@ -40,6 +40,7 @@ export const routes = {
   store: '/store/products',
   storeRecentlyViewed: '/store/products/recently_viewed',
   storeCompare: '/store/compare',
+  storeToggleCompare: (productId: string) => `/store/compare/toggle?product_id=${productId}`,
   storeWishlist: '/store/wishlist',
   storeStockAlerts: '/store/stock_alerts',
   storePriceAlerts: '/store/price_alerts',

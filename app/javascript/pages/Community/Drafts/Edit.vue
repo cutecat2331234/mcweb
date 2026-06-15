@@ -35,6 +35,17 @@ const props = defineProps<{
 }>()
 
 const showPoll = ref(!!props.draft.poll)
+const tagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
+const tagGroupError = ref('')
+
+function tagsValid() {
+  if (tagPickerRef.value?.hasMissingRequired) {
+    tagGroupError.value = '请从必填标签组中至少选择一个标签。'
+    return false
+  }
+  tagGroupError.value = ''
+  return true
+}
 
 const form = useForm({
   draft: {
@@ -54,6 +65,7 @@ const form = useForm({
 })
 
 function save() {
+  if (!tagsValid()) return
   if (!showPoll.value) {
     form.draft.poll_question = ''
     form.draft.poll_options = ''
@@ -62,6 +74,7 @@ function save() {
 }
 
 function publish() {
+  if (!tagsValid()) return
   router.post(`/forum/drafts/${props.draft.id}/publish`)
 }
 
@@ -105,7 +118,8 @@ function clearSchedule() {
     </div>
     <div class="space-y-2">
       <Label for="tags">标签（最多 5 个）</Label>
-      <TagGroupPicker v-model="form.draft.tags" :tag-groups="draft.section.tag_groups" :max-tags="5" />
+      <TagGroupPicker ref="tagPickerRef" v-model="form.draft.tags" :tag-groups="draft.section.tag_groups" :max-tags="5" />
+      <p v-if="tagGroupError" class="text-sm text-destructive">{{ tagGroupError }}</p>
     </div>
 
     <div class="space-y-2">

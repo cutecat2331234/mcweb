@@ -194,6 +194,7 @@ const props = defineProps<{
   } | null
   replyDraft?: string | null
   replyDraftUrl?: string | null
+  warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
   meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null }
 }>()
 
@@ -208,6 +209,15 @@ const editingTopic = ref(false)
 const editTitle = ref(props.topic.title)
 const editTags = ref(props.topic.tags_string)
 const editPrefix = ref(props.topic.prefix || '')
+const editTagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
+const editTagError = ref('')
+const replyLinkError = ref('')
+
+function containsLink(text: string) {
+  return /https?:\/\/|www\./i.test(text)
+}
+
+const postBlocked = computed(() => !!props.warningRestrictions?.post)
 
 const replyForm = useForm({
   post: {
@@ -235,7 +245,7 @@ const showPollVoters = ref(false)
 const pollVoters = ref<Array<{ label: string; index: number; voters: string[] }>>([])
 const slowModeSeconds = ref(props.topic.slow_mode_seconds || 0)
 const slowModeRemaining = ref(props.topic.slow_mode_remaining_seconds || 0)
-const effectiveCanReply = computed(() => props.canReply && slowModeRemaining.value <= 0)
+const effectiveCanReply = computed(() => props.canReply && slowModeRemaining.value <= 0 && !postBlocked.value)
 let slowModeTimer: ReturnType<typeof setInterval> | null = null
 const autoCloseAt = ref('')
 const autoOpenAt = ref('')
@@ -343,6 +353,11 @@ watch(() => replyForm.post.body, (body) => {
 })
 
 function submitReply() {
+  replyLinkError.value = ''
+  if (props.warningRestrictions?.link && containsLink(replyForm.post.body)) {
+    replyLinkError.value = props.warningRestrictions.link
+    return
+  }
   replyForm.post('/forum/posts', {
     preserveScroll: true,
     onSuccess: () => {
@@ -696,6 +711,11 @@ async function loadPollVoters() {
 }
 
 function saveTopicEdit() {
+  editTagError.value = ''
+  if (editTagPickerRef.value?.hasMissingRequired) {
+    editTagError.value = '请从必填标签组中至少选择一个标签。'
+    return
+  }
   const payload: Record<string, unknown> = {
     title: editTitle.value,
     tags: editTags.value,
@@ -1020,7 +1040,8 @@ function pollPercent(votes: number) {
         <option v-for="p in topic.section_prefixes" :key="p" :value="p">{{ p }}</option>
       </select>
     </div>
-    <TagGroupPicker v-model="editTags" :tag-groups="topic.tag_groups" :max-tags="5" />
+    <TagGroupPicker ref="editTagPickerRef" v-model="editTags" :tag-groups="topic.tag_groups" :max-tags="5" />
+    <p v-if="editTagError" class="text-sm text-destructive">{{ editTagError }}</p>
     <template v-if="topic.can_edit_poll && poll">
       <Input v-model="editPollQuestion" placeholder="投票问题" />
       <Textarea v-model="editPollOptions" rows="4" placeholder="每行一个选项" />
@@ -1518,6 +1539,10 @@ function pollPercent(votes: number) {
     此分区为只读模式，普通用户无法回复（版主除外）。
   </p>
 
+  <p v-if="warningRestrictions?.post && canReply" class="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    {{ warningRestrictions.post }}
+  </p>
+
   <section v-if="effectiveCanReply" id="reply-form" class="mt-8 max-w-2xl">
     <h2 class="mb-3 text-sm font-semibold">回复</h2>
     <div v-if="cannedResponses?.length" class="mb-3 flex flex-wrap gap-2">
@@ -1557,6 +1582,8 @@ function pollPercent(votes: number) {
     </div>
     <form class="space-y-3" @submit.prevent="submitReply">
       <MarkdownEditor v-model="replyForm.post.body" :rows="6" placeholder="写下你的回复… 输入 @ 可提及用户" required />
+      <p v-if="replyLinkError" class="text-sm text-destructive">{{ replyLinkError }}</p>
+      <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
       <label v-if="topic.can_moderate" class="flex items-center gap-2 text-sm">
         <input v-model="replyForm.post.whisper" type="checkbox">
         员工私语（仅员工可见）

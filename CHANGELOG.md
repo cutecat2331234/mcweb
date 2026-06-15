@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- 新增 `PostAccess`，隐藏帖子对普通用户不可读/不可互动（raw、反应、书签等）
+- 结账未知支付方式不再向用户暴露内部异常信息
+
+### Previously
+
 - `CreatePost` 与 `SaveReplyDraft` 增加主题可见性校验，防止向隐藏/草稿主题回复
 - UrlSafety 拒绝云元数据 IP `169.254.169.254`
 

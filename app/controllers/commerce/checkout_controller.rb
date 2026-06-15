@@ -94,8 +94,8 @@ module Commerce
       else
         redirect_to store_order_path(order), alert: service_error_message(result)
       end
-    rescue Payments::Provider::UnknownProviderError => e
-      redirect_to store_order_path(order), alert: e.message
+    rescue Payments::Provider::UnknownProviderError
+      redirect_to store_order_path(order), alert: "支付方式不可用，请重试或更换支付方式。"
     rescue ActiveRecord::RecordInvalid => e
       redirect_to store_order_path(order), alert: e.record.errors.full_messages.to_sentence
     end

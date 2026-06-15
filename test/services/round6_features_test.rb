@@ -150,6 +150,44 @@ class Community::ToggleReactionVisibilityTest < ActiveSupport::TestCase
     assert result.failure?
     assert_match(/not available/i, result.error)
   end
+
+  test "cannot react on hidden post without moderation permission" do
+    @post.update!(status: :hidden)
+
+    result = Community::ToggleReaction.call(user: @other, post: @post, emoji: "👍")
+
+    assert result.failure?
+    assert_match(/not available/i, result.error)
+  end
+end
+
+class Community::PostRawAccessTest < ActionDispatch::IntegrationTest
+  setup do
+    @author = create_user
+    category = Community::Category.find_or_create_by!(slug: "raw-access-cat") { |c| c.name = "Raw Access" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "raw-access-sec") do |s|
+      s.name = "Raw Access Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @author,
+      section: section,
+      title: "Raw access topic",
+      body: "Opening post",
+      ip_address: "127.0.0.1"
+    ).value
+    @post = @topic.posts.first
+  end
+
+  test "raw hides moderated posts from regular users" do
+    @post.update!(status: :hidden)
+    other = create_user
+    sign_in_as(other)
+
+    get raw_forum_post_path(@post)
+
+    assert_response :not_found
+  end
 end
 
 class Community::PostAccessControlTest < ActionDispatch::IntegrationTest

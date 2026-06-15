@@ -93,7 +93,7 @@ module Community
     end
 
     def edits
-      return head :not_found unless PollParticipation.visible?(topic: @post.topic, user: current_user)
+      return head :not_found unless PostAccess.readable?(post: @post, user: current_user)
 
       unless can_view_edits?
         return redirect_to forum_topic_path(@post.topic), alert: "无权查看编辑历史。"
@@ -164,7 +164,7 @@ module Community
     end
 
     def raw
-      return head :not_found unless PollParticipation.visible?(topic: @post.topic, user: current_user)
+      return head :not_found unless PostAccess.readable?(post: @post, user: current_user)
 
       render plain: @post.body, content_type: "text/plain; charset=utf-8"
     end

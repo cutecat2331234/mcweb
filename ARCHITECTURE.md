@@ -1316,3 +1316,13 @@ app/
 | 摘要标记已读 | `SendForumDigest` 发送后标记通知 `read_at` |
 | 商城 Webhook 测试 | `DispatchTestOrderWebhook` + 商城设置页测试按钮 |
 | 分渠道告警阈值 | `webhook.failure_alert_forum_threshold` / `store_threshold` |
+
+### 第八十六轮（论坛 Webhook 测试、搜索历史 OPML、商城事件模拟、标签邮件）
+
+| 功能 | 实现 |
+|------|------|
+| 论坛 Webhook 测试 | `forum.saved_search_webhook_url` + `DispatchTestSavedSearchWebhook` + 论坛设置测试按钮 |
+| 搜索历史 OPML | `SearchHistoryOpmlToken` + `GET search/histories.opml` + 搜索页导出链接 |
+| 商城 Webhook 事件模拟 | `DispatchTestOrderWebhook` 支持多事件类型选择 |
+| 标签关注邮件 | `NotifyTagTopic` watching 级别即时邮件 + `ForumMailer#tag_topic` |
+| 搜索历史去重修复 | `SearchHistoryFingerprint` 唯一指纹索引 |

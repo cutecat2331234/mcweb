@@ -25,7 +25,7 @@ module Community
         delivery
       else
         Community::SavedSearchWebhookDelivery.create!(
-          saved_search_id: saved_search_id,
+          saved_search_id: saved_search_id.presence,
           event_type: payload["event"].to_s,
           url: url,
           status: "pending",

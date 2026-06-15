@@ -39,7 +39,9 @@ Rails.application.routes.draw do
     resources :roles, only: %i[index show]
     resources :audit_logs, only: %i[index show]
     namespace :forum do
-      resource :settings, only: %i[show update]
+      resource :settings, only: %i[show update] do
+        post :test_webhook
+      end
       resources :categories
       resources :sections, only: %i[index show new create edit update]
       resources :topics, only: %i[index show]
@@ -201,6 +203,7 @@ Rails.application.routes.draw do
     end
     get "search.rss", to: "rss#ad_hoc_search", as: :search_rss, defaults: { format: :rss }
     get "search.opml", to: "rss#ad_hoc_search_opml", as: :search_opml, defaults: { format: :xml }
+    get "search/histories.opml", to: "rss#search_histories_opml", as: :search_histories_opml, defaults: { format: :xml }
     delete "search/history", to: "search_histories#clear", as: :clear_search_histories
     resources :search_histories, only: %i[destroy], path: "search/history"
     get "search", to: "search#index"

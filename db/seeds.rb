@@ -120,6 +120,7 @@ SiteSetting.set("forum.group_pm_creator_only_add", "false") unless SiteSetting.e
 SiteSetting.set("forum.saved_search_limit", "20") unless SiteSetting.exists?(key: "forum.saved_search_limit")
 SiteSetting.set("forum.saved_search_digest_hour", "9") unless SiteSetting.exists?(key: "forum.saved_search_digest_hour")
 SiteSetting.set("forum.saved_search_webhook_secret", "") unless SiteSetting.exists?(key: "forum.saved_search_webhook_secret")
+SiteSetting.set("forum.saved_search_webhook_url", "") unless SiteSetting.exists?(key: "forum.saved_search_webhook_url")
 SiteSetting.set("webhook.failure_alert_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_threshold")
 SiteSetting.set("webhook.failure_alert_forum_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_forum_threshold")
 SiteSetting.set("webhook.failure_alert_store_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_store_threshold")

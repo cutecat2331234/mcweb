@@ -89,6 +89,7 @@ const props = defineProps<{
     searched_at: string
   }>
   clearSearchHistoryUrl?: string | null
+  searchHistoriesOpmlUrl?: string | null
 }>()
 
 const atSavedSearchLimit = computed(() => {
@@ -690,14 +691,25 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
   <div v-if="searchHistories?.length" class="mb-6">
     <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">最近搜索</h2>
-      <button
-        v-if="clearSearchHistoryUrl"
-        type="button"
-        class="text-xs text-muted-foreground hover:text-destructive"
-        @click="clearSearchHistory"
-      >
-        清空历史
-      </button>
+      <div class="flex gap-3">
+        <a
+          v-if="searchHistoriesOpmlUrl"
+          :href="searchHistoriesOpmlUrl"
+          class="text-xs text-primary hover:underline"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          导出 OPML
+        </a>
+        <button
+          v-if="clearSearchHistoryUrl"
+          type="button"
+          class="text-xs text-muted-foreground hover:text-destructive"
+          @click="clearSearchHistory"
+        >
+          清空历史
+        </button>
+      </div>
     </div>
     <div class="flex flex-wrap gap-2">
       <span

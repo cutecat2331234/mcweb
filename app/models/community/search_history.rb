@@ -8,20 +8,23 @@ module Community
 
     belongs_to :user
 
-    scope :recent, -> { order(created_at: :desc) }
+    scope :recent, -> { order(updated_at: :desc) }
+
+    before_validation :assign_fingerprint
 
     def self.record!(user:, query:, filters: {})
       normalized_query = query.to_s.strip
       normalized_filters = filters.stringify_keys.compact
       return if normalized_query.blank? && normalized_filters.except("q").blank?
 
-      existing = user.forum_search_histories.recent.find_by(query: normalized_query, filters: normalized_filters)
+      fingerprint = SearchHistoryFingerprint.generate(query: normalized_query, filters: normalized_filters)
+      existing = user.forum_search_histories.find_by(fingerprint: fingerprint)
       if existing
-        existing.touch
+        existing.update!(query: normalized_query, filters: normalized_filters, updated_at: Time.current)
         return existing
       end
 
-      entry = user.forum_search_histories.create!(query: normalized_query, filters: normalized_filters)
+      entry = user.forum_search_histories.create!(query: normalized_query, filters: normalized_filters, fingerprint: fingerprint)
       trim_for_user!(user)
       entry
     end
@@ -35,6 +38,16 @@ module Community
       Community::SavedSearchPresenter.url_params(
         Struct.new(:query, :filters, keyword_init: true).new(query: query, filters: filters)
       )
+    end
+
+    def rss_params
+      url_params.stringify_keys
+    end
+
+  private
+
+    def assign_fingerprint
+      self.fingerprint = SearchHistoryFingerprint.generate(query: query, filters: filters || {})
     end
   end
 end

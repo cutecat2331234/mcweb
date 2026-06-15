@@ -286,7 +286,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.jsonb "request_payload", default: {}, null: false
     t.text "response_body"
     t.integer "response_code"
-    t.bigint "saved_search_id", null: false
+    t.bigint "saved_search_id"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
     t.string "url", limit: 2048, null: false
@@ -311,10 +311,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   create_table "forum_search_histories", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "filters", default: {}, null: false
+    t.string "fingerprint"
     t.string "query", default: "", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["user_id", "created_at"], name: "index_forum_search_histories_on_user_id_and_created_at"
+    t.index ["user_id", "fingerprint"], name: "index_forum_search_histories_on_user_id_and_fingerprint", unique: true
     t.index ["user_id"], name: "index_forum_search_histories_on_user_id"
   end
 

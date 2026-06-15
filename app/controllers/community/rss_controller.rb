@@ -72,6 +72,14 @@ module Community
       head :not_found
     end
 
+    def search_histories_opml
+      user_id = Community::SearchHistoryOpmlToken.verify(params[:token])
+      user = User.find(user_id)
+      render xml: build_search_histories_opml(user), content_type: "application/xml"
+    rescue Community::SearchHistoryOpmlToken::InvalidToken, ActiveRecord::RecordNotFound
+      head :not_found
+    end
+
     def watching_opml
       user_id = Community::WatchingOpmlToken.verify(params[:token])
       user = User.find(user_id)
@@ -131,6 +139,19 @@ module Community
       end.join("\n")
 
       wrap_opml(title: "#{user.username} 的保存搜索", outlines: outlines)
+    end
+
+    def build_search_histories_opml(user)
+      outlines = user.forum_search_histories.recent.limit(20).map do |history|
+        params = history.rss_params
+        token = Community::SearchRssToken.generate(params)
+        title = history.query.presence || "筛选搜索"
+        rss_url = forum_search_rss_url(params.symbolize_keys.merge(token: token))
+        html_url = forum_search_url(history.url_params)
+        opml_outline("#{title} (#{l(history.updated_at, format: :short)})", rss_url: rss_url, html_url: html_url)
+      end.join("\n")
+
+      wrap_opml(title: "#{user.username} 的搜索历史", outlines: outlines)
     end
 
     def build_watching_opml(user)

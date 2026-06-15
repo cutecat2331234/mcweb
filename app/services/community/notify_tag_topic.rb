@@ -37,6 +37,18 @@ module Community
             path: "/forum/topics/#{@topic.public_id}"
           }
         )
+
+        level = levels_by_user[user.id] || "watching"
+        if level == "watching" &&
+            Community::WatchEmailDelivery.allowed?(user) &&
+            NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.tag_topic")
+          MailDeliveryJob.perform_later(
+            "Community::ForumMailer",
+            "tag_topic",
+            "deliver_now",
+            args: [ user.id, @topic.public_id, tag_names ]
+          )
+        end
       end
 
       ServiceResult.success

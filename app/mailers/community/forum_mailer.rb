@@ -39,6 +39,15 @@ module Community
       mail(to: @user.email, subject: "分区有新主题：#{@topic.title.truncate(60)}")
     end
 
+    def tag_topic(user_id, topic_id, tag_names)
+      @user = User.find(user_id)
+      @topic = Community::Topic.find_by!(public_id: topic_id)
+      @tag_names = tag_names
+      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+
+      mail(to: @user.email, subject: "关注标签有新主题：#{@topic.title.truncate(60)}")
+    end
+
     def digest(user_id, notification_ids)
       @user = User.find(user_id)
       @notifications = Notification.where(id: notification_ids, user: @user).order(created_at: :desc)

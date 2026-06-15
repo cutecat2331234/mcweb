@@ -26,7 +26,8 @@ module Admin
         render inertia: "Admin/Store/Settings/Show", props: {
           settings: store_settings_props,
           shippingMethods: Commerce::ShippingMethods.stored_list,
-          testWebhookUrl: test_webhook_admin_store_settings_path
+          testWebhookUrl: test_webhook_admin_store_settings_path,
+          testWebhookEvents: Commerce::DispatchTestOrderWebhook::EVENT_TYPES
         }
       end
 
@@ -53,9 +54,10 @@ module Admin
       end
 
       def test_webhook
-        result = Commerce::DispatchTestOrderWebhook.call
+        event_type = params[:event].to_s.presence || "order.test"
+        result = Commerce::DispatchTestOrderWebhook.call(event_type: event_type)
         if result.success?
-          redirect_to admin_store_settings_path, notice: "测试 Webhook 已加入发送队列（order.test）。"
+          redirect_to admin_store_settings_path, notice: "测试 Webhook 已加入发送队列（#{result.value[:event_type]}）。"
         else
           redirect_to admin_store_settings_path, alert: result.error || "测试发送失败。"
         end

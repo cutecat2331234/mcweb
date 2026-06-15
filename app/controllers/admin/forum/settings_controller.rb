@@ -22,6 +22,7 @@ module Admin
         forum.allow_op_close
         forum.min_trust_level_reaction
         forum.saved_search_webhook_secret
+        forum.saved_search_webhook_url
         webhook.failure_alert_threshold
         webhook.failure_alert_forum_threshold
         webhook.failure_alert_store_threshold
@@ -31,7 +32,8 @@ module Admin
 
       def show
         render inertia: "Admin/Forum/Settings/Show", props: {
-          settings: forum_settings_props
+          settings: forum_settings_props,
+          testWebhookUrl: test_webhook_admin_forum_settings_path
         }
       end
 
@@ -47,6 +49,15 @@ module Admin
         )
 
         redirect_to admin_forum_settings_path, notice: "论坛设置已保存。"
+      end
+
+      def test_webhook
+        result = Community::DispatchTestSavedSearchWebhook.call
+        if result.success?
+          redirect_to admin_forum_settings_path, notice: "测试 Webhook 已加入发送队列（saved_search.match）。"
+        else
+          redirect_to admin_forum_settings_path, alert: result.error || "测试发送失败。"
+        end
       end
 
     private
@@ -83,6 +94,7 @@ module Admin
         when "forum.allow_op_close" then "true"
         when "forum.min_trust_level_reaction" then "0"
         when "forum.saved_search_webhook_secret" then ""
+        when "forum.saved_search_webhook_url" then ""
         when "webhook.failure_alert_threshold" then "5"
         when "webhook.failure_alert_forum_threshold" then "5"
         when "webhook.failure_alert_store_threshold" then "5"
@@ -110,6 +122,7 @@ module Admin
           "forum.allow_op_close" => "允许楼主关闭自己的主题",
           "forum.min_trust_level_reaction" => "使用反应所需的最低信任等级",
           "forum.saved_search_webhook_secret" => "保存搜索 Webhook 密钥",
+          "forum.saved_search_webhook_url" => "保存搜索 Webhook URL（测试/全局）",
           "webhook.failure_alert_threshold" => "Webhook 失败告警阈值（24h，兼容）",
           "webhook.failure_alert_forum_threshold" => "论坛 Webhook 失败告警阈值（24h）",
           "webhook.failure_alert_store_threshold" => "商城 Webhook 失败告警阈值（24h）",
@@ -130,6 +143,7 @@ module Admin
           "forum.allow_op_close" => "设为 false 时楼主无法自行关闭主题。",
           "forum.min_trust_level_reaction" => "信任等级低于此值的用户无法对帖子添加反应。",
           "forum.saved_search_webhook_secret" => "用于 X-McWeb-Signature HMAC 签名的密钥，可选。",
+          "forum.saved_search_webhook_url" => "用于管理后台测试投递与全局 Hook，留空则无法发送测试。",
           "webhook.failure_alert_threshold" => "旧版统一阈值，论坛/商城未单独配置时回退使用。0 表示关闭。",
           "webhook.failure_alert_forum_threshold" => "近 24 小时论坛 Webhook 失败达到此值时告警，0 表示不检查论坛。",
           "webhook.failure_alert_store_threshold" => "近 24 小时商城 Webhook 失败达到此值时告警，0 表示不检查商城。",
@@ -142,6 +156,7 @@ module Admin
         return "boolean" if key == "forum.group_pm_creator_only_add"
         return "boolean" if key == "forum.allow_op_close"
         return "text" if key == "forum.saved_search_webhook_secret"
+        return "text" if key == "forum.saved_search_webhook_url"
         return "text" if key == "webhook.failure_alert_email"
 
         "text"

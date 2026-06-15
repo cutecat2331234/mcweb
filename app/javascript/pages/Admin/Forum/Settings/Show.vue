@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3'
+import { useForm, router } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -19,6 +19,7 @@ export interface ForumSettingItem {
 
 const props = defineProps<{
   settings: ForumSettingItem[]
+  testWebhookUrl?: string | null
 }>()
 
 const form = useForm({
@@ -27,6 +28,11 @@ const form = useForm({
 
 function submit() {
   form.patch(adminRoutes.forumSettings)
+}
+
+function sendTestWebhook() {
+  if (!props.testWebhookUrl || !confirm('向配置的 Webhook URL 发送 saved_search.match 测试事件？')) return
+  router.post(props.testWebhookUrl)
 }
 </script>
 
@@ -51,5 +57,14 @@ function submit() {
       <Input v-else :id="setting.key" v-model="form.settings[setting.key]" />
     </div>
     <Button type="submit" :disabled="form.processing">保存论坛设置</Button>
+    <Button
+      v-if="testWebhookUrl"
+      type="button"
+      variant="outline"
+      class="ml-2"
+      @click="sendTestWebhook"
+    >
+      发送 Webhook 测试
+    </Button>
   </form>
 </template>

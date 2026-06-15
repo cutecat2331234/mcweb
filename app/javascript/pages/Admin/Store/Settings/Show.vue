@@ -30,7 +30,10 @@ const props = defineProps<{
   settings: StoreSettingItem[]
   shippingMethods: ShippingMethodItem[]
   testWebhookUrl?: string | null
+  testWebhookEvents?: string[]
 }>()
+
+const selectedTestEvent = ref(props.testWebhookEvents?.[0] || 'order.test')
 
 const form = useForm({
   settings: Object.fromEntries(props.settings.map((s) => [s.key, s.value])),
@@ -76,8 +79,8 @@ function submit() {
 }
 
 function sendTestWebhook() {
-  if (!props.testWebhookUrl || !confirm('向配置的 Webhook URL 发送 order.test 测试事件？')) return
-  router.post(props.testWebhookUrl)
+  if (!props.testWebhookUrl || !confirm(`向配置的 Webhook URL 发送 ${selectedTestEvent.value} 测试事件？`)) return
+  router.post(props.testWebhookUrl, { event: selectedTestEvent.value })
 }
 </script>
 
@@ -139,14 +142,18 @@ function sendTestWebhook() {
       />
     </div>
     <Button type="submit" :disabled="form.processing">保存商城设置</Button>
-    <Button
-      v-if="testWebhookUrl"
-      type="button"
-      variant="outline"
-      class="ml-2"
-      @click="sendTestWebhook"
-    >
-      发送 Webhook 测试
-    </Button>
+    <template v-if="testWebhookUrl">
+      <select v-model="selectedTestEvent" class="ml-2 h-9 rounded-md border px-2 text-sm">
+        <option v-for="event in testWebhookEvents || ['order.test']" :key="event" :value="event">{{ event }}</option>
+      </select>
+      <Button
+        type="button"
+        variant="outline"
+        class="ml-2"
+        @click="sendTestWebhook"
+      >
+        发送 Webhook 测试
+      </Button>
+    </template>
   </form>
 </template>

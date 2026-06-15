@@ -5,18 +5,24 @@ require "uri"
 
 module UrlSafety
   BLOCKED_HOSTS = %w[localhost metadata.google.internal].freeze
+  CGNAT_NETWORK = IPAddr.new("100.64.0.0/10")
 
   module_function
 
   def public_http_url?(url)
     uri = URI.parse(url.to_s.strip)
     return false unless uri.is_a?(URI::HTTP) && uri.host.present?
+    return false unless uri.userinfo.blank?
 
-    host = uri.host.downcase
+    host = uri.host.downcase.delete_prefix("[").delete_suffix("]")
     return false if BLOCKED_HOSTS.include?(host)
     return false if host.end_with?(".local", ".internal", ".localhost")
+    return false if host == "0.0.0.0" || host == "::"
 
-    resolved_addresses(host).all? { |address| public_ip?(address) }
+    addresses = resolved_addresses(host)
+    return false if addresses.empty?
+
+    addresses.all? { |address| public_ip?(address) }
   rescue URI::InvalidURIError, SocketError
     false
   end
@@ -27,7 +33,10 @@ module UrlSafety
   private_class_method :resolved_addresses
 
   def public_ip?(address)
-    !address.loopback? && !address.private? && !address.link_local?
+    return false if address.loopback? || address.private? || address.link_local?
+    return false if CGNAT_NETWORK.include?(address)
+
+    true
   end
   private_class_method :public_ip?
 end

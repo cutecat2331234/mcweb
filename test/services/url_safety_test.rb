@@ -20,6 +20,14 @@ class UrlSafetyTest < ActiveSupport::TestCase
   test "blocks metadata host" do
     assert_not UrlSafety.public_http_url?("http://metadata.google.internal/computeMetadata/v1/")
   end
+
+  test "blocks urls with embedded credentials" do
+    assert_not UrlSafety.public_http_url?("http://user:pass@127.0.0.1/admin")
+  end
+
+  test "blocks cgnat addresses" do
+    assert_not UrlSafety.public_http_url?("http://100.64.0.1/status")
+  end
 end
 
 class Community::FetchLinkPreviewTest < ActiveSupport::TestCase

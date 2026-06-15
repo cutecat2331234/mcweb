@@ -4,6 +4,11 @@
 
 ### Fixed
 
+- UrlSafety 拒绝空 DNS 结果、CGNAT 地址（100.64.0.0/10）及带凭据的 URL
+- Minecraft Connector 认证必须提供有效时间戳，防止重放
+
+### Previously
+
 - 论坛链接预览增加 SSRF 防护，阻止访问 localhost/内网/metadata 地址
 - 未验证邮箱的用户无法登录
 - `bin/install` rsync 排除 `node_modules` 等目录，避免跨平台依赖污染

@@ -92,4 +92,19 @@ class Minecraft::ConnectorAuthenticatorTest < ActiveSupport::TestCase
 
     assert result.failure?
   end
+
+  test "rejects missing timestamp" do
+    payload = '{"status":"ok"}'
+    signature = OpenSSL::HMAC.hexdigest("SHA256", @secret, payload)
+
+    result = Minecraft::ConnectorAuthenticator.call(
+      server: @server,
+      payload: payload,
+      signature: signature,
+      timestamp: nil
+    )
+
+    assert result.failure?
+    assert_match(/timestamp/i, result.error)
+  end
 end

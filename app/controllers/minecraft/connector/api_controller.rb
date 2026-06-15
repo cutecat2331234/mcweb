@@ -55,6 +55,7 @@ module Minecraft
         return if auth_result.success?
 
         render json: { error: service_error_message(auth_result) }, status: :unauthorized
+        nil
       end
 
       def signed_payload

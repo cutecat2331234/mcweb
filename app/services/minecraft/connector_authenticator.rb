@@ -33,7 +33,7 @@ module Minecraft
     end
 
     def timestamp_valid?
-      return true if @timestamp.blank?
+      return false if @timestamp.blank?
 
       ts = Time.zone.at(@timestamp.to_i)
       (Time.current - ts).abs <= @max_skew

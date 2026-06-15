@@ -22,6 +22,8 @@ module Community
 
     def render_posts_tab(tab)
       scope = Community::Post.where(status: :published)
+        .joins(:topic)
+        .where(forum_topics: { status: :published, unlisted: false })
         .includes(:user, topic: :section)
         .order(created_at: :desc)
 

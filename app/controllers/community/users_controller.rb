@@ -45,13 +45,21 @@ module Community
       else
                        Community::Topic.where(user: user, status: :published, unlisted: false)
       end.order(created_at: :desc)
-      posts_scope = Community::Post.where(user: user, status: :published).includes(:topic).order(created_at: :desc)
+      posts_scope = Community::Post.where(user: user, status: :published).joins(:topic)
+      posts_scope = if logged_in? && (current_user.id == user.id || current_user.permission?("forum.topics.lock"))
+                      posts_scope.where(forum_topics: { status: :published })
+      else
+                      posts_scope.where(forum_topics: { status: :published, unlisted: false })
+      end
+      posts_scope = posts_scope.includes(:topic).order(created_at: :desc)
       posts_count = posts_scope.count
       @pagy_topics, topics = pagy(preload_topics(topics_scope), limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
       @pagy_posts, posts = pagy(posts_scope, limit: 20, page: [ params[:posts_page].to_i, 1 ].max)
       trust = Community::TrustLevel.level_info(user)
       progress = Community::TrustLevel.progress_for(user)
       liked_posts = Community::Post.where(user: user, status: :published)
+        .joins(:topic)
+        .where(forum_topics: { status: :published, unlisted: false })
         .select("forum_posts.*, COUNT(forum_reactions.id) AS reactions_count")
         .joins(:reactions)
         .group("forum_posts.id")

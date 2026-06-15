@@ -41,7 +41,7 @@ module Community
     def feed_item(topic)
       link = forum_topic_url(topic)
       pub_date = (topic.last_posted_at || topic.created_at).rfc2822
-      description = escape_xml(topic.posts.first&.body&.truncate(300).to_s)
+      description = escape_xml(topic.posts.published.order(:floor_number).first&.body&.truncate(300).to_s)
       <<~XML
         <item>
           <title>#{escape_xml(topic.title)}</title>

@@ -17,6 +17,10 @@ module Community
         return ServiceResult.failure(error: "Post does not belong to this topic.")
       end
 
+      unless PostAccess.readable?(post: @post, user: @user)
+        return ServiceResult.failure(error: "Post not available.")
+      end
+
       @topic.update!(solved_post: @post)
       Community::NotifyTopicSolved.call(topic: @topic, post: @post, actor: @user)
       auto_close_on_solved!

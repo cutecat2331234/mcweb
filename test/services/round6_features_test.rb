@@ -243,6 +243,39 @@ class Community::HiddenPostTopicListTest < ActionDispatch::IntegrationTest
   end
 end
 
+class Community::HiddenTopicActivityFeedTest < ActionDispatch::IntegrationTest
+  setup do
+    @author = create_user
+    category = Community::Category.find_or_create_by!(slug: "activity-hidden-cat") { |c| c.name = "Activity Hidden" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "activity-hidden-sec") do |s|
+      s.name = "Activity Hidden Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @author,
+      section: section,
+      title: "Hidden activity topic",
+      body: "Opening",
+      ip_address: "127.0.0.1"
+    ).value
+    @topic.update!(status: "hidden")
+    @reply = Community::CreatePost.call(
+      user: @author,
+      topic: @topic,
+      body: "Secret hidden reply",
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    ).value
+  end
+
+  test "activity feed omits posts from hidden topics" do
+    get forum_activity_path(tab: "posts")
+
+    assert_response :success
+    assert_not_includes response.body, "Secret hidden reply"
+  end
+end
+
 class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
   setup do
     @author = create_user

@@ -80,7 +80,7 @@ deploy_release() {
   version="$(date +%Y%m%d%H%M%S)"
   local release_dir="${APP_ROOT}/releases/${version}"
   mkdir -p "${release_dir}" "${CONFIG_DIR}" "${DATA_DIR}/uploads" "${LOG_DIR}" "${BACKUP_DIR}"
-  rsync -a --exclude='.git' --exclude='tmp' --exclude='log' "$(pwd)/" "${release_dir}/"
+  rsync -a --exclude='.git' --exclude='tmp' --exclude='log' --exclude='node_modules' --exclude='storage' --exclude='vendor/bundle' "$(pwd)/" "${release_dir}/"
   ln -sfn "${release_dir}" "${APP_ROOT}/current"
   chown -R "${APP_USER}:${APP_USER}" "${APP_ROOT}" "${DATA_DIR}" "${LOG_DIR}"
 }

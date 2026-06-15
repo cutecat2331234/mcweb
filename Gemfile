@@ -31,6 +31,7 @@ gem "bootsnap", require: false
 gem "thruster", require: false
 gem "image_processing", "~> 1.2"
 gem "prawn", "~> 2.5"
+gem "ostruct"
 
 group :development, :test do
   gem "debug", platforms: %i[ mri windows ], require: "debug/prelude"

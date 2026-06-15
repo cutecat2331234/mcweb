@@ -14,7 +14,7 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Invalid URL.") unless valid_url?
+      return ServiceResult.failure(error: "Invalid URL.") unless UrlSafety.public_http_url?(@url)
 
       cached = Rails.cache.read(cache_key)
       return ServiceResult.success(cached) if cached
@@ -27,13 +27,6 @@ module Community
     end
 
     private
-
-    def valid_url?
-      uri = URI.parse(@url)
-      uri.is_a?(URI::HTTP) && uri.host.present?
-    rescue URI::InvalidURIError
-      false
-    end
 
     def cache_key
       "forum/link_preview/#{Digest::SHA256.hexdigest(@url)}"

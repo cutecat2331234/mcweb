@@ -24,7 +24,7 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
       email: @user.email, password: "password123"
     }
 
-    assert_includes [400, 404, 422, 500], response.status,
+    assert_includes [ 400, 404, 422, 500 ], response.status,
                     "Expected flat login params to fail, got #{response.status}"
   end
 

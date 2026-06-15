@@ -4,6 +4,13 @@
 
 ### Fixed
 
+- 论坛链接预览增加 SSRF 防护，阻止访问 localhost/内网/metadata 地址
+- 未验证邮箱的用户无法登录
+- `bin/install` rsync 排除 `node_modules` 等目录，避免跨平台依赖污染
+- 添加 `ostruct` gem，消除 Ruby 4.0 弃用警告
+
+### Previously
+
 - Minecraft 后台服务器列表/详情改用 `address` 字段，修复 `NoMethodError: host`
 - 注册与密码重置通过 `Identity::Mailer` 发送邮件
 - 补充 `config/templates/install.env.example`

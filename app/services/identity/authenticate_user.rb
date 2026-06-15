@@ -33,6 +33,10 @@ module Identity
         return generic_failure
       end
 
+      unless user.email_verified?
+        return ServiceResult.failure(error: "Please verify your email before signing in.")
+      end
+
       if user.totp_enabled? || user.require_totp?
         return ServiceResult.failure(error: "Two-factor authentication code is required.") if @totp_code.blank?
         return ServiceResult.failure(error: "Invalid two-factor authentication code.") unless verify_totp(user)

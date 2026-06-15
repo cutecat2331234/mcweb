@@ -46,6 +46,19 @@ class Identity::AuthenticateUserTest < ActiveSupport::TestCase
 
     assert result.failure?
   end
+
+  test "rejects unverified email" do
+    create_user(email: "unverified@example.com", username: "unverified", email_verified: false, email_verified_at: nil)
+    result = Identity::AuthenticateUser.call(
+      email: "unverified@example.com",
+      password: "password123",
+      ip_address: "127.0.0.1",
+      user_agent: "Test"
+    )
+
+    assert result.failure?
+    assert_match(/verify your email/i, result.error)
+  end
 end
 
 class Identity::PermissionCheckerTest < ActiveSupport::TestCase
@@ -77,6 +90,19 @@ class Identity::ResetPasswordTest < ActiveSupport::TestCase
 
     user.reload
     assert user.password_reset_token_digest.present?
+  end
+end
+
+class Identity::MailerTest < ActionMailer::TestCase
+  test "verification email includes token link" do
+    user = create_user(email: "mailer@example.com", username: "maileruser")
+    token = "test-verification-token"
+
+    email = Identity::Mailer.verification_email(user.id, token)
+
+    assert_equal [ "mailer@example.com" ], email.to
+    body = [ email.text_part&.body&.decoded, email.html_part&.body&.decoded, email.body.decoded ].compact.join
+    assert_includes body, token
   end
 end
 

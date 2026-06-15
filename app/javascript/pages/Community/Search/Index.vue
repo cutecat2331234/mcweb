@@ -80,6 +80,15 @@ const props = defineProps<{
   suggestUrl?: string | null
   searchRssUrl?: string | null
   searchOpmlUrl?: string | null
+  searchHistories?: Array<{
+    id: number
+    query: string
+    filter_labels?: string[]
+    url: string
+    delete_url: string
+    searched_at: string
+  }>
+  clearSearchHistoryUrl?: string | null
 }>()
 
 const atSavedSearchLimit = computed(() => {
@@ -379,6 +388,21 @@ async function saveSearch() {
   }
 }
 
+async function deleteSearchHistory(deleteUrl: string) {
+  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+  await fetch(deleteUrl, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': token, Accept: 'application/json' },
+    credentials: 'same-origin',
+  })
+  router.reload({ only: ['searchHistories'] })
+}
+
+function clearSearchHistory() {
+  if (!props.clearSearchHistoryUrl || !confirm('确定清空所有搜索历史吗？')) return
+  router.delete(props.clearSearchHistoryUrl, { preserveScroll: true })
+}
+
 async function deleteSavedSearch(deleteUrl: string) {
   const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
   await fetch(deleteUrl, {
@@ -661,6 +685,32 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       {{ saving ? '保存中…' : '保存搜索' }}
     </Button>
     <p v-if="saveError" class="text-sm text-destructive">{{ saveError }}</p>
+  </div>
+
+  <div v-if="searchHistories?.length" class="mb-6">
+    <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
+      <h2 class="text-sm font-semibold">最近搜索</h2>
+      <button
+        v-if="clearSearchHistoryUrl"
+        type="button"
+        class="text-xs text-muted-foreground hover:text-destructive"
+        @click="clearSearchHistory"
+      >
+        清空历史
+      </button>
+    </div>
+    <div class="flex flex-wrap gap-2">
+      <span
+        v-for="history in searchHistories"
+        :key="history.id"
+        class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm"
+      >
+        <Link :href="history.url" class="hover:underline">{{ history.query || '筛选搜索' }}</Link>
+        <span v-for="label in history.filter_labels || []" :key="label" class="text-[10px] text-muted-foreground">{{ label }}</span>
+        <span class="text-[10px] text-muted-foreground">{{ history.searched_at }}</span>
+        <button type="button" class="text-muted-foreground hover:text-destructive" title="删除" @click="deleteSearchHistory(history.delete_url)">×</button>
+      </span>
+    </div>
   </div>
 
   <div v-if="savedSearches?.length" class="mb-6 flex flex-wrap gap-2">

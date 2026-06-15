@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3'
+import { useForm, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -29,6 +29,7 @@ export interface ShippingMethodItem {
 const props = defineProps<{
   settings: StoreSettingItem[]
   shippingMethods: ShippingMethodItem[]
+  testWebhookUrl?: string | null
 }>()
 
 const form = useForm({
@@ -72,6 +73,11 @@ function submit() {
       })),
     }))
     .patch(adminRoutes.storeSettings)
+}
+
+function sendTestWebhook() {
+  if (!props.testWebhookUrl || !confirm('向配置的 Webhook URL 发送 order.test 测试事件？')) return
+  router.post(props.testWebhookUrl)
 }
 </script>
 
@@ -133,5 +139,14 @@ function submit() {
       />
     </div>
     <Button type="submit" :disabled="form.processing">保存商城设置</Button>
+    <Button
+      v-if="testWebhookUrl"
+      type="button"
+      variant="outline"
+      class="ml-2"
+      @click="sendTestWebhook"
+    >
+      发送 Webhook 测试
+    </Button>
   </form>
 </template>

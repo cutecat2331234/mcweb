@@ -34,6 +34,7 @@ module Community
         "deliver_now",
         args: [ @user.id, notifications.map(&:id) ]
       )
+      Notification.where(id: notifications.map(&:id)).update_all(read_at: Time.current)
       @user.update!(forum_digest_last_sent_at: Time.current)
       ServiceResult.success(sent: true, count: notifications.count)
     end

@@ -58,6 +58,8 @@ module Community
 
       assignee_id = resolve_assignee_id(assignee_filter)
 
+      Community::RecordSearchHistory.call(user: current_user, params: params) if logged_in? && query.present?
+
       if query.present?
         unless posts_only
         topics = search_topic_base_scope(unlisted_filter: unlisted_filter, archived_filter: archived_filter)
@@ -208,7 +210,9 @@ module Community
         savedSearchesOpmlUrl: logged_in? ? Community::SavedSearchPresenter.opml_path(current_user) : nil,
         suggestUrl: forum_search_suggest_path,
         searchRssUrl: query.present? ? search_rss_url_for(query) : nil,
-        searchOpmlUrl: query.present? ? search_opml_url_for(query) : nil
+        searchOpmlUrl: query.present? ? search_opml_url_for(query) : nil,
+        searchHistories: serialize_search_histories,
+        clearSearchHistoryUrl: logged_in? ? forum_clear_search_histories_path : nil
       }
     end
 
@@ -416,6 +420,23 @@ module Community
 
     def apply_images_filter(scope)
       scope.where("forum_posts.body LIKE ? OR forum_posts.body LIKE ?", "%![%", "%/rails/active_storage/%")
+    end
+
+    def serialize_search_histories
+      return [] unless logged_in?
+
+      current_user.forum_search_histories.recent.limit(10).map do |history|
+        {
+          id: history.id,
+          query: history.query,
+          filter_labels: Community::SavedSearchFilterSummary.call(
+            Struct.new(:query, :filters, keyword_init: true).new(query: history.query, filters: history.filters)
+          ),
+          url: forum_search_path(history.url_params),
+          delete_url: forum_search_history_path(history),
+          searched_at: l(history.updated_at, format: :short)
+        }
+      end
     end
 
     def serialize_saved_searches

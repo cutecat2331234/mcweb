@@ -1307,3 +1307,12 @@ app/
 | 关注即时邮件模式 | `forum_watch_email_mode`（instant/digest_only/none）+ `WatchEmailDelivery` |
 | 管理 Webhook 日期筛选 | `created_from` / `created_to` + `Admin::WebhookDeliveryFilterable` |
 | 仪表盘失败链接 | 预筛选近 24h 失败投递 + 关注 OPML 含主题订阅 |
+
+### 第八十五轮（搜索历史、摘要已读、Webhook 测试、分渠道告警）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索历史 | `Community::SearchHistory` + 记录/展示/单删/清空 |
+| 摘要标记已读 | `SendForumDigest` 发送后标记通知 `read_at` |
+| 商城 Webhook 测试 | `DispatchTestOrderWebhook` + 商城设置页测试按钮 |
+| 分渠道告警阈值 | `webhook.failure_alert_forum_threshold` / `store_threshold` |

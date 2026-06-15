@@ -25,7 +25,8 @@ module Admin
       def show
         render inertia: "Admin/Store/Settings/Show", props: {
           settings: store_settings_props,
-          shippingMethods: Commerce::ShippingMethods.stored_list
+          shippingMethods: Commerce::ShippingMethods.stored_list,
+          testWebhookUrl: test_webhook_admin_store_settings_path
         }
       end
 
@@ -49,6 +50,15 @@ module Admin
         redirect_to admin_store_settings_path, notice: "商城设置已保存。"
       rescue ArgumentError, JSON::ParserError => e
         redirect_to admin_store_settings_path, alert: "保存失败：#{e.message}"
+      end
+
+      def test_webhook
+        result = Commerce::DispatchTestOrderWebhook.call
+        if result.success?
+          redirect_to admin_store_settings_path, notice: "测试 Webhook 已加入发送队列（order.test）。"
+        else
+          redirect_to admin_store_settings_path, alert: result.error || "测试发送失败。"
+        end
       end
 
     private

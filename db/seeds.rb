@@ -121,6 +121,8 @@ SiteSetting.set("forum.saved_search_limit", "20") unless SiteSetting.exists?(key
 SiteSetting.set("forum.saved_search_digest_hour", "9") unless SiteSetting.exists?(key: "forum.saved_search_digest_hour")
 SiteSetting.set("forum.saved_search_webhook_secret", "") unless SiteSetting.exists?(key: "forum.saved_search_webhook_secret")
 SiteSetting.set("webhook.failure_alert_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_threshold")
+SiteSetting.set("webhook.failure_alert_forum_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_forum_threshold")
+SiteSetting.set("webhook.failure_alert_store_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_store_threshold")
 SiteSetting.set("webhook.failure_alert_email", "") unless SiteSetting.exists?(key: "webhook.failure_alert_email")
 SiteSetting.set("webhook.failure_alert_cooldown_hours", "6") unless SiteSetting.exists?(key: "webhook.failure_alert_cooldown_hours")
 SiteSetting.set("forum.digest_hour", "8") unless SiteSetting.exists?(key: "forum.digest_hour")

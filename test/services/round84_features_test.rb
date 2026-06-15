@@ -52,6 +52,8 @@ class Round84WebhookFailureAlertTest < ActiveSupport::TestCase
     @previous_email = SiteSetting.get("webhook.failure_alert_email")
     @previous_cooldown = SiteSetting.get("webhook.failure_alert_last_sent_at")
     SiteSetting.set("webhook.failure_alert_threshold", "2")
+    SiteSetting.set("webhook.failure_alert_forum_threshold", "2")
+    SiteSetting.set("webhook.failure_alert_store_threshold", "0")
     SiteSetting.set("webhook.failure_alert_email", "admin-alert@example.com")
     SiteSetting.set("webhook.failure_alert_last_sent_at", "")
   end

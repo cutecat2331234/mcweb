@@ -26,10 +26,12 @@ const props = defineProps<{
   filterOptions: Array<{ value: string; label: string }>
   sectionOptions: Array<{ value: string; label: string }>
   tagOptions: Array<{ value: string; label: string }>
+  filterBookmarkUrl?: string | null
   activeFilters?: Array<{ param: string; label: string; value?: string }>
 }>()
 
 const selectedIds = ref<string[]>([])
+const bookmarkCopied = ref(false)
 
 const selectedTagSlugs = computed(() =>
   props.tags
@@ -95,6 +97,17 @@ function removeFilter(chip: { param: string; value?: string }) {
     overrides.tags = next.length ? next.join(',') : undefined
   }
   router.get(routes.forumUnread, listParams(overrides), { preserveState: true })
+}
+
+async function copyFilterBookmark() {
+  if (!props.filterBookmarkUrl) return
+  try {
+    await navigator.clipboard.writeText(props.filterBookmarkUrl)
+    bookmarkCopied.value = true
+    window.setTimeout(() => { bookmarkCopied.value = false }, 2000)
+  } catch {
+    // ignore clipboard errors
+  }
 }
 </script>
 
@@ -167,6 +180,15 @@ function removeFilter(chip: { param: string; value?: string }) {
 
   <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
     <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <Button
+      v-if="filterBookmarkUrl"
+      type="button"
+      variant="outline"
+      size="sm"
+      @click="copyFilterBookmark"
+    >
+      {{ bookmarkCopied ? '已复制链接' : '复制筛选链接' }}
+    </Button>
     <span
       v-for="chip in activeFilters"
       :key="`${chip.param}-${chip.value || chip.label}`"

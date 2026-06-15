@@ -184,6 +184,7 @@ module Community
       @quoted_post = Community::Post.find(quoted_post_id)
       @topic = @post.topic
       @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      assign_notification_unsubscribe("forum.quote")
       mail(to: @user.email, subject: "#{@quoter.username} 引用了你的帖子")
     end
 

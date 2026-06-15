@@ -1536,3 +1536,13 @@ app/
 | 订单预设状态联动 | `CustomerOrderTotalPresets` 保留 status/q/日期参数 |
 | 关注标签/用户退订 | `tag_topic`/`followed_topic` 邮件退订链接 |
 | 通知本周筛选 | `period=this_week` + 时间快捷筛选入口 |
+
+### 第一百零五轮（上月时间线、本月通知筛选、未读筛选书签、引用邮件退订、导出金额预设）
+
+| 功能 | 实现 |
+|------|------|
+| 通知上月桶 | `GroupNotificationTimeline` 增加 `last_month`（上月）分组 |
+| 通知本月筛选 | `period=this_month` + `NotificationPeriodFilters` 快捷入口 |
+| 未读筛选书签 | `UnreadFilterBookmarkUrl` + 复制筛选链接按钮 |
+| 引用邮件退订 | `post_quoted` 邮件 `forum.quote` 退订链接 |
+| 导出金额预设 | CSV 导出尊重 `min_total`/`max_total` 预设参数 |

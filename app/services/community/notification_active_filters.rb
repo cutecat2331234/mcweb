@@ -34,6 +34,7 @@ module Community
       when "today" then "仅今日"
       when "this_week" then "本周"
       when "this_month" then "本月"
+      when "last_month" then "上月"
       else period
       end
     end

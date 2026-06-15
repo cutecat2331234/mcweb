@@ -103,6 +103,8 @@ module Community
         scope.where("created_at >= ?", Time.zone.now.beginning_of_day)
       when "this_week"
         scope.where("created_at >= ?", Time.zone.now.beginning_of_week)
+      when "this_month"
+        scope.where("created_at >= ?", Time.zone.now.beginning_of_month)
       else
         scope
       end

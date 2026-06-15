@@ -60,6 +60,7 @@ module Community
         filterOptions: topic_filter_options,
         sectionOptions: unread_section_options,
         tagOptions: unread_tag_options,
+        filterBookmarkUrl: unread_filter_bookmark_url(sort: sort, filter: filter, section: section_slug, tag_slugs: tag_slugs, tag_match: tag_match),
         activeFilters: unread_active_filters(sort: sort, filter: filter, section: section_slug, tag_slugs: tag_slugs, tag_match: tag_match)
       }
     end
@@ -147,6 +148,17 @@ module Community
         { value: "all", label: "全部标签" },
         { value: "any", label: "任意标签" }
       ]
+    end
+
+    def unread_filter_bookmark_url(sort:, filter:, section:, tag_slugs:, tag_match:)
+      Community::UnreadFilterBookmarkUrl.call(
+        base_url: request.base_url,
+        sort: sort,
+        filter: filter,
+        section: section,
+        tags: tag_slugs,
+        tag_match: tag_match
+      )
     end
 
     def apply_unread_tag_filters(scope, tag_slugs, match:)

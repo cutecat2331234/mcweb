@@ -37,6 +37,7 @@ const nav = [
     { label: '评价', href: adminRoutes.storeReviews },
     { label: '商品问答', href: adminRoutes.storeProductQuestions },
     { label: '发货', href: adminRoutes.storeFulfillments },
+    { label: '商城设置', href: adminRoutes.storeSettings },
   ]},
   { label: '系统', items: [
     { label: 'Minecraft 服务器', href: adminRoutes.minecraftServers },

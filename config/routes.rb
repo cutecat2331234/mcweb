@@ -53,6 +53,7 @@ Rails.application.routes.draw do
       resources :canned_responses
     end
     namespace :store do
+      resource :settings, only: %i[show update]
       resources :categories
       resources :products do
         member do

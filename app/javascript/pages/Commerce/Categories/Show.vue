@@ -59,6 +59,8 @@ const sortLabels: Record<string, string> = {
   price_asc: '价格升序',
   price_desc: '价格降序',
   popular: '最热',
+  rating: '评分最高',
+  discount_desc: '折扣最大',
 }
 
 function filterParams(overrides: Record<string, string | undefined> = {}) {
@@ -133,9 +135,11 @@ function toggleWishlist(url: string) {
       @change="applySort(($event.target as HTMLSelectElement).value)"
     >
       <option value="">最新上架</option>
+      <option value="popular">最热</option>
+      <option value="rating">评分最高</option>
       <option value="price_asc">价格从低到高</option>
       <option value="price_desc">价格从高到低</option>
-      <option value="popular">最热</option>
+      <option value="discount_desc">折扣最大</option>
     </select>
     <label class="flex items-center gap-2 text-sm">
       <input

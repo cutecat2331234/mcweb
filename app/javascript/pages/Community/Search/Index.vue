@@ -56,7 +56,7 @@ const props = defineProps<{
   posts: SearchPost[]
   topicsPagination: PaginationMeta
   postsPagination: PaginationMeta
-  savedSearches?: Array<{ id: number; name: string; query: string; url: string; delete_url: string; notify_daily?: boolean }>
+  savedSearches?: Array<{ id: number; name: string; query: string; url: string; update_url?: string; delete_url: string; notify_daily?: boolean }>
   loggedIn?: boolean
   forumStaff?: boolean
   saveSearchUrl?: string | null
@@ -286,6 +286,33 @@ async function deleteSavedSearch(deleteUrl: string) {
   })
   router.reload({ only: ['savedSearches'] })
 }
+
+const togglingNotifyId = ref<number | null>(null)
+
+async function toggleSavedSearchNotify(search: { id: number; notify_daily?: boolean; update_url?: string }) {
+  if (!search.update_url) return
+  togglingNotifyId.value = search.id
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const response = await fetch(search.update_url, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+        'X-CSRF-Token': token,
+      },
+      credentials: 'same-origin',
+      body: JSON.stringify({
+        saved_search: { notify_daily: !search.notify_daily },
+      }),
+    })
+    if (response.ok) {
+      router.reload({ only: ['savedSearches'] })
+    }
+  } finally {
+    togglingNotifyId.value = null
+  }
+}
 </script>
 
 <template>
@@ -456,8 +483,18 @@ async function deleteSavedSearch(deleteUrl: string) {
     <span class="text-sm text-muted-foreground">已保存：</span>
     <span v-for="search in savedSearches" :key="search.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <Link :href="search.url" class="hover:underline">{{ search.name }}</Link>
-      <span v-if="search.notify_daily" class="text-[10px] text-primary" title="已开启每日邮件提醒">📧</span>
-      <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteSavedSearch(search.delete_url)">×</button>
+      <button
+        v-if="search.update_url"
+        type="button"
+        class="text-[10px] transition-opacity"
+        :class="search.notify_daily ? 'text-primary' : 'text-muted-foreground opacity-50 hover:opacity-100'"
+        :disabled="togglingNotifyId === search.id"
+        :title="search.notify_daily ? '关闭每日邮件提醒' : '开启每日邮件提醒'"
+        @click="toggleSavedSearchNotify(search)"
+      >
+        📧
+      </button>
+      <button type="button" class="text-muted-foreground hover:text-destructive" title="删除" @click="deleteSavedSearch(search.delete_url)">×</button>
     </span>
   </div>
 

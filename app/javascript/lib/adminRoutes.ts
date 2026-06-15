@@ -47,6 +47,7 @@ export const adminRoutes = {
   storeReviews: '/admin/store/reviews',
   storeOrder: (id: string) => `/admin/store/orders/${id}`,
   storeFulfillments: '/admin/store/fulfillments',
+  storeSettings: '/admin/store/settings',
   storeFulfillment: (id: string | number) => `/admin/store/fulfillments/${id}`,
   websitePages: '/admin/website/pages',
   websitePage: (id: string | number) => `/admin/website/pages/${id}`,

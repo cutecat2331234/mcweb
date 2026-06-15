@@ -17,6 +17,7 @@ export interface SavedSearchItem {
   notify_daily: boolean
   url: string
   update_url: string
+  delete_url: string
 }
 
 const props = defineProps<{
@@ -71,6 +72,16 @@ async function toggleSavedSearchNotify(search: SavedSearchItem) {
   } finally {
     togglingId.value = null
   }
+}
+
+async function deleteSavedSearch(deleteUrl: string) {
+  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+  await fetch(deleteUrl, {
+    method: 'DELETE',
+    headers: { 'X-CSRF-Token': token, Accept: 'application/json' },
+    credentials: 'same-origin',
+  })
+  router.reload({ only: ['savedSearches'] })
 }
 </script>
 
@@ -138,15 +149,24 @@ async function toggleSavedSearchNotify(search: SavedSearchItem) {
           <Link :href="search.url" class="font-medium hover:underline">{{ search.name }}</Link>
           <p v-if="search.query" class="truncate text-xs text-muted-foreground">关键词：{{ search.query }}</p>
         </div>
-        <label class="flex shrink-0 items-center gap-2 text-xs">
-          <input
-            type="checkbox"
-            :checked="search.notify_daily"
-            :disabled="togglingId === search.id"
-            @change="toggleSavedSearchNotify(search)"
-          />
-          每日邮件
-        </label>
+        <div class="flex shrink-0 flex-wrap items-center gap-2">
+          <label class="flex items-center gap-2 text-xs">
+            <input
+              type="checkbox"
+              :checked="search.notify_daily"
+              :disabled="togglingId === search.id"
+              @change="toggleSavedSearchNotify(search)"
+            />
+            每日邮件
+          </label>
+          <button
+            type="button"
+            class="text-xs text-destructive hover:underline"
+            @click="deleteSavedSearch(search.delete_url)"
+          >
+            删除
+          </button>
+        </div>
       </li>
     </ul>
     <p class="mt-3 text-xs text-muted-foreground">

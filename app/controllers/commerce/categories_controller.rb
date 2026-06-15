@@ -24,7 +24,10 @@ module Commerce
       scope = case params[:sort]
       when "price_asc" then scope.order(price_cents: :asc)
       when "price_desc" then scope.order(price_cents: :desc)
+      when "discount_desc" then scope.on_sale.order(Arel.sql("((compare_at_price_cents - price_cents)::float / NULLIF(compare_at_price_cents, 0)) DESC"))
       when "popular" then scope.order(view_count: :desc, created_at: :desc)
+      when "rating" then scope.left_joins(:reviews).where(store_reviews: { status: "published" })
+                .group("store_products.id").order(Arel.sql("COALESCE(AVG(store_reviews.rating), 0) DESC"))
       else scope.order(created_at: :desc)
       end
 

@@ -8,7 +8,10 @@ module Commerce
       scope = scope.on_sale if params[:on_sale] == "1"
       if params[:q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
-        scope = scope.where("name ILIKE ? OR slug ILIKE ?", q, q)
+        scope = scope.left_joins(:variants).where(
+          "store_products.name ILIKE :q OR store_products.slug ILIKE :q OR store_product_variants.sku ILIKE :q",
+          q: q
+        ).distinct
       end
       scope = case params[:sort]
       when "price_asc" then scope.order(price_cents: :asc)

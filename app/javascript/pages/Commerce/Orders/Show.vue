@@ -107,7 +107,7 @@ const payForm = useForm({
   order_id: props.order.id,
   checkout: { provider: props.order.default_provider || 'fake' },
 })
-const cancelForm = useForm({})
+const cancelForm = useForm({ reason: '' })
 const refundForm = useForm({ reason: '', amount_cents: 0 as number | '' })
 
 onMounted(() => {
@@ -300,7 +300,13 @@ function refreshDownload(url: string) {
     </form>
     <Button v-else-if="order.can_confirm_free" type="button" @click="payForm.post(routes.storeCheckout)">确认订单</Button>
     <Button v-else-if="order.can_pay" type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
-    <Button v-if="order.can_cancel" type="button" variant="outline" @click="cancelForm.post(order.cancel_url)">取消订单</Button>
+    <div v-if="order.can_cancel" class="flex flex-wrap items-end gap-2">
+      <div class="space-y-1">
+        <Label for="cancel_reason">取消原因（可选）</Label>
+        <Input id="cancel_reason" v-model="cancelForm.reason" placeholder="例如：买错了 / 暂时不需要" class="w-64" />
+      </div>
+      <Button type="button" variant="outline" @click="cancelForm.post(order.cancel_url)">取消订单</Button>
+    </div>
     <Button v-if="order.can_reorder && order.reorder_url" type="button" variant="outline" @click="reorderForm.post(order.reorder_url)">再次购买</Button>
     <Button v-if="order.can_download_receipt" as-child variant="outline">
       <a :href="order.receipt_url" target="_blank" rel="noopener">HTML 收据</a>

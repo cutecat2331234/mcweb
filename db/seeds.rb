@@ -111,6 +111,8 @@ SiteSetting.set("store.order_webhook_secret", "") unless SiteSetting.exists?(key
 SiteSetting.set("store.abandoned_cart_coupon_code", "") unless SiteSetting.exists?(key: "store.abandoned_cart_coupon_code")
 SiteSetting.set("store.refund_window_days", "0") unless SiteSetting.exists?(key: "store.refund_window_days")
 SiteSetting.set("store.pending_order_expiry_minutes", "30") unless SiteSetting.exists?(key: "store.pending_order_expiry_minutes")
+SiteSetting.set("store.review_request_delay_days", "3") unless SiteSetting.exists?(key: "store.review_request_delay_days")
+SiteSetting.set("forum.reaction_emojis", "👍,❤️,😂,🎉,👀") unless SiteSetting.exists?(key: "forum.reaction_emojis")
 SiteSetting.set("store.compare_max_items", "4") unless SiteSetting.exists?(key: "store.compare_max_items")
 SiteSetting.set("store.cart_max_items", "99") unless SiteSetting.exists?(key: "store.cart_max_items")
 

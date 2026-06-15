@@ -589,6 +589,12 @@ function moderatePost(post: PostItem, action: string, extra: Record<string, stri
   router.post(`/forum/posts/${post.id}/moderate`, { action_type: action, ...extra }, { preserveScroll: true })
 }
 
+function changePostAuthor(post: PostItem) {
+  const username = window.prompt('输入新作者用户名（Discourse Change Owner）')
+  if (!username?.trim()) return
+  moderatePost(post, 'change_author', { new_username: username.trim() })
+}
+
 function saveStaffNotice(post: PostItem) {
   if (!staffNoticeText.value.trim()) return
   moderatePost(post, 'set_staff_notice', { staff_notice: staffNoticeText.value.trim() })
@@ -1273,6 +1279,7 @@ function pollPercent(votes: number) {
               <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.wiki ? 'disable_wiki' : 'enable_wiki')">
                 {{ post.wiki ? '关闭 Wiki' : 'Wiki 帖' }}
               </button>
+              <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="changePostAuthor(post)">更改作者</button>
               <button v-if="post.can_moderate && post.staff_notice" type="button" class="text-xs hover:underline" @click="moderatePost(post, 'clear_staff_notice')">清除提示</button>
               <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">编辑</button>
               <button v-if="post.can_delete && !post.deleted" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">删除</button>

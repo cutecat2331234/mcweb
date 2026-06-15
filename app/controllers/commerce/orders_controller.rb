@@ -44,7 +44,7 @@ module Commerce
     end
 
     def cancel
-      result = Commerce::CancelOrder.call(order: @order, actor: current_user)
+      result = Commerce::CancelOrder.call(order: @order, actor: current_user, reason: params[:reason])
 
       if result.success?
         redirect_to store_order_path(@order), notice: "订单已取消。"

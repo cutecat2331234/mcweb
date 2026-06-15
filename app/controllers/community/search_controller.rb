@@ -20,6 +20,8 @@ module Community
       parsed_announcement = parsed.success? ? parsed.value[:announcement_filter] : nil
       parsed_unlisted = parsed.success? ? parsed.value[:unlisted_filter] : nil
       parsed_archived = parsed.success? ? parsed.value[:archived_filter] : nil
+      parsed_mine = parsed.success? ? parsed.value[:mine_filter] : nil
+      parsed_scope = parsed.success? ? parsed.value[:scope_filter] : nil
       parsed_poll = parsed.success? ? parsed.value[:poll_filter] : nil
       parsed_noreplies = parsed.success? ? parsed.value[:noreplies_filter] : nil
 
@@ -35,6 +37,8 @@ module Community
       announcement_filter = params[:announcement].to_s.presence || parsed_announcement
       unlisted_filter = params[:unlisted].to_s.presence || parsed_unlisted
       archived_filter = params[:archived].to_s.presence || parsed_archived
+      mine_filter = params[:mine].to_s.presence || parsed_mine
+      scope_filter = params[:scope].to_s.presence || parsed_scope
       poll_filter = params[:poll].to_s.presence || parsed_poll
       noreplies_filter = params[:noreplies].to_s.presence || parsed_noreplies
       topics = Community::Topic.none
@@ -42,6 +46,7 @@ module Community
 
       if query.present?
         topics = search_topic_base_scope(unlisted_filter: unlisted_filter, archived_filter: archived_filter)
+        topics = apply_user_search_scope(topics, mine_filter: mine_filter, scope_filter: scope_filter)
         topics = topics.joins(:section).where(forum_sections: { slug: section_slug }) if section_slug
         topics = topics.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
         topics = topics.joins(:tags).where(forum_tags: { slug: tag_slug }) if tag_slug
@@ -72,12 +77,15 @@ module Community
         )
         topics = case params[:topic_sort]
         when "oldest" then topics.order(created_at: :asc)
+        when "relevance"
+          topics.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_topics.title, '')), plainto_tsquery('simple', #{ActiveRecord::Base.connection.quote(query)})) DESC"))
         else topics.order(last_posted_at: :desc)
         end
         topics = filter_blocked_topics(topics)
         topics = preload_topics(topics)
 
         posts = Community::Post.where(status: :published).joins(:topic).where(forum_topics: { status: :published, unlisted: false })
+        posts = apply_user_search_scope(posts, mine_filter: mine_filter, scope_filter: scope_filter, on_posts: true)
         posts = posts.joins(topic: :section).where(forum_sections: { slug: section_slug }) if section_slug
         posts = posts.joins(:user).where("users.username ILIKE ?", "%#{author}%") if author
         posts = posts.joins(topic: :tags).where(forum_tags: { slug: tag_slug }) if tag_slug
@@ -108,6 +116,8 @@ module Community
         ).includes(:user, topic: :section)
         posts = case params[:post_sort]
         when "oldest" then posts.order(created_at: :asc)
+        when "relevance"
+          posts.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_posts.body, '')), plainto_tsquery('simple', #{ActiveRecord::Base.connection.quote(query)})) DESC"))
         else posts.order(created_at: :desc)
         end
         posts = filter_blocked_posts(posts)
@@ -135,6 +145,8 @@ module Community
         announcement: announcement_filter.to_s,
         unlisted: unlisted_filter.to_s,
         archived: archived_filter.to_s,
+        mine: mine_filter.to_s,
+        scope: scope_filter.to_s,
         poll: poll_filter.to_s,
         noreplies: noreplies_filter.to_s,
         createdAfter: params[:created_after].to_s,
@@ -149,11 +161,55 @@ module Community
         postsPagination: pagy_props(@pagy_posts),
         savedSearches: serialize_saved_searches,
         loggedIn: logged_in?,
-        saveSearchUrl: logged_in? ? forum_saved_searches_path : nil
+        saveSearchUrl: logged_in? ? forum_saved_searches_path : nil,
+        suggestUrl: forum_search_suggest_path
       }
     end
 
+    def suggest
+      q = params[:q].to_s.strip
+      if q.length < 2
+        return render json: { topics: [], tags: [], users: [] }
+      end
+
+      needle = "%#{ActiveRecord::Base.sanitize_sql_like(q)}%"
+      topics = Community::Topic.published_listed
+        .where("title ILIKE ?", needle)
+        .order(last_posted_at: :desc)
+        .limit(5)
+        .map { |topic| { title: topic.title, url: forum_topic_path(topic) } }
+
+      tags = Community::Tag.usable_by(current_user)
+        .where("name ILIKE ? OR slug ILIKE ?", needle, needle)
+        .order(:name)
+        .limit(5)
+        .map { |tag| { name: tag.name, url: forum_tag_path(tag.slug) } }
+
+      users = User.where(status: :active)
+        .where("username ILIKE ? OR display_name ILIKE ?", needle, needle)
+        .order(:username)
+        .limit(5)
+        .map { |user| { username: user.username, url: forum_user_path(user.username) } }
+
+      render json: { topics: topics, tags: tags, users: users }
+    end
+
     private
+
+    def apply_user_search_scope(scope, mine_filter:, scope_filter:, on_posts: false)
+      return scope unless logged_in?
+
+      if mine_filter == "mine"
+        return on_posts ? scope.where(user_id: current_user.id) : scope.where(user_id: current_user.id)
+      end
+
+      if scope_filter == "bookmarks"
+        bookmark_topic_ids = Community::Bookmark.where(user: current_user).select(:forum_topic_id)
+        return on_posts ? scope.where(forum_topic_id: bookmark_topic_ids) : scope.where(id: bookmark_topic_ids)
+      end
+
+      scope
+    end
 
     def apply_search_topic_filters(scope, solved_filter:, locked_filter:, pinned_filter:, wiki_filter:, featured_filter: nil, announcement_filter: nil, unlisted_filter: nil, archived_filter: nil, poll_filter: nil, noreplies_filter: nil)
       result = Community::ApplyTopicSearchFilters.call(

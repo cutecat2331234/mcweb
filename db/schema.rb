@@ -922,6 +922,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["store_order_id"], name: "index_store_order_staff_notes_on_store_order_id"
   end
 
+  create_table "store_order_webhook_deliveries", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.string "order_public_id"
+    t.text "response_body"
+    t.integer "response_code"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.string "url", limit: 2048, null: false
+    t.index ["created_at"], name: "index_store_order_webhook_deliveries_on_created_at"
+    t.index ["order_public_id"], name: "index_store_order_webhook_deliveries_on_order_public_id"
+  end
+
   create_table "store_orders", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "currency", default: "CNY", null: false
@@ -932,6 +945,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "notes"
     t.string "order_number", null: false
     t.string "public_id", null: false
+    t.datetime "review_request_sent_at"
     t.datetime "shipped_at"
     t.jsonb "shipping_address", default: {}, null: false
     t.string "shipping_carrier"

@@ -123,6 +123,9 @@ Rails.application.routes.draw do
     get "categories/:slug.rss", to: "rss#category", as: :category_rss, defaults: { format: :rss }
     get "categories/:slug", to: "categories#show", as: :category
     resources :topics, only: %i[show new create update] do
+      collection do
+        get :similar_titles
+      end
       resource :reply_draft, only: %i[update destroy], controller: "reply_drafts"
       member do
         post :moderate
@@ -171,6 +174,7 @@ Rails.application.routes.draw do
       end
     end
     get "search", to: "search#index"
+    get "search/suggest", to: "search#suggest", as: :search_suggest
     get "mentions/search", to: "mentions#search", as: :mention_search
     get "latest", to: "latest#index"
     get "activity", to: "activity#index"

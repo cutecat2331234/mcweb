@@ -94,7 +94,7 @@ module Community
         cannedResponses: can_moderate_topic? ? Community::CannedResponse.ordered.map { |r| { title: r.title, body: r.body } } : [],
         section_read_only: @topic.section.read_only?,
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
-        reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
+        reactionEmojis: Community::ToggleReaction.allowed_emoji,
         sections: can_move_topic? ? movable_sections : [],
         relatedTopics: serialize_topics(@topic.similar_topics),
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
@@ -120,8 +120,15 @@ module Community
       end
 
       render inertia: "Community/Topics/New", props: {
-        section: section_props
+        section: section_props,
+        similarTitlesUrl: similar_titles_forum_topics_path(section_id: @section.slug)
       }
+    end
+
+    def similar_titles
+      section = Community::Section.find_by!(slug: params[:section_id])
+      result = Community::FindSimilarTitles.call(section: section, title: params[:title])
+      render json: { titles: result.value[:titles] }
     end
 
     def create

@@ -132,6 +132,15 @@ module Commerce
       mail(to: @user.email, subject: "商家回复了你的评价：#{@product.name}")
     end
 
+    def review_request(order_id)
+      @order = Commerce::Order.includes(:items).find(order_id)
+      @user = @order.user
+      return unless commerce_email_enabled?(@user, "commerce.review_request")
+
+      @url = "#{root_url.chomp('/')}#{"/store/orders/#{@order.public_id}"}"
+      mail(to: @user.email, subject: "邀请你评价订单 #{@order.order_number}")
+    end
+
     private
 
     def commerce_email_enabled?(user, notification_type)

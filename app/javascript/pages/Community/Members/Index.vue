@@ -31,6 +31,7 @@ const props = defineProps<{
   pagination: PaginationMeta
   query: string
   sort: string
+  trustLevel?: string
 }>()
 
 const searchQuery = ref(props.query)
@@ -46,6 +47,15 @@ function changeSort(value: string) {
   router.get(routes.forumMembers, {
     q: searchQuery.value || undefined,
     sort: value !== 'active' ? value : undefined,
+    trust_level: props.trustLevel || undefined,
+  }, { preserveState: true })
+}
+
+function changeTrustLevel(value: string) {
+  router.get(routes.forumMembers, {
+    q: searchQuery.value || undefined,
+    sort: props.sort !== 'active' ? props.sort : undefined,
+    trust_level: value || undefined,
   }, { preserveState: true })
 }
 </script>
@@ -72,6 +82,14 @@ function changeSort(value: string) {
       <option value="likes">获赞最多</option>
       <option value="reviews">评价最多</option>
       <option value="purchases">购买最多</option>
+    </select>
+    <select :value="trustLevel || ''" class="h-9 rounded-md border px-2 text-sm" @change="changeTrustLevel(($event.target as HTMLSelectElement).value)">
+      <option value="">全部信任等级</option>
+      <option value="0">TL0 新成员</option>
+      <option value="1">TL1 基本用户</option>
+      <option value="2">TL2 成员</option>
+      <option value="3">TL3 常客</option>
+      <option value="4">TL4 领导者</option>
     </select>
   </div>
 

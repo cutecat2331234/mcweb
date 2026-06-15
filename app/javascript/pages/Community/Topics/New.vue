@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -15,7 +15,11 @@ defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
   section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
+  similarTitlesUrl?: string
 }>()
+
+const similarTitles = ref<Array<{ title: string; url: string }>>([])
+let similarTimer: ReturnType<typeof setTimeout> | null = null
 
 const form = useForm({
   topic: {
@@ -31,6 +35,28 @@ const form = useForm({
     poll_hide_results_until_vote: false,
     scheduled_at: '',
   },
+})
+
+watch(() => form.topic.title, (title) => {
+  if (!props.similarTitlesUrl || title.length < 3) {
+    similarTitles.value = []
+    return
+  }
+  if (similarTimer) clearTimeout(similarTimer)
+  similarTimer = setTimeout(async () => {
+    try {
+      const response = await fetch(`${props.similarTitlesUrl}?title=${encodeURIComponent(title)}`, {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        similarTitles.value = data.titles || []
+      }
+    } catch {
+      similarTitles.value = []
+    }
+  }, 400)
 })
 
 const showPoll = ref(false)
@@ -73,6 +99,14 @@ function saveDraft() {
     <div class="space-y-2">
       <Label for="title">标题</Label>
       <Input id="title" v-model="form.topic.title" required autofocus />
+      <div v-if="similarTitles.length" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+        <p class="font-medium">发现相似主题（Discourse 风格提示）</p>
+        <ul class="mt-1 list-inside list-disc">
+          <li v-for="item in similarTitles" :key="item.url">
+            <Link :href="item.url" class="underline" target="_blank">{{ item.title }}</Link>
+          </li>
+        </ul>
+      </div>
       <p v-if="form.errors.title" class="text-sm text-destructive">{{ form.errors.title }}</p>
     </div>
     <div v-if="section.prefixes?.length" class="space-y-2">

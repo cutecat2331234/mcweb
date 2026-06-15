@@ -9,7 +9,8 @@ module Community
     AUTHOR_AT_PATTERN = /\B@([a-zA-Z0-9_]+)/
     AUTHOR_COLON_PATTERN = /\bauthor:([a-zA-Z0-9_]+)/i
 
-    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived].freeze
+    VALID_TOPIC_FLAGS = %w[solved unsolved locked unlocked pinned wiki featured announcement global unlisted archived mine].freeze
+    RESERVED_IN_SCOPES = %w[bookmarks].freeze
     VALID_HAS_FLAGS = %w[poll noreplies].freeze
 
     def initialize(query:)
@@ -18,6 +19,7 @@ module Community
 
     def call
       section_slug = nil
+      scope_filter = nil
       tag_slug = nil
       topic_flags = {}
       has_flags = {}
@@ -25,7 +27,12 @@ module Community
       text = @query.dup
 
       if (match = text.match(IN_PATTERN))
-        section_slug = match[1]
+        scope = match[1].downcase
+        if RESERVED_IN_SCOPES.include?(scope)
+          scope_filter = scope
+        else
+          section_slug = match[1]
+        end
         text = text.gsub(match[0], "").strip
       end
 
@@ -76,6 +83,8 @@ module Community
         announcement_filter: announcement_filter,
         unlisted_filter: topic_flags["unlisted"] ? "unlisted" : nil,
         archived_filter: topic_flags["archived"] ? "archived" : nil,
+        mine_filter: topic_flags["mine"] ? "mine" : nil,
+        scope_filter: scope_filter,
         poll_filter: has_flags["poll"] ? "poll" : nil,
         noreplies_filter: has_flags["noreplies"] ? "noreplies" : nil,
         author: author

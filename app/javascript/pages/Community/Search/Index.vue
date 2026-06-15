@@ -49,6 +49,7 @@ const props = defineProps<{
   savedSearches?: Array<{ id: number; name: string; query: string; url: string; delete_url: string }>
   loggedIn?: boolean
   saveSearchUrl?: string | null
+  suggestUrl?: string
 }>()
 
 const q = ref(props.query)
@@ -63,6 +64,27 @@ const postSort = ref(props.postSort || 'recent')
 const saveName = ref('')
 const saving = ref(false)
 const saveError = ref('')
+const suggestions = ref<{ topics: Array<{ title: string; url: string }>; tags: Array<{ name: string; url: string }>; users: Array<{ username: string; url: string }> } | null>(null)
+let suggestTimer: ReturnType<typeof setTimeout> | null = null
+
+watch(q, (value) => {
+  if (!props.suggestUrl || value.length < 2) {
+    suggestions.value = null
+    return
+  }
+  if (suggestTimer) clearTimeout(suggestTimer)
+  suggestTimer = setTimeout(async () => {
+    try {
+      const response = await fetch(`${props.suggestUrl}?q=${encodeURIComponent(value)}`, {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+      })
+      if (response.ok) suggestions.value = await response.json()
+    } catch {
+      suggestions.value = null
+    }
+  }, 300)
+})
 
 watch(() => props.query, (value) => { q.value = value })
 watch(() => props.author, (value) => { author.value = value })
@@ -144,10 +166,23 @@ async function deleteSavedSearch(deleteUrl: string) {
     { label: '搜索', current: true },
   ]" />
 
-  <PageHeader title="搜索论坛" subtitle="支持 in:分区、tag:标签、is:solved/is:locked/is:featured/is:unlisted、has:poll/has:noreplies 等语法" />
+  <PageHeader title="搜索论坛" subtitle="支持 in:分区、in:bookmarks、is:mine、is:solved、tag:标签、is:archived 等语法" />
 
   <form class="mb-8 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
-    <Input v-model="q" placeholder="输入关键词..." class="min-w-[200px] flex-1" />
+    <div class="relative min-w-[200px] flex-1">
+      <Input v-model="q" placeholder="输入关键词..." class="w-full" />
+      <div v-if="suggestions && (suggestions.topics.length || suggestions.tags.length || suggestions.users.length)" class="absolute z-10 mt-1 w-full rounded-md border bg-background p-2 shadow-md">
+        <p v-for="topic in suggestions.topics" :key="topic.url" class="text-sm">
+          <Link :href="topic.url" class="hover:underline">{{ topic.title }}</Link>
+        </p>
+        <p v-for="tag in suggestions.tags" :key="tag.url" class="text-sm text-muted-foreground">
+          <Link :href="tag.url" class="hover:underline">#{{ tag.name }}</Link>
+        </p>
+        <p v-for="user in suggestions.users" :key="user.url" class="text-sm text-muted-foreground">
+          <Link :href="user.url" class="hover:underline">@{{ user.username }}</Link>
+        </p>
+      </div>
+    </div>
     <select v-model="sectionSlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
       <option value="">全部分区</option>
       <option v-for="sec in sections" :key="sec.slug" :value="sec.slug">
@@ -169,10 +204,12 @@ async function deleteSavedSearch(deleteUrl: string) {
     <select v-model="topicSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
       <option value="recent">主题：最新</option>
       <option value="oldest">主题：最早</option>
+      <option value="relevance">主题：相关度</option>
     </select>
     <select v-model="postSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
       <option value="recent">帖子：最新</option>
       <option value="oldest">帖子：最早</option>
+      <option value="relevance">帖子：相关度</option>
     </select>
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">搜索</button>
   </form>

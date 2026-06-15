@@ -2,9 +2,10 @@
 
 module Commerce
   class CancelOrder < ApplicationService
-    def initialize(order:, actor: nil)
+    def initialize(order:, actor: nil, reason: nil)
       @order = order
       @actor = actor
+      @reason = reason.to_s.strip.presence
     end
 
     def call
@@ -14,6 +15,13 @@ module Commerce
         @order.cancel! if @order.may_cancel?
         restore_stock!
       end
+
+      Commerce::OrderEvent.create!(
+        order: @order,
+        actor: @actor || @order.user,
+        event_type: "cancelled",
+        metadata: { reason: @reason }.compact
+      ) if @reason.present?
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_cancelled", "deliver_now", args: [ @order.id ])
 

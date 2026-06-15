@@ -10,7 +10,9 @@ module Community
       end
 
       sort = params[:sort].to_s.presence || "active"
+      trust_level = params[:trust_level].to_s.presence
       scope = apply_member_sort(scope, sort)
+      scope = apply_trust_level_filter(scope, trust_level) if trust_level.present?
 
       @pagy, members = pagy(scope, limit: 30)
       stats = member_stats(members)
@@ -19,7 +21,8 @@ module Community
         members: members.map { |user| serialize_member(user, stats: stats) },
         pagination: pagy_props(@pagy),
         query: params[:q].to_s,
-        sort: sort
+        sort: sort,
+        trustLevel: trust_level.to_s
       }
     end
 
@@ -50,6 +53,18 @@ module Community
       else
         scope.order(Arel.sql("last_seen_at DESC NULLS LAST, created_at DESC"))
       end
+    end
+
+    def apply_trust_level_filter(scope, trust_level)
+      level = trust_level.to_i
+      thresholds = Community::TrustLevel::LEVELS.map { |entry| entry[:min_posts] }
+      min_posts = thresholds[level] || 0
+      max_posts = thresholds[level + 1]
+
+      posts_sql = "(SELECT COUNT(*) FROM forum_posts WHERE forum_posts.user_id = users.id AND forum_posts.status = 'published')"
+      scope = scope.where("#{posts_sql} >= ?", min_posts)
+      scope = scope.where("#{posts_sql} < ?", max_posts) if max_posts
+      scope
     end
 
     def member_stats(members)

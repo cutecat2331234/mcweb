@@ -147,7 +147,7 @@ function quickAdd(product: ProductItem) {
   </section>
 
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
-    <Input v-model="q" placeholder="搜索商品…" class="max-w-xs" />
+    <Input v-model="q" placeholder="搜索商品名或 SKU…" class="max-w-xs" />
     <select v-model="sort" class="h-9 rounded-md border border-input bg-transparent px-3 text-sm">
       <option value="newest">最新</option>
       <option value="popular">最热</option>

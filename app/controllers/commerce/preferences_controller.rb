@@ -23,6 +23,7 @@ module Commerce
       commerce.question_answered
       commerce.new_product_question
       commerce.merchant_review_reply
+      commerce.review_request
     ].freeze
 
     CHANNELS = %w[email in_app].freeze
@@ -79,7 +80,8 @@ module Commerce
         "commerce.product_changelog" => "商品更新日志",
         "commerce.question_answered" => "问答回复通知",
         "commerce.new_product_question" => "新商品提问（员工）",
-        "commerce.merchant_review_reply" => "商家评价回复"
+        "commerce.merchant_review_reply" => "商家评价回复",
+        "commerce.review_request" => "购后评价邀请"
       }[type] || type.humanize
     end
   end

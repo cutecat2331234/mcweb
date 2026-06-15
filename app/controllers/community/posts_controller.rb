@@ -79,7 +79,8 @@ module Community
         user: current_user,
         post: @post,
         action: params[:action_type],
-        staff_notice: params[:staff_notice]
+        staff_notice: params[:staff_notice],
+        new_username: params[:new_username]
       )
 
       if result.success?

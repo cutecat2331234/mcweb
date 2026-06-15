@@ -937,3 +937,20 @@ app/
 | 商城分类商品数量 | `serialize_category.product_count` |
 | Webhook 含行项目 | `DispatchOrderWebhook` items[] + subtotal |
 | 商城通知偏好 | `commerce.merchant_review_reply` |
+
+### 第五十四轮（搜索增强、审核工具与商城运营细节）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索相关度排序 | `topic_sort`/`post_sort` = `relevance` + `ts_rank` |
+| 搜索 `is:mine` / `in:bookmarks` | `ParseSearchQuery` + `SearchController` 用户范围 |
+| 搜索自动补全 | `search#suggest` + `Search/Index.vue` 下拉 |
+| 通知未读筛选 | `notifications#index` read=unread + UI 标签页 |
+| 发帖相似标题提示 | `FindSimilarTitles` + `topics#similar_titles` + `New.vue` |
+| 更改帖子作者（Discourse） | `ChangePostAuthor` + 版主操作 |
+| 成员信任等级筛选 | `MembersController` trust_level + UI |
+| 商品 SKU 搜索 | `ProductsController` join variants |
+| 订单取消原因 | `CancelOrder` reason + `OrderEvent` |
+| 可配置反应表情 | `forum.reaction_emojis` + `ToggleReaction` |
+| 购后评价邀请 | `SendReviewRequest` + Job + 邮件 + 偏好 |
+| Webhook 投递日志 | `OrderWebhookDelivery` + Job 记录响应 |

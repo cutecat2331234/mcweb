@@ -5,14 +5,20 @@ module Community
     before_action :require_login
 
     def index
+      read_filter = params[:read].to_s.presence
       category = params[:category].to_s.presence
       notifications = current_user.notifications.recent.limit(100)
       notifications = filter_notifications_by_category(notifications, category)
+      notifications = notifications.unread if read_filter == "unread"
+
+      unread_count = current_user.notifications.unread.count
 
       render inertia: "Community/Notifications/Index", props: {
         notifications: group_notifications(notifications),
         flat_notifications: notifications.limit(50).map { |n| serialize_notification(n) },
-        activeCategory: category.presence || "all"
+        activeCategory: category.presence || "all",
+        activeRead: read_filter.presence || "all",
+        unreadCount: unread_count
       }
     end
 
@@ -31,10 +37,12 @@ module Community
 
     def mark_all_read
       category = params[:category].to_s.presence
+      read_filter = params[:read].to_s.presence
       scope = current_user.notifications.unread
       scope = filter_notifications_by_category(scope, category) if category.present?
+      scope = scope.unread if read_filter == "unread"
       scope.update_all(read_at: Time.current)
-      redirect_to forum_notifications_path(category: category), notice: "已标记为已读。"
+      redirect_to forum_notifications_path(category: category, read: read_filter), notice: "已标记为已读。"
     end
 
     private

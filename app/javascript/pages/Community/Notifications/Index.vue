@@ -36,6 +36,8 @@ export interface NotificationGroup {
 const props = defineProps<{
   notifications: NotificationGroup[]
   activeCategory: 'all' | 'forum' | 'commerce'
+  activeRead?: 'all' | 'unread'
+  unreadCount?: number
 }>()
 
 const expanded = ref<Record<string, boolean>>({})
@@ -43,7 +45,15 @@ const expanded = ref<Record<string, boolean>>({})
 function markAllRead() {
   router.patch('/forum/notifications/mark_all_read', {
     category: props.activeCategory === 'all' ? undefined : props.activeCategory,
+    read: props.activeRead === 'unread' ? 'unread' : undefined,
   })
+}
+
+function switchRead(read: 'all' | 'unread') {
+  router.get(routes.forumNotifications, {
+    category: props.activeCategory === 'all' ? undefined : props.activeCategory,
+    read: read === 'unread' ? 'unread' : undefined,
+  }, { preserveState: true })
 }
 
 function toggleExpand(key: string) {
@@ -75,10 +85,15 @@ function categoryLabel(category: string) {
     <Button type="button" variant="outline" size="sm" @click="markAllRead">全部已读</Button>
   </div>
 
-  <div class="mb-4 flex gap-2">
+  <div class="mb-4 flex flex-wrap gap-2">
     <Button :variant="activeCategory === 'all' ? 'default' : 'outline'" size="sm" @click="switchCategory('all')">全部</Button>
     <Button :variant="activeCategory === 'forum' ? 'default' : 'outline'" size="sm" @click="switchCategory('forum')">论坛</Button>
     <Button :variant="activeCategory === 'commerce' ? 'default' : 'outline'" size="sm" @click="switchCategory('commerce')">商城</Button>
+    <span class="mx-1 text-muted-foreground">|</span>
+    <Button :variant="(activeRead || 'all') === 'all' ? 'default' : 'outline'" size="sm" @click="switchRead('all')">全部消息</Button>
+    <Button :variant="activeRead === 'unread' ? 'default' : 'outline'" size="sm" @click="switchRead('unread')">
+      未读<span v-if="unreadCount != null && unreadCount > 0"> ({{ unreadCount }})</span>
+    </Button>
   </div>
 
   <div v-if="notifications.length" class="space-y-2">

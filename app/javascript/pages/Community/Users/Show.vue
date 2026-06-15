@@ -99,9 +99,12 @@ const props = defineProps<{
   }>
   badges: Array<{
     name: string
+    slug?: string
     icon: string
     description: string | null
     color: string
+    granted_at?: string
+    url?: string
   }>
   store_reviews?: Array<{
     id: number
@@ -242,15 +245,17 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
         </p>
       </div>
       <div v-if="badges.length" class="mt-3 flex flex-wrap gap-2">
-        <span
+        <Link
           v-for="badge in badges"
-          :key="badge.name"
-          class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+          :key="badge.slug || badge.name"
+          :href="badge.url || routes.forumBadges"
+          class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs hover:bg-muted/50"
           :style="{ borderColor: badge.color, color: badge.color }"
-          :title="badge.description || badge.name"
+          :title="badge.description ? `${badge.description} · ${badge.granted_at}` : badge.granted_at"
         >
           {{ badge.icon }} {{ badge.name }}
-        </span>
+          <span v-if="badge.granted_at" class="text-[10px] opacity-70">{{ badge.granted_at }}</span>
+        </Link>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
         <Button v-if="profile.message_url" as-child size="sm">

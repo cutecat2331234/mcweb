@@ -22,6 +22,8 @@ export const routes = {
   forumUnreadMarkAllRead: '/forum/unread/mark_all_read',
   forumPreview: '/forum/preview',
   forumTags: '/forum/tags',
+  forumBadges: '/forum/badges',
+  forumBadge: (slug: string) => `/forum/badges/${slug}`,
   forumNotifications: '/forum/notifications',
   forumPreferences: '/forum/preferences',
   forumDrafts: '/forum/drafts',

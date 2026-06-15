@@ -14,7 +14,8 @@ module Community
         {
           name: ub.badge.name,
           icon: ub.badge.icon,
-          color: ub.badge.color
+          color: ub.badge.color,
+          granted_at: l(ub.granted_at, format: :short)
         }
       end
       likes_received = Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count
@@ -148,9 +149,12 @@ module Community
         badges: user.user_badges.includes(:badge).order(granted_at: :desc).map do |ub|
           {
             name: ub.badge.name,
+            slug: ub.badge.slug,
             icon: ub.badge.icon,
             description: ub.badge.description,
-            color: ub.badge.color
+            color: ub.badge.color,
+            granted_at: l(ub.granted_at, format: :short),
+            url: forum_badge_path(ub.badge.slug)
           }
         end,
         topics: serialize_topics(topics),

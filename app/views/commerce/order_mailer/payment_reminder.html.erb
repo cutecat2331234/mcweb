@@ -1,0 +1,11 @@
+<h2>订单待支付提醒</h2>
+<p>您好 <%= @order.user.username %>，</p>
+<p>您的订单 <strong><%= @order.order_number %></strong> 尚未完成支付。</p>
+<% if @expires_label.present? %>
+  <p>请在 <strong><%= @expires_label %></strong> 前完成支付，逾期订单将自动取消。</p>
+<% end %>
+<%= render partial: "commerce/order_mailer/order_details", locals: { order: @order } %>
+<p>
+  <a href="<%= @pay_url %>">立即支付</a>
+</p>
+<p>感谢使用 Mcweb 商城。</p>

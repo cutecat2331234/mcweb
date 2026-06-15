@@ -69,6 +69,7 @@ async function dismissAnnouncement(topicId: string) {
             <Link :href="routes.forumActivity" class="hover:text-foreground transition-colors">动态</Link>
             <Link :href="routes.forumSearch" class="hover:text-foreground transition-colors">搜索</Link>
             <Link :href="routes.forumTags" class="hover:text-foreground transition-colors">标签</Link>
+            <Link :href="routes.forumBadges" class="hover:text-foreground transition-colors">徽章</Link>
             <Link v-if="auth.user" :href="routes.forumWatching" class="hover:text-foreground transition-colors">关注主题</Link>
             <Link v-if="auth.user" :href="routes.forumWatchedTags" class="hover:text-foreground transition-colors">关注标签</Link>
             <Link v-if="auth.user" :href="routes.forumWatchedTagTopics" class="hover:text-foreground transition-colors">标签主题</Link>

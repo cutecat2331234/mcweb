@@ -9,6 +9,18 @@ module Commerce
       mail(to: @order.user.email, subject: "订单确认 #{@order.order_number}")
     end
 
+    def payment_reminder(order_id)
+      @order = Commerce::Order.includes(:items, :coupon, :gift_card).find(order_id)
+      return unless commerce_email_enabled?(@order.user, "commerce.payment_reminder")
+
+      minutes = SiteSetting.get("store.pending_order_expiry_minutes", "30").to_i
+      minutes = 30 if minutes <= 0
+      expires = @order.created_at + minutes.minutes
+      @expires_label = expires.future? ? I18n.l(expires, format: :short) : nil
+      @pay_url = "#{root_url.chomp('/')}#{"/store/orders/#{@order.public_id}"}"
+      mail(to: @order.user.email, subject: "请尽快支付订单 #{@order.order_number}")
+    end
+
     def payment_confirmed(order_id)
       @order = Commerce::Order.includes(:items, :coupon, :gift_card).find(order_id)
       return unless commerce_email_enabled?(@order.user, "commerce.payment_confirmed")

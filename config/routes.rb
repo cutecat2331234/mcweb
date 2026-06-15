@@ -157,6 +157,7 @@ Rails.application.routes.draw do
     resources :topics, only: %i[show new create update] do
       collection do
         get :similar_titles
+        patch :bulk_moderate
       end
       resource :reply_draft, only: %i[update destroy], controller: "reply_drafts"
       member do
@@ -236,6 +237,8 @@ Rails.application.routes.draw do
     get "watching/tags", to: "watched#tags", as: :watched_tags
     get "watching/tag-topics", to: "watched#tag_topics", as: :watched_tag_topics
     get "tags", to: "tags#index", as: :tags
+    get "badges", to: "badges#index", as: :badges
+    get "badges/:id", to: "badges#show", as: :badge
     get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
     get "digest/unsubscribe", to: "digest_unsubscribes#show", as: :unsubscribe_forum_digest

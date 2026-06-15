@@ -26,7 +26,9 @@ module Community
         topics: serialize_topics(topics, read_states: read_states),
         pagination: pagy_props(@pagy),
         sort: sort,
-        sortOptions: forum_sort_options
+        sortOptions: forum_sort_options,
+        canBulkModerate: current_user.permission?("forum.topics.lock"),
+        bulkModerateUrl: current_user.permission?("forum.topics.lock") ? bulk_moderate_forum_topics_path : nil
       }
     end
 

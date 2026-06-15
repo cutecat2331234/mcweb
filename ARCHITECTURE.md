@@ -1384,3 +1384,13 @@ app/
 | 私信会话静音 | `muted_at` + `ToggleConversationMute` + 通知跳过静音参与者 |
 | 未读选择性标已读 | `MarkTopicsRead` + 未读页多选 + `mark_selected_read` 路由 |
 | 商城 Webhook 维护 | `RetryFailedOrderWebhooksJob` 重试卡住 pending 投递 |
+
+### 第九十二轮（批量版主操作、徽章画廊、待支付提醒、搜索排除 UI）
+
+| 功能 | 实现 |
+|------|------|
+| 批量版主操作 | `BulkModerateTopics` + 分区/指派列表多选锁定/归档 |
+| 公开徽章画廊 | `/forum/badges` 列表 + `/forum/badges/:slug` 获得者 |
+| 资料页徽章日期 | `granted_at` 序列化 + 链接至徽章详情 |
+| 待支付订单提醒 | `PendingOrderPaymentReminderJob` + `commerce.payment_reminder` 偏好 |
+| 搜索排除 UI | 输入框占位符 + 排除语法说明 |

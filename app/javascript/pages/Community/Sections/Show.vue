@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import { Head } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -45,6 +46,8 @@ const props = defineProps<{
   filter: string
   filterOptions: Array<{ value: string; label: string }>
   canCreateTopic: boolean
+  canBulkModerate?: boolean
+  bulkModerateUrl?: string | null
   subscriptionLevels?: SubscriptionLevelOption[]
   meta?: { title: string; description?: string | null }
 }>()
@@ -72,6 +75,18 @@ function toggleMute() {
 function markAllRead() {
   if (!props.section.mark_all_read_url) return
   router.patch(props.section.mark_all_read_url)
+}
+
+const selectedIds = ref<string[]>([])
+
+function bulkModerate(action: string) {
+  if (!props.bulkModerateUrl || selectedIds.value.length === 0) return
+  router.patch(props.bulkModerateUrl, {
+    topic_ids: selectedIds.value,
+    action_type: action,
+  }, {
+    onSuccess: () => { selectedIds.value = [] },
+  })
 }
 </script>
 
@@ -113,6 +128,14 @@ function markAllRead() {
       <Button v-if="section.mark_all_read_url" type="button" variant="outline" size="sm" @click="markAllRead">
         全部标为已读
       </Button>
+      <template v-if="canBulkModerate && bulkModerateUrl && selectedIds.length">
+        <Button type="button" variant="outline" size="sm" @click="bulkModerate('lock')">
+          锁定选中（{{ selectedIds.length }}）
+        </Button>
+        <Button type="button" variant="outline" size="sm" @click="bulkModerate('archive')">
+          归档选中
+        </Button>
+      </template>
       <Button v-if="canCreateTopic && section.new_topic_url" as-child>
         <Link :href="section.new_topic_url">新建主题</Link>
       </Button>
@@ -185,7 +208,14 @@ function markAllRead() {
     </div>
   </div>
 
-  <TopicListTable :topics="topics" show-views show-participants />
+  <TopicListTable
+    :topics="topics"
+    show-views
+    show-participants
+    :selectable="!!(canBulkModerate && bulkModerateUrl)"
+    :selected-ids="selectedIds"
+    @update:selected-ids="selectedIds = $event"
+  />
 
   <Pagination :pagination="pagination" :base-path="routes.forumSection(section.slug)" />
 </template>

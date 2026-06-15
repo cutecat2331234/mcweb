@@ -13,6 +13,7 @@ module Commerce
       commerce.order_shipped
       commerce.order_completed
       commerce.order_cancelled
+      commerce.payment_reminder
       commerce.refund_requested
       commerce.refund_processed
       commerce.refund_rejected
@@ -88,6 +89,7 @@ module Commerce
         "commerce.order_shipped" => "物流发货",
         "commerce.order_completed" => "订单完成",
         "commerce.order_cancelled" => "订单取消",
+        "commerce.payment_reminder" => "待支付提醒",
         "commerce.refund_requested" => "退款申请提交",
         "commerce.refund_processed" => "退款通知",
         "commerce.refund_rejected" => "退款拒绝通知",

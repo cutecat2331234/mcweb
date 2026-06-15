@@ -522,7 +522,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
     <div class="relative min-w-[200px] flex-1">
       <Input
         v-model="q"
-        placeholder="输入关键词..."
+        placeholder="关键词，使用 -spam 排除词，如：ruby tutorial -offtopic"
         class="w-full"
         autocomplete="off"
         @focus="q.trim().length >= 2 && suggestUrl && fetchSuggestions(q.trim())"
@@ -645,6 +645,11 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       {{ shareCopied ? '已复制' : '复制链接' }}
     </button>
   </form>
+
+  <p class="mb-4 max-w-2xl text-xs text-muted-foreground">
+    排除语法：在关键词前加 <code class="rounded bg-muted px-1">-</code> 可排除包含该词的主题/帖子，例如
+    <code class="rounded bg-muted px-1">ruby tutorial -spam -offtopic</code>
+  </p>
 
   <div v-if="showAdvanced" class="mb-6 flex max-w-2xl flex-wrap gap-2 rounded-lg border p-4">
     <select v-if="categories?.length" v-model="categorySlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">

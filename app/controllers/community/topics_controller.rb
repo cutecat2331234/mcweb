@@ -8,7 +8,7 @@ module Community
     include Community::WarningRestrictionsSerializable
     include Community::SubscriptionNoticeable
 
-    before_action :require_login, only: %i[new create update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :require_login, only: %i[new create update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate bulk_moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
     before_action :set_topic, only: %i[show update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
 
@@ -275,6 +275,27 @@ module Community
         redirect_to forum_topic_path(@topic), notice: "主题已更新。"
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def bulk_moderate
+      unless current_user.permission?("forum.topics.lock")
+        return redirect_back fallback_location: forum_latest_path, alert: "无权执行批量版主操作。"
+      end
+
+      result = Community::BulkModerateTopics.call(
+        user: current_user,
+        topic_public_ids: params[:topic_ids],
+        action: params[:action_type],
+        lock_reason: params[:lock_reason]
+      )
+
+      if result.success?
+        notice = "已处理 #{result.value[:moderated]} 个主题"
+        notice += "，#{result.value[:failed]} 个失败" if result.value[:failed].positive?
+        redirect_back fallback_location: forum_latest_path, notice: notice
+      else
+        redirect_back fallback_location: forum_latest_path, alert: result.error || "操作失败"
       end
     end
 

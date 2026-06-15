@@ -1023,6 +1023,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "gift_wrap_cents", default: 0, null: false
     t.text "notes"
     t.string "order_number", null: false
+    t.datetime "payment_reminder_sent_at"
     t.string "public_id", null: false
     t.datetime "review_request_sent_at"
     t.datetime "shipped_at"
@@ -1041,6 +1042,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["order_number"], name: "index_store_orders_on_order_number", unique: true
+    t.index ["payment_reminder_sent_at"], name: "index_store_orders_on_payment_reminder_sent_at"
     t.index ["public_id"], name: "index_store_orders_on_public_id", unique: true
     t.index ["status"], name: "index_store_orders_on_status"
     t.index ["store_coupon_id"], name: "index_store_orders_on_store_coupon_id"

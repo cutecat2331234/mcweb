@@ -14,10 +14,12 @@ defineProps<{
 }>()
 
 const form = useForm({
-  email: '',
-  password: '',
-  totp_code: '',
-  remember_me: false,
+  session: {
+    email: '',
+    password: '',
+    totp_code: '',
+    remember_me: false,
+  },
 })
 
 function submit() {
@@ -33,23 +35,23 @@ function submit() {
   <form class="max-w-md space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
       <Label for="email">邮箱</Label>
-      <Input id="email" v-model="form.email" type="email" autocomplete="email" required autofocus />
-      <p v-if="form.errors.email" class="text-sm text-destructive">{{ form.errors.email }}</p>
+      <Input id="email" v-model="form.session.email" type="email" autocomplete="email" required autofocus />
+      <p v-if="form.errors['session.email']" class="text-sm text-destructive">{{ form.errors['session.email'] }}</p>
     </div>
 
     <div class="space-y-2">
       <Label for="password">密码</Label>
-      <Input id="password" v-model="form.password" type="password" autocomplete="current-password" required />
-      <p v-if="form.errors.password" class="text-sm text-destructive">{{ form.errors.password }}</p>
+      <Input id="password" v-model="form.session.password" type="password" autocomplete="current-password" required />
+      <p v-if="form.errors['session.password']" class="text-sm text-destructive">{{ form.errors['session.password'] }}</p>
     </div>
 
     <div class="space-y-2">
       <Label for="totp_code">两步验证码（如已启用）</Label>
-      <Input id="totp_code" v-model="form.totp_code" autocomplete="one-time-code" />
+      <Input id="totp_code" v-model="form.session.totp_code" autocomplete="one-time-code" />
     </div>
 
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.remember_me" type="checkbox" class="rounded border-input">
+      <input v-model="form.session.remember_me" type="checkbox" class="rounded border-input">
       记住我
     </label>
 

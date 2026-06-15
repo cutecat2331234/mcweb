@@ -8,7 +8,7 @@ module Community
       topic = poll.topic
       section = topic.section
 
-      return false unless topic_visible?(topic, user)
+      return false unless visible?(topic: topic, user: user)
       return false if topic.locked? && !user&.permission?("forum.topics.lock")
       return false unless section.allowed?(user, :reply)
       return false unless section.trust_allowed?(user, :reply)
@@ -18,7 +18,7 @@ module Community
       true
     end
 
-    def topic_visible?(topic, user)
+    def visible?(topic:, user:)
       case topic.status
       when "published"
         true
@@ -30,6 +30,5 @@ module Community
         false
       end
     end
-    private_class_method :topic_visible?
   end
 end

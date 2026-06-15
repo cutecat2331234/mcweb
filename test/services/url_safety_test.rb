@@ -10,6 +10,7 @@ class UrlSafetyTest < ActiveSupport::TestCase
   test "blocks localhost" do
     assert_not UrlSafety.public_http_url?("http://localhost/admin")
     assert_not UrlSafety.public_http_url?("http://127.0.0.1/secret")
+    assert_not UrlSafety.public_http_url?("http://[::1]/secret")
   end
 
   test "blocks private ip literals" do

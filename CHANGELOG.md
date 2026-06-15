@@ -4,6 +4,12 @@
 
 ### Fixed
 
+- 投票者列表、帖子反应与书签操作校验主题可见性，防止隐藏主题信息泄露
+- UrlSafety 拒绝 IPv6 回环地址 `[::1]`
+- 购物车更新失败时不再向用户暴露内部异常信息
+
+### Previously
+
 - 通知跳转 `visit` 使用 `SafeRedirect`，拒绝 metadata 中的开放重定向
 - 投票/撤销投票校验主题可见性与分区权限，防止隐藏主题 IDOR
 - 商品 `image_url` / `gallery_urls` 模型校验与前端序列化过滤危险 URL

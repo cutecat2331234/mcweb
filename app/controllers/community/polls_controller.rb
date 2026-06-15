@@ -44,6 +44,8 @@ module Community
 
     def voters
       poll = Community::Poll.find(params[:id])
+      return head :forbidden unless PollParticipation.visible?(topic: poll.topic, user: current_user)
+
       user_votes = poll.votes.where(user: current_user)
       show_results = !poll.hide_results_until_vote || user_votes.exists? || !poll.open?
       return head :forbidden unless show_results || current_user&.permission?("forum.topics.lock")

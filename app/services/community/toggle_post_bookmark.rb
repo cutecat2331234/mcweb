@@ -8,6 +8,8 @@ module Community
     end
 
     def call
+      return ServiceResult.failure(error: "Topic not available.") unless PollParticipation.visible?(topic: @post.topic, user: @user)
+
       bookmark = Community::Bookmark.find_by(user: @user, post: @post)
       if bookmark
         bookmark.destroy!

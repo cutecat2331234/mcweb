@@ -32,7 +32,7 @@ module UrlSafety
     host = uri.host.downcase.delete_prefix("[").delete_suffix("]")
     return false if BLOCKED_HOSTS.include?(host)
     return false if host.end_with?(".local", ".internal", ".localhost")
-    return false if host == "0.0.0.0" || host == "::"
+    return false if host == "0.0.0.0" || host == "::" || host == "::1"
 
     addresses = resolved_addresses(host)
     return false if addresses.empty?

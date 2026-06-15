@@ -179,8 +179,10 @@ module Commerce
       end
 
       redirect_to store_cart_path, notice: "购物车已更新。"
-    rescue ActiveRecord::RecordNotFound, ActiveRecord::RecordInvalid => e
-      redirect_to store_cart_path, alert: e.message
+    rescue ActiveRecord::RecordNotFound
+      redirect_to store_cart_path, alert: "购物车项不存在。"
+    rescue ActiveRecord::RecordInvalid
+      redirect_to store_cart_path, alert: "无法更新购物车，请重试。"
     end
 
     private

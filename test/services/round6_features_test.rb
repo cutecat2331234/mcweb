@@ -91,6 +91,67 @@ class Community::VotePollTest < ActiveSupport::TestCase
   end
 end
 
+class Community::PollVotersAccessTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = create_user
+    category = Community::Category.find_or_create_by!(slug: "poll-voters-cat") { |c| c.name = "Poll Voters" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "poll-voters-sec") do |s|
+      s.name = "Poll Voters Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @user,
+      section: section,
+      title: "Poll voters topic",
+      body: "Body",
+      poll_question: "Pick one?",
+      poll_options: %w[A B],
+      ip_address: "127.0.0.1"
+    ).value
+    @poll = @topic.poll
+    Community::VotePoll.call(user: @user, poll: @poll, option_index: 0)
+  end
+
+  test "voters endpoint rejects hidden topics for regular users" do
+    @topic.update!(status: "hidden")
+    other = create_user
+    sign_in_as(other)
+
+    get voters_forum_poll_path(@poll), as: :json
+
+    assert_response :forbidden
+  end
+end
+
+class Community::ToggleReactionVisibilityTest < ActiveSupport::TestCase
+  setup do
+    @author = create_user
+    @other = create_user
+    category = Community::Category.find_or_create_by!(slug: "react-vis-cat") { |c| c.name = "React Vis" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "react-vis-sec") do |s|
+      s.name = "React Vis Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @author,
+      section: section,
+      title: "Hidden react topic",
+      body: "Body",
+      ip_address: "127.0.0.1"
+    ).value
+    @post = @topic.posts.first
+  end
+
+  test "cannot react on hidden topic without moderation permission" do
+    @topic.update!(status: "hidden")
+
+    result = Community::ToggleReaction.call(user: @other, post: @post, emoji: "👍")
+
+    assert result.failure?
+    assert_match(/not available/i, result.error)
+  end
+end
+
 class Community::CreateTopicPollTest < ActiveSupport::TestCase
   setup do
     @user = create_user

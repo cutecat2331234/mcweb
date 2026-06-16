@@ -108,11 +108,7 @@ SiteSetting.set("store.flat_shipping_cents", "0") unless SiteSetting.exists?(key
 SiteSetting.set("store.compare_max_items", "4") unless SiteSetting.exists?(key: "store.compare_max_items")
 SiteSetting.set("store.cart_max_items", "99") unless SiteSetting.exists?(key: "store.cart_max_items")
 
-if Rails.env.development?
-  unless InstallationLock.locked?
-    puts "Development mode: installation not locked. Visit /setup to initialize."
-  end
-
+unless Website::Page.exists?
   theme = Website::Theme.find_or_create_by!(key: "default") do |t|
     t.name = "默认主题"
     t.tokens = {
@@ -136,7 +132,7 @@ if Rails.env.development?
   end
 
   Website::Block.find_or_create_by!(page: page, block_type: "hero", position: 0) do |b|
-    b.settings = { headline: "欢迎来到 MCWeb 服务器", subheadline: "立即加入游戏", cta_text: "复制地址", cta_url: "#server" }
+    b.settings = { headline: "欢迎来到 MCWeb 服务器", subheadline: "立即加入游戏", cta_text: "进入应用", cta_url: "/app/forum/sections" }
     b.visible = true
   end
 
@@ -178,6 +174,12 @@ if Rails.env.development?
       item.position = attrs[:position]
       item.visible = true
     end
+  end
+end
+
+if Rails.env.development?
+  unless InstallationLock.locked?
+    puts "Development mode: installation not locked. Visit /setup to initialize."
   end
 
   category = Community::Category.find_or_create_by!(slug: "general") do |c|

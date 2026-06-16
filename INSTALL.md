@@ -2,7 +2,8 @@
 
 ## 前置条件
 
-- Ubuntu 22.04/24.04 或 Debian 12 x86_64
+- Ubuntu 22.04/24.04 或 Debian 12+ x86_64
+- PostgreSQL 18（安装脚本通过官方 PGDG 源安装）
 - root 或 sudo 权限
 - 域名已解析到服务器
 - 开放 80、443 端口
@@ -59,3 +60,4 @@ sudo systemctl enable --now mcweb-web mcweb-worker caddy
 - **Ruby 3.4.9 而非 4.0**：Rails 8.1 生态在 3.4.x 上最稳定；4.0 发布后将在下一版本评估升级
 - **无 Docker 默认依赖**：降低服主部署门槛，使用 systemd + Caddy 原生部署
 - **无 Redis 默认依赖**：Solid Queue/Cache 基于 PostgreSQL
+- **PostgreSQL 18**：通过 PGDG 源安装最新稳定版，避免发行版默认版本滞后

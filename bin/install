@@ -39,6 +39,23 @@ detect_os() {
   fi
 }
 
+install_postgresql() {
+  local pg_version="${MCWEB_POSTGRESQL_VERSION:-18}"
+
+  apt-get install -y -qq curl ca-certificates gnupg lsb-release
+  install -d /usr/share/postgresql-common/pgdg
+  if [[ ! -f /etc/apt/sources.list.d/pgdg.list ]]; then
+    curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /tmp/pgdg.asc
+    gpg --batch --yes --dearmor -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg < /tmp/pgdg.asc
+    echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.gpg] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    apt-get update -qq
+  fi
+
+  DEBIAN_FRONTEND=noninteractive apt-get install -y \
+    "postgresql-${pg_version}" \
+    "postgresql-client-${pg_version}"
+}
+
 install_dependencies() {
   local os
   os="$(detect_os)"
@@ -47,8 +64,8 @@ install_dependencies() {
       apt-get update -qq
       DEBIAN_FRONTEND=noninteractive apt-get install -y \
         build-essential libpq-dev libyaml-dev libssl-dev zlib1g-dev \
-        libvips-dev imagemagick curl git postgresql postgresql-contrib \
-        caddy nodejs
+        libvips-dev imagemagick curl git caddy nodejs
+      install_postgresql
       ;;
     *)
       echo "不支持的操作系统: $os" >&2

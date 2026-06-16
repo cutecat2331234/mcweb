@@ -17,7 +17,7 @@
 |------|------|
 | 语言 | Ruby 3.4.9（规范要求 Ruby 4.0.x，当前生态以 3.4.x 为稳定选择） |
 | 框架 | Rails 8.1.x |
-| 数据库 | PostgreSQL |
+| 数据库 | PostgreSQL 18 |
 | 队列/缓存 | Solid Queue、Solid Cache、Solid Cable |
 | 前端 | ERB、Hotwire、ViewComponent、Tailwind CSS 4、Importmap |
 

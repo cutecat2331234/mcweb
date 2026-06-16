@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+### Changed
+
+- 生产与 CI 统一使用 PostgreSQL 18；`bin/install` 通过 PGDG 官方源安装 `postgresql-18`
+
 ### Fixed
 
 - 管理员只读订单权限不再允许直接修改订单状态

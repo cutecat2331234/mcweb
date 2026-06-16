@@ -19,7 +19,7 @@ const form = useForm({
 })
 
 function submit() {
-  form.patch(`/identity/password_resets/${props.token}`)
+  form.patch(`/app/identity/password_resets/${props.token}`)
 }
 </script>
 

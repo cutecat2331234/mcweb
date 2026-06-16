@@ -32,6 +32,9 @@ function toggleTheme() {
           <Link :href="routes.home" class="text-sm font-semibold tracking-tight no-underline text-foreground">
             Mcweb
           </Link>
+          <span class="rounded-md border border-border bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+            /app
+          </span>
           <nav class="hidden items-center gap-4 text-sm text-muted-foreground md:flex">
             <Link :href="routes.forum" class="hover:text-foreground transition-colors">论坛</Link>
             <Link :href="routes.forumLatest" class="hover:text-foreground transition-colors">最新</Link>

@@ -14,14 +14,14 @@ class Community::TopicOneboxTest < ActiveSupport::TestCase
   end
 
   test "fetch topic onebox by path" do
-    result = Community::FetchTopicOnebox.call(url: "/forum/topics/#{@topic.public_id}")
+    result = Community::FetchTopicOnebox.call(url: "/app/forum/topics/#{@topic.public_id}")
     assert result.success?
     assert_equal @topic.title, result.value[:title]
     assert_equal @user.username, result.value[:author]
   end
 
   test "format post body embeds topic onebox" do
-    result = Community::FormatPostBody.call(body: "/forum/topics/#{@topic.public_id}")
+    result = Community::FormatPostBody.call(body: "/app/forum/topics/#{@topic.public_id}")
     assert result.success?
     assert_includes result.value, "topic-onebox"
     assert_includes result.value, @topic.title
@@ -30,11 +30,11 @@ class Community::TopicOneboxTest < ActiveSupport::TestCase
   test "unlisted topic does not render onebox" do
     @topic.update!(unlisted: true)
 
-    result = Community::FetchTopicOnebox.call(url: "/forum/topics/#{@topic.public_id}")
+    result = Community::FetchTopicOnebox.call(url: "/app/forum/topics/#{@topic.public_id}")
     assert result.success?
     assert_nil result.value
 
-    formatted = Community::FormatPostBody.call(body: "/forum/topics/#{@topic.public_id}")
+    formatted = Community::FormatPostBody.call(body: "/app/forum/topics/#{@topic.public_id}")
     assert formatted.success?
     assert_not_includes formatted.value, "topic-onebox"
   end

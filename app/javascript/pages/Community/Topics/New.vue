@@ -36,11 +36,11 @@ const form = useForm({
 const showPoll = ref(false)
 
 function submit() {
-  form.post(`/forum/topics?section_id=${props.section.slug}`)
+  form.post(`/app/forum/topics?section_id=${props.section.slug}`)
 }
 
 function saveDraft() {
-  router.post(`/forum/drafts?section_id=${props.section.slug}`, {
+  router.post(`/app/forum/drafts?section_id=${props.section.slug}`, {
     draft: {
       title: form.topic.title,
       body: form.topic.body,

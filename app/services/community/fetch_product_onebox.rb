@@ -2,7 +2,7 @@
 
 module Community
   class FetchProductOnebox < ApplicationService
-    PRODUCT_PATH = %r{\A/store/products/([\w-]+)\z}i
+    PRODUCT_PATH = %r{\A(?:/app)?/store/products/([\w-]+)\z}i
 
     def initialize(url:)
       @url = url.to_s.strip
@@ -29,7 +29,7 @@ module Community
         summary: product.summary,
         price_label: format_price(product),
         image_url: product_image_url(product),
-        url: "/store/products/#{product.public_id}"
+        url: "/app/store/products/#{product.public_id}"
       )
     rescue URI::InvalidURIError
       ServiceResult.success(nil)

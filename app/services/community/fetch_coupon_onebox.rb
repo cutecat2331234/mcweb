@@ -2,7 +2,7 @@
 
 module Community
   class FetchCouponOnebox < ApplicationService
-    COUPON_PATH = %r{\A/store/coupons/([\w-]+)\z}i
+    COUPON_PATH = %r{\A(?:/app)?/store/coupons/([\w-]+)\z}i
 
     def initialize(url:)
       @url = url.to_s.strip
@@ -34,7 +34,7 @@ module Community
       ServiceResult.success(
         code: coupon.code,
         discount_label: label,
-        url: "/store/coupons/#{coupon.code}"
+        url: "/app/store/coupons/#{coupon.code}"
       )
     rescue URI::InvalidURIError
       ServiceResult.success(nil)

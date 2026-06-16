@@ -292,7 +292,7 @@ watch(() => replyForm.post.body, (body) => {
 })
 
 function submitReply() {
-  replyForm.post('/forum/posts', {
+  replyForm.post('/app/forum/posts', {
     preserveScroll: true,
     onSuccess: () => {
       replyForm.post.body = ''
@@ -366,19 +366,19 @@ function clearReplyTarget() {
 }
 
 function markSolved(post: PostItem) {
-  router.post(`/forum/topics/${props.topic.id}/mark_solved`, { post_id: post.id }, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/mark_solved`, { post_id: post.id }, { preserveScroll: true })
 }
 
 function unsolveTopic() {
-  router.post(`/forum/topics/${props.topic.id}/unsolve`, {}, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/unsolve`, {}, { preserveScroll: true })
 }
 
 function updateSlowMode() {
-  router.patch(`/forum/topics/${props.topic.id}/slow_mode`, { seconds: slowModeSeconds.value })
+  router.patch(`/app/forum/topics/${props.topic.id}/slow_mode`, { seconds: slowModeSeconds.value })
 }
 
 function updateAutoClose() {
-  router.patch(`/forum/topics/${props.topic.id}/auto_close`, { auto_close_at: autoCloseAt.value || null })
+  router.patch(`/app/forum/topics/${props.topic.id}/auto_close`, { auto_close_at: autoCloseAt.value || null })
 }
 
 function restorePost(post: PostItem) {
@@ -430,7 +430,7 @@ function deletePost(post: PostItem) {
 }
 
 function toggleReaction(post: PostItem, emoji: string) {
-  router.post(`/forum/posts/${post.id}/reaction`, { emoji }, { preserveScroll: true })
+  router.post(`/app/forum/posts/${post.id}/reaction`, { emoji }, { preserveScroll: true })
 }
 
 const staffNoteBody = ref('')
@@ -446,7 +446,7 @@ function watchLabel() {
 }
 
 function toggleWatch() {
-  router.post(`/forum/topics/${props.topic.id}/subscription`, {}, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/subscription`, {}, { preserveScroll: true })
 }
 
 function submitStaffNote() {
@@ -459,7 +459,7 @@ function submitStaffNote() {
 
 function banReply() {
   if (!replyBanUsername.value.trim()) return
-  router.post(`/forum/topics/${props.topic.id}/reply_ban`, {
+  router.post(`/app/forum/topics/${props.topic.id}/reply_ban`, {
     username: replyBanUsername.value.trim(),
     reason: replyBanReason.value,
   }, {
@@ -472,7 +472,7 @@ function banReply() {
 }
 
 function unbanReply(username: string) {
-  router.post(`/forum/topics/${props.topic.id}/reply_unban`, { username }, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/reply_unban`, { username }, { preserveScroll: true })
 }
 
 function inviteWatcher() {
@@ -484,7 +484,7 @@ function inviteWatcher() {
 }
 
 function toggleMute() {
-  router.post(`/forum/topics/${props.topic.id}/mute`, {}, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/mute`, {}, { preserveScroll: true })
 }
 
 function toggleBookmark() {
@@ -494,7 +494,7 @@ function toggleBookmark() {
     bookmarkRemindAt.value = props.topicBookmark.remind_at_input || ''
     return
   }
-  router.post(`/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
 }
 
 function saveBookmark() {
@@ -511,7 +511,7 @@ function saveBookmark() {
 }
 
 function removeBookmark() {
-  router.post(`/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
 }
 
 function moderate(action: string) {
@@ -519,10 +519,10 @@ function moderate(action: string) {
     const reason = window.prompt('锁定原因（可选）', lockReasonInput.value || '')
     if (reason === null) return
     lockReasonInput.value = reason
-    router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: action, lock_reason: reason || undefined }, { preserveScroll: true })
+    router.post(`/app/forum/topics/${props.topic.id}/moderate`, { action_type: action, lock_reason: reason || undefined }, { preserveScroll: true })
     return
   }
-  router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: action }, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/moderate`, { action_type: action }, { preserveScroll: true })
 }
 
 function isOwnPost(post: PostItem) {
@@ -538,7 +538,7 @@ function isPostExpanded(post: PostItem) {
 }
 
 function moderatePost(post: PostItem, action: string, extra: Record<string, string> = {}) {
-  router.post(`/forum/posts/${post.id}/moderate`, { action_type: action, ...extra }, { preserveScroll: true })
+  router.post(`/app/forum/posts/${post.id}/moderate`, { action_type: action, ...extra }, { preserveScroll: true })
 }
 
 function saveStaffNotice(post: PostItem) {
@@ -550,19 +550,19 @@ function saveStaffNotice(post: PostItem) {
 
 function moveTopic() {
   if (!moveSectionSlug.value) return
-  router.post(`/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
+  router.post(`/app/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
 }
 
 function mergeTopic() {
   if (!mergeTargetId.value.trim()) return
   if (!confirm('确定将此主题合并到目标主题？源主题将被隐藏。')) return
-  router.post(`/forum/topics/${props.topic.id}/merge`, { target_topic_id: mergeTargetId.value.trim() })
+  router.post(`/app/forum/topics/${props.topic.id}/merge`, { target_topic_id: mergeTargetId.value.trim() })
 }
 
 function splitPost(post: PostItem) {
   if (!confirm(`确定从 #${post.floor_number} 起拆分为新主题？`)) return
   const title = window.prompt('新主题标题（留空使用默认）', '')
-  router.post(`/forum/topics/${props.topic.id}/split`, {
+  router.post(`/app/forum/topics/${props.topic.id}/split`, {
     post_id: post.id,
     title: title || undefined,
     section_slug: splitSectionSlug.value || undefined,
@@ -591,7 +591,7 @@ async function loadPollVoters() {
 }
 
 function saveTopicEdit() {
-  router.patch(`/forum/topics/${props.topic.id}`, {
+  router.patch(`/app/forum/topics/${props.topic.id}`, {
     topic: { title: editTitle.value, tags: editTags.value, prefix: editPrefix.value },
   }, {
     onSuccess: () => { editingTopic.value = false },
@@ -680,11 +680,11 @@ function changePostSort() {
 
 function closeOwnTopic() {
   const reason = window.prompt('关闭原因（可选）', '') || undefined
-  router.post(`/forum/topics/${props.topic.id}/close_own`, { lock_reason: reason }, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/close_own`, { lock_reason: reason }, { preserveScroll: true })
 }
 
 function reopenOwnTopic() {
-  router.post(`/forum/topics/${props.topic.id}/reopen_own`, {}, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/reopen_own`, {}, { preserveScroll: true })
 }
 
 function onPostMouseUp(post: PostItem, event: MouseEvent) {

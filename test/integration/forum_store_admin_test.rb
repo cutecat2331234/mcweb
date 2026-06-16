@@ -40,7 +40,7 @@ class ForumIntegrationTest < ActionDispatch::IntegrationTest
       post forum_posts_path, params: { post: { topic_id: topic.public_id, body: "First reply" } }
     end
     assert_equal posts_before + 1, Community::Post.count
-    assert_redirected_to %r{/forum/topics/#{topic.public_id}}
+    assert_redirected_to %r{/app/forum/topics/#{topic.public_id}}
   end
 
   test "forum search finds topics" do

@@ -98,7 +98,7 @@ class Community::FormatPostBodyOneboxSafetyTest < ActiveSupport::TestCase
     )
     product.update_column(:image_url, "javascript:alert(1)")
 
-    result = Community::FormatPostBody.call(body: "/store/products/#{product.public_id}")
+    result = Community::FormatPostBody.call(body: "/app/store/products/#{product.public_id}")
     assert result.success?
     assert_not_includes result.value, "javascript:"
     assert_not_includes result.value, "<img"

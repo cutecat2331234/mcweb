@@ -24,7 +24,7 @@ defineProps<{
 }>()
 
 function revokeSession(id: number) {
-  router.delete(`/identity/sessions/${id}`)
+  router.delete(`/app/identity/sessions/${id}`)
 }
 </script>
 

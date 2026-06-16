@@ -28,7 +28,7 @@ module Community
           topic_id: @topic.public_id,
           post_id: @post.id,
           quoted_post_id: @quoted_post.id,
-          path: "/forum/topics/#{@topic.public_id}#post-#{@post.id}"
+          path: "/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"
         }
       )
 

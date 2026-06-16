@@ -169,7 +169,7 @@ class Community::FormatPostBodyTest < ActiveSupport::TestCase
     result = Community::FormatPostBody.call(body: "Hello **world** @testuser")
     assert result.success?
     assert_includes result.value, "<strong>world</strong>"
-    assert_includes result.value, "/forum/users/testuser"
+    assert_includes result.value, "/app/forum/users/testuser"
   end
 end
 

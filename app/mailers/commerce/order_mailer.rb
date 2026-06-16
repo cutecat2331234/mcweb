@@ -75,7 +75,7 @@ module Commerce
 
       @baseline = baseline_cents
       @current = current_cents
-      @url = "#{root_url.chomp('/')}#{"/store/products/#{@product.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/store/products/#{@product.public_id}"}"
       mail(to: @user.email, subject: "商品降价：#{@product.name}")
     end
 
@@ -101,7 +101,7 @@ module Commerce
       @product = Commerce::Product.find(product_id)
       return unless commerce_email_enabled?(@user, "commerce.product_changelog")
 
-      @url = "#{root_url.chomp('/')}#{"/store/products/#{@product.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/store/products/#{@product.public_id}"}"
       mail(to: @user.email, subject: "商品更新：#{@product.name}")
     end
 
@@ -111,7 +111,7 @@ module Commerce
       @product = @question.product
       return unless commerce_email_enabled?(@user, "commerce.new_product_question")
 
-      @url = "#{root_url.chomp('/')}#{"/store/products/#{@product.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/store/products/#{@product.public_id}"}"
       mail(to: @user.email, subject: "新商品提问：#{@product.name}")
     end
 

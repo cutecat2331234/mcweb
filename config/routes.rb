@@ -12,15 +12,6 @@ Rails.application.routes.draw do
     patch ":step", to: "wizard#update"
   end
 
-  namespace :identity do
-    get "sign-in", to: "sessions#new", as: :sign_in
-    resource :session, only: %i[create destroy]
-    resources :registrations, only: %i[new create], path: "register"
-    resources :password_resets, only: %i[new create edit update], param: :token
-    resource :email_verification, only: %i[show], path: "verify-email"
-    resources :sessions_management, only: %i[index destroy], path: "sessions"
-  end
-
   namespace :admin do
     root "dashboard#index"
     resources :users, only: %i[index show] do
@@ -84,6 +75,16 @@ Rails.application.routes.draw do
       resources :ip_bans, only: %i[index create destroy]
     end
   end
+
+  scope path: "app" do
+    namespace :identity do
+      get "sign-in", to: "sessions#new", as: :sign_in
+      resource :session, only: %i[create destroy]
+      resources :registrations, only: %i[new create], path: "register"
+      resources :password_resets, only: %i[new create edit update], param: :token
+      resource :email_verification, only: %i[show], path: "verify-email"
+      resources :sessions_management, only: %i[index destroy], path: "sessions"
+    end
 
   scope module: :community, path: "forum", as: :forum do
     resources :sections, only: %i[index show] do
@@ -199,8 +200,8 @@ Rails.application.routes.draw do
     end
   end
 
-  get "payments/fake/:id", to: "payments/fake#show", as: :fake_payment
-  post "payments/fake/:id", to: "payments/fake#create"
+    get "payments/fake/:id", to: "payments/fake#show", as: :fake_payment
+    post "payments/fake/:id", to: "payments/fake#create"
 
     scope module: :commerce, path: "store", as: :store do
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
@@ -276,18 +277,31 @@ Rails.application.routes.draw do
     get "downloads/:token", to: "downloads#show", as: :download
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
+    end
+
+    namespace :minecraft, path: "minecraft" do
+      resource :link, only: %i[show create], controller: "link"
+    end
   end
 
   scope module: :website, as: :website do
     resources :articles, only: %i[index show], path: "blog"
-    get "pages/:slug", to: "pages#show", as: :page
   end
+
+  get "website/blog", to: redirect("/blog")
+  get "website/blog/:slug", to: redirect("/blog/%{slug}")
+  get "website/pages/:slug", to: redirect("/%{slug}")
+
+  get "/forum(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/forum/#{params[:path]}" : "/app/forum" }
+  get "/store(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/store/#{params[:path]}" : "/app/store" }
+  get "/identity(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/identity/#{params[:path]}" : "/app/identity" }
+  get "/minecraft/link", to: redirect("/app/minecraft/link")
+  get "/payments/fake/:id", to: redirect("/app/payments/fake/%{id}")
 
   get "health/live", to: "health#live"
   get "health/ready", to: "health#ready"
 
   namespace :minecraft do
-    resource :link, only: %i[show create], controller: "link"
     namespace :connector do
       scope ":server_id" do
         post "heartbeat", to: "api#heartbeat"
@@ -296,4 +310,6 @@ Rails.application.routes.draw do
       end
     end
   end
+
+  get ":slug", to: "website/pages#show", as: :website_page, constraints: WebsiteSlugConstraint
 end

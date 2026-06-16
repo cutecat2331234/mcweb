@@ -117,7 +117,7 @@ class Commerce::StoreSitemapTest < ActionDispatch::IntegrationTest
     get store_sitemap_path
     assert_response :success
     assert_includes response.body, "<urlset"
-    assert_includes response.body, "/store/products/"
+    assert_includes response.body, "/app/store/products/"
   end
 end
 

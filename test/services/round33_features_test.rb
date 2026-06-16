@@ -14,13 +14,13 @@ class Community::CouponOneboxTest < ActiveSupport::TestCase
   end
 
   test "fetch coupon onebox" do
-    result = Community::FetchCouponOnebox.call(url: "/store/coupons/#{@coupon.code}")
+    result = Community::FetchCouponOnebox.call(url: "/app/store/coupons/#{@coupon.code}")
     assert result.success?
     assert_equal @coupon.code, result.value[:code]
   end
 
   test "format post body embeds coupon onebox" do
-    result = Community::FormatPostBody.call(body: "/store/coupons/#{@coupon.code}")
+    result = Community::FormatPostBody.call(body: "/app/store/coupons/#{@coupon.code}")
     assert result.success?
     assert_includes result.value, "coupon-onebox"
     assert_includes result.value, @coupon.code

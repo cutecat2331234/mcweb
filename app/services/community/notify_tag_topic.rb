@@ -36,7 +36,7 @@ module Community
           body: "#{@topic.user.username} 使用了标签 #{tag_names}",
           metadata: {
             topic_id: @topic.public_id,
-            path: "/forum/topics/#{@topic.public_id}"
+            path: "/app/forum/topics/#{@topic.public_id}"
           }
         )
       end

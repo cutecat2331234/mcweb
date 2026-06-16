@@ -114,13 +114,13 @@ class Community::UserOneboxTest < ActiveSupport::TestCase
   end
 
   test "fetch user onebox" do
-    result = Community::FetchUserOnebox.call(url: "/forum/users/#{@user.username}")
+    result = Community::FetchUserOnebox.call(url: "/app/forum/users/#{@user.username}")
     assert result.success?
     assert_equal @user.username, result.value[:username]
   end
 
   test "format post body embeds user onebox" do
-    result = Community::FormatPostBody.call(body: "/forum/users/#{@user.username}")
+    result = Community::FormatPostBody.call(body: "/app/forum/users/#{@user.username}")
     assert result.success?
     assert_includes result.value, "user-onebox"
     assert_includes result.value, @user.username

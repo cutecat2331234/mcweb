@@ -31,7 +31,7 @@ module Commerce
           notification_type: "commerce.order_fulfilled",
           title: "订单已发货",
           body: "订单 #{@order.order_number} 商品已发货完成。",
-          path: "/store/orders/#{@order.public_id}"
+          path: "/app/store/orders/#{@order.public_id}"
         )
       end
 
@@ -54,7 +54,7 @@ module Commerce
         notification_type: "commerce.order_completed",
         title: "订单已完成",
         body: "订单 #{@order.order_number} 已全部完成，感谢购买。",
-        path: "/store/orders/#{@order.public_id}"
+        path: "/app/store/orders/#{@order.public_id}"
       )
     end
   end

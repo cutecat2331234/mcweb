@@ -140,6 +140,46 @@ if Rails.env.development?
     b.visible = true
   end
 
+  about_page = Website::Page.find_or_create_by!(slug: "about") do |p|
+    p.title = "关于我们"
+    p.status = "published"
+    p.page_type = "custom"
+    p.theme = theme
+    p.published_at = Time.current
+    p.seo = { title: "关于我们", description: "了解服务器与团队" }
+  end
+
+  Website::Block.find_or_create_by!(page: about_page, block_type: "hero", position: 0) do |b|
+    b.settings = {
+      headline: "关于 McWeb 服务器",
+      subheadline: "我们致力于打造一个公平、有趣、长期运营的 Minecraft 社区。",
+      cta_text: "加入论坛",
+      cta_url: "/app/forum/sections"
+    }
+    b.visible = true
+  end
+
+  Website::Block.find_or_create_by!(page: about_page, block_type: "rich_text", position: 1) do |b|
+    b.settings = {
+      html: "<p>McWeb 是一套面向服主的开源官网系统，将营销页面、玩家论坛与数字商城整合在一起。</p><p>官网使用简洁路径如 <strong>/home</strong> 与 <strong>/about</strong>，玩家功能则集中在 <strong>/app</strong> 应用模块。</p>"
+    }
+    b.visible = true
+  end
+
+  [
+    { label: "首页", page: nil, url: "/", position: 0 },
+    { label: "服务器主页", page: page, position: 1 },
+    { label: "关于", page: about_page, position: 2 },
+    { label: "动态", page: nil, url: "/blog", position: 3 }
+  ].each do |attrs|
+    Website::NavItem.find_or_create_by!(location: "header", label: attrs[:label]) do |item|
+      item.website_page_id = attrs[:page]&.id
+      item.url = attrs[:url]
+      item.position = attrs[:position]
+      item.visible = true
+    end
+  end
+
   category = Community::Category.find_or_create_by!(slug: "general") do |c|
     c.name = "综合讨论"
     c.description = "综合话题"

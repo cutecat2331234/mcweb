@@ -16,7 +16,7 @@ module Community
         title: "你收到了一条社区警告",
         body: @warning.reason.truncate(200),
         metadata: {
-          path: "/forum/users/#{@user.username}",
+          path: "/app/forum/users/#{@user.username}",
           warning_id: @warning.id,
           points: @warning.points
         }

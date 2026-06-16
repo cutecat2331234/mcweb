@@ -17,7 +17,7 @@ module Community
         notification_type: "forum.topic_invite",
         title: "#{@inviter.username} 邀请你关注主题",
         body: @topic.title,
-        metadata: { path: "/forum/topics/#{@topic.public_id}", topic_id: @topic.public_id }
+        metadata: { path: "/app/forum/topics/#{@topic.public_id}", topic_id: @topic.public_id }
       )
 
       ServiceResult.success

@@ -299,7 +299,7 @@ class Community::HiddenTopicNotificationDisplayTest < ActionDispatch::Integratio
       notification_type: "forum.topic_reply",
       title: "主题有新回复：Secret hidden notification topic",
       body: "leaked reply excerpt",
-      metadata: { topic_id: @topic.public_id, path: "/forum/topics/#{@topic.public_id}" }
+      metadata: { topic_id: @topic.public_id, path: "/app/forum/topics/#{@topic.public_id}" }
     )
   end
 

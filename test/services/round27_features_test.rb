@@ -72,14 +72,14 @@ class Community::NotificationGroupingTest < ActiveSupport::TestCase
       notification_type: "commerce.order_created",
       title: "订单更新",
       body: "body",
-      metadata: { path: "/store/orders/#{order_id}", order_public_id: order_id }
+      metadata: { path: "/app/store/orders/#{order_id}", order_public_id: order_id }
     )
     Notification.notify!(
       user: @user,
       notification_type: "commerce.order_fulfilled",
       title: "已发货",
       body: "body",
-      metadata: { path: "/store/orders/#{order_id}", order_public_id: order_id }
+      metadata: { path: "/app/store/orders/#{order_id}", order_public_id: order_id }
     )
   end
 
@@ -101,7 +101,7 @@ class Commerce::NotifyOrderPublicIdTest < ActiveSupport::TestCase
       notification_type: "commerce.order_created",
       title: "订单",
       body: "body",
-      path: "/store/orders/ord_abc123xyz"
+      path: "/app/store/orders/ord_abc123xyz"
     )
     notification = Notification.last
     assert_equal "ord_abc123xyz", notification.metadata["order_public_id"]

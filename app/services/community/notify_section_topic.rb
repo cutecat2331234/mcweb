@@ -34,7 +34,7 @@ module Community
           metadata: {
             topic_id: @topic.public_id,
             section_slug: @section.slug,
-            path: "/forum/topics/#{@topic.public_id}"
+            path: "/app/forum/topics/#{@topic.public_id}"
           }
         )
 

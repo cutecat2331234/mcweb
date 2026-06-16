@@ -49,7 +49,7 @@ module Commerce
         notification_type: "commerce.order_processing",
         title: "订单处理中",
         body: "订单 #{order.order_number} 正在处理，请稍候。",
-        path: "/store/orders/#{order.public_id}"
+        path: "/app/store/orders/#{order.public_id}"
       )
     end
 
@@ -60,7 +60,7 @@ module Commerce
         notification_type: "commerce.order_fulfilling",
         title: "订单发货中",
         body: "订单 #{order.order_number} 正在发货处理。",
-        path: "/store/orders/#{order.public_id}"
+        path: "/app/store/orders/#{order.public_id}"
       )
     end
   end

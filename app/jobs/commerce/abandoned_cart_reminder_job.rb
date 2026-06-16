@@ -32,7 +32,7 @@ module Commerce
               notification_type: "commerce.abandoned_cart",
               title: "购物车提醒",
               body: "你的购物车中有 #{item_count} 件商品尚未结账。",
-              path: "/store/cart?recovery=#{cart.recovery_token}"
+              path: "/app/store/cart?recovery=#{cart.recovery_token}"
             )
           end
 

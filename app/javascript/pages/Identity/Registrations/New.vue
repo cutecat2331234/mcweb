@@ -21,7 +21,7 @@ const form = useForm({
 })
 
 function submit() {
-  form.post('/identity/register')
+  form.post('/app/identity/register')
 }
 </script>
 

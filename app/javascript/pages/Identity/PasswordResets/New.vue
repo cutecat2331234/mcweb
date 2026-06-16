@@ -14,7 +14,7 @@ const form = useForm({
 })
 
 function submit() {
-  form.post('/identity/password_resets')
+  form.post('/app/identity/password_resets')
 }
 </script>
 

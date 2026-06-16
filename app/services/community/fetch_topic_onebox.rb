@@ -2,7 +2,7 @@
 
 module Community
   class FetchTopicOnebox < ApplicationService
-    TOPIC_PATH = %r{\A/forum/topics/([\w-]+)\z}i
+    TOPIC_PATH = %r{\A(?:/app)?/forum/topics/([\w-]+)\z}i
 
     def initialize(url:)
       @url = url.to_s.strip
@@ -28,7 +28,7 @@ module Community
         author: topic.user&.username,
         replies_count: topic.replies_count,
         section_name: topic.section&.name,
-        url: "/forum/topics/#{topic.public_id}"
+        url: "/app/forum/topics/#{topic.public_id}"
       )
     rescue URI::InvalidURIError
       ServiceResult.success(nil)

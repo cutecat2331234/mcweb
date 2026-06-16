@@ -19,8 +19,8 @@ module Community
           body: @message.body.truncate(120),
           metadata: {
             conversation_id: @conversation.id,
-            url: "/forum/conversations/#{@conversation.id}",
-            path: "/forum/conversations/#{@conversation.id}"
+            url: "/app/forum/conversations/#{@conversation.id}",
+            path: "/app/forum/conversations/#{@conversation.id}"
           }
         )
 

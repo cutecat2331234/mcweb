@@ -64,6 +64,15 @@ class ApplicationController < ActionController::Base
       end
     end
 
+    begin
+      nav_items = Website::NavItem.visible_items.for_location("header").ordered
+      if nav_items.any?
+        share[:website_nav] = nav_items.map { |item| { label: item.label, href: item.href } }
+      end
+    rescue ActiveRecord::StatementInvalid, NameError
+      nil
+    end
+
     share
   end
 end

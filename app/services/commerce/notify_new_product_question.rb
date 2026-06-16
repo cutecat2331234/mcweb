@@ -32,7 +32,7 @@ module Commerce
           title: "新商品提问：#{@product.name}",
           body: @question.body.truncate(120),
           metadata: {
-            path: "/store/products/#{@product.public_id}",
+            path: "/app/store/products/#{@product.public_id}",
             product_public_id: @product.public_id,
             question_id: @question.id
           }

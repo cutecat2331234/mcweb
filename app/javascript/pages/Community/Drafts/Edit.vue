@@ -57,16 +57,16 @@ function save() {
     form.draft.poll_question = ''
     form.draft.poll_options = ''
   }
-  form.patch(`/forum/drafts/${props.draft.id}`)
+  form.patch(`/app/forum/drafts/${props.draft.id}`)
 }
 
 function publish() {
-  router.post(`/forum/drafts/${props.draft.id}/publish`)
+  router.post(`/app/forum/drafts/${props.draft.id}/publish`)
 }
 
 function destroy() {
   if (!confirm('确定删除此草稿？')) return
-  router.delete(`/forum/drafts/${props.draft.id}`)
+  router.delete(`/app/forum/drafts/${props.draft.id}`)
 }
 
 function clearSchedule() {

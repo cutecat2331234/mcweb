@@ -6,7 +6,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
 
       mail(to: @user.email, subject: "主题有新回复：#{@topic.title.truncate(60)}")
     end
@@ -15,7 +15,7 @@ module Community
       @user = User.find(user_id)
       @conversation = Community::Conversation.find(conversation_id)
       @message = Community::Message.find(message_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/conversations/#{@conversation.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/conversations/#{@conversation.id}"}"
 
       mail(to: @user.email, subject: "来自 #{@message.user.username} 的私信")
     end
@@ -24,7 +24,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
 
       mail(to: @user.email, subject: "#{@post.user.username} 在主题中提到了你")
     end
@@ -32,7 +32,7 @@ module Community
     def section_topic(user_id, topic_id)
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
 
       mail(to: @user.email, subject: "分区有新主题：#{@topic.title.truncate(60)}")
     end
@@ -49,7 +49,7 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
       @editor = @post.user
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
 
       mail(to: @user.email, subject: "帖子已编辑：#{@topic.title.truncate(60)}")
     end
@@ -61,9 +61,9 @@ module Community
       return unless @topic
 
       @url = if @bookmark.forum_post_id.present? && @bookmark.post
-               "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@bookmark.post.id}"}"
+               "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@bookmark.post.id}"}"
       else
-               "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+               "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
       end
       @note = @bookmark.note
 
@@ -73,7 +73,7 @@ module Community
     def user_warning(user_id, warning_id)
       @user = User.find(user_id)
       @warning = Community::UserWarning.find(warning_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/users/#{@user.username}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/users/#{@user.username}"}"
       mail(to: @user.email, subject: "社区警告通知")
     end
   end

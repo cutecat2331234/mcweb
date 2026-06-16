@@ -17,7 +17,7 @@ module Community
         body: @badge.description.to_s.truncate(120),
         metadata: {
           badge_slug: @badge.slug,
-          path: "/forum/users/#{@user.username}"
+          path: "/app/forum/users/#{@user.username}"
         }
       )
 

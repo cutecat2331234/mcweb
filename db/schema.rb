@@ -604,6 +604,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["user_id"], name: "index_forum_user_warnings_on_user_id"
   end
 
+  create_table "frontend_templates", force: :cascade do |t|
+    t.string "checksum", default: "", null: false
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.string "installed_path"
+    t.string "key", null: false
+    t.jsonb "manifest", default: {}, null: false
+    t.string "name", null: false
+    t.jsonb "scopes", default: [], null: false
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.string "version", default: "1.0.0", null: false
+    t.index ["key"], name: "index_frontend_templates_on_key", unique: true
+    t.index ["status"], name: "index_frontend_templates_on_status"
+  end
+
   create_table "installation_locks", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.boolean "locked", default: false, null: false

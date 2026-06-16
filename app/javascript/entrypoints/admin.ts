@@ -18,21 +18,16 @@ document.addEventListener('inertia:success', () => {
   syncCsrfMetaTag()
 })
 
-// Wappalyzer 等工具用于识别 Ruby on Rails 的 JS 指纹（Inertia 入口也需设置）
-if (typeof window !== 'undefined') {
-  ;(window as Window & { _rails_loaded?: boolean })._rails_loaded = true
-}
-
 createInertiaApp({
   resolve: async (name) => {
-    if (name.startsWith('Admin/')) {
-      throw new Error(`Admin pages must use admin entry: ${name}`)
+    if (!name.startsWith('Admin/')) {
+      throw new Error(`Non-admin page must use admin entry: ${name}`)
     }
-    const pages = import.meta.glob<DefineComponent>('../pages/**/*.vue')
+    const pages = import.meta.glob<DefineComponent>('../pages/Admin/**/*.vue')
     const path = `../pages/${name}.vue`
     const loader = pages[path]
     if (!loader) {
-      throw new Error(`Inertia page not found: ${name}`)
+      throw new Error(`Admin Inertia page not found: ${name}`)
     }
     return loader()
   },

@@ -5,6 +5,8 @@ Rails.application.routes.draw do
 
   root "website/home#index"
 
+  get "theme-assets/:template_key/*path", to: "frontend/template_assets#show", as: :frontend_theme_asset, format: false
+
   namespace :setup, path: "setup" do
     root "wizard#index"
     get "complete", to: "wizard#complete", as: :complete
@@ -108,6 +110,13 @@ Rails.application.routes.draw do
     namespace :website do
       resources :pages, only: %i[index show]
       resources :articles, only: %i[index show]
+    end
+    namespace :frontend do
+      resources :templates, only: %i[index create update destroy] do
+        member do
+          get :preview
+        end
+      end
     end
     namespace :minecraft do
       resources :servers, only: %i[index show]

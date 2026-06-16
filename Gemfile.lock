@@ -447,6 +447,7 @@ DEPENDENCIES
   rotp (~> 6.3)
   rqrcode (~> 2.2)
   rubocop-rails-omakase
+  rubyzip (~> 3.3)
   sanitize (~> 6.1)
   selenium-webdriver
   solid_cable

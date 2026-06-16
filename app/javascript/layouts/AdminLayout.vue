@@ -18,6 +18,7 @@ const nav = [
   { label: '官网', items: [
     { label: '页面', href: adminRoutes.websitePages },
     { label: '文章', href: adminRoutes.websiteArticles },
+    { label: '前台模板', href: adminRoutes.frontendTemplates },
   ]},
   { label: '社区', items: [
     { label: '板块', href: adminRoutes.forumSections },

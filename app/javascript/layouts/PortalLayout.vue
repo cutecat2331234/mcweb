@@ -6,8 +6,10 @@ import { routes } from '@/lib/routes'
 import FlashMessages from '@/components/portal/FlashMessages.vue'
 import ForumShortcuts from '@/components/portal/ForumShortcuts.vue'
 import PortalSubnav from '@/components/portal/PortalSubnav.vue'
+import TemplateAssets from '@/components/portal/TemplateAssets.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
+import { useActiveTemplate } from '@/lib/useActiveTemplate'
 
 const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
@@ -17,6 +19,7 @@ const forumAssigned = computed(() => page.props.forum_assigned as { count: numbe
 const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
+const { activeTemplate, tokenStyle, portalHeaderExtraSlot } = useActiveTemplate()
 
 const dismissedLocal = ref<string[]>(loadDismissedLocal())
 
@@ -57,11 +60,14 @@ async function dismissAnnouncement(topicId: string) {
 </script>
 
 <template>
-  <div class="min-h-dvh bg-background">
+  <div class="min-h-dvh bg-background" :style="tokenStyle">
+    <TemplateAssets />
     <header class="sticky top-0 z-40 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <div v-if="portalHeaderExtraSlot" v-html="portalHeaderExtraSlot" />
       <div class="mx-auto flex h-14 max-w-6xl items-center justify-between px-4">
-        <Link :href="routes.home" class="text-sm font-semibold tracking-tight no-underline text-foreground">
-          Mcweb
+        <Link :href="routes.home" class="flex items-center gap-2 text-sm font-semibold tracking-tight no-underline text-foreground">
+          <img v-if="activeTemplate?.logoUrl" :src="activeTemplate.logoUrl" alt="Logo" class="h-7 w-auto">
+          <span>Mcweb</span>
         </Link>
 
         <div class="flex items-center gap-1 sm:gap-2">

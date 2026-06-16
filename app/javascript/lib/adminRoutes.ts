@@ -57,6 +57,7 @@ export const adminRoutes = {
   websitePage: (id: string | number) => `/admin/website/pages/${id}`,
   websiteArticles: '/admin/website/articles',
   websiteArticle: (id: string) => `/admin/website/articles/${id}`,
+  frontendTemplates: '/admin/frontend/templates',
   minecraftServers: '/admin/minecraft/servers',
   minecraftServer: (id: string | number) => `/admin/minecraft/servers/${id}`,
   settings: '/admin/system/settings',

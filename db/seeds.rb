@@ -4,6 +4,7 @@ PERMISSIONS = [
   { key: "website.pages.read", name: "查看官网页面", category: "website" },
   { key: "website.pages.edit", name: "编辑官网页面", category: "website" },
   { key: "website.pages.publish", name: "发布官网页面", category: "website" },
+  { key: "website.templates.manage", name: "管理前台模板", category: "website" },
   { key: "forum.sections.manage", name: "管理论坛分区", category: "forum" },
   { key: "forum.topics.lock", name: "锁定主题", category: "forum" },
   { key: "forum.topics.move", name: "移动主题", category: "forum" },
@@ -39,7 +40,7 @@ ROLES = {
   "editor" => {
     name: "网站编辑",
     description: "管理官网内容",
-    permissions: %w[website.pages.read website.pages.edit website.pages.publish admin.access]
+    permissions: %w[website.pages.read website.pages.edit website.pages.publish website.templates.manage admin.access]
   },
   "forum_admin" => {
     name: "论坛管理员",

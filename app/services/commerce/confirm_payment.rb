@@ -29,8 +29,8 @@ module Commerce
         order = Commerce::Order.lock.find(record.store_order_id)
         order_id = order.id
 
-        unless %w[pending awaiting_payment].include?(order.status)
-          payment_error = "Order is not payable."
+        unless order.payable?
+          payment_error = order.payment_expired? ? "订单支付已过期。" : "Order is not payable."
           raise ActiveRecord::Rollback
         end
 

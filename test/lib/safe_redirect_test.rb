@@ -26,4 +26,14 @@ class SafeLocalPathTest < ActiveSupport::TestCase
     controller = ApplicationController.new
     assert_equal "/app/store/orders/ord1", controller.safe_local_path("/store/orders/ord1")
   end
+
+  test "safe_local_path rejects protocol-relative paths" do
+    controller = ApplicationController.new
+    assert_nil controller.safe_local_path("//evil.com")
+  end
+
+  test "safe_local_path rejects paths with backslashes" do
+    controller = ApplicationController.new
+    assert_nil controller.safe_local_path("/store\\evil")
+  end
 end

@@ -175,6 +175,20 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     active = order.payment_records.pending.order(created_at: :desc).first
     assert_equal order.total_cents, active.amount_cents
   end
+
+  test "checkout rejects expired order via order_id" do
+    SiteSetting.set("store.pending_order_expiry_minutes", "30")
+    cart = Commerce::Cart.find_or_create_by!(user: @user)
+    cart.add_item!(product: @product, quantity: 1)
+    order = Commerce::CreateOrder.call(cart: cart, user: @user).value
+    order.update!(created_at: 2.hours.ago)
+
+    post store_checkout_path, params: { order_id: order.public_id, checkout: { provider: "fake" } }
+
+    assert_redirected_to store_order_path(order)
+    assert_match(/过期/, flash[:alert].to_s)
+    assert_equal "pending", order.reload.status
+  end
 end
 
 class AdminIntegrationTest < ActionDispatch::IntegrationTest

@@ -24,6 +24,10 @@ module Payments
     def create
       order = @payment.order
       return redirect_to root_path, alert: "无权访问此支付。" unless order.user_id == current_user.id
+      unless order.payable?
+        message = order.payment_expired? ? "订单支付已过期。" : "该订单无法继续支付。"
+        return redirect_to store_order_path(order), alert: message
+      end
 
       result = Commerce::ConfirmPayment.call(
         payment_record: @payment,

@@ -54,6 +54,18 @@ class Commerce::ConfirmPaymentTest < ActiveSupport::TestCase
     assert_equal "cancelled", @order.reload.status
   end
 
+  test "rejects payment confirmation for expired pending order" do
+    SiteSetting.set("store.pending_order_expiry_minutes", "30")
+    @order.update!(created_at: 2.hours.ago)
+
+    result = Commerce::ConfirmPayment.call(payment_record: @payment, provider_payment_id: "late_pay")
+
+    assert result.failure?
+    assert_equal "订单支付已过期。", result.error
+    assert_equal "pending", @payment.reload.status
+    assert_equal "pending", @order.reload.status
+  end
+
   test "rejects payment confirmation for failed payment record" do
     @payment.update!(status: "failed")
 
@@ -164,6 +176,47 @@ class Commerce::RestoreStoreCreditTest < ActiveSupport::TestCase
     result = Commerce::RestoreStoreCredit.call(order: order)
     assert result.failure?
     assert_equal "用户信息无效。", result.error
+  end
+end
+
+class Commerce::ProcessRefundRestoreFailureTest < ActiveSupport::TestCase
+  setup do
+    @admin = create_user
+    @user = create_user
+    @order = Commerce::Order.create!(
+      public_id: "ord_ref_gift_#{SecureRandom.hex(6)}",
+      order_number: "REFG#{SecureRandom.hex(4)}",
+      user: @user,
+      status: "paid",
+      subtotal_cents: 1000,
+      total_cents: 500,
+      gift_card_amount_cents: 500,
+      currency: "CNY"
+    )
+    @payment = Payments::Record.create!(
+      order: @order,
+      provider: "fake",
+      status: "succeeded",
+      amount_cents: 500,
+      currency: "CNY",
+      provider_payment_id: "fake_ref_gift_#{SecureRandom.hex(4)}"
+    )
+  end
+
+  test "full refund rolls back when gift card association is missing" do
+    result = Commerce::ProcessRefund.call(
+      order: @order,
+      payment_record: @payment,
+      amount_cents: 500,
+      reason: "Full refund",
+      approved_by: @admin
+    )
+
+    assert result.failure?
+    assert_equal "礼品卡信息无效。", result.error
+    assert_equal "paid", @order.reload.status
+    assert_equal "succeeded", @payment.reload.status
+    assert_equal 0, @order.refunds.where(status: "completed").count
   end
 end
 

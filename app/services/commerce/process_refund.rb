@@ -17,6 +17,7 @@ module Commerce
 
       refund = nil
       previous_status = @order.status
+      restore_error = [ nil ]
       Commerce::Refund.transaction do
         @order.lock!
         @payment_record.lock!
@@ -46,34 +47,58 @@ module Commerce
             event_type: "refund_processed",
             metadata: { refund_id: refund.id, amount_cents: @amount_cents }
           )
-          Commerce::RestoreStoreCreditPartial.call(
-            order: @order,
-            refund_amount_cents: @amount_cents,
-            payment_amount_cents: @payment_record.amount_cents
+          ensure_restore!(
+            Commerce::RestoreStoreCreditPartial.call(
+              order: @order,
+              refund_amount_cents: @amount_cents,
+              payment_amount_cents: @payment_record.amount_cents
+            ),
+            restore_error,
+            "商店余额恢复失败。"
           )
-          Commerce::RestoreStockPartial.call(
-            order: @order,
-            refund_amount_cents: @amount_cents,
-            payment_amount_cents: @payment_record.amount_cents
+          ensure_restore!(
+            Commerce::RestoreStockPartial.call(
+              order: @order,
+              refund_amount_cents: @amount_cents,
+              payment_amount_cents: @payment_record.amount_cents
+            ),
+            restore_error,
+            "库存恢复失败。"
           )
-          Commerce::RestoreCouponPartial.call(
-            order: @order,
-            refund_amount_cents: @amount_cents,
-            payment_amount_cents: @payment_record.amount_cents,
-            already_refunded_cents: refunded_cents
+          ensure_restore!(
+            Commerce::RestoreCouponPartial.call(
+              order: @order,
+              refund_amount_cents: @amount_cents,
+              payment_amount_cents: @payment_record.amount_cents,
+              already_refunded_cents: refunded_cents
+            ),
+            restore_error,
+            "优惠券恢复失败。"
           )
-          Commerce::RestoreGiftCardPartial.call(
-            order: @order,
-            refund_amount_cents: @amount_cents,
-            payment_amount_cents: @payment_record.amount_cents
+          ensure_restore!(
+            Commerce::RestoreGiftCardPartial.call(
+              order: @order,
+              refund_amount_cents: @amount_cents,
+              payment_amount_cents: @payment_record.amount_cents
+            ),
+            restore_error,
+            "礼品卡余额恢复失败。"
           )
           if full_refund?(@amount_cents, refunded_cents)
             @order.update!(status: "refunded")
             restore_stock!
             restore_coupon_usage!
-            restore_gift_card_balance!
-            Commerce::RestoreStoreCredit.call(order: @order)
-            Commerce::RevokeIssuedGiftCards.call(order: @order)
+            ensure_restore!(restore_gift_card_balance!, restore_error, "礼品卡余额恢复失败。")
+            ensure_restore!(
+              Commerce::RestoreStoreCredit.call(order: @order),
+              restore_error,
+              "商店余额恢复失败。"
+            )
+            ensure_restore!(
+              Commerce::RevokeIssuedGiftCards.call(order: @order),
+              restore_error,
+              "礼品卡撤销失败。"
+            )
           end
           MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_processed", "deliver_now", args: [ refund.id ])
           Commerce::NotifyOrderEvent.call(
@@ -101,6 +126,8 @@ module Commerce
           return result
         end
       end
+
+      return ServiceResult.failure(error: restore_error[0]) if restore_error[0].present?
 
       Administration::AuditLogger.call(
         actor: @approved_by || @requested_by,
@@ -162,6 +189,13 @@ module Commerce
 
     def format_refund_amount(cents)
       ActionController::Base.helpers.number_to_currency(cents / 100.0, unit: "¥")
+    end
+
+    def ensure_restore!(result, restore_error, message)
+      return if result.success?
+
+      restore_error[0] = result.error.presence || message
+      raise ActiveRecord::Rollback
     end
   end
 end

@@ -957,16 +957,11 @@ module InertiaSerializable
   end
 
   def payment_expires_at(order)
-    return nil unless order.pending? || order.awaiting_payment?
-
-    minutes = SiteSetting.get("store.pending_order_expiry_minutes", "30").to_i
-    minutes = 30 if minutes <= 0
-    order.created_at + minutes.minutes
+    order.payment_expires_at
   end
 
   def payment_expired?(order)
-    expires = payment_expires_at(order)
-    expires.present? && expires.past?
+    order.payment_expired?
   end
 
   def payment_expires_label(order)
@@ -977,7 +972,7 @@ module InertiaSerializable
   end
 
   def payment_actionable?(order)
-    (order.pending? || order.awaiting_payment?) && !payment_expired?(order)
+    order.payable?
   end
 
   def fulfillment_status_label(status)

@@ -78,6 +78,23 @@ module Commerce
       aasm.states(permitted: true).map(&:name).include?(target_status.to_sym)
     end
 
+    def payment_expires_at
+      return nil unless pending? || awaiting_payment?
+
+      minutes = SiteSetting.get("store.pending_order_expiry_minutes", "30").to_i
+      minutes = 30 if minutes <= 0
+      created_at + minutes.minutes
+    end
+
+    def payment_expired?
+      expires = payment_expires_at
+      expires.present? && expires.past?
+    end
+
+    def payable?
+      (pending? || awaiting_payment?) && !payment_expired?
+    end
+
     private
 
     def generate_order_number

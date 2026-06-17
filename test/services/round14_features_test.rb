@@ -157,7 +157,34 @@ class Payments::StripeProviderTest < ActiveSupport::TestCase
   test "creates test checkout in test mode" do
     result = Payments::StripeProvider.new.create_payment(@payment)
     assert result.success?
-    assert result.value[:checkout_url].present?
+    assert_match %r{\A/app/payments/fake/}, result.value[:checkout_url]
+  end
+end
+
+class Payments::FakeProviderCheckoutUrlTest < ActiveSupport::TestCase
+  setup do
+    @order = Commerce::Order.create!(
+      user: create_user,
+      order_number: "ORD-FAKE-#{SecureRandom.hex(4)}",
+      status: "pending",
+      subtotal_cents: 500,
+      discount_cents: 0,
+      total_cents: 500,
+      currency: "CNY"
+    )
+    @payment = Payments::Record.create!(
+      order: @order,
+      provider: "fake",
+      amount_cents: 500,
+      currency: "CNY",
+      status: "pending"
+    )
+  end
+
+  test "checkout url uses app prefix" do
+    result = Payments::FakeProvider.new.create_payment(@payment)
+    assert result.success?
+    assert_match %r{\A/app/payments/fake/}, result.value[:checkout_url]
   end
 end
 

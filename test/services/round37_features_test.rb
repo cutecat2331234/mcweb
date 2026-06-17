@@ -109,6 +109,14 @@ class Commerce::RestoreGiftCardBalanceTest < ActiveSupport::TestCase
     assert_equal 200, @gift_card.reload.balance_cents
     assert @gift_card.active?
   end
+
+  test "fails when gift card association is missing" do
+    @order.update_columns(store_gift_card_id: nil)
+
+    result = Commerce::RestoreGiftCardBalance.call(order: @order.reload)
+    assert result.failure?
+    assert_equal "礼品卡信息无效。", result.error
+  end
 end
 
 class Commerce::ZeroTotalCheckoutTest < ActiveSupport::TestCase

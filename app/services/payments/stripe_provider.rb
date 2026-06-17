@@ -11,7 +11,7 @@ module Payments
         payment_record.update!(provider: "fake", provider_payment_id: provider_payment_id)
         return ServiceResult.success(
           payment_record: payment_record,
-          checkout_url: "/payments/fake/#{provider_payment_id}",
+          checkout_url: "#{Mcweb::Paths::APP_PREFIX}/payments/fake/#{provider_payment_id}",
           test_mode: true
         )
       end

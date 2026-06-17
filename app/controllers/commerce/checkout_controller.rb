@@ -79,22 +79,30 @@ module Commerce
         end
 
         order = order_result.value
-        if order.total_cents.zero?
-          payment_record = Payments::Record.create!(
-            order: order,
-            provider: "fake",
-            amount_cents: 0,
-            currency: order.currency,
-            status: :pending
-          )
-          Commerce::ConfirmPayment.call(payment_record: payment_record, provider_payment_id: "free-#{order.public_id}")
-          return redirect_to store_order_path(order), notice: "订单已确认。"
-        end
       else
         order = Commerce::Order.find_by!(public_id: params[:order_id], user: current_user)
         unless order.pending? || order.awaiting_payment?
           return redirect_to store_order_path(order), alert: "该订单无法继续支付。"
         end
+      end
+
+      if order.total_cents.zero?
+        payment_record = order.payment_records.pending.order(created_at: :desc).first
+        payment_record ||= Payments::Record.create!(
+          order: order,
+          provider: "fake",
+          amount_cents: 0,
+          currency: order.currency,
+          status: :pending
+        )
+        result = Commerce::ConfirmPayment.call(
+          payment_record: payment_record,
+          provider_payment_id: "free-#{order.public_id}"
+        )
+        unless result.success?
+          return redirect_to store_order_path(order), alert: service_error_message(result)
+        end
+        return redirect_to store_order_path(order), notice: "订单已确认。"
       end
 
       provider_name = checkout_params[:provider].presence || default_provider

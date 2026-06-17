@@ -715,7 +715,7 @@ module Community
     end
 
     def bulk_moderate_destination
-      safe_local_path(params[:return_to]) || safe_local_path(request.referer) || forum_latest_path
+      safe_local_path(params[:return_to]) || safe_referer_path(fallback: forum_latest_path)
     end
   end
 end

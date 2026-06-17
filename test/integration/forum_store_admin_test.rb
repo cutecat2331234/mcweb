@@ -99,6 +99,29 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     end
     assert_response :redirect
   end
+
+  test "checkout completes zero total order via order_id" do
+    gift_card = Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.alphanumeric(10).upcase}",
+      balance_cents: 10_000,
+      initial_balance_cents: 10_000,
+      currency: "CNY",
+      active: true,
+      created_by: @user
+    )
+    cart = Commerce::Cart.find_or_create_by!(user: @user)
+    cart.add_item!(product: @product, quantity: 1)
+    order = Commerce::CreateOrder.call(
+      cart: cart,
+      user: @user,
+      gift_card_code: gift_card.code
+    ).value
+    assert_equal 0, order.total_cents
+
+    post store_checkout_path, params: { order_id: order.public_id, checkout: { provider: "fake" } }
+    assert_redirected_to store_order_path(order)
+    assert_equal "paid", order.reload.status
+  end
 end
 
 class AdminIntegrationTest < ActionDispatch::IntegrationTest

@@ -5,7 +5,7 @@ module Payments
     def create_payment(payment_record)
       provider_payment_id = "fake_#{SecureRandom.alphanumeric(16)}"
       payment_record.update!(provider_payment_id: provider_payment_id)
-      ServiceResult.success(payment_record: payment_record, checkout_url: "/payments/fake/#{provider_payment_id}")
+      ServiceResult.success(payment_record: payment_record, checkout_url: "#{Mcweb::Paths::APP_PREFIX}/payments/fake/#{provider_payment_id}")
     end
 
     def verify_webhook_signature(payload:, signature:, headers: {})

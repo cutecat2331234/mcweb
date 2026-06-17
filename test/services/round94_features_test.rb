@@ -140,6 +140,14 @@ class Round94BulkModerateReturnToTest < ActionDispatch::IntegrationTest
       params: { topic_ids: [ @topic.public_id ], action_type: "lock", return_to: admin_forum_topics_path }
     assert_redirected_to admin_forum_topics_path
   end
+
+  test "bulk moderate redirects using safe referer path" do
+    search_path = forum_search_path(q: "Return")
+    patch bulk_moderate_forum_topics_path,
+      params: { topic_ids: [ @topic.public_id ], action_type: "lock" },
+      headers: { "HTTP_REFERER" => "http://www.example.com#{search_path}" }
+    assert_redirected_to search_path
+  end
 end
 
 class Round94BulkUpdateOrdersTest < ActiveSupport::TestCase

@@ -11,7 +11,8 @@ module Commerce
       original = @order.gift_card_amount_cents.to_i
       already_restored = @order.gift_card_restored_cents.to_i
       amount = original - already_restored
-      return ServiceResult.success unless card && amount.positive?
+      return ServiceResult.success unless amount.positive?
+      return ServiceResult.failure(error: "礼品卡信息无效。") unless card
 
       Commerce::GiftCard.transaction do
         card.lock!

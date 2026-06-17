@@ -11,6 +11,7 @@ module Commerce
       return ServiceResult.success unless amount.positive?
 
       user = @order.user
+      return ServiceResult.failure(error: "用户信息无效。") unless user
       return ServiceResult.success if Commerce::StoreCreditTransaction.where(order: @order).where("amount_cents < 0").exists?
       Commerce::Order.transaction do
         user.lock!

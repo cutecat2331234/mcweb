@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 
 const page = usePage()
 const dismissed = ref<Set<number>>(new Set())
+const autoHidden = ref(false)
 
 const flash = computed(() => page.props.flash as { notice?: string; alert?: string } | undefined)
 
@@ -16,9 +17,10 @@ const messages = computed(() => {
   return items
 })
 
-const visibleMessages = computed(() =>
-  messages.value.filter((_, index) => !dismissed.value.has(index)),
-)
+const visibleMessages = computed(() => {
+  if (autoHidden.value) return []
+  return messages.value.filter((_, index) => !dismissed.value.has(index))
+})
 
 function dismiss(index: number) {
   dismissed.value = new Set([ ...dismissed.value, index ])
@@ -26,12 +28,10 @@ function dismiss(index: number) {
 
 watch(messages, (current) => {
   dismissed.value = new Set()
+  autoHidden.value = false
   if (!current.length) return
   window.setTimeout(() => {
-    if (flash.value) {
-      flash.value.notice = undefined
-      flash.value.alert = undefined
-    }
+    autoHidden.value = true
   }, 6000)
 })
 </script>
@@ -40,7 +40,7 @@ watch(messages, (current) => {
   <div v-if="visibleMessages.length" class="mb-6 space-y-3">
     <div
       v-for="(message, index) in messages"
-      v-show="!dismissed.has(index)"
+      v-show="!dismissed.has(index) && !autoHidden"
       :key="index"
       role="alert"
       :class="cn(

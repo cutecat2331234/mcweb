@@ -89,11 +89,11 @@ class ApplicationController < ActionController::Base
   end
 
   def safe_local_path(path)
-    value = path.to_s
+    value = path.to_s.strip
     return nil if value.blank?
-    return nil unless value.start_with?("/")
     return nil if value.start_with?("//")
+    return nil unless value.start_with?("/")
 
-    value
+    Mcweb::Paths.normalize(value)
   end
 end

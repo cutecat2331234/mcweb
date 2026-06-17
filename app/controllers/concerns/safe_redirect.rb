@@ -13,7 +13,7 @@ module SafeRedirect
     return fallback if location.include?("\\")
     return fallback if location.match?(/[\x00-\x1f\x7f]/)
 
-    location
+    Mcweb::Paths.normalize(location)
   end
 
   def safe_referer_path(fallback:)

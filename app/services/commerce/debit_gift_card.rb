@@ -7,9 +7,11 @@ module Commerce
     end
 
     def call
-      card = @order.gift_card
       amount = @order.gift_card_amount_cents.to_i
-      return ServiceResult.success unless card && amount.positive?
+      return ServiceResult.success unless amount.positive?
+
+      card = @order.gift_card
+      return ServiceResult.failure(error: "礼品卡信息无效。") unless card
       return ServiceResult.success if card.transactions.exists?(order: @order, transaction_type: :debit)
 
       Commerce::GiftCard.transaction do

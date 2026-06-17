@@ -75,7 +75,8 @@ module Commerce
 
       if newly_paid && order_id
         order = Commerce::Order.find(order_id)
-        Commerce::CompleteOrderPayment.call(order: order, from_status: from_status)
+        completion = Commerce::CompleteOrderPayment.call(order: order, from_status: from_status)
+        return completion unless completion.success?
       end
 
       ServiceResult.success(record: @payment_record.reload, idempotent: false, newly_paid: newly_paid)

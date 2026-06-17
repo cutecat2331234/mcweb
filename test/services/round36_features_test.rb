@@ -150,6 +150,15 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
     assert_match(/余额不足|无效|停用/, result.error.to_s)
   end
 
+  test "debit gift card fails when gift card association is missing" do
+    order = Commerce::CreateOrder.call(cart: @cart, user: @user, gift_card_code: @gift_card.code).value
+    order.update_columns(store_gift_card_id: nil)
+
+    result = Commerce::DebitGiftCard.call(order: order.reload)
+    assert result.failure?
+    assert_equal "礼品卡信息无效。", result.error
+  end
+
   test "rejects expired gift card" do
     @gift_card.update!(expires_at: 1.day.ago)
     result = Commerce::PreviewGiftCard.call(subtotal_cents: 1000, code: @gift_card.code)

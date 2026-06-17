@@ -23,7 +23,7 @@ module Community
           body: "#{@actor.username} 将「#{@topic.title}」指派给你。",
           metadata: {
             topic_id: @topic.public_id,
-            path: "/forum/topics/#{@topic.public_id}"
+            path: "#{Mcweb::Paths::APP_PREFIX}/forum/topics/#{@topic.public_id}"
           }
         )
       end

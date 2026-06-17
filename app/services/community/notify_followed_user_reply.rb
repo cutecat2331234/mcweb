@@ -30,7 +30,7 @@ module Community
             topic_id: @topic.public_id,
             post_id: @post.id,
             username: @author.username,
-            path: "/forum/topics/#{@topic.public_id}#post-#{@post.id}"
+            path: "#{Mcweb::Paths::APP_PREFIX}/forum/topics/#{@topic.public_id}#post-#{@post.id}"
           }
         )
 

@@ -138,7 +138,7 @@ module Commerce
       @product = @review.product
       return unless commerce_email_enabled?(@user, "commerce.merchant_review_reply")
 
-      @url = "#{root_url.chomp('/')}#{"/store/products/#{@product.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{Mcweb::Paths.normalize("/store/products/#{@product.public_id}")}"
       mail(to: @user.email, subject: "商家回复了你的评价：#{@product.name}")
     end
 
@@ -147,7 +147,7 @@ module Commerce
       @user = @order.user
       return unless commerce_email_enabled?(@user, "commerce.review_request")
 
-      @url = "#{root_url.chomp('/')}#{"/store/orders/#{@order.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{Mcweb::Paths.normalize("/store/orders/#{@order.public_id}")}"
       mail(to: @user.email, subject: "邀请你评价订单 #{@order.order_number}")
     end
 
@@ -165,7 +165,7 @@ module Commerce
       minutes = 30 if minutes <= 0
       expires = order.created_at + minutes.minutes
       @expires_label = expires.future? ? I18n.l(expires, format: :short) : nil
-      @pay_url = "#{root_url.chomp('/')}#{"/store/orders/#{order.public_id}"}"
+      @pay_url = "#{root_url.chomp('/')}#{Mcweb::Paths.normalize("/store/orders/#{order.public_id}")}"
     end
   end
 end

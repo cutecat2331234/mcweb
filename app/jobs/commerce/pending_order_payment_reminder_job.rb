@@ -53,7 +53,7 @@ module Commerce
           notification_type: "commerce.payment_reminder",
           title: "订单待支付提醒",
           body: "订单 #{order.order_number} 请在 #{expires_label} 前完成支付。",
-          path: "/store/orders/#{order.public_id}"
+          path: "#{Mcweb::Paths::APP_PREFIX}/store/orders/#{order.public_id}"
         )
       end
 

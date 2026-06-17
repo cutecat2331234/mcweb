@@ -16,11 +16,11 @@ class Round98NotificationDestinationUrlTest < ActiveSupport::TestCase
 
   test "builds absolute url from metadata path" do
     url = Community::NotificationDestinationUrl.for(@notification, root_url: "https://example.com")
-    assert_equal "https://example.com/forum/topics/abc123", url
+    assert_equal "https://example.com/app/forum/topics/abc123", url
   end
 
-  test "notification destination_path" do
-    assert_equal "/forum/topics/abc123", @notification.destination_path
+  test "notification destination_path normalizes legacy forum paths" do
+    assert_equal "/app/forum/topics/abc123", @notification.destination_path
   end
 end
 
@@ -38,7 +38,7 @@ class Round98DigestLinksTest < ActionMailer::TestCase
 
   test "digest email includes notification link" do
     email = Community::ForumMailer.digest(@user.id, [ @notification.id ])
-    assert_includes email.html_part.body.decoded, "/forum/topics/topic1"
+    assert_includes email.html_part.body.decoded, "/app/forum/topics/topic1"
   end
 end
 

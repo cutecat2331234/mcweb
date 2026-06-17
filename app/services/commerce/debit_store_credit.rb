@@ -11,6 +11,7 @@ module Commerce
       return ServiceResult.success unless amount.positive?
 
       user = @order.user
+      return ServiceResult.success if Commerce::StoreCreditTransaction.where(order: @order).where("amount_cents < 0").exists?
       Commerce::Order.transaction do
         user.lock!
         debit = [ amount, user.store_credit_cents.to_i ].min

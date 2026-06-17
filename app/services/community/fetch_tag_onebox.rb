@@ -21,7 +21,7 @@ module Community
         name: tag.name,
         description: tag.description.to_s.truncate(120),
         topics_count: tag.topics.where(status: :published).count,
-        url: "/forum/tags/#{tag.slug}"
+        url: "#{Mcweb::Paths::APP_PREFIX}/forum/tags/#{tag.slug}"
       )
     rescue URI::InvalidURIError
       ServiceResult.success(nil)

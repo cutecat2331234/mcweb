@@ -76,6 +76,35 @@ class Commerce::ConfirmPaymentTest < ActiveSupport::TestCase
   end
 end
 
+class Commerce::DebitStoreCreditTest < ActiveSupport::TestCase
+  setup do
+    @user = create_user
+    @user.update!(store_credit_cents: 500)
+    @order = Commerce::Order.create!(
+      public_id: "ord_sc_#{SecureRandom.hex(6)}",
+      order_number: "SC#{SecureRandom.hex(4)}",
+      user: @user,
+      status: "paid",
+      subtotal_cents: 1000,
+      total_cents: 700,
+      store_credit_amount_cents: 300,
+      currency: "CNY"
+    )
+  end
+
+  test "debits store credit for order" do
+    Commerce::DebitStoreCredit.call(order: @order)
+    assert_equal 200, @user.reload.store_credit_cents
+    assert_equal 1, @user.store_credit_transactions.where(order: @order).count
+  end
+
+  test "debit store credit is idempotent" do
+    Commerce::DebitStoreCredit.call(order: @order)
+    Commerce::DebitStoreCredit.call(order: @order)
+    assert_equal 200, @user.reload.store_credit_cents
+    assert_equal 1, @user.store_credit_transactions.where(order: @order).where("amount_cents < 0").count
+  end
+
 class Commerce::CreateFulfillmentTest < ActiveSupport::TestCase
   setup do
     @user = create_user

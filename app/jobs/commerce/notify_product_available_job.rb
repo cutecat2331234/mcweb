@@ -22,7 +22,7 @@ module Commerce
               title: "商品已上架",
               body: "#{product.name} 现已开售，可以购买了。",
               metadata: {
-                path: "/store/products/#{product.public_id}",
+                path: "#{Mcweb::Paths::APP_PREFIX}/store/products/#{product.public_id}",
                 product_id: product.public_id
               }
             )

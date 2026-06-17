@@ -53,7 +53,7 @@ module Community
             {
               id: "test_topic",
               title: "测试主题",
-              path: "/forum/search?q=test"
+              path: "#{Mcweb::Paths::APP_PREFIX}/forum/search?q=test"
             }
           ]
         }

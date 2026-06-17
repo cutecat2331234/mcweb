@@ -23,7 +23,7 @@ module Community
         titles: topics.map do |topic|
           {
             title: topic.title,
-            url: "/forum/topics/#{topic.public_id}",
+            url: "#{Mcweb::Paths::APP_PREFIX}/forum/topics/#{topic.public_id}",
             last_posted_at: topic.last_posted_at
           }
         end

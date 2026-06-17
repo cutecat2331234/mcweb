@@ -20,7 +20,7 @@ module Commerce
         notification_type: "commerce.review_request",
         title: "邀请你评价已购商品",
         body: "订单 #{@order.order_number} 已完成，欢迎分享购买体验。",
-        path: "/store/orders/#{@order.public_id}"
+        path: "#{Mcweb::Paths::APP_PREFIX}/store/orders/#{@order.public_id}"
       )
 
       if NotificationPreference.enabled?(@order.user, channel: "email", notification_type: "commerce.review_request")

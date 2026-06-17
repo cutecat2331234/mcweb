@@ -49,7 +49,7 @@ module Commerce
           notification_type: "commerce.order_shipped",
           title: "订单已发货",
           body: tracking_summary,
-          path: "/store/orders/#{@order.public_id}"
+          path: "/app/store/orders/#{@order.public_id}"
         )
       end
 

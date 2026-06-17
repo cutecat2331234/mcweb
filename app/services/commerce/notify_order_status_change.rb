@@ -36,7 +36,7 @@ module Commerce
         notification_type: config[:preference],
         title: "订单状态更新",
         body: "订单 #{@order.order_number} 现为：#{label}",
-        path: "/store/orders/#{@order.public_id}"
+        path: "#{Mcweb::Paths::APP_PREFIX}/store/orders/#{@order.public_id}"
       )
 
       if NotificationPreference.enabled?(user, channel: "email", notification_type: config[:preference])

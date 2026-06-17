@@ -22,7 +22,7 @@ module Community
         name: section.name,
         description: section.description.to_s.truncate(120),
         meta: meta,
-        url: "/forum/sections/#{section.slug}"
+        url: "#{Mcweb::Paths::APP_PREFIX}/forum/sections/#{section.slug}"
       )
     rescue URI::InvalidURIError
       ServiceResult.success(nil)

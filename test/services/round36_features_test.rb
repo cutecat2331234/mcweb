@@ -126,6 +126,14 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
     assert_not @gift_card.active?
   end
 
+  test "debit gift card is idempotent" do
+    order = Commerce::CreateOrder.call(cart: @cart, user: @user, gift_card_code: @gift_card.code).value
+    Commerce::DebitGiftCard.call(order: order)
+    Commerce::DebitGiftCard.call(order: order)
+    assert_equal 0, @gift_card.reload.balance_cents
+    assert_equal 1, @gift_card.transactions.where(order: order, transaction_type: :debit).count
+  end
+
   test "debit gift card fails when balance is insufficient" do
     order = Commerce::CreateOrder.call(cart: @cart, user: @user, gift_card_code: @gift_card.code).value
     @gift_card.update!(balance_cents: 0, active: false)

@@ -9,7 +9,7 @@ module Commerce
     def call
       user = @review.user
       product = @review.product
-      path = "/store/products/#{product.public_id}#reviews"
+      path = "#{Mcweb::Paths::APP_PREFIX}/store/products/#{product.public_id}#reviews"
 
       Commerce::NotifyOrderEvent.call(
         user: user,

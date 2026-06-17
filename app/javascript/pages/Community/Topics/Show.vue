@@ -484,15 +484,15 @@ function updateAutoClose() {
 }
 
 function updateAutoOpen() {
-  router.patch(`/forum/topics/${props.topic.id}/auto_open`, { auto_open_at: autoOpenAt.value || null })
+  router.patch(`/app/forum/topics/${props.topic.id}/auto_open`, { auto_open_at: autoOpenAt.value || null })
 }
 
 function updateAutoBump() {
-  router.patch(`/forum/topics/${props.topic.id}/auto_bump`, { auto_bump_at: autoBumpAt.value || null })
+  router.patch(`/app/forum/topics/${props.topic.id}/auto_bump`, { auto_bump_at: autoBumpAt.value || null })
 }
 
 function updateAutoArchive() {
-  router.patch(`/forum/topics/${props.topic.id}/auto_archive`, { auto_archive_at: autoArchiveAt.value || null })
+  router.patch(`/app/forum/topics/${props.topic.id}/auto_archive`, { auto_archive_at: autoArchiveAt.value || null })
 }
 
 function restorePost(post: PostItem) {

@@ -17,8 +17,9 @@ class Notification < ApplicationRecord
   end
 
   def destination_path
-    metadata["path"].presence || metadata[:path].presence ||
+    raw = metadata["path"].presence || metadata[:path].presence ||
       metadata["url"].presence || metadata[:url].presence
+    Mcweb::Paths.normalize(raw)
   end
 
   def self.notify!(user:, notification_type:, title:, body: nil, metadata: {})

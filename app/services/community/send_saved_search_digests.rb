@@ -58,7 +58,7 @@ module Community
 
     def saved_search_notification_path(search)
       params = Community::SavedSearchPresenter.url_params(search).compact
-      "/forum/search?#{params.to_query}"
+      "#{Mcweb::Paths::APP_PREFIX}/forum/search?#{params.to_query}"
     end
   end
 end

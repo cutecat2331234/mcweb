@@ -50,7 +50,7 @@ module Community
           body: "「#{@topic.title}」的投票「#{@poll.question}」已结束。",
           metadata: {
             topic_id: @topic.public_id,
-            path: "/forum/topics/#{@topic.public_id}"
+            path: "#{Mcweb::Paths::APP_PREFIX}/forum/topics/#{@topic.public_id}"
           }
         )
       end

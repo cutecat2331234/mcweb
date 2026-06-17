@@ -137,7 +137,7 @@ function submitItemQuestion(item: { product_public_id?: string | null; id?: numb
   if (!item.product_public_id || !item.id) return
   const body = questionForms.value[item.id]?.trim()
   if (!body) return
-  router.post(`/store/products/${item.product_public_id}/questions`, {
+  router.post(`/app/store/products/${item.product_public_id}/questions`, {
     question: { body },
     order_item_id: item.id,
     return_order_id: item.ask_question_return_order_id,

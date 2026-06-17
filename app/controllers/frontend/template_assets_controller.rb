@@ -1,0 +1,40 @@
+# frozen_string_literal: true
+
+module Frontend
+  class TemplateAssetsController < ApplicationController
+    def show
+      template = Frontend::Template.installed.find_by!(key: params[:template_key])
+      relative = params[:path].to_s
+      raise ActiveRecord::RecordNotFound if relative.blank? || relative.include?("..")
+
+      file = Pathname(template.installed_path).join(relative).cleanpath
+      root = Pathname(template.installed_path).cleanpath
+      raise ActiveRecord::RecordNotFound unless file.to_s.start_with?(root.to_s) && file.file?
+
+      ext = file.extname.downcase
+      raise ActiveRecord::RecordNotFound unless Frontend::ValidateTemplateArchive::ALLOWED_EXTENSIONS.include?(ext)
+
+      expires_in 1.year, public: true
+      fresh_when etag: template.checksum, last_modified: template.updated_at, public: true
+      send_file file, disposition: "inline", type: mime_type_for(ext)
+    end
+
+    private
+
+    def mime_type_for(ext)
+      {
+        ".css" => "text/css",
+        ".json" => "application/json",
+        ".png" => "image/png",
+        ".jpg" => "image/jpeg",
+        ".jpeg" => "image/jpeg",
+        ".svg" => "image/svg+xml",
+        ".webp" => "image/webp",
+        ".gif" => "image/gif",
+        ".woff" => "font/woff",
+        ".woff2" => "font/woff2",
+        ".html" => "text/html"
+      }.fetch(ext, "application/octet-stream")
+    end
+  end
+end

@@ -14,6 +14,7 @@ module ActiveSupport
       Rails.cache.clear
       InstallationLock.find_or_create_by!(id: 1) { |lock| lock.locked = false }
       InstallationLock.lock!(user: User.first || create_user) unless InstallationLock.locked?
+      Frontend::TemplateStorage.ensure_root!
     end
 
     def sign_in_as(user, remember_me: false, password: "password123")

@@ -6,6 +6,7 @@ class ApplicationController < ActionController::Base
   include InertiaSerializable
   include BlockedUsersFilterable
   include TouchLastSeen
+  include FrontendTemplateShare
 
   allow_browser versions: :modern
 
@@ -75,7 +76,7 @@ class ApplicationController < ActionController::Base
       end
     end
 
-    share
+    share.merge(share_active_template)
   end
 
   def safe_local_path(path)

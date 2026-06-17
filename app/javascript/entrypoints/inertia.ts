@@ -4,6 +4,15 @@ import { createApp, h, type DefineComponent } from 'vue'
 import '@/styles/portal.css'
 import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'
 
+function syncCsrfFromInertiaPage(page?: { props?: Record<string, unknown> }) {
+  const token = page?.props?.csrf_token
+  if (typeof token === 'string' && token.length > 0) {
+    syncCsrfMetaTag(token)
+  } else {
+    syncCsrfMetaTag()
+  }
+}
+
 router.on('before', (event) => {
   const headers = csrfHeaders()
   if (Object.keys(headers).length === 0) return
@@ -14,9 +23,12 @@ router.on('before', (event) => {
   }
 })
 
-document.addEventListener('inertia:success', () => {
-  syncCsrfMetaTag()
+document.addEventListener('inertia:success', (event) => {
+  const detail = (event as CustomEvent<{ page?: { props?: Record<string, unknown> } }>).detail
+  syncCsrfFromInertiaPage(detail.page)
 })
+
+syncCsrfMetaTag()
 
 // Wappalyzer 等工具用于识别 Ruby on Rails 的 JS 指纹（Inertia 入口也需设置）
 if (typeof window !== 'undefined') {

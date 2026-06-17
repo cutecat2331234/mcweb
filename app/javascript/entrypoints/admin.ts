@@ -14,9 +14,17 @@ router.on('before', (event) => {
   }
 })
 
-document.addEventListener('inertia:success', () => {
-  syncCsrfMetaTag()
+document.addEventListener('inertia:success', (event) => {
+  const detail = (event as CustomEvent<{ page?: { props?: Record<string, unknown> } }>).detail
+  const token = detail.page?.props?.csrf_token
+  if (typeof token === 'string' && token.length > 0) {
+    syncCsrfMetaTag(token)
+  } else {
+    syncCsrfMetaTag()
+  }
 })
+
+syncCsrfMetaTag()
 
 createInertiaApp({
   resolve: async (name) => {

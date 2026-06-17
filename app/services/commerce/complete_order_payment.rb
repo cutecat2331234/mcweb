@@ -9,8 +9,12 @@ module Commerce
     end
 
     def call
-      Commerce::DebitGiftCard.call(order: @order)
-      Commerce::DebitStoreCredit.call(order: @order)
+      gift_result = Commerce::DebitGiftCard.call(order: @order)
+      return gift_result unless gift_result.success?
+
+      credit_result = Commerce::DebitStoreCredit.call(order: @order)
+      return credit_result unless credit_result.success?
+
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "payment_confirmed", "deliver_now", args: [ @order.id ])
       Commerce::NotifyOrderEvent.call(
         user: @order.user,

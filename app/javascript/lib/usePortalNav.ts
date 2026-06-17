@@ -91,8 +91,8 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
       { label: '草稿', href: routes.forumDrafts, loginRequired: true, icon: 'file-text' },
       { label: '偏好', href: routes.forumPreferences, loginRequired: true, icon: 'settings' },
       { label: '拉黑', href: routes.forumBlocks, loginRequired: true, icon: 'ban' },
-    { label: '忽略', href: routes.forumIgnores, loginRequired: true, icon: 'user-minus' },
-    { label: '静音', href: routes.forumMuted, loginRequired: true, icon: 'volume-off' },
+      { label: '忽略', href: routes.forumIgnores, loginRequired: true, icon: 'user-minus' },
+      { label: '静音', href: routes.forumMuted, loginRequired: true, icon: 'volume-off' },
     ]
   })
 

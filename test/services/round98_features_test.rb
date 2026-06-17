@@ -42,6 +42,25 @@ class Round98DigestLinksTest < ActionMailer::TestCase
   end
 end
 
+class Round98NotificationVisitTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = create_user
+    @notification = Notification.create!(
+      user: @user,
+      notification_type: "forum.topic_reply",
+      title: "Reply",
+      body: "body",
+      metadata: { path: "/forum/topics/legacy1" }
+    )
+    sign_in_as(@user)
+  end
+
+  test "visit redirects legacy notification paths to app scope" do
+    get visit_forum_notification_path(@notification)
+    assert_redirected_to "/app/forum/topics/legacy1"
+  end
+end
+
 class Round98StoreOrdersTabsTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user

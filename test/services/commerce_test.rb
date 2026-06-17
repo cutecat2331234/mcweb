@@ -104,6 +104,15 @@ class Commerce::DebitStoreCreditTest < ActiveSupport::TestCase
     assert_equal 200, @user.reload.store_credit_cents
     assert_equal 1, @user.store_credit_transactions.where(order: @order).where("amount_cents < 0").count
   end
+
+  test "fails when store credit balance is insufficient" do
+    @user.update!(store_credit_cents: 100)
+    result = Commerce::DebitStoreCredit.call(order: @order)
+    assert_not result.success?
+    assert_equal "商店余额不足。", result.error
+    assert_equal 100, @user.reload.store_credit_cents
+    assert_equal 0, @user.store_credit_transactions.where(order: @order).count
+  end
 end
 
 class Commerce::CreateFulfillmentTest < ActiveSupport::TestCase

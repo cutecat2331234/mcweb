@@ -1,13 +1,15 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { Moon, Sun } from '@lucide/vue'
-import { computed } from 'vue'
-import { adminRoutes } from '@/lib/adminRoutes'
-import FlashMessages from '@/components/portal/FlashMessages.vue'
 import Button from '@/components/ui/Button.vue'
+import FlashMessages from '@/components/portal/FlashMessages.vue'
+import { adminRoutes } from '@/lib/adminRoutes'
+import { useTheme } from '@/lib/useTheme'
 
 const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
+const { isDark, toggleTheme } = useTheme()
 
 const nav = [
   { label: '概览', items: [
@@ -51,13 +53,6 @@ const nav = [
   ]},
 ]
 
-const isDark = computed(() => document.documentElement.classList.contains('dark'))
-
-function toggleTheme() {
-  const next = isDark.value ? 'light' : 'dark'
-  document.documentElement.classList.toggle('dark', next === 'dark')
-  localStorage.setItem('mc-theme', next)
-}
 </script>
 
 <template>

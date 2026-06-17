@@ -14,12 +14,14 @@ module Commerce
       return ServiceResult.success if Commerce::StoreCreditTransaction.where(order: @order).where("amount_cents < 0").exists?
       Commerce::Order.transaction do
         user.lock!
-        debit = [ amount, user.store_credit_cents.to_i ].min
-        user.update!(store_credit_cents: user.store_credit_cents.to_i - debit)
+        balance = user.store_credit_cents.to_i
+        return ServiceResult.failure(error: "商店余额不足。") if balance < amount
+
+        user.update!(store_credit_cents: balance - amount)
         Commerce::StoreCreditTransaction.create!(
           user: user,
           order: @order,
-          amount_cents: -debit,
+          amount_cents: -amount,
           note: "订单 #{@order.order_number} 抵扣"
         )
       end

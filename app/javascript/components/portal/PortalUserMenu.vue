@@ -61,7 +61,7 @@ defineProps<{
       <DropdownMenuSeparator class="my-1 h-px bg-border" />
       <DropdownMenuItem as-child>
         <Link
-          :href="routes.sessions"
+          :href="routes.signOut"
           method="delete"
           as="button"
           class="relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-destructive/10"

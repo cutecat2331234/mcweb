@@ -11,6 +11,7 @@ import TemplateAssets from '@/components/portal/TemplateAssets.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
+import { useTheme } from '@/lib/useTheme'
 
 const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
@@ -21,6 +22,7 @@ const messagesUnread = computed(() => page.props.messages_unread as { count: num
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
 const { activeTemplate, tokenStyle, portalHeaderExtraSlot } = useActiveTemplate()
+const { isDark, toggleTheme } = useTheme()
 
 const mobileNavOpen = ref(false)
 const dismissedLocal = ref<string[]>(loadDismissedLocal())
@@ -37,14 +39,6 @@ const visibleAnnouncements = computed(() => {
   const items = globalAnnouncements.value || []
   return items.filter((item) => !dismissedLocal.value.includes(item.id))
 })
-
-const isDark = computed(() => document.documentElement.classList.contains('dark'))
-
-function toggleTheme() {
-  const next = isDark.value ? 'light' : 'dark'
-  document.documentElement.classList.toggle('dark', next === 'dark')
-  localStorage.setItem('mc-theme', next)
-}
 
 function closeMobileNav() {
   mobileNavOpen.value = false

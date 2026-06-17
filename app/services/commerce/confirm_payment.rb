@@ -42,6 +42,14 @@ module Commerce
           end
         end
 
+        if order.store_credit_amount_cents.to_i.positive?
+          credit_result = Commerce::DebitStoreCredit.call(order: order)
+          unless credit_result.success?
+            payment_error = credit_result.error || "商店余额扣款失败。"
+            raise ActiveRecord::Rollback
+          end
+        end
+
         from_status = order.status
         order.submit_payment! if order.pending? && order.may_submit_payment?
         order.mark_paid! if order.awaiting_payment? && order.may_mark_paid?

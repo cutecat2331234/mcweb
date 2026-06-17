@@ -76,7 +76,8 @@ module Community
 
     def safe_notification_path(metadata)
       raw = metadata["path"].presence || metadata["url"].presence
-      safe_local_redirect_path(raw, fallback: forum_notifications_path)
+      path = Mcweb::Paths.normalize(raw)
+      safe_local_redirect_path(path, fallback: forum_notifications_path)
     end
 
     def serialize_notification(notification)

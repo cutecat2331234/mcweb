@@ -61,6 +61,18 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
   end
 
+  test "destroy session signs user out" do
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "password123", remember_me: "0" }
+    }
+    assert session[:session_token].present? || cookies[:session_token].present?
+
+    delete identity_session_path
+    assert_redirected_to root_path
+    assert_not session[:session_token].present?
+    assert_not cookies[:session_token].present?
+  end
+
   test "registration does not auto sign in before email verification" do
     suffix = SecureRandom.hex(4)
     post identity_registrations_path, params: {

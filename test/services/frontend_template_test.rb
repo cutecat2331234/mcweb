@@ -40,7 +40,7 @@ class FrontendTemplateArchiveTest < ActiveSupport::TestCase
   end
 
   test "sanitizes script tags from slots" do
-    result = Frontend::SanitizeTemplateSlot.call('<p>Hi</p><script>alert(1)</script>')
+    result = Frontend::SanitizeTemplateSlot.call("<p>Hi</p><script>alert(1)</script>")
     assert_equal "<p>Hi</p>", result.value
   end
 

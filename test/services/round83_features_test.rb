@@ -180,7 +180,7 @@ class Round83BulkRetryWebhooksTest < ActiveSupport::TestCase
 
   test "bulk retry forum failed deliveries" do
     assert_enqueued_jobs 1, only: Community::DispatchSavedSearchWebhookJob do
-      result = Community::BulkRetrySavedSearchWebhooks.call(delivery_ids: [@forum_delivery.id])
+      result = Community::BulkRetrySavedSearchWebhooks.call(delivery_ids: [ @forum_delivery.id ])
       assert result.success?
       assert_equal 1, result.value[:queued]
     end
@@ -188,7 +188,7 @@ class Round83BulkRetryWebhooksTest < ActiveSupport::TestCase
 
   test "bulk retry store failed deliveries" do
     assert_enqueued_jobs 1, only: Commerce::DispatchOrderWebhookJob do
-      result = Commerce::BulkRetryOrderWebhooks.call(delivery_ids: [@store_delivery.id])
+      result = Commerce::BulkRetryOrderWebhooks.call(delivery_ids: [ @store_delivery.id ])
       assert result.success?
       assert_equal 1, result.value[:queued]
     end
@@ -252,7 +252,7 @@ class Round83AdminWebhookBulkRetryTest < ActionDispatch::IntegrationTest
   test "forum bulk retry endpoint queues jobs" do
     sign_in_as(@admin)
     assert_enqueued_jobs 1, only: Community::DispatchSavedSearchWebhookJob do
-      post bulk_retry_admin_forum_webhook_deliveries_path, params: { ids: [@forum_delivery.id] }
+      post bulk_retry_admin_forum_webhook_deliveries_path, params: { ids: [ @forum_delivery.id ] }
     end
     assert_redirected_to admin_forum_webhook_deliveries_path
   end
@@ -260,7 +260,7 @@ class Round83AdminWebhookBulkRetryTest < ActionDispatch::IntegrationTest
   test "store bulk retry endpoint queues jobs" do
     sign_in_as(@admin)
     assert_enqueued_jobs 1, only: Commerce::DispatchOrderWebhookJob do
-      post bulk_retry_admin_store_webhook_deliveries_path, params: { ids: [@store_delivery.id] }
+      post bulk_retry_admin_store_webhook_deliveries_path, params: { ids: [ @store_delivery.id ] }
     end
     assert_redirected_to admin_store_webhook_deliveries_path
   end

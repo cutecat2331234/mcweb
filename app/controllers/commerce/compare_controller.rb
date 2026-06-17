@@ -114,6 +114,5 @@ module Commerce
     def compare_fallback_path(product)
       product.coming_soon? ? preview_store_product_path(product) : store_product_path(product)
     end
-
   end
 end

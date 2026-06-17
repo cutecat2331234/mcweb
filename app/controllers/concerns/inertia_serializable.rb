@@ -741,7 +741,7 @@ module InertiaSerializable
       receipt_pdf_url: receipt_pdf_store_order_path(order),
       can_pay: payment_actionable?(order) && order.total_cents.positive?,
       can_confirm_free: payment_actionable?(order) && order.total_cents.zero?,
-      can_cancel: payment_actionable?(order),
+      can_cancel: order.pending? || order.awaiting_payment?,
       can_request_refund: refundable_order?(order),
       payment_expires_at: payment_expires_at(order)&.iso8601,
       payment_expires_label: payment_expires_label(order),

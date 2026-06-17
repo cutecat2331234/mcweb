@@ -189,6 +189,40 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     assert_match(/过期/, flash[:alert].to_s)
     assert_equal "pending", order.reload.status
   end
+
+  test "user can cancel expired pending order" do
+    SiteSetting.set("store.pending_order_expiry_minutes", "30")
+    cart = Commerce::Cart.find_or_create_by!(user: @user)
+    cart.add_item!(product: @product, quantity: 1)
+    order = Commerce::CreateOrder.call(cart: cart, user: @user).value
+    order.update!(created_at: 2.hours.ago)
+
+    post cancel_store_order_path(order)
+
+    assert_redirected_to store_order_path(order)
+    assert_equal "cancelled", order.reload.status
+  end
+
+  test "fake payment page redirects when order expired" do
+    SiteSetting.set("store.pending_order_expiry_minutes", "30")
+    cart = Commerce::Cart.find_or_create_by!(user: @user)
+    cart.add_item!(product: @product, quantity: 1)
+    order = Commerce::CreateOrder.call(cart: cart, user: @user).value
+    order.update!(created_at: 2.hours.ago)
+    payment = Payments::Record.create!(
+      order: order,
+      provider: "fake",
+      amount_cents: order.total_cents,
+      currency: "CNY",
+      status: "pending",
+      provider_payment_id: "fake_exp_#{SecureRandom.hex(8)}"
+    )
+
+    get fake_payment_path(payment.provider_payment_id)
+
+    assert_redirected_to store_order_path(order)
+    assert_match(/过期/, flash[:alert].to_s)
+  end
 end
 
 class AdminIntegrationTest < ActionDispatch::IntegrationTest

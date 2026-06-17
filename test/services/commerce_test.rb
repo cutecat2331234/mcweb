@@ -66,6 +66,17 @@ class Commerce::ConfirmPaymentTest < ActiveSupport::TestCase
     assert_equal "pending", @order.reload.status
   end
 
+  test "rejects payment when amount does not match order total" do
+    @payment.update!(amount_cents: 500)
+
+    result = Commerce::ConfirmPayment.call(payment_record: @payment, provider_payment_id: "mismatch_pay")
+
+    assert result.failure?
+    assert_equal "支付金额与订单不符。", result.error
+    assert_equal "pending", @payment.reload.status
+    assert_equal "pending", @order.reload.status
+  end
+
   test "rejects payment confirmation for failed payment record" do
     @payment.update!(status: "failed")
 
@@ -176,6 +187,38 @@ class Commerce::RestoreStoreCreditTest < ActiveSupport::TestCase
     result = Commerce::RestoreStoreCredit.call(order: order)
     assert result.failure?
     assert_equal "用户信息无效。", result.error
+  end
+end
+
+class Commerce::CancelOrderCouponTest < ActiveSupport::TestCase
+  setup do
+    @user = create_user
+    @coupon = Commerce::Coupon.create!(
+      code: "CANCEL10",
+      discount_type: "fixed",
+      discount_value: 100,
+      active: true,
+      used_count: 1
+    )
+    @order = Commerce::Order.create!(
+      public_id: "ord_cancel_coupon_#{SecureRandom.hex(6)}",
+      order_number: "CNC#{SecureRandom.hex(4)}",
+      user: @user,
+      status: "pending",
+      subtotal_cents: 1000,
+      total_cents: 900,
+      discount_cents: 100,
+      coupon: @coupon,
+      coupon_usage_restored: true,
+      currency: "CNY"
+    )
+  end
+
+  test "skips coupon decrement when usage already restored" do
+    result = Commerce::CancelOrder.call(order: @order, actor: @user)
+    assert result.success?
+    assert_equal 1, @coupon.reload.used_count
+    assert @order.reload.coupon_usage_restored?
   end
 end
 

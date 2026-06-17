@@ -64,9 +64,11 @@ module Commerce
     def restore_coupon_usage!
       coupon = @order.coupon
       return unless coupon
+      return if @order.coupon_usage_restored?
       return unless coupon.used_count.positive?
 
       coupon.decrement!(:used_count)
+      @order.update!(coupon_usage_restored: true)
     end
 
     def cancel_pending_payments!

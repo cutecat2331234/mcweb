@@ -34,6 +34,11 @@ module Commerce
           raise ActiveRecord::Rollback
         end
 
+        if record.amount_cents != order.total_cents
+          payment_error = "支付金额与订单不符。"
+          raise ActiveRecord::Rollback
+        end
+
         if order.gift_card_amount_cents.to_i.positive?
           debit_result = Commerce::DebitGiftCard.call(order: order)
           unless debit_result.success?

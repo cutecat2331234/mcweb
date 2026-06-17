@@ -22,9 +22,9 @@ module Community
       end
 
       path = if @bookmark.forum_post_id.present? && @bookmark.post
-               "/forum/topics/#{topic.public_id}#post-#{@bookmark.post.id}"
+               "/app/forum/topics/#{topic.public_id}#post-#{@bookmark.post.id}"
       else
-               "/forum/topics/#{topic.public_id}"
+               "/app/forum/topics/#{topic.public_id}"
       end
 
       title = topic.title

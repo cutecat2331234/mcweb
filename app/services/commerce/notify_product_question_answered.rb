@@ -19,7 +19,7 @@ module Commerce
           title: "你的问题收到回复",
           body: @answer.body.truncate(200),
           metadata: {
-            path: "/store/products/#{@product.public_id}",
+            path: "/app/store/products/#{@product.public_id}",
             question_id: @question.id,
             answer_id: @answer.id
           }

@@ -8,7 +8,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
       assign_notification_unsubscribe("forum.topic_reply")
 
       mail(to: @user.email, subject: "主题有新回复：#{@topic.title.truncate(60)}")
@@ -18,7 +18,7 @@ module Community
       @user = User.find(user_id)
       @conversation = Community::Conversation.find(conversation_id)
       @message = Community::Message.find(message_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/conversations/#{@conversation.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/conversations/#{@conversation.id}"}"
       assign_notification_unsubscribe("forum.private_message")
 
       mail(to: @user.email, subject: "来自 #{@message.user.username} 的私信")
@@ -28,7 +28,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
       @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
       @mention_unsubscribe_url = notification_type_unsubscribe_url_for(@user, "forum.mention")
       @notification_unsubscribe_url = @mention_unsubscribe_url
@@ -40,7 +40,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
 
       mail(to: @user.email, subject: "#{@post.user.username} 在主题中 @here 提及了你")
     end
@@ -48,7 +48,7 @@ module Community
     def section_topic(user_id, topic_id)
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
       assign_notification_unsubscribe("forum.section_topic")
 
       mail(to: @user.email, subject: "分区有新主题：#{@topic.title.truncate(60)}")
@@ -58,7 +58,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @tag_names = tag_names
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
       assign_notification_unsubscribe("forum.tag_topic")
 
       mail(to: @user.email, subject: "关注标签有新主题：#{@topic.title.truncate(60)}")
@@ -68,7 +68,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @author = @topic.user
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
       assign_notification_unsubscribe("forum.followed_topic")
 
       mail(to: @user.email, subject: "#{@author.username} 发布了新主题")
@@ -78,7 +78,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
       assign_notification_unsubscribe("forum.followed_reply")
 
       mail(to: @user.email, subject: "#{@post.user.username} 回复了主题：#{@topic.title.truncate(60)}")
@@ -114,7 +114,7 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
       @editor = @post.user
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
 
       mail(to: @user.email, subject: "帖子已编辑：#{@topic.title.truncate(60)}")
     end
@@ -126,9 +126,9 @@ module Community
       return unless @topic
 
       @url = if @bookmark.forum_post_id.present? && @bookmark.post
-               "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@bookmark.post.id}"}"
+               "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@bookmark.post.id}"}"
       else
-               "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+               "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
       end
       @note = @bookmark.note
       @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
@@ -139,7 +139,7 @@ module Community
     def user_warning(user_id, warning_id)
       @user = User.find(user_id)
       @warning = Community::UserWarning.find(warning_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/users/#{@user.username}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/users/#{@user.username}"}"
       mail(to: @user.email, subject: "社区警告通知")
     end
 
@@ -154,7 +154,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @actor = User.find(actor_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
       mail(to: @user.email, subject: "主题已指派给你：#{@topic.title.truncate(60)}")
     end
 
@@ -172,7 +172,7 @@ module Community
       @reactor = User.find(reactor_id)
       @emoji = emoji
       @topic = @post.topic
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
       assign_notification_unsubscribe("forum.reaction")
       mail(to: @user.email, subject: "#{@reactor.username} 对你的帖子做出了反应 #{@emoji}")
     end
@@ -183,7 +183,7 @@ module Community
       @quoter = User.find(quoter_id)
       @quoted_post = Community::Post.find(quoted_post_id)
       @topic = @post.topic
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
       assign_notification_unsubscribe("forum.quote")
       mail(to: @user.email, subject: "#{@quoter.username} 引用了你的帖子")
     end
@@ -193,7 +193,7 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
       @actor = User.find(actor_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
       assign_notification_unsubscribe("forum.topic_solved")
       mail(to: @user.email, subject: "你的主题已标记为已解决")
     end
@@ -202,7 +202,7 @@ module Community
       @user = User.find(user_id)
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @inviter = User.find(inviter_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
       assign_notification_unsubscribe("forum.topic_invite")
 
       mail(to: @user.email, subject: "#{@inviter.username} 邀请你关注主题")
@@ -213,7 +213,7 @@ module Community
       @poll = Community::Poll.find(poll_id)
       @topic = @poll.topic
       @actor = User.find(actor_id)
-      @url = "#{root_url.chomp('/')}#{"/forum/topics/#{@topic.public_id}"}"
+      @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
       mail(to: @user.email, subject: "投票已关闭：#{@poll.question.truncate(60)}")
     end
 

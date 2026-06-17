@@ -17,7 +17,7 @@ module Commerce
         notification_type: "commerce.payment_confirmed",
         title: "支付成功",
         body: "订单 #{@order.order_number} 已支付成功。",
-        path: "/store/orders/#{@order.public_id}"
+        path: "#{Mcweb::Paths::APP_PREFIX}/store/orders/#{@order.public_id}"
       )
       Community::CheckAutoBadges.call(user: @order.user)
       @order.items.includes(:product).find_each do |item|

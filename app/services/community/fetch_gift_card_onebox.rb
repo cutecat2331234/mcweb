@@ -2,7 +2,7 @@
 
 module Community
   class FetchGiftCardOnebox < ApplicationService
-    GIFT_CARD_PATH = %r{\A/store/gift_cards/([\w-]+)\z}i
+    GIFT_CARD_PATH = %r{\A(?:/app)?/store/gift_cards/([\w-]+)\z}i
 
     def initialize(url:)
       @url = url.to_s.strip

@@ -81,7 +81,7 @@ module Commerce
             notification_type: "commerce.refund_processed",
             title: "退款已完成",
             body: "订单 #{@order.order_number} 退款 #{format_refund_amount(@amount_cents)} 已处理。",
-            path: "/store/orders/#{@order.public_id}"
+            path: "/app/store/orders/#{@order.public_id}"
           )
           Commerce::DispatchOrderWebhook.call(
             order: @order,

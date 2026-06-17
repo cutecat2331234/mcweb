@@ -156,7 +156,7 @@ module Commerce
         notification_type: "commerce.order_created",
         title: "订单已创建",
         body: "订单 #{order.order_number} 等待支付。",
-        path: "/store/orders/#{order.public_id}"
+        path: "/app/store/orders/#{order.public_id}"
       )
 
       Commerce::DispatchOrderWebhook.call(

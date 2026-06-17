@@ -48,7 +48,7 @@ module Commerce
         notification_type: "commerce.refund_requested",
         title: "退款申请已提交",
         body: "订单 #{@order.order_number} 退款申请正在审核。",
-        path: "/store/orders/#{@order.public_id}"
+        path: "/app/store/orders/#{@order.public_id}"
       )
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_requested", "deliver_now", args: [ refund.id ])

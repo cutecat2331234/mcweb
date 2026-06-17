@@ -138,7 +138,7 @@ class Commerce::NotifyOrderEventTest < ActiveSupport::TestCase
         notification_type: "commerce.order_created",
         title: "订单已创建",
         body: "测试订单",
-        path: "/store/orders/test"
+        path: "/app/store/orders/test"
       )
     end
   end

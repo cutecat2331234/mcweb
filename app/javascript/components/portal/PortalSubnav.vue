@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
-import { routes } from '@/lib/routes'
+import { routes, appPrefix } from '@/lib/routes'
 import Badge from '@/components/ui/Badge.vue'
 
 interface NavItem {
@@ -32,8 +32,8 @@ const currentPath = computed(() => page.url.split('?')[0])
 function isActive(href: string) {
   const path = currentPath.value
   if (href === routes.home) return path === '/'
-  if (href === routes.forum) return path.startsWith('/forum')
-  if (href === routes.store) return path.startsWith('/store')
+  if (href === routes.forum) return path.startsWith(`${appPrefix}/forum`)
+  if (href === routes.store) return path.startsWith(`${appPrefix}/store`)
   return path === href || path.startsWith(`${href}/`)
 }
 
@@ -44,7 +44,7 @@ function linkClass(href: string) {
 }
 
 const activeSection = computed<'forum' | 'store'>(() =>
-  currentPath.value.startsWith('/store') ? 'store' : 'forum',
+  currentPath.value.startsWith(`${appPrefix}/store`) ? 'store' : 'forum',
 )
 
 const forumBrowseItems: NavItem[] = [

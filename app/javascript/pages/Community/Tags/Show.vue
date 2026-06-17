@@ -37,7 +37,7 @@ const sortOptions = [
 ]
 
 function changeSort(value: string) {
-  router.get(`/forum/tags/${props.tag.slug}`, { sort: value }, { preserveState: true })
+  router.get(`/app/forum/tags/${props.tag.slug}`, { sort: value }, { preserveState: true })
 }
 </script>
 
@@ -80,5 +80,5 @@ function changeSort(value: string) {
 
   <TopicListTable :topics="topics" show-views />
 
-  <Pagination :pagination="pagination" :base-path="`/forum/tags/${tag.slug}`" />
+  <Pagination :pagination="pagination" :base-path="`/app/forum/tags/${tag.slug}`" />
 </template>

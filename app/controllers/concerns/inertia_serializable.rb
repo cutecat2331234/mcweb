@@ -880,7 +880,7 @@ module InertiaSerializable
       excerpt: article.summary,
       article_type: article.article_type,
       published_at: article.published_at ? l(article.published_at, format: :short) : nil,
-      url: "/website/blog/#{article.slug}"
+      url: "/blog/#{article.slug}"
     }
   end
 

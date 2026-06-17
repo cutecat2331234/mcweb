@@ -28,7 +28,7 @@ module Commerce
           title: "商品更新：#{product.name}",
           body: product.changelog.truncate(200),
           metadata: {
-            path: "/store/products/#{product.public_id}",
+            path: "/app/store/products/#{product.public_id}",
             product_public_id: product.public_id
           }
         )

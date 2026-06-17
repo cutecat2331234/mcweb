@@ -106,7 +106,7 @@ function submit() {
     linkError.value = props.warningRestrictions.link
     return
   }
-  form.post(`/forum/conversations/${props.conversation.id}/messages`, {
+  form.post(`${routes.app}/forum/conversations/${props.conversation.id}/messages`, {
     preserveScroll: true,
     onSuccess: () => { form.message.body = '' },
   })
@@ -187,7 +187,7 @@ function submit() {
     </div>
   </div>
 
-  <Pagination v-if="pagination.pages > 1" class="mb-4" :pagination="pagination" :base-path="`/forum/conversations/${conversation.id}`" page-param="page" />
+  <Pagination v-if="pagination.pages > 1" class="mb-4" :pagination="pagination" :base-path="routes.forumMessage(conversation.id)" page-param="page" />
 
   <p v-if="canSendPm === false" class="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
     新成员（信任等级 0）暂时无法发送私信，多发帖参与社区即可解锁。

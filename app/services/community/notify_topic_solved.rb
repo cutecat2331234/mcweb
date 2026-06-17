@@ -30,7 +30,7 @@ module Community
           metadata: {
             topic_id: @topic.public_id,
             post_id: @post.id,
-            path: "/forum/topics/#{@topic.public_id}#post-#{@post.id}"
+            path: Community::PostPermalink.path(@topic, @post)
           }
         )
       end

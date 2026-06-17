@@ -14,7 +14,7 @@ module Website
       end
 
       render inertia: "Website/Pages/Show", props: {
-        page: { title: page.title },
+        page: { title: page.title, slug: page.slug },
         blocks: blocks
       }
     end

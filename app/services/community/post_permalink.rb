@@ -5,11 +5,11 @@ module Community
     module_function
 
     def path(topic, post)
-      "/forum/topics/#{topic.public_id}#p-#{post.floor_number}"
+      "#{Mcweb::Paths::APP_PREFIX}/forum/topics/#{topic.public_id}#p-#{post.floor_number}"
     end
 
     def legacy_path(topic, post)
-      "/forum/topics/#{topic.public_id}#post-#{post.id}"
+      "#{Mcweb::Paths::APP_PREFIX}/forum/topics/#{topic.public_id}#post-#{post.id}"
     end
   end
 end

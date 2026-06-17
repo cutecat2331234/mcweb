@@ -114,53 +114,53 @@ module Community
       text = text.gsub(MENTION_PATTERN) do
         username = Regexp.last_match(1)
         token = placeholder_token(placeholders, "MENTION")
-        placeholders[token] = %(<a href="/forum/users/#{username}" class="mention">@#{username}</a>)
+        placeholders[token] = %(<a href="/app/forum/users/#{username}" class="mention">@#{username}</a>)
         token
       end
 
-      text = text.gsub(%r{\A(/forum/categories/[\w-]+)\s*\z}i) do |path|
+      text = text.gsub(%r{\A(?:/app)?/forum/categories/[\w-]+\s*\z}i) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = category_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
         token
       end
 
-      text = text.gsub(%r{\A(/forum/sections/[\w-]+)\s*\z}i) do |path|
+      text = text.gsub(%r{\A(?:/app)?/forum/sections/[\w-]+\s*\z}i) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = section_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
         token
       end
 
-      text = text.gsub(%r{\A(/forum/tags/[\w-]+)\s*\z}i) do |path|
+      text = text.gsub(%r{\A(?:/app)?/forum/tags/[\w-]+\s*\z}i) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = tag_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
         token
       end
 
-      text = text.gsub(%r{\A(/forum/users/[\w-]+)\s*\z}i) do |path|
+      text = text.gsub(%r{\A(?:/app)?/forum/users/[\w-]+\s*\z}i) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = user_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
         token
       end
 
-      text = text.gsub(%r{\A(/store/products/[\w-]+)\s*\z}) do |path|
+      text = text.gsub(%r{\A(?:/app)?/store/products/[\w-]+\s*\z}) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = product_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
         token
       end
 
-      text = text.gsub(%r{\A(/forum/topics/[\w-]+)\s*\z}) do |path|
+      text = text.gsub(%r{\A(?:/app)?/forum/topics/[\w-]+\s*\z}) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = topic_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
         token
       end
 
-      text = text.gsub(%r{\A(/store/coupons/[\w-]+)\s*\z}i) do |path|
+      text = text.gsub(%r{\A(?:/app)?/store/coupons/[\w-]+\s*\z}i) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = coupon_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
         token
       end
 
-      text = text.gsub(%r{\A(/store/gift_cards/[\w-]+)\s*\z}i) do |path|
+      text = text.gsub(%r{\A(?:/app)?/store/gift_cards/[\w-]+\s*\z}i) do |path|
         token = placeholder_token(placeholders, "ONEBOX")
         placeholders[token] = gift_card_onebox_html(path) || %(<a href="#{ERB::Util.html_escape(path)}">#{ERB::Util.html_escape(path)}</a>)
         token

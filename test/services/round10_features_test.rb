@@ -179,7 +179,7 @@ class Community::NotificationVisitTest < ActionDispatch::IntegrationTest
       notification_type: "forum.topic_reply",
       title: "Test",
       body: "Body",
-      metadata: { path: "/forum/sections" }
+      metadata: { path: "/app/forum/sections" }
     )
   end
 

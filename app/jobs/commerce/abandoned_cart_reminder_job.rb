@@ -65,7 +65,7 @@ module Commerce
         cart.ensure_recovery_token!
         title = second ? "购物车再次提醒" : "购物车提醒"
         body = second ? "你的购物车仍有 #{item_count} 件商品等待结账。" : "你的购物车中有 #{item_count} 件商品尚未结账。"
-        recovery_path = "/store/cart?recovery=#{cart.recovery_token}"
+        recovery_path = "#{Mcweb::Paths::APP_PREFIX}/store/cart?recovery=#{cart.recovery_token}"
         recovery_path += "&coupon=#{ERB::Util.url_encode(coupon_code)}" if coupon_code.present?
         Commerce::NotifyOrderEvent.call(
           user: user,

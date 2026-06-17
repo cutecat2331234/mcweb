@@ -211,7 +211,9 @@ const editingPostId = ref<number | null>(null)
 const copiedPostId = ref<number | null>(null)
 const editBody = ref('')
 const editReason = ref('')
-const editingTopic = ref(false)
+type TopicPanel = 'edit-topic' | 'edit-bookmark' | 'share-pm' | 'assign' | null
+const activePanel = ref<TopicPanel>(null)
+const moderateToolsOpen = ref(false)
 const editTitle = ref(props.topic.title)
 const editTags = ref(props.topic.tags_string)
 const editPrefix = ref(props.topic.prefix || '')
@@ -257,7 +259,6 @@ const editBodyHasBlockedLink = computed(() =>
 
 const canSubmitReply = computed(() => !postBlocked.value && !replyBodyHasBlockedLink.value)
 
-const sharePmOpen = ref(false)
 const sharePmUsername = ref('')
 const sharePmMessage = ref('')
 const editPollQuestion = ref(props.poll?.question || '')
@@ -285,7 +286,6 @@ const topicSearch = ref(props.topicSearchQuery || '')
 const postSort = ref(props.postSort || 'oldest')
 const selectionQuote = ref<{ post: PostItem; text: string; top: number; left: number } | null>(null)
 const selectedPollOptions = ref<number[]>(props.poll?.user_vote_indices || [])
-const editingBookmark = ref(false)
 const bookmarkNote = ref(props.topicBookmark?.note || '')
 const bookmarkRemindAt = ref(props.topicBookmark?.remind_at_input || '')
 const editingPostBookmarkId = ref<number | null>(null)
@@ -294,7 +294,6 @@ const postBookmarkRemindAt = ref('')
 const expandedPosts = ref<Record<number, boolean>>({})
 const expandedDiffs = ref<Record<number, boolean>>({})
 const lockReasonInput = ref('')
-const assignPickerOpen = ref(false)
 const assignQuery = ref('')
 const assignSuggestions = ref<Array<{ username: string; display_name: string | null; avatar_url: string }>>([])
 let assignSearchTimer: ReturnType<typeof setTimeout> | null = null
@@ -381,13 +380,21 @@ watch(() => replyForm.post.body, (body) => {
   }
 })
 
+function togglePanel(panel: TopicPanel) {
+  activePanel.value = activePanel.value === panel ? null : panel
+}
+
+function closePanel() {
+  activePanel.value = null
+}
+
 function submitReply() {
   replyLinkError.value = ''
   if (props.warningRestrictions?.link && containsLink(replyForm.post.body)) {
     replyLinkError.value = props.warningRestrictions.link
     return
   }
-  replyForm.post('/forum/posts', {
+  replyForm.post(`${routes.app}/forum/posts`, {
     preserveScroll: true,
     onSuccess: () => {
       replyForm.post.body = ''
@@ -461,19 +468,19 @@ function clearReplyTarget() {
 }
 
 function markSolved(post: PostItem) {
-  router.post(`/forum/topics/${props.topic.id}/mark_solved`, { post_id: post.id }, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/mark_solved`, { post_id: post.id }, { preserveScroll: true })
 }
 
 function unsolveTopic() {
-  router.post(`/forum/topics/${props.topic.id}/unsolve`, {}, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/unsolve`, {}, { preserveScroll: true })
 }
 
 function updateSlowMode() {
-  router.patch(`/forum/topics/${props.topic.id}/slow_mode`, { seconds: slowModeSeconds.value })
+  router.patch(`/app/forum/topics/${props.topic.id}/slow_mode`, { seconds: slowModeSeconds.value })
 }
 
 function updateAutoClose() {
-  router.patch(`/forum/topics/${props.topic.id}/auto_close`, { auto_close_at: autoCloseAt.value || null })
+  router.patch(`/app/forum/topics/${props.topic.id}/auto_close`, { auto_close_at: autoCloseAt.value || null })
 }
 
 function updateAutoOpen() {
@@ -514,6 +521,7 @@ function markUnread() {
 }
 
 function startEdit(post: PostItem) {
+  closePanel()
   editingPostId.value = post.id
   editBody.value = post.body
 }
@@ -542,7 +550,7 @@ function deletePost(post: PostItem) {
 }
 
 function toggleReaction(post: PostItem, emoji: string) {
-  router.post(`/forum/posts/${post.id}/reaction`, { emoji }, { preserveScroll: true })
+  router.post(`/app/forum/posts/${post.id}/reaction`, { emoji }, { preserveScroll: true })
 }
 
 const staffNoteBody = ref('')
@@ -561,7 +569,7 @@ function submitStaffNote() {
 
 function banReply() {
   if (!replyBanUsername.value.trim()) return
-  router.post(`/forum/topics/${props.topic.id}/reply_ban`, {
+  router.post(`/app/forum/topics/${props.topic.id}/reply_ban`, {
     username: replyBanUsername.value.trim(),
     reason: replyBanReason.value,
   }, {
@@ -574,7 +582,7 @@ function banReply() {
 }
 
 function unbanReply(username: string) {
-  router.post(`/forum/topics/${props.topic.id}/reply_unban`, { username }, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/reply_unban`, { username }, { preserveScroll: true })
 }
 
 function inviteWatcher() {
@@ -586,17 +594,21 @@ function inviteWatcher() {
 }
 
 function toggleMute() {
-  router.post(`/forum/topics/${props.topic.id}/mute`, {}, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/mute`, {}, { preserveScroll: true })
 }
 
 function toggleBookmark() {
   if (props.topic.bookmarked && props.topicBookmark) {
-    editingBookmark.value = !editingBookmark.value
-    bookmarkNote.value = props.topicBookmark.note || ''
-    bookmarkRemindAt.value = props.topicBookmark.remind_at_input || ''
+    if (activePanel.value === 'edit-bookmark') {
+      closePanel()
+    } else {
+      activePanel.value = 'edit-bookmark'
+      bookmarkNote.value = props.topicBookmark.note || ''
+      bookmarkRemindAt.value = props.topicBookmark.remind_at_input || ''
+    }
     return
   }
-  router.post(`/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
+  router.post(`${routes.app}/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
 }
 
 function saveBookmark() {
@@ -608,17 +620,17 @@ function saveBookmark() {
     },
   }, {
     preserveScroll: true,
-    onSuccess: () => { editingBookmark.value = false },
+    onSuccess: () => { closePanel() },
   })
 }
 
 function removeBookmark() {
-  router.post(`/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
+  router.post(`${routes.app}/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
 }
 
 function moderate(action: string) {
   if (action === 'assign') {
-    assignPickerOpen.value = true
+    activePanel.value = 'assign'
     assignQuery.value = props.topic.assigned_username || ''
     searchAssignees(assignQuery.value)
     return
@@ -627,10 +639,10 @@ function moderate(action: string) {
     const reason = window.prompt('锁定原因（可选）', lockReasonInput.value || '')
     if (reason === null) return
     lockReasonInput.value = reason
-    router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: action, lock_reason: reason || undefined }, { preserveScroll: true })
+    router.post(`/app/forum/topics/${props.topic.id}/moderate`, { action_type: action, lock_reason: reason || undefined }, { preserveScroll: true })
     return
   }
-  router.post(`/forum/topics/${props.topic.id}/moderate`, { action_type: action }, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/moderate`, { action_type: action }, { preserveScroll: true })
 }
 
 function searchAssignees(query: string) {
@@ -654,12 +666,12 @@ function searchAssignees(query: string) {
 }
 
 function confirmAssign(username: string) {
-  router.post(`/forum/topics/${props.topic.id}/moderate`, {
+  router.post(`${routes.app}/forum/topics/${props.topic.id}/moderate`, {
     action_type: 'assign',
     assignee_username: username,
   }, {
     preserveScroll: true,
-    onSuccess: () => { assignPickerOpen.value = false },
+    onSuccess: () => { closePanel() },
   })
 }
 
@@ -676,7 +688,7 @@ function isPostExpanded(post: PostItem) {
 }
 
 function moderatePost(post: PostItem, action: string, extra: Record<string, string> = {}) {
-  router.post(`/forum/posts/${post.id}/moderate`, { action_type: action, ...extra }, { preserveScroll: true })
+  router.post(`/app/forum/posts/${post.id}/moderate`, { action_type: action, ...extra }, { preserveScroll: true })
 }
 
 function changePostAuthor(post: PostItem) {
@@ -694,19 +706,19 @@ function saveStaffNotice(post: PostItem) {
 
 function moveTopic() {
   if (!moveSectionSlug.value) return
-  router.post(`/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
+  router.post(`/app/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
 }
 
 function mergeTopic() {
   if (!mergeTargetId.value.trim()) return
   if (!confirm('确定将此主题合并到目标主题？源主题将被隐藏。')) return
-  router.post(`/forum/topics/${props.topic.id}/merge`, { target_topic_id: mergeTargetId.value.trim() })
+  router.post(`/app/forum/topics/${props.topic.id}/merge`, { target_topic_id: mergeTargetId.value.trim() })
 }
 
 function splitPost(post: PostItem) {
   if (!confirm(`确定从 #${post.floor_number} 起拆分为新主题？`)) return
   const title = window.prompt('新主题标题（留空使用默认）', '')
-  router.post(`/forum/topics/${props.topic.id}/split`, {
+  router.post(`/app/forum/topics/${props.topic.id}/split`, {
     post_id: post.id,
     title: title || undefined,
     section_slug: splitSectionSlug.value || undefined,
@@ -750,8 +762,8 @@ function saveTopicEdit() {
     payload.poll_options = editPollOptions.value
     payload.poll_closes_days = editPollClosesDays.value
   }
-  router.patch(`/forum/topics/${props.topic.id}`, { topic: payload }, {
-    onSuccess: () => { editingTopic.value = false },
+  router.patch(`${routes.app}/forum/topics/${props.topic.id}`, { topic: payload }, {
+    onSuccess: () => { closePanel() },
   })
 }
 
@@ -762,7 +774,7 @@ function shareAsPm() {
     message: sharePmMessage.value,
   }, {
     onSuccess: () => {
-      sharePmOpen.value = false
+      closePanel()
       sharePmUsername.value = ''
       sharePmMessage.value = ''
     },
@@ -851,11 +863,11 @@ function changePostSort() {
 
 function closeOwnTopic() {
   const reason = window.prompt('关闭原因（可选）', '') || undefined
-  router.post(`/forum/topics/${props.topic.id}/close_own`, { lock_reason: reason }, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/close_own`, { lock_reason: reason }, { preserveScroll: true })
 }
 
 function reopenOwnTopic() {
-  router.post(`/forum/topics/${props.topic.id}/reopen_own`, {}, { preserveScroll: true })
+  router.post(`/app/forum/topics/${props.topic.id}/reopen_own`, {}, { preserveScroll: true })
 }
 
 function onPostMouseUp(post: PostItem, event: MouseEvent) {
@@ -966,8 +978,8 @@ async function copyPollShareLink() {
       <Button v-if="topic.rss_url" as-child variant="outline" size="sm">
         <a :href="topic.rss_url" target="_blank" rel="noopener">RSS</a>
       </Button>
-      <Button v-if="topic.can_edit" type="button" variant="outline" size="sm" @click="editingTopic = !editingTopic">
-        编辑主题
+      <Button v-if="topic.can_edit" type="button" variant="outline" size="sm" @click="togglePanel('edit-topic')">
+        {{ activePanel === 'edit-topic' ? '收起编辑' : '编辑主题' }}
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleBookmark">
         {{ topic.bookmarked ? '编辑书签' : '加入书签' }}
@@ -992,8 +1004,8 @@ async function copyPollShareLink() {
       <Button v-if="jumpToUnreadUrl" as-child variant="outline" size="sm">
         <Link :href="jumpToUnreadUrl">跳到未读</Link>
       </Button>
-      <Button v-if="topic.share_as_pm_url" type="button" variant="outline" size="sm" @click="sharePmOpen = !sharePmOpen">
-        私信分享
+      <Button v-if="topic.share_as_pm_url" type="button" variant="outline" size="sm" @click="togglePanel('share-pm')">
+        {{ activePanel === 'share-pm' ? '收起分享' : '私信分享' }}
       </Button>
       <Button v-if="reportTopicUrl" as-child variant="outline" size="sm">
         <Link :href="reportTopicUrl">举报主题</Link>
@@ -1049,7 +1061,7 @@ async function copyPollShareLink() {
     </div>
   </div>
 
-  <div v-if="assignPickerOpen" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
+  <div v-if="activePanel === 'assign'" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
     <p class="text-sm font-medium">指派给员工（Discourse Assign）</p>
     <Input
       v-model="assignQuery"
@@ -1078,11 +1090,11 @@ async function copyPollShareLink() {
       >
         确认指派
       </Button>
-      <Button type="button" size="sm" variant="outline" @click="assignPickerOpen = false">取消</Button>
+      <Button type="button" size="sm" variant="outline" @click="closePanel">取消</Button>
     </div>
   </div>
 
-  <div v-if="editingTopic" class="mb-4 max-w-xl space-y-3 rounded-lg border p-4">
+  <div v-if="activePanel === 'edit-topic'" class="mb-4 max-w-xl space-y-3 rounded-lg border p-4">
     <Input v-model="editTitle" placeholder="主题标题" />
     <div v-if="topic.section_prefixes?.length" class="space-y-1">
       <label class="text-sm">前缀</label>
@@ -1100,17 +1112,17 @@ async function copyPollShareLink() {
     </template>
     <div class="flex gap-2">
       <Button type="button" size="sm" :disabled="!editTagsReady" @click="saveTopicEdit">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="editingTopic = false">取消</Button>
+      <Button type="button" size="sm" variant="outline" @click="closePanel">取消</Button>
     </div>
   </div>
 
-  <div v-if="sharePmOpen && topic.share_as_pm_url" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
+  <div v-if="activePanel === 'share-pm' && topic.share_as_pm_url" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
     <p class="text-sm font-medium">通过私信分享主题</p>
     <Input v-model="sharePmUsername" placeholder="收件人用户名" />
     <Textarea v-model="sharePmMessage" rows="2" placeholder="附言（可选）" />
     <div class="flex gap-2">
       <Button type="button" size="sm" @click="shareAsPm">发送</Button>
-      <Button type="button" size="sm" variant="outline" @click="sharePmOpen = false">取消</Button>
+      <Button type="button" size="sm" variant="outline" @click="closePanel">取消</Button>
     </div>
   </div>
 
@@ -1132,13 +1144,13 @@ async function copyPollShareLink() {
     </Link>
   </div>
 
-  <div v-if="editingBookmark && topicBookmark" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
+  <div v-if="activePanel === 'edit-bookmark' && topicBookmark" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
     <p class="text-sm font-medium">书签备注与提醒</p>
     <textarea v-model="bookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="备注" />
     <input v-model="bookmarkRemindAt" type="datetime-local" class="h-9 w-full rounded-md border px-2 text-sm" />
     <div class="flex gap-2">
       <Button type="button" size="sm" @click="saveBookmark">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="editingBookmark = false">取消</Button>
+      <Button type="button" size="sm" variant="outline" @click="closePanel">取消</Button>
     </div>
   </div>
 
@@ -1243,7 +1255,17 @@ async function copyPollShareLink() {
     </ul>
   </section>
 
-  <div v-if="topic.can_move && sections.length" class="mb-4 flex flex-wrap items-center gap-2">
+  <section v-if="topic.can_move || topic.can_moderate" class="mb-4 rounded-lg border">
+    <button
+      type="button"
+      class="flex w-full items-center justify-between px-4 py-2.5 text-sm font-medium hover:bg-muted/40"
+      @click="moderateToolsOpen = !moderateToolsOpen"
+    >
+      <span>版主工具</span>
+      <span class="text-xs text-muted-foreground">{{ moderateToolsOpen ? '收起' : '展开' }}</span>
+    </button>
+    <div v-show="moderateToolsOpen" class="space-y-4 border-t p-4">
+  <div v-if="topic.can_move && sections.length" class="flex flex-wrap items-center gap-2">
     <label class="text-sm text-muted-foreground">移动到分区：</label>
     <select v-model="moveSectionSlug" class="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
       <option value="">选择分区…</option>
@@ -1329,7 +1351,7 @@ async function copyPollShareLink() {
     此主题为全站公告，将在全站顶部展示。
   </p>
 
-  <section v-if="topic.can_moderate && topic.staff_notes?.length" class="mb-4 rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
+  <section v-if="topic.can_moderate && topic.staff_notes?.length" class="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
     <h2 class="mb-2 text-sm font-semibold text-amber-900 dark:text-amber-100">员工备注（仅版主可见）</h2>
     <ul class="space-y-2 text-sm">
       <li v-for="note in topic.staff_notes" :key="note.id" class="rounded border bg-background/80 p-2">
@@ -1339,13 +1361,13 @@ async function copyPollShareLink() {
     </ul>
   </section>
 
-  <section v-if="topic.can_moderate && topic.staff_note_url" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
+  <section v-if="topic.can_moderate && topic.staff_note_url" class="max-w-xl space-y-2 rounded-lg border p-4">
     <h2 class="text-sm font-semibold">添加员工备注</h2>
     <textarea v-model="staffNoteBody" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="仅员工可见" />
     <Button type="button" size="sm" :disabled="!staffNoteBody.trim()" @click="submitStaffNote">保存备注</Button>
   </section>
 
-  <section v-if="topic.can_moderate" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
+  <section v-if="topic.can_moderate" class="max-w-xl space-y-2 rounded-lg border p-4">
     <h2 class="text-sm font-semibold">主题回复禁言</h2>
     <div v-if="topic.reply_bans?.length" class="space-y-1 text-sm">
       <div v-for="ban in topic.reply_bans" :key="ban.username" class="flex items-center justify-between gap-2">
@@ -1360,12 +1382,14 @@ async function copyPollShareLink() {
     </div>
   </section>
 
-  <section v-if="topic.can_invite && topic.invite_url" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
+  <section v-if="topic.can_invite && topic.invite_url" class="max-w-xl space-y-2 rounded-lg border p-4">
     <h2 class="text-sm font-semibold">邀请关注</h2>
     <p class="text-xs text-muted-foreground">邀请用户关注此主题（Discourse 风格），对方将收到通知并自动设为「关注」。</p>
     <div class="flex flex-wrap gap-2">
       <Input v-model="inviteUsername" placeholder="用户名" class="max-w-[12rem]" />
       <Button type="button" size="sm" variant="outline" :disabled="!inviteUsername.trim()" @click="inviteWatcher">发送邀请</Button>
+    </div>
+  </section>
     </div>
   </section>
 

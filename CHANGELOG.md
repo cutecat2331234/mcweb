@@ -4,6 +4,12 @@
 
 ### Changed
 
+- 用户面板（论坛、商城、登录）统一迁移至 `/app/*` 路径，旧路径自动 301 重定向
+- 官网 CMS 页面支持 `/home`、`/about` 等简洁路径；博客改为 `/blog`
+- 默认官网模板样式全面升级：导航、首页、CMS 页面块渲染
+
+### Previously
+
 - 生产与 CI 统一使用 PostgreSQL 18；`bin/install` 通过 PGDG 官方源安装 `postgresql-18`
 
 ### Fixed

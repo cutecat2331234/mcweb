@@ -61,7 +61,7 @@ class Community::SendForumDigestTest < ActiveSupport::TestCase
       notification_type: "forum.topic_reply",
       title: "Reply",
       body: "New reply",
-      metadata: { path: "/forum/topics/abc" }
+      metadata: { path: "/app/forum/topics/abc" }
     )
   end
 

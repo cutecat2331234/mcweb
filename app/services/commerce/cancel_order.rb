@@ -31,7 +31,7 @@ module Commerce
         notification_type: "commerce.order_cancelled",
         title: "订单已取消",
         body: "订单 #{@order.order_number} 已取消。",
-        path: "/store/orders/#{@order.public_id}"
+        path: "/app/store/orders/#{@order.public_id}"
       )
 
       Commerce::DispatchOrderWebhook.call(

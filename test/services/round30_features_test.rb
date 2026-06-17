@@ -88,13 +88,13 @@ class Community::ProductOneboxTest < ActiveSupport::TestCase
   end
 
   test "fetch product onebox by path" do
-    result = Community::FetchProductOnebox.call(url: "/store/products/#{@product.public_id}")
+    result = Community::FetchProductOnebox.call(url: "/app/store/products/#{@product.public_id}")
     assert result.success?
     assert_equal @product.name, result.value[:name]
   end
 
   test "format post body embeds product onebox" do
-    result = Community::FormatPostBody.call(body: "/store/products/#{@product.public_id}")
+    result = Community::FormatPostBody.call(body: "/app/store/products/#{@product.public_id}")
     assert result.success?
     assert_includes result.value, "product-onebox"
     assert_includes result.value, @product.name

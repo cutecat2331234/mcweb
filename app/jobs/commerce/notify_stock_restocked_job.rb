@@ -25,7 +25,7 @@ module Commerce
             title: "商品已补货",
             body: "#{product.name}#{alert.variant ? "（#{alert.variant.name}）" : ""} 已有货，可以购买了。",
             metadata: {
-              path: "/store/products/#{product.public_id}",
+              path: "/app/store/products/#{product.public_id}",
               product_id: product.public_id,
               variant_id: alert.variant&.id
             }

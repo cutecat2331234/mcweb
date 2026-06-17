@@ -2,7 +2,7 @@
 
 module Community
   class FetchUserOnebox < ApplicationService
-    USER_PATH = %r{\A/forum/users/([\w-]+)\z}i
+    USER_PATH = %r{\A(?:/app)?/forum/users/([\w-]+)\z}i
 
     def initialize(url:)
       @url = url.to_s.strip
@@ -31,7 +31,7 @@ module Community
         avatar_url: user.avatar_url,
         trust_name: trust[:name],
         posts_count: posts_count,
-        url: "/forum/users/#{user.username}"
+        url: "/app/forum/users/#{user.username}"
       )
     rescue URI::InvalidURIError
       ServiceResult.success(nil)

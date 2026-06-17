@@ -24,7 +24,7 @@ const form = useForm({
 })
 
 function submit() {
-  form.post('/forum/reports')
+  form.post('/app/forum/reports')
 }
 </script>
 

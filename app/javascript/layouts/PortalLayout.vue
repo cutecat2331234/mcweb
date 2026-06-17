@@ -49,7 +49,7 @@ async function dismissAnnouncement(topicId: string) {
   localStorage.setItem('mc-dismissed-announcements', JSON.stringify(dismissedLocal.value))
   if (auth.value.user) {
     const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
-    await fetch('/forum/announcements/dismiss', {
+    await fetch(`${routes.app}/forum/announcements/dismiss`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
       credentials: 'same-origin',

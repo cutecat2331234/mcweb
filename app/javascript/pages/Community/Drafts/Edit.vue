@@ -93,7 +93,7 @@ function save() {
     form.draft.poll_question = ''
     form.draft.poll_options = ''
   }
-  form.patch(`/forum/drafts/${props.draft.id}`)
+  form.patch(`/app/forum/drafts/${props.draft.id}`)
 }
 
 function publish() {
@@ -103,12 +103,12 @@ function publish() {
     linkError.value = props.warningRestrictions.link
     return
   }
-  router.post(`/forum/drafts/${props.draft.id}/publish`)
+  router.post(`${routes.app}/forum/drafts/${props.draft.id}/publish`)
 }
 
 function destroy() {
   if (!confirm('确定删除此草稿？')) return
-  router.delete(`/forum/drafts/${props.draft.id}`)
+  router.delete(`${routes.app}/forum/drafts/${props.draft.id}`)
 }
 
 function clearSchedule() {

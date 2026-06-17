@@ -43,7 +43,7 @@ module Community
           metadata: {
             topic_id: @topic.public_id,
             post_id: @post.id,
-            path: "/forum/topics/#{@topic.public_id}#post-#{@post.id}"
+            path: "/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"
           }
         )
 

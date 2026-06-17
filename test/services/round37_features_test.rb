@@ -64,13 +64,13 @@ class Community::FetchGiftCardOneboxTest < ActiveSupport::TestCase
   end
 
   test "fetch gift card onebox does not expose card details" do
-    result = Community::FetchGiftCardOnebox.call(url: "/store/gift_cards/#{@card.code}")
+    result = Community::FetchGiftCardOnebox.call(url: "/app/store/gift_cards/#{@card.code}")
     assert result.success?
     assert_nil result.value
   end
 
   test "format post body does not embed gift card onebox" do
-    result = Community::FormatPostBody.call(body: "/store/gift_cards/#{@card.code}")
+    result = Community::FormatPostBody.call(body: "/app/store/gift_cards/#{@card.code}")
     assert result.success?
     assert_not_includes result.value, "gift-card-onebox"
     assert_includes result.value, @card.code

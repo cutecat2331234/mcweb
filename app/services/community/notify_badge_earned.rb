@@ -20,7 +20,7 @@ module Community
           body: @badge.description.to_s.truncate(120),
           metadata: {
             badge_slug: @badge.slug,
-            path: "/forum/badges/#{@badge.slug}"
+            path: "#{Mcweb::Paths::APP_PREFIX}/forum/badges/#{@badge.slug}"
           }
         )
       end

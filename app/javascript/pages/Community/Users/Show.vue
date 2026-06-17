@@ -152,7 +152,7 @@ function toggleFollow() {
 }
 
 function saveBio() {
-  bioForm.patch(`/forum/users/${props.profile.username}`, {
+  bioForm.patch(`/app/forum/users/${props.profile.username}`, {
     preserveScroll: true,
     onSuccess: () => {
       editingBio.value = false
@@ -163,7 +163,7 @@ function saveBio() {
 }
 
 function removeAvatar() {
-  router.post(`/forum/users/${props.profile.username}`, {
+  router.post(`/app/forum/users/${props.profile.username}`, {
     _method: 'patch',
     user: { remove_forum_avatar: true },
   }, { preserveScroll: true })
@@ -175,7 +175,7 @@ function uploadAvatar(event: Event) {
   const data = new FormData()
   data.append('_method', 'patch')
   data.append('user[forum_avatar]', file)
-  router.post(`/forum/users/${props.profile.username}`, data, {
+  router.post(`/app/forum/users/${props.profile.username}`, data, {
     forceFormData: true,
     preserveScroll: true,
     onFinish: () => {
@@ -185,7 +185,7 @@ function uploadAvatar(event: Event) {
 }
 
 function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
-  router.get(`/forum/users/${props.profile.username}`, { tab }, { preserveState: true })
+  router.get(routes.forumUser(props.profile.username), { tab }, { preserveState: true })
 }
 </script>
 

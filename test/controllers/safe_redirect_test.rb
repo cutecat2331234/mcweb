@@ -15,7 +15,7 @@ class SafeRedirectTest < ActiveSupport::TestCase
   test "allows same-site relative paths" do
     tester = RedirectTester.new(host: "example.com")
 
-    assert_equal "/store/cart", tester.send(:safe_local_redirect_path, "/store/cart", fallback: "/")
+    assert_equal "/app/store/cart", tester.send(:safe_local_redirect_path, "/app/store/cart", fallback: "/")
     assert_equal "/forum?q=1", tester.send(:safe_local_redirect_path, "/forum?q=1", fallback: "/")
   end
 
@@ -28,9 +28,9 @@ class SafeRedirectTest < ActiveSupport::TestCase
   end
 
   test "safe_referer_path only allows same host" do
-    tester = RedirectTester.new(host: "example.com", referer: "https://example.com/store/cart")
+    tester = RedirectTester.new(host: "example.com", referer: "https://example.com/app/store/cart")
 
-    assert_equal "/store/cart", tester.send(:safe_referer_path, fallback: "/fallback")
+    assert_equal "/app/store/cart", tester.send(:safe_referer_path, fallback: "/fallback")
   end
 
   test "safe_referer_path rejects foreign hosts" do
@@ -68,10 +68,10 @@ class StoreReturnLocationTest < ActiveSupport::TestCase
   end
 
   test "stores safe relative paths" do
-    controller = Controller.new("/forum/topics/abc")
+    controller = Controller.new("/app/forum/topics/abc")
 
     controller.store_return_location
 
-    assert_equal "/forum/topics/abc", controller.session[:return_to]
+    assert_equal "/app/forum/topics/abc", controller.session[:return_to]
   end
 end

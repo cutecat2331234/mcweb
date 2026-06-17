@@ -26,7 +26,7 @@ module Community
           notification_type: "forum.followed_topic",
           title: "#{@topic.user.username} 发布了新主题",
           body: @topic.title,
-          metadata: { path: "/forum/topics/#{@topic.public_id}", topic_id: @topic.public_id }
+          metadata: { path: "/app/forum/topics/#{@topic.public_id}", topic_id: @topic.public_id }
         )
 
         if Community::NotificationLevelFilter.deliver_watch_email?(

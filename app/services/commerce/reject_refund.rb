@@ -27,7 +27,7 @@ module Commerce
         notification_type: "commerce.refund_rejected",
         title: "退款申请被拒绝",
         body: "订单 #{@refund.order.order_number} 的退款申请未通过审核。",
-        path: "/store/orders/#{@refund.order.public_id}"
+        path: "/app/store/orders/#{@refund.order.public_id}"
       )
 
       ServiceResult.success(@refund)

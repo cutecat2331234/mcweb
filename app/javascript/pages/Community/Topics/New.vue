@@ -109,7 +109,7 @@ const showPoll = ref(false)
 
 function submit() {
   if (!validateBeforeSubmit()) return
-  form.post(`/forum/topics?section_id=${props.section.slug}`)
+  form.post(`${routes.app}/forum/topics?section_id=${props.section.slug}`)
 }
 
 function saveDraft() {
@@ -117,7 +117,7 @@ function saveDraft() {
     tagGroupError.value = '请从必填标签组中至少选择一个标签后再保存。'
     return
   }
-  router.post(`/forum/drafts?section_id=${props.section.slug}`, {
+  router.post(`${routes.app}/forum/drafts?section_id=${props.section.slug}`, {
     draft: {
       title: form.topic.title,
       body: form.topic.body,

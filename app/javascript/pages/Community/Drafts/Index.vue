@@ -32,7 +32,7 @@ defineProps<{
 
 function deleteDraft(id: string) {
   if (!confirm('确定删除此草稿？')) return
-  router.delete(`/forum/drafts/${id}`)
+  router.delete(`/app/forum/drafts/${id}`)
 }
 </script>
 

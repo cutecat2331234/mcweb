@@ -23,7 +23,7 @@ const form = useForm({
 })
 
 function submit() {
-  form.post('/identity/session', {
+  form.post('/app/identity/session', {
     preserveScroll: true,
   })
 }

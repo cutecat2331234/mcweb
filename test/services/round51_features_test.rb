@@ -10,7 +10,7 @@ class Community::PostPermalinkTest < ActiveSupport::TestCase
     topic = Community::CreateTopic.call(user: user, section: section, title: "Perm", body: "OP", ip_address: "127.0.0.1").value
     post = topic.posts.first
 
-    assert_equal "/forum/topics/#{topic.public_id}#p-#{post.floor_number}", Community::PostPermalink.path(topic, post)
+    assert_equal "/app/forum/topics/#{topic.public_id}#p-#{post.floor_number}", Community::PostPermalink.path(topic, post)
   end
 end
 

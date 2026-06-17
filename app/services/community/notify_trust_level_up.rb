@@ -21,7 +21,7 @@ module Community
           body: "你已达到信任等级 #{@level}，解锁更多社区权限。",
           metadata: {
             trust_level: @level,
-            path: "/forum/users/#{@user.username}"
+            path: "#{Mcweb::Paths::APP_PREFIX}/forum/users/#{@user.username}"
           }
         )
       end

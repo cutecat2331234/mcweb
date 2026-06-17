@@ -271,7 +271,7 @@ module Admin
     end
 
     def user_params
-      params.expect(user: %i[display_name locale time_zone status])[:user]
+      params.expect(user: %i[display_name locale time_zone])[:user]
     end
   end
 end

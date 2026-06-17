@@ -5,8 +5,8 @@ module Community
     def initialize(user:, poll:, option_index: nil, option_indices: nil)
       @user = user
       @poll = poll
-      indices = option_indices.presence || [ option_index ]
-      @option_indices = Array(indices).map(&:to_i).uniq.sort
+      raw = option_indices.presence || [ option_index ]
+      @option_indices = Array(raw).filter_map { |value| normalize_index(value) }.uniq.sort
     end
 
     def call
@@ -30,6 +30,15 @@ module Community
       ServiceResult.success(@poll.votes.where(user: @user))
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    def normalize_index(value)
+      str = value.to_s.strip
+      return nil unless str.match?(/\A-?\d+\z/)
+
+      str.to_i
     end
   end
 end

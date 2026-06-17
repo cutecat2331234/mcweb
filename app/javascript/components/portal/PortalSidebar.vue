@@ -26,17 +26,18 @@ const { activeTemplate } = useActiveTemplate()
 <template>
   <aside
     :class="cn(
-      'flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground',
+      'flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground dark:bg-gradient-to-b dark:from-sidebar dark:via-sidebar dark:to-primary/10',
       props.class,
     )"
   >
-    <div class="flex h-14 items-center gap-2 border-b border-sidebar-border px-4">
+    <div class="flex h-14 items-center gap-2 border-b border-sidebar-border/60 bg-gradient-to-br from-sidebar via-sidebar to-primary/20 px-4">
       <Link
         :href="routes.home"
         class="flex min-w-0 flex-1 items-center gap-2.5 font-semibold tracking-tight text-sidebar-foreground no-underline"
         @click="onNavigate?.()"
       >
         <img v-if="activeTemplate?.logoUrl" :src="activeTemplate.logoUrl" alt="" class="h-8 w-auto shrink-0">
+        <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-blue-500/20 p-1.5 text-base">⛏</span>
         <span class="truncate">McWeb</span>
       </Link>
       <Button
@@ -100,15 +101,15 @@ const { activeTemplate } = useActiveTemplate()
       </div>
     </nav>
 
-    <div class="mt-auto border-t border-sidebar-border p-3">
+    <div class="mt-auto border-t border-sidebar-border/60 p-3">
       <Link
         :href="routes.home"
-        class="flex items-center gap-2 rounded-lg px-3 py-2 text-sm text-sidebar-foreground/70 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground"
+        class="group flex items-center gap-2.5 rounded-xl border border-sidebar-border/40 bg-sidebar-accent/20 px-3 py-2.5 text-sm text-sidebar-foreground/70 transition-all hover:border-primary/30 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:shadow-sm hover:shadow-primary/5"
         @click="onNavigate?.()"
       >
-        <Home class="h-4 w-4" />
-        返回官网
-        <ExternalLink class="ml-auto h-3.5 w-3.5 opacity-50" />
+        <Home class="h-4 w-4 shrink-0 text-primary/70 transition-colors group-hover:text-primary" />
+        <span class="flex-1">返回官网</span>
+        <ExternalLink class="h-3.5 w-3.5 shrink-0 text-primary/50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
       </Link>
     </div>
   </aside>

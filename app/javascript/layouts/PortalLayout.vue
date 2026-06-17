@@ -105,12 +105,12 @@ const sidebarProps = computed(() => ({
 
       <!-- Main column -->
       <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
-        <header class="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60">
+        <header class="sticky top-0 z-30 border-b border-primary/10 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
           <div class="flex h-14 items-center gap-2 px-4 sm:px-6">
             <Button
               variant="ghost"
               size="icon"
-              class="lg:hidden"
+              class="lg:hidden hover:bg-primary/10"
               type="button"
               aria-label="打开菜单"
               @click="mobileNavOpen = true"

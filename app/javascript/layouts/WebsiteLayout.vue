@@ -41,7 +41,7 @@ function isActive(href: string) {
       <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
         <Link :href="routes.home" class="website-brand flex items-center gap-2 no-underline">
           <img v-if="activeTemplate?.logoUrl" :src="activeTemplate.logoUrl" alt="Logo" class="h-8 w-auto">
-          <span v-else class="website-brand-mark">⛏</span>
+          <span v-else class="website-brand-mark bg-gradient-to-br from-green-500/25 to-emerald-600/20 border-green-500/40">⛏</span>
           <span class="text-lg font-semibold tracking-tight text-white">McWeb</span>
         </Link>
 
@@ -68,7 +68,7 @@ function isActive(href: string) {
             {{ auth.user.username }}
           </Link>
           <Link v-else :href="routes.signIn" class="website-btn website-btn-primary !px-4 !py-2 text-sm">
-            进入应用
+            进入应用 →
           </Link>
         </div>
       </div>
@@ -80,11 +80,13 @@ function isActive(href: string) {
     </main>
 
     <div v-if="websiteFooterSlot" v-html="websiteFooterSlot" />
-    <footer v-else class="website-footer py-12">
+    <footer v-else class="website-footer border-t border-green-500/15 py-12">
       <div class="mx-auto max-w-6xl px-4">
         <div class="grid gap-8 md:grid-cols-3">
           <div>
-            <p class="font-semibold text-white">McWeb</p>
+            <p class="font-semibold text-white">
+              <span class="text-green-500">█</span> McWeb
+            </p>
             <p class="mt-2 text-sm text-slate-400">面向 Minecraft 服主的开源社区与商城系统</p>
           </div>
           <div>
@@ -104,8 +106,8 @@ function isActive(href: string) {
             </div>
           </div>
         </div>
-        <p class="mt-10 border-t border-white/10 pt-6 text-center text-xs text-slate-500">
-          © {{ new Date().getFullYear() }} McWeb · 用户功能位于 {{ appPrefix }} 模块
+        <p class="mt-10 border-t border-green-500/15 pt-6 text-center text-xs text-slate-500">
+          ▣ {{ new Date().getFullYear() }} McWeb · 用户功能位于 {{ appPrefix }} 模块
         </p>
       </div>
     </footer>

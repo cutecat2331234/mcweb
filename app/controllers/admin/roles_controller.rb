@@ -66,6 +66,8 @@ module Admin
     end
 
     def update
+      return redirect_to admin_roles_path, alert: "System roles cannot be modified." if @role.system_role?
+
       if @role.update(role_params)
         sync_permissions!
         Administration::AuditLogger.call(actor: current_user, action: "admin.role_updated", resource: @role)
@@ -90,7 +92,7 @@ module Admin
     end
 
     def role_params
-      params.expect(role: %i[name key system_role])[:role]
+      params.expect(role: %i[name key description])[:role]
     end
 
     def sync_permissions!

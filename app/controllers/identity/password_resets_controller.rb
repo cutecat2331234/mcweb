@@ -26,9 +26,17 @@ module Identity
     end
 
     def update
+      p = password_reset_params
+      if p[:password].present? && p[:password] != p[:password_confirmation]
+        return render inertia: "Identity/PasswordResets/Edit",
+                      props: { token: params[:token] },
+                      status: :unprocessable_entity,
+                      errors: { base: "两次输入的密码不一致。" }
+      end
+
       result = Identity::ResetPassword.call(
         token: params[:token],
-        new_password: password_reset_params[:password]
+        new_password: p[:password]
       )
 
       if result.success?

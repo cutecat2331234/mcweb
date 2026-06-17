@@ -356,6 +356,7 @@ module InertiaSerializable
 
   def can_delete_post?(post, user)
     return false unless user
+    return false if post.floor_number == 1
 
     user.id == post.user_id || user.permission?("forum.topics.lock")
   end

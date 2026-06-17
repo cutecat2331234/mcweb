@@ -34,7 +34,7 @@ module Frontend
           return failure(error: "非法路径：#{entry.name}") if forbidden_path?(name)
           return failure(error: "不允许的文件类型：#{name}") unless allowed_entry?(name)
 
-          total_size += entry.compressed_size.to_i
+          total_size += entry.size.to_i
           return failure(error: "模板包过大（最大 #{MAX_ZIP_BYTES / 1.megabyte}MB）") if total_size > MAX_ZIP_BYTES
 
           entries << name

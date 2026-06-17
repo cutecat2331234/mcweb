@@ -10,25 +10,25 @@ module Commerce
 
     scope :active_coupons, -> { where(active: true) }
 
-    def applicable?(subtotal_cents:, cart_items: nil, user: nil)
-      inapplicable_reason(subtotal_cents: subtotal_cents, cart_items: cart_items, user: user).nil?
+    def applicable?(subtotal_cents:, cart_items: nil, user: nil, exclude_order_id: nil)
+      inapplicable_reason(subtotal_cents: subtotal_cents, cart_items: cart_items, user: user, exclude_order_id: exclude_order_id).nil?
     end
 
-    def inapplicable_reason(subtotal_cents:, cart_items: nil, user: nil)
+    def inapplicable_reason(subtotal_cents:, cart_items: nil, user: nil, exclude_order_id: nil)
       return "优惠券无效或已停用" unless active?
       return "优惠券尚未生效" if starts_at.present? && starts_at > Time.current
       return "优惠券已过期" if ends_at.present? && ends_at < Time.current
       return "优惠券已达使用上限" if usage_limit.present? && used_count >= usage_limit
       return "未达到最低消费金额" if subtotal_cents < min_amount_cents
       return "优惠券不适用于购物车商品" unless matches_cart_restrictions?(cart_items)
-      return "仅限首单使用" if first_order_only? && user && !first_order?(user)
-      return "已达到每人限用次数" if per_user_limit.present? && user && user_usage_count(user) >= per_user_limit
+      return "仅限首单使用" if first_order_only? && user && !first_order?(user, exclude_order_id: exclude_order_id)
+      return "已达到每人限用次数" if per_user_limit.present? && user && user_usage_count(user, exclude_order_id: exclude_order_id) >= per_user_limit
 
       nil
     end
 
-    def calculate_discount(subtotal_cents, cart_items: nil, user: nil)
-      return 0 unless applicable?(subtotal_cents: subtotal_cents, cart_items: cart_items, user: user)
+    def calculate_discount(subtotal_cents, cart_items: nil, user: nil, exclude_order_id: nil)
+      return 0 unless applicable?(subtotal_cents: subtotal_cents, cart_items: cart_items, user: user, exclude_order_id: exclude_order_id)
 
       amount = case discount_type
       when "percentage"
@@ -64,12 +64,16 @@ module Commerce
 
     private
 
-    def first_order?(user)
-      !Commerce::Order.where(user: user).where.not(status: %w[cancelled failed]).exists?
+    def first_order?(user, exclude_order_id: nil)
+      scope = Commerce::Order.where(user: user).where.not(status: %w[cancelled failed])
+      scope = scope.where.not(id: exclude_order_id) if exclude_order_id
+      !scope.exists?
     end
 
-    def user_usage_count(user)
-      Commerce::Order.where(user: user, store_coupon_id: id).where.not(status: %w[cancelled failed]).count
+    def user_usage_count(user, exclude_order_id: nil)
+      scope = Commerce::Order.where(user: user, store_coupon_id: id).where.not(status: %w[cancelled failed])
+      scope = scope.where.not(id: exclude_order_id) if exclude_order_id
+      scope.count
     end
 
     def matches_cart_restrictions?(cart_items)

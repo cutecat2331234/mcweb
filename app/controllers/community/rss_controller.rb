@@ -24,7 +24,7 @@ module Community
       topic = Community::Topic.find_by!(public_id: params[:id])
       return head :not_found unless topic.published?
 
-      posts = topic.posts.chronological.includes(:user).limit(50)
+      posts = topic.posts.published.where.not(post_type: "whisper").chronological.includes(:user).limit(50)
       render xml: build_topic_feed(topic, posts), content_type: "application/rss+xml"
     end
 

@@ -22,6 +22,7 @@ module Community
 
     def render_posts_tab(tab)
       scope = Community::Post.where(status: :published)
+        .where.not(post_type: "whisper")
         .joins(:topic)
         .where(forum_topics: { status: :published, unlisted: false })
         .includes(:user, topic: :section)
@@ -47,6 +48,7 @@ module Community
 
       followed_ids = Community::UserFollow.where(follower: current_user).pluck(:followed_id) - blocked_user_ids
       scope = Community::Post.where(status: :published, user_id: followed_ids)
+        .where.not(post_type: "whisper")
         .includes(:user, topic: :section)
         .order(created_at: :desc)
       scope = scope.joins(:topic).where(forum_topics: { status: :published, unlisted: false })

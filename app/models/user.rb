@@ -40,12 +40,23 @@ class User < ApplicationRecord
     roles.joins(:permissions).exists?(permissions: { key: key })
   end
 
+  def available_store_credit_cents(exclude_order_id: nil)
+    pending = Commerce::Order
+      .where(user: self, status: %w[pending awaiting_payment])
+      .where.not(store_credit_amount_cents: [nil, 0])
+    pending = pending.where.not(id: exclude_order_id) if exclude_order_id
+    reserved = pending.sum(:store_credit_amount_cents)
+    [ store_credit_cents.to_i - reserved, 0 ].max
+  end
+
   def permissions
     Permission.joins(roles: :users).where(users: { id: id }).distinct
   end
 
   def banned?
-    status == "banned" || (ban_expires_at.present? && ban_expires_at > Time.current)
+    return false unless status == "banned"
+
+    ban_expires_at.nil? || ban_expires_at.future?
   end
 
   def ban_active?

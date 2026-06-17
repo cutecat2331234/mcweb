@@ -24,7 +24,19 @@ module Commerce
     private
 
     def webhook_event_id
-      params[:event_id].presence || request.headers["X-Webhook-Id"].presence || SecureRandom.uuid
+      params[:event_id].presence ||
+        request.headers["X-Webhook-Id"].presence ||
+        body_event_id ||
+        SecureRandom.uuid
+    end
+
+    def body_event_id
+      body = request.raw_post
+      return if body.blank?
+
+      JSON.parse(body)["id"].presence
+    rescue JSON::ParserError
+      nil
     end
 
     def webhook_event_type

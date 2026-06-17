@@ -23,14 +23,15 @@ module Commerce
         reason = coupon.inapplicable_reason(
           subtotal_cents: @order.subtotal_cents,
           cart_items: cart_items,
-          user: @order.user
+          user: @order.user,
+          exclude_order_id: @order.id
         )
         if reason
           coupon_error = reason
           raise ActiveRecord::Rollback
         end
 
-        discount_cents = coupon.calculate_discount(@order.subtotal_cents, cart_items: cart_items, user: @order.user)
+        discount_cents = coupon.calculate_discount(@order.subtotal_cents, cart_items: cart_items, user: @order.user, exclude_order_id: @order.id)
         shipping_result = Commerce::CalculateShipping.call(
           subtotal_cents: @order.subtotal_cents,
           cart_items: cart_items,

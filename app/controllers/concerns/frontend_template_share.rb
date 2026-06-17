@@ -12,6 +12,7 @@ module FrontendTemplateShare
   def capture_template_preview
     return if admin_request?
     return if params[:preview_template].blank?
+    return unless current_user&.permission?("website.templates.manage")
 
     session[:preview_template_key] = params[:preview_template].to_s
   end

@@ -25,7 +25,8 @@ module Identity
       user = User.find_by(email: @email)
       return generic_failure unless user
 
-      return ServiceResult.failure(error: "Account is banned.") if banned?(user)
+      clear_expired_ban!(user)
+      return ServiceResult.failure(error: "Account is banned.") if user.banned?
       return ServiceResult.failure(error: "Account has been deleted.") if user.deleted?
       return ServiceResult.failure(error: "Account is temporarily locked.") if locked?(user)
 
@@ -71,10 +72,11 @@ module Identity
 
     private
 
-    def banned?(user)
-      return true if user.status == "banned"
+    def clear_expired_ban!(user)
+      return unless user.status == "banned"
+      return if user.ban_expires_at.nil? || user.ban_expires_at.future?
 
-      user.banned_at.present? && (user.ban_expires_at.nil? || user.ban_expires_at.future?)
+      user.unban!
     end
 
     def locked?(user)

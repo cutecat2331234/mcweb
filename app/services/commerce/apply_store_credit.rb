@@ -14,7 +14,8 @@ module Commerce
       payable = [ @order.subtotal_cents - @order.discount_cents + @order.shipping_cents.to_i + @order.gift_wrap_cents.to_i - @order.gift_card_amount_cents.to_i, 0 ].max
       return ServiceResult.success(order: @order, store_credit_amount_cents: 0) unless payable.positive?
 
-      amount = [ payable, @user.store_credit_cents.to_i ].min
+      available = @user.available_store_credit_cents(exclude_order_id: @order.id)
+      amount = [ payable, available ].min
       return ServiceResult.success(order: @order, store_credit_amount_cents: 0) unless amount.positive?
 
       total_cents = payable - amount

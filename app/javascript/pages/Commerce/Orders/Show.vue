@@ -214,14 +214,30 @@ function refreshDownload(url: string) {
     退款申请审核中，请耐心等待。
   </p>
 
-  <div v-if="order.downloads?.length" class="mb-6 rounded-lg border p-4">
-    <h2 class="mb-3 text-sm font-semibold">数字商品下载</h2>
-    <ul class="space-y-2 text-sm">
-      <li v-for="(download, index) in order.downloads" :key="index" class="flex justify-between gap-4">
-        <span>{{ download.product_name }}</span>
-        <a :href="download.url" target="_blank" rel="noopener" class="text-primary hover:underline">下载</a>
-      </li>
-    </ul>
+  <div v-if="order.downloads?.length" class="mb-6">
+    <h2 class="mb-4 flex items-center gap-2 text-base font-semibold">
+      <span class="flex h-7 w-7 items-center justify-center rounded-lg bg-primary/10 text-primary text-sm">↓</span>
+      数字商品下载
+    </h2>
+    <div class="grid gap-3 sm:grid-cols-2">
+      <a
+        v-for="(download, index) in order.downloads"
+        :key="index"
+        :href="download.url"
+        target="_blank"
+        rel="noopener"
+        class="group flex items-center gap-4 rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5 no-underline"
+      >
+        <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/20 to-blue-500/10 text-primary text-xl transition-all group-hover:from-primary/30">
+          ⬇
+        </div>
+        <div class="min-w-0 flex-1">
+          <p class="truncate font-medium text-foreground">{{ download.product_name }}</p>
+          <p class="mt-0.5 text-xs text-muted-foreground">点击下载</p>
+        </div>
+        <span class="text-sm text-primary opacity-0 transition-opacity group-hover:opacity-100">→</span>
+      </a>
+    </div>
   </div>
 
   <div v-if="order.events.length" class="mb-6 rounded-lg border p-4">
@@ -278,7 +294,15 @@ function refreshDownload(url: string) {
             <Badge v-if="item.fulfillment_status_label || item.fulfillment_status" :variant="item.fulfillment_status === 'fulfilled' ? 'success' : 'default'">
               {{ item.fulfillment_status_label || item.fulfillment_status }}
             </Badge>
-            <a v-if="item.download_url" :href="item.download_url" target="_blank" rel="noopener" class="ml-2 text-xs text-primary hover:underline">下载</a>
+            <a
+              v-if="item.download_url"
+              :href="item.download_url"
+              target="_blank"
+              rel="noopener"
+              class="ml-2 inline-flex items-center gap-1 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary transition-colors no-underline hover:bg-primary/20"
+            >
+              ⬇ 下载
+            </a>
             <Button
               v-if="item.refresh_download_url"
               type="button"

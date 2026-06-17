@@ -2,6 +2,7 @@
 
 module Payments
   class StripeProvider < Provider
+    WEBHOOK_TOLERANCE_SECONDS = 5.minutes.to_i
     def create_payment(payment_record)
       config = Payments::ProviderConfig.find_by(provider: "stripe")
       secret_key = config&.credentials_hash&.dig("secret_key")
@@ -34,6 +35,7 @@ module Payments
       if stripe_sig.include?("t=")
         timestamp, signatures = parse_stripe_signature(stripe_sig)
         return false if timestamp.blank? || signatures.empty?
+        return false unless timestamp_fresh?(timestamp)
 
         signed_payload = "#{timestamp}.#{payload}"
         expected = OpenSSL::HMAC.hexdigest("SHA256", secret, signed_payload)
@@ -80,6 +82,13 @@ module Payments
       timestamp = parts["t"]
       signatures = header.scan(/v1=([a-f0-9]+)/).flatten
       [ timestamp, signatures ]
+    end
+
+    def timestamp_fresh?(timestamp)
+      ts = Integer(timestamp, exception: false)
+      return false if ts.nil?
+
+      (Time.now.to_i - ts).abs <= WEBHOOK_TOLERANCE_SECONDS
     end
   end
 end

@@ -119,6 +119,43 @@ class Commerce::RestoreGiftCardBalanceTest < ActiveSupport::TestCase
   end
 end
 
+class Commerce::RestoreGiftCardPartialTest < ActiveSupport::TestCase
+  setup do
+    @user = create_user
+    @gift_card = Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.alphanumeric(10).upcase}",
+      balance_cents: 0,
+      initial_balance_cents: 500,
+      currency: "CNY",
+      active: true,
+      created_by: @user
+    )
+    @order = Commerce::Order.create!(
+      public_id: "ord_r37p_#{SecureRandom.hex(4)}",
+      order_number: "R37P#{SecureRandom.hex(3).upcase}",
+      user: @user,
+      status: "paid",
+      subtotal_cents: 500,
+      total_cents: 300,
+      gift_card: @gift_card,
+      gift_card_amount_cents: 200,
+      currency: "CNY"
+    )
+  end
+
+  test "fails when gift card association is missing" do
+    @order.update_columns(store_gift_card_id: nil)
+
+    result = Commerce::RestoreGiftCardPartial.call(
+      order: @order.reload,
+      refund_amount_cents: 150,
+      payment_amount_cents: 300
+    )
+    assert result.failure?
+    assert_equal "礼品卡信息无效。", result.error
+  end
+end
+
 class Commerce::ZeroTotalCheckoutTest < ActiveSupport::TestCase
   setup do
     @user = create_user

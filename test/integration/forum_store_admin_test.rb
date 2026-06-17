@@ -122,6 +122,59 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     assert_redirected_to store_order_path(order)
     assert_equal "paid", order.reload.status
   end
+
+  test "checkout replaces stale pending payment for zero total order" do
+    gift_card = Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.alphanumeric(10).upcase}",
+      balance_cents: 10_000,
+      initial_balance_cents: 10_000,
+      currency: "CNY",
+      active: true,
+      created_by: @user
+    )
+    cart = Commerce::Cart.find_or_create_by!(user: @user)
+    cart.add_item!(product: @product, quantity: 1)
+    order = Commerce::CreateOrder.call(
+      cart: cart,
+      user: @user,
+      gift_card_code: gift_card.code
+    ).value
+    stale = Payments::Record.create!(
+      order: order,
+      provider: "fake",
+      amount_cents: order.subtotal_cents,
+      currency: "CNY",
+      status: "pending"
+    )
+
+    post store_checkout_path, params: { order_id: order.public_id, checkout: { provider: "fake" } }
+
+    assert_redirected_to store_order_path(order)
+    assert_equal "failed", stale.reload.status
+    assert_equal "paid", order.reload.status
+    assert Payments::Record.exists?(order: order, status: "succeeded", amount_cents: 0)
+  end
+
+  test "checkout replaces stale pending payment amount on retry" do
+    cart = Commerce::Cart.find_or_create_by!(user: @user)
+    cart.add_item!(product: @product, quantity: 1)
+    order = Commerce::CreateOrder.call(cart: cart, user: @user).value
+    order.submit_payment! if order.may_submit_payment?
+    stale = Payments::Record.create!(
+      order: order,
+      provider: "fake",
+      amount_cents: order.total_cents + 500,
+      currency: "CNY",
+      status: "pending"
+    )
+
+    post store_checkout_path, params: { order_id: order.public_id, checkout: { provider: "fake" } }
+
+    assert_response :redirect
+    assert_equal "failed", stale.reload.status
+    active = order.payment_records.pending.order(created_at: :desc).first
+    assert_equal order.total_cents, active.amount_cents
+  end
 end
 
 class AdminIntegrationTest < ActionDispatch::IntegrationTest

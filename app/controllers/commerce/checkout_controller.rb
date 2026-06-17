@@ -87,14 +87,7 @@ module Commerce
       end
 
       if order.total_cents.zero?
-        payment_record = order.payment_records.pending.order(created_at: :desc).first
-        payment_record ||= Payments::Record.create!(
-          order: order,
-          provider: "fake",
-          amount_cents: 0,
-          currency: order.currency,
-          status: :pending
-        )
+        payment_record = resolve_pending_payment(order: order, provider: "fake", amount_cents: 0)
         result = Commerce::ConfirmPayment.call(
           payment_record: payment_record,
           provider_payment_id: "free-#{order.public_id}"
@@ -107,13 +100,10 @@ module Commerce
 
       provider_name = checkout_params[:provider].presence || default_provider
 
-      payment_record = order.payment_records.pending.order(created_at: :desc).first
-      payment_record ||= Payments::Record.create!(
+      payment_record = resolve_pending_payment(
         order: order,
         provider: provider_name,
-        amount_cents: order.total_cents,
-        currency: order.currency,
-        status: :pending
+        amount_cents: order.total_cents
       )
 
       result = Payments::Provider.for(provider_name).create_payment(payment_record)
@@ -365,6 +355,21 @@ module Commerce
         flash[:alert] = result.error
         nil
       end
+    end
+
+    def resolve_pending_payment(order:, provider:, amount_cents:)
+      order.payment_records.pending
+        .where("amount_cents != ? OR provider != ?", amount_cents, provider)
+        .update_all(status: "failed", updated_at: Time.current)
+
+      order.payment_records.pending.find_by(amount_cents: amount_cents, provider: provider) ||
+        Payments::Record.create!(
+          order: order,
+          provider: provider,
+          amount_cents: amount_cents,
+          currency: order.currency,
+          status: :pending
+        )
     end
   end
 end

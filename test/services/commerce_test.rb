@@ -113,6 +113,58 @@ class Commerce::DebitStoreCreditTest < ActiveSupport::TestCase
     assert_equal 100, @user.reload.store_credit_cents
     assert_equal 0, @user.store_credit_transactions.where(order: @order).count
   end
+
+  test "fails when user association is missing" do
+    order = @order
+    def order.user
+      nil
+    end
+
+    result = Commerce::DebitStoreCredit.call(order: order)
+    assert result.failure?
+    assert_equal "用户信息无效。", result.error
+  end
+end
+
+class Commerce::RestoreStoreCreditTest < ActiveSupport::TestCase
+  setup do
+    @user = create_user
+    @user.update!(store_credit_cents: 0)
+    @order = Commerce::Order.create!(
+      public_id: "ord_restore_sc_#{SecureRandom.hex(6)}",
+      order_number: "RSC#{SecureRandom.hex(4)}",
+      user: @user,
+      status: "refunded",
+      subtotal_cents: 1000,
+      total_cents: 700,
+      store_credit_amount_cents: 300,
+      currency: "CNY"
+    )
+    Commerce::StoreCreditTransaction.create!(
+      user: @user,
+      order: @order,
+      amount_cents: -300,
+      note: "deduct"
+    )
+  end
+
+  test "restores store credit balance" do
+    result = Commerce::RestoreStoreCredit.call(order: @order)
+    assert result.success?
+    assert_equal 300, @user.reload.store_credit_cents
+    assert_equal 0, @order.reload.store_credit_amount_cents
+  end
+
+  test "fails when user association is missing" do
+    order = @order
+    def order.user
+      nil
+    end
+
+    result = Commerce::RestoreStoreCredit.call(order: order)
+    assert result.failure?
+    assert_equal "用户信息无效。", result.error
+  end
 end
 
 class Commerce::PreviewCouponGiftWrapTest < ActiveSupport::TestCase

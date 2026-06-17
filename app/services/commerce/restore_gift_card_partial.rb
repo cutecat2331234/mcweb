@@ -11,7 +11,8 @@ module Commerce
     def call
       card = @order.gift_card
       original = @order.gift_card_amount_cents.to_i
-      return ServiceResult.success(restored_cents: 0) unless card && original.positive?
+      return ServiceResult.success(restored_cents: 0) unless original.positive?
+      return ServiceResult.failure(error: "礼品卡信息无效。") unless card
 
       already_restored = @order.gift_card_restored_cents.to_i
       remaining = original - already_restored

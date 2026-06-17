@@ -23,6 +23,8 @@ module Commerce
       return ServiceResult.success(restored_cents: 0) unless restore.positive?
 
       user = @order.user
+      return ServiceResult.failure(error: "用户信息无效。") unless user
+
       Commerce::Order.transaction do
         user.lock!
         user.update!(store_credit_cents: user.store_credit_cents.to_i + restore)

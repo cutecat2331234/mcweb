@@ -71,6 +71,31 @@ class Round59FeaturesTest < ActiveSupport::TestCase
     assert_equal 250, @user.reload.store_credit_cents
   end
 
+  test "restore store credit partial fails when user association is missing" do
+    order = Commerce::Order.create!(
+      public_id: "ord_r59pu_#{SecureRandom.hex(4)}",
+      order_number: "R59PU#{SecureRandom.hex(3).upcase}",
+      user: @user,
+      status: "paid",
+      subtotal_cents: 1000,
+      total_cents: 500,
+      store_credit_amount_cents: 500,
+      store_credit_restored_cents: 0,
+      currency: "CNY"
+    )
+    def order.user
+      nil
+    end
+
+    result = Commerce::RestoreStoreCreditPartial.call(
+      order: order,
+      refund_amount_cents: 250,
+      payment_amount_cents: 500
+    )
+    assert result.failure?
+    assert_equal "用户信息无效。", result.error
+  end
+
   test "subscribe product availability alert for upcoming product" do
     product = Commerce::Product.create!(
       name: "Upcoming R59",

@@ -223,6 +223,26 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     assert_redirected_to store_order_path(order)
     assert_match(/过期/, flash[:alert].to_s)
   end
+
+  test "fake payment page rejects stale payment amount" do
+    cart = Commerce::Cart.find_or_create_by!(user: @user)
+    cart.add_item!(product: @product, quantity: 1)
+    order = Commerce::CreateOrder.call(cart: cart, user: @user).value
+    payment = Payments::Record.create!(
+      order: order,
+      provider: "fake",
+      amount_cents: order.total_cents + 500,
+      currency: "CNY",
+      status: "pending",
+      provider_payment_id: "fake_stale_#{SecureRandom.hex(8)}"
+    )
+
+    get fake_payment_path(payment.provider_payment_id)
+
+    assert_redirected_to store_order_path(order)
+    assert_match(/失效/, flash[:alert].to_s)
+    assert_equal "failed", payment.reload.status
+  end
 end
 
 class AdminIntegrationTest < ActionDispatch::IntegrationTest

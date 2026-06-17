@@ -73,6 +73,21 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_not cookies[:session_token].present?
   end
 
+  test "revoking current session from management signs user out" do
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "password123", remember_me: "0" }
+    }
+    follow_redirect!
+    session_record = @user.sessions.active.order(last_active_at: :desc).first
+
+    delete identity_sessions_management_path(session_record)
+
+    assert_redirected_to identity_sign_in_path
+    assert_not session[:session_token].present?
+    assert_not cookies[:session_token].present?
+    assert session_record.reload.revoked?
+  end
+
   test "registration does not auto sign in before email verification" do
     suffix = SecureRandom.hex(4)
     post identity_registrations_path, params: {

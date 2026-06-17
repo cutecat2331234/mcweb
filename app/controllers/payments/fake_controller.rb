@@ -13,6 +13,11 @@ module Payments
         return redirect_to store_order_path(order), alert: message
       end
 
+      if @payment.status == "pending" && @payment.amount_cents != order.total_cents
+        @payment.update!(status: "failed")
+        return redirect_to store_order_path(order), alert: "支付信息已失效，请重新发起支付。"
+      end
+
       render inertia: "Payments/Fake/Show", props: {
         paymentId: @payment.provider_payment_id,
         amountLabel: format_money(@payment.amount_cents, @payment.currency),
@@ -31,6 +36,11 @@ module Payments
       unless order.payable?
         message = order.payment_expired? ? "订单支付已过期。" : "该订单无法继续支付。"
         return redirect_to store_order_path(order), alert: message
+      end
+
+      if @payment.status == "pending" && @payment.amount_cents != order.total_cents
+        @payment.update!(status: "failed")
+        return redirect_to store_order_path(order), alert: "支付信息已失效，请重新发起支付。"
       end
 
       result = Commerce::ConfirmPayment.call(

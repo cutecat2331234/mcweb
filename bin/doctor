@@ -6,6 +6,7 @@ cd "${APP_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
 
 echo "== McWeb Doctor =="
 ruby -v
+psql --version 2>/dev/null || echo "PostgreSQL client: not found"
 bundle exec rails -v
 bundle exec rails runner "puts 'DB: ' + ActiveRecord::Base.connection.active?.to_s"
 systemctl is-active mcweb-web >/dev/null 2>&1 && echo "Web: running" || echo "Web: not running"

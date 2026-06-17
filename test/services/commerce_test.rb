@@ -104,6 +104,7 @@ class Commerce::DebitStoreCreditTest < ActiveSupport::TestCase
     assert_equal 200, @user.reload.store_credit_cents
     assert_equal 1, @user.store_credit_transactions.where(order: @order).where("amount_cents < 0").count
   end
+end
 
 class Commerce::CreateFulfillmentTest < ActiveSupport::TestCase
   setup do

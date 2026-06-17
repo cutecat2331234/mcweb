@@ -234,7 +234,10 @@ async function previewCoupon() {
         'Content-Type': 'application/json',
         'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
       },
-      body: JSON.stringify({ code: form.checkout.coupon_code }),
+      body: JSON.stringify({
+        code: form.checkout.coupon_code,
+        gift_wrap: form.checkout.gift_wrap,
+      }),
     })
     const data = await response.json()
     if (response.ok) {

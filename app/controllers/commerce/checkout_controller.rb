@@ -130,7 +130,8 @@ module Commerce
         subtotal_cents: subtotal_cents,
         code: params[:code],
         cart_items: cart_items,
-        user: current_user
+        user: current_user,
+        gift_wrap_cents: gift_wrap_cents_for_preview
       )
 
       if result.success?
@@ -162,7 +163,8 @@ module Commerce
           subtotal_cents: subtotal_cents,
           code: params[:coupon_code],
           cart_items: cart_items,
-          user: current_user
+          user: current_user,
+          gift_wrap_cents: gift_wrap_cents_for_preview
         )
         discount_cents = preview.success? ? preview.value[:discount_cents] : 0
         shipping_cents = preview.success? ? preview.value[:shipping_cents].to_i : shipping_cents_for_preview(subtotal_cents)
@@ -207,7 +209,8 @@ module Commerce
           subtotal_cents: subtotal_cents,
           code: params[:coupon_code],
           cart_items: cart_items,
-          user: current_user
+          user: current_user,
+          gift_wrap_cents: gift_wrap_cents_for_preview
         )
         if preview.success?
           discount_cents = preview.value[:discount_cents]

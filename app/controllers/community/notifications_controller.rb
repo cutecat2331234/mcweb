@@ -245,7 +245,7 @@ module Community
           read: unread.zero?,
           latest_at: l(latest.created_at, format: :short),
           latest_at_ts: latest.created_at.to_i,
-          visit_url: notification_content_visible?(latest) && latest.metadata["path"].present? ? visit_forum_notification_path(latest) : nil,
+          visit_url: notification_content_visible?(latest) && latest.destination_path.present? ? visit_forum_notification_path(latest) : nil,
           items: items.first(5).map { |n| serialize_notification(n) }
         }
       end.sort_by { |g| -g[:latest_at_ts] }.first(30)

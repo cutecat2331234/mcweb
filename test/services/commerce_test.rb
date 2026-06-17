@@ -115,6 +115,20 @@ class Commerce::DebitStoreCreditTest < ActiveSupport::TestCase
   end
 end
 
+class Commerce::PreviewCouponGiftWrapTest < ActiveSupport::TestCase
+  test "preview coupon includes gift wrap in total" do
+    Commerce::Coupon.create!(
+      code: "WRAP10",
+      discount_type: "fixed",
+      discount_value: 100,
+      active: true
+    )
+    result = Commerce::PreviewCoupon.call(subtotal_cents: 1000, code: "WRAP10", gift_wrap_cents: 300)
+    assert result.success?
+    assert_equal 1200, result.value[:total_cents]
+  end
+end
+
 class Commerce::BulkUpdateOrdersMarkPaidTest < ActiveSupport::TestCase
   setup do
     @admin = create_user
@@ -220,5 +234,33 @@ class Commerce::ApplyCouponTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal 100, order.reload.discount_cents
     assert_equal 900, order.total_cents
+  end
+
+  test "applies coupon and preserves gift wrap fee" do
+    user = create_user
+    order = Commerce::Order.create!(
+      public_id: "ord_coupon_wrap",
+      order_number: "ORD-COUP-WRAP",
+      user: user,
+      status: "pending",
+      subtotal_cents: 1000,
+      shipping_cents: 0,
+      gift_wrap_cents: 300,
+      total_cents: 1300,
+      discount_cents: 0,
+      currency: "CNY"
+    )
+    Commerce::Coupon.create!(
+      code: "SAVE100",
+      discount_type: "fixed",
+      discount_value: 100,
+      active: true
+    )
+
+    result = Commerce::ApplyCoupon.call(order: order, code: "SAVE100")
+    assert result.success?
+    order.reload
+    assert_equal 100, order.discount_cents
+    assert_equal 1200, order.total_cents
   end
 end

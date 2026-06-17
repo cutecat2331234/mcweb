@@ -229,7 +229,8 @@ class Round90PaymentExpiresAtTest < ActiveSupport::TestCase
 
   test "expired pending order remains cancellable in order detail" do
     @order.update!(created_at: 31.minutes.ago)
-    detail = @helper.send(:serialize_order_detail, @order)
+    controller = ApplicationController.new
+    detail = controller.send(:serialize_order_detail, @order)
     assert detail[:can_cancel]
     assert_not detail[:can_pay]
     assert detail[:payment_expired]

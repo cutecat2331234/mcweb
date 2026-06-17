@@ -10,6 +10,7 @@ module Commerce
       card = @order.gift_card
       amount = @order.gift_card_amount_cents.to_i
       return ServiceResult.success unless card && amount.positive?
+      return ServiceResult.success if card.transactions.exists?(order: @order, transaction_type: :debit)
 
       Commerce::GiftCard.transaction do
         card.lock!

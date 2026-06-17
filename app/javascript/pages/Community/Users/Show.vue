@@ -123,9 +123,8 @@ const props = defineProps<{
   }>
 }>()
 
-const editingBio = ref(false)
-const editingTitle = ref(false)
-const editingSignature = ref(false)
+type ProfileEditPanel = 'title' | 'bio' | 'signature' | null
+const profileEditPanel = ref<ProfileEditPanel>(null)
 const avatarInput = ref<HTMLInputElement | null>(null)
 const bioForm = useForm({
   user: {
@@ -151,13 +150,15 @@ function toggleFollow() {
   router.post(props.profile.follow_url, {}, { preserveScroll: true })
 }
 
+function toggleProfileEdit(panel: ProfileEditPanel) {
+  profileEditPanel.value = profileEditPanel.value === panel ? null : panel
+}
+
 function saveBio() {
   bioForm.patch(`/app/forum/users/${props.profile.username}`, {
     preserveScroll: true,
     onSuccess: () => {
-      editingBio.value = false
-      editingTitle.value = false
-      editingSignature.value = false
+      profileEditPanel.value = null
     },
   })
 }
@@ -288,14 +289,14 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
         >
           {{ profile.is_ignored ? '取消忽略' : '忽略用户' }}
         </Button>
-        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="editingTitle = !editingTitle">
-          编辑头衔
+        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('title')">
+          {{ profileEditPanel === 'title' ? '收起头衔' : '编辑头衔' }}
         </Button>
-        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="editingBio = !editingBio">
-          编辑简介
+        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('bio')">
+          {{ profileEditPanel === 'bio' ? '收起简介' : '编辑简介' }}
         </Button>
-        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="editingSignature = !editingSignature">
-          编辑签名
+        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('signature')">
+          {{ profileEditPanel === 'signature' ? '收起签名' : '编辑签名' }}
         </Button>
         <template v-if="profile.can_edit">
           <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="uploadAvatar" />
@@ -306,40 +307,40 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
     </div>
   </div>
 
-  <form v-if="editingTitle" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
+  <form v-if="profileEditPanel === 'title'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
     <Label for="forum_title">论坛头衔</Label>
     <input id="forum_title" v-model="bioForm.user.forum_title" class="h-9 w-full rounded-md border px-2 text-sm" placeholder="如：资深玩家" />
     <Label for="forum_flair_color_hex">头衔颜色（Hex，可选）</Label>
     <input id="forum_flair_color_hex" v-model="bioForm.user.forum_flair_color_hex" class="h-9 w-full rounded-md border px-2 text-sm" placeholder="#6366f1" />
     <div class="flex gap-2">
       <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="editingTitle = false">取消</Button>
+      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">取消</Button>
     </div>
   </form>
 
-  <div v-if="profile.bio && !editingBio" class="mb-6 max-w-xl rounded-lg border p-4 text-sm whitespace-pre-wrap">
+  <div v-if="profile.bio && profileEditPanel !== 'bio'" class="mb-6 max-w-xl rounded-lg border p-4 text-sm whitespace-pre-wrap">
     {{ profile.bio }}
   </div>
 
-  <form v-if="editingBio" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
+  <form v-if="profileEditPanel === 'bio'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
     <Label for="bio">个人简介</Label>
     <Textarea id="bio" v-model="bioForm.user.bio" rows="4" placeholder="介绍一下自己…" />
     <div class="flex gap-2">
       <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="editingBio = false">取消</Button>
+      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">取消</Button>
     </div>
   </form>
 
-  <div v-if="profile.forum_signature && !editingSignature" class="mb-6 max-w-xl rounded-lg border p-4 text-sm whitespace-pre-wrap text-muted-foreground">
+  <div v-if="profile.forum_signature && profileEditPanel !== 'signature'" class="mb-6 max-w-xl rounded-lg border p-4 text-sm whitespace-pre-wrap text-muted-foreground">
     签名：{{ profile.forum_signature }}
   </div>
 
-  <form v-if="editingSignature" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
+  <form v-if="profileEditPanel === 'signature'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
     <Label for="forum_signature">帖子签名（支持 Markdown）</Label>
     <Textarea id="forum_signature" v-model="bioForm.user.forum_signature" rows="3" placeholder="显示在帖子底部的签名…" />
     <div class="flex gap-2">
       <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="editingSignature = false">取消</Button>
+      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">取消</Button>
     </div>
   </form>
 

@@ -85,8 +85,9 @@ class ApplicationController < ActionController::Base
       nil
     end
 
-    share.merge(share_active_template)
+    share = share.merge(share_active_template)
     share[:csrf_token] = form_authenticity_token
+    share
   end
 
   def safe_local_path(path)

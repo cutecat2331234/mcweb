@@ -16,7 +16,7 @@ module Frontend
 
       expires_in 1.year, public: true
       fresh_when etag: template.checksum, last_modified: template.updated_at, public: true
-      send_file file, disposition: "inline", type: mime_type_for(ext)
+      send_data File.binread(file), disposition: "inline", type: mime_type_for(ext), filename: file.basename.to_s
     end
 
     private

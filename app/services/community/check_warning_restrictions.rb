@@ -24,10 +24,10 @@ module Community
 
     def threshold_for(action)
       key = case action
-            when :post then "forum.warning_block_post_threshold"
-            when :link then "forum.warning_block_links_threshold"
-            when :pm then "forum.warning_block_pm_threshold"
-            end
+      when :post then "forum.warning_block_post_threshold"
+      when :link then "forum.warning_block_links_threshold"
+      when :pm then "forum.warning_block_pm_threshold"
+      end
       SiteSetting.get(key, "0").to_i
     end
 

@@ -42,10 +42,11 @@ end
 class Website::PagePublisherTest < ActiveSupport::TestCase
   test "publishes page and creates revision rollback snapshot" do
     author = create_user
+    slug = "about-#{SecureRandom.hex(4)}"
     page = Website::Page.create!(
-      public_id: "page_pub1",
+      public_id: "page_pub_#{SecureRandom.hex(6)}",
       title: "About",
-      slug: "about",
+      slug: slug,
       page_type: "custom",
       status: "draft"
     )

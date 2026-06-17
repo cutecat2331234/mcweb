@@ -3,7 +3,7 @@
 module Mcweb
   module Paths
     APP_PREFIX = "/app"
-    LEGACY_APP_SCOPES = %w[/forum /store /identity /minecraft /payments].freeze
+    LEGACY_APP_SCOPES = %w[ /forum /store /identity /minecraft /payments ].freeze
 
     module_function
 

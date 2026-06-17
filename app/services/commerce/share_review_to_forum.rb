@@ -17,7 +17,7 @@ module Commerce
 
       topic = topic_result.value
       stars = "★" * @review.rating + "☆" * (5 - @review.rating)
-      body = "#{stars}\n\n#{@review.body.presence || '（无文字评价）'}\n\n/store/products/#{@product.public_id}"
+      body = "#{stars}\n\n#{@review.body.presence || '（无文字评价）'}\n\n#{Mcweb::Paths::APP_PREFIX}/store/products/#{@product.public_id}"
 
       post_result = Community::CreatePost.call(user: @user, topic: topic, body: body, skip_interval_check: true)
       return post_result unless post_result.success?

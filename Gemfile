@@ -12,7 +12,7 @@ gem "jbuilder"
 
 gem "bcrypt", "~> 3.1.7"
 gem "view_component", "~> 4.12"
-gem "pagy", "~> 43.5"
+gem "pagy", "~> 9.3"
 gem "rotp", "~> 6.3"
 gem "rqrcode", "~> 3.2"
 gem "sanitize", "~> 7.0"

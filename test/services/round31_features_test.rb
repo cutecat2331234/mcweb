@@ -73,6 +73,7 @@ class Commerce::ShareReviewToForumTest < ActiveSupport::TestCase
     @review.reload
     assert @review.forum_post_id.present?
     assert_includes @review.forum_post.body, "Great product"
+    assert_includes @review.forum_post.body, "/app/store/products/"
   end
 
   test "cannot share another users review" do

@@ -63,15 +63,19 @@ module Community
       @pagy_assigned, assigned_topics = pagy(preload_topics(assigned_scope), limit: 20, page: [ params[:assigned_page].to_i, 1 ].max)
       trust = Community::TrustLevel.level_info(user)
       progress = Community::TrustLevel.progress_for(user)
-      liked_posts = Community::Post.where(user: user, status: :published)
+      liked_rows = Community::Post.where(user: user, status: :published)
         .joins(:topic)
         .where(forum_topics: { status: :published, unlisted: false })
-        .select("forum_posts.*, COUNT(forum_reactions.id) AS reactions_count")
         .joins(:reactions)
         .group("forum_posts.id")
         .order(Arel.sql("COUNT(forum_reactions.id) DESC"))
         .limit(10)
+        .pluck(Arel.sql("forum_posts.id"), Arel.sql("COUNT(forum_reactions.id)"))
+
+      liked_counts = liked_rows.to_h
+      liked_posts = Community::Post.where(id: liked_counts.keys)
         .includes(:topic)
+        .sort_by { |post| -liked_counts[post.id].to_i }
         .map do |post|
           {
             id: post.id,
@@ -79,7 +83,7 @@ module Community
             floor_number: post.floor_number,
             topic_title: post.topic.title,
             topic_url: forum_topic_path(post.topic),
-            likes_count: post[:reactions_count].to_i
+            likes_count: liked_counts[post.id].to_i
           }
         end
 

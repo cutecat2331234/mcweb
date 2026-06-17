@@ -115,6 +115,37 @@ class Commerce::DebitStoreCreditTest < ActiveSupport::TestCase
   end
 end
 
+class Commerce::BulkUpdateOrdersMarkPaidTest < ActiveSupport::TestCase
+  setup do
+    @admin = create_user
+    @user = create_user
+    @user.update!(store_credit_cents: 100)
+    @order = Commerce::Order.create!(
+      public_id: "ord_bulk_#{SecureRandom.hex(6)}",
+      order_number: "BULK#{SecureRandom.hex(4)}",
+      user: @user,
+      status: "awaiting_payment",
+      subtotal_cents: 1000,
+      total_cents: 700,
+      store_credit_amount_cents: 300,
+      currency: "CNY"
+    )
+  end
+
+  test "bulk mark paid fails when store credit is insufficient" do
+    result = Commerce::BulkUpdateOrders.call(
+      actor: @admin,
+      order_public_ids: [ @order.public_id ],
+      action: "mark_paid"
+    )
+    assert result.success?
+    assert_equal 0, result.value[:processed]
+    assert_equal 1, result.value[:failed]
+    assert_equal "awaiting_payment", @order.reload.status
+    assert_equal 100, @user.reload.store_credit_cents
+  end
+end
+
 class Commerce::CreateFulfillmentTest < ActiveSupport::TestCase
   setup do
     @user = create_user

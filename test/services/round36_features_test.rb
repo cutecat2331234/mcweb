@@ -112,6 +112,13 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
     assert_not result.value.key?(:balance_cents)
   end
 
+  test "preview gift card includes gift wrap in payable amount" do
+    result = Commerce::PreviewGiftCard.call(subtotal_cents: 1000, code: @gift_card.code, gift_wrap_cents: 300)
+    assert result.success?
+    assert_equal 300, result.value[:gift_card_amount_cents]
+    assert_equal 1000, result.value[:total_cents]
+  end
+
   test "create order with gift card reduces total" do
     order = Commerce::CreateOrder.call(cart: @cart, user: @user, gift_card_code: @gift_card.code).value
     assert_equal 300, order.gift_card_amount_cents

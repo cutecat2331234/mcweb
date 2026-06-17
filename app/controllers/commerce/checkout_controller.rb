@@ -174,7 +174,8 @@ module Commerce
         subtotal_cents: subtotal_cents,
         code: params[:code],
         discount_cents: discount_cents,
-        shipping_cents: shipping_cents
+        shipping_cents: shipping_cents,
+        gift_wrap_cents: gift_wrap_cents_for_preview
       )
 
       if result.success?
@@ -219,7 +220,8 @@ module Commerce
           subtotal_cents: subtotal_cents,
           code: params[:gift_card_code],
           discount_cents: discount_cents,
-          shipping_cents: shipping_cents
+          shipping_cents: shipping_cents,
+          gift_wrap_cents: gift_wrap_cents_for_preview
         )
         gift_card_amount_cents = gift_preview.success? ? gift_preview.value[:gift_card_amount_cents] : 0
       end
@@ -229,6 +231,7 @@ module Commerce
         subtotal_cents: subtotal_cents,
         discount_cents: discount_cents,
         shipping_cents: shipping_cents,
+        gift_wrap_cents: gift_wrap_cents_for_preview,
         gift_card_amount_cents: gift_card_amount_cents
       )
 
@@ -311,6 +314,12 @@ module Commerce
 
     def default_provider
       Payments::ProviderConfig.enabled_providers.pick(:provider) || "fake"
+    end
+
+    def gift_wrap_cents_for_preview
+      return 0 unless ActiveModel::Type::Boolean.new.cast(params[:gift_wrap])
+
+      SiteSetting.get("store.gift_wrap_cents", "500").to_i
     end
 
     def shipping_cents_for_preview(subtotal_cents, shipping_method_code: nil)

@@ -86,6 +86,33 @@ class Commerce::GiftWrapTest < ActiveSupport::TestCase
     assert order.gift_wrap?
     assert_equal 300, order.gift_wrap_cents
   end
+
+  test "gift card covers gift wrap fee" do
+    gift_card = Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.alphanumeric(10).upcase}",
+      balance_cents: 1300,
+      initial_balance_cents: 1300,
+      currency: "CNY",
+      active: true,
+      created_by: @user
+    )
+    order = Commerce::Order.create!(
+      public_id: "ord_gw_#{SecureRandom.hex(6)}",
+      order_number: "GW#{SecureRandom.hex(4)}",
+      user: @user,
+      status: "pending",
+      subtotal_cents: 1000,
+      shipping_cents: 0,
+      gift_wrap_cents: 300,
+      total_cents: 1300,
+      currency: "CNY"
+    )
+    result = Commerce::ApplyGiftCard.call(order: order, code: gift_card.code)
+    assert result.success?, result.error
+    order.reload
+    assert_equal 1300, order.gift_card_amount_cents
+    assert_equal 0, order.total_cents
+  end
 end
 
 class Commerce::OrderStaffNoteTest < ActiveSupport::TestCase

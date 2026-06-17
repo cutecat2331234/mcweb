@@ -51,6 +51,12 @@ module Commerce
         order.submit_payment! if order.pending? && order.may_submit_payment?
         return ServiceResult.failure(error: "订单不可标记已支付") unless order.awaiting_payment? && order.may_mark_paid?
 
+        gift_result = Commerce::DebitGiftCard.call(order: order)
+        return gift_result unless gift_result.success?
+
+        credit_result = Commerce::DebitStoreCredit.call(order: order)
+        return credit_result unless credit_result.success?
+
         order.mark_paid!
         result = Commerce::CompleteOrderPayment.call(order: order, from_status: from_status, staff_marked: true)
         return result unless result.success?

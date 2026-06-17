@@ -16,7 +16,7 @@ module Commerce
       reason = card.inapplicable_reason
       return ServiceResult.failure(error: reason) if reason
 
-      payable = [ @order.subtotal_cents - @order.discount_cents + @order.shipping_cents.to_i, 0 ].max
+      payable = [ @order.subtotal_cents - @order.discount_cents + @order.shipping_cents.to_i + @order.gift_wrap_cents.to_i, 0 ].max
       amount = 0
 
       Commerce::Order.transaction do

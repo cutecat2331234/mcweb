@@ -2,11 +2,12 @@
 
 module Commerce
   class PreviewGiftCard < ApplicationService
-    def initialize(subtotal_cents:, code:, discount_cents: 0, shipping_cents: 0)
+    def initialize(subtotal_cents:, code:, discount_cents: 0, shipping_cents: 0, gift_wrap_cents: 0)
       @subtotal_cents = subtotal_cents
       @code = code.to_s.strip.upcase
       @discount_cents = discount_cents
       @shipping_cents = shipping_cents.to_i
+      @gift_wrap_cents = gift_wrap_cents.to_i
     end
 
     def call
@@ -16,7 +17,7 @@ module Commerce
       reason = card.inapplicable_reason
       return ServiceResult.failure(error: reason) if reason
 
-      payable = [ @subtotal_cents - @discount_cents + @shipping_cents, 0 ].max
+      payable = [ @subtotal_cents - @discount_cents + @shipping_cents + @gift_wrap_cents, 0 ].max
       amount = card.applicable_amount_cents(payable)
       return ServiceResult.failure(error: "礼品卡余额不足。") unless amount.positive?
 

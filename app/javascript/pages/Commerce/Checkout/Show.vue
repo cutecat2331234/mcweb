@@ -140,6 +140,16 @@ watch(selectedAddressId, (id) => {
   if (id) applySavedAddress(id)
 })
 
+watch(() => form.checkout.gift_wrap, async () => {
+  if (form.checkout.gift_card_code.trim()) {
+    await previewGiftCard()
+  } else if (form.checkout.coupon_code.trim()) {
+    await previewCoupon()
+  } else {
+    await refreshStoreCredit()
+  }
+})
+
 async function refreshStoreCredit() {
   storeCreditLabel.value = null
   if (!props.previewStoreCreditUrl || !form.checkout.use_store_credit) return
@@ -155,6 +165,7 @@ async function refreshStoreCredit() {
       body: JSON.stringify({
         coupon_code: form.checkout.coupon_code,
         gift_card_code: form.checkout.gift_card_code,
+        gift_wrap: form.checkout.gift_wrap,
       }),
     })
     const data = await response.json()
@@ -186,6 +197,7 @@ async function previewGiftCard() {
       body: JSON.stringify({
         code: form.checkout.gift_card_code,
         coupon_code: form.checkout.coupon_code,
+        gift_wrap: form.checkout.gift_wrap,
       }),
     })
     const data = await response.json()

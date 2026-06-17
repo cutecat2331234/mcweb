@@ -1,0 +1,9 @@
+<h2>邀请你评价已购商品</h2>
+<p>你好 <%= @user.username %>，</p>
+<p>订单 <strong><%= @order.order_number %></strong> 已完成。欢迎为以下商品留下评价，帮助其他买家做出选择。</p>
+<ul>
+  <% @order.items.each do |item| %>
+    <li><%= item.product_name %></li>
+  <% end %>
+</ul>
+<p><a href="<%= @url %>">查看订单并评价</a></p>

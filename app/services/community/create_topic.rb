@@ -82,6 +82,7 @@ module Community
 
       opening_post = topic.posts.first
       Community::ProcessMentions.call(body: @body, author: @user, post: opening_post, topic: topic) if opening_post
+      Community::ProcessHashtags.call(topic: topic, body: @body, user: @user) if opening_post
       Community::NotifySectionTopic.call(topic: topic)
       Community::NotifyFollowedUserTopic.call(topic: topic)
       if @tag_names.present? && topic.tags.any?
@@ -116,8 +117,8 @@ module Community
         return ServiceResult.failure(error: "You are muted in this section.")
       end
 
-      if section_requires_tags? && @tag_names.blank?
-        return ServiceResult.failure(error: required_tags_message)
+      if @section.requires_tags_or_groups? && @tag_names.blank?
+        return ServiceResult.failure(error: @section.tag_requirements_message)
       end
 
       if @section.prefix_required? && @prefix.blank?
@@ -148,20 +149,17 @@ module Community
         return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
       end
 
+      link_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :link)
+      return link_restriction if link_restriction.failure? && Community::TrustLevel.contains_link?(@body)
+
+      post_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :post)
+      return post_restriction if post_restriction.failure?
+
       ServiceResult.success
     end
 
     def muted_in_section?
       Community::Mute.muted?(@user, section: @section)
-    end
-
-    def section_requires_tags?
-      Array(@section.required_tag_ids).map(&:to_i).reject(&:zero?).any?
-    end
-
-    def required_tags_message
-      names = @section.required_tags.pluck(:name).join("、")
-      "此分区要求至少包含以下标签之一：#{names.presence || '指定标签'}"
     end
 
     def duplicate_title?

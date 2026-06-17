@@ -47,6 +47,13 @@ class ApplicationController < ActionController::Base
         count: Community::ReadState.with_unread_for(current_user).count,
         url: forum_unread_path
       }
+      assigned_count = Community::Topic.published_listed.where(assigned_to: current_user).count
+      if assigned_count.positive? || current_user.permission?("forum.topics.lock")
+        share[:forum_assigned] = {
+          count: assigned_count,
+          url: forum_assigned_path
+        }
+      end
       share[:messages_unread] = {
         count: Community::Conversation.for_user(current_user).sum { |c| c.unread_count_for(current_user) },
         url: forum_conversations_path
@@ -54,6 +61,10 @@ class ApplicationController < ActionController::Base
     end
 
     announcements = Community::Topic.global_announcements.order(last_posted_at: :desc).limit(3)
+    if logged_in?
+      dismissed = Array(current_user.dismissed_global_announcement_ids).map(&:to_s)
+      announcements = announcements.reject { |topic| dismissed.include?(topic.public_id) }
+    end
     if announcements.any?
       share[:global_announcements] = announcements.map do |topic|
         {
@@ -65,5 +76,14 @@ class ApplicationController < ActionController::Base
     end
 
     share
+  end
+
+  def safe_local_path(path)
+    value = path.to_s
+    return nil if value.blank?
+    return nil unless value.start_with?("/")
+    return nil if value.start_with?("//")
+
+    value
   end
 end

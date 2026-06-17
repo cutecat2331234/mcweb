@@ -4,10 +4,13 @@ module Community
   class TopicsController < ApplicationController
     include Community::TopicVisibility
     include Community::TopicListPreloadable
+    include Community::SectionTagGroupsSerializable
+    include Community::WarningRestrictionsSerializable
+    include Community::SubscriptionNoticeable
 
-    before_action :require_login, only: %i[new create update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own]
+    before_action :require_login, only: %i[new create update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate bulk_moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close mark_unread staff_note reply_ban reply_unban invite close_own reopen_own]
+    before_action :set_topic, only: %i[show update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
 
     def show
       @topic.record_view!
@@ -20,6 +23,7 @@ module Community
       end
       posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits, :forked_topics, user: { user_badges: :badge })
       posts_scope = filter_blocked_posts(posts_scope)
+      posts_scope = posts_scope.where.not(post_type: "whisper") unless can_moderate_topic?
       posts_scope = case params[:post_sort]
       when "recent" then posts_scope.reorder(floor_number: :desc)
       else posts_scope
@@ -62,6 +66,7 @@ module Community
           viewer: current_user
         ).merge(
           section_prefixes: Array(@topic.section.prefixes),
+          tag_groups: section_tag_groups_for(@topic.section),
           global_announcement: @topic.global_announcement?,
           staff_notes: can_moderate_topic? ? @topic.staff_notes.includes(:author).order(created_at: :desc).map { |note|
             { id: note.id, body: note.body, author: note.author.username, created_at: l(note.created_at, format: :short) }
@@ -71,7 +76,10 @@ module Community
             { username: ban.user.username, reason: ban.reason, expires_at: ban.expires_at ? l(ban.expires_at, format: :short) : nil }
           } : [],
           can_invite: can_invite_topic?,
-          invite_url: can_invite_topic? ? invite_forum_topic_path(@topic) : nil
+          invite_url: can_invite_topic? ? invite_forum_topic_path(@topic) : nil,
+          share_as_pm_url: logged_in? ? share_as_pm_forum_topic_path(@topic) : nil,
+          export_url: can_moderate_topic? ? export_forum_topic_path(@topic, format: :csv) : nil,
+          can_edit_poll: can_edit_topic?
         ),
         posts: posts.map do |post|
           serialize_post(
@@ -91,7 +99,7 @@ module Community
         cannedResponses: can_moderate_topic? ? Community::CannedResponse.ordered.map { |r| { title: r.title, body: r.body } } : [],
         section_read_only: @topic.section.read_only?,
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
-        reactionEmojis: Community::ToggleReaction::ALLOWED_EMOJI,
+        reactionEmojis: Community::ToggleReaction.allowed_emoji,
         sections: can_move_topic? ? movable_sections : [],
         relatedTopics: serialize_topics(@topic.similar_topics),
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
@@ -107,11 +115,10 @@ module Community
         } : nil,
         replyDraft: logged_in? ? Community::ReplyDraft.find_by(user: current_user, topic: @topic)&.body : nil,
         replyDraftUrl: logged_in? ? forum_topic_reply_draft_path(@topic) : nil,
-        meta: {
-          title: @topic.title,
-          description: @topic.posts.published.order(:floor_number).first&.body&.truncate(160),
-          noindex: @topic.unlisted?
-        }
+        warningRestrictions: warning_restrictions_props,
+        subscriptionLevels: Community::SubscriptionLevelOptions.for(:topic),
+        subscriptionUrl: logged_in? ? subscription_forum_topic_path(@topic) : nil,
+        meta: topic_meta_props(@topic)
       }
     end
 
@@ -121,8 +128,16 @@ module Community
       end
 
       render inertia: "Community/Topics/New", props: {
-        section: section_props
+        section: section_props,
+        similarTitlesUrl: similar_titles_forum_topics_path(section_id: @section.slug),
+        warningRestrictions: warning_restrictions_props
       }
+    end
+
+    def similar_titles
+      section = Community::Section.find_by!(slug: params[:section_id])
+      result = Community::FindSimilarTitles.call(section: section, title: params[:title])
+      render json: { titles: result.value[:titles] }
     end
 
     def create
@@ -190,7 +205,8 @@ module Community
         topic: @topic,
         title: topic_params[:title],
         tag_names: topic_params[:tags],
-        prefix: topic_params[:prefix]
+        prefix: topic_params[:prefix],
+        poll_params: poll_edit_params
       )
 
       if result.success?
@@ -204,17 +220,25 @@ module Community
       result = Community::ToggleSubscription.call(user: current_user, topic: @topic)
 
       if result.success?
-        notice = if result.value[:watching]
-                   case result.value[:notification_level]
-                   when "tracking" then "已切换为跟踪（仅站内通知）。"
-                   else "已关注此主题（即时通知）。"
-                   end
-        else
-                   "已取消关注。"
-        end
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :topic)
         redirect_to forum_topic_path(@topic), notice: notice
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def update_subscription
+      result = Community::SetSubscriptionLevel.call(
+        user: current_user,
+        subscribable: @topic,
+        level: params[:level]
+      )
+
+      if result.success?
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :topic)
+        redirect_to forum_topic_path(@topic), notice: notice
+      else
+        redirect_to forum_topic_path(@topic), alert: result.error || "更新失败"
       end
     end
 
@@ -243,11 +267,58 @@ module Community
         user: current_user,
         topic: @topic,
         action: params[:action_type],
-        lock_reason: params[:lock_reason]
+        lock_reason: params[:lock_reason],
+        assignee_username: params[:assignee_username]
       )
 
       if result.success?
         redirect_to forum_topic_path(@topic), notice: "主题已更新。"
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def bulk_moderate
+      unless current_user.permission?("forum.topics.lock")
+        return redirect_back fallback_location: forum_latest_path, alert: "无权执行批量版主操作。"
+      end
+
+      result = Community::BulkModerateTopics.call(
+        user: current_user,
+        topic_public_ids: params[:topic_ids],
+        action: params[:action_type],
+        lock_reason: params[:lock_reason]
+      )
+
+      if result.success?
+        notice = "已处理 #{result.value[:moderated]} 个主题"
+        notice += "，#{result.value[:failed]} 个失败" if result.value[:failed].positive?
+        redirect_to bulk_moderate_destination, notice: notice
+      else
+        redirect_to bulk_moderate_destination, alert: result.error || "操作失败"
+      end
+    end
+
+    def export
+      unless can_moderate_topic?
+        return redirect_to forum_topic_path(@topic), alert: "无权导出此主题。"
+      end
+
+      result = Community::ExportTopicPosts.call(topic: @topic)
+      send_data result.value[:csv], filename: "topic-#{@topic.public_id}.csv", type: "text/csv", disposition: "attachment"
+    end
+
+    def share_as_pm
+      result = Community::ShareTopicAsConversation.call(
+        sender: current_user,
+        topic: @topic,
+        recipient_username: params[:recipient_username],
+        message: params[:message]
+      )
+
+      if result.success?
+        conversation = result.value[:conversation]
+        redirect_to forum_conversation_path(conversation), notice: "主题已通过私信分享。"
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -360,6 +431,36 @@ module Community
       redirect_to forum_topic_path(@topic), alert: "无效的关闭时间。"
     end
 
+    def update_auto_open
+      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+
+      at = params[:auto_open_at].present? ? Time.zone.parse(params[:auto_open_at].to_s) : nil
+      @topic.update!(auto_open_at: at)
+      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动重新开放。" : "自动开放已取消。"
+    rescue ArgumentError
+      redirect_to forum_topic_path(@topic), alert: "无效的开放时间。"
+    end
+
+    def update_auto_bump
+      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+
+      at = params[:auto_bump_at].present? ? Time.zone.parse(params[:auto_bump_at].to_s) : nil
+      @topic.update!(auto_bump_at: at)
+      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动提升。" : "自动提升已取消。"
+    rescue ArgumentError
+      redirect_to forum_topic_path(@topic), alert: "无效的提升时间。"
+    end
+
+    def update_auto_archive
+      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+
+      at = params[:auto_archive_at].present? ? Time.zone.parse(params[:auto_archive_at].to_s) : nil
+      @topic.update!(auto_archive_at: at)
+      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动归档。" : "自动归档已取消。"
+    rescue ArgumentError
+      redirect_to forum_topic_path(@topic), alert: "无效的归档时间。"
+    end
+
     def mark_unread
       result = Community::MarkTopicUnread.call(user: current_user, topic: @topic)
 
@@ -439,7 +540,25 @@ module Community
     end
 
     def topic_params
-      params.require(:topic).permit(:title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days, :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :poll_anonymous, :scheduled_at)
+      params.require(:topic).permit(
+        :title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days,
+        :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :poll_anonymous,
+        :scheduled_at, :remove_poll
+      )
+    end
+
+    def poll_edit_params
+      return nil unless params[:topic].key?(:poll_question) || params[:topic].key?(:poll_options) || params[:topic][:remove_poll].present?
+
+      {
+        poll_question: topic_params[:poll_question],
+        poll_options: parse_poll_options(topic_params[:poll_options]),
+        poll_closes_days: topic_params[:poll_closes_days],
+        poll_multiple_choice: topic_params[:poll_multiple_choice],
+        poll_max_choices: topic_params[:poll_max_choices],
+        poll_hide_results_until_vote: topic_params[:poll_hide_results_until_vote],
+        remove_poll: topic_params[:remove_poll]
+      }
     end
 
     def section_props
@@ -451,7 +570,10 @@ module Community
         prefix_required: @section.prefix_required?,
         topic_template: @section.topic_template,
         required_tags: @section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
-        allowed_tags: @section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } }
+        required_tag_groups: @section.required_tag_groups.map { |g| { name: g.name, slug: g.slug } },
+        tag_groups: section_tag_groups_for(@section),
+        allowed_tags: @section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
+        default_tags: @section.default_tags.map { |tag| tag.name }
       }
     end
 
@@ -515,7 +637,7 @@ module Community
     def mark_topic_notifications_read!
       return unless logged_in?
 
-      types = %w[forum.topic_reply forum.mention forum.section_topic forum.reaction forum.tag_topic forum.followed_topic forum.quote forum.topic_solved]
+      types = %w[forum.topic_reply forum.mention forum.section_topic forum.reaction forum.tag_topic forum.followed_topic forum.followed_reply forum.quote forum.topic_solved]
       current_user.notifications.unread.where(notification_type: types).find_each do |notification|
         topic_id = notification.metadata["topic_id"]
         notification.mark_read! if topic_id == @topic.public_id
@@ -563,6 +685,37 @@ module Community
       return 1 unless post
 
       Community::ReadState.page_for_floor(post.floor_number, per_page: per_page)
+    end
+
+    def topic_meta_props(topic)
+      first_post = topic.posts.first
+      description = first_post&.body&.truncate(160)
+      image = first_post&.body.to_s[/!\[[^\]]*\]\(([^)]+)\)/, 1]
+      meta = {
+        title: topic.title,
+        description: description,
+        noindex: topic.unlisted?,
+        url: "#{request.base_url}#{forum_topic_path(topic)}",
+        image: image.presence
+      }
+
+      if (poll = topic.poll)
+        meta[:title] = "#{topic.title} — 投票"
+        meta[:description] = "投票：#{poll.question}"
+        meta[:url] = "#{request.base_url}#{forum_topic_path(topic)}#poll"
+        meta[:poll_question] = poll.question
+        meta[:twitter_card] = "summary"
+        meta[:twitter_title] = meta[:title]
+        meta[:twitter_description] = meta[:description]
+        meta[:og_locale] = "zh_CN"
+        meta[:og_site_name] = "Mcweb"
+      end
+
+      meta
+    end
+
+    def bulk_moderate_destination
+      safe_local_path(params[:return_to]) || safe_local_path(request.referer) || forum_latest_path
     end
   end
 end

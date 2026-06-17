@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { Head } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -7,6 +9,8 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import Button from '@/components/ui/Button.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Badge from '@/components/ui/Badge.vue'
+import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
+import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -24,7 +28,7 @@ const props = defineProps<{
     link_url?: string | null
     link_label?: string | null
     read_only?: boolean
-    notification_level?: 'watching' | 'tracking' | null
+    notification_level?: 'watching' | 'tracking' | 'normal' | null
     new_topic_url: string | null
     watching: boolean
     muted?: boolean
@@ -42,7 +46,12 @@ const props = defineProps<{
   sort: string
   filter: string
   filterOptions: Array<{ value: string; label: string }>
+  activeFilters?: Array<{ param: string; label: string; value?: string }>
   canCreateTopic: boolean
+  canBulkModerate?: boolean
+  bulkModerateUrl?: string | null
+  subscriptionLevels?: SubscriptionLevelOption[]
+  meta?: { title: string; description?: string | null }
 }>()
 
 const sortOptions = [
@@ -61,15 +70,13 @@ function changeFilter(value: string) {
   router.get(routes.forumSection(props.section.slug), { sort: props.sort, filter: value || undefined }, { preserveState: true })
 }
 
-function sectionWatchLabel() {
-  if (!props.section.watching) return '关注分区'
-  if (props.section.notification_level === 'tracking') return '跟踪中（点击取消）'
-  return '关注中（点击改为跟踪）'
+function removeFilter(chip: { param: string }) {
+  router.get(routes.forumSection(props.section.slug), {
+    sort: chip.param === 'sort' ? undefined : (props.sort === 'activity' ? undefined : props.sort),
+    filter: chip.param === 'filter' ? undefined : (props.filter || undefined),
+  }, { preserveState: true })
 }
 
-function toggleWatch() {
-  router.post(props.section.subscription_url, {}, { preserveScroll: true })
-}
 function toggleMute() {
   if (!props.section.mute_url) return
   router.post(props.section.mute_url, {}, { preserveScroll: true })
@@ -78,9 +85,28 @@ function markAllRead() {
   if (!props.section.mark_all_read_url) return
   router.patch(props.section.mark_all_read_url)
 }
+
+const selectedIds = ref<string[]>([])
+
+function bulkModerate(action: string) {
+  if (!props.bulkModerateUrl || selectedIds.value.length === 0) return
+  router.patch(props.bulkModerateUrl, {
+    topic_ids: selectedIds.value,
+    action_type: action,
+    return_to: window.location.pathname + window.location.search,
+  }, {
+    onSuccess: () => { selectedIds.value = [] },
+  })
+}
 </script>
 
 <template>
+  <Head v-if="meta">
+    <title>{{ meta.title }}</title>
+    <meta v-if="meta.description" name="description" :content="meta.description" />
+    <meta property="og:title" :content="meta.title" />
+    <meta v-if="meta.description" property="og:description" :content="meta.description" />
+  </Head>
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '论坛', href: routes.forum },
@@ -99,15 +125,24 @@ function markAllRead() {
       :subtitle="section.description || undefined"
     />
     <div class="flex flex-wrap gap-2">
-      <Button type="button" variant="outline" size="sm" @click="toggleWatch">
-        {{ sectionWatchLabel() }}
-      </Button>
+      <SubscriptionLevelSelect
+        v-if="subscriptionLevels?.length"
+        :options="subscriptionLevels"
+        :subscription-url="section.subscription_url"
+        :watching="section.watching"
+        :notification-level="section.notification_level"
+      />
       <Button v-if="section.mute_url" type="button" variant="outline" size="sm" @click="toggleMute">
         {{ section.muted ? '取消静音分区' : '静音分区' }}
       </Button>
       <Button v-if="section.mark_all_read_url" type="button" variant="outline" size="sm" @click="markAllRead">
         全部标为已读
       </Button>
+      <BulkModerateToolbar
+        v-if="canBulkModerate && bulkModerateUrl"
+        :count="selectedIds.length"
+        @moderate="bulkModerate"
+      />
       <Button v-if="canCreateTopic && section.new_topic_url" as-child>
         <Link :href="section.new_topic_url">新建主题</Link>
       </Button>
@@ -170,6 +205,18 @@ function markAllRead() {
     </div>
   </div>
 
+  <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span
+      v-for="chip in activeFilters"
+      :key="`${chip.param}-${chip.value || chip.label}`"
+      class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
+    >
+      {{ chip.label }}
+      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(chip)">×</button>
+    </span>
+  </div>
+
   <div v-if="featuredTopics.length" class="mb-6">
     <h2 class="mb-2 text-sm font-semibold">精选主题</h2>
     <div class="space-y-2 rounded-lg border p-3">
@@ -180,7 +227,14 @@ function markAllRead() {
     </div>
   </div>
 
-  <TopicListTable :topics="topics" show-views show-participants />
+  <TopicListTable
+    :topics="topics"
+    show-views
+    show-participants
+    :selectable="!!(canBulkModerate && bulkModerateUrl)"
+    :selected-ids="selectedIds"
+    @update:selected-ids="selectedIds = $event"
+  />
 
   <Pagination :pagination="pagination" :base-path="routes.forumSection(section.slug)" />
 </template>

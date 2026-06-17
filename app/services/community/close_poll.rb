@@ -16,6 +16,12 @@ module Community
       return ServiceResult.failure(error: "Poll is already closed.") unless @poll.open?
 
       @poll.update!(closes_at: Time.current)
+      Community::FinalizePollClosed.call(
+        poll: @poll,
+        actor: @user,
+        body: "#{@user.username} 关闭了投票「#{@poll.question}」。"
+      )
+
       ServiceResult.success(@poll)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

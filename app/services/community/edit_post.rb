@@ -30,6 +30,13 @@ module Community
       return ServiceResult.failure(error: "Post body is too short.") if @body.length < CreatePost::MIN_BODY_LENGTH
       return ServiceResult.failure(error: "You cannot edit this post.") unless can_edit?
 
+      if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@user)
+        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+      end
+
+      link_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :link)
+      return link_restriction if link_restriction.failure? && Community::TrustLevel.contains_link?(@body)
+
       filter_censored_body!
       @post.edit_body!(@body, editor: @user, reason: @reason)
       Community::ProcessNewMentions.call(
@@ -39,6 +46,7 @@ module Community
         post: @post,
         topic: @post.topic
       )
+      Community::ProcessHashtags.call(topic: @post.topic, body: @body, user: @user)
       Community::NotifyPostEdited.call(post: @post) if @old_body != @body
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e

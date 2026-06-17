@@ -2,6 +2,9 @@
 
 module Community
   class DraftsController < ApplicationController
+    include Community::SectionTagGroupsSerializable
+    include Community::WarningRestrictionsSerializable
+
     before_action :require_login
 
     def index
@@ -44,7 +47,8 @@ module Community
           section: {
             name: draft.section.name,
             slug: draft.section.slug,
-            prefixes: Array(draft.section.prefixes)
+            prefixes: Array(draft.section.prefixes),
+            tag_groups: section_tag_groups_for(draft.section)
           },
           poll: poll ? {
             question: poll.question,
@@ -54,7 +58,8 @@ module Community
             max_choices: poll.max_choices,
             hide_results_until_vote: poll.hide_results_until_vote
           } : nil
-        }
+        },
+        warningRestrictions: warning_restrictions_props
       }
     end
 

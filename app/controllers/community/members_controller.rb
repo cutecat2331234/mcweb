@@ -10,7 +10,9 @@ module Community
       end
 
       sort = params[:sort].to_s.presence || "active"
+      trust_level = params[:trust_level].to_s.presence
       scope = apply_member_sort(scope, sort)
+      scope = apply_trust_level_filter(scope, trust_level) if trust_level.present?
 
       @pagy, members = pagy(scope, limit: 30)
       stats = member_stats(members)
@@ -19,7 +21,8 @@ module Community
         members: members.map { |user| serialize_member(user, stats: stats) },
         pagination: pagy_props(@pagy),
         query: params[:q].to_s,
-        sort: sort
+        sort: sort,
+        trustLevel: trust_level.to_s
       }
     end
 
@@ -52,6 +55,22 @@ module Community
       end
     end
 
+    def apply_trust_level_filter(scope, trust_level)
+      level = trust_level.to_i
+      return scope unless level.between?(0, 4)
+
+      thresholds = Community::TrustLevel::LEVELS
+      min_posts = thresholds.find { |entry| entry[:level] == level }&.dig(:min_posts) || 0
+      next_entry = thresholds.find { |entry| entry[:level] == level + 1 }
+      max_posts = next_entry&.dig(:min_posts)
+      posts_sql = "(SELECT COUNT(*) FROM forum_posts WHERE forum_posts.user_id = users.id AND forum_posts.status = 'published')"
+
+      auto_scope = scope.where(forum_trust_level_override: nil).where("#{posts_sql} >= ?", min_posts)
+      auto_scope = auto_scope.where("#{posts_sql} < ?", max_posts) if max_posts
+
+      scope.where(forum_trust_level_override: level).or(auto_scope)
+    end
+
     def member_stats(members)
       ids = members.map(&:id)
       {
@@ -63,7 +82,8 @@ module Community
     end
 
     def serialize_member(user, stats:)
-      trust = Community::TrustLevel.level_info(user)
+      level = Community::TrustLevel.level_for(user)
+      trust = Community::TrustLevel::LEVELS.find { |entry| entry[:level] == level } || Community::TrustLevel::LEVELS.first
       {
         username: user.username,
         display_name: user.display_name,

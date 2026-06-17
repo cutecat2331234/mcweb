@@ -1,0 +1,11 @@
+<h2>订单已发货</h2>
+<p>您好 <%= @order.user.username %>，</p>
+<p>订单 <strong><%= @order.order_number %></strong> 已发货。</p>
+<% if @order.tracking_number.present? %>
+  <p>承运商：<strong><%= @order.shipping_carrier.presence || "快递" %></strong></p>
+  <p>物流单号：<strong><%= @order.tracking_number %></strong></p>
+  <% if @tracking_url.present? %>
+    <p><a href="<%= @tracking_url %>">点击查询物流</a></p>
+  <% end %>
+<% end %>
+<%= render partial: "commerce/order_mailer/order_details", locals: { order: @order } %>

@@ -1,6 +1,6 @@
 module Community
   class Subscription < ApplicationRecord
-    NOTIFICATION_LEVELS = %w[watching tracking].freeze
+    NOTIFICATION_LEVELS = %w[watching tracking normal].freeze
 
     belongs_to :user
     belongs_to :subscribable, polymorphic: true
@@ -10,7 +10,7 @@ module Community
 
     def self.subscribe!(user, subscribable, level: "watching")
       record = find_or_initialize_by(user: user, subscribable: subscribable)
-      record.notification_level = level if record.new_record? || record.notification_level.blank?
+      record.notification_level = level
       record.save!
       record
     end

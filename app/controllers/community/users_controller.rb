@@ -14,10 +14,12 @@ module Community
         {
           name: ub.badge.name,
           icon: ub.badge.icon,
-          color: ub.badge.color
+          color: ub.badge.color,
+          granted_at: l(ub.granted_at, format: :short)
         }
       end
       likes_received = Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count
+      following = logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user)
 
       render json: {
         username: user.username,
@@ -33,13 +35,15 @@ module Community
         last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
         online: user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago,
         badges: badges,
-        message_url: (logged_in? && current_user.id != user.id && Community::TrustLevel.can_send_pm?(current_user)) ? new_forum_conversation_path(to: user.username) : nil
+        message_url: (logged_in? && current_user.id != user.id && Community::TrustLevel.can_send_pm?(current_user)) ? new_forum_conversation_path(to: user.username) : nil,
+        follow_url: (logged_in? && current_user.id != user.id) ? forum_user_follow_path(user.username) : nil,
+        following: following
       }
     end
 
     def show
       user = User.find_by!(username: params[:id])
-      tab = params[:tab].to_s.in?(%w[topics posts store]) ? params[:tab] : "topics"
+      tab = params[:tab].to_s.in?(%w[topics posts store assigned]) ? params[:tab] : "topics"
       topics_scope = if logged_in? && (current_user.id == user.id || current_user.permission?("forum.topics.lock"))
                        Community::Topic.where(user: user, status: :published)
       else
@@ -55,6 +59,8 @@ module Community
       posts_count = posts_scope.count
       @pagy_topics, topics = pagy(preload_topics(topics_scope), limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
       @pagy_posts, posts = pagy(posts_scope, limit: 20, page: [ params[:posts_page].to_i, 1 ].max)
+      assigned_scope = Community::Topic.published_listed.where(assigned_to: user).order(last_posted_at: :desc)
+      @pagy_assigned, assigned_topics = pagy(preload_topics(assigned_scope), limit: 20, page: [ params[:assigned_page].to_i, 1 ].max)
       trust = Community::TrustLevel.level_info(user)
       progress = Community::TrustLevel.progress_for(user)
       liked_posts = Community::Post.where(user: user, status: :published)
@@ -108,6 +114,7 @@ module Community
           username: user.username,
           display_name: user.display_name,
           forum_title: user.forum_title,
+          forum_flair_color_hex: user.forum_flair_color_hex,
           avatar_url: user.avatar_url,
           bio: user.bio,
           trust_level: trust[:level],
@@ -120,6 +127,7 @@ module Community
           topics_count: topics_scope.count,
           posts_count: posts_count,
           orders_count: orders_count,
+          assigned_count: assigned_scope.count,
           followers_count: Community::UserFollow.where(followed: user).count,
           followers_url: forum_user_followers_path(user.username),
           profile_url: forum_user_path(user.username),
@@ -134,7 +142,9 @@ module Community
           is_following: logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user),
           follow_url: logged_in? && current_user.id != user.id ? forum_user_follow_path(user.username) : nil,
           trust_progress: progress,
-          warning_points: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? Community::UserWarning.total_points_for(user) : nil
+          warning_points: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? Community::UserWarning.total_points_for(user) : nil,
+          store_credit_label: (logged_in? && current_user.id == user.id && user.store_credit_cents.to_i.positive?) ? format_money(user.store_credit_cents.to_i, "CNY") : nil,
+          store_wallet_url: (logged_in? && current_user.id == user.id) ? store_wallet_path : nil
         },
         warnings: (logged_in? && (current_user.id == user.id || current_user.permission?("forum.users.warn") || current_user.permission?("admin.access"))) ? user.forum_warnings.recent.limit(10).map do |warning|
           {
@@ -147,13 +157,18 @@ module Community
         badges: user.user_badges.includes(:badge).order(granted_at: :desc).map do |ub|
           {
             name: ub.badge.name,
+            slug: ub.badge.slug,
             icon: ub.badge.icon,
             description: ub.badge.description,
-            color: ub.badge.color
+            color: ub.badge.color,
+            granted_at: l(ub.granted_at, format: :short),
+            url: forum_badge_path(ub.badge.slug)
           }
         end,
         topics: serialize_topics(topics),
         topicsPagination: pagy_props(@pagy_topics),
+        assigned_topics: serialize_topics(assigned_topics),
+        assignedPagination: pagy_props(@pagy_assigned),
         recent_posts: posts.map do |post|
           {
             id: post.id,
@@ -188,7 +203,7 @@ module Community
     private
 
     def user_params
-      params.require(:user).permit(:bio, :forum_title, :forum_signature)
+      params.require(:user).permit(:bio, :forum_title, :forum_signature, :forum_flair_color_hex)
     end
 
     def attach_forum_avatar!(user)

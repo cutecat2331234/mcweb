@@ -39,7 +39,36 @@ module Commerce
       ((compare_at_price_cents - price_cents).to_f / compare_at_price_cents * 100).round
     end
 
-    scope :available, -> { where(status: :active) }
+    scope :available, -> {
+      now = Time.current
+      where(status: :active)
+        .where("available_at IS NULL OR available_at <= ?", now)
+        .where("unavailable_at IS NULL OR unavailable_at > ?", now)
+    }
+
+    scope :upcoming, -> {
+      where(status: :active)
+        .where("available_at IS NOT NULL AND available_at > ?", Time.current)
+        .order(:available_at)
+    }
+
+    def coming_soon?
+      available_at.present? && available_at > Time.current
+    end
+
+    def available?
+      return false unless active?
+
+      now = Time.current
+      (available_at.nil? || available_at <= now) &&
+        (unavailable_at.nil? || unavailable_at > now)
+    end
+
+    def coming_soon_label
+      return nil unless coming_soon?
+
+      "将于 #{I18n.l(available_at, format: :short)} 上架"
+    end
 
     scope :with_stock, -> {
       where(

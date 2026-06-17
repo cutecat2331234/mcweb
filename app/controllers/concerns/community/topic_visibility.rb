@@ -7,7 +7,22 @@ module Community
     private
 
     def topic_visible?(topic, user: current_user)
-      PollParticipation.visible?(topic: topic, user: user)
+      return false unless PollParticipation.visible?(topic: topic, user: user)
+
+      if topic.archived_at.present?
+        return false unless user.present? && (topic.user_id == user.id || user.permission?("forum.topics.lock"))
+      end
+
+      case topic.status
+      when "published"
+        true
+      when "draft"
+        user.present? && topic.user_id == user.id
+      when "hidden"
+        user.present? && (topic.user_id == user.id || user.permission?("forum.topics.lock"))
+      else
+        false
+      end
     end
 
     def ensure_topic_visible!(topic)

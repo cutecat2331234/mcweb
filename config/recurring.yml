@@ -17,6 +17,10 @@ production:
     class: Commerce::ExpirePendingOrdersJob
     queue: maintenance
     schedule: every 15 minutes
+  pending_order_payment_reminders:
+    class: Commerce::PendingOrderPaymentReminderJob
+    queue: mailers
+    schedule: every 15 minutes
   abandoned_cart_reminders:
     class: Commerce::AbandonedCartReminderJob
     queue: mailers
@@ -24,13 +28,29 @@ production:
   forum_digest:
     class: Community::ForumDigestJob
     queue: mailers
-    schedule: at 8am every day
+    schedule: every hour at minute 10
+  saved_search_digest:
+    class: Community::SavedSearchDigestJob
+    queue: mailers
+    schedule: every hour at minute 5
   publish_scheduled_topics:
     class: Community::PublishScheduledTopicsJob
     queue: default
     schedule: every 5 minutes
   close_scheduled_topics:
     class: Community::CloseScheduledTopicsJob
+    queue: default
+    schedule: every 5 minutes
+  open_scheduled_topics:
+    class: Community::OpenScheduledTopicsJob
+    queue: default
+    schedule: every 5 minutes
+  bump_scheduled_topics:
+    class: Community::BumpScheduledTopicsJob
+    queue: default
+    schedule: every 5 minutes
+  archive_scheduled_topics:
+    class: Community::ArchiveScheduledTopicsJob
     queue: default
     schedule: every 5 minutes
   bookmark_reminders:
@@ -49,3 +69,19 @@ production:
     class: Commerce::GiftCardExpiryReminderJob
     queue: mailers
     schedule: at 9am every day
+  activate_scheduled_products:
+    class: Commerce::ActivateScheduledProductsJob
+    queue: maintenance
+    schedule: every 5 minutes
+  retry_failed_saved_search_webhooks:
+    class: Community::RetryFailedSavedSearchWebhooksJob
+    queue: maintenance
+    schedule: every 15 minutes
+  retry_failed_order_webhooks:
+    class: Commerce::RetryFailedOrderWebhooksJob
+    queue: maintenance
+    schedule: every 15 minutes
+  webhook_failure_alert:
+    class: WebhookFailureAlertJob
+    queue: mailers
+    schedule: every hour at minute 45

@@ -4,6 +4,12 @@ module Community
   class ProcessMentions < ApplicationService
     MENTION_PATTERN = /@([a-zA-Z0-9_]{3,32})/
 
+    GROUP_MENTION_METHODS = {
+      "staff" => :staff_users,
+      "moderators" => :staff_users,
+      "here" => :topic_participants
+    }.freeze
+
     def initialize(body:, author:, post:, topic:)
       @body = body.to_s
       @author = author
@@ -12,40 +18,76 @@ module Community
     end
 
     def call
-      usernames = @body.scan(MENTION_PATTERN).flatten.uniq
-      return ServiceResult.success(mentioned: []) if usernames.empty?
+      tokens = @body.scan(MENTION_PATTERN).flatten.uniq
+      return ServiceResult.success(mentioned: []) if tokens.empty?
 
-      users = User.where(username: usernames).where.not(id: @author.id)
-      users.find_each do |user|
-        next unless mention_visible_to?(user)
-        next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.mention")
-
-        Notification.notify!(
-          user: user,
-          notification_type: "forum.mention",
-          title: "#{@author.username} 在主题中提到了你",
-          body: @body.truncate(120),
-          metadata: {
-            topic_id: @topic.public_id,
-            post_id: @post.id,
-            path: "/forum/topics/#{@topic.public_id}#post-#{@post.id}"
-          }
-        )
-
-        if NotificationPreference.enabled?(user, channel: "email", notification_type: "forum.mention")
-          MailDeliveryJob.perform_later(
-            "Community::ForumMailer",
-            "mention",
-            "deliver_now",
-            args: [ user.id, @topic.public_id, @post.id ]
-          )
+      mentioned_users = []
+      group_tokens = []
+      tokens.each do |token|
+        method = GROUP_MENTION_METHODS[token.downcase]
+        if method
+          group_tokens << token.downcase
+          mentioned_users.concat(send(method).to_a)
+        else
+          user = User.find_by(username: token)
+          mentioned_users << user if user && user.id != @author.id
         end
       end
 
-      ServiceResult.success(mentioned: users.pluck(:username))
+      mentioned_users.uniq.each do |user|
+        next unless mention_visible_to?(user)
+        notify_user!(user, group_mention: group_tokens.include?("here"))
+      end
+
+      ServiceResult.success(mentioned: mentioned_users.map(&:username).uniq)
     end
 
     private
+
+    def self.staff_users
+      User.joins(roles: :permissions)
+        .where(permissions: { key: "forum.topics.lock" })
+        .distinct
+    end
+
+    def staff_users
+      self.class.staff_users
+    end
+
+    def topic_participants
+      user_ids = @topic.posts.where(status: :published).distinct.pluck(:user_id)
+      user_ids << @topic.user_id
+      User.where(id: user_ids.uniq).where.not(id: @author.id)
+    end
+
+    def notify_user!(user, group_mention: false)
+      notification_type = group_mention ? "forum.here" : "forum.mention"
+      return unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: notification_type)
+
+      title = group_mention ? "#{@author.username} 在主题中 @here 提及了你" : "#{@author.username} 在主题中提到了你"
+
+      Notification.notify!(
+        user: user,
+        notification_type: notification_type,
+        title: title,
+        body: @body.truncate(120),
+        metadata: {
+          topic_id: @topic.public_id,
+          post_id: @post.id,
+          path: Community::PostPermalink.path(@topic, @post)
+        }
+      )
+
+      if Community::InstantEmailDelivery.allowed?(user, notification_type: notification_type)
+        mailer_action = group_mention ? "here" : "mention"
+        MailDeliveryJob.perform_later(
+          "Community::ForumMailer",
+          mailer_action,
+          "deliver_now",
+          args: [ user.id, @topic.public_id, @post.id ]
+        )
+      end
+    end
 
     def mention_visible_to?(user)
       return false unless PollParticipation.visible?(topic: @topic, user: user)

@@ -4,6 +4,7 @@ module Community
   class SectionsController < ApplicationController
     include Community::TopicFilterable
     include Community::TopicListPreloadable
+    include Community::SubscriptionNoticeable
 
     def index
       @pagy, sections = pagy(Community::Section.roots.ordered.includes(:category, :children), limit: 20)
@@ -26,7 +27,9 @@ module Community
             name: category.name,
             description: category.description,
             icon: category.icon,
-            color_hex: category.color_hex
+            color_hex: category.color_hex,
+            seo_title: category.seo["title"],
+            seo_description: category.seo["description"]
           }
         end,
         pagination: pagy_props(@pagy)
@@ -76,6 +79,7 @@ module Community
           mark_all_read_url: logged_in? ? mark_all_read_forum_section_path(section) : nil,
           rss_url: forum_section_rss_path(section),
           required_tags: section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
+          required_tag_groups: section.required_tag_groups.map { |g| { name: g.name, slug: g.slug } },
           allowed_tags: section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
           prefix_required: section.prefix_required?
         },
@@ -85,7 +89,15 @@ module Community
         sort: sort,
         filter: filter.to_s,
         filterOptions: topic_filter_options(prefixes: Array(section.prefixes), staff: staff),
-        canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic)
+        activeFilters: section_active_filters(sort: sort, filter: filter, prefixes: Array(section.prefixes), staff: staff),
+        canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic),
+        canBulkModerate: logged_in? && current_user.permission?("forum.topics.lock"),
+        bulkModerateUrl: logged_in? && current_user.permission?("forum.topics.lock") ? bulk_moderate_forum_topics_path : nil,
+        subscriptionLevels: Community::SubscriptionLevelOptions.for(:section),
+        meta: {
+          title: section.seo["title"].presence || section.name,
+          description: section.seo["description"].presence || section.description&.truncate(160)
+        }
       }
     end
 
@@ -95,17 +107,27 @@ module Community
       result = Community::ToggleSectionSubscription.call(user: current_user, section: section)
 
       if result.success?
-        notice = if result.value[:watching]
-                   case result.value[:notification_level]
-                   when "tracking" then "已切换为跟踪此分区（仅站内通知）。"
-                   else "已关注此分区（即时通知）。"
-                   end
-        else
-                   "已取消关注此分区。"
-        end
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :section)
         redirect_to forum_section_path(section), notice: notice
       else
         redirect_to forum_section_path(section), alert: service_error_message(result)
+      end
+    end
+
+    def update_subscription
+      require_login
+      section = Community::Section.find_by!(slug: params[:id])
+      result = Community::SetSubscriptionLevel.call(
+        user: current_user,
+        subscribable: section,
+        level: params[:level]
+      )
+
+      if result.success?
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :section)
+        redirect_to forum_section_path(section), notice: notice
+      else
+        redirect_to forum_section_path(section), alert: result.error || "更新失败"
       end
     end
 
@@ -131,6 +153,13 @@ module Community
       else
         redirect_to forum_section_path(section), alert: service_error_message(result)
       end
+    end
+
+    private
+
+    def section_active_filters(sort:, filter:, prefixes:, staff:)
+      Community::TopicListActiveFilters.call(filter: filter, prefixes: prefixes, staff: staff) +
+        Community::TopicListSortActiveFilters.call(sort: sort, default: "activity")
     end
   end
 end

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -40,6 +40,8 @@ export interface ProductReview {
   share_to_forum_url?: string | null
   forum_post_url?: string | null
   photo_urls?: string[]
+  merchant_reply?: string | null
+  merchant_replied_at?: string | null
 }
 
 export interface ProductDetail {
@@ -217,6 +219,28 @@ const reviewSort = ref(props.reviewSort || 'newest')
 const reviewRating = ref<number | ''>(props.reviewRating || '')
 const questionSearch = ref(props.questionQuery || '')
 
+const purchaseSectionRef = ref<HTMLElement | null>(null)
+const showStickyBar = ref(false)
+let purchaseObserver: IntersectionObserver | null = null
+
+onMounted(() => {
+  const el = purchaseSectionRef.value
+  if (!el) return
+  purchaseObserver = new IntersectionObserver(
+    ([entry]) => { showStickyBar.value = !entry?.isIntersecting },
+    { threshold: 0 }
+  )
+  purchaseObserver.observe(el)
+})
+
+onUnmounted(() => {
+  purchaseObserver?.disconnect()
+})
+
+const showStickyActions = computed(() =>
+  showStickyBar.value && (canPurchase.value || props.loggedIn || !!props.compareUrl)
+)
+
 function searchQuestions() {
   router.get(routes.storeProduct(props.product.id), {
     question_q: questionSearch.value || undefined,
@@ -381,6 +405,8 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <meta head-key="og:type" property="og:type" content="product" />
   </Head>
 
+  <div :class="{ 'pb-24': showStickyActions }">
+
   <Breadcrumb :items="[
     { label: '首页', href: routes.home },
     { label: '商城', href: routes.store },
@@ -439,6 +465,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </div>
   </div>
 
+  <div ref="purchaseSectionRef">
   <Card class="max-w-xl">
     <CardContent class="space-y-3 pt-6">
       <div v-if="product.average_rating" class="text-sm">
@@ -559,6 +586,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <Button as-child variant="outline">
       <Link :href="routes.store">返回商城</Link>
     </Button>
+  </div>
   </div>
 
   <section class="mt-10 max-w-xl">
@@ -710,6 +738,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
           <span class="text-amber-500">{{ '★'.repeat(review.rating) }}</span>
         </div>
         <p v-if="review.body" class="text-sm">{{ review.body }}</p>
+        <div v-if="review.merchant_reply" class="mt-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-3 text-sm">
+          <p class="text-xs font-medium text-emerald-800">商家回复<span v-if="review.merchant_replied_at" class="ml-2 font-normal text-muted-foreground">{{ review.merchant_replied_at }}</span></p>
+          <p class="mt-1">{{ review.merchant_reply }}</p>
+        </div>
         <div v-if="review.photo_urls?.length" class="mt-2 flex flex-wrap gap-2">
           <a v-for="(url, i) in review.photo_urls" :key="i" :href="url" target="_blank" rel="noopener">
             <img :src="url" alt="" class="h-20 w-20 rounded object-cover ring-1 ring-border hover:opacity-90" />
@@ -735,7 +767,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
         </div>
       </article>
     </div>
-    <Pagination v-if="reviewsPagination" :pagination="reviewsPagination" :base-path="routes.storeProduct(product.id)" query-param="review_page" />
+    <Pagination v-if="reviewsPagination" :pagination="reviewsPagination" :base-path="routes.storeProduct(product.id)" page-param="review_page" />
     <Button
       v-if="reviewsPagination && reviewsPagination.page < reviewsPagination.pages"
       type="button"
@@ -772,4 +804,35 @@ function submitAnswer(questionId: number, answerUrl: string) {
       <Button type="submit" :disabled="reviewForm.processing">提交评价</Button>
     </form>
   </section>
+
+  </div>
+
+  <div
+    v-if="showStickyActions"
+    class="fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+  >
+    <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+      <div class="min-w-0">
+        <p class="truncate text-sm font-medium">{{ product.name }}</p>
+        <p class="text-sm text-primary">{{ displayPrice }}</p>
+      </div>
+      <div class="flex shrink-0 flex-wrap gap-2">
+        <Button
+          v-if="canPurchase"
+          type="button"
+          size="sm"
+          :disabled="product.variants.length > 0 && !selectedVariantId"
+          @click="addToCart"
+        >
+          加入购物车
+        </Button>
+        <Button v-if="loggedIn" type="button" size="sm" variant="outline" @click="toggleWishlist">
+          {{ wishlistedForSelection ? '心愿单' : '收藏' }}
+        </Button>
+        <Button v-if="compareUrl" type="button" size="sm" variant="outline" @click="toggleCompare">
+          {{ compared ? '对比中' : '对比' }}
+        </Button>
+      </div>
+    </div>
+  </div>
 </template>

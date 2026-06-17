@@ -20,11 +20,18 @@ module Community
 
       return ServiceResult.failure(error: "You are muted in this section.") if Community::Mute.muted?(@user, section: @topic.section)
 
+      tag_ids = @topic.tags.pluck(:id)
       required_result = Community::ValidateSectionRequiredTags.call(
         section: @topic.section,
-        tag_ids: @topic.tags.pluck(:id)
+        tag_ids: tag_ids
       )
       return required_result if required_result.failure?
+
+      group_result = Community::ValidateSectionTagGroups.call(
+        section: @topic.section,
+        tag_ids: tag_ids
+      )
+      return group_result if group_result.failure?
 
       if @topic.section.prefix_required? && @topic.prefix.blank?
         return ServiceResult.failure(error: "此分区要求选择主题前缀。")
@@ -33,6 +40,12 @@ module Community
       if Community::TrustLevel.contains_link?(post.body) && !Community::TrustLevel.can_post_links?(@user)
         return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
       end
+
+      link_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :link)
+      return link_restriction if link_restriction.failure? && Community::TrustLevel.contains_link?(post.body)
+
+      post_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :post)
+      return post_restriction if post_restriction.failure?
 
       Community::Topic.transaction do
         @topic.update!(status: "published", last_posted_at: Time.current, last_post_user: @user)

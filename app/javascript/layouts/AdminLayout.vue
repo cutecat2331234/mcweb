@@ -26,6 +26,8 @@ const nav = [
     { label: '举报', href: adminRoutes.forumReports },
     { label: '徽章', href: adminRoutes.forumBadges },
     { label: '标签', href: adminRoutes.forumTags },
+    { label: '论坛设置', href: adminRoutes.forumSettings },
+    { label: 'Webhook 投递', href: adminRoutes.forumWebhookDeliveries },
   ]},
   { label: '商城', items: [
     { label: '商品', href: adminRoutes.storeProducts },
@@ -33,9 +35,11 @@ const nav = [
     { label: '优惠券', href: adminRoutes.storeCoupons },
     { label: '礼品卡', href: adminRoutes.storeGiftCards },
     { label: '订单', href: adminRoutes.storeOrders },
+    { label: 'Webhook 投递', href: adminRoutes.storeWebhookDeliveries },
     { label: '评价', href: adminRoutes.storeReviews },
     { label: '商品问答', href: adminRoutes.storeProductQuestions },
     { label: '发货', href: adminRoutes.storeFulfillments },
+    { label: '商城设置', href: adminRoutes.storeSettings },
   ]},
   { label: '系统', items: [
     { label: 'Minecraft 服务器', href: adminRoutes.minecraftServers },

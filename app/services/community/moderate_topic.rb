@@ -16,14 +16,19 @@ module Community
       "global_announcement" => "此主题已设为全站公告。",
       "remove_global_announcement" => "此主题已取消全站公告。",
       "unlist" => "此主题已设为未列出（仅链接可访问）。",
-      "list" => "此主题已恢复公开列表显示。"
+      "list" => "此主题已恢复公开列表显示。",
+      "archive" => "此主题已归档。",
+      "unarchive" => "此主题已取消归档。",
+      "assign" => "此主题已指派给员工。",
+      "unassign" => "此主题已取消指派。"
     }.freeze
 
-    def initialize(user:, topic:, action:, lock_reason: nil)
+    def initialize(user:, topic:, action:, lock_reason: nil, assignee_username: nil)
       @user = user
       @topic = topic
       @action = action.to_s
       @lock_reason = lock_reason.to_s.strip.presence
+      @assignee_username = assignee_username.to_s.strip.presence
     end
 
     def call
@@ -70,6 +75,18 @@ module Community
         @topic.update!(unlisted: true)
       when "list"
         @topic.update!(unlisted: false)
+      when "archive"
+        @topic.update!(archived_at: Time.current)
+      when "unarchive"
+        @topic.update!(archived_at: nil)
+      when "assign"
+        assignee = User.find_by(username: @assignee_username)
+        return ServiceResult.failure(error: "指派用户不存在。") unless assignee
+
+        @topic.update!(assigned_to: assignee)
+        Community::NotifyTopicAssigned.call(topic: @topic, assignee: assignee, actor: @user)
+      when "unassign"
+        @topic.update!(assigned_to_id: nil)
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

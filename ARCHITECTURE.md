@@ -857,3 +857,702 @@ app/
 | 商品 og:image | `product_seo_props.seo_image` + `Products/Show.vue` |
 | 弃购恢复提示横幅 | `cartRecovered` + `Carts/Show.vue` |
 | 多选引用移除同步 | 移除引用时同步清理回复正文 |
+
+### 第四十九轮（员工私语、主题分享、配送方式与物流追踪）
+
+| 功能 | 实现 |
+|------|------|
+| 论坛分类/分区 SEO（Discourse/XenForo） | `forum_categories.seo` / `forum_sections.seo` + 管理端表单 + 分区页 Head |
+| 员工私语帖（Discourse whisper） | `forum_posts.whisper` + `CreatePost` 权限校验 + 主题页仅员工可见 |
+| 投票编辑（延长关闭时间等） | `EditTopicPoll` + `EditTopic` 联动 + 主题编辑 UI |
+| 主题私信分享（Discourse share） | `ShareTopicAsConversation` + `topics#share_as_pm` |
+| 论坛键盘快捷键（Discourse） | `ForumShortcuts.vue` + `PortalLayout` 全局监听 |
+| 配送方式选择（标准/加急） | `ShippingMethods` + `CalculateShipping` + 结账页选择 |
+| 运费与 flat_shipping 兼容 | `store.flat_shipping_cents` 同步标准配送单价 |
+| 订单物流追踪 | `store_orders.shipping_method` / `tracking_number` / `shipping_carrier` / `shipped_at` |
+| 管理端发货录入 | `UpdateOrderShipping` + 管理订单详情 |
+| 发货邮件与装箱单 | `order_shipped` 邮件 + `packing_slip` 打印页 |
+| 订单邮件详情增强 | `_order_details` 部分模板复用 |
+
+### 第五十轮（标签同义词、定时提升、礼品包装与对比分享）
+
+| 功能 | 实现 |
+|------|------|
+| 标签同义词（XenForo） | `forum_tags.canonical_tag_id` + `SyncTopicTags` 归并 + 管理端 |
+| 主题定时自动提升（Discourse bump） | `forum_topics.auto_bump_at` + `BumpScheduledTopicsJob` |
+| 用户头衔颜色（XenForo flair） | `users.forum_flair_color_hex` + 帖子作者彩色头衔 |
+| 投票结果 CSV 导出 | `ExportPollResults` + `polls#export` |
+| 订单员工备注（Shop） | `store_order_staff_notes` + 管理端 `staff_note` |
+| 管理端买家备注展示 | 订单详情显示 `store_orders.notes` |
+| 商品对比分享链接 | `compare_share_token` + `Compare/Public.vue` |
+| 结账礼品包装 | `store.gift_wrap_cents` + `CalculateGiftWrap` + 结账勾选 |
+| PDF 收据字段增强 | 备注/配送/物流/礼品包装/礼品卡行 |
+
+### 第五十一轮（主题归档、楼层锚点、最低消费与订单 Webhook）
+
+| 功能 | 实现 |
+|------|------|
+| 「我已解决」筛选（Discourse） | `TopicFilterable#solved_mine` |
+| 列表 Wiki/公告/未列出徽章 | `TopicTitleBadges` + `serialize_topic_list_item` |
+| 楼层 permalink `#p-{floor}` | `PostPermalink` + 主题页滚动定位 |
+| 主题归档/取消归档（Discourse） | `forum_topics.archived_at` + `ModerateTopic` + 可见性规则 |
+| `@staff` / `@moderators` 群组提及 | `ProcessMentions::GROUP_MENTIONS` |
+| 摘要仅关注内容（Discourse watched） | `users.forum_digest_watched_only` + `SendForumDigest` 过滤 |
+| 结账最低消费门槛（Shop） | `store.min_checkout_subtotal_cents` + `CreateOrder` 校验 + 结账页禁用 |
+| 弃购二次提醒（72h） | `abandoned_second_reminder_sent_at` + `AbandonedCartReminderJob` |
+| 订单状态 Webhook | `store.order_webhook_url` + `DispatchOrderWebhook` |
+| 管理端改状态用户通知 | `NotifyOrderStatusChange` + 管理订单更新 |
+| 订单页商品 Q&A | 订单详情展示已提交问题 + 快捷提问表单 |
+
+### 第五十二轮（公告关闭、搜索高亮、定时开放与商城 Webhook 增强）
+
+| 功能 | 实现 |
+|------|------|
+| 归档主题筛选/搜索 `is:archived` | `TopicFilterable` + `ParseSearchQuery` + `[归档]` 徽章 |
+| 全站公告可关闭（Discourse） | `dismissed_global_announcement_ids` + `PortalLayout` + `DismissGlobalAnnouncement` |
+| 主题 SEO 增强 | `og:url` / `canonical` / `og:image`（首帖图片） |
+| 搜索关键词高亮 | `HighlightSearchText` + 帖子结果 `<mark>` |
+| 用户卡片快速关注 | `UserHoverCard` + `users#card` follow 字段 |
+| 定时自动重新开放 | `auto_open_at` + `OpenScheduledTopicsJob` |
+| 配送预计送达天数 | `ShippingMethods` delivery_days + 结账展示 |
+| 客户部分退款申请 | `RequestRefund` amount_cents + 订单页金额输入 |
+| Webhook HMAC 签名 | `store.order_webhook_secret` + `X-McWeb-Signature` |
+| 发货 Webhook `order.shipped` | `UpdateOrderShipping` 触发 |
+| 弃购恢复专属优惠码 | `store.abandoned_cart_coupon_code` + 恢复链接 |
+| 商家评价回复 | `merchant_reply` + 管理端 + 商品页展示 |
+
+### 第五十三轮（@here 提及、正文标签、分类 RSS 与商城运营增强）
+
+| 功能 | 实现 |
+|------|------|
+| `@here` 提及主题参与者（Discourse） | `ProcessMentions` + `topic_participants` |
+| 正文 `#标签` 自动同步（XenForo） | `ProcessHashtags` + 发帖/编辑接入 |
+| 论坛分类 RSS | `rss#category` + `categories/:slug.rss` |
+| 论坛分类页 | `categories#show` + `forum_category_path` |
+| 分区默认标签预填 | `default_tag_ids` + 发帖页 + 管理端 |
+| 主题列表摘要/缩略图 | `excerpt` + `thumbnail_url` + `TopicListTable` |
+| 商家回复评价通知 | `NotifyMerchantReviewReply` + 邮件 + 偏好 |
+| 退款时间窗口 | `store.refund_window_days` + `RequestRefund` |
+| 待支付订单过期可配置 | `store.pending_order_expiry_minutes` + Job |
+| 商城分类商品数量 | `serialize_category.product_count` |
+| Webhook 含行项目 | `DispatchOrderWebhook` items[] + subtotal |
+| 商城通知偏好 | `commerce.merchant_review_reply` |
+
+### 第五十四轮（搜索增强、审核工具与商城运营细节）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索相关度排序 | `topic_sort`/`post_sort` = `relevance` + `ts_rank` |
+| 搜索 `is:mine` / `in:bookmarks` | `ParseSearchQuery` + `SearchController` 用户范围 |
+| 搜索自动补全 | `search#suggest` + `Search/Index.vue` 下拉 |
+| 通知未读筛选 | `notifications#index` read=unread + UI 标签页 |
+| 发帖相似标题提示 | `FindSimilarTitles` + `topics#similar_titles` + `New.vue` |
+| 更改帖子作者（Discourse） | `ChangePostAuthor` + 版主操作 |
+| 成员信任等级筛选 | `MembersController` trust_level + UI |
+| 商品 SKU 搜索 | `ProductsController` join variants |
+| 订单取消原因 | `CancelOrder` reason + `OrderEvent` |
+| 可配置反应表情 | `forum.reaction_emojis` + `ToggleReaction` |
+| 购后评价邀请 | `SendReviewRequest` + Job + 邮件 + 偏好 |
+| Webhook 投递日志 | `OrderWebhookDelivery` + Job 记录响应 |
+
+### 第五十五轮（主题指派、地址簿与商城细节）
+
+| 功能 | 实现 |
+|------|------|
+| 主题指派（Discourse Assign） | `assigned_to` + `ModerateTopic` assign/unassign + 通知 |
+| 导出主题帖子 CSV | `ExportTopicPosts` + `topics#export` |
+| 搜索 `is:assigned` | `ParseSearchQuery` + `ApplyTopicSearchFilters` |
+| 信任等级手动覆盖 | `forum_trust_level_override` + 管理端设置 |
+| 收货地址簿 | `ShippingAddress` + CRUD + 结账选择 |
+| 商城分类 RSS | `Commerce::RssController#category` |
+| 购物车赠言 | `store_cart_items.gift_note` + 订单快照 |
+| 退款窗口到期展示 | `refund_window_expires_label` + 订单页 |
+| 主题指派通知偏好 | `forum.topic_assigned` |
+| 管理端 Webhook 投递记录 | 订单详情 sections |
+
+### 第五十六轮（指派收件箱、搜索扩展与商城 RSS）
+
+| 功能 | 实现 |
+|------|------|
+| 指派收件箱 `/forum/assigned` | `AssignedController` + 导航徽章 |
+| 搜索 `is:unassigned` / `assigned:me` | `ParseSearchQuery` + `assignee_id` 过滤 |
+| 搜索 `in:watching` / `in:unread` | `SearchController` 用户范围扩展 |
+| 分区列表指派筛选 | `TopicFilterable` assigned/unassigned/assigned_mine |
+| 用户资料指派主题 Tab | `users#show` tab=assigned |
+| 指派员工选择器 | `mentions#search?staff=1` + `Topics/Show.vue` |
+| 成员 TL 筛选尊重覆盖 | `MembersController#apply_trust_level_filter` |
+| 商城最新商品 RSS | `store/latest.rss` |
+| 收货地址编辑 | `shipping_addresses#update` + `UpsertShippingAddress` |
+
+### 第五十七轮（标签组、商店余额、定时归档与商城运营）
+
+| 功能 | 实现 |
+|------|------|
+| 标签组（XenForo Tag Groups） | `TagGroup` + `one_per_topic` + 分区必填组 |
+| 商店余额钱包 | `store_credit_cents` + 结账抵扣 + 管理端调整 |
+| 客户可见订单备注 | `visible_to_customer` + 订单页展示 |
+| 主题定时归档 | `auto_archive_at` + `ArchiveScheduledTopicsJob` |
+| 警告积分后果 | `CheckWarningRestrictions` 限制发帖/链接/私信 |
+| 搜索 `category:` / `has:images` | `ParseSearchQuery` + 同义词标签解析 |
+| 分区/标签 Onebox | `FetchSectionOnebox` / `FetchTagOnebox` |
+| 商品定时上架/下架 | `available_at` / `unavailable_at` + Job |
+| `@here` 通知偏好 | `forum.here` + `ProcessMentions` 门控 |
+| 管理端警告列表 | `admin/forum/warnings#index` |
+
+### 第五十八轮（R57 前端补全、钱包页与运营增强）
+
+| 功能 | 实现 |
+|------|------|
+| 结账商店余额 UI | `Checkout/Show.vue` 余额展示 + 可选抵扣 |
+| 商店余额钱包页 | `/store/wallet` + 交易记录 |
+| 即将上架商品区 | `Product.upcoming` + 商城首页展示 |
+| 分类 Onebox | `FetchCategoryOnebox` + `FormatPostBody` |
+| 搜索分类/含图筛选 UI | `Search/Index.vue` 下拉与复选框 |
+| 搜索建议同义词标签 | `search#suggest` effective_tag 去重 |
+| 管理端警告 CSV 导出 | `warnings#index` format=csv |
+| 分区必填标签组 UI | `Sections/Form.vue` + 发帖页提示 |
+| 商品定时上下架表单 | `Products/Form.vue` datetime 字段 |
+| 结账可关闭余额抵扣 | `use_store_credit` 参数 |
+
+### 第五十九轮（标签色展示、部分退款余额、上架通知与搜索指派）
+
+| 功能 | 实现 |
+|------|------|
+| 主题列表标签颜色 | `serialize_topic_tag` + `TopicTitleBadges` color_hex |
+| 标签组颜色 | `forum_tag_groups.color_hex` + 管理端表单 |
+| 部分退款按比例退还余额 | `RestoreStoreCreditPartial` + `store_credit_restored_cents` |
+| 即将上架到货通知 | `ProductAvailabilityAlert` + `NotifyProductAvailableJob` |
+| 搜索指派筛选 UI | `Search/Index.vue` assigned/assignee 控件 |
+| 用户资料页商店余额 | `Users/Show` + `/store/wallet` 链接 |
+| 上架通知管理页 | `/store/availability_alerts` |
+
+### 第六十轮（商品预览、部分退款库存、标签组选择与搜索增强）
+
+| 功能 | 实现 |
+|------|------|
+| 即将上架商品预览页 | `/store/products/:id/preview` + `Preview.vue` |
+| 部分退款按比例恢复库存 | `RestoreStockPartial` + `stock_restored_quantity` |
+| 搜索高级筛选 UI | bookmarks/watching/unread、mine、locked、wiki、poll、noreplies |
+| 商品上架通知偏好 | `commerce.product_available` + 邮件 |
+| XenForo 标签组选择器 | `TagGroupPicker` + 发帖页分组点选 |
+| 标签云按组展示 | `Tags/Index` 分组 + 标签/组颜色 |
+| 主题详情标签颜色 | `Topics/Show` color_hex 样式 |
+
+### 第六十一轮（标签组编辑扩展、优惠券恢复、员工搜索与心愿单）
+
+| 功能 | 实现 |
+|------|------|
+| 草稿编辑标签组选择器 | `Drafts/Edit` + `SectionTagGroupsSerializable` |
+| 主题编辑标签组选择器 | `Topics/Show` 编辑区 `TagGroupPicker` |
+| 累计全额退款恢复优惠券 | `RestoreCouponPartial` + `coupon_usage_restored` |
+| 搜索精选/公告/归档筛选 | `Search/Index` featured/announcement + 员工 unlisted/archived |
+| 员工低库存通知偏好 | `commerce.low_stock` 商城通知设置 |
+| 即将上架商品心愿单 | `Wishlist#toggle` 支持 `coming_soon` + 预览页按钮 |
+
+### 第六十二轮（礼品卡部分退款、必填标签组提示、心愿单即将上架）
+
+| 功能 | 实现 |
+|------|------|
+| 部分退款按比例恢复礼品卡 | `RestoreGiftCardPartial` + `gift_card_restored_cents` |
+| 必填标签组前端提示 | `TagGroupPicker` required 标记 + 缺失警告 |
+| 标签组色点展示 | `TopicTitleBadges` group_color_hex 圆点 |
+| 心愿单即将上架展示 | 徽章 + 预览链接 + 上架时间 |
+| 心愿单批量加购跳过未上架 | `AddWishlistToCart` 跳过 `coming_soon` |
+
+### 第六十三轮（必填标签组发布校验、心愿单完善、退款恢复明细）
+
+| 功能 | 实现 |
+|------|------|
+| 必填标签组发布拦截 | `Section#requires_tags_or_groups?` + `CreateTopic` / `ScheduleTopic` / `PublishTopicDraft` / `PublishScheduledTopic` |
+| 主题详情标签组色点 | `Topics/Show` 标签 `group_color_hex` 圆点 |
+| 心愿单即将上架通知 | `Wishlist#index` 上架通知订阅按钮 |
+| 心愿单备注支持未上架 | `update_note` 允许 `coming_soon` 商品 |
+| 公开心愿单即将上架 | `public_show` 预览链接 + `Public.vue` 徽章 |
+| 订单退款恢复明细 | `serialize_order_restorations` + `Orders/Show` |
+| 搜索全站公告文案 | `Search/Index` 「仅全站公告」 |
+| 修复 storeProduct 路由 | `routes.ts` `storeProduct` helper |
+
+### 第六十四轮（警告限制 UX、标签组提交拦截、心愿单对比）
+
+| 功能 | 实现 |
+|------|------|
+| 警告积分发帖/链接/私信提示 | `WarningRestrictionsSerializable` + 发帖/回复/私信页横幅 |
+| 必填标签组前端提交拦截 | `TagGroupPicker` expose + New/Drafts/Show 发布校验 |
+| 心愿单商品对比 | `compare_url` / `compared` + 对比列表入口 |
+| 管理端退款恢复明细 | 员工订单页「退款恢复明细」区块 |
+| 管理端商店余额字段 | 订单详情展示余额抵扣 |
+
+### 第六十五轮（心愿单导入对比、标签组实时禁用、草稿必填校验）
+
+| 功能 | 实现 |
+|------|------|
+| 心愿单一键导入对比 | `AddWishlistToCompare` + 对比页按钮 |
+| 必填标签组实时禁用 | `tagsReady` / `canPublish` 禁用发布与保存按钮 |
+| 草稿保存必填组校验 | `SaveTopicDraft` 拦截缺失必填标签组 |
+| 对比页可导入数量 | `wishlistImportableCount` 展示 |
+
+### 第六十六轮（空状态引导、链接限制完善、心愿单导入对比对称）
+
+| 功能 | 实现 |
+|------|------|
+| 对比/心愿单空状态引导 | 空列表 CTA 链到商城、心愿单、对比 |
+| 心愿单页一键导入对比 | `wishlistImportCompareUrl` + 导入按钮 |
+| 回复/编辑链接实时禁用 | `replyBodyHasBlockedLink` / `editBodyHasBlockedLink` |
+| 草稿编辑警告限制 | `Drafts/Edit` 横幅 + `canPublish` |
+| 私信链接实时禁用 | `Messages/New` `bodyHasBlockedLink` |
+| 草稿发布警告校验 | `PublishTopicDraft` CheckWarningRestrictions |
+| 编辑帖子链接校验 | `EditPost` 链接限制 |
+| 私信链接服务端校验 | `CreateConversation` 链接限制 |
+| 对比导入上限跳过提示 | `AddWishlistToCompare` 满额逐件标记 |
+| 对比导入 redirect_back | 心愿单导入后返回来源页 |
+
+### 第六十七轮（分页修复、心愿单筛选、对比差异高亮、sticky 购买栏）
+
+| 功能 | 实现 |
+|------|------|
+| 评价/搜索分页 prop 修复 | `page-param` 替代错误的 `query-param` |
+| 分类页分页修复 | `:pagination` + `:base-path` 替代 `:meta` |
+| 发帖页链接实时提示 | `watch` body + `bodyHasBlockedLink` 红色提示 |
+| 心愿单 URL 筛选 | `in_stock` / `on_sale` / `coming_soon` / `sort` |
+| 对比表差异高亮 | `rowHasDiff` / `cellDiffClass` 琥珀色背景 |
+| 商品详情 sticky 购买栏 | `IntersectionObserver` 底部固定加购/收藏/对比 |
+| 心愿单备注本地 state | `noteDrafts` 避免直接 mutate props |
+| 心愿单重复徽章修复 | 移除重复的「未开售」徽章 |
+
+### 第六十八轮（筛选预设、预览对比、群组私信校验、分类排序）
+
+| 功能 | 实现 |
+|------|------|
+| 心愿单保存筛选预设 | `WishlistFilterPreset` + CRUD + 芯片 UI |
+| 分类页排序 UI | 价格升降 / 最热下拉 |
+| 对比仅差异行开关 | `onlyDiffRows` / `visibleRows` |
+| 即将上架商品加入对比 | 预览页按钮 + compare 支持 `coming_soon` |
+| 对比 session 清理 | 移除已下架商品 ID |
+| 群组私信链接/警告校验 | `CreateGroupConversation` + `SendMessage` |
+| 群组私信 TL0 / 链接横幅 | `Messages/New` 修复 `canSend` |
+| 保存搜索 URL 参数补全 | `SavedSearchesController` 同步 filters |
+| 心愿单互斥筛选 | `in_stock` 与 `coming_soon` 互斥 |
+
+### 第六十九轮（私信回复限制、商城筛选 chips、列表对比）
+
+| 功能 | 实现 |
+|------|------|
+| 私信对话页链接/警告限制 | `Messages/Show` 实时禁用 + 横幅 |
+| 对比仅差异行记忆 | `localStorage` `mcweb_compare_only_diff` |
+| 商城列表筛选 chips | 当前筛选徽章 + 清除筛选 |
+| 商品列表加入对比 | `product_compare_props` + 表格对比按钮 |
+| 即将上架区加入对比 | 商城首页 upcoming 对比按钮 |
+| 保存搜索集成测试 | POST 返回含 `assigned` 的 URL |
+
+### 第七十轮（搜索分页修复、列表心愿单、群组邀请校验、公开筛选分享）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索帖子分页修复 | `page-param="post_page"` 替换错误 `query-param` |
+| 搜索高级筛选 UI | locked/pinned/wiki/featured/poll/noreplies/assigned 等 |
+| 保存搜索筛选同步 | `saveSearch` 含全部高级筛选字段 |
+| 商品列表心愿单 | `product_wishlist_props` + 列表/即将上架收藏按钮 |
+| 群组添加成员校验 | TL0/禁言/警告用户不可被邀请 |
+| 添加成员 UI 限制 | `canAddParticipant` + 群组满员/警告时隐藏表单 |
+| 私信对话分页 | `page-param="page"` 显式声明 |
+| 公开心愿单筛选 | `public_show` 支持 in_stock/on_sale/coming_soon/sort |
+| 筛选预设公开分享 | `public_share_url` + 复制分享链接 |
+
+### 第七十一轮（搜索建议、精选区心愿单、群主邀请限制）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索建议下拉 | `suggestUrl` + 主题/标签/用户实时建议 |
+| 精选/最近浏览 compare+wishlist | 商城首页区块加入对比与收藏按钮 |
+| 群主专属邀请 | `forum.group_pm_creator_only_add` SiteSetting |
+| 添加成员限制提示 | `addParticipantRestrictedReason` 中文说明 |
+| 搜索帖子分页集成测试 | `post_page=2` 端到端验证 |
+
+### 第七十二轮（保存搜索每日提醒、建议键盘导航、分类/浏览页心愿单）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索每日邮件提醒 | `notify_daily` + `last_notified_at` 迁移 |
+| 保存搜索匹配服务 | `SavedSearchMatcher` 按筛选与关键词匹配新主题 |
+| 每日摘要任务 | `SavedSearchDigestJob` + `recurring.yml` 每天 9am |
+| 摘要邮件 | `ForumMailer#saved_search_digest` |
+| 搜索建议键盘导航 | ↑↓ Enter Esc + 高亮当前项 |
+| 保存搜索 UI | `saveNotifyDaily` 复选框 + 已保存项 📧 标记 |
+| 最近浏览 compare+wishlist | `RecentlyViewed/Index` 对比/收藏按钮 |
+| 分类页 compare+wishlist | `Categories/Show` 对比/收藏 + 筛选 chips |
+| 群主设置种子 | `db/seeds.rb` 默认 `forum.group_pm_creator_only_add` |
+
+### 第七十三轮（论坛设置后台、偏好页搜索提醒、分类页筛选对齐）
+
+| 功能 | 实现 |
+|------|------|
+| 管理后台论坛设置 | `Admin::Forum::SettingsController` 专用 UI |
+| 群主邀请策略 | `forum.group_pm_creator_only_add` 复选框 + 中文说明 |
+| 保存搜索 PATCH | `notify_daily` 开关更新 |
+| 偏好页保存搜索 | 列表展示 + 每日邮件切换 |
+| 分类页价格筛选 | `price_min` / `price_max` 后端筛选 |
+| 分类页筛选 chips | 与商城首页一致的筛选表单与徽章 |
+
+### 第七十四轮（商城设置后台、搜索提醒切换、偏好页删除、分类排序对齐）
+
+| 功能 | 实现 |
+|------|------|
+| 管理后台商城设置 | `Admin::Store::SettingsController` 运费/对比/SEO 等 |
+| 搜索页提醒切换 | 已保存搜索 📧 按钮一键开关 `notify_daily` |
+| 偏好页删除搜索 | `delete_url` + 删除按钮 |
+| 分类页排序对齐 | `rating` / `discount_desc` 与商城首页一致 |
+
+### 第七十五轮（搜索重命名、配送方式编辑、摘要邮件管理链接、分类 newest 排序）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索内联重命名 | 搜索页 ✎ 按钮 + PATCH `name` |
+| 配送方式 JSON 编辑 | 商城设置 `store.shipping_methods` 文本域 + 校验 |
+| 摘要邮件管理链接 | `saved_search_digest` 链接至通知偏好页 |
+| 分类页 newest 排序 | `sort=newest` 与商城首页参数统一 |
+| 配送方式种子 | `db/seeds.rb` 默认 JSON |
+
+### 第七十六轮（搜索上限、邮件一键退订、偏好页重命名、配送可视化）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索数量上限 | `forum.saved_search_limit` + 模型校验 + 搜索页计数 |
+| 摘要邮件一键退订 | `SavedSearchUnsubscribeToken` + 签名链接 |
+| 偏好页搜索重命名 | 与搜索页一致的内联 ✎ 重命名 |
+| 配送方式可视化 | 商城设置表单编辑 + `stored_list` |
+| 论坛设置上限配置 | 管理后台 `forum.saved_search_limit` |
+
+### 第七十七轮（筛选摘要邮件、保存搜索 RSS、结账送达预估、摘要发送时间）
+
+| 功能 | 实现 |
+|------|------|
+| 摘要邮件筛选 chips | `SavedSearchFilterSummary` + digest 模板展示 |
+| 保存搜索 RSS | `SavedSearchRssToken` + `RssController#saved_search` |
+| 搜索/偏好页 RSS 链接 | `SavedSearchPresenter.rss_path` + 前端 RSS 按钮 |
+| 结账配送预计送达 | `selectedShippingEstimate` 展示所选方式 `delivery_estimate` |
+| 摘要发送时间配置 | `forum.saved_search_digest_hour` + 每小时任务检查 |
+| 序列化复用 | `SavedSearchPresenter` 统一 url/rss 参数 |
+
+### 第七十八轮（筛选匹配修复、OPML、Webhook、论坛摘要退订、管理设置补全）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索筛选完整匹配 | `BuildSavedSearchTopicScope` 对齐搜索页全部筛选条件 |
+| 保存搜索 OPML 导出 | `SavedSearchOpmlToken` + `RssController#saved_searches_opml` |
+| 保存搜索 Webhook | `webhook_url` 字段 + `DispatchSavedSearchWebhook` |
+| 论坛摘要 HTML + 退订 | `digest.html.erb` + `ForumDigestUnsubscribeToken` |
+| 论坛摘要发送时间 | `forum.digest_hour` + 每小时任务检查 |
+| 论坛管理设置补全 | `forum.allow_op_close` / `forum.min_trust_level_reaction` |
+| 商城 Webhook URL 管理 | 管理后台 `store.order_webhook_url` |
+| 订单邮件送达预估 | `_order_details` 展示 `delivery_estimate_label` |
+
+### 第七十九轮（Webhook 投递日志、关注 OPML、搜索建议增强、发货物流链接）
+
+| 功能 | 实现 |
+|------|------|
+| Webhook 投递日志 | `SavedSearchWebhookDelivery` + Job 记录响应 |
+| 偏好页投递记录 | `savedSearchWebhookDeliveries` 最近 20 条 |
+| 关注订阅 OPML | `WatchingOpmlToken` + `RssController#watching_opml` |
+| 搜索建议增强 | 分区 + 保存的搜索自动补全 |
+| 发货邮件物流链接 | `Commerce::TrackingUrl` + `order_shipped` 可点击查询 |
+| 物流 URL 复用 | `InertiaSerializable` 委托 `TrackingUrl` |
+
+### 第八十轮（Webhook 重试、管理投递日志、物流时间线、搜索实时刷新）
+
+| 功能 | 实现 |
+|------|------|
+| Webhook 请求体存储 | `forum_saved_search_webhook_deliveries.request_payload` |
+| Webhook 手动重试 | `RetrySavedSearchWebhook` + 偏好页「重试发送」 |
+| 管理后台投递日志 | `Admin::Forum::WebhookDeliveriesController#index` + 状态筛选 |
+| 订单物流时间线 | `Commerce::OrderShippingTimeline` + 订单详情进度条 |
+| 搜索实时刷新 | 搜索页输入 ≥2 字后 450ms 防抖自动 `router.get` |
+
+### 第八十一轮（仅标题搜索、Webhook 自动重试、管理详情、商城投递日志）
+
+| 功能 | 实现 |
+|------|------|
+| 仅标题搜索 | `title_only` 参数 + `in:title` 语法 + 搜索页复选框 |
+| Webhook 自动重试 | Job 指数退避最多 3 次 + `RetryFailedSavedSearchWebhooksJob` 清理超时 pending |
+| 论坛投递详情 | `Admin::Forum::WebhookDeliveriesController#show` + 管理重试 |
+| 商城投递日志 | `Admin::Store::WebhookDeliveriesController#index` + `request_payload` |
+| 物流时间线修复 | 已送达订单正确标记「运输中」完成 |
+| 管理列表增强 | 状态 Tab 筛选 + 分页 + 行链接详情 |
+
+### 第八十二轮（Webhook HMAC、仅帖子搜索、商城详情重试、事件筛选、分享链接）
+
+| 功能 | 实现 |
+|------|------|
+| 论坛 Webhook HMAC | `forum.saved_search_webhook_secret` + `WebhookSignature` |
+| 仅帖子搜索 | `posts_only` + `in:posts` + 与仅标题互斥 |
+| 搜索链接分享 | 搜索页「复制链接」按钮 |
+| 商城 Webhook 详情 | `Admin::Store::WebhookDeliveriesController#show` + 重试 |
+| 管理事件筛选 | 论坛/商城 Webhook 列表 `eventTabs` |
+
+### 第八十三轮（即时搜索 RSS、主题高亮、Webhook 统计、批量重试）
+
+| 功能 | 实现 |
+|------|------|
+| 即时搜索 RSS | `Community::SearchRssToken` + `GET search.rss` + 搜索页 RSS 链接 |
+| 搜索主题高亮 | `serialize_topic` 增加 `title_html` + `TopicListTable` 渲染 |
+| 帖子高亮修复 | 搜索页帖子结果使用 `body_html` 而非纯文本 |
+| Webhook 投递统计 | `WebhookDeliveryStats` 24h 成功率 + 管理仪表盘卡片 |
+| 批量重试失败 Webhook | `BulkRetrySavedSearchWebhooks` / `BulkRetryOrderWebhooks` + 管理列表按钮 |
+
+### 第八十四轮（搜索 OPML、Webhook 告警、关注邮件模式、日期筛选）
+
+| 功能 | 实现 |
+|------|------|
+| 即时搜索 OPML | `GET search.opml` + 搜索页 OPML 链接 |
+| Webhook 失败邮件告警 | `WebhookFailureAlertCheck` + `WebhookFailureAlertJob` + 论坛设置阈值/邮箱 |
+| 关注即时邮件模式 | `forum_watch_email_mode`（instant/digest_only/none）+ `WatchEmailDelivery` |
+| 管理 Webhook 日期筛选 | `created_from` / `created_to` + `Admin::WebhookDeliveryFilterable` |
+| 仪表盘失败链接 | 预筛选近 24h 失败投递 + 关注 OPML 含主题订阅 |
+
+### 第八十五轮（搜索历史、摘要已读、Webhook 测试、分渠道告警）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索历史 | `Community::SearchHistory` + 记录/展示/单删/清空 |
+| 摘要标记已读 | `SendForumDigest` 发送后标记通知 `read_at` |
+| 商城 Webhook 测试 | `DispatchTestOrderWebhook` + 商城设置页测试按钮 |
+| 分渠道告警阈值 | `webhook.failure_alert_forum_threshold` / `store_threshold` |
+
+### 第八十六轮（论坛 Webhook 测试、搜索历史 OPML、商城事件模拟、标签邮件）
+
+| 功能 | 实现 |
+|------|------|
+| 论坛 Webhook 测试 | `forum.saved_search_webhook_url` + `DispatchTestSavedSearchWebhook` + 论坛设置测试按钮 |
+| 搜索历史 OPML | `SearchHistoryOpmlToken` + `GET search/histories.opml` + 搜索页导出链接 |
+| 商城 Webhook 事件模拟 | `DispatchTestOrderWebhook` 支持多事件类型选择 |
+| 标签关注邮件 | `NotifyTagTopic` watching 级别即时邮件 + `ForumMailer#tag_topic` |
+| 搜索历史去重修复 | `SearchHistoryFingerprint` 唯一指纹索引 |
+
+### 第八十七轮（合并 OPML、Webhook 测试增强、摘要邮件互斥、事件统计）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索合并 OPML | `SearchFeedsOpmlToken` + `GET search/feeds.opml` 分组导出保存搜索与历史 |
+| 论坛 Webhook 绑定保存搜索 | `DispatchTestSavedSearchWebhook` 支持 `saved_search` 参数 + 管理后台下拉选择 |
+| Webhook 测试状态 | `WebhookTestDeliveryStatus` 在论坛/商城设置页展示最近测试投递 |
+| 商城 Webhook 按事件统计 | `WebhookDeliveryStats#store_stats_by_event` + 仪表盘展示 |
+| @提及与摘要互斥 | `InstantEmailDelivery` 开启 digest 时跳过即时提及邮件 |
+
+### 第八十八轮（Normal 通知级别、退款 Webhook、测试筛选与轮询）
+
+| 功能 | 实现 |
+|------|------|
+| Normal 通知级别 | `SubscriptionLevelCycler` 四级循环 watching→tracking→normal→取消 |
+| 普通级别过滤 | `NotificationLevelFilter` + `TopicParticipant` 仅参与/提及时通知 |
+| 关注邮件 digest 互斥 | `WatchEmailDelivery#email_allowed?` 结合 `InstantEmailDelivery` |
+| 退款 Webhook | `order.refunded` 事件 + `ProcessRefund` 触发 |
+| Webhook 测试/正式筛选 | 论坛投递日志 `kind` 筛选 + `kindTabs` |
+| Webhook 测试轮询 | `webhook_test_status` JSON + 设置页自动刷新 |
+| OPML 导出上限 | `forum.search_feeds_opml_*_limit` 站点设置 |
+
+### 第八十九轮（Discourse 风格通知下拉、批量 Webhook 测试、订单取消/履约事件）
+
+| 功能 | 实现 |
+|------|------|
+| 通知级别下拉 | `SubscriptionLevelOptions` + `SetSubscriptionLevel` + `PATCH subscription` 路由 |
+| 共享下拉组件 | `SubscriptionLevelSelect.vue`（主题/分区/标签页） |
+| 通知说明 | 偏好页 `notificationLevelGuide` 四级说明 |
+| 批量 Webhook 测试 | `BatchTestSavedSearchWebhooks` + 管理后台「批量测试保存搜索」 |
+| 订单取消 Webhook | `CancelOrder` 发 `order.cancelled`（含 `cancel_reason`） |
+| 订单履约 Webhook | `NotifyOrderStatusChange` 对 fulfilled 发 `order.fulfilled` |
+| 商城投递筛选 | 管理后台事件 Tab 增加 `order.cancelled`、`order.fulfilled` |
+
+### 第九十轮（关注用户回复、主题 RSS、订单生命周期 Webhook 完善）
+
+| 功能 | 实现 |
+|------|------|
+| 关注用户回复通知 | `NotifyFollowedUserReply` + `forum.followed_reply` 偏好 |
+| 关注用户新主题邮件 | `NotifyFollowedUserTopic` 即时邮件（对标分区/标签） |
+| 主题 RSS | `/forum/topics/:id.rss` 按楼层输出 + OPML 修正 |
+| 订单创建 Webhook | `CreateOrder` 发 `order.created` |
+| 支付 Webhook 规范化 | `mark_paid` → `order.paid`；取消避免重复 `order.cancel` |
+| 过期取消原因 | `ExpirePendingOrdersJob` 传 `reason: expired` |
+| 支付倒计时 | 订单页 `payment_expires_at` / 超时提示 |
+| 商城 Webhook 测试筛选 | 投递日志 `kindTabs`（测试/正式） |
+| 批量订单 Webhook 测试 | `BatchTestOrderWebhooks` + 管理后台按钮 |
+
+### 第九十一轮（保存搜索站内通知、搜索排除、私信静音、未读选择性标已读）
+
+| 功能 | 实现 |
+|------|------|
+| 保存搜索站内通知 | `notify_in_app` 列 + `forum.saved_search_match` 偏好 + 摘要时推送 |
+| 搜索排除语法 | `ParseSearchQuery` 解析 `-词` + `ApplySearchExclusions` |
+| 私信会话静音 | `muted_at` + `ToggleConversationMute` + 通知跳过静音参与者 |
+| 未读选择性标已读 | `MarkTopicsRead` + 未读页多选 + `mark_selected_read` 路由 |
+| 商城 Webhook 维护 | `RetryFailedOrderWebhooksJob` 重试卡住 pending 投递 |
+
+### 第九十二轮（批量版主操作、徽章画廊、待支付提醒、搜索排除 UI）
+
+| 功能 | 实现 |
+|------|------|
+| 批量版主操作 | `BulkModerateTopics` + 分区/指派列表多选锁定/归档 |
+| 公开徽章画廊 | `/forum/badges` 列表 + `/forum/badges/:slug` 获得者 |
+| 资料页徽章日期 | `granted_at` 序列化 + 链接至徽章详情 |
+| 待支付订单提醒 | `PendingOrderPaymentReminderJob` + `commerce.payment_reminder` 偏好 |
+| 搜索排除 UI | 输入框占位符 + 排除语法说明 |
+
+### 第九十三轮（邮件通知补全、批量版主完善、订单邮件强化）
+
+| 功能 | 实现 |
+|------|------|
+| 徽章获得邮件 | `ForumMailer#badge_earned` + `NotifyBadgeEarned` 双通道 |
+| 主题指派邮件 | `ForumMailer#topic_assigned` + `NotifyTopicAssigned` 双通道 |
+| 信任等级邮件 | `ForumMailer#trust_level_up` + `NotifyTrustLevelUp` 双通道 |
+| 订单确认邮件强化 | `order_created` 含支付截止时间与立即支付链接 |
+| 支付提醒 bug 修复 | 通知关闭时不写入 `payment_reminder_sent_at` |
+| 最新/搜索批量版主 | Latest + Search 列表多选锁定/归档/解锁/取消归档 |
+| 批量反向操作 | `BulkModerateToolbar` 组件（解锁/取消归档） |
+| 管理后台批量版主 | Admin 主题列表分页 + 多选批量版主操作 |
+
+### 第九十四轮（反应/引用邮件、书签修复、批量重定向、商城批量订单）
+
+| 功能 | 实现 |
+|------|------|
+| 反应/引用/已解决邮件 | `ForumMailer` + 双通道通知服务 |
+| 书签提醒修复 | 邮件-only 用户可收到；未发布/关闭通知时清除 `remind_at` |
+| 批量版主 return_to | `safe_local_path` + 各列表传 `return_to` 参数 |
+| 用户卡片徽章日期 | `UserHoverCard` 显示 `granted_at` |
+| 帖子书签提醒列 | 书签页帖子表显示提醒时间 |
+| 商城批量订单 | `BulkUpdateOrders` 批量取消待支付/标记发货完成 |
+| 摘要类型扩展 | `SendForumDigest` 含 `forum.quote`、`forum.topic_solved` |
+
+### 第九十五轮（主题邀请邮件、投票关闭通知、帖子徽章日期、商城订单增强）
+
+| 功能 | 实现 |
+|------|------|
+| 主题邀请邮件 | `ForumMailer#topic_invite` + `NotifyTopicInvite` 双通道 |
+| 投票关闭通知 | `FinalizePollClosed` + `NotifyPollClosed` + small-action 帖 |
+| 过期投票任务 | `CloseExpiredPollsJob` 通知 + 小操作帖（幂等） |
+| 手动关闭投票 | `ClosePoll` 调用 `FinalizePollClosed` |
+| 投票关闭偏好 | `forum.poll_closed` + `PreferencesController` |
+| 帖子内联徽章日期 | `serialize_user_badges` `granted_at` + `Topics/Show.vue` |
+| 管理订单状态标签 | `statusTabs` + `ORDER_STATUS_LABELS` 中文显示 |
+| 批量标记已支付 | `BulkUpdateOrders#mark_paid` |
+| 搜索排除词芯片 | `excludeTerms` props + 红色芯片展示 |
+| 保存搜索排除标签 | `SavedSearchFilterSummary` 排除词 chips |
+| 订单导出筛选修复 | `export` 尊重 `q`/`status` 参数 |
+
+### 第九十六轮（摘要补全、支付通知、订单计数、排除词可移除）
+
+| 功能 | 实现 |
+|------|------|
+| 摘要类型补全 | `SendForumDigest` 含 badge/trust/assigned/invite/poll/post_edited/here |
+| 摘要仅关注修复 | 非主题通知（徽章等）在 watched-only 模式下仍纳入摘要 |
+| 即时邮件与摘要互斥 | 各 `Notify*` 服务使用 `InstantEmailDelivery` / `WatchEmailDelivery` |
+| @here 专用邮件 | `ForumMailer#here` + `ProcessMentions` 区分 mailer |
+| 支付完成统一 | `CompleteOrderPayment` 共享支付后副作用 |
+| 批量 mark_paid 通知 | 批量/管理后台标记已支付触发邮件与站内通知 |
+| 订单状态标签计数 | `statusTabs` 显示各状态订单数量 |
+| 排除词可移除 | 搜索页排除芯片 × 按钮即时更新查询 |
+
+### 第九十七轮（搜索筛选芯片、投票关闭横幅、摘要分组、后台计数优化）
+
+| 功能 | 实现 |
+|------|------|
+| 搜索活跃筛选芯片 | `SearchActiveFilters` + 可移除筛选 chips |
+| 投票关闭状态横幅 | `closed_at` + `Topics/Show.vue` 醒目提示条 |
+| 摘要按类型分组 | `GroupDigestNotifications` + digest 邮件模板 |
+| 订单 tab 隐藏空状态 | 仅显示有订单的状态标签 |
+| Webhook tab 计数 | 投递列表 statusTabs 显示各状态数量 |
+
+### 第九十八轮（摘要直达链接、商城订单筛选、Webhook 事件计数）
+
+| 功能 | 实现 |
+|------|------|
+| 通知直达路径 | `Notification#destination_path` + `NotificationDestinationUrl` |
+| 摘要邮件链接 | digest 模板每条通知附可点击直达 URL |
+| 用户订单状态标签 | `statusTabs` 计数 + 隐藏空状态 |
+| 用户订单筛选芯片 | `activeFilters` 可移除 q/status |
+| 用户订单导出筛选 | export 尊重 q/status 参数 |
+| Webhook 事件 tab 计数 | `eventTabs` 显示各事件类型数量 |
+| 投票关闭 UI 强化 | 关闭后禁用投票交互、去除重复文案 |
+
+### 第九十九轮（通知类型筛选、主题列表芯片、订单同步、投票分享）
+
+| 功能 | 实现 |
+|------|------|
+| 通知类型标签 | `NotificationTypeLabels` 统一论坛/商城类型中文名 |
+| 通知按类型筛选 | `NotificationsController` `type` 参数 + `typeTabs` 计数标签 |
+| 通知筛选芯片 | `NotificationActiveFilters` + 可移除 category/read/type |
+| 主题列表筛选芯片 | `TopicListActiveFilters` + 最新/分区页 `activeFilters` |
+| 摘要未读入口 | digest 邮件「查看全部未读通知」链接 |
+| 投票分享链接 | `serialize_poll` `share_url` + 主题页复制按钮 |
+| 订单 tab 同步 | `Orders/Index.vue` watch props 同步下拉框状态 |
+
+### 第一百轮（通知快捷筛选、未读筛选、投票 OG、订单 tab 联动）
+
+| 功能 | 实现 |
+|------|------|
+| 通知快捷筛选 | `NotificationQuickFilters` @提及/回复/反应/支付快捷入口 |
+| 类型 tab 未读优先 | `typeTabs` 含 `unread_count`，按未读数排序高亮 |
+| 清除全部筛选 | 通知页「清除全部」按钮 |
+| 未读主题筛选 | `UnreadController` 支持 `filter` + 排序/筛选芯片 |
+| 排序筛选芯片 | `TopicListSortActiveFilters` 最新/分区/未读页可移除 |
+| 投票 OG 元数据 | `topic_meta_props` 含 `poll_question` + `#poll` URL |
+| 订单 tab 联动 | `statusTabs` 含 `status`，点击同步 `q` 与下拉框 |
+
+### 第一百零一轮（通知分组、未读分区筛选、投票 Twitter、订单日期、提及退订）
+
+| 功能 | 实现 |
+|------|------|
+| 通知未读/已读分组 | `GroupNotificationsByReadState` + 可折叠 `notificationSections` |
+| 未读主题分区筛选 | `UnreadController` `section` 参数 + `sectionOptions` |
+| 投票 Twitter Card | `topic_meta_props` twitter 字段 + `Topics/Show.vue` meta |
+| 订单日期筛选 | `created_after`/`created_before` + `CustomerOrderActiveFilters` |
+| @提及邮件退订 | `NotificationTypeUnsubscribeToken` + 一键退订链接 |
+| 摘要提及退订 | digest 邮件底部「关闭 @提及 邮件」链接 |
+
+### 第一百零二轮（通知时间线、未读标签筛选、投票 OG 增强、订单金额、邮件退订扩展）
+
+| 功能 | 实现 |
+|------|------|
+| 通知时间线分组 | `GroupNotificationTimeline` 今天/昨天/更早 + `timeline_sections` 嵌套折叠 |
+| 未读主题标签筛选 | `UnreadController` `tag` 参数 + `tagOptions` + 筛选芯片 |
+| 投票 OG 增强 | `topic_meta_props` `og_locale`/`og_site_name` + `Topics/Show.vue` meta |
+| 订单金额区间 | `min_total`/`max_total` + `CustomerOrderActiveFilters` + 导出同步 |
+| 邮件类型退订 | `_notification_unsubscribe` 局部 + topic_reply/followed_reply/reaction/mention |
+| 摘要按类型退订 | digest 每类型「关闭此类邮件」链接 |
+
+### 第一百零三轮（本周时间线、多标签未读、订单金额预设、私信分区退订、仅今日通知）
+
+| 功能 | 实现 |
+|------|------|
+| 通知本周桶 | `GroupNotificationTimeline` 增加 `this_week`（本周）分组 |
+| 未读多标签 AND | `UnreadController` `tags` 逗号分隔 + 多标签芯片 + 添加标签下拉 |
+| 订单金额预设 | `CustomerOrderTotalPresets` ¥100以下/¥100–500/¥500以上快捷按钮 |
+| 私信/分区退订 | `private_message`/`section_topic` 邮件退订链接 |
+| 通知仅今日 | `period=today` 参数 + `NotificationPeriodFilters` 时间快捷筛选 |
+
+### 第一百零四轮（本月时间线、标签 OR 模式、订单预设联动、关注邮件退订、本周通知）
+
+| 功能 | 实现 |
+|------|------|
+| 通知本月桶 | `GroupNotificationTimeline` 增加 `this_month`（本月）分组 |
+| 未读标签 OR 模式 | `tag_match=any|all` + 多标签时切换全部/任意匹配 |
+| 订单预设状态联动 | `CustomerOrderTotalPresets` 保留 status/q/日期参数 |
+| 关注标签/用户退订 | `tag_topic`/`followed_topic` 邮件退订链接 |
+| 通知本周筛选 | `period=this_week` + 时间快捷筛选入口 |
+
+### 第一百零五轮（上月时间线、本月通知筛选、未读筛选书签、引用邮件退订、导出金额预设）
+
+| 功能 | 实现 |
+|------|------|
+| 通知上月桶 | `GroupNotificationTimeline` 增加 `last_month`（上月）分组 |
+| 通知本月筛选 | `period=this_month` + `NotificationPeriodFilters` 快捷入口 |
+| 未读筛选书签 | `UnreadFilterBookmarkUrl` + 复制筛选链接按钮 |
+| 引用邮件退订 | `post_quoted` 邮件 `forum.quote` 退订链接 |
+| 导出金额预设 | CSV 导出尊重 `min_total`/`max_total` 预设参数 |
+
+### 第一百零六轮（去年时间线、上月通知筛选、未读命名预设、主题邮件退订、导出链接复制）
+
+| 功能 | 实现 |
+|------|------|
+| 通知去年桶 | `GroupNotificationTimeline` 增加 `last_year`（去年）分组 |
+| 通知上月筛选 | `period=last_month` + `NotificationPeriodFilters` 快捷入口 |
+| 未读命名预设 | `UnreadFilterPreset` + 保存/加载命名筛选（对标心愿单） |
+| 主题邮件退订 | `topic_solved`/`topic_invite` 邮件退订链接 |
+| 导出链接复制 | 订单页「复制导出链接」按钮（保留当前筛选参数） |

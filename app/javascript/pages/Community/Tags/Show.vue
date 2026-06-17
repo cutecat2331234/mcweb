@@ -5,7 +5,7 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
-import Button from '@/components/ui/Button.vue'
+import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -18,12 +18,14 @@ const props = defineProps<{
     color_hex?: string | null
     rss_url: string
     watching?: boolean
+    notification_level?: 'watching' | 'tracking' | 'normal' | null
     subscription_url?: string
   }
   topics: TopicListItem[]
   pagination: PaginationMeta
   loggedIn?: boolean
   sort?: string
+  subscriptionLevels?: SubscriptionLevelOption[]
 }>()
 
 const sortOptions = [
@@ -36,11 +38,6 @@ const sortOptions = [
 
 function changeSort(value: string) {
   router.get(`/forum/tags/${props.tag.slug}`, { sort: value }, { preserveState: true })
-}
-
-function toggleWatch() {
-  if (!props.tag.subscription_url) return
-  router.post(props.tag.subscription_url)
 }
 </script>
 
@@ -55,9 +52,13 @@ function toggleWatch() {
 
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
     <PageHeader :title="`#${tag.name}`" subtitle="按标签浏览主题" />
-    <Button v-if="loggedIn && tag.subscription_url" type="button" variant="outline" size="sm" @click="toggleWatch">
-      {{ tag.watching ? '取消关注标签' : '关注此标签' }}
-    </Button>
+    <SubscriptionLevelSelect
+      v-if="loggedIn && tag.subscription_url && subscriptionLevels?.length"
+      :options="subscriptionLevels"
+      :subscription-url="tag.subscription_url"
+      :watching="!!tag.watching"
+      :notification-level="tag.notification_level"
+    />
   </div>
 
   <p v-if="tag.description" class="mb-4 text-sm text-muted-foreground">{{ tag.description }}</p>

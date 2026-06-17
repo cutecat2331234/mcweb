@@ -51,11 +51,43 @@ module Community
       Community::Tag.where(id: ids).order(:name)
     end
 
+    def default_tags
+      ids = Array(default_tag_ids).map(&:to_i).reject(&:zero?)
+      return Community::Tag.none if ids.empty?
+
+      Community::Tag.where(id: ids).order(:name)
+    end
+
     def allowed_tags
       ids = Array(allowed_tag_ids).map(&:to_i).reject(&:zero?)
       return Community::Tag.none if ids.empty?
 
       Community::Tag.where(id: ids).order(:name)
+    end
+
+    def required_tag_groups
+      ids = Array(required_tag_group_ids).map(&:to_i).reject(&:zero?)
+      return Community::TagGroup.none if ids.empty?
+
+      Community::TagGroup.where(id: ids).order(:name)
+    end
+
+    def requires_tags_or_groups?
+      Array(required_tag_ids).map(&:to_i).reject(&:zero?).any? ||
+        Array(required_tag_group_ids).map(&:to_i).reject(&:zero?).any?
+    end
+
+    def tag_requirements_message
+      parts = []
+      if Array(required_tag_ids).map(&:to_i).reject(&:zero?).any?
+        names = required_tags.pluck(:name).join("、")
+        parts << "至少包含以下标签之一：#{names}"
+      end
+      if Array(required_tag_group_ids).map(&:to_i).reject(&:zero?).any?
+        names = required_tag_groups.pluck(:name).join("、")
+        parts << "从以下标签组中至少选一个标签：#{names}"
+      end
+      "此分区要求#{parts.join('；')}"
     end
 
     def read_only?

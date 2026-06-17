@@ -19,6 +19,16 @@ module Community
       return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
       return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@sender)
 
+      pm_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :pm)
+      return pm_restriction if pm_restriction.failure?
+
+      if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@sender)
+        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+      end
+
+      link_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :link)
+      return link_restriction if link_restriction.failure? && Community::TrustLevel.contains_link?(@body)
+
       recipients = User.where(username: @usernames)
       missing = @usernames - recipients.pluck(:username)
       return ServiceResult.failure(error: "Users not found: #{missing.join(', ')}") if missing.any?

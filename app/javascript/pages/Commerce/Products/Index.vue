@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -36,18 +36,30 @@ export interface ProductItem {
   summary?: string | null
   url: string
   quick_addable?: boolean
+  preview_url?: string | null
+  coming_soon_label?: string | null
+  available_at_label?: string | null
+  has_availability_alert?: boolean
+  availability_alert_url?: string | null
+  availability_alert_unsubscribe_url?: string | null
+  compare_url?: string
+  compared?: boolean
+  wishlist_url?: string
+  wishlisted?: boolean
 }
 
 export interface CategoryItem {
   slug: string
   name: string
   url: string
+  product_count?: number
 }
 
 const props = defineProps<{
   products: ProductItem[]
   featured_products?: ProductItem[]
   recently_viewed?: ProductItem[]
+  upcoming_products?: ProductItem[]
   categories: CategoryItem[]
   activeCategory: string | null
   query: string
@@ -60,6 +72,8 @@ const props = defineProps<{
   compareCount?: number
   seo_title?: string
   seo_description?: string | null
+  rss_url?: string
+  loggedIn?: boolean
 }>()
 
 const q = ref(props.query)
@@ -81,9 +95,34 @@ function search() {
   }, { preserveState: true })
 }
 
+function subscribeAvailabilityAlert(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
+function unsubscribeAvailabilityAlert(url: string) {
+  router.delete(url, { preserveScroll: true })
+}
+
 function quickAdd(product: ProductItem) {
   if (!product.db_id) return
   router.post(routes.storeCart, { product_id: product.db_id, quantity: 1 }, { preserveScroll: true })
+}
+
+function toggleCompare(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
+function toggleWishlist(url: string) {
+  router.post(url, {}, { preserveScroll: true })
+}
+
+const hasActiveFilters = computed(() =>
+  !!(props.query || props.activeCategory || props.inStock || props.onSale ||
+    props.priceMin || props.priceMax || (props.sort && props.sort !== 'newest'))
+)
+
+function clearFilters() {
+  router.get(routes.store, {}, { preserveState: true })
 }
 </script>
 
@@ -101,6 +140,7 @@ function quickAdd(product: ProductItem) {
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <PageHeader title="商品列表" subtitle="浏览可购买的数字商品" />
+    <a v-if="rss_url" :href="rss_url" target="_blank" rel="noopener" class="mb-4 inline-block text-sm text-muted-foreground hover:text-foreground">RSS 订阅最新商品</a>
     <Link v-if="compareCount" :href="routes.storeCompare" class="text-sm text-primary hover:underline">
       对比列表 ({{ compareCount }})
     </Link>
@@ -112,41 +152,143 @@ function quickAdd(product: ProductItem) {
       <Link :href="routes.storeRecentlyViewed" class="text-xs text-primary hover:underline">查看全部</Link>
     </div>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Link
+      <div
         v-for="product in recently_viewed"
         :key="product.id"
-        :href="product.url"
-        class="flex gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+        class="flex gap-3 rounded-lg border p-3"
       >
-        <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover" />
-        <div>
-          <p class="font-medium">{{ product.name }}</p>
+        <Link :href="product.url" class="shrink-0">
+          <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover" />
+        </Link>
+        <div class="min-w-0 flex-1">
+          <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
           <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+          <div v-if="loggedIn" class="mt-2 flex flex-wrap gap-1">
+            <Button
+              v-if="product.compare_url"
+              type="button"
+              size="sm"
+              variant="outline"
+              @click="toggleCompare(product.compare_url!)"
+            >
+              {{ product.compared ? '对比中' : '对比' }}
+            </Button>
+            <Button
+              v-if="product.wishlist_url"
+              type="button"
+              size="sm"
+              :variant="product.wishlisted ? 'outline' : 'secondary'"
+              @click="toggleWishlist(product.wishlist_url!)"
+            >
+              {{ product.wishlisted ? '心愿单' : '收藏' }}
+            </Button>
+          </div>
         </div>
-      </Link>
+      </div>
+    </div>
+  </section>
+
+  <section v-if="upcoming_products?.length" class="mb-8">
+    <h2 class="mb-3 text-sm font-semibold">即将上架</h2>
+    <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        v-for="product in upcoming_products"
+        :key="product.id"
+        class="flex gap-3 rounded-lg border border-dashed p-3 opacity-90"
+      >
+        <Link :href="product.preview_url || product.url" class="shrink-0">
+          <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover grayscale hover:opacity-90" />
+        </Link>
+        <div class="min-w-0 flex-1">
+          <Link :href="product.preview_url || product.url" class="font-medium hover:underline">{{ product.name }}</Link>
+          <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+          <Badge v-if="product.available_at_label" class="mt-1">{{ product.available_at_label }}</Badge>
+          <div v-if="loggedIn && product.availability_alert_url" class="mt-2">
+            <Button
+              v-if="!product.has_availability_alert"
+              type="button"
+              size="sm"
+              variant="secondary"
+              @click="subscribeAvailabilityAlert(product.availability_alert_url!)"
+            >
+              上架通知
+            </Button>
+            <Button
+              v-else-if="product.availability_alert_unsubscribe_url"
+              type="button"
+              size="sm"
+              variant="outline"
+              @click="unsubscribeAvailabilityAlert(product.availability_alert_unsubscribe_url!)"
+            >
+              已订阅上架
+            </Button>
+          </div>
+          <div v-if="loggedIn && product.compare_url" class="mt-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              @click="toggleCompare(product.compare_url!)"
+            >
+              {{ product.compared ? '移出对比' : '加入对比' }}
+            </Button>
+          </div>
+          <div v-if="loggedIn && product.wishlist_url" class="mt-2">
+            <Button
+              type="button"
+              size="sm"
+              :variant="product.wishlisted ? 'outline' : 'secondary'"
+              @click="toggleWishlist(product.wishlist_url!)"
+            >
+              {{ product.wishlisted ? '心愿单' : '收藏' }}
+            </Button>
+          </div>
+        </div>
+      </div>
     </div>
   </section>
 
   <section v-if="featured_products?.length" class="mb-8">
     <h2 class="mb-3 text-sm font-semibold">精选商品</h2>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-      <Link
+      <div
         v-for="product in featured_products"
         :key="product.id"
-        :href="product.url"
-        class="flex gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+        class="flex gap-3 rounded-lg border p-3"
       >
-        <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover" />
-        <div>
-          <p class="font-medium">{{ product.name }}</p>
+        <Link :href="product.url" class="shrink-0">
+          <img v-if="product.image_url" :src="product.image_url" :alt="product.name" class="h-16 w-16 rounded object-cover" />
+        </Link>
+        <div class="min-w-0 flex-1">
+          <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
           <p class="text-sm text-muted-foreground">{{ product.price_label }}</p>
+          <div v-if="loggedIn" class="mt-2 flex flex-wrap gap-1">
+            <Button
+              v-if="product.compare_url"
+              type="button"
+              size="sm"
+              variant="outline"
+              @click="toggleCompare(product.compare_url!)"
+            >
+              {{ product.compared ? '对比中' : '对比' }}
+            </Button>
+            <Button
+              v-if="product.wishlist_url"
+              type="button"
+              size="sm"
+              :variant="product.wishlisted ? 'outline' : 'secondary'"
+              @click="toggleWishlist(product.wishlist_url!)"
+            >
+              {{ product.wishlisted ? '心愿单' : '收藏' }}
+            </Button>
+          </div>
         </div>
-      </Link>
+      </div>
     </div>
   </section>
 
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
-    <Input v-model="q" placeholder="搜索商品…" class="max-w-xs" />
+    <Input v-model="q" placeholder="搜索商品名或 SKU…" class="max-w-xs" />
     <select v-model="sort" class="h-9 rounded-md border border-input bg-transparent px-3 text-sm">
       <option value="newest">最新</option>
       <option value="popular">最热</option>
@@ -166,7 +308,18 @@ function quickAdd(product: ProductItem) {
     <Input v-model="priceMin" type="number" min="0" step="0.01" placeholder="最低价" class="w-24" />
     <Input v-model="priceMax" type="number" min="0" step="0.01" placeholder="最高价" class="w-24" />
     <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">筛选</button>
+    <Button v-if="hasActiveFilters" type="button" variant="outline" size="sm" @click="clearFilters">清除筛选</Button>
   </form>
+
+  <div v-if="hasActiveFilters" class="mb-4 flex flex-wrap items-center gap-2 text-xs">
+    <span class="text-muted-foreground">当前筛选：</span>
+    <Badge v-if="query" variant="outline">关键词：{{ query }}</Badge>
+    <Badge v-if="activeCategory" variant="outline">分类</Badge>
+    <Badge v-if="inStock" variant="outline">仅有货</Badge>
+    <Badge v-if="onSale" variant="outline">促销中</Badge>
+    <Badge v-if="priceMin || priceMax" variant="outline">价格区间</Badge>
+    <Badge v-if="sort && sort !== 'newest'" variant="outline">排序：{{ sort }}</Badge>
+  </div>
 
   <div v-if="categories.length" class="mb-4 flex flex-wrap gap-2">
     <Link
@@ -183,7 +336,7 @@ function quickAdd(product: ProductItem) {
       class="rounded-full border px-3 py-1 text-sm transition-colors"
       :class="activeCategory === category.slug ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
     >
-      {{ category.name }}
+      {{ category.name }}<span v-if="category.product_count != null" class="ml-1 text-muted-foreground">({{ category.product_count }})</span>
     </Link>
   </div>
 
@@ -231,15 +384,35 @@ function quickAdd(product: ProductItem) {
             <Badge v-else variant="success">有货</Badge>
           </TableCell>
           <TableCell>
-            <Button
-              v-if="product.quick_addable"
-              type="button"
-              size="sm"
-              variant="outline"
-              @click="quickAdd(product)"
-            >
-              加购
-            </Button>
+            <div class="flex flex-col gap-1">
+              <Button
+                v-if="product.quick_addable"
+                type="button"
+                size="sm"
+                variant="outline"
+                @click="quickAdd(product)"
+              >
+                加购
+              </Button>
+              <Button
+                v-if="loggedIn && product.compare_url"
+                type="button"
+                size="sm"
+                :variant="product.compared ? 'outline' : 'secondary'"
+                @click="toggleCompare(product.compare_url!)"
+              >
+                {{ product.compared ? '对比中' : '对比' }}
+              </Button>
+              <Button
+                v-if="loggedIn && product.wishlist_url"
+                type="button"
+                size="sm"
+                :variant="product.wishlisted ? 'outline' : 'secondary'"
+                @click="toggleWishlist(product.wishlist_url!)"
+              >
+                {{ product.wishlisted ? '心愿单' : '收藏' }}
+              </Button>
+            </div>
           </TableCell>
         </TableRow>
       </TableBody>

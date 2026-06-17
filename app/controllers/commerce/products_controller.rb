@@ -8,7 +8,10 @@ module Commerce
       scope = scope.on_sale if params[:on_sale] == "1"
       if params[:q].present?
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q])}%"
-        scope = scope.where("name ILIKE ? OR slug ILIKE ?", q, q)
+        scope = scope.left_joins(:variants).where(
+          "store_products.name ILIKE :q OR store_products.slug ILIKE :q OR store_product_variants.sku ILIKE :q",
+          q: q
+        ).distinct
       end
       scope = case params[:sort]
       when "price_asc" then scope.order(price_cents: :asc)
@@ -47,14 +50,43 @@ module Commerce
                           []
       end
 
+      upcoming = Commerce::Product.upcoming.includes(:category).limit(8)
+      availability_alert_ids = if logged_in?
+                                 Commerce::ProductAvailabilityAlert
+                                   .where(user: current_user, store_product_id: upcoming.map(&:id))
+                                   .pluck(:store_product_id, :id)
+                                   .to_h
+      else
+                                 {}
+      end
+
       @pagy, products = pagy(scope, limit: 20)
       categories = Commerce::Category.ordered
       category_query = index_filter_params
 
       render inertia: "Commerce/Products/Index", props: {
-        products: products.map { |product| serialize_product_list_item(product) },
-        featured_products: featured.map { |product| serialize_product_list_item(product) },
-        recently_viewed: recently_viewed.map { |product| serialize_product_list_item(product) },
+        products: products.map { |product|
+          serialize_product_list_item(product)
+            .merge(product_compare_props(product))
+            .merge(product_wishlist_props(product))
+        },
+        featured_products: featured.map { |product|
+          serialize_product_list_item(product)
+            .merge(product_compare_props(product))
+            .merge(product_wishlist_props(product))
+        },
+        recently_viewed: recently_viewed.map { |product|
+          serialize_product_list_item(product)
+            .merge(product_compare_props(product))
+            .merge(product_wishlist_props(product))
+        },
+        upcoming_products: upcoming.map do |product|
+          alert_id = availability_alert_ids[product.id]
+          serialize_upcoming_product(product, availability_alert: alert_id.present?, availability_alert_id: alert_id)
+            .merge(product_compare_props(product))
+            .merge(product_wishlist_props(product))
+        end,
+        loggedIn: logged_in?,
         categories: categories.map { |category| serialize_category(category, **category_query) },
         activeCategory: params[:category],
         query: params[:q].to_s,
@@ -66,7 +98,8 @@ module Commerce
         compareCount: compare_product_count,
         pagination: pagy_props(@pagy),
         seo_title: SiteSetting.get("store.seo_title", "").presence || "商城",
-        seo_description: SiteSetting.get("store.seo_description", "").presence
+        seo_description: SiteSetting.get("store.seo_description", "").presence,
+        rss_url: store_latest_rss_path
       }
     end
 
@@ -79,7 +112,13 @@ module Commerce
         .filter_map { |view| view.product if view.product&.active? }
 
       render inertia: "Commerce/RecentlyViewed/Index", props: {
-        products: products.map { |product| serialize_product_list_item(product) },
+        products: products.map { |product|
+          serialize_product_list_item(product)
+            .merge(product_compare_props(product))
+            .merge(product_wishlist_props(product))
+        },
+        compareCount: compare_product_count,
+        loggedIn: true,
         clearUrl: clear_recently_viewed_store_products_path
       }
     end
@@ -89,6 +128,40 @@ module Commerce
 
       Commerce::ProductView.where(user: current_user).delete_all
       redirect_to recently_viewed_store_products_path, notice: "浏览记录已清空。"
+    end
+
+    def preview
+      product = Commerce::Product.upcoming.includes(:category).find_by!(public_id: params[:id])
+      alert = logged_in? ? Commerce::ProductAvailabilityAlert.find_by(user: current_user, product: product) : nil
+      wishlist_item = logged_in? ? Commerce::WishlistItem.find_by(user: current_user, product: product) : nil
+
+      render inertia: "Commerce/Products/Preview", props: {
+        product: {
+          id: product.public_id,
+          name: product.name,
+          slug: product.slug,
+          description: product.description,
+          summary: product.summary,
+          price_label: format_price(product),
+          compare_at_label: product.on_sale? ? format_money(product.compare_at_price_cents, product.currency) : nil,
+          on_sale: product.on_sale?,
+          discount_label: product.discount_percent ? "-#{product.discount_percent}%" : nil,
+          category_name: product.category&.name,
+          image_url: product_image_url(product),
+          gallery_urls: product.gallery_urls || [],
+          available_at_label: product.available_at ? l(product.available_at, format: :short) : nil,
+          coming_soon_label: product.coming_soon_label
+        },
+        hasAvailabilityAlert: alert.present?,
+        availabilityAlertUrl: logged_in? ? availability_alert_store_product_path(product) : nil,
+        availabilityAlertUnsubscribeUrl: alert ? store_availability_alert_path(alert) : nil,
+        wishlistUrl: logged_in? ? wishlist_store_product_path(product) : nil,
+        wishlisted: wishlist_item.present?,
+        compareUrl: store_toggle_compare_path(product_id: product.public_id),
+        compared: Array(session[:compare_product_ids]).include?(product.public_id),
+        compareCount: compare_product_count,
+        loggedIn: logged_in?
+      }
     end
 
     def show

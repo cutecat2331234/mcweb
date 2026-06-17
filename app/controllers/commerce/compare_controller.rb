@@ -2,27 +2,43 @@
 
 module Commerce
   class CompareController < ApplicationController
+    include Commerce::WishlistCompareImportable
+
+    before_action :require_login, only: %i[share import_wishlist]
+
     def show
       ids = Array(session[:compare_product_ids])
-      products_by_id = Commerce::Product.available.where(public_id: ids).includes(:variants, :category).index_by(&:public_id)
+      active_ids = Commerce::Product.active.where(public_id: ids).pluck(:public_id)
+      session[:compare_product_ids] = ids.filter { |id| active_ids.include?(id) }
+      ids = session[:compare_product_ids]
+
+      products_by_id = Commerce::Product.active.where(public_id: ids).includes(:variants, :category).index_by(&:public_id)
       products = ids.filter_map { |id| products_by_id[id] }
+      share_url = compare_share_url_for(current_user, ids)
 
       render inertia: "Commerce/Compare/Show", props: {
         products: products.map { |product| serialize_compare_product(product) },
         compareCount: products.size,
-        compareMaxItems: Commerce::ToggleCompare.compare_max_items
+        compareMaxItems: Commerce::ToggleCompare.compare_max_items,
+        shareUrl: share_url,
+        wishlistImportUrl: logged_in? ? store_import_wishlist_compare_path : nil,
+        wishlistImportableCount: logged_in? ? wishlist_importable_compare_count(ids) : 0
       }
     end
 
     def toggle
-      product = Commerce::Product.available.find_by!(public_id: params[:product_id])
+      product = Commerce::Product.active.find_by!(public_id: params[:product_id])
+      unless product.available? || product.coming_soon?
+        return redirect_back fallback_location: store_products_path, alert: "商品不可加入对比。"
+      end
+
       result = Commerce::ToggleCompare.call(session: session, product: product)
 
       if result.success?
         notice = result.value[:compared] ? "已加入对比。" : "已从对比移除。"
-        redirect_back fallback_location: store_compare_path, notice: notice
+        redirect_back fallback_location: compare_fallback_path(product), notice: notice
       else
-        redirect_back fallback_location: store_product_path(product), alert: service_error_message(result)
+        redirect_back fallback_location: compare_fallback_path(product), alert: service_error_message(result)
       end
     end
 
@@ -31,7 +47,50 @@ module Commerce
       redirect_to store_compare_path, notice: "对比列表已清空。"
     end
 
+    def share
+      ids = Array(session[:compare_product_ids])
+      return redirect_to store_compare_path, alert: "对比列表为空。" if ids.empty?
+
+      result = Commerce::EnsureCompareShareToken.call(user: current_user, product_ids: ids)
+      if result.success?
+        redirect_to store_compare_path, notice: "分享链接已生成。"
+      else
+        redirect_to store_compare_path, alert: service_error_message(result)
+      end
+    end
+
+    def import_wishlist
+      result = Commerce::AddWishlistToCompare.call(user: current_user, session: session)
+
+      if result.success?
+        notice = "已从心愿单添加 #{result.value[:added]} 件商品到对比。"
+        notice += " 跳过：#{result.value[:skipped].join('、')}" if result.value[:skipped].any?
+        redirect_back fallback_location: store_compare_path, notice: notice
+      else
+        redirect_back fallback_location: store_compare_path, alert: service_error_message(result)
+      end
+    end
+
+    def public_show
+      user = User.find_by!(compare_share_token: params[:token])
+      ids = Array(user.compare_product_ids)
+      products_by_id = Commerce::Product.active.where(public_id: ids).includes(:variants, :category).index_by(&:public_id)
+      products = ids.filter_map { |id| products_by_id[id] }
+
+      render inertia: "Commerce/Compare/Public", props: {
+        owner: user.display_name.presence || user.username,
+        products: products.map { |product| serialize_compare_product(product) }
+      }
+    end
+
     private
+
+    def compare_share_url_for(user, ids)
+      return nil unless user && ids.any?
+
+      result = Commerce::EnsureCompareShareToken.call(user: user, product_ids: ids)
+      result.success? ? store_public_compare_url(result.value[:token]) : nil
+    end
 
     def serialize_compare_product(product)
       avg = product.reviews.published.average(:rating)&.round(1)
@@ -39,7 +98,8 @@ module Commerce
         id: product.public_id,
         db_id: product.id,
         name: product.name,
-        url: store_product_path(product),
+        url: product.coming_soon? ? preview_store_product_path(product) : store_product_path(product),
+        coming_soon: product.coming_soon?,
         price_label: format_price(product),
         category_name: product.category&.name,
         in_stock: product.in_stock?,
@@ -50,5 +110,10 @@ module Commerce
         add_to_cart_url: store_cart_path
       }
     end
+
+    def compare_fallback_path(product)
+      product.coming_soon? ? preview_store_product_path(product) : store_product_path(product)
+    end
+
   end
 end

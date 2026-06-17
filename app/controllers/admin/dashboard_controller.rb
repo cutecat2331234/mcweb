@@ -5,6 +5,8 @@ module Admin
     def index
       metrics_result = Commerce::SalesMetrics.call
       metrics_data = metrics_result.value
+      webhook_stats = WebhookDeliveryStats.summary
+      failed_since = 24.hours.ago.to_date.to_s
 
       render inertia: "Admin/Dashboard/Index", props: {
         metrics: [
@@ -19,6 +21,15 @@ module Admin
           { label: "7日退款", value: metrics_data[:refund_count_7d] },
           { label: "弃购购物车", value: metrics_data[:abandoned_carts_count] }
         ],
+        webhookStats: {
+          forum: webhook_stats[:forum],
+          store: webhook_stats[:store],
+          storeByEvent: webhook_stats[:store_by_event]
+        },
+        webhookFailedLinks: {
+          forum: admin_forum_webhook_deliveries_path(status: "failed", created_from: failed_since),
+          store: admin_store_webhook_deliveries_path(status: "failed", created_from: failed_since)
+        },
         recentAuditLogs: AuditLog.recent.limit(10).map do |log|
           {
             action: log.action,

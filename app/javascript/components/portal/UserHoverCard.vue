@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 
 const props = defineProps<{
   username: string
@@ -20,8 +20,10 @@ export interface UserCardData {
   member_since: string
   last_seen_at?: string | null
   online?: boolean
-  badges: Array<{ name: string; icon: string | null; color: string | null }>
+  badges: Array<{ name: string; icon: string | null; color: string | null; granted_at?: string }>
   message_url: string | null
+  follow_url?: string | null
+  following?: boolean
 }
 
 const open = ref(false)
@@ -57,6 +59,16 @@ function onLeave() {
   open.value = false
 }
 
+function toggleFollow() {
+  if (!card.value?.follow_url) return
+  router.post(card.value.follow_url, {}, {
+    preserveScroll: true,
+    onSuccess: () => {
+      if (card.value) card.value.following = !card.value.following
+    },
+  })
+}
+
 onBeforeUnmount(() => {
   if (hoverTimer) clearTimeout(hoverTimer)
 })
@@ -89,13 +101,23 @@ onBeforeUnmount(() => {
             :key="badge.name"
             class="rounded border px-1.5 py-0.5 text-[10px]"
             :style="badge.color ? { borderColor: badge.color, color: badge.color } : undefined"
+            :title="badge.granted_at ? `${badge.name} · ${badge.granted_at}` : badge.name"
           >
             {{ badge.icon ? `${badge.icon} ` : '' }}{{ badge.name }}
+            <span v-if="badge.granted_at" class="opacity-70">· {{ badge.granted_at }}</span>
           </span>
         </div>
-        <div class="mt-3 flex gap-2">
+        <div class="mt-3 flex flex-wrap gap-2">
           <Link :href="card.profile_url" class="text-xs text-primary hover:underline">查看资料</Link>
           <Link v-if="card.message_url" :href="card.message_url" class="text-xs text-primary hover:underline">发私信</Link>
+          <button
+            v-if="card.follow_url"
+            type="button"
+            class="text-xs text-primary hover:underline"
+            @click="toggleFollow"
+          >
+            {{ card.following ? '取消关注' : '关注' }}
+          </button>
         </div>
       </template>
     </div>

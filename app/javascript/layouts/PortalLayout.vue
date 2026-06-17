@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { Moon, Sun, Bell } from '@lucide/vue'
 import { routes } from '@/lib/routes'
 import FlashMessages from '@/components/portal/FlashMessages.vue'
+import ForumShortcuts from '@/components/portal/ForumShortcuts.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 
@@ -11,9 +12,25 @@ const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const notifications = computed(() => page.props.notifications as { unread_count: number; url: string } | undefined)
 const forumUnread = computed(() => page.props.forum_unread as { count: number; url: string } | undefined)
+const forumAssigned = computed(() => page.props.forum_assigned as { count: number; url: string } | undefined)
 const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
+
+const dismissedLocal = ref<string[]>(loadDismissedLocal())
+
+function loadDismissedLocal(): string[] {
+  try {
+    return JSON.parse(localStorage.getItem('mc-dismissed-announcements') || '[]')
+  } catch {
+    return []
+  }
+}
+
+const visibleAnnouncements = computed(() => {
+  const items = globalAnnouncements.value || []
+  return items.filter((item) => !dismissedLocal.value.includes(item.id))
+})
 
 const isDark = computed(() => document.documentElement.classList.contains('dark'))
 
@@ -21,6 +38,20 @@ function toggleTheme() {
   const next = isDark.value ? 'light' : 'dark'
   document.documentElement.classList.toggle('dark', next === 'dark')
   localStorage.setItem('mc-theme', next)
+}
+
+async function dismissAnnouncement(topicId: string) {
+  dismissedLocal.value = [ ...dismissedLocal.value, topicId ]
+  localStorage.setItem('mc-dismissed-announcements', JSON.stringify(dismissedLocal.value))
+  if (auth.value.user) {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    await fetch('/forum/announcements/dismiss', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },
+      credentials: 'same-origin',
+      body: JSON.stringify({ topic_id: topicId }),
+    })
+  }
 }
 </script>
 
@@ -38,6 +69,7 @@ function toggleTheme() {
             <Link :href="routes.forumActivity" class="hover:text-foreground transition-colors">动态</Link>
             <Link :href="routes.forumSearch" class="hover:text-foreground transition-colors">搜索</Link>
             <Link :href="routes.forumTags" class="hover:text-foreground transition-colors">标签</Link>
+            <Link :href="routes.forumBadges" class="hover:text-foreground transition-colors">徽章</Link>
             <Link v-if="auth.user" :href="routes.forumWatching" class="hover:text-foreground transition-colors">关注主题</Link>
             <Link v-if="auth.user" :href="routes.forumWatchedTags" class="hover:text-foreground transition-colors">关注标签</Link>
             <Link v-if="auth.user" :href="routes.forumWatchedTagTopics" class="hover:text-foreground transition-colors">标签主题</Link>
@@ -48,6 +80,7 @@ function toggleTheme() {
             <Link v-if="auth.user" :href="routes.forumMuted" class="hover:text-foreground transition-colors">静音</Link>
             <Link :href="routes.forumMembers" class="hover:text-foreground transition-colors">成员</Link>
             <Link v-if="auth.user" :href="routes.forumUnread" class="hover:text-foreground transition-colors">未读</Link>
+            <Link v-if="auth.user && forumAssigned" :href="forumAssigned.url" class="hover:text-foreground transition-colors">指派</Link>
             <Link v-if="auth.user" :href="routes.forumMessages" class="hover:text-foreground transition-colors">私信</Link>
             <Link v-if="auth.user" :href="routes.forumPreferences" class="hover:text-foreground transition-colors">偏好</Link>
             <Link v-if="auth.user" :href="routes.forumDrafts" class="hover:text-foreground transition-colors">草稿</Link>
@@ -57,6 +90,9 @@ function toggleTheme() {
             <Link v-if="auth.user" :href="routes.storeCompare" class="hover:text-foreground transition-colors">对比</Link>
             <Link v-if="auth.user" :href="routes.storeStockAlerts" class="hover:text-foreground transition-colors">到货通知</Link>
             <Link v-if="auth.user" :href="routes.storePriceAlerts" class="hover:text-foreground transition-colors">降价提醒</Link>
+            <Link v-if="auth.user" :href="routes.storeAvailabilityAlerts" class="hover:text-foreground transition-colors">上架通知</Link>
+            <Link v-if="auth.user" :href="routes.storeShippingAddresses" class="hover:text-foreground transition-colors">收货地址</Link>
+            <Link v-if="auth.user" :href="routes.storeWallet" class="hover:text-foreground transition-colors">商店余额</Link>
             <Link v-if="auth.user" :href="routes.storePreferences" class="hover:text-foreground transition-colors">商城通知</Link>
             <Link v-if="auth.user" :href="routes.storeOrders" class="hover:text-foreground transition-colors">我的订单</Link>
             <Link v-if="auth.user" :href="routes.storeGiftCards" class="hover:text-foreground transition-colors">礼品卡</Link>
@@ -107,6 +143,18 @@ function toggleTheme() {
               </Badge>
             </Link>
           </Button>
+          <Button v-if="auth.user && forumAssigned" as-child variant="ghost" size="sm" class="relative hidden md:inline-flex">
+            <Link :href="forumAssigned.url">
+              指派
+              <Badge
+                v-if="forumAssigned.count > 0"
+                variant="danger"
+                class="ml-1 h-4 min-w-4 px-1 text-[10px]"
+              >
+                {{ forumAssigned.count > 99 ? '99+' : forumAssigned.count }}
+              </Badge>
+            </Link>
+          </Button>
           <div class="mx-1 h-6 w-px bg-border" />
           <Link v-if="auth.user" :href="routes.forumUser(auth.user.username)" class="text-sm text-muted-foreground hover:text-foreground">
             {{ auth.user.username }}
@@ -118,17 +166,24 @@ function toggleTheme() {
       </div>
     </header>
 
-    <div v-if="globalAnnouncements?.length" class="border-b bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100">
+    <div v-if="visibleAnnouncements.length" class="border-b bg-amber-50 text-amber-950 dark:bg-amber-950 dark:text-amber-100">
       <div class="mx-auto flex max-w-6xl flex-wrap items-center gap-x-4 gap-y-1 px-4 py-2 text-sm">
         <span class="font-medium shrink-0">全站公告</span>
         <Link
-          v-for="item in globalAnnouncements"
+          v-for="item in visibleAnnouncements"
           :key="item.id"
           :href="item.url"
           class="truncate hover:underline"
         >
           {{ item.title }}
         </Link>
+        <button
+          type="button"
+          class="ml-auto shrink-0 text-xs underline opacity-80 hover:opacity-100"
+          @click="visibleAnnouncements.forEach((item) => dismissAnnouncement(item.id))"
+        >
+          全部关闭
+        </button>
       </div>
     </div>
 
@@ -136,5 +191,6 @@ function toggleTheme() {
       <FlashMessages />
       <slot />
     </main>
+    <ForumShortcuts />
   </div>
 </template>

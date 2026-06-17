@@ -11,7 +11,7 @@ defineOptions({ layout: AdminLayout })
 
 const props = defineProps<{
   title: string
-  category: { id?: number; name: string; slug: string; position: number; color_hex?: string; icon?: string; description?: string }
+  category: { id?: number; name: string; slug: string; position: number; color_hex?: string; icon?: string; description?: string; seo_title?: string; seo_description?: string }
   submitUrl: string
   method: 'post' | 'patch'
   backUrl: string
@@ -55,6 +55,14 @@ function submit() {
     <div class="space-y-2">
       <Label for="description">描述</Label>
       <Textarea id="description" v-model="form.category.description" rows="3" placeholder="分类说明…" />
+    </div>
+    <div class="space-y-2">
+      <Label for="seo_title">SEO 标题</Label>
+      <Input id="seo_title" v-model="form.category.seo_title" />
+    </div>
+    <div class="space-y-2">
+      <Label for="seo_description">SEO 描述</Label>
+      <Textarea id="seo_description" v-model="form.category.seo_description" rows="2" />
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

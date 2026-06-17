@@ -56,6 +56,13 @@ module Commerce
         body: "订单 #{@order.order_number} 已全部完成，感谢购买。",
         path: "/store/orders/#{@order.public_id}"
       )
+
+      delay_days = SiteSetting.get("store.review_request_delay_days", "3").to_i
+      if delay_days <= 0
+        Commerce::SendReviewRequest.call(order: @order)
+      else
+        Commerce::SendReviewRequestJob.set(wait: delay_days.days).perform_later(@order.id)
+      end
     end
   end
 end

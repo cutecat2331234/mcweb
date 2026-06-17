@@ -14,10 +14,10 @@ module Community
         return ServiceResult.success(watching: true, notification_level: "watching")
       end
 
-      case existing.notification_level
-      when "watching"
-        existing.update!(notification_level: "tracking")
-        ServiceResult.success(watching: true, notification_level: "tracking")
+      next_level = SubscriptionLevelCycler.next_level(existing.notification_level)
+      if next_level
+        existing.update!(notification_level: next_level)
+        ServiceResult.success(watching: true, notification_level: next_level)
       else
         existing.destroy!
         ServiceResult.success(watching: false, notification_level: nil)

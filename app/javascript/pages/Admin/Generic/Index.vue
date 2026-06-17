@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
+import { ref, watch } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import Pagination from '@/components/portal/Pagination.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
+import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -22,14 +24,129 @@ export interface AdminAction {
   href: string
 }
 
-defineProps<{
+export interface StatusTab {
+  label: string
+  href: string
+  active: boolean
+  count?: number
+}
+
+export interface PaginationMeta {
+  page: number
+  pages: number
+  count: number
+  from: number
+  to: number
+  prev: string | null
+  next: string | null
+}
+
+export interface BulkRetryAction {
+  label: string
+  href: string
+  ids: number[]
+}
+
+export interface DateFilterProps {
+  created_from: string
+  created_to: string
+  action: string
+}
+
+export interface AdminRow extends Record<string, string> {
+  url?: string
+  publicId?: string
+}
+
+const props = defineProps<{
   title: string
   subtitle?: string
   exportUrl?: string
   columns: AdminColumn[]
-  rows: Array<Record<string, string>>
+  rows: Array<AdminRow>
   actions?: AdminAction[]
+  statusTabs?: StatusTab[]
+  eventTabs?: StatusTab[]
+  kindTabs?: StatusTab[]
+  bulkRetry?: BulkRetryAction | null
+  dateFilter?: DateFilterProps | null
+  pagination?: PaginationMeta
+  selectable?: boolean
+  bulkModerateUrl?: string | null
+  bulkOrderUrl?: string | null
+  bulkOrderActions?: Array<{ label: string; action: string }>
 }>()
+
+const selectedPublicIds = ref<string[]>([])
+
+const dateFrom = ref('')
+const dateTo = ref('')
+
+watch(
+  () => props.dateFilter,
+  (filter) => {
+    dateFrom.value = filter?.created_from || ''
+    dateTo.value = filter?.created_to || ''
+  },
+  { immediate: true }
+)
+
+function submitBulkRetry(action: BulkRetryAction) {
+  if (!confirm(`确定要${action.label}吗？`)) return
+  router.post(action.href, { ids: action.ids })
+}
+
+function applyDateFilter() {
+  if (!props.dateFilter) return
+  const params = new URLSearchParams(window.location.search)
+  if (dateFrom.value) params.set('created_from', dateFrom.value)
+  else params.delete('created_from')
+  if (dateTo.value) params.set('created_to', dateTo.value)
+  else params.delete('created_to')
+  window.location.href = `${props.dateFilter.action}?${params.toString()}`
+}
+
+function toggleRowSelection(publicId: string, checked: boolean) {
+  if (!publicId) return
+  if (checked) {
+    if (!selectedPublicIds.value.includes(publicId)) {
+      selectedPublicIds.value = [ ...selectedPublicIds.value, publicId ]
+    }
+  } else {
+    selectedPublicIds.value = selectedPublicIds.value.filter((id) => id !== publicId)
+  }
+}
+
+function toggleSelectAll(checked: boolean) {
+  if (!checked) {
+    selectedPublicIds.value = []
+    return
+  }
+  selectedPublicIds.value = props.rows.map((row) => row.publicId).filter((id): id is string => !!id)
+}
+
+function bulkModerate(action: string) {
+  if (!props.bulkModerateUrl || selectedPublicIds.value.length === 0) return
+  router.patch(props.bulkModerateUrl, {
+    topic_ids: selectedPublicIds.value,
+    action_type: action,
+    return_to: window.location.pathname + window.location.search,
+  }, {
+    onSuccess: () => { selectedPublicIds.value = [] },
+  })
+}
+
+function bulkOrder(action: string) {
+  if (!props.bulkOrderUrl || selectedPublicIds.value.length === 0) return
+  if (!confirm('确定执行此批量操作吗？')) return
+  router.patch(props.bulkOrderUrl, {
+    order_ids: selectedPublicIds.value,
+    action_type: action,
+    return_to: window.location.pathname + window.location.search,
+  }, {
+    onSuccess: () => { selectedPublicIds.value = [] },
+  })
+}
 </script>
 
 <template>
@@ -45,13 +162,93 @@ defineProps<{
       >
         {{ action.label }}
       </Link>
+      <button
+        v-if="bulkRetry"
+        type="button"
+        class="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+        @click="submitBulkRetry(bulkRetry)"
+      >
+        {{ bulkRetry.label }}
+      </button>
+      <BulkModerateToolbar
+        v-if="selectable && bulkModerateUrl"
+        :count="selectedPublicIds.length"
+        @moderate="bulkModerate"
+      />
+      <template v-if="selectable && bulkOrderUrl && bulkOrderActions?.length && selectedPublicIds.length">
+        <button
+          v-for="item in bulkOrderActions"
+          :key="item.action"
+          type="button"
+          class="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
+          @click="bulkOrder(item.action)"
+        >
+          {{ item.label }}（{{ selectedPublicIds.length }}）
+        </button>
+      </template>
     </div>
   </div>
+
+  <div v-if="statusTabs?.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      v-for="tab in statusTabs"
+      :key="'status-' + tab.href"
+      :href="tab.href"
+      class="rounded-md border px-3 py-1.5 text-sm no-underline"
+      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ tab.label }}<span v-if="tab.count != null" class="ml-1 opacity-80">({{ tab.count }})</span>
+    </Link>
+  </div>
+
+  <div v-if="eventTabs?.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      v-for="tab in eventTabs"
+      :key="'event-' + tab.href"
+      :href="tab.href"
+      class="rounded-md border px-3 py-1.5 text-xs no-underline"
+      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ tab.label }}<span v-if="tab.count != null" class="ml-1 opacity-80">({{ tab.count }})</span>
+    </Link>
+  </div>
+
+  <div v-if="kindTabs?.length" class="mb-4 flex flex-wrap gap-2">
+    <Link
+      v-for="tab in kindTabs"
+      :key="'kind-' + tab.href"
+      :href="tab.href"
+      class="rounded-md border px-3 py-1.5 text-xs no-underline"
+      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
+    >
+      {{ tab.label }}
+    </Link>
+  </div>
+
+  <form v-if="dateFilter" class="mb-4 flex flex-wrap items-end gap-2" @submit.prevent="applyDateFilter">
+    <label class="text-sm">
+      <span class="mb-1 block text-muted-foreground">起始日期</span>
+      <input v-model="dateFrom" type="date" class="h-9 rounded-md border px-2 text-sm">
+    </label>
+    <label class="text-sm">
+      <span class="mb-1 block text-muted-foreground">结束日期</span>
+      <input v-model="dateTo" type="date" class="h-9 rounded-md border px-2 text-sm">
+    </label>
+    <button type="submit" class="h-9 rounded-md border px-3 text-sm hover:bg-muted">筛选</button>
+  </form>
 
   <div v-if="rows.length" class="rounded-lg border">
     <Table>
       <TableHeader>
         <TableRow>
+          <TableHead v-if="selectable" class="w-10">
+            <input
+              type="checkbox"
+              class="rounded border"
+              :checked="rows.length > 0 && selectedPublicIds.length === rows.filter((r) => r.publicId).length"
+              @change="toggleSelectAll(($event.target as HTMLInputElement).checked)"
+            >
+          </TableHead>
           <TableHead v-for="column in columns" :key="column.key">
             {{ column.label }}
           </TableHead>
@@ -59,6 +256,15 @@ defineProps<{
       </TableHeader>
       <TableBody>
         <TableRow v-for="(row, index) in rows" :key="index">
+          <TableCell v-if="selectable">
+            <input
+              v-if="row.publicId"
+              type="checkbox"
+              class="rounded border"
+              :checked="selectedPublicIds.includes(row.publicId)"
+              @change="toggleRowSelection(row.publicId, ($event.target as HTMLInputElement).checked)"
+            >
+          </TableCell>
           <TableCell v-for="column in columns" :key="column.key">
             <Link
               v-if="column.link && row.url"
@@ -77,4 +283,6 @@ defineProps<{
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
     暂无数据。
   </p>
+
+  <Pagination v-if="pagination && pagination.pages > 1" :meta="pagination" class="mt-4" />
 </template>

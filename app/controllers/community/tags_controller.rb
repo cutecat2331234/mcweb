@@ -4,9 +4,12 @@ module Community
   class TagsController < ApplicationController
     include Community::TopicListPreloadable
 
-    before_action :require_login, only: %i[toggle_subscription]
+    include Community::SubscriptionNoticeable
+
+    before_action :require_login, only: %i[toggle_subscription update_subscription]
 
     def index
+      usable_ids = Community::Tag.usable_by(current_user).pluck(:id).to_set
       tags = Community::Tag.usable_by(current_user)
         .left_joins(:topic_tags)
         .group(:id)
@@ -14,21 +17,50 @@ module Community
         .order("topics_count DESC")
         .limit(100)
 
+      grouped_tag_ids = Set.new
+      tag_groups = Community::TagGroup.includes(:tags).ordered.filter_map do |group|
+        group_tags = group.tags.select { |tag| usable_ids.include?(tag.id) }
+        next if group_tags.empty?
+
+        group_tags.each { |tag| grouped_tag_ids.add(tag.id) }
+        {
+          name: group.name,
+          slug: group.slug,
+          color_hex: group.color_hex,
+          tags: group_tags.map do |tag|
+            count = tags.find { |t| t.id == tag.id }&.topics_count.to_i
+            {
+              name: tag.name,
+              slug: tag.slug,
+              topics_count: count,
+              color_hex: tag.color_hex,
+              url: forum_tag_path(tag.slug)
+            }
+          end.sort_by { |t| -t[:topics_count] }
+        }
+      end
+
+      ungrouped = tags.reject { |tag| grouped_tag_ids.include?(tag.id) }.map do |tag|
+        {
+          name: tag.name,
+          slug: tag.slug,
+          topics_count: tag.topics_count.to_i,
+          color_hex: tag.color_hex,
+          url: forum_tag_path(tag.slug)
+        }
+      end
+
       render inertia: "Community/Tags/Index", props: {
-        tags: tags.map do |tag|
-          {
-            name: tag.name,
-            slug: tag.slug,
-            topics_count: tag.topics_count.to_i,
-            color_hex: tag.color_hex,
-            url: forum_tag_path(tag.slug)
-          }
-        end
+        tagGroups: tag_groups,
+        ungroupedTags: ungrouped
       }
     end
 
     def show
-      tag = Community::Tag.usable_by(current_user).find_by!(slug: params[:slug])
+      tag = Community::Tag.resolve_by_slug(params[:slug])
+      return head :not_found unless tag
+
+      tag = Community::Tag.usable_by(current_user).find_by!(id: tag.id)
       sort = params[:sort].to_s.presence || "activity"
       topic_ids = tag.topics.published_listed.pluck(:id)
       scope = preload_topics(Community::Topic.where(id: topic_ids).sorted(sort))
@@ -41,7 +73,7 @@ module Community
                       {}
       end
 
-      watching = logged_in? && Community::Subscription.exists?(user: current_user, subscribable: tag)
+      subscription = logged_in? ? Community::Subscription.find_by(user: current_user, subscribable: tag) : nil
 
       render inertia: "Community/Tags/Show", props: {
         tag: {
@@ -50,13 +82,15 @@ module Community
           description: tag.description,
           color_hex: tag.color_hex,
           rss_url: forum_tag_rss_path(tag.slug),
-          watching: watching,
+          watching: subscription.present?,
+          notification_level: subscription&.notification_level,
           subscription_url: forum_tag_subscription_path(tag.slug)
         },
         topics: serialize_topics(topics, read_states: read_states),
         pagination: pagy_props(@pagy),
         sort: sort,
-        loggedIn: logged_in?
+        loggedIn: logged_in?,
+        subscriptionLevels: Community::SubscriptionLevelOptions.for(:tag)
       }
     end
 
@@ -65,17 +99,26 @@ module Community
       result = Community::ToggleTagSubscription.call(user: current_user, tag: tag)
 
       if result.success?
-        notice = if result.value[:watching]
-                   case result.value[:notification_level]
-                   when "tracking" then "已切换为跟踪此标签（仅站内通知）。"
-                   else "已关注此标签（即时通知）。"
-                   end
-        else
-                   "已取消关注此标签。"
-        end
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :tag)
         redirect_to forum_tag_path(tag.slug), notice: notice
       else
         redirect_to forum_tag_path(tag.slug), alert: service_error_message(result)
+      end
+    end
+
+    def update_subscription
+      tag = Community::Tag.usable_by(current_user).find_by!(slug: params[:slug])
+      result = Community::SetSubscriptionLevel.call(
+        user: current_user,
+        subscribable: tag,
+        level: params[:level]
+      )
+
+      if result.success?
+        notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :tag)
+        redirect_to forum_tag_path(tag.slug), notice: notice
+      else
+        redirect_to forum_tag_path(tag.slug), alert: result.error || "更新失败"
       end
     end
   end

@@ -1,0 +1,47 @@
+<table style="width:100%;border-collapse:collapse;margin:1rem 0;">
+  <thead>
+    <tr>
+      <th style="border:1px solid #ddd;padding:0.5rem;text-align:left;">商品</th>
+      <th style="border:1px solid #ddd;padding:0.5rem;text-align:left;">数量</th>
+      <th style="border:1px solid #ddd;padding:0.5rem;text-align:left;">小计</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% order.items.each do |item| %>
+      <tr>
+        <td style="border:1px solid #ddd;padding:0.5rem;">
+          <%= item.product_name %>
+          <% if item.variant_name.present? %> — <%= item.variant_name %><% end %>
+        </td>
+        <td style="border:1px solid #ddd;padding:0.5rem;"><%= item.quantity %></td>
+        <td style="border:1px solid #ddd;padding:0.5rem;"><%= number_to_currency(item.total_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<% if order.shipping_address.present? && order.shipping_address.values.any?(&:present?) %>
+  <p><strong>收货地址：</strong><%= format_shipping_address(order.shipping_address) %></p>
+<% end %>
+
+<% if order.shipping_method.present? %>
+  <p><strong>配送方式：</strong><%= Commerce::ShippingMethods.label_for(order.shipping_method) %></p>
+  <% estimate = Commerce::ShippingMethods.delivery_estimate_label(Commerce::ShippingMethods.find(order.shipping_method)) %>
+  <% if estimate.present? %>
+    <p><strong>预计送达：</strong><%= estimate %></p>
+  <% end %>
+<% end %>
+
+<% if order.discount_cents.positive? %>
+  <p>优惠<%= order.coupon ? " (#{order.coupon.code})" : "" %>：−<%= number_to_currency(order.discount_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+<% end %>
+<% if order.gift_card_amount_cents.positive? %>
+  <p>礼品卡<%= order.gift_card ? " (#{order.gift_card.code})" : "" %>：−<%= number_to_currency(order.gift_card_amount_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+<% end %>
+<p>小计：<%= number_to_currency(order.subtotal_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+<% if order.shipping_cents.positive? %>
+  <p>运费：<%= number_to_currency(order.shipping_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+<% elsif order.shipping_cents.zero? && order.subtotal_cents.positive? %>
+  <p>运费：免运费</p>
+<% end %>
+<p><strong>合计：<%= number_to_currency(order.total_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></strong></p>

@@ -6,3 +6,6 @@
   <% end %>
 </ul>
 <p><a href="<%= @recovery_url %>">前往购物车完成购买</a></p>
+<% if @coupon_code.present? %>
+<p>专属优惠码：<strong><%= @coupon_code %></strong>（点击链接自动应用）</p>
+<% end %>

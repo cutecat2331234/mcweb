@@ -49,7 +49,7 @@ module Admin
       end
 
       def create
-        category = ::Community::Category.new(category_params)
+        category = ::Community::Category.new(category_attributes)
         if category.save
           redirect_to admin_forum_category_path(category), notice: "分类已创建。"
         else
@@ -62,7 +62,7 @@ module Admin
       end
 
       def update
-        if @category.update(category_params)
+        if @category.update(category_attributes)
           redirect_to admin_forum_category_path(@category), notice: "分类已更新。"
         else
           render inertia: "Admin/Forum/Categories/Form", props: form_props(@category), status: :unprocessable_entity
@@ -85,7 +85,7 @@ module Admin
       end
 
       def category_params
-        params.require(:category).permit(:name, :slug, :position, :color_hex, :icon, :description)
+        params.require(:category).permit(:name, :slug, :position, :color_hex, :icon, :description, :seo_title, :seo_description)
       end
 
       def form_props(category)
@@ -98,12 +98,24 @@ module Admin
             position: category.position || 0,
             color_hex: category.color_hex || "",
             icon: category.icon || "",
-            description: category.description || ""
+            description: category.description || "",
+            seo_title: category.seo["title"].to_s,
+            seo_description: category.seo["description"].to_s
           },
           submitUrl: category.persisted? ? admin_forum_category_path(category) : admin_forum_categories_path,
           method: category.persisted? ? "patch" : "post",
           backUrl: admin_forum_categories_path
         }
+      end
+
+      def category_attributes
+        attrs = category_params.to_h
+        seo = {
+          "title" => attrs.delete("seo_title"),
+          "description" => attrs.delete("seo_description")
+        }.compact
+        attrs[:seo] = seo if seo.any?
+        attrs
       end
     end
   end

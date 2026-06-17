@@ -2,7 +2,7 @@
 
 module Community
   class SavedSearchesController < ApplicationController
-    before_action :require_login
+    before_action :require_login, except: :unsubscribe
 
     def index
       searches = current_user.forum_saved_searches.recent.limit(20)
@@ -18,16 +18,38 @@ module Community
       end
     end
 
+    def update
+      search = current_user.forum_saved_searches.find(params[:id])
+      if search.update(saved_search_update_params)
+        render json: serialize_saved_search(search)
+      else
+        render json: { error: search.errors.full_messages.to_sentence }, status: :unprocessable_entity
+      end
+    end
+
     def destroy
       search = current_user.forum_saved_searches.find(params[:id])
       search.destroy!
       head :no_content
     end
 
+    def unsubscribe
+      search_id = Community::SavedSearchUnsubscribeToken.verify(params[:token])
+      search = Community::SavedSearch.find(search_id)
+      search.update!(notify_daily: false)
+      redirect_to forum_preferences_path, notice: "已关闭「#{search.name}」的每日邮件提醒。"
+    rescue Community::SavedSearchUnsubscribeToken::InvalidToken, ActiveRecord::RecordNotFound
+      redirect_to forum_search_path, alert: "取消提醒链接无效或已过期。"
+    end
+
     private
 
     def saved_search_params
-      params.require(:saved_search).permit(:name, :query, filters: {})
+      params.require(:saved_search).permit(:name, :query, :notify_daily, :notify_in_app, :webhook_url, filters: {})
+    end
+
+    def saved_search_update_params
+      params.require(:saved_search).permit(:notify_daily, :notify_in_app, :name, :webhook_url)
     end
 
     def serialize_saved_search(search)
@@ -36,29 +58,19 @@ module Community
         name: search.name,
         query: search.query,
         filters: search.filters,
-        url: forum_search_path(search_url_params(search)),
+        notify_daily: search.notify_daily?,
+        notify_in_app: search.notify_in_app?,
+        filter_labels: Community::SavedSearchFilterSummary.call(search),
+        url: forum_search_path(Community::SavedSearchPresenter.url_params(search)),
+        rss_url: Community::SavedSearchPresenter.rss_path(search),
+        webhook_url: search.webhook_url,
+        update_url: forum_saved_search_path(search),
         delete_url: forum_saved_search_path(search)
       }
     end
 
     def search_url_params(search)
-      filters = search.filters.symbolize_keys
-      {
-        q: search.query.presence,
-        section: filters[:section].presence,
-        author: filters[:author].presence,
-        tag: filters[:tag].presence,
-        solved: filters[:solved].presence,
-        locked: filters[:locked].presence,
-        pinned: filters[:pinned].presence,
-        wiki: filters[:wiki].presence,
-        featured: filters[:featured].presence,
-        announcement: filters[:announcement].presence,
-        created_after: filters[:created_after].presence,
-        created_before: filters[:created_before].presence,
-        topic_sort: filters[:topic_sort].presence,
-        post_sort: filters[:post_sort].presence
-      }.compact
+      Community::SavedSearchPresenter.url_params(search)
     end
   end
 end

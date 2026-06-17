@@ -155,6 +155,10 @@ module Commerce
         end
 
         @cart.add_item!(product: product, variant: variant, quantity: quantity)
+      elsif params[:item_id].present? && params.key?(:gift_note)
+        item = @cart.items.find(params[:item_id])
+        item.update!(gift_note: params[:gift_note].to_s.strip.presence)
+        @cart.reset_abandoned_reminder!
       elsif params[:item_id].present?
         item = @cart.items.find(params[:item_id])
         if params[:quantity].to_i.positive?

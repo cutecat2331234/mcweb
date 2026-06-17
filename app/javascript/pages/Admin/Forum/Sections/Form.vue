@@ -23,7 +23,9 @@ const props = defineProps<{
     create_topic_roles: string
     reply_roles: string
     required_tag_ids: number[]
+    required_tag_group_ids: number[]
     allowed_tag_ids: number[]
+    default_tag_ids: number[]
     prefix_required: boolean
     min_trust_level_create: number
     min_trust_level_reply: number
@@ -34,8 +36,11 @@ const props = defineProps<{
     link_url: string
     link_label: string
     default_notification_level: string
+    seo_title: string
+    seo_description: string
   }
   tags: Array<{ id: number; name: string }>
+  tagGroups?: Array<{ id: number; name: string }>
   categories: Array<{ id: number; name: string }>
   parentSections: Array<{ id: number; name: string }>
   submitUrl: string
@@ -47,7 +52,9 @@ const form = useForm({
   section: {
     ...props.section,
     required_tag_ids: [ ...props.section.required_tag_ids ],
+    required_tag_group_ids: [ ...(props.section.required_tag_group_ids || []) ],
     allowed_tag_ids: [ ...props.section.allowed_tag_ids ],
+    default_tag_ids: [ ...props.section.default_tag_ids ],
   },
 })
 
@@ -68,6 +75,26 @@ function toggleAllowedTag(tagId: number) {
     ids.splice(index, 1)
   } else {
     ids.push(tagId)
+  }
+}
+
+function toggleDefaultTag(tagId: number) {
+  const ids = form.section.default_tag_ids
+  const index = ids.indexOf(tagId)
+  if (index >= 0) {
+    ids.splice(index, 1)
+  } else {
+    ids.push(tagId)
+  }
+}
+
+function toggleRequiredTagGroup(groupId: number) {
+  const ids = form.section.required_tag_group_ids
+  const index = ids.indexOf(groupId)
+  if (index >= 0) {
+    ids.splice(index, 1)
+  } else {
+    ids.push(groupId)
   }
 }
 
@@ -155,6 +182,14 @@ function submit() {
         <Label for="link_label">外链显示文字</Label>
         <Input id="link_label" v-model="form.section.link_label" placeholder="查看版规全文" />
       </div>
+      <div class="space-y-2">
+        <Label for="seo_title">SEO 标题</Label>
+        <Input id="seo_title" v-model="form.section.seo_title" />
+      </div>
+      <div class="space-y-2">
+        <Label for="seo_description">SEO 描述</Label>
+        <Textarea id="seo_description" v-model="form.section.seo_description" rows="2" />
+      </div>
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
@@ -171,6 +206,7 @@ function submit() {
       <select id="default_notification_level" v-model="form.section.default_notification_level" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
         <option value="watching">关注（邮件+站内）</option>
         <option value="tracking">跟踪（仅站内）</option>
+        <option value="normal">普通（仅参与/提及）</option>
       </select>
     </div>
     <div class="space-y-2">
@@ -192,6 +228,20 @@ function submit() {
       </div>
       <p class="text-xs text-muted-foreground">勾选后，用户在此分区发帖必须包含至少一个所选标签。</p>
     </div>
+    <div v-if="tagGroups?.length" class="space-y-2">
+      <Label>必填标签组（至少从组内选一个标签）</Label>
+      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
+        <label v-for="group in tagGroups" :key="`group-${group.id}`" class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            class="h-4 w-4"
+            :checked="form.section.required_tag_group_ids.includes(group.id)"
+            @change="toggleRequiredTagGroup(group.id)"
+          />
+          {{ group.name }}
+        </label>
+      </div>
+    </div>
     <div v-if="tags.length" class="space-y-2">
       <Label>允许标签（白名单，空=不限制）</Label>
       <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
@@ -206,6 +256,21 @@ function submit() {
         </label>
       </div>
       <p class="text-xs text-muted-foreground">勾选后，仅可使用列表中的标签；留空表示不限制。</p>
+    </div>
+    <div v-if="tags.length" class="space-y-2">
+      <Label>默认标签（发帖时预填，Discourse/XenForo）</Label>
+      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
+        <label v-for="tag in tags" :key="`default-${tag.id}`" class="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            class="h-4 w-4"
+            :checked="form.section.default_tag_ids.includes(tag.id)"
+            @change="toggleDefaultTag(tag.id)"
+          />
+          {{ tag.name }}
+        </label>
+      </div>
+      <p class="text-xs text-muted-foreground">勾选后，用户在此分区新建主题时标签栏将自动预填这些标签。</p>
     </div>
     <div class="flex gap-2">
       <Button type="submit" :disabled="form.processing">保存</Button>

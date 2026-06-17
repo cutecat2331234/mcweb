@@ -8,7 +8,9 @@ module Commerce
 
     def call
       card = @order.gift_card
-      amount = @order.gift_card_amount_cents.to_i
+      original = @order.gift_card_amount_cents.to_i
+      already_restored = @order.gift_card_restored_cents.to_i
+      amount = original - already_restored
       return ServiceResult.success unless card && amount.positive?
 
       Commerce::GiftCard.transaction do
@@ -23,6 +25,7 @@ module Commerce
           transaction_type: :credit,
           order: @order
         )
+        @order.update!(gift_card_amount_cents: 0, gift_card_restored_cents: original)
       end
 
       ServiceResult.success

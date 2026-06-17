@@ -17,20 +17,34 @@ module Community
         recipient_ids: [ author.id ],
         topic: @topic
       ).value.include?(author.id)
-      return ServiceResult.success unless NotificationPreference.enabled?(author, channel: "in_app", notification_type: "forum.quote")
 
-      Notification.notify!(
-        user: author,
-        notification_type: "forum.quote",
-        title: "#{@quoter.username} 引用了你的帖子",
-        body: @topic.title.truncate(80),
-        metadata: {
-          topic_id: @topic.public_id,
-          post_id: @post.id,
-          quoted_post_id: @quoted_post.id,
-          path: "/forum/topics/#{@topic.public_id}#post-#{@post.id}"
-        }
-      )
+      email_enabled = Community::InstantEmailDelivery.allowed?(author, notification_type: "forum.quote")
+      in_app_enabled = NotificationPreference.enabled?(author, channel: "in_app", notification_type: "forum.quote")
+      return ServiceResult.success unless email_enabled || in_app_enabled
+
+      if in_app_enabled
+        Notification.notify!(
+          user: author,
+          notification_type: "forum.quote",
+          title: "#{@quoter.username} 引用了你的帖子",
+          body: @topic.title.truncate(80),
+          metadata: {
+            topic_id: @topic.public_id,
+            post_id: @post.id,
+            quoted_post_id: @quoted_post.id,
+            path: "/forum/topics/#{@topic.public_id}#post-#{@post.id}"
+          }
+        )
+      end
+
+      if email_enabled
+        MailDeliveryJob.perform_later(
+          "Community::ForumMailer",
+          "post_quoted",
+          "deliver_now",
+          args: [ author.id, @post.id, @quoter.id, @quoted_post.id ]
+        )
+      end
 
       ServiceResult.success
     end

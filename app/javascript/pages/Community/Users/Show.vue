@@ -24,6 +24,7 @@ const props = defineProps<{
     username: string
     display_name: string | null
     forum_title: string | null
+    forum_flair_color_hex?: string | null
     avatar_url: string
     bio: string | null
     trust_level: number
@@ -35,6 +36,7 @@ const props = defineProps<{
     forum_signature?: string | null
     topics_count: number
     posts_count: number
+    assigned_count?: number
     orders_count?: number
     followers_count?: number
     followers_url?: string | null
@@ -64,6 +66,8 @@ const props = defineProps<{
       can_post_links: boolean
     } | null
     warning_points?: number | null
+    store_credit_label?: string | null
+    store_wallet_url?: string | null
   }
   warnings?: Array<{
     reason: string
@@ -73,6 +77,8 @@ const props = defineProps<{
   }>
   topics: TopicListItem[]
   topicsPagination: PaginationMeta
+  assigned_topics?: TopicListItem[]
+  assignedPagination?: PaginationMeta
   recent_posts: Array<{
     id: number
     body: string
@@ -82,7 +88,7 @@ const props = defineProps<{
     created_at: string
   }>
   postsPagination: PaginationMeta
-  activeTab: 'topics' | 'posts' | 'store'
+  activeTab: 'topics' | 'posts' | 'store' | 'assigned'
   liked_posts: Array<{
     id: number
     body: string
@@ -93,9 +99,12 @@ const props = defineProps<{
   }>
   badges: Array<{
     name: string
+    slug?: string
     icon: string
     description: string | null
     color: string
+    granted_at?: string
+    url?: string
   }>
   store_reviews?: Array<{
     id: number
@@ -122,6 +131,7 @@ const bioForm = useForm({
   user: {
     bio: props.profile.bio || '',
     forum_title: props.profile.forum_title || '',
+    forum_flair_color_hex: props.profile.forum_flair_color_hex || '',
     forum_signature: props.profile.forum_signature || '',
   },
 })
@@ -174,7 +184,7 @@ function uploadAvatar(event: Event) {
   })
 }
 
-function switchTab(tab: 'topics' | 'posts' | 'store') {
+function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
   router.get(`/forum/users/${props.profile.username}`, { tab }, { preserveState: true })
 }
 </script>
@@ -209,6 +219,10 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
         </Link>
         <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
         <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> 警告积分</span>
+        <span v-if="profile.store_credit_label">
+          商店余额 <strong>{{ profile.store_credit_label }}</strong>
+          <Link v-if="profile.store_wallet_url" :href="profile.store_wallet_url" class="ml-1 text-primary hover:underline">钱包</Link>
+        </span>
       </div>
       <div v-if="warnings?.length" class="mt-4 max-w-xl rounded-lg border p-4">
         <h3 class="mb-2 text-sm font-semibold">社区警告记录</h3>
@@ -231,15 +245,17 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
         </p>
       </div>
       <div v-if="badges.length" class="mt-3 flex flex-wrap gap-2">
-        <span
+        <Link
           v-for="badge in badges"
-          :key="badge.name"
-          class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs"
+          :key="badge.slug || badge.name"
+          :href="badge.url || routes.forumBadges"
+          class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs hover:bg-muted/50"
           :style="{ borderColor: badge.color, color: badge.color }"
-          :title="badge.description || badge.name"
+          :title="badge.description ? `${badge.description} · ${badge.granted_at}` : badge.granted_at"
         >
           {{ badge.icon }} {{ badge.name }}
-        </span>
+          <span v-if="badge.granted_at" class="text-[10px] opacity-70">{{ badge.granted_at }}</span>
+        </Link>
       </div>
       <div class="mt-3 flex flex-wrap gap-2">
         <Button v-if="profile.message_url" as-child size="sm">
@@ -293,6 +309,8 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
   <form v-if="editingTitle" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
     <Label for="forum_title">论坛头衔</Label>
     <input id="forum_title" v-model="bioForm.user.forum_title" class="h-9 w-full rounded-md border px-2 text-sm" placeholder="如：资深玩家" />
+    <Label for="forum_flair_color_hex">头衔颜色（Hex，可选）</Label>
+    <input id="forum_flair_color_hex" v-model="bioForm.user.forum_flair_color_hex" class="h-9 w-full rounded-md border px-2 text-sm" placeholder="#6366f1" />
     <div class="flex gap-2">
       <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
       <Button type="button" size="sm" variant="outline" @click="editingTitle = false">取消</Button>
@@ -335,6 +353,14 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
     <Button :variant="activeTab === 'store' ? 'default' : 'outline'" size="sm" @click="switchTab('store')">
       商城 ({{ profile.orders_count ?? 0 }})
     </Button>
+    <Button
+      v-if="profile.assigned_count"
+      :variant="activeTab === 'assigned' ? 'default' : 'outline'"
+      size="sm"
+      @click="switchTab('assigned')"
+    >
+      指派 ({{ profile.assigned_count }})
+    </Button>
   </div>
 
   <section v-if="activeTab === 'topics'">
@@ -370,6 +396,19 @@ function switchTab(tab: 'topics' | 'posts' | 'store') {
       </div>
     </div>
     <p v-else class="text-sm text-muted-foreground">暂无商城评价。</p>
+  </section>
+
+  <section v-else-if="activeTab === 'assigned'">
+    <h2 class="mb-3 text-sm font-semibold">指派给此用户的主题</h2>
+    <TopicListTable v-if="assigned_topics?.length" :topics="assigned_topics" show-views />
+    <Pagination
+      v-if="assigned_topics?.length && assignedPagination"
+      :pagination="assignedPagination"
+      :base-path="profile.profile_url"
+      page-param="assigned_page"
+      :query="{ tab: 'assigned' }"
+    />
+    <p v-else class="text-sm text-muted-foreground">暂无指派主题。</p>
   </section>
 
   <section v-else>

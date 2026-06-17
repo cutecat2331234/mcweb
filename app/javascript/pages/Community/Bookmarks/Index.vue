@@ -85,6 +85,7 @@ function saveBookmark(url: string) {
             <TableHead>主题</TableHead>
             <TableHead>楼层</TableHead>
             <TableHead>备注</TableHead>
+            <TableHead>提醒时间</TableHead>
             <TableHead>收藏时间</TableHead>
             <TableHead />
           </TableRow>
@@ -97,13 +98,14 @@ function saveBookmark(url: string) {
               </TableCell>
               <TableCell>#{{ bookmark.floor_number }}</TableCell>
               <TableCell class="max-w-xs text-muted-foreground">{{ bookmark.note || bookmark.excerpt }}</TableCell>
+              <TableCell>{{ bookmark.remind_at || '—' }}</TableCell>
               <TableCell>{{ bookmark.created_at }}</TableCell>
               <TableCell>
                 <Button type="button" variant="outline" size="sm" @click="startEdit(bookmark.bookmark_id, bookmark.note, bookmark.remind_at_input)">编辑</Button>
               </TableCell>
             </TableRow>
             <TableRow v-if="editingId === bookmark.bookmark_id">
-              <TableCell colspan="5" class="space-y-2 border-t bg-muted/30 p-4">
+              <TableCell colspan="6" class="space-y-2 border-t bg-muted/30 p-4">
                 <Textarea v-model="editNote" rows="2" placeholder="书签备注" />
                 <Input v-model="editRemindAt" type="datetime-local" />
                 <div class="flex gap-2">

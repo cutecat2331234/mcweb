@@ -27,6 +27,10 @@ module Commerce
       )
 
       if result.success?
+        if params[:return_order_id].present?
+          order = Commerce::Order.find_by(public_id: params[:return_order_id], user_id: current_user.id)
+          return redirect_to store_order_path(order), notice: "问题已提交。" if order
+        end
         redirect_to store_product_path(@product), notice: "问题已提交。"
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)

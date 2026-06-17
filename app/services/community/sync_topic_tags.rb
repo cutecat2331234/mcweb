@@ -16,12 +16,16 @@ module Community
         next unless slug
 
         tag = Community::Tag.find_by(slug: slug)
+        tag = tag&.effective_tag
         if tag&.staff_only? && !can_use_staff_tags?
           return ServiceResult.failure(error: "You cannot use restricted tag: #{tag.name}")
         end
       end
 
-      tags = @tag_names.filter_map { |name| Community::Tag.find_or_create_by_name!(name, user: @user) }
+      tags = @tag_names.filter_map do |name|
+        tag = Community::Tag.find_or_create_by_name!(name, user: @user)
+        tag&.effective_tag
+      end.uniq
 
       allowed = Array(@topic.section.allowed_tag_ids).map(&:to_i).reject(&:zero?)
       if allowed.any?
@@ -37,11 +41,22 @@ module Community
         Community::TopicTag.find_or_create_by!(topic: @topic, tag: tag)
       end
 
+      tag_ids = tags.map(&:id)
+
       required_result = Community::ValidateSectionRequiredTags.call(
         section: @topic.section,
-        tag_ids: tags.map(&:id)
+        tag_ids: tag_ids
       )
       return required_result if required_result.failure?
+
+      group_result = Community::ValidateTagGroups.call(tag_ids: tag_ids)
+      return group_result if group_result.failure?
+
+      section_group_result = Community::ValidateSectionTagGroups.call(
+        section: @topic.section,
+        tag_ids: tag_ids
+      )
+      return section_group_result if section_group_result.failure?
 
       ServiceResult.success(tags: tags)
     end

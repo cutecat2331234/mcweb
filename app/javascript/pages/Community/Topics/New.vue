@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -8,20 +8,42 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
-  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; allowed_tags?: Array<{ name: string; slug: string; url: string }> }
+  section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; required_tag_groups?: Array<{ name: string; slug: string }>; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; required?: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
+  similarTitlesUrl?: string
+  warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
 }>()
+
+const similarTitles = ref<Array<{ title: string; url: string }>>([])
+const tagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
+const tagGroupError = ref('')
+const linkError = ref('')
+let similarTimer: ReturnType<typeof setTimeout> | null = null
+
+function containsLink(text: string) {
+  return /https?:\/\/|www\./i.test(text)
+}
+
+function missingRequiredGroups(tags: string) {
+  const names = tags.split(',').map((t) => t.trim()).filter(Boolean)
+  return (props.section.tag_groups || []).filter((group) => {
+    if (!group.required) return false
+    const groupNames = new Set(group.tags.map((t) => t.name))
+    return !names.some((name) => groupNames.has(name))
+  })
+}
 
 const form = useForm({
   topic: {
     title: '',
     body: props.section.topic_template || '',
-    tags: '',
+    tags: (props.section.default_tags || []).join(', '),
     prefix: '',
     poll_question: '',
     poll_options: '',
@@ -33,13 +55,68 @@ const form = useForm({
   },
 })
 
+const tagsReady = computed(() => missingRequiredGroups(form.topic.tags).length === 0)
+const bodyHasBlockedLink = computed(() =>
+  !!(props.warningRestrictions?.link && containsLink(form.topic.body))
+)
+const canPublish = computed(() => tagsReady.value && !props.warningRestrictions?.post && !bodyHasBlockedLink.value)
+
+function validateBeforeSubmit() {
+  tagGroupError.value = ''
+  linkError.value = ''
+  if (!tagsReady.value) {
+    tagGroupError.value = '请从必填标签组中至少选择一个标签后再发布。'
+    return false
+  }
+  if (props.warningRestrictions?.post) return false
+  if (props.warningRestrictions?.link && containsLink(form.topic.body)) {
+    linkError.value = props.warningRestrictions.link
+    return false
+  }
+  return true
+}
+
+watch(() => form.topic.title, (title) => {
+  if (!props.similarTitlesUrl || title.length < 3) {
+    similarTitles.value = []
+    return
+  }
+  if (similarTimer) clearTimeout(similarTimer)
+  similarTimer = setTimeout(async () => {
+    try {
+      const response = await fetch(`${props.similarTitlesUrl}?title=${encodeURIComponent(title)}`, {
+        headers: { Accept: 'application/json' },
+        credentials: 'same-origin',
+      })
+      if (response.ok) {
+        const data = await response.json()
+        similarTitles.value = data.titles || []
+      }
+    } catch {
+      similarTitles.value = []
+    }
+  }, 400)
+})
+
+watch(() => form.topic.body, (body) => {
+  linkError.value =
+    props.warningRestrictions?.link && containsLink(body)
+      ? props.warningRestrictions.link
+      : ''
+})
+
 const showPoll = ref(false)
 
 function submit() {
+  if (!validateBeforeSubmit()) return
   form.post(`/forum/topics?section_id=${props.section.slug}`)
 }
 
 function saveDraft() {
+  if (!tagsReady.value) {
+    tagGroupError.value = '请从必填标签组中至少选择一个标签后再保存。'
+    return
+  }
   router.post(`/forum/drafts?section_id=${props.section.slug}`, {
     draft: {
       title: form.topic.title,
@@ -69,10 +146,22 @@ function saveDraft() {
 
   <PageHeader title="新建主题" :subtitle="section.name" />
 
+  <p v-if="warningRestrictions?.post" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    {{ warningRestrictions.post }}
+  </p>
+
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
       <Label for="title">标题</Label>
       <Input id="title" v-model="form.topic.title" required autofocus />
+      <div v-if="similarTitles.length" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+        <p class="font-medium">发现相似主题（Discourse 风格提示）</p>
+        <ul class="mt-1 list-inside list-disc">
+          <li v-for="item in similarTitles" :key="item.url">
+            <Link :href="item.url" class="underline" target="_blank">{{ item.title }}</Link>
+          </li>
+        </ul>
+      </div>
       <p v-if="form.errors.title" class="text-sm text-destructive">{{ form.errors.title }}</p>
     </div>
     <div v-if="section.prefixes?.length" class="space-y-2">
@@ -85,22 +174,33 @@ function saveDraft() {
     <div class="space-y-2">
       <Label for="body">首帖内容</Label>
       <MarkdownEditor v-model="form.topic.body" :rows="8" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名" />
+      <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
+      <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
+      <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
       <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
     </div>
     <div class="space-y-2">
-      <Label for="tags">标签（逗号分隔，最多 5 个）</Label>
-      <Input id="tags" v-model="form.topic.tags" placeholder="例如：公告,活动" />
+      <Label for="tags">标签（最多 5 个）</Label>
+      <TagGroupPicker ref="tagPickerRef" v-model="form.topic.tags" :tag-groups="section.tag_groups" :max-tags="5" />
+      <p v-if="tagGroupError" class="text-sm text-destructive">{{ tagGroupError }}</p>
       <p v-if="section.required_tags?.length" class="text-xs text-muted-foreground">
         此分区要求至少包含以下标签之一：
         <template v-for="(tag, index) in section.required_tags" :key="tag.slug">
           <Link :href="tag.url" class="underline">{{ tag.name }}</Link><span v-if="index < section.required_tags.length - 1">、</span>
         </template>
       </p>
+      <p v-if="section.required_tag_groups?.length" class="text-xs text-muted-foreground">
+        此分区要求从以下标签组中至少选一个标签：
+        {{ section.required_tag_groups.map((g) => g.name).join('、') }}
+      </p>
       <p v-if="section.allowed_tags?.length" class="text-xs text-muted-foreground">
         此分区仅允许使用：
         <template v-for="(tag, index) in section.allowed_tags" :key="`allowed-${tag.slug}`">
           <Link :href="tag.url" class="underline">{{ tag.name }}</Link><span v-if="index < section.allowed_tags.length - 1">、</span>
         </template>
+      </p>
+      <p v-if="section.default_tags?.length" class="text-xs text-muted-foreground">
+        默认标签：{{ section.default_tags.join('、') }}
       </p>
     </div>
 
@@ -137,8 +237,8 @@ function saveDraft() {
     </div>
 
     <div class="flex flex-wrap gap-3">
-      <Button type="submit" :disabled="form.processing">发布</Button>
-      <Button type="button" variant="outline" :disabled="!form.topic.title" @click="saveDraft">保存草稿</Button>
+      <Button type="submit" :disabled="form.processing || !canPublish">发布</Button>
+      <Button type="button" variant="outline" :disabled="!form.topic.title || !tagsReady" @click="saveDraft">保存草稿</Button>
       <Button as-child variant="outline">
         <Link :href="section.url">取消</Link>
       </Button>

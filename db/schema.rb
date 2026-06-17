@@ -107,6 +107,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "icon"
     t.string "name", null: false
     t.integer "position", default: 0, null: false
+    t.jsonb "seo", default: {}, null: false
     t.string "slug", null: false
     t.datetime "updated_at", null: false
     t.index ["slug"], name: "index_forum_categories_on_slug", unique: true
@@ -125,10 +126,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "created_at", null: false
     t.bigint "forum_conversation_id", null: false
     t.datetime "last_read_at"
+    t.datetime "muted_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["forum_conversation_id", "user_id"], name: "idx_forum_conv_participants_unique", unique: true
     t.index ["forum_conversation_id"], name: "index_forum_conversation_participants_on_forum_conversation_id"
+    t.index ["muted_at"], name: "index_forum_conversation_participants_on_muted_at"
     t.index ["user_id"], name: "index_forum_conversation_participants_on_user_id"
   end
 
@@ -278,15 +281,46 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["reviewer_id"], name: "index_forum_reports_on_reviewer_id"
   end
 
+  create_table "forum_saved_search_webhook_deliveries", force: :cascade do |t|
+    t.integer "attempt_count", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.jsonb "request_payload", default: {}, null: false
+    t.text "response_body"
+    t.integer "response_code"
+    t.bigint "saved_search_id"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.string "url", limit: 2048, null: false
+    t.index ["created_at"], name: "index_forum_saved_search_webhook_deliveries_on_created_at"
+    t.index ["saved_search_id"], name: "index_forum_saved_search_webhook_deliveries_on_saved_search_id"
+  end
+
   create_table "forum_saved_searches", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.jsonb "filters", default: {}, null: false
+    t.datetime "last_notified_at"
     t.string "name", null: false
+    t.boolean "notify_daily", default: false, null: false
+    t.boolean "notify_in_app", default: true, null: false
     t.text "query", default: "", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.string "webhook_url"
     t.index ["user_id", "created_at"], name: "index_forum_saved_searches_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_forum_saved_searches_on_user_id"
+  end
+
+  create_table "forum_search_histories", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "filters", default: {}, null: false
+    t.string "fingerprint"
+    t.string "query", default: "", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_forum_search_histories_on_user_id_and_created_at"
+    t.index ["user_id", "fingerprint"], name: "index_forum_search_histories_on_user_id_and_fingerprint", unique: true
+    t.index ["user_id"], name: "index_forum_search_histories_on_user_id"
   end
 
   create_table "forum_section_mutes", force: :cascade do |t|
@@ -305,6 +339,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "color_hex"
     t.datetime "created_at", null: false
     t.string "default_notification_level", default: "watching", null: false
+    t.jsonb "default_tag_ids", default: [], null: false
     t.text "description"
     t.bigint "forum_category_id", null: false
     t.string "icon"
@@ -319,7 +354,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.boolean "prefix_required", default: false, null: false
     t.jsonb "prefixes", default: [], null: false
     t.boolean "read_only", default: false, null: false
+    t.jsonb "required_tag_group_ids", default: [], null: false
     t.jsonb "required_tag_ids", default: [], null: false
+    t.jsonb "seo", default: {}, null: false
     t.string "slug", null: false
     t.text "topic_template"
     t.datetime "updated_at", null: false
@@ -349,7 +386,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["user_id"], name: "index_forum_subscriptions_on_user_id"
   end
 
+  create_table "forum_tag_group_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_tag_group_id", null: false
+    t.bigint "forum_tag_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["forum_tag_group_id", "forum_tag_id"], name: "idx_tag_group_membership_unique", unique: true
+    t.index ["forum_tag_group_id"], name: "index_forum_tag_group_memberships_on_forum_tag_group_id"
+    t.index ["forum_tag_id"], name: "index_forum_tag_group_memberships_on_forum_tag_id"
+  end
+
+  create_table "forum_tag_groups", force: :cascade do |t|
+    t.string "color_hex"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "name", null: false
+    t.boolean "one_per_topic", default: false, null: false
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.index ["slug"], name: "index_forum_tag_groups_on_slug", unique: true
+  end
+
   create_table "forum_tags", force: :cascade do |t|
+    t.bigint "canonical_tag_id"
     t.string "color_hex"
     t.datetime "created_at", null: false
     t.text "description"
@@ -357,6 +416,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.string "slug", null: false
     t.boolean "staff_only", default: false, null: false
     t.datetime "updated_at", null: false
+    t.index ["canonical_tag_id"], name: "index_forum_tags_on_canonical_tag_id"
     t.index ["slug"], name: "index_forum_tags_on_slug", unique: true
   end
 
@@ -417,7 +477,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "forum_topics", force: :cascade do |t|
+    t.datetime "archived_at"
+    t.bigint "assigned_to_id"
+    t.datetime "auto_archive_at"
+    t.datetime "auto_bump_at"
     t.datetime "auto_close_at"
+    t.datetime "auto_open_at"
     t.datetime "bumped_at"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
@@ -445,7 +510,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "views_count", default: 0, null: false
     t.boolean "wiki", default: false, null: false
     t.index "to_tsvector('simple'::regconfig, (COALESCE(title, ''::character varying))::text)", name: "index_forum_topics_on_title_tsvector", using: :gin
+    t.index ["archived_at"], name: "index_forum_topics_on_archived_at"
+    t.index ["assigned_to_id"], name: "index_forum_topics_on_assigned_to_id"
+    t.index ["auto_archive_at"], name: "index_forum_topics_on_auto_archive_at"
+    t.index ["auto_bump_at"], name: "index_forum_topics_on_auto_bump_at"
     t.index ["auto_close_at"], name: "index_forum_topics_on_auto_close_at"
+    t.index ["auto_open_at"], name: "index_forum_topics_on_auto_open_at"
     t.index ["deleted_at"], name: "index_forum_topics_on_deleted_at"
     t.index ["forum_section_id", "last_posted_at"], name: "index_forum_topics_on_forum_section_id_and_last_posted_at"
     t.index ["forum_section_id"], name: "index_forum_topics_on_forum_section_id"
@@ -457,6 +527,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["solved_post_id"], name: "index_forum_topics_on_solved_post_id"
     t.index ["source_post_id"], name: "index_forum_topics_on_source_post_id"
     t.index ["user_id"], name: "index_forum_topics_on_user_id"
+  end
+
+  create_table "forum_unread_filter_presets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "filters", default: {}, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_forum_unread_filter_presets_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_forum_unread_filter_presets_on_user_id"
   end
 
   create_table "forum_user_badges", force: :cascade do |t|
@@ -756,6 +836,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "store_cart_items", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "gift_note", limit: 200
     t.integer "quantity", default: 1, null: false
     t.bigint "store_cart_id", null: false
     t.bigint "store_product_id", null: false
@@ -769,6 +850,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "store_carts", force: :cascade do |t|
     t.datetime "abandoned_reminder_sent_at"
+    t.datetime "abandoned_second_reminder_sent_at"
     t.datetime "created_at", null: false
     t.string "recovery_token"
     t.string "session_token"
@@ -812,6 +894,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "usage_limit"
     t.integer "used_count", default: 0, null: false
     t.index ["code"], name: "index_store_coupons_on_code", unique: true
+  end
+
+  create_table "store_credit_transactions", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.integer "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "note"
+    t.bigint "store_order_id"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["actor_id"], name: "index_store_credit_transactions_on_actor_id"
+    t.index ["store_order_id"], name: "index_store_credit_transactions_on_store_order_id"
+    t.index ["user_id"], name: "index_store_credit_transactions_on_user_id"
   end
 
   create_table "store_fulfillment_attempts", force: :cascade do |t|
@@ -888,6 +983,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.jsonb "fulfillment_snapshot", default: {}, null: false
     t.string "product_name", null: false
     t.integer "quantity", default: 1, null: false
+    t.integer "stock_restored_quantity", default: 0, null: false
     t.bigint "store_order_id", null: false
     t.bigint "store_product_id"
     t.bigint "store_product_variant_id"
@@ -900,24 +996,63 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["store_product_variant_id"], name: "index_store_order_items_on_store_product_variant_id"
   end
 
+  create_table "store_order_staff_notes", force: :cascade do |t|
+    t.bigint "author_id", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.bigint "store_order_id", null: false
+    t.datetime "updated_at", null: false
+    t.boolean "visible_to_customer", default: false, null: false
+    t.index ["author_id"], name: "index_store_order_staff_notes_on_author_id"
+    t.index ["store_order_id"], name: "index_store_order_staff_notes_on_store_order_id"
+  end
+
+  create_table "store_order_webhook_deliveries", force: :cascade do |t|
+    t.integer "attempt_count", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.string "order_public_id"
+    t.jsonb "request_payload", default: {}, null: false
+    t.text "response_body"
+    t.integer "response_code"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.string "url", limit: 2048, null: false
+    t.index ["created_at"], name: "index_store_order_webhook_deliveries_on_created_at"
+    t.index ["order_public_id"], name: "index_store_order_webhook_deliveries_on_order_public_id"
+  end
+
   create_table "store_orders", force: :cascade do |t|
+    t.boolean "coupon_usage_restored", default: false, null: false
     t.datetime "created_at", null: false
     t.string "currency", default: "CNY", null: false
     t.integer "discount_cents", default: 0, null: false
     t.integer "gift_card_amount_cents", default: 0, null: false
+    t.integer "gift_card_restored_cents", default: 0, null: false
+    t.boolean "gift_wrap", default: false, null: false
+    t.integer "gift_wrap_cents", default: 0, null: false
     t.text "notes"
     t.string "order_number", null: false
+    t.datetime "payment_reminder_sent_at"
     t.string "public_id", null: false
+    t.datetime "review_request_sent_at"
+    t.datetime "shipped_at"
     t.jsonb "shipping_address", default: {}, null: false
+    t.string "shipping_carrier"
     t.integer "shipping_cents", default: 0, null: false
+    t.string "shipping_method"
     t.string "status", default: "pending", null: false
     t.bigint "store_coupon_id"
+    t.integer "store_credit_amount_cents", default: 0, null: false
+    t.integer "store_credit_restored_cents", default: 0, null: false
     t.bigint "store_gift_card_id"
     t.integer "subtotal_cents", default: 0, null: false
     t.integer "total_cents", default: 0, null: false
+    t.string "tracking_number"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["order_number"], name: "index_store_orders_on_order_number", unique: true
+    t.index ["payment_reminder_sent_at"], name: "index_store_orders_on_payment_reminder_sent_at"
     t.index ["public_id"], name: "index_store_orders_on_public_id", unique: true
     t.index ["status"], name: "index_store_orders_on_status"
     t.index ["store_coupon_id"], name: "index_store_orders_on_store_coupon_id"
@@ -958,6 +1093,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.bigint "user_id", null: false
     t.index ["store_product_question_id"], name: "index_store_product_answers_on_store_product_question_id"
     t.index ["user_id"], name: "index_store_product_answers_on_user_id"
+  end
+
+  create_table "store_product_availability_alerts", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "notified_at"
+    t.bigint "store_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["store_product_id"], name: "index_store_product_availability_alerts_on_store_product_id"
+    t.index ["user_id", "store_product_id"], name: "index_availability_alerts_on_user_and_product", unique: true
+    t.index ["user_id"], name: "index_store_product_availability_alerts_on_user_id"
   end
 
   create_table "store_product_questions", force: :cascade do |t|
@@ -1001,6 +1147,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
 
   create_table "store_products", force: :cascade do |t|
     t.boolean "allow_backorder", default: false, null: false
+    t.datetime "available_at"
     t.text "changelog"
     t.string "changelog_notified_version"
     t.integer "compare_at_price_cents"
@@ -1027,13 +1174,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "stock"
     t.bigint "store_category_id"
     t.text "summary"
+    t.datetime "unavailable_at"
     t.datetime "updated_at", null: false
     t.string "version"
     t.integer "view_count", default: 0, null: false
+    t.index ["available_at"], name: "index_store_products_on_available_at"
     t.index ["forum_topic_id"], name: "index_store_products_on_forum_topic_id"
     t.index ["public_id"], name: "index_store_products_on_public_id", unique: true
     t.index ["slug"], name: "index_store_products_on_slug", unique: true
     t.index ["store_category_id"], name: "index_store_products_on_store_category_id"
+    t.index ["unavailable_at"], name: "index_store_products_on_unavailable_at"
   end
 
   create_table "store_refunds", force: :cascade do |t|
@@ -1065,6 +1215,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "body"
     t.datetime "created_at", null: false
     t.bigint "forum_post_id"
+    t.datetime "merchant_replied_at"
+    t.text "merchant_reply"
     t.integer "rating", null: false
     t.string "status", default: "published", null: false
     t.bigint "store_product_id", null: false
@@ -1075,6 +1227,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["store_product_id", "user_id"], name: "index_store_reviews_on_store_product_id_and_user_id", unique: true
     t.index ["store_product_id"], name: "index_store_reviews_on_store_product_id"
     t.index ["user_id"], name: "index_store_reviews_on_user_id"
+  end
+
+  create_table "store_shipping_addresses", force: :cascade do |t|
+    t.string "city", null: false
+    t.datetime "created_at", null: false
+    t.boolean "default_address", default: false, null: false
+    t.string "label", limit: 50
+    t.string "line1", null: false
+    t.string "line2"
+    t.string "name", null: false
+    t.string "phone", null: false
+    t.string "postal_code"
+    t.string "province", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "default_address"], name: "index_store_shipping_addresses_on_user_id_and_default_address"
+    t.index ["user_id"], name: "index_store_shipping_addresses_on_user_id"
   end
 
   create_table "store_stock_alerts", force: :cascade do |t|
@@ -1088,6 +1257,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["store_product_variant_id"], name: "index_store_stock_alerts_on_store_product_variant_id"
     t.index ["user_id", "store_product_id", "store_product_variant_id"], name: "index_stock_alerts_on_user_product_variant", unique: true
     t.index ["user_id"], name: "index_store_stock_alerts_on_user_id"
+  end
+
+  create_table "store_wishlist_filter_presets", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "filters", default: {}, null: false
+    t.string "name", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "created_at"], name: "index_store_wishlist_filter_presets_on_user_id_and_created_at"
+    t.index ["user_id"], name: "index_store_wishlist_filter_presets_on_user_id"
   end
 
   create_table "store_wishlist_items", force: :cascade do |t|
@@ -1118,8 +1297,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "ban_reason"
     t.datetime "banned_at"
     t.text "bio"
+    t.jsonb "compare_product_ids", default: [], null: false
+    t.string "compare_share_token"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
+    t.jsonb "dismissed_global_announcement_ids", default: [], null: false
     t.string "display_name"
     t.string "email", null: false
     t.datetime "email_verification_sent_at"
@@ -1129,8 +1311,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.integer "failed_login_count", default: 0, null: false
     t.string "forum_digest_frequency", default: "none", null: false
     t.datetime "forum_digest_last_sent_at"
+    t.boolean "forum_digest_watched_only", default: false, null: false
+    t.string "forum_flair_color_hex"
     t.text "forum_signature"
     t.string "forum_title"
+    t.integer "forum_trust_level_override"
+    t.string "forum_watch_email_mode", default: "instant", null: false
     t.datetime "last_seen_at"
     t.datetime "last_sign_in_at"
     t.string "last_sign_in_ip"
@@ -1143,12 +1329,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.text "recovery_codes_ciphertext"
     t.boolean "require_totp", default: false, null: false
     t.string "status", default: "active", null: false
+    t.integer "store_credit_cents", default: 0, null: false
     t.string "time_zone", default: "Asia/Shanghai", null: false
     t.boolean "totp_enabled", default: false, null: false
     t.string "totp_secret_ciphertext"
     t.datetime "updated_at", null: false
     t.string "username", null: false
     t.string "wishlist_share_token"
+    t.index ["compare_share_token"], name: "index_users_on_compare_share_token", unique: true
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
@@ -1276,7 +1464,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_reply_drafts", "users"
   add_foreign_key "forum_reports", "users", column: "reporter_id"
   add_foreign_key "forum_reports", "users", column: "reviewer_id"
+  add_foreign_key "forum_saved_search_webhook_deliveries", "forum_saved_searches", column: "saved_search_id"
   add_foreign_key "forum_saved_searches", "users"
+  add_foreign_key "forum_search_histories", "users"
   add_foreign_key "forum_section_mutes", "forum_sections"
   add_foreign_key "forum_section_mutes", "users"
   add_foreign_key "forum_sections", "forum_categories"
@@ -1284,6 +1474,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_staff_notes", "users"
   add_foreign_key "forum_staff_notes", "users", column: "author_id"
   add_foreign_key "forum_subscriptions", "users"
+  add_foreign_key "forum_tag_group_memberships", "forum_tag_groups"
+  add_foreign_key "forum_tag_group_memberships", "forum_tags"
+  add_foreign_key "forum_tags", "forum_tags", column: "canonical_tag_id"
   add_foreign_key "forum_topic_invites", "forum_topics"
   add_foreign_key "forum_topic_invites", "users"
   add_foreign_key "forum_topic_invites", "users", column: "invited_by_id"
@@ -1300,7 +1493,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "forum_topics", "forum_posts", column: "source_post_id"
   add_foreign_key "forum_topics", "forum_sections"
   add_foreign_key "forum_topics", "users"
+  add_foreign_key "forum_topics", "users", column: "assigned_to_id"
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"
+  add_foreign_key "forum_unread_filter_presets", "users"
   add_foreign_key "forum_user_badges", "forum_badges"
   add_foreign_key "forum_user_badges", "users"
   add_foreign_key "forum_user_blocks", "users", column: "blocked_id"
@@ -1333,6 +1528,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_cart_items", "store_product_variants"
   add_foreign_key "store_cart_items", "store_products"
   add_foreign_key "store_carts", "users"
+  add_foreign_key "store_credit_transactions", "store_orders"
+  add_foreign_key "store_credit_transactions", "users"
+  add_foreign_key "store_credit_transactions", "users", column: "actor_id"
   add_foreign_key "store_fulfillment_attempts", "store_fulfillments"
   add_foreign_key "store_fulfillments", "store_order_items"
   add_foreign_key "store_fulfillments", "store_orders"
@@ -1346,6 +1544,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_order_items", "store_orders"
   add_foreign_key "store_order_items", "store_product_variants"
   add_foreign_key "store_order_items", "store_products"
+  add_foreign_key "store_order_staff_notes", "store_orders"
+  add_foreign_key "store_order_staff_notes", "users", column: "author_id"
   add_foreign_key "store_orders", "store_coupons"
   add_foreign_key "store_orders", "store_gift_cards"
   add_foreign_key "store_orders", "users"
@@ -1356,6 +1556,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_product_answer_helpful_votes", "users"
   add_foreign_key "store_product_answers", "store_product_questions"
   add_foreign_key "store_product_answers", "users"
+  add_foreign_key "store_product_availability_alerts", "store_products"
+  add_foreign_key "store_product_availability_alerts", "users"
   add_foreign_key "store_product_questions", "store_order_items"
   add_foreign_key "store_product_questions", "store_products"
   add_foreign_key "store_product_questions", "users"
@@ -1373,9 +1575,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "store_reviews", "forum_posts"
   add_foreign_key "store_reviews", "store_products"
   add_foreign_key "store_reviews", "users"
+  add_foreign_key "store_shipping_addresses", "users"
   add_foreign_key "store_stock_alerts", "store_product_variants"
   add_foreign_key "store_stock_alerts", "store_products"
   add_foreign_key "store_stock_alerts", "users"
+  add_foreign_key "store_wishlist_filter_presets", "users"
   add_foreign_key "store_wishlist_items", "store_product_variants", column: "variant_id"
   add_foreign_key "store_wishlist_items", "store_products"
   add_foreign_key "store_wishlist_items", "users"

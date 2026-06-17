@@ -2,11 +2,12 @@
 
 module Community
   class ModeratePost < ApplicationService
-    def initialize(user:, post:, action:, staff_notice: nil)
+    def initialize(user:, post:, action:, staff_notice: nil, new_username: nil)
       @user = user
       @post = post
       @action = action.to_s
       @staff_notice = staff_notice.to_s.strip.presence
+      @new_username = new_username
     end
 
     def call
@@ -29,6 +30,8 @@ module Community
         @post.update!(staff_notice: @staff_notice)
       when "clear_staff_notice"
         @post.update!(staff_notice: nil)
+      when "change_author"
+        return Community::ChangePostAuthor.call(user: @user, post: @post, new_username: @new_username)
       else
         return ServiceResult.failure(error: "Unknown moderation action.")
       end

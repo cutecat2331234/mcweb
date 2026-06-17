@@ -24,6 +24,9 @@ module Community
     end
 
     def self.level_for(user)
+      override = user&.forum_trust_level_override
+      return override if override.present? && override.between?(0, 4)
+
       level_info(user)[:level]
     end
 

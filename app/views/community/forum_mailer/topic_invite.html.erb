@@ -1,0 +1,4 @@
+<p>你好 <%= @user.username %>，</p>
+<p><strong><%= @inviter.username %></strong> 邀请你关注主题「<%= @topic.title %>」。</p>
+<p><a href="<%= @url %>">查看主题</a></p>
+<%= render "notification_unsubscribe" %>

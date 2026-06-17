@@ -2,27 +2,35 @@
 
 module Commerce
   class RequestRefund < ApplicationService
-    def initialize(order:, user:, reason: nil)
+    def initialize(order:, user:, reason: nil, amount_cents: nil)
       @order = order
       @user = user
       @reason = reason
+      @amount_cents = amount_cents
     end
 
     def call
       return ServiceResult.failure(error: "Not your order.") unless @order.user_id == @user.id
       return ServiceResult.failure(error: "Order is not refundable.") unless %w[paid fulfilled completed].include?(@order.status)
+      return ServiceResult.failure(error: "Refund window has expired.") unless within_refund_window?
 
       payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
       return ServiceResult.failure(error: "No payment found.") unless payment
 
-      existing = Commerce::Refund.where(order: @order, status: %w[pending completed]).exists?
-      return ServiceResult.failure(error: "Refund already requested.") if existing
+      return ServiceResult.failure(error: "Refund already pending.") if Commerce::Refund.where(order: @order, status: "pending").exists?
+
+      max_cents = refundable_cents(payment)
+      return ServiceResult.failure(error: "No refundable amount remaining.") if max_cents <= 0
+
+      requested = @amount_cents.present? ? @amount_cents.to_i : max_cents
+      return ServiceResult.failure(error: "退款金额无效。") if requested <= 0
+      return ServiceResult.failure(error: "退款金额超过可退上限。") if requested > max_cents
 
       refund = Commerce::Refund.create!(
         order: @order,
         payment_record: payment,
         status: "pending",
-        amount_cents: payment.amount_cents,
+        amount_cents: requested,
         reason: @reason || "Customer request",
         requested_by: @user,
         requested_by_customer: true
@@ -32,7 +40,7 @@ module Commerce
         order: @order,
         actor: @user,
         event_type: "refund_requested",
-        metadata: { refund_id: refund.id }
+        metadata: { refund_id: refund.id, amount_cents: requested }
       )
 
       Commerce::NotifyOrderEvent.call(
@@ -48,6 +56,23 @@ module Commerce
       ServiceResult.success(refund)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    def refundable_cents(payment)
+      refunded = Commerce::Refund.where(order: @order, status: %w[pending completed]).sum(:amount_cents)
+      [ payment.amount_cents - refunded, 0 ].max
+    end
+
+    def within_refund_window?
+      window_days = SiteSetting.get("store.refund_window_days", "0").to_i
+      return true if window_days <= 0
+
+      payment = @order.payment_records.where(status: "succeeded").order(created_at: :asc).first
+      return false unless payment
+
+      Time.current <= payment.created_at + window_days.days
     end
   end
 end

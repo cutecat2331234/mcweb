@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, useForm, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -39,16 +39,50 @@ const props = defineProps<{
     remove_url?: string | null
   }>
   addParticipantUrl?: string | null
+  addParticipantRestrictedReason?: string | null
   archiveUrl?: string
   unarchiveUrl?: string
   archived?: boolean
+  muted?: boolean
+  muteUrl?: string
+  unmuteUrl?: string
   currentUsername?: string
+  canSendPm?: boolean
+  warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
 }>()
+
+const linkError = ref('')
+
+function containsLink(text: string) {
+  return /https?:\/\/|www\./i.test(text)
+}
+
+const pmBlocked = computed(() => !!props.warningRestrictions?.pm)
+
+const form = useForm({
+  message: { body: '' },
+})
+
+const bodyHasBlockedLink = computed(() =>
+  !!(props.warningRestrictions?.link && containsLink(form.message.body))
+)
+
+const canSend = computed(() =>
+  !pmBlocked.value &&
+  props.canSendPm !== false &&
+  !bodyHasBlockedLink.value
+)
+
+const canAddParticipant = computed(() =>
+  !!props.addParticipantUrl &&
+  props.canSendPm !== false &&
+  !pmBlocked.value
+)
 
 const addUsername = ref('')
 
 function addParticipant() {
-  if (!props.addParticipantUrl || !addUsername.value.trim()) return
+  if (!canAddParticipant.value || !props.addParticipantUrl || !addUsername.value.trim()) return
   router.post(props.addParticipantUrl, { username: addUsername.value.trim() }, {
     preserveScroll: true,
     onSuccess: () => { addUsername.value = '' },
@@ -65,11 +99,13 @@ function removeParticipant(participant: { username: string; remove_url?: string 
 const title = props.conversation.display_name || props.conversation.other_user?.username || '私信'
 const subtitle = props.conversation.is_group ? props.conversation.participants_label : '私信对话'
 
-const form = useForm({
-  message: { body: '' },
-})
-
 function submit() {
+  linkError.value = ''
+  if (pmBlocked.value) return
+  if (props.warningRestrictions?.link && containsLink(form.message.body)) {
+    linkError.value = props.warningRestrictions.link
+    return
+  }
   form.post(`/forum/conversations/${props.conversation.id}/messages`, {
     preserveScroll: true,
     onSuccess: () => { form.message.body = '' },
@@ -94,6 +130,12 @@ function submit() {
     <Button v-else-if="!archived && archiveUrl" type="button" size="sm" variant="outline" @click="router.post(archiveUrl)">
       归档会话
     </Button>
+    <Button v-if="muted && unmuteUrl" type="button" size="sm" variant="outline" @click="router.post(unmuteUrl)">
+      取消静音
+    </Button>
+    <Button v-else-if="!muted && muteUrl" type="button" size="sm" variant="outline" @click="router.post(muteUrl)">
+      静音会话
+    </Button>
   </div>
 
   <div v-if="conversation.is_group && participants.length" class="mb-4">
@@ -114,10 +156,13 @@ function submit() {
         </button>
       </span>
     </div>
-    <form v-if="addParticipantUrl" class="mt-3 flex max-w-sm gap-2" @submit.prevent="addParticipant">
+    <form v-if="addParticipantUrl && canAddParticipant" class="mt-3 flex max-w-sm gap-2" @submit.prevent="addParticipant">
       <Input v-model="addUsername" placeholder="用户名" class="flex-1" />
       <Button type="submit" variant="outline" size="sm">添加成员</Button>
     </form>
+    <p v-else-if="conversation.is_group && addParticipantRestrictedReason" class="mt-3 text-xs text-muted-foreground">
+      {{ addParticipantRestrictedReason }}
+    </p>
   </div>
 
   <div class="mb-6 max-h-[50vh] space-y-3 overflow-y-auto rounded-lg border p-4">
@@ -142,10 +187,25 @@ function submit() {
     </div>
   </div>
 
-  <Pagination v-if="pagination.pages > 1" class="mb-4" :pagination="pagination" :base-path="`/forum/conversations/${conversation.id}`" />
+  <Pagination v-if="pagination.pages > 1" class="mb-4" :pagination="pagination" :base-path="`/forum/conversations/${conversation.id}`" page-param="page" />
+
+  <p v-if="canSendPm === false" class="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    新成员（信任等级 0）暂时无法发送私信，多发帖参与社区即可解锁。
+  </p>
+
+  <p v-if="pmBlocked" class="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    {{ warningRestrictions?.pm }}
+  </p>
+
+  <p v-if="conversation.is_group && warningRestrictions?.link" class="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    {{ warningRestrictions.link }}
+  </p>
 
   <form class="max-w-2xl space-y-3" @submit.prevent="submit">
     <MarkdownEditor v-model="form.message.body" :show-mention="false" :rows="3" placeholder="输入消息…" />
-    <Button type="submit" :disabled="form.processing">发送</Button>
+    <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
+    <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
+    <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
+    <Button type="submit" :disabled="form.processing || !canSend">发送</Button>
   </form>
 </template>

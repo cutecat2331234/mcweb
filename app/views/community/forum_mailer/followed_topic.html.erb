@@ -1,0 +1,4 @@
+<p>你好 <%= @user.username %>，</p>
+<p>你关注的用户 <strong><%= @author.username %></strong> 发布了新主题「<%= @topic.title %>」。</p>
+<p><a href="<%= @url %>">查看主题</a></p>
+<%= render "notification_unsubscribe" %>

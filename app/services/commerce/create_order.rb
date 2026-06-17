@@ -2,13 +2,16 @@
 
 module Commerce
   class CreateOrder < ApplicationService
-    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil, shipping_address: nil)
+    def initialize(cart:, user:, notes: nil, coupon_code: nil, gift_card_code: nil, use_store_credit: true, shipping_address: nil, shipping_method: nil, gift_wrap: false)
       @cart = cart
       @user = user
       @notes = notes
       @coupon_code = coupon_code
       @gift_card_code = gift_card_code
+      @use_store_credit = ActiveModel::Type::Boolean.new.cast(use_store_credit)
       @shipping_address = shipping_address
+      @shipping_method = shipping_method.presence || "standard"
+      @gift_wrap = gift_wrap
     end
 
     def call
@@ -30,6 +33,12 @@ module Commerce
       )
       return address_result if address_result.failure?
 
+      subtotal_preview = @cart.items.includes(:product, :variant).sum { |item| item.total_cents }
+      min_cents = SiteSetting.get("store.min_checkout_subtotal_cents", "0").to_i
+      if min_cents.positive? && subtotal_preview < min_cents
+        return ServiceResult.failure(error: "订单未满最低消费金额（#{min_cents / 100.0} 元）。")
+      end
+
       order = nil
       coupon_error = nil
       empty_cart = false
@@ -50,7 +59,8 @@ module Commerce
           status: "pending",
           currency: "CNY",
           notes: @notes,
-          shipping_address: normalized_shipping_address
+          shipping_address: normalized_shipping_address,
+          shipping_method: @shipping_method
         )
 
         @cart.items.includes(:product, :variant).find_each do |item|
@@ -69,7 +79,9 @@ module Commerce
             unit_price_cents: unit_price_cents,
             quantity: item.quantity,
             total_cents: line_total,
-            fulfillment_snapshot: snapshot_fulfillment(product, variant)
+            fulfillment_snapshot: snapshot_fulfillment(product, variant).merge(
+              gift_note: item.gift_note.to_s.presence
+            ).compact
           )
 
           stock_result = decrement_stock!(product, variant, item.quantity)
@@ -79,10 +91,18 @@ module Commerce
           end
         end
 
+        cart_items = @cart.items.includes(:product)
+        shipping_cents = shipping_cents_for(subtotal_cents, cart_items: cart_items)
+        wrap_result = Commerce::CalculateGiftWrap.call(enabled: @gift_wrap, cart_items: cart_items)
+        gift_wrap = wrap_result.success? && wrap_result.value[:gift_wrap]
+        gift_wrap_cents = wrap_result.success? ? wrap_result.value[:gift_wrap_cents].to_i : 0
+
         order.update!(
           subtotal_cents: subtotal_cents,
-          shipping_cents: shipping_cents_for(subtotal_cents, cart_items: @cart.items.includes(:product)),
-          total_cents: subtotal_cents + shipping_cents_for(subtotal_cents, cart_items: @cart.items.includes(:product)),
+          shipping_cents: shipping_cents,
+          gift_wrap: gift_wrap,
+          gift_wrap_cents: gift_wrap_cents,
+          total_cents: subtotal_cents + shipping_cents + gift_wrap_cents,
           discount_cents: 0
         )
 
@@ -98,6 +118,14 @@ module Commerce
           gift_result = Commerce::ApplyGiftCard.call(order: order, code: @gift_card_code)
           unless gift_result.success?
             coupon_error = gift_result.error
+            raise ActiveRecord::Rollback
+          end
+        end
+
+        if @use_store_credit
+          credit_result = Commerce::ApplyStoreCredit.call(order: order, user: @user)
+          unless credit_result.success?
+            coupon_error = credit_result.error
             raise ActiveRecord::Rollback
           end
         end
@@ -129,6 +157,13 @@ module Commerce
         title: "订单已创建",
         body: "订单 #{order.order_number} 等待支付。",
         path: "/store/orders/#{order.public_id}"
+      )
+
+      Commerce::DispatchOrderWebhook.call(
+        order: order,
+        event_type: "order.created",
+        from_status: nil,
+        to_status: "pending"
       )
 
       ServiceResult.success(order)
@@ -178,7 +213,12 @@ module Commerce
     end
 
     def shipping_cents_for(subtotal_cents, cart_items: nil, coupon: nil)
-      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
+      result = Commerce::CalculateShipping.call(
+        subtotal_cents: subtotal_cents,
+        cart_items: cart_items,
+        coupon: coupon,
+        shipping_method_code: @shipping_method
+      )
       result.success? ? result.value[:shipping_cents].to_i : 0
     end
 

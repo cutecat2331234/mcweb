@@ -32,11 +32,18 @@ Rails.application.routes.draw do
         post :staff_note
         post :silence
         post :unsilence
+        post :set_trust_level
+        post :adjust_store_credit
       end
     end
     resources :roles, only: %i[index show]
     resources :audit_logs, only: %i[index show]
     namespace :forum do
+      resource :settings, only: %i[show update] do
+        post :test_webhook
+        post :test_all_webhooks
+        get :webhook_test_status
+      end
       resources :categories
       resources :sections, only: %i[index show new create edit update]
       resources :topics, only: %i[index show]
@@ -45,9 +52,24 @@ Rails.application.routes.draw do
       resources :censored_words, only: %i[index create destroy]
       resources :badges, only: %i[index new create edit update destroy]
       resources :tags
+      resources :tag_groups
+      resources :warnings, only: %i[index]
       resources :canned_responses
+      resources :webhook_deliveries, only: %i[index show] do
+        collection do
+          post :bulk_retry
+        end
+        member do
+          post :retry
+        end
+      end
     end
     namespace :store do
+      resource :settings, only: %i[show update] do
+        post :test_webhook
+        post :test_all_webhooks
+        get :webhook_test_status
+      end
       resources :categories
       resources :products do
         member do
@@ -59,10 +81,22 @@ Rails.application.routes.draw do
       resources :orders, only: %i[index show update] do
         collection do
           get :export
+          patch :bulk_update
+        end
+        member do
+          post :staff_note
         end
       end
       resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
+      resources :webhook_deliveries, only: %i[index show] do
+        collection do
+          post :bulk_retry
+        end
+        member do
+          post :retry
+        end
+      end
       resources :product_questions, only: %i[index destroy] do
         member do
           patch :hide
@@ -89,6 +123,7 @@ Rails.application.routes.draw do
     resources :sections, only: %i[index show] do
       member do
         post :subscription, action: :toggle_subscription
+        patch :subscription, action: :update_subscription
         post :mute, action: :toggle_mute
         patch :mark_all_read
       end
@@ -112,11 +147,19 @@ Rails.application.routes.draw do
         post :close
         post :revoke
         get :voters
+        get :export
       end
     end
     get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
     get "sections/:id.rss", to: "rss#section", as: :section_rss, defaults: { format: :rss }
+    get "topics/:id.rss", to: "rss#topic", as: :topic_rss, defaults: { format: :rss }
+    get "categories/:slug.rss", to: "rss#category", as: :category_rss, defaults: { format: :rss }
+    get "categories/:slug", to: "categories#show", as: :category
     resources :topics, only: %i[show new create update] do
+      collection do
+        get :similar_titles
+        patch :bulk_moderate
+      end
       resource :reply_draft, only: %i[update destroy], controller: "reply_drafts"
       member do
         post :moderate
@@ -127,8 +170,12 @@ Rails.application.routes.draw do
         post :unsolve
         patch :slow_mode, action: :update_slow_mode
         patch :auto_close, action: :update_auto_close
+        patch :auto_open, action: :update_auto_open
+        patch :auto_bump, action: :update_auto_bump
+        patch :auto_archive, action: :update_auto_archive
         post :mark_unread
         post :subscription, action: :toggle_subscription
+        patch :subscription, action: :update_subscription
         post :mute, action: :toggle_mute
         post :bookmark, action: :toggle_bookmark
         post :staff_note
@@ -137,6 +184,8 @@ Rails.application.routes.draw do
         post :invite
         post :close_own
         post :reopen_own
+        post :share_as_pm
+        get :export
       end
     end
     resources :posts, only: %i[create update destroy] do
@@ -161,32 +210,58 @@ Rails.application.routes.draw do
         patch :mark_all_read
       end
     end
+    get "search.rss", to: "rss#ad_hoc_search", as: :search_rss, defaults: { format: :rss }
+    get "search.opml", to: "rss#ad_hoc_search_opml", as: :search_opml, defaults: { format: :xml }
+    get "search/histories.opml", to: "rss#search_histories_opml", as: :search_histories_opml, defaults: { format: :xml }
+    get "search/feeds.opml", to: "rss#search_feeds_opml", as: :search_feeds_opml, defaults: { format: :xml }
+    delete "search/history", to: "search_histories#clear", as: :clear_search_histories
+    resources :search_histories, only: %i[destroy], path: "search/history"
     get "search", to: "search#index"
+    get "search/suggest", to: "search#suggest", as: :search_suggest
     get "mentions/search", to: "mentions#search", as: :mention_search
     get "latest", to: "latest#index"
     get "activity", to: "activity#index"
     get "following", to: "follows#index"
+    post "announcements/dismiss", to: "announcements#dismiss", as: :dismiss_announcement
     get "unread", to: "unread#index"
+    get "assigned", to: "assigned#index"
     patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read
+    patch "unread/mark_selected_read", to: "unread#mark_selected_read", as: :unread_mark_selected_read
+    resources :unread_filter_presets, only: %i[create destroy], path: "unread/filter_presets"
     post "preview", to: "previews#create"
     post "uploads", to: "uploads#create"
     get "bookmarks", to: "bookmarks#index"
     patch "bookmarks/:id", to: "bookmarks#update", as: :bookmark
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
+    get "watching.opml", to: "rss#watching_opml", as: :watching_opml, defaults: { format: :xml }
     get "watching", to: "watched#index"
     get "watching/tags", to: "watched#tags", as: :watched_tags
     get "watching/tag-topics", to: "watched#tag_topics", as: :watched_tag_topics
     get "tags", to: "tags#index", as: :tags
+    get "badges", to: "badges#index", as: :badges
+    get "badges/:id", to: "badges#show", as: :badge
     get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
-    resources :saved_searches, only: %i[index create destroy]
+    get "digest/unsubscribe", to: "digest_unsubscribes#show", as: :unsubscribe_forum_digest
+    get "notifications/email/unsubscribe", to: "notification_type_unsubscribes#show", as: :unsubscribe_notification_type
+    get "saved_searches.opml", to: "rss#saved_searches_opml", as: :saved_searches_opml, defaults: { format: :xml }
+    get "saved_searches/:id.rss", to: "rss#saved_search", as: :saved_search_rss, defaults: { format: :rss }
+    post "webhook_deliveries/:id/retry", to: "saved_search_webhook_deliveries#retry", as: :retry_saved_search_webhook_delivery
+    resources :saved_searches, only: %i[index create update destroy] do
+      collection do
+        get :unsubscribe
+      end
+    end
     get "tags/:slug", to: "tags#show", as: :tag
     post "tags/:slug/subscription", to: "tags#toggle_subscription", as: :tag_subscription
+    patch "tags/:slug/subscription", to: "tags#update_subscription", as: :tag_subscription_level
     resources :conversations, only: %i[index show new create] do
       member do
         post :archive
         post :unarchive
+        post :mute
+        post :unmute
       end
       resources :messages, only: %i[create], controller: "conversation_messages"
       resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username
@@ -204,6 +279,8 @@ Rails.application.routes.draw do
 
     scope module: :commerce, path: "store", as: :store do
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
+    get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
+    get "categories/:slug.rss", to: "rss#category", as: :category_rss, defaults: { format: :rss }
     get "categories/:slug", to: "categories#show", as: :category
     get "gift_cards", to: "gift_cards#index", as: :gift_cards
     resources :products, only: %i[index show] do
@@ -217,6 +294,8 @@ Rails.application.routes.draw do
         post :discussion, action: :create_discussion
         post :price_alert, to: "price_alerts#create"
         post :stock_alert, to: "stock_alerts#create"
+        post :availability_alert, to: "availability_alerts#create"
+        get :preview
         resources :reviews, only: %i[create destroy], controller: "reviews" do
           member do
             post :helpful, action: :toggle_helpful
@@ -230,12 +309,16 @@ Rails.application.routes.draw do
     end
     get "compare", to: "compare#show"
     post "compare/toggle", to: "compare#toggle", as: :toggle_compare
+    post "compare/import_wishlist", to: "compare#import_wishlist", as: :import_wishlist_compare
     delete "compare", to: "compare#clear"
+    get "compare/share", to: "compare#share"
+    get "compare/:token", to: "compare#public_show", as: :public_compare
     get "wishlist", to: "wishlist#index"
     post "wishlist/add_all_to_cart", to: "wishlist#add_all_to_cart", as: :add_all_to_cart_wishlist
     patch "wishlist/:product_id/note", to: "wishlist#update_note", as: :note_wishlist
     post "wishlist/:product_id/add_to_cart", to: "wishlist#add_to_cart", as: :add_wishlist_item_to_cart
     get "wishlist/share", to: "wishlist#share"
+    resources :wishlist_filter_presets, only: %i[index create destroy], path: "wishlist/filter_presets"
     get "wishlist/:token", to: "wishlist#public_show", as: :public_wishlist
     resources :stock_alerts, only: %i[index destroy] do
       member do
@@ -243,6 +326,7 @@ Rails.application.routes.draw do
       end
     end
     resources :price_alerts, only: %i[index destroy]
+    resources :availability_alerts, only: %i[index destroy]
     resource :cart, only: %i[show update] do
       post :preview_coupon, on: :member
       post :preview_gift_card, on: :member
@@ -260,6 +344,7 @@ Rails.application.routes.draw do
         post :refund
         get :receipt
         get :receipt_pdf
+        get :packing_slip
         post :reorder
         post :refresh_download
       end
@@ -267,6 +352,7 @@ Rails.application.routes.draw do
     resource :checkout, only: %i[show create], controller: "checkout" do
       post :preview_coupon, on: :member
       post :preview_gift_card, on: :member
+      post :preview_store_credit, on: :member
     end
     get "coupons/:code", to: "coupons#show", as: :coupon
     post "coupons/:code/apply", to: "coupons#apply", as: :apply_coupon
@@ -274,8 +360,14 @@ Rails.application.routes.draw do
     post "gift_cards/:code/apply", to: "gift_cards#apply", as: :apply_gift_card
     post "webhooks/:provider", to: "webhooks#create", as: :webhook
     get "downloads/:token", to: "downloads#show", as: :download
+    get "wallet", to: "wallet#show"
     get "preferences", to: "preferences#show"
     patch "preferences", to: "preferences#update"
+    resources :shipping_addresses, only: %i[index create update destroy] do
+      member do
+        post :make_default
+      end
+    end
   end
 
   scope module: :website, as: :website do

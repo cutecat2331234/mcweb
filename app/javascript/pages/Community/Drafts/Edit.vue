@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -21,7 +22,7 @@ const props = defineProps<{
     tags: string
     prefix?: string | null
     scheduled_at_input?: string | null
-    section: { name: string; slug: string; prefixes?: string[] }
+    section: { name: string; slug: string; prefixes?: string[]; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; required?: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }> }
     poll?: {
       question: string
       options: string
@@ -31,9 +32,17 @@ const props = defineProps<{
       hide_results_until_vote: boolean
     } | null
   }
+  warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
 }>()
 
 const showPoll = ref(!!props.draft.poll)
+const tagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
+const tagGroupError = ref('')
+const linkError = ref('')
+
+function containsLink(text: string) {
+  return /https?:\/\/|www\./i.test(text)
+}
 
 const form = useForm({
   draft: {
@@ -52,7 +61,34 @@ const form = useForm({
   },
 })
 
+function missingRequiredGroups(tags: string) {
+  const names = tags.split(',').map((t) => t.trim()).filter(Boolean)
+  return (props.draft.section.tag_groups || []).filter((group) => {
+    if (!group.required) return false
+    const groupNames = new Set(group.tags.map((t) => t.name))
+    return !names.some((name) => groupNames.has(name))
+  })
+}
+
+const tagsReady = computed(() => missingRequiredGroups(form.draft.tags).length === 0)
+
+const bodyHasBlockedLink = computed(() =>
+  !!(props.warningRestrictions?.link && containsLink(form.draft.body))
+)
+
+const canPublish = computed(() => tagsReady.value && !props.warningRestrictions?.post && !bodyHasBlockedLink.value)
+
+function tagsValid() {
+  if (!tagsReady.value) {
+    tagGroupError.value = '请从必填标签组中至少选择一个标签。'
+    return false
+  }
+  tagGroupError.value = ''
+  return true
+}
+
 function save() {
+  if (!tagsValid()) return
   if (!showPoll.value) {
     form.draft.poll_question = ''
     form.draft.poll_options = ''
@@ -61,6 +97,12 @@ function save() {
 }
 
 function publish() {
+  if (!tagsValid()) return
+  if (props.warningRestrictions?.post) return
+  if (props.warningRestrictions?.link && containsLink(form.draft.body)) {
+    linkError.value = props.warningRestrictions.link
+    return
+  }
   router.post(`/forum/drafts/${props.draft.id}/publish`)
 }
 
@@ -86,6 +128,10 @@ function clearSchedule() {
 
   <PageHeader title="编辑草稿" :subtitle="draft.section.name" />
 
+  <p v-if="warningRestrictions?.post" class="mb-4 max-w-lg rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    {{ warningRestrictions.post }}
+  </p>
+
   <form class="max-w-lg space-y-4" @submit.prevent="save">
     <div class="space-y-2">
       <Label for="title">标题</Label>
@@ -101,10 +147,14 @@ function clearSchedule() {
     <div class="space-y-2">
       <Label for="body">内容</Label>
       <MarkdownEditor v-model="form.draft.body" :rows="10" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名、[^脚注]" />
+      <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
+      <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
+      <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
     </div>
     <div class="space-y-2">
-      <Label for="tags">标签（逗号分隔）</Label>
-      <Input id="tags" v-model="form.draft.tags" />
+      <Label for="tags">标签（最多 5 个）</Label>
+      <TagGroupPicker ref="tagPickerRef" v-model="form.draft.tags" :tag-groups="draft.section.tag_groups" :max-tags="5" />
+      <p v-if="tagGroupError" class="text-sm text-destructive">{{ tagGroupError }}</p>
     </div>
 
     <div class="space-y-2">
@@ -140,8 +190,8 @@ function clearSchedule() {
       <Button v-if="draft.scheduled_at_input" type="button" variant="outline" size="sm" @click="clearSchedule">取消定时</Button>
     </div>
     <div class="flex flex-wrap gap-2">
-      <Button type="submit" :disabled="form.processing">保存草稿</Button>
-      <Button type="button" :disabled="!form.draft.body" @click="publish">发布主题</Button>
+      <Button type="submit" :disabled="form.processing || !tagsReady">保存草稿</Button>
+      <Button type="button" :disabled="!form.draft.body || !canPublish" @click="publish">发布主题</Button>
       <Button type="button" variant="destructive" @click="destroy">删除</Button>
       <Button as-child variant="outline">
         <Link :href="routes.forumDrafts">返回</Link>

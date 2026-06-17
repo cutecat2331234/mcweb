@@ -14,8 +14,12 @@ module Commerce
       pending_coupon ||= session[:pending_coupon_code].to_s.presence
       pending_gift_card = session[:pending_gift_card_code].to_s.presence
       coupon = Commerce::Coupon.find_by(code: pending_coupon) if pending_coupon.present?
-      requires_shipping = items.any? { |item| item.product&.requires_shipping? }
-      default_shipping_address = last_shipping_address_for(current_user)
+      requires_shipping = items.any? { |item| item.product&.requires_shipping? || item.product&.product_type == "physical" }
+      default_shipping_address = default_shipping_address_for(current_user)
+      saved_addresses = current_user.shipping_addresses.ordered.map { |address| serialize_saved_address(address) }
+      gift_wrap_cents = SiteSetting.get("store.gift_wrap_cents", "500").to_i
+      min_checkout_cents = SiteSetting.get("store.min_checkout_subtotal_cents", "0").to_i
+      store_credit_balance = current_user.store_credit_cents.to_i
 
       render inertia: "Commerce/Checkout/Show", props: {
         items: items.map { |item|
@@ -33,11 +37,22 @@ module Commerce
         couponAutoApplied: params[:coupon].present? && pending_coupon.present?,
         requiresShipping: requires_shipping,
         defaultShippingAddress: default_shipping_address,
+        savedAddresses: saved_addresses,
+        shippingAddressesUrl: store_shipping_addresses_path,
         providers: providers,
         defaultProvider: providers.first&.dig(:value),
         previewCouponUrl: preview_coupon_store_checkout_path,
         previewGiftCardUrl: preview_gift_card_store_checkout_path,
-        **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon)
+        giftWrapAvailable: requires_shipping && gift_wrap_cents.positive?,
+        giftWrapCents: gift_wrap_cents,
+        giftWrapLabel: format_money(gift_wrap_cents, currency),
+        minCheckoutCents: min_checkout_cents,
+        minCheckoutLabel: min_checkout_cents.positive? ? format_money(min_checkout_cents, currency) : nil,
+        belowMinCheckout: min_checkout_cents.positive? && subtotal_cents < min_checkout_cents,
+        storeCreditBalanceCents: store_credit_balance,
+        storeCreditBalanceLabel: store_credit_balance.positive? ? format_money(store_credit_balance, currency) : nil,
+        previewStoreCreditUrl: preview_store_credit_store_checkout_path,
+        **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon, shipping_method_code: params[:shipping_method])
       }
     end
 
@@ -53,8 +68,11 @@ module Commerce
           user: current_user,
           coupon_code: checkout_params[:coupon_code].presence || session.delete(:pending_coupon_code),
           gift_card_code: checkout_params[:gift_card_code].presence || session.delete(:pending_gift_card_code),
+          use_store_credit: checkout_params[:use_store_credit],
           notes: checkout_params[:notes],
-          shipping_address: shipping_address_params
+          shipping_address: shipping_address_params,
+          shipping_method: checkout_params[:shipping_method],
+          gift_wrap: checkout_params[:gift_wrap]
         )
         unless order_result.success?
           return redirect_to store_checkout_path, alert: service_error_message(order_result)
@@ -174,10 +192,64 @@ module Commerce
       end
     end
 
+    def preview_store_credit
+      cart = Commerce::Cart.find_by(user: current_user)
+      subtotal_cents = cart&.subtotal_cents.to_i
+      cart_items = cart&.items&.includes(:product) || []
+      currency = cart_items.first&.product&.currency || "CNY"
+      discount_cents = 0
+      shipping_cents = shipping_cents_for_preview(subtotal_cents)
+      gift_card_amount_cents = 0
+
+      if params[:coupon_code].present?
+        preview = Commerce::PreviewCoupon.call(
+          subtotal_cents: subtotal_cents,
+          code: params[:coupon_code],
+          cart_items: cart_items,
+          user: current_user
+        )
+        if preview.success?
+          discount_cents = preview.value[:discount_cents]
+          shipping_cents = preview.value[:shipping_cents].to_i
+        end
+      end
+
+      if params[:gift_card_code].present?
+        gift_preview = Commerce::PreviewGiftCard.call(
+          subtotal_cents: subtotal_cents,
+          code: params[:gift_card_code],
+          discount_cents: discount_cents,
+          shipping_cents: shipping_cents
+        )
+        gift_card_amount_cents = gift_preview.success? ? gift_preview.value[:gift_card_amount_cents] : 0
+      end
+
+      result = Commerce::PreviewStoreCredit.call(
+        user: current_user,
+        subtotal_cents: subtotal_cents,
+        discount_cents: discount_cents,
+        shipping_cents: shipping_cents,
+        gift_card_amount_cents: gift_card_amount_cents
+      )
+
+      if result.success?
+        render json: {
+          balance_cents: result.value[:balance_cents],
+          store_credit_amount_cents: result.value[:store_credit_amount_cents],
+          total_cents: result.value[:total_cents],
+          balance_label: format_money(result.value[:balance_cents], currency),
+          store_credit_amount_label: format_money(result.value[:store_credit_amount_cents], currency),
+          total_label: format_money(result.value[:total_cents], currency)
+        }
+      else
+        render json: { error: service_error_message(result) }, status: :unprocessable_entity
+      end
+    end
+
     private
 
     def checkout_params
-      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes)
+      params.fetch(:checkout, {}).permit(:provider, :coupon_code, :gift_card_code, :notes, :shipping_method, :gift_wrap, :use_store_credit)
     end
 
     def shipping_address_params
@@ -188,6 +260,9 @@ module Commerce
     end
 
     def last_shipping_address_for(user)
+      saved = user.shipping_addresses.find_by(default_address: true) || user.shipping_addresses.ordered.first
+      return saved.to_address_hash if saved
+
       order = Commerce::Order.where(user: user)
         .where.not(shipping_address: [ nil, {} ])
         .where.not(status: %w[cancelled failed pending awaiting_payment])
@@ -209,15 +284,45 @@ module Commerce
       }
     end
 
+    def default_shipping_address_for(user)
+      hash = last_shipping_address_for(user)
+      return nil unless hash.is_a?(Hash) && hash.values.any?(&:present?)
+
+      normalized = hash.with_indifferent_access
+      {
+        name: normalized[:name].to_s,
+        phone: normalized[:phone].to_s,
+        line1: normalized[:line1].to_s,
+        line2: normalized[:line2].to_s,
+        city: normalized[:city].to_s,
+        province: normalized[:province].to_s,
+        postal_code: normalized[:postal_code].to_s
+      }
+    end
+
+    def serialize_saved_address(address)
+      {
+        id: address.id,
+        label: address.label,
+        summary: address.summary_label,
+        address: address.to_address_hash
+      }
+    end
+
     def default_provider
       Payments::ProviderConfig.enabled_providers.pick(:provider) || "fake"
     end
 
-    def shipping_cents_for_preview(subtotal_cents)
+    def shipping_cents_for_preview(subtotal_cents, shipping_method_code: nil)
       cart = Commerce::Cart.find_by(user: current_user)
       cart_items = cart&.items&.includes(:product) || []
       coupon = Commerce::Coupon.find_by(code: session[:pending_coupon_code]) if session[:pending_coupon_code].present?
-      result = Commerce::CalculateShipping.call(subtotal_cents: subtotal_cents, cart_items: cart_items, coupon: coupon)
+      result = Commerce::CalculateShipping.call(
+        subtotal_cents: subtotal_cents,
+        cart_items: cart_items,
+        coupon: coupon,
+        shipping_method_code: shipping_method_code || params[:shipping_method]
+      )
       result.success? ? result.value[:shipping_cents].to_i : 0
     end
 

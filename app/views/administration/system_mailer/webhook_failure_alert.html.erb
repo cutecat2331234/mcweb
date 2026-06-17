@@ -1,0 +1,15 @@
+<p>近 24 小时内 Webhook 失败次数已超过配置阈值。</p>
+
+<ul>
+  <% if @forum_alert %>
+    <li>论坛保存搜索：失败 <%= @forum_failed %> 次（阈值 <%= @forum_threshold %>，共 <%= @stats.dig(:forum, :total) %> 次）</li>
+  <% end %>
+  <% if @store_alert %>
+    <li>商城订单：失败 <%= @store_failed %> 次（阈值 <%= @store_threshold %>，共 <%= @stats.dig(:store, :total) %> 次）</li>
+  <% end %>
+</ul>
+
+<p>
+  <a href="<%= @forum_url %>">查看论坛失败投递</a><br>
+  <a href="<%= @store_url %>">查看商城失败投递</a>
+</p>

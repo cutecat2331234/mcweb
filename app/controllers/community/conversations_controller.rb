@@ -2,6 +2,8 @@
 
 module Community
   class ConversationsController < ApplicationController
+    include Community::WarningRestrictionsSerializable
+
     before_action :require_login
 
     def index
@@ -50,11 +52,17 @@ module Community
         messages: messages.map { |msg| serialize_message(msg, conversation: conversation, participants_by_user: participants_by_user) },
         pagination: pagy_props(@pagy),
         participants: conversation.is_group? ? serialize_group_participants(conversation) : [],
-        addParticipantUrl: conversation.is_group? ? forum_conversation_participants_path(conversation) : nil,
-        archiveUrl: forum_archive_conversation_path(conversation),
-        unarchiveUrl: forum_unarchive_conversation_path(conversation),
+        addParticipantUrl: group_add_participant_url(conversation),
+        addParticipantRestrictedReason: group_add_restricted_reason(conversation),
+        archiveUrl: archive_forum_conversation_path(conversation),
+        unarchiveUrl: unarchive_forum_conversation_path(conversation),
         archived: conversation.participants.find_by(user: current_user)&.archived_at.present?,
-        currentUsername: current_user.username
+        muted: conversation.participants.find_by(user: current_user)&.muted_at.present?,
+        muteUrl: mute_forum_conversation_path(conversation),
+        unmuteUrl: unmute_forum_conversation_path(conversation),
+        currentUsername: current_user.username,
+        canSendPm: Community::TrustLevel.can_send_pm?(current_user),
+        warningRestrictions: warning_restrictions_props
       }
     end
 
@@ -62,7 +70,8 @@ module Community
       render inertia: "Community/Messages/New", props: {
         recipient: params[:to].to_s.presence,
         group: params[:group] == "1",
-        canSendPm: Community::TrustLevel.can_send_pm?(current_user)
+        canSendPm: Community::TrustLevel.can_send_pm?(current_user),
+        warningRestrictions: warning_restrictions_props
       }
     end
 
@@ -112,10 +121,70 @@ module Community
       end
     end
 
+    def mute
+      conversation = Community::Conversation.for_user(current_user).find(params[:id])
+      result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
+
+      if result.success?
+        redirect_to forum_conversation_path(conversation), notice: "已静音此会话。"
+      else
+        redirect_to forum_conversation_path(conversation), alert: result.error || "操作失败"
+      end
+    end
+
+    def unmute
+      conversation = Community::Conversation.for_user(current_user).find(params[:id])
+      result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
+
+      if result.success?
+        redirect_to forum_conversation_path(conversation), notice: "已取消静音。"
+      else
+        redirect_to forum_conversation_path(conversation), alert: result.error || "操作失败"
+      end
+    end
+
     private
 
     def conversation_params
       params.require(:conversation).permit(:recipient, :recipients, :title, :body, :is_group)
+    end
+
+    def group_add_participant_url(conversation)
+      return nil unless conversation.is_group?
+      return nil unless conversation.participant?(current_user)
+      return nil if conversation.participants.count >= Community::AddConversationParticipant::MAX_PARTICIPANTS
+      return nil unless Community::TrustLevel.can_send_pm?(current_user)
+
+      return nil unless Community::AddConversationParticipant.can_add_member?(current_user, conversation)
+
+      pm_restriction = Community::CheckWarningRestrictions.call(user: current_user, action: :pm)
+      return nil if pm_restriction.failure?
+
+      forum_conversation_participants_path(conversation)
+    end
+
+    def group_add_restricted_reason(conversation)
+      return nil unless conversation.is_group?
+      return nil unless conversation.participant?(current_user)
+      return nil if group_add_participant_url(conversation)
+
+      if SiteSetting.get("forum.group_pm_creator_only_add", "false") == "true" &&
+         !Community::AddConversationParticipant.can_add_member?(current_user, conversation)
+        return "仅群主可添加新成员。"
+      end
+
+      if conversation.participants.count >= Community::AddConversationParticipant::MAX_PARTICIPANTS
+        return "群组人数已满。"
+      end
+
+      unless Community::TrustLevel.can_send_pm?(current_user)
+        return "新成员暂时无法添加群组成员。"
+      end
+
+      pm_restriction = Community::CheckWarningRestrictions.call(user: current_user, action: :pm)
+      return pm_restriction.error if pm_restriction.failure?
+
+      nil
     end
 
     def serialize_conversation(conversation, include_other: false)

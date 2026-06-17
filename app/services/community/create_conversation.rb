@@ -13,6 +13,17 @@ module Community
       return ServiceResult.failure(error: "You cannot message yourself.") if @sender.id == @recipient.id
       return ServiceResult.failure(error: "You cannot message this user.") if Community::UserBlock.blocked?(@sender, @recipient)
       return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@sender)
+
+      pm_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :pm)
+      return pm_restriction if pm_restriction.failure?
+
+      if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@sender)
+        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+      end
+
+      link_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :link)
+      return link_restriction if link_restriction.failure? && Community::TrustLevel.contains_link?(@body)
+
       return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
 
       conversation = find_existing || create_conversation!

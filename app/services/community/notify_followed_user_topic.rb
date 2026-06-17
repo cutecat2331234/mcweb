@@ -28,6 +28,19 @@ module Community
           body: @topic.title,
           metadata: { path: "/forum/topics/#{@topic.public_id}", topic_id: @topic.public_id }
         )
+
+        if Community::NotificationLevelFilter.deliver_watch_email?(
+          level: "watching",
+          user: user,
+          notification_type: "forum.followed_topic"
+        ) && Community::WatchEmailDelivery.email_allowed?(user, notification_type: "forum.followed_topic")
+          MailDeliveryJob.perform_later(
+            "Community::ForumMailer",
+            "followed_topic",
+            "deliver_now",
+            args: [ user.id, @topic.public_id ]
+          )
+        end
       end
 
       ServiceResult.success

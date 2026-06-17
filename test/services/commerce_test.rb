@@ -209,9 +209,9 @@ class Commerce::CancelOrderCouponTest < ActiveSupport::TestCase
       total_cents: 900,
       discount_cents: 100,
       coupon: @coupon,
-      coupon_usage_restored: true,
       currency: "CNY"
     )
+    @order.update_columns(coupon_usage_restored: true)
   end
 
   test "skips coupon decrement when usage already restored" do
@@ -221,6 +221,16 @@ class Commerce::CancelOrderCouponTest < ActiveSupport::TestCase
 
     assert result.success?
     assert_equal 1, @coupon.reload.used_count
+    assert @order.reload.coupon_usage_restored?
+  end
+
+  test "restores coupon usage on cancel and marks flag" do
+    @order.update_columns(coupon_usage_restored: false)
+
+    result = Commerce::CancelOrder.call(order: @order, actor: @user)
+
+    assert result.success?
+    assert_equal 0, @coupon.reload.used_count
     assert @order.reload.coupon_usage_restored?
   end
 end

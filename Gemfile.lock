@@ -152,7 +152,7 @@ GEM
     json (2.19.9)
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
-    lockbox (1.4.1)
+    lockbox (2.2.0)
     logger (1.7.0)
     loofah (2.25.1)
       crass (~> 1.0.2)
@@ -433,7 +433,7 @@ DEPENDENCIES
   importmap-rails
   inertia_rails (~> 3.21)
   jbuilder
-  lockbox (~> 1.4)
+  lockbox (~> 2.2)
   minitest (~> 5.25)
   minitest-reporters
   mission_control-jobs (~> 1.0)

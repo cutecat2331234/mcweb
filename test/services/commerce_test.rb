@@ -194,7 +194,7 @@ class Commerce::CancelOrderCouponTest < ActiveSupport::TestCase
   setup do
     @user = create_user
     @coupon = Commerce::Coupon.create!(
-      code: "CANCEL10",
+      code: "CANCEL#{SecureRandom.hex(6).upcase}",
       discount_type: "fixed",
       discount_value: 100,
       active: true,
@@ -215,7 +215,10 @@ class Commerce::CancelOrderCouponTest < ActiveSupport::TestCase
   end
 
   test "skips coupon decrement when usage already restored" do
+    assert @order.reload.coupon_usage_restored?
+
     result = Commerce::CancelOrder.call(order: @order, actor: @user)
+
     assert result.success?
     assert_equal 1, @coupon.reload.used_count
     assert @order.reload.coupon_usage_restored?

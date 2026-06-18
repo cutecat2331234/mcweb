@@ -12,6 +12,7 @@ import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import { useTheme } from '@/lib/useTheme'
+import { readCsrfToken } from '@/lib/csrf'
 
 const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
@@ -48,7 +49,7 @@ async function dismissAnnouncement(topicId: string) {
   dismissedLocal.value = [ ...dismissedLocal.value, topicId ]
   localStorage.setItem('mc-dismissed-announcements', JSON.stringify(dismissedLocal.value))
   if (auth.value.user) {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const token = readCsrfToken()
     await fetch(`${routes.app}/forum/announcements/dismiss`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token },

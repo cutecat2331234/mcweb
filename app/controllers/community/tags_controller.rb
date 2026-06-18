@@ -84,7 +84,7 @@ module Community
           rss_url: forum_tag_rss_path(tag.slug),
           watching: subscription.present?,
           notification_level: subscription&.notification_level,
-          subscription_url: forum_tag_subscription_path(tag.slug)
+          subscription_url: forum_tag_subscription_level_path(tag.slug)
         },
         topics: serialize_topics(topics, read_states: read_states),
         pagination: pagy_props(@pagy),
@@ -116,9 +116,9 @@ module Community
 
       if result.success?
         notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :tag)
-        redirect_to forum_tag_path(tag.slug), notice: notice
+        redirect_after_subscription_update(fallback_location: forum_tag_path(tag.slug), notice: notice)
       else
-        redirect_to forum_tag_path(tag.slug), alert: result.error || "更新失败"
+        redirect_after_subscription_update(fallback_location: forum_tag_path(tag.slug), alert: result.error || "更新失败")
       end
     end
   end

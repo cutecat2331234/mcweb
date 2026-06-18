@@ -125,9 +125,9 @@ module Community
 
       if result.success?
         notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :section)
-        redirect_to forum_section_path(section), notice: notice
+        redirect_after_subscription_update(fallback_location: forum_section_path(section), notice: notice)
       else
-        redirect_to forum_section_path(section), alert: result.error || "更新失败"
+        redirect_after_subscription_update(fallback_location: forum_section_path(section), alert: result.error || "更新失败")
       end
     end
 

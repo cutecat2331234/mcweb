@@ -47,5 +47,12 @@ module Community
         tag: "已取消关注此标签。"
       }[context]
     end
+
+    def redirect_after_subscription_update(fallback_location:, notice: nil, alert: nil)
+      options = { fallback_location: fallback_location }
+      options[:notice] = notice if notice
+      options[:alert] = alert if alert
+      redirect_back **options
+    end
   end
 end

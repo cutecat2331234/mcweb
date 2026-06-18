@@ -43,7 +43,7 @@ class User < ApplicationRecord
   def available_store_credit_cents(exclude_order_id: nil)
     pending = Commerce::Order
       .where(user: self, status: %w[pending awaiting_payment])
-      .where.not(store_credit_amount_cents: [nil, 0])
+      .where.not(store_credit_amount_cents: [ nil, 0 ])
     pending = pending.where.not(id: exclude_order_id) if exclude_order_id
     reserved = pending.sum(:store_credit_amount_cents)
     [ store_credit_cents.to_i - reserved, 0 ].max

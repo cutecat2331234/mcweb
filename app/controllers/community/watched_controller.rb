@@ -45,7 +45,7 @@ module Community
             slug: tag.slug,
             description: tag.description,
             url: forum_tag_path(tag.slug),
-            subscription_url: forum_tag_subscription_path(tag.slug)
+            subscription_url: forum_tag_subscription_level_path(tag.slug)
           }
         end,
         tagTopicsUrl: forum_watched_tag_topics_path,

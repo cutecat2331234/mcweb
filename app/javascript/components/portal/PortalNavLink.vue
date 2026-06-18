@@ -84,10 +84,10 @@ const emit = defineEmits<{ navigate: [] }>()
     :href="item.href"
     @click="emit('navigate')"
     :class="cn(
-      'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all',
+      'group flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.99]',
       active
-        ? 'relative bg-sidebar-accent text-sidebar-accent-foreground shadow-sm before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary'
-        : 'text-sidebar-foreground/80 hover:bg-sidebar-accent/60 hover:text-sidebar-accent-foreground',
+        ? 'relative bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:left-0 before:top-1/2 before:h-5 before:w-0.5 before:-translate-y-1/2 before:rounded-full before:bg-primary'
+        : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/50 hover:text-sidebar-accent-foreground',
       compact && 'px-2.5 py-2',
     )"
   >

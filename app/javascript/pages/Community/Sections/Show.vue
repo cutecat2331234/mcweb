@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Badge from '@/components/ui/Badge.vue'
 import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
+import Select from '@/components/ui/Select.vue'
 import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import { routes } from '@/lib/routes'
 
@@ -185,23 +186,21 @@ function bulkModerate(action: string) {
   <div class="mb-4 flex flex-wrap items-center gap-4">
     <div class="flex items-center gap-2">
       <label class="text-sm text-muted-foreground">排序：</label>
-      <select
-        :value="sort"
-        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-        @change="changeSort(($event.target as HTMLSelectElement).value)"
-      >
-        <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
+      <Select
+        :model-value="sort"
+        :options="sortOptions"
+        size="sm"
+        @update:model-value="changeSort"
+      />
     </div>
     <div class="flex items-center gap-2">
       <label class="text-sm text-muted-foreground">筛选：</label>
-      <select
-        :value="filter"
-        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-        @change="changeFilter(($event.target as HTMLSelectElement).value)"
-      >
-        <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
+      <Select
+        :model-value="filter"
+        :options="filterOptions"
+        size="sm"
+        @update:model-value="changeFilter"
+      />
     </div>
   </div>
 

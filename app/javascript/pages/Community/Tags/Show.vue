@@ -6,6 +6,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
+import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -69,13 +70,12 @@ function changeSort(value: string) {
 
   <div class="mb-4 flex items-center gap-2">
     <label class="text-sm text-muted-foreground">排序：</label>
-    <select
-      :value="sort || 'activity'"
-      class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-      @change="changeSort(($event.target as HTMLSelectElement).value)"
-    >
-      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-    </select>
+    <Select
+      :model-value="sort || 'activity'"
+      :options="sortOptions"
+      size="sm"
+      @update:model-value="changeSort"
+    />
   </div>
 
   <TopicListTable :topics="topics" show-views />

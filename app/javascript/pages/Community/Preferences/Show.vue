@@ -7,7 +7,9 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Label from '@/components/ui/Label.vue'
+import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
+import { readCsrfToken } from '@/lib/csrf'
 
 defineOptions({ layout: PortalLayout })
 
@@ -79,7 +81,7 @@ function retryWebhook(url: string) {
 async function toggleSavedSearchNotify(search: SavedSearchItem) {
   togglingId.value = search.id
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const token = readCsrfToken()
     const response = await fetch(search.update_url, {
       method: 'PATCH',
       headers: {
@@ -101,7 +103,7 @@ async function toggleSavedSearchNotify(search: SavedSearchItem) {
 }
 
 async function deleteSavedSearch(deleteUrl: string) {
-  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+  const token = readCsrfToken()
   await fetch(deleteUrl, {
     method: 'DELETE',
     headers: { 'X-CSRF-Token': token, Accept: 'application/json' },
@@ -124,7 +126,7 @@ async function saveRenameSearch(search: SavedSearchItem) {
   if (!search.update_url || !editingSearchName.value.trim()) return
   renamingSearchId.value = search.id
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const token = readCsrfToken()
     const response = await fetch(search.update_url, {
       method: 'PATCH',
       headers: {
@@ -186,9 +188,12 @@ async function saveRenameSearch(search: SavedSearchItem) {
 
     <div class="rounded-lg border p-4">
       <Label for="watch-email-mode" class="mb-2 block text-sm font-medium">关注即时邮件</Label>
-      <select id="watch-email-mode" v-model="form.watch_email_mode" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option v-for="opt in watch_email_mode_options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
+      <Select
+        id="watch-email-mode"
+        v-model="form.watch_email_mode"
+        :options="watch_email_mode_options"
+        class="w-full"
+      />
       <p class="mt-2 text-xs text-muted-foreground">控制关注主题/分区时是否立即收到邮件（对标 Discourse 通知级别）。</p>
     </div>
 
@@ -203,9 +208,12 @@ async function saveRenameSearch(search: SavedSearchItem) {
 
     <div class="rounded-lg border p-4">
       <Label for="digest" class="mb-2 block text-sm font-medium">邮件摘要</Label>
-      <select id="digest" v-model="form.digest_frequency" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option v-for="opt in digest_options" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
+      <Select
+        id="digest"
+        v-model="form.digest_frequency"
+        :options="digest_options"
+        class="w-full"
+      />
       <p class="mt-2 text-xs text-muted-foreground">摘要将汇总未读的论坛通知，减少即时邮件打扰。</p>
       <label v-if="form.digest_frequency !== 'none'" class="mt-3 flex items-center gap-2 text-sm">
         <input v-model="form.digest_watched_only" type="checkbox">

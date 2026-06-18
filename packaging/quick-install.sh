@@ -64,23 +64,22 @@ ensure_bundle_env() {
 
 run_migrate() {
   local env_file="/etc/mcweb/mcweb.env"
+  local bundle_bin="/home/${APP_USER}/.rbenv/shims/bundle"
   if [[ ! -f "${env_file}" ]]; then
     echo "未找到 ${env_file}，跳过数据库迁移。"
     return 0
   fi
 
-  set -a
-  # shellcheck disable=SC1090
-  source "${env_file}"
-  set +a
-
-  sudo -u "${APP_USER}" env \
-    HOME="/home/${APP_USER}" \
-    PATH="/home/${APP_USER}/.rbenv/shims:/usr/local/bin:/usr/bin:/bin" \
-    BUNDLE_DEPLOYMENT=true \
-    BUNDLE_WITHOUT="${BUNDLE_WITHOUT:-development:test}" \
-    RAILS_ENV=production \
-    bash -c "cd ${APP_ROOT}/current && bundle exec rails db:migrate"
+  sudo -u "${APP_USER}" bash -c "
+    set -a
+    source '${env_file}'
+    set +a
+    export RAILS_ENV=production
+    export BUNDLE_DEPLOYMENT=true
+    export BUNDLE_WITHOUT=\${BUNDLE_WITHOUT:-development:test}
+    cd '${APP_ROOT}/current'
+    '${bundle_bin}' exec rails db:migrate
+  "
 }
 
 restart_services() {

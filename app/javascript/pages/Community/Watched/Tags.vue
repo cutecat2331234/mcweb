@@ -21,7 +21,7 @@ defineProps<{
 }>()
 
 function unsubscribe(url: string) {
-  router.post(url)
+  router.patch(url, { level: 'off' }, { preserveScroll: true })
 }
 </script>
 

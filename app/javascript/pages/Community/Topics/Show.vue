@@ -987,14 +987,13 @@ async function copyPollShareLink() {
       <Button v-if="loggedIn && topic.bookmarked" type="button" variant="outline" size="sm" @click="removeBookmark">
         移除书签
       </Button>
-      <Button v-if="loggedIn && subscriptionLevels?.length && subscriptionUrl" type="button" variant="outline" size="sm" class="px-1">
-        <SubscriptionLevelSelect
-          :options="subscriptionLevels"
-          :subscription-url="subscriptionUrl"
-          :watching="topic.watching"
-          :notification-level="topic.notification_level"
-        />
-      </Button>
+      <SubscriptionLevelSelect
+        v-if="loggedIn && subscriptionLevels?.length && subscriptionUrl"
+        :options="subscriptionLevels"
+        :subscription-url="subscriptionUrl"
+        :watching="topic.watching"
+        :notification-level="topic.notification_level"
+      />
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleMute">
         {{ topic.muted ? '取消静音' : '静音主题' }}
       </Button>

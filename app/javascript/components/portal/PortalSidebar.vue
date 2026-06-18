@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { MessageSquare, ShoppingBag, ExternalLink, Home, X } from '@lucide/vue'
 import { routes } from '@/lib/routes'
 import { usePortalNav, type PortalNavOptions } from '@/lib/usePortalNav'
-import PortalNavLink from '@/components/portal/PortalNavLink.vue'
+import PortalNavGroupSection from '@/components/portal/PortalNavGroupSection.vue'
 import Button from '@/components/ui/Button.vue'
 import { cn } from '@/lib/utils'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
@@ -19,32 +19,86 @@ const navOptions = computed(() => ({
   cart: props.cart,
 }))
 
-const { navGroups, isActive, isSectionActive } = usePortalNav(navOptions)
+const { navGroups, isActive, isSectionActive, currentPath } = usePortalNav(navOptions)
 const { activeTemplate } = useActiveTemplate()
+
+const STORAGE_KEY = 'mc-portal-nav-expanded'
+
+function loadExpanded(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw) return JSON.parse(raw) as Record<string, boolean>
+  } catch {
+    /* ignore */
+  }
+  return {}
+}
+
+const expandedGroups = ref<Record<string, boolean>>(loadExpanded())
+
+watch(
+  navGroups,
+  (groups) => {
+    for (const group of groups) {
+      if (expandedGroups.value[group.key] === undefined) {
+        expandedGroups.value[group.key] = group.defaultExpanded ?? true
+      }
+    }
+  },
+  { immediate: true },
+)
+
+function toggleGroup(key: string) {
+  expandedGroups.value[key] = !expandedGroups.value[key]
+  persistExpanded()
+}
+
+function isGroupExpanded(key: string, defaultExpanded: boolean) {
+  return expandedGroups.value[key] ?? defaultExpanded
+}
+
+function persistExpanded() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(expandedGroups.value))
+}
+
+watch(
+  [currentPath, navGroups],
+  () => {
+    for (const group of navGroups.value) {
+      if (group.items.some((item) => isActive(item.href))) {
+        if (!expandedGroups.value[group.key]) {
+          expandedGroups.value[group.key] = true
+          persistExpanded()
+        }
+      }
+    }
+  },
+  { immediate: true },
+)
 </script>
 
 <template>
   <aside
     :class="cn(
-      'flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground dark:bg-gradient-to-b dark:from-sidebar dark:via-sidebar dark:to-primary/10',
+      'flex h-full w-64 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground',
       props.class,
     )"
   >
-    <div class="flex h-14 items-center gap-2 border-b border-sidebar-border/60 bg-gradient-to-br from-sidebar via-sidebar to-primary/20 px-4">
+    <div class="flex h-14 items-center gap-2 border-b border-sidebar-border/50 px-4">
       <Link
         :href="routes.home"
         class="flex min-w-0 flex-1 items-center gap-2.5 font-semibold tracking-tight text-sidebar-foreground no-underline"
         @click="onNavigate?.()"
       >
         <img v-if="activeTemplate?.logoUrl" :src="activeTemplate.logoUrl" alt="" class="h-8 w-auto shrink-0">
-        <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-primary/30 to-blue-500/20 p-1.5 text-base">⛏</span>
+        <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 p-1.5 text-base">⛏</span>
         <span class="truncate">McWeb</span>
       </Link>
       <Button
         v-if="showClose"
         variant="ghost"
         size="icon"
-        class="shrink-0 lg:hidden"
+        class="shrink-0 text-sidebar-foreground/70 lg:hidden"
         type="button"
         aria-label="关闭菜单"
         @click="onNavigate?.()"
@@ -54,14 +108,14 @@ const { activeTemplate } = useActiveTemplate()
     </div>
 
     <div class="p-3">
-      <div class="grid grid-cols-2 gap-1 rounded-lg bg-sidebar-accent/50 p-1">
+      <div class="grid grid-cols-2 gap-1 rounded-lg border border-sidebar-border/40 bg-sidebar-accent/30 p-1">
         <Link
           :href="routes.forum"
           :class="cn(
-            'flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all',
+            'flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.98]',
             isSectionActive('forum')
-              ? 'bg-sidebar text-sidebar-foreground shadow-sm'
-              : 'text-sidebar-foreground/70 hover:text-sidebar-foreground',
+              ? 'bg-background/80 text-sidebar-foreground shadow-sm'
+              : 'text-sidebar-foreground/65 hover:bg-background/40 hover:text-sidebar-foreground',
           )"
           @click="onNavigate?.()"
         >
@@ -71,10 +125,10 @@ const { activeTemplate } = useActiveTemplate()
         <Link
           :href="routes.store"
           :class="cn(
-            'flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all',
+            'flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.98]',
             isSectionActive('store')
-              ? 'bg-sidebar text-sidebar-foreground shadow-sm'
-              : 'text-sidebar-foreground/70 hover:text-sidebar-foreground',
+              ? 'bg-background/80 text-sidebar-foreground shadow-sm'
+              : 'text-sidebar-foreground/65 hover:bg-background/40 hover:text-sidebar-foreground',
           )"
           @click="onNavigate?.()"
         >
@@ -84,32 +138,27 @@ const { activeTemplate } = useActiveTemplate()
       </div>
     </div>
 
-    <nav class="flex-1 space-y-6 overflow-y-auto px-3 pb-4">
-      <div v-for="group in navGroups" :key="group.key">
-        <p class="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/50">
-          {{ group.label }}
-        </p>
-        <div class="space-y-0.5">
-          <PortalNavLink
-            v-for="item in group.items"
-            :key="item.href"
-            :item="item"
-            :active="isActive(item.href)"
-            @navigate="onNavigate?.()"
-          />
-        </div>
-      </div>
+    <nav class="flex-1 space-y-3 overflow-y-auto px-3 pb-4">
+      <PortalNavGroupSection
+        v-for="group in navGroups"
+        :key="group.key"
+        :group="group"
+        :expanded="isGroupExpanded(group.key, group.defaultExpanded ?? true)"
+        :is-active="isActive"
+        @toggle="toggleGroup(group.key)"
+        @navigate="onNavigate?.()"
+      />
     </nav>
 
-    <div class="mt-auto border-t border-sidebar-border/60 p-3">
+    <div class="mt-auto border-t border-sidebar-border/50 p-3">
       <Link
         :href="routes.home"
-        class="group flex items-center gap-2.5 rounded-xl border border-sidebar-border/40 bg-sidebar-accent/20 px-3 py-2.5 text-sm text-sidebar-foreground/70 transition-all hover:border-primary/30 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground hover:shadow-sm hover:shadow-primary/5"
+        class="group flex items-center gap-2.5 rounded-lg border border-sidebar-border/30 px-3 py-2.5 text-sm text-sidebar-foreground/70 transition-all duration-150 hover:border-sidebar-border/60 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground active:scale-[0.99]"
         @click="onNavigate?.()"
       >
-        <Home class="h-4 w-4 shrink-0 text-primary/70 transition-colors group-hover:text-primary" />
+        <Home class="h-4 w-4 shrink-0 opacity-70 transition-colors group-hover:opacity-100" />
         <span class="flex-1">返回官网</span>
-        <ExternalLink class="h-3.5 w-3.5 shrink-0 text-primary/50 transition-all group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-primary" />
+        <ExternalLink class="h-3.5 w-3.5 shrink-0 opacity-50 transition-all group-hover:opacity-80" />
       </Link>
     </div>
   </aside>

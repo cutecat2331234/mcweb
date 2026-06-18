@@ -14,6 +14,7 @@ export interface PortalNavGroup {
   key: string
   label: string
   items: PortalNavItem[]
+  defaultExpanded?: boolean
 }
 
 export interface PortalNavOptions {
@@ -22,6 +23,10 @@ export interface PortalNavOptions {
   forumAssigned?: { count: number; url: string }
   messagesUnread?: { count: number; url: string }
   cart?: { count: number; url: string }
+}
+
+function pathMatches(path: string, href: string) {
+  return path === href || path.startsWith(`${href}/`)
 }
 
 export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOptions>) {
@@ -33,21 +38,6 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
   const activeSection = computed<'forum' | 'store'>(() =>
     currentPath.value.startsWith(`${appPrefix}/store`) ? 'store' : 'forum',
   )
-
-  function isActive(href: string) {
-    const path = currentPath.value
-    if (href === routes.forum) {
-      return path === routes.forum || path.startsWith(`${routes.forum}/`)
-    }
-    if (href === routes.store) {
-      return path === routes.store || (path.startsWith(`${appPrefix}/store/products`) && !path.includes('/recently_viewed'))
-    }
-    return path === href || path.startsWith(`${href}/`)
-  }
-
-  function isSectionActive(section: 'forum' | 'store') {
-    return activeSection.value === section
-  }
 
   const forumBrowseItems: PortalNavItem[] = [
     { label: '板块', href: routes.forum, icon: 'layout-grid' },
@@ -133,23 +123,55 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
         {
           key: 'store-browse',
           label: '浏览',
+          defaultExpanded: true,
           items: storeBrowseItems.filter((item) => !item.loginRequired || opts.value.loggedIn),
         },
       ]
       if (opts.value.loggedIn) {
-        groups.push({ key: 'store-mine', label: '我的', items: storePersonalItems.value })
+        groups.push({ key: 'store-mine', label: '我的', defaultExpanded: false, items: storePersonalItems.value })
       }
       return groups
     }
 
     const groups: PortalNavGroup[] = [
-      { key: 'forum-browse', label: '浏览', items: forumBrowseItems },
+      { key: 'forum-browse', label: '浏览', defaultExpanded: true, items: forumBrowseItems },
     ]
     if (opts.value.loggedIn) {
-      groups.push({ key: 'forum-mine', label: '我的', items: forumPersonalItems.value })
+      groups.push({ key: 'forum-mine', label: '我的', defaultExpanded: false, items: forumPersonalItems.value })
     }
     return groups
   })
+
+  const allNavHrefs = computed(() => navGroups.value.flatMap((group) => group.items.map((item) => item.href)))
+
+  function isActive(href: string) {
+    const path = currentPath.value
+
+    if (href === routes.forum) {
+      const matches = path === routes.forum || path.startsWith(`${routes.forum}/`)
+      if (!matches) return false
+      const better = allNavHrefs.value
+        .filter((h) => h !== href && h.startsWith(`${routes.forum}/`) && pathMatches(path, h))
+        .sort((a, b) => b.length - a.length)[0]
+      return !better
+    }
+
+    if (href === routes.store) {
+      return path === routes.store || (path.startsWith(`${appPrefix}/store/products`) && !path.includes('/recently_viewed'))
+    }
+
+    if (!pathMatches(path, href)) return false
+
+    const moreSpecific = allNavHrefs.value
+      .filter((other) => other !== href && other.startsWith(`${href}/`) && pathMatches(path, other))
+      .sort((a, b) => b.length - a.length)[0]
+
+    return !moreSpecific
+  }
+
+  function isSectionActive(section: 'forum' | 'store') {
+    return activeSection.value === section
+  }
 
   return {
     currentPath,

@@ -212,7 +212,11 @@ const sidebarProps = computed(() => ({
 
         <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
           <FlashMessages />
-          <slot />
+          <Transition name="page-fade" mode="out-in">
+            <div :key="page.url" class="min-h-[1px]">
+              <slot />
+            </div>
+          </Transition>
         </main>
       </div>
     </div>

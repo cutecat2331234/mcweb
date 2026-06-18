@@ -275,24 +275,52 @@ class ReadStateEnsureTrackingTest < ActiveSupport::TestCase
       s.position = 0
     end
     Community::Subscription.subscribe!(@watcher, @section, level: "watching")
-    @topic = Community::CreateTopic.call(
+  end
+
+  test "section topic notification creates read state for watcher who never visited" do
+    topic = Community::CreateTopic.call(
       user: @author,
       section: @section,
       title: "Tracked topic",
       body: "OP",
       ip_address: "127.0.0.1"
     ).value
+
+    assert Notification.exists?(user: @watcher, notification_type: "forum.section_topic")
+
+    state = Community::ReadState.find_by(user: @watcher, topic: topic)
+    assert state, "expected read state for notified watcher"
+    assert_equal 0, state.last_read_floor
+    assert state.unread_count.positive?
   end
 
-  test "section topic notification creates read state for watcher who never visited" do
-    assert_not Community::ReadState.exists?(user: @watcher, topic: @topic)
+  test "ensure_tracking creates read state without visiting topic" do
+    topic = Community::Topic.create!(
+      public_id: "topic_#{SecureRandom.alphanumeric(16)}",
+      section: @section,
+      user: @author,
+      title: "Manual topic",
+      status: "published",
+      last_posted_at: Time.current,
+      last_post_user: @author,
+      replies_count: 0
+    )
+    Community::Post.create!(
+      topic: topic,
+      user: @author,
+      floor_number: 1,
+      body: "OP",
+      status: "published",
+      post_type: "regular"
+    )
 
-    assert_difference -> { Notification.where(user: @watcher, notification_type: "forum.section_topic").count }, 1 do
-      Community::NotifySectionTopic.call(topic: @topic)
-    end
+    assert_not Community::ReadState.exists?(user: @watcher, topic: topic)
 
-    state = Community::ReadState.find_by(user: @watcher, topic: @topic)
-    assert state, "expected read state for notified watcher"
+    Community::ReadState.ensure_tracking!(@watcher, topic)
+
+    state = Community::ReadState.find_by!(user: @watcher, topic: topic)
+    assert_equal 0, state.last_read_floor
+    assert state.unread_count.positive?
   end
 end
 

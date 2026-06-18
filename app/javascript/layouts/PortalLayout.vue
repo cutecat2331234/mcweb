@@ -68,7 +68,7 @@ const sidebarProps = computed(() => ({
 </script>
 
 <template>
-  <div class="min-h-dvh bg-background" :style="tokenStyle">
+  <div class="min-h-dvh bg-background portal-themed" :style="tokenStyle">
     <TemplateAssets />
 
     <div v-if="portalHeaderExtraSlot" v-html="portalHeaderExtraSlot" />

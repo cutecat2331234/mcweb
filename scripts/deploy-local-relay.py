@@ -183,7 +183,17 @@ if ! ./quick-install.sh; then
   " || true
   systemctl restart mcweb-web mcweb-worker
 fi
-sleep 3
+for i in 1 2 3 4 5 6 7 8 9 10; do
+  if systemctl is-active --quiet mcweb-web mcweb-worker && curl -fsS http://127.0.0.1:3000/health/live >/dev/null 2>&1; then
+    break
+  fi
+  if [ "$i" -eq 10 ]; then
+    echo "health check failed after retries" >&2
+    systemctl status mcweb-web --no-pager -l | tail -20 >&2 || true
+    exit 1
+  fi
+  sleep 3
+done
 systemctl is-active mcweb-web mcweb-worker
 curl -fsS http://127.0.0.1:3000/health/live
 echo

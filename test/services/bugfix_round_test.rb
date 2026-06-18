@@ -177,6 +177,25 @@ class ConversationUnreadCountTest < ActiveSupport::TestCase
     assert_equal 0, Community::Conversation.total_unread_count_for(@alice)
     assert_equal 1, @conversation.unread_count_for(@alice)
   end
+
+  test "unread_counts_for matches unread_count_for" do
+    Community::SendMessage.call(user: @bob, conversation: @conversation, body: "Reply")
+    counts = Community::Conversation.unread_counts_for(@alice, [ @conversation.id ])
+
+    assert_equal @conversation.unread_count_for(@alice), counts[@conversation.id]
+  end
+
+  test "incoming message unarchives recipient" do
+    Community::SendMessage.call(user: @bob, conversation: @conversation, body: "Reply")
+    participant = @conversation.participants.find_by!(user: @alice)
+    participant.update!(archived_at: Time.current)
+    assert_equal 0, Community::Conversation.total_unread_count_for(@alice)
+
+    Community::SendMessage.call(user: @bob, conversation: @conversation, body: "Another")
+
+    assert_nil participant.reload.archived_at
+    assert_operator Community::Conversation.total_unread_count_for(@alice), :>, 0
+  end
 end
 
 class HidePostCounterTest < ActiveSupport::TestCase

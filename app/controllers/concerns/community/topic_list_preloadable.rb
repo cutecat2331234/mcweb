@@ -44,7 +44,17 @@ module Community
 
     def serialize_topics(topics, read_states: {}, highlight_query: nil)
       topics = attach_participant_users!(topics)
+      read_states = read_states_for_topics(topics) if read_states.empty? && logged_in?
       topics.map { |topic| serialize_topic(topic, read_state: read_states[topic.id], highlight_query: highlight_query) }
+    end
+
+    def read_states_for_topics(topics)
+      return {} unless logged_in?
+
+      topic_ids = topics.to_a.map(&:id)
+      return {} if topic_ids.empty?
+
+      Community::ReadState.where(user: current_user, forum_topic_id: topic_ids).index_by(&:forum_topic_id)
     end
   end
 end

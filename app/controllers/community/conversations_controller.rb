@@ -190,7 +190,7 @@ module Community
 
     def serialize_conversation(conversation, include_other: false, unread_count: nil)
       other = conversation.other_user(current_user)
-      last_message = conversation.messages.max_by(&:created_at)
+      last_message = conversation.messages.order(created_at: :desc).first
       display = conversation.display_name(current_user)
 
       data = {

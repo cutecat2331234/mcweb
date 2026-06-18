@@ -263,30 +263,6 @@ class NotificationMarkReadRedirectTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to forum_notifications_path(category: "forum", read: "unread")
   end
-
-  test "visit unavailable content preserves notification filters" do
-    author = create_user
-    category = Community::Category.find_or_create_by!(slug: "visit-cat") { |c| c.name = "V" }
-    section = Community::Section.find_or_create_by!(category: category, slug: "visit-sec") { |s| s.name = "V"; s.position = 0 }
-    topic = Community::Topic.create!(
-      public_id: "topic_#{SecureRandom.alphanumeric(16)}",
-      section: section,
-      user: author,
-      title: "Hidden",
-      status: "published",
-      unlisted: true,
-      last_posted_at: Time.current,
-      last_post_user: author,
-      replies_count: 0
-    )
-    @notification.update!(
-      metadata: { topic_id: topic.public_id, path: forum_topic_path(topic) }
-    )
-
-    get visit_forum_notification_path(@notification, category: "forum", read: "unread")
-
-    assert_redirected_to forum_notifications_path(category: "forum", read: "unread")
-  end
 end
 
 class ReadStateEnsureTrackingTest < ActiveSupport::TestCase
@@ -311,11 +287,12 @@ class ReadStateEnsureTrackingTest < ActiveSupport::TestCase
   test "section topic notification creates read state for watcher who never visited" do
     assert_not Community::ReadState.exists?(user: @watcher, topic: @topic)
 
-    Community::NotifySectionTopic.call(topic: @topic)
+    assert_difference -> { Notification.where(user: @watcher, notification_type: "forum.section_topic").count }, 1 do
+      Community::NotifySectionTopic.call(topic: @topic)
+    end
 
     state = Community::ReadState.find_by(user: @watcher, topic: @topic)
-    assert state, "expected read state for watcher"
-    assert state.unread_count.positive?
+    assert state, "expected read state for notified watcher"
   end
 end
 

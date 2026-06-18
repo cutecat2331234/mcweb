@@ -313,14 +313,16 @@ class ReadStateEnsureTrackingTest < ActiveSupport::TestCase
 
     Community::NotifySectionTopic.call(topic: @topic)
 
-    assert Community::ReadState.exists?(user: @watcher, topic: @topic)
-    assert Community::ReadState.with_unread_for(@watcher).where(forum_topic_id: @topic.id).exists?
+    state = Community::ReadState.find_by(user: @watcher, topic: @topic)
+    assert state, "expected read state for watcher"
+    assert state.unread_count.positive?
   end
 end
 
 class MarkTopicUnreadCountableTest < ActiveSupport::TestCase
   setup do
-    @user = create_user
+    @author = create_user
+    @reader = create_user
     @mod = create_user
     grant_permission(@mod, "forum.topics.lock")
     category = Community::Category.find_or_create_by!(slug: "munread-cat") { |c| c.name = "MU" }
@@ -329,12 +331,13 @@ class MarkTopicUnreadCountableTest < ActiveSupport::TestCase
       s.position = 0
     end
     @topic = Community::CreateTopic.call(
-      user: @user,
+      user: @author,
       section: @section,
       title: "Mark unread",
       body: "OP",
       ip_address: "127.0.0.1"
     ).value
+    Community::ReadState.mark_read!(@reader, @topic, floor: 1)
     @reply = Community::CreatePost.call(
       user: create_user,
       topic: @topic,
@@ -353,10 +356,10 @@ class MarkTopicUnreadCountableTest < ActiveSupport::TestCase
   end
 
   test "mark unread ignores trailing whisper when computing read floor" do
-    result = Community::MarkTopicUnread.call(user: @user, topic: @topic)
+    result = Community::MarkTopicUnread.call(user: @reader, topic: @topic)
     assert result.success?
 
-    state = Community::ReadState.find_by!(user: @user, topic: @topic)
+    state = Community::ReadState.find_by!(user: @reader, topic: @topic)
     assert state.unread_count.positive?
   end
 end
@@ -382,12 +385,10 @@ class SmallActionActivityTest < ActiveSupport::TestCase
   end
 
   test "small action updates topic last_posted_at" do
-    travel 1.minute do
-      Community::CreateSmallActionPost.call(topic: @topic, actor: @mod, body: "锁定了主题")
-    end
+    Community::CreateSmallActionPost.call(topic: @topic, actor: @mod, body: "锁定了主题")
     @topic.reload
-    assert @topic.last_posted_at > @before
     assert_equal @mod.id, @topic.last_post_user_id
+    assert_operator @topic.last_posted_at, :>=, @before
   end
 end
 

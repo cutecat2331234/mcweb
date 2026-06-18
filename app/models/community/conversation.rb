@@ -61,6 +61,7 @@ module Community
         )
         .group(:forum_conversation_id)
         .count
+        .transform_keys(&:to_i)
 
       conversation_ids.index_with { |id| counts[id] || 0 }
     end

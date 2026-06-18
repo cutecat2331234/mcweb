@@ -592,9 +592,11 @@ module Community
 
     def mark_topic_read!(posts)
       return unless logged_in?
-      return if posts.blank?
 
-      last_floor = posts.map(&:floor_number).max.to_i
+      countable = posts.select { |post| post.published? && post.post_type_regular? }
+      return if countable.blank?
+
+      last_floor = countable.map(&:floor_number).max.to_i
       Community::ReadState.mark_read!(current_user, @topic, floor: last_floor)
     end
 

@@ -9,7 +9,7 @@ module Community
 
     def call
       @section.topics.where(status: :published).find_each do |topic|
-        max_floor = topic.posts.where(status: :published).maximum(:floor_number).to_i
+        max_floor = topic.posts.countable.maximum(:floor_number).to_i
         next if max_floor.zero?
 
         Community::ReadState.mark_read!(@user, topic, floor: max_floor)

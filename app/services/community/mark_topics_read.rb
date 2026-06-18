@@ -12,7 +12,7 @@ module Community
 
       marked = 0
       Community::Topic.where(public_id: @topic_public_ids).find_each do |topic|
-        max_floor = topic.posts.maximum(:floor_number).to_i
+        max_floor = topic.posts.countable.maximum(:floor_number).to_i
         Community::ReadState.mark_read!(@user, topic, floor: max_floor)
         marked += 1
       end

@@ -132,7 +132,7 @@ function filterParams(overrides: Record<string, string | undefined> = {}) {
 }
 
 function markAllRead() {
-  router.patch(`${routes.app}/forum/notifications/mark_all_read`, filterParams())
+  router.patch(appendQueryParams(`${routes.app}/forum/notifications/mark_all_read`, filterParams()))
 }
 
 function switchRead(read: 'all' | 'unread') {

@@ -12,7 +12,7 @@ module Community
       states = states.where(forum_topic_id: @topic_ids) if @topic_ids.present?
 
       states.find_each do |state|
-        max_floor = state.topic.posts.maximum(:floor_number).to_i
+        max_floor = state.topic.posts.countable.maximum(:floor_number).to_i
         Community::ReadState.mark_read!(@user, state.topic, floor: max_floor)
       end
 

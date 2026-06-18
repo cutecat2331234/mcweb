@@ -263,6 +263,65 @@ class NotificationMarkReadRedirectTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to forum_notifications_path(category: "forum", read: "unread")
   end
+
+  test "mark all read preserves notification filters" do
+    Notification.create!(
+      user: @user,
+      notification_type: "forum.mention",
+      title: "Unread",
+      body: "Body",
+      metadata: {}
+    )
+
+    patch mark_all_read_forum_notifications_path(category: "forum", read: "unread")
+
+    assert_redirected_to forum_notifications_path(category: "forum", read: "unread")
+  end
+end
+
+class MarkTopicsReadCountableTest < ActiveSupport::TestCase
+  setup do
+    @user = create_user
+    @mod = create_user
+    grant_permission(@mod, "forum.topics.lock")
+    category = Community::Category.find_or_create_by!(slug: "mtr-cat") { |c| c.name = "MTR" }
+    @section = Community::Section.find_or_create_by!(category: category, slug: "mtr-sec") do |s|
+      s.name = "MTR Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: create_user,
+      section: @section,
+      title: "Mark topics read",
+      body: "OP",
+      ip_address: "127.0.0.1"
+    ).value
+    Community::ReadState.mark_read!(@user, @topic, floor: 1)
+    Community::CreatePost.call(
+      user: create_user,
+      topic: @topic,
+      body: "Unread reply",
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    )
+    Community::CreatePost.call(
+      user: @mod,
+      topic: @topic,
+      body: "Trailing whisper",
+      whisper: true,
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    )
+  end
+
+  test "mark topics read ignores trailing whisper floor" do
+    result = Community::MarkTopicsRead.call(user: @user, topic_public_ids: [ @topic.public_id ])
+    assert result.success?
+
+    state = Community::ReadState.find_by!(user: @user, topic: @topic)
+    assert_equal 2, state.last_read_floor
+    assert_not Community::ReadState.with_unread_for(@user).where(forum_topic_id: @topic.id).exists?
+  end
 end
 
 class ReadStateEnsureTrackingTest < ActiveSupport::TestCase

@@ -36,7 +36,7 @@ module Community
     end
 
     def show
-      conversation = Community::Conversation.for_user(current_user).find(params[:id])
+      conversation = find_accessible_conversation!
       conversation.mark_read_for!(current_user)
 
       scope = conversation.messages.includes(:user).order(created_at: :asc)
@@ -123,7 +123,7 @@ module Community
     end
 
     def mute
-      conversation = Community::Conversation.for_user(current_user).find(params[:id])
+      conversation = find_accessible_conversation!
       result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
 
       if result.success?
@@ -134,7 +134,7 @@ module Community
     end
 
     def unmute
-      conversation = Community::Conversation.for_user(current_user).find(params[:id])
+      conversation = find_accessible_conversation!
       result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
 
       if result.success?
@@ -145,6 +145,10 @@ module Community
     end
 
     private
+
+    def find_accessible_conversation!
+      Community::Conversation.for_user(current_user, include_archived: true).find(params[:id])
+    end
 
     def conversation_params
       params.require(:conversation).permit(:recipient, :recipients, :title, :body, :is_group)

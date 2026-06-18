@@ -168,6 +168,15 @@ class ConversationUnreadCountTest < ActiveSupport::TestCase
 
     assert_equal 0, Community::Conversation.total_unread_count_for(@alice)
   end
+
+  test "total_unread_count_for excludes archived conversations" do
+    Community::SendMessage.call(user: @bob, conversation: @conversation, body: "Reply")
+    participant = @conversation.participants.find_by!(user: @alice)
+    participant.update!(archived_at: Time.current)
+
+    assert_equal 0, Community::Conversation.total_unread_count_for(@alice)
+    assert_equal 1, @conversation.unread_count_for(@alice)
+  end
 end
 
 class HidePostCounterTest < ActiveSupport::TestCase
@@ -471,5 +480,35 @@ class SectionMuteRedirectTest < ActionDispatch::IntegrationTest
     post mute_forum_section_path(@section, sort: "hot", filter: "unsolved")
 
     assert_redirected_to forum_section_path(@section, sort: "hot", filter: "unsolved")
+  end
+end
+
+class ArchivedConversationAccessTest < ActionDispatch::IntegrationTest
+  setup do
+    @alice = create_user
+    enable_forum_pm!(@alice)
+    @bob = create_user
+    enable_forum_pm!(@bob)
+    result = Community::CreateConversation.call(
+      sender: @alice,
+      recipient_username: @bob.username,
+      body: "Hello"
+    )
+    @conversation = result.value[:conversation]
+    sign_in_as(@alice)
+    Community::ArchiveConversation.call(user: @alice, conversation: @conversation)
+  end
+
+  test "archived conversation show page is accessible" do
+    get forum_conversation_path(@conversation)
+
+    assert_response :success
+  end
+
+  test "archived conversation appears in archived list" do
+    get forum_conversations_path(archived: 1)
+
+    assert_response :success
+    assert_includes @response.body, @bob.username
   end
 end

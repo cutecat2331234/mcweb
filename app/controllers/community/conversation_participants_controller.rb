@@ -40,7 +40,7 @@ module Community
     private
 
     def set_conversation
-      @conversation = Community::Conversation.for_user(current_user).find(params[:conversation_id])
+      @conversation = Community::Conversation.for_user(current_user, include_archived: true).find(params[:conversation_id])
     end
   end
 end

@@ -18,6 +18,22 @@ module Community
     validates :floor_number, presence: true, uniqueness: { scope: :forum_topic_id }
 
     scope :chronological, -> { order(:floor_number) }
+    scope :countable, -> { published.where(post_type: :regular) }
+
+    def self.sync_topic_counters!(topic)
+      countable = topic.posts.countable.order(:floor_number)
+      last = countable.last
+
+      if last
+        topic.update!(
+          replies_count: [ countable.count - 1, 0 ].max,
+          last_posted_at: last.created_at,
+          last_post_user: last.user
+        )
+      else
+        topic.update!(replies_count: 0)
+      end
+    end
 
     def small_action?
       post_type == "small_action"
@@ -43,11 +59,7 @@ module Community
     private
 
     def update_topic_counters
-      topic.update!(
-        replies_count: [ topic.posts.count - 1, 0 ].max,
-        last_posted_at: created_at,
-        last_post_user: user
-      )
+      self.class.sync_topic_counters!(topic)
     end
   end
 end

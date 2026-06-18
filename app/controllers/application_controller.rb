@@ -56,7 +56,7 @@ class ApplicationController < ActionController::Base
         }
       end
       share[:messages_unread] = {
-        count: Community::Conversation.for_user(current_user).sum { |c| c.unread_count_for(current_user) },
+        count: Community::Conversation.total_unread_count_for(current_user),
         url: forum_conversations_path
       }
     end

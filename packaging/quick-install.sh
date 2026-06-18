@@ -85,7 +85,10 @@ run_migrate() {
 restart_services() {
   if systemctl list-unit-files mcweb-web.service >/dev/null 2>&1; then
     systemctl daemon-reload
-    systemctl restart mcweb-worker mcweb-web || true
+    if ! systemctl restart mcweb-worker mcweb-web; then
+      echo "重启 mcweb-web / mcweb-worker 失败" >&2
+      exit 1
+    fi
     echo "已重启 mcweb-web / mcweb-worker"
   else
     echo "提示: systemctl enable --now mcweb-web mcweb-worker caddy"

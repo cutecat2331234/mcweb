@@ -7,19 +7,7 @@ module Community
     end
 
     def call
-      published = @topic.posts.where(status: :published).order(:floor_number)
-      last = published.last
-
-      if last
-        @topic.update!(
-          last_posted_at: last.created_at,
-          last_post_user: last.user,
-          replies_count: [ published.count - 1, 0 ].max
-        )
-      else
-        @topic.update!(replies_count: 0)
-      end
-
+      Community::Post.sync_topic_counters!(@topic)
       ServiceResult.success(@topic)
     end
   end

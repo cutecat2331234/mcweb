@@ -137,9 +137,9 @@ module Community
       result = Community::MarkSectionRead.call(user: current_user, section: section)
 
       if result.success?
-        redirect_to forum_section_path(section), notice: "分区已全部标为已读。"
+        redirect_to forum_section_path(section, section_index_query_params), notice: "分区已全部标为已读。"
       else
-        redirect_to forum_section_path(section), alert: service_error_message(result)
+        redirect_to forum_section_path(section, section_index_query_params), alert: service_error_message(result)
       end
     end
 
@@ -156,6 +156,10 @@ module Community
     end
 
     private
+
+    def section_index_query_params
+      params.permit(:sort, :filter).to_h.compact_blank
+    end
 
     def section_active_filters(sort:, filter:, prefixes:, staff:)
       Community::TopicListActiveFilters.call(filter: filter, prefixes: prefixes, staff: staff) +

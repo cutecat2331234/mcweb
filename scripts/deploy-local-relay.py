@@ -224,14 +224,24 @@ def main() -> int:
     args = parser.parse_args()
 
     if not args.artifact_id:
-        raise SystemExit("--artifact-id is required unless zip is already cached")
+        zip_path = paths(args.sha)["zip"]
+        if not (zip_path.exists() and zip_path.stat().st_size > 1_000_000):
+            raise SystemExit("--artifact-id is required unless zip is already cached")
 
     if not args.password:
         args.password = require_env("MCWEB_SSH_PASSWORD")
 
     p = paths(args.sha)
     log(f"=== Deploy {args.sha} via local relay ===")
-    download_local(p, args.artifact_id, args.expected_bytes)
+
+    zip_path: Path = p["zip"]
+    if args.artifact_id:
+        download_local(p, args.artifact_id, args.expected_bytes)
+    elif zip_path.exists() and zip_path.stat().st_size > 1_000_000:
+        log(f"Using cached zip: {zip_path} ({zip_path.stat().st_size} bytes)")
+    else:
+        raise SystemExit("--artifact-id is required unless zip is already cached")
+
     extract_tarball(p, args.sha)
     upload_tarball(p, args.host, args.user, args.password)
     out = install_remote(p, args.sha, args.host, args.user, args.password)

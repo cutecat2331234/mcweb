@@ -31,7 +31,11 @@ module Community
 
       if section_slug.present?
         section = Community::Section.find_by(slug: section_slug)
-        scope = scope.where(forum_topics: { forum_section_id: section.id }) if section
+        scope = if section
+                  scope.where(forum_topics: { forum_section_id: section.id })
+        else
+                  scope.none
+        end
       end
 
       if tag_slugs.any?
@@ -71,9 +75,9 @@ module Community
       result = Community::MarkAllTopicsRead.call(user: current_user)
 
       if result.success?
-        redirect_to forum_unread_path, notice: "全部主题已标记为已读。"
+        redirect_to_unread_index(notice: "全部主题已标记为已读。")
       else
-        redirect_to forum_unread_path, alert: service_error_message(result)
+        redirect_to_unread_index(alert: service_error_message(result))
       end
     end
 
@@ -84,13 +88,29 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_unread_path, notice: "已标记 #{result.value[:marked]} 个主题为已读。"
+        redirect_to_unread_index(notice: "已标记 #{result.value[:marked]} 个主题为已读。")
       else
-        redirect_to forum_unread_path, alert: result.error || "操作失败"
+        redirect_to_unread_index(alert: result.error || "操作失败")
       end
     end
 
     private
+
+    def redirect_to_unread_index(notice: nil, alert: nil)
+      redirect_to forum_unread_path(unread_index_query_params), notice: notice, alert: alert
+    end
+
+    def unread_index_query_params
+      query = {
+        sort: params[:sort].presence,
+        filter: params[:filter].presence,
+        section: params[:section].presence,
+        tags: params[:tags].presence || params[:tag].presence
+      }
+      tag_match = params[:tag_match].to_s.presence
+      query[:tag_match] = tag_match if tag_match.present? && tag_match != "all"
+      query.compact
+    end
 
     def forum_sort_options
       [

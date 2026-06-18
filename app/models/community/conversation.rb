@@ -45,5 +45,17 @@ module Community
     def participant?(user)
       participants.exists?(user: user)
     end
+
+    def self.total_unread_count_for(user)
+      Community::Message
+        .joins(conversation: :participants)
+        .where(forum_conversation_participants: { user_id: user.id, archived_at: nil })
+        .where.not(user_id: user.id)
+        .where(
+          "forum_conversation_participants.last_read_at IS NULL " \
+          "OR forum_messages.created_at > forum_conversation_participants.last_read_at"
+        )
+        .count
+    end
   end
 end

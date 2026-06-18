@@ -41,8 +41,8 @@ def paths(version: str) -> dict[str, Path | str]:
     root = WORK_ROOT
     return {
         "root": root,
-        "zip": root / "mcweb-artifact.zip",
-        "extract": root / "artifact",
+        "zip": root / f"mcweb-artifact-{version}.zip",
+        "extract": root / f"artifact-{version}",
         "tarball": root / f"mcweb-{version}.tar.gz",
         "remote_tarball": f"/tmp/mcweb-{version}.tar.gz",
         "remote_dir": f"/tmp/mcweb-release-{version}",
@@ -55,7 +55,7 @@ def download_local(p: dict, artifact_id: str, expected_bytes: int | None) -> Non
     zip_path: Path = p["zip"]
     url = f"https://api.github.com/repos/cutecat2331234/mcweb/actions/artifacts/{artifact_id}/zip"
 
-    if zip_path.exists() and expected_bytes and zip_path.stat().st_size >= expected_bytes - 1_000_000:
+    if zip_path.exists() and expected_bytes and zip_path.stat().st_size == expected_bytes:
         log(f"Local zip already complete: {zip_path.stat().st_size} bytes")
         return
 
@@ -72,8 +72,8 @@ def download_local(p: dict, artifact_id: str, expected_bytes: int | None) -> Non
             )
             size = zip_path.stat().st_size
             log(f"Downloaded {size} bytes")
-            if expected_bytes and size < expected_bytes - 1_000_000:
-                raise RuntimeError(f"zip too small: {size} < {expected_bytes}")
+            if expected_bytes and size != expected_bytes:
+                raise RuntimeError(f"zip size mismatch: {size} != {expected_bytes}")
             return
         except Exception as exc:
             log(f"Download attempt {attempt} failed: {exc}")

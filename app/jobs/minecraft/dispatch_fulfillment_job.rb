@@ -16,10 +16,11 @@ module Minecraft
       snapshot = order_item.fulfillment_snapshot
       server_public_id = snapshot.dig("fulfillment_config", "server_id") || snapshot.dig("fulfillment_config", "minecraft_server_id")
 
-      server = if server_public_id.present?
-                 Minecraft::Server.find_by(public_id: server_public_id.to_s) ||
-                   Minecraft::Server.find_by(id: server_public_id.to_i)
-               end
+      server =
+        if server_public_id.present?
+          Minecraft::Server.find_by(public_id: server_public_id.to_s) ||
+            Minecraft::Server.find_by(id: server_public_id.to_i)
+        end
 
       unless server
         Rails.logger.error("[DispatchFulfillmentJob] No Minecraft server found for fulfillment #{fulfillment_id} (server_id=#{server_public_id.inspect})")

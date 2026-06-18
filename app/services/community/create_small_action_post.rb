@@ -24,6 +24,8 @@ module Community
         )
       end
 
+      @topic.update!(last_posted_at: post.created_at, last_post_user: @actor)
+
       ServiceResult.success(post)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

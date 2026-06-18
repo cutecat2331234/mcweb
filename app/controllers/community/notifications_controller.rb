@@ -43,7 +43,7 @@ module Community
       notification = current_user.notifications.find(params[:id])
       notification.mark_read!
       unless notification_content_visible?(notification)
-        redirect_to forum_notifications_path, alert: "此通知关联的内容已不可用。"
+        redirect_to forum_notifications_path(notification_index_query_params), alert: "此通知关联的内容已不可用。"
         return
       end
       destination = safe_notification_path(notification.metadata)

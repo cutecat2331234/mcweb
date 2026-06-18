@@ -81,7 +81,7 @@ function removeFilter(chip: { param: string }) {
 
 function toggleMute() {
   if (!props.section.mute_url) return
-  router.post(props.section.mute_url, {}, { preserveScroll: true })
+  router.post(appendQueryParams(props.section.mute_url, sectionListParams()), {}, { preserveScroll: true })
 }
 function sectionListParams() {
   return {

@@ -35,6 +35,8 @@ module Community
         )
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.topic_reply")
 
+        Community::ReadState.ensure_tracking!(user, @topic)
+
         Notification.notify!(
           user: user,
           notification_type: "forum.topic_reply",

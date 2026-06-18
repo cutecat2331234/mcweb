@@ -263,4 +263,148 @@ class NotificationMarkReadRedirectTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to forum_notifications_path(category: "forum", read: "unread")
   end
+
+  test "visit unavailable content preserves notification filters" do
+    author = create_user
+    category = Community::Category.find_or_create_by!(slug: "visit-cat") { |c| c.name = "V" }
+    section = Community::Section.find_or_create_by!(category: category, slug: "visit-sec") { |s| s.name = "V"; s.position = 0 }
+    topic = Community::Topic.create!(
+      public_id: "topic_#{SecureRandom.alphanumeric(16)}",
+      section: section,
+      user: author,
+      title: "Hidden",
+      status: "published",
+      unlisted: true,
+      last_posted_at: Time.current,
+      last_post_user: author,
+      replies_count: 0
+    )
+    @notification.update!(
+      metadata: { topic_id: topic.public_id, path: forum_topic_path(topic) }
+    )
+
+    get visit_forum_notification_path(@notification, category: "forum", read: "unread")
+
+    assert_redirected_to forum_notifications_path(category: "forum", read: "unread")
+  end
+end
+
+class ReadStateEnsureTrackingTest < ActiveSupport::TestCase
+  setup do
+    @author = create_user
+    @watcher = create_user
+    category = Community::Category.find_or_create_by!(slug: "track-cat") { |c| c.name = "Track" }
+    @section = Community::Section.find_or_create_by!(category: category, slug: "track-sec") do |s|
+      s.name = "Track Sec"
+      s.position = 0
+    end
+    Community::Subscription.subscribe!(@watcher, @section, level: "watching")
+    @topic = Community::CreateTopic.call(
+      user: @author,
+      section: @section,
+      title: "Tracked topic",
+      body: "OP",
+      ip_address: "127.0.0.1"
+    ).value
+  end
+
+  test "section topic notification creates read state for watcher who never visited" do
+    assert_not Community::ReadState.exists?(user: @watcher, topic: @topic)
+
+    Community::NotifySectionTopic.call(topic: @topic)
+
+    assert Community::ReadState.exists?(user: @watcher, topic: @topic)
+    assert Community::ReadState.with_unread_for(@watcher).where(forum_topic_id: @topic.id).exists?
+  end
+end
+
+class MarkTopicUnreadCountableTest < ActiveSupport::TestCase
+  setup do
+    @user = create_user
+    @mod = create_user
+    grant_permission(@mod, "forum.topics.lock")
+    category = Community::Category.find_or_create_by!(slug: "munread-cat") { |c| c.name = "MU" }
+    @section = Community::Section.find_or_create_by!(category: category, slug: "munread-sec") do |s|
+      s.name = "MU Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @user,
+      section: @section,
+      title: "Mark unread",
+      body: "OP",
+      ip_address: "127.0.0.1"
+    ).value
+    @reply = Community::CreatePost.call(
+      user: create_user,
+      topic: @topic,
+      body: "Regular reply",
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    ).value
+    Community::CreatePost.call(
+      user: @mod,
+      topic: @topic,
+      body: "Staff whisper",
+      whisper: true,
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    )
+  end
+
+  test "mark unread ignores trailing whisper when computing read floor" do
+    result = Community::MarkTopicUnread.call(user: @user, topic: @topic)
+    assert result.success?
+
+    state = Community::ReadState.find_by!(user: @user, topic: @topic)
+    assert state.unread_count.positive?
+  end
+end
+
+class SmallActionActivityTest < ActiveSupport::TestCase
+  setup do
+    @mod = create_user
+    grant_permission(@mod, "forum.topics.lock")
+    @user = create_user
+    category = Community::Category.find_or_create_by!(slug: "sa-cat") { |c| c.name = "SA" }
+    @section = Community::Section.find_or_create_by!(category: category, slug: "sa-sec") do |s|
+      s.name = "SA Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @user,
+      section: @section,
+      title: "Small action topic",
+      body: "OP",
+      ip_address: "127.0.0.1"
+    ).value
+    @before = @topic.last_posted_at
+  end
+
+  test "small action updates topic last_posted_at" do
+    travel 1.minute do
+      Community::CreateSmallActionPost.call(topic: @topic, actor: @mod, body: "锁定了主题")
+    end
+    @topic.reload
+    assert @topic.last_posted_at > @before
+    assert_equal @mod.id, @topic.last_post_user_id
+  end
+end
+
+class SectionMuteRedirectTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = create_user
+    sign_in_as(@user)
+    category = Community::Category.find_or_create_by!(slug: "mute-cat") { |c| c.name = "M" }
+    @section = Community::Section.find_or_create_by!(category: category, slug: "mute-sec") do |s|
+      s.name = "Mute Sec"
+      s.position = 0
+    end
+  end
+
+  test "toggle mute preserves section sort and filter" do
+    post mute_forum_section_path(@section, sort: "hot", filter: "unsolved")
+
+    assert_redirected_to forum_section_path(@section, sort: "hot", filter: "unsolved")
+  end
 end

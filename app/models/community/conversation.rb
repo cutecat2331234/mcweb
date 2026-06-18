@@ -47,6 +47,24 @@ module Community
       participants.exists?(user: user)
     end
 
+    def self.unread_counts_for(user, conversation_ids)
+      return {} if conversation_ids.blank?
+
+      counts = Community::Message
+        .joins(conversation: :participants)
+        .where(forum_conversation_id: conversation_ids)
+        .where(forum_conversation_participants: { user_id: user.id, muted_at: nil })
+        .where.not(user_id: user.id)
+        .where(
+          "forum_conversation_participants.last_read_at IS NULL " \
+          "OR forum_messages.created_at > forum_conversation_participants.last_read_at"
+        )
+        .group(:forum_conversation_id)
+        .count
+
+      conversation_ids.index_with { |id| counts[id] || 0 }
+    end
+
     def self.total_unread_count_for(user)
       Community::Message
         .joins(conversation: :participants)

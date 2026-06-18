@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import { routes } from '@/lib/routes'
 import { appendQueryParams } from '@/lib/utils'
+import { readCsrfToken } from '@/lib/csrf'
 
 defineOptions({ layout: PortalLayout })
 
@@ -134,7 +135,7 @@ async function saveFilterPreset() {
   saving.value = true
   saveError.value = ''
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+    const token = readCsrfToken()
     const response = await fetch(props.saveFilterPresetUrl, {
       method: 'POST',
       headers: {
@@ -169,7 +170,7 @@ async function saveFilterPreset() {
 }
 
 async function deleteFilterPreset(deleteUrl: string) {
-  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
+  const token = readCsrfToken()
   await fetch(deleteUrl, {
     method: 'DELETE',
     headers: { 'X-CSRF-Token': token, Accept: 'application/json' },

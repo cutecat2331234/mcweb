@@ -25,9 +25,10 @@ module Community
       end
 
       conversations = conversations.limit(50)
+      unread_counts = Community::Conversation.unread_counts_for(current_user, conversations.map(&:id))
 
       render inertia: "Community/Messages/Index", props: {
-        conversations: conversations.map { |conv| serialize_conversation(conv) },
+        conversations: conversations.map { |conv| serialize_conversation(conv, unread_count: unread_counts[conv.id]) },
         showArchived: include_archived,
         archivedToggleUrl: include_archived ? forum_conversations_path : forum_conversations_path(archived: 1),
         query: params[:q].to_s
@@ -187,9 +188,9 @@ module Community
       nil
     end
 
-    def serialize_conversation(conversation, include_other: false)
+    def serialize_conversation(conversation, include_other: false, unread_count: nil)
       other = conversation.other_user(current_user)
-      last_message = conversation.messages.order(created_at: :desc).first
+      last_message = conversation.messages.max_by(&:created_at)
       display = conversation.display_name(current_user)
 
       data = {
@@ -199,7 +200,7 @@ module Community
         title: conversation.title,
         display_name: display,
         last_message_at: conversation.last_message_at ? l(conversation.last_message_at, format: :short) : nil,
-        unread_count: conversation.unread_count_for(current_user),
+        unread_count: unread_count.nil? ? conversation.unread_count_for(current_user) : unread_count,
         last_message_preview: last_message&.body&.truncate(80),
         archived: conversation.participants.find_by(user: current_user)&.archived_at.present?
       }

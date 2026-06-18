@@ -13,6 +13,13 @@ module Community
       state.save!
     end
 
+    # Ensure subscribers who receive notifications but never opened the topic still appear in unread lists.
+    def self.ensure_tracking!(user, topic)
+      find_or_create_by!(user: user, topic: topic) do |state|
+        state.last_read_floor = 0
+      end
+    end
+
     def self.first_unread_floor(user, topic)
       state = find_by(user: user, topic: topic)
       last_read = state&.last_read_floor.to_i

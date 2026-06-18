@@ -16,6 +16,7 @@ import ReadingProgress from '@/components/portal/ReadingProgress.vue'
 import ImageLightbox from '@/components/portal/ImageLightbox.vue'
 import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
 import { routes } from '@/lib/routes'
+import { readCsrfToken } from '@/lib/csrf'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
 
 defineOptions({ layout: PortalLayout })
@@ -359,7 +360,7 @@ watch(() => replyForm.post.body, (body) => {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
-            'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+            'X-CSRF-Token': readCsrfToken(),
           },
           body: JSON.stringify({ body }),
           credentials: 'same-origin',
@@ -372,7 +373,7 @@ watch(() => replyForm.post.body, (body) => {
       fetch(props.replyDraftUrl, {
         method: 'DELETE',
         headers: {
-          'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+          'X-CSRF-Token': readCsrfToken(),
         },
         credentials: 'same-origin',
       }).catch(() => {})
@@ -407,7 +408,7 @@ function submitReply() {
         fetch(props.replyDraftUrl, {
           method: 'DELETE',
           headers: {
-            'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
+            'X-CSRF-Token': readCsrfToken(),
           },
           credentials: 'same-origin',
         }).catch(() => {})

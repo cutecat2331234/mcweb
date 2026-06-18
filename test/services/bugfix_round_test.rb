@@ -160,4 +160,107 @@ class ConversationUnreadCountTest < ActiveSupport::TestCase
     assert_equal 2, Community::Conversation.total_unread_count_for(@alice)
     assert_equal 0, Community::Conversation.total_unread_count_for(@bob)
   end
+
+  test "total_unread_count_for excludes muted conversations" do
+    Community::SendMessage.call(user: @bob, conversation: @conversation, body: "Reply")
+    participant = @conversation.participants.find_by!(user: @alice)
+    participant.update!(muted_at: Time.current)
+
+    assert_equal 0, Community::Conversation.total_unread_count_for(@alice)
+  end
+end
+
+class HidePostCounterTest < ActiveSupport::TestCase
+  setup do
+    @mod = create_user
+    grant_permission(@mod, "forum.topics.lock")
+    @author = create_user
+    category = Community::Category.find_or_create_by!(slug: "hide-cat") { |c| c.name = "Hide" }
+    @section = Community::Section.find_or_create_by!(category: category, slug: "hide-sec") do |s|
+      s.name = "Hide Sec"
+      s.position = 0
+    end
+    @topic = Community::CreateTopic.call(
+      user: @author,
+      section: @section,
+      title: "Hide counter topic",
+      body: "OP",
+      ip_address: "127.0.0.1"
+    ).value
+    @reply = Community::CreatePost.call(
+      user: create_user,
+      topic: @topic,
+      body: "Visible reply",
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    ).value
+  end
+
+  test "hiding a reply decrements replies_count" do
+    assert_equal 1, @topic.reload.replies_count
+
+    result = Community::ModeratePost.call(user: @mod, post: @reply, action: "hide")
+    assert result.success?
+    assert_equal 0, @topic.reload.replies_count
+  end
+end
+
+class UnreadMarkAllScopedTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = create_user
+    sign_in_as(@user)
+    @cat = Community::Category.find_or_create_by!(slug: "scoped-cat") { |c| c.name = "SC" }
+    @section_a = Community::Section.find_or_create_by!(category: @cat, slug: "scoped-a") { |s| s.name = "A"; s.position = 0 }
+    @section_b = Community::Section.find_or_create_by!(category: @cat, slug: "scoped-b") { |s| s.name = "B"; s.position = 1 }
+  end
+
+  def create_unread_topic(section:, title:)
+    topic = Community::CreateTopic.call(
+      user: create_user,
+      section: section,
+      title: title,
+      body: "Body",
+      ip_address: "127.0.0.1"
+    ).value
+    Community::ReadState.mark_read!(@user, topic, floor: 0)
+    Community::CreatePost.call(
+      user: create_user,
+      topic: topic,
+      body: "Reply",
+      ip_address: "127.0.0.1",
+      skip_interval_check: true
+    )
+    topic
+  end
+
+  test "mark all read with section filter only clears that section" do
+    topic_a = create_unread_topic(section: @section_a, title: "Topic A #{SecureRandom.hex(3)}")
+    topic_b = create_unread_topic(section: @section_b, title: "Topic B #{SecureRandom.hex(3)}")
+
+    patch forum_unread_mark_all_read_path(section: @section_a.slug)
+
+    assert_redirected_to forum_unread_path(section: @section_a.slug)
+    assert_not Community::ReadState.with_unread_for(@user).where(forum_topic_id: topic_a.id).exists?
+    assert Community::ReadState.with_unread_for(@user).where(forum_topic_id: topic_b.id).exists?
+  end
+end
+
+class NotificationMarkReadRedirectTest < ActionDispatch::IntegrationTest
+  setup do
+    @user = create_user
+    sign_in_as(@user)
+    @notification = Notification.create!(
+      user: @user,
+      notification_type: "forum.mention",
+      title: "Test",
+      body: "Body",
+      metadata: {}
+    )
+  end
+
+  test "mark read preserves notification filters" do
+    patch mark_read_forum_notification_path(@notification, category: "forum", read: "unread")
+
+    assert_redirected_to forum_notifications_path(category: "forum", read: "unread")
+  end
 end

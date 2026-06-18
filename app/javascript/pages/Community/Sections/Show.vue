@@ -13,6 +13,7 @@ import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/compone
 import Select from '@/components/ui/Select.vue'
 import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import { routes } from '@/lib/routes'
+import { appendQueryParams } from '@/lib/utils'
 
 defineOptions({ layout: PortalLayout })
 
@@ -82,9 +83,16 @@ function toggleMute() {
   if (!props.section.mute_url) return
   router.post(props.section.mute_url, {}, { preserveScroll: true })
 }
+function sectionListParams() {
+  return {
+    sort: props.sort === 'activity' ? undefined : props.sort,
+    filter: props.filter || undefined,
+  }
+}
+
 function markAllRead() {
   if (!props.section.mark_all_read_url) return
-  router.patch(props.section.mark_all_read_url)
+  router.patch(appendQueryParams(props.section.mark_all_read_url, sectionListParams()))
 }
 
 const selectedIds = ref<string[]>([])

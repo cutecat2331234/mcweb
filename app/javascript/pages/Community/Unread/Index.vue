@@ -9,6 +9,7 @@ import TopicListTable, { type TopicListItem } from '@/components/portal/TopicLis
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import { routes } from '@/lib/routes'
+import { appendQueryParams } from '@/lib/utils'
 
 defineOptions({ layout: PortalLayout })
 
@@ -58,14 +59,16 @@ function listParams(overrides: Record<string, string | undefined> = {}) {
 }
 
 function markAllRead() {
-  router.patch(props.markAllReadUrl)
+  router.patch(appendQueryParams(props.markAllReadUrl, listParams()))
 }
 
 function markSelectedRead() {
   if (!props.markSelectedReadUrl || selectedIds.value.length === 0) return
-  router.patch(props.markSelectedReadUrl, { topic_ids: selectedIds.value }, {
-    onSuccess: () => { selectedIds.value = [] },
-  })
+  router.patch(
+    appendQueryParams(props.markSelectedReadUrl, listParams()),
+    { topic_ids: selectedIds.value },
+    { onSuccess: () => { selectedIds.value = [] } },
+  )
 }
 
 function changeSort(value: string) {

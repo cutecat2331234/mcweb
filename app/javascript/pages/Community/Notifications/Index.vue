@@ -7,6 +7,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { routes } from '@/lib/routes'
+import { appendQueryParams } from '@/lib/utils'
 
 defineOptions({ layout: PortalLayout })
 
@@ -143,7 +144,7 @@ function toggleExpand(key: string) {
 }
 
 function markRead(url: string) {
-  router.patch(url, {}, { preserveScroll: true })
+  router.patch(appendQueryParams(url, filterParams()), {}, { preserveScroll: true })
 }
 
 function switchCategory(category: 'all' | 'forum' | 'commerce') {

@@ -18,8 +18,10 @@ module Community
       case @action
       when "hide"
         @post.update!(status: "hidden")
+        Community::SyncTopicLastPost.call(topic: @post.topic)
       when "unhide"
         @post.update!(status: "published")
+        Community::SyncTopicLastPost.call(topic: @post.topic)
       when "enable_wiki"
         @post.update!(wiki: true)
       when "disable_wiki"

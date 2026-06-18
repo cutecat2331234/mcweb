@@ -14,35 +14,8 @@ module Community
       section_slug = params[:section].to_s.presence
       tag_slugs = unread_tag_slugs
       tag_match = unread_tag_match
-      scope = Community::ReadState
-        .with_unread_for(current_user)
-        .includes(topic: TOPIC_LIST_INCLUDES)
-        .joins(:topic)
-
-      if filter.present?
-        unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
-        filtered_ids = apply_topic_filter(
-          Community::Topic.where(id: unread_topic_ids),
-          filter: filter,
-          user: current_user
-        ).select(:id)
-        scope = scope.where(forum_topic_id: filtered_ids)
-      end
-
-      if section_slug.present?
-        section = Community::Section.find_by(slug: section_slug)
-        scope = if section
-                  scope.where(forum_topics: { forum_section_id: section.id })
-        else
-                  scope.none
-        end
-      end
-
-      if tag_slugs.any?
-        scope = apply_unread_tag_filters(scope, tag_slugs, match: tag_match)
-      end
-
-      scope = scope.where.not(forum_topics: { user_id: blocked_user_ids }) if blocked_user_ids.any?
+      scope = unread_read_states_scope(sort: sort, filter: filter, section_slug: section_slug, tag_slugs: tag_slugs, tag_match: tag_match)
+      scope = scope.includes(topic: TOPIC_LIST_INCLUDES)
       scope = apply_forum_topic_sort(scope, sort)
 
       @pagy, read_states = pagy(scope, limit: 20)
@@ -72,7 +45,8 @@ module Community
     end
 
     def mark_all_read
-      result = Community::MarkAllTopicsRead.call(user: current_user)
+      topic_ids = unread_read_states_scope.pluck(:forum_topic_id)
+      result = Community::MarkAllTopicsRead.call(user: current_user, topic_ids: topic_ids)
 
       if result.success?
         redirect_to_unread_index(notice: "全部主题已标记为已读。")
@@ -110,6 +84,41 @@ module Community
       tag_match = params[:tag_match].to_s.presence
       query[:tag_match] = tag_match if tag_match.present? && tag_match != "all"
       query.compact
+    end
+
+    def unread_read_states_scope(sort: nil, filter: nil, section_slug: nil, tag_slugs: nil, tag_match: nil)
+      filter = filter.presence || params[:filter].to_s.presence
+      section_slug = section_slug.presence || params[:section].to_s.presence
+      tag_slugs = tag_slugs || unread_tag_slugs
+      tag_match = tag_match || unread_tag_match
+
+      scope = Community::ReadState.with_unread_for(current_user).joins(:topic)
+
+      if filter.present?
+        unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
+        filtered_ids = apply_topic_filter(
+          Community::Topic.where(id: unread_topic_ids),
+          filter: filter,
+          user: current_user
+        ).select(:id)
+        scope = scope.where(forum_topic_id: filtered_ids)
+      end
+
+      if section_slug.present?
+        section = Community::Section.find_by(slug: section_slug)
+        scope = if section
+                  scope.where(forum_topics: { forum_section_id: section.id })
+        else
+                  scope.none
+        end
+      end
+
+      if tag_slugs.any?
+        scope = apply_unread_tag_filters(scope, tag_slugs, match: tag_match)
+      end
+
+      scope = scope.where.not(forum_topics: { user_id: blocked_user_ids }) if blocked_user_ids.any?
+      scope
     end
 
     def forum_sort_options

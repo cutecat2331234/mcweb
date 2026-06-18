@@ -23,6 +23,7 @@ module Community
       case reportable
       when Community::Post
         reportable.update!(status: :hidden) unless reportable.deleted_at.present?
+        Community::SyncTopicLastPost.call(topic: reportable.topic)
       when Community::Topic
         reportable.update!(status: :hidden)
       end

@@ -100,9 +100,9 @@ module Community
 
       if result.success?
         notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :tag)
-        redirect_to forum_tag_path(tag.slug), notice: notice
+        redirect_to forum_tag_path(tag.slug, params.permit(:sort).compact_blank), notice: notice
       else
-        redirect_to forum_tag_path(tag.slug), alert: service_error_message(result)
+        redirect_to forum_tag_path(tag.slug, params.permit(:sort).compact_blank), alert: service_error_message(result)
       end
     end
 

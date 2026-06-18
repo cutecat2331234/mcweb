@@ -5,6 +5,8 @@ module Community
 
     validates :user_id, uniqueness: { scope: :forum_topic_id }
 
+    EXCLUDED_UNREAD_POST_TYPES = %w[whisper small_action].freeze
+
     def self.mark_read!(user, topic, floor:)
       state = find_or_initialize_by(user: user, topic: topic)
       state.last_read_floor = [ state.last_read_floor, floor ].max
@@ -14,7 +16,7 @@ module Community
     def self.first_unread_floor(user, topic)
       state = find_by(user: user, topic: topic)
       last_read = state&.last_read_floor.to_i
-      topic.posts.where(status: :published).where.not(post_type: "whisper").where("floor_number > ?", last_read).minimum(:floor_number)
+      topic.posts.where(status: :published).where.not(post_type: EXCLUDED_UNREAD_POST_TYPES).where("floor_number > ?", last_read).minimum(:floor_number)
     end
 
     def self.page_for_floor(floor, per_page: 20)
@@ -24,7 +26,7 @@ module Community
     end
 
     def unread_count
-      topic.posts.where(status: :published).where.not(post_type: "whisper").where("floor_number > ?", last_read_floor).count
+      topic.posts.where(status: :published).where.not(post_type: EXCLUDED_UNREAD_POST_TYPES).where("floor_number > ?", last_read_floor).count
     end
 
     scope :with_unread_for, ->(user) {
@@ -35,7 +37,7 @@ module Community
             SELECT 1 FROM forum_posts
             WHERE forum_posts.forum_topic_id = forum_read_states.forum_topic_id
               AND forum_posts.status = 'published'
-              AND forum_posts.post_type != 'whisper'
+              AND forum_posts.post_type NOT IN ('whisper', 'small_action')
               AND forum_posts.floor_number > forum_read_states.last_read_floor
           )
         SQL

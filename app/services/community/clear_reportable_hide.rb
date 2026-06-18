@@ -14,7 +14,10 @@ module Community
 
       case @reportable
       when Community::Post
-        @reportable.update!(status: :published) if @reportable.status == "hidden" && @reportable.deleted_at.blank?
+        if @reportable.status == "hidden" && @reportable.deleted_at.blank?
+          @reportable.update!(status: :published)
+          Community::SyncTopicLastPost.call(topic: @reportable.topic)
+        end
       when Community::Topic
         @reportable.update!(status: :published) if @reportable.status == "hidden"
       end

@@ -53,7 +53,7 @@ module Community
     def mark_read
       notification = current_user.notifications.find(params[:id])
       notification.mark_read!
-      redirect_to forum_notifications_path, notice: "已标记为已读。"
+      redirect_to forum_notifications_path(notification_index_query_params), notice: "已标记为已读。"
     end
 
     def mark_all_read
@@ -64,15 +64,19 @@ module Community
       scope = current_user.notifications.unread
       scope = apply_notification_filters(scope, category: category, read: read_filter, type: type_filter, period: period_filter)
       scope.update_all(read_at: Time.current)
-      redirect_to forum_notifications_path(
-        category: category,
-        read: read_filter,
-        type: type_filter,
-        period: period_filter
-      ), notice: "已标记为已读。"
+      redirect_to forum_notifications_path(notification_index_query_params), notice: "已标记为已读。"
     end
 
     private
+
+    def notification_index_query_params
+      {
+        category: params[:category].presence,
+        read: params[:read].presence,
+        type: params[:type].presence,
+        period: params[:period].presence
+      }.compact
+    end
 
     def safe_notification_path(metadata)
       raw = metadata["path"].presence || metadata["url"].presence

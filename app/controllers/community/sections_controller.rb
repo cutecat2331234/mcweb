@@ -108,9 +108,9 @@ module Community
 
       if result.success?
         notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :section)
-        redirect_to forum_section_path(section), notice: notice
+        redirect_to forum_section_path(section, section_index_query_params), notice: notice
       else
-        redirect_to forum_section_path(section), alert: service_error_message(result)
+        redirect_to forum_section_path(section, section_index_query_params), alert: service_error_message(result)
       end
     end
 
@@ -149,9 +149,9 @@ module Community
       result = Community::ToggleSectionMute.call(user: current_user, section: section)
 
       if result.success?
-        redirect_to forum_section_path(section), notice: result.value[:muted] ? "已静音此分区。" : "已取消静音。"
+        redirect_to forum_section_path(section, section_index_query_params), notice: result.value[:muted] ? "已静音此分区。" : "已取消静音。"
       else
-        redirect_to forum_section_path(section), alert: service_error_message(result)
+        redirect_to forum_section_path(section, section_index_query_params), alert: service_error_message(result)
       end
     end
 

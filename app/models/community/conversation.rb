@@ -32,6 +32,7 @@ module Community
     def unread_count_for(user)
       participant = participants.find_by(user: user)
       return 0 unless participant
+      return 0 if participant.muted_at.present?
 
       scope = messages.where.not(user: user)
       scope = scope.where("created_at > ?", participant.last_read_at) if participant.last_read_at
@@ -49,7 +50,7 @@ module Community
     def self.total_unread_count_for(user)
       Community::Message
         .joins(conversation: :participants)
-        .where(forum_conversation_participants: { user_id: user.id, archived_at: nil })
+        .where(forum_conversation_participants: { user_id: user.id, archived_at: nil, muted_at: nil })
         .where.not(user_id: user.id)
         .where(
           "forum_conversation_participants.last_read_at IS NULL " \

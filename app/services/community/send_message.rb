@@ -33,7 +33,7 @@ module Community
       message = @conversation.messages.create!(user: @user, body: @body)
       @conversation.update!(last_message_at: message.created_at)
       @conversation.mark_read_for!(@user)
-      unarchive_recipients!
+      @conversation.unarchive_all_participants!
 
       Community::NotifyPrivateMessage.call(message: message, conversation: @conversation)
 
@@ -46,10 +46,6 @@ module Community
 
     def participant?
       @conversation.participants.exists?(user: @user)
-    end
-
-    def unarchive_recipients!
-      @conversation.participants.where.not(user: @user).where.not(archived_at: nil).update_all(archived_at: nil)
     end
   end
 end

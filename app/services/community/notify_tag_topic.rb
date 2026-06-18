@@ -30,6 +30,8 @@ module Community
         next unless NotificationLevelFilter.deliver_in_app?(level: level, user: user, context: :tag_topic)
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.tag_topic")
 
+        Community::ReadState.ensure_tracking!(user, @topic)
+
         tag_names = @tags.map(&:name).join(", ")
         Notification.notify!(
           user: user,

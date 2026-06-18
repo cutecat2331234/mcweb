@@ -21,6 +21,8 @@ module Community
 
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.followed_topic")
 
+        Community::ReadState.ensure_tracking!(user, @topic)
+
         Notification.notify!(
           user: user,
           notification_type: "forum.followed_topic",

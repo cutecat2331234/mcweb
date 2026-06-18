@@ -29,6 +29,8 @@ module Community
       conversation = find_existing || create_conversation!
       message = conversation.messages.create!(user: @sender, body: @body)
       conversation.update!(last_message_at: message.created_at)
+      conversation.mark_read_for!(@sender)
+      conversation.unarchive_all_participants!
 
       Community::NotifyPrivateMessage.call(message: message, conversation: conversation)
 

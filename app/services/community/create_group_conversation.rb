@@ -53,6 +53,9 @@ module Community
         conversation.update!(last_message_at: message.created_at)
       end
 
+      conversation.mark_read_for!(@sender)
+      conversation.unarchive_all_participants!
+
       message = conversation.messages.order(:created_at).last
       Community::NotifyPrivateMessage.call(message: message, conversation: conversation)
 

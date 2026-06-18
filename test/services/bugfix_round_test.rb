@@ -196,6 +196,33 @@ class ConversationUnreadCountTest < ActiveSupport::TestCase
     assert_nil participant.reload.archived_at
     assert_operator Community::Conversation.total_unread_count_for(@alice), :>, 0
   end
+
+  test "create conversation unarchives archived recipient when reusing thread" do
+    Community::SendMessage.call(user: @bob, conversation: @conversation, body: "Reply")
+    bob_participant = @conversation.participants.find_by!(user: @bob)
+    bob_participant.update!(archived_at: Time.current)
+
+    Community::CreateConversation.call(
+      sender: @alice,
+      recipient_username: @bob.username,
+      body: "Follow up"
+    )
+
+    assert_nil bob_participant.reload.archived_at
+  end
+
+  test "create conversation unarchives sender own archived thread" do
+    alice_participant = @conversation.participants.find_by!(user: @alice)
+    alice_participant.update!(archived_at: Time.current)
+
+    Community::CreateConversation.call(
+      sender: @alice,
+      recipient_username: @bob.username,
+      body: "Back again"
+    )
+
+    assert_nil alice_participant.reload.archived_at
+  end
 end
 
 class HidePostCounterTest < ActiveSupport::TestCase
@@ -407,6 +434,37 @@ class ReadStateEnsureTrackingTest < ActiveSupport::TestCase
 
     state = Community::ReadState.find_by!(user: @watcher, topic: topic)
     assert_equal 0, state.last_read_floor
+    assert state.unread_count.positive?
+  end
+end
+
+class TagTopicEnsureTrackingTest < ActiveSupport::TestCase
+  setup do
+    @author = create_user
+    @watcher = create_user
+    @tag = Community::Tag.find_or_create_by!(slug: "track-tag-#{SecureRandom.hex(3)}") { |t| t.name = "Track Tag" }
+    Community::Subscription.subscribe!(@watcher, @tag, level: "watching")
+    category = Community::Category.find_or_create_by!(slug: "tag-track-cat") { |c| c.name = "TC" }
+    @section = Community::Section.find_or_create_by!(category: category, slug: "tag-track-sec") do |s|
+      s.name = "TC Sec"
+      s.position = 0
+    end
+  end
+
+  test "tag topic notification creates read state for tag watcher" do
+    topic = Community::CreateTopic.call(
+      user: @author,
+      section: @section,
+      title: "Tagged topic",
+      body: "OP",
+      tag_names: [ @tag.name ],
+      ip_address: "127.0.0.1"
+    ).value
+
+    assert Notification.exists?(user: @watcher, notification_type: "forum.tag_topic")
+
+    state = Community::ReadState.find_by(user: @watcher, topic: topic)
+    assert state, "expected read state for tag watcher"
     assert state.unread_count.positive?
   end
 end

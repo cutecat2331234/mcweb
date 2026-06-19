@@ -124,4 +124,8 @@
   .page-fade-leave-to {
     opacity: 0;
   }
+
+  .portal-themed main .page-header {
+    background: transparent;
+  }
 }

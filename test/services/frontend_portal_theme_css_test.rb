@@ -16,18 +16,20 @@ class FrontendPortalThemeCssTest < ActiveSupport::TestCase
       <div class="portal-themed">
         <header class="portal-header sticky">nav</header>
         <main>
-          <header class="mb-8 flex flex-col">
+          <div class="page-header mb-8 flex flex-col">
             <h1>论坛板块</h1>
             <p>浏览社区讨论分区</p>
-          </header>
+          </div>
         </main>
       </div>
     HTML
 
-    page_headers = html.css("main header")
+    page_headers = html.css("main .page-header")
+    legacy_headers = html.css("main header")
     scoped = html.css(".portal-themed header.portal-header")
 
     assert_equal 1, page_headers.size
+    assert_empty legacy_headers
     assert_equal 1, scoped.size
     refute_includes scoped, page_headers.first
   end

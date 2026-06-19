@@ -15,7 +15,8 @@ module Frontend
       raise ActiveRecord::RecordNotFound unless Frontend::ValidateTemplateArchive::ALLOWED_EXTENSIONS.include?(ext)
 
       expires_in 1.year, public: true
-      fresh_when etag: template.checksum, last_modified: template.updated_at, public: true
+      return unless stale?(etag: Digest::SHA256.file(file).hexdigest, last_modified: file.mtime, public: true)
+
       send_data File.binread(file), disposition: "inline", type: mime_type_for(ext), filename: file.basename.to_s
     end
 

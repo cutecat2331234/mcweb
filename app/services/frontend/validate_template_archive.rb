@@ -30,6 +30,7 @@ module Frontend
         zip.each do |entry|
           name = normalize_entry_name(entry.name)
           next if name.blank?
+          next if entry.directory? || name.end_with?("/")
 
           return failure(error: "非法路径：#{entry.name}") if forbidden_path?(name)
           return failure(error: "不允许的文件类型：#{name}") unless allowed_entry?(name)

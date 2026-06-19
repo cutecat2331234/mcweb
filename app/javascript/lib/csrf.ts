@@ -13,7 +13,7 @@ export function readCsrfToken(): string {
 
 /** Keep meta tag in sync with the latest server-issued token. */
 export function syncCsrfMetaTag(token?: string | null): void {
-  const resolved = token?.trim() || readCsrfTokenFromCookie()
+  const resolved = token?.trim() || readCsrfTokenFromCookie() || readCsrfToken()
   if (!resolved) return
 
   const meta = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')

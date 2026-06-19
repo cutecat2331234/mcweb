@@ -12,6 +12,7 @@ import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 import { routes } from '@/lib/routes'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
 
@@ -30,8 +31,14 @@ defineProps<{
   }>
 }>()
 
-function deleteDraft(id: string) {
-  if (!confirm('确定删除此草稿？')) return
+async function deleteDraft(id: string) {
+  const ok = await confirm({
+    title: '删除草稿',
+    message: '确定删除此草稿？',
+    confirmLabel: '删除',
+    variant: 'destructive',
+  })
+  if (!ok) return
   router.delete(`/app/forum/drafts/${id}`)
 }
 </script>

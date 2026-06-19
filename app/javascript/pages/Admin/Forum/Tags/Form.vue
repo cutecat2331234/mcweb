@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
@@ -19,6 +22,15 @@ const props = defineProps<{
 }>()
 
 const form = useForm({ tag: { ...props.tag } })
+
+const canonicalTagOptions = computed(() => [
+  { value: '', label: '无（独立标签）' },
+  ...(props.canonicalTags || []).map((tag) => ({ value: String(tag.id), label: tag.name })),
+])
+
+function updateCanonicalTagId(value: string) {
+  form.tag.canonical_tag_id = value ? Number(value) : null
+}
 
 function submit() {
   if (props.method === 'patch') form.patch(props.submitUrl)
@@ -47,14 +59,17 @@ function submit() {
     </div>
     <div v-if="canonicalTags?.length" class="space-y-2">
       <Label for="canonical_tag_id">同义词指向（可选）</Label>
-      <select id="canonical_tag_id" v-model="form.tag.canonical_tag_id" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option :value="null">无（独立标签）</option>
-        <option v-for="tag in canonicalTags" :key="tag.id" :value="tag.id">{{ tag.name }}</option>
-      </select>
+      <Select
+        id="canonical_tag_id"
+        :model-value="form.tag.canonical_tag_id == null ? '' : String(form.tag.canonical_tag_id)"
+        :options="canonicalTagOptions"
+        block
+        @update:model-value="updateCanonicalTagId"
+      />
       <p class="text-xs text-muted-foreground">设为某标签的同义词后，发帖与搜索将归并到主标签。</p>
     </div>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.tag.staff_only" type="checkbox" />
+      <Checkbox v-model="form.tag.staff_only" />
       仅工作人员可使用
     </label>
     <div class="flex gap-2">

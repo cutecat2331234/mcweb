@@ -2,6 +2,9 @@
 
 module Community
   class ConversationMessagesController < ApplicationController
+    include Community::WarningRestrictionsSerializable
+    include Community::ConversationsInertiaProps
+
     before_action :require_login
     before_action :set_conversation
 
@@ -15,7 +18,13 @@ module Community
       if result.success?
         redirect_to forum_conversation_path(@conversation)
       else
-        redirect_to forum_conversation_path(@conversation), alert: service_error_message(result)
+        render inertia: "Community/Messages/Show",
+               status: :unprocessable_entity,
+               props: conversation_show_props(
+                 @conversation,
+                 form_errors: inertia_form_errors(result, prefix: "message"),
+                 initialBody: message_params[:body]
+               )
       end
     end
 

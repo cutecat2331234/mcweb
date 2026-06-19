@@ -6,6 +6,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Button from '@/components/ui/Button.vue'
+import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -53,14 +54,13 @@ function changeSort(value: string) {
       <Button :variant="tab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">最新主题</Button>
       <Button :variant="tab === 'following' ? 'default' : 'outline'" size="sm" @click="switchTab('following')">关注的人</Button>
     </div>
-    <select
+    <Select
       v-if="tab === 'topics'"
-      :value="sort"
-      class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-      @change="changeSort(($event.target as HTMLSelectElement).value)"
-    >
-      <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-    </select>
+      :model-value="sort"
+      :options="sortOptions"
+      size="sm"
+      @update:model-value="changeSort"
+    />
   </div>
 
   <div v-if="tab === 'posts' || tab === 'following'">

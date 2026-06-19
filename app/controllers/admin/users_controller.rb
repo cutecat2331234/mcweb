@@ -129,7 +129,7 @@ module Admin
     def update
       if @user.update(user_params)
         Administration::AuditLogger.call(actor: current_user, action: "admin.user_updated", resource: @user)
-        redirect_to admin_user_path(@user), notice: "User updated."
+        redirect_to admin_user_path(@user), notice: "用户已更新。"
       else
         render :edit, status: :unprocessable_entity
       end
@@ -138,7 +138,7 @@ module Admin
     def destroy
       @user.soft_delete!
       Administration::AuditLogger.call(actor: current_user, action: "admin.user_deleted", resource: @user)
-      redirect_to admin_users_path, notice: "User deleted."
+      redirect_to admin_users_path, notice: "用户已删除。"
     end
 
     def ban

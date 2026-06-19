@@ -3,6 +3,11 @@ require_relative "../config/environment"
 require "rails/test_help"
 require "minitest/reporters"
 require "active_job/test_helper"
+
+unless ENV["LOCKBOX_MASTER_KEY"].to_s.match?(/\A\h{64}\z/i)
+  ENV["LOCKBOX_MASTER_KEY"] = "a" * 64
+end
+Lockbox.master_key = ENV["LOCKBOX_MASTER_KEY"]
 Minitest::Reporters.use! Minitest::Reporters::ProgressReporter.new
 
 module ActiveSupport

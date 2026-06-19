@@ -5,9 +5,11 @@ require "fileutils"
 
 module Frontend
   class InstallTemplateArchive < ApplicationService
-    def initialize(archive_io:, actor: nil)
+    def initialize(archive_io:, actor: nil, key_override: nil, manifest_overrides: {})
       @archive_io = archive_io
       @actor = actor
+      @key_override = key_override
+      @manifest_overrides = manifest_overrides
     end
 
     def call
@@ -18,6 +20,8 @@ module Frontend
       return validation unless validation.success?
 
       manifest = validation.value[:manifest].deep_stringify_keys
+      manifest.merge!(@manifest_overrides.stringify_keys) if @manifest_overrides.present?
+      manifest["key"] = @key_override if @key_override.present?
       key = manifest.fetch("key")
       Frontend::TemplateStorage.ensure_root!
       target = Frontend::TemplateStorage.path_for(key)

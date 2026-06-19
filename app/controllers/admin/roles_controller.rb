@@ -56,7 +56,7 @@ module Admin
       if @role.save
         sync_permissions!
         Administration::AuditLogger.call(actor: current_user, action: "admin.role_created", resource: @role)
-        redirect_to admin_role_path(@role), notice: "Role created."
+        redirect_to admin_role_path(@role), notice: "角色已创建。"
       else
         render :new, status: :unprocessable_entity
       end
@@ -66,23 +66,23 @@ module Admin
     end
 
     def update
-      return redirect_to admin_roles_path, alert: "System roles cannot be modified." if @role.system_role?
+      return redirect_to admin_roles_path, alert: "系统内置角色不可修改。" if @role.system_role?
 
       if @role.update(role_params)
         sync_permissions!
         Administration::AuditLogger.call(actor: current_user, action: "admin.role_updated", resource: @role)
-        redirect_to admin_role_path(@role), notice: "Role updated."
+        redirect_to admin_role_path(@role), notice: "角色已更新。"
       else
         render :edit, status: :unprocessable_entity
       end
     end
 
     def destroy
-      return redirect_to admin_roles_path, alert: "System roles cannot be deleted." if @role.system_role?
+      return redirect_to admin_roles_path, alert: "系统内置角色不可删除。" if @role.system_role?
 
       @role.destroy!
       Administration::AuditLogger.call(actor: current_user, action: "admin.role_deleted", resource: @role)
-      redirect_to admin_roles_path, notice: "Role deleted."
+      redirect_to admin_roles_path, notice: "角色已删除。"
     end
 
     private

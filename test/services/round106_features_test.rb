@@ -19,7 +19,7 @@ class Round106NotificationLastMonthFilterTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
     Notification.create!(user: @user, notification_type: "forum.mention", title: "LastMonth", body: "b", created_at: Time.zone.now.beginning_of_month.prev_month + 5.days)
-    Notification.create!(user: @user, notification_type: "forum.reaction", title: "Old", body: "b", created_at: 2.years.ago)
+    Notification.create!(user: @user, notification_type: "forum.reaction", title: "AncientNotify", body: "b", created_at: 2.years.ago)
     sign_in_as(@user)
   end
 
@@ -29,7 +29,7 @@ class Round106NotificationLastMonthFilterTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "activePeriod"
     assert_includes response.body, '"period":"last_month"'
     assert_includes response.body, "LastMonth"
-    refute_includes response.body, "Old"
+    refute_includes response.body, "AncientNotify"
   end
 end
 

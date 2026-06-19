@@ -49,7 +49,7 @@ module Admin
         @server = ::Minecraft::Server.new(server_params)
 
         if @server.save
-          redirect_to admin_minecraft_server_path(@server), notice: "Server created."
+          redirect_to admin_minecraft_server_path(@server), notice: "服务器已创建。"
         else
           render :new, status: :unprocessable_entity
         end
@@ -60,7 +60,7 @@ module Admin
 
       def update
         if @server.update(server_params)
-          redirect_to admin_minecraft_server_path(@server), notice: "Server updated."
+          redirect_to admin_minecraft_server_path(@server), notice: "服务器已更新。"
         else
           render :edit, status: :unprocessable_entity
         end
@@ -68,7 +68,7 @@ module Admin
 
       def destroy
         @server.destroy!
-        redirect_to admin_minecraft_servers_path, notice: "Server deleted."
+        redirect_to admin_minecraft_servers_path, notice: "服务器已删除。"
       end
 
       private

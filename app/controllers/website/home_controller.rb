@@ -2,18 +2,24 @@
 
 module Website
   class HomeController < ApplicationController
-    skip_installation_guard only: :index
-
     def index
-      featured = begin
-        Website::Article.published.order(published_at: :desc).limit(6)
-      rescue ActiveRecord::StatementInvalid
+      featured = if FeatureFlags.enabled?(:website_blog)
+        begin
+          Website::Article.published.order(published_at: :desc).limit(6)
+        rescue ActiveRecord::StatementInvalid
+          []
+        end
+      else
         []
       end
 
-      featured_products = begin
-        Commerce::Product.available.where(featured: true).order(created_at: :desc).limit(6)
-      rescue ActiveRecord::StatementInvalid
+      featured_products = if FeatureFlags.enabled?(:store)
+        begin
+          Commerce::Product.available.where(featured: true).order(created_at: :desc).limit(6)
+        rescue ActiveRecord::StatementInvalid
+          []
+        end
+      else
         []
       end
 

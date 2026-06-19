@@ -12,6 +12,7 @@ import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
+import { confirm } from '@/lib/useConfirm'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -172,8 +173,14 @@ function moveToWishlist(itemId: number) {
   router.post(props.moveToWishlistUrl, { item_id: itemId })
 }
 
-function clearCart() {
-  if (!props.clearCartUrl || !confirm('确定清空购物车？')) return
+async function clearCart() {
+  const ok = await confirm({
+    title: '清空购物车',
+    message: '确定清空购物车？',
+    confirmLabel: '清空',
+    variant: 'destructive',
+  })
+  if (!props.clearCartUrl || !ok) return
   router.delete(props.clearCartUrl)
 }
 
@@ -222,13 +229,13 @@ function updateGiftNote(itemId: number, giftNote: string) {
               </div>
             </TableCell>
             <TableCell>
-              <input
+              <Input
                 type="number"
-                :value="item.quantity"
+                :model-value="item.quantity"
                 min="1"
-                class="w-16 rounded-md border px-2 py-1 text-sm"
-                @change="updateQuantity(item.id, Number(($event.target as HTMLInputElement).value))"
-              >
+                class="w-20"
+                @update:model-value="(value) => updateQuantity(item.id, Number(value))"
+              />
             </TableCell>
             <TableCell>{{ item.unit_price_label }}</TableCell>
             <TableCell>{{ item.total_label }}</TableCell>

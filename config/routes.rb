@@ -113,6 +113,7 @@ Rails.application.routes.draw do
       resources :servers, only: %i[index show]
     end
     namespace :system do
+      resource :feature_toggles, only: %i[show update], path: "feature-toggles"
       resource :settings, only: %i[show update]
       resources :jobs, only: %i[index]
       resources :ip_bans, only: %i[index create destroy]

@@ -17,9 +17,10 @@ const props = withDefaults(
     size?: 'sm' | 'default'
     disabled?: boolean
     title?: string
+    block?: boolean
     id?: string
   }>(),
-  { size: 'default', disabled: false },
+  { size: 'default', disabled: false, block: false },
 )
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
@@ -48,7 +49,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
 </script>
 
 <template>
-  <div ref="root" class="relative inline-block text-left">
+  <div ref="root" :class="cn('relative text-left', block && 'block w-full')">
     <button
       :id="id"
       type="button"
@@ -59,6 +60,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
         'hover:bg-accent/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
         'active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50',
         size === 'sm' ? 'h-8 px-2.5 text-xs' : 'h-9 px-3',
+        block && 'w-full',
         props.class,
       )"
       @click.stop="toggle"

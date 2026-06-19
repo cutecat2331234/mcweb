@@ -51,7 +51,7 @@ module Admin
         @article = ::Website::Article.new(article_params)
 
         if @article.save
-          redirect_to admin_website_article_path(@article), notice: "Article created."
+          redirect_to admin_website_article_path(@article), notice: "文章已创建。"
         else
           render :new, status: :unprocessable_entity
         end
@@ -62,7 +62,7 @@ module Admin
 
       def update
         if @article.update(article_params)
-          redirect_to admin_website_article_path(@article), notice: "Article updated."
+          redirect_to admin_website_article_path(@article), notice: "文章已更新。"
         else
           render :edit, status: :unprocessable_entity
         end
@@ -70,7 +70,7 @@ module Admin
 
       def destroy
         @article.destroy!
-        redirect_to admin_website_articles_path, notice: "Article deleted."
+        redirect_to admin_website_articles_path, notice: "文章已删除。"
       end
 
       private

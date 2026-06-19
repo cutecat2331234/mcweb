@@ -1,6 +1,8 @@
 class ApplicationController < ActionController::Base
   include Authentication
+  include CsrfCookie
   include InstallationGuard
+  include FeatureGuard
   include ServiceResponder
   include Pagy::Backend
   include InertiaSerializable
@@ -22,24 +24,27 @@ class ApplicationController < ActionController::Base
       flash: {
         notice: flash[:notice],
         alert: flash[:alert]
-      }
+      },
+      features: FeatureFlags.frontend_hash
     }
 
-    cart = if logged_in?
-             Commerce::Cart.find_by(user: current_user)
-    else
-             token = cookies.signed[:cart_token]
-             Commerce::Cart.find_by(session_token: token) if token.present?
+    if FeatureFlags.enabled?(:store)
+      cart = if logged_in?
+               Commerce::Cart.find_by(user: current_user)
+      else
+               token = cookies.signed[:cart_token]
+               Commerce::Cart.find_by(session_token: token) if token.present?
+      end
+
+      if cart
+        share[:cart] = {
+          count: cart.items.sum(:quantity),
+          url: store_cart_path
+        }
+      end
     end
 
-    if cart
-      share[:cart] = {
-        count: cart.items.sum(:quantity),
-        url: store_cart_path
-      }
-    end
-
-    if logged_in?
+    if FeatureFlags.enabled?(:forum) && logged_in?
       share[:notifications] = {
         unread_count: current_user.notifications.unread.count,
         url: forum_notifications_path
@@ -61,18 +66,20 @@ class ApplicationController < ActionController::Base
       }
     end
 
-    announcements = Community::Topic.global_announcements.order(last_posted_at: :desc).limit(3)
-    if logged_in?
-      dismissed = Array(current_user.dismissed_global_announcement_ids).map(&:to_s)
-      announcements = announcements.reject { |topic| dismissed.include?(topic.public_id) }
-    end
-    if announcements.any?
-      share[:global_announcements] = announcements.map do |topic|
-        {
-          title: topic.title,
-          url: forum_topic_path(topic),
-          id: topic.public_id
-        }
+    if FeatureFlags.enabled?(:forum)
+      announcements = Community::Topic.global_announcements.order(last_posted_at: :desc).limit(3)
+      if logged_in?
+        dismissed = Array(current_user.dismissed_global_announcement_ids).map(&:to_s)
+        announcements = announcements.reject { |topic| dismissed.include?(topic.public_id) }
+      end
+      if announcements.any?
+        share[:global_announcements] = announcements.map do |topic|
+          {
+            title: topic.title,
+            url: forum_topic_path(topic),
+            id: topic.public_id
+          }
+        end
       end
     end
 

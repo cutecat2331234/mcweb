@@ -4,6 +4,8 @@ import { Link, usePage } from '@inertiajs/vue3'
 import { routes, appPrefix } from '@/lib/routes'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
+import { useFeatureFlags } from '@/lib/useFeatureFlags'
+import { isBlogHref } from '@/lib/featureFlags'
 import '@/styles/website.css'
 
 interface NavItem {
@@ -14,15 +16,22 @@ interface NavItem {
 const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const { activeTemplate, tokenStyle, websiteHeaderSlot, websiteFooterSlot } = useActiveTemplate()
+const { features } = useFeatureFlags()
 
 const websiteNav = computed(() => {
   const items = page.props.website_nav as NavItem[] | undefined
-  if (items?.length) return items
-  return [
-    { label: '首页', href: routes.home },
-    { label: '关于', href: routes.page('about') },
-    { label: '动态', href: routes.blog },
-  ]
+  const base = items?.length
+    ? items
+    : [
+        { label: '首页', href: routes.home },
+        { label: '关于', href: routes.page('about') },
+        { label: '动态', href: routes.blog },
+      ]
+
+  return base.filter((item) => {
+    if (!features.value.website_blog && isBlogHref(item.href)) return false
+    return true
+  })
 })
 
 function isActive(href: string) {
@@ -58,10 +67,10 @@ function isActive(href: string) {
         </nav>
 
         <div class="flex items-center gap-3 text-sm">
-          <Link :href="routes.forum" class="website-nav-link hidden sm:inline">论坛</Link>
-          <Link :href="routes.store" class="website-nav-link hidden sm:inline">商城</Link>
+          <Link v-if="features.forum" :href="routes.forum" class="website-nav-link hidden sm:inline">论坛</Link>
+          <Link v-if="features.store" :href="routes.store" class="website-nav-link hidden sm:inline">商城</Link>
           <Link
-            v-if="auth.user"
+            v-if="features.forum && auth.user"
             :href="routes.forumUser(auth.user.username)"
             class="website-btn website-btn-ghost !px-4 !py-2 text-sm"
           >
@@ -100,8 +109,8 @@ function isActive(href: string) {
           <div>
             <p class="mb-3 text-sm font-medium text-slate-300">应用中心</p>
             <div class="flex flex-col gap-2 text-sm">
-              <Link :href="routes.forum" class="website-nav-link w-fit">论坛</Link>
-              <Link :href="routes.store" class="website-nav-link w-fit">商城</Link>
+              <Link v-if="features.forum" :href="routes.forum" class="website-nav-link w-fit">论坛</Link>
+              <Link v-if="features.store" :href="routes.store" class="website-nav-link w-fit">商城</Link>
               <Link :href="routes.signIn" class="website-nav-link w-fit">登录</Link>
             </div>
           </div>

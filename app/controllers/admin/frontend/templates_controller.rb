@@ -5,6 +5,7 @@ module Admin
     class TemplatesController < BaseController
       before_action -> { require_permission("website.templates.manage") }
       before_action :set_template, only: %i[update destroy preview]
+      before_action :ensure_builtin_template, only: :index
 
       def index
         render inertia: "Admin/Frontend/Templates/Index", props: {
@@ -20,7 +21,7 @@ module Admin
         file = params[:archive]
         return redirect_with_alert("请选择模板压缩包") unless file.respond_to?(:read)
 
-        result = Frontend::InstallTemplateArchive.call(archive_io: file, actor: current_user)
+        result = ::Frontend::InstallTemplateArchive.call(archive_io: file, actor: current_user)
         if result.success?
           redirect_to admin_frontend_templates_path, notice: "模板「#{result.value.name}」安装成功。"
         else
@@ -29,7 +30,7 @@ module Admin
       end
 
       def update
-        result = Frontend::ActivateTemplate.call(
+        result = ::Frontend::ActivateTemplate.call(
           scope: params.require(:scope),
           template_key: params[:template_key],
           actor: current_user
@@ -42,7 +43,7 @@ module Admin
       end
 
       def destroy
-        result = Frontend::DeleteTemplate.call(template: @template, actor: current_user)
+        result = ::Frontend::DeleteTemplate.call(template: @template, actor: current_user)
         if result.success?
           redirect_to admin_frontend_templates_path, notice: "模板已删除。"
         else
@@ -71,6 +72,7 @@ module Admin
           scopes: template.scopes,
           status: template.status,
           checksum: template.checksum,
+          builtin: builtin_template?(template),
           error_message: template.error_message,
           update_url: admin_frontend_template_path(template),
           preview_website_url: template.supports_scope?("website") ? preview_admin_frontend_template_path(template, scope: "website") : nil,
@@ -89,6 +91,15 @@ module Admin
 
       def redirect_with_alert(message)
         redirect_to admin_frontend_templates_path, alert: message
+      end
+
+      def ensure_builtin_template
+        ::Frontend::EnsureDefaultTemplate.call
+      end
+
+      def builtin_template?(template)
+        template.key == ::Frontend::EnsureDefaultTemplate::BUILTIN_KEY ||
+          template.manifest.is_a?(Hash) && template.manifest["builtin"] == true
       end
     end
   end

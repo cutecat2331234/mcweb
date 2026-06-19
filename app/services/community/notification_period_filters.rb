@@ -50,18 +50,7 @@ module Community
     end
 
     def count_for(scope, period)
-      case period
-      when "today"
-        scope.where("created_at >= ?", Time.zone.now.beginning_of_day).count
-      when "this_week"
-        scope.where("created_at >= ?", Time.zone.now.beginning_of_week).count
-      when "this_month"
-        scope.where("created_at >= ?", Time.zone.now.beginning_of_month).count
-      when "last_month"
-        scope.where(created_at: last_month_range).count
-      else
-        0
-      end
+      NotificationPeriodScope.call(scope, period).count
     end
 
     def apply_category(scope)
@@ -82,12 +71,6 @@ module Community
         type: @type.presence,
         period: period
       }.compact
-    end
-
-    def last_month_range
-      start = Time.zone.now.beginning_of_month.prev_month
-      finish = Time.zone.now.beginning_of_month
-      start...finish
     end
   end
 end

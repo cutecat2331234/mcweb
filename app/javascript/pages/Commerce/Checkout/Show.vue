@@ -13,6 +13,9 @@ import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
+import Radio from '@/components/ui/Radio.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -116,6 +119,27 @@ const totalLabel = ref<string | null>(props.subtotalLabel)
 const previewing = ref(false)
 const previewingGiftCard = ref(false)
 const selectedAddressId = ref<number | ''>('')
+
+const savedAddressOptions = computed(() => [
+  { value: '', label: '手动填写' },
+  ...(props.savedAddresses || []).map((saved) => ({
+    value: String(saved.id),
+    label: `${saved.summary}${saved.label ? `（${saved.label}）` : ''}`,
+  })),
+])
+
+const providerOptions = computed(() =>
+  props.providers.map((provider) => ({ value: provider.value, label: provider.label })),
+)
+
+function updateSelectedAddressId(value: string) {
+  selectedAddressId.value = value ? Number(value) : ''
+}
+
+function updateUseStoreCredit(value: boolean) {
+  form.checkout.use_store_credit = value
+  void refreshStoreCredit()
+}
 
 const selectedShippingEstimate = computed(() => {
   const method = props.shippingMethods?.find((item) => item.code === form.checkout.shipping_method)
@@ -308,7 +332,10 @@ onMounted(() => {
     </div>
 
     <label v-if="storeCreditBalanceCents" class="flex items-center gap-2 text-sm">
-      <input v-model="form.checkout.use_store_credit" type="checkbox" class="rounded border" @change="refreshStoreCredit" />
+      <Checkbox
+        :model-value="form.checkout.use_store_credit"
+        @update:model-value="updateUseStoreCredit"
+      />
       使用商店余额抵扣
     </label>
 
@@ -341,8 +368,8 @@ onMounted(() => {
 
       <div v-if="requiresShipping && shippingMethods?.length" class="space-y-2 rounded-lg border p-4">
         <p class="text-sm font-medium">配送方式</p>
-        <label v-for="method in shippingMethods" :key="method.code" class="flex items-center gap-2 text-sm">
-          <input v-model="form.checkout.shipping_method" type="radio" :value="method.code">
+        <label v-for="method in shippingMethods" :key="method.code" class="flex cursor-pointer items-center gap-2 text-sm">
+          <Radio v-model="form.checkout.shipping_method" name="shipping_method" :value="method.code" />
           {{ method.label_with_price }}
         </label>
         <p v-if="selectedShippingEstimate" class="text-xs text-muted-foreground">
@@ -356,12 +383,13 @@ onMounted(() => {
         </div>
         <div v-if="savedAddresses?.length" class="space-y-2">
           <Label for="saved_address">使用已保存地址</Label>
-          <select id="saved_address" v-model="selectedAddressId" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
-            <option value="">手动填写</option>
-            <option v-for="saved in savedAddresses" :key="saved.id" :value="saved.id">
-              {{ saved.summary }}{{ saved.label ? `（${saved.label}）` : '' }}
-            </option>
-          </select>
+          <Select
+            id="saved_address"
+            :model-value="selectedAddressId === '' ? '' : String(selectedAddressId)"
+            :options="savedAddressOptions"
+            block
+            @update:model-value="updateSelectedAddressId"
+          />
         </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="space-y-2">
@@ -398,7 +426,7 @@ onMounted(() => {
       </div>
 
       <label v-if="giftWrapAvailable" class="flex items-center gap-2 rounded-lg border p-4 text-sm">
-        <input v-model="form.checkout.gift_wrap" type="checkbox">
+        <Checkbox v-model="form.checkout.gift_wrap" />
         礼品包装（{{ giftWrapLabel }}）
       </label>
 
@@ -409,9 +437,7 @@ onMounted(() => {
 
       <div class="space-y-2">
         <Label for="provider">支付方式</Label>
-        <select id="provider" v-model="form.checkout.provider" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
-          <option v-for="provider in providers" :key="provider.value" :value="provider.value">{{ provider.label }}</option>
-        </select>
+        <Select id="provider" v-model="form.checkout.provider" :options="providerOptions" block />
       </div>
       <Button type="submit" :disabled="form.processing || belowMinCheckout">立即支付</Button>
     </form>

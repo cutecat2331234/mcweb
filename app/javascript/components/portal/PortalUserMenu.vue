@@ -13,10 +13,13 @@ import { routes } from '@/lib/routes'
 import Avatar from '@/components/ui/Avatar.vue'
 import Button from '@/components/ui/Button.vue'
 import { cn } from '@/lib/utils'
+import { useFeatureFlags } from '@/lib/useFeatureFlags'
 
 defineProps<{
   username: string
 }>()
+
+const { features } = useFeatureFlags()
 </script>
 
 <template>
@@ -40,7 +43,7 @@ defineProps<{
         <p class="mt-1 text-xs text-muted-foreground">用户中心</p>
       </DropdownMenuLabel>
       <DropdownMenuSeparator class="my-1 h-px bg-border" />
-      <DropdownMenuItem as-child>
+      <DropdownMenuItem v-if="features.forum" as-child>
         <Link
           :href="routes.forumUser(username)"
           class="relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
@@ -49,7 +52,7 @@ defineProps<{
           个人资料
         </Link>
       </DropdownMenuItem>
-      <DropdownMenuItem as-child>
+      <DropdownMenuItem v-if="features.forum" as-child>
         <Link
           :href="routes.forumPreferences"
           class="relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
@@ -58,7 +61,7 @@ defineProps<{
           论坛偏好
         </Link>
       </DropdownMenuItem>
-      <DropdownMenuSeparator class="my-1 h-px bg-border" />
+      <DropdownMenuSeparator v-if="features.forum" class="my-1 h-px bg-border" />
       <DropdownMenuItem as-child>
         <Link
           :href="routes.signOut"

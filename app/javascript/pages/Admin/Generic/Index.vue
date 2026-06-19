@@ -10,6 +10,10 @@ import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
+import Input from '@/components/ui/Input.vue'
+import Button from '@/components/ui/Button.vue'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -91,8 +95,12 @@ watch(
   { immediate: true }
 )
 
-function submitBulkRetry(action: BulkRetryAction) {
-  if (!confirm(`确定要${action.label}吗？`)) return
+async function submitBulkRetry(action: BulkRetryAction) {
+  const ok = await confirm({
+    title: action.label,
+    message: `确定要${action.label}吗？`,
+  })
+  if (!ok) return
   router.post(action.href, { ids: action.ids })
 }
 
@@ -136,9 +144,13 @@ function bulkModerate(action: string) {
   })
 }
 
-function bulkOrder(action: string) {
+async function bulkOrder(action: string) {
   if (!props.bulkOrderUrl || selectedPublicIds.value.length === 0) return
-  if (!confirm('确定执行此批量操作吗？')) return
+  const ok = await confirm({
+    title: '批量操作',
+    message: '确定执行此批量操作吗？',
+  })
+  if (!ok) return
   router.patch(props.bulkOrderUrl, {
     order_ids: selectedPublicIds.value,
     action_type: action,
@@ -228,13 +240,13 @@ function bulkOrder(action: string) {
   <form v-if="dateFilter" class="mb-4 flex flex-wrap items-end gap-2" @submit.prevent="applyDateFilter">
     <label class="text-sm">
       <span class="mb-1 block text-muted-foreground">起始日期</span>
-      <input v-model="dateFrom" type="date" class="h-9 rounded-md border px-2 text-sm">
+      <Input v-model="dateFrom" type="date" class="w-40" />
     </label>
     <label class="text-sm">
       <span class="mb-1 block text-muted-foreground">结束日期</span>
-      <input v-model="dateTo" type="date" class="h-9 rounded-md border px-2 text-sm">
+      <Input v-model="dateTo" type="date" class="w-40" />
     </label>
-    <button type="submit" class="h-9 rounded-md border px-3 text-sm hover:bg-muted">筛选</button>
+    <Button type="submit" variant="outline" size="sm">筛选</Button>
   </form>
 
   <div v-if="rows.length" class="rounded-lg border">
@@ -242,12 +254,10 @@ function bulkOrder(action: string) {
       <TableHeader>
         <TableRow>
           <TableHead v-if="selectable" class="w-10">
-            <input
-              type="checkbox"
-              class="rounded border"
-              :checked="rows.length > 0 && selectedPublicIds.length === rows.filter((r) => r.publicId).length"
-              @change="toggleSelectAll(($event.target as HTMLInputElement).checked)"
-            >
+            <Checkbox
+              :model-value="rows.length > 0 && selectedPublicIds.length === rows.filter((r) => r.publicId).length"
+              @update:model-value="toggleSelectAll"
+            />
           </TableHead>
           <TableHead v-for="column in columns" :key="column.key">
             {{ column.label }}
@@ -257,13 +267,11 @@ function bulkOrder(action: string) {
       <TableBody>
         <TableRow v-for="(row, index) in rows" :key="index">
           <TableCell v-if="selectable">
-            <input
+            <Checkbox
               v-if="row.publicId"
-              type="checkbox"
-              class="rounded border"
-              :checked="selectedPublicIds.includes(row.publicId)"
-              @change="toggleRowSelection(row.publicId, ($event.target as HTMLInputElement).checked)"
-            >
+              :model-value="selectedPublicIds.includes(row.publicId)"
+              @update:model-value="(checked) => toggleRowSelection(row.publicId!, checked)"
+            />
           </TableCell>
           <TableCell v-for="column in columns" :key="column.key">
             <Link

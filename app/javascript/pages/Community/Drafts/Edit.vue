@@ -10,7 +10,10 @@ import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
 
@@ -61,6 +64,11 @@ const form = useForm({
   },
 })
 
+const prefixOptions = computed(() => [
+  { value: '', label: '无前缀' },
+  ...(props.draft.section.prefixes || []).map((p) => ({ value: p, label: p })),
+])
+
 function missingRequiredGroups(tags: string) {
   const names = tags.split(',').map((t) => t.trim()).filter(Boolean)
   return (props.draft.section.tag_groups || []).filter((group) => {
@@ -106,8 +114,14 @@ function publish() {
   router.post(`${routes.app}/forum/drafts/${props.draft.id}/publish`)
 }
 
-function destroy() {
-  if (!confirm('确定删除此草稿？')) return
+async function destroy() {
+  const ok = await confirm({
+    title: '删除草稿',
+    message: '确定删除此草稿？',
+    confirmLabel: '删除',
+    variant: 'destructive',
+  })
+  if (!ok) return
   router.delete(`${routes.app}/forum/drafts/${props.draft.id}`)
 }
 
@@ -139,10 +153,7 @@ function clearSchedule() {
     </div>
     <div v-if="draft.section.prefixes?.length" class="space-y-2">
       <Label for="prefix">主题前缀</Label>
-      <select id="prefix" v-model="form.draft.prefix" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option value="">无前缀</option>
-        <option v-for="p in draft.section.prefixes" :key="p" :value="p">{{ p }}</option>
-      </select>
+      <Select id="prefix" v-model="form.draft.prefix" :options="prefixOptions" block />
     </div>
     <div class="space-y-2">
       <Label for="body">内容</Label>
@@ -169,7 +180,7 @@ function clearSchedule() {
         <Label for="poll_closes_days">自动关闭（天数，0 表示不关闭）</Label>
         <Input id="poll_closes_days" v-model="form.draft.poll_closes_days" type="number" min="0" />
         <label class="flex items-center gap-2 text-sm">
-          <input v-model="form.draft.poll_multiple_choice" type="checkbox" class="h-4 w-4" />
+          <Checkbox v-model="form.draft.poll_multiple_choice" />
           允许多选投票
         </label>
         <div v-if="form.draft.poll_multiple_choice" class="space-y-2">
@@ -177,7 +188,7 @@ function clearSchedule() {
           <Input id="poll_max_choices" v-model.number="form.draft.poll_max_choices" type="number" min="2" max="10" />
         </div>
         <label class="flex items-center gap-2 text-sm">
-          <input v-model="form.draft.poll_hide_results_until_vote" type="checkbox" class="h-4 w-4" />
+          <Checkbox v-model="form.draft.poll_hide_results_until_vote" />
           投票后才显示结果
         </label>
       </div>

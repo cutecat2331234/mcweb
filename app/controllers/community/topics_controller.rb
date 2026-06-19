@@ -164,9 +164,12 @@ module Community
             return redirect_to forum_drafts_path, notice: "主题已定时，将于 #{l(scheduled_at, format: :short)} 发布。"
           end
           return render inertia: "Community/Topics/New",
-                        props: { section: section_props },
-                        status: :unprocessable_entity,
-                        errors: topic_errors(result)
+                        props: {
+                          section: section_props,
+                          warningRestrictions: warning_restrictions_props,
+                          form_errors: topic_form_errors(result)
+                        },
+                        status: :unprocessable_entity
         end
       end
 
@@ -192,10 +195,11 @@ module Community
       else
         render inertia: "Community/Topics/New",
                props: {
-                 section: section_props
+                 section: section_props,
+                 warningRestrictions: warning_restrictions_props,
+                 form_errors: topic_form_errors(result)
                },
-               status: :unprocessable_entity,
-               errors: topic_errors(result)
+               status: :unprocessable_entity
       end
     end
 
@@ -581,13 +585,8 @@ module Community
       raw.to_s.lines.map(&:strip).reject(&:blank?)
     end
 
-    def topic_errors(result)
-      errors = {}
-      errors[:title] = Array(result.errors[:title]).first if result.errors&.dig(:title)
-      errors[:body] = Array(result.errors[:body]).first if result.errors&.dig(:body)
-      errors[:title] ||= result.error if result.error.present? && errors.empty?
-      errors[:body] ||= result.error if result.error.present? && errors[:title].blank?
-      errors
+    def topic_form_errors(result)
+      inertia_form_errors(result, prefix: "topic")
     end
 
     def mark_topic_read!(posts)

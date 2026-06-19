@@ -7,7 +7,9 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
+import { prompt } from '@/lib/usePrompt'
 
 defineOptions({ layout: PortalLayout })
 
@@ -53,6 +55,13 @@ const props = defineProps<{
 const saveName = ref('')
 const saving = ref(false)
 const saveError = ref('')
+
+const wishlistSortOptions = [
+  { value: 'newest', label: '最近添加' },
+  { value: 'price_asc', label: '价格从低到高' },
+  { value: 'price_desc', label: '价格从高到低' },
+  { value: 'name', label: '名称 A-Z' },
+]
 
 const noteDrafts = reactive<Record<string, string>>({})
 
@@ -143,7 +152,10 @@ async function copyPublicShare(url: string) {
     await navigator.clipboard.writeText(new URL(url, window.location.origin).href)
     alert('公开筛选分享链接已复制')
   } catch {
-    prompt('复制分享链接：', url)
+    await prompt({
+      title: '复制分享链接',
+      defaultValue: url,
+    })
   }
 }
 
@@ -192,7 +204,10 @@ async function copyShareLink() {
     await navigator.clipboard.writeText(props.shareUrl)
     alert('分享链接已复制')
   } catch {
-    prompt('复制此链接', props.shareUrl)
+    await prompt({
+      title: '复制此链接',
+      defaultValue: props.shareUrl,
+    })
   }
 }
 </script>
@@ -236,16 +251,12 @@ async function copyShareLink() {
     <Button type="button" size="sm" :variant="filters?.coming_soon ? 'default' : 'outline'" @click="toggleFilter('coming_soon')">
       即将上架
     </Button>
-    <select
-      :value="filters?.sort || 'newest'"
-      class="h-8 rounded-md border px-2 text-xs"
-      @change="applyFilters({ sort: ($event.target as HTMLSelectElement).value })"
-    >
-      <option value="newest">最近添加</option>
-      <option value="price_asc">价格从低到高</option>
-      <option value="price_desc">价格从高到低</option>
-      <option value="name">名称 A-Z</option>
-    </select>
+    <Select
+      :model-value="filters?.sort || 'newest'"
+      :options="wishlistSortOptions"
+      size="sm"
+      @update:model-value="(value) => applyFilters({ sort: value })"
+    />
     <Button v-if="hasActiveFilters()" type="button" size="sm" variant="ghost" @click="clearFilters">清除筛选</Button>
     <span v-if="totalCount !== undefined && filteredCount !== undefined && hasActiveFilters()" class="text-xs text-muted-foreground">
       显示 {{ filteredCount }} / {{ totalCount }} 件
@@ -292,13 +303,12 @@ async function copyShareLink() {
         </p>
         <p v-if="product.saved_variant_name" class="text-xs text-muted-foreground">规格：{{ product.saved_variant_name }}</p>
         <div v-if="product.update_note_url" class="mt-2 flex max-w-md gap-2">
-          <input
+          <Input
             v-model="noteDrafts[product.id]"
-            type="text"
             placeholder="添加备注…"
-            class="h-8 flex-1 rounded-md border px-2 text-xs"
+            class="h-8 flex-1 text-xs"
             @keydown.enter.prevent="saveNote(product)"
-          >
+          />
           <Button type="button" size="sm" variant="outline" @click="saveNote(product)">保存备注</Button>
         </div>
         <p v-if="product.coming_soon && product.available_at_label" class="text-xs text-muted-foreground">上架时间：{{ product.available_at_label }}</p>

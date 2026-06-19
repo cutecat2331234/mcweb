@@ -25,6 +25,7 @@ module Community
       scope = @user.notifications
       scope = apply_category(scope)
       scope = scope.unread if @read == "unread"
+      scope = Community::NotificationPeriodScope.call(scope, @period) if @period.present?
 
       counts = scope.unscope(:order).group(:notification_type).count
       unread_counts = scope.unread.unscope(:order).group(:notification_type).count

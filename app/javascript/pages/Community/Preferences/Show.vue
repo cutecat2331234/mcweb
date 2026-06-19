@@ -8,6 +8,7 @@ import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Label from '@/components/ui/Label.vue'
 import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 import { readCsrfToken } from '@/lib/csrf'
 
@@ -168,19 +169,11 @@ async function saveRenameSearch(search: SavedSearchItem) {
       <p class="mb-3 text-sm font-medium">{{ pref.label }}</p>
       <div class="flex flex-wrap gap-6">
         <label class="flex items-center gap-2 text-sm">
-          <input
-            v-model="form.preferences[pref.notification_type].in_app"
-            type="checkbox"
-            class="h-4 w-4"
-          />
+          <Checkbox v-model="form.preferences[pref.notification_type].in_app" />
           站内通知
         </label>
         <label class="flex items-center gap-2 text-sm">
-          <input
-            v-model="form.preferences[pref.notification_type].email"
-            type="checkbox"
-            class="h-4 w-4"
-          />
+          <Checkbox v-model="form.preferences[pref.notification_type].email" />
           邮件通知
         </label>
       </div>
@@ -216,7 +209,7 @@ async function saveRenameSearch(search: SavedSearchItem) {
       />
       <p class="mt-2 text-xs text-muted-foreground">摘要将汇总未读的论坛通知，减少即时邮件打扰。</p>
       <label v-if="form.digest_frequency !== 'none'" class="mt-3 flex items-center gap-2 text-sm">
-        <input v-model="form.digest_watched_only" type="checkbox">
+        <Checkbox v-model="form.digest_watched_only" />
         仅包含我关注的分区/主题/标签
       </label>
     </div>
@@ -274,11 +267,10 @@ async function saveRenameSearch(search: SavedSearchItem) {
         </div>
         <div class="flex shrink-0 flex-wrap items-center gap-2">
           <label class="flex items-center gap-2 text-xs">
-            <input
-              type="checkbox"
-              :checked="search.notify_daily"
+            <Checkbox
+              :model-value="search.notify_daily"
               :disabled="togglingId === search.id"
-              @change="toggleSavedSearchNotify(search)"
+              @update:model-value="toggleSavedSearchNotify(search)"
             />
             每日邮件
           </label>

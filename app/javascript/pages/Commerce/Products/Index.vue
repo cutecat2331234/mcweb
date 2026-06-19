@@ -14,6 +14,8 @@ import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -82,6 +84,15 @@ const inStock = ref(props.inStock ?? false)
 const onSale = ref(props.onSale ?? false)
 const priceMin = ref(props.priceMin ?? '')
 const priceMax = ref(props.priceMax ?? '')
+
+const sortOptions = [
+  { value: 'newest', label: '最新' },
+  { value: 'popular', label: '最热' },
+  { value: 'rating', label: '评分最高' },
+  { value: 'price_asc', label: '价格升序' },
+  { value: 'price_desc', label: '价格降序' },
+  { value: 'discount_desc', label: '折扣最大' },
+]
 
 function search() {
   router.get(routes.store, {
@@ -289,20 +300,13 @@ function clearFilters() {
 
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
     <Input v-model="q" placeholder="搜索商品名或 SKU…" class="max-w-xs" />
-    <select v-model="sort" class="h-9 rounded-md border border-input bg-transparent px-3 text-sm">
-      <option value="newest">最新</option>
-      <option value="popular">最热</option>
-      <option value="rating">评分最高</option>
-      <option value="price_asc">价格升序</option>
-      <option value="price_desc">价格降序</option>
-      <option value="discount_desc">折扣最大</option>
-    </select>
+    <Select v-model="sort" :options="sortOptions" size="sm" />
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="inStock" type="checkbox" class="rounded border" />
+      <Checkbox v-model="inStock" />
       仅看有货
     </label>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="onSale" type="checkbox" class="rounded border" />
+      <Checkbox v-model="onSale" />
       仅促销
     </label>
     <Input v-model="priceMin" type="number" min="0" step="0.01" placeholder="最低价" class="w-24" />

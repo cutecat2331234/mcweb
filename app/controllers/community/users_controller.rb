@@ -195,9 +195,23 @@ module Community
       user = User.find_by!(username: params[:id])
       return head :forbidden unless current_user.id == user.id
 
+      if ActiveModel::Type::Boolean.new.cast(params.dig(:user, :remove_forum_avatar))
+        remove_forum_avatar!(user)
+        redirect_to forum_user_path(user.username), notice: "头像已恢复默认。"
+        return
+      end
+
+      if params.dig(:user, :forum_avatar).present?
+        error = attach_forum_avatar!(user, file: params[:user][:forum_avatar])
+        if error
+          redirect_to forum_user_path(user.username), alert: error
+        else
+          redirect_to forum_user_path(user.username), notice: "头像已更新。"
+        end
+        return
+      end
+
       if user.update(user_params)
-        attach_forum_avatar!(user) if params[:user][:forum_avatar].present?
-        remove_forum_avatar!(user) if ActiveModel::Type::Boolean.new.cast(params.dig(:user, :remove_forum_avatar))
         redirect_to forum_user_path(user.username), notice: "资料已更新。"
       else
         redirect_to forum_user_path(user.username), alert: user.errors.full_messages.to_sentence
@@ -210,15 +224,15 @@ module Community
       params.require(:user).permit(:bio, :forum_title, :forum_signature, :forum_flair_color_hex)
     end
 
-    def attach_forum_avatar!(user)
-      file = params[:user][:forum_avatar]
-      return unless file.respond_to?(:content_type)
+    def attach_forum_avatar!(user, file:)
+      return "请选择图片文件。" unless file.respond_to?(:content_type)
 
       allowed = %w[image/jpeg image/png image/gif image/webp]
-      return unless allowed.include?(file.content_type)
-      return if file.size > 2.megabytes
+      return "不支持的图片格式（仅支持 JPEG、PNG、GIF、WebP）。" unless allowed.include?(file.content_type)
+      return "图片过大（最大 2MB）。" if file.size > 2.megabytes
 
       user.forum_avatar.attach(file)
+      nil
     end
 
     def remove_forum_avatar!(user)

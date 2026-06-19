@@ -13,6 +13,7 @@ import Badge from '@/components/ui/Badge.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import { useTheme } from '@/lib/useTheme'
 import { readCsrfToken } from '@/lib/csrf'
+import { useFeatureFlags } from '@/lib/useFeatureFlags'
 
 const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
@@ -24,6 +25,7 @@ const cart = computed(() => page.props.cart as { count: number; url: string } | 
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
 const { activeTemplate, tokenStyle, portalHeaderExtraSlot } = useActiveTemplate()
 const { isDark, toggleTheme } = useTheme()
+const { features } = useFeatureFlags()
 
 const mobileNavOpen = ref(false)
 const dismissedLocal = ref<string[]>(loadDismissedLocal())
@@ -135,7 +137,7 @@ const sidebarProps = computed(() => ({
                 <Moon v-else class="h-4 w-4" />
               </Button>
 
-              <Button v-if="auth.user && notifications" as-child variant="ghost" size="icon" class="relative">
+              <Button v-if="features.forum && auth.user && notifications" as-child variant="ghost" size="icon" class="relative">
                 <Link :href="notifications.url" aria-label="通知">
                   <Bell class="h-4 w-4" />
                   <Badge
@@ -148,7 +150,7 @@ const sidebarProps = computed(() => ({
                 </Link>
               </Button>
 
-              <Button v-if="auth.user && messagesUnread" as-child variant="ghost" size="icon" class="relative">
+              <Button v-if="features.forum && auth.user && messagesUnread" as-child variant="ghost" size="icon" class="relative">
                 <Link :href="messagesUnread.url" aria-label="私信">
                   <Mail class="h-4 w-4" />
                   <Badge
@@ -161,7 +163,7 @@ const sidebarProps = computed(() => ({
                 </Link>
               </Button>
 
-              <Button v-if="cart" as-child variant="ghost" size="icon" class="relative">
+              <Button v-if="features.store && cart" as-child variant="ghost" size="icon" class="relative">
                 <Link :href="cart.url" aria-label="购物车">
                   <ShoppingCart class="h-4 w-4" />
                   <Badge
@@ -185,7 +187,7 @@ const sidebarProps = computed(() => ({
         </header>
 
         <div
-          v-if="visibleAnnouncements.length"
+          v-if="features.forum && visibleAnnouncements.length"
           class="border-b bg-amber-500/10 text-amber-950 dark:bg-amber-500/10 dark:text-amber-100"
         >
           <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm sm:px-6">
@@ -212,16 +214,18 @@ const sidebarProps = computed(() => ({
         </div>
 
         <main class="flex-1 px-4 py-6 sm:px-6 lg:px-8">
-          <FlashMessages />
-          <Transition name="page-fade" mode="out-in">
-            <div :key="page.url" class="min-h-[1px]">
-              <slot />
-            </div>
-          </Transition>
+          <div class="mx-auto w-full max-w-6xl">
+            <FlashMessages />
+            <Transition name="page-fade" mode="out-in">
+              <div :key="page.url" class="min-h-[1px]">
+                <slot />
+              </div>
+            </Transition>
+          </div>
         </main>
       </div>
     </div>
 
-    <ForumShortcuts />
+    <ForumShortcuts v-if="features.forum" />
   </div>
 </template>

@@ -12,6 +12,10 @@ class SiteSetting < ApplicationRecord
     value
   end
 
+  def self.unset(key)
+    where(key: key).delete_all
+  end
+
   def self.fetch(key, default = nil, &block)
     setting = find_by(key: key)
     return setting.value if setting

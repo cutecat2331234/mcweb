@@ -8,8 +8,12 @@ module Frontend
     end
 
     def call
+      if builtin?
+        return ServiceResult.failure(error: "内置默认模板无法删除。")
+      end
+
       Frontend::Template::SITE_SETTING_KEYS.each do |scope, setting_key|
-        SiteSetting.set(setting_key, nil) if SiteSetting.get(setting_key) == @template.key
+        SiteSetting.unset(setting_key) if SiteSetting.get(setting_key) == @template.key
       end
 
       path = @template.installed_path
@@ -19,10 +23,16 @@ module Frontend
       @template.destroy!
 
       log_audit(key)
+      Frontend::EnsureDefaultTemplate.call
       ServiceResult.success(true)
     end
 
     private
+
+    def builtin?
+      @template.key == Frontend::EnsureDefaultTemplate::BUILTIN_KEY ||
+        @template.manifest.is_a?(Hash) && @template.manifest["builtin"] == true
+    end
 
     def log_audit(key)
       return unless @actor

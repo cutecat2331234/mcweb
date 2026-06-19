@@ -11,8 +11,11 @@ import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Label from '@/components/ui/Label.vue'
 import Input from '@/components/ui/Input.vue'
+import FileInput from '@/components/ui/FileInput.vue'
 import Textarea from '@/components/ui/Textarea.vue'
+import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
 
@@ -166,9 +169,9 @@ const reviewForm = useForm<{
 const editingReview = ref(false)
 const existingReviewPhotos = ref<string[]>([])
 
-function onReviewPhotosChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  reviewForm.review.photos = Array.from(input.files || []).slice(0, 3)
+function onReviewPhotosChange(files: File | File[]) {
+  const list = Array.isArray(files) ? files : [files]
+  reviewForm.review.photos = list.slice(0, 3)
 }
 
 const selectedVariant = computed(() =>
@@ -218,6 +221,27 @@ const reviewSort = ref(props.reviewSort || 'newest')
 
 const reviewRating = ref<number | ''>(props.reviewRating || '')
 const questionSearch = ref(props.questionQuery || '')
+
+const questionSortOptions = [
+  { value: 'newest', label: '最新回答' },
+  { value: 'helpful', label: '最有帮助' },
+]
+
+const reviewSortOptions = [
+  { value: 'newest', label: '最新' },
+  { value: 'helpful', label: '最有帮助' },
+  { value: 'rating', label: '评分最高' },
+]
+
+const reviewRatingFilterOptions = [
+  { value: '', label: '全部星级' },
+  ...Array.from({ length: 5 }, (_, i) => ({ value: String(i + 1), label: `${i + 1} 星` })),
+]
+
+const reviewRatingFormOptions = Array.from({ length: 5 }, (_, i) => ({
+  value: String(i + 1),
+  label: `${i + 1} 星`,
+}))
 
 const purchaseSectionRef = ref<HTMLElement | null>(null)
 const showStickyBar = ref(false)
@@ -300,8 +324,14 @@ function startEditReview() {
   editingReview.value = true
 }
 
-function deleteReview() {
-  if (!props.deleteReviewUrl || !confirm('确定删除你的评价？')) return
+async function deleteReview() {
+  const ok = await confirm({
+    title: '删除评价',
+    message: '确定删除你的评价？',
+    confirmLabel: '删除',
+    variant: 'destructive',
+  })
+  if (!props.deleteReviewUrl || !ok) return
   router.delete(props.deleteReviewUrl)
 }
 
@@ -419,37 +449,18 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <Button v-if="reorderUrl" type="button" size="sm" variant="outline" @click="router.post(reorderUrl)">再次购买</Button>
   </div>
 
-  <section v-if="product.version || product.changelog" class="mb-6 max-w-xl rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">版本信息</h2>
-    <p v-if="product.version" class="text-sm">当前版本：{{ product.version }}</p>
-    <p v-if="product.changelog" class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{{ product.changelog }}</p>
-  </section>
-
-  <section v-if="product.discussion_url || createDiscussionUrl" class="mb-6 max-w-xl rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">社区讨论</h2>
-    <p v-if="product.discussion_replies_count !== null && product.discussion_replies_count !== undefined" class="text-sm text-muted-foreground">
-      {{ product.discussion_replies_count }} 条回复
-    </p>
-    <div class="mt-2 flex gap-2">
-      <Button v-if="product.discussion_url" as-child size="sm">
-        <Link :href="product.discussion_url">参与讨论</Link>
-      </Button>
-      <Button v-else-if="createDiscussionUrl" type="button" size="sm" variant="outline" @click="createDiscussion">
-        开启讨论帖
-      </Button>
-    </div>
-  </section>
-
-  <p v-if="askFromOrder" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+  <p v-if="askFromOrder" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
     关于订单 {{ askFromOrder.order_number }} 的商品「{{ askFromOrder.item_name }}」提问
   </p>
 
-  <div v-if="allImages.length" class="mb-6 max-w-xl">
+  <div class="mt-6 grid gap-8 lg:grid-cols-2 xl:grid-cols-5 lg:items-start">
+    <div class="space-y-6 xl:col-span-3">
+  <div v-if="allImages.length">
     <img
       v-if="activeGalleryImage"
       :src="activeGalleryImage"
       :alt="product.name"
-      class="mb-3 max-h-80 w-full rounded-lg border object-cover"
+      class="mb-3 max-h-[28rem] w-full rounded-lg border object-cover"
     />
     <div v-if="allImages.length > 1" class="flex flex-wrap gap-2">
       <button
@@ -465,8 +476,31 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </div>
   </div>
 
+  <section v-if="product.version || product.changelog" class="rounded-lg border p-4">
+    <h2 class="mb-2 text-sm font-semibold">版本信息</h2>
+    <p v-if="product.version" class="text-sm">当前版本：{{ product.version }}</p>
+    <p v-if="product.changelog" class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{{ product.changelog }}</p>
+  </section>
+
+  <section v-if="product.discussion_url || createDiscussionUrl" class="rounded-lg border p-4">
+    <h2 class="mb-2 text-sm font-semibold">社区讨论</h2>
+    <p v-if="product.discussion_replies_count !== null && product.discussion_replies_count !== undefined" class="text-sm text-muted-foreground">
+      {{ product.discussion_replies_count }} 条回复
+    </p>
+    <div class="mt-2 flex gap-2">
+      <Button v-if="product.discussion_url" as-child size="sm">
+        <Link :href="product.discussion_url">参与讨论</Link>
+      </Button>
+      <Button v-else-if="createDiscussionUrl" type="button" size="sm" variant="outline" @click="createDiscussion">
+        开启讨论帖
+      </Button>
+    </div>
+  </section>
+    </div>
+
+    <div class="space-y-6 xl:col-span-2 lg:sticky lg:top-20">
   <div ref="purchaseSectionRef">
-  <Card class="max-w-xl">
+  <Card>
     <CardContent class="space-y-3 pt-6">
       <div v-if="product.average_rating" class="text-sm">
         <span class="text-amber-500">★</span> {{ product.average_rating }} / 5（{{ reviewsCount ?? product.reviews.length }} 条评价）
@@ -547,7 +581,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </CardContent>
   </Card>
 
-  <div class="mt-6 flex flex-wrap gap-3">
+  <div class="flex flex-wrap gap-3">
     <Button
       v-if="canPurchase"
       type="button"
@@ -588,20 +622,20 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </Button>
   </div>
   </div>
+    </div>
+  </div>
 
-  <section class="mt-10 max-w-xl">
+  <section class="mt-10">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">商品问答</h2>
       <div class="flex flex-wrap items-center gap-2">
-        <select
+        <Select
           v-if="questions.length"
-          :value="questionSort || 'newest'"
-          class="h-8 rounded-md border px-2 text-xs"
-          @change="changeQuestionSort(($event.target as HTMLSelectElement).value)"
-        >
-          <option value="newest">最新回答</option>
-          <option value="helpful">最有帮助</option>
-        </select>
+          :model-value="questionSort || 'newest'"
+          :options="questionSortOptions"
+          size="sm"
+          @update:model-value="changeQuestionSort"
+        />
         <form class="flex gap-2" @submit.prevent="searchQuestions">
           <Input v-model="questionSearch" placeholder="搜索问答…" class="h-8 max-w-xs text-sm" />
           <Button type="submit" size="sm" variant="outline">搜索</Button>
@@ -670,27 +704,22 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </div>
   </section>
 
-  <section v-if="product.reviews.length || userReview || ratingBreakdown?.length" class="mt-10 max-w-xl">
+  <section v-if="product.reviews.length || userReview || ratingBreakdown?.length" class="mt-10">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">用户评价</h2>
-      <select
+      <Select
         v-if="product.reviews.length || reviewsCount"
-        :value="reviewSort"
-        class="h-8 rounded-md border px-2 text-xs"
-        @change="changeReviewSort(($event.target as HTMLSelectElement).value)"
-      >
-        <option value="newest">最新</option>
-        <option value="helpful">最有帮助</option>
-        <option value="rating">评分最高</option>
-      </select>
-      <select
-        :value="reviewRating"
-        class="h-8 rounded-md border px-2 text-xs"
-        @change="changeReviewRating(($event.target as HTMLSelectElement).value)"
-      >
-        <option value="">全部星级</option>
-        <option v-for="n in 5" :key="n" :value="n">{{ n }} 星</option>
-      </select>
+        :model-value="reviewSort"
+        :options="reviewSortOptions"
+        size="sm"
+        @update:model-value="changeReviewSort"
+      />
+      <Select
+        :model-value="reviewRating === '' ? '' : String(reviewRating)"
+        :options="reviewRatingFilterOptions"
+        size="sm"
+        @update:model-value="changeReviewRating"
+      />
     </div>
     <div v-if="ratingBreakdown?.length" class="mb-4 space-y-1">
       <button
@@ -779,14 +808,17 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </Button>
   </section>
 
-  <section v-if="loggedIn && (canReview || (canEditReview && editingReview))" class="mt-8 max-w-xl">
+  <section v-if="loggedIn && (canReview || (canEditReview && editingReview))" class="mt-8">
     <h2 class="mb-3 text-sm font-semibold">{{ canEditReview ? '编辑评价' : '写评价' }}</h2>
     <form class="space-y-3" @submit.prevent="submitReview">
       <div class="space-y-2">
         <Label>评分</Label>
-        <select v-model.number="reviewForm.review.rating" class="h-9 rounded-md border px-2 text-sm">
-          <option v-for="n in 5" :key="n" :value="n">{{ n }} 星</option>
-        </select>
+        <Select
+          :model-value="String(reviewForm.review.rating)"
+          :options="reviewRatingFormOptions"
+          size="sm"
+          @update:model-value="(v) => { reviewForm.review.rating = Number(v) }"
+        />
       </div>
       <Textarea v-model="reviewForm.review.body" rows="4" placeholder="分享你的使用体验（可选）" />
       <div v-if="existingReviewPhotos.length" class="space-y-2">
@@ -799,7 +831,15 @@ function submitAnswer(questionId: number, answerUrl: string) {
       </div>
       <div class="space-y-2">
         <Label for="review_photos">图片（最多 3 张）</Label>
-        <Input id="review_photos" type="file" accept="image/*" multiple @change="onReviewPhotosChange" />
+        <FileInput
+          accept="image/*"
+          multiple
+          button-label="选择图片"
+          @change="onReviewPhotosChange"
+        />
+        <p v-if="reviewForm.review.photos.length" class="text-xs text-muted-foreground">
+          已选 {{ reviewForm.review.photos.length }} 张
+        </p>
       </div>
       <Button type="submit" :disabled="reviewForm.processing">提交评价</Button>
     </form>

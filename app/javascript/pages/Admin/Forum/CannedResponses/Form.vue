@@ -6,6 +6,7 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -28,8 +29,14 @@ function submit() {
   }
 }
 
-function destroy() {
-  if (!props.deleteUrl || !confirm('确定删除此罐头回复？')) return
+async function destroy() {
+  const ok = await confirm({
+    title: '删除罐头回复',
+    message: '确定删除此罐头回复？',
+    confirmLabel: '删除',
+    variant: 'destructive',
+  })
+  if (!props.deleteUrl || !ok) return
   form.delete(props.deleteUrl)
 }
 </script>

@@ -131,6 +131,9 @@ SiteSetting.set("forum.digest_hour", "8") unless SiteSetting.exists?(key: "forum
 SiteSetting.set("store.order_webhook_url", "") unless SiteSetting.exists?(key: "store.order_webhook_url")
 SiteSetting.set("store.compare_max_items", "4") unless SiteSetting.exists?(key: "store.compare_max_items")
 SiteSetting.set("store.cart_max_items", "99") unless SiteSetting.exists?(key: "store.cart_max_items")
+FeatureFlags.definitions.each do |definition|
+  SiteSetting.set(definition.key, definition.default ? "true" : "false") unless SiteSetting.exists?(key: definition.key)
+end
 unless SiteSetting.exists?(key: "store.shipping_methods")
   SiteSetting.set("store.shipping_methods", Commerce::ShippingMethods::DEFAULT_JSON.to_json)
 end
@@ -246,5 +249,8 @@ if Rails.env.development?
     c.settings = { webhook_secret: "fake_webhook_secret" }
   end
 end
+
+puts "Ensuring builtin frontend template..."
+Frontend::EnsureDefaultTemplate.call
 
 puts "Seed complete."

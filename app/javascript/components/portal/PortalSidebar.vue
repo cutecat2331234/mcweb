@@ -8,8 +8,11 @@ import PortalNavGroupSection from '@/components/portal/PortalNavGroupSection.vue
 import Button from '@/components/ui/Button.vue'
 import { cn } from '@/lib/utils'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
+import { useFeatureFlags } from '@/lib/useFeatureFlags'
 
 const props = defineProps<PortalNavOptions & { class?: string; onNavigate?: () => void; showClose?: boolean }>()
+
+const { features, showPortalSectionTabs, portalSectionGridClass } = useFeatureFlags()
 
 const navOptions = computed(() => ({
   loggedIn: props.loggedIn,
@@ -107,9 +110,15 @@ watch(
       </Button>
     </div>
 
-    <div class="p-3">
-      <div class="grid grid-cols-2 gap-1 rounded-lg border border-sidebar-border/40 bg-sidebar-accent/30 p-1">
+    <div v-if="showPortalSectionTabs" class="p-3">
+      <div
+        :class="cn(
+          'grid gap-1 rounded-lg border border-sidebar-border/40 bg-sidebar-accent/30 p-1',
+          portalSectionGridClass,
+        )"
+      >
         <Link
+          v-if="features.forum"
           :href="routes.forum"
           :class="cn(
             'flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.98]',
@@ -123,6 +132,7 @@ watch(
           论坛
         </Link>
         <Link
+          v-if="features.store"
           :href="routes.store"
           :class="cn(
             'flex items-center justify-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-all duration-150 active:scale-[0.98]',

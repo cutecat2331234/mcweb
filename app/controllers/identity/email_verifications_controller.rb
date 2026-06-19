@@ -2,13 +2,11 @@
 
 module Identity
   class EmailVerificationsController < ApplicationController
-    skip_installation_guard only: :show
-
     def show
       result = Identity::VerifyEmail.call(token: params[:token])
 
       if result.success?
-        redirect_to identity_sign_in_path, notice: "Email verified successfully. You can now sign in."
+        redirect_to identity_sign_in_path, notice: "邮箱已验证，现在可以登录了。"
       else
         redirect_to root_path, alert: service_error_message(result)
       end

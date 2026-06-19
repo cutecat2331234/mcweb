@@ -129,20 +129,7 @@ module Community
     end
 
     def apply_notification_period(scope, period)
-      case period.to_s
-      when "today"
-        scope.where("created_at >= ?", Time.zone.now.beginning_of_day)
-      when "this_week"
-        scope.where("created_at >= ?", Time.zone.now.beginning_of_week)
-      when "this_month"
-        scope.where("created_at >= ?", Time.zone.now.beginning_of_month)
-      when "last_month"
-        start = Time.zone.now.beginning_of_month.prev_month
-        finish = Time.zone.now.beginning_of_month
-        scope.where(created_at: start...finish)
-      else
-        scope
-      end
+      Community::NotificationPeriodScope.call(scope, period)
     end
 
     def filter_notifications_by_category(scope, category)

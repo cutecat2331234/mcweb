@@ -49,6 +49,9 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm ci
 
+      - name: Build Tailwind CSS
+        run: bundle exec rails tailwindcss:build
+
       - name: Build Vite test assets
         run: bin/vite build --mode=test
 
@@ -111,6 +114,14 @@ jobs:
         run: |
           chmod +x bin/build-release packaging/quick-install.sh
           RELEASE_VERSION="${{ steps.version.outputs.value }}" bin/build-release
+
+      - name: Verify release assets compiled
+        run: |
+          STAGE="dist/mcweb-${{ steps.version.outputs.value }}"
+          test -s "$STAGE/app/assets/builds/tailwind.css"
+          test -n "$(find "$STAGE/public/assets" -maxdepth 1 -name '*.css' | head -1)"
+          test -d "$STAGE/public/vite"
+          echo "Release assets OK"
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v7

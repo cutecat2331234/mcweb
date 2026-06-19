@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -12,7 +12,9 @@ import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 import Button from '@/components/ui/Button.vue'
+import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
+import { prompt } from '@/lib/usePrompt'
 
 defineOptions({ layout: PortalLayout })
 
@@ -66,6 +68,11 @@ const createdBefore = ref(props.createdBefore || '')
 const minTotal = ref(props.minTotal || '')
 const maxTotal = ref(props.maxTotal || '')
 const exportCopied = ref(false)
+
+const statusSelectOptions = computed(() => [
+  { value: '', label: '全部状态' },
+  ...props.statusOptions.map((opt) => ({ value: opt.value, label: opt.label })),
+])
 
 watch(() => props.status, (value) => {
   statusFilter.value = value
@@ -160,7 +167,10 @@ async function copyExportUrl() {
     exportCopied.value = true
     window.setTimeout(() => { exportCopied.value = false }, 2000)
   } catch {
-    prompt('复制导出链接：', props.exportUrl)
+    await prompt({
+      title: '复制导出链接',
+      defaultValue: props.exportUrl,
+    })
   }
 }
 </script>
@@ -208,10 +218,7 @@ async function copyExportUrl() {
 
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
     <Input v-model="q" placeholder="搜索订单号…" class="max-w-xs" />
-    <select v-model="statusFilter" class="h-9 rounded-md border border-input bg-transparent px-3 text-sm">
-      <option value="">全部状态</option>
-      <option v-for="opt in statusOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-    </select>
+    <Select v-model="statusFilter" :options="statusSelectOptions" size="sm" />
     <Input v-model="createdAfter" type="date" class="max-w-[10rem]" title="起始日期" />
     <Input v-model="createdBefore" type="date" class="max-w-[10rem]" title="截止日期" />
     <Input v-model="minTotal" type="number" min="0" step="0.01" placeholder="最低金额" class="max-w-[8rem]" title="最低金额" />

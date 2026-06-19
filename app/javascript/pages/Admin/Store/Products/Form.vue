@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3'
+import { computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
+import FileInput from '@/components/ui/FileInput.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -55,6 +59,28 @@ const form = useForm({
   },
 })
 
+const productTypeOptions = [
+  { value: 'virtual', label: '虚拟商品' },
+  { value: 'physical', label: '实体商品' },
+  { value: 'gift_card', label: '礼品卡（购买后自动发卡）' },
+  { value: 'digital', label: '数字商品' },
+]
+
+const statusOptions = [
+  { value: 'draft', label: '草稿' },
+  { value: 'active', label: '上架' },
+  { value: 'archived', label: '归档' },
+]
+
+const categoryOptions = computed(() => [
+  { value: '', label: '无分类' },
+  ...props.categories.map((cat) => ({ value: String(cat.id), label: cat.name })),
+])
+
+function updateCategoryId(value: string) {
+  form.product.store_category_id = value ? Number(value) : null
+}
+
 function addVariant() {
   form.product.variants.push({ name: '', sku: '', price_cents: form.product.price_cents, stock: null })
 }
@@ -76,10 +102,8 @@ function submit() {
   }
 }
 
-async function uploadCover(event: Event) {
+async function uploadCover(file: File) {
   if (!props.uploadUrl) return
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
   const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
   const body = new FormData()
   body.append('file', file)
@@ -117,20 +141,11 @@ async function uploadCover(event: Event) {
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
         <Label for="product_type">类型</Label>
-        <select id="product_type" v-model="form.product.product_type" class="h-9 w-full rounded-md border px-2 text-sm">
-          <option value="virtual">虚拟商品</option>
-          <option value="physical">实体商品</option>
-          <option value="gift_card">礼品卡（购买后自动发卡）</option>
-          <option value="digital">数字商品</option>
-        </select>
+        <Select id="product_type" v-model="form.product.product_type" :options="productTypeOptions" block />
       </div>
       <div class="space-y-2">
         <Label for="status">状态</Label>
-        <select id="status" v-model="form.product.status" class="h-9 w-full rounded-md border px-2 text-sm">
-          <option value="draft">草稿</option>
-          <option value="active">上架</option>
-          <option value="archived">归档</option>
-        </select>
+        <Select id="status" v-model="form.product.status" :options="statusOptions" block />
       </div>
     </div>
     <div class="grid grid-cols-2 gap-4">
@@ -159,10 +174,13 @@ async function uploadCover(event: Event) {
     </div>
     <div class="space-y-2">
       <Label for="category">分类</Label>
-      <select id="category" v-model="form.product.store_category_id" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option :value="null">无分类</option>
-        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-      </select>
+      <Select
+        id="category"
+        :model-value="form.product.store_category_id == null ? '' : String(form.product.store_category_id)"
+        :options="categoryOptions"
+        block
+        @update:model-value="updateCategoryId"
+      />
     </div>
     <div class="space-y-2">
       <Label for="purchase_limit">限购（空=不限）</Label>
@@ -176,16 +194,16 @@ async function uploadCover(event: Event) {
       <Label for="maximum_quantity">最高购买量（空=不限）</Label>
       <Input id="maximum_quantity" v-model.number="form.product.maximum_quantity" type="number" min="1" />
     </div>
-    <div class="flex items-center gap-2">
-      <input id="requires_shipping" v-model="form.product.requires_shipping" type="checkbox" class="rounded border" />
+    <label class="flex items-center gap-2">
+      <Checkbox id="requires_shipping" v-model="form.product.requires_shipping" />
       <Label for="requires_shipping">需要运费（实物商品通常勾选）</Label>
-    </div>
+    </label>
     <div class="space-y-2">
       <Label for="image_url">商品图片 URL</Label>
       <Input id="image_url" v-model="form.product.image_url" placeholder="https://example.com/image.png" />
       <div v-if="uploadUrl" class="mt-2">
         <Label for="cover_upload">或上传封面图</Label>
-        <input id="cover_upload" type="file" accept="image/*" class="text-sm" @change="uploadCover" />
+        <FileInput id="cover_upload" accept="image/*" button-label="选择封面图" @change="uploadCover" />
       </div>
     </div>
     <div class="space-y-2">
@@ -196,14 +214,14 @@ async function uploadCover(event: Event) {
       <Label for="fulfillment_config">发货配置（JSON，可含 download_url、Minecraft 命令等）</Label>
       <Textarea id="fulfillment_config" v-model="form.product.fulfillment_config" rows="6" placeholder='{"download_url":"https://example.com/file.zip","commands":["give {player} diamond 1"]}' />
     </div>
-    <div class="flex items-center gap-2">
-      <input id="featured" v-model="form.product.featured" type="checkbox" class="rounded border" />
+    <label class="flex items-center gap-2">
+      <Checkbox id="featured" v-model="form.product.featured" />
       <Label for="featured">精选商品（首页展示）</Label>
-    </div>
-    <div class="flex items-center gap-2">
-      <input id="allow_backorder" v-model="form.product.allow_backorder" type="checkbox" class="rounded border" />
+    </label>
+    <label class="flex items-center gap-2">
+      <Checkbox id="allow_backorder" v-model="form.product.allow_backorder" />
       <Label for="allow_backorder">缺货时可预订（Backorder）</Label>
-    </div>
+    </label>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
         <Label for="version">版本号</Label>

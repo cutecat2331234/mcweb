@@ -5,7 +5,10 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
+import { prompt } from '@/lib/usePrompt'
 
 defineOptions({ layout: PortalLayout })
 
@@ -93,7 +96,10 @@ async function copyShareLink() {
     await navigator.clipboard.writeText(props.shareUrl)
     alert('分享链接已复制')
   } catch {
-    prompt('复制此链接', props.shareUrl)
+    await prompt({
+      title: '复制此链接',
+      defaultValue: props.shareUrl,
+    })
   }
 }
 
@@ -129,7 +135,7 @@ function addToCart(product: { db_id: number; add_to_cart_url: string; variants: 
       <Button v-if="shareUrl && products.length" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
       <Button v-if="products.length" type="button" variant="outline" size="sm" @click="clearAll">清空对比</Button>
       <label v-if="products.length >= 2" class="flex items-center gap-1.5 text-xs text-muted-foreground">
-        <input v-model="onlyDiffRows" type="checkbox" class="rounded border">
+        <Checkbox v-model="onlyDiffRows" />
         仅差异行
       </label>
     </div>

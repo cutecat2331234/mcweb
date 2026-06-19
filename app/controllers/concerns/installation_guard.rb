@@ -27,7 +27,7 @@ module InstallationGuard
   def block_setup_when_locked
     return unless InstallationLock.locked?
 
-    redirect_to root_path, alert: "Setup has already been completed."
+    redirect_to root_path, alert: "系统已完成安装，无法重复运行安装向导。"
   end
 
   def setup_controller?

@@ -157,12 +157,12 @@ module Commerce
 
     def new
       cart = Commerce::Cart.find_by(user: current_user)
-      redirect_to store_cart_path, alert: "Your cart is empty." if cart.nil? || cart.empty?
+      redirect_to store_cart_path, alert: "购物车是空的。" if cart.nil? || cart.empty?
     end
 
     def create
       cart = Commerce::Cart.find_by(user: current_user)
-      return redirect_to store_cart_path, alert: "Your cart is empty." if cart.nil? || cart.empty?
+      return redirect_to store_cart_path, alert: "购物车是空的。" if cart.nil? || cart.empty?
 
       result = Commerce::CreateOrder.call(
         cart: cart,
@@ -171,7 +171,7 @@ module Commerce
       )
 
       if result.success?
-        redirect_to store_order_path(result.value), notice: "Order created."
+        redirect_to store_order_path(result.value), notice: "订单已创建。"
       else
         redirect_to new_store_order_path, alert: service_error_message(result)
       end

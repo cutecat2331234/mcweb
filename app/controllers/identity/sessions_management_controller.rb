@@ -21,7 +21,7 @@ module Identity
         sign_out
         redirect_to identity_sign_in_path, notice: "当前会话已撤销，请重新登录。"
       else
-        redirect_to identity_sessions_management_index_path, notice: "Session revoked."
+        redirect_to identity_sessions_management_index_path, notice: "会话已撤销。"
       end
     end
   end

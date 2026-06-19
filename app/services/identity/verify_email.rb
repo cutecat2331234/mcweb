@@ -10,8 +10,8 @@ module Identity
 
     def call
       user = User.find_by(email_verification_token_digest: digest_token(@token))
-      return ServiceResult.failure(error: "Invalid or expired verification token.") unless user
-      return ServiceResult.failure(error: "Invalid or expired verification token.") if token_expired?(user)
+      return ServiceResult.failure(error: "验证链接无效或已过期。") unless user
+      return ServiceResult.failure(error: "验证链接无效或已过期。") if token_expired?(user)
       return ServiceResult.success(user) if user.email_verified?
 
       user.update!(

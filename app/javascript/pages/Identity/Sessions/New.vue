@@ -1,17 +1,24 @@
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3'
+import { computed } from 'vue'
+import { Link, useForm, usePage } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
+import Alert from '@/components/ui/Alert.vue'
 import { routes } from '@/lib/routes'
+import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const props = defineProps<{
+  login_error?: string
   errors?: Record<string, string>
 }>()
+
+const page = usePage()
 
 const form = useForm({
   session: {
@@ -22,15 +29,30 @@ const form = useForm({
   },
 })
 
+const loginError = computed(() => {
+  if (form.errors.base) return form.errors.base
+  if (props.login_error) return props.login_error
+  const pageErrors = page.props.errors as Record<string, string> | undefined
+  return pageErrors?.base || ''
+})
+
 function submit() {
-  form.post('/app/identity/session', {
-    preserveScroll: true,
-  })
+  const token = String(page.props.csrf_token || readCsrfToken())
+  form
+    .transform((data) => ({ ...data, authenticity_token: token }))
+    .post(routes.identitySession, {
+      preserveScroll: true,
+      headers: csrfHeaders(),
+    })
 }
 </script>
 
 <template>
   <PageHeader title="登录" subtitle="访问你的 Mcweb 账户" />
+
+  <Alert v-if="loginError" variant="destructive" title="登录失败" class="mb-4 max-w-md">
+    {{ loginError }}
+  </Alert>
 
   <form class="max-w-md space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
@@ -50,14 +72,12 @@ function submit() {
       <Input id="totp_code" v-model="form.session.totp_code" autocomplete="one-time-code" />
     </div>
 
-    <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.session.remember_me" type="checkbox" class="rounded border-input">
+    <label class="flex cursor-pointer items-center gap-2 text-sm">
+      <Checkbox v-model="form.session.remember_me" />
       记住我
     </label>
 
-    <p v-if="form.errors.base" class="text-sm text-destructive">{{ form.errors.base }}</p>
-
-    <div class="flex items-center gap-3 pt-2">
+    <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
       <Button type="submit" :disabled="form.processing">登录</Button>
       <Link :href="routes.register" class="text-sm text-muted-foreground hover:text-foreground">
         创建账户

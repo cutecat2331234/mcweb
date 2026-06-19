@@ -4,8 +4,6 @@ module Identity
   class RegistrationsController < ApplicationController
     include GuestCartMergeable
 
-    skip_installation_guard only: %i[new create]
-
     before_action :redirect_if_signed_in, only: %i[new create]
 
     def new
@@ -27,7 +25,7 @@ module Identity
       else
         render inertia: "Identity/Registrations/New",
                status: :unprocessable_entity,
-               errors: { base: service_error_message(result) }
+               props: { form_errors: inertia_form_errors(result, prefix: "registration") }
       end
     end
 
@@ -38,7 +36,7 @@ module Identity
     end
 
     def redirect_if_signed_in
-      redirect_to root_path if user_signed_in?
+      redirect_to FeatureFlags.primary_portal_path(self) if user_signed_in?
     end
   end
 end

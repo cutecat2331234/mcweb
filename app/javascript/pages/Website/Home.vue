@@ -1,7 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import WebsiteLayout from '@/layouts/WebsiteLayout.vue'
 import { routes } from '@/lib/routes'
+import { useFeatureFlags } from '@/lib/useFeatureFlags'
 
 defineOptions({ layout: WebsiteLayout })
 
@@ -27,23 +29,49 @@ defineProps<{
   featuredProducts: FeaturedProduct[]
 }>()
 
-const features = [
+const { features } = useFeatureFlags()
+
+const allFeatures = [
   {
+    id: 'forum',
     icon: '💬',
     title: '社区论坛',
     description: '分区讨论、话题追踪、私信与举报审核，让玩家在社区里自然留存。',
   },
   {
+    id: 'store',
     icon: '🛒',
     title: '数字商城',
     description: '商品上架、购物车、支付回调与 Minecraft 自动发货，变现与运营一体化。',
   },
   {
+    id: 'identity',
     icon: '🔐',
     title: '账号与安全',
     description: '注册登录、邮箱验证、2FA 与细粒度权限，为服主团队提供可靠后台。',
   },
-]
+] as const
+
+const visibleFeatures = computed(() =>
+  allFeatures.filter((feature) => {
+    if (feature.id === 'forum') return features.value.forum
+    if (feature.id === 'store') return features.value.store
+    return true
+  }),
+)
+
+const featureGridClass = computed(() => {
+  const count = visibleFeatures.value.length
+  if (count <= 1) return 'grid gap-6 md:grid-cols-1 max-w-xl mx-auto'
+  if (count === 2) return 'grid gap-6 md:grid-cols-2'
+  return 'grid gap-6 md:grid-cols-3'
+})
+
+const appEntryHref = computed(() => {
+  if (features.value.forum) return routes.forum
+  if (features.value.store) return routes.store
+  return routes.signIn
+})
 
 const stats = [
   { value: '3 合 1', label: '官网 · 论坛 · 商城' },
@@ -89,7 +117,7 @@ const stats = [
     </p>
 
     <div class="mt-12 flex flex-wrap items-center justify-center gap-4">
-      <Link :href="routes.forum" class="website-btn website-btn-primary text-base">
+      <Link :href="appEntryHref" class="website-btn website-btn-primary text-base">
         进入应用中心 →
       </Link>
       <Link :href="routes.page('about')" class="website-btn website-btn-ghost text-base">
@@ -117,9 +145,9 @@ const stats = [
         从吸引新玩家到社区运营与付费转化，McWeb 把关键能力整合在同一套系统中。
       </p>
     </div>
-    <div class="grid gap-6 md:grid-cols-3">
+    <div :class="featureGridClass">
       <article
-        v-for="feature in features"
+        v-for="feature in visibleFeatures"
         :key="feature.title"
         class="website-card group relative overflow-hidden text-left"
       >
@@ -133,7 +161,7 @@ const stats = [
   </section>
 
   <!-- 精选商品 -->
-  <section v-if="featuredProducts.length" class="mx-auto max-w-6xl px-4 pb-16">
+  <section v-if="features.store && featuredProducts.length" class="mx-auto max-w-6xl px-4 pb-16">
     <div class="mb-10 flex items-end justify-between gap-4">
       <div>
         <p class="mb-1 text-xs font-bold uppercase tracking-[0.3em] text-green-400">商城</p>
@@ -168,7 +196,7 @@ const stats = [
   </section>
 
   <!-- 最新动态 -->
-  <section v-if="featuredArticles.length" class="mx-auto max-w-6xl px-4 pb-20">
+  <section v-if="features.website_blog && featuredArticles.length" class="mx-auto max-w-6xl px-4 pb-20">
     <div class="mb-10">
       <p class="mb-1 text-xs font-bold uppercase tracking-[0.3em] text-green-400">公告</p>
       <h2 class="website-section-title text-left text-2xl font-bold">最新动态</h2>
@@ -209,7 +237,7 @@ const stats = [
         </p>
         <div class="mt-10 flex flex-wrap justify-center gap-4">
           <Link :href="routes.register" class="website-btn website-btn-primary text-base">免费注册</Link>
-          <Link :href="routes.blog" class="website-btn website-btn-ghost text-base">查看公告</Link>
+          <Link v-if="features.website_blog" :href="routes.blog" class="website-btn website-btn-ghost text-base">查看公告</Link>
         </div>
       </div>
     </div>

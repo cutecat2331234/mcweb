@@ -6,6 +6,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
@@ -40,12 +41,12 @@ const form = useForm({
   },
 })
 
-function toggleTag(id: number) {
-  const idx = selectedTagIds.value.indexOf(id)
-  if (idx >= 0) {
-    selectedTagIds.value.splice(idx, 1)
+function toggleTag(id: number, checked: boolean) {
+  if (checked) {
+    if (!selectedTagIds.value.includes(id)) selectedTagIds.value.push(id)
   } else {
-    selectedTagIds.value.push(id)
+    const idx = selectedTagIds.value.indexOf(id)
+    if (idx >= 0) selectedTagIds.value.splice(idx, 1)
   }
   form.tag_group.tag_ids = [...selectedTagIds.value]
 }
@@ -81,17 +82,16 @@ function submit() {
       <Input id="color_hex" v-model="form.tag_group.color_hex" placeholder="#6366f1" />
     </div>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.tag_group.one_per_topic" type="checkbox" class="rounded border" />
+      <Checkbox v-model="form.tag_group.one_per_topic" />
       每个主题只能从此组选一个标签（XenForo）
     </label>
     <div class="space-y-2">
       <Label>组内标签</Label>
       <div class="max-h-48 space-y-1 overflow-y-auto rounded-md border p-3">
         <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            :checked="selectedTagIds.includes(tag.id)"
-            @change="toggleTag(tag.id)"
+          <Checkbox
+            :model-value="selectedTagIds.includes(tag.id)"
+            @update:model-value="(checked) => toggleTag(tag.id, checked)"
           />
           {{ tag.name }}
         </label>

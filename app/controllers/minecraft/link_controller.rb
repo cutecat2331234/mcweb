@@ -15,11 +15,11 @@ module Minecraft
       )
 
       if result.success?
-        redirect_to root_path, notice: "Minecraft account linked successfully."
+        redirect_to root_path, notice: "Minecraft 账号已成功绑定。"
       else
         render inertia: "Minecraft/Link/Show",
                status: :unprocessable_entity,
-               errors: { base: service_error_message(result) }
+               props: { form_error: service_error_message(result) }
       end
     end
 

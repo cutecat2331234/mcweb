@@ -5,6 +5,8 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -36,6 +38,25 @@ const props = defineProps<{
 
 const form = useForm({ coupon: { ...props.coupon } })
 
+const discountTypeOptions = [
+  { value: 'percentage', label: '百分比' },
+  { value: 'fixed', label: '固定金额（分）' },
+]
+
+function toggleProductId(id: number, checked: boolean) {
+  const ids = form.coupon.product_ids || []
+  form.coupon.product_ids = checked
+    ? ids.includes(id) ? ids : [...ids, id]
+    : ids.filter((x) => x !== id)
+}
+
+function toggleCategoryId(id: number, checked: boolean) {
+  const ids = form.coupon.category_ids || []
+  form.coupon.category_ids = checked
+    ? ids.includes(id) ? ids : [...ids, id]
+    : ids.filter((x) => x !== id)
+}
+
 function submit() {
   if (props.method === 'patch') {
     form.patch(props.submitUrl)
@@ -56,10 +77,7 @@ function submit() {
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
         <Label for="discount_type">类型</Label>
-        <select id="discount_type" v-model="form.coupon.discount_type" class="h-9 w-full rounded-md border px-2 text-sm">
-          <option value="percentage">百分比</option>
-          <option value="fixed">固定金额（分）</option>
-        </select>
+        <Select id="discount_type" v-model="form.coupon.discount_type" :options="discountTypeOptions" block />
       </div>
       <div class="space-y-2">
         <Label for="discount_value">折扣值</Label>
@@ -97,18 +115,21 @@ function submit() {
       <Input id="max_discount_cents" v-model.number="form.coupon.max_discount_cents" type="number" min="1" />
     </div>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.coupon.first_order_only" type="checkbox" class="h-4 w-4" />
+      <Checkbox v-model="form.coupon.first_order_only" />
       仅限首单
     </label>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.coupon.free_shipping" type="checkbox" class="h-4 w-4" />
+      <Checkbox v-model="form.coupon.free_shipping" />
       免运费
     </label>
     <div class="space-y-2">
       <Label>限定商品（不选=全部）</Label>
       <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
         <label v-for="product in products || []" :key="product.id" class="flex items-center gap-2">
-          <input v-model="form.coupon.product_ids" type="checkbox" :value="product.id" class="h-4 w-4" />
+          <Checkbox
+            :model-value="(form.coupon.product_ids || []).includes(product.id)"
+            @update:model-value="(checked) => toggleProductId(product.id, checked)"
+          />
           {{ product.name }}
         </label>
       </div>
@@ -117,13 +138,16 @@ function submit() {
       <Label>限定分类（不选=全部）</Label>
       <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
         <label v-for="category in categories || []" :key="category.id" class="flex items-center gap-2">
-          <input v-model="form.coupon.category_ids" type="checkbox" :value="category.id" class="h-4 w-4" />
+          <Checkbox
+            :model-value="(form.coupon.category_ids || []).includes(category.id)"
+            @update:model-value="(checked) => toggleCategoryId(category.id, checked)"
+          />
           {{ category.name }}
         </label>
       </div>
     </div>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.coupon.active" type="checkbox" class="h-4 w-4" />
+      <Checkbox v-model="form.coupon.active" />
       启用
     </label>
     <div class="flex gap-2">

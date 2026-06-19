@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3'
+import { computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -58,43 +61,67 @@ const form = useForm({
   },
 })
 
-function toggleRequiredTag(tagId: number) {
+const categoryOptions = computed(() => [
+  { value: '', label: '无分类' },
+  ...props.categories.map((cat) => ({ value: String(cat.id), label: cat.name })),
+])
+
+const parentSectionOptions = computed(() => [
+  { value: '', label: '无（顶级板块）' },
+  ...props.parentSections.map((sec) => ({ value: String(sec.id), label: sec.name })),
+])
+
+const notificationLevelOptions = [
+  { value: 'watching', label: '关注（邮件+站内）' },
+  { value: 'tracking', label: '跟踪（仅站内）' },
+  { value: 'normal', label: '普通（仅参与/提及）' },
+]
+
+function updateForumCategoryId(value: string) {
+  form.section.forum_category_id = value ? Number(value) : null
+}
+
+function updateParentId(value: string) {
+  form.section.parent_id = value ? Number(value) : null
+}
+
+function toggleRequiredTag(tagId: number, checked: boolean) {
   const ids = form.section.required_tag_ids
-  const index = ids.indexOf(tagId)
-  if (index >= 0) {
-    ids.splice(index, 1)
+  if (checked) {
+    if (!ids.includes(tagId)) ids.push(tagId)
   } else {
-    ids.push(tagId)
+    const index = ids.indexOf(tagId)
+    if (index >= 0) ids.splice(index, 1)
   }
 }
 
-function toggleAllowedTag(tagId: number) {
+function toggleAllowedTag(tagId: number, checked: boolean) {
   const ids = form.section.allowed_tag_ids
-  const index = ids.indexOf(tagId)
-  if (index >= 0) {
-    ids.splice(index, 1)
+  if (checked) {
+    if (!ids.includes(tagId)) ids.push(tagId)
   } else {
-    ids.push(tagId)
+    const index = ids.indexOf(tagId)
+    if (index >= 0) ids.splice(index, 1)
   }
 }
 
-function toggleDefaultTag(tagId: number) {
+function toggleDefaultTag(tagId: number, checked: boolean) {
   const ids = form.section.default_tag_ids
-  const index = ids.indexOf(tagId)
-  if (index >= 0) {
-    ids.splice(index, 1)
+  if (checked) {
+    if (!ids.includes(tagId)) ids.push(tagId)
   } else {
-    ids.push(tagId)
+    const index = ids.indexOf(tagId)
+    if (index >= 0) ids.splice(index, 1)
   }
 }
 
-function toggleRequiredTagGroup(groupId: number) {
+function toggleRequiredTagGroup(groupId: number, checked: boolean) {
   const ids = form.section.required_tag_group_ids
-  const index = ids.indexOf(groupId)
-  if (index >= 0) {
-    ids.splice(index, 1)
+  if (checked) {
+    if (!ids.includes(groupId)) ids.push(groupId)
   } else {
-    ids.push(groupId)
+    const index = ids.indexOf(groupId)
+    if (index >= 0) ids.splice(index, 1)
   }
 }
 
@@ -129,17 +156,23 @@ function submit() {
     </div>
     <div class="space-y-2">
       <Label for="category">分类</Label>
-      <select id="category" v-model="form.section.forum_category_id" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option :value="null">无分类</option>
-        <option v-for="cat in categories" :key="cat.id" :value="cat.id">{{ cat.name }}</option>
-      </select>
+      <Select
+        id="category"
+        :model-value="form.section.forum_category_id == null ? '' : String(form.section.forum_category_id)"
+        :options="categoryOptions"
+        block
+        @update:model-value="updateForumCategoryId"
+      />
     </div>
     <div class="space-y-2">
       <Label for="parent">父级板块（可选）</Label>
-      <select id="parent" v-model="form.section.parent_id" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option :value="null">无（顶级板块）</option>
-        <option v-for="sec in parentSections" :key="sec.id" :value="sec.id">{{ sec.name }}</option>
-      </select>
+      <Select
+        id="parent"
+        :model-value="form.section.parent_id == null ? '' : String(form.section.parent_id)"
+        :options="parentSectionOptions"
+        block
+        @update:model-value="updateParentId"
+      />
     </div>
     <div class="space-y-2">
       <Label for="create_topic_roles">发帖权限（权限 key，逗号分隔，空=所有人）</Label>
@@ -153,12 +186,12 @@ function submit() {
       <Label for="prefixes">主题前缀（每行一个，如：公告、求助）</Label>
       <Textarea id="prefixes" v-model="form.section.prefixes" rows="3" placeholder="公告&#10;求助&#10;分享" />
       <label class="flex items-center gap-2 text-sm">
-        <input v-model="form.section.prefix_required" type="checkbox" class="h-4 w-4" />
+        <Checkbox v-model="form.section.prefix_required" />
         发帖时必须选择前缀
       </label>
     </div>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.section.read_only" type="checkbox" class="h-4 w-4" />
+      <Checkbox v-model="form.section.read_only" />
       只读分区（普通用户不可发帖/回复）
     </label>
     <div class="grid grid-cols-2 gap-4">
@@ -203,11 +236,7 @@ function submit() {
     </div>
     <div class="space-y-2">
       <Label for="default_notification_level">默认订阅级别（首次关注分区）</Label>
-      <select id="default_notification_level" v-model="form.section.default_notification_level" class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 text-sm">
-        <option value="watching">关注（邮件+站内）</option>
-        <option value="tracking">跟踪（仅站内）</option>
-        <option value="normal">普通（仅参与/提及）</option>
-      </select>
+      <Select id="default_notification_level" v-model="form.section.default_notification_level" :options="notificationLevelOptions" block />
     </div>
     <div class="space-y-2">
       <Label for="topic_template">主题模板（XenForo，发帖时预填正文）</Label>
@@ -217,11 +246,9 @@ function submit() {
       <Label>必填标签（发帖时至少选一个，XenForo 风格）</Label>
       <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
         <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            class="h-4 w-4"
-            :checked="form.section.required_tag_ids.includes(tag.id)"
-            @change="toggleRequiredTag(tag.id)"
+          <Checkbox
+            :model-value="form.section.required_tag_ids.includes(tag.id)"
+            @update:model-value="(checked) => toggleRequiredTag(tag.id, checked)"
           />
           {{ tag.name }}
         </label>
@@ -232,11 +259,9 @@ function submit() {
       <Label>必填标签组（至少从组内选一个标签）</Label>
       <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
         <label v-for="group in tagGroups" :key="`group-${group.id}`" class="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            class="h-4 w-4"
-            :checked="form.section.required_tag_group_ids.includes(group.id)"
-            @change="toggleRequiredTagGroup(group.id)"
+          <Checkbox
+            :model-value="form.section.required_tag_group_ids.includes(group.id)"
+            @update:model-value="(checked) => toggleRequiredTagGroup(group.id, checked)"
           />
           {{ group.name }}
         </label>
@@ -246,11 +271,9 @@ function submit() {
       <Label>允许标签（白名单，空=不限制）</Label>
       <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
         <label v-for="tag in tags" :key="`allowed-${tag.id}`" class="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            class="h-4 w-4"
-            :checked="form.section.allowed_tag_ids.includes(tag.id)"
-            @change="toggleAllowedTag(tag.id)"
+          <Checkbox
+            :model-value="form.section.allowed_tag_ids.includes(tag.id)"
+            @update:model-value="(checked) => toggleAllowedTag(tag.id, checked)"
           />
           {{ tag.name }}
         </label>
@@ -261,11 +284,9 @@ function submit() {
       <Label>默认标签（发帖时预填，Discourse/XenForo）</Label>
       <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
         <label v-for="tag in tags" :key="`default-${tag.id}`" class="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            class="h-4 w-4"
-            :checked="form.section.default_tag_ids.includes(tag.id)"
-            @change="toggleDefaultTag(tag.id)"
+          <Checkbox
+            :model-value="form.section.default_tag_ids.includes(tag.id)"
+            @update:model-value="(checked) => toggleDefaultTag(tag.id, checked)"
           />
           {{ tag.name }}
         </label>

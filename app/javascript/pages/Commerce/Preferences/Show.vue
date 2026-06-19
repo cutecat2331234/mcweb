@@ -4,6 +4,7 @@ import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -49,19 +50,11 @@ function submit() {
       <p class="mb-3 text-sm font-medium">{{ pref.label }}</p>
       <div class="flex flex-wrap gap-4">
         <label class="flex items-center gap-2 text-sm">
-          <input
-            v-model="form.preferences[pref.notification_type].email"
-            type="checkbox"
-            class="h-4 w-4"
-          />
+          <Checkbox v-model="form.preferences[pref.notification_type].email" />
           邮件
         </label>
         <label class="flex items-center gap-2 text-sm">
-          <input
-            v-model="form.preferences[pref.notification_type].in_app"
-            type="checkbox"
-            class="h-4 w-4"
-          />
+          <Checkbox v-model="form.preferences[pref.notification_type].in_app" />
           站内通知
         </label>
       </div>

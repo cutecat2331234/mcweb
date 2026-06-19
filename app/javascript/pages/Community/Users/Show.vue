@@ -3,7 +3,6 @@ import { ref } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -12,7 +11,9 @@ import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 import Button from '@/components/ui/Button.vue'
 import Textarea from '@/components/ui/Textarea.vue'
+import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import FileInput from '@/components/ui/FileInput.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import { routes } from '@/lib/routes'
@@ -125,7 +126,6 @@ const props = defineProps<{
 
 type ProfileEditPanel = 'title' | 'bio' | 'signature' | null
 const profileEditPanel = ref<ProfileEditPanel>(null)
-const avatarInput = ref<HTMLInputElement | null>(null)
 const bioForm = useForm({
   user: {
     bio: props.profile.bio || '',
@@ -170,18 +170,13 @@ function removeAvatar() {
   }, { preserveScroll: true })
 }
 
-function uploadAvatar(event: Event) {
-  const file = (event.target as HTMLInputElement).files?.[0]
-  if (!file) return
+function uploadAvatar(file: File) {
   const data = new FormData()
   data.append('_method', 'patch')
   data.append('user[forum_avatar]', file)
   router.post(`/app/forum/users/${props.profile.username}`, data, {
     forceFormData: true,
     preserveScroll: true,
-    onFinish: () => {
-      if (avatarInput.value) avatarInput.value.value = ''
-    },
   })
 }
 
@@ -204,115 +199,143 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
     你当前被禁言，暂时无法发帖。
   </p>
 
-  <div class="mb-6 flex items-center gap-4">
-    <img :src="profile.avatar_url" :alt="profile.username" class="h-16 w-16 rounded-full" />
-    <div class="min-w-0 flex-1">
-      <PageHeader
-        :title="profile.display_name || profile.username"
-        :subtitle="`${profile.forum_title ? profile.forum_title + ' · ' : ''}加入于 ${profile.member_since}${profile.last_seen_at ? ' · 最后在线 ' + profile.last_seen_at : ''}${profile.online ? ' · 在线' : ''} · ${profile.trust_name} (Lv.${profile.trust_level})`"
+  <section class="mb-8 overflow-hidden rounded-xl border bg-card">
+    <div class="flex flex-col gap-6 p-6 lg:flex-row lg:items-start">
+      <img
+        :src="profile.avatar_url"
+        :alt="profile.username"
+        class="mx-auto h-24 w-24 shrink-0 rounded-full ring-2 ring-border lg:mx-0"
       />
-      <div class="mt-2 flex gap-6 text-sm">
-        <span><strong>{{ profile.topics_count }}</strong> 主题</span>
-        <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
-        <span v-if="profile.orders_count"><strong>{{ profile.orders_count }}</strong> 订单</span>
-        <Link v-if="profile.followers_url" :href="profile.followers_url" class="hover:underline">
-          <strong>{{ profile.followers_count ?? 0 }}</strong> 粉丝
-        </Link>
-        <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
-        <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> 警告积分</span>
-        <span v-if="profile.store_credit_label">
-          商店余额 <strong>{{ profile.store_credit_label }}</strong>
-          <Link v-if="profile.store_wallet_url" :href="profile.store_wallet_url" class="ml-1 text-primary hover:underline">钱包</Link>
-        </span>
-      </div>
-      <div v-if="warnings?.length" class="mt-4 max-w-xl rounded-lg border p-4">
-        <h3 class="mb-2 text-sm font-semibold">社区警告记录</h3>
-        <ul class="space-y-2 text-sm">
-          <li v-for="(warning, index) in warnings" :key="index" class="flex justify-between gap-4 border-b pb-2 last:border-0 last:pb-0">
-            <span>{{ warning.reason }}</span>
-            <span class="shrink-0 text-muted-foreground">{{ warning.points }} 点 · {{ warning.issuer }} · {{ warning.created_at }}</span>
-          </li>
-        </ul>
-      </div>
-      <div v-if="profile.trust_progress" class="mt-3 max-w-md rounded-lg border p-3 text-sm">
-        <p class="font-medium">{{ profile.trust_progress.name }} (Lv.{{ profile.trust_progress.level }})</p>
-        <p v-if="profile.trust_progress.posts_needed > 0" class="mt-1 text-muted-foreground">
-          再发 {{ profile.trust_progress.posts_needed }} 帖可升至 {{ profile.trust_progress.next_level_name }}
-        </p>
-        <p v-else class="mt-1 text-muted-foreground">已达最高信任等级</p>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ profile.trust_progress.can_send_pm ? '可发私信' : 'Lv.1 后可发私信' }} ·
-          {{ profile.trust_progress.can_post_links ? '可发链接' : 'Lv.1 后可发链接' }}
-        </p>
-      </div>
-      <div v-if="badges.length" class="mt-3 flex flex-wrap gap-2">
-        <Link
-          v-for="badge in badges"
-          :key="badge.slug || badge.name"
-          :href="badge.url || routes.forumBadges"
-          class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs hover:bg-muted/50"
-          :style="{ borderColor: badge.color, color: badge.color }"
-          :title="badge.description ? `${badge.description} · ${badge.granted_at}` : badge.granted_at"
-        >
-          {{ badge.icon }} {{ badge.name }}
-          <span v-if="badge.granted_at" class="text-[10px] opacity-70">{{ badge.granted_at }}</span>
-        </Link>
-      </div>
-      <div class="mt-3 flex flex-wrap gap-2">
-        <Button v-if="profile.message_url" as-child size="sm">
-          <Link :href="profile.message_url">发私信</Link>
-        </Button>
-        <Button
-          v-if="profile.follow_url"
-          type="button"
-          size="sm"
-          :variant="profile.is_following ? 'outline' : 'default'"
-          @click="toggleFollow"
-        >
-          {{ profile.is_following ? '取消关注' : '关注' }}
-        </Button>
-        <Button
-          v-if="profile.block_url"
-          type="button"
-          size="sm"
-          :variant="profile.is_blocked ? 'outline' : 'destructive'"
-          @click="toggleBlock"
-        >
-          {{ profile.is_blocked ? '取消拉黑' : '拉黑用户' }}
-        </Button>
-        <Button
-          v-if="profile.ignore_url"
-          type="button"
-          size="sm"
-          :variant="profile.is_ignored ? 'outline' : 'secondary'"
-          @click="toggleIgnore"
-        >
-          {{ profile.is_ignored ? '取消忽略' : '忽略用户' }}
-        </Button>
-        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('title')">
-          {{ profileEditPanel === 'title' ? '收起头衔' : '编辑头衔' }}
-        </Button>
-        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('bio')">
-          {{ profileEditPanel === 'bio' ? '收起简介' : '编辑简介' }}
-        </Button>
-        <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('signature')">
-          {{ profileEditPanel === 'signature' ? '收起签名' : '编辑签名' }}
-        </Button>
-        <template v-if="profile.can_edit">
-          <input ref="avatarInput" type="file" accept="image/*" class="hidden" @change="uploadAvatar" />
-          <Button type="button" size="sm" variant="outline" @click="avatarInput?.click()">更换头像</Button>
-          <Button type="button" size="sm" variant="outline" @click="removeAvatar">恢复默认头像</Button>
-        </template>
+
+      <div class="min-w-0 flex-1 space-y-4">
+        <div class="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div class="min-w-0 space-y-2 text-center lg:text-left">
+            <div class="flex flex-wrap items-center justify-center gap-2 lg:justify-start">
+              <h1 class="text-2xl font-bold tracking-tight sm:text-3xl">
+                {{ profile.display_name || profile.username }}
+              </h1>
+              <span
+                v-if="profile.forum_title"
+                class="rounded-full border px-2 py-0.5 text-xs font-medium"
+                :style="profile.forum_flair_color_hex ? { borderColor: profile.forum_flair_color_hex, color: profile.forum_flair_color_hex } : undefined"
+              >
+                {{ profile.forum_title }}
+              </span>
+            </div>
+            <p class="text-sm text-muted-foreground">
+              @{{ profile.username }} · 加入于 {{ profile.member_since }}
+              <span v-if="profile.last_seen_at"> · 最后在线 {{ profile.last_seen_at }}</span>
+              <span v-if="profile.online"> · 在线</span>
+              · {{ profile.trust_name }} (Lv.{{ profile.trust_level }})
+            </p>
+            <div class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm lg:justify-start">
+              <span><strong>{{ profile.topics_count }}</strong> 主题</span>
+              <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
+              <span v-if="profile.orders_count"><strong>{{ profile.orders_count }}</strong> 订单</span>
+              <Link v-if="profile.followers_url" :href="profile.followers_url" class="hover:underline">
+                <strong>{{ profile.followers_count ?? 0 }}</strong> 粉丝
+              </Link>
+              <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
+              <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> 警告积分</span>
+              <span v-if="profile.store_credit_label">
+                商店余额 <strong>{{ profile.store_credit_label }}</strong>
+                <Link v-if="profile.store_wallet_url" :href="profile.store_wallet_url" class="ml-1 text-primary hover:underline">钱包</Link>
+              </span>
+            </div>
+          </div>
+
+          <div class="flex flex-wrap justify-center gap-2 lg:justify-end">
+            <Button v-if="profile.message_url" as-child size="sm">
+              <Link :href="profile.message_url">发私信</Link>
+            </Button>
+            <Button
+              v-if="profile.follow_url"
+              type="button"
+              size="sm"
+              :variant="profile.is_following ? 'outline' : 'default'"
+              @click="toggleFollow"
+            >
+              {{ profile.is_following ? '取消关注' : '关注' }}
+            </Button>
+            <Button
+              v-if="profile.block_url"
+              type="button"
+              size="sm"
+              :variant="profile.is_blocked ? 'outline' : 'destructive'"
+              @click="toggleBlock"
+            >
+              {{ profile.is_blocked ? '取消拉黑' : '拉黑用户' }}
+            </Button>
+            <Button
+              v-if="profile.ignore_url"
+              type="button"
+              size="sm"
+              :variant="profile.is_ignored ? 'outline' : 'secondary'"
+              @click="toggleIgnore"
+            >
+              {{ profile.is_ignored ? '取消忽略' : '忽略用户' }}
+            </Button>
+            <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('title')">
+              {{ profileEditPanel === 'title' ? '收起头衔' : '编辑头衔' }}
+            </Button>
+            <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('bio')">
+              {{ profileEditPanel === 'bio' ? '收起简介' : '编辑简介' }}
+            </Button>
+            <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('signature')">
+              {{ profileEditPanel === 'signature' ? '收起签名' : '编辑签名' }}
+            </Button>
+            <template v-if="profile.can_edit">
+              <FileInput accept="image/*" button-label="更换头像" @change="uploadAvatar" />
+              <Button type="button" size="sm" variant="outline" @click="removeAvatar">恢复默认头像</Button>
+            </template>
+          </div>
+        </div>
+
+        <div v-if="warnings?.length" class="max-w-xl rounded-lg border p-4">
+          <h3 class="mb-2 text-sm font-semibold">社区警告记录</h3>
+          <ul class="space-y-2 text-sm">
+            <li v-for="(warning, index) in warnings" :key="index" class="flex justify-between gap-4 border-b pb-2 last:border-0 last:pb-0">
+              <span>{{ warning.reason }}</span>
+              <span class="shrink-0 text-muted-foreground">{{ warning.points }} 点 · {{ warning.issuer }} · {{ warning.created_at }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="profile.trust_progress" class="max-w-md rounded-lg border p-3 text-sm">
+          <p class="font-medium">{{ profile.trust_progress.name }} (Lv.{{ profile.trust_progress.level }})</p>
+          <p v-if="profile.trust_progress.posts_needed > 0" class="mt-1 text-muted-foreground">
+            再发 {{ profile.trust_progress.posts_needed }} 帖可升至 {{ profile.trust_progress.next_level_name }}
+          </p>
+          <p v-else class="mt-1 text-muted-foreground">已达最高信任等级</p>
+          <p class="mt-1 text-xs text-muted-foreground">
+            {{ profile.trust_progress.can_send_pm ? '可发私信' : 'Lv.1 后可发私信' }} ·
+            {{ profile.trust_progress.can_post_links ? '可发链接' : 'Lv.1 后可发链接' }}
+          </p>
+        </div>
+
+        <div v-if="badges.length" class="flex flex-wrap justify-center gap-2 lg:justify-start">
+          <Link
+            v-for="badge in badges"
+            :key="badge.slug || badge.name"
+            :href="badge.url || routes.forumBadges"
+            class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs hover:bg-muted/50"
+            :style="{ borderColor: badge.color, color: badge.color }"
+            :title="badge.description ? `${badge.description} · ${badge.granted_at}` : badge.granted_at"
+          >
+            {{ badge.icon }} {{ badge.name }}
+            <span v-if="badge.granted_at" class="text-[10px] opacity-70">{{ badge.granted_at }}</span>
+          </Link>
+        </div>
       </div>
     </div>
-  </div>
+  </section>
 
   <form v-if="profileEditPanel === 'title'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
     <Label for="forum_title">论坛头衔</Label>
-    <input id="forum_title" v-model="bioForm.user.forum_title" class="h-9 w-full rounded-md border px-2 text-sm" placeholder="如：资深玩家" />
+    <Input id="forum_title" v-model="bioForm.user.forum_title" placeholder="如：资深玩家" />
     <Label for="forum_flair_color_hex">头衔颜色（Hex，可选）</Label>
-    <input id="forum_flair_color_hex" v-model="bioForm.user.forum_flair_color_hex" class="h-9 w-full rounded-md border px-2 text-sm" placeholder="#6366f1" />
-    <div class="flex gap-2">
+    <Input id="forum_flair_color_hex" v-model="bioForm.user.forum_flair_color_hex" placeholder="#6366f1" />
+    <div class="flex flex-wrap justify-end gap-2 sm:justify-start">
       <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
       <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">取消</Button>
     </div>
@@ -344,7 +367,7 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
     </div>
   </form>
 
-  <div class="mb-4 flex gap-2">
+  <div class="mb-4 flex flex-wrap justify-between gap-2">
     <Button :variant="activeTab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">
       主题 ({{ profile.topics_count }})
     </Button>

@@ -8,6 +8,7 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
+import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -35,6 +36,25 @@ const props = defineProps<{
 }>()
 
 const searchQuery = ref(props.query)
+
+const sortOptions = [
+  { value: 'active', label: '最近活跃' },
+  { value: 'online', label: '当前在线' },
+  { value: 'joined', label: '最新加入' },
+  { value: 'posts', label: '发帖最多' },
+  { value: 'likes', label: '获赞最多' },
+  { value: 'reviews', label: '评价最多' },
+  { value: 'purchases', label: '购买最多' },
+]
+
+const trustLevelOptions = [
+  { value: '', label: '全部信任等级' },
+  { value: '0', label: 'TL0 新成员' },
+  { value: '1', label: 'TL1 基本用户' },
+  { value: '2', label: 'TL2 成员' },
+  { value: '3', label: 'TL3 常客' },
+  { value: '4', label: 'TL4 领导者' },
+]
 
 function search() {
   router.get(routes.forumMembers, {
@@ -74,23 +94,8 @@ function changeTrustLevel(value: string) {
       <Input v-model="searchQuery" placeholder="搜索用户名…" class="max-w-xs" />
       <Button type="submit" variant="outline">搜索</Button>
     </form>
-    <select :value="sort" class="h-9 rounded-md border px-2 text-sm" @change="changeSort(($event.target as HTMLSelectElement).value)">
-      <option value="active">最近活跃</option>
-      <option value="online">当前在线</option>
-      <option value="joined">最新加入</option>
-      <option value="posts">发帖最多</option>
-      <option value="likes">获赞最多</option>
-      <option value="reviews">评价最多</option>
-      <option value="purchases">购买最多</option>
-    </select>
-    <select :value="trustLevel || ''" class="h-9 rounded-md border px-2 text-sm" @change="changeTrustLevel(($event.target as HTMLSelectElement).value)">
-      <option value="">全部信任等级</option>
-      <option value="0">TL0 新成员</option>
-      <option value="1">TL1 基本用户</option>
-      <option value="2">TL2 成员</option>
-      <option value="3">TL3 常客</option>
-      <option value="4">TL4 领导者</option>
-    </select>
+    <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
+    <Select :model-value="trustLevel || ''" :options="trustLevelOptions" size="sm" @update:model-value="changeTrustLevel" />
   </div>
 
   <div v-if="members.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

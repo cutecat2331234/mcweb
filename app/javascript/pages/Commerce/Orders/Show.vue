@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -14,6 +14,7 @@ import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
+import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -123,6 +124,11 @@ const payForm = useForm({
   order_id: props.order.id,
   checkout: { provider: props.order.default_provider || 'fake' },
 })
+
+const paymentProviderOptions = computed(() =>
+  props.order.payment_providers.map((provider) => ({ value: provider.value, label: provider.label })),
+)
+
 const cancelForm = useForm({ reason: '' })
 const refundForm = useForm({ reason: '', amount_cents: 0 as number | '' })
 
@@ -392,11 +398,7 @@ function refreshDownload(url: string) {
 
   <div class="flex flex-wrap gap-3">
     <form v-if="order.can_pay && order.payment_providers.length > 1" class="flex items-center gap-2">
-      <select v-model="payForm.checkout.provider" class="h-9 rounded-md border px-2 text-sm">
-        <option v-for="provider in order.payment_providers" :key="provider.value" :value="provider.value">
-          {{ provider.label }}
-        </option>
-      </select>
+      <Select v-model="payForm.checkout.provider" :options="paymentProviderOptions" size="sm" />
       <Button type="button" @click="payForm.post(routes.storeCheckout)">支付</Button>
     </form>
     <Button v-else-if="order.can_confirm_free" type="button" @click="payForm.post(routes.storeCheckout)">确认订单</Button>

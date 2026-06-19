@@ -12,7 +12,7 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
       session: { email: @user.email, password: "password123", remember_me: "0" }
     }
 
-    assert_redirected_to root_path
+    assert_redirected_to forum_sections_path
     follow_redirect!
     assert_response :success
     assert session[:session_token].present? || cookies[:session_token].present?,
@@ -34,6 +34,8 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     }
 
     assert_response :unprocessable_entity
+    assert_includes response.body, "login_error"
+    assert_includes response.body, "邮箱或密码错误"
   end
 
   test "sign in without csrf token is rejected when forgery protection enabled" do
@@ -58,7 +60,7 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
 
     post identity_session_path, params: { session: { email: @user.email, password: "password123" } }
 
-    assert_redirected_to root_path
+    assert_redirected_to forum_sections_path
   end
 
   test "destroy session signs user out" do

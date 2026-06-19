@@ -8,6 +8,8 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -49,6 +51,15 @@ const props = defineProps<{
 const q = ref(props.query)
 const priceMin = ref(props.priceMin ?? '')
 const priceMax = ref(props.priceMax ?? '')
+
+const categorySortOptions = [
+  { value: 'newest', label: '最新上架' },
+  { value: 'popular', label: '最热' },
+  { value: 'rating', label: '评分最高' },
+  { value: 'price_asc', label: '价格从低到高' },
+  { value: 'price_desc', label: '价格从高到低' },
+  { value: 'discount_desc', label: '折扣最大' },
+]
 
 const hasActiveFilters = !!(
   props.query || props.filters.in_stock || props.filters.on_sale ||
@@ -130,33 +141,23 @@ function toggleWishlist(url: string) {
 
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
     <Input v-model="q" placeholder="搜索本分类商品…" class="max-w-xs" />
-    <select
-      :value="filters.sort || 'newest'"
-      class="h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-      @change="applySort(($event.target as HTMLSelectElement).value)"
-    >
-      <option value="newest">最新上架</option>
-      <option value="popular">最热</option>
-      <option value="rating">评分最高</option>
-      <option value="price_asc">价格从低到高</option>
-      <option value="price_desc">价格从高到低</option>
-      <option value="discount_desc">折扣最大</option>
-    </select>
+    <Select
+      :model-value="filters.sort || 'newest'"
+      :options="categorySortOptions"
+      size="sm"
+      @update:model-value="applySort"
+    />
     <label class="flex items-center gap-2 text-sm">
-      <input
-        type="checkbox"
-        class="rounded border"
-        :checked="filters.in_stock"
-        @change="applyFilter('in_stock', !filters.in_stock)"
+      <Checkbox
+        :model-value="filters.in_stock"
+        @update:model-value="(checked) => applyFilter('in_stock', checked)"
       />
       仅看有货
     </label>
     <label class="flex items-center gap-2 text-sm">
-      <input
-        type="checkbox"
-        class="rounded border"
-        :checked="filters.on_sale"
-        @change="applyFilter('on_sale', !filters.on_sale)"
+      <Checkbox
+        :model-value="filters.on_sale"
+        @update:model-value="(checked) => applyFilter('on_sale', checked)"
       />
       仅促销
     </label>

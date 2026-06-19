@@ -35,7 +35,7 @@ class Identity::DeletedUserAuthTest < ActiveSupport::TestCase
     )
 
     assert result.failure?
-    assert_match(/deleted/i, result.error)
+    assert_match(/删除/, result.error)
   end
 end
 

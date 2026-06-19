@@ -6,10 +6,27 @@ module ServiceResponder
   private
 
   def service_error_message(result)
-    return result.error if result.error.present?
-    return nil if result.errors.blank?
+    raw = if result.error.present?
+      result.error
+    elsif result.errors.blank?
+      nil
+    else
+      result.errors.flat_map { |_, msgs| Array(msgs) }.join("；")
+    end
 
-    result.errors.flat_map { |_, msgs| Array(msgs) }.join("；")
+    ServiceErrorTranslator.translate(raw)
+  end
+
+  def inertia_form_errors(result, prefix: nil)
+    if result.error.present?
+      return { base: ServiceErrorTranslator.translate(result.error) }
+    end
+    return {} if result.errors.blank?
+
+    result.errors.each_with_object({}) do |(key, msgs), hash|
+      path = prefix ? "#{prefix}.#{key}" : key.to_s
+      hash[path] = ServiceErrorTranslator.translate(Array(msgs).join("；"))
+    end
   end
 
   def flash_service_errors(result)

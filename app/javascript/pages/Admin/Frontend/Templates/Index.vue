@@ -5,6 +5,8 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
+import FileInput from '@/components/ui/FileInput.vue'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -16,6 +18,7 @@ interface TemplateItem {
   scopes: string[]
   status: string
   checksum: string
+  builtin?: boolean
   error_message?: string | null
   update_url: string
   preview_website_url?: string | null
@@ -33,14 +36,11 @@ const props = defineProps<{
 
 const uploading = ref(false)
 
-function onFileChange(event: Event) {
-  const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
+function onFileChange(file: File) {
   uploading.value = true
   router.post(props.uploadUrl, { archive: file }, {
     forceFormData: true,
-    onFinish: () => { uploading.value = false; input.value = '' },
+    onFinish: () => { uploading.value = false },
   })
 }
 
@@ -52,8 +52,15 @@ function deactivate(scope: 'website' | 'portal', template: TemplateItem) {
   router.patch(template.update_url, { scope, template_key: null })
 }
 
-function removeTemplate(template: TemplateItem) {
-  if (!window.confirm(`确定删除模板「${template.name}」？`)) return
+async function removeTemplate(template: TemplateItem) {
+  if (template.builtin) return
+  const ok = await confirm({
+    title: '删除模板',
+    message: `确定删除模板「${template.name}」？此操作不可恢复。`,
+    confirmLabel: '删除',
+    variant: 'destructive',
+  })
+  if (!ok) return
   router.delete(template.delete_url)
 }
 
@@ -78,12 +85,12 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
       或下载
       <a :href="starterDownloadUrl" class="underline">示例模板包</a>。
     </p>
-    <label class="inline-flex cursor-pointer items-center gap-2">
-      <Button as-child variant="outline" size="sm" :disabled="uploading">
-        <span>{{ uploading ? '上传中…' : '选择 ZIP 文件' }}</span>
-      </Button>
-      <input type="file" accept=".zip,application/zip" class="hidden" :disabled="uploading" @change="onFileChange">
-    </label>
+    <FileInput
+      accept=".zip,application/zip"
+      :disabled="uploading"
+      :button-label="uploading ? '上传中…' : '选择 ZIP 文件'"
+      @change="onFileChange"
+    />
   </div>
 
   <div class="space-y-4">
@@ -93,9 +100,10 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
       class="rounded-lg border p-4"
     >
       <div class="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <h3 class="font-medium">{{ template.name }}</h3>
+            <Badge v-if="template.builtin" variant="secondary">内置</Badge>
             <Badge variant="outline">{{ template.key }}</Badge>
             <Badge variant="outline">v{{ template.version }}</Badge>
             <Badge :variant="template.status === 'installed' ? 'default' : 'outline'">{{ template.status }}</Badge>
@@ -106,10 +114,18 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
           </p>
           <p v-if="template.error_message" class="mt-1 text-sm text-destructive">{{ template.error_message }}</p>
         </div>
-        <Button type="button" variant="outline" size="sm" @click="removeTemplate(template)">删除</Button>
+        <Button
+          v-if="!template.builtin"
+          type="button"
+          variant="outline"
+          size="sm"
+          @click="removeTemplate(template)"
+        >
+          删除
+        </Button>
       </div>
 
-      <div class="mt-4 flex flex-wrap gap-2">
+      <div class="mt-4 flex flex-wrap items-center justify-end gap-2 sm:justify-start">
         <template v-if="template.scopes.includes('website')">
           <Button
             v-if="!isActive(template, 'website')"
@@ -120,7 +136,7 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
             激活官网
           </Button>
           <Button
-            v-else
+            v-else-if="!template.builtin"
             type="button"
             size="sm"
             variant="secondary"
@@ -128,6 +144,7 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
           >
             停用官网
           </Button>
+          <Badge v-else-if="isActive(template, 'website')" variant="secondary">内置默认</Badge>
           <Button v-if="template.preview_website_url" as-child size="sm" variant="outline">
             <a :href="template.preview_website_url" target="_blank" rel="noopener">预览官网</a>
           </Button>
@@ -143,7 +160,7 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
             激活前台
           </Button>
           <Button
-            v-else
+            v-else-if="!template.builtin"
             type="button"
             size="sm"
             variant="secondary"
@@ -151,6 +168,7 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
           >
             停用前台
           </Button>
+          <Badge v-else-if="isActive(template, 'portal')" variant="secondary">内置默认</Badge>
           <Button v-if="template.preview_portal_url" as-child size="sm" variant="outline">
             <a :href="template.preview_portal_url" target="_blank" rel="noopener">预览前台</a>
           </Button>
@@ -158,12 +176,12 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
       </div>
     </div>
 
-    <p v-if="!templates.length" class="text-sm text-muted-foreground">尚未安装任何前台模板。</p>
+    <p v-if="!templates.length" class="text-sm text-muted-foreground">正在加载内置模板…</p>
   </div>
 
   <p class="mt-6 text-xs text-muted-foreground">
     当前激活：
-    官网 <code>{{ activeWebsiteTemplate || '默认' }}</code>，
-    前台 <code>{{ activePortalTemplate || '默认' }}</code>
+    官网 <code>{{ activeWebsiteTemplate || '内置默认' }}</code>，
+    前台 <code>{{ activePortalTemplate || '内置默认' }}</code>
   </p>
 </template>

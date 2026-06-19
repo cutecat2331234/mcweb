@@ -119,7 +119,7 @@ class Round75CategoryNewestSortTest < ActionDispatch::IntegrationTest
 
   test "category vue uses newest sort option" do
     content = File.read(Rails.root.join("app/javascript/pages/Commerce/Categories/Show.vue"))
-    assert_includes content, 'value="newest"'
+    assert_includes content, "value: 'newest'"
     assert_includes content, "newest: '最新'"
   end
 end

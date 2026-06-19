@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="<%= I18n.locale %>" data-controller="theme">
+  <head>
+    <title><%= content_for(:title) || "McWeb Setup" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+    <%= render "shared/tech_fingerprint" %>
+    <%= yield :head %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+
+    <%= stylesheet_link_tag :app, "data-turbo-track": "reload" %>
+    <%= javascript_importmap_tags %>
+    <script>
+      (function () {
+        var key = "mc-theme";
+        var stored = localStorage.getItem(key);
+        var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+        if (theme === "dark") document.documentElement.classList.add("dark");
+      })();
+    </script>
+  </head>
+
+  <body class="min-h-dvh" style="background: var(--mc-bg); color: var(--mc-fg);">
+    <main class="mx-auto flex min-h-dvh w-full max-w-lg flex-col justify-center px-4 py-10 sm:px-6">
+      <div class="mb-8 text-center">
+        <p class="text-lg font-semibold tracking-tight">McWeb</p>
+        <p class="mt-1 text-sm" style="color: var(--mc-fg-muted);">首次安装向导</p>
+      </div>
+      <%= render "shared/flash" %>
+      <%= yield %>
+    </main>
+  </body>
+</html>

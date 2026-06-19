@@ -218,7 +218,7 @@ module Admin
               Commerce::NotifyOrderStatusChange.call(order: @order, from_status: previous_status)
             end
           end
-          redirect_to admin_store_order_path(@order), notice: "Order updated."
+          redirect_to admin_store_order_path(@order), notice: "订单已更新。"
         else
           redirect_to admin_store_order_path(@order), alert: @order.errors.full_messages.to_sentence
         end
@@ -298,23 +298,23 @@ module Admin
       end
 
       def reject_refund
-        return redirect_to admin_store_order_path(@order), alert: "Not authorized." unless current_user.permission?("store.orders.refund")
+        return redirect_to admin_store_order_path(@order), alert: "无权执行此操作。" unless current_user.permission?("store.orders.refund")
 
         refund = @order.refunds.pending.find(params[:refund_id])
         result = Commerce::RejectRefund.call(refund: refund, actor: current_user, reason: params[:reason])
 
         if result.success?
-          redirect_to admin_store_order_path(@order), notice: "Refund rejected."
+          redirect_to admin_store_order_path(@order), notice: "退款申请已拒绝。"
         else
           redirect_to admin_store_order_path(@order), alert: service_error_message(result)
         end
       end
 
       def process_refund
-        return redirect_to admin_store_order_path(@order), alert: "Not authorized." unless current_user.permission?("store.orders.refund")
+        return redirect_to admin_store_order_path(@order), alert: "无权执行此操作。" unless current_user.permission?("store.orders.refund")
 
         payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
-        return redirect_to admin_store_order_path(@order), alert: "No refundable payment." unless payment
+        return redirect_to admin_store_order_path(@order), alert: "没有可退款的支付记录。" unless payment
 
         result = Commerce::ProcessRefund.call(
           order: @order,
@@ -326,7 +326,7 @@ module Admin
         )
 
         if result.success?
-          redirect_to admin_store_order_path(@order), notice: "Refund processed."
+          redirect_to admin_store_order_path(@order), notice: "退款已处理。"
         else
           redirect_to admin_store_order_path(@order), alert: service_error_message(result)
         end

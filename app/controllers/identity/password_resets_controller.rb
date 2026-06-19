@@ -2,7 +2,6 @@
 
 module Identity
   class PasswordResetsController < ApplicationController
-    skip_installation_guard
     before_action :redirect_if_logged_in, only: %i[new create]
 
     def new
@@ -13,11 +12,11 @@ module Identity
       result = Identity::ResetPassword.call(email: password_reset_params[:email])
 
       if result.success?
-        redirect_to identity_sign_in_path, notice: "If the email exists, a reset link has been sent."
+        redirect_to identity_sign_in_path, notice: "若该邮箱已注册，我们已发送重置链接。"
       else
         render inertia: "Identity/PasswordResets/New",
                status: :unprocessable_entity,
-               errors: { base: service_error_message(result) }
+               props: { form_error: service_error_message(result) }
       end
     end
 
@@ -29,9 +28,8 @@ module Identity
       p = password_reset_params
       if p[:password].present? && p[:password] != p[:password_confirmation]
         return render inertia: "Identity/PasswordResets/Edit",
-                      props: { token: params[:token] },
-                      status: :unprocessable_entity,
-                      errors: { base: "两次输入的密码不一致。" }
+                      props: { token: params[:token], form_errors: { base: "两次输入的密码不一致。" } },
+                      status: :unprocessable_entity
       end
 
       result = Identity::ResetPassword.call(
@@ -40,12 +38,11 @@ module Identity
       )
 
       if result.success?
-        redirect_to identity_sign_in_path, notice: "Password has been reset. You can now sign in."
+        redirect_to identity_sign_in_path, notice: "密码已重置，现在可以登录了。"
       else
         render inertia: "Identity/PasswordResets/Edit",
-               props: { token: params[:token] },
-               status: :unprocessable_entity,
-               errors: { base: service_error_message(result) }
+               props: { token: params[:token], form_errors: inertia_form_errors(result) },
+               status: :unprocessable_entity
       end
     end
 

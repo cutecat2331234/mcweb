@@ -18,6 +18,10 @@ import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/compone
 import { routes } from '@/lib/routes'
 import { readCsrfToken } from '@/lib/csrf'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
+import { confirm } from '@/lib/useConfirm'
+import { prompt } from '@/lib/usePrompt'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: PortalLayout })
 
@@ -233,6 +237,32 @@ function missingRequiredGroups(tags: string, groups?: Array<{ required?: boolean
 }
 
 const editTagsReady = computed(() => missingRequiredGroups(editTags.value, props.topic.tag_groups).length === 0)
+
+const prefixOptions = computed(() => [
+  { value: '', label: '无前缀' },
+  ...(props.topic.section_prefixes || []).map((prefix) => ({ value: prefix, label: prefix })),
+])
+
+const sectionMoveOptions = computed(() => [
+  { value: '', label: '选择分区…' },
+  ...props.sections.map((section) => ({
+    value: section.slug,
+    label: `${section.category ? `${section.category} / ` : ''}${section.name}`,
+  })),
+])
+
+const sectionSplitOptions = computed(() => [
+  { value: '', label: '当前分区' },
+  ...props.sections.map((section) => ({
+    value: section.slug,
+    label: `${section.category ? `${section.category} / ` : ''}${section.name}`,
+  })),
+])
+
+const postSortOptions = [
+  { value: 'oldest', label: '最早优先' },
+  { value: 'recent', label: '最新优先' },
+]
 
 function containsLink(text: string) {
   return /https?:\/\/|www\./i.test(text)
@@ -545,8 +575,14 @@ function saveEdit(post: PostItem) {
   })
 }
 
-function deletePost(post: PostItem) {
-  if (!confirm('确定删除此帖子？')) return
+async function deletePost(post: PostItem) {
+  const ok = await confirm({
+    title: '删除帖子',
+    message: '确定删除此帖子？',
+    confirmLabel: '删除',
+    variant: 'destructive',
+  })
+  if (!ok) return
   router.delete(post.update_url, { preserveScroll: true })
 }
 
@@ -629,7 +665,7 @@ function removeBookmark() {
   router.post(`${routes.app}/forum/topics/${props.topic.id}/bookmark`, {}, { preserveScroll: true })
 }
 
-function moderate(action: string) {
+async function moderate(action: string) {
   if (action === 'assign') {
     activePanel.value = 'assign'
     assignQuery.value = props.topic.assigned_username || ''
@@ -637,7 +673,11 @@ function moderate(action: string) {
     return
   }
   if (action === 'lock' && !props.topic.locked) {
-    const reason = window.prompt('锁定原因（可选）', lockReasonInput.value || '')
+    const reason = await prompt({
+      title: '锁定主题',
+      message: '锁定原因（可选）',
+      defaultValue: lockReasonInput.value || '',
+    })
     if (reason === null) return
     lockReasonInput.value = reason
     router.post(`/app/forum/topics/${props.topic.id}/moderate`, { action_type: action, lock_reason: reason || undefined }, { preserveScroll: true })
@@ -692,8 +732,11 @@ function moderatePost(post: PostItem, action: string, extra: Record<string, stri
   router.post(`/app/forum/posts/${post.id}/moderate`, { action_type: action, ...extra }, { preserveScroll: true })
 }
 
-function changePostAuthor(post: PostItem) {
-  const username = window.prompt('输入新作者用户名（Discourse Change Owner）')
+async function changePostAuthor(post: PostItem) {
+  const username = await prompt({
+    title: '更改作者',
+    message: '输入新作者用户名（Discourse Change Owner）',
+  })
   if (!username?.trim()) return
   moderatePost(post, 'change_author', { new_username: username.trim() })
 }
@@ -710,15 +753,31 @@ function moveTopic() {
   router.post(`/app/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
 }
 
-function mergeTopic() {
+async function mergeTopic() {
   if (!mergeTargetId.value.trim()) return
-  if (!confirm('确定将此主题合并到目标主题？源主题将被隐藏。')) return
+  const ok = await confirm({
+    title: '合并主题',
+    message: '确定将此主题合并到目标主题？源主题将被隐藏。',
+    confirmLabel: '合并',
+    variant: 'destructive',
+  })
+  if (!ok) return
   router.post(`/app/forum/topics/${props.topic.id}/merge`, { target_topic_id: mergeTargetId.value.trim() })
 }
 
-function splitPost(post: PostItem) {
-  if (!confirm(`确定从 #${post.floor_number} 起拆分为新主题？`)) return
-  const title = window.prompt('新主题标题（留空使用默认）', '')
+async function splitPost(post: PostItem) {
+  const ok = await confirm({
+    title: '拆分主题',
+    message: `确定从 #${post.floor_number} 起拆分为新主题？`,
+    confirmLabel: '拆分',
+  })
+  if (!ok) return
+  const title = await prompt({
+    title: '拆分主题',
+    message: '新主题标题（留空使用默认）',
+    defaultValue: '',
+  })
+  if (title === null) return
   router.post(`/app/forum/topics/${props.topic.id}/split`, {
     post_id: post.id,
     title: title || undefined,
@@ -726,13 +785,23 @@ function splitPost(post: PostItem) {
   })
 }
 
-function forkTopic(post: PostItem) {
+async function forkTopic(post: PostItem) {
   if (!post.fork_topic_url) return
-  const title = window.prompt('新主题标题（留空使用默认）', `回复：${props.topic.title}`)
-  const body = window.prompt('补充说明（可选）', '') || undefined
+  const title = await prompt({
+    title: '分叉主题',
+    message: '新主题标题（留空使用默认）',
+    defaultValue: `回复：${props.topic.title}`,
+  })
+  if (title === null) return
+  const body = await prompt({
+    title: '分叉主题',
+    message: '补充说明（可选）',
+    defaultValue: '',
+  })
+  if (body === null) return
   router.post(post.fork_topic_url, {
     title: title || undefined,
-    body,
+    body: body || undefined,
   })
 }
 
@@ -838,15 +907,27 @@ function submitMultiPoll() {
   router.post(props.poll.vote_url, { option_indices: selectedPollOptions.value }, { preserveScroll: true })
 }
 
-function closePoll() {
+async function closePoll() {
   if (!props.poll?.close_url) return
-  if (!confirm('确定关闭此投票？')) return
+  const ok = await confirm({
+    title: '关闭投票',
+    message: '确定关闭此投票？',
+    confirmLabel: '关闭',
+    variant: 'destructive',
+  })
+  if (!ok) return
   router.post(props.poll.close_url, {}, { preserveScroll: true })
 }
 
-function revokePoll() {
+async function revokePoll() {
   if (!props.poll?.revoke_url) return
-  if (!confirm('确定撤销您的投票？')) return
+  const ok = await confirm({
+    title: '撤销投票',
+    message: '确定撤销您的投票？',
+    confirmLabel: '撤销',
+    variant: 'destructive',
+  })
+  if (!ok) return
   router.post(props.poll.revoke_url, {}, { preserveScroll: true })
 }
 
@@ -862,9 +943,14 @@ function changePostSort() {
   router.get(routes.forumTopic(props.topic.id), { q: topicSearch.value || undefined, post_sort: postSort.value !== 'oldest' ? postSort.value : undefined }, { preserveScroll: true })
 }
 
-function closeOwnTopic() {
-  const reason = window.prompt('关闭原因（可选）', '') || undefined
-  router.post(`/app/forum/topics/${props.topic.id}/close_own`, { lock_reason: reason }, { preserveScroll: true })
+async function closeOwnTopic() {
+  const reason = await prompt({
+    title: '关闭主题',
+    message: '关闭原因（可选）',
+    defaultValue: '',
+  })
+  if (reason === null) return
+  router.post(`/app/forum/topics/${props.topic.id}/close_own`, { lock_reason: reason || undefined }, { preserveScroll: true })
 }
 
 function reopenOwnTopic() {
@@ -1098,10 +1184,7 @@ async function copyPollShareLink() {
     <Input v-model="editTitle" placeholder="主题标题" />
     <div v-if="topic.section_prefixes?.length" class="space-y-1">
       <label class="text-sm">前缀</label>
-      <select v-model="editPrefix" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option value="">无前缀</option>
-        <option v-for="p in topic.section_prefixes" :key="p" :value="p">{{ p }}</option>
-      </select>
+      <Select v-model="editPrefix" :options="prefixOptions" block />
     </div>
     <TagGroupPicker ref="editTagPickerRef" v-model="editTags" :tag-groups="topic.tag_groups" :max-tags="5" />
     <p v-if="editTagError" class="text-sm text-destructive">{{ editTagError }}</p>
@@ -1147,7 +1230,7 @@ async function copyPollShareLink() {
   <div v-if="activePanel === 'edit-bookmark' && topicBookmark" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
     <p class="text-sm font-medium">书签备注与提醒</p>
     <textarea v-model="bookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="备注" />
-    <input v-model="bookmarkRemindAt" type="datetime-local" class="h-9 w-full rounded-md border px-2 text-sm" />
+    <Input v-model="bookmarkRemindAt" type="datetime-local" class="w-full" />
     <div class="flex gap-2">
       <Button type="button" size="sm" @click="saveBookmark">保存</Button>
       <Button type="button" size="sm" variant="outline" @click="closePanel">取消</Button>
@@ -1195,10 +1278,9 @@ async function copyPollShareLink() {
     <div v-else-if="poll.open && loggedIn && poll.options?.length" class="space-y-2">
       <template v-if="poll.multiple_choice">
         <label v-for="option in poll.options" :key="option.index" class="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            :checked="selectedPollOptions.includes(option.index)"
-            @change="togglePollOption(option.index)"
+          <Checkbox
+            :model-value="selectedPollOptions.includes(option.index)"
+            @update:model-value="() => togglePollOption(option.index)"
           />
           {{ option.label }}
         </label>
@@ -1267,21 +1349,11 @@ async function copyPollShareLink() {
     <div v-show="moderateToolsOpen" class="space-y-4 border-t p-4">
   <div v-if="topic.can_move && sections.length" class="flex flex-wrap items-center gap-2">
     <label class="text-sm text-muted-foreground">移动到分区：</label>
-    <select v-model="moveSectionSlug" class="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">选择分区…</option>
-      <option v-for="section in sections" :key="section.slug" :value="section.slug">
-        {{ section.category ? `${section.category} / ` : '' }}{{ section.name }}
-      </option>
-    </select>
+    <Select v-model="moveSectionSlug" :options="sectionMoveOptions" size="sm" class="min-w-[12rem]" />
     <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">移动</Button>
     <template v-if="topic.can_move">
       <label class="text-sm text-muted-foreground">拆分到分区：</label>
-      <select v-model="splitSectionSlug" class="h-8 rounded-md border border-input bg-transparent px-2 text-sm">
-        <option value="">当前分区</option>
-        <option v-for="section in sections" :key="section.slug" :value="section.slug">
-          {{ section.category ? `${section.category} / ` : '' }}{{ section.name }}
-        </option>
-      </select>
+      <Select v-model="splitSectionSlug" :options="sectionSplitOptions" size="sm" class="min-w-[12rem]" />
       <Input v-model="mergeTargetId" placeholder="合并到主题 ID" class="h-8 w-40" />
       <Button type="button" size="sm" variant="outline" :disabled="!mergeTargetId" @click="mergeTopic">合并</Button>
     </template>
@@ -1395,10 +1467,7 @@ async function copyPollShareLink() {
 
   <form class="mb-4 flex max-w-md flex-wrap items-center gap-2" @submit.prevent="searchInTopic">
     <Input v-model="topicSearch" placeholder="在此主题内搜索帖子…" class="min-w-[12rem] flex-1" />
-    <select v-model="postSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm" @change="changePostSort">
-      <option value="oldest">最早优先</option>
-      <option value="recent">最新优先</option>
-    </select>
+    <Select v-model="postSort" :options="postSortOptions" class="min-w-[8rem]" @update:model-value="changePostSort" />
     <Button type="submit" variant="outline">搜索</Button>
   </form>
 
@@ -1528,7 +1597,7 @@ async function copyPollShareLink() {
 
           <div v-if="editingPostBookmarkId === post.id && post.bookmark" class="mt-2 space-y-2 rounded border bg-muted/30 p-3">
             <textarea v-model="postBookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="书签备注" />
-            <input v-model="postBookmarkRemindAt" type="datetime-local" class="h-8 w-full rounded-md border px-2 text-sm" />
+            <Input v-model="postBookmarkRemindAt" type="datetime-local" class="w-full" />
             <div class="flex gap-2">
               <Button type="button" size="sm" @click="savePostBookmark(post)">保存</Button>
               <Button type="button" size="sm" variant="outline" @click="editingPostBookmarkId = null">取消</Button>
@@ -1671,7 +1740,7 @@ async function copyPollShareLink() {
       <p v-else-if="replyBodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
       <label v-if="topic.can_moderate" class="flex items-center gap-2 text-sm">
-        <input v-model="replyForm.post.whisper" type="checkbox">
+        <Checkbox v-model="replyForm.post.whisper" />
         员工私语（仅员工可见）
       </label>
       <Button type="submit" :disabled="replyForm.processing || !canSubmitReply">发表回复</Button>

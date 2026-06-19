@@ -7,6 +7,7 @@ import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 
 export interface TopicListItem {
   id: string
@@ -74,11 +75,9 @@ const allSelected = () =>
       <TableHeader>
         <TableRow>
           <TableHead v-if="selectable" class="w-10">
-            <input
-              type="checkbox"
-              class="h-4 w-4"
-              :checked="allSelected()"
-              @change="toggleAll(($event.target as HTMLInputElement).checked)"
+            <Checkbox
+              :model-value="allSelected()"
+              @update:model-value="toggleAll"
             />
           </TableHead>
           <TableHead>主题</TableHead>
@@ -91,11 +90,9 @@ const allSelected = () =>
       <TableBody>
         <TableRow v-for="topic in topics" :key="topic.id">
           <TableCell v-if="selectable" class="w-10">
-            <input
-              type="checkbox"
-              class="h-4 w-4"
-              :checked="(selectedIds || []).includes(topic.id)"
-              @change="toggleRow(topic.id, ($event.target as HTMLInputElement).checked)"
+            <Checkbox
+              :model-value="(selectedIds || []).includes(topic.id)"
+              @update:model-value="(checked) => toggleRow(topic.id, checked)"
             />
           </TableCell>
           <TableCell>

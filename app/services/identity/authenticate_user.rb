@@ -20,15 +20,15 @@ module Identity
         limit: 10,
         window: 15.minutes
       )
-      return ServiceResult.failure(error: "Too many login attempts. Please try again later.") if rate_limit_result.failure?
+      return ServiceResult.failure(error: "登录尝试过于频繁，请稍后再试。") if rate_limit_result.failure?
 
       user = User.find_by(email: @email)
       return generic_failure unless user
 
       clear_expired_ban!(user)
-      return ServiceResult.failure(error: "Account is banned.") if user.banned?
-      return ServiceResult.failure(error: "Account has been deleted.") if user.deleted?
-      return ServiceResult.failure(error: "Account is temporarily locked.") if locked?(user)
+      return ServiceResult.failure(error: "该账户已被封禁。") if user.banned?
+      return ServiceResult.failure(error: "该账户已被删除。") if user.deleted?
+      return ServiceResult.failure(error: "账户已临时锁定，请稍后再试。") if locked?(user)
 
       unless user.authenticate(@password)
         record_failed_login(user)
@@ -36,12 +36,12 @@ module Identity
       end
 
       unless user.email_verified?
-        return ServiceResult.failure(error: "Please verify your email before signing in.")
+        return ServiceResult.failure(error: "请先验证邮箱后再登录。")
       end
 
       if user.totp_enabled? || user.require_totp?
-        return ServiceResult.failure(error: "Two-factor authentication code is required.") if @totp_code.blank?
-        return ServiceResult.failure(error: "Invalid two-factor authentication code.") unless verify_totp(user)
+        return ServiceResult.failure(error: "请输入两步验证码。") if @totp_code.blank?
+        return ServiceResult.failure(error: "两步验证码无效。") unless verify_totp(user)
       end
 
       user.update!(
@@ -98,7 +98,7 @@ module Identity
     end
 
     def generic_failure
-      ServiceResult.failure(error: "Invalid email or password.")
+      ServiceResult.failure(error: "邮箱或密码错误。")
     end
   end
 end

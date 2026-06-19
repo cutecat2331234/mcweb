@@ -1,6 +1,7 @@
 import { computed, type ComputedRef } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import { routes, appPrefix } from '@/lib/routes'
+import { resolveFeatureFlags } from '@/lib/featureFlags'
 
 export interface PortalNavItem {
   label: string
@@ -35,9 +36,17 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
 
   const currentPath = computed(() => page.url.split('?')[0])
 
-  const activeSection = computed<'forum' | 'store'>(() =>
-    currentPath.value.startsWith(`${appPrefix}/store`) ? 'store' : 'forum',
+  const features = computed(() =>
+    resolveFeatureFlags(page.props.features as Parameters<typeof resolveFeatureFlags>[0]),
   )
+
+  const activeSection = computed<'forum' | 'store'>(() => {
+    const onStorePath = currentPath.value.startsWith(`${appPrefix}/store`)
+    if (onStorePath && features.value.store) return 'store'
+    if (features.value.forum) return 'forum'
+    if (features.value.store) return 'store'
+    return 'forum'
+  })
 
   const forumBrowseItems: PortalNavItem[] = [
     { label: '板块', href: routes.forum, icon: 'layout-grid' },
@@ -118,7 +127,7 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
   })
 
   const navGroups = computed<PortalNavGroup[]>(() => {
-    if (activeSection.value === 'store') {
+    if (activeSection.value === 'store' && features.value.store) {
       const groups: PortalNavGroup[] = [
         {
           key: 'store-browse',
@@ -132,6 +141,8 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
       }
       return groups
     }
+
+    if (!features.value.forum) return []
 
     const groups: PortalNavGroup[] = [
       { key: 'forum-browse', label: '浏览', defaultExpanded: true, items: forumBrowseItems },

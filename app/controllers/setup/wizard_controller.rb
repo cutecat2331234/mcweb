@@ -2,6 +2,8 @@
 
 module Setup
   class WizardController < ApplicationController
+    layout "setup"
+
     STEPS = %w[site admin].freeze
 
     def index
@@ -81,13 +83,15 @@ module Setup
       user = result.value[:user]
       user.update!(email_verified: true, email_verified_at: Time.current)
 
-      admin_role = Role.find_or_create_by!(key: "admin", name: "Administrator", system_role: true)
+      Rails.application.load_seed unless Role.exists?(key: "super_admin")
+      admin_role = Role.find_by!(key: "super_admin")
       user.roles << admin_role unless user.roles.include?(admin_role)
 
       SiteSetting.set("site.name", site_data[:name]) if site_data[:name].present?
       SiteSetting.set("site.url", site_data[:url]) if site_data[:url].present?
 
       InstallationLock.lock!(user: user)
+      Frontend::EnsureDefaultTemplate.call
       session.delete(:setup_wizard)
 
       redirect_to identity_sign_in_path, notice: t("mcweb.flash.setup_complete")

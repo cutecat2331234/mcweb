@@ -52,7 +52,7 @@ module Admin
             redirect_to admin_store_fulfillment_path(@fulfillment), notice: "已重新排队发货。"
           end
         elsif @fulfillment.update(fulfillment_params)
-          redirect_to admin_store_fulfillment_path(@fulfillment), notice: "Fulfillment updated."
+          redirect_to admin_store_fulfillment_path(@fulfillment), notice: "履约记录已更新。"
         else
           redirect_to admin_store_fulfillment_path(@fulfillment), alert: @fulfillment.errors.full_messages.to_sentence
         end

@@ -7,9 +7,12 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Alert from '@/components/ui/Alert.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import Textarea from '@/components/ui/Textarea.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -18,6 +21,7 @@ const props = defineProps<{
   section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; required_tag_groups?: Array<{ name: string; slug: string }>; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; required?: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
   similarTitlesUrl?: string
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
+  form_errors?: Record<string, string>
 }>()
 
 const similarTitles = ref<Array<{ title: string; url: string }>>([])
@@ -54,6 +58,31 @@ const form = useForm({
     scheduled_at: '',
   },
 })
+
+watch(
+  () => props.form_errors,
+  (errors) => {
+    if (!errors) return
+    Object.entries(errors).forEach(([key, message]) => {
+      form.setError(key as keyof typeof form.errors, message)
+    })
+  },
+  { immediate: true },
+)
+
+const formError = computed(() => {
+  if (form.errors.base) return form.errors.base
+  return props.form_errors?.base || ''
+})
+
+function fieldError(key: string) {
+  return form.errors[`topic.${key}` as keyof typeof form.errors] || props.form_errors?.[`topic.${key}`] || ''
+}
+
+const prefixOptions = computed(() => [
+  ...(props.section.prefix_required ? [] : [{ value: '', label: '无前缀' }]),
+  ...(props.section.prefixes || []).map((p) => ({ value: p, label: p })),
+])
 
 const tagsReady = computed(() => missingRequiredGroups(form.topic.tags).length === 0)
 const bodyHasBlockedLink = computed(() =>
@@ -150,6 +179,10 @@ function saveDraft() {
     {{ warningRestrictions.post }}
   </p>
 
+  <Alert v-if="formError" variant="destructive" class="mb-4 max-w-lg">
+    {{ formError }}
+  </Alert>
+
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
       <Label for="title">标题</Label>
@@ -162,14 +195,11 @@ function saveDraft() {
           </li>
         </ul>
       </div>
-      <p v-if="form.errors.title" class="text-sm text-destructive">{{ form.errors.title }}</p>
+      <p v-if="fieldError('title')" class="text-sm text-destructive">{{ fieldError('title') }}</p>
     </div>
     <div v-if="section.prefixes?.length" class="space-y-2">
       <Label for="prefix">主题前缀{{ section.prefix_required ? '（必选）' : '' }}</Label>
-      <select id="prefix" v-model="form.topic.prefix" class="h-9 w-full rounded-md border px-2 text-sm" :required="section.prefix_required">
-        <option v-if="!section.prefix_required" value="">无前缀</option>
-        <option v-for="p in section.prefixes" :key="p" :value="p">{{ p }}</option>
-      </select>
+      <Select id="prefix" v-model="form.topic.prefix" :options="prefixOptions" block />
     </div>
     <div class="space-y-2">
       <Label for="body">首帖内容</Label>
@@ -177,7 +207,7 @@ function saveDraft() {
       <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
       <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
-      <p v-if="form.errors.body" class="text-sm text-destructive">{{ form.errors.body }}</p>
+      <p v-if="fieldError('body')" class="text-sm text-destructive">{{ fieldError('body') }}</p>
     </div>
     <div class="space-y-2">
       <Label for="tags">标签（最多 5 个）</Label>
@@ -216,7 +246,7 @@ function saveDraft() {
         <Label for="poll_closes_days">自动关闭（天数，0 表示不关闭）</Label>
         <Input id="poll_closes_days" v-model="form.topic.poll_closes_days" type="number" min="0" placeholder="0" />
         <label class="flex items-center gap-2 text-sm">
-          <input v-model="form.topic.poll_multiple_choice" type="checkbox" class="h-4 w-4" />
+          <Checkbox v-model="form.topic.poll_multiple_choice" />
           允许多选投票
         </label>
         <div v-if="form.topic.poll_multiple_choice" class="space-y-2">
@@ -224,7 +254,7 @@ function saveDraft() {
           <Input id="poll_max_choices" v-model.number="form.topic.poll_max_choices" type="number" min="2" max="10" />
         </div>
         <label class="flex items-center gap-2 text-sm">
-          <input v-model="form.topic.poll_hide_results_until_vote" type="checkbox" class="h-4 w-4" />
+          <Checkbox v-model="form.topic.poll_hide_results_until_vote" />
           投票后才显示结果
         </label>
       </div>

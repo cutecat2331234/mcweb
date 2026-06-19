@@ -50,7 +50,7 @@ module Admin
         @page = ::Website::Page.new(page_params)
 
         if @page.save
-          redirect_to admin_website_page_path(@page), notice: "Page created."
+          redirect_to admin_website_page_path(@page), notice: "页面已创建。"
         else
           render :new, status: :unprocessable_entity
         end
@@ -61,7 +61,7 @@ module Admin
 
       def update
         if @page.update(page_params)
-          redirect_to admin_website_page_path(@page), notice: "Page updated."
+          redirect_to admin_website_page_path(@page), notice: "页面已更新。"
         else
           render :edit, status: :unprocessable_entity
         end
@@ -69,7 +69,7 @@ module Admin
 
       def destroy
         @page.destroy!
-        redirect_to admin_website_pages_path, notice: "Page deleted."
+        redirect_to admin_website_pages_path, notice: "页面已删除。"
       end
 
       private

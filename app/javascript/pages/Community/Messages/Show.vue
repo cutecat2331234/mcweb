@@ -1,14 +1,16 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { Link, useForm, router } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+import Alert from '@/components/ui/Alert.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import { routes } from '@/lib/routes'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
 
@@ -49,6 +51,8 @@ const props = defineProps<{
   currentUsername?: string
   canSendPm?: boolean
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
+  form_errors?: Record<string, string>
+  initialBody?: string | null
 }>()
 
 const linkError = ref('')
@@ -60,8 +64,28 @@ function containsLink(text: string) {
 const pmBlocked = computed(() => !!props.warningRestrictions?.pm)
 
 const form = useForm({
-  message: { body: '' },
+  message: { body: props.initialBody || '' },
 })
+
+watch(
+  () => props.form_errors,
+  (errors) => {
+    if (!errors) return
+    Object.entries(errors).forEach(([key, message]) => {
+      form.setError(key as keyof typeof form.errors, message)
+    })
+  },
+  { immediate: true },
+)
+
+const formError = computed(() => {
+  if (form.errors.base) return form.errors.base
+  return props.form_errors?.base || ''
+})
+
+function fieldError(key: string) {
+  return form.errors[`message.${key}` as keyof typeof form.errors] || props.form_errors?.[`message.${key}`] || ''
+}
 
 const bodyHasBlockedLink = computed(() =>
   !!(props.warningRestrictions?.link && containsLink(form.message.body))
@@ -89,10 +113,16 @@ function addParticipant() {
   })
 }
 
-function removeParticipant(participant: { username: string; remove_url?: string | null; is_self?: boolean }) {
+async function removeParticipant(participant: { username: string; remove_url?: string | null; is_self?: boolean }) {
   if (!participant.remove_url) return
   const msg = participant.is_self ? '确定离开此群组？' : `确定移除 ${participant.username}？`
-  if (!confirm(msg)) return
+  const ok = await confirm({
+    title: participant.is_self ? '离开群组' : '移除成员',
+    message: msg,
+    confirmLabel: participant.is_self ? '离开' : '移除',
+    variant: 'destructive',
+  })
+  if (!ok) return
   router.delete(participant.remove_url, { preserveScroll: true })
 }
 
@@ -202,8 +232,10 @@ function submit() {
   </p>
 
   <form class="max-w-2xl space-y-3" @submit.prevent="submit">
+    <Alert v-if="formError" variant="destructive">{{ formError }}</Alert>
     <MarkdownEditor v-model="form.message.body" :show-mention="false" :rows="3" placeholder="输入消息…" />
-    <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
+    <p v-if="fieldError('body')" class="text-sm text-destructive">{{ fieldError('body') }}</p>
+    <p v-else-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
     <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
     <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
     <Button type="submit" :disabled="form.processing || !canSend">发送</Button>

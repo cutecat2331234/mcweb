@@ -16,9 +16,16 @@ module Frontend
       setting_key = Frontend::Template::SITE_SETTING_KEYS.fetch(@scope)
 
       if @template_key.blank?
-        SiteSetting.set(setting_key, nil)
-        log_audit(nil, "deactivated")
-        return ServiceResult.success(nil)
+        SiteSetting.unset(setting_key)
+        ::Frontend::EnsureDefaultTemplate.call
+        builtin = ::Frontend::Template.installed.find_by(key: ::Frontend::EnsureDefaultTemplate::BUILTIN_KEY)
+        if builtin&.supports_scope?(@scope)
+          SiteSetting.set(setting_key, builtin.key)
+          log_audit(builtin, "activated")
+        else
+          log_audit(nil, "deactivated")
+        end
+        return ServiceResult.success(builtin)
       end
 
       template = Frontend::Template.installed.find_by(key: @template_key)

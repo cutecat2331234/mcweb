@@ -3,6 +3,7 @@ import { createApp, h, type DefineComponent } from 'vue'
 
 import '@/styles/portal.css'
 import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'
+import AppProvider from '@/components/AppProvider.vue'
 
 router.on('before', (event) => {
   const headers = csrfHeaders()
@@ -27,6 +28,17 @@ document.addEventListener('inertia:success', (event) => {
 syncCsrfMetaTag()
 
 createInertiaApp({
+  setup({ el, App, props, plugin }) {
+    const token = (props as { initialPage?: { props?: Record<string, unknown> } }).initialPage?.props?.csrf_token
+    if (typeof token === 'string' && token.length > 0) {
+      syncCsrfMetaTag(token)
+    } else {
+      syncCsrfMetaTag()
+    }
+    createApp({ render: () => h(AppProvider, null, { default: () => h(App, props) }) })
+      .use(plugin)
+      .mount(el)
+  },
   resolve: async (name) => {
     if (!name.startsWith('Admin/')) {
       throw new Error(`Non-admin page must use admin entry: ${name}`)
@@ -38,11 +50,6 @@ createInertiaApp({
       throw new Error(`Admin Inertia page not found: ${name}`)
     }
     return loader()
-  },
-  setup({ el, App, props, plugin }) {
-    createApp({ render: () => h(App, props) })
-      .use(plugin)
-      .mount(el)
   },
   progress: {
     color: '#38bdf8',

@@ -69,7 +69,7 @@ module Admin
 
       def update
         if @topic.update(topic_params)
-          redirect_to admin_forum_topic_path(@topic), notice: "Topic updated."
+          redirect_to admin_forum_topic_path(@topic), notice: "主题已更新。"
         else
           render :edit, status: :unprocessable_entity
         end
@@ -77,7 +77,7 @@ module Admin
 
       def destroy
         @topic.soft_delete!
-        redirect_to admin_forum_topics_path, notice: "Topic deleted."
+        redirect_to admin_forum_topics_path, notice: "主题已删除。"
       end
 
       private

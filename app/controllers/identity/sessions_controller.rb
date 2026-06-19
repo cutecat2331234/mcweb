@@ -4,8 +4,6 @@ module Identity
   class SessionsController < ApplicationController
     include GuestCartMergeable
 
-    skip_installation_guard only: %i[new create destroy]
-
     before_action :redirect_if_signed_in, only: %i[new create]
 
     def new
@@ -29,17 +27,17 @@ module Identity
           remember_me: session_params[:remember_me] == "1" || session_params[:remember_me] == true
         )
         merge_guest_cart!
-        redirect_after_login notice: "Signed in successfully."
+        redirect_after_login default: FeatureFlags.primary_portal_path(self), notice: "登录成功。"
       else
         render inertia: "Identity/Sessions/New",
                status: :unprocessable_entity,
-               errors: { base: service_error_message(result) }
+               props: { login_error: service_error_message(result) }
       end
     end
 
     def destroy
       sign_out
-      redirect_to root_path, notice: "Signed out."
+      redirect_to root_path, notice: "已退出登录。"
     end
 
     private
@@ -49,7 +47,7 @@ module Identity
     end
 
     def redirect_if_signed_in
-      redirect_to root_path if user_signed_in?
+      redirect_to FeatureFlags.primary_portal_path(self) if user_signed_in?
     end
   end
 end

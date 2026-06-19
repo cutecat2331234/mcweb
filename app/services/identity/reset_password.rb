@@ -16,7 +16,7 @@ module Identity
       elsif @email.present?
         request_reset
       else
-        ServiceResult.failure(error: "Email or token with new password is required.")
+        ServiceResult.failure(error: "请提供邮箱，或提供重置令牌与新密码。")
       end
     end
 
@@ -50,8 +50,8 @@ module Identity
 
     def complete_reset
       user = User.find_by(password_reset_token_digest: digest_token(@token))
-      return ServiceResult.failure(error: "Invalid or expired reset token.") unless user
-      return ServiceResult.failure(error: "Reset token has expired.") if token_expired?(user)
+      return ServiceResult.failure(error: "重置链接无效或已过期。") unless user
+      return ServiceResult.failure(error: "重置链接已过期。") if token_expired?(user)
 
       user.update!(
         password: @new_password,

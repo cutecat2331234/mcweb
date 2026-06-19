@@ -9,7 +9,11 @@ import TopicListTable, { type TopicListItem } from '@/components/portal/TopicLis
 import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
+import { confirm } from '@/lib/useConfirm'
+import { prompt } from '@/lib/usePrompt'
 
 defineOptions({ layout: PortalLayout })
 
@@ -147,6 +151,91 @@ function bulkModerate(action: string) {
 const saving = ref(false)
 const saveError = ref('')
 const shareCopied = ref(false)
+
+const sectionSelectOptions = computed(() => [
+  { value: '', label: '全部分区' },
+  ...props.sections.map((sec) => ({
+    value: sec.slug,
+    label: `${sec.category ? `${sec.category} / ` : ''}${sec.name}`,
+  })),
+])
+
+const tagSelectOptions = computed(() => [
+  { value: '', label: '全部标签' },
+  ...props.tags.map((t) => ({ value: t.slug, label: `#${t.name}` })),
+])
+
+const solvedOptions = [
+  { value: '', label: '全部状态' },
+  { value: 'unsolved', label: '未解决' },
+  { value: 'solved', label: '已解决' },
+]
+
+const topicSortOptions = [
+  { value: 'recent', label: '主题：最新' },
+  { value: 'oldest', label: '主题：最早' },
+]
+
+const postSortOptions = [
+  { value: 'recent', label: '帖子：最新' },
+  { value: 'oldest', label: '帖子：最早' },
+]
+
+const categorySelectOptions = computed(() => [
+  { value: '', label: '全部分类' },
+  ...(props.categories || []).map((cat) => ({ value: cat.slug, label: cat.name })),
+])
+
+const lockedOptions = [
+  { value: '', label: '锁定状态' },
+  { value: 'locked', label: '已锁定' },
+  { value: 'unlocked', label: '未锁定' },
+]
+
+const pinnedOptions = [
+  { value: '', label: '置顶状态' },
+  { value: 'pinned', label: '已置顶' },
+  { value: 'unpinned', label: '未置顶' },
+]
+
+const wikiOptions = [
+  { value: '', label: 'Wiki' },
+  { value: 'wiki', label: 'Wiki 主题' },
+  { value: 'nonwiki', label: '非 Wiki' },
+]
+
+const featuredOptions = [
+  { value: '', label: '精选' },
+  { value: 'featured', label: '精选主题' },
+]
+
+const pollOptions = [
+  { value: '', label: '投票' },
+  { value: 'poll', label: '含投票' },
+]
+
+const norepliesOptions = [
+  { value: '', label: '回复' },
+  { value: 'noreplies', label: '无回复' },
+]
+
+const assignedOptions = [
+  { value: '', label: '分配' },
+  { value: 'assigned', label: '已分配' },
+  { value: 'unassigned', label: '未分配' },
+]
+
+const mineOptions = [
+  { value: '', label: '范围' },
+  { value: 'mine', label: '我的主题' },
+]
+
+const scopeOptions = [
+  { value: '', label: '订阅' },
+  { value: 'bookmarks', label: '我的收藏' },
+  { value: 'watching', label: '正在关注' },
+  { value: 'unread', label: '未读' },
+]
 
 watch(titleOnly, (value) => {
   if (value) postsOnly.value = false
@@ -361,7 +450,10 @@ async function copySearchLink() {
     shareCopied.value = true
     setTimeout(() => { shareCopied.value = false }, 2000)
   } catch {
-    window.prompt('复制搜索链接', url)
+    await prompt({
+      title: '复制搜索链接',
+      defaultValue: url,
+    })
   }
 }
 
@@ -459,8 +551,14 @@ async function deleteSearchHistory(deleteUrl: string) {
   router.reload({ only: ['searchHistories'] })
 }
 
-function clearSearchHistory() {
-  if (!props.clearSearchHistoryUrl || !confirm('确定清空所有搜索历史吗？')) return
+async function clearSearchHistory() {
+  const ok = await confirm({
+    title: '清空搜索历史',
+    message: '确定清空所有搜索历史吗？',
+    confirmLabel: '清空',
+    variant: 'destructive',
+  })
+  if (!props.clearSearchHistoryUrl || !ok) return
   router.delete(props.clearSearchHistoryUrl, { preserveScroll: true })
 }
 
@@ -661,38 +759,20 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         </template>
       </div>
     </div>
-    <select v-model="sectionSlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">全部分区</option>
-      <option v-for="sec in sections" :key="sec.slug" :value="sec.slug">
-        {{ sec.category ? `${sec.category} / ` : '' }}{{ sec.name }}
-      </option>
-    </select>
+    <Select v-model="sectionSlug" :options="sectionSelectOptions" size="sm" />
     <Input v-model="author" placeholder="作者用户名" class="w-36" />
     <Input v-model="createdAfter" type="date" class="w-36" title="起始日期" />
     <Input v-model="createdBefore" type="date" class="w-36" title="截止日期" />
-    <select v-model="tagSlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">全部标签</option>
-      <option v-for="t in tags" :key="t.slug" :value="t.slug">#{{ t.name }}</option>
-    </select>
-    <select v-model="solved" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">全部状态</option>
-      <option value="unsolved">未解决</option>
-      <option value="solved">已解决</option>
-    </select>
-    <select v-model="topicSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm" :disabled="postsOnly">
-      <option value="recent">主题：最新</option>
-      <option value="oldest">主题：最早</option>
-    </select>
-    <select v-model="postSort" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm" :disabled="titleOnly">
-      <option value="recent">帖子：最新</option>
-      <option value="oldest">帖子：最早</option>
-    </select>
+    <Select v-model="tagSlug" :options="tagSelectOptions" size="sm" />
+    <Select v-model="solved" :options="solvedOptions" size="sm" />
+    <Select v-model="topicSort" :options="topicSortOptions" size="sm" :disabled="postsOnly" />
+    <Select v-model="postSort" :options="postSortOptions" size="sm" :disabled="titleOnly" />
     <label class="flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
-      <input v-model="titleOnly" type="checkbox" class="rounded border" />
+      <Checkbox v-model="titleOnly" />
       仅标题
     </label>
     <label class="flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
-      <input v-model="postsOnly" type="checkbox" class="rounded border" />
+      <Checkbox v-model="postsOnly" />
       仅帖子
     </label>
     <button type="button" class="rounded-md border px-3 py-2 text-sm" @click="showAdvanced = !showAdvanced">
@@ -745,52 +825,16 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
   </div>
 
   <div v-if="showAdvanced" class="mb-6 flex max-w-2xl flex-wrap gap-2 rounded-lg border p-4">
-    <select v-if="categories?.length" v-model="categorySlug" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">全部分类</option>
-      <option v-for="cat in categories" :key="cat.slug" :value="cat.slug">{{ cat.name }}</option>
-    </select>
-    <select v-model="locked" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">锁定状态</option>
-      <option value="locked">已锁定</option>
-      <option value="unlocked">未锁定</option>
-    </select>
-    <select v-model="pinned" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">置顶状态</option>
-      <option value="pinned">已置顶</option>
-      <option value="unpinned">未置顶</option>
-    </select>
-    <select v-model="wiki" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">Wiki</option>
-      <option value="wiki">Wiki 主题</option>
-      <option value="nonwiki">非 Wiki</option>
-    </select>
-    <select v-model="featured" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">精选</option>
-      <option value="featured">精选主题</option>
-    </select>
-    <select v-model="poll" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">投票</option>
-      <option value="poll">含投票</option>
-    </select>
-    <select v-model="noreplies" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">回复</option>
-      <option value="noreplies">无回复</option>
-    </select>
-    <select v-if="loggedIn" v-model="assigned" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">分配</option>
-      <option value="assigned">已分配</option>
-      <option value="unassigned">未分配</option>
-    </select>
-    <select v-if="loggedIn" v-model="mine" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">范围</option>
-      <option value="mine">我的主题</option>
-    </select>
-    <select v-if="loggedIn" v-model="scope" class="h-9 rounded-md border border-input bg-transparent px-2 text-sm">
-      <option value="">订阅</option>
-      <option value="bookmarks">我的收藏</option>
-      <option value="watching">正在关注</option>
-      <option value="unread">未读</option>
-    </select>
+    <Select v-if="categories?.length" v-model="categorySlug" :options="categorySelectOptions" size="sm" />
+    <Select v-model="locked" :options="lockedOptions" size="sm" />
+    <Select v-model="pinned" :options="pinnedOptions" size="sm" />
+    <Select v-model="wiki" :options="wikiOptions" size="sm" />
+    <Select v-model="featured" :options="featuredOptions" size="sm" />
+    <Select v-model="poll" :options="pollOptions" size="sm" />
+    <Select v-model="noreplies" :options="norepliesOptions" size="sm" />
+    <Select v-if="loggedIn" v-model="assigned" :options="assignedOptions" size="sm" />
+    <Select v-if="loggedIn" v-model="mine" :options="mineOptions" size="sm" />
+    <Select v-if="loggedIn" v-model="scope" :options="scopeOptions" size="sm" />
   </div>
 
   <div v-if="loggedIn && saveSearchUrl" class="mb-6 flex flex-wrap items-end gap-2 rounded-lg border p-4">
@@ -798,7 +842,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       <label class="text-sm font-medium">保存当前搜索</label>
       <Input v-model="saveName" placeholder="搜索名称" class="w-48" :disabled="atSavedSearchLimit" />
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
-        <input v-model="saveNotifyDaily" type="checkbox" class="rounded border-input" :disabled="atSavedSearchLimit" />
+        <Checkbox v-model="saveNotifyDaily" :disabled="atSavedSearchLimit" />
         每日邮件提醒新结果
       </label>
       <Input v-model="saveWebhookUrl" placeholder="Webhook URL（可选）" class="w-64" :disabled="atSavedSearchLimit" />

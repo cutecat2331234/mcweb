@@ -68,7 +68,7 @@ class Identity::AuthenticateUserTest < ActiveSupport::TestCase
     )
 
     assert result.failure?
-    assert_match(/verify your email/i, result.error)
+    assert_match(/验证邮箱/, result.error)
   end
 end
 

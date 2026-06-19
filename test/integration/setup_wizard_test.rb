@@ -8,6 +8,17 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     SiteSetting.where(key: %w[site.name site.url]).delete_all
   end
 
+  test "redirects uninstalled visitors to setup" do
+    get identity_sign_in_path
+    assert_redirected_to setup_root_path
+
+    get root_path
+    assert_redirected_to setup_root_path
+
+    get store_products_path
+    assert_redirected_to setup_root_path
+  end
+
   test "completes setup when admin step submits password" do
     patch setup_step_path("site"), params: { setup: { name: "My Server", url: "https://mc.example.com" } }
     assert_redirected_to setup_step_path("admin")
@@ -26,6 +37,8 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to identity_sign_in_path
     assert InstallationLock.locked?
+    user = User.find_by!(email: "owner@example.com")
+    assert user.roles.exists?(key: "super_admin")
     follow_redirect!
     assert_response :success
   end

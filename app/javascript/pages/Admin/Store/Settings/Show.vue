@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { useForm, router } from '@inertiajs/vue3'
-import { ref, onBeforeUnmount } from 'vue'
+import { ref, onBeforeUnmount, computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Select from '@/components/ui/Select.vue'
+import { confirm } from '@/lib/useConfirm'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
@@ -45,6 +47,10 @@ const props = defineProps<{
 
 const selectedTestEvent = ref(props.testWebhookEvents?.[0] || 'order.test')
 const lastTestWebhookDisplay = ref<LastTestWebhook | null>(props.lastTestWebhook ?? null)
+
+const testEventOptions = computed(() =>
+  (props.testWebhookEvents || ['order.test']).map((event) => ({ value: event, label: event })),
+)
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 onBeforeUnmount(() => {
@@ -116,15 +122,23 @@ function submit() {
     .patch(adminRoutes.storeSettings)
 }
 
-function sendTestWebhook() {
-  if (!props.testWebhookUrl || !confirm(`向配置的 Webhook URL 发送 ${selectedTestEvent.value} 测试事件？`)) return
+async function sendTestWebhook() {
+  const ok = await confirm({
+    title: '发送 Webhook 测试',
+    message: `向配置的 Webhook URL 发送 ${selectedTestEvent.value} 测试事件？`,
+  })
+  if (!props.testWebhookUrl || !ok) return
   router.post(props.testWebhookUrl, { event: selectedTestEvent.value }, {
     onSuccess: () => startPollingWebhookStatus(),
   })
 }
 
-function sendTestAllWebhooks() {
-  if (!props.testAllWebhooksUrl || !confirm('向配置的 Webhook URL 批量发送全部订单 Webhook 测试事件？')) return
+async function sendTestAllWebhooks() {
+  const ok = await confirm({
+    title: '批量发送 Webhook 测试',
+    message: '向配置的 Webhook URL 批量发送全部订单 Webhook 测试事件？',
+  })
+  if (!props.testAllWebhooksUrl || !ok) return
   router.post(props.testAllWebhooksUrl, {}, {
     onSuccess: () => startPollingWebhookStatus(),
   })
@@ -190,9 +204,7 @@ function sendTestAllWebhooks() {
     </div>
     <Button type="submit" :disabled="form.processing">保存商城设置</Button>
     <template v-if="testWebhookUrl">
-      <select v-model="selectedTestEvent" class="ml-2 h-9 rounded-md border px-2 text-sm">
-        <option v-for="event in testWebhookEvents || ['order.test']" :key="event" :value="event">{{ event }}</option>
-      </select>
+      <Select v-model="selectedTestEvent" :options="testEventOptions" class="ml-2" size="sm" />
       <Button
         type="button"
         variant="outline"

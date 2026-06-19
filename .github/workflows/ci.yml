@@ -95,6 +95,8 @@ jobs:
           cache: npm
       - name: Install JavaScript dependencies
         run: npm ci
+      - name: Build Tailwind CSS
+        run: bundle exec rails tailwindcss:build
       - name: Build Vite test assets
         run: bin/vite build --mode=test
       - name: Prepare database

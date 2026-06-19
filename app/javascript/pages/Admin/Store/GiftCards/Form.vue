@@ -5,6 +5,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -67,7 +68,7 @@ function submit() {
       <Input id="recipient_email" v-model="form.gift_card.recipient_email" type="email" placeholder="收件人邮箱" />
     </div>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.gift_card.active" type="checkbox" class="h-4 w-4" />
+      <Checkbox v-model="form.gift_card.active" />
       启用
     </label>
     <div class="flex gap-2">

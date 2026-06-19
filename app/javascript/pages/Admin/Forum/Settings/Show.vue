@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { useForm, router } from '@inertiajs/vue3'
-import { ref, onBeforeUnmount } from 'vue'
+import { ref, onBeforeUnmount, computed } from 'vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
+import { confirm } from '@/lib/useConfirm'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
@@ -73,20 +76,33 @@ const form = useForm({
   settings: Object.fromEntries(props.settings.map((s) => [s.key, s.value])),
 })
 
+const savedSearchOptions = computed(() => [
+  { value: '', label: '通用测试载荷' },
+  ...(props.savedSearchesForTest || []).map((search) => ({ value: String(search.id), label: search.name })),
+])
+
 function submit() {
   form.patch(adminRoutes.forumSettings)
 }
 
-function sendTestWebhook() {
-  if (!props.testWebhookUrl || !confirm('向配置的 Webhook URL 发送 saved_search.match 测试事件？')) return
+async function sendTestWebhook() {
+  const ok = await confirm({
+    title: '发送 Webhook 测试',
+    message: '向配置的 Webhook URL 发送 saved_search.match 测试事件？',
+  })
+  if (!props.testWebhookUrl || !ok) return
   const data = selectedSavedSearchId.value ? { saved_search_id: selectedSavedSearchId.value } : {}
   router.post(props.testWebhookUrl, data, {
     onSuccess: () => startPollingWebhookStatus(),
   })
 }
 
-function sendTestAllWebhooks() {
-  if (!props.testAllWebhooksUrl || !confirm('向配置的 Webhook URL 批量发送最多 20 条保存搜索测试事件？')) return
+async function sendTestAllWebhooks() {
+  const ok = await confirm({
+    title: '批量发送 Webhook 测试',
+    message: '向配置的 Webhook URL 批量发送最多 20 条保存搜索测试事件？',
+  })
+  if (!props.testAllWebhooksUrl || !ok) return
   router.post(props.testAllWebhooksUrl, {}, {
     onSuccess: () => startPollingWebhookStatus(),
   })
@@ -101,13 +117,10 @@ function sendTestAllWebhooks() {
       <Label :for="setting.key" class="text-sm font-medium">{{ setting.label }}</Label>
       <p v-if="setting.hint" class="text-xs text-muted-foreground">{{ setting.hint }}</p>
       <label v-if="setting.input_type === 'boolean'" class="flex items-center gap-2 text-sm">
-        <input
+        <Checkbox
           :id="setting.key"
-          v-model="form.settings[setting.key]"
-          type="checkbox"
-          class="h-4 w-4 rounded border"
-          true-value="true"
-          false-value="false"
+          :model-value="form.settings[setting.key] === 'true'"
+          @update:model-value="(v) => { form.settings[setting.key] = v ? 'true' : 'false' }"
         />
         启用
       </label>
@@ -115,16 +128,13 @@ function sendTestAllWebhooks() {
     </div>
     <Button type="submit" :disabled="form.processing">保存论坛设置</Button>
     <template v-if="testWebhookUrl">
-      <select
+      <Select
         v-if="savedSearchesForTest?.length"
         v-model="selectedSavedSearchId"
-        class="ml-2 h-9 rounded-md border border-input bg-transparent px-3 text-sm"
-      >
-        <option value="">通用测试载荷</option>
-        <option v-for="search in savedSearchesForTest" :key="search.id" :value="String(search.id)">
-          {{ search.name }}
-        </option>
-      </select>
+        :options="savedSearchOptions"
+        class="ml-2"
+        size="sm"
+      />
       <Button type="button" variant="outline" class="ml-2" @click="sendTestWebhook">
         发送 Webhook 测试
       </Button>

@@ -5,6 +5,7 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
 
@@ -27,8 +28,13 @@ defineProps<{
   can_restore?: boolean
 }>()
 
-function restoreEdit(url: string | null | undefined) {
-  if (!url || !confirm('确定恢复到此版本？')) return
+async function restoreEdit(url: string | null | undefined) {
+  const ok = await confirm({
+    title: '恢复版本',
+    message: '确定恢复到此版本？',
+    confirmLabel: '恢复',
+  })
+  if (!url || !ok) return
   router.post(url, {}, { preserveScroll: true })
 }
 </script>

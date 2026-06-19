@@ -50,7 +50,7 @@ module Authentication
     return if logged_in?
 
     store_return_location
-    redirect_to identity_sign_in_path, alert: "Please sign in to continue."
+    redirect_to identity_sign_in_path, alert: "请先登录后再继续。"
   end
 
   alias_method :authenticate_user!, :require_login
@@ -63,7 +63,7 @@ module Authentication
     allowed = result.success? && result.value[:allowed]
     return if allowed
 
-    redirect_to root_path, alert: "You are not authorized to perform this action."
+    redirect_to root_path, alert: "你没有权限执行此操作。"
   end
 
   def sign_in(session_record:, token:, remember_me: false)

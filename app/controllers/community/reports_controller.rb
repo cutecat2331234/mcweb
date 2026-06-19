@@ -14,7 +14,7 @@ module Community
 
     def create
       reportable = find_reportable
-      return redirect_back fallback_location: root_path, alert: "Content not found." unless reportable
+      return redirect_back fallback_location: root_path, alert: "内容不存在或无权访问。" unless reportable
 
       reason_code = report_params[:reason_code].presence
       detail = report_params[:reason_detail].to_s.strip
@@ -41,16 +41,16 @@ module Community
         resource: report
       )
 
-      redirect_back fallback_location: root_path, notice: "Report submitted."
+      redirect_back fallback_location: root_path, notice: "举报已提交。"
     rescue ActiveRecord::RecordInvalid => e
       render inertia: "Community/Reports/New",
              props: {
                reportableType: report_params[:reportable_type],
                reportableId: report_params[:reportable_id],
-               reasonOptions: Community::Report::REASONS.map { |code, label| { value: code, label: label } }
+               reasonOptions: Community::Report::REASONS.map { |code, label| { value: code, label: label } },
+               form_errors: { "report.reason" => e.record.errors.full_messages.join("；") }
              },
-             status: :unprocessable_entity,
-             errors: { reason: e.record.errors.full_messages.to_sentence }
+             status: :unprocessable_entity
     end
 
     private

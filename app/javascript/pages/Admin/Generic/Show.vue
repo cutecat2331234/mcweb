@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -8,6 +8,9 @@ import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -105,6 +108,16 @@ const trustLevelOverride = ref(props.trustLevelForm?.override?.toString() ?? 'au
 
 const badgeSlug = ref('')
 
+const badgeOptions = computed(() => [
+  { value: '', label: '请选择' },
+  ...(props.badgeForm?.badges || []).map((badge) => ({ value: badge.slug, label: badge.name })),
+])
+
+const trustLevelOptions = computed(() => [
+  { value: 'auto', label: '自动（按发帖数计算）' },
+  ...(props.trustLevelForm?.levels || []).map((level) => ({ value: String(level.value), label: level.label })),
+])
+
 const warningForm = useForm({
   reason: '',
   points: 1,
@@ -140,6 +153,24 @@ const refundForm = useForm({
   amount_cents: props.refundForm?.max_cents || 0,
   reason: '',
 })
+
+async function runAction(action: DetailAction) {
+  if (action.confirm) {
+    const ok = await confirm({
+      title: '确认操作',
+      message: action.confirm,
+      confirmLabel: '继续',
+      variant: action.method === 'delete' ? 'destructive' : 'default',
+    })
+    if (!ok) return
+  }
+  const method = action.method || 'get'
+  if (method === 'get') {
+    router.visit(action.href)
+    return
+  }
+  router.visit(action.href, { method, data: action.data })
+}
 
 function submitMute() {
   if (!props.muteForm) return
@@ -297,10 +328,7 @@ function submitTrustLevel() {
     <p v-if="props.badgeForm.earned.length" class="text-xs text-muted-foreground">已拥有：{{ props.badgeForm.earned.join('、') }}</p>
     <div class="space-y-2">
       <Label>选择徽章</Label>
-      <select v-model="badgeSlug" class="h-9 w-full rounded-md border px-2 text-sm" required>
-        <option value="">请选择</option>
-        <option v-for="badge in props.badgeForm.badges" :key="badge.slug" :value="badge.slug">{{ badge.name }}</option>
-      </select>
+      <Select v-model="badgeSlug" :options="badgeOptions" block />
     </div>
     <Button type="submit" size="sm">授予</Button>
   </form>
@@ -327,7 +355,7 @@ function submitTrustLevel() {
       <Input v-model="staffNoteForm.body" placeholder="内部备注" required />
     </div>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="staffNoteForm.visible_to_customer" type="checkbox" class="rounded border" />
+      <Checkbox v-model="staffNoteForm.visible_to_customer" />
       对买家可见
     </label>
     <Button type="submit" size="sm" :disabled="staffNoteForm.processing">保存备注</Button>
@@ -370,31 +398,28 @@ function submitTrustLevel() {
     <p class="text-xs text-muted-foreground">当前有效等级：TL{{ props.trustLevelForm.current_level }}</p>
     <div class="space-y-2">
       <Label>手动覆盖</Label>
-      <select v-model="trustLevelOverride" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option value="auto">自动（按发帖数计算）</option>
-        <option v-for="level in props.trustLevelForm.levels" :key="level.value" :value="String(level.value)">
-          {{ level.label }}
-        </option>
-      </select>
+      <Select v-model="trustLevelOverride" :options="trustLevelOptions" block />
     </div>
     <Button type="submit" size="sm">保存信任等级</Button>
   </form>
 
-  <div class="mt-6 flex flex-wrap gap-3">
+  <div class="mt-6 flex flex-wrap justify-end gap-3 sm:justify-start">
     <template v-for="action in actions" :key="action.href + action.label">
       <Button
         v-if="action.method && action.method !== 'get'"
-        as-child
+        type="button"
         :variant="action.variant ?? 'default'"
+        @click="runAction(action)"
       >
-        <Link
-          :href="action.href"
-          :method="action.method"
-          as="button"
-          :data="action.data"
-        >
-          {{ action.label }}
-        </Link>
+        {{ action.label }}
+      </Button>
+      <Button
+        v-else-if="action.confirm"
+        type="button"
+        :variant="action.variant ?? 'outline'"
+        @click="runAction(action)"
+      >
+        {{ action.label }}
       </Button>
       <Button v-else as-child :variant="action.variant ?? 'outline'">
         <Link :href="action.href">{{ action.label }}</Link>

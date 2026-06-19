@@ -8,8 +8,10 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Badge from '@/components/ui/Badge.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 import { router } from '@inertiajs/vue3'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
 
@@ -99,8 +101,14 @@ function makeDefault(url: string) {
   router.post(url, {}, { preserveScroll: true })
 }
 
-function removeAddress(url: string) {
-  if (!confirm('确定删除此地址？')) return
+async function removeAddress(url: string) {
+  const ok = await confirm({
+    title: '删除地址',
+    message: '确定删除此地址？',
+    confirmLabel: '删除',
+    variant: 'destructive',
+  })
+  if (!ok) return
   router.delete(url, { preserveScroll: true })
 }
 </script>
@@ -138,7 +146,7 @@ function removeAddress(url: string) {
             <Input v-model="editForm.address.postal_code" placeholder="邮编" />
           </div>
           <label class="flex items-center gap-2 text-sm">
-            <input v-model="editForm.make_default" type="checkbox">
+            <Checkbox v-model="editForm.make_default" />
             设为默认地址
           </label>
           <div class="flex gap-2">
@@ -214,7 +222,7 @@ function removeAddress(url: string) {
       </div>
     </div>
     <label class="flex items-center gap-2 text-sm">
-      <input v-model="form.make_default" type="checkbox">
+      <Checkbox v-model="form.make_default" />
       设为默认地址
     </label>
     <Button type="submit" :disabled="form.processing">保存地址</Button>

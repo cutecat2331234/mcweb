@@ -5,6 +5,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
+import Select from '@/components/ui/Select.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 
@@ -28,6 +29,13 @@ const props = defineProps<{
 }>()
 
 const form = useForm({ badge: { ...props.badge } })
+
+const grantRuleOptions = [
+  { value: 'manual', label: '手动' },
+  { value: 'first_topic', label: '首帖' },
+  { value: 'posts_count', label: '发帖数' },
+  { value: 'likes_received', label: '获赞数' },
+]
 
 function submit() {
   if (props.method === 'patch') form.patch(props.submitUrl)
@@ -56,12 +64,7 @@ function submit() {
     </div>
     <div class="space-y-2">
       <Label for="grant_rule">授予规则</Label>
-      <select id="grant_rule" v-model="form.badge.grant_rule" class="h-9 w-full rounded-md border px-2 text-sm">
-        <option value="manual">手动</option>
-        <option value="first_topic">首帖</option>
-        <option value="posts_count">发帖数</option>
-        <option value="likes_received">获赞数</option>
-      </select>
+      <Select id="grant_rule" v-model="form.badge.grant_rule" :options="grantRuleOptions" block />
     </div>
     <div class="space-y-2">
       <Label for="grant_threshold">阈值（发帖/获赞规则）</Label>

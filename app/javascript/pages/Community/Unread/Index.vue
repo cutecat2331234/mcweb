@@ -8,6 +8,7 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 import { appendQueryParams } from '@/lib/utils'
 import { readCsrfToken } from '@/lib/csrf'
@@ -40,6 +41,20 @@ const bookmarkCopied = ref(false)
 const saveName = ref('')
 const saving = ref(false)
 const saveError = ref('')
+
+const tagPicker = ref('')
+
+const availableTagOptions = computed(() => [
+  { value: '', label: '添加标签筛选…' },
+  ...props.tagOptions
+    .filter((o) => o.value && !selectedTagSlugs.value.includes(o.value))
+    .map((o) => ({ value: o.value, label: o.label })),
+])
+
+function onPickTag(value: string) {
+  if (value) addTag(value)
+  tagPicker.value = ''
+}
 
 const selectedTagSlugs = computed(() =>
   props.tags
@@ -190,48 +205,17 @@ async function deleteFilterPreset(deleteUrl: string) {
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
     <PageHeader title="未读主题" subtitle="你有未读回复的主题" />
     <div class="flex flex-wrap items-center gap-2">
-      <select
-        :value="sort"
-        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-        @change="changeSort(($event.target as HTMLSelectElement).value)"
-      >
-        <option v-for="opt in sortOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
-      <select
-        :value="filter"
-        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-        @change="changeFilter(($event.target as HTMLSelectElement).value)"
-      >
-        <option v-for="opt in filterOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
-      <select
-        :value="section"
-        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-        @change="changeSection(($event.target as HTMLSelectElement).value)"
-      >
-        <option v-for="opt in sectionOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
-      <select
-        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-        @change="addTag(($event.target as HTMLSelectElement).value); ($event.target as HTMLSelectElement).value = ''"
-      >
-        <option value="">添加标签筛选…</option>
-        <option
-          v-for="opt in tagOptions.filter((o) => o.value && !selectedTagSlugs.includes(o.value))"
-          :key="opt.value"
-          :value="opt.value"
-        >
-          {{ opt.label }}
-        </option>
-      </select>
-      <select
+      <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
+      <Select :model-value="filter" :options="filterOptions" size="sm" @update:model-value="changeFilter" />
+      <Select :model-value="section" :options="sectionOptions" size="sm" @update:model-value="changeSection" />
+      <Select v-model="tagPicker" :options="availableTagOptions" size="sm" @update:model-value="onPickTag" />
+      <Select
         v-if="selectedTagSlugs.length > 1"
-        :value="tagMatch"
-        class="h-8 rounded-md border border-input bg-transparent px-2 text-sm"
-        @change="changeTagMatch(($event.target as HTMLSelectElement).value)"
-      >
-        <option v-for="opt in tagMatchOptions" :key="opt.value" :value="opt.value">{{ opt.label }}</option>
-      </select>
+        :model-value="tagMatch"
+        :options="tagMatchOptions"
+        size="sm"
+        @update:model-value="changeTagMatch"
+      />
       <Button
         v-if="markSelectedReadUrl && selectedIds.length"
         type="button"

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -7,6 +8,8 @@ import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 defineProps<{
   alerts: Array<{
@@ -28,27 +31,25 @@ function unsubscribe(url: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
-    { label: '降价提醒', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.store'), href: routes.store },
+    { label: t('commerce.priceAlerts.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="降价提醒" subtitle="管理你订阅的商品降价通知" />
+  <PageHeader :title="t('commerce.priceAlerts.title')" :subtitle="t('commerce.priceAlerts.subtitle')" />
 
   <div v-if="alerts.length" class="space-y-3">
     <div v-for="alert in alerts" :key="alert.id" class="flex items-center justify-between gap-4 rounded-lg border p-4">
       <div>
         <Link :href="alert.product_url" class="font-medium hover:underline">{{ alert.product_name }}</Link>
-        <p v-if="alert.variant_name" class="text-sm text-muted-foreground">规格：{{ alert.variant_name }}</p>
+        <p v-if="alert.variant_name" class="text-sm text-muted-foreground">{{ t('commerce.priceAlerts.variant', { name: alert.variant_name }) }}</p>
         <p class="text-sm text-muted-foreground">
-          订阅价 {{ alert.baseline_price_label }}
-          <span class="mx-1">→</span>
-          现价 {{ alert.current_price_label }}
+          {{ t('commerce.priceAlerts.priceChange', { baseline: alert.baseline_price_label, current: alert.current_price_label }) }}
         </p>
-        <p class="text-xs text-muted-foreground">订阅于 {{ alert.subscribed_at }}</p>
+        <p class="text-xs text-muted-foreground">{{ t('commerce.priceAlerts.subscribedAt', { at: alert.subscribed_at }) }}</p>
       </div>
-      <Button type="button" size="sm" variant="outline" @click="unsubscribe(alert.unsubscribe_url)">取消订阅</Button>
+      <Button type="button" size="sm" variant="outline" @click="unsubscribe(alert.unsubscribe_url)">{{ t('commerce.priceAlerts.unsubscribe') }}</Button>
     </div>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无降价提醒订阅。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('commerce.priceAlerts.empty') }}</p>
 </template>

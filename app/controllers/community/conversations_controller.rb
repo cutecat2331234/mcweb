@@ -9,9 +9,9 @@ module Community
 
     def index
       include_archived = params[:archived] == "1"
-      conversations = Community::Conversation
+      conversations_scope = Community::Conversation
         .for_user(current_user, include_archived: include_archived)
-        .includes(participants: :user, messages: :user, creator: [])
+        .includes(participants: :user, creator: [])
         .ordered
 
       if params[:q].present?
@@ -22,14 +22,27 @@ module Community
           .where("forum_messages.body ILIKE ?", q)
           .distinct
           .pluck(:forum_conversation_id)
-        conversations = conversations.where(id: conversation_ids)
+        conversations_scope = conversations_scope.where(id: conversation_ids)
       end
 
-      conversations = conversations.limit(50)
-      unread_counts = Community::Conversation.unread_counts_for(current_user, conversations.map(&:id))
+      @pagy, conversations = pagy(conversations_scope, limit: 30)
+      conversation_ids = conversations.map(&:id)
+      unread_counts = Community::Conversation.unread_counts_for(current_user, conversation_ids)
+      last_previews = Community::Conversation.last_message_previews_for(conversation_ids)
+      participants_by_conversation = conversations.each_with_object({}) do |conv, memo|
+        memo[conv.id] = conv.participants.index_by(&:user_id)
+      end
 
       render inertia: "Community/Messages/Index", props: {
-        conversations: conversations.map { |conv| serialize_conversation(conv, unread_count: unread_counts[conv.id]) },
+        conversations: conversations.map do |conv|
+          serialize_conversation(
+            conv,
+            unread_count: unread_counts[conv.id],
+            last_message_preview: last_previews[conv.id],
+            current_participant: participants_by_conversation[conv.id]&.[](current_user.id)
+          )
+        end,
+        pagination: pagy_props(@pagy),
         showArchived: include_archived,
         archivedToggleUrl: include_archived ? forum_conversations_path : forum_conversations_path(archived: 1),
         query: params[:q].to_s
@@ -75,7 +88,7 @@ module Community
       result = Community::ArchiveConversation.call(user: current_user, conversation: conversation)
 
       if result.success?
-        redirect_to forum_conversations_path, notice: "会话已归档。"
+        redirect_to forum_conversations_path, notice: t("mcweb.flash.conversation_archived")
       else
         redirect_to forum_conversation_path(conversation), alert: service_error_message(result)
       end
@@ -86,7 +99,7 @@ module Community
       result = Community::UnarchiveConversation.call(user: current_user, conversation: conversation)
 
       if result.success?
-        redirect_to forum_conversation_path(conversation), notice: "会话已恢复。"
+        redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.conversation_restored")
       else
         redirect_to forum_conversations_path(archived: 1), alert: service_error_message(result)
       end
@@ -97,9 +110,9 @@ module Community
       result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
 
       if result.success?
-        redirect_to forum_conversation_path(conversation), notice: "已静音此会话。"
+        redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.conversation_muted")
       else
-        redirect_to forum_conversation_path(conversation), alert: result.error || "操作失败"
+        redirect_to forum_conversation_path(conversation), alert: result.error || t("mcweb.flash.operation_failed")
       end
     end
 
@@ -108,9 +121,9 @@ module Community
       result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
 
       if result.success?
-        redirect_to forum_conversation_path(conversation), notice: "已取消静音。"
+        redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.conversation_unmuted")
       else
-        redirect_to forum_conversation_path(conversation), alert: result.error || "操作失败"
+        redirect_to forum_conversation_path(conversation), alert: result.error || t("mcweb.flash.operation_failed")
       end
     end
 

@@ -1,4 +1,4 @@
-<h2>支付成功</h2>
-<p>您好 <%= @order.user.username %>，</p>
-<p>订单 <strong><%= @order.order_number %></strong> 已支付成功。</p>
+<h2><%= t("mcweb.mail.commerce.payment_confirmed.heading") %></h2>
+<p><%= t("mcweb.mail.greeting_formal", username: @order.user.username) %></p>
+<p><%= t("mcweb.mail.commerce.payment_confirmed.body", number: @order.order_number) %></p>
 <%= render partial: "commerce/order_mailer/order_details", locals: { order: @order } %>

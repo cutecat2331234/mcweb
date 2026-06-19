@@ -6,7 +6,12 @@ module Admin
     before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note silence unsilence set_trust_level adjust_store_credit]
 
     def index
-      users = User.order(created_at: :desc)
+      users_scope = User.order(created_at: :desc)
+      if params[:q].present?
+        q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].to_s.strip)}%"
+        users_scope = users_scope.where("username ILIKE :q OR email ILIKE :q", q: q)
+      end
+      @pagy, users = pagy(users_scope, limit: 50)
 
       render inertia: "Admin/Generic/Index", props: {
         title: "用户",
@@ -24,7 +29,8 @@ module Admin
             joined: l(user.created_at, format: :short),
             url: admin_user_path(user)
           )
-        end
+        end,
+        pagination: pagy_props(@pagy)
       }
     end
 
@@ -53,6 +59,7 @@ module Admin
           { label: "封禁原因", value: @user.ban_reason.presence || "—" },
           { label: "封禁到期", value: @user.ban_expires_at ? l(@user.ban_expires_at, format: :long) : (@user.banned? ? "永久" : "—") },
           { label: "角色", value: @user.roles.pluck(:name).join(", ").presence || "—" },
+          { label: "账户类型", value: account_type_label(@user.account_type) },
           { label: "邮箱已验证", value: @user.email_verified? ? "是" : "否" },
           { label: "注册时间", value: l(@user.created_at, format: :long) },
           { label: "警告积分", value: Community::UserWarning.total_points_for(@user).to_s },
@@ -117,6 +124,15 @@ module Admin
           balance_cents: @user.store_credit_cents.to_i,
           balance_label: format_money(@user.store_credit_cents.to_i, "CNY")
         } : nil,
+        accountForm: current_user.account_owner? || current_user.permission?("system.settings.manage") ? {
+          action_url: admin_user_path(@user),
+          account_type: @user.account_type,
+          account_types: User.account_types.keys.map { |key| { value: key, label: account_type_label(key) } },
+          role_ids: @user.role_ids,
+          roles: Role.order(:name).map { |role| { id: role.id, name: role.name, key: role.key } },
+          admin_modules: @user.admin_module_grants.pluck(:module_key),
+          module_options: AdminModuleGrant::MODULE_KEYS
+        } : nil,
         actions: mute_actions.map do |m|
           { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
         end
@@ -128,17 +144,18 @@ module Admin
 
     def update
       if @user.update(user_params)
+        sync_roles_and_modules!
         Administration::AuditLogger.call(actor: current_user, action: "admin.user_updated", resource: @user)
-        redirect_to admin_user_path(@user), notice: "用户已更新。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.user"))
       else
-        render :edit, status: :unprocessable_entity
+        redirect_to admin_user_path(@user), alert: @user.errors.full_messages.to_sentence
       end
     end
 
     def destroy
       @user.soft_delete!
       Administration::AuditLogger.call(actor: current_user, action: "admin.user_deleted", resource: @user)
-      redirect_to admin_users_path, notice: "用户已删除。"
+      redirect_to admin_users_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.user"))
     end
 
     def ban
@@ -151,7 +168,7 @@ module Admin
       )
 
       if result.success?
-        redirect_to admin_user_path(@user), notice: "用户已封禁。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.user_banned")
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end
@@ -160,18 +177,18 @@ module Admin
     def unban
       result = Administration::UnbanUser.call(user: @user, actor: current_user)
       if result.success?
-        redirect_to admin_user_path(@user), notice: "用户已解封。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.user_unbanned")
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end
     end
 
     def grant_badge
-      return redirect_to admin_user_path(@user), alert: "无权授予徽章。" unless current_user.permission?("forum.badges.manage") || current_user.permission?("admin.access")
+      return redirect_to admin_user_path(@user), alert: t("mcweb.flash.cannot_grant_badge") unless current_user.permission?("forum.badges.manage") || current_user.permission?("admin.access")
 
       result = Community::AwardBadge.call(user: @user, badge_slug: params[:badge_slug])
       if result.success?
-        redirect_to admin_user_path(@user), notice: "徽章已授予。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.badge_granted")
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end
@@ -185,7 +202,7 @@ module Admin
         points: params[:points]
       )
       if result.success?
-        redirect_to admin_user_path(@user), notice: "警告已发出。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.warning_issued")
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end
@@ -198,7 +215,7 @@ module Admin
         body: params[:body]
       )
       if result.success?
-        redirect_to admin_user_path(@user), notice: "员工备注已添加。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.staff_note_added")
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end
@@ -212,7 +229,7 @@ module Admin
         days: params[:days]
       )
       if result.success?
-        redirect_to admin_user_path(@user), notice: "用户已被沉默（可浏览不可发帖）。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.user_silenced")
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end
@@ -221,7 +238,7 @@ module Admin
     def unsilence
       result = Community::RemoveUserSilence.call(actor: current_user, user: @user)
       if result.success?
-        redirect_to admin_user_path(@user), notice: "用户沉默已解除。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.user_unsilenced")
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end
@@ -232,15 +249,15 @@ module Admin
       value = override.to_s.strip
       if value.blank? || value == "auto"
         @user.update!(forum_trust_level_override: nil)
-        redirect_to admin_user_path(@user), notice: "信任等级已恢复为自动计算。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.trust_level_auto")
       else
         level = value.to_i
         unless level.between?(0, 4)
-          return redirect_to admin_user_path(@user), alert: "信任等级必须在 0-4 之间。"
+          return redirect_to admin_user_path(@user), alert: t("mcweb.flash.trust_level_invalid")
         end
 
         @user.update!(forum_trust_level_override: level)
-        redirect_to admin_user_path(@user), notice: "信任等级已设为 TL#{level}。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.trust_level_set", level: level)
       end
     end
 
@@ -252,7 +269,7 @@ module Admin
         note: params[:note]
       )
       if result.success?
-        redirect_to admin_user_path(@user), notice: "商店余额已更新为 #{format_money(result.value[:balance_cents], 'CNY')}。"
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.wallet_updated", amount: format_money(result.value[:balance_cents], "CNY"))
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end
@@ -266,12 +283,42 @@ module Admin
       "TL#{level} · #{info&.dig(:name) || '未知'}"
     end
 
+    def account_type_label(account_type)
+      {
+        "member" => "普通会员",
+        "staff" => "工作人员",
+        "admin" => "管理员",
+        "owner" => "站主"
+      }[account_type.to_s] || account_type.to_s
+    end
+
+    def sync_roles_and_modules!
+      return unless params[:user]
+
+      if params[:user][:role_ids]
+        @user.role_ids = Array(params[:user][:role_ids]).reject(&:blank?).map(&:to_i)
+      end
+
+      if params[:user][:admin_modules] && (@user.account_staff? || params[:user][:account_type] == "staff")
+        modules = Array(params[:user][:admin_modules]).reject(&:blank?)
+        @user.admin_module_grants.where.not(module_key: modules).delete_all
+        modules.each do |module_key|
+          @user.admin_module_grants.find_or_create_by!(module_key: module_key) do |grant|
+            grant.granted_by = current_user
+            grant.granted_at = Time.current
+          end
+        end
+      end
+    end
+
     def set_user
       @user = User.find_by!(public_id: params[:id])
     end
 
     def user_params
-      params.expect(user: %i[display_name locale time_zone])[:user]
+      permitted = %i[display_name locale time_zone]
+      permitted << :account_type if current_user.account_owner? || current_user.permission?("system.settings.manage")
+      params.expect(user: permitted)[:user]
     end
   end
 end

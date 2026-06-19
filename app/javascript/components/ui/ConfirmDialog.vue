@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { confirmState, resolveConfirm } from '@/lib/useConfirm'
 import Button from '@/components/ui/Button.vue'
+
+const { t } = useI18n()
 
 function cancel() {
   resolveConfirm(false)
@@ -33,14 +36,14 @@ function accept() {
           <p class="mt-2 text-sm text-muted-foreground">{{ confirmState.options.message }}</p>
           <div class="mt-6 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" @click="cancel">
-              {{ confirmState.options.cancelLabel || '取消' }}
+              {{ confirmState.options.cancelLabel || t('common.cancel') }}
             </Button>
             <Button
               type="button"
               :variant="confirmState.options.variant === 'destructive' ? 'destructive' : 'default'"
               @click="accept"
             >
-              {{ confirmState.options.confirmLabel || '确定' }}
+              {{ confirmState.options.confirmLabel || t('common.confirm') }}
             </Button>
           </div>
         </div>

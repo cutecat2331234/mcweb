@@ -1,9 +1,9 @@
-<h2>邀请你评价已购商品</h2>
-<p>你好 <%= @user.username %>，</p>
-<p>订单 <strong><%= @order.order_number %></strong> 已完成。欢迎为以下商品留下评价，帮助其他买家做出选择。</p>
+<h2><%= t("mcweb.mail.commerce.review_request.heading") %></h2>
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
+<p><%= t("mcweb.mail.commerce.review_request.intro", number: @order.order_number) %></p>
 <ul>
   <% @order.items.each do |item| %>
-    <li><%= item.product_name %></li>
+    <li><%= item.product_name %><% if item.variant_name.present? %> — <%= item.variant_name %><% end %></li>
   <% end %>
 </ul>
-<p><a href="<%= @url %>">查看订单并评价</a></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.commerce.review_request.action") %></a></p>

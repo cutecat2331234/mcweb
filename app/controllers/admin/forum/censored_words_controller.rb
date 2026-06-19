@@ -18,7 +18,7 @@ module Admin
         word = Community::CensoredWord.new(censored_word_params)
         if word.save
           Rails.cache.delete("forum/censored_words")
-          redirect_to admin_forum_censored_words_path, notice: "敏感词已添加。"
+          redirect_to admin_forum_censored_words_path, notice: t("mcweb.flash.censored_word_added")
         else
           redirect_to admin_forum_censored_words_path, alert: word.errors.full_messages.to_sentence
         end
@@ -27,7 +27,7 @@ module Admin
       def destroy
         Community::CensoredWord.find(params[:id]).destroy!
         Rails.cache.delete("forum/censored_words")
-        redirect_to admin_forum_censored_words_path, notice: "敏感词已删除。"
+        redirect_to admin_forum_censored_words_path, notice: t("mcweb.flash.censored_word_deleted")
       end
 
       private

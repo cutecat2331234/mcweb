@@ -75,7 +75,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_bookmarks_path, notice: "书签已更新。"
+        redirect_to forum_bookmarks_path, notice: t("mcweb.flash.bookmark_updated")
       else
         redirect_to forum_bookmarks_path, alert: service_error_message(result)
       end

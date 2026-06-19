@@ -19,9 +19,9 @@ module Identity
 
       if revoking_current
         sign_out
-        redirect_to identity_sign_in_path, notice: "当前会话已撤销，请重新登录。"
+        redirect_to identity_sign_in_path, notice: t("mcweb.flash.session_revoked_current")
       else
-        redirect_to identity_sessions_management_index_path, notice: "会话已撤销。"
+        redirect_to identity_sessions_management_index_path, notice: t("mcweb.flash.session_revoked")
       end
     end
   end

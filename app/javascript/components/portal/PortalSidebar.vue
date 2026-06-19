@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { Link, usePage } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import { MessageSquare, ShoppingBag, ExternalLink, Home, X } from '@lucide/vue'
 import { routes } from '@/lib/routes'
 import { usePortalNav, type PortalNavOptions } from '@/lib/usePortalNav'
@@ -11,6 +12,7 @@ import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
 
 const props = defineProps<PortalNavOptions & { class?: string; onNavigate?: () => void; showClose?: boolean }>()
+const { t } = useI18n()
 
 const { features, showPortalSectionTabs, portalSectionGridClass } = useFeatureFlags()
 
@@ -24,6 +26,19 @@ const navOptions = computed(() => ({
 
 const { navGroups, isActive, isSectionActive, currentPath } = usePortalNav(navOptions)
 const { activeTemplate } = useActiveTemplate()
+const page = usePage()
+const minecraftServers = computed(() => page.props.minecraft_servers as Array<{ name: string; online: number; max: number; status: string }> | undefined)
+
+const serverStatusLabels: Record<string, string> = {
+  online: 'portal.serverStatusOnline',
+  offline: 'portal.serverStatusOffline',
+  maintenance: 'portal.serverStatusMaintenance',
+}
+
+function serverStatusLabel(status: string) {
+  const key = serverStatusLabels[status]
+  return key ? t(key) : status
+}
 
 const STORAGE_KEY = 'mc-portal-nav-expanded'
 
@@ -95,7 +110,7 @@ watch(
       >
         <img v-if="activeTemplate?.logoUrl" :src="activeTemplate.logoUrl" alt="" class="h-8 w-auto shrink-0">
         <span v-else class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary/10 p-1.5 text-base">⛏</span>
-        <span class="truncate">McWeb</span>
+        <span class="truncate">{{ t('portal.brand') }}</span>
       </Link>
       <Button
         v-if="showClose"
@@ -103,7 +118,7 @@ watch(
         size="icon"
         class="shrink-0 text-sidebar-foreground/70 lg:hidden"
         type="button"
-        aria-label="关闭菜单"
+        :aria-label="t('common.close')"
         @click="onNavigate?.()"
       >
         <X class="h-5 w-5" />
@@ -129,7 +144,7 @@ watch(
           @click="onNavigate?.()"
         >
           <MessageSquare class="h-4 w-4" />
-          论坛
+          {{ t('nav.forum') }}
         </Link>
         <Link
           v-if="features.store"
@@ -143,8 +158,22 @@ watch(
           @click="onNavigate?.()"
         >
           <ShoppingBag class="h-4 w-4" />
-          商城
+          {{ t('nav.store') }}
         </Link>
+      </div>
+    </div>
+
+    <div v-if="features.minecraft && minecraftServers?.length" class="px-3 pb-3">
+      <p class="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50">{{ t('portal.serverStatus') }}</p>
+      <div class="space-y-2">
+        <div
+          v-for="server in minecraftServers"
+          :key="server.name"
+          class="rounded-lg border border-sidebar-border/40 bg-sidebar-accent/20 px-3 py-2 text-xs"
+        >
+          <div class="font-medium text-sidebar-foreground">{{ server.name }}</div>
+          <div class="text-sidebar-foreground/70">{{ server.online }}/{{ server.max }} {{ t('portal.online') }}{{ t('common.colon') }} {{ serverStatusLabel(server.status) }}</div>
+        </div>
       </div>
     </div>
 
@@ -167,7 +196,7 @@ watch(
         @click="onNavigate?.()"
       >
         <Home class="h-4 w-4 shrink-0 opacity-70 transition-colors group-hover:opacity-100" />
-        <span class="flex-1">返回官网</span>
+        <span class="flex-1">{{ t('portal.backToWebsite') }}</span>
         <ExternalLink class="h-3.5 w-3.5 shrink-0 opacity-50 transition-all group-hover:opacity-80" />
       </Link>
     </div>

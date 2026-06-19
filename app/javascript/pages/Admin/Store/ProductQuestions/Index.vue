@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -11,6 +12,8 @@ import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 defineProps<{
   questions: Array<{
@@ -36,18 +39,18 @@ function unhideQuestion(url: string) {
 </script>
 
 <template>
-  <PageHeader title="商品问答" />
+  <PageHeader :title="t('admin.productQuestions.title')" />
 
   <div v-if="questions.length" class="rounded-lg border">
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>商品</TableHead>
-          <TableHead>提问者</TableHead>
-          <TableHead>问题</TableHead>
-          <TableHead>订单</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>时间</TableHead>
+          <TableHead>{{ t('admin.productQuestions.colProduct') }}</TableHead>
+          <TableHead>{{ t('admin.productQuestions.colAuthor') }}</TableHead>
+          <TableHead>{{ t('admin.productQuestions.colQuestion') }}</TableHead>
+          <TableHead>{{ t('admin.productQuestions.colOrder') }}</TableHead>
+          <TableHead>{{ t('admin.productQuestions.colStatus') }}</TableHead>
+          <TableHead>{{ t('admin.common.time') }}</TableHead>
           <TableHead />
         </TableRow>
       </TableHeader>
@@ -61,15 +64,15 @@ function unhideQuestion(url: string) {
           <TableCell>{{ q.created_at }}</TableCell>
           <TableCell class="flex gap-2">
             <Button v-if="q.status === 'published'" type="button" size="sm" variant="outline" @click="hideQuestion(q.hide_url)">
-              隐藏
+              {{ t('admin.common.hide') }}
             </Button>
             <Button v-else type="button" size="sm" variant="outline" @click="unhideQuestion(q.unhide_url)">
-              恢复
+              {{ t('admin.common.restore') }}
             </Button>
           </TableCell>
         </TableRow>
       </TableBody>
     </Table>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无问答。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('admin.productQuestions.empty') }}</p>
 </template>

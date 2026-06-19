@@ -56,7 +56,7 @@ module Admin
       if @role.save
         sync_permissions!
         Administration::AuditLogger.call(actor: current_user, action: "admin.role_created", resource: @role)
-        redirect_to admin_role_path(@role), notice: "角色已创建。"
+        redirect_to admin_role_path(@role), notice: t("mcweb.flash.created", resource: t("mcweb.resources.role"))
       else
         render :new, status: :unprocessable_entity
       end
@@ -66,23 +66,23 @@ module Admin
     end
 
     def update
-      return redirect_to admin_roles_path, alert: "系统内置角色不可修改。" if @role.system_role?
+      return redirect_to admin_roles_path, alert: t("mcweb.flash.system_role_immutable") if @role.system_role?
 
       if @role.update(role_params)
         sync_permissions!
         Administration::AuditLogger.call(actor: current_user, action: "admin.role_updated", resource: @role)
-        redirect_to admin_role_path(@role), notice: "角色已更新。"
+        redirect_to admin_role_path(@role), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.role"))
       else
         render :edit, status: :unprocessable_entity
       end
     end
 
     def destroy
-      return redirect_to admin_roles_path, alert: "系统内置角色不可删除。" if @role.system_role?
+      return redirect_to admin_roles_path, alert: t("mcweb.flash.system_role_undeletable") if @role.system_role?
 
       @role.destroy!
       Administration::AuditLogger.call(actor: current_user, action: "admin.role_deleted", resource: @role)
-      redirect_to admin_roles_path, notice: "角色已删除。"
+      redirect_to admin_roles_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.role"))
     end
 
     private

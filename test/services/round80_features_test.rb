@@ -227,6 +227,6 @@ class Round80AdminNavWebhookDeliveriesTest < ActiveSupport::TestCase
   test "admin layout links to forum webhook deliveries" do
     content = File.read(Rails.root.join("app/javascript/layouts/AdminLayout.vue"))
     assert_includes content, "forumWebhookDeliveries"
-    assert_includes content, "Webhook 投递"
+    assert_includes content, "admin.forumWebhookDeliveries"
   end
 end

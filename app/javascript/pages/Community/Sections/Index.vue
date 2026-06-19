@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -13,6 +14,8 @@ import TableRow from '@/components/ui/TableRow.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 export interface SectionItem {
   id: number
@@ -45,11 +48,11 @@ defineProps<{
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), current: true },
   ]" />
 
-  <PageHeader title="论坛板块" subtitle="浏览社区讨论分区" />
+  <PageHeader :title="t('forum.sectionsIndex.title')" :subtitle="t('forum.sectionsIndex.subtitle')" />
 
   <div v-if="categories?.length" class="mb-6 grid gap-3 sm:grid-cols-2">
     <div
@@ -74,11 +77,11 @@ defineProps<{
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>板块</TableHead>
-          <TableHead>分类</TableHead>
-          <TableHead>主题数</TableHead>
-          <TableHead>未读</TableHead>
-          <TableHead>简介</TableHead>
+          <TableHead>{{ t('forum.sectionsIndex.colSection') }}</TableHead>
+          <TableHead>{{ t('forum.sectionsIndex.colCategory') }}</TableHead>
+          <TableHead>{{ t('forum.sectionsIndex.colTopics') }}</TableHead>
+          <TableHead>{{ t('forum.sectionsIndex.colUnread') }}</TableHead>
+          <TableHead>{{ t('forum.sectionsIndex.colDescription') }}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -137,7 +140,7 @@ defineProps<{
   </div>
 
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    暂无论坛板块。
+    {{ t('forum.sectionsIndex.empty') }}
   </p>
 
   <Pagination :pagination="pagination" :base-path="routes.forum" />

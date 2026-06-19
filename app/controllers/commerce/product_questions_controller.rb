@@ -29,9 +29,9 @@ module Commerce
       if result.success?
         if params[:return_order_id].present?
           order = Commerce::Order.find_by(public_id: params[:return_order_id], user_id: current_user.id)
-          return redirect_to store_order_path(order), notice: "问题已提交。" if order
+          return redirect_to store_order_path(order), notice: t("mcweb.flash.question_submitted") if order
         end
-        redirect_to store_product_path(@product), notice: "问题已提交。"
+        redirect_to store_product_path(@product), notice: t("mcweb.flash.question_submitted")
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end
@@ -49,7 +49,7 @@ module Commerce
       )
 
       if result.success?
-        redirect_to store_product_path(@product), notice: "回答已发布。"
+        redirect_to store_product_path(@product), notice: t("mcweb.flash.answer_published")
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end
@@ -61,7 +61,7 @@ module Commerce
       result = Commerce::ToggleAnswerHelpful.call(user: current_user, answer: answer)
 
       if result.success?
-        redirect_to store_product_path(@product), notice: result.value[:helpful] ? "已标记有帮助。" : "已取消标记。"
+        redirect_to store_product_path(@product), notice: result.value[:helpful] ? t("mcweb.flash.helpful_marked") : t("mcweb.flash.helpful_unmarked")
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end

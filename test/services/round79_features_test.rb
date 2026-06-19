@@ -87,7 +87,7 @@ class Round79OrderShippedTrackingUrlTest < ActiveSupport::TestCase
   test "order shipped email includes tracking link" do
     content = File.read(Rails.root.join("app/views/commerce/order_mailer/order_shipped.html.erb"))
     assert_includes content, "@tracking_url"
-    assert_includes content, "查询物流"
+    assert_includes content, "track_url"
   end
 end
 

@@ -43,7 +43,7 @@ module Community
 
     def show
       user = User.find_by!(username: params[:id])
-      tab = params[:tab].to_s.in?(%w[topics posts store assigned]) ? params[:tab] : "topics"
+      tab = params[:tab].to_s.in?(%w[topics posts store assigned minecraft]) ? params[:tab] : "topics"
       topics_scope = if logged_in? && (current_user.id == user.id || current_user.permission?("forum.topics.lock"))
                        Community::Topic.where(user: user, status: :published)
       else
@@ -187,7 +187,13 @@ module Community
         activeTab: tab,
         liked_posts: liked_posts,
         store_reviews: store_reviews,
-        store_orders: store_orders
+        store_orders: store_orders,
+        account_type: account_type_label(user.account_type),
+        role_names: user.roles.order(:name).pluck(:name),
+        game_permission_groups: serialize_game_permission_groups(user),
+        minecraft: serialize_minecraft_profile(user),
+        skin_mode: SiteSetting.get("minecraft.profile.skin_mode", "2d"),
+        profile_sections: SiteSetting.get("minecraft.profile.sections", "minecraft,trust,roles,game_groups").to_s.split(",").map(&:strip).reject(&:blank?)
       }
     end
 
@@ -197,7 +203,7 @@ module Community
 
       if ActiveModel::Type::Boolean.new.cast(params.dig(:user, :remove_forum_avatar))
         remove_forum_avatar!(user)
-        redirect_to forum_user_path(user.username), notice: "头像已恢复默认。"
+        redirect_to forum_user_path(user.username), notice: t("mcweb.flash.avatar_reset")
         return
       end
 
@@ -206,13 +212,13 @@ module Community
         if error
           redirect_to forum_user_path(user.username), alert: error
         else
-          redirect_to forum_user_path(user.username), notice: "头像已更新。"
+          redirect_to forum_user_path(user.username), notice: t("mcweb.flash.avatar_updated")
         end
         return
       end
 
       if user.update(user_params)
-        redirect_to forum_user_path(user.username), notice: "资料已更新。"
+        redirect_to forum_user_path(user.username), notice: t("mcweb.flash.profile_updated")
       else
         redirect_to forum_user_path(user.username), alert: user.errors.full_messages.to_sentence
       end
@@ -250,6 +256,57 @@ module Community
         section: mute.section&.name || "全站",
         reason: mute.reason,
         expires_at: mute.expires_at ? l(mute.expires_at, format: :short) : "永久"
+      }
+    end
+
+    def account_type_label(account_type)
+      I18n.t("mcweb.labels.account_type.#{account_type}", default: account_type.to_s)
+    end
+
+    def serialize_game_permission_groups(user)
+      profile = user.minecraft_player_profiles.first
+      return [] unless profile
+
+      profile.permission_groups.order(weight: :desc).map do |group|
+        { key: group.group_key, label: group.group_label.presence || group.group_key, source: group.source }
+      end
+    end
+
+    def serialize_minecraft_profile(user)
+      profile = user.minecraft_player_profiles.first
+      unless profile
+        legacy = user.minecraft_identities.order(linked_at: :desc).first
+        profile = legacy&.player_profile
+      end
+
+      unless profile
+        return {
+          linked: false,
+          link_url: (logged_in? && current_user.id == user.id) ? minecraft_link_path : nil
+        }
+      end
+
+      identity = profile.active_identity
+      legacy = user.minecraft_identities.find_by(player_profile: profile) || user.minecraft_identities.order(linked_at: :desc).first
+
+      fields = profile.profile_field_values.map do |value|
+        definition = Minecraft::ProfileFieldDefinition.find_by(key: value.field_key)
+        next unless definition&.active?
+
+        { key: value.field_key, label: definition.label, value: value.value, field_type: definition.field_type, group: definition.group_name }
+      end.compact
+
+      {
+        linked: true,
+        player_id: profile.public_id,
+        username: identity&.username || legacy&.username,
+        uuid: identity&.external_uuid || legacy&.uuid,
+        identity_type: identity&.identity_type || legacy&.identity_type || "java",
+        skin_texture_url: identity&.skin_texture_url || legacy&.skin_texture_url,
+        skin_model: identity&.skin_model || legacy&.skin_model,
+        last_seen_ingame_at: (identity&.last_seen_ingame_at || legacy&.last_seen_ingame_at)&.then { |t| l(t, format: :short) },
+        fields: fields,
+        link_url: (logged_in? && current_user.id == user.id) ? minecraft_link_path : nil
       }
     end
   end

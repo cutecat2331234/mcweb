@@ -74,7 +74,7 @@ module Commerce
       result = Commerce::CancelOrder.call(order: @order, actor: current_user, reason: params[:reason])
 
       if result.success?
-        redirect_to store_order_path(@order), notice: "订单已取消。"
+        redirect_to store_order_path(@order), notice: t("mcweb.flash.order_cancelled")
       else
         redirect_to store_order_path(@order), alert: service_error_message(result)
       end
@@ -89,7 +89,7 @@ module Commerce
       )
 
       if result.success?
-        redirect_to store_order_path(@order), notice: "退款申请已提交，请等待审核。"
+        redirect_to store_order_path(@order), notice: t("mcweb.flash.refund_requested")
       else
         redirect_to store_order_path(@order), alert: service_error_message(result)
       end
@@ -97,7 +97,7 @@ module Commerce
 
     def receipt
       unless %w[paid processing fulfilling fulfilled completed refunded].include?(@order.status)
-        return redirect_to store_order_path(@order), alert: "该订单暂无收据。"
+        return redirect_to store_order_path(@order), alert: t("mcweb.flash.no_receipt")
       end
 
       render "commerce/orders/receipt", layout: false
@@ -105,7 +105,7 @@ module Commerce
 
     def receipt_pdf
       unless %w[paid processing fulfilling fulfilled completed refunded].include?(@order.status)
-        return redirect_to store_order_path(@order), alert: "该订单暂无收据。"
+        return redirect_to store_order_path(@order), alert: t("mcweb.flash.no_receipt")
       end
 
       result = Commerce::GenerateOrderReceiptPdf.call(order: @order)
@@ -121,7 +121,7 @@ module Commerce
 
     def packing_slip
       unless %w[paid processing fulfilling fulfilled completed].include?(@order.status)
-        return redirect_to store_order_path(@order), alert: "该订单暂无装箱单。"
+        return redirect_to store_order_path(@order), alert: t("mcweb.flash.no_packing_slip")
       end
 
       render "commerce/orders/packing_slip", layout: false
@@ -145,7 +145,7 @@ module Commerce
 
     def refresh_download
       order_item = @order.items.find_by(id: params[:order_item_id])
-      return redirect_to store_order_path(@order), alert: "商品不存在。" unless order_item
+      return redirect_to store_order_path(@order), alert: t("mcweb.flash.product_not_found") unless order_item
 
       result = Commerce::GenerateDownloadToken.call(order_item: order_item, user: current_user)
       if result.success?
@@ -157,12 +157,12 @@ module Commerce
 
     def new
       cart = Commerce::Cart.find_by(user: current_user)
-      redirect_to store_cart_path, alert: "购物车是空的。" if cart.nil? || cart.empty?
+      redirect_to store_cart_path, alert: t("mcweb.services.errors.cart_empty") if cart.nil? || cart.empty?
     end
 
     def create
       cart = Commerce::Cart.find_by(user: current_user)
-      return redirect_to store_cart_path, alert: "购物车是空的。" if cart.nil? || cart.empty?
+      return redirect_to store_cart_path, alert: t("mcweb.services.errors.cart_empty") if cart.nil? || cart.empty?
 
       result = Commerce::CreateOrder.call(
         cart: cart,
@@ -171,7 +171,7 @@ module Commerce
       )
 
       if result.success?
-        redirect_to store_order_path(result.value), notice: "订单已创建。"
+        redirect_to store_order_path(result.value), notice: t("mcweb.services.errors.order_created")
       else
         redirect_to new_store_order_path, alert: service_error_message(result)
       end

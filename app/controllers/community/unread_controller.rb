@@ -49,7 +49,7 @@ module Community
       result = Community::MarkAllTopicsRead.call(user: current_user, topic_ids: topic_ids)
 
       if result.success?
-        redirect_to_unread_index(notice: "全部主题已标记为已读。")
+        redirect_to_unread_index(notice: t("mcweb.flash.all_topics_marked_read"))
       else
         redirect_to_unread_index(alert: service_error_message(result))
       end
@@ -62,9 +62,9 @@ module Community
       )
 
       if result.success?
-        redirect_to_unread_index(notice: "已标记 #{result.value[:marked]} 个主题为已读。")
+        redirect_to_unread_index(notice: t("mcweb.flash.topics_marked_read", count: result.value[:marked]))
       else
-        redirect_to_unread_index(alert: result.error || "操作失败")
+        redirect_to_unread_index(alert: result.error || t("mcweb.flash.operation_failed"))
       end
     end
 

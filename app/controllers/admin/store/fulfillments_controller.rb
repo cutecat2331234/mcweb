@@ -49,10 +49,10 @@ module Admin
           if result.failure?
             redirect_to admin_store_fulfillment_path(@fulfillment), alert: service_error_message(result)
           else
-            redirect_to admin_store_fulfillment_path(@fulfillment), notice: "已重新排队发货。"
+            redirect_to admin_store_fulfillment_path(@fulfillment), notice: t("mcweb.flash.fulfillment_requeued")
           end
         elsif @fulfillment.update(fulfillment_params)
-          redirect_to admin_store_fulfillment_path(@fulfillment), notice: "履约记录已更新。"
+          redirect_to admin_store_fulfillment_path(@fulfillment), notice: t("mcweb.flash.fulfillment_updated")
         else
           redirect_to admin_store_fulfillment_path(@fulfillment), alert: @fulfillment.errors.full_messages.to_sentence
         end

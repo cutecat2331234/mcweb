@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -9,6 +10,8 @@ import FileInput from '@/components/ui/FileInput.vue'
 import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 interface TemplateItem {
   id: number
@@ -55,9 +58,9 @@ function deactivate(scope: 'website' | 'portal', template: TemplateItem) {
 async function removeTemplate(template: TemplateItem) {
   if (template.builtin) return
   const ok = await confirm({
-    title: '删除模板',
-    message: `确定删除模板「${template.name}」？此操作不可恢复。`,
-    confirmLabel: '删除',
+    title: t('admin.templates.deleteTitle'),
+    message: t('admin.templates.deleteConfirm', { name: template.name }),
+    confirmLabel: t('admin.ui.delete'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -73,22 +76,22 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
 
 <template>
   <PageHeader
-    title="前台模板"
-    subtitle="上传 ZIP 压缩包快速更换官网与用户前台外观。后台 Admin 界面不受模板影响。"
+    :title="t('admin.templates.title')"
+    :subtitle="t('admin.templates.subtitle')"
   />
 
   <div class="mb-6 rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">上传模板包</h2>
+    <h2 class="mb-2 text-sm font-semibold">{{ t('admin.templates.uploadTitle') }}</h2>
     <p class="mb-3 text-sm text-muted-foreground">
-      压缩包需包含 manifest.json，详见
-      <a href="/template-starter/manifest.json" class="underline" target="_blank" rel="noopener">manifest 规范</a>
-      或下载
-      <a :href="starterDownloadUrl" class="underline">示例模板包</a>。
+      {{ t('admin.templates.uploadHint') }}
+      <a href="/template-starter/manifest.json" class="underline" target="_blank" rel="noopener">{{ t('admin.templates.manifestSpec') }}</a>
+      {{ t('admin.templates.orDownload') }}
+      <a :href="starterDownloadUrl" class="underline">{{ t('admin.templates.samplePack') }}</a>。
     </p>
     <FileInput
       accept=".zip,application/zip"
       :disabled="uploading"
-      :button-label="uploading ? '上传中…' : '选择 ZIP 文件'"
+      :button-label="uploading ? t('admin.templates.uploading') : t('admin.templates.selectZip')"
       @change="onFileChange"
     />
   </div>
@@ -103,14 +106,14 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
         <div class="min-w-0 flex-1">
           <div class="flex flex-wrap items-center gap-2">
             <h3 class="font-medium">{{ template.name }}</h3>
-            <Badge v-if="template.builtin" variant="secondary">内置</Badge>
+            <Badge v-if="template.builtin" variant="secondary">{{ t('admin.templates.builtin') }}</Badge>
             <Badge variant="outline">{{ template.key }}</Badge>
             <Badge variant="outline">v{{ template.version }}</Badge>
             <Badge :variant="template.status === 'installed' ? 'default' : 'outline'">{{ template.status }}</Badge>
           </div>
           <p class="mt-1 text-xs text-muted-foreground">
-            范围：{{ template.scopes.join('、') }}
-            <span v-if="template.checksum" class="ml-2">校验：{{ template.checksum.slice(0, 12) }}…</span>
+            {{ t('admin.templates.scopes') }}{{ template.scopes.join(t('common.listSeparator')) }}
+            <span v-if="template.checksum" class="ml-2">{{ t('admin.templates.checksum') }}{{ template.checksum.slice(0, 12) }}…</span>
           </p>
           <p v-if="template.error_message" class="mt-1 text-sm text-destructive">{{ template.error_message }}</p>
         </div>
@@ -121,7 +124,7 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
           size="sm"
           @click="removeTemplate(template)"
         >
-          删除
+          {{ t('admin.ui.delete') }}
         </Button>
       </div>
 
@@ -133,7 +136,7 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
             size="sm"
             @click="activate(template, 'website')"
           >
-            激活官网
+            {{ t('admin.templates.activateWebsite') }}
           </Button>
           <Button
             v-else-if="!template.builtin"
@@ -142,11 +145,11 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
             variant="secondary"
             @click="deactivate('website', template)"
           >
-            停用官网
+            {{ t('admin.templates.deactivateWebsite') }}
           </Button>
-          <Badge v-else-if="isActive(template, 'website')" variant="secondary">内置默认</Badge>
+          <Badge v-else-if="isActive(template, 'website')" variant="secondary">{{ t('admin.templates.builtinDefault') }}</Badge>
           <Button v-if="template.preview_website_url" as-child size="sm" variant="outline">
-            <a :href="template.preview_website_url" target="_blank" rel="noopener">预览官网</a>
+            <a :href="template.preview_website_url" target="_blank" rel="noopener">{{ t('admin.templates.previewWebsite') }}</a>
           </Button>
         </template>
 
@@ -157,7 +160,7 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
             size="sm"
             @click="activate(template, 'portal')"
           >
-            激活前台
+            {{ t('admin.templates.activatePortal') }}
           </Button>
           <Button
             v-else-if="!template.builtin"
@@ -166,22 +169,22 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
             variant="secondary"
             @click="deactivate('portal', template)"
           >
-            停用前台
+            {{ t('admin.templates.deactivatePortal') }}
           </Button>
-          <Badge v-else-if="isActive(template, 'portal')" variant="secondary">内置默认</Badge>
+          <Badge v-else-if="isActive(template, 'portal')" variant="secondary">{{ t('admin.templates.builtinDefault') }}</Badge>
           <Button v-if="template.preview_portal_url" as-child size="sm" variant="outline">
-            <a :href="template.preview_portal_url" target="_blank" rel="noopener">预览前台</a>
+            <a :href="template.preview_portal_url" target="_blank" rel="noopener">{{ t('admin.templates.previewPortal') }}</a>
           </Button>
         </template>
       </div>
     </div>
 
-    <p v-if="!templates.length" class="text-sm text-muted-foreground">正在加载内置模板…</p>
+    <p v-if="!templates.length" class="text-sm text-muted-foreground">{{ t('admin.templates.loading') }}</p>
   </div>
 
   <p class="mt-6 text-xs text-muted-foreground">
-    当前激活：
-    官网 <code>{{ activeWebsiteTemplate || '内置默认' }}</code>，
-    前台 <code>{{ activePortalTemplate || '内置默认' }}</code>
+    {{ t('admin.templates.activeNow') }}
+    {{ t('admin.templates.website') }} <code>{{ activeWebsiteTemplate || t('admin.templates.builtinDefault') }}</code>，
+    {{ t('admin.templates.portal') }} <code>{{ activePortalTemplate || t('admin.templates.builtinDefault') }}</code>
   </p>
 </template>

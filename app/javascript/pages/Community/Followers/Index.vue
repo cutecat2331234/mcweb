@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -8,7 +10,9 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const { t } = useI18n()
+
+const props = defineProps<{
   profile: {
     username: string
     display_name: string | null
@@ -25,19 +29,21 @@ defineProps<{
   }>
   pagination: PaginationMeta
 }>()
+
+const displayName = computed(() => props.profile.display_name || props.profile.username)
 </script>
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: profile.display_name || profile.username, href: profile.profile_url },
-    { label: '粉丝', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: displayName, href: profile.profile_url },
+    { label: t('forum.followers.breadcrumb'), current: true },
   ]" />
 
   <PageHeader
-    :title="`${profile.display_name || profile.username} 的粉丝`"
-    :subtitle="`共 ${profile.followers_count} 人`"
+    :title="t('forum.followers.title', { name: displayName })"
+    :subtitle="t('forum.followers.subtitle', { count: profile.followers_count })"
   />
 
   <div v-if="followers.length" class="space-y-3">
@@ -49,10 +55,10 @@ defineProps<{
         </Link>
         <p v-if="follower.forum_title" class="text-xs text-muted-foreground">{{ follower.forum_title }}</p>
       </div>
-      <span class="text-xs text-muted-foreground">关注于 {{ follower.followed_at }}</span>
+      <span class="text-xs text-muted-foreground">{{ t('forum.followers.followedAt', { at: follower.followed_at }) }}</span>
     </div>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无粉丝。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('forum.followers.empty') }}</p>
 
   <Pagination
     v-if="pagination.pages > 1"

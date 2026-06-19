@@ -28,4 +28,69 @@ class I18nZhCNTest < ActiveSupport::TestCase
       assert result.errors[:password].any? { |m| m.include?("不能为空") }
     end
   end
+
+  test "order status labels respect locale" do
+    I18n.with_locale("zh-CN") do
+      assert_equal "待支付", I18n.t("mcweb.labels.order_status.pending")
+    end
+    I18n.with_locale(:en) do
+      assert_equal "Pending payment", I18n.t("mcweb.labels.order_status.pending")
+    end
+  end
+
+  test "subscription notices respect locale" do
+    I18n.with_locale(:en) do
+      assert_equal "Watching this topic (instant notifications).",
+                   I18n.t("mcweb.flash.subscription.watching.topic")
+    end
+  end
+
+  test "notification type labels respect locale" do
+    I18n.with_locale("zh-CN") do
+      assert_equal "主题回复", Community::NotificationTypeLabels.label_for("forum.topic_reply")
+    end
+    I18n.with_locale(:en) do
+      assert_equal "Topic reply", Community::NotificationTypeLabels.label_for("forum.topic_reply")
+    end
+  end
+
+  test "mail templates respect locale" do
+    I18n.with_locale("zh-CN") do
+      assert_includes I18n.t("mcweb.mail.forum.topic_reply.body", author: "alice", title: "Hello"), "alice"
+      assert_includes I18n.t("mcweb.mail.identity.verification.intro"), "验证"
+    end
+    I18n.with_locale(:en) do
+      assert_includes I18n.t("mcweb.mail.forum.topic_reply.body", author: "alice", title: "Hello"), "alice"
+      assert_includes I18n.t("mcweb.mail.identity.verification.intro"), "verify"
+    end
+  end
+
+  test "commerce mail templates respect locale" do
+    I18n.with_locale("zh-CN") do
+      assert_includes I18n.t("mcweb.mail.commerce.payment_confirmed.body", number: "A001"), "A001"
+      assert_includes I18n.t("mcweb.mail.commerce.order_shipped.heading"), "发货"
+    end
+    I18n.with_locale(:en) do
+      assert_includes I18n.t("mcweb.mail.commerce.payment_confirmed.body", number: "A001"), "A001"
+      assert_includes I18n.t("mcweb.mail.commerce.order_shipped.heading"), "shipped"
+    end
+  end
+end
+
+class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
+  test "locale controller updates session and user locale" do
+    user = create_user
+    sign_in_as(user)
+
+    patch locale_path, params: { locale: "en" }
+    assert_redirected_to root_path
+    assert_equal "en", session[:locale]
+    assert_equal "en", user.reload.locale
+  end
+
+  test "invalid locale is rejected" do
+    patch locale_path, params: { locale: "fr" }
+    assert_redirected_to root_path
+    assert_nil session[:locale]
+  end
 end

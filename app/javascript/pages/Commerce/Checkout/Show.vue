@@ -16,9 +16,12 @@ import TableRow from '@/components/ui/TableRow.vue'
 import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import Radio from '@/components/ui/Radio.vue'
+import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 export interface CheckoutItem {
   product_name: string
@@ -121,7 +124,7 @@ const previewingGiftCard = ref(false)
 const selectedAddressId = ref<number | ''>('')
 
 const savedAddressOptions = computed(() => [
-  { value: '', label: '手动填写' },
+  { value: '', label: t('commerce.checkout.manualEntry') },
   ...(props.savedAddresses || []).map((saved) => ({
     value: String(saved.id),
     label: `${saved.summary}${saved.label ? `（${saved.label}）` : ''}`,
@@ -226,15 +229,15 @@ async function previewGiftCard() {
     })
     const data = await response.json()
     if (response.ok) {
-      giftCardMessage.value = `礼品卡 ${data.code} 已应用`
+      giftCardMessage.value = t('commerce.checkout.giftCardApplied', { code: data.code })
       giftCardLabel.value = data.gift_card_amount_label
       totalLabel.value = data.total_label
       await refreshStoreCredit()
     } else {
-      giftCardError.value = data.error || '礼品卡无效'
+      giftCardError.value = data.error || t('commerce.checkout.invalidGiftCard')
     }
   } catch {
-    giftCardError.value = '无法验证礼品卡'
+    giftCardError.value = t('commerce.checkout.giftCardVerifyFailed')
   } finally {
     previewingGiftCard.value = false
   }
@@ -265,21 +268,21 @@ async function previewCoupon() {
     })
     const data = await response.json()
     if (response.ok) {
-      couponMessage.value = `优惠码 ${data.code} 已应用`
+      couponMessage.value = t('commerce.checkout.couponApplied', { code: data.code })
       discountLabel.value = data.discount_label
       totalLabel.value = data.total_label
-      couponMinAmountHint.value = data.min_amount_label ? `最低消费 ${data.min_amount_label}` : null
-      couponRemainingHint.value = data.amount_remaining_label ? `还差 ${data.amount_remaining_label} 可用` : null
+      couponMinAmountHint.value = data.min_amount_label ? t('commerce.checkout.minSpend', { amount: data.min_amount_label }) : null
+      couponRemainingHint.value = data.amount_remaining_label ? t('commerce.checkout.amountRemaining', { amount: data.amount_remaining_label }) : null
       if (form.checkout.gift_card_code.trim()) {
         await previewGiftCard()
       } else {
         await refreshStoreCredit()
       }
     } else {
-      couponError.value = data.error || '优惠码无效'
+      couponError.value = data.error || t('commerce.checkout.invalidCoupon')
     }
   } catch {
-    couponError.value = '无法验证优惠码'
+    couponError.value = t('commerce.checkout.couponVerifyFailed')
   } finally {
     previewing.value = false
   }
@@ -297,16 +300,16 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageHeader title="结账" />
+  <PageHeader :title="t('commerce.checkout.title')" />
 
   <p v-if="belowMinCheckout && minCheckoutLabel" class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-    订单未满最低消费 {{ minCheckoutLabel }}，请继续选购后再结账。
+    {{ t('commerce.checkout.belowMinCheckout', { amount: minCheckoutLabel }) }}
   </p>
 
   <div v-if="items.length" class="max-w-2xl space-y-6">
     <div class="rounded-lg border">
       <Table>
-        <TableHeader><TableRow><TableHead>商品</TableHead><TableHead>数量</TableHead><TableHead>小计</TableHead></TableRow></TableHeader>
+        <TableHeader><TableRow><TableHead>{{ t('commerce.checkout.product') }}</TableHead><TableHead>{{ t('commerce.checkout.quantity') }}</TableHead><TableHead>{{ t('commerce.checkout.lineTotal') }}</TableHead></TableRow></TableHeader>
         <TableBody>
           <TableRow v-for="(item, index) in items" :key="index">
             <TableCell>
@@ -321,14 +324,14 @@ onMounted(() => {
     </div>
 
     <div class="space-y-1 text-sm">
-      <p>小计：{{ subtotalLabel }}</p>
-      <p v-if="shippingLabel">运费：{{ freeShipping ? '免运费' : shippingLabel }}</p>
-      <p v-if="freeShippingRemainingLabel" class="text-xs text-amber-600">还差 {{ freeShippingRemainingLabel }} 可享免运费</p>
-      <p v-if="discountLabel" class="text-green-600">优惠：-{{ discountLabel }}</p>
-      <p v-if="giftCardLabel" class="text-green-600">礼品卡：-{{ giftCardLabel }}</p>
-      <p v-if="storeCreditBalanceLabel" class="text-muted-foreground">商店余额：{{ storeCreditBalanceLabel }}</p>
-      <p v-if="storeCreditLabel" class="text-green-600">余额抵扣：-{{ storeCreditLabel }}</p>
-      <p class="font-medium">应付：{{ totalLabel }}</p>
+      <p>{{ t('commerce.checkout.subtotal', { amount: subtotalLabel }) }}</p>
+      <p v-if="shippingLabel">{{ t('commerce.checkout.shipping', { amount: freeShipping ? t('commerce.checkout.freeShipping') : shippingLabel }) }}</p>
+      <p v-if="freeShippingRemainingLabel" class="text-xs text-amber-600">{{ t('commerce.checkout.freeShippingRemaining', { remaining: freeShippingRemainingLabel }) }}</p>
+      <p v-if="discountLabel" class="text-green-600">{{ t('commerce.checkout.discount', { amount: discountLabel }) }}</p>
+      <p v-if="giftCardLabel" class="text-green-600">{{ t('commerce.checkout.giftCard', { amount: giftCardLabel }) }}</p>
+      <p v-if="storeCreditBalanceLabel" class="text-muted-foreground">{{ t('commerce.checkout.storeCreditBalance', { amount: storeCreditBalanceLabel }) }}</p>
+      <p v-if="storeCreditLabel" class="text-green-600">{{ t('commerce.checkout.storeCreditApplied', { amount: storeCreditLabel }) }}</p>
+      <p class="font-medium">{{ t('commerce.checkout.total', { amount: totalLabel }) }}</p>
     </div>
 
     <label v-if="storeCreditBalanceCents" class="flex items-center gap-2 text-sm">
@@ -336,19 +339,19 @@ onMounted(() => {
         :model-value="form.checkout.use_store_credit"
         @update:model-value="updateUseStoreCredit"
       />
-      使用商店余额抵扣
+      {{ t('commerce.checkout.useStoreCredit') }}
     </label>
 
     <p v-if="couponAutoApplied && pendingCouponCode" class="text-sm text-green-700">
-      已通过链接自动应用优惠码 {{ pendingCouponCode }}
+      {{ t('commerce.checkout.couponAutoApplied', { code: pendingCouponCode }) }}
     </p>
 
     <form class="space-y-4" @submit.prevent="form.post(routes.storeCheckout)">
       <div class="space-y-2">
-        <Label for="coupon">优惠码</Label>
+        <Label for="coupon">{{ t('commerce.checkout.coupon') }}</Label>
         <div class="flex gap-2">
-          <Input id="coupon" v-model="form.checkout.coupon_code" placeholder="输入优惠码" class="flex-1" />
-          <Button type="button" variant="outline" :disabled="previewing" @click="previewCoupon">验证</Button>
+          <Input id="coupon" v-model="form.checkout.coupon_code" :placeholder="t('commerce.checkout.couponPlaceholder')" class="flex-1" />
+          <Button type="button" variant="outline" :disabled="previewing" @click="previewCoupon">{{ t('commerce.checkout.validate') }}</Button>
         </div>
         <p v-if="couponMessage" class="text-sm text-green-600">{{ couponMessage }}</p>
         <p v-if="couponMinAmountHint" class="text-xs text-muted-foreground">{{ couponMinAmountHint }}</p>
@@ -357,32 +360,32 @@ onMounted(() => {
       </div>
 
       <div class="space-y-2">
-        <Label for="gift_card">礼品卡</Label>
+        <Label for="gift_card">{{ t('commerce.checkout.giftCardLabel') }}</Label>
         <div class="flex gap-2">
-          <Input id="gift_card" v-model="form.checkout.gift_card_code" placeholder="输入礼品卡代码" class="flex-1" />
-          <Button type="button" variant="outline" :disabled="previewingGiftCard" @click="previewGiftCard">验证</Button>
+          <Input id="gift_card" v-model="form.checkout.gift_card_code" :placeholder="t('commerce.checkout.giftCardPlaceholder')" class="flex-1" />
+          <Button type="button" variant="outline" :disabled="previewingGiftCard" @click="previewGiftCard">{{ t('commerce.checkout.validate') }}</Button>
         </div>
         <p v-if="giftCardMessage" class="text-sm text-green-600">{{ giftCardMessage }}</p>
         <p v-if="giftCardError" class="text-sm text-destructive">{{ giftCardError }}</p>
       </div>
 
       <div v-if="requiresShipping && shippingMethods?.length" class="space-y-2 rounded-lg border p-4">
-        <p class="text-sm font-medium">配送方式</p>
+        <p class="text-sm font-medium">{{ t('commerce.checkout.shippingMethods') }}</p>
         <label v-for="method in shippingMethods" :key="method.code" class="flex cursor-pointer items-center gap-2 text-sm">
           <Radio v-model="form.checkout.shipping_method" name="shipping_method" :value="method.code" />
           {{ method.label_with_price }}
         </label>
         <p v-if="selectedShippingEstimate" class="text-xs text-muted-foreground">
-          预计送达：{{ selectedShippingEstimate }}
+          {{ t('commerce.checkout.deliveryEstimate', { estimate: selectedShippingEstimate }) }}
         </p>
       </div>
       <div v-if="requiresShipping" class="space-y-3 rounded-lg border p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-sm font-semibold">收货地址</h2>
-          <Link v-if="shippingAddressesUrl" :href="shippingAddressesUrl" class="text-xs text-primary hover:underline">管理地址簿</Link>
+          <h2 class="text-sm font-semibold">{{ t('commerce.checkout.shippingAddress') }}</h2>
+          <Link v-if="shippingAddressesUrl" :href="shippingAddressesUrl" class="text-xs text-primary hover:underline">{{ t('commerce.checkout.manageAddresses') }}</Link>
         </div>
         <div v-if="savedAddresses?.length" class="space-y-2">
-          <Label for="saved_address">使用已保存地址</Label>
+          <Label for="saved_address">{{ t('commerce.checkout.savedAddress') }}</Label>
           <Select
             id="saved_address"
             :model-value="selectedAddressId === '' ? '' : String(selectedAddressId)"
@@ -393,33 +396,33 @@ onMounted(() => {
         </div>
         <div class="grid gap-3 sm:grid-cols-2">
           <div class="space-y-2">
-            <Label for="ship_name">收件人</Label>
+            <Label for="ship_name">{{ t('commerce.checkout.recipient') }}</Label>
             <Input id="ship_name" v-model="form.checkout.shipping_address.name" required />
           </div>
           <div class="space-y-2">
-            <Label for="ship_phone">手机号</Label>
+            <Label for="ship_phone">{{ t('commerce.checkout.phone') }}</Label>
             <Input id="ship_phone" v-model="form.checkout.shipping_address.phone" required />
           </div>
         </div>
         <div class="space-y-2">
-          <Label for="ship_line1">地址</Label>
+          <Label for="ship_line1">{{ t('commerce.checkout.address') }}</Label>
           <Input id="ship_line1" v-model="form.checkout.shipping_address.line1" required />
         </div>
         <div class="space-y-2">
-          <Label for="ship_line2">地址补充（可选）</Label>
+          <Label for="ship_line2">{{ t('commerce.checkout.addressLine2') }}</Label>
           <Input id="ship_line2" v-model="form.checkout.shipping_address.line2" />
         </div>
         <div class="grid gap-3 sm:grid-cols-3">
           <div class="space-y-2">
-            <Label for="ship_province">省/州</Label>
+            <Label for="ship_province">{{ t('commerce.checkout.province') }}</Label>
             <Input id="ship_province" v-model="form.checkout.shipping_address.province" required />
           </div>
           <div class="space-y-2">
-            <Label for="ship_city">城市</Label>
+            <Label for="ship_city">{{ t('commerce.checkout.city') }}</Label>
             <Input id="ship_city" v-model="form.checkout.shipping_address.city" required />
           </div>
           <div class="space-y-2">
-            <Label for="ship_postal">邮编</Label>
+            <Label for="ship_postal">{{ t('commerce.checkout.postalCode') }}</Label>
             <Input id="ship_postal" v-model="form.checkout.shipping_address.postal_code" />
           </div>
         </div>
@@ -427,26 +430,26 @@ onMounted(() => {
 
       <label v-if="giftWrapAvailable" class="flex items-center gap-2 rounded-lg border p-4 text-sm">
         <Checkbox v-model="form.checkout.gift_wrap" />
-        礼品包装（{{ giftWrapLabel }}）
+        {{ t('commerce.checkout.giftWrap', { label: giftWrapLabel }) }}
       </label>
 
       <div class="space-y-2">
-        <Label for="notes">订单备注（可选）</Label>
-        <Textarea id="notes" v-model="form.checkout.notes" rows="2" placeholder="如有特殊说明请填写…" />
+        <Label for="notes">{{ t('commerce.checkout.notes') }}</Label>
+        <Textarea id="notes" v-model="form.checkout.notes" rows="2" :placeholder="t('commerce.checkout.notesPlaceholder')" />
       </div>
 
       <div class="space-y-2">
-        <Label for="provider">支付方式</Label>
+        <Label for="provider">{{ t('commerce.checkout.paymentMethod') }}</Label>
         <Select id="provider" v-model="form.checkout.provider" :options="providerOptions" block />
       </div>
-      <Button type="submit" :disabled="form.processing || belowMinCheckout">立即支付</Button>
+      <Button type="submit" :disabled="form.processing || belowMinCheckout">{{ t('commerce.checkout.payNow') }}</Button>
     </form>
   </div>
 
   <div v-else class="space-y-4">
-    <p class="text-sm text-muted-foreground">购物车是空的。</p>
+    <p class="text-sm text-muted-foreground">{{ t('commerce.checkout.emptyCart') }}</p>
     <Button as-child variant="outline">
-      <Link :href="routes.storeCart">查看购物车</Link>
+      <Link :href="routes.storeCart">{{ t('commerce.checkout.viewCart') }}</Link>
     </Button>
   </div>
 </template>

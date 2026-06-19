@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -24,6 +25,8 @@ import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 export interface QuotedPost {
   id: number
@@ -239,12 +242,12 @@ function missingRequiredGroups(tags: string, groups?: Array<{ required?: boolean
 const editTagsReady = computed(() => missingRequiredGroups(editTags.value, props.topic.tag_groups).length === 0)
 
 const prefixOptions = computed(() => [
-  { value: '', label: '无前缀' },
+  { value: '', label: t('forum.topics.noPrefix') },
   ...(props.topic.section_prefixes || []).map((prefix) => ({ value: prefix, label: prefix })),
 ])
 
 const sectionMoveOptions = computed(() => [
-  { value: '', label: '选择分区…' },
+  { value: '', label: t('forum.topics.selectSection') },
   ...props.sections.map((section) => ({
     value: section.slug,
     label: `${section.category ? `${section.category} / ` : ''}${section.name}`,
@@ -252,17 +255,17 @@ const sectionMoveOptions = computed(() => [
 ])
 
 const sectionSplitOptions = computed(() => [
-  { value: '', label: '当前分区' },
+  { value: '', label: t('forum.topics.currentSection') },
   ...props.sections.map((section) => ({
     value: section.slug,
     label: `${section.category ? `${section.category} / ` : ''}${section.name}`,
   })),
 ])
 
-const postSortOptions = [
-  { value: 'oldest', label: '最早优先' },
-  { value: 'recent', label: '最新优先' },
-]
+const postSortOptions = computed(() => [
+  { value: 'oldest', label: t('forum.topics.sortOldest') },
+  { value: 'recent', label: t('forum.topics.sortRecent') },
+])
 
 function containsLink(text: string) {
   return /https?:\/\/|www\./i.test(text)
@@ -449,7 +452,7 @@ function submitReply() {
 
 function buildQuoteBlock(post: PostItem) {
   const lines = post.body.split('\n').map((line) => `> ${line}`)
-  return `> **#${post.floor_number} ${post.author}：**\n${lines.join('\n')}\n\n`
+  return `> **#${post.floor_number} ${post.author}${t('common.colon')}**\n${lines.join('\n')}\n\n`
 }
 
 function quotePost(post: PostItem) {
@@ -533,7 +536,7 @@ function restorePost(post: PostItem) {
 
 function reactionTitle(post: PostItem, emoji: string) {
   const users = post.reaction_users?.[emoji]
-  return users?.length ? users.join('、') : ''
+  return users?.length ? users.join(t('common.listSeparator')) : ''
 }
 
 function copyPermalink(post: PostItem) {
@@ -577,9 +580,9 @@ function saveEdit(post: PostItem) {
 
 async function deletePost(post: PostItem) {
   const ok = await confirm({
-    title: '删除帖子',
-    message: '确定删除此帖子？',
-    confirmLabel: '删除',
+    title: t('forum.topics.deletePost'),
+    message: t('forum.topics.deletePostConfirm'),
+    confirmLabel: t('common.confirm'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -674,8 +677,8 @@ async function moderate(action: string) {
   }
   if (action === 'lock' && !props.topic.locked) {
     const reason = await prompt({
-      title: '锁定主题',
-      message: '锁定原因（可选）',
+      title: t('forum.topics.lockTopic'),
+      message: t('forum.topics.lockReason'),
       defaultValue: lockReasonInput.value || '',
     })
     if (reason === null) return
@@ -734,8 +737,8 @@ function moderatePost(post: PostItem, action: string, extra: Record<string, stri
 
 async function changePostAuthor(post: PostItem) {
   const username = await prompt({
-    title: '更改作者',
-    message: '输入新作者用户名（Discourse Change Owner）',
+    title: t('forum.topics.changeAuthor'),
+    message: t('forum.topics.changeAuthorPrompt'),
   })
   if (!username?.trim()) return
   moderatePost(post, 'change_author', { new_username: username.trim() })
@@ -756,9 +759,9 @@ function moveTopic() {
 async function mergeTopic() {
   if (!mergeTargetId.value.trim()) return
   const ok = await confirm({
-    title: '合并主题',
-    message: '确定将此主题合并到目标主题？源主题将被隐藏。',
-    confirmLabel: '合并',
+    title: t('forum.topics.mergeTopic'),
+    message: t('forum.topics.mergeTopicConfirm'),
+    confirmLabel: t('forum.topics.merge'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -767,14 +770,14 @@ async function mergeTopic() {
 
 async function splitPost(post: PostItem) {
   const ok = await confirm({
-    title: '拆分主题',
-    message: `确定从 #${post.floor_number} 起拆分为新主题？`,
-    confirmLabel: '拆分',
+    title: t('forum.topics.splitTopic'),
+    message: t('forum.topics.splitFromPost', { floor: post.floor_number }),
+    confirmLabel: t('forum.topics.split'),
   })
   if (!ok) return
   const title = await prompt({
-    title: '拆分主题',
-    message: '新主题标题（留空使用默认）',
+    title: t('forum.topics.splitTopic'),
+    message: t('forum.topics.splitTitlePrompt'),
     defaultValue: '',
   })
   if (title === null) return
@@ -788,14 +791,14 @@ async function splitPost(post: PostItem) {
 async function forkTopic(post: PostItem) {
   if (!post.fork_topic_url) return
   const title = await prompt({
-    title: '分叉主题',
-    message: '新主题标题（留空使用默认）',
-    defaultValue: `回复：${props.topic.title}`,
+    title: t('forum.topics.forkTopic'),
+    message: t('forum.topics.splitTitlePrompt'),
+    defaultValue: t('forum.topics.forkTitleDefault', { title: props.topic.title }),
   })
   if (title === null) return
   const body = await prompt({
-    title: '分叉主题',
-    message: '补充说明（可选）',
+    title: t('forum.topics.forkTopic'),
+    message: t('forum.topics.forkNotePrompt'),
     defaultValue: '',
   })
   if (body === null) return
@@ -819,7 +822,7 @@ async function loadPollVoters() {
 function saveTopicEdit() {
   editTagError.value = ''
   if (!editTagsReady.value) {
-    editTagError.value = '请从必填标签组中至少选择一个标签。'
+    editTagError.value = t('forum.topics.requiredTagsError')
     return
   }
   const payload: Record<string, unknown> = {
@@ -910,9 +913,9 @@ function submitMultiPoll() {
 async function closePoll() {
   if (!props.poll?.close_url) return
   const ok = await confirm({
-    title: '关闭投票',
-    message: '确定关闭此投票？',
-    confirmLabel: '关闭',
+    title: t('forum.topics.closePoll'),
+    message: t('forum.topics.closePollConfirm'),
+    confirmLabel: t('common.close'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -922,9 +925,9 @@ async function closePoll() {
 async function revokePoll() {
   if (!props.poll?.revoke_url) return
   const ok = await confirm({
-    title: '撤销投票',
-    message: '确定撤销您的投票？',
-    confirmLabel: '撤销',
+    title: t('forum.topics.revokeVote'),
+    message: t('forum.topics.revokeVoteConfirm'),
+    confirmLabel: t('forum.topics.revoke'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -945,8 +948,8 @@ function changePostSort() {
 
 async function closeOwnTopic() {
   const reason = await prompt({
-    title: '关闭主题',
-    message: '关闭原因（可选）',
+    title: t('forum.topics.closeTopic'),
+    message: t('forum.topics.closeReason'),
     defaultValue: '',
   })
   if (reason === null) return
@@ -983,7 +986,7 @@ function quoteSelection() {
       excerpt: text.slice(0, 120),
     })
   }
-  const block = `> **#${post.floor_number} ${post.author}：**\n${text.split('\n').map((line) => `> ${line}`).join('\n')}\n\n`
+  const block = `> **#${post.floor_number} ${post.author}${t('common.colon')}**\n${text.split('\n').map((line) => `> ${line}`).join('\n')}\n\n`
   replyForm.post.body = replyForm.post.body ? `${replyForm.post.body}\n\n${block}` : block
   selectionQuote.value = null
   window.getSelection()?.removeAllRanges()
@@ -1037,42 +1040,42 @@ async function copyPollShareLink() {
     <meta v-if="meta.og_site_name" head-key="og:site_name" property="og:site_name" :content="meta.og_site_name" />
   </Head>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
     { label: topic.section.name, href: topic.section.url },
     { label: topic.title, current: true },
   ]" />
 
   <p v-if="topic.source_topic" class="mb-4 rounded-lg border bg-muted/30 px-4 py-3 text-sm">
-    本主题源自
+    {{ t('forum.topics.forkedFrom') }}
     <Link :href="topic.source_topic.url" class="font-medium text-primary hover:underline">
-      #{{ topic.source_topic.floor_number }} {{ topic.source_topic.author }} 的回复
+      {{ t('forum.topics.forkedFromReply', { floor: topic.source_topic.floor_number, author: topic.source_topic.author }) }}
     </Link>
     （{{ topic.source_topic.title }}）
   </p>
 
   <p v-if="topic.assigned_username && topic.assigned_url" class="mb-4 rounded-lg border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900 dark:border-orange-900 dark:bg-orange-950/30">
-    已指派给
+    {{ t('forum.topics.assignedTo') }}
     <Link :href="topic.assigned_url" class="font-medium hover:underline">@{{ topic.assigned_username }}</Link>
   </p>
 
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
     <PageHeader
-      :title="`${topic.prefix ? `[${topic.prefix}] ` : ''}${topic.pinned ? '[置顶] ' : ''}${topic.title}`"
-      :subtitle="`${topic.author ? `作者 ${topic.author}` : ''}${topic.author ? ' · ' : ''}${topic.views_count} 次浏览${topic.reading_time_minutes ? ` · 约 ${topic.reading_time_minutes} 分钟阅读` : ''}`"
+      :title="`${topic.prefix ? `[${topic.prefix}] ` : ''}${topic.pinned ? `[${t('forum.topics.pinnedLabel')}] ` : ''}${topic.title}`"
+      :subtitle="`${topic.author ? `${t('forum.topics.author')} ${topic.author}` : ''}${topic.author ? ' · ' : ''}${t('forum.topics.views', { count: topic.views_count })}${topic.reading_time_minutes ? ` · ${t('forum.topics.readingTime', { minutes: topic.reading_time_minutes })}` : ''}`"
     />
     <div class="flex flex-wrap gap-2">
       <Button v-if="topic.rss_url" as-child variant="outline" size="sm">
         <a :href="topic.rss_url" target="_blank" rel="noopener">RSS</a>
       </Button>
       <Button v-if="topic.can_edit" type="button" variant="outline" size="sm" @click="togglePanel('edit-topic')">
-        {{ activePanel === 'edit-topic' ? '收起编辑' : '编辑主题' }}
+        {{ activePanel === 'edit-topic' ? t('forum.topics.collapseEdit') : t('forum.topics.editTopic') }}
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleBookmark">
-        {{ topic.bookmarked ? '编辑书签' : '加入书签' }}
+        {{ topic.bookmarked ? t('forum.topics.editBookmark') : t('forum.topics.addBookmark') }}
       </Button>
       <Button v-if="loggedIn && topic.bookmarked" type="button" variant="outline" size="sm" @click="removeBookmark">
-        移除书签
+        {{ t('forum.topics.removeBookmark') }}
       </Button>
       <SubscriptionLevelSelect
         v-if="loggedIn && subscriptionLevels?.length && subscriptionUrl"
@@ -1082,76 +1085,76 @@ async function copyPollShareLink() {
         :notification-level="topic.notification_level"
       />
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleMute">
-        {{ topic.muted ? '取消静音' : '静音主题' }}
+        {{ topic.muted ? t('forum.topics.unmute') : t('forum.topics.mute') }}
       </Button>
-      <Button v-if="markUnreadUrl" type="button" variant="outline" size="sm" @click="markUnread">标为未读</Button>
-      <Button v-if="canCloseOwn && !topic.locked" type="button" variant="outline" size="sm" @click="closeOwnTopic">关闭主题</Button>
-      <Button v-if="canCloseOwn && topic.locked" type="button" variant="outline" size="sm" @click="reopenOwnTopic">重新打开</Button>
+      <Button v-if="markUnreadUrl" type="button" variant="outline" size="sm" @click="markUnread">{{ t('forum.topics.markUnread') }}</Button>
+      <Button v-if="canCloseOwn && !topic.locked" type="button" variant="outline" size="sm" @click="closeOwnTopic">{{ t('forum.topics.closeTopic') }}</Button>
+      <Button v-if="canCloseOwn && topic.locked" type="button" variant="outline" size="sm" @click="reopenOwnTopic">{{ t('forum.topics.reopenTopic') }}</Button>
       <Button v-if="jumpToUnreadUrl" as-child variant="outline" size="sm">
-        <Link :href="jumpToUnreadUrl">跳到未读</Link>
+        <Link :href="jumpToUnreadUrl">{{ t('forum.topics.jumpUnread') }}</Link>
       </Button>
       <Button v-if="topic.share_as_pm_url" type="button" variant="outline" size="sm" @click="togglePanel('share-pm')">
-        {{ activePanel === 'share-pm' ? '收起分享' : '私信分享' }}
+        {{ activePanel === 'share-pm' ? t('forum.topics.collapseShare') : t('forum.topics.sharePm') }}
       </Button>
       <Button v-if="reportTopicUrl" as-child variant="outline" size="sm">
-        <Link :href="reportTopicUrl">举报主题</Link>
+        <Link :href="reportTopicUrl">{{ t('forum.topics.reportTopic') }}</Link>
       </Button>
       <template v-if="topic.can_moderate">
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.locked ? 'unlock' : 'lock')">
-          {{ topic.locked ? '解锁' : '锁定' }}
+          {{ topic.locked ? t('forum.topics.unlock') : t('forum.topics.lock') }}
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.pinned ? 'unpin' : 'pin')">
-          {{ topic.pinned ? '取消置顶' : '置顶' }}
+          {{ topic.pinned ? t('forum.topics.unpin') : t('forum.topics.pin') }}
         </Button>
         <Button v-if="topic.can_moderate && !topic.pinned" type="button" variant="outline" size="sm" @click="moderate('pin_7')">
-          置顶 7 天
+          {{ t('forum.topics.pin7Days') }}
         </Button>
         <Button
           type="button"
           variant="outline"
           size="sm"
           :disabled="!!topic.bump_cooldown_remaining_seconds"
-          :title="topic.bump_cooldown_remaining_seconds ? `冷却中（${topic.bump_cooldown_remaining_seconds}秒）` : undefined"
+          :title="topic.bump_cooldown_remaining_seconds ? t('forum.topics.bumpCooldown', { seconds: topic.bump_cooldown_remaining_seconds }) : undefined"
           @click="moderate('bump')"
         >
-          提升主题
+          {{ t('forum.topics.bump') }}
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.featured ? 'unfeature' : 'feature')">
-          {{ topic.featured ? '取消精选' : '设为精选' }}
+          {{ topic.featured ? t('forum.topics.unfeature') : t('forum.topics.feature') }}
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.hidden ? 'unhide' : 'hide')">
-          {{ topic.hidden ? '取消隐藏' : '隐藏主题' }}
+          {{ topic.hidden ? t('forum.topics.unhide') : t('forum.topics.hide') }}
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.wiki ? 'disable_wiki' : 'enable_wiki')">
-          {{ topic.wiki ? '关闭 Wiki' : '开启 Wiki' }}
+          {{ topic.wiki ? t('forum.topics.disableWiki') : t('forum.topics.enableWiki') }}
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.global_announcement ? 'remove_global_announcement' : 'global_announcement')">
-          {{ topic.global_announcement ? '取消全站公告' : '设为全站公告' }}
+          {{ topic.global_announcement ? t('forum.topics.removeAnnouncement') : t('forum.topics.setAnnouncement') }}
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.unlisted ? 'list' : 'unlist')">
-          {{ topic.unlisted ? '恢复列表显示' : '设为未列出' }}
+          {{ topic.unlisted ? t('forum.topics.relist') : t('forum.topics.unlist') }}
         </Button>
         <Button type="button" variant="outline" size="sm" @click="moderate(topic.archived_at ? 'unarchive' : 'archive')">
-          {{ topic.archived_at ? '取消归档' : '归档主题' }}
+          {{ topic.archived_at ? t('forum.topics.unarchive') : t('forum.topics.archive') }}
         </Button>
         <Button v-if="topic.assigned_username" type="button" variant="outline" size="sm" @click="moderate('unassign')">
-          取消指派
+          {{ t('forum.topics.unassign') }}
         </Button>
         <Button v-else type="button" variant="outline" size="sm" @click="moderate('assign')">
-          指派员工
+          {{ t('forum.topics.assignStaff') }}
         </Button>
         <Button v-if="topic.export_url" as-child variant="outline" size="sm">
-          <a :href="topic.export_url" download>导出帖子 CSV</a>
+          <a :href="topic.export_url" download>{{ t('forum.topics.exportCsv') }}</a>
         </Button>
       </template>
     </div>
   </div>
 
   <div v-if="activePanel === 'assign'" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
-    <p class="text-sm font-medium">指派给员工（Discourse Assign）</p>
+    <p class="text-sm font-medium">{{ t('forum.topics.assignTitle') }}</p>
     <Input
       v-model="assignQuery"
-      placeholder="搜索员工用户名"
+      :placeholder="t('forum.topics.searchStaff')"
       @input="searchAssignees(assignQuery)"
     />
     <ul v-if="assignSuggestions.length" class="max-h-40 overflow-auto rounded border text-sm">
@@ -1174,38 +1177,38 @@ async function copyPollShareLink() {
         :disabled="!assignQuery.trim()"
         @click="confirmAssign(assignQuery.trim())"
       >
-        确认指派
+        {{ t('forum.topics.confirmAssign') }}
       </Button>
-      <Button type="button" size="sm" variant="outline" @click="closePanel">取消</Button>
+      <Button type="button" size="sm" variant="outline" @click="closePanel">{{ t('common.cancel') }}</Button>
     </div>
   </div>
 
   <div v-if="activePanel === 'edit-topic'" class="mb-4 max-w-xl space-y-3 rounded-lg border p-4">
-    <Input v-model="editTitle" placeholder="主题标题" />
+    <Input v-model="editTitle" :placeholder="t('forum.topics.topicTitle')" />
     <div v-if="topic.section_prefixes?.length" class="space-y-1">
-      <label class="text-sm">前缀</label>
+      <label class="text-sm">{{ t('forum.topics.prefix') }}</label>
       <Select v-model="editPrefix" :options="prefixOptions" block />
     </div>
     <TagGroupPicker ref="editTagPickerRef" v-model="editTags" :tag-groups="topic.tag_groups" :max-tags="5" />
     <p v-if="editTagError" class="text-sm text-destructive">{{ editTagError }}</p>
     <template v-if="topic.can_edit_poll && poll">
-      <Input v-model="editPollQuestion" placeholder="投票问题" />
-      <Textarea v-model="editPollOptions" rows="4" placeholder="每行一个选项" />
-      <Input v-model="editPollClosesDays" type="number" min="0" placeholder="关闭天数（0=不限）" />
+      <Input v-model="editPollQuestion" :placeholder="t('forum.topics.pollQuestion')" />
+      <Textarea v-model="editPollOptions" rows="4" :placeholder="t('forum.topics.pollOptions')" />
+      <Input v-model="editPollClosesDays" type="number" min="0" :placeholder="t('forum.topics.pollCloseDays')" />
     </template>
     <div class="flex gap-2">
-      <Button type="button" size="sm" :disabled="!editTagsReady" @click="saveTopicEdit">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="closePanel">取消</Button>
+      <Button type="button" size="sm" :disabled="!editTagsReady" @click="saveTopicEdit">{{ t('common.save') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="closePanel">{{ t('common.cancel') }}</Button>
     </div>
   </div>
 
   <div v-if="activePanel === 'share-pm' && topic.share_as_pm_url" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
-    <p class="text-sm font-medium">通过私信分享主题</p>
-    <Input v-model="sharePmUsername" placeholder="收件人用户名" />
-    <Textarea v-model="sharePmMessage" rows="2" placeholder="附言（可选）" />
+    <p class="text-sm font-medium">{{ t('forum.topics.sharePmTitle') }}</p>
+    <Input v-model="sharePmUsername" :placeholder="t('forum.topics.recipient')" />
+    <Textarea v-model="sharePmMessage" rows="2" :placeholder="t('forum.topics.shareNote')" />
     <div class="flex gap-2">
-      <Button type="button" size="sm" @click="shareAsPm">发送</Button>
-      <Button type="button" size="sm" variant="outline" @click="closePanel">取消</Button>
+      <Button type="button" size="sm" @click="shareAsPm">{{ t('forum.topics.send') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="closePanel">{{ t('common.cancel') }}</Button>
     </div>
   </div>
 
@@ -1228,12 +1231,12 @@ async function copyPollShareLink() {
   </div>
 
   <div v-if="activePanel === 'edit-bookmark' && topicBookmark" class="mb-4 max-w-xl space-y-2 rounded-lg border p-4">
-    <p class="text-sm font-medium">书签备注与提醒</p>
-    <textarea v-model="bookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="备注" />
+    <p class="text-sm font-medium">{{ t('forum.topics.bookmarkNoteReminder') }}</p>
+    <textarea v-model="bookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" :placeholder="t('forum.topics.bookmarkNotePlaceholder')" />
     <Input v-model="bookmarkRemindAt" type="datetime-local" class="w-full" />
     <div class="flex gap-2">
-      <Button type="button" size="sm" @click="saveBookmark">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="closePanel">取消</Button>
+      <Button type="button" size="sm" @click="saveBookmark">{{ t('forum.topics.save') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="closePanel">{{ t('forum.topics.cancel') }}</Button>
     </div>
   </div>
 
@@ -1242,23 +1245,23 @@ async function copyPollShareLink() {
       v-if="!poll.open"
       class="mb-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
     >
-      投票已结束<span v-if="poll.closed_at">（{{ poll.closed_at }}）</span>，以下为最终结果。
+      {{ t('forum.topics.pollClosed') }}<span v-if="poll.closed_at">{{ t('forum.topics.pollClosedAtParen', { at: poll.closed_at }) }}</span>{{ t('forum.topics.pollClosedSuffix') }}
     </div>
     <div class="mb-3 flex items-center justify-between gap-2">
       <h2 class="text-sm font-semibold">{{ poll.question }}</h2>
-      <Button v-if="poll.close_url" type="button" variant="outline" size="sm" @click="closePoll">关闭投票</Button>
+      <Button v-if="poll.close_url" type="button" variant="outline" size="sm" @click="closePoll">{{ t('forum.topics.closePoll') }}</Button>
     </div>
-    <p v-if="poll.multiple_choice" class="mb-2 text-xs text-muted-foreground">多选（最多 {{ poll.max_choices }} 项）</p>
-    <p v-if="poll.anonymous" class="mb-2 text-xs text-muted-foreground">匿名投票：不公开投票者名单</p>
-    <p v-if="poll.closes_at && poll.open" class="mb-2 text-xs text-muted-foreground">投票将于 {{ poll.closes_at }} 结束</p>
+    <p v-if="poll.multiple_choice" class="mb-2 text-xs text-muted-foreground">{{ t('forum.topics.pollMultiple', { n: poll.max_choices }) }}</p>
+    <p v-if="poll.anonymous" class="mb-2 text-xs text-muted-foreground">{{ t('forum.topics.pollAnonymous') }}</p>
+    <p v-if="poll.closes_at && poll.open" class="mb-2 text-xs text-muted-foreground">{{ t('forum.topics.pollClosesAt', { at: poll.closes_at }) }}</p>
     <p v-if="poll.hide_results_until_vote && !poll.show_results && poll.open" class="mb-3 text-xs text-muted-foreground">
-      投票后可查看结果
+      {{ t('forum.topics.pollResultsAfterVote') }}
     </p>
     <div v-if="poll.show_results" class="space-y-2" :class="{ 'pointer-events-none opacity-75': !poll.open }">
       <div v-for="option in poll.results" :key="option.index" class="space-y-1">
         <div class="flex items-center justify-between gap-2 text-sm">
           <span>{{ option.label }}</span>
-          <span class="text-muted-foreground">{{ option.votes }} 票 ({{ pollPercent(option.votes) }}%)</span>
+          <span class="text-muted-foreground">{{ t('forum.topics.pollVotes', { votes: option.votes, percent: pollPercent(option.votes) }) }}</span>
         </div>
         <div class="h-2 overflow-hidden rounded-full bg-muted">
           <div class="h-full bg-primary transition-all" :style="{ width: `${pollPercent(option.votes)}%` }" />
@@ -1270,9 +1273,9 @@ async function copyPollShareLink() {
           variant="outline"
           @click="votePoll(option.index)"
         >
-          {{ poll.user_vote_index === null ? '投票' : '改投此项' }}
+          {{ poll.user_vote_index === null ? t('forum.topics.vote') : t('forum.topics.changeVote') }}
         </Button>
-        <span v-else-if="pollVoted(option.index)" class="text-xs text-primary">你已投票</span>
+        <span v-else-if="pollVoted(option.index)" class="text-xs text-primary">{{ t('forum.topics.youVoted') }}</span>
       </div>
     </div>
     <div v-else-if="poll.open && loggedIn && poll.options?.length" class="space-y-2">
@@ -1284,7 +1287,7 @@ async function copyPollShareLink() {
           />
           {{ option.label }}
         </label>
-        <Button type="button" size="sm" :disabled="!selectedPollOptions.length" @click="submitMultiPoll">提交投票</Button>
+        <Button type="button" size="sm" :disabled="!selectedPollOptions.length" @click="submitMultiPoll">{{ t('forum.topics.submitVote') }}</Button>
       </template>
       <template v-else>
         <div v-for="option in poll.options" :key="option.index">
@@ -1295,44 +1298,44 @@ async function copyPollShareLink() {
             variant="outline"
             @click="votePoll(option.index)"
           >
-            {{ poll.user_vote_index === null ? '投票' : '改投此项' }}：{{ option.label }}
+            {{ t('forum.topics.voteWithLabel', { action: poll.user_vote_index === null ? t('forum.topics.vote') : t('forum.topics.changeVote'), label: option.label }) }}
           </Button>
-          <span v-else class="text-xs text-primary">已选：{{ option.label }}</span>
+          <span v-else class="text-xs text-primary">{{ t('forum.topics.selectedOption', { label: option.label }) }}</span>
         </div>
       </template>
     </div>
-    <p v-if="poll.show_results && poll.total_votes !== null" class="mt-3 text-xs text-muted-foreground">共 {{ poll.total_votes }} 票</p>
+    <p v-if="poll.show_results && poll.total_votes !== null" class="mt-3 text-xs text-muted-foreground">{{ t('forum.topics.totalVotes', { n: poll.total_votes }) }}</p>
     <div class="mt-2 flex flex-wrap gap-2">
-      <Button v-if="poll.revoke_url" type="button" variant="outline" size="sm" @click="revokePoll">撤销投票</Button>
+      <Button v-if="poll.revoke_url" type="button" variant="outline" size="sm" @click="revokePoll">{{ t('forum.topics.revokePoll') }}</Button>
       <Button v-if="poll.voters_url" type="button" variant="outline" size="sm" @click="loadPollVoters">
-        {{ showPollVoters ? '收起投票者' : '查看投票者' }}
+        {{ showPollVoters ? t('forum.topics.hideVoters') : t('forum.topics.showVoters') }}
       </Button>
       <Button v-if="poll.export_url" as-child variant="outline" size="sm">
-        <a :href="poll.export_url" download>导出 CSV</a>
+        <a :href="poll.export_url" download>{{ t('forum.topics.exportPollCsv') }}</a>
       </Button>
       <Button v-if="poll.share_url" type="button" variant="outline" size="sm" @click="copyPollShareLink">
-        {{ pollShareCopied ? '已复制链接' : '复制投票链接' }}
+        {{ pollShareCopied ? t('forum.topics.pollLinkCopied') : t('forum.topics.copyPollLink') }}
       </Button>
     </div>
     <ul v-if="showPollVoters && pollVoters.length" class="mt-2 space-y-2 text-xs">
       <li v-for="group in pollVoters" :key="group.index">
-        <span class="font-medium">{{ group.label }}：</span>
-        <span class="text-muted-foreground">{{ group.voters.length ? group.voters.join('、') : '暂无' }}</span>
+        <span class="font-medium">{{ group.label }}{{ t('common.colon') }}</span>
+        <span class="text-muted-foreground">{{ group.voters.length ? group.voters.join(t('common.listSeparator')) : t('forum.topics.noVoters') }}</span>
       </li>
     </ul>
   </section>
 
   <section v-if="topic.linked_product_url" class="mb-6 max-w-xl rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">关联商品</h2>
+    <h2 class="mb-2 text-sm font-semibold">{{ t('forum.topics.linkedProducts') }}</h2>
     <Link :href="topic.linked_product_url" class="font-medium hover:underline">{{ topic.linked_product_name }}</Link>
   </section>
 
   <section v-if="relatedTopics?.length" class="mb-6 max-w-xl rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">相关主题</h2>
+    <h2 class="mb-2 text-sm font-semibold">{{ t('forum.topics.relatedTopics') }}</h2>
     <ul class="space-y-1 text-sm">
       <li v-for="related in relatedTopics" :key="related.id">
         <Link :href="related.url" class="hover:underline">{{ related.title }}</Link>
-        <span class="ml-2 text-xs text-muted-foreground">{{ related.replies_count }} 回复</span>
+        <span class="ml-2 text-xs text-muted-foreground">{{ t('forum.topics.replyCount', { n: related.replies_count }) }}</span>
       </li>
     </ul>
   </section>
@@ -1343,88 +1346,88 @@ async function copyPollShareLink() {
       class="flex w-full items-center justify-between px-4 py-2.5 text-sm font-medium hover:bg-muted/40"
       @click="moderateToolsOpen = !moderateToolsOpen"
     >
-      <span>版主工具</span>
-      <span class="text-xs text-muted-foreground">{{ moderateToolsOpen ? '收起' : '展开' }}</span>
+      <span>{{ t('forum.topics.moderatorTools') }}</span>
+      <span class="text-xs text-muted-foreground">{{ moderateToolsOpen ? t('forum.topics.collapse') : t('forum.topics.expand') }}</span>
     </button>
     <div v-show="moderateToolsOpen" class="space-y-4 border-t p-4">
   <div v-if="topic.can_move && sections.length" class="flex flex-wrap items-center gap-2">
-    <label class="text-sm text-muted-foreground">移动到分区：</label>
+    <label class="text-sm text-muted-foreground">{{ t('forum.topics.moveToSection') }}</label>
     <Select v-model="moveSectionSlug" :options="sectionMoveOptions" size="sm" class="min-w-[12rem]" />
-    <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">移动</Button>
+    <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">{{ t('forum.topics.move') }}</Button>
     <template v-if="topic.can_move">
-      <label class="text-sm text-muted-foreground">拆分到分区：</label>
+      <label class="text-sm text-muted-foreground">{{ t('forum.topics.splitToSection') }}</label>
       <Select v-model="splitSectionSlug" :options="sectionSplitOptions" size="sm" class="min-w-[12rem]" />
-      <Input v-model="mergeTargetId" placeholder="合并到主题 ID" class="h-8 w-40" />
-      <Button type="button" size="sm" variant="outline" :disabled="!mergeTargetId" @click="mergeTopic">合并</Button>
+      <Input v-model="mergeTargetId" :placeholder="t('forum.topics.mergeToTopicId')" class="h-8 w-40" />
+      <Button type="button" size="sm" variant="outline" :disabled="!mergeTargetId" @click="mergeTopic">{{ t('forum.topics.merge') }}</Button>
     </template>
     <template v-if="topic.can_moderate">
-      <Input v-model.number="slowModeSeconds" type="number" min="0" class="h-8 w-24" placeholder="慢速秒" />
-      <Button type="button" size="sm" variant="outline" @click="updateSlowMode">设置慢速</Button>
+      <Input v-model.number="slowModeSeconds" type="number" min="0" class="h-8 w-24" :placeholder="t('forum.topics.slowModeSeconds')" />
+      <Button type="button" size="sm" variant="outline" @click="updateSlowMode">{{ t('forum.topics.setSlowMode') }}</Button>
       <Input v-model="autoCloseAt" type="datetime-local" class="h-8 w-48" />
-      <Button type="button" size="sm" variant="outline" @click="updateAutoClose">定时关闭</Button>
+      <Button type="button" size="sm" variant="outline" @click="updateAutoClose">{{ t('forum.topics.scheduleClose') }}</Button>
       <Input v-model="autoOpenAt" type="datetime-local" class="h-8 w-48" />
-      <Button type="button" size="sm" variant="outline" @click="updateAutoOpen">定时开放</Button>
+      <Button type="button" size="sm" variant="outline" @click="updateAutoOpen">{{ t('forum.topics.scheduleOpen') }}</Button>
       <Input v-model="autoBumpAt" type="datetime-local" class="h-8 w-48" />
-      <Button type="button" size="sm" variant="outline" @click="updateAutoBump">定时提升</Button>
+      <Button type="button" size="sm" variant="outline" @click="updateAutoBump">{{ t('forum.topics.scheduleBump') }}</Button>
       <Input v-model="autoArchiveAt" type="datetime-local" class="h-8 w-48" />
-      <Button type="button" size="sm" variant="outline" @click="updateAutoArchive">定时归档</Button>
+      <Button type="button" size="sm" variant="outline" @click="updateAutoArchive">{{ t('forum.topics.scheduleArchive') }}</Button>
     </template>
   </div>
 
   <p v-if="topic.pinned_until" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-    置顶将于 {{ topic.pinned_until }} 自动取消。
+    {{ t('forum.topics.pinUntil', { at: topic.pinned_until }) }}
   </p>
   <p v-if="topic.bumped_at" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
-    最近提升：{{ topic.bumped_at }}
+    {{ t('forum.topics.lastBump', { at: topic.bumped_at }) }}
   </p>
   <p v-if="topic.hidden" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
-    此主题已被版主隐藏。
+    {{ t('forum.topics.topicHidden') }}
   </p>
   <p v-if="topic.wiki" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-    Wiki 主题：所有登录用户可协作编辑帖子。
+    {{ t('forum.topics.wikiCollaborative') }}
   </p>
   <p v-if="topic.solved_post_id" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
-    此主题已标记为已解决。
-    <button v-if="canMarkSolved" type="button" class="ml-2 underline" @click="unsolveTopic">取消已解决</button>
+    {{ t('forum.topics.topicSolved') }}
+    <button v-if="canMarkSolved" type="button" class="ml-2 underline" @click="unsolveTopic">{{ t('forum.topics.unsolveTopic') }}</button>
   </p>
   <p v-if="topic.slow_mode_seconds" class="mb-4 rounded-md border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900">
   <template v-if="slowModeRemaining > 0">
-    慢速模式冷却中，请等待 {{ slowModeRemaining }} 秒后再回复。
+    {{ t('forum.topics.slowModeWait', { seconds: slowModeRemaining }) }}
   </template>
   <template v-else>
-    慢速模式：同一用户需间隔 {{ topic.slow_mode_seconds }} 秒才能再次回复。
+    {{ t('forum.topics.slowModeInterval', { seconds: topic.slow_mode_seconds }) }}
   </template>
   </p>
   <p v-if="topic.archived_at" class="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
-    此主题已于 {{ topic.archived_at }} 归档，仅作者与版主可见。
+    {{ t('forum.topics.archivedAt', { at: topic.archived_at }) }}
   </p>
   <p v-if="topic.unlisted" class="mb-4 rounded-md border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
-    此主题为未列出状态，不会出现在公开列表中，但持有链接的用户仍可访问。
+    {{ t('forum.topics.unlisted') }}
   </p>
 
   <p v-if="topic.auto_close_at" class="mb-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
-    将于 {{ topic.auto_close_at }} 自动关闭。
+    {{ t('forum.topics.autoCloseAt', { at: topic.auto_close_at }) }}
   </p>
   <p v-if="topic.auto_open_at" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
-    将于 {{ topic.auto_open_at }} 自动重新开放。
+    {{ t('forum.topics.autoOpenAt', { at: topic.auto_open_at }) }}
   </p>
   <p v-if="topic.auto_bump_at" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
-    将于 {{ topic.auto_bump_at }} 自动提升。
+    {{ t('forum.topics.autoBumpAt', { at: topic.auto_bump_at }) }}
   </p>
   <p v-if="topic.auto_archive_at" class="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
-    将于 {{ topic.auto_archive_at }} 自动归档。
+    {{ t('forum.topics.autoArchiveAt', { at: topic.auto_archive_at }) }}
   </p>
   <p v-if="topic.locked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-    此主题已锁定，无法回复。
-    <span v-if="topic.lock_reason" class="mt-1 block font-medium">原因：{{ topic.lock_reason }}</span>
+    {{ t('forum.topics.topicLocked') }}
+    <span v-if="topic.lock_reason" class="mt-1 block font-medium">{{ t('forum.topics.lockReasonDisplay', { reason: topic.lock_reason }) }}</span>
   </p>
 
   <p v-if="topic.global_announcement" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
-    此主题为全站公告，将在全站顶部展示。
+    {{ t('forum.topics.siteAnnouncement') }}
   </p>
 
   <section v-if="topic.can_moderate && topic.staff_notes?.length" class="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
-    <h2 class="mb-2 text-sm font-semibold text-amber-900 dark:text-amber-100">员工备注（仅版主可见）</h2>
+    <h2 class="mb-2 text-sm font-semibold text-amber-900 dark:text-amber-100">{{ t('forum.topics.staffNotes') }}</h2>
     <ul class="space-y-2 text-sm">
       <li v-for="note in topic.staff_notes" :key="note.id" class="rounded border bg-background/80 p-2">
         <p class="text-muted-foreground text-xs">{{ note.author }} · {{ note.created_at }}</p>
@@ -1434,41 +1437,41 @@ async function copyPollShareLink() {
   </section>
 
   <section v-if="topic.can_moderate && topic.staff_note_url" class="max-w-xl space-y-2 rounded-lg border p-4">
-    <h2 class="text-sm font-semibold">添加员工备注</h2>
-    <textarea v-model="staffNoteBody" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="仅员工可见" />
-    <Button type="button" size="sm" :disabled="!staffNoteBody.trim()" @click="submitStaffNote">保存备注</Button>
+    <h2 class="text-sm font-semibold">{{ t('forum.topics.addStaffNote') }}</h2>
+    <textarea v-model="staffNoteBody" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" :placeholder="t('forum.topics.staffNotePlaceholder')" />
+    <Button type="button" size="sm" :disabled="!staffNoteBody.trim()" @click="submitStaffNote">{{ t('forum.topics.saveStaffNote') }}</Button>
   </section>
 
   <section v-if="topic.can_moderate" class="max-w-xl space-y-2 rounded-lg border p-4">
-    <h2 class="text-sm font-semibold">主题回复禁言</h2>
+    <h2 class="text-sm font-semibold">{{ t('forum.topics.replyBan') }}</h2>
     <div v-if="topic.reply_bans?.length" class="space-y-1 text-sm">
       <div v-for="ban in topic.reply_bans" :key="ban.username" class="flex items-center justify-between gap-2">
-        <span>{{ ban.username }}<span v-if="ban.expires_at" class="text-muted-foreground"> · 至 {{ ban.expires_at }}</span></span>
-        <button type="button" class="text-xs text-primary hover:underline" @click="unbanReply(ban.username)">解除</button>
+        <span>{{ ban.username }}<span v-if="ban.expires_at" class="text-muted-foreground"> · {{ t('forum.topics.banUntil', { at: ban.expires_at }) }}</span></span>
+        <button type="button" class="text-xs text-primary hover:underline" @click="unbanReply(ban.username)">{{ t('forum.topics.unban') }}</button>
       </div>
     </div>
     <div class="flex flex-wrap gap-2">
-      <Input v-model="replyBanUsername" placeholder="用户名" class="max-w-[10rem]" />
-      <Input v-model="replyBanReason" placeholder="原因（可选）" class="flex-1 min-w-[8rem]" />
-      <Button type="button" size="sm" variant="outline" @click="banReply">禁止回复</Button>
+      <Input v-model="replyBanUsername" :placeholder="t('forum.topics.banUsername')" class="max-w-[10rem]" />
+      <Input v-model="replyBanReason" :placeholder="t('forum.topics.banReason')" class="flex-1 min-w-[8rem]" />
+      <Button type="button" size="sm" variant="outline" @click="banReply">{{ t('forum.topics.banReply') }}</Button>
     </div>
   </section>
 
   <section v-if="topic.can_invite && topic.invite_url" class="max-w-xl space-y-2 rounded-lg border p-4">
-    <h2 class="text-sm font-semibold">邀请关注</h2>
-    <p class="text-xs text-muted-foreground">邀请用户关注此主题（Discourse 风格），对方将收到通知并自动设为「关注」。</p>
+    <h2 class="text-sm font-semibold">{{ t('forum.topics.inviteWatch') }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t('forum.topics.inviteWatchHint') }}</p>
     <div class="flex flex-wrap gap-2">
-      <Input v-model="inviteUsername" placeholder="用户名" class="max-w-[12rem]" />
-      <Button type="button" size="sm" variant="outline" :disabled="!inviteUsername.trim()" @click="inviteWatcher">发送邀请</Button>
+      <Input v-model="inviteUsername" :placeholder="t('forum.topics.banUsername')" class="max-w-[12rem]" />
+      <Button type="button" size="sm" variant="outline" :disabled="!inviteUsername.trim()" @click="inviteWatcher">{{ t('forum.topics.inviteSend') }}</Button>
     </div>
   </section>
     </div>
   </section>
 
   <form class="mb-4 flex max-w-md flex-wrap items-center gap-2" @submit.prevent="searchInTopic">
-    <Input v-model="topicSearch" placeholder="在此主题内搜索帖子…" class="min-w-[12rem] flex-1" />
+    <Input v-model="topicSearch" :placeholder="t('forum.topics.searchInTopic')" class="min-w-[12rem] flex-1" />
     <Select v-model="postSort" :options="postSortOptions" class="min-w-[8rem]" @update:model-value="changePostSort" />
-    <Button type="submit" variant="outline">搜索</Button>
+    <Button type="submit" variant="outline">{{ t('forum.topics.search') }}</Button>
   </form>
 
   <div class="space-y-4">
@@ -1478,7 +1481,7 @@ async function copyPollShareLink() {
         class="flex items-center gap-3 text-xs text-primary"
       >
         <span class="h-px flex-1 bg-primary/30" />
-        <span>上次读到这里</span>
+        <span>{{ t('forum.topics.lastReadHere') }}</span>
         <span class="h-px flex-1 bg-primary/30" />
       </div>
       <article
@@ -1494,8 +1497,8 @@ async function copyPollShareLink() {
         ]"
         :style="{ marginLeft: `${post.depth * 1.5}rem` }"
       >
-      <div v-if="post.whisper" class="mb-2 text-xs font-medium text-amber-700 dark:text-amber-300">员工私语（仅员工可见）</div>
-      <div v-if="post.small_action" class="mb-2 text-xs font-medium text-muted-foreground">系统操作</div>
+      <div v-if="post.whisper" class="mb-2 text-xs font-medium text-amber-700 dark:text-amber-300">{{ t('forum.topics.staffWhisper') }}</div>
+      <div v-if="post.small_action" class="mb-2 text-xs font-medium text-muted-foreground">{{ t('forum.topics.systemAction') }}</div>
       <div v-if="post.small_action" class="text-sm text-muted-foreground">
         {{ post.body }}
         <span class="ml-2 text-xs not-italic">— {{ post.author }}, {{ post.created_at }}</span>
@@ -1506,7 +1509,7 @@ async function copyPollShareLink() {
           <div class="flex items-center justify-between gap-2 text-sm text-muted-foreground">
             <div>
               <span class="font-medium text-foreground">#{{ post.floor_number }}</span>
-              <span v-if="post.is_solved" class="ml-2 text-xs text-green-600">[已解决]</span>
+              <span v-if="post.is_solved" class="ml-2 text-xs text-green-600">{{ t('forum.topics.solvedBadge') }}</span>
               <span class="mx-2">·</span>
               <UserHoverCard v-if="post.author_card_url" :username="post.author_username" :card-url="post.author_card_url">
                 <Link :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
@@ -1524,57 +1527,57 @@ async function copyPollShareLink() {
                 :style="badge.color ? { borderColor: badge.color, color: badge.color } : undefined"
                 :title="badge.granted_at ? `${badge.name} · ${badge.granted_at}` : badge.name"
               >{{ badge.icon || badge.name }}<span v-if="badge.granted_at" class="opacity-70">·{{ badge.granted_at }}</span></span>
-              <span v-if="post.verified_purchaser" class="ml-1 rounded border border-green-300 bg-green-50 px-1 text-[10px] text-green-700">认证买家</span>
+              <span v-if="post.verified_purchaser" class="ml-1 rounded border border-green-300 bg-green-50 px-1 text-[10px] text-green-700">{{ t('forum.topics.verifiedPurchaser') }}</span>
               <span class="mx-2">·</span>
               <span>{{ post.created_at }}</span>
               <span v-if="post.edited_at" class="ml-2">
-                （已编辑 {{ post.edited_at }}<span v-if="post.last_edit_reason">：{{ post.last_edit_reason }}</span>
+                {{ t('forum.topics.editedAt', { at: post.edited_at }) }}<span v-if="post.last_edit_reason">{{ t('forum.topics.editReasonSuffix', { reason: post.last_edit_reason }) }}</span>
                 <button v-if="post.edit_diff_lines?.length" type="button" class="hover:underline" @click="expandedDiffs[post.id] = !expandedDiffs[post.id]">
-                  {{ expandedDiffs[post.id] ? '收起改动' : '查看改动' }}
+                  {{ expandedDiffs[post.id] ? t('forum.topics.hideDiff') : t('forum.topics.showDiff') }}
                 </button>
-                <Link v-if="post.edits_url" :href="post.edits_url" class="hover:underline">历史</Link>）
+                <Link v-if="post.edits_url" :href="post.edits_url" class="hover:underline">{{ t('forum.topics.editHistory') }}</Link>）
               </span>
-              <span v-if="post.wiki" class="ml-2 text-xs text-blue-600">[Wiki 帖]</span>
-              <span v-if="post.hidden" class="ml-2 text-amber-600">[已隐藏]</span>
-              <span v-if="post.deleted" class="ml-2 text-destructive">[已删除]</span>
+              <span v-if="post.wiki" class="ml-2 text-xs text-blue-600">{{ t('forum.topics.wikiPost') }}</span>
+              <span v-if="post.hidden" class="ml-2 text-amber-600">{{ t('forum.topics.hiddenPost') }}</span>
+              <span v-if="post.deleted" class="ml-2 text-destructive">{{ t('forum.topics.deletedPost') }}</span>
             </div>
             <div class="flex gap-2">
-              <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">引用</button>
-              <button v-if="post.fork_topic_url" type="button" class="text-xs hover:underline" @click="forkTopic(post)">转为新主题</button>
+              <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">{{ t('forum.topics.quote') }}</button>
+              <button v-if="post.fork_topic_url" type="button" class="text-xs hover:underline" @click="forkTopic(post)">{{ t('forum.topics.forkTopic') }}</button>
               <button type="button" class="text-xs hover:underline" @click="copyPermalink(post)">
-                {{ copiedPostId === post.id ? '已复制' : '复制链接' }}
+                {{ copiedPostId === post.id ? t('forum.topics.linkCopied') : t('forum.topics.copyLink') }}
               </button>
-              <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">回复</button>
-              <a v-if="post.raw_url" :href="post.raw_url" target="_blank" rel="noopener" class="text-xs hover:underline">原文</a>
+              <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">{{ t('forum.topics.reply') }}</button>
+              <a v-if="post.raw_url" :href="post.raw_url" target="_blank" rel="noopener" class="text-xs hover:underline">{{ t('forum.topics.rawPost') }}</a>
               <button v-if="post.bookmark_url" type="button" class="text-xs hover:underline" @click="togglePostBookmark(post)">
-                {{ post.bookmarked ? '编辑书签' : '书签' }}
+                {{ post.bookmarked ? t('forum.topics.editBookmark') : t('forum.topics.addPostBookmark') }}
               </button>
-              <button v-if="post.bookmarked && post.bookmark_url" type="button" class="text-xs hover:underline" @click="removePostBookmark(post)">移除书签</button>
-              <button v-if="canMarkSolved && !post.is_solved" type="button" class="text-xs text-green-600 hover:underline" @click="markSolved(post)">标为已解决</button>
-              <button v-if="topic.can_move && post.floor_number > 1" type="button" class="text-xs hover:underline" @click="splitPost(post)">拆分主题</button>
-              <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">举报</Link>
+              <button v-if="post.bookmarked && post.bookmark_url" type="button" class="text-xs hover:underline" @click="removePostBookmark(post)">{{ t('forum.topics.removePostBookmark') }}</button>
+              <button v-if="canMarkSolved && !post.is_solved" type="button" class="text-xs text-green-600 hover:underline" @click="markSolved(post)">{{ t('forum.topics.markSolved') }}</button>
+              <button v-if="topic.can_move && post.floor_number > 1" type="button" class="text-xs hover:underline" @click="splitPost(post)">{{ t('forum.topics.splitTopic') }}</button>
+              <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">{{ t('forum.topics.report') }}</Link>
               <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
-                {{ post.hidden ? '显示' : '隐藏' }}
+                {{ post.hidden ? t('forum.topics.showPost') : t('forum.topics.hidePost') }}
               </button>
               <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="staffNoticePostId = post.id; staffNoticeText = post.staff_notice || ''">
-                员工提示
+                {{ t('forum.topics.staffNotice') }}
               </button>
               <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.wiki ? 'disable_wiki' : 'enable_wiki')">
-                {{ post.wiki ? '关闭 Wiki' : 'Wiki 帖' }}
+                {{ post.wiki ? t('forum.topics.disableWiki') : t('forum.topics.wikiPostToggle') }}
               </button>
-              <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="changePostAuthor(post)">更改作者</button>
-              <button v-if="post.can_moderate && post.staff_notice" type="button" class="text-xs hover:underline" @click="moderatePost(post, 'clear_staff_notice')">清除提示</button>
-              <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">编辑</button>
-              <button v-if="post.can_delete && !post.deleted" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">删除</button>
-              <button v-if="post.restore_url" type="button" class="text-xs text-green-600 hover:underline" @click="restorePost(post)">恢复</button>
+              <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="changePostAuthor(post)">{{ t('forum.topics.changeAuthor') }}</button>
+              <button v-if="post.can_moderate && post.staff_notice" type="button" class="text-xs hover:underline" @click="moderatePost(post, 'clear_staff_notice')">{{ t('forum.topics.clearNotice') }}</button>
+              <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">{{ t('forum.topics.edit') }}</button>
+              <button v-if="post.can_delete && !post.deleted" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">{{ t('forum.topics.delete') }}</button>
+              <button v-if="post.restore_url" type="button" class="text-xs text-green-600 hover:underline" @click="restorePost(post)">{{ t('forum.topics.restore') }}</button>
             </div>
           </div>
 
           <div v-if="staffNoticePostId === post.id" class="mb-3 space-y-2 rounded border bg-muted/30 p-3">
-            <textarea v-model="staffNoticeText" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="员工提示（所有人可见）" />
+            <textarea v-model="staffNoticeText" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" :placeholder="t('forum.topics.staffNoticePlaceholder')" />
             <div class="flex gap-2">
-              <Button type="button" size="sm" @click="saveStaffNotice(post)">保存提示</Button>
-              <Button type="button" size="sm" variant="outline" @click="staffNoticePostId = null">取消</Button>
+              <Button type="button" size="sm" @click="saveStaffNotice(post)">{{ t('forum.topics.saveNotice') }}</Button>
+              <Button type="button" size="sm" variant="outline" @click="staffNoticePostId = null">{{ t('forum.topics.cancel') }}</Button>
             </div>
           </div>
 
@@ -1584,34 +1587,34 @@ async function copyPollShareLink() {
 
           <blockquote v-if="post.quoted_post" class="mb-3 mt-2 border-l-2 border-muted pl-3 text-sm text-muted-foreground">
             <a :href="`#post-${post.quoted_post.id}`" class="hover:underline">
-              <span class="font-medium">#{{ post.quoted_post.floor_number }} {{ post.quoted_post.author }}：</span>
+              <span class="font-medium">#{{ post.quoted_post.floor_number }} {{ post.quoted_post.author }}{{ t('common.colon') }}</span>
               {{ post.quoted_post.excerpt }}
             </a>
           </blockquote>
           <div v-if="post.forked_topics?.length" class="mb-2 text-xs text-muted-foreground">
-            已衍生主题：
+            {{ t('forum.topics.forkedTopics') }}
             <template v-for="(forked, index) in post.forked_topics" :key="forked.id">
-              <Link :href="forked.url" class="text-primary hover:underline">{{ forked.title }}</Link><span v-if="index < post.forked_topics!.length - 1">、</span>
+              <Link :href="forked.url" class="text-primary hover:underline">{{ forked.title }}</Link><span v-if="index < post.forked_topics!.length - 1">{{ t('common.listSeparator') }}</span>
             </template>
           </div>
 
           <div v-if="editingPostBookmarkId === post.id && post.bookmark" class="mt-2 space-y-2 rounded border bg-muted/30 p-3">
-            <textarea v-model="postBookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" placeholder="书签备注" />
+            <textarea v-model="postBookmarkNote" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" :placeholder="t('forum.topics.postBookmarkNote')" />
             <Input v-model="postBookmarkRemindAt" type="datetime-local" class="w-full" />
             <div class="flex gap-2">
-              <Button type="button" size="sm" @click="savePostBookmark(post)">保存</Button>
-              <Button type="button" size="sm" variant="outline" @click="editingPostBookmarkId = null">取消</Button>
+              <Button type="button" size="sm" @click="savePostBookmark(post)">{{ t('forum.topics.save') }}</Button>
+              <Button type="button" size="sm" variant="outline" @click="editingPostBookmarkId = null">{{ t('forum.topics.cancel') }}</Button>
             </div>
           </div>
 
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
             <MarkdownEditor v-model="editBody" :rows="6" />
-            <Input v-model="editReason" placeholder="编辑说明（可选）" class="h-8" />
+            <Input v-model="editReason" :placeholder="t('forum.topics.editReasonOptional')" class="h-8" />
             <p v-if="editLinkError" class="text-sm text-destructive">{{ editLinkError }}</p>
             <p v-else-if="editBodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
             <div class="flex gap-2">
-              <Button type="button" size="sm" :disabled="editBodyHasBlockedLink" @click="saveEdit(post)">保存</Button>
-              <Button type="button" size="sm" variant="outline" @click="cancelEdit">取消</Button>
+              <Button type="button" size="sm" :disabled="editBodyHasBlockedLink" @click="saveEdit(post)">{{ t('forum.topics.save') }}</Button>
+              <Button type="button" size="sm" variant="outline" @click="cancelEdit">{{ t('forum.topics.cancel') }}</Button>
             </div>
           </div>
           <div v-else class="mt-2">
@@ -1639,16 +1642,16 @@ async function copyPollShareLink() {
               class="mt-2 text-xs text-primary hover:underline"
               @click="togglePostExpand(post.id)"
             >
-              {{ isPostExpanded(post) ? '收起' : '展开全文' }}
+              {{ isPostExpanded(post) ? t('forum.topics.collapseFull') : t('forum.topics.expandFull') }}
             </button>
           </div>
           <p v-if="post.edit_seconds_remaining && post.can_edit" class="mt-1 text-xs text-muted-foreground">
-            编辑窗口剩余 {{ post.edit_seconds_remaining }} 秒
+            {{ t('forum.topics.editWindowRemaining', { seconds: post.edit_seconds_remaining }) }}
           </p>
           <div v-if="post.signature_html" class="mt-3 border-t pt-2 text-xs text-muted-foreground prose prose-sm max-w-none" v-html="post.signature_html" />
 
           <div class="mt-3 flex flex-wrap items-center gap-2" v-if="!post.small_action">
-            <span v-if="post.reactions_total" class="text-xs text-muted-foreground">{{ post.reactions_total }} 个反应</span>
+            <span v-if="post.reactions_total" class="text-xs text-muted-foreground">{{ t('forum.topics.reactionsCount', { n: post.reactions_total }) }}</span>
             <template v-if="loggedIn && !isOwnPost(post)">
               <ReactionUsersPopover
                 v-for="emoji in reactionEmojis"
@@ -1690,7 +1693,7 @@ async function copyPollShareLink() {
   <Pagination :pagination="pagination" :base-path="routes.forumTopic(topic.id)" />
 
   <p v-if="section_read_only" class="mb-4 rounded-md border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
-    此分区为只读模式，普通用户无法回复（版主除外）。
+    {{ t('forum.topics.readonlySection') }}
   </p>
 
   <p v-if="warningRestrictions?.post && canReply" class="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
@@ -1698,9 +1701,9 @@ async function copyPollShareLink() {
   </p>
 
   <section v-if="effectiveCanReply" id="reply-form" class="mt-8 max-w-2xl">
-    <h2 class="mb-3 text-sm font-semibold">回复</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ t('forum.topics.reply') }}</h2>
     <div v-if="cannedResponses?.length" class="mb-3 flex flex-wrap gap-2">
-      <span class="self-center text-xs text-muted-foreground">罐头回复：</span>
+      <span class="self-center text-xs text-muted-foreground">{{ t('forum.topics.cannedReplies') }}</span>
       <Button
         v-for="(item, index) in cannedResponses"
         :key="index"
@@ -1714,8 +1717,8 @@ async function copyPollShareLink() {
     </div>
     <div v-if="replyPreview" class="mb-3 rounded-md border bg-muted/40 p-3 text-sm">
       <div class="flex items-start justify-between gap-2">
-        <p>回复 #{{ replyPreview.floor_number }} {{ replyPreview.author }}</p>
-        <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearReplyTarget">清除</button>
+        <p>{{ t('forum.topics.replyToPreview', { floor: replyPreview.floor_number, author: replyPreview.author }) }}</p>
+        <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearReplyTarget">{{ t('forum.topics.clearTarget') }}</button>
       </div>
     </div>
     <div v-if="quotePreviews.length" class="mb-3 space-y-2">
@@ -1726,24 +1729,24 @@ async function copyPollShareLink() {
       >
         <div class="flex items-start justify-between gap-2">
           <p>
-            引用 #{{ quote.floor_number }} {{ quote.author }}：
+            {{ t('forum.topics.quotePreview', { floor: quote.floor_number, author: quote.author }) }}
             {{ quote.excerpt }}
           </p>
-          <button type="button" class="text-xs text-muted-foreground hover:underline" @click="removeQuote(quote.id)">移除</button>
+          <button type="button" class="text-xs text-muted-foreground hover:underline" @click="removeQuote(quote.id)">{{ t('forum.topics.remove') }}</button>
         </div>
       </div>
-      <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearQuotes">清除全部引用</button>
+      <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearQuotes">{{ t('forum.topics.clearAllQuotes') }}</button>
     </div>
     <form class="space-y-3" @submit.prevent="submitReply">
-      <MarkdownEditor v-model="replyForm.post.body" :rows="6" placeholder="写下你的回复… 输入 @ 可提及用户" required />
+      <MarkdownEditor v-model="replyForm.post.body" :rows="6" :placeholder="t('forum.topics.replyPlaceholder')" required />
       <p v-if="replyLinkError" class="text-sm text-destructive">{{ replyLinkError }}</p>
       <p v-else-if="replyBodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
       <label v-if="topic.can_moderate" class="flex items-center gap-2 text-sm">
         <Checkbox v-model="replyForm.post.whisper" />
-        员工私语（仅员工可见）
+        {{ t('forum.topics.staffWhisper') }}
       </label>
-      <Button type="submit" :disabled="replyForm.processing || !canSubmitReply">发表回复</Button>
+      <Button type="submit" :disabled="replyForm.processing || !canSubmitReply">{{ t('forum.topics.publishReply') }}</Button>
     </form>
   </section>
 
@@ -1755,6 +1758,6 @@ async function copyPollShareLink() {
     @mousedown.prevent
     @click="quoteSelection"
   >
-    引用选中
+    {{ t('forum.topics.quoteSelection') }}
   </button>
 </template>

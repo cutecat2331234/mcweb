@@ -1,12 +1,12 @@
-<p>你好 <%= @user.username %>，</p>
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
 
-<p>以下是您订阅的论坛摘要（<%= @notifications.count %> 条）：</p>
+<p><%= t("mcweb.mail.forum.digest.intro", count: @notifications.count) %></p>
 
 <% @digest_sections.each do |section| %>
   <h3 style="font-size:14px;margin:16px 0 8px;color:#333;">
     <%= section[:label] %> (<%= section[:notifications].size %>)
     <span style="font-size:12px;font-weight:normal;">
-      · <a href="<%= notification_type_unsubscribe_url_for(@user, section[:type]) %>" style="color:#666;">关闭此类邮件</a>
+      · <a href="<%= notification_type_unsubscribe_url_for(@user, section[:type]) %>" style="color:#666;"><%= t("mcweb.mail.forum.digest.disable_type") %></a>
     </span>
   </h3>
   <ul>
@@ -28,15 +28,15 @@
 <% end %>
 
 <p>
-  <a href="<%= @unread_notifications_url %>">查看全部未读通知</a>
+  <a href="<%= @unread_notifications_url %>"><%= t("mcweb.mail.forum.digest.view_unread") %></a>
   ·
-  <a href="<%= root_url.chomp('/') %><%= forum_latest_path %>">访问论坛</a>
+  <a href="<%= root_url.chomp('/') %><%= forum_latest_path %>"><%= t("mcweb.mail.forum.digest.visit_forum") %></a>
 </p>
 
 <p style="font-size:12px;color:#666;margin-top:24px;">
-  <a href="<%= @unsubscribe_url %>">一键关闭论坛邮件摘要</a>
+  <a href="<%= @unsubscribe_url %>"><%= t("mcweb.mail.forum.digest.unsubscribe_digest") %></a>
   ·
-  <a href="<%= @mention_unsubscribe_url %>">关闭 @提及 邮件</a>
+  <a href="<%= @mention_unsubscribe_url %>"><%= t("mcweb.mail.forum.digest.unsubscribe_mentions") %></a>
   ·
-  <a href="<%= @preferences_url %>">在通知偏好中管理</a>
+  <a href="<%= @preferences_url %>"><%= t("mcweb.mail.manage_preferences") %></a>
 </p>

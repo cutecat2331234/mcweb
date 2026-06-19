@@ -17,35 +17,19 @@ module Community
     end
 
     def watching_notice(context)
-      {
-        topic: "已关注此主题（即时通知）。",
-        section: "已关注此分区（即时通知）。",
-        tag: "已关注此标签（即时通知）。"
-      }[context]
+      I18n.t("mcweb.flash.subscription.watching.#{context}")
     end
 
     def tracking_notice(context)
-      {
-        topic: "已切换为跟踪此主题（仅站内通知）。",
-        section: "已切换为跟踪此分区（仅站内通知）。",
-        tag: "已切换为跟踪此标签（仅站内通知）。"
-      }[context]
+      I18n.t("mcweb.flash.subscription.tracking.#{context}")
     end
 
     def normal_notice(context)
-      {
-        topic: "已切换为普通（仅参与或被 @提及时通知）。",
-        section: "已切换为普通（不接收分区新主题通知）。",
-        tag: "已切换为普通（不接收标签新主题通知）。"
-      }[context]
+      I18n.t("mcweb.flash.subscription.normal.#{context}")
     end
 
     def off_notice(context)
-      {
-        topic: "已关闭此主题通知。",
-        section: "已取消关注此分区。",
-        tag: "已取消关注此标签。"
-      }[context]
+      I18n.t("mcweb.flash.subscription.off.#{context}")
     end
 
     def redirect_after_subscription_update(fallback_location:, notice: nil, alert: nil)

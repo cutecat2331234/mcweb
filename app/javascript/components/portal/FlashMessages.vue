@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { usePage } from '@inertiajs/vue3'
 import { AlertCircle, CheckCircle2, X } from '@lucide/vue'
 import { cn } from '@/lib/utils'
+
+const { t } = useI18n()
 
 const page = usePage()
 const dismissed = ref<Set<number>>(new Set())
@@ -62,7 +65,7 @@ watch(messages, (current) => {
       <button
         type="button"
         class="absolute right-2 top-2 rounded-md p-1 opacity-70 transition-opacity hover:opacity-100"
-        aria-label="关闭"
+        :aria-label="t('common.close')"
         @click="dismiss(index)"
       >
         <X class="h-4 w-4" />

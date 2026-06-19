@@ -1,6 +1,9 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import Badge from '@/components/ui/Badge.vue'
 import { Link } from '@inertiajs/vue3'
+
+const { t } = useI18n()
 
 defineProps<{
   prefix?: string | null
@@ -25,16 +28,16 @@ defineProps<{
 
 <template>
   <span v-if="prefix" class="mr-1 text-xs text-violet-600">[{{ prefix }}]</span>
-  <span v-if="pinned" class="mr-1 text-xs text-amber-600">[置顶]</span>
-  <span v-if="featured" class="mr-1 text-xs text-blue-600">[精选]</span>
-  <span v-if="locked" class="mr-1 text-xs text-muted-foreground">[锁定]</span>
+  <span v-if="pinned" class="mr-1 text-xs text-amber-600">{{ t('components.topicBadges.pinned') }}</span>
+  <span v-if="featured" class="mr-1 text-xs text-blue-600">{{ t('components.topicBadges.featured') }}</span>
+  <span v-if="locked" class="mr-1 text-xs text-muted-foreground">{{ t('components.topicBadges.locked') }}</span>
   <span v-if="wiki" class="mr-1 text-xs text-cyan-600">[Wiki]</span>
-  <span v-if="globalAnnouncement" class="mr-1 text-xs text-rose-600">[公告]</span>
-  <span v-if="unlisted" class="mr-1 text-xs text-violet-600">[未列出]</span>
-  <span v-if="archived" class="mr-1 text-xs text-slate-600">[归档]</span>
-  <span v-if="solved" class="mr-1 text-xs text-green-600">[已解决]</span>
+  <span v-if="globalAnnouncement" class="mr-1 text-xs text-rose-600">{{ t('components.topicBadges.announcement') }}</span>
+  <span v-if="unlisted" class="mr-1 text-xs text-violet-600">{{ t('components.topicBadges.unlisted') }}</span>
+  <span v-if="archived" class="mr-1 text-xs text-slate-600">{{ t('components.topicBadges.archived') }}</span>
+  <span v-if="solved" class="mr-1 text-xs text-green-600">{{ t('components.topicBadges.solved') }}</span>
   <Link v-if="assignedUsername && assignedUrl" :href="assignedUrl" class="mr-1 text-xs text-orange-600 hover:underline" @click.stop>[@{{ assignedUsername }}]</Link>
-  <Link v-if="linkedProduct && linkedProductUrl" :href="linkedProductUrl" class="mr-1 text-xs text-emerald-600 hover:underline" @click.stop>[商品]</Link>
+  <Link v-if="linkedProduct && linkedProductUrl" :href="linkedProductUrl" class="mr-1 text-xs text-emerald-600 hover:underline" @click.stop>{{ t('components.topicBadges.product') }}</Link>
   <Link
     v-for="tag in tags || []"
     :key="tag.slug"
@@ -51,5 +54,5 @@ defineProps<{
     />
     #{{ tag.name }}
   </Link>
-  <Badge v-if="hasUnread" class="ml-2">{{ unreadCount }} 未读</Badge>
+  <Badge v-if="hasUnread" class="ml-2">{{ t('components.topicBadges.unread', { count: unreadCount }) }}</Badge>
 </template>

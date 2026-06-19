@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -8,7 +10,9 @@ import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
 
-defineProps<{
+const { t } = useI18n()
+
+const props = defineProps<{
   owner: string
   products: Array<{
     id: string
@@ -20,54 +24,51 @@ defineProps<{
     average_rating: number | null
   }>
 }>()
+
+const stockLabel = (inStock: boolean) => inStock ? t('commerce.compare.inStock') : t('commerce.compare.outOfStock')
+
+const rows = computed(() => [
+  { key: 'price', label: t('commerce.compare.price'), get: (p: (typeof props)['products'][number]) => p.price_label },
+  { key: 'category', label: t('commerce.compare.category'), get: (p: (typeof props)['products'][number]) => p.category_name || '—' },
+  { key: 'stock', label: t('commerce.compare.stock'), get: (p: (typeof props)['products'][number]) => stockLabel(p.in_stock) },
+  { key: 'rating', label: t('commerce.compare.rating'), get: (p: (typeof props)['products'][number]) => String(p.average_rating ?? '—') },
+])
 </script>
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
-    { label: '分享对比', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.store'), href: routes.store },
+    { label: t('commerce.compare.publicBreadcrumb'), current: true },
   ]" />
 
-  <PageHeader :title="`${owner} 的对比列表`" subtitle="公开分享的商品对比" />
+  <PageHeader :title="t('commerce.compare.publicTitle', { owner })" :subtitle="t('commerce.compare.publicSubtitle')" />
 
   <div v-if="products.length" class="overflow-x-auto">
     <table class="w-full min-w-[640px] border text-sm">
       <thead>
         <tr class="border-b bg-muted/50">
-          <th class="p-3 text-left">属性</th>
+          <th class="p-3 text-left">{{ t('commerce.compare.attribute') }}</th>
           <th v-for="product in products" :key="product.id" class="p-3 text-left">
             <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
           </th>
         </tr>
       </thead>
       <tbody>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">价格</td>
-          <td v-for="product in products" :key="`${product.id}-price`" class="p-3">{{ product.price_label }}</td>
-        </tr>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">分类</td>
-          <td v-for="product in products" :key="`${product.id}-cat`" class="p-3">{{ product.category_name || '—' }}</td>
-        </tr>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">库存</td>
-          <td v-for="product in products" :key="`${product.id}-stock`" class="p-3">{{ product.in_stock ? '有货' : '缺货' }}</td>
-        </tr>
-        <tr class="border-b">
-          <td class="p-3 text-muted-foreground">评分</td>
-          <td v-for="product in products" :key="`${product.id}-rating`" class="p-3">{{ product.average_rating ?? '—' }}</td>
+        <tr v-for="row in rows" :key="row.key" class="border-b">
+          <td class="p-3 text-muted-foreground">{{ row.label }}</td>
+          <td v-for="product in products" :key="`${product.id}-${row.key}`" class="p-3">{{ row.get(product) }}</td>
         </tr>
       </tbody>
     </table>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    对比列表为空或商品已下架。
+    {{ t('commerce.compare.publicEmpty') }}
   </p>
 
   <div class="mt-4">
     <Button as-child variant="outline">
-      <Link :href="routes.storeCompare">创建自己的对比</Link>
+      <Link :href="routes.storeCompare">{{ t('commerce.compare.createOwn') }}</Link>
     </Button>
   </div>
 </template>

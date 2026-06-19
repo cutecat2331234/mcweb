@@ -1,7 +1,7 @@
-您的购物车中还有以下商品尚未结算：
+<%= t("mcweb.mail.commerce.abandoned_cart.text_intro") %>
 
 <% @cart.items.each do |item| %>
-- <%= item.product.name %> x<%= item.quantity %>
+- <%= item.product.name %> × <%= item.quantity %>
 <% end %>
 
-请访问 <%= @recovery_url %> 完成购买。
+<%= t("mcweb.mail.commerce.abandoned_cart.text_action", url: @recovery_url) %>

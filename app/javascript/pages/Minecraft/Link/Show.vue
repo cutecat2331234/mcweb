@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import { useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -14,6 +15,8 @@ defineOptions({ layout: PortalLayout })
 const props = defineProps<{
   form_error?: string | null
 }>()
+
+const { t } = useI18n()
 
 const form = useForm({
   link: { code: '' },
@@ -36,7 +39,7 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader title="绑定 Minecraft 账户" subtitle="在游戏内执行 /website link，然后输入验证码" />
+  <PageHeader :title="t('minecraft.link.title')" :subtitle="t('minecraft.link.subtitle')" />
 
   <Alert v-if="formError" variant="destructive" class="mb-4 max-w-sm">
     {{ formError }}
@@ -44,10 +47,10 @@ function submit() {
 
   <form class="max-w-sm space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
-      <Label for="code">验证码</Label>
+      <Label for="code">{{ t('minecraft.link.code') }}</Label>
       <Input id="code" v-model="form.link.code" class="font-mono" required autocomplete="off" />
       <p v-if="form.errors['link.code']" class="text-sm text-destructive">{{ form.errors['link.code'] }}</p>
     </div>
-    <Button type="submit" :disabled="form.processing">绑定账户</Button>
+    <Button type="submit" :disabled="form.processing">{{ t('minecraft.link.submit') }}</Button>
   </form>
 </template>

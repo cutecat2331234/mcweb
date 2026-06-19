@@ -30,7 +30,7 @@ module Commerce
       result = Commerce::SubscribeProductAvailabilityAlert.call(user: current_user, product: product)
 
       if result.success?
-        redirect_back fallback_location: store_products_path, notice: "上架通知已订阅。"
+        redirect_back fallback_location: store_products_path, notice: t("mcweb.flash.availability_subscribed")
       else
         redirect_back fallback_location: store_products_path, alert: service_error_message(result)
       end
@@ -39,7 +39,7 @@ module Commerce
     def destroy
       alert = Commerce::ProductAvailabilityAlert.find_by!(id: params[:id], user: current_user)
       Commerce::UnsubscribeProductAvailabilityAlert.call(user: current_user, product: alert.product)
-      redirect_back fallback_location: store_availability_alerts_path, notice: "已取消上架通知。"
+      redirect_back fallback_location: store_availability_alerts_path, notice: t("mcweb.flash.availability_unsubscribed")
     end
   end
 end

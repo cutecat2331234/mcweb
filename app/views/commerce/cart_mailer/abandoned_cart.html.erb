@@ -1,11 +1,11 @@
-<p>您好 <%= @user.username %>，</p>
-<p>您的购物车中还有以下商品尚未结算：</p>
+<p><%= t("mcweb.mail.greeting_formal", username: @user.username) %></p>
+<p><%= t("mcweb.mail.commerce.abandoned_cart.intro") %></p>
 <ul>
   <% @cart.items.each do |item| %>
-    <li><%= item.product.name %><% if item.variant %>（<%= item.variant.name %>）<% end %> × <%= item.quantity %></li>
+    <li><%= item.product.name %> × <%= item.quantity %></li>
   <% end %>
 </ul>
-<p><a href="<%= @recovery_url %>">前往购物车完成购买</a></p>
+<p><a href="<%= @recovery_url %>"><%= t("mcweb.mail.commerce.abandoned_cart.action") %></a></p>
 <% if @coupon_code.present? %>
-<p>专属优惠码：<strong><%= @coupon_code %></strong>（点击链接自动应用）</p>
+<p><%= t("mcweb.mail.commerce.abandoned_cart.coupon", code: @coupon_code) %></p>
 <% end %>

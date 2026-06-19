@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -15,6 +16,8 @@ import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 defineProps<{
   drafts: Array<{
@@ -33,9 +36,9 @@ defineProps<{
 
 async function deleteDraft(id: string) {
   const ok = await confirm({
-    title: '删除草稿',
-    message: '确定删除此草稿？',
-    confirmLabel: '删除',
+    title: t('forum.drafts.deleteTitle'),
+    message: t('forum.drafts.deleteConfirm'),
+    confirmLabel: t('forum.drafts.delete'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -45,21 +48,21 @@ async function deleteDraft(id: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '我的草稿', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.drafts.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="我的草稿" subtitle="未发布的主题草稿" />
+  <PageHeader :title="t('forum.drafts.title')" :subtitle="t('forum.drafts.subtitle')" />
 
   <div v-if="drafts.length" class="rounded-lg border">
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>标题 / 预览</TableHead>
-          <TableHead>分区</TableHead>
-          <TableHead>定时</TableHead>
-          <TableHead>更新时间</TableHead>
+          <TableHead>{{ t('forum.drafts.colTitle') }}</TableHead>
+          <TableHead>{{ t('forum.drafts.colSection') }}</TableHead>
+          <TableHead>{{ t('forum.drafts.colScheduled') }}</TableHead>
+          <TableHead>{{ t('forum.drafts.colUpdated') }}</TableHead>
           <TableHead />
         </TableRow>
       </TableHeader>
@@ -74,14 +77,14 @@ async function deleteDraft(id: string) {
           </TableCell>
           <TableCell>
             {{ draft.scheduled_at || '—' }}
-            <Badge v-if="draft.has_poll" variant="secondary" class="ml-1">投票</Badge>
+            <Badge v-if="draft.has_poll" variant="secondary" class="ml-1">{{ t('forum.drafts.pollBadge') }}</Badge>
           </TableCell>
           <TableCell>{{ draft.updated_at }}</TableCell>
           <TableCell class="text-right">
             <Button as-child variant="outline" size="sm">
-              <Link :href="draft.edit_url">编辑</Link>
+              <Link :href="draft.edit_url">{{ t('forum.drafts.edit') }}</Link>
             </Button>
-            <Button type="button" variant="outline" size="sm" class="ml-2" @click="deleteDraft(draft.id)">删除</Button>
+            <Button type="button" variant="outline" size="sm" class="ml-2" @click="deleteDraft(draft.id)">{{ t('forum.drafts.delete') }}</Button>
           </TableCell>
         </TableRow>
       </TableBody>
@@ -89,6 +92,6 @@ async function deleteDraft(id: string) {
   </div>
 
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    暂无草稿。在新建主题时可保存草稿。
+    {{ t('forum.drafts.empty') }}
   </p>
 </template>

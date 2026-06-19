@@ -29,7 +29,7 @@ module Admin
       def hide
         result = Commerce::HideProductQuestion.call(question: @question)
         if result.success?
-          redirect_to admin_store_product_questions_path, notice: "问题已隐藏。"
+          redirect_to admin_store_product_questions_path, notice: t("mcweb.flash.question_hidden")
         else
           redirect_to admin_store_product_questions_path, alert: service_error_message(result)
         end
@@ -38,7 +38,7 @@ module Admin
       def unhide
         result = Commerce::ShowProductQuestion.call(question: @question)
         if result.success?
-          redirect_to admin_store_product_questions_path, notice: "问题已恢复显示。"
+          redirect_to admin_store_product_questions_path, notice: t("mcweb.flash.question_restored")
         else
           redirect_to admin_store_product_questions_path, alert: service_error_message(result)
         end
@@ -46,7 +46,7 @@ module Admin
 
       def destroy
         @question.destroy!
-        redirect_to admin_store_product_questions_path, notice: "问题已删除。"
+        redirect_to admin_store_product_questions_path, notice: t("mcweb.flash.question_deleted")
       end
 
       private

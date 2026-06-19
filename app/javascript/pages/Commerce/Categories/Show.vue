@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Head, Link, router } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -13,6 +14,8 @@ import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   category: {
@@ -52,28 +55,28 @@ const q = ref(props.query)
 const priceMin = ref(props.priceMin ?? '')
 const priceMax = ref(props.priceMax ?? '')
 
-const categorySortOptions = [
-  { value: 'newest', label: '最新上架' },
-  { value: 'popular', label: '最热' },
-  { value: 'rating', label: '评分最高' },
-  { value: 'price_asc', label: '价格从低到高' },
-  { value: 'price_desc', label: '价格从高到低' },
-  { value: 'discount_desc', label: '折扣最大' },
-]
+const categorySortOptions = computed(() => [
+  { value: 'newest', label: t('commerce.categoryShow.sortNewestListed') },
+  { value: 'popular', label: t('commerce.productList.sortPopular') },
+  { value: 'rating', label: t('commerce.productList.sortRating') },
+  { value: 'price_asc', label: t('commerce.wishlist.sortPriceAsc') },
+  { value: 'price_desc', label: t('commerce.wishlist.sortPriceDesc') },
+  { value: 'discount_desc', label: t('commerce.productList.sortDiscount') },
+])
+
+const sortLabels = computed<Record<string, string>>(() => ({
+  newest: t('commerce.productList.sortNewest'),
+  price_asc: t('commerce.productList.sortPriceAsc'),
+  price_desc: t('commerce.productList.sortPriceDesc'),
+  popular: t('commerce.productList.sortPopular'),
+  rating: t('commerce.productList.sortRating'),
+  discount_desc: t('commerce.productList.sortDiscount'),
+}))
 
 const hasActiveFilters = !!(
   props.query || props.filters.in_stock || props.filters.on_sale ||
   props.priceMin || props.priceMax || (props.filters.sort && props.filters.sort !== 'newest')
 )
-
-const sortLabels: Record<string, string> = {
-  newest: '最新',
-  price_asc: '价格升序',
-  price_desc: '价格降序',
-  popular: '最热',
-  rating: '评分最高',
-  discount_desc: '折扣最大',
-}
 
 function filterParams(overrides: Record<string, string | undefined> = {}) {
   return {
@@ -126,21 +129,21 @@ function toggleWishlist(url: string) {
     <meta v-if="category.seo_description" head-key="og:description" property="og:description" :content="category.seo_description" />
   </Head>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.store'), href: routes.store },
     { label: category.name, current: true },
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader :title="`${category.icon ? category.icon + ' ' : ''}${category.name}`" :subtitle="category.description || '分类商品'" />
+    <PageHeader :title="`${category.icon ? category.icon + ' ' : ''}${category.name}`" :subtitle="category.description || t('commerce.categoryShow.subtitle')" />
     <Link v-if="compareCount" :href="routes.storeCompare" class="text-sm text-primary hover:underline">
-      对比列表 ({{ compareCount }})
+      {{ t('commerce.productList.compareList', { count: compareCount }) }}
     </Link>
   </div>
   <div v-if="category.color_hex" class="mb-4 h-1 w-full max-w-xl rounded-full" :style="{ backgroundColor: category.color_hex }" />
 
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
-    <Input v-model="q" placeholder="搜索本分类商品…" class="max-w-xs" />
+    <Input v-model="q" :placeholder="t('commerce.categoryShow.searchPlaceholder')" class="max-w-xs" />
     <Select
       :model-value="filters.sort || 'newest'"
       :options="categorySortOptions"
@@ -152,29 +155,29 @@ function toggleWishlist(url: string) {
         :model-value="filters.in_stock"
         @update:model-value="(checked) => applyFilter('in_stock', checked)"
       />
-      仅看有货
+      {{ t('commerce.productList.inStockOnly') }}
     </label>
     <label class="flex items-center gap-2 text-sm">
       <Checkbox
         :model-value="filters.on_sale"
         @update:model-value="(checked) => applyFilter('on_sale', checked)"
       />
-      仅促销
+      {{ t('commerce.productList.onSaleOnly') }}
     </label>
-    <Input v-model="priceMin" type="number" min="0" step="0.01" placeholder="最低价" class="w-24" />
-    <Input v-model="priceMax" type="number" min="0" step="0.01" placeholder="最高价" class="w-24" />
-    <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">筛选</button>
-    <Button v-if="hasActiveFilters" type="button" variant="outline" size="sm" @click="clearFilters">清除筛选</Button>
+    <Input v-model="priceMin" type="number" min="0" step="0.01" :placeholder="t('commerce.productList.priceMin')" class="w-24" />
+    <Input v-model="priceMax" type="number" min="0" step="0.01" :placeholder="t('commerce.productList.priceMax')" class="w-24" />
+    <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">{{ t('commerce.productList.filter') }}</button>
+    <Button v-if="hasActiveFilters" type="button" variant="outline" size="sm" @click="clearFilters">{{ t('commerce.productList.clearFilters') }}</Button>
     <a v-if="category.rss_url" :href="category.rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS</a>
   </form>
 
   <div v-if="hasActiveFilters" class="mb-4 flex flex-wrap items-center gap-2 text-xs">
-    <span class="text-muted-foreground">当前筛选：</span>
-    <Badge v-if="query" variant="outline">关键词：{{ query }}</Badge>
-    <Badge v-if="filters.in_stock" variant="outline">仅有货</Badge>
-    <Badge v-if="filters.on_sale" variant="outline">促销中</Badge>
-    <Badge v-if="priceMin || priceMax" variant="outline">价格区间</Badge>
-    <Badge v-if="filters.sort && filters.sort !== 'newest'" variant="outline">排序：{{ sortLabels[filters.sort] || filters.sort }}</Badge>
+    <span class="text-muted-foreground">{{ t('commerce.productList.activeFilters') }}</span>
+    <Badge v-if="query" variant="outline">{{ t('commerce.productList.keyword', { q: query }) }}</Badge>
+    <Badge v-if="filters.in_stock" variant="outline">{{ t('commerce.productList.inStockBadge') }}</Badge>
+    <Badge v-if="filters.on_sale" variant="outline">{{ t('commerce.productList.onSaleBadge') }}</Badge>
+    <Badge v-if="priceMin || priceMax" variant="outline">{{ t('commerce.productList.priceRange') }}</Badge>
+    <Badge v-if="filters.sort && filters.sort !== 'newest'" variant="outline">{{ t('commerce.productList.sortLabel', { sort: sortLabels[filters.sort] || filters.sort }) }}</Badge>
   </div>
 
   <div v-if="products.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -189,9 +192,9 @@ function toggleWishlist(url: string) {
         <span v-if="product.compare_at_label" class="ml-2 text-muted-foreground line-through">{{ product.compare_at_label }}</span>
       </p>
       <div class="mt-2 flex flex-wrap gap-2">
-        <Badge v-if="!product.in_stock" variant="secondary">缺货</Badge>
-        <Badge v-else-if="product.low_stock" variant="outline">库存紧张</Badge>
-        <Badge v-if="product.on_sale" variant="default">促销</Badge>
+        <Badge v-if="!product.in_stock" variant="secondary">{{ t('commerce.categoryShow.outOfStock') }}</Badge>
+        <Badge v-else-if="product.low_stock" variant="outline">{{ t('commerce.categoryShow.lowStock') }}</Badge>
+        <Badge v-if="product.on_sale" variant="default">{{ t('commerce.categoryShow.onSale') }}</Badge>
       </div>
       <div v-if="loggedIn" class="mt-3 flex flex-wrap gap-1">
         <Button
@@ -201,7 +204,7 @@ function toggleWishlist(url: string) {
           variant="outline"
           @click="toggleCompare(product.compare_url!)"
         >
-          {{ product.compared ? '对比中' : '对比' }}
+          {{ product.compared ? t('commerce.productList.comparing') : t('commerce.productList.compare') }}
         </Button>
         <Button
           v-if="product.wishlist_url"
@@ -210,12 +213,12 @@ function toggleWishlist(url: string) {
           :variant="product.wishlisted ? 'outline' : 'secondary'"
           @click="toggleWishlist(product.wishlist_url!)"
         >
-          {{ product.wishlisted ? '心愿单' : '收藏' }}
+          {{ product.wishlisted ? t('commerce.productList.wishlist') : t('commerce.productList.favorite') }}
         </Button>
       </div>
     </div>
   </div>
-  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">该分类暂无商品。</p>
+  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{{ t('commerce.categoryShow.empty') }}</p>
 
   <Pagination
     v-if="pagination?.pages > 1"

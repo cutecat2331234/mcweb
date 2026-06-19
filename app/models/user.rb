@@ -22,8 +22,13 @@ class User < ApplicationRecord
     has_many :store_wishlist_filter_presets, class_name: "Commerce::WishlistFilterPreset", dependent: :destroy
     has_many :shipping_addresses, class_name: "Commerce::ShippingAddress", dependent: :destroy
     has_many :store_credit_transactions, class_name: "Commerce::StoreCreditTransaction", dependent: :destroy
+  has_many :admin_module_grants, dependent: :destroy
+  has_many :minecraft_identities, class_name: "Minecraft::Identity", dependent: :destroy
+  has_many :minecraft_identity_links, class_name: "Minecraft::IdentityLink", dependent: :destroy
+  has_many :minecraft_player_profiles, through: :minecraft_identity_links, source: :player_profile
 
   enum :status, { active: "active", banned: "banned", deleted: "deleted" }, validate: true
+  enum :account_type, { member: "member", staff: "staff", admin: "admin", owner: "owner" }, validate: true, prefix: :account
 
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                     format: { with: URI::MailTo::EMAIL_REGEXP }
@@ -37,7 +42,17 @@ class User < ApplicationRecord
   scope :not_banned, -> { where(status: :active) }
 
   def permission?(key)
+    return true if account_owner?
+
     roles.joins(:permissions).exists?(permissions: { key: key })
+  end
+
+  def can_access_admin?
+    Identity::AccountAccess.can_access_admin?(self)
+  end
+
+  def admin_module_allowed?(module_key)
+    Identity::AccountAccess.module_allowed?(self, module_key)
   end
 
   def available_store_credit_cents(exclude_order_id: nil)

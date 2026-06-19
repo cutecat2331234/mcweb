@@ -15,7 +15,7 @@ module Minecraft
       )
 
       if result.success?
-        redirect_to root_path, notice: "Minecraft 账号已成功绑定。"
+        redirect_to root_path, notice: t("mcweb.flash.minecraft_linked")
       else
         render inertia: "Minecraft/Link/Show",
                status: :unprocessable_entity,

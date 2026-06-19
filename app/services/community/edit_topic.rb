@@ -39,7 +39,7 @@ module Community
     def can_edit?
       return false unless @user
 
-      @user.id == @topic.user_id || @user.permission?("forum.topics.lock")
+      @user.id == @topic.user_id || @user.permission?("forum.topics.edit_others") || @user.permission?("forum.topics.lock")
     end
 
     def valid_prefix

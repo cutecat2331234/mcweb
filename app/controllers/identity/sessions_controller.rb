@@ -27,7 +27,7 @@ module Identity
           remember_me: session_params[:remember_me] == "1" || session_params[:remember_me] == true
         )
         merge_guest_cart!
-        redirect_after_login default: FeatureFlags.primary_portal_path(self), notice: "登录成功。"
+        redirect_after_login default: FeatureFlags.primary_portal_path(self), notice: t("mcweb.flash.sign_in_success")
       else
         render inertia: "Identity/Sessions/New",
                status: :unprocessable_entity,
@@ -37,7 +37,7 @@ module Identity
 
     def destroy
       sign_out
-      redirect_to root_path, notice: "已退出登录。"
+      redirect_to root_path, notice: t("mcweb.flash.sign_out_success")
     end
 
     private

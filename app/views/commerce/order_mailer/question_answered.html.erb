@@ -1,7 +1,6 @@
-<p>你好 <%= @user.username %>，</p>
-<p>你在商品「<%= @product.name %>」提出的问题已收到回复：</p>
-<blockquote><%= @question.body %></blockquote>
-<p><strong>回复：</strong></p>
-<p><%= @answer.body %></p>
-<p>— <%= @answer.user.username %><% if @answer.official %>（官方）<% end %></p>
-<p><a href="<%= store_product_url(@product) %>">查看商品详情</a></p>
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
+<p><%= t("mcweb.mail.commerce.question_answered.body", product: @product.name) %></p>
+<blockquote><%= simple_format(@answer.body) %></blockquote>
+<p><strong><%= t("mcweb.mail.commerce.reply_label") %></strong></p>
+<p>— <%= @answer.user.username %><% if @answer.official %><%= t("mcweb.mail.commerce.official") %><% end %></p>
+<p><a href="<%= store_product_url(@product) %>"><%= t("mcweb.mail.commerce.view_product_detail") %></a></p>

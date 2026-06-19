@@ -42,7 +42,7 @@ module Admin
       def create
         tag = Community::Tag.new(tag_params)
         if tag.save
-          redirect_to admin_forum_tags_path, notice: "标签已创建。"
+          redirect_to admin_forum_tags_path, notice: t("mcweb.flash.created", resource: t("mcweb.resources.tag"))
         else
           render inertia: "Admin/Forum/Tags/Form", props: form_props(tag), status: :unprocessable_entity
         end
@@ -50,7 +50,7 @@ module Admin
 
       def update
         if @tag.update(tag_params)
-          redirect_to admin_forum_tags_path, notice: "标签已更新。"
+          redirect_to admin_forum_tags_path, notice: t("mcweb.flash.updated", resource: t("mcweb.resources.tag"))
         else
           render inertia: "Admin/Forum/Tags/Form", props: form_props(@tag), status: :unprocessable_entity
         end
@@ -58,7 +58,7 @@ module Admin
 
       def destroy
         @tag.destroy!
-        redirect_to admin_forum_tags_path, notice: "标签已删除。"
+        redirect_to admin_forum_tags_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.tag"))
       end
 
       private

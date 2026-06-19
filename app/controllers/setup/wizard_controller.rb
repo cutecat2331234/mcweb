@@ -81,10 +81,10 @@ module Setup
       end
 
       user = result.value[:user]
-      user.update!(email_verified: true, email_verified_at: Time.current)
+      user.update!(email_verified: true, email_verified_at: Time.current, account_type: :owner)
 
-      Rails.application.load_seed unless Role.exists?(key: "super_admin")
-      admin_role = Role.find_by!(key: "super_admin")
+      Rails.application.load_seed unless Role.exists?(key: "owner")
+      admin_role = Role.find_by!(key: "owner")
       user.roles << admin_role unless user.roles.include?(admin_role)
 
       SiteSetting.set("site.name", site_data[:name]) if site_data[:name].present?

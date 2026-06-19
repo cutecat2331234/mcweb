@@ -32,7 +32,7 @@ module Commerce
       result = Commerce::SubscribePriceAlert.call(user: current_user, product: @product, variant: variant)
 
       if result.success?
-        redirect_back fallback_location: store_wishlist_path, notice: "已订阅降价提醒。"
+        redirect_back fallback_location: store_wishlist_path, notice: t("mcweb.flash.price_alert_subscribed")
       else
         redirect_back fallback_location: store_wishlist_path, alert: service_error_message(result)
       end
@@ -41,7 +41,7 @@ module Commerce
     def destroy
       alert = Commerce::PriceAlert.find_by!(id: params[:id], user: current_user)
       Commerce::UnsubscribePriceAlert.call(user: current_user, product: alert.product)
-      redirect_back fallback_location: store_price_alerts_path, notice: "已取消降价提醒。"
+      redirect_back fallback_location: store_price_alerts_path, notice: t("mcweb.flash.price_alert_unsubscribed")
     end
 
     private

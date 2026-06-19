@@ -1,7 +1,7 @@
-您的礼品卡已创建
+<%= t("mcweb.mail.commerce.gift_card.created_title") %>
 
-代码：<%= @card.code %>
-余额：<%= @card.balance_cents / 100.0 %> <%= @card.currency %>
-<% if @card.expires_at %>到期时间：<%= l(@card.expires_at, format: :long) %><% end %>
+<%= t("mcweb.mail.commerce.gift_card.code", code: @card.code) %>
+<%= t("mcweb.mail.commerce.gift_card.balance", amount: @card.balance_cents / 100.0, currency: @card.currency) %>
+<% if @card.expires_at %><%= t("mcweb.mail.commerce.gift_card.expires_long", time: l(@card.expires_at, format: :long)) %><% end %>
 
-请妥善保管礼品卡代码，结账时可使用。
+<%= t("mcweb.mail.commerce.gift_card.keep_safe") %>

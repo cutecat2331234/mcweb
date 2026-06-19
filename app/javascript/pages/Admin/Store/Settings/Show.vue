@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useForm, router } from '@inertiajs/vue3'
 import { ref, onBeforeUnmount, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -11,6 +12,8 @@ import { confirm } from '@/lib/useConfirm'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 export interface StoreSettingItem {
   key: string
@@ -96,7 +99,7 @@ const shippingMethods = ref(
 function addShippingMethod() {
   shippingMethods.value.push({
     code: `method_${shippingMethods.value.length + 1}`,
-    label: '新配送方式',
+    label: t('admin.storeSettings.newShippingLabel'),
     cents: 0,
     delivery_days_min: '',
     delivery_days_max: '',
@@ -124,8 +127,8 @@ function submit() {
 
 async function sendTestWebhook() {
   const ok = await confirm({
-    title: '发送 Webhook 测试',
-    message: `向配置的 Webhook URL 发送 ${selectedTestEvent.value} 测试事件？`,
+    title: t('admin.storeSettings.sendWebhookTestTitle'),
+    message: t('admin.storeSettings.sendWebhookTestConfirm', { event: selectedTestEvent.value }),
   })
   if (!props.testWebhookUrl || !ok) return
   router.post(props.testWebhookUrl, { event: selectedTestEvent.value }, {
@@ -135,8 +138,8 @@ async function sendTestWebhook() {
 
 async function sendTestAllWebhooks() {
   const ok = await confirm({
-    title: '批量发送 Webhook 测试',
-    message: '向配置的 Webhook URL 批量发送全部订单 Webhook 测试事件？',
+    title: t('admin.storeSettings.batchWebhookTestTitle'),
+    message: t('admin.storeSettings.batchWebhookTestConfirm'),
   })
   if (!props.testAllWebhooksUrl || !ok) return
   router.post(props.testAllWebhooksUrl, {}, {
@@ -146,16 +149,16 @@ async function sendTestAllWebhooks() {
 </script>
 
 <template>
-  <PageHeader title="商城设置" subtitle="运费、购物车、对比、SEO 与订单策略（对标 XenForo 资源管理 / WooCommerce 商店选项）" />
+  <PageHeader :title="t('admin.storeSettings.title')" :subtitle="t('admin.storeSettings.subtitle')" />
 
   <form class="max-w-3xl space-y-6" @submit.prevent="submit">
     <section class="space-y-4 rounded-lg border p-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
-          <h2 class="text-sm font-semibold">配送方式</h2>
-          <p class="text-xs text-muted-foreground">可视化编辑结账可选配送方式；标准配送（code=standard）运费会同步「固定运费」设置。</p>
+          <h2 class="text-sm font-semibold">{{ t('admin.storeSettings.shippingMethods') }}</h2>
+          <p class="text-xs text-muted-foreground">{{ t('admin.storeSettings.shippingHint') }}</p>
         </div>
-        <Button type="button" size="sm" variant="outline" @click="addShippingMethod">添加配送方式</Button>
+        <Button type="button" size="sm" variant="outline" @click="addShippingMethod">{{ t('admin.storeSettings.addShipping') }}</Button>
       </div>
 
       <div v-if="shippingMethods.length" class="space-y-3">
@@ -165,31 +168,31 @@ async function sendTestAllWebhooks() {
           class="grid gap-2 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-6"
         >
           <div class="space-y-1">
-            <Label class="text-xs">代码</Label>
+            <Label class="text-xs">{{ t('admin.storeSettings.code') }}</Label>
             <Input v-model="method.code" placeholder="standard" />
           </div>
           <div class="space-y-1 lg:col-span-2">
-            <Label class="text-xs">名称</Label>
-            <Input v-model="method.label" placeholder="标准配送" />
+            <Label class="text-xs">{{ t('admin.storeSettings.label') }}</Label>
+            <Input v-model="method.label" />
           </div>
           <div class="space-y-1">
-            <Label class="text-xs">运费（分）</Label>
+            <Label class="text-xs">{{ t('admin.storeSettings.cents') }}</Label>
             <Input v-model="method.cents" type="number" min="0" />
           </div>
           <div class="space-y-1">
-            <Label class="text-xs">最短天数</Label>
+            <Label class="text-xs">{{ t('admin.storeSettings.minDays') }}</Label>
             <Input v-model="method.delivery_days_min" type="number" min="0" />
           </div>
           <div class="flex items-end gap-2">
             <div class="min-w-0 flex-1 space-y-1">
-              <Label class="text-xs">最长天数</Label>
+              <Label class="text-xs">{{ t('admin.storeSettings.maxDays') }}</Label>
               <Input v-model="method.delivery_days_max" type="number" min="0" />
             </div>
-            <Button type="button" size="sm" variant="ghost" class="shrink-0 text-destructive" @click="removeShippingMethod(index)">删除</Button>
+            <Button type="button" size="sm" variant="ghost" class="shrink-0 text-destructive" @click="removeShippingMethod(index)">{{ t('admin.ui.delete') }}</Button>
           </div>
         </div>
       </div>
-      <p v-else class="text-sm text-muted-foreground">暂无配送方式，请添加至少一种。</p>
+      <p v-else class="text-sm text-muted-foreground">{{ t('admin.storeSettings.emptyShipping') }}</p>
     </section>
 
     <div v-for="setting in settings" :key="setting.key" class="rounded-lg border p-4 space-y-2">
@@ -202,7 +205,7 @@ async function sendTestAllWebhooks() {
         :min="setting.input_type === 'number' ? 0 : undefined"
       />
     </div>
-    <Button type="submit" :disabled="form.processing">保存商城设置</Button>
+    <Button type="submit" :disabled="form.processing">{{ t('admin.storeSettings.save') }}</Button>
     <template v-if="testWebhookUrl">
       <Select v-model="selectedTestEvent" :options="testEventOptions" class="ml-2" size="sm" />
       <Button
@@ -211,7 +214,7 @@ async function sendTestAllWebhooks() {
         class="ml-2"
         @click="sendTestWebhook"
       >
-        发送 Webhook 测试
+        {{ t('admin.storeSettings.sendWebhookTest') }}
       </Button>
       <Button
         v-if="testAllWebhooksUrl"
@@ -220,11 +223,11 @@ async function sendTestAllWebhooks() {
         class="ml-2"
         @click="sendTestAllWebhooks"
       >
-        批量测试全部事件
+        {{ t('admin.storeSettings.batchWebhookTest') }}
       </Button>
       <p v-if="lastTestWebhookDisplay" class="mt-2 text-xs text-muted-foreground">
-        最近测试：{{ lastTestWebhookDisplay.event_type }} · {{ lastTestWebhookDisplay.status }}
-        <span v-if="lastTestWebhookDisplay.response_code != null"> · HTTP {{ lastTestWebhookDisplay.response_code }}</span>
+        {{ t('admin.storeSettings.lastTest', { event: lastTestWebhookDisplay.event_type, status: lastTestWebhookDisplay.status }) }}
+        <span v-if="lastTestWebhookDisplay.response_code != null">{{ t('admin.storeSettings.lastTestHttp', { code: lastTestWebhookDisplay.response_code }) }}</span>
         · {{ lastTestWebhookDisplay.created_at }}
       </p>
     </template>

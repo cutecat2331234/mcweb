@@ -119,7 +119,7 @@ end
 
 class Admin::MinecraftServersControllerTest < ActionDispatch::IntegrationTest
   test "lists servers without host field error" do
-    admin = create_user(email: "mcadmin@example.com", username: "mcadmin")
+    admin = create_user(email: "mcadmin@example.com", username: "mcadmin", account_type: "admin")
     grant_permission(admin, "admin.access")
     grant_permission(admin, "minecraft.servers.manage")
     sign_in_as(admin)

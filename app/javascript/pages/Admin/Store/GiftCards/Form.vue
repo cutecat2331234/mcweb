@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -8,6 +9,8 @@ import Label from '@/components/ui/Label.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   title: string
@@ -41,40 +44,40 @@ function submit() {
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
-      <Label for="code">礼品卡代码</Label>
-      <Input id="code" v-model="form.gift_card.code" placeholder="留空自动生成" :disabled="method === 'patch'" />
-      <p v-if="method !== 'patch'" class="text-xs text-muted-foreground">留空将自动生成 GC 开头的代码。</p>
+      <Label for="code">{{ t('admin.forms.giftCard.code') }}</Label>
+      <Input id="code" v-model="form.gift_card.code" :placeholder="t('admin.forms.giftCard.codePlaceholder')" :disabled="method === 'patch'" />
+      <p v-if="method !== 'patch'" class="text-xs text-muted-foreground">{{ t('admin.forms.giftCard.codeHint') }}</p>
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
-        <Label for="balance_cents">面额（分）</Label>
+        <Label for="balance_cents">{{ t('admin.forms.giftCard.balanceCents') }}</Label>
         <Input id="balance_cents" v-model.number="form.gift_card.balance_cents" type="number" min="1" required />
       </div>
       <div class="space-y-2">
-        <Label for="currency">货币</Label>
+        <Label for="currency">{{ t('admin.forms.giftCard.currency') }}</Label>
         <Input id="currency" v-model="form.gift_card.currency" required />
       </div>
     </div>
     <div class="space-y-2">
-      <Label for="expires_at">过期时间（可选）</Label>
+      <Label for="expires_at">{{ t('admin.forms.giftCard.expiresAt') }}</Label>
       <Input id="expires_at" v-model="form.gift_card.expires_at" type="datetime-local" />
     </div>
     <div class="space-y-2">
-      <Label for="note">备注</Label>
-      <Input id="note" v-model="form.gift_card.note" placeholder="内部备注" />
+      <Label for="note">{{ t('admin.forms.giftCard.note') }}</Label>
+      <Input id="note" v-model="form.gift_card.note" :placeholder="t('admin.forms.giftCard.notePlaceholder')" />
     </div>
     <div v-if="method !== 'patch'" class="space-y-2">
-      <Label for="recipient_email">发送邮件（可选）</Label>
-      <Input id="recipient_email" v-model="form.gift_card.recipient_email" type="email" placeholder="收件人邮箱" />
+      <Label for="recipient_email">{{ t('admin.forms.giftCard.recipientEmail') }}</Label>
+      <Input id="recipient_email" v-model="form.gift_card.recipient_email" type="email" :placeholder="t('admin.forms.giftCard.recipientPlaceholder')" />
     </div>
     <label class="flex items-center gap-2 text-sm">
       <Checkbox v-model="form.gift_card.active" />
-      启用
+      {{ t('admin.common.enable') }}
     </label>
     <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ method === 'patch' ? '保存' : '创建' }}</Button>
+      <Button type="submit" :disabled="form.processing">{{ method === 'patch' ? t('admin.ui.save') : t('admin.ui.create') }}</Button>
       <Button as-child variant="outline">
-        <Link :href="backUrl">取消</Link>
+        <Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link>
       </Button>
     </div>
   </form>

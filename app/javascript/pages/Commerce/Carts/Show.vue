@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -16,6 +17,8 @@ import { confirm } from '@/lib/useConfirm'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 export interface CartItem {
   id: number
@@ -110,7 +113,7 @@ async function previewCoupon() {
     })
     const data = await res.json()
     if (!res.ok) {
-      couponError.value = data.error || '优惠券无效'
+      couponError.value = data.error || t('commerce.cart.invalidCoupon')
       return
     }
     couponPreview.value = data
@@ -146,7 +149,7 @@ async function previewGiftCard() {
     })
     const data = await res.json()
     if (!res.ok) {
-      giftCardError.value = data.error || '礼品卡无效'
+      giftCardError.value = data.error || t('commerce.cart.invalidGiftCard')
       return
     }
     giftCardPreview.value = data
@@ -175,9 +178,9 @@ function moveToWishlist(itemId: number) {
 
 async function clearCart() {
   const ok = await confirm({
-    title: '清空购物车',
-    message: '确定清空购物车？',
-    confirmLabel: '清空',
+    title: t('commerce.cart.clearCart'),
+    message: t('commerce.cart.clearCartConfirm'),
+    confirmLabel: t('commerce.cart.clear'),
     variant: 'destructive',
   })
   if (!props.clearCartUrl || !ok) return
@@ -190,10 +193,10 @@ function updateGiftNote(itemId: number, giftNote: string) {
 </script>
 
 <template>
-  <PageHeader title="购物车" />
+  <PageHeader :title="t('commerce.cart.title')" />
 
   <p v-if="cartRecovered" class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
-    已通过提醒链接恢复你的购物车，可以继续结账。
+    {{ t('commerce.cart.recovered') }}
   </p>
 
   <div v-if="items.length" class="space-y-6">
@@ -201,10 +204,10 @@ function updateGiftNote(itemId: number, giftNote: string) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>商品</TableHead>
-            <TableHead>数量</TableHead>
-            <TableHead>单价</TableHead>
-            <TableHead>小计</TableHead>
+            <TableHead>{{ t('commerce.cart.product') }}</TableHead>
+            <TableHead>{{ t('commerce.cart.quantity') }}</TableHead>
+            <TableHead>{{ t('commerce.cart.unitPrice') }}</TableHead>
+            <TableHead>{{ t('commerce.cart.lineTotal') }}</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -214,15 +217,15 @@ function updateGiftNote(itemId: number, giftNote: string) {
               <Link v-if="item.product_url" :href="item.product_url" class="hover:underline">{{ item.product_name }}</Link>
               <template v-else>{{ item.product_name }}</template>
               <span v-if="item.variant_name" class="text-muted-foreground"> — {{ item.variant_name }}</span>
-              <p v-if="item.minimum_quantity && item.minimum_quantity > 1" class="text-xs text-muted-foreground">最少购买 {{ item.minimum_quantity }} 件</p>
-              <p v-if="item.maximum_quantity" class="text-xs text-muted-foreground">单次最多 {{ item.maximum_quantity }} 件</p>
-              <p v-if="item.purchase_limit_remaining != null" class="text-xs text-muted-foreground">还可购买 {{ item.purchase_limit_remaining }} 件</p>
+              <p v-if="item.minimum_quantity && item.minimum_quantity > 1" class="text-xs text-muted-foreground">{{ t('commerce.cart.minQty', { n: item.minimum_quantity }) }}</p>
+              <p v-if="item.maximum_quantity" class="text-xs text-muted-foreground">{{ t('commerce.cart.maxQty', { n: item.maximum_quantity }) }}</p>
+              <p v-if="item.purchase_limit_remaining != null" class="text-xs text-muted-foreground">{{ t('commerce.cart.limitRemaining', { n: item.purchase_limit_remaining }) }}</p>
               <div class="mt-2 max-w-xs space-y-1">
-                <Label :for="`gift-note-${item.id}`" class="text-xs">赠言（可选）</Label>
+                <Label :for="`gift-note-${item.id}`" class="text-xs">{{ t('commerce.cart.giftNote') }}</Label>
                 <Input
                   :id="`gift-note-${item.id}`"
                   :model-value="item.gift_note || ''"
-                  placeholder="送给朋友的留言"
+                  :placeholder="t('commerce.cart.giftNotePlaceholder')"
                   class="h-8 text-xs"
                   @change="updateGiftNote(item.id, ($event.target as HTMLInputElement).value)"
                 />
@@ -241,7 +244,7 @@ function updateGiftNote(itemId: number, giftNote: string) {
             <TableCell>{{ item.total_label }}</TableCell>
             <TableCell>
               <div class="flex gap-1">
-                <Button variant="ghost" size="sm" type="button" @click="removeItem(item.id)">移除</Button>
+                <Button variant="ghost" size="sm" type="button" @click="removeItem(item.id)">{{ t('commerce.cart.remove') }}</Button>
                 <Button
                   v-if="loggedIn && moveToWishlistUrl"
                   variant="ghost"
@@ -249,7 +252,7 @@ function updateGiftNote(itemId: number, giftNote: string) {
                   type="button"
                   @click="moveToWishlist(item.id)"
                 >
-                  移入心愿单
+                  {{ t('commerce.cart.moveToWishlist') }}
                 </Button>
               </div>
             </TableCell>
@@ -258,72 +261,76 @@ function updateGiftNote(itemId: number, giftNote: string) {
       </Table>
     </div>
 
-    <p class="font-medium">小计：{{ subtotalLabel }}</p>
+    <p class="font-medium">{{ t('commerce.cart.subtotal', { amount: subtotalLabel }) }}</p>
     <p v-if="shippingLabel" class="text-sm text-muted-foreground">
-      运费：{{ freeShipping ? (couponFreeShipping ? '免运费（优惠券）' : noShippableItems ? '无需运费' : '免运费') : shippingLabel }}
+      {{ t('commerce.cart.shipping', {
+        amount: freeShipping
+          ? (couponFreeShipping ? t('commerce.cart.freeShippingCoupon') : noShippableItems ? t('commerce.cart.noShippingNeeded') : t('commerce.cart.freeShipping'))
+          : shippingLabel
+      }) }}
     </p>
     <p v-if="couponAutoApplied && pendingCouponCode" class="text-sm text-green-700">
-      已通过链接自动应用优惠码 {{ pendingCouponCode }}
+      {{ t('commerce.cart.couponAutoApplied', { code: pendingCouponCode }) }}
     </p>
     <p
       v-if="freeShippingRemainingLabel && !freeShipping"
       class="text-xs text-muted-foreground"
     >
-      再购 {{ freeShippingRemainingLabel }} 即可免运费（满 {{ freeShippingMinLabel }} 免运费）
+      {{ t('commerce.cart.freeShippingRemaining', { remaining: freeShippingRemainingLabel, min: freeShippingMinLabel }) }}
     </p>
 
     <div class="max-w-md space-y-2 rounded-lg border p-4">
-      <Label for="coupon">优惠券</Label>
+      <Label for="coupon">{{ t('commerce.cart.coupon') }}</Label>
       <div class="flex gap-2">
-        <Input id="coupon" v-model="couponCode" placeholder="输入优惠码" class="flex-1" />
+        <Input id="coupon" v-model="couponCode" :placeholder="t('commerce.cart.couponPlaceholder')" class="flex-1" />
         <Button type="button" variant="outline" :disabled="couponLoading || !couponCode.trim()" @click="previewCoupon">
-          {{ couponLoading ? '验证中…' : '预览' }}
+          {{ couponLoading ? t('commerce.cart.validating') : t('commerce.cart.preview') }}
         </Button>
-        <Button v-if="clearCouponUrl && pendingCouponCode" type="button" variant="ghost" @click="clearCoupon">清除</Button>
+        <Button v-if="clearCouponUrl && pendingCouponCode" type="button" variant="ghost" @click="clearCoupon">{{ t('commerce.cart.clear') }}</Button>
       </div>
       <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
       <p v-if="couponPreview" class="text-sm text-muted-foreground">
-        优惠码 <strong>{{ couponPreview.code }}</strong> 已应用，减免 {{ couponPreview.discount_label }}，预计合计 {{ couponPreview.total_label }}
-        <span v-if="couponPreview.min_amount_label" class="block text-xs">最低消费 {{ couponPreview.min_amount_label }}</span>
+        {{ t('commerce.cart.couponApplied', { code: couponPreview.code, discount: couponPreview.discount_label, total: couponPreview.total_label }) }}
+        <span v-if="couponPreview.min_amount_label" class="block text-xs">{{ t('commerce.cart.minSpend', { amount: couponPreview.min_amount_label }) }}</span>
       </p>
       <p v-if="couponError && couponPreview?.amount_remaining_label" class="text-xs text-amber-600">
-        还差 {{ couponPreview.amount_remaining_label }} 可用此优惠码
+        {{ t('commerce.cart.amountRemaining', { amount: couponPreview.amount_remaining_label }) }}
       </p>
-      <p v-else-if="pendingCouponCode" class="text-sm text-muted-foreground">已保存优惠码：<strong>{{ pendingCouponCode }}</strong>（结账时自动使用）</p>
-      <p class="text-xs text-muted-foreground">优惠码在结账时正式使用。</p>
+      <p v-else-if="pendingCouponCode" class="text-sm text-muted-foreground">{{ t('commerce.cart.couponSaved', { code: pendingCouponCode }) }}</p>
+      <p class="text-xs text-muted-foreground">{{ t('commerce.cart.couponHint') }}</p>
     </div>
 
     <div class="max-w-md space-y-2 rounded-lg border p-4">
-      <Label for="gift_card">礼品卡</Label>
+      <Label for="gift_card">{{ t('commerce.cart.giftCard') }}</Label>
       <div class="flex gap-2">
-        <Input id="gift_card" v-model="giftCardCode" placeholder="输入礼品卡代码" class="flex-1" />
+        <Input id="gift_card" v-model="giftCardCode" :placeholder="t('commerce.cart.giftCardPlaceholder')" class="flex-1" />
         <Button type="button" variant="outline" :disabled="giftCardLoading || !giftCardCode.trim()" @click="previewGiftCard">
-          {{ giftCardLoading ? '验证中…' : '预览' }}
+          {{ giftCardLoading ? t('commerce.cart.validating') : t('commerce.cart.preview') }}
         </Button>
-        <Button v-if="clearGiftCardUrl && pendingGiftCardCode" type="button" variant="ghost" @click="clearGiftCard">清除</Button>
+        <Button v-if="clearGiftCardUrl && pendingGiftCardCode" type="button" variant="ghost" @click="clearGiftCard">{{ t('commerce.cart.clear') }}</Button>
       </div>
       <p v-if="giftCardError" class="text-sm text-destructive">{{ giftCardError }}</p>
       <p v-if="giftCardPreview" class="text-sm text-muted-foreground">
-        礼品卡 <strong>{{ giftCardPreview.code }}</strong> 可抵扣 {{ giftCardPreview.gift_card_amount_label }}，预计合计 {{ giftCardPreview.total_label }}
+        {{ t('commerce.cart.giftCardApplied', { code: giftCardPreview.code, amount: giftCardPreview.gift_card_amount_label, total: giftCardPreview.total_label }) }}
       </p>
-      <p v-else-if="pendingGiftCardCode" class="text-sm text-muted-foreground">已保存礼品卡：<strong>{{ pendingGiftCardCode }}</strong>（结账时自动使用）</p>
+      <p v-else-if="pendingGiftCardCode" class="text-sm text-muted-foreground">{{ t('commerce.cart.giftCardSaved', { code: pendingGiftCardCode }) }}</p>
     </div>
 
     <div v-if="loggedIn" class="flex flex-wrap gap-3">
       <Button as-child>
-        <Link :href="routes.storeCheckout">去结算</Link>
+        <Link :href="routes.storeCheckout">{{ t('commerce.cart.checkout') }}</Link>
       </Button>
-      <Button v-if="clearCartUrl" type="button" variant="outline" @click="clearCart">清空购物车</Button>
+      <Button v-if="clearCartUrl" type="button" variant="outline" @click="clearCart">{{ t('commerce.cart.clearCart') }}</Button>
     </div>
     <div v-else class="space-y-3">
-      <p class="text-sm text-muted-foreground">请先登录后再结账。</p>
+      <p class="text-sm text-muted-foreground">{{ t('commerce.cart.loginToCheckout') }}</p>
       <Button as-child variant="outline">
-        <Link :href="routes.signIn">登录</Link>
+        <Link :href="routes.signIn">{{ t('common.signIn') }}</Link>
       </Button>
     </div>
 
     <section v-if="crossSellProducts?.length" class="mt-8">
-      <h2 class="mb-3 text-sm font-semibold">猜你喜欢</h2>
+      <h2 class="mb-3 text-sm font-semibold">{{ t('commerce.cart.crossSell') }}</h2>
       <div class="grid gap-3 sm:grid-cols-2">
         <Link
           v-for="product in crossSellProducts"
@@ -348,9 +355,9 @@ function updateGiftNote(itemId: number, giftNote: string) {
   </div>
 
   <div v-else class="space-y-4">
-    <p class="text-sm text-muted-foreground">购物车是空的。</p>
+    <p class="text-sm text-muted-foreground">{{ t('commerce.cart.empty') }}</p>
     <Button as-child variant="outline">
-      <Link :href="routes.store">浏览商品</Link>
+      <Link :href="routes.store">{{ t('commerce.cart.browseProducts') }}</Link>
     </Button>
   </div>
 </template>

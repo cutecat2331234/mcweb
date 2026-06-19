@@ -13,10 +13,13 @@ import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 import Button from '@/components/ui/Button.vue'
 import Select from '@/components/ui/Select.vue'
+import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
 import { prompt } from '@/lib/usePrompt'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 interface StatusTab {
   label: string
@@ -70,7 +73,7 @@ const maxTotal = ref(props.maxTotal || '')
 const exportCopied = ref(false)
 
 const statusSelectOptions = computed(() => [
-  { value: '', label: '全部状态' },
+  { value: '', label: t('commerce.orders.allStatus') },
   ...props.statusOptions.map((opt) => ({ value: opt.value, label: opt.label })),
 ])
 
@@ -168,7 +171,7 @@ async function copyExportUrl() {
     window.setTimeout(() => { exportCopied.value = false }, 2000)
   } catch {
     await prompt({
-      title: '复制导出链接',
+      title: t('commerce.orders.copyExportLink'),
       defaultValue: props.exportUrl,
     })
   }
@@ -177,15 +180,15 @@ async function copyExportUrl() {
 
 <template>
   <div class="mb-4 flex items-center justify-between gap-3">
-    <PageHeader title="我的订单" />
+    <PageHeader :title="t('commerce.orders.title')" />
     <Button as-child variant="outline" size="sm">
-      <Link :href="routes.storePreferences">邮件偏好</Link>
+      <Link :href="routes.storePreferences">{{ t('commerce.orders.emailPrefs') }}</Link>
     </Button>
     <Button v-if="exportUrl" as-child variant="outline" size="sm">
-      <a :href="exportUrl">导出 CSV</a>
+      <a :href="exportUrl">{{ t('commerce.orders.exportCsv') }}</a>
     </Button>
     <Button v-if="exportUrl" type="button" variant="outline" size="sm" @click="copyExportUrl">
-      {{ exportCopied ? '已复制链接' : '复制导出链接' }}
+      {{ exportCopied ? t('commerce.orders.linkCopied') : t('commerce.orders.copyExportLink') }}
     </Button>
   </div>
 
@@ -203,7 +206,7 @@ async function copyExportUrl() {
   </div>
 
   <div v-if="totalPresets?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">金额快捷：</span>
+    <span class="text-xs text-muted-foreground">{{ t('commerce.orders.amountPresets') }}</span>
     <button
       v-for="preset in totalPresets"
       :key="preset.key"
@@ -217,24 +220,24 @@ async function copyExportUrl() {
   </div>
 
   <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
-    <Input v-model="q" placeholder="搜索订单号…" class="max-w-xs" />
+    <Input v-model="q" :placeholder="t('commerce.orders.searchPlaceholder')" class="max-w-xs" />
     <Select v-model="statusFilter" :options="statusSelectOptions" size="sm" />
-    <Input v-model="createdAfter" type="date" class="max-w-[10rem]" title="起始日期" />
-    <Input v-model="createdBefore" type="date" class="max-w-[10rem]" title="截止日期" />
-    <Input v-model="minTotal" type="number" min="0" step="0.01" placeholder="最低金额" class="max-w-[8rem]" title="最低金额" />
-    <Input v-model="maxTotal" type="number" min="0" step="0.01" placeholder="最高金额" class="max-w-[8rem]" title="最高金额" />
-    <Button type="submit" size="sm">筛选</Button>
+    <Input v-model="createdAfter" type="date" class="max-w-[10rem]" :title="t('commerce.orders.dateFrom')" />
+    <Input v-model="createdBefore" type="date" class="max-w-[10rem]" :title="t('commerce.orders.dateTo')" />
+    <Input v-model="minTotal" type="number" min="0" step="0.01" :placeholder="t('commerce.orders.minAmount')" class="max-w-[8rem]" :title="t('commerce.orders.minAmount')" />
+    <Input v-model="maxTotal" type="number" min="0" step="0.01" :placeholder="t('commerce.orders.maxAmount')" class="max-w-[8rem]" :title="t('commerce.orders.maxAmount')" />
+    <Button type="submit" size="sm">{{ t('commerce.orders.filter') }}</Button>
   </form>
 
   <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span class="text-xs text-muted-foreground">{{ t('commerce.orders.activeFilters') }}</span>
     <span
       v-for="filter in activeFilters"
       :key="`${filter.param}-${filter.value || filter.label}`"
       class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
     >
       {{ filter.label }}
-      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(filter)">×</button>
+      <button type="button" class="hover:opacity-70" :title="t('commerce.orders.removeFilter')" @click="removeFilter(filter)">×</button>
     </span>
   </div>
 
@@ -242,11 +245,11 @@ async function copyExportUrl() {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>订单号</TableHead>
-          <TableHead>状态</TableHead>
-          <TableHead>金额</TableHead>
-          <TableHead>时间</TableHead>
-          <TableHead class="text-right">操作</TableHead>
+          <TableHead>{{ t('commerce.orders.orderNumber') }}</TableHead>
+          <TableHead>{{ t('commerce.orders.status') }}</TableHead>
+          <TableHead>{{ t('commerce.orders.amount') }}</TableHead>
+          <TableHead>{{ t('commerce.orders.time') }}</TableHead>
+          <TableHead class="text-right">{{ t('commerce.orders.actions') }}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -259,14 +262,14 @@ async function copyExportUrl() {
           <TableCell class="text-muted-foreground">{{ order.created_at }}</TableCell>
           <TableCell class="text-right">
             <Button v-if="order.can_reorder && order.reorder_url" type="button" variant="outline" size="sm" @click="reorder(order.reorder_url!)">
-              再次购买
+              {{ t('commerce.orders.reorder') }}
             </Button>
           </TableCell>
         </TableRow>
       </TableBody>
     </Table>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无订单。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('commerce.orders.empty') }}</p>
 
   <Pagination v-if="pagination.pages > 1" :meta="pagination" class="mt-6" />
 </template>

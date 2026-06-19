@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const open = ref(false)
 const src = ref('')
@@ -53,7 +56,7 @@ onUnmounted(() => {
         class="absolute right-4 top-4 rounded bg-black/50 px-3 py-1 text-sm text-white"
         @click="close"
       >
-        关闭
+        {{ t('common.close') }}
       </button>
     </div>
   </Teleport>

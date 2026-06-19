@@ -127,7 +127,7 @@ module Community
         notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :section)
         redirect_after_subscription_update(fallback_location: forum_section_path(section), notice: notice)
       else
-        redirect_after_subscription_update(fallback_location: forum_section_path(section), alert: result.error || "更新失败")
+        redirect_after_subscription_update(fallback_location: forum_section_path(section), alert: result.error || t("mcweb.flash.subscription_update_failed"))
       end
     end
 
@@ -137,7 +137,7 @@ module Community
       result = Community::MarkSectionRead.call(user: current_user, section: section)
 
       if result.success?
-        redirect_to forum_section_path(section, section_index_query_params), notice: "分区已全部标为已读。"
+        redirect_to forum_section_path(section, section_index_query_params), notice: t("mcweb.flash.section_marked_read")
       else
         redirect_to forum_section_path(section, section_index_query_params), alert: service_error_message(result)
       end
@@ -149,7 +149,7 @@ module Community
       result = Community::ToggleSectionMute.call(user: current_user, section: section)
 
       if result.success?
-        redirect_to forum_section_path(section, section_index_query_params), notice: result.value[:muted] ? "已静音此分区。" : "已取消静音。"
+        redirect_to forum_section_path(section, section_index_query_params), notice: result.value[:muted] ? t("mcweb.flash.section_muted") : t("mcweb.flash.section_unmuted")
       else
         redirect_to forum_section_path(section, section_index_query_params), alert: service_error_message(result)
       end

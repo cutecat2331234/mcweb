@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from '@/components/ui/Button.vue'
 
 const props = withDefaults(
@@ -15,11 +16,13 @@ const props = withDefaults(
     accept: '*/*',
     disabled: false,
     multiple: false,
-    buttonLabel: '选择文件',
     buttonVariant: 'outline',
     buttonSize: 'sm',
   },
 )
+
+const { t } = useI18n()
+const displayLabel = computed(() => props.buttonLabel || t('components.fileInput.chooseFile'))
 
 const emit = defineEmits<{ change: [files: File | File[]] }>()
 
@@ -56,7 +59,7 @@ function onChange(event: Event) {
       :disabled="disabled"
       @click="openPicker"
     >
-      <slot>{{ buttonLabel }}</slot>
+      <slot>{{ displayLabel }}</slot>
     </Button>
   </div>
 </template>

@@ -1,5 +1,6 @@
-<p>您好 <%= @user.username %>，</p>
-<p>你关注的商品 <strong><%= @product.name %></strong> 降价了。</p>
-<p>原价：<%= number_to_currency(@baseline / 100.0, unit: @product.currency == "CNY" ? "¥" : "$") %></p>
-<p>现价：<%= number_to_currency(@current / 100.0, unit: @product.currency == "CNY" ? "¥" : "$") %></p>
-<p><a href="<%= @url %>">查看商品</a></p>
+<p><%= t("mcweb.mail.greeting_formal", username: @user.username) %></p>
+<p><%= t("mcweb.mail.commerce.price_drop.body", product: @product.name) %></p>
+<% unit = @product.currency == "CNY" ? "¥" : "$" %>
+<p><%= t("mcweb.mail.commerce.price_drop.was", amount: number_to_currency(@baseline / 100.0, unit: unit)) %></p>
+<p><%= t("mcweb.mail.commerce.price_drop.now", amount: number_to_currency(@current / 100.0, unit: unit)) %></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.commerce.view_product") %></a></p>

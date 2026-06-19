@@ -23,7 +23,7 @@ module Admin
 
         result = ::Frontend::InstallTemplateArchive.call(archive_io: file, actor: current_user)
         if result.success?
-          redirect_to admin_frontend_templates_path, notice: "模板「#{result.value.name}」安装成功。"
+          redirect_to admin_frontend_templates_path, notice: t("mcweb.flash.template_installed", name: result.value.name)
         else
           redirect_to admin_frontend_templates_path, alert: result.error
         end
@@ -45,7 +45,7 @@ module Admin
       def destroy
         result = ::Frontend::DeleteTemplate.call(template: @template, actor: current_user)
         if result.success?
-          redirect_to admin_frontend_templates_path, notice: "模板已删除。"
+          redirect_to admin_frontend_templates_path, notice: t("mcweb.flash.template_deleted")
         else
           redirect_to admin_frontend_templates_path, alert: result.error
         end

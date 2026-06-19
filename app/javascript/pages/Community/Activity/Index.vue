@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -10,6 +11,8 @@ import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   tab: 'posts' | 'topics' | 'following'
@@ -41,18 +44,18 @@ function changeSort(value: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '动态', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.activity.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="论坛动态" subtitle="全站最新活动" />
+  <PageHeader :title="t('forum.activity.title')" :subtitle="t('forum.activity.subtitle')" />
 
   <div class="mb-4 flex flex-wrap items-center gap-3">
     <div class="flex gap-2">
-      <Button :variant="tab === 'posts' ? 'default' : 'outline'" size="sm" @click="switchTab('posts')">最新回复</Button>
-      <Button :variant="tab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">最新主题</Button>
-      <Button :variant="tab === 'following' ? 'default' : 'outline'" size="sm" @click="switchTab('following')">关注的人</Button>
+      <Button :variant="tab === 'posts' ? 'default' : 'outline'" size="sm" @click="switchTab('posts')">{{ t('forum.activity.tabPosts') }}</Button>
+      <Button :variant="tab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">{{ t('forum.activity.tabTopics') }}</Button>
+      <Button :variant="tab === 'following' ? 'default' : 'outline'" size="sm" @click="switchTab('following')">{{ t('forum.activity.tabFollowing') }}</Button>
     </div>
     <Select
       v-if="tab === 'topics'"
@@ -77,12 +80,12 @@ function changeSort(value: string) {
         <p class="mt-1 text-sm text-muted-foreground">#{{ post.floor_number }} {{ post.body_excerpt }}</p>
       </article>
     </div>
-    <p v-else class="text-sm text-muted-foreground">暂无动态。</p>
+    <p v-else class="text-sm text-muted-foreground">{{ t('forum.activity.emptyPosts') }}</p>
   </div>
 
   <div v-else>
     <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants />
-    <p v-else class="text-sm text-muted-foreground">暂无主题。</p>
+    <p v-else class="text-sm text-muted-foreground">{{ t('forum.activity.emptyTopics') }}</p>
   </div>
 
   <Pagination v-if="pagination.pages > 1" class="mt-6" :pagination="pagination" :base-path="routes.forumActivity" />

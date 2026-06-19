@@ -3,6 +3,7 @@ import { createApp, h, type DefineComponent } from 'vue'
 
 import '@/styles/portal.css'
 import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'
+import { createAppI18n, normalizeAppLocale, syncI18nLocale } from '@/lib/i18n'
 import AppProvider from '@/components/AppProvider.vue'
 
 function syncCsrfFromInertiaPage(page?: { props?: Record<string, unknown> }) {
@@ -12,6 +13,12 @@ function syncCsrfFromInertiaPage(page?: { props?: Record<string, unknown> }) {
   } else {
     syncCsrfMetaTag()
   }
+}
+
+const i18n = createAppI18n()
+
+function syncLocaleFromInertiaPage(page?: { props?: Record<string, unknown> }) {
+  syncI18nLocale(i18n, page?.props?.locale)
 }
 
 router.on('before', (event) => {
@@ -27,6 +34,7 @@ router.on('before', (event) => {
 document.addEventListener('inertia:success', (event) => {
   const detail = (event as CustomEvent<{ page?: { props?: Record<string, unknown> } }>).detail
   syncCsrfFromInertiaPage(detail.page)
+  syncLocaleFromInertiaPage(detail.page)
 })
 
 syncCsrfMetaTag()
@@ -38,11 +46,12 @@ if (typeof window !== 'undefined') {
 
 createInertiaApp({
   setup({ el, App, props, plugin }) {
-    syncCsrfFromInertiaPage(
-      (props as { initialPage?: { props?: Record<string, unknown> } }).initialPage,
-    )
+    const initialPage = (props as { initialPage?: { props?: Record<string, unknown> } }).initialPage
+    syncCsrfFromInertiaPage(initialPage)
+    syncI18nLocale(i18n, initialPage?.props?.locale ?? normalizeAppLocale(document.documentElement.lang))
     createApp({ render: () => h(AppProvider, null, { default: () => h(App, props) }) })
       .use(plugin)
+      .use(i18n)
       .mount(el)
   },
   resolve: async (name) => {

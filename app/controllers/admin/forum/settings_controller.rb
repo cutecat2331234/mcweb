@@ -54,7 +54,7 @@ module Admin
           metadata: { keys: settings_params.keys }
         )
 
-        redirect_to admin_forum_settings_path, notice: "论坛设置已保存。"
+        redirect_to admin_forum_settings_path, notice: t("mcweb.flash.forum_settings_saved")
       end
 
       def test_webhook
@@ -62,9 +62,9 @@ module Admin
         result = Community::DispatchTestSavedSearchWebhook.call(saved_search: saved_search)
         if result.success?
           label = saved_search ? "「#{saved_search.name}」" : "saved_search.match"
-          redirect_to admin_forum_settings_path, notice: "测试 Webhook 已加入发送队列（#{label}）。"
+          redirect_to admin_forum_settings_path, notice: t("mcweb.flash.webhook_test_queued", label: label)
         else
-          redirect_to admin_forum_settings_path, alert: result.error || "测试发送失败。"
+          redirect_to admin_forum_settings_path, alert: result.error || t("mcweb.flash.webhook_test_failed")
         end
       end
 
@@ -72,9 +72,9 @@ module Admin
         result = Community::BatchTestSavedSearchWebhooks.call(user: current_user)
         if result.success?
           redirect_to admin_forum_settings_path,
-                      notice: "已加入 #{result.value[:queued]}/#{result.value[:total]} 条保存搜索 Webhook 测试队列。"
+                      notice: t("mcweb.flash.webhook_batch_test_queued", queued: result.value[:queued], total: result.value[:total])
         else
-          redirect_to admin_forum_settings_path, alert: result.error || "批量测试失败。"
+          redirect_to admin_forum_settings_path, alert: result.error || t("mcweb.flash.webhook_batch_test_failed")
         end
       end
 

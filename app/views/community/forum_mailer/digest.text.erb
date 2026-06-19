@@ -1,6 +1,6 @@
-您好 <%= @user.username %>，
+<%= t("mcweb.mail.greeting_formal", username: @user.username) %>
 
-以下是您订阅的论坛摘要（<%= @notifications.count %> 条）：
+<%= t("mcweb.mail.forum.digest.intro", count: @notifications.count) %>
 
 <% @digest_sections.each do |section| %>
 ## <%= section[:label] %> (<%= section[:notifications].size %>)
@@ -11,7 +11,7 @@
 <% end %>
 
 <% end %>
-访问论坛：<%= root_url %>forum/latest
+<%= t("mcweb.mail.forum.digest.visit_forum") %>: <%= root_url %>forum/latest
 
-一键关闭论坛邮件摘要：<%= @unsubscribe_url %>
-管理通知偏好：<%= @preferences_url %>
+<%= t("mcweb.mail.forum.digest.unsubscribe_digest") %>: <%= @unsubscribe_url %>
+<%= t("mcweb.mail.manage_preferences") %>: <%= @preferences_url %>

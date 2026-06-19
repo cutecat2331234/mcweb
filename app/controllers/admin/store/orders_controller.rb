@@ -31,7 +31,7 @@ module Admin
             admin_row(
               order_number: order.order_number,
               customer: order.user.username,
-              status: ORDER_STATUS_LABELS[order.status] || order.status,
+              status: order_status_label(order.status),
               total: format_money(order.total_cents, order.currency),
               url: admin_store_order_path(order),
               publicId: order.public_id
@@ -58,7 +58,7 @@ module Admin
           notice += "，#{result.value[:failed]} 个失败" if result.value[:failed].positive?
           redirect_to destination, notice: notice
         else
-          redirect_to destination, alert: result.error || "操作失败"
+          redirect_to destination, alert: result.error || t("mcweb.flash.operation_failed")
         end
       end
 
@@ -80,7 +80,7 @@ module Admin
             rows << [
               order.order_number,
               order.user.username,
-              ORDER_STATUS_LABELS[order.status] || order.status,
+              order_status_label(order.status),
               order.total_cents / 100.0,
               order.created_at.iso8601
             ]
@@ -174,7 +174,7 @@ module Admin
         )
 
         if result.success?
-          redirect_to admin_store_order_path(@order), notice: "员工备注已添加。"
+          redirect_to admin_store_order_path(@order), notice: t("mcweb.flash.staff_note_added")
         else
           redirect_to admin_store_order_path(@order), alert: service_error_message(result)
         end
@@ -190,7 +190,7 @@ module Admin
         )
 
         if result.success?
-          redirect_to admin_store_order_path(@order), notice: "物流信息已更新。"
+          redirect_to admin_store_order_path(@order), notice: t("mcweb.flash.shipping_updated")
         else
           redirect_to admin_store_order_path(@order), alert: service_error_message(result)
         end
@@ -218,7 +218,7 @@ module Admin
               Commerce::NotifyOrderStatusChange.call(order: @order, from_status: previous_status)
             end
           end
-          redirect_to admin_store_order_path(@order), notice: "订单已更新。"
+          redirect_to admin_store_order_path(@order), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.order"))
         else
           redirect_to admin_store_order_path(@order), alert: @order.errors.full_messages.to_sentence
         end
@@ -298,23 +298,23 @@ module Admin
       end
 
       def reject_refund
-        return redirect_to admin_store_order_path(@order), alert: "无权执行此操作。" unless current_user.permission?("store.orders.refund")
+        return redirect_to admin_store_order_path(@order), alert: t("mcweb.flash.permission_denied") unless current_user.permission?("store.orders.refund")
 
         refund = @order.refunds.pending.find(params[:refund_id])
         result = Commerce::RejectRefund.call(refund: refund, actor: current_user, reason: params[:reason])
 
         if result.success?
-          redirect_to admin_store_order_path(@order), notice: "退款申请已拒绝。"
+          redirect_to admin_store_order_path(@order), notice: t("mcweb.flash.refund_rejected")
         else
           redirect_to admin_store_order_path(@order), alert: service_error_message(result)
         end
       end
 
       def process_refund
-        return redirect_to admin_store_order_path(@order), alert: "无权执行此操作。" unless current_user.permission?("store.orders.refund")
+        return redirect_to admin_store_order_path(@order), alert: t("mcweb.flash.permission_denied") unless current_user.permission?("store.orders.refund")
 
         payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
-        return redirect_to admin_store_order_path(@order), alert: "没有可退款的支付记录。" unless payment
+        return redirect_to admin_store_order_path(@order), alert: t("mcweb.flash.no_refundable_payment") unless payment
 
         result = Commerce::ProcessRefund.call(
           order: @order,
@@ -326,7 +326,7 @@ module Admin
         )
 
         if result.success?
-          redirect_to admin_store_order_path(@order), notice: "退款已处理。"
+          redirect_to admin_store_order_path(@order), notice: t("mcweb.flash.refund_processed")
         else
           redirect_to admin_store_order_path(@order), alert: service_error_message(result)
         end
@@ -378,7 +378,7 @@ module Admin
           active: current.blank?,
           count: total
         } ]
-        ORDER_STATUS_LABELS.each do |status, label|
+        order_status_labels.each do |status, label|
           count = counts[status].to_i
           next if count.zero?
 
@@ -399,6 +399,14 @@ module Admin
           scope = scope.where("order_number ILIKE ?", q)
         end
         scope
+      end
+
+      def order_status_label(status)
+        I18n.t("mcweb.labels.order_status.#{status}", default: status.to_s.humanize)
+      end
+
+      def order_status_labels
+        ::Commerce::Order::STATUSES.index_with { |status| order_status_label(status) }
       end
     end
   end

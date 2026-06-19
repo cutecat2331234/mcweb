@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -8,6 +9,8 @@ import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   title: string
@@ -33,41 +36,41 @@ function submit() {
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
-      <Label for="name">名称</Label>
+      <Label for="name">{{ t('admin.common.name') }}</Label>
       <Input id="name" v-model="form.category.name" required />
     </div>
     <div class="space-y-2">
-      <Label for="slug">标识 (slug)</Label>
+      <Label for="slug">{{ t('admin.common.slugFull') }}</Label>
       <Input id="slug" v-model="form.category.slug" required />
     </div>
     <div class="space-y-2">
-      <Label for="position">排序</Label>
+      <Label for="position">{{ t('admin.common.position') }}</Label>
       <Input id="position" v-model.number="form.category.position" type="number" min="0" />
     </div>
     <div class="space-y-2">
-      <Label for="color_hex">颜色 (#hex)</Label>
+      <Label for="color_hex">{{ t('admin.forms.forumCategory.colorHex') }}</Label>
       <Input id="color_hex" v-model="form.category.color_hex" placeholder="#2563eb" />
     </div>
     <div class="space-y-2">
-      <Label for="icon">图标 (emoji)</Label>
+      <Label for="icon">{{ t('admin.forms.forumCategory.iconEmoji') }}</Label>
       <Input id="icon" v-model="form.category.icon" placeholder="💬" />
     </div>
     <div class="space-y-2">
-      <Label for="description">描述</Label>
-      <Textarea id="description" v-model="form.category.description" rows="3" placeholder="分类说明…" />
+      <Label for="description">{{ t('admin.common.description') }}</Label>
+      <Textarea id="description" v-model="form.category.description" rows="3" :placeholder="t('admin.forms.forumCategory.descriptionPlaceholder')" />
     </div>
     <div class="space-y-2">
-      <Label for="seo_title">SEO 标题</Label>
+      <Label for="seo_title">{{ t('admin.forms.category.seoTitle') }}</Label>
       <Input id="seo_title" v-model="form.category.seo_title" />
     </div>
     <div class="space-y-2">
-      <Label for="seo_description">SEO 描述</Label>
+      <Label for="seo_description">{{ t('admin.forms.category.seoDescription') }}</Label>
       <Textarea id="seo_description" v-model="form.category.seo_description" rows="2" />
     </div>
     <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">保存</Button>
+      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
       <Button as-child variant="outline">
-        <Link :href="backUrl">取消</Link>
+        <Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link>
       </Button>
     </div>
   </form>

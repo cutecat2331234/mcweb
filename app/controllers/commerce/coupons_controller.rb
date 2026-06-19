@@ -38,10 +38,10 @@ module Commerce
       require_login
       code = params[:code].to_s.strip.upcase
       coupon = Commerce::Coupon.active_coupons.find_by(code: code)
-      return redirect_to store_coupon_path(code), alert: "优惠券无效。" unless coupon
+      return redirect_to store_coupon_path(code), alert: t("mcweb.flash.coupon_invalid") unless coupon
 
       session[:pending_coupon_code] = coupon.code
-      redirect_to store_cart_path, notice: "优惠码 #{coupon.code} 已保存，结账时自动使用。"
+      redirect_to store_cart_path, notice: t("mcweb.flash.coupon_saved", code: coupon.code)
     end
 
     private

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -16,6 +17,8 @@ import { confirm } from '@/lib/useConfirm'
 import { prompt } from '@/lib/usePrompt'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 export type SearchTopic = TopicListItem
 
@@ -153,7 +156,7 @@ const saveError = ref('')
 const shareCopied = ref(false)
 
 const sectionSelectOptions = computed(() => [
-  { value: '', label: '全部分区' },
+  { value: '', label: t('forum.search.allSections') },
   ...props.sections.map((sec) => ({
     value: sec.slug,
     label: `${sec.category ? `${sec.category} / ` : ''}${sec.name}`,
@@ -161,81 +164,81 @@ const sectionSelectOptions = computed(() => [
 ])
 
 const tagSelectOptions = computed(() => [
-  { value: '', label: '全部标签' },
-  ...props.tags.map((t) => ({ value: t.slug, label: `#${t.name}` })),
+  { value: '', label: t('forum.search.allTags') },
+  ...props.tags.map((tag) => ({ value: tag.slug, label: `#${tag.name}` })),
 ])
 
-const solvedOptions = [
-  { value: '', label: '全部状态' },
-  { value: 'unsolved', label: '未解决' },
-  { value: 'solved', label: '已解决' },
-]
+const solvedOptions = computed(() => [
+  { value: '', label: t('forum.search.allStatus') },
+  { value: 'unsolved', label: t('forum.search.unsolved') },
+  { value: 'solved', label: t('forum.search.solved') },
+])
 
-const topicSortOptions = [
-  { value: 'recent', label: '主题：最新' },
-  { value: 'oldest', label: '主题：最早' },
-]
+const topicSortOptions = computed(() => [
+  { value: 'recent', label: t('forum.search.topicSortRecent') },
+  { value: 'oldest', label: t('forum.search.topicSortOldest') },
+])
 
-const postSortOptions = [
-  { value: 'recent', label: '帖子：最新' },
-  { value: 'oldest', label: '帖子：最早' },
-]
+const postSortOptions = computed(() => [
+  { value: 'recent', label: t('forum.search.postSortRecent') },
+  { value: 'oldest', label: t('forum.search.postSortOldest') },
+])
 
 const categorySelectOptions = computed(() => [
-  { value: '', label: '全部分类' },
+  { value: '', label: t('forum.search.allCategories') },
   ...(props.categories || []).map((cat) => ({ value: cat.slug, label: cat.name })),
 ])
 
-const lockedOptions = [
-  { value: '', label: '锁定状态' },
-  { value: 'locked', label: '已锁定' },
-  { value: 'unlocked', label: '未锁定' },
-]
+const lockedOptions = computed(() => [
+  { value: '', label: t('forum.search.lockStatus') },
+  { value: 'locked', label: t('forum.search.locked') },
+  { value: 'unlocked', label: t('forum.search.unlocked') },
+])
 
-const pinnedOptions = [
-  { value: '', label: '置顶状态' },
-  { value: 'pinned', label: '已置顶' },
-  { value: 'unpinned', label: '未置顶' },
-]
+const pinnedOptions = computed(() => [
+  { value: '', label: t('forum.search.pinStatus') },
+  { value: 'pinned', label: t('forum.search.pinned') },
+  { value: 'unpinned', label: t('forum.search.unpinned') },
+])
 
-const wikiOptions = [
+const wikiOptions = computed(() => [
   { value: '', label: 'Wiki' },
-  { value: 'wiki', label: 'Wiki 主题' },
-  { value: 'nonwiki', label: '非 Wiki' },
-]
+  { value: 'wiki', label: t('forum.search.wikiTopics') },
+  { value: 'nonwiki', label: t('forum.search.nonWiki') },
+])
 
-const featuredOptions = [
-  { value: '', label: '精选' },
-  { value: 'featured', label: '精选主题' },
-]
+const featuredOptions = computed(() => [
+  { value: '', label: t('forum.search.featured') },
+  { value: 'featured', label: t('forum.search.featuredTopics') },
+])
 
-const pollOptions = [
-  { value: '', label: '投票' },
-  { value: 'poll', label: '含投票' },
-]
+const pollOptions = computed(() => [
+  { value: '', label: t('forum.search.poll') },
+  { value: 'poll', label: t('forum.search.hasPoll') },
+])
 
-const norepliesOptions = [
-  { value: '', label: '回复' },
-  { value: 'noreplies', label: '无回复' },
-]
+const norepliesOptions = computed(() => [
+  { value: '', label: t('forum.search.replies') },
+  { value: 'noreplies', label: t('forum.search.noReplies') },
+])
 
-const assignedOptions = [
-  { value: '', label: '分配' },
-  { value: 'assigned', label: '已分配' },
-  { value: 'unassigned', label: '未分配' },
-]
+const assignedOptions = computed(() => [
+  { value: '', label: t('forum.search.assignment') },
+  { value: 'assigned', label: t('forum.search.assigned') },
+  { value: 'unassigned', label: t('forum.search.unassigned') },
+])
 
-const mineOptions = [
-  { value: '', label: '范围' },
-  { value: 'mine', label: '我的主题' },
-]
+const mineOptions = computed(() => [
+  { value: '', label: t('forum.search.scope') },
+  { value: 'mine', label: t('forum.search.myTopics') },
+])
 
-const scopeOptions = [
-  { value: '', label: '订阅' },
-  { value: 'bookmarks', label: '我的收藏' },
-  { value: 'watching', label: '正在关注' },
-  { value: 'unread', label: '未读' },
-]
+const scopeOptions = computed(() => [
+  { value: '', label: t('forum.search.subscription') },
+  { value: 'bookmarks', label: t('forum.search.myBookmarks') },
+  { value: 'watching', label: t('forum.search.watching') },
+  { value: 'unread', label: t('forum.search.unread') },
+])
 
 watch(titleOnly, (value) => {
   if (value) postsOnly.value = false
@@ -266,7 +269,7 @@ const flatSuggestions = computed(() => {
     url: item.url,
     label: item.category ? `${item.category} / ${item.name}` : (item.name || ''),
   }))
-  suggestSavedSearches.value.forEach((item) => items.push({ url: item.url, label: `保存：${item.name}` }))
+  suggestSavedSearches.value.forEach((item) => items.push({ url: item.url, label: t('forum.search.savedPrefix', { name: item.name || '' }) }))
   return items
 })
 
@@ -451,7 +454,7 @@ async function copySearchLink() {
     setTimeout(() => { shareCopied.value = false }, 2000)
   } catch {
     await prompt({
-      title: '复制搜索链接',
+      title: t('forum.search.copyLink'),
       defaultValue: url,
     })
   }
@@ -529,7 +532,7 @@ async function saveSearch() {
     })
     if (!response.ok) {
       const data = await response.json().catch(() => ({}))
-      saveError.value = data.error || '保存失败'
+      saveError.value = data.error || t('forum.search.saveFailed')
       return
     }
     saveName.value = ''
@@ -553,9 +556,9 @@ async function deleteSearchHistory(deleteUrl: string) {
 
 async function clearSearchHistory() {
   const ok = await confirm({
-    title: '清空搜索历史',
-    message: '确定清空所有搜索历史吗？',
-    confirmLabel: '清空',
+    title: t('forum.search.clearHistory'),
+    message: t('forum.search.clearHistoryConfirm'),
+    confirmLabel: t('forum.search.clear'),
     variant: 'destructive',
   })
   if (!props.clearSearchHistoryUrl || !ok) return
@@ -667,18 +670,18 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '搜索', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('nav.search'), current: true },
   ]" />
 
-  <PageHeader title="搜索论坛" subtitle="支持 in:分区、tag:标签、is:solved、-排除词 等语法（对标 Discourse）" />
+  <PageHeader :title="t('forum.search.title')" :subtitle="t('forum.search.subtitle')" />
 
   <form class="mb-4 flex max-w-2xl flex-wrap gap-2" @submit.prevent="search">
     <div class="relative min-w-[200px] flex-1">
       <Input
         v-model="q"
-        placeholder="关键词，使用 -spam 排除词，如：ruby tutorial -offtopic"
+        :placeholder="t('forum.search.keywordPlaceholder')"
         class="w-full"
         autocomplete="off"
         @focus="q.trim().length >= 2 && suggestUrl && fetchSuggestions(q.trim())"
@@ -689,10 +692,10 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         v-if="suggestOpen && suggestUrl"
         class="absolute z-20 mt-1 max-h-64 w-full overflow-y-auto rounded-md border bg-background shadow-md"
       >
-        <p v-if="suggestLoading" class="px-3 py-2 text-xs text-muted-foreground">搜索建议…</p>
+        <p v-if="suggestLoading" class="px-3 py-2 text-xs text-muted-foreground">{{ t('forum.search.suggestLoading') }}</p>
         <template v-else>
           <div v-if="suggestTopics.length" class="border-b px-2 py-1">
-            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">主题</p>
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestTopics') }}</p>
             <button
               v-for="(item, index) in suggestTopics"
               :key="item.url"
@@ -705,7 +708,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
             </button>
           </div>
           <div v-if="suggestTags.length" class="border-b px-2 py-1">
-            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">标签</p>
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestTags') }}</p>
             <button
               v-for="(item, index) in suggestTags"
               :key="item.url"
@@ -718,7 +721,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
             </button>
           </div>
           <div v-if="suggestUsers.length" class="border-b px-2 py-1">
-            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">用户</p>
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestUsers') }}</p>
             <button
               v-for="(item, index) in suggestUsers"
               :key="item.url"
@@ -731,7 +734,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
             </button>
           </div>
           <div v-if="suggestSections.length" class="border-b px-2 py-1">
-            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">分区</p>
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestSections') }}</p>
             <button
               v-for="(item, index) in suggestSections"
               :key="item.url"
@@ -744,7 +747,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
             </button>
           </div>
           <div v-if="suggestSavedSearches.length" class="px-2 py-1">
-            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">保存的搜索</p>
+            <p class="px-1 py-1 text-[10px] font-semibold uppercase text-muted-foreground">{{ t('forum.search.suggestSaved') }}</p>
             <button
               v-for="(item, index) in suggestSavedSearches"
               :key="item.url"
@@ -760,32 +763,32 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       </div>
     </div>
     <Select v-model="sectionSlug" :options="sectionSelectOptions" size="sm" />
-    <Input v-model="author" placeholder="作者用户名" class="w-36" />
-    <Input v-model="createdAfter" type="date" class="w-36" title="起始日期" />
-    <Input v-model="createdBefore" type="date" class="w-36" title="截止日期" />
+    <Input v-model="author" :placeholder="t('forum.search.authorPlaceholder')" class="w-36" />
+    <Input v-model="createdAfter" type="date" class="w-36" :title="t('forum.search.dateFrom')" />
+    <Input v-model="createdBefore" type="date" class="w-36" :title="t('forum.search.dateTo')" />
     <Select v-model="tagSlug" :options="tagSelectOptions" size="sm" />
     <Select v-model="solved" :options="solvedOptions" size="sm" />
     <Select v-model="topicSort" :options="topicSortOptions" size="sm" :disabled="postsOnly" />
     <Select v-model="postSort" :options="postSortOptions" size="sm" :disabled="titleOnly" />
     <label class="flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
       <Checkbox v-model="titleOnly" />
-      仅标题
+      {{ t('forum.search.titleOnly') }}
     </label>
     <label class="flex h-9 items-center gap-2 rounded-md border px-3 text-sm">
       <Checkbox v-model="postsOnly" />
-      仅帖子
+      {{ t('forum.search.postsOnly') }}
     </label>
     <button type="button" class="rounded-md border px-3 py-2 text-sm" @click="showAdvanced = !showAdvanced">
-      {{ showAdvanced ? '收起高级' : '高级筛选' }}
+      {{ showAdvanced ? t('forum.search.hideAdvanced') : t('forum.search.showAdvanced') }}
     </button>
-    <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">搜索</button>
+    <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">{{ t('forum.search.submit') }}</button>
     <button type="button" class="rounded-md border px-3 py-2 text-sm" @click="copySearchLink">
-      {{ shareCopied ? '已复制' : '复制链接' }}
+      {{ shareCopied ? t('forum.search.linkCopied') : t('forum.search.copyLinkBtn') }}
     </button>
   </form>
 
   <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span class="text-xs text-muted-foreground">{{ t('forum.search.activeFilters') }}</span>
     <span
       v-for="filter in activeFilters"
       :key="`${filter.param}-${filter.value || filter.label}`"
@@ -796,19 +799,19 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       <button
         type="button"
         class="hover:opacity-70"
-        title="移除此筛选"
+        :title="t('forum.search.removeFilter')"
         @click="removeActiveFilter(filter)"
       >×</button>
     </span>
   </div>
 
   <p class="mb-4 max-w-2xl text-xs text-muted-foreground">
-    排除语法：在关键词前加 <code class="rounded bg-muted px-1">-</code> 可排除包含该词的主题/帖子，例如
+    {{ t('forum.search.excludeSyntax') }} <code class="rounded bg-muted px-1">-</code> {{ t('forum.search.excludeSyntaxExample') }}
     <code class="rounded bg-muted px-1">ruby tutorial -spam -offtopic</code>
   </p>
 
   <div v-if="excludeTerms?.length && !activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">排除词：</span>
+    <span class="text-xs text-muted-foreground">{{ t('forum.search.excludeTerms') }}</span>
     <span
       v-for="term in excludeTerms"
       :key="term"
@@ -818,7 +821,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       <button
         type="button"
         class="hover:text-destructive/80"
-        title="移除此排除词"
+        :title="t('forum.search.removeExclude')"
         @click="removeExcludeTerm(term)"
       >×</button>
     </span>
@@ -839,27 +842,27 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
 
   <div v-if="loggedIn && saveSearchUrl" class="mb-6 flex flex-wrap items-end gap-2 rounded-lg border p-4">
     <div class="space-y-1">
-      <label class="text-sm font-medium">保存当前搜索</label>
-      <Input v-model="saveName" placeholder="搜索名称" class="w-48" :disabled="atSavedSearchLimit" />
+      <label class="text-sm font-medium">{{ t('forum.search.saveCurrentSearch') }}</label>
+      <Input v-model="saveName" :placeholder="t('forum.search.searchNamePlaceholder')" class="w-48" :disabled="atSavedSearchLimit" />
       <label class="flex items-center gap-2 text-sm text-muted-foreground">
         <Checkbox v-model="saveNotifyDaily" :disabled="atSavedSearchLimit" />
-        每日邮件提醒新结果
+        {{ t('forum.search.notifyDaily') }}
       </label>
-      <Input v-model="saveWebhookUrl" placeholder="Webhook URL（可选）" class="w-64" :disabled="atSavedSearchLimit" />
+      <Input v-model="saveWebhookUrl" :placeholder="t('forum.search.webhookPlaceholder')" class="w-64" :disabled="atSavedSearchLimit" />
       <p v-if="savedSearchLimit" class="text-xs text-muted-foreground">
-        已保存 {{ savedSearchCount ?? 0 }} / {{ savedSearchLimit }}
+        {{ t('forum.search.savedCount', { count: savedSearchCount ?? 0, limit: savedSearchLimit }) }}
       </p>
-      <p v-if="atSavedSearchLimit" class="text-xs text-destructive">已达保存搜索上限，请删除旧搜索后再保存。</p>
+      <p v-if="atSavedSearchLimit" class="text-xs text-destructive">{{ t('forum.search.savedLimitReached') }}</p>
     </div>
     <Button type="button" variant="outline" :disabled="saving || !saveName.trim() || atSavedSearchLimit" @click="saveSearch">
-      {{ saving ? '保存中…' : '保存搜索' }}
+      {{ saving ? t('forum.search.saving') : t('forum.search.saveSearch') }}
     </Button>
     <p v-if="saveError" class="text-sm text-destructive">{{ saveError }}</p>
   </div>
 
   <div v-if="searchHistories?.length" class="mb-6">
     <div class="mb-2 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-sm font-semibold">最近搜索</h2>
+      <h2 class="text-sm font-semibold">{{ t('forum.search.recentSearches') }}</h2>
       <div class="flex gap-3">
         <a
           v-if="searchFeedsOpmlUrl"
@@ -868,7 +871,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          合并导出 OPML
+          {{ t('forum.search.exportMergedOpml') }}
         </a>
         <a
           v-if="searchHistoriesOpmlUrl"
@@ -877,7 +880,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          导出 OPML
+          {{ t('forum.search.exportOpml') }}
         </a>
         <button
           v-if="clearSearchHistoryUrl"
@@ -885,7 +888,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           class="text-xs text-muted-foreground hover:text-destructive"
           @click="clearSearchHistory"
         >
-          清空历史
+          {{ t('forum.search.clearHistoryBtn') }}
         </button>
       </div>
     </div>
@@ -895,16 +898,16 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         :key="history.id"
         class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm"
       >
-        <Link :href="history.url" class="hover:underline">{{ history.query || '筛选搜索' }}</Link>
+        <Link :href="history.url" class="hover:underline">{{ history.query || t('forum.search.filterSearch') }}</Link>
         <span v-for="label in history.filter_labels || []" :key="label" class="text-[10px] text-muted-foreground">{{ label }}</span>
         <span class="text-[10px] text-muted-foreground">{{ history.searched_at }}</span>
-        <button type="button" class="text-muted-foreground hover:text-destructive" title="删除" @click="deleteSearchHistory(history.delete_url)">×</button>
+        <button type="button" class="text-muted-foreground hover:text-destructive" :title="t('forum.search.delete')" @click="deleteSearchHistory(history.delete_url)">×</button>
       </span>
     </div>
   </div>
 
   <div v-if="savedSearches?.length" class="mb-6 flex flex-wrap gap-2">
-    <span class="text-sm text-muted-foreground">已保存：</span>
+    <span class="text-sm text-muted-foreground">{{ t('forum.search.savedLabel') }}</span>
     <a
       v-if="savedSearchesOpmlUrl"
       :href="savedSearchesOpmlUrl"
@@ -912,7 +915,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       target="_blank"
       rel="noopener noreferrer"
     >
-      导出 OPML
+      {{ t('forum.search.exportOpml') }}
     </a>
     <span v-for="search in savedSearches" :key="search.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <template v-if="editingSearchId === search.id">
@@ -928,9 +931,9 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           :disabled="renamingSearchId === search.id || !editingSearchName.trim()"
           @click="saveRenameSearch(search)"
         >
-          保存
+          {{ t('forum.search.save') }}
         </button>
-        <button type="button" class="text-muted-foreground" @click="cancelRenameSearch">取消</button>
+        <button type="button" class="text-muted-foreground" @click="cancelRenameSearch">{{ t('forum.search.cancel') }}</button>
       </template>
       <template v-else>
         <Link :href="search.url" class="hover:underline">{{ search.name }}</Link>
@@ -938,7 +941,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           v-if="search.update_url"
           type="button"
           class="text-muted-foreground hover:text-foreground"
-          title="重命名"
+          :title="t('forum.search.rename')"
           @click="startRenameSearch(search)"
         >
           ✎
@@ -949,7 +952,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           class="text-[10px] transition-opacity"
           :class="search.notify_daily ? 'text-primary' : 'text-muted-foreground opacity-50 hover:opacity-100'"
           :disabled="togglingNotifyId === search.id"
-          :title="search.notify_daily ? '关闭每日邮件提醒' : '开启每日邮件提醒'"
+          :title="search.notify_daily ? t('forum.search.disableDailyEmail') : t('forum.search.enableDailyEmail')"
           @click="toggleSavedSearchNotify(search)"
         >
           📧
@@ -960,7 +963,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           class="text-[10px] transition-opacity"
           :class="search.notify_in_app !== false ? 'text-primary' : 'text-muted-foreground opacity-50 hover:opacity-100'"
           :disabled="togglingNotifyId === search.id"
-          :title="search.notify_in_app !== false ? '关闭站内通知' : '开启站内通知'"
+          :title="search.notify_in_app !== false ? t('forum.search.disableInApp') : t('forum.search.enableInApp')"
           @click="toggleSavedSearchNotifyInApp(search)"
         >
           🔔
@@ -969,7 +972,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           v-if="search.rss_url"
           :href="search.rss_url"
           class="text-[10px] text-muted-foreground hover:text-foreground"
-          title="RSS 订阅"
+          :title="t('forum.search.rssFeed')"
           target="_blank"
           rel="noopener noreferrer"
         >
@@ -978,18 +981,18 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
         <span
           v-if="search.webhook_url"
           class="text-[10px] text-muted-foreground"
-          title="已配置 Webhook"
+          :title="t('forum.search.webhookConfigured')"
         >
           Hook
         </span>
-        <button type="button" class="text-muted-foreground hover:text-destructive" title="删除" @click="deleteSavedSearch(search.delete_url)">×</button>
+        <button type="button" class="text-muted-foreground hover:text-destructive" :title="t('forum.search.delete')" @click="deleteSavedSearch(search.delete_url)">×</button>
       </template>
     </span>
   </div>
 
   <template v-if="query">
     <div class="mb-3 flex items-center justify-between gap-2">
-      <h2 class="text-sm font-semibold">主题</h2>
+      <h2 class="text-sm font-semibold">{{ t('forum.search.topics') }}</h2>
       <div class="flex gap-3">
         <a
           v-if="searchRssUrl"
@@ -998,7 +1001,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          RSS 订阅此搜索
+          {{ t('forum.search.rssSubscribe') }}
         </a>
         <a
           v-if="searchOpmlUrl"
@@ -1007,7 +1010,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
           target="_blank"
           rel="noopener noreferrer"
         >
-          OPML 导出
+          {{ t('forum.search.exportOpml') }}
         </a>
       </div>
     </div>
@@ -1025,16 +1028,16 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       @update:selected-ids="selectedTopicIds = $event"
     />
     <Pagination v-if="topics.length" :pagination="topicsPagination" :base-path="routes.forumSearch" page-param="topic_page" class="mb-8" />
-    <p v-else class="mb-8 text-sm text-muted-foreground">未找到相关主题。</p>
+    <p v-else class="mb-8 text-sm text-muted-foreground">{{ t('forum.search.noTopics') }}</p>
 
-    <h2 class="mb-3 text-sm font-semibold">帖子</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ t('forum.search.postsHeading') }}</h2>
     <div v-if="posts.length" class="rounded-lg border">
       <table class="w-full text-sm">
         <thead>
           <tr class="border-b text-left">
-            <th class="p-3">内容</th>
-            <th class="p-3">主题</th>
-            <th class="p-3">作者</th>
+            <th class="p-3">{{ t('forum.search.content') }}</th>
+            <th class="p-3">{{ t('forum.search.topic') }}</th>
+            <th class="p-3">{{ t('forum.search.author') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -1050,6 +1053,6 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
       </table>
       <Pagination :pagination="postsPagination" :base-path="routes.forumSearch" page-param="post_page" />
     </div>
-    <p v-else class="text-sm text-muted-foreground">未找到相关帖子。</p>
+    <p v-else class="text-sm text-muted-foreground">{{ t('forum.search.noPosts') }}</p>
   </template>
 </template>

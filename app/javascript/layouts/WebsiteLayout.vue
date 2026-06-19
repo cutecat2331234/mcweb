@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import { routes, appPrefix } from '@/lib/routes'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
@@ -13,6 +14,7 @@ interface NavItem {
   href: string
 }
 
+const { t } = useI18n()
 const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const { activeTemplate, tokenStyle, websiteHeaderSlot, websiteFooterSlot } = useActiveTemplate()
@@ -23,9 +25,9 @@ const websiteNav = computed(() => {
   const base = items?.length
     ? items
     : [
-        { label: '首页', href: routes.home },
-        { label: '关于', href: routes.page('about') },
-        { label: '动态', href: routes.blog },
+        { label: t('website.layout.home'), href: routes.home },
+        { label: t('website.layout.about'), href: routes.page('about') },
+        { label: t('website.layout.blog'), href: routes.blog },
       ]
 
   return base.filter((item) => {
@@ -67,8 +69,8 @@ function isActive(href: string) {
         </nav>
 
         <div class="flex items-center gap-3 text-sm">
-          <Link v-if="features.forum" :href="routes.forum" class="website-nav-link hidden sm:inline">论坛</Link>
-          <Link v-if="features.store" :href="routes.store" class="website-nav-link hidden sm:inline">商城</Link>
+          <Link v-if="features.forum" :href="routes.forum" class="website-nav-link hidden sm:inline">{{ t('website.layout.forum') }}</Link>
+          <Link v-if="features.store" :href="routes.store" class="website-nav-link hidden sm:inline">{{ t('website.layout.store') }}</Link>
           <Link
             v-if="features.forum && auth.user"
             :href="routes.forumUser(auth.user.username)"
@@ -77,7 +79,7 @@ function isActive(href: string) {
             {{ auth.user.username }}
           </Link>
           <Link v-else :href="routes.signIn" class="website-btn website-btn-primary !px-4 !py-2 text-sm">
-            进入应用 →
+            {{ t('website.layout.enterApp') }}
           </Link>
         </div>
       </div>
@@ -96,10 +98,10 @@ function isActive(href: string) {
             <p class="font-semibold text-white">
               <span class="text-green-500">█</span> McWeb
             </p>
-            <p class="mt-2 text-sm text-slate-400">面向 Minecraft 服主的开源社区与商城系统</p>
+            <p class="mt-2 text-sm text-slate-400">{{ t('website.layout.tagline') }}</p>
           </div>
           <div>
-            <p class="mb-3 text-sm font-medium text-slate-300">官网</p>
+            <p class="mb-3 text-sm font-medium text-slate-300">{{ t('website.layout.siteSection') }}</p>
             <div class="flex flex-col gap-2 text-sm">
               <Link v-for="item in websiteNav" :key="`f-${item.href}`" :href="item.href" class="website-nav-link w-fit">
                 {{ item.label }}
@@ -107,16 +109,16 @@ function isActive(href: string) {
             </div>
           </div>
           <div>
-            <p class="mb-3 text-sm font-medium text-slate-300">应用中心</p>
+            <p class="mb-3 text-sm font-medium text-slate-300">{{ t('website.layout.appSection') }}</p>
             <div class="flex flex-col gap-2 text-sm">
-              <Link v-if="features.forum" :href="routes.forum" class="website-nav-link w-fit">论坛</Link>
-              <Link v-if="features.store" :href="routes.store" class="website-nav-link w-fit">商城</Link>
-              <Link :href="routes.signIn" class="website-nav-link w-fit">登录</Link>
+              <Link v-if="features.forum" :href="routes.forum" class="website-nav-link w-fit">{{ t('website.layout.forum') }}</Link>
+              <Link v-if="features.store" :href="routes.store" class="website-nav-link w-fit">{{ t('website.layout.store') }}</Link>
+              <Link :href="routes.signIn" class="website-nav-link w-fit">{{ t('website.layout.signIn') }}</Link>
             </div>
           </div>
         </div>
         <p class="mt-10 border-t border-green-500/15 pt-6 text-center text-xs text-slate-500">
-          ▣ {{ new Date().getFullYear() }} McWeb · 用户功能位于 {{ appPrefix }} 模块
+          {{ t('website.layout.copyright', { year: new Date().getFullYear(), appPrefix }) }}
         </p>
       </div>
     </footer>

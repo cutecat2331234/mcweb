@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -13,6 +14,8 @@ import Checkbox from '@/components/ui/Checkbox.vue'
 import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 export interface DetailField {
   label: string
@@ -109,12 +112,12 @@ const trustLevelOverride = ref(props.trustLevelForm?.override?.toString() ?? 'au
 const badgeSlug = ref('')
 
 const badgeOptions = computed(() => [
-  { value: '', label: '请选择' },
+  { value: '', label: t('admin.common.pleaseSelect') },
   ...(props.badgeForm?.badges || []).map((badge) => ({ value: badge.slug, label: badge.name })),
 ])
 
 const trustLevelOptions = computed(() => [
-  { value: 'auto', label: '自动（按发帖数计算）' },
+  { value: 'auto', label: t('admin.genericShow.autoTrust') },
   ...(props.trustLevelForm?.levels || []).map((level) => ({ value: String(level.value), label: level.label })),
 ])
 
@@ -157,9 +160,9 @@ const refundForm = useForm({
 async function runAction(action: DetailAction) {
   if (action.confirm) {
     const ok = await confirm({
-      title: '确认操作',
+      title: t('admin.common.confirmOperation'),
       message: action.confirm,
-      confirmLabel: '继续',
+      confirmLabel: t('admin.common.continue'),
       variant: action.method === 'delete' ? 'destructive' : 'default',
     })
     if (!ok) return
@@ -279,128 +282,128 @@ function submitTrustLevel() {
   </div>
 
   <form v-if="props.muteForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitMute">
-    <h2 class="text-sm font-semibold">禁言用户</h2>
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.muteUser') }}</h2>
     <div class="space-y-2">
-      <Label>原因</Label>
-      <Input v-model="muteForm.reason" placeholder="禁言原因" />
+      <Label>{{ t('admin.common.reason') }}</Label>
+      <Input v-model="muteForm.reason" :placeholder="t('admin.genericShow.muteReason')" />
     </div>
     <div class="space-y-2">
-      <Label>到期时间（空=永久）</Label>
+      <Label>{{ t('admin.genericShow.expiresAt') }}</Label>
       <Input v-model="muteForm.expires_at" type="datetime-local" />
     </div>
-    <Button type="submit" variant="destructive" size="sm" :disabled="muteForm.processing">禁言</Button>
+    <Button type="submit" variant="destructive" size="sm" :disabled="muteForm.processing">{{ t('admin.genericShow.mute') }}</Button>
   </form>
 
   <form v-if="props.banForm && !props.banForm.banned" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitBan">
-    <h2 class="text-sm font-semibold">封禁用户</h2>
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.banUser') }}</h2>
     <div class="space-y-2">
-      <Label>封禁原因</Label>
-      <Input v-model="banForm.reason" placeholder="封禁原因" />
+      <Label>{{ t('admin.genericShow.banReason') }}</Label>
+      <Input v-model="banForm.reason" :placeholder="t('admin.genericShow.banReason')" />
     </div>
     <div class="space-y-2">
-      <Label>到期时间（空=永久）</Label>
+      <Label>{{ t('admin.genericShow.expiresAt') }}</Label>
       <Input v-model="banForm.expires_at" type="datetime-local" />
     </div>
-    <Button type="submit" variant="destructive" size="sm" :disabled="banForm.processing">封禁账号</Button>
+    <Button type="submit" variant="destructive" size="sm" :disabled="banForm.processing">{{ t('admin.genericShow.banAccount') }}</Button>
   </form>
 
   <div v-if="props.banForm?.banned" class="mt-6 max-w-lg rounded-lg border p-4">
-    <p class="mb-3 text-sm text-destructive">该用户当前处于封禁状态。</p>
-    <Button type="button" size="sm" variant="outline" @click="submitUnban">解除封禁</Button>
+    <p class="mb-3 text-sm text-destructive">{{ t('admin.genericShow.bannedNotice') }}</p>
+    <Button type="button" size="sm" variant="outline" @click="submitUnban">{{ t('admin.genericShow.unban') }}</Button>
   </div>
 
   <form v-if="props.refundForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitRefund">
-    <h2 class="text-sm font-semibold">部分退款</h2>
-    <p class="text-xs text-muted-foreground">最多可退 {{ props.refundForm.max_label }}</p>
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.partialRefund') }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t('admin.genericShow.maxRefund', { amount: props.refundForm.max_label }) }}</p>
     <div class="space-y-2">
-      <Label>退款金额（分）</Label>
+      <Label>{{ t('admin.genericShow.refundCents') }}</Label>
       <Input v-model.number="refundForm.amount_cents" type="number" :max="props.refundForm.max_cents" min="1" required />
     </div>
     <div class="space-y-2">
-      <Label>原因</Label>
-      <Input v-model="refundForm.reason" placeholder="退款原因" />
+      <Label>{{ t('admin.common.reason') }}</Label>
+      <Input v-model="refundForm.reason" :placeholder="t('admin.genericShow.refundReason')" />
     </div>
-    <Button type="submit" size="sm" :disabled="refundForm.processing">处理退款</Button>
+    <Button type="submit" size="sm" :disabled="refundForm.processing">{{ t('admin.genericShow.processRefund') }}</Button>
   </form>
 
   <form v-if="props.badgeForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitBadge">
-    <h2 class="text-sm font-semibold">授予徽章</h2>
-    <p v-if="props.badgeForm.earned.length" class="text-xs text-muted-foreground">已拥有：{{ props.badgeForm.earned.join('、') }}</p>
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.grantBadge') }}</h2>
+    <p v-if="props.badgeForm.earned.length" class="text-xs text-muted-foreground">{{ t('admin.genericShow.earnedBadges', { badges: props.badgeForm.earned.join(t('common.listSeparator')) }) }}</p>
     <div class="space-y-2">
-      <Label>选择徽章</Label>
+      <Label>{{ t('admin.genericShow.selectBadge') }}</Label>
       <Select v-model="badgeSlug" :options="badgeOptions" block />
     </div>
-    <Button type="submit" size="sm">授予</Button>
+    <Button type="submit" size="sm">{{ t('admin.genericShow.grant') }}</Button>
   </form>
 
   <form v-if="props.warningForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitWarning">
-    <h2 class="text-sm font-semibold">发出警告（XenForo）</h2>
-    <p class="text-xs text-muted-foreground">当前累计警告积分：{{ props.warningForm.warning_points }}</p>
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.warning') }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t('admin.genericShow.warningPoints', { points: props.warningForm.warning_points }) }}</p>
     <div class="space-y-2">
-      <Label>警告原因</Label>
-      <Input v-model="warningForm.reason" placeholder="说明违规原因" required />
+      <Label>{{ t('admin.genericShow.warningReason') }}</Label>
+      <Input v-model="warningForm.reason" :placeholder="t('admin.genericShow.warningReasonPlaceholder')" required />
     </div>
     <div class="space-y-2">
-      <Label>警告点数（1-10）</Label>
+      <Label>{{ t('admin.genericShow.warningPointsLabel') }}</Label>
       <Input v-model.number="warningForm.points" type="number" min="1" max="10" />
     </div>
-    <Button type="submit" variant="destructive" size="sm" :disabled="warningForm.processing">发出警告</Button>
+    <Button type="submit" variant="destructive" size="sm" :disabled="warningForm.processing">{{ t('admin.genericShow.issueWarning') }}</Button>
   </form>
 
   <form v-if="props.staffNoteForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitStaffNote">
-    <h2 class="text-sm font-semibold">添加员工备注</h2>
-    <p class="text-xs text-muted-foreground">默认仅管理员可见；勾选后买家可在订单页查看。</p>
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.staffNote') }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t('admin.genericShow.staffNoteHint') }}</p>
     <div class="space-y-2">
-      <Label>备注内容</Label>
-      <Input v-model="staffNoteForm.body" placeholder="内部备注" required />
+      <Label>{{ t('admin.genericShow.noteBody') }}</Label>
+      <Input v-model="staffNoteForm.body" :placeholder="t('admin.genericShow.notePlaceholder')" required />
     </div>
     <label class="flex items-center gap-2 text-sm">
       <Checkbox v-model="staffNoteForm.visible_to_customer" />
-      对买家可见
+      {{ t('admin.genericShow.visibleToBuyer') }}
     </label>
-    <Button type="submit" size="sm" :disabled="staffNoteForm.processing">保存备注</Button>
+    <Button type="submit" size="sm" :disabled="staffNoteForm.processing">{{ t('admin.genericShow.saveNote') }}</Button>
   </form>
 
   <form v-if="props.storeCreditForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitStoreCredit">
-    <h2 class="text-sm font-semibold">调整商店余额</h2>
-    <p class="text-xs text-muted-foreground">当前余额：{{ props.storeCreditForm.balance_label }}</p>
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.storeCredit') }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t('admin.genericShow.currentBalance', { balance: props.storeCreditForm.balance_label }) }}</p>
     <div class="space-y-2">
-      <Label>调整金额（分，正数增加负数扣减）</Label>
+      <Label>{{ t('admin.genericShow.adjustCents') }}</Label>
       <Input v-model.number="storeCreditForm.amount_cents" type="number" required />
     </div>
     <div class="space-y-2">
-      <Label>备注</Label>
-      <Input v-model="storeCreditForm.note" placeholder="可选" />
+      <Label>{{ t('admin.genericShow.note') }}</Label>
+      <Input v-model="storeCreditForm.note" :placeholder="t('admin.common.optional')" />
     </div>
-    <Button type="submit" size="sm" :disabled="storeCreditForm.processing">保存余额</Button>
+    <Button type="submit" size="sm" :disabled="storeCreditForm.processing">{{ t('admin.genericShow.saveBalance') }}</Button>
   </form>
 
   <div v-if="props.silenceForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4">
-    <h2 class="text-sm font-semibold">用户沉默（XenForo）</h2>
-    <p class="text-xs text-muted-foreground">沉默用户可浏览论坛但无法发帖或回复，与封禁不同。</p>
-    <p v-if="props.silenceForm.silenced" class="text-sm text-amber-700">当前处于沉默状态。</p>
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.silence') }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t('admin.genericShow.silenceHint') }}</p>
+    <p v-if="props.silenceForm.silenced" class="text-sm text-amber-700">{{ t('admin.genericShow.silencedNotice') }}</p>
     <form v-if="!props.silenceForm.silenced" class="space-y-3" @submit.prevent="submitSilence">
       <div class="space-y-2">
-        <Label>原因</Label>
-        <Input v-model="silenceForm.reason" placeholder="可选" />
+        <Label>{{ t('admin.common.reason') }}</Label>
+        <Input v-model="silenceForm.reason" :placeholder="t('admin.common.optional')" />
       </div>
       <div class="space-y-2">
-        <Label>天数（留空为永久）</Label>
-        <Input v-model.number="silenceForm.days" type="number" min="1" placeholder="例如 7" />
+        <Label>{{ t('admin.genericShow.days') }}</Label>
+        <Input v-model.number="silenceForm.days" type="number" min="1" :placeholder="t('admin.genericShow.daysPlaceholder')" />
       </div>
-      <Button type="submit" variant="destructive" size="sm" :disabled="silenceForm.processing">施加沉默</Button>
+      <Button type="submit" variant="destructive" size="sm" :disabled="silenceForm.processing">{{ t('admin.genericShow.applySilence') }}</Button>
     </form>
-    <Button v-else type="button" variant="outline" size="sm" @click="submitUnsilence">解除沉默</Button>
+    <Button v-else type="button" variant="outline" size="sm" @click="submitUnsilence">{{ t('admin.genericShow.removeSilence') }}</Button>
   </div>
 
   <form v-if="props.trustLevelForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitTrustLevel">
-    <h2 class="text-sm font-semibold">论坛信任等级覆盖（Discourse TL）</h2>
-    <p class="text-xs text-muted-foreground">当前有效等级：TL{{ props.trustLevelForm.current_level }}</p>
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.trustLevel') }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t('admin.genericShow.currentTrust', { level: props.trustLevelForm.current_level }) }}</p>
     <div class="space-y-2">
-      <Label>手动覆盖</Label>
+      <Label>{{ t('admin.genericShow.manualOverride') }}</Label>
       <Select v-model="trustLevelOverride" :options="trustLevelOptions" block />
     </div>
-    <Button type="submit" size="sm">保存信任等级</Button>
+    <Button type="submit" size="sm">{{ t('admin.genericShow.saveTrust') }}</Button>
   </form>
 
   <div class="mt-6 flex flex-wrap justify-end gap-3 sm:justify-start">
@@ -426,7 +429,7 @@ function submitTrustLevel() {
       </Button>
     </template>
     <Button as-child variant="outline">
-      <Link :href="backUrl">返回</Link>
+      <Link :href="backUrl">{{ t('admin.genericShow.back') }}</Link>
     </Button>
   </div>
 </template>

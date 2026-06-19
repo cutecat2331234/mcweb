@@ -7,16 +7,16 @@ module Community
     def retry
       delivery = Community::SavedSearchWebhookDelivery.find(params[:id])
       unless delivery.status == "failed"
-        redirect_to forum_preferences_path, alert: "仅失败记录可重试。"
+        redirect_to forum_preferences_path, alert: t("mcweb.flash.webhook_retry_failed_only")
         return
       end
 
       result = Community::RetrySavedSearchWebhook.call(delivery: delivery, actor: current_user)
 
       if result.success?
-        redirect_to forum_preferences_path, notice: "Webhook 已重新加入发送队列。"
+        redirect_to forum_preferences_path, notice: t("mcweb.flash.webhook_requeued")
       else
-        redirect_to forum_preferences_path, alert: result.error || "重试失败。"
+        redirect_to forum_preferences_path, alert: result.error || t("mcweb.flash.webhook_retry_failed")
       end
     end
   end

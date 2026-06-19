@@ -1,8 +1,8 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="<%= I18n.locale %>">
 <head>
   <meta charset="utf-8">
-  <title>装箱单 <%= order.order_number %></title>
+  <title><%= t("mcweb.mail.commerce.packing_slip.page_title", number: order.order_number) %></title>
   <style>
     body { font-family: sans-serif; max-width: 640px; margin: 2rem auto; padding: 0 1rem; color: #111; }
     h1 { font-size: 1.25rem; }
@@ -12,24 +12,24 @@
   </style>
 </head>
 <body>
-  <h1>装箱单 / Packing Slip</h1>
-  <p>订单号：<strong><%= order.order_number %></strong></p>
-  <p>日期：<%= l(order.created_at, format: :long) %></p>
+  <h1><%= t("mcweb.mail.commerce.packing_slip.title") %></h1>
+  <p><%= t("mcweb.mail.commerce.order_number", number: order.order_number) %></p>
+  <p><%= t("mcweb.mail.commerce.receipt.date", date: l(order.created_at, format: :long)) %></p>
   <% if order.shipping_address.present? && order.shipping_address.values.any?(&:present?) %>
-    <p><strong>收货人：</strong><%= format_shipping_address(order.shipping_address) %></p>
+    <p><strong><%= t("mcweb.mail.commerce.packing_slip.recipient", address: format_shipping_address(order.shipping_address)) %></strong></p>
   <% end %>
   <% if order.shipping_method.present? %>
-    <p><strong>配送方式：</strong><%= Commerce::ShippingMethods.label_for(order.shipping_method) %></p>
+    <p><strong><%= t("mcweb.mail.commerce.shipping_method_label", method: Commerce::ShippingMethods.label_for(order.shipping_method)) %></strong></p>
   <% end %>
   <% if order.notes.present? %>
-    <p><strong>备注：</strong><%= order.notes %></p>
+    <p><strong><%= t("mcweb.mail.commerce.packing_slip.notes", notes: order.notes) %></strong></p>
   <% end %>
 
   <table>
     <thead>
       <tr>
-        <th>SKU / 商品</th>
-        <th>数量</th>
+        <th><%= t("mcweb.mail.commerce.packing_slip.sku_product") %></th>
+        <th><%= t("mcweb.mail.commerce.qty_col") %></th>
       </tr>
     </thead>
     <tbody>
@@ -45,7 +45,7 @@
     </tbody>
   </table>
 
-  <p class="no-print"><button onclick="window.print()">打印</button></p>
-  <p><small>McWeb 商城 — 仓库装箱单</small></p>
+  <p class="no-print"><button onclick="window.print()"><%= t("mcweb.mail.commerce.packing_slip.print") %></button></p>
+  <p><small><%= t("mcweb.mail.commerce.packing_slip.footer") %></small></p>
 </body>
 </html>

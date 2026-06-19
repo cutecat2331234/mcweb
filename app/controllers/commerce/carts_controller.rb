@@ -37,25 +37,25 @@ module Commerce
       result = Commerce::ClearCart.call(cart: @cart)
 
       if result.success?
-        redirect_to store_cart_path, notice: "购物车已清空。"
+        redirect_to store_cart_path, notice: t("mcweb.flash.cart_cleared")
       else
         redirect_to store_cart_path, alert: service_error_message(result)
       end
     end
 
     def move_to_wishlist
-      return redirect_to store_cart_path, alert: "请先登录。" unless logged_in?
+      return redirect_to store_cart_path, alert: t("mcweb.flash.sign_in_required_short") unless logged_in?
 
       item = @cart.items.find(params[:item_id])
       result = Commerce::MoveCartItemToWishlist.call(user: current_user, cart_item: item)
 
       if result.success?
-        redirect_to store_cart_path, notice: "已移入心愿单。"
+        redirect_to store_cart_path, notice: t("mcweb.flash.moved_to_wishlist")
       else
         redirect_to store_cart_path, alert: service_error_message(result)
       end
     rescue ActiveRecord::RecordNotFound
-      redirect_to store_cart_path, alert: "购物车项不存在。"
+      redirect_to store_cart_path, alert: t("mcweb.flash.cart_item_missing")
     end
 
     def preview_coupon
@@ -90,7 +90,7 @@ module Commerce
 
     def clear_coupon
       session.delete(:pending_coupon_code)
-      redirect_to store_cart_path, notice: "已清除优惠码。"
+      redirect_to store_cart_path, notice: t("mcweb.flash.coupon_cleared")
     end
 
     def preview_gift_card
@@ -133,7 +133,7 @@ module Commerce
 
     def clear_gift_card
       session.delete(:pending_gift_card_code)
-      redirect_to store_cart_path, notice: "已清除礼品卡。"
+      redirect_to store_cart_path, notice: t("mcweb.flash.gift_card_cleared")
     end
 
     def update
@@ -181,11 +181,11 @@ module Commerce
         @cart.reset_abandoned_reminder!
       end
 
-      redirect_to store_cart_path, notice: "购物车已更新。"
+      redirect_to store_cart_path, notice: t("mcweb.flash.cart_updated")
     rescue ActiveRecord::RecordNotFound
-      redirect_to store_cart_path, alert: "购物车项不存在。"
+      redirect_to store_cart_path, alert: t("mcweb.flash.cart_item_missing")
     rescue ActiveRecord::RecordInvalid
-      redirect_to store_cart_path, alert: "无法更新购物车，请重试。"
+      redirect_to store_cart_path, alert: t("mcweb.flash.cart_update_failed")
     end
 
     private

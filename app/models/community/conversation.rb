@@ -51,6 +51,18 @@ module Community
       participants.exists?(user: user)
     end
 
+    def self.last_message_previews_for(conversation_ids)
+      return {} if conversation_ids.blank?
+
+      Community::Message
+        .where(forum_conversation_id: conversation_ids)
+        .select("DISTINCT ON (forum_conversation_id) forum_conversation_id, body")
+        .order(:forum_conversation_id, created_at: :desc)
+        .each_with_object({}) do |message, memo|
+          memo[message.forum_conversation_id] = message.body&.truncate(80)
+        end
+    end
+
     def self.unread_counts_for(user, conversation_ids)
       return {} if conversation_ids.blank?
 

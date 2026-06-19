@@ -1,6 +1,9 @@
 <script setup lang="ts">
 import { onBeforeUnmount, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   username: string
@@ -81,19 +84,19 @@ onBeforeUnmount(() => {
       v-if="open"
       class="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border bg-popover p-3 text-sm shadow-lg"
     >
-      <div v-if="loading && !card" class="text-muted-foreground">加载中…</div>
+      <div v-if="loading && !card" class="text-muted-foreground">{{ t('common.loading') }}</div>
       <template v-else-if="card">
         <div class="flex items-center gap-2">
           <img :src="card.avatar_url" :alt="card.username" class="h-10 w-10 rounded-full" />
           <div class="min-w-0">
             <p class="font-medium">{{ card.display_name || card.username }}</p>
-            <p class="text-xs text-muted-foreground">@{{ card.username }} · {{ card.trust_name }}<span v-if="card.online" class="ml-1 text-green-600">· 在线</span></p>
+            <p class="text-xs text-muted-foreground">@{{ card.username }} · {{ card.trust_name }}<span v-if="card.online" class="ml-1 text-green-600">{{ t('components.userHover.online') }}</span></p>
           </div>
         </div>
         <p v-if="card.bio" class="mt-2 line-clamp-2 text-xs text-muted-foreground">{{ card.bio }}</p>
         <p class="mt-2 text-xs text-muted-foreground">
-          {{ card.posts_count }} 帖<span v-if="card.likes_received != null"> · {{ card.likes_received }} 获赞</span> · 加入于 {{ card.member_since }}
-          <span v-if="card.last_seen_at && !card.online"> · 最后在线 {{ card.last_seen_at }}</span>
+          {{ t('components.userHover.posts', { count: card.posts_count }) }}<span v-if="card.likes_received != null">{{ t('components.userHover.likes', { count: card.likes_received }) }}</span> · {{ t('components.userHover.memberSince', { date: card.member_since }) }}
+          <span v-if="card.last_seen_at && !card.online">{{ t('components.userHover.lastSeen', { date: card.last_seen_at }) }}</span>
         </p>
         <div v-if="card.badges.length" class="mt-2 flex flex-wrap gap-1">
           <span
@@ -108,15 +111,15 @@ onBeforeUnmount(() => {
           </span>
         </div>
         <div class="mt-3 flex flex-wrap gap-2">
-          <Link :href="card.profile_url" class="text-xs text-primary hover:underline">查看资料</Link>
-          <Link v-if="card.message_url" :href="card.message_url" class="text-xs text-primary hover:underline">发私信</Link>
+          <Link :href="card.profile_url" class="text-xs text-primary hover:underline">{{ t('components.userHover.viewProfile') }}</Link>
+          <Link v-if="card.message_url" :href="card.message_url" class="text-xs text-primary hover:underline">{{ t('components.userHover.sendMessage') }}</Link>
           <button
             v-if="card.follow_url"
             type="button"
             class="text-xs text-primary hover:underline"
             @click="toggleFollow"
           >
-            {{ card.following ? '取消关注' : '关注' }}
+            {{ card.following ? t('components.userHover.unfollow') : t('components.userHover.follow') }}
           </button>
         </div>
       </template>

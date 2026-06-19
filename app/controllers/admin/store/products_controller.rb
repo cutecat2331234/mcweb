@@ -7,7 +7,12 @@ module Admin
       before_action :set_product, only: %i[show edit update destroy]
 
       def index
-        products = ::Commerce::Product.order(:name)
+        products_scope = ::Commerce::Product.order(:name)
+        if params[:q].present?
+          q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].to_s.strip)}%"
+          products_scope = products_scope.where("name ILIKE :q OR slug ILIKE :q", q: q)
+        end
+        @pagy, products = pagy(products_scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: "商品",
@@ -30,6 +35,7 @@ module Admin
               url: admin_store_product_path(product)
             )
           end,
+          pagination: pagy_props(@pagy),
           actions: [ { label: "新建商品", href: new_admin_store_product_path } ]
         }
       end
@@ -64,7 +70,7 @@ module Admin
         product = ::Commerce::Product.new(product_params)
         if product.save
           Commerce::EnsureProductDiscussionTopic.call(product: product) if product.active?
-          redirect_to admin_store_product_path(product), notice: "商品已创建。"
+          redirect_to admin_store_product_path(product), notice: t("mcweb.flash.created", resource: t("mcweb.resources.product"))
         else
           render inertia: "Admin/Store/Products/Form",
                  props: form_props(product),
@@ -106,7 +112,7 @@ module Admin
           if @product.active? && @product.forum_topic_id.blank?
             Commerce::EnsureProductDiscussionTopic.call(product: @product)
           end
-          redirect_to admin_store_product_path(@product), notice: "商品已更新。"
+          redirect_to admin_store_product_path(@product), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.product"))
         else
           render inertia: "Admin/Store/Products/Form",
                  props: form_props(@product),
@@ -116,13 +122,13 @@ module Admin
 
       def destroy
         @product.update!(status: :archived)
-        redirect_to admin_store_products_path, notice: "商品已归档。"
+        redirect_to admin_store_products_path, notice: t("mcweb.flash.archived", resource: t("mcweb.resources.product"))
       end
 
       def duplicate
         result = Commerce::DuplicateProduct.call(product: @product)
         if result.success?
-          redirect_to edit_admin_store_product_path(result.value), notice: "商品已复制为草稿，请检查 SKU 与标识。"
+          redirect_to edit_admin_store_product_path(result.value), notice: t("mcweb.flash.product_copied")
         else
           redirect_to admin_store_product_path(@product), alert: service_error_message(result)
         end

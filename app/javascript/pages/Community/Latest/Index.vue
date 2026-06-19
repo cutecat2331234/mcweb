@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -11,6 +12,8 @@ import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   topics: TopicListItem[]
@@ -26,13 +29,13 @@ const props = defineProps<{
 
 const selectedIds = ref<string[]>([])
 
-const sortOptions = [
-  { value: 'activity', label: '最近活跃' },
-  { value: 'hot', label: '热门' },
-  { value: 'newest', label: '最新发布' },
-  { value: 'replies', label: '最多回复' },
-  { value: 'views', label: '最多浏览' },
-]
+const sortOptions = computed(() => [
+  { value: 'activity', label: t('forum.latest.sortActivity') },
+  { value: 'hot', label: t('forum.latest.sortHot') },
+  { value: 'newest', label: t('forum.latest.sortNewest') },
+  { value: 'replies', label: t('forum.latest.sortReplies') },
+  { value: 'views', label: t('forum.latest.sortViews') },
+])
 
 function changeSort(value: string) {
   router.get(routes.forumLatest, { sort: value, filter: props.filter || undefined }, { preserveState: true })
@@ -63,20 +66,20 @@ function bulkModerate(action: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '最新', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.latest.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="最新主题" subtitle="全站最近活跃的主题" />
+  <PageHeader :title="t('forum.latest.title')" :subtitle="t('forum.latest.subtitle')" />
 
   <div class="mb-4 flex flex-wrap items-center gap-4">
     <div class="flex items-center gap-2">
-      <label class="text-sm text-muted-foreground">排序：</label>
+      <label class="text-sm text-muted-foreground">{{ t('forum.lists.sortLabel') }}</label>
       <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
     </div>
     <div class="flex items-center gap-2">
-      <label class="text-sm text-muted-foreground">筛选：</label>
+      <label class="text-sm text-muted-foreground">{{ t('forum.lists.filterLabel') }}</label>
       <Select :model-value="filter" :options="filterOptions" size="sm" @update:model-value="changeFilter" />
     </div>
     <BulkModerateToolbar
@@ -84,18 +87,18 @@ function bulkModerate(action: string) {
       :count="selectedIds.length"
       @moderate="bulkModerate"
     />
-    <a :href="rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
+    <a :href="rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">{{ t('forum.lists.rss') }}</a>
   </div>
 
   <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span class="text-xs text-muted-foreground">{{ t('forum.lists.activeFilters') }}</span>
     <span
       v-for="chip in activeFilters"
       :key="`${chip.param}-${chip.value || chip.label}`"
       class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
     >
       {{ chip.label }}
-      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(chip)">×</button>
+      <button type="button" class="hover:opacity-70" :title="t('forum.lists.removeFilter')" @click="removeFilter(chip)">×</button>
     </span>
   </div>
 

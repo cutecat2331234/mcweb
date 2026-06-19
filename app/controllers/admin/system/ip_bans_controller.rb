@@ -38,7 +38,7 @@ module Admin
         )
 
         if result.success?
-          redirect_to admin_system_ip_bans_path, notice: "IP 已封禁。"
+          redirect_to admin_system_ip_bans_path, notice: t("mcweb.flash.ip_banned")
         else
           redirect_to admin_system_ip_bans_path, alert: service_error_message(result)
         end
@@ -47,7 +47,7 @@ module Admin
       def destroy
         ban = Administration::IpBan.find(params[:id])
         ban.destroy!
-        redirect_to admin_system_ip_bans_path, notice: "IP 封禁已解除。"
+        redirect_to admin_system_ip_bans_path, notice: t("mcweb.flash.ip_unbanned")
       end
     end
   end

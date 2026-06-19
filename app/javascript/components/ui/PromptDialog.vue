@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { nextTick, ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { promptState, resolvePrompt } from '@/lib/usePrompt'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+
+const { t } = useI18n()
 
 const inputRef = ref<HTMLInputElement | null>(null)
 
@@ -57,10 +60,10 @@ function accept() {
           </div>
           <div class="mt-6 flex flex-wrap justify-end gap-2">
             <Button type="button" variant="outline" @click="cancel">
-              {{ promptState.options.cancelLabel || '取消' }}
+              {{ promptState.options.cancelLabel || t('common.cancel') }}
             </Button>
             <Button type="submit">
-              {{ promptState.options.confirmLabel || '确定' }}
+              {{ promptState.options.confirmLabel || t('common.confirm') }}
             </Button>
           </div>
         </form>

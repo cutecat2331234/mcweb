@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
+
+const { t } = useI18n()
 
 defineProps<{
   disabled?: boolean
@@ -38,7 +41,7 @@ async function onFileChange(event: Event) {
     })
     const data = await res.json()
     if (!res.ok) {
-      error.value = data.error || '上传失败'
+      error.value = data.error || t('components.imageUpload.uploadFailed')
       return
     }
     emit('insert', data.markdown)
@@ -60,7 +63,7 @@ async function onFileChange(event: Event) {
       @change="onFileChange"
     >
     <Button type="button" variant="outline" size="sm" :disabled="uploading || disabled" @click="openPicker">
-      {{ uploading ? '上传中…' : '插入图片' }}
+      {{ uploading ? t('components.imageUpload.uploading') : t('components.imageUpload.insertImage') }}
     </Button>
     <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
   </div>

@@ -82,7 +82,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_drafts_path, notice: "草稿已保存。"
+        redirect_to forum_drafts_path, notice: t("mcweb.flash.draft_saved")
       else
         redirect_to new_forum_topic_path(section_id: section.slug), alert: service_error_message(result)
       end
@@ -109,7 +109,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_drafts_path, notice: "草稿已更新。"
+        redirect_to forum_drafts_path, notice: t("mcweb.flash.draft_updated")
       else
         redirect_to edit_forum_draft_path(draft), alert: service_error_message(result)
       end
@@ -120,7 +120,7 @@ module Community
       result = Community::PublishTopicDraft.call(user: current_user, topic: draft)
 
       if result.success?
-        redirect_to forum_topic_path(draft), notice: "主题已发布。"
+        redirect_to forum_topic_path(draft), notice: t("mcweb.flash.topic_published")
       else
         redirect_to edit_forum_draft_path(draft), alert: service_error_message(result)
       end
@@ -129,7 +129,7 @@ module Community
     def destroy
       draft = current_user_draft
       draft.soft_delete!
-      redirect_to forum_drafts_path, notice: "草稿已删除。"
+      redirect_to forum_drafts_path, notice: t("mcweb.flash.draft_deleted")
     end
 
     private

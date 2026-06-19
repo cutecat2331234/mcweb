@@ -111,7 +111,7 @@ class Round73CategoryFilterChipsUiTest < ActionDispatch::IntegrationTest
     assert_includes content, "hasActiveFilters"
     assert_includes content, "priceMin"
     assert_includes content, "clearFilters"
-    assert_includes content, "当前筛选"
+    assert_includes content, "commerce.productList.activeFilters"
   end
 end
 

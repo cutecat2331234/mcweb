@@ -40,10 +40,24 @@ module Community
       "commerce.low_stock" => "库存预警"
     }.freeze
 
-    ALL = FORUM.merge(COMMERCE).freeze
+    MINECRAFT = {
+      "minecraft.custom" => "Minecraft 事件",
+      "minecraft.link_completed" => "Minecraft 绑定成功",
+      "minecraft.player_join" => "玩家上线",
+      "minecraft.player_quit" => "玩家下线"
+    }.freeze
+
+    ALL = FORUM.merge(COMMERCE).merge(MINECRAFT).freeze
 
     def self.label_for(type)
-      ALL[type.to_s] || type.to_s.humanize
+      type_key = type.to_s
+      types = I18n.t("mcweb.labels.notification_types", default: {})
+      if types.is_a?(Hash)
+        label = types[type_key.to_sym] || types[type_key]
+        return label if label.present?
+      end
+
+      ALL[type_key] || type_key.humanize
     end
   end
 end

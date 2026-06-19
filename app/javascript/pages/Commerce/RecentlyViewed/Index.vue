@@ -1,13 +1,15 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
-import Badge from '@/components/ui/Badge.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   products: Array<{
@@ -44,19 +46,19 @@ function toggleWishlist(url: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
-    { label: '最近浏览', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.store'), href: routes.store },
+    { label: t('commerce.recentlyViewed.breadcrumb'), current: true },
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader title="最近浏览" subtitle="你最近查看过的商品" />
+    <PageHeader :title="t('commerce.recentlyViewed.title')" :subtitle="t('commerce.recentlyViewed.subtitle')" />
     <Link v-if="compareCount" :href="routes.storeCompare" class="text-sm text-primary hover:underline">
-      对比列表 ({{ compareCount }})
+      {{ t('commerce.recentlyViewed.compareList', { count: compareCount }) }}
     </Link>
   </div>
 
-  <Button v-if="clearUrl && products.length" type="button" variant="outline" size="sm" class="mb-4" @click="clearHistory">清空浏览记录</Button>
+  <Button v-if="clearUrl && products.length" type="button" variant="outline" size="sm" class="mb-4" @click="clearHistory">{{ t('commerce.recentlyViewed.clearHistory') }}</Button>
 
   <div v-if="products.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <div
@@ -79,7 +81,7 @@ function toggleWishlist(url: string) {
             variant="outline"
             @click="toggleCompare(product.compare_url!)"
           >
-            {{ product.compared ? '对比中' : '对比' }}
+            {{ product.compared ? t('commerce.recentlyViewed.comparing') : t('commerce.recentlyViewed.compare') }}
           </Button>
           <Button
             v-if="product.wishlist_url"
@@ -88,15 +90,15 @@ function toggleWishlist(url: string) {
             :variant="product.wishlisted ? 'outline' : 'secondary'"
             @click="toggleWishlist(product.wishlist_url!)"
           >
-            {{ product.wishlisted ? '心愿单' : '收藏' }}
+            {{ product.wishlisted ? t('commerce.recentlyViewed.wishlisted') : t('commerce.recentlyViewed.favorite') }}
           </Button>
         </div>
       </div>
     </div>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无浏览记录。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('commerce.recentlyViewed.empty') }}</p>
 
   <Button as-child variant="outline" class="mt-6">
-    <Link :href="routes.store">返回商城</Link>
+    <Link :href="routes.store">{{ t('commerce.recentlyViewed.backToStore') }}</Link>
   </Button>
 </template>

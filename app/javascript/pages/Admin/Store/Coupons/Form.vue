@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3'
+import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -9,6 +11,8 @@ import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   title: string
@@ -24,6 +28,7 @@ const props = defineProps<{
     max_discount_cents?: number | null
     active: boolean
     starts_at: string | null
+    ends_at?: string | null
     product_ids?: number[]
     category_ids?: number[]
     description?: string
@@ -38,10 +43,10 @@ const props = defineProps<{
 
 const form = useForm({ coupon: { ...props.coupon } })
 
-const discountTypeOptions = [
-  { value: 'percentage', label: '百分比' },
-  { value: 'fixed', label: '固定金额（分）' },
-]
+const discountTypeOptions = computed(() => [
+  { value: 'percentage', label: t('admin.forms.coupon.typePercentage') },
+  { value: 'fixed', label: t('admin.forms.coupon.typeFixed') },
+])
 
 function toggleProductId(id: number, checked: boolean) {
   const ids = form.coupon.product_ids || []
@@ -71,59 +76,59 @@ function submit() {
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
-      <Label for="code">优惠码</Label>
+      <Label for="code">{{ t('admin.forms.coupon.code') }}</Label>
       <Input id="code" v-model="form.coupon.code" required />
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
-        <Label for="discount_type">类型</Label>
+        <Label for="discount_type">{{ t('admin.forms.coupon.discountType') }}</Label>
         <Select id="discount_type" v-model="form.coupon.discount_type" :options="discountTypeOptions" block />
       </div>
       <div class="space-y-2">
-        <Label for="discount_value">折扣值</Label>
+        <Label for="discount_value">{{ t('admin.forms.coupon.discountValue') }}</Label>
         <Input id="discount_value" v-model.number="form.coupon.discount_value" type="number" min="1" required />
       </div>
     </div>
     <div class="space-y-2">
-      <Label for="min_amount_cents">最低消费（分）</Label>
+      <Label for="min_amount_cents">{{ t('admin.forms.coupon.minAmount') }}</Label>
       <Input id="min_amount_cents" v-model.number="form.coupon.min_amount_cents" type="number" min="0" />
     </div>
     <div class="space-y-2">
-      <Label for="description">公开说明（优惠券详情页展示）</Label>
+      <Label for="description">{{ t('admin.forms.coupon.publicDescription') }}</Label>
       <Input id="description" v-model="form.coupon.description" />
     </div>
     <div class="space-y-2">
-      <Label for="usage_limit">使用上限（空=无限）</Label>
+      <Label for="usage_limit">{{ t('admin.forms.coupon.usageLimit') }}</Label>
       <Input id="usage_limit" v-model.number="form.coupon.usage_limit" type="number" min="1" />
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
-        <Label for="starts_at">开始时间</Label>
+        <Label for="starts_at">{{ t('admin.forms.coupon.startsAt') }}</Label>
         <Input id="starts_at" v-model="form.coupon.starts_at" type="datetime-local" />
       </div>
       <div class="space-y-2">
-        <Label for="ends_at">结束时间</Label>
+        <Label for="ends_at">{{ t('admin.forms.coupon.endsAt') }}</Label>
         <Input id="ends_at" v-model="form.coupon.ends_at" type="datetime-local" />
       </div>
     </div>
     <div class="space-y-2">
-      <Label for="per_user_limit">每用户使用上限（空=无限）</Label>
+      <Label for="per_user_limit">{{ t('admin.forms.coupon.perUserLimit') }}</Label>
       <Input id="per_user_limit" v-model.number="form.coupon.per_user_limit" type="number" min="1" />
     </div>
     <div class="space-y-2">
-      <Label for="max_discount_cents">最大折扣金额（分，空=不限）</Label>
+      <Label for="max_discount_cents">{{ t('admin.forms.coupon.maxDiscount') }}</Label>
       <Input id="max_discount_cents" v-model.number="form.coupon.max_discount_cents" type="number" min="1" />
     </div>
     <label class="flex items-center gap-2 text-sm">
       <Checkbox v-model="form.coupon.first_order_only" />
-      仅限首单
+      {{ t('admin.forms.coupon.firstOrderOnly') }}
     </label>
     <label class="flex items-center gap-2 text-sm">
       <Checkbox v-model="form.coupon.free_shipping" />
-      免运费
+      {{ t('admin.forms.coupon.freeShipping') }}
     </label>
     <div class="space-y-2">
-      <Label>限定商品（不选=全部）</Label>
+      <Label>{{ t('admin.forms.coupon.limitProducts') }}</Label>
       <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
         <label v-for="product in products || []" :key="product.id" class="flex items-center gap-2">
           <Checkbox
@@ -135,7 +140,7 @@ function submit() {
       </div>
     </div>
     <div class="space-y-2">
-      <Label>限定分类（不选=全部）</Label>
+      <Label>{{ t('admin.forms.coupon.limitCategories') }}</Label>
       <div class="max-h-40 space-y-1 overflow-y-auto rounded-md border p-2 text-sm">
         <label v-for="category in categories || []" :key="category.id" class="flex items-center gap-2">
           <Checkbox
@@ -148,12 +153,12 @@ function submit() {
     </div>
     <label class="flex items-center gap-2 text-sm">
       <Checkbox v-model="form.coupon.active" />
-      启用
+      {{ t('admin.common.enable') }}
     </label>
     <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">保存</Button>
+      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
       <Button as-child variant="outline">
-        <Link :href="backUrl">取消</Link>
+        <Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link>
       </Button>
     </div>
   </form>

@@ -52,7 +52,7 @@ module Admin
       def create
         category = ::Commerce::Category.new(category_params)
         if category.save
-          redirect_to admin_store_category_path(category), notice: "分类已创建。"
+          redirect_to admin_store_category_path(category), notice: t("mcweb.flash.created", resource: t("mcweb.resources.category"))
         else
           render inertia: "Admin/Store/Categories/Form", props: form_props(category), status: :unprocessable_entity
         end
@@ -64,7 +64,7 @@ module Admin
 
       def update
         if @category.update(category_params)
-          redirect_to admin_store_category_path(@category), notice: "分类已更新。"
+          redirect_to admin_store_category_path(@category), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.category"))
         else
           render inertia: "Admin/Store/Categories/Form", props: form_props(@category), status: :unprocessable_entity
         end
@@ -72,7 +72,7 @@ module Admin
 
       def destroy
         @category.destroy!
-        redirect_to admin_store_categories_path, notice: "分类已删除。"
+        redirect_to admin_store_categories_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.category"))
       end
 
       private

@@ -51,7 +51,7 @@ module Admin
       def create
         category = ::Community::Category.new(category_attributes)
         if category.save
-          redirect_to admin_forum_category_path(category), notice: "分类已创建。"
+          redirect_to admin_forum_category_path(category), notice: t("mcweb.flash.created", resource: t("mcweb.resources.category"))
         else
           render inertia: "Admin/Forum/Categories/Form", props: form_props(category), status: :unprocessable_entity
         end
@@ -63,7 +63,7 @@ module Admin
 
       def update
         if @category.update(category_attributes)
-          redirect_to admin_forum_category_path(@category), notice: "分类已更新。"
+          redirect_to admin_forum_category_path(@category), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.category"))
         else
           render inertia: "Admin/Forum/Categories/Form", props: form_props(@category), status: :unprocessable_entity
         end
@@ -71,10 +71,10 @@ module Admin
 
       def destroy
         if @category.sections.exists?
-          redirect_to admin_forum_categories_path, alert: "分类下仍有板块，无法删除。"
+          redirect_to admin_forum_categories_path, alert: t("mcweb.flash.category_has_sections")
         else
           @category.destroy!
-          redirect_to admin_forum_categories_path, notice: "分类已删除。"
+          redirect_to admin_forum_categories_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.category"))
         end
       end
 

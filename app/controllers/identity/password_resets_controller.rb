@@ -12,7 +12,7 @@ module Identity
       result = Identity::ResetPassword.call(email: password_reset_params[:email])
 
       if result.success?
-        redirect_to identity_sign_in_path, notice: "若该邮箱已注册，我们已发送重置链接。"
+        redirect_to identity_sign_in_path, notice: t("mcweb.flash.password_reset_sent")
       else
         render inertia: "Identity/PasswordResets/New",
                status: :unprocessable_entity,
@@ -38,7 +38,7 @@ module Identity
       )
 
       if result.success?
-        redirect_to identity_sign_in_path, notice: "密码已重置，现在可以登录了。"
+        redirect_to identity_sign_in_path, notice: t("mcweb.flash.password_reset_success")
       else
         render inertia: "Identity/PasswordResets/Edit",
                props: { token: params[:token], form_errors: inertia_form_errors(result) },

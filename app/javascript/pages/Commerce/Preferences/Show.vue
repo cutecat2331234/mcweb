@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -8,6 +9,8 @@ import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   preferences: Array<{
@@ -34,12 +37,12 @@ function submit() {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
-    { label: '通知偏好', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.store'), href: routes.store },
+    { label: t('commerce.preferences.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="商城通知偏好" subtitle="管理订单与商品相关通知" />
+  <PageHeader :title="t('commerce.preferences.title')" :subtitle="t('commerce.preferences.subtitle')" />
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div
@@ -51,17 +54,17 @@ function submit() {
       <div class="flex flex-wrap gap-4">
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="form.preferences[pref.notification_type].email" />
-          邮件
+          {{ t('commerce.preferences.email') }}
         </label>
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="form.preferences[pref.notification_type].in_app" />
-          站内通知
+          {{ t('commerce.preferences.inApp') }}
         </label>
       </div>
     </div>
-    <Button type="submit" :disabled="form.processing">保存</Button>
+    <Button type="submit" :disabled="form.processing">{{ t('commerce.preferences.save') }}</Button>
     <Button as-child variant="outline">
-      <Link :href="routes.storeOrders">返回订单</Link>
+      <Link :href="routes.storeOrders">{{ t('commerce.preferences.backToOrders') }}</Link>
     </Button>
   </form>
 </template>

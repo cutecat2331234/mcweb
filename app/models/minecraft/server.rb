@@ -8,6 +8,7 @@ module Minecraft
     has_many :link_codes, class_name: "Minecraft::LinkCode", foreign_key: :minecraft_server_id, dependent: :destroy
     has_many :connector_tasks, class_name: "Minecraft::ConnectorTask", foreign_key: :minecraft_server_id, dependent: :destroy
     has_many :processed_deliveries, class_name: "Minecraft::ProcessedDelivery", foreign_key: :minecraft_server_id, dependent: :destroy
+    has_many :server_snapshots, class_name: "Minecraft::ServerSnapshot", foreign_key: :minecraft_server_id, dependent: :destroy
 
     enum :status, { offline: "offline", online: "online", maintenance: "maintenance" }, validate: true
 

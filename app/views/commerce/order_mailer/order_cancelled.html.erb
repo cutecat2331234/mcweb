@@ -1,3 +1,4 @@
-<h2>订单已取消</h2>
-<p>您好 <%= @order.user.username %>，</p>
-<p>订单 <strong><%= @order.order_number %></strong> 已取消。</p>
+<h2><%= t("mcweb.mail.commerce.order_cancelled.heading") %></h2>
+<p><%= t("mcweb.mail.greeting_formal", username: @order.user.username) %></p>
+<p><%= t("mcweb.mail.commerce.order_cancelled.body", number: @order.order_number) %></p>
+<%= render partial: "commerce/order_mailer/order_details", locals: { order: @order } %>

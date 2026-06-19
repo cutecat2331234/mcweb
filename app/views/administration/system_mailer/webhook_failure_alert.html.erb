@@ -1,15 +1,15 @@
-<p>近 24 小时内 Webhook 失败次数已超过配置阈值。</p>
+<p><%= t("mcweb.mail.commerce.webhook_failure.body") %></p>
 
 <ul>
   <% if @forum_alert %>
-    <li>论坛保存搜索：失败 <%= @forum_failed %> 次（阈值 <%= @forum_threshold %>，共 <%= @stats.dig(:forum, :total) %> 次）</li>
+    <li><%= t("mcweb.mail.commerce.webhook_failure.forum", failed: @forum_failed, threshold: @forum_threshold, total: @stats.dig(:forum, :total)) %></li>
   <% end %>
   <% if @store_alert %>
-    <li>商城订单：失败 <%= @store_failed %> 次（阈值 <%= @store_threshold %>，共 <%= @stats.dig(:store, :total) %> 次）</li>
+    <li><%= t("mcweb.mail.commerce.webhook_failure.store", failed: @store_failed, threshold: @store_threshold, total: @stats.dig(:store, :total)) %></li>
   <% end %>
 </ul>
 
 <p>
-  <a href="<%= @forum_url %>">查看论坛失败投递</a><br>
-  <a href="<%= @store_url %>">查看商城失败投递</a>
+  <a href="<%= @forum_url %>"><%= t("mcweb.mail.commerce.webhook_failure.view_forum") %></a><br>
+  <a href="<%= @store_url %>"><%= t("mcweb.mail.commerce.webhook_failure.view_store") %></a>
 </p>

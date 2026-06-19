@@ -7,9 +7,9 @@ module Community
       user = User.find(user_id)
       NotificationPreference.set!(user, channel: "email", notification_type: notification_type, enabled: false)
       label = Community::NotificationTypeLabels.label_for(notification_type)
-      redirect_to forum_preferences_path, notice: "已关闭 #{label} 邮件通知。"
+      redirect_to forum_preferences_path, notice: t("mcweb.flash.notification_email_unsubscribed", label: label)
     rescue Community::NotificationTypeUnsubscribeToken::InvalidToken, ActiveRecord::RecordNotFound
-      redirect_to forum_preferences_path, alert: "退订链接无效或已过期。"
+      redirect_to forum_preferences_path, alert: t("mcweb.flash.unsubscribe_invalid")
     end
   end
 end

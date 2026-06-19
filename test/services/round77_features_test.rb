@@ -39,7 +39,7 @@ class Round77SavedSearchFilterSummaryTest < ActiveSupport::TestCase
   test "digest email template shows filter chips" do
     content = File.read(Rails.root.join("app/views/community/forum_mailer/saved_search_digest.html.erb"))
     assert_includes content, "@filter_labels"
-    assert_includes content, "筛选条件"
+    assert_includes content, "saved_search_digest.filters"
   end
 
   test "digest mailer sets filter labels and rss url" do

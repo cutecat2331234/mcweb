@@ -82,4 +82,5 @@ export const routes = {
   blogArticle: (slug: string) => `/blog/${slug}`,
   page: (slug: string) => `/${slug}`,
   minecraftLink: `${appPrefix}/minecraft/link`,
+  locale: '/locale',
 } as const

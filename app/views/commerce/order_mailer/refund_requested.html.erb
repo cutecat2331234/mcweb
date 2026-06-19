@@ -1,6 +1,6 @@
-<p>您好 <%= @order.user.username %>，</p>
-<p>订单 <strong><%= @order.order_number %></strong> 的退款申请已提交，正在审核中。</p>
+<p><%= t("mcweb.mail.greeting_formal", username: @order.user.username) %></p>
+<p><%= t("mcweb.mail.commerce.refund_requested.body", number: @order.order_number) %></p>
 <% if @refund.reason.present? %>
-<p>原因：<%= @refund.reason %></p>
+<p><%= t("mcweb.mail.commerce.reason_label", reason: @refund.reason) %></p>
 <% end %>
-<p><a href="<%= store_order_url(@order) %>">查看订单详情</a></p>
+<p><a href="<%= store_order_url(@order) %>"><%= t("mcweb.mail.commerce.view_order_detail") %></a></p>

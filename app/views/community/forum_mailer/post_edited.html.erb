@@ -1,4 +1,4 @@
-<p>你好 <%= @user.username %>，</p>
-<p><strong><%= @editor.username %></strong> 编辑了主题「<%= @topic.title %>」中的 #<%= @post.floor_number %> 楼：</p>
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
+<p><%= t("mcweb.mail.forum.post_edited.body", editor: @editor.username, title: @topic.title, floor: @post.floor_number) %></p>
 <blockquote><%= simple_format(@post.body.truncate(500)) %></blockquote>
-<p><a href="<%= @url %>">查看帖子</a></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.view_post") %></a></p>

@@ -63,7 +63,7 @@ module Admin
       def create
         section = ::Community::Section.new(section_params)
         if section.save
-          redirect_to admin_forum_section_path(section), notice: "板块已创建。"
+          redirect_to admin_forum_section_path(section), notice: t("mcweb.flash.created", resource: t("mcweb.resources.section"))
         else
           render inertia: "Admin/Forum/Sections/Form", props: form_props(section), status: :unprocessable_entity
         end
@@ -75,7 +75,7 @@ module Admin
 
       def update
         if @section.update(section_params)
-          redirect_to admin_forum_section_path(@section), notice: "板块已更新。"
+          redirect_to admin_forum_section_path(@section), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.section"))
         else
           render inertia: "Admin/Forum/Sections/Form", props: form_props(@section), status: :unprocessable_entity
         end

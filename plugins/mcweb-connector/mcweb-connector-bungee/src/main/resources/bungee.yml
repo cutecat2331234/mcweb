@@ -1,0 +1,4 @@
+name: McWebConnector
+main: com.mcweb.connector.bungee.McWebBungeePlugin
+version: 1.0.0
+author: McWeb

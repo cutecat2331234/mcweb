@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -17,6 +18,8 @@ import TableRow from '@/components/ui/TableRow.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   topics: Array<{
@@ -69,24 +72,24 @@ function saveBookmark(url: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '我的书签', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.bookmarks.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="我的书签" subtitle="收藏的主题与帖子，可添加备注与提醒" />
+  <PageHeader :title="t('forum.bookmarks.title')" :subtitle="t('forum.bookmarks.subtitle')" />
 
   <section v-if="postBookmarks.length" class="mb-8">
-    <h2 class="mb-3 text-sm font-semibold">帖子书签</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ t('forum.bookmarks.postBookmarks') }}</h2>
     <div class="rounded-lg border">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>主题</TableHead>
-            <TableHead>楼层</TableHead>
-            <TableHead>备注</TableHead>
-            <TableHead>提醒时间</TableHead>
-            <TableHead>收藏时间</TableHead>
+            <TableHead>{{ t('forum.bookmarks.topicCol') }}</TableHead>
+            <TableHead>{{ t('forum.bookmarks.floorCol') }}</TableHead>
+            <TableHead>{{ t('forum.bookmarks.noteCol') }}</TableHead>
+            <TableHead>{{ t('forum.bookmarks.remindCol') }}</TableHead>
+            <TableHead>{{ t('forum.bookmarks.savedAtCol') }}</TableHead>
             <TableHead />
           </TableRow>
         </TableHeader>
@@ -101,16 +104,16 @@ function saveBookmark(url: string) {
               <TableCell>{{ bookmark.remind_at || '—' }}</TableCell>
               <TableCell>{{ bookmark.created_at }}</TableCell>
               <TableCell>
-                <Button type="button" variant="outline" size="sm" @click="startEdit(bookmark.bookmark_id, bookmark.note, bookmark.remind_at_input)">编辑</Button>
+                <Button type="button" variant="outline" size="sm" @click="startEdit(bookmark.bookmark_id, bookmark.note, bookmark.remind_at_input)">{{ t('forum.lists.edit') }}</Button>
               </TableCell>
             </TableRow>
             <TableRow v-if="editingId === bookmark.bookmark_id">
               <TableCell colspan="6" class="space-y-2 border-t bg-muted/30 p-4">
-                <Textarea v-model="editNote" rows="2" placeholder="书签备注" />
+                <Textarea v-model="editNote" rows="2" :placeholder="t('forum.bookmarks.notePlaceholder')" />
                 <Input v-model="editRemindAt" type="datetime-local" />
                 <div class="flex gap-2">
-                  <Button type="button" size="sm" @click="saveBookmark(bookmark.update_url)">保存</Button>
-                  <Button type="button" size="sm" variant="outline" @click="editingId = null">取消</Button>
+                  <Button type="button" size="sm" @click="saveBookmark(bookmark.update_url)">{{ t('forum.lists.save') }}</Button>
+                  <Button type="button" size="sm" variant="outline" @click="editingId = null">{{ t('forum.lists.cancel') }}</Button>
                 </div>
               </TableCell>
             </TableRow>
@@ -121,7 +124,7 @@ function saveBookmark(url: string) {
   </section>
 
   <section>
-    <h2 class="mb-3 text-sm font-semibold">主题书签</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ t('forum.bookmarks.topicBookmarks') }}</h2>
     <TopicListTable v-if="topicItems.length" :topics="topicItems" show-views show-participants class="mb-4" />
     <div v-if="topics.length" class="space-y-3">
       <article
@@ -131,24 +134,24 @@ function saveBookmark(url: string) {
       >
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="min-w-0 flex-1">
-            <p v-if="item.note" class="text-sm text-muted-foreground">备注：{{ item.note }}</p>
-            <p v-if="item.remind_at" class="text-xs text-muted-foreground">提醒：{{ item.remind_at }}</p>
-            <p v-if="!item.note && !item.remind_at" class="text-xs text-muted-foreground">暂无备注或提醒</p>
+            <p v-if="item.note" class="text-sm text-muted-foreground">{{ t('forum.bookmarks.notePrefix') }}{{ item.note }}</p>
+            <p v-if="item.remind_at" class="text-xs text-muted-foreground">{{ t('forum.bookmarks.remindPrefix') }}{{ item.remind_at }}</p>
+            <p v-if="!item.note && !item.remind_at" class="text-xs text-muted-foreground">{{ t('forum.bookmarks.noNoteRemind') }}</p>
           </div>
-          <Button type="button" variant="outline" size="sm" @click="startEdit(item.bookmark_id, item.note, item.remind_at_input)">编辑备注</Button>
+          <Button type="button" variant="outline" size="sm" @click="startEdit(item.bookmark_id, item.note, item.remind_at_input)">{{ t('forum.bookmarks.editNote') }}</Button>
         </div>
         <div v-if="editingId === item.bookmark_id" class="mt-3 space-y-2 border-t pt-3">
-          <Textarea v-model="editNote" rows="2" placeholder="书签备注" />
+          <Textarea v-model="editNote" rows="2" :placeholder="t('forum.bookmarks.notePlaceholder')" />
           <Input v-model="editRemindAt" type="datetime-local" />
           <div class="flex gap-2">
-            <Button type="button" size="sm" @click="saveBookmark(item.update_url)">保存</Button>
-            <Button type="button" size="sm" variant="outline" @click="editingId = null">取消</Button>
+            <Button type="button" size="sm" @click="saveBookmark(item.update_url)">{{ t('forum.lists.save') }}</Button>
+            <Button type="button" size="sm" variant="outline" @click="editingId = null">{{ t('forum.lists.cancel') }}</Button>
           </div>
         </div>
       </article>
     </div>
     <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-      你还没有收藏任何主题。
+      {{ t('forum.bookmarks.emptyTopics') }}
     </p>
   </section>
 </template>

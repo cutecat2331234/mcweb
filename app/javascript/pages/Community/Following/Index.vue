@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -10,6 +11,8 @@ import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   tab: 'topics' | 'users'
@@ -43,17 +46,17 @@ function unfollow(url: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '我的关注', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.following.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="我的关注" subtitle="关注用户与其最新主题" />
+  <PageHeader :title="t('forum.following.title')" :subtitle="t('forum.following.subtitle')" />
 
   <div class="mb-4 flex flex-wrap items-center gap-3">
     <div class="flex gap-2">
-      <Button :variant="tab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">主题动态</Button>
-      <Button :variant="tab === 'users' ? 'default' : 'outline'" size="sm" @click="switchTab('users')">关注用户</Button>
+      <Button :variant="tab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">{{ t('forum.following.tabTopics') }}</Button>
+      <Button :variant="tab === 'users' ? 'default' : 'outline'" size="sm" @click="switchTab('users')">{{ t('forum.following.tabUsers') }}</Button>
     </div>
     <Select
       v-if="tab === 'topics'"
@@ -66,7 +69,7 @@ function unfollow(url: string) {
 
   <section v-if="tab === 'topics'">
     <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants />
-    <p v-else class="text-sm text-muted-foreground">关注用户暂无新主题。</p>
+    <p v-else class="text-sm text-muted-foreground">{{ t('forum.following.emptyTopics') }}</p>
     <Pagination
       v-if="topicsPagination.pages > 1"
       :pagination="topicsPagination"
@@ -85,10 +88,10 @@ function unfollow(url: string) {
           </Link>
           <p v-if="user.forum_title" class="text-xs text-muted-foreground">{{ user.forum_title }}</p>
         </div>
-        <Button type="button" size="sm" variant="outline" @click="unfollow(user.unfollow_url)">取消关注</Button>
+        <Button type="button" size="sm" variant="outline" @click="unfollow(user.unfollow_url)">{{ t('forum.following.unfollow') }}</Button>
       </div>
     </div>
-    <p v-else class="text-sm text-muted-foreground">尚未关注任何用户。</p>
+    <p v-else class="text-sm text-muted-foreground">{{ t('forum.following.emptyUsers') }}</p>
     <Pagination
       v-if="usersPagination.pages > 1"
       :pagination="usersPagination"

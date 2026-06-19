@@ -35,7 +35,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: "帖子已更新。"
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: t("mcweb.flash.post_updated")
       else
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
       end
@@ -43,17 +43,17 @@ module Community
 
     def destroy
       unless PollParticipation.visible?(topic: @post.topic, user: current_user)
-        return redirect_to root_path, alert: "主题不可用。"
+        return redirect_to root_path, alert: t("mcweb.flash.topic_unavailable")
       end
 
       unless can_delete_post?(@post, current_user)
-        return redirect_to forum_topic_path(@post.topic), alert: "无权删除此帖子。"
+        return redirect_to forum_topic_path(@post.topic), alert: t("mcweb.flash.cannot_delete_post")
       end
 
       topic = @post.topic
       @post.soft_delete!
       Community::SyncTopicLastPost.call(topic: topic)
-      redirect_to forum_topic_path(topic), notice: "帖子已删除。"
+      redirect_to forum_topic_path(topic), notice: t("mcweb.flash.post_deleted")
     end
 
     def toggle_reaction
@@ -74,7 +74,7 @@ module Community
       result = Community::TogglePostBookmark.call(user: current_user, post: @post)
 
       if result.success?
-        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: result.value[:bookmarked] ? "已加入书签。" : "已移除书签。"
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: result.value[:bookmarked] ? t("mcweb.flash.bookmark_added") : t("mcweb.flash.bookmark_removed")
       else
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
       end
@@ -90,7 +90,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: "帖子已更新。"
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: t("mcweb.flash.post_updated")
       else
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
       end
@@ -100,7 +100,7 @@ module Community
       return head :not_found unless PostAccess.readable?(post: @post, user: current_user)
 
       unless can_view_edits?
-        return redirect_to forum_topic_path(@post.topic), alert: "无权查看编辑历史。"
+        return redirect_to forum_topic_path(@post.topic), alert: t("mcweb.flash.cannot_view_edit_history")
       end
 
       edits = @post.edits.includes(:editor).order(created_at: :desc)
@@ -133,7 +133,7 @@ module Community
       result = Community::RestorePostEdit.call(user: current_user, edit: edit)
 
       if result.success?
-        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: "已恢复至选定版本。"
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: t("mcweb.flash.post_restored_version")
       else
         redirect_to edits_forum_post_path(@post), alert: service_error_message(result)
       end
@@ -143,7 +143,7 @@ module Community
       result = Community::RestorePost.call(actor: current_user, post: @post)
 
       if result.success?
-        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: "帖子已恢复。"
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: t("mcweb.flash.post_restored")
       else
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
       end
@@ -161,7 +161,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(result.value), notice: "已创建新主题。"
+        redirect_to forum_topic_path(result.value), notice: t("mcweb.flash.topic_created_from_post")
       else
         redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), alert: service_error_message(result)
       end

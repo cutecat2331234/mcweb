@@ -1,11 +1,11 @@
-<h2>订单已发货</h2>
-<p>您好 <%= @order.user.username %>，</p>
-<p>订单 <strong><%= @order.order_number %></strong> 已发货。</p>
+<h2><%= t("mcweb.mail.commerce.order_shipped.heading") %></h2>
+<p><%= t("mcweb.mail.greeting_formal", username: @order.user.username) %></p>
+<p><%= t("mcweb.mail.commerce.order_shipped.body", number: @order.order_number) %></p>
 <% if @order.tracking_number.present? %>
-  <p>承运商：<strong><%= @order.shipping_carrier.presence || "快递" %></strong></p>
-  <p>物流单号：<strong><%= @order.tracking_number %></strong></p>
+  <p><%= t("mcweb.mail.commerce.track_carrier", carrier: @order.shipping_carrier.presence || t("mcweb.mail.commerce.default_carrier")) %></p>
+  <p><%= t("mcweb.mail.commerce.track_number", number: @order.tracking_number) %></p>
   <% if @tracking_url.present? %>
-    <p><a href="<%= @tracking_url %>">点击查询物流</a></p>
+    <p><a href="<%= @tracking_url %>"><%= t("mcweb.mail.commerce.track_url") %></a></p>
   <% end %>
 <% end %>
 <%= render partial: "commerce/order_mailer/order_details", locals: { order: @order } %>

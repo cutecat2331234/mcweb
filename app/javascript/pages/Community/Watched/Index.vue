@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -9,6 +10,8 @@ import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   topics: TopicListItem[]
@@ -24,15 +27,15 @@ function changeSort(value: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '关注主题', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.watched.topicsBreadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="关注主题" subtitle="你正在关注的主题" />
+  <PageHeader :title="t('forum.watched.topicsTitle')" :subtitle="t('forum.watched.topicsSubtitle')" />
 
   <div class="mb-4 flex items-center gap-2">
-    <label class="text-sm text-muted-foreground">排序：</label>
+    <label class="text-sm text-muted-foreground">{{ t('forum.lists.sortLabel') }}</label>
     <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
   </div>
 

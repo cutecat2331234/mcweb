@@ -58,7 +58,7 @@ class Round76SavedSearchUnsubscribeTest < ActionDispatch::IntegrationTest
   test "digest email includes unsubscribe url" do
     content = File.read(Rails.root.join("app/views/community/forum_mailer/saved_search_digest.html.erb"))
     assert_includes content, "@unsubscribe_url"
-    assert_includes content, "一键关闭"
+    assert_includes content, "unsubscribe_search"
   end
 end
 

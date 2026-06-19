@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -7,6 +8,8 @@ import Badge from '@/components/ui/Badge.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 interface TagItem {
   name: string
@@ -41,12 +44,12 @@ function tagStyle(tag: TagItem) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '标签', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.tags.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="标签云" subtitle="按标签组与使用频率浏览" />
+  <PageHeader :title="t('forum.tags.title')" :subtitle="t('forum.tags.subtitle')" />
 
   <div v-if="tagGroups?.length" class="mb-8 space-y-6">
     <section v-for="group in tagGroups" :key="group.slug">
@@ -71,7 +74,7 @@ function tagStyle(tag: TagItem) {
   </div>
 
   <section v-if="ungroupedTags?.length">
-    <h2 v-if="tagGroups?.length" class="mb-2 text-sm font-semibold">其他标签</h2>
+    <h2 v-if="tagGroups?.length" class="mb-2 text-sm font-semibold">{{ t('forum.tags.otherTags') }}</h2>
     <div class="flex flex-wrap gap-3">
       <Link
         v-for="tag in ungroupedTags"
@@ -102,6 +105,6 @@ function tagStyle(tag: TagItem) {
   </div>
 
   <p v-else-if="!tagGroups?.length && !ungroupedTags?.length" class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    暂无标签。
+    {{ t('forum.tags.empty') }}
   </p>
 </template>

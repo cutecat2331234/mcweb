@@ -51,18 +51,18 @@ module Admin
           metadata: { keys: settings_params.keys + (params[:shipping_methods].present? ? [ "store.shipping_methods" ] : []) }
         )
 
-        redirect_to admin_store_settings_path, notice: "商城设置已保存。"
+        redirect_to admin_store_settings_path, notice: t("mcweb.flash.store_settings_saved")
       rescue ArgumentError, JSON::ParserError => e
-        redirect_to admin_store_settings_path, alert: "保存失败：#{e.message}"
+        redirect_to admin_store_settings_path, alert: t("mcweb.flash.store_settings_save_failed", message: e.message)
       end
 
       def test_webhook
         event_type = params[:event].to_s.presence || "order.test"
         result = Commerce::DispatchTestOrderWebhook.call(event_type: event_type)
         if result.success?
-          redirect_to admin_store_settings_path, notice: "测试 Webhook 已加入发送队列（#{result.value[:event_type]}）。"
+          redirect_to admin_store_settings_path, notice: t("mcweb.flash.webhook_test_queued", label: result.value[:event_type])
         else
-          redirect_to admin_store_settings_path, alert: result.error || "测试发送失败。"
+          redirect_to admin_store_settings_path, alert: result.error || t("mcweb.flash.webhook_test_failed")
         end
       end
 
@@ -70,9 +70,9 @@ module Admin
         result = Commerce::BatchTestOrderWebhooks.call
         if result.success?
           redirect_to admin_store_settings_path,
-                      notice: "已加入 #{result.value[:queued]}/#{result.value[:total]} 条订单 Webhook 测试队列。"
+                      notice: t("mcweb.flash.webhook_batch_order_test_queued", queued: result.value[:queued], total: result.value[:total])
         else
-          redirect_to admin_store_settings_path, alert: result.error || "批量测试失败。"
+          redirect_to admin_store_settings_path, alert: result.error || t("mcweb.flash.webhook_batch_test_failed")
         end
       end
 

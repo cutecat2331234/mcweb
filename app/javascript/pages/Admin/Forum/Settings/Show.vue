@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { useForm, router } from '@inertiajs/vue3'
 import { ref, onBeforeUnmount, computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -12,6 +13,8 @@ import { confirm } from '@/lib/useConfirm'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 export interface ForumSettingItem {
   key: string
@@ -77,7 +80,7 @@ const form = useForm({
 })
 
 const savedSearchOptions = computed(() => [
-  { value: '', label: '通用测试载荷' },
+  { value: '', label: t('admin.forumSettings.genericPayload') },
   ...(props.savedSearchesForTest || []).map((search) => ({ value: String(search.id), label: search.name })),
 ])
 
@@ -87,8 +90,8 @@ function submit() {
 
 async function sendTestWebhook() {
   const ok = await confirm({
-    title: '发送 Webhook 测试',
-    message: '向配置的 Webhook URL 发送 saved_search.match 测试事件？',
+    title: t('admin.forumSettings.sendWebhookTestTitle'),
+    message: t('admin.forumSettings.sendWebhookTestConfirm'),
   })
   if (!props.testWebhookUrl || !ok) return
   const data = selectedSavedSearchId.value ? { saved_search_id: selectedSavedSearchId.value } : {}
@@ -99,8 +102,8 @@ async function sendTestWebhook() {
 
 async function sendTestAllWebhooks() {
   const ok = await confirm({
-    title: '批量发送 Webhook 测试',
-    message: '向配置的 Webhook URL 批量发送最多 20 条保存搜索测试事件？',
+    title: t('admin.forumSettings.batchWebhookTestTitle'),
+    message: t('admin.forumSettings.batchWebhookTestConfirm'),
   })
   if (!props.testAllWebhooksUrl || !ok) return
   router.post(props.testAllWebhooksUrl, {}, {
@@ -110,7 +113,7 @@ async function sendTestAllWebhooks() {
 </script>
 
 <template>
-  <PageHeader title="论坛设置" subtitle="私信、警告、反应与主题行为（对标 Discourse / XenForo 站点选项）" />
+  <PageHeader :title="t('admin.forumSettings.title')" :subtitle="t('admin.forumSettings.subtitle')" />
 
   <form class="max-w-xl space-y-4" @submit.prevent="submit">
     <div v-for="setting in settings" :key="setting.key" class="rounded-lg border p-4 space-y-2">
@@ -122,11 +125,11 @@ async function sendTestAllWebhooks() {
           :model-value="form.settings[setting.key] === 'true'"
           @update:model-value="(v) => { form.settings[setting.key] = v ? 'true' : 'false' }"
         />
-        启用
+        {{ t('admin.common.enable') }}
       </label>
       <Input v-else :id="setting.key" v-model="form.settings[setting.key]" />
     </div>
-    <Button type="submit" :disabled="form.processing">保存论坛设置</Button>
+    <Button type="submit" :disabled="form.processing">{{ t('admin.forumSettings.save') }}</Button>
     <template v-if="testWebhookUrl">
       <Select
         v-if="savedSearchesForTest?.length"
@@ -136,7 +139,7 @@ async function sendTestAllWebhooks() {
         size="sm"
       />
       <Button type="button" variant="outline" class="ml-2" @click="sendTestWebhook">
-        发送 Webhook 测试
+        {{ t('admin.forumSettings.sendWebhookTest') }}
       </Button>
       <Button
         v-if="testAllWebhooksUrl && savedSearchesForTest?.length"
@@ -145,11 +148,11 @@ async function sendTestAllWebhooks() {
         class="ml-2"
         @click="sendTestAllWebhooks"
       >
-        批量测试保存搜索
+        {{ t('admin.forumSettings.batchWebhookTest') }}
       </Button>
       <p v-if="lastTestWebhookDisplay" class="mt-2 text-xs text-muted-foreground">
-        最近测试：{{ lastTestWebhookDisplay.event_type }} · {{ lastTestWebhookDisplay.status }}
-        <span v-if="lastTestWebhookDisplay.response_code != null"> · HTTP {{ lastTestWebhookDisplay.response_code }}</span>
+        {{ t('admin.forumSettings.lastTest', { event: lastTestWebhookDisplay.event_type, status: lastTestWebhookDisplay.status }) }}
+        <span v-if="lastTestWebhookDisplay.response_code != null">{{ t('admin.forumSettings.lastTestHttp', { code: lastTestWebhookDisplay.response_code }) }}</span>
         · {{ lastTestWebhookDisplay.created_at }}
       </p>
     </template>

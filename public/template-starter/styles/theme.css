@@ -7,5 +7,6 @@
 }
 
 .portal-themed header {
-  background: var(--template-portal-header-bg, rgba(15, 23, 42, 0.95));
+  background: color-mix(in oklch, var(--background) 94%, transparent);
+  backdrop-filter: blur(12px);
 }

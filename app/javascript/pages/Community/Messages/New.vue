@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -12,6 +13,8 @@ import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   group?: boolean
@@ -84,24 +87,24 @@ function submitMessage() {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '私信', href: routes.forumMessages },
-    { label: group ? '新建群组' : '发私信', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.messages.title'), href: routes.forumMessages },
+    { label: group ? t('forum.messages.breadcrumbGroup') : t('forum.messages.breadcrumbDm'), current: true },
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-    <PageHeader :title="group ? '新建群组私信' : '发私信'" />
+    <PageHeader :title="group ? t('forum.messages.titleGroup') : t('forum.messages.titleDm')" />
     <Button v-if="!group" as-child variant="outline" size="sm">
-      <Link :href="routes.forumMessagesGroupNew">群组私信</Link>
+      <Link :href="routes.forumMessagesGroupNew">{{ t('forum.messages.groupLink') }}</Link>
     </Button>
     <Button v-else as-child variant="outline" size="sm">
-      <Link :href="routes.forumMessagesNew">一对一私信</Link>
+      <Link :href="routes.forumMessagesNew">{{ t('forum.messages.dmLink') }}</Link>
     </Button>
   </div>
 
   <p v-if="canSendPm === false" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-    新成员（信任等级 0）暂时无法发送私信，多发帖参与社区即可解锁。
+    {{ t('forum.messages.trustLevelBlocked') }}
   </p>
 
   <p v-if="pmBlocked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
@@ -119,23 +122,23 @@ function submitMessage() {
   <form class="max-w-lg space-y-4" @submit.prevent="submitMessage">
     <template v-if="group">
       <div class="space-y-2">
-        <Label for="title">群组名称</Label>
-        <Input id="title" v-model="form.conversation.title" required placeholder="例如：活动讨论组" />
+        <Label for="title">{{ t('forum.messages.groupTitle') }}</Label>
+        <Input id="title" v-model="form.conversation.title" required :placeholder="t('forum.messages.groupTitlePlaceholder')" />
         <p v-if="fieldError('title')" class="text-sm text-destructive">{{ fieldError('title') }}</p>
       </div>
       <div class="space-y-2">
-        <Label for="recipients">成员用户名（逗号分隔）</Label>
+        <Label for="recipients">{{ t('forum.messages.recipients') }}</Label>
         <Input id="recipients" v-model="form.conversation.recipients" required placeholder="user1, user2" />
         <p v-if="fieldError('recipients')" class="text-sm text-destructive">{{ fieldError('recipients') }}</p>
       </div>
     </template>
     <div v-else class="space-y-2">
-      <Label for="recipient">收件人用户名</Label>
+      <Label for="recipient">{{ t('forum.messages.recipient') }}</Label>
       <Input id="recipient" v-model="form.conversation.recipient" required placeholder="username" />
       <p v-if="fieldError('recipient')" class="text-sm text-destructive">{{ fieldError('recipient') }}</p>
     </div>
     <div class="space-y-2">
-      <Label>消息内容</Label>
+      <Label>{{ t('forum.messages.body') }}</Label>
       <MarkdownEditor v-model="form.conversation.body" :show-mention="false" />
       <p v-if="fieldError('body')" class="text-sm text-destructive">{{ fieldError('body') }}</p>
       <p v-else-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
@@ -143,9 +146,9 @@ function submitMessage() {
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
     </div>
     <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing || !canSend">发送</Button>
+      <Button type="submit" :disabled="form.processing || !canSend">{{ t('forum.messages.send') }}</Button>
       <Button as-child variant="outline">
-        <Link :href="routes.forumMessages">取消</Link>
+        <Link :href="routes.forumMessages">{{ t('forum.topics.cancel') }}</Link>
       </Button>
     </div>
   </form>

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination from '@/components/portal/Pagination.vue'
@@ -9,6 +10,7 @@ import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
+import TableRow from '@/components/ui/TableRow.vue'
 import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import Input from '@/components/ui/Input.vue'
@@ -16,6 +18,8 @@ import Button from '@/components/ui/Button.vue'
 import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 export interface AdminColumn {
   key: string
@@ -98,7 +102,7 @@ watch(
 async function submitBulkRetry(action: BulkRetryAction) {
   const ok = await confirm({
     title: action.label,
-    message: `确定要${action.label}吗？`,
+    message: t('admin.common.confirmAction', { action: action.label }),
   })
   if (!ok) return
   router.post(action.href, { ids: action.ids })
@@ -147,8 +151,8 @@ function bulkModerate(action: string) {
 async function bulkOrder(action: string) {
   if (!props.bulkOrderUrl || selectedPublicIds.value.length === 0) return
   const ok = await confirm({
-    title: '批量操作',
-    message: '确定执行此批量操作吗？',
+    title: t('admin.common.bulkAction'),
+    message: t('admin.common.bulkConfirm'),
   })
   if (!ok) return
   router.patch(props.bulkOrderUrl, {
@@ -165,7 +169,7 @@ async function bulkOrder(action: string) {
   <div class="mb-4 flex items-center justify-between">
     <PageHeader :title="title" :subtitle="subtitle" />
     <div class="flex gap-2">
-      <a v-if="exportUrl" :href="exportUrl" class="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-muted">导出 CSV</a>
+      <a v-if="exportUrl" :href="exportUrl" class="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-muted">{{ t('admin.common.exportCsv') }}</a>
       <Link
         v-for="action in actions || []"
         :key="action.href"
@@ -239,14 +243,14 @@ async function bulkOrder(action: string) {
 
   <form v-if="dateFilter" class="mb-4 flex flex-wrap items-end gap-2" @submit.prevent="applyDateFilter">
     <label class="text-sm">
-      <span class="mb-1 block text-muted-foreground">起始日期</span>
+      <span class="mb-1 block text-muted-foreground">{{ t('admin.common.dateFrom') }}</span>
       <Input v-model="dateFrom" type="date" class="w-40" />
     </label>
     <label class="text-sm">
-      <span class="mb-1 block text-muted-foreground">结束日期</span>
+      <span class="mb-1 block text-muted-foreground">{{ t('admin.common.dateTo') }}</span>
       <Input v-model="dateTo" type="date" class="w-40" />
     </label>
-    <Button type="submit" variant="outline" size="sm">筛选</Button>
+    <Button type="submit" variant="outline" size="sm">{{ t('admin.common.filter') }}</Button>
   </form>
 
   <div v-if="rows.length" class="rounded-lg border">
@@ -289,7 +293,7 @@ async function bulkOrder(action: string) {
   </div>
 
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    暂无数据。
+    {{ t('admin.ui.noResults') }}
   </p>
 
   <Pagination v-if="pagination && pagination.pages > 1" :meta="pagination" class="mt-4" />

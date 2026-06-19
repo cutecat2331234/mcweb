@@ -1,9 +1,9 @@
 <table style="width:100%;border-collapse:collapse;margin:1rem 0;">
   <thead>
     <tr>
-      <th style="border:1px solid #ddd;padding:0.5rem;text-align:left;">商品</th>
-      <th style="border:1px solid #ddd;padding:0.5rem;text-align:left;">数量</th>
-      <th style="border:1px solid #ddd;padding:0.5rem;text-align:left;">小计</th>
+      <th style="border:1px solid #ddd;padding:0.5rem;text-align:left;"><%= t("mcweb.mail.commerce.product_col") %></th>
+      <th style="border:1px solid #ddd;padding:0.5rem;text-align:left;"><%= t("mcweb.mail.commerce.qty_col") %></th>
+      <th style="border:1px solid #ddd;padding:0.5rem;text-align:left;"><%= t("mcweb.mail.commerce.line_total_col") %></th>
     </tr>
   </thead>
   <tbody>
@@ -21,27 +21,28 @@
 </table>
 
 <% if order.shipping_address.present? && order.shipping_address.values.any?(&:present?) %>
-  <p><strong>收货地址：</strong><%= format_shipping_address(order.shipping_address) %></p>
+  <p><%= t("mcweb.mail.commerce.shipping_address_label", address: format_shipping_address(order.shipping_address)) %></p>
 <% end %>
 
 <% if order.shipping_method.present? %>
-  <p><strong>配送方式：</strong><%= Commerce::ShippingMethods.label_for(order.shipping_method) %></p>
+  <p><%= t("mcweb.mail.commerce.shipping_method_label", method: Commerce::ShippingMethods.label_for(order.shipping_method)) %></p>
   <% estimate = Commerce::ShippingMethods.delivery_estimate_label(Commerce::ShippingMethods.find(order.shipping_method)) %>
   <% if estimate.present? %>
-    <p><strong>预计送达：</strong><%= estimate %></p>
+    <p><%= t("mcweb.mail.commerce.delivery_estimate_label", estimate: estimate) %></p>
   <% end %>
 <% end %>
 
+<% currency_unit = order.currency == "CNY" ? "¥" : "$" %>
 <% if order.discount_cents.positive? %>
-  <p>优惠<%= order.coupon ? " (#{order.coupon.code})" : "" %>：−<%= number_to_currency(order.discount_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+  <p><%= t("mcweb.mail.commerce.discount_line", code: order.coupon ? " (#{order.coupon.code})" : "", amount: number_to_currency(order.discount_cents / 100.0, unit: currency_unit)) %></p>
 <% end %>
 <% if order.gift_card_amount_cents.positive? %>
-  <p>礼品卡<%= order.gift_card ? " (#{order.gift_card.code})" : "" %>：−<%= number_to_currency(order.gift_card_amount_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+  <p><%= t("mcweb.mail.commerce.gift_card_line", code: order.gift_card ? " (#{order.gift_card.code})" : "", amount: number_to_currency(order.gift_card_amount_cents / 100.0, unit: currency_unit)) %></p>
 <% end %>
-<p>小计：<%= number_to_currency(order.subtotal_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+<p><%= t("mcweb.mail.commerce.subtotal_line", amount: number_to_currency(order.subtotal_cents / 100.0, unit: currency_unit)) %></p>
 <% if order.shipping_cents.positive? %>
-  <p>运费：<%= number_to_currency(order.shipping_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></p>
+  <p><%= t("mcweb.mail.commerce.shipping_line", amount: number_to_currency(order.shipping_cents / 100.0, unit: currency_unit)) %></p>
 <% elsif order.shipping_cents.zero? && order.subtotal_cents.positive? %>
-  <p>运费：免运费</p>
+  <p><%= t("mcweb.mail.commerce.shipping_line", amount: t("mcweb.mail.commerce.free_shipping")) %></p>
 <% end %>
-<p><strong>合计：<%= number_to_currency(order.total_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></strong></p>
+<p><strong><%= t("mcweb.mail.commerce.total_line", amount: number_to_currency(order.total_cents / 100.0, unit: currency_unit)) %></strong></p>

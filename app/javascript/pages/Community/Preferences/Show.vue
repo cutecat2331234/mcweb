@@ -1,9 +1,11 @@
 <script setup lang="ts">
 import { Link, router, useForm } from '@inertiajs/vue3'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Label from '@/components/ui/Label.vue'
@@ -13,6 +15,8 @@ import { routes } from '@/lib/routes'
 import { readCsrfToken } from '@/lib/csrf'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 export interface SavedSearchItem {
   id: number
@@ -153,12 +157,22 @@ async function saveRenameSearch(search: SavedSearchItem) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '通知偏好', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('preferences.title'), current: true },
   ]" />
 
-  <PageHeader title="通知偏好" subtitle="管理站内通知与邮件通知" />
+  <PageHeader :title="t('preferences.title')" :subtitle="t('preferences.subtitle')" />
+
+  <section class="mb-6 max-w-lg rounded-lg border p-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-sm font-medium">{{ t('preferences.language') }}</h2>
+        <p class="mt-1 text-sm text-muted-foreground">{{ t('preferences.languageHint') }}</p>
+      </div>
+      <LanguageSwitcher />
+    </div>
+  </section>
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div
@@ -170,28 +184,28 @@ async function saveRenameSearch(search: SavedSearchItem) {
       <div class="flex flex-wrap gap-6">
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="form.preferences[pref.notification_type].in_app" />
-          站内通知
+          {{ t('preferences.inApp') }}
         </label>
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="form.preferences[pref.notification_type].email" />
-          邮件通知
+          {{ t('preferences.email') }}
         </label>
       </div>
     </div>
 
     <div class="rounded-lg border p-4">
-      <Label for="watch-email-mode" class="mb-2 block text-sm font-medium">关注即时邮件</Label>
+      <Label for="watch-email-mode" class="mb-2 block text-sm font-medium">{{ t('preferences.watchEmailMode') }}</Label>
       <Select
         id="watch-email-mode"
         v-model="form.watch_email_mode"
         :options="watch_email_mode_options"
         class="w-full"
       />
-      <p class="mt-2 text-xs text-muted-foreground">控制关注主题/分区时是否立即收到邮件（对标 Discourse 通知级别）。</p>
+      <p class="mt-2 text-xs text-muted-foreground">{{ t('preferences.watchEmailModeHint') }}</p>
     </div>
 
     <div v-if="notificationLevelGuide?.length" class="rounded-lg border p-4">
-      <p class="mb-3 text-sm font-medium">主题/分区/标签通知级别说明</p>
+      <p class="mb-3 text-sm font-medium">{{ t('preferences.notificationLevelGuide') }}</p>
       <ul class="space-y-2 text-sm text-muted-foreground">
         <li v-for="item in notificationLevelGuide" :key="item.value">
           <span class="font-medium text-foreground">{{ item.label }}</span> — {{ item.description }}
@@ -200,26 +214,26 @@ async function saveRenameSearch(search: SavedSearchItem) {
     </div>
 
     <div class="rounded-lg border p-4">
-      <Label for="digest" class="mb-2 block text-sm font-medium">邮件摘要</Label>
+      <Label for="digest" class="mb-2 block text-sm font-medium">{{ t('preferences.digest') }}</Label>
       <Select
         id="digest"
         v-model="form.digest_frequency"
         :options="digest_options"
         class="w-full"
       />
-      <p class="mt-2 text-xs text-muted-foreground">摘要将汇总未读的论坛通知，减少即时邮件打扰。</p>
+      <p class="mt-2 text-xs text-muted-foreground">{{ t('preferences.digestHint') }}</p>
       <label v-if="form.digest_frequency !== 'none'" class="mt-3 flex items-center gap-2 text-sm">
         <Checkbox v-model="form.digest_watched_only" />
-        仅包含我关注的分区/主题/标签
+        {{ t('preferences.digestWatchedOnly') }}
       </label>
     </div>
 
-    <Button type="submit" :disabled="form.processing">保存</Button>
+    <Button type="submit" :disabled="form.processing">{{ t('preferences.save') }}</Button>
   </form>
 
   <section v-if="savedSearches?.length" class="mt-8 max-w-lg">
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-sm font-semibold">保存的搜索与每日提醒</h2>
+      <h2 class="text-sm font-semibold">{{ t('preferences.savedSearchesTitle') }}</h2>
       <a
         v-if="savedSearchesOpmlUrl"
         :href="savedSearchesOpmlUrl"
@@ -227,10 +241,10 @@ async function saveRenameSearch(search: SavedSearchItem) {
         target="_blank"
         rel="noopener noreferrer"
       >
-        导出 OPML
+        {{ t('preferences.exportOpml') }}
       </a>
     </div>
-    <p class="mb-4 text-xs text-muted-foreground">开启后，当搜索条件匹配到新主题时，每天会收到一封邮件摘要（对标 Discourse 保存搜索提醒）。</p>
+    <p class="mb-4 text-xs text-muted-foreground">{{ t('preferences.savedSearchesHint') }}</p>
     <ul class="space-y-2">
       <li
         v-for="search in savedSearches"
@@ -246,15 +260,15 @@ async function saveRenameSearch(search: SavedSearchItem) {
                 @keydown.enter="saveRenameSearch(search)"
                 @keydown.escape="cancelRenameSearch"
               />
-              <Button type="button" size="sm" variant="outline" :disabled="renamingSearchId === search.id" @click="saveRenameSearch(search)">保存</Button>
-              <Button type="button" size="sm" variant="ghost" @click="cancelRenameSearch">取消</Button>
+              <Button type="button" size="sm" variant="outline" :disabled="renamingSearchId === search.id" @click="saveRenameSearch(search)">{{ t('common.save') }}</Button>
+              <Button type="button" size="sm" variant="ghost" @click="cancelRenameSearch">{{ t('common.cancel') }}</Button>
             </div>
           </template>
           <template v-else>
             <Link :href="search.url" class="font-medium hover:underline">{{ search.name }}</Link>
-            <button type="button" class="ml-2 text-xs text-muted-foreground hover:text-foreground" title="重命名" @click="startRenameSearch(search)">✎</button>
+            <button type="button" class="ml-2 text-xs text-muted-foreground hover:text-foreground" :title="t('preferences.rename')" @click="startRenameSearch(search)">✎</button>
           </template>
-          <p v-if="search.query && editingSearchId !== search.id" class="truncate text-xs text-muted-foreground">关键词：{{ search.query }}</p>
+          <p v-if="search.query && editingSearchId !== search.id" class="truncate text-xs text-muted-foreground">{{ t('preferences.keywords') }}{{ t('common.colon') }}{{ search.query }}</p>
           <p v-if="search.filter_labels?.length && editingSearchId !== search.id" class="mt-1 flex flex-wrap gap-1">
             <span
               v-for="label in search.filter_labels"
@@ -272,7 +286,7 @@ async function saveRenameSearch(search: SavedSearchItem) {
               :disabled="togglingId === search.id"
               @update:model-value="toggleSavedSearchNotify(search)"
             />
-            每日邮件
+            {{ t('preferences.dailyEmail') }}
           </label>
           <a
             v-if="search.rss_url"
@@ -283,40 +297,40 @@ async function saveRenameSearch(search: SavedSearchItem) {
           >
             RSS
           </a>
-          <span v-if="search.webhook_url" class="text-xs text-muted-foreground" title="已配置 Webhook">Webhook</span>
+          <span v-if="search.webhook_url" class="text-xs text-muted-foreground" :title="t('preferences.webhookConfigured')">Webhook</span>
           <button
             type="button"
             class="text-xs text-destructive hover:underline"
             @click="deleteSavedSearch(search.delete_url)"
           >
-            删除
+            {{ t('preferences.delete') }}
           </button>
         </div>
       </li>
     </ul>
     <p class="mt-3 text-xs text-muted-foreground">
-      <Link :href="routes.forumSearch" class="text-primary hover:underline">前往搜索页</Link>
-      创建或管理更多保存的搜索。
+      <Link :href="routes.forumSearch" class="text-primary hover:underline">{{ t('preferences.goToSearch') }}</Link>
+      {{ t('preferences.manageSavedSearches') }}
       <template v-if="savedSearchesOpmlUrl">
         ·
-        <a :href="savedSearchesOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">导出保存搜索 OPML</a>
+        <a :href="savedSearchesOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{{ t('preferences.exportSavedSearchesOpml') }}</a>
       </template>
       <template v-if="watchingOpmlUrl">
         ·
-        <a :href="watchingOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">导出关注订阅 OPML</a>
+        <a :href="watchingOpmlUrl" class="text-primary hover:underline" target="_blank" rel="noopener noreferrer">{{ t('preferences.exportWatchingOpml') }}</a>
       </template>
     </p>
   </section>
 
   <section v-if="savedSearchWebhookDeliveries?.length" class="mt-8 max-w-lg">
-    <h2 class="mb-3 text-sm font-semibold">保存搜索 Webhook 投递记录</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ t('preferences.webhookDeliveriesTitle') }}</h2>
     <ul class="space-y-2 text-xs">
       <li
         v-for="delivery in savedSearchWebhookDeliveries"
         :key="delivery.id"
         class="rounded-lg border px-3 py-2"
       >
-        <span class="font-medium">{{ delivery.search_name || '搜索' }}</span>
+        <span class="font-medium">{{ delivery.search_name || t('preferences.searchFallback') }}</span>
         — {{ delivery.status }}
         <span v-if="delivery.response_code" class="text-muted-foreground">({{ delivery.response_code }})</span>
         <span class="ml-2 text-muted-foreground">{{ delivery.created_at }}</span>
@@ -326,7 +340,7 @@ async function saveRenameSearch(search: SavedSearchItem) {
           class="mt-1 block text-xs text-primary hover:underline"
           @click="retryWebhook(delivery.retry_url)"
         >
-          重试发送
+          {{ t('preferences.retrySend') }}
         </button>
       </li>
     </ul>

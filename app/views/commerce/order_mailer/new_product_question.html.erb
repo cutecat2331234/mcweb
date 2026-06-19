@@ -1,5 +1,5 @@
-<p>您好 <%= @user.username %>，</p>
-<p>商品 <strong><%= @product.name %></strong> 收到新的用户提问：</p>
-<p><%= @question.body.truncate(300) %></p>
-<p>提问者：<%= @question.user.username %></p>
-<p><a href="<%= @url %>">前往回复</a></p>
+<p><%= t("mcweb.mail.greeting_formal", username: @user.username) %></p>
+<p><%= t("mcweb.mail.commerce.new_product_question.body", product: @product.name) %></p>
+<blockquote><%= simple_format(@question.body) %></blockquote>
+<p><%= t("mcweb.mail.commerce.new_product_question.asker", username: @question.user.username) %></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.commerce.go_reply") %></a></p>

@@ -58,9 +58,9 @@ module Admin
       def retry
         result = Community::AdminRetrySavedSearchWebhook.call(delivery: @delivery)
         if result.success?
-          redirect_to admin_forum_webhook_delivery_path(@delivery), notice: "Webhook 已重新加入发送队列。"
+          redirect_to admin_forum_webhook_delivery_path(@delivery), notice: t("mcweb.flash.webhook_requeued")
         else
-          redirect_to admin_forum_webhook_delivery_path(@delivery), alert: result.error || "重试失败。"
+          redirect_to admin_forum_webhook_delivery_path(@delivery), alert: result.error || t("mcweb.flash.webhook_retry_failed")
         end
       end
 
@@ -68,10 +68,10 @@ module Admin
         result = Community::BulkRetrySavedSearchWebhooks.call(delivery_ids: params[:ids])
         if result.success?
           redirect_to admin_forum_webhook_deliveries_path(webhook_filter_params),
-                      notice: "已重试 #{result.value[:queued]} 条失败投递。"
+                      notice: t("mcweb.flash.webhook_retry_queued", count: result.value[:queued])
         else
           redirect_to admin_forum_webhook_deliveries_path(webhook_filter_params),
-                      alert: result.error || "批量重试失败。"
+                      alert: result.error || t("mcweb.flash.webhook_batch_retry_failed")
         end
       end
 

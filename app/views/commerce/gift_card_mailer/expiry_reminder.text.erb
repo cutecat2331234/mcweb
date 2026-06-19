@@ -1,6 +1,6 @@
-您好 <%= @user.username %>，
+<%= t("mcweb.mail.greeting_formal", username: @user.username) %>
 
-您的礼品卡 <%= @card.code %> 将于 <%= l(@card.expires_at, format: :long) %> 到期。
-当前余额：<%= @card.balance_cents / 100.0 %> <%= @card.currency %>
+<%= t("mcweb.mail.commerce.gift_card.expiry_reminder", code: @card.code, time: l(@card.expires_at, format: :long)) %>
+<%= t("mcweb.mail.commerce.gift_card.current_balance", amount: @card.balance_cents / 100.0, currency: @card.currency) %>
 
-请尽快使用，避免过期失效。
+<%= t("mcweb.mail.commerce.gift_card.use_soon") %>

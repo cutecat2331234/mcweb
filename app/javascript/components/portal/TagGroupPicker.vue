@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 
 export interface TagOption {
   name: string
@@ -15,6 +16,8 @@ export interface TagGroupOption {
   required?: boolean
   tags: TagOption[]
 }
+
+const { t } = useI18n()
 
 const props = defineProps<{
   modelValue: string
@@ -74,9 +77,9 @@ function toggleTag(name: string, group?: TagGroupOption) {
 <template>
   <div class="space-y-3">
     <p v-if="missingRequiredGroups.length" class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
-      请从以下必填标签组中至少选一个标签：{{ missingRequiredGroups.map((g) => g.name).join('、') }}
+      {{ t('components.tagGroupPicker.missingRequired', { groups: missingRequiredGroups.map((g) => g.name).join(t('common.listSeparator')) }) }}
     </p>
-    <p v-if="atMaxTags" class="text-xs text-muted-foreground">已达标签上限（{{ maxTags ?? 5 }} 个）</p>
+    <p v-if="atMaxTags" class="text-xs text-muted-foreground">{{ t('components.tagGroupPicker.atMaxTags', { max: maxTags ?? 5 }) }}</p>
     <div v-for="group in tagGroups || []" :key="group.slug" class="rounded-md border p-3" :class="group.required ? 'border-amber-300/60' : ''">
       <div class="mb-2 flex items-center gap-2">
         <span
@@ -85,8 +88,8 @@ function toggleTag(name: string, group?: TagGroupOption) {
           :style="{ backgroundColor: group.color_hex }"
         />
         <span class="text-sm font-medium">{{ group.name }}</span>
-        <span v-if="group.required" class="text-xs text-amber-600">（必填组）</span>
-        <span v-else-if="group.one_per_topic" class="text-xs text-muted-foreground">（每组限选一个）</span>
+        <span v-if="group.required" class="text-xs text-amber-600">{{ t('components.tagGroupPicker.requiredGroup') }}</span>
+        <span v-else-if="group.one_per_topic" class="text-xs text-muted-foreground">{{ t('components.tagGroupPicker.onePerTopic') }}</span>
       </div>
       <div class="flex flex-wrap gap-2">
         <button
@@ -103,16 +106,16 @@ function toggleTag(name: string, group?: TagGroupOption) {
       </div>
     </div>
     <div class="space-y-1">
-      <label class="text-xs text-muted-foreground">已选标签（可手动编辑）</label>
+      <label class="text-xs text-muted-foreground">{{ t('components.tagGroupPicker.selectedTags') }}</label>
       <input
         :value="modelValue"
         class="h-9 w-full rounded-md border px-2 text-sm"
-        placeholder="例如：公告,活动"
+        :placeholder="t('components.tagGroupPicker.placeholder')"
         @input="emit('update:modelValue', ($event.target as HTMLInputElement).value)"
       />
     </div>
     <p v-if="!tagGroups?.length" class="text-xs text-muted-foreground">
-      暂无标签组，请使用逗号分隔输入标签。
+      {{ t('components.tagGroupPicker.noGroups') }}
     </p>
   </div>
 </template>

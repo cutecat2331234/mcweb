@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import Table from '@/components/ui/Table.vue'
@@ -16,9 +17,13 @@ import Label from '@/components/ui/Label.vue'
 import FileInput from '@/components/ui/FileInput.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
+import MinecraftProfileCard, { type MinecraftProfile } from '@/components/minecraft/MinecraftProfileCard.vue'
+import Badge from '@/components/ui/Badge.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   profile: {
@@ -89,7 +94,7 @@ const props = defineProps<{
     created_at: string
   }>
   postsPagination: PaginationMeta
-  activeTab: 'topics' | 'posts' | 'store' | 'assigned'
+  activeTab: 'topics' | 'posts' | 'store' | 'assigned' | 'minecraft'
   liked_posts: Array<{
     id: number
     body: string
@@ -122,7 +127,17 @@ const props = defineProps<{
     url: string
     created_at: string
   }>
+  account_type?: string | null
+  role_names?: string[]
+  game_permission_groups?: Array<{ key: string; label: string; source: string }>
+  minecraft?: MinecraftProfile
+  skin_mode?: string
+  profile_sections?: string[]
 }>()
+
+const profileSections = computed(() => props.profile_sections?.length
+  ? props.profile_sections
+  : [ 'minecraft', 'trust', 'roles', 'game_groups' ])
 
 type ProfileEditPanel = 'title' | 'bio' | 'signature' | null
 const profileEditPanel = ref<ProfileEditPanel>(null)
@@ -180,23 +195,27 @@ function uploadAvatar(file: File) {
   })
 }
 
-function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
+function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned' | 'minecraft') {
   router.get(routes.forumUser(props.profile.username), { tab }, { preserveState: true })
 }
 </script>
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
     { label: profile.username, current: true },
   ]" />
 
   <p v-if="profile.mute_info" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-    你当前被禁言（{{ profile.mute_info.section }}）{{ profile.mute_info.reason ? '：' + profile.mute_info.reason : '' }}，到期：{{ profile.mute_info.expires_at }}
+    {{ t('userProfile.mutedWithInfo', {
+      section: profile.mute_info.section,
+      reasonPart: profile.mute_info.reason ? t('userProfile.muteReasonPart', { reason: profile.mute_info.reason }) : '',
+      expires: profile.mute_info.expires_at,
+    }) }}
   </p>
   <p v-else-if="profile.is_muted" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-    你当前被禁言，暂时无法发帖。
+    {{ t('userProfile.mutedGeneric') }}
   </p>
 
   <section class="mb-8 overflow-hidden rounded-xl border bg-card">
@@ -223,30 +242,30 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
               </span>
             </div>
             <p class="text-sm text-muted-foreground">
-              @{{ profile.username }} · 加入于 {{ profile.member_since }}
-              <span v-if="profile.last_seen_at"> · 最后在线 {{ profile.last_seen_at }}</span>
-              <span v-if="profile.online"> · 在线</span>
+              @{{ profile.username }} · {{ t('userProfile.joinedAt') }} {{ profile.member_since }}
+              <span v-if="profile.last_seen_at"> · {{ t('userProfile.lastSeen') }} {{ profile.last_seen_at }}</span>
+              <span v-if="profile.online"> · {{ t('userProfile.online') }}</span>
               · {{ profile.trust_name }} (Lv.{{ profile.trust_level }})
             </p>
             <div class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm lg:justify-start">
-              <span><strong>{{ profile.topics_count }}</strong> 主题</span>
-              <span><strong>{{ profile.posts_count }}</strong> 帖子</span>
-              <span v-if="profile.orders_count"><strong>{{ profile.orders_count }}</strong> 订单</span>
+              <span><strong>{{ profile.topics_count }}</strong> {{ t('userProfile.topics') }}</span>
+              <span><strong>{{ profile.posts_count }}</strong> {{ t('userProfile.posts') }}</span>
+              <span v-if="profile.orders_count"><strong>{{ profile.orders_count }}</strong> {{ t('userProfile.orders') }}</span>
               <Link v-if="profile.followers_url" :href="profile.followers_url" class="hover:underline">
-                <strong>{{ profile.followers_count ?? 0 }}</strong> 粉丝
+                <strong>{{ profile.followers_count ?? 0 }}</strong> {{ t('userProfile.followers') }}
               </Link>
-              <span><strong>{{ profile.likes_received }}</strong> 获赞</span>
-              <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> 警告积分</span>
+              <span><strong>{{ profile.likes_received }}</strong> {{ t('userProfile.likesReceived') }}</span>
+              <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> {{ t('userProfile.warningPoints') }}</span>
               <span v-if="profile.store_credit_label">
-                商店余额 <strong>{{ profile.store_credit_label }}</strong>
-                <Link v-if="profile.store_wallet_url" :href="profile.store_wallet_url" class="ml-1 text-primary hover:underline">钱包</Link>
+                {{ t('userProfile.storeCredit') }} <strong>{{ profile.store_credit_label }}</strong>
+                <Link v-if="profile.store_wallet_url" :href="profile.store_wallet_url" class="ml-1 text-primary hover:underline">{{ t('userProfile.wallet') }}</Link>
               </span>
             </div>
           </div>
 
           <div class="flex flex-wrap justify-center gap-2 lg:justify-end">
             <Button v-if="profile.message_url" as-child size="sm">
-              <Link :href="profile.message_url">发私信</Link>
+              <Link :href="profile.message_url">{{ t('userProfile.sendMessage') }}</Link>
             </Button>
             <Button
               v-if="profile.follow_url"
@@ -255,7 +274,7 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
               :variant="profile.is_following ? 'outline' : 'default'"
               @click="toggleFollow"
             >
-              {{ profile.is_following ? '取消关注' : '关注' }}
+              {{ profile.is_following ? t('userProfile.unfollow') : t('userProfile.follow') }}
             </Button>
             <Button
               v-if="profile.block_url"
@@ -264,7 +283,7 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
               :variant="profile.is_blocked ? 'outline' : 'destructive'"
               @click="toggleBlock"
             >
-              {{ profile.is_blocked ? '取消拉黑' : '拉黑用户' }}
+              {{ profile.is_blocked ? t('userProfile.unblock') : t('userProfile.block') }}
             </Button>
             <Button
               v-if="profile.ignore_url"
@@ -273,45 +292,71 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
               :variant="profile.is_ignored ? 'outline' : 'secondary'"
               @click="toggleIgnore"
             >
-              {{ profile.is_ignored ? '取消忽略' : '忽略用户' }}
+              {{ profile.is_ignored ? t('userProfile.unignore') : t('userProfile.ignore') }}
             </Button>
             <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('title')">
-              {{ profileEditPanel === 'title' ? '收起头衔' : '编辑头衔' }}
+              {{ profileEditPanel === 'title' ? t('userProfile.collapseTitle') : t('userProfile.editTitle') }}
             </Button>
             <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('bio')">
-              {{ profileEditPanel === 'bio' ? '收起简介' : '编辑简介' }}
+              {{ profileEditPanel === 'bio' ? t('userProfile.collapseBio') : t('userProfile.editBio') }}
             </Button>
             <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('signature')">
-              {{ profileEditPanel === 'signature' ? '收起签名' : '编辑签名' }}
+              {{ profileEditPanel === 'signature' ? t('userProfile.collapseSignature') : t('userProfile.editSignature') }}
             </Button>
             <template v-if="profile.can_edit">
-              <FileInput accept="image/*" button-label="更换头像" @change="uploadAvatar" />
-              <Button type="button" size="sm" variant="outline" @click="removeAvatar">恢复默认头像</Button>
+              <FileInput accept="image/*" :button-label="t('userProfile.changeAvatar')" @change="uploadAvatar" />
+              <Button type="button" size="sm" variant="outline" @click="removeAvatar">{{ t('userProfile.resetAvatar') }}</Button>
             </template>
           </div>
         </div>
 
         <div v-if="warnings?.length" class="max-w-xl rounded-lg border p-4">
-          <h3 class="mb-2 text-sm font-semibold">社区警告记录</h3>
+          <h3 class="mb-2 text-sm font-semibold">{{ t('userProfile.warningsTitle') }}</h3>
           <ul class="space-y-2 text-sm">
             <li v-for="(warning, index) in warnings" :key="index" class="flex justify-between gap-4 border-b pb-2 last:border-0 last:pb-0">
               <span>{{ warning.reason }}</span>
-              <span class="shrink-0 text-muted-foreground">{{ warning.points }} 点 · {{ warning.issuer }} · {{ warning.created_at }}</span>
+              <span class="shrink-0 text-muted-foreground">{{ warning.points }} {{ t('userProfile.warningPointsUnit') }} · {{ warning.issuer }} · {{ warning.created_at }}</span>
             </li>
           </ul>
         </div>
 
-        <div v-if="profile.trust_progress" class="max-w-md rounded-lg border p-3 text-sm">
-          <p class="font-medium">{{ profile.trust_progress.name }} (Lv.{{ profile.trust_progress.level }})</p>
-          <p v-if="profile.trust_progress.posts_needed > 0" class="mt-1 text-muted-foreground">
-            再发 {{ profile.trust_progress.posts_needed }} 帖可升至 {{ profile.trust_progress.next_level_name }}
-          </p>
-          <p v-else class="mt-1 text-muted-foreground">已达最高信任等级</p>
-          <p class="mt-1 text-xs text-muted-foreground">
-            {{ profile.trust_progress.can_send_pm ? '可发私信' : 'Lv.1 后可发私信' }} ·
-            {{ profile.trust_progress.can_post_links ? '可发链接' : 'Lv.1 后可发链接' }}
-          </p>
-        </div>
+        <template v-for="section in profileSections" :key="section">
+          <div v-if="section === 'trust' && profile.trust_progress" class="max-w-md rounded-lg border p-3 text-sm">
+            <p class="font-medium">{{ t('userProfile.trustLevel') }} · {{ profile.trust_progress.name }} (Lv.{{ profile.trust_progress.level }})</p>
+            <p v-if="profile.trust_progress.posts_needed > 0" class="mt-1 text-muted-foreground">
+              {{ t('userProfile.trustPostsNeeded', { count: profile.trust_progress.posts_needed, next: profile.trust_progress.next_level_name }) }}
+            </p>
+            <p v-else class="mt-1 text-muted-foreground">{{ t('userProfile.trustMaxLevel') }}</p>
+          </div>
+
+          <div v-else-if="section === 'account_type' && account_type" class="max-w-md rounded-lg border p-3 text-sm">
+            <p class="font-medium">{{ t('userProfile.accountType') }}</p>
+            <p class="mt-1"><Badge variant="outline">{{ account_type }}</Badge></p>
+          </div>
+
+          <div v-else-if="section === 'roles' && role_names?.length" class="max-w-md rounded-lg border p-3 text-sm">
+            <p class="mb-2 font-medium">{{ t('userProfile.websiteRoles') }}</p>
+            <div class="flex flex-wrap gap-2">
+              <Badge v-for="role in role_names" :key="role" variant="secondary">{{ role }}</Badge>
+            </div>
+          </div>
+
+          <div v-else-if="section === 'game_groups' && game_permission_groups?.length" class="max-w-md rounded-lg border p-3 text-sm">
+            <p class="mb-2 font-medium">{{ t('userProfile.gameGroups') }}</p>
+            <div class="flex flex-wrap gap-2">
+              <Badge v-for="group in game_permission_groups" :key="group.key" variant="outline">
+                {{ group.label }} <span class="text-muted-foreground">({{ group.source }})</span>
+              </Badge>
+            </div>
+          </div>
+
+          <MinecraftProfileCard
+            v-else-if="section === 'minecraft' && minecraft && activeTab !== 'minecraft'"
+            :minecraft="minecraft"
+            :skin-mode="skin_mode"
+            class="max-w-xl"
+          />
+        </template>
 
         <div v-if="badges.length" class="flex flex-wrap justify-center gap-2 lg:justify-start">
           <Link
@@ -331,13 +376,13 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
   </section>
 
   <form v-if="profileEditPanel === 'title'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
-    <Label for="forum_title">论坛头衔</Label>
-    <Input id="forum_title" v-model="bioForm.user.forum_title" placeholder="如：资深玩家" />
-    <Label for="forum_flair_color_hex">头衔颜色（Hex，可选）</Label>
+    <Label for="forum_title">{{ t('userProfile.forumTitle') }}</Label>
+    <Input id="forum_title" v-model="bioForm.user.forum_title" :placeholder="t('userProfile.forumTitlePlaceholder')" />
+    <Label for="forum_flair_color_hex">{{ t('userProfile.flairColor') }}</Label>
     <Input id="forum_flair_color_hex" v-model="bioForm.user.forum_flair_color_hex" placeholder="#6366f1" />
     <div class="flex flex-wrap justify-end gap-2 sm:justify-start">
-      <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">取消</Button>
+      <Button type="submit" size="sm" :disabled="bioForm.processing">{{ t('common.save') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">{{ t('common.cancel') }}</Button>
     </div>
   </form>
 
@@ -346,36 +391,36 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
   </div>
 
   <form v-if="profileEditPanel === 'bio'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
-    <Label for="bio">个人简介</Label>
-    <Textarea id="bio" v-model="bioForm.user.bio" rows="4" placeholder="介绍一下自己…" />
+    <Label for="bio">{{ t('userProfile.bio') }}</Label>
+    <Textarea id="bio" v-model="bioForm.user.bio" rows="4" :placeholder="t('userProfile.bioPlaceholder')" />
     <div class="flex gap-2">
-      <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">取消</Button>
+      <Button type="submit" size="sm" :disabled="bioForm.processing">{{ t('common.save') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">{{ t('common.cancel') }}</Button>
     </div>
   </form>
 
   <div v-if="profile.forum_signature && profileEditPanel !== 'signature'" class="mb-6 max-w-xl rounded-lg border p-4 text-sm whitespace-pre-wrap text-muted-foreground">
-    签名：{{ profile.forum_signature }}
+    {{ t('userProfile.signaturePrefix') }}{{ profile.forum_signature }}
   </div>
 
   <form v-if="profileEditPanel === 'signature'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">
-    <Label for="forum_signature">帖子签名（支持 Markdown）</Label>
-    <Textarea id="forum_signature" v-model="bioForm.user.forum_signature" rows="3" placeholder="显示在帖子底部的签名…" />
+    <Label for="forum_signature">{{ t('userProfile.signatureLabel') }}</Label>
+    <Textarea id="forum_signature" v-model="bioForm.user.forum_signature" rows="3" :placeholder="t('userProfile.signaturePlaceholder')" />
     <div class="flex gap-2">
-      <Button type="submit" size="sm" :disabled="bioForm.processing">保存</Button>
-      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">取消</Button>
+      <Button type="submit" size="sm" :disabled="bioForm.processing">{{ t('common.save') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">{{ t('common.cancel') }}</Button>
     </div>
   </form>
 
-  <div class="mb-4 flex flex-wrap justify-between gap-2">
+  <div class="mb-4 flex flex-wrap justify-start gap-2">
     <Button :variant="activeTab === 'topics' ? 'default' : 'outline'" size="sm" @click="switchTab('topics')">
-      主题 ({{ profile.topics_count }})
+      {{ t('userProfile.tabTopics') }} ({{ profile.topics_count }})
     </Button>
     <Button :variant="activeTab === 'posts' ? 'default' : 'outline'" size="sm" @click="switchTab('posts')">
-      回复 ({{ profile.posts_count }})
+      {{ t('userProfile.tabPosts') }} ({{ profile.posts_count }})
     </Button>
     <Button :variant="activeTab === 'store' ? 'default' : 'outline'" size="sm" @click="switchTab('store')">
-      商城 ({{ profile.orders_count ?? 0 }})
+      {{ t('userProfile.tabStore') }} ({{ profile.orders_count ?? 0 }})
     </Button>
     <Button
       v-if="profile.assigned_count"
@@ -383,14 +428,32 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
       size="sm"
       @click="switchTab('assigned')"
     >
-      指派 ({{ profile.assigned_count }})
+      {{ t('userProfile.tabAssigned') }} ({{ profile.assigned_count }})
+    </Button>
+    <Button
+      v-if="minecraft?.linked"
+      :variant="activeTab === 'minecraft' ? 'default' : 'outline'"
+      size="sm"
+      @click="switchTab('minecraft')"
+    >
+      {{ t('userProfile.tabMinecraft') }}
     </Button>
   </div>
 
+  <section v-if="activeTab === 'minecraft'">
+    <MinecraftProfileCard
+      v-if="minecraft?.linked"
+      :minecraft="minecraft"
+      :skin-mode="skin_mode"
+      class="max-w-xl"
+    />
+    <p v-else class="text-sm text-muted-foreground">{{ t('userProfile.noMinecraft') }}</p>
+  </section>
+
   <section v-if="activeTab === 'topics'">
-  <h2 class="mb-3 text-sm font-semibold">最近主题</h2>
+  <h2 class="mb-3 text-sm font-semibold">{{ t('userProfile.recentTopics') }}</h2>
   <TopicListTable v-if="topics.length" :topics="topics" show-views show-participants />
-  <p v-else class="text-sm text-muted-foreground">暂无主题。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('userProfile.noTopics') }}</p>
   <Pagination
     v-if="topicsPagination.pages > 1"
     :pagination="topicsPagination"
@@ -400,7 +463,7 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
   </section>
 
   <section v-else-if="activeTab === 'store'">
-    <h2 class="mb-3 text-sm font-semibold">我的订单</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ t('userProfile.myOrders') }}</h2>
     <div v-if="store_orders?.length" class="mb-6 space-y-2 rounded-lg border p-4">
       <div v-for="order in store_orders" :key="order.order_number" class="flex flex-wrap items-center justify-between gap-2 text-sm">
         <Link :href="order.url" class="font-medium hover:underline">{{ order.order_number }}</Link>
@@ -408,9 +471,9 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
         <span class="text-xs text-muted-foreground">{{ order.created_at }}</span>
       </div>
     </div>
-    <p v-else-if="profile.can_edit" class="mb-6 text-sm text-muted-foreground">暂无订单记录。</p>
+    <p v-else-if="profile.can_edit" class="mb-6 text-sm text-muted-foreground">{{ t('userProfile.noOrders') }}</p>
 
-    <h2 class="mb-3 text-sm font-semibold">商城评价</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ t('userProfile.storeReviews') }}</h2>
     <div v-if="store_reviews?.length" class="space-y-2 rounded-lg border p-4">
       <div v-for="review in store_reviews" :key="review.id" class="text-sm">
         <Link :href="review.product_url" class="font-medium hover:underline">{{ review.product_name }}</Link>
@@ -419,11 +482,11 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
         <p class="text-xs text-muted-foreground">{{ review.created_at }}</p>
       </div>
     </div>
-    <p v-else class="text-sm text-muted-foreground">暂无商城评价。</p>
+    <p v-else class="text-sm text-muted-foreground">{{ t('userProfile.noStoreReviews') }}</p>
   </section>
 
   <section v-else-if="activeTab === 'assigned'">
-    <h2 class="mb-3 text-sm font-semibold">指派给此用户的主题</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ t('userProfile.assignedTopics') }}</h2>
     <TopicListTable v-if="assigned_topics?.length" :topics="assigned_topics" show-views />
     <Pagination
       v-if="assigned_topics?.length && assignedPagination"
@@ -432,11 +495,11 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
       page-param="assigned_page"
       :query="{ tab: 'assigned' }"
     />
-    <p v-else class="text-sm text-muted-foreground">暂无指派主题。</p>
+    <p v-else class="text-sm text-muted-foreground">{{ t('userProfile.noAssignedTopics') }}</p>
   </section>
 
   <section v-else>
-  <h2 class="mb-3 text-sm font-semibold">最近回复</h2>
+  <h2 class="mb-3 text-sm font-semibold">{{ t('userProfile.recentPosts') }}</h2>
   <div v-if="recent_posts.length" class="space-y-2 rounded-lg border p-4">
     <div v-for="post in recent_posts" :key="post.id" class="text-sm">
       <Link :href="post.topic_url" class="font-medium hover:underline">#{{ post.floor_number }} {{ post.topic_title }}</Link>
@@ -444,7 +507,7 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
       <p class="text-xs text-muted-foreground">{{ post.created_at }}</p>
     </div>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无回复。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('userProfile.noRecentPosts') }}</p>
   <Pagination
     v-if="postsPagination.pages > 1"
     :pagination="postsPagination"
@@ -453,13 +516,13 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned') {
   />
   </section>
 
-  <h2 class="mb-3 mt-8 text-sm font-semibold">获赞帖子</h2>
+  <h2 class="mb-3 mt-8 text-sm font-semibold">{{ t('userProfile.likedPosts') }}</h2>
   <div v-if="liked_posts.length" class="space-y-2 rounded-lg border p-4">
     <div v-for="post in liked_posts" :key="post.id" class="text-sm">
       <Link :href="post.topic_url" class="font-medium hover:underline">#{{ post.floor_number }} {{ post.topic_title }}</Link>
-      <span class="ml-2 text-xs text-muted-foreground">{{ post.likes_count }} 个反应</span>
+      <span class="ml-2 text-xs text-muted-foreground">{{ t('userProfile.reactionsCount', { count: post.likes_count }) }}</span>
       <p class="text-muted-foreground">{{ post.body }}</p>
     </div>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无获赞帖子。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('userProfile.noLikedPosts') }}</p>
 </template>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import { ChevronDown, Check } from '@lucide/vue'
 import { cn } from '@/lib/utils'
 
@@ -25,6 +26,7 @@ const props = withDefaults(
 
 const emit = defineEmits<{ 'update:modelValue': [value: string] }>()
 
+const { t } = useI18n()
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 
@@ -65,7 +67,7 @@ onUnmounted(() => document.removeEventListener('click', onClickOutside))
       )"
       @click.stop="toggle"
     >
-      <span class="truncate">{{ selected?.label || '选择…' }}</span>
+      <span class="truncate">{{ selected?.label || t('components.select.placeholder') }}</span>
       <ChevronDown
         class="h-3.5 w-3.5 shrink-0 opacity-60 transition-transform duration-200"
         :class="open && 'rotate-180'"

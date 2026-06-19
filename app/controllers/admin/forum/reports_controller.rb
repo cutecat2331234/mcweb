@@ -61,7 +61,7 @@ module Admin
 
         Community::ClearReportableHide.call(reportable: @report.reportable) if @report.dismissed?
 
-        redirect_to admin_forum_report_path(@report), notice: "举报已处理。"
+        redirect_to admin_forum_report_path(@report), notice: t("mcweb.flash.report_resolved")
       rescue ActiveRecord::RecordInvalid => e
         redirect_to admin_forum_report_path(@report), alert: e.record.errors.full_messages.to_sentence
       end

@@ -7,6 +7,8 @@ PERMISSIONS = [
   { key: "website.templates.manage", name: "管理前台模板", category: "website" },
   { key: "forum.sections.manage", name: "管理论坛分区", category: "forum" },
   { key: "forum.topics.lock", name: "锁定主题", category: "forum" },
+  { key: "forum.posts.edit_others", name: "编辑他人帖子", category: "forum" },
+  { key: "forum.topics.edit_others", name: "编辑他人主题", category: "forum" },
   { key: "forum.topics.move", name: "移动主题", category: "forum" },
   { key: "forum.users.mute", name: "禁言用户", category: "forum" },
   { key: "forum.users.warn", name: "警告用户", category: "forum" },
@@ -45,12 +47,12 @@ ROLES = {
   "forum_admin" => {
     name: "论坛管理员",
     description: "管理论坛",
-    permissions: %w[forum.sections.manage forum.topics.lock forum.topics.move forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage admin.access]
+    permissions: %w[forum.sections.manage forum.topics.lock forum.topics.move forum.posts.edit_others forum.topics.edit_others forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage admin.access]
   },
   "moderator" => {
     name: "版主",
     description: "分区版主",
-    permissions: %w[forum.topics.lock forum.users.mute forum.users.warn admin.access]
+    permissions: %w[forum.topics.lock forum.posts.edit_others forum.topics.edit_others forum.users.mute forum.users.warn admin.access]
   },
   "store_admin" => {
     name: "商城管理员",
@@ -73,6 +75,9 @@ ROLES = {
     permissions: %w[system.audit.read admin.access]
   }
 }.freeze
+
+SiteSetting.set("minecraft.profile.skin_mode", "2d") unless SiteSetting.exists?(key: "minecraft.profile.skin_mode")
+SiteSetting.set("minecraft.bridges.enabled", "placeholderapi,luckperms,vault") unless SiteSetting.exists?(key: "minecraft.bridges.enabled")
 
 puts "Seeding permissions and roles..."
 PERMISSIONS.each do |attrs|

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -16,6 +17,8 @@ import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   draft: {
@@ -65,7 +68,7 @@ const form = useForm({
 })
 
 const prefixOptions = computed(() => [
-  { value: '', label: '无前缀' },
+  { value: '', label: t('forum.topics.noPrefix') },
   ...(props.draft.section.prefixes || []).map((p) => ({ value: p, label: p })),
 ])
 
@@ -88,7 +91,7 @@ const canPublish = computed(() => tagsReady.value && !props.warningRestrictions?
 
 function tagsValid() {
   if (!tagsReady.value) {
-    tagGroupError.value = '请从必填标签组中至少选择一个标签。'
+    tagGroupError.value = t('forum.topics.requiredTagsDraft')
     return false
   }
   tagGroupError.value = ''
@@ -116,9 +119,9 @@ function publish() {
 
 async function destroy() {
   const ok = await confirm({
-    title: '删除草稿',
-    message: '确定删除此草稿？',
-    confirmLabel: '删除',
+    title: t('forum.drafts.deleteTitle'),
+    message: t('forum.drafts.deleteConfirm'),
+    confirmLabel: t('forum.drafts.delete'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -134,13 +137,13 @@ function clearSchedule() {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '我的草稿', href: routes.forumDrafts },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.drafts.breadcrumb'), href: routes.forumDrafts },
     { label: draft.title, current: true },
   ]" />
 
-  <PageHeader title="编辑草稿" :subtitle="draft.section.name" />
+  <PageHeader :title="t('forum.drafts.editTitle')" :subtitle="draft.section.name" />
 
   <p v-if="warningRestrictions?.post" class="mb-4 max-w-lg rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
     {{ warningRestrictions.post }}
@@ -148,64 +151,64 @@ function clearSchedule() {
 
   <form class="max-w-lg space-y-4" @submit.prevent="save">
     <div class="space-y-2">
-      <Label for="title">标题</Label>
+      <Label for="title">{{ t('forum.drafts.titleLabel') }}</Label>
       <Input id="title" v-model="form.draft.title" required />
     </div>
     <div v-if="draft.section.prefixes?.length" class="space-y-2">
-      <Label for="prefix">主题前缀</Label>
+      <Label for="prefix">{{ t('forum.drafts.prefixLabel') }}</Label>
       <Select id="prefix" v-model="form.draft.prefix" :options="prefixOptions" block />
     </div>
     <div class="space-y-2">
-      <Label for="body">内容</Label>
-      <MarkdownEditor v-model="form.draft.body" :rows="10" placeholder="支持 **粗体**、*斜体*、`代码`、@用户名、[^脚注]" />
+      <Label for="body">{{ t('forum.drafts.bodyLabel') }}</Label>
+      <MarkdownEditor v-model="form.draft.body" :rows="10" :placeholder="t('forum.drafts.bodyPlaceholder')" />
       <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
       <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
     </div>
     <div class="space-y-2">
-      <Label for="tags">标签（最多 5 个）</Label>
+      <Label for="tags">{{ t('forum.topics.tagsLabel') }}</Label>
       <TagGroupPicker ref="tagPickerRef" v-model="form.draft.tags" :tag-groups="draft.section.tag_groups" :max-tags="5" />
       <p v-if="tagGroupError" class="text-sm text-destructive">{{ tagGroupError }}</p>
     </div>
 
     <div class="space-y-2">
       <Button type="button" variant="outline" size="sm" @click="showPoll = !showPoll">
-        {{ showPoll ? '隐藏投票' : '编辑投票' }}
+        {{ showPoll ? t('forum.topics.hidePoll') : t('forum.drafts.editPoll') }}
       </Button>
       <div v-if="showPoll" class="space-y-2 rounded-lg border p-3">
-        <Label for="poll_question">投票问题</Label>
-        <Input id="poll_question" v-model="form.draft.poll_question" placeholder="你想问什么？" />
-        <Label for="poll_options">选项（每行一个）</Label>
+        <Label for="poll_question">{{ t('forum.topics.pollQuestion') }}</Label>
+        <Input id="poll_question" v-model="form.draft.poll_question" :placeholder="t('forum.topics.pollQuestionPlaceholder')" />
+        <Label for="poll_options">{{ t('forum.drafts.pollOptionsRows') }}</Label>
         <Textarea id="poll_options" v-model="form.draft.poll_options" rows="4" />
-        <Label for="poll_closes_days">自动关闭（天数，0 表示不关闭）</Label>
+        <Label for="poll_closes_days">{{ t('forum.drafts.pollClosesDays') }}</Label>
         <Input id="poll_closes_days" v-model="form.draft.poll_closes_days" type="number" min="0" />
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="form.draft.poll_multiple_choice" />
-          允许多选投票
+          {{ t('forum.topics.pollMultipleChoice') }}
         </label>
         <div v-if="form.draft.poll_multiple_choice" class="space-y-2">
-          <Label for="poll_max_choices">最多可选几项</Label>
+          <Label for="poll_max_choices">{{ t('forum.topics.pollMaxChoices') }}</Label>
           <Input id="poll_max_choices" v-model.number="form.draft.poll_max_choices" type="number" min="2" max="10" />
         </div>
         <label class="flex items-center gap-2 text-sm">
           <Checkbox v-model="form.draft.poll_hide_results_until_vote" />
-          投票后才显示结果
+          {{ t('forum.topics.pollHideResults') }}
         </label>
       </div>
     </div>
 
     <div class="space-y-2">
-      <Label for="scheduled_at">定时发布（可选）</Label>
+      <Label for="scheduled_at">{{ t('forum.topics.scheduledPublish') }}</Label>
       <Input id="scheduled_at" v-model="form.draft.scheduled_at" type="datetime-local" />
-      <p class="text-xs text-muted-foreground">设置未来时间将在指定时刻自动发布。</p>
-      <Button v-if="draft.scheduled_at_input" type="button" variant="outline" size="sm" @click="clearSchedule">取消定时</Button>
+      <p class="text-xs text-muted-foreground">{{ t('forum.drafts.scheduledHintEdit') }}</p>
+      <Button v-if="draft.scheduled_at_input" type="button" variant="outline" size="sm" @click="clearSchedule">{{ t('forum.drafts.clearSchedule') }}</Button>
     </div>
     <div class="flex flex-wrap gap-2">
-      <Button type="submit" :disabled="form.processing || !tagsReady">保存草稿</Button>
-      <Button type="button" :disabled="!form.draft.body || !canPublish" @click="publish">发布主题</Button>
-      <Button type="button" variant="destructive" @click="destroy">删除</Button>
+      <Button type="submit" :disabled="form.processing || !tagsReady">{{ t('forum.topics.saveDraft') }}</Button>
+      <Button type="button" :disabled="!form.draft.body || !canPublish" @click="publish">{{ t('forum.drafts.publishTopic') }}</Button>
+      <Button type="button" variant="destructive" @click="destroy">{{ t('forum.drafts.delete') }}</Button>
       <Button as-child variant="outline">
-        <Link :href="routes.forumDrafts">返回</Link>
+        <Link :href="routes.forumDrafts">{{ t('forum.drafts.back') }}</Link>
       </Button>
     </div>
   </form>

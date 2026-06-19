@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -7,6 +8,8 @@ import Badge from '@/components/ui/Badge.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 interface BadgeItem {
   name: string
@@ -26,12 +29,12 @@ defineProps<{
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '徽章画廊', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.badges.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="徽章画廊" subtitle="探索社区成就徽章，了解获得方式（对标 Discourse / XenForo）" />
+  <PageHeader :title="t('forum.badges.title')" :subtitle="t('forum.badges.subtitle')" />
 
   <div v-if="badges.length" class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
     <Link
@@ -47,11 +50,11 @@ defineProps<{
           <p v-if="badge.description" class="mt-1 text-sm text-muted-foreground">{{ badge.description }}</p>
           <div class="mt-2 flex flex-wrap gap-2">
             <Badge variant="secondary">{{ badge.grant_rule_label }}</Badge>
-            <Badge variant="outline">{{ badge.users_count }} 人获得</Badge>
+            <Badge variant="outline">{{ t('forum.badges.usersEarned', { count: badge.users_count }) }}</Badge>
           </div>
         </div>
       </div>
     </Link>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无徽章。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('forum.badges.empty') }}</p>
 </template>

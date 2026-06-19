@@ -7,7 +7,7 @@ module Payments
 
     def show
       order = @payment.order
-      return redirect_to root_path, alert: "无权访问此支付。" unless order.user_id == current_user.id
+      return redirect_to root_path, alert: t("mcweb.flash.payment_access_denied") unless order.user_id == current_user.id
       unless order.payable?
         message = order.payment_expired? ? "订单支付已过期。" : "该订单无法继续支付。"
         return redirect_to store_order_path(order), alert: message
@@ -15,7 +15,7 @@ module Payments
 
       if @payment.status == "pending" && @payment.amount_cents != order.total_cents
         @payment.update!(status: "failed")
-        return redirect_to store_order_path(order), alert: "支付信息已失效，请重新发起支付。"
+        return redirect_to store_order_path(order), alert: t("mcweb.flash.payment_expired")
       end
 
       render inertia: "Payments/Fake/Show", props: {
@@ -32,7 +32,7 @@ module Payments
 
     def create
       order = @payment.order
-      return redirect_to root_path, alert: "无权访问此支付。" unless order.user_id == current_user.id
+      return redirect_to root_path, alert: t("mcweb.flash.payment_access_denied") unless order.user_id == current_user.id
       unless order.payable?
         message = order.payment_expired? ? "订单支付已过期。" : "该订单无法继续支付。"
         return redirect_to store_order_path(order), alert: message
@@ -40,7 +40,7 @@ module Payments
 
       if @payment.status == "pending" && @payment.amount_cents != order.total_cents
         @payment.update!(status: "failed")
-        return redirect_to store_order_path(order), alert: "支付信息已失效，请重新发起支付。"
+        return redirect_to store_order_path(order), alert: t("mcweb.flash.payment_expired")
       end
 
       result = Commerce::ConfirmPayment.call(
@@ -49,7 +49,7 @@ module Payments
       )
 
       if result.success?
-        redirect_to store_order_path(order), notice: "支付成功。"
+        redirect_to store_order_path(order), notice: t("mcweb.flash.payment_success")
       else
         redirect_to fake_payment_path(@payment.provider_payment_id), alert: service_error_message(result)
       end

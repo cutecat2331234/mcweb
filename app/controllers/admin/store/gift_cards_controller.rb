@@ -69,7 +69,7 @@ module Admin
       def update
         card = ::Commerce::GiftCard.find(params[:id])
         if card.update(gift_card_params)
-          redirect_to admin_store_gift_card_path(card), notice: "礼品卡已更新。"
+          redirect_to admin_store_gift_card_path(card), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.gift_card"))
         else
           render inertia: "Admin/Store/GiftCards/Form", props: form_props(card, editing: true), status: :unprocessable_entity
         end
@@ -94,7 +94,7 @@ module Admin
               args: [ card.id, params[:gift_card][:recipient_email] ]
             )
           end
-          redirect_to admin_store_gift_card_path(card), notice: "礼品卡已创建。"
+          redirect_to admin_store_gift_card_path(card), notice: t("mcweb.flash.created", resource: t("mcweb.resources.gift_card"))
         else
           render inertia: "Admin/Store/GiftCards/Form", props: form_props(card), status: :unprocessable_entity
         end

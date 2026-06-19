@@ -52,14 +52,14 @@ module Admin
             actor: current_user,
             body: review_params[:merchant_reply]
           )
-          return redirect_to admin_store_review_path(@review), notice: "商家回复已发布。" if result.success?
+          return redirect_to admin_store_review_path(@review), notice: t("mcweb.flash.merchant_reply_published") if result.success?
 
           return redirect_to admin_store_review_path(@review), alert: service_error_message(result)
         end
 
         status = review_params[:status]
         if status.present? && @review.update(status: status)
-          redirect_to admin_store_reviews_path, notice: "评价已更新。"
+          redirect_to admin_store_reviews_path, notice: t("mcweb.flash.review_updated")
         else
           redirect_to admin_store_reviews_path, alert: @review.errors.full_messages.to_sentence
         end

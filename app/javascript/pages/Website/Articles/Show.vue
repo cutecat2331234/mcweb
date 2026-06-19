@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import WebsiteLayout from '@/layouts/WebsiteLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: WebsiteLayout })
+
+const { t } = useI18n()
 
 defineProps<{
   article: {
@@ -21,6 +24,6 @@ defineProps<{
     <div v-if="article.summary" class="prose prose-invert max-w-none whitespace-pre-wrap text-slate-200">
       {{ article.summary }}
     </div>
-    <Link :href="routes.blog" class="mt-8 inline-block text-sky-300 hover:underline">返回博客</Link>
+    <Link :href="routes.blog" class="mt-8 inline-block text-sky-300 hover:underline">{{ t('website.articles.backToBlog') }}</Link>
   </section>
 </template>

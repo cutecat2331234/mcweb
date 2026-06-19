@@ -1,5 +1,5 @@
-<p>你好 <%= @user.username %>，</p>
-<p>你关注的分区有新主题「<%= @topic.title %>」。</p>
-<p>作者：<strong><%= @topic.user.username %></strong></p>
-<p><a href="<%= @url %>">查看主题</a></p>
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
+<p><%= t("mcweb.mail.forum.section_topic.body", title: @topic.title) %></p>
+<p><%= t("mcweb.mail.author_label", username: @topic.user.username) %></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.view_topic") %></a></p>
 <%= render "notification_unsubscribe" %>

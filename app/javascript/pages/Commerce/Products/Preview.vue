@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -8,6 +9,8 @@ import Badge from '@/components/ui/Badge.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   product: {
@@ -60,17 +63,17 @@ function toggleCompare() {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.store'), href: routes.store },
     { label: product.name, current: true },
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center gap-2">
-    <Badge variant="outline">即将上架</Badge>
+    <Badge variant="outline">{{ t('commerce.productPreview.comingSoon') }}</Badge>
     <Badge v-if="product.available_at_label">{{ product.available_at_label }}</Badge>
   </div>
 
-  <PageHeader :title="product.name" :subtitle="product.coming_soon_label || '商品尚未开售，可先订阅上架通知'" />
+  <PageHeader :title="product.name" :subtitle="product.coming_soon_label || t('commerce.productPreview.subtitle')" />
 
   <div class="grid gap-8 lg:grid-cols-2">
     <div>
@@ -100,16 +103,16 @@ function toggleCompare() {
 
       <div v-if="loggedIn" class="flex flex-wrap gap-2 pt-2">
         <Button v-if="wishlistUrl" type="button" :variant="wishlisted ? 'outline' : 'secondary'" @click="toggleWishlist">
-          {{ wishlisted ? '已在心愿单' : '加入心愿单' }}
+          {{ wishlisted ? t('commerce.productPreview.inWishlist') : t('commerce.productPreview.addWishlist') }}
         </Button>
         <Button v-if="compareUrl" type="button" variant="outline" @click="toggleCompare">
-          {{ compared ? '移出对比' : '加入对比' }}{{ compareCount ? ` (${compareCount})` : '' }}
+          {{ compared ? t('commerce.productPreview.removeCompare') : t('commerce.productPreview.addCompare') }}{{ compareCount ? ` (${compareCount})` : '' }}
         </Button>
-        <Button v-if="!hasAvailabilityAlert && availabilityAlertUrl" type="button" @click="subscribe">订阅上架通知</Button>
-        <Button v-else-if="hasAvailabilityAlert && availabilityAlertUnsubscribeUrl" type="button" variant="outline" @click="unsubscribe">已订阅 · 取消</Button>
+        <Button v-if="!hasAvailabilityAlert && availabilityAlertUrl" type="button" @click="subscribe">{{ t('commerce.productPreview.subscribeAvailability') }}</Button>
+        <Button v-else-if="hasAvailabilityAlert && availabilityAlertUnsubscribeUrl" type="button" variant="outline" @click="unsubscribe">{{ t('commerce.productPreview.subscribedCancel') }}</Button>
       </div>
       <p v-else-if="!loggedIn" class="text-sm text-muted-foreground">
-        <a :href="routes.signIn" class="text-primary hover:underline">登录</a> 后可订阅上架通知
+        <a :href="routes.signIn" class="text-primary hover:underline">{{ t('commerce.productPreview.signInToSubscribe') }}</a>{{ t('commerce.productPreview.signInHint') }}
       </p>
     </div>
   </div>

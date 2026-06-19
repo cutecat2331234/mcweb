@@ -75,10 +75,10 @@ module Community
       nil
     end
 
-    def serialize_conversation(conversation, include_other: false, unread_count: nil)
+    def serialize_conversation(conversation, include_other: false, unread_count: nil, last_message_preview: nil, current_participant: nil)
       other = conversation.other_user(current_user)
-      last_message = conversation.messages.order(created_at: :desc).first
       display = conversation.display_name(current_user)
+      participant = current_participant || conversation.participants.find_by(user: current_user)
 
       data = {
         id: conversation.id,
@@ -88,8 +88,8 @@ module Community
         display_name: display,
         last_message_at: conversation.last_message_at ? l(conversation.last_message_at, format: :short) : nil,
         unread_count: unread_count.nil? ? conversation.unread_count_for(current_user) : unread_count,
-        last_message_preview: last_message&.body&.truncate(80),
-        archived: conversation.participants.find_by(user: current_user)&.archived_at.present?
+        last_message_preview: last_message_preview,
+        archived: participant&.archived_at.present?
       }
 
       if include_other

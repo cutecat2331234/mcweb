@@ -1,5 +1,5 @@
-<p>您好 <%= @user.username %>，</p>
-<p>你收到了一条社区警告（<%= @warning.points %> 点）：</p>
+<p><%= t("mcweb.mail.greeting_formal", username: @user.username) %></p>
+<p><%= t("mcweb.mail.forum.user_warning.body", points: @warning.points) %></p>
 <p><strong><%= @warning.reason %></strong></p>
-<p>累计警告积分：<%= Community::UserWarning.total_points_for(@user) %> 点</p>
-<p><a href="<%= @url %>">查看个人资料</a></p>
+<p><%= t("mcweb.mail.forum.user_warning.total_points", points: Community::UserWarning.total_points_for(@user)) %></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.view_profile") %></a></p>

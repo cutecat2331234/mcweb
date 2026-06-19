@@ -18,15 +18,16 @@ module Community
         period: period_filter
       )
       notifications = filtered_scope.limit(100)
+      topic_visibility = preload_notification_topics(notifications)
 
       unread_count = current_user.notifications.unread.count
 
-      grouped = group_notifications(notifications)
+      grouped = group_notifications(notifications, topic_visibility: topic_visibility)
 
       render inertia: "Community/Notifications/Index", props: {
         notifications: grouped,
         notificationSections: Community::GroupNotificationsByReadState.call(grouped),
-        flat_notifications: notifications.limit(50).map { |n| serialize_notification(n) },
+        flat_notifications: notifications.limit(50).map { |n| serialize_notification(n, topic_visibility: topic_visibility) },
         activeCategory: category.presence || "all",
         activeRead: read_filter.presence || "all",
         activeType: type_filter.to_s,
@@ -43,7 +44,7 @@ module Community
       notification = current_user.notifications.find(params[:id])
       notification.mark_read!
       unless notification_content_visible?(notification)
-        redirect_to forum_notifications_path(notification_index_query_params), alert: "此通知关联的内容已不可用。"
+        redirect_to forum_notifications_path(notification_index_query_params), alert: t("mcweb.flash.notification_unavailable")
         return
       end
       destination = safe_notification_path(notification.metadata)
@@ -53,7 +54,7 @@ module Community
     def mark_read
       notification = current_user.notifications.find(params[:id])
       notification.mark_read!
-      redirect_to forum_notifications_path(notification_index_query_params), notice: "已标记为已读。"
+      redirect_to forum_notifications_path(notification_index_query_params), notice: t("mcweb.flash.marked_read")
     end
 
     def mark_all_read
@@ -64,7 +65,7 @@ module Community
       scope = current_user.notifications.unread
       scope = apply_notification_filters(scope, category: category, read: read_filter, type: type_filter, period: period_filter)
       scope.update_all(read_at: Time.current)
-      redirect_to forum_notifications_path(notification_index_query_params), notice: "已标记为已读。"
+      redirect_to forum_notifications_path(notification_index_query_params), notice: t("mcweb.flash.marked_read")
     end
 
     private
@@ -84,8 +85,8 @@ module Community
       safe_local_redirect_path(path, fallback: forum_notifications_path)
     end
 
-    def serialize_notification(notification)
-      visible = notification_content_visible?(notification)
+    def serialize_notification(notification, topic_visibility: nil)
+      visible = notification_content_visible?(notification, topic_visibility: topic_visibility)
       {
         id: notification.id,
         title: visible ? notification.title : "内容不可用",
@@ -100,8 +101,8 @@ module Community
       }
     end
 
-    def notification_content_visible?(notification)
-      topic = notification_topic(notification)
+    def notification_content_visible?(notification, topic_visibility: nil)
+      topic = notification_topic(notification, topic_visibility: topic_visibility)
       return true if topic.nil?
       return false unless PollParticipation.visible?(topic: topic, user: current_user)
       return true unless topic.unlisted?
@@ -109,11 +110,22 @@ module Community
       current_user.id == topic.user_id || current_user.permission?("forum.topics.lock")
     end
 
-    def notification_topic(notification)
+    def notification_topic(notification, topic_visibility: nil)
       public_id = notification.metadata["topic_id"]
       return nil unless public_id.present?
 
-      Community::Topic.find_by(public_id: public_id.to_s)
+      if topic_visibility
+        topic_visibility[public_id.to_s]
+      else
+        Community::Topic.find_by(public_id: public_id.to_s)
+      end
+    end
+
+    def preload_notification_topics(notifications)
+      public_ids = notifications.filter_map { |n| n.metadata["topic_id"].presence }.uniq
+      return {} if public_ids.blank?
+
+      Community::Topic.where(public_id: public_ids).index_by(&:public_id)
     end
 
     def notification_category(notification)
@@ -208,7 +220,7 @@ module Community
       NotificationActiveFilters.call(category: category.presence || "all", read: read, type: type, period: period)
     end
 
-    def group_notifications(notifications)
+    def group_notifications(notifications, topic_visibility: nil)
       grouped = notifications.group_by do |n|
         topic_id = n.metadata["topic_id"] || n.metadata.dig("topic", "id")
         conversation_id = n.metadata["conversation_id"]
@@ -229,15 +241,15 @@ module Community
           key: "#{type}-#{group_key}",
           notification_type: type == "commerce_order" ? latest.notification_type : type,
           category: notification_category(latest),
-          title: type == "commerce_order" ? "订单 #{group_key.to_s.sub(/\Aord_/, '').truncate(8)}" : (notification_content_visible?(latest) ? latest.title : "内容不可用"),
-          body: items.size > 1 ? "共 #{items.size} 条相关通知" : (notification_content_visible?(latest) ? latest.body : "此通知关联的内容已不可用。"),
+          title: type == "commerce_order" ? "订单 #{group_key.to_s.sub(/\Aord_/, '').truncate(8)}" : (notification_content_visible?(latest, topic_visibility: topic_visibility) ? latest.title : "内容不可用"),
+          body: items.size > 1 ? "共 #{items.size} 条相关通知" : (notification_content_visible?(latest, topic_visibility: topic_visibility) ? latest.body : "此通知关联的内容已不可用。"),
           count: items.size,
           unread_count: unread,
           read: unread.zero?,
           latest_at: l(latest.created_at, format: :short),
           latest_at_ts: latest.created_at.to_i,
-          visit_url: notification_content_visible?(latest) && latest.destination_path.present? ? visit_forum_notification_path(latest) : nil,
-          items: items.first(5).map { |n| serialize_notification(n) }
+          visit_url: notification_content_visible?(latest, topic_visibility: topic_visibility) && latest.destination_path.present? ? visit_forum_notification_path(latest) : nil,
+          items: items.first(5).map { |n| serialize_notification(n, topic_visibility: topic_visibility) }
         }
       end.sort_by { |g| -g[:latest_at_ts] }.first(30)
     end

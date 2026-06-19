@@ -1,3 +1,3 @@
-<p>你好 <%= @user.username %>，</p>
-<p>你的信任等级已提升至 <strong><%= @level_name %></strong>（Lv.<%= @level %>），解锁了更多社区权限。</p>
-<p><a href="<%= @url %>">查看个人资料</a></p>
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
+<p><%= t("mcweb.mail.forum.trust_level_up.body", level_name: @level_name, level: @level) %></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.view_profile") %></a></p>

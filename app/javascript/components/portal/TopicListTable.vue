@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { Link } from '@inertiajs/vue3'
 import TopicTitleBadges from '@/components/portal/TopicTitleBadges.vue'
 import Table from '@/components/ui/Table.vue'
@@ -8,6 +9,8 @@ import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
+
+const { t } = useI18n()
 
 export interface TopicListItem {
   id: string
@@ -80,11 +83,11 @@ const allSelected = () =>
               @update:model-value="toggleAll"
             />
           </TableHead>
-          <TableHead>主题</TableHead>
-          <TableHead>作者</TableHead>
-          <TableHead>回复</TableHead>
-          <TableHead v-if="showViews">浏览</TableHead>
-          <TableHead>最后回复</TableHead>
+          <TableHead>{{ t('components.topicList.colTopic') }}</TableHead>
+          <TableHead>{{ t('components.topicList.colAuthor') }}</TableHead>
+          <TableHead>{{ t('components.topicList.colReplies') }}</TableHead>
+          <TableHead v-if="showViews">{{ t('components.topicList.colViews') }}</TableHead>
+          <TableHead>{{ t('components.topicList.colLastReply') }}</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -154,6 +157,6 @@ const allSelected = () =>
     </Table>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    暂无主题。
+    {{ t('components.topicList.empty') }}
   </p>
 </template>

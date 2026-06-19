@@ -1,10 +1,10 @@
-<p>你好 <%= @user.username %>，</p>
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
 
-<p>你保存的搜索「<%= @search.name %>」有 <%= @topics.size %> 条新主题：</p>
+<p><%= t("mcweb.mail.forum.saved_search_digest.intro", name: @search.name, count: @topics.size) %></p>
 
 <% if @filter_labels.present? %>
   <p style="font-size:13px;color:#444;margin:12px 0;">
-    筛选条件：
+    <%= t("mcweb.mail.forum.saved_search_digest.filters") %>
     <% @filter_labels.each do |label| %>
       <span style="display:inline-block;background:#f0f0f0;border-radius:4px;padding:2px 8px;margin:2px 4px 2px 0;"><%= label %></span>
     <% end %>
@@ -18,14 +18,14 @@
 </ul>
 
 <p>
-  <a href="<%= @url %>">查看完整搜索结果</a>
+  <a href="<%= @url %>"><%= t("mcweb.mail.forum.saved_search_digest.view_results") %></a>
   ·
-  <a href="<%= @rss_url %>">RSS 订阅</a>
+  <a href="<%= @rss_url %>"><%= t("mcweb.mail.forum.saved_search_digest.rss") %></a>
 </p>
 
 <p style="font-size:12px;color:#666;margin-top:24px;">
-  你开启了此搜索的每日邮件提醒。
-  <a href="<%= @unsubscribe_url %>">一键关闭此搜索的每日提醒</a>
+  <%= t("mcweb.mail.forum.saved_search_digest.daily_reminder") %>
+  <a href="<%= @unsubscribe_url %>"><%= t("mcweb.mail.forum.saved_search_digest.unsubscribe_search") %></a>
   ·
-  <a href="<%= @preferences_url %>">在通知偏好中管理全部保存的搜索</a>
+  <a href="<%= @preferences_url %>"><%= t("mcweb.mail.forum.saved_search_digest.manage_saved") %></a>
 </p>

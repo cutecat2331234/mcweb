@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -8,6 +9,8 @@ import Badge from '@/components/ui/Badge.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 interface BadgeInfo {
   name: string
@@ -37,9 +40,9 @@ const props = defineProps<{
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '徽章画廊', href: routes.forumBadges },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.badges.breadcrumb'), href: routes.forumBadges },
     { label: badge.name, current: true },
   ]" />
 
@@ -49,12 +52,12 @@ const props = defineProps<{
       <PageHeader :title="badge.name" :subtitle="badge.description || undefined" />
       <div class="mt-2 flex flex-wrap gap-2">
         <Badge variant="secondary">{{ badge.grant_rule_label }}</Badge>
-        <Badge variant="outline">{{ badge.users_count }} 人获得</Badge>
+        <Badge variant="outline">{{ t('forum.badges.usersEarned', { count: badge.users_count }) }}</Badge>
       </div>
     </div>
   </div>
 
-  <h2 class="mb-3 text-sm font-semibold">获得者</h2>
+  <h2 class="mb-3 text-sm font-semibold">{{ t('forum.badges.holders') }}</h2>
   <div v-if="holders.length" class="divide-y rounded-lg border">
     <div v-for="holder in holders" :key="holder.username" class="flex items-center justify-between gap-3 px-4 py-3">
       <Link :href="holder.profile_url" class="flex items-center gap-2 hover:underline">
@@ -70,7 +73,7 @@ const props = defineProps<{
       <span class="text-xs text-muted-foreground">{{ holder.granted_at }}</span>
     </div>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无人获得此徽章。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('forum.badges.emptyHolders') }}</p>
 
   <Pagination
     v-if="pagination.pages > 1"

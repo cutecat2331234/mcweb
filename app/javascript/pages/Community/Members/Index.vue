@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -12,6 +13,8 @@ import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   members: Array<{
@@ -37,24 +40,24 @@ const props = defineProps<{
 
 const searchQuery = ref(props.query)
 
-const sortOptions = [
-  { value: 'active', label: '最近活跃' },
-  { value: 'online', label: '当前在线' },
-  { value: 'joined', label: '最新加入' },
-  { value: 'posts', label: '发帖最多' },
-  { value: 'likes', label: '获赞最多' },
-  { value: 'reviews', label: '评价最多' },
-  { value: 'purchases', label: '购买最多' },
-]
+const sortOptions = computed(() => [
+  { value: 'active', label: t('forum.members.sortActive') },
+  { value: 'online', label: t('forum.members.sortOnline') },
+  { value: 'joined', label: t('forum.members.sortJoined') },
+  { value: 'posts', label: t('forum.members.sortPosts') },
+  { value: 'likes', label: t('forum.members.sortLikes') },
+  { value: 'reviews', label: t('forum.members.sortReviews') },
+  { value: 'purchases', label: t('forum.members.sortPurchases') },
+])
 
-const trustLevelOptions = [
-  { value: '', label: '全部信任等级' },
-  { value: '0', label: 'TL0 新成员' },
-  { value: '1', label: 'TL1 基本用户' },
-  { value: '2', label: 'TL2 成员' },
-  { value: '3', label: 'TL3 常客' },
-  { value: '4', label: 'TL4 领导者' },
-]
+const trustLevelOptions = computed(() => [
+  { value: '', label: t('forum.members.allTrustLevels') },
+  { value: '0', label: t('forum.members.tl0') },
+  { value: '1', label: t('forum.members.tl1') },
+  { value: '2', label: t('forum.members.tl2') },
+  { value: '3', label: t('forum.members.tl3') },
+  { value: '4', label: t('forum.members.tl4') },
+])
 
 function search() {
   router.get(routes.forumMembers, {
@@ -82,17 +85,17 @@ function changeTrustLevel(value: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '成员目录', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.members.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="成员目录" subtitle="浏览社区成员与在线状态" />
+  <PageHeader :title="t('forum.members.title')" :subtitle="t('forum.members.subtitle')" />
 
   <div class="mb-4 flex flex-wrap items-center gap-2">
     <form class="flex flex-1 gap-2" @submit.prevent="search">
-      <Input v-model="searchQuery" placeholder="搜索用户名…" class="max-w-xs" />
-      <Button type="submit" variant="outline">搜索</Button>
+      <Input v-model="searchQuery" :placeholder="t('forum.members.searchPlaceholder')" class="max-w-xs" />
+      <Button type="submit" variant="outline">{{ t('forum.members.search') }}</Button>
     </form>
     <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
     <Select :model-value="trustLevel || ''" :options="trustLevelOptions" size="sm" @update:model-value="changeTrustLevel" />
@@ -109,19 +112,19 @@ function changeTrustLevel(value: string) {
       <div class="min-w-0">
         <p class="font-medium">
           {{ member.display_name || member.username }}
-          <Badge v-if="member.online" class="ml-2 text-[10px]">在线</Badge>
+          <Badge v-if="member.online" class="ml-2 text-[10px]">{{ t('forum.members.online') }}</Badge>
         </p>
         <p class="text-xs text-muted-foreground">
-          @{{ member.username }} · {{ member.trust_name }} · {{ member.posts_count }} 帖 · {{ member.likes_received }} 赞 · {{ member.purchases_count }} 购
+          @{{ member.username }} · {{ member.trust_name }} · {{ t('forum.members.posts', { n: member.posts_count }) }} · {{ t('forum.members.likes', { n: member.likes_received }) }} · {{ t('forum.members.purchases', { n: member.purchases_count }) }}
         </p>
         <p class="text-xs text-muted-foreground">
-          {{ member.reviews_count }} 评价 ·
-          {{ member.last_seen_at ? `最后在线 ${member.last_seen_at}` : `加入于 ${member.member_since}` }}
+          {{ t('forum.members.reviews', { n: member.reviews_count }) }} ·
+          {{ member.last_seen_at ? t('forum.members.lastSeen', { at: member.last_seen_at }) : t('forum.members.joined', { at: member.member_since }) }}
         </p>
       </div>
     </Link>
   </div>
-  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">未找到成员。</p>
+  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{{ t('forum.members.empty') }}</p>
 
   <Pagination :pagination="pagination" :base-path="routes.forumMembers" />
 </template>

@@ -18,7 +18,7 @@ module Admin
         )
 
         if result.success?
-          redirect_to admin_user_path(user), notice: "用户已禁言。"
+          redirect_to admin_user_path(user), notice: t("mcweb.flash.user_muted")
         else
           redirect_to admin_user_path(user), alert: service_error_message(result)
         end
@@ -30,7 +30,7 @@ module Admin
         result = Community::RemoveMute.call(actor: current_user, mute: mute)
 
         if result.success?
-          redirect_to admin_user_path(user), notice: "禁言已解除。"
+          redirect_to admin_user_path(user), notice: t("mcweb.flash.user_unmuted")
         else
           redirect_to admin_user_path(user), alert: service_error_message(result)
         end

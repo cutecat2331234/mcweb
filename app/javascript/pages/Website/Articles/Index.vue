@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import WebsiteLayout from '@/layouts/WebsiteLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Table from '@/components/ui/Table.vue'
@@ -11,6 +12,8 @@ import TableRow from '@/components/ui/TableRow.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: WebsiteLayout })
+
+const { t } = useI18n()
 
 defineProps<{
   articles: Array<{
@@ -24,15 +27,15 @@ defineProps<{
 
 <template>
   <section class="mx-auto max-w-5xl px-4 py-16">
-    <PageHeader title="新闻与公告" />
+    <PageHeader :title="t('website.articles.title')" />
 
     <div v-if="articles.length" class="rounded-lg border border-white/10 bg-white/5">
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>标题</TableHead>
-            <TableHead>类型</TableHead>
-            <TableHead>发布时间</TableHead>
+            <TableHead>{{ t('website.articles.colTitle') }}</TableHead>
+            <TableHead>{{ t('website.articles.colType') }}</TableHead>
+            <TableHead>{{ t('website.articles.colPublished') }}</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -44,6 +47,6 @@ defineProps<{
         </TableBody>
       </Table>
     </div>
-    <p v-else class="text-slate-300">暂无已发布文章。</p>
+    <p v-else class="text-slate-300">{{ t('website.articles.empty') }}</p>
   </section>
 </template>

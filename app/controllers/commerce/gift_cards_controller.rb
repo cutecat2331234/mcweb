@@ -37,7 +37,7 @@ module Commerce
     def apply
       code = params[:code].to_s.strip.upcase
       card = Commerce::GiftCard.find_by(code: code)
-      return redirect_to store_gift_card_path(code), alert: "礼品卡无效。" unless card
+      return redirect_to store_gift_card_path(code), alert: t("mcweb.flash.gift_card_invalid") unless card
 
       claim = Commerce::ClaimGiftCard.call(user: current_user, gift_card: card)
       unless claim.success?
@@ -45,7 +45,7 @@ module Commerce
       end
 
       session[:pending_gift_card_code] = card.code
-      redirect_to store_cart_path, notice: "礼品卡 #{card.code} 已保存到您的钱包，结账时自动使用。"
+      redirect_to store_cart_path, notice: t("mcweb.flash.gift_card_saved", code: card.code)
     end
 
     private

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -40,6 +40,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.bigint "blob_id", null: false
     t.string "variation_digest", null: false
     t.index ["blob_id", "variation_digest"], name: "index_active_storage_variant_records_uniqueness", unique: true
+  end
+
+  create_table "admin_module_grants", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "granted_at", null: false
+    t.bigint "granted_by_id"
+    t.string "module_key", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["granted_by_id"], name: "index_admin_module_grants_on_granted_by_id"
+    t.index ["user_id", "module_key"], name: "index_admin_module_grants_on_user_id_and_module_key", unique: true
+    t.index ["user_id"], name: "index_admin_module_grants_on_user_id"
   end
 
   create_table "audit_logs", force: :cascade do |t|
@@ -658,17 +670,61 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "minecraft_identities", force: :cascade do |t|
+    t.string "cape_texture_url"
     t.datetime "created_at", null: false
     t.string "identity_type", default: "java", null: false
+    t.datetime "last_seen_ingame_at"
     t.datetime "linked_at", null: false
+    t.jsonb "metadata", default: {}, null: false
     t.bigint "minecraft_server_id"
+    t.bigint "player_profile_id"
+    t.string "skin_model"
+    t.string "skin_texture_url"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.string "username", null: false
     t.string "uuid", null: false
     t.index ["minecraft_server_id"], name: "index_minecraft_identities_on_minecraft_server_id"
+    t.index ["player_profile_id"], name: "index_minecraft_identities_on_player_profile_id"
     t.index ["user_id"], name: "index_minecraft_identities_on_user_id"
     t.index ["uuid", "identity_type"], name: "index_minecraft_identities_on_uuid_and_identity_type", unique: true
+  end
+
+  create_table "minecraft_identity_links", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "linked_at", null: false
+    t.bigint "player_profile_id", null: false
+    t.datetime "unlinked_at"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["player_profile_id", "user_id"], name: "idx_on_player_profile_id_user_id_a518a2f67b", unique: true, where: "(unlinked_at IS NULL)"
+    t.index ["player_profile_id"], name: "index_minecraft_identity_links_on_player_profile_id"
+    t.index ["user_id"], name: "index_minecraft_identity_links_on_user_id"
+  end
+
+  create_table "minecraft_integration_action_logs", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "error_message"
+    t.string "event_id", null: false
+    t.string "event_key", null: false
+    t.bigint "integration_action_id"
+    t.jsonb "payload", default: {}, null: false
+    t.string "status", default: "completed", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_id"], name: "index_minecraft_integration_action_logs_on_event_id", unique: true
+    t.index ["integration_action_id"], name: "idx_on_integration_action_id_fcd7877343"
+  end
+
+  create_table "minecraft_integration_actions", force: :cascade do |t|
+    t.jsonb "actions", default: [], null: false
+    t.jsonb "conditions", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: true, null: false
+    t.string "event_key", null: false
+    t.string "name", null: false
+    t.integer "priority", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_key"], name: "index_minecraft_integration_actions_on_event_key"
   end
 
   create_table "minecraft_link_codes", force: :cascade do |t|
@@ -687,6 +743,49 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["used_by_id"], name: "index_minecraft_link_codes_on_used_by_id"
   end
 
+  create_table "minecraft_permission_groups", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "group_key", null: false
+    t.string "group_label"
+    t.bigint "player_profile_id", null: false
+    t.string "source", default: "manual", null: false
+    t.datetime "synced_at"
+    t.datetime "updated_at", null: false
+    t.integer "weight", default: 0, null: false
+    t.index ["player_profile_id", "group_key"], name: "idx_on_player_profile_id_group_key_1156207531", unique: true
+    t.index ["player_profile_id"], name: "index_minecraft_permission_groups_on_player_profile_id"
+  end
+
+  create_table "minecraft_player_identities", force: :cascade do |t|
+    t.string "cape_texture_url"
+    t.datetime "created_at", null: false
+    t.string "external_uuid", null: false
+    t.string "identity_type", default: "java", null: false
+    t.datetime "last_seen_ingame_at"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "platform", default: "java", null: false
+    t.bigint "player_profile_id", null: false
+    t.bigint "primary_server_id"
+    t.string "skin_model"
+    t.string "skin_texture_url"
+    t.datetime "superseded_at"
+    t.datetime "updated_at", null: false
+    t.string "username", null: false
+    t.datetime "valid_from", null: false
+    t.index ["platform", "external_uuid"], name: "idx_on_platform_external_uuid_9bc1c89e08", unique: true, where: "(superseded_at IS NULL)"
+    t.index ["player_profile_id"], name: "index_minecraft_player_identities_on_player_profile_id"
+    t.index ["primary_server_id"], name: "index_minecraft_player_identities_on_primary_server_id"
+    t.index ["username"], name: "index_minecraft_player_identities_on_username"
+  end
+
+  create_table "minecraft_player_profiles", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "public_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["public_id"], name: "index_minecraft_player_profiles_on_public_id", unique: true
+  end
+
   create_table "minecraft_processed_deliveries", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "delivery_id", null: false
@@ -696,6 +795,50 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "updated_at", null: false
     t.index ["minecraft_server_id", "delivery_id"], name: "idx_on_minecraft_server_id_delivery_id_5dd669361e", unique: true
     t.index ["minecraft_server_id"], name: "index_minecraft_processed_deliveries_on_minecraft_server_id"
+  end
+
+  create_table "minecraft_profile_field_definitions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "field_type", default: "text", null: false
+    t.string "group_name"
+    t.string "icon"
+    t.string "key", null: false
+    t.string "label", null: false
+    t.integer "sort_order", default: 0, null: false
+    t.string "source", default: "plugin", null: false
+    t.datetime "updated_at", null: false
+    t.string "visibility", default: "public", null: false
+    t.index ["key"], name: "index_minecraft_profile_field_definitions_on_key", unique: true
+  end
+
+  create_table "minecraft_profile_field_values", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "field_key", null: false
+    t.bigint "player_profile_id", null: false
+    t.datetime "updated_at", null: false
+    t.string "updated_by", default: "plugin", null: false
+    t.text "value"
+    t.index ["player_profile_id", "field_key"], name: "idx_on_player_profile_id_field_key_7dd58d55e1", unique: true
+    t.index ["player_profile_id"], name: "index_minecraft_profile_field_values_on_player_profile_id"
+  end
+
+  create_table "minecraft_server_snapshots", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "max_players", default: 0, null: false
+    t.bigint "memory_max_bytes"
+    t.bigint "memory_used_bytes"
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "minecraft_server_id", null: false
+    t.string "motd"
+    t.integer "online_players", default: 0, null: false
+    t.jsonb "plugins", default: [], null: false
+    t.float "tps"
+    t.datetime "updated_at", null: false
+    t.string "version"
+    t.jsonb "worlds", default: [], null: false
+    t.index ["minecraft_server_id", "created_at"], name: "idx_on_minecraft_server_id_created_at_9b27186894"
+    t.index ["minecraft_server_id"], name: "index_minecraft_server_snapshots_on_minecraft_server_id"
   end
 
   create_table "minecraft_servers", force: :cascade do |t|
@@ -1309,6 +1452,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.string "account_type", default: "member", null: false
     t.datetime "ban_expires_at"
     t.text "ban_reason"
     t.datetime "banned_at"
@@ -1352,6 +1496,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.datetime "updated_at", null: false
     t.string "username", null: false
     t.string "wishlist_share_token"
+    t.index ["account_type"], name: "index_users_on_account_type"
     t.index ["compare_share_token"], name: "index_users_on_compare_share_token", unique: true
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["email"], name: "index_users_on_email", unique: true
@@ -1450,6 +1595,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
     t.index ["key"], name: "index_website_themes_on_key", unique: true
   end
 
+  add_foreign_key "admin_module_grants", "users"
+  add_foreign_key "admin_module_grants", "users", column: "granted_by_id"
   add_foreign_key "audit_logs", "users", column: "actor_id"
   add_foreign_key "forum_bookmarks", "forum_posts"
   add_foreign_key "forum_bookmarks", "forum_topics"
@@ -1528,11 +1675,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_15_201301) do
   add_foreign_key "ip_bans", "users", column: "banned_by_id"
   add_foreign_key "minecraft_connector_tasks", "minecraft_servers"
   add_foreign_key "minecraft_connector_tasks", "store_fulfillments"
+  add_foreign_key "minecraft_identities", "minecraft_player_profiles", column: "player_profile_id"
   add_foreign_key "minecraft_identities", "minecraft_servers"
   add_foreign_key "minecraft_identities", "users"
+  add_foreign_key "minecraft_identity_links", "minecraft_player_profiles", column: "player_profile_id"
+  add_foreign_key "minecraft_identity_links", "users"
+  add_foreign_key "minecraft_integration_action_logs", "minecraft_integration_actions", column: "integration_action_id"
   add_foreign_key "minecraft_link_codes", "minecraft_servers"
   add_foreign_key "minecraft_link_codes", "users", column: "used_by_id"
+  add_foreign_key "minecraft_permission_groups", "minecraft_player_profiles", column: "player_profile_id"
+  add_foreign_key "minecraft_player_identities", "minecraft_player_profiles", column: "player_profile_id"
+  add_foreign_key "minecraft_player_identities", "minecraft_servers", column: "primary_server_id"
   add_foreign_key "minecraft_processed_deliveries", "minecraft_servers"
+  add_foreign_key "minecraft_profile_field_values", "minecraft_player_profiles", column: "player_profile_id"
+  add_foreign_key "minecraft_server_snapshots", "minecraft_servers"
   add_foreign_key "notification_preferences", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "payment_attempts", "payment_records"

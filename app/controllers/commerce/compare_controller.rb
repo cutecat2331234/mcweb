@@ -29,7 +29,7 @@ module Commerce
     def toggle
       product = Commerce::Product.active.find_by!(public_id: params[:product_id])
       unless product.available? || product.coming_soon?
-        return redirect_back fallback_location: store_products_path, alert: "商品不可加入对比。"
+        return redirect_back fallback_location: store_products_path, alert: t("mcweb.flash.compare_product_invalid")
       end
 
       result = Commerce::ToggleCompare.call(session: session, product: product)
@@ -44,16 +44,16 @@ module Commerce
 
     def clear
       session[:compare_product_ids] = []
-      redirect_to store_compare_path, notice: "对比列表已清空。"
+      redirect_to store_compare_path, notice: t("mcweb.flash.compare_cleared")
     end
 
     def share
       ids = Array(session[:compare_product_ids])
-      return redirect_to store_compare_path, alert: "对比列表为空。" if ids.empty?
+      return redirect_to store_compare_path, alert: t("mcweb.flash.compare_empty") if ids.empty?
 
       result = Commerce::EnsureCompareShareToken.call(user: current_user, product_ids: ids)
       if result.success?
-        redirect_to store_compare_path, notice: "分享链接已生成。"
+        redirect_to store_compare_path, notice: t("mcweb.flash.compare_share_created")
       else
         redirect_to store_compare_path, alert: service_error_message(result)
       end

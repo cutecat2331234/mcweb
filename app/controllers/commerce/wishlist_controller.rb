@@ -74,7 +74,7 @@ module Commerce
     def share
       result = Commerce::EnsureWishlistShareToken.call(user: current_user)
       if result.success?
-        redirect_to store_wishlist_path, notice: "分享链接已生成。"
+        redirect_to store_wishlist_path, notice: t("mcweb.flash.compare_share_created")
       else
         redirect_to store_wishlist_path, alert: service_error_message(result)
       end
@@ -108,7 +108,7 @@ module Commerce
     def toggle
       product = Commerce::Product.active.find_by!(public_id: params[:id])
       unless product.available? || product.coming_soon?
-        return redirect_back fallback_location: store_products_path, alert: "商品不可加入心愿单。"
+        return redirect_back fallback_location: store_products_path, alert: t("mcweb.flash.wishlist_product_invalid")
       end
 
       variant = product.variants.find_by(id: params[:variant_id]) if params[:variant_id].present?
@@ -127,7 +127,7 @@ module Commerce
       result = Commerce::AddWishlistItemToCart.call(user: current_user, product: product)
 
       if result.success?
-        redirect_to store_cart_path, notice: "已加入购物车。"
+        redirect_to store_cart_path, notice: t("mcweb.flash.added_to_cart")
       else
         redirect_to store_wishlist_path, alert: service_error_message(result)
       end
@@ -148,12 +148,12 @@ module Commerce
     def update_note
       product = Commerce::Product.active.find_by!(public_id: params[:product_id])
       unless product.available? || product.coming_soon?
-        return redirect_to store_wishlist_path, alert: "商品不可编辑备注。"
+        return redirect_to store_wishlist_path, alert: t("mcweb.flash.wishlist_note_invalid")
       end
       result = Commerce::UpdateWishlistNote.call(user: current_user, product: product, note: params[:note])
 
       if result.success?
-        redirect_to store_wishlist_path, notice: "备注已保存。"
+        redirect_to store_wishlist_path, notice: t("mcweb.flash.wishlist_note_saved")
       else
         redirect_to store_wishlist_path, alert: service_error_message(result)
       end

@@ -84,7 +84,7 @@ module Community
         current_user.update!(forum_watch_email_mode: params[:watch_email_mode])
       end
 
-      redirect_to forum_preferences_path, notice: "通知偏好已保存。"
+      redirect_to forum_preferences_path, notice: t("mcweb.flash.preferences_saved")
     end
 
     private

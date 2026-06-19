@@ -1,8 +1,8 @@
-<p>您好 <%= @user.username %>，</p>
-<p>你设置的书签提醒时间到了。</p>
+<p><%= t("mcweb.mail.greeting_formal", username: @user.username) %></p>
+<p><%= t("mcweb.mail.forum.bookmark_reminder.body") %></p>
 <p><strong><%= @topic.title %></strong></p>
 <% if @note.present? %>
-<p>备注：<%= @note %></p>
+<p><%= t("mcweb.mail.forum.bookmark_reminder.note", note: @note) %></p>
 <% end %>
-<p><a href="<%= @url %>">查看内容</a></p>
-<p class="text-muted"><a href="<%= @preferences_url %>">管理通知偏好</a></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.forum.bookmark_reminder.view_content") %></a></p>
+<p class="text-muted"><a href="<%= @preferences_url %>"><%= t("mcweb.mail.manage_preferences") %></a></p>

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -7,6 +8,8 @@ import Card from '@/components/ui/Card.vue'
 import CardContent from '@/components/ui/CardContent.vue'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   paymentId: string
@@ -19,25 +22,25 @@ const form = useForm({})
 </script>
 
 <template>
-  <PageHeader title="模拟支付" subtitle="开发环境测试支付" />
+  <PageHeader :title="t('payments.fake.title')" :subtitle="t('payments.fake.subtitle')" />
 
   <Card class="max-w-md">
     <CardContent class="space-y-4 pt-6">
       <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">订单号</span>
+        <span class="text-muted-foreground">{{ t('payments.fake.orderNumber') }}</span>
         <span>{{ order.order_number }}</span>
       </div>
       <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">支付金额</span>
+        <span class="text-muted-foreground">{{ t('payments.fake.amount') }}</span>
         <span class="font-medium">{{ amountLabel }}</span>
       </div>
       <p class="text-xs text-muted-foreground">
-        这是 Fake 支付提供商的测试页面。点击下方按钮将立即完成支付并触发发货流程。
+        {{ t('payments.fake.hint') }}
       </p>
       <div class="flex gap-3">
-        <Button type="button" :disabled="form.processing" @click="form.post(payUrl)">确认支付</Button>
+        <Button type="button" :disabled="form.processing" @click="form.post(payUrl)">{{ t('payments.fake.confirm') }}</Button>
         <Button as-child variant="outline">
-          <Link :href="order.url">返回订单</Link>
+          <Link :href="order.url">{{ t('payments.fake.backToOrder') }}</Link>
         </Button>
       </div>
     </CardContent>

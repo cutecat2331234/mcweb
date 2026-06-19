@@ -31,7 +31,7 @@ class Round75SavedSearchDigestEmailTest < ActionDispatch::IntegrationTest
   test "digest email template includes preferences link" do
     content = File.read(Rails.root.join("app/views/community/forum_mailer/saved_search_digest.html.erb"))
     assert_includes content, "@preferences_url"
-    assert_includes content, "通知偏好"
+    assert_includes content, "manage_saved"
   end
 
   test "mailer sets preferences url" do
@@ -120,6 +120,6 @@ class Round75CategoryNewestSortTest < ActionDispatch::IntegrationTest
   test "category vue uses newest sort option" do
     content = File.read(Rails.root.join("app/javascript/pages/Commerce/Categories/Show.vue"))
     assert_includes content, "value: 'newest'"
-    assert_includes content, "newest: '最新'"
+    assert_includes content, "commerce.categoryShow.sortNewestListed"
   end
 end

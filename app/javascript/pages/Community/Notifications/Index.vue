@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -10,6 +11,8 @@ import { routes } from '@/lib/routes'
 import { appendQueryParams } from '@/lib/utils'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 export interface NotificationGroup {
   key: string
@@ -165,7 +168,7 @@ function clearAllFilters() {
 }
 
 function categoryLabel(category: string) {
-  return category === 'commerce' ? '商城' : '论坛'
+  return category === 'commerce' ? t('community.notifications.store') : t('community.notifications.forum')
 }
 
 const displaySections = () => {
@@ -173,7 +176,7 @@ const displaySections = () => {
   if (!props.notifications.length) return []
   return [{
     key: 'all',
-    label: '全部',
+    label: t('community.notifications.all'),
     count: props.notifications.length,
     groups: props.notifications,
     timeline_sections: [],
@@ -186,7 +189,7 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
   if (!section.groups.length) return []
   return [{
     key: 'all',
-    label: '全部',
+    label: t('community.notifications.all'),
     count: section.groups.length,
     groups: section.groups,
     default_expanded: true,
@@ -196,29 +199,29 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '通知', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('community.notifications.title'), current: true },
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
-    <PageHeader title="通知" subtitle="论坛与商城消息" />
-    <Button type="button" variant="outline" size="sm" @click="markAllRead">全部已读</Button>
+    <PageHeader :title="t('community.notifications.title')" :subtitle="t('community.notifications.subtitle')" />
+    <Button type="button" variant="outline" size="sm" @click="markAllRead">{{ t('community.notifications.markAllRead') }}</Button>
   </div>
 
   <div class="mb-4 flex flex-wrap gap-2">
-    <Button :variant="activeCategory === 'all' ? 'default' : 'outline'" size="sm" @click="switchCategory('all')">全部</Button>
-    <Button :variant="activeCategory === 'forum' ? 'default' : 'outline'" size="sm" @click="switchCategory('forum')">论坛</Button>
-    <Button :variant="activeCategory === 'commerce' ? 'default' : 'outline'" size="sm" @click="switchCategory('commerce')">商城</Button>
+    <Button :variant="activeCategory === 'all' ? 'default' : 'outline'" size="sm" @click="switchCategory('all')">{{ t('community.notifications.all') }}</Button>
+    <Button :variant="activeCategory === 'forum' ? 'default' : 'outline'" size="sm" @click="switchCategory('forum')">{{ t('community.notifications.forum') }}</Button>
+    <Button :variant="activeCategory === 'commerce' ? 'default' : 'outline'" size="sm" @click="switchCategory('commerce')">{{ t('community.notifications.store') }}</Button>
     <span class="mx-1 text-muted-foreground">|</span>
-    <Button :variant="(activeRead || 'all') === 'all' ? 'default' : 'outline'" size="sm" @click="switchRead('all')">全部消息</Button>
+    <Button :variant="(activeRead || 'all') === 'all' ? 'default' : 'outline'" size="sm" @click="switchRead('all')">{{ t('community.notifications.allMessages') }}</Button>
     <Button :variant="activeRead === 'unread' ? 'default' : 'outline'" size="sm" @click="switchRead('unread')">
-      未读<span v-if="unreadCount != null && unreadCount > 0"> ({{ unreadCount }})</span>
+      {{ t('community.notifications.unread') }}<span v-if="unreadCount != null && unreadCount > 0"> ({{ unreadCount }})</span>
     </Button>
   </div>
 
   <div v-if="periodFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">时间筛选：</span>
+    <span class="text-xs text-muted-foreground">{{ t('community.notifications.timeFilter') }}</span>
     <Link
       v-for="pf in periodFilters"
       :key="pf.key"
@@ -231,7 +234,7 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
   </div>
 
   <div v-if="quickFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">快捷筛选：</span>
+    <span class="text-xs text-muted-foreground">{{ t('community.notifications.quickFilter') }}</span>
     <Link
       v-for="qf in quickFilters"
       :key="qf.key"
@@ -240,7 +243,7 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
       :class="qf.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
     >
       {{ qf.label }}<span class="ml-1 opacity-80">({{ qf.count }})</span>
-      <span v-if="qf.unread_count" class="ml-1 font-semibold">· {{ qf.unread_count }} 未读</span>
+      <span v-if="qf.unread_count" class="ml-1 font-semibold">· {{ t('community.notifications.unreadCount', { count: qf.unread_count }) }}</span>
     </Link>
   </div>
 
@@ -256,21 +259,21 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
       ]"
     >
       {{ tab.label }}<span class="ml-1 opacity-80">({{ tab.count }})</span>
-      <span v-if="tab.unread_count" class="ml-1 text-orange-600 dark:text-orange-400">{{ tab.unread_count }} 未读</span>
+      <span v-if="tab.unread_count" class="ml-1 text-orange-600 dark:text-orange-400">{{ t('community.notifications.unreadCount', { count: tab.unread_count }) }}</span>
     </Link>
   </div>
 
   <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span class="text-xs text-muted-foreground">{{ t('community.notifications.activeFilters') }}</span>
     <span
       v-for="filter in activeFilters"
       :key="`${filter.param}-${filter.value || filter.label}`"
       class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
     >
       {{ filter.label }}
-      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(filter)">×</button>
+      <button type="button" class="hover:opacity-70" :title="t('community.notifications.removeFilter')" @click="removeFilter(filter)">×</button>
     </span>
-    <Button type="button" variant="ghost" size="sm" class="h-6 text-xs" @click="clearAllFilters">清除全部</Button>
+    <Button type="button" variant="ghost" size="sm" class="h-6 text-xs" @click="clearAllFilters">{{ t('community.notifications.clearAll') }}</Button>
   </div>
 
   <div v-if="displaySections().length" class="space-y-4">
@@ -281,7 +284,7 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
         @click="toggleSection(section.key, section.default_expanded)"
       >
         <span>{{ section.label }} ({{ section.count }})</span>
-        <span class="text-xs text-muted-foreground">{{ isSectionExpanded(section) ? '收起' : '展开' }}</span>
+        <span class="text-xs text-muted-foreground">{{ isSectionExpanded(section) ? t('community.notifications.collapse') : t('community.notifications.expand') }}</span>
       </button>
       <div v-if="isSectionExpanded(section)" class="space-y-3 border-t p-3">
         <div v-for="timeline in sectionTimelines(section)" :key="`${section.key}-${timeline.key}`" class="rounded-md border">
@@ -291,7 +294,7 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
             @click="toggleTimeline(section.key, timeline)"
           >
             <span>{{ timeline.label }} ({{ timeline.count }})</span>
-            <span>{{ isTimelineExpanded(section.key, timeline) ? '收起' : '展开' }}</span>
+            <span>{{ isTimelineExpanded(section.key, timeline) ? t('community.notifications.collapse') : t('community.notifications.expand') }}</span>
           </button>
           <div v-if="isTimelineExpanded(section.key, timeline)" class="space-y-2 border-t p-2">
             <article
@@ -306,17 +309,17 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
                     <Badge variant="outline" class="text-[10px]">{{ categoryLabel(group.category) }}</Badge>
                     <h3 class="text-sm font-medium">{{ group.title }}</h3>
                     <Badge v-if="group.count > 1">{{ group.count }}</Badge>
-                    <Badge v-if="group.unread_count" variant="default">{{ group.unread_count }} 未读</Badge>
+                    <Badge v-if="group.unread_count" variant="default">{{ t('community.notifications.unreadCount', { count: group.unread_count }) }}</Badge>
                   </div>
                   <p v-if="group.body" class="mt-1 text-sm text-muted-foreground">{{ group.body }}</p>
                   <p class="mt-2 text-xs text-muted-foreground">{{ group.latest_at }}</p>
                 </div>
                 <div class="flex shrink-0 gap-2">
                   <Button v-if="group.count > 1" type="button" variant="outline" size="sm" @click="toggleExpand(group.key)">
-                    {{ expanded[group.key] ? '收起' : '展开' }}
+                    {{ expanded[group.key] ? t('community.notifications.collapse') : t('community.notifications.expand') }}
                   </Button>
                   <Button v-if="group.visit_url" as-child size="sm">
-                    <Link :href="group.visit_url">查看</Link>
+                    <Link :href="group.visit_url">{{ t('community.notifications.view') }}</Link>
                   </Button>
                 </div>
               </div>
@@ -328,9 +331,9 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
                     <p class="text-xs text-muted-foreground">{{ item.created_at }}</p>
                   </div>
                   <div class="flex gap-1">
-                    <Button v-if="!item.read" type="button" variant="outline" size="sm" @click="markRead(item.mark_read_url)">已读</Button>
+                    <Button v-if="!item.read" type="button" variant="outline" size="sm" @click="markRead(item.mark_read_url)">{{ t('community.notifications.markRead') }}</Button>
                     <Button as-child size="sm" variant="outline">
-                      <Link :href="item.visit_url">查看</Link>
+                      <Link :href="item.visit_url">{{ t('community.notifications.view') }}</Link>
                     </Button>
                   </div>
                 </li>
@@ -343,6 +346,6 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
   </div>
 
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    暂无通知。
+    {{ t('community.notifications.empty') }}
   </p>
 </template>

@@ -64,6 +64,12 @@ module ActiveSupport
       user.roles << role unless user.roles.include?(role)
     end
 
+    def grant_admin_module(user, module_key)
+      user.admin_module_grants.find_or_create_by!(module_key: module_key) do |grant|
+        grant.granted_at = Time.current
+      end
+    end
+
     def enable_forum_pm!(user)
       return if Community::TrustLevel.can_send_pm?(user)
 

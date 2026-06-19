@@ -1,6 +1,6 @@
-<p>你好 <%= @user.username %>，</p>
-<p>恭喜！你获得了徽章 <strong><%= @badge.icon %> <%= @badge.name %></strong>。</p>
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
+<p><%= t("mcweb.mail.forum.badge_earned.body", badge: "#{@badge.icon} #{@badge.name}") %></p>
 <% if @badge.description.present? %>
   <p><%= @badge.description %></p>
 <% end %>
-<p><a href="<%= @url %>">查看徽章详情</a></p>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.forum.badge_earned.view_badge") %></a></p>

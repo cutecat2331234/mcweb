@@ -50,7 +50,7 @@ module Admin
         @page = ::Website::Page.new(page_params)
 
         if @page.save
-          redirect_to admin_website_page_path(@page), notice: "页面已创建。"
+          redirect_to admin_website_page_path(@page), notice: t("mcweb.flash.created", resource: t("mcweb.resources.page"))
         else
           render :new, status: :unprocessable_entity
         end
@@ -61,7 +61,7 @@ module Admin
 
       def update
         if @page.update(page_params)
-          redirect_to admin_website_page_path(@page), notice: "页面已更新。"
+          redirect_to admin_website_page_path(@page), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.page"))
         else
           render :edit, status: :unprocessable_entity
         end
@@ -69,7 +69,7 @@ module Admin
 
       def destroy
         @page.destroy!
-        redirect_to admin_website_pages_path, notice: "页面已删除。"
+        redirect_to admin_website_pages_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.page"))
       end
 
       private

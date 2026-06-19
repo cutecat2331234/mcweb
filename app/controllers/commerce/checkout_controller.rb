@@ -60,7 +60,7 @@ module Commerce
       if params[:order_id].blank?
         cart = Commerce::Cart.find_by(user: current_user)
         if cart.nil? || cart.empty?
-          return redirect_to store_cart_path, alert: "购物车是空的。"
+          return redirect_to store_cart_path, alert: t("mcweb.services.errors.cart_empty")
         end
 
         order_result = Commerce::CreateOrder.call(
@@ -96,7 +96,7 @@ module Commerce
         unless result.success?
           return redirect_to store_order_path(order), alert: service_error_message(result)
         end
-        return redirect_to store_order_path(order), notice: "订单已确认。"
+        return redirect_to store_order_path(order), notice: t("mcweb.flash.order_confirmed")
       end
 
       provider_name = checkout_params[:provider].presence || default_provider
@@ -115,7 +115,7 @@ module Commerce
         redirect_to store_order_path(order), alert: service_error_message(result)
       end
     rescue Payments::Provider::UnknownProviderError
-      redirect_to store_order_path(order), alert: "支付方式不可用，请重试或更换支付方式。"
+      redirect_to store_order_path(order), alert: t("mcweb.flash.payment_method_unavailable")
     rescue ActiveRecord::RecordInvalid => e
       redirect_to store_order_path(order), alert: e.record.errors.full_messages.to_sentence
     end

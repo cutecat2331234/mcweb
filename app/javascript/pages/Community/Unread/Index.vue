@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -14,6 +15,8 @@ import { appendQueryParams } from '@/lib/utils'
 import { readCsrfToken } from '@/lib/csrf'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   topics: TopicListItem[]
@@ -45,7 +48,7 @@ const saveError = ref('')
 const tagPicker = ref('')
 
 const availableTagOptions = computed(() => [
-  { value: '', label: '添加标签筛选…' },
+  { value: '', label: t('forum.lists.addTagFilter') },
   ...props.tagOptions
     .filter((o) => o.value && !selectedTagSlugs.value.includes(o.value))
     .map((o) => ({ value: o.value, label: o.label })),
@@ -174,7 +177,7 @@ async function saveFilterPreset() {
     })
     if (!response.ok) {
       const data = await response.json().catch(() => ({}))
-      saveError.value = data.error || '保存失败'
+      saveError.value = data.error || t('forum.lists.saveFailed')
       return
     }
     saveName.value = ''
@@ -197,13 +200,13 @@ async function deleteFilterPreset(deleteUrl: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '未读主题', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.unread.breadcrumb'), current: true },
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader title="未读主题" subtitle="你有未读回复的主题" />
+    <PageHeader :title="t('forum.unread.title')" :subtitle="t('forum.unread.subtitle')" />
     <div class="flex flex-wrap items-center gap-2">
       <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
       <Select :model-value="filter" :options="filterOptions" size="sm" @update:model-value="changeFilter" />
@@ -223,27 +226,27 @@ async function deleteFilterPreset(deleteUrl: string) {
         size="sm"
         @click="markSelectedRead"
       >
-        标选中为已读（{{ selectedIds.length }}）
+        {{ t('forum.lists.markSelectedRead', { count: selectedIds.length }) }}
       </Button>
       <Button v-if="topics.length" type="button" variant="outline" size="sm" @click="markAllRead">
-        全部标为已读
+        {{ t('forum.lists.markAllRead') }}
       </Button>
     </div>
   </div>
 
   <div v-if="saveFilterPresetUrl && hasActiveFilters()" class="mb-4 flex flex-wrap items-end gap-2 rounded-lg border p-3">
     <div class="space-y-1">
-      <label class="text-sm font-medium">保存当前筛选</label>
-      <Input v-model="saveName" placeholder="筛选名称" class="w-48" />
+      <label class="text-sm font-medium">{{ t('forum.lists.saveCurrentFilter') }}</label>
+      <Input v-model="saveName" :placeholder="t('forum.lists.filterNamePlaceholder')" class="w-48" />
     </div>
     <Button type="button" variant="outline" size="sm" :disabled="saving || !saveName.trim()" @click="saveFilterPreset">
-      {{ saving ? '保存中…' : '保存筛选' }}
+      {{ saving ? t('forum.lists.saving') : t('forum.lists.saveFilter') }}
     </Button>
     <p v-if="saveError" class="text-sm text-destructive">{{ saveError }}</p>
   </div>
 
   <div v-if="savedFilterPresets?.length" class="mb-4 flex flex-wrap gap-2">
-    <span class="text-sm text-muted-foreground">已保存：</span>
+    <span class="text-sm text-muted-foreground">{{ t('forum.lists.savedFilters') }}</span>
     <span v-for="preset in savedFilterPresets" :key="preset.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <Link :href="preset.url" class="hover:underline">{{ preset.name }}</Link>
       <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteFilterPreset(preset.delete_url)">×</button>
@@ -251,7 +254,7 @@ async function deleteFilterPreset(deleteUrl: string) {
   </div>
 
   <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">已选筛选：</span>
+    <span class="text-xs text-muted-foreground">{{ t('forum.lists.activeFilters') }}</span>
     <Button
       v-if="filterBookmarkUrl"
       type="button"
@@ -259,7 +262,7 @@ async function deleteFilterPreset(deleteUrl: string) {
       size="sm"
       @click="copyFilterBookmark"
     >
-      {{ bookmarkCopied ? '已复制链接' : '复制筛选链接' }}
+      {{ bookmarkCopied ? t('forum.lists.linkCopied') : t('forum.lists.copyFilterLink') }}
     </Button>
     <span
       v-for="chip in activeFilters"
@@ -267,7 +270,7 @@ async function deleteFilterPreset(deleteUrl: string) {
       class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
     >
       {{ chip.label }}
-      <button type="button" class="hover:opacity-70" title="移除此筛选" @click="removeFilter(chip)">×</button>
+      <button type="button" class="hover:opacity-70" :title="t('forum.lists.removeFilter')" @click="removeFilter(chip)">×</button>
     </span>
   </div>
 

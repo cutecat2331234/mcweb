@@ -1,5 +1,5 @@
-你好 <%= @user.display_name || @user.username %>，
+<%= t("mcweb.mail.greeting", username: @user.display_name || @user.username) %>
 
-你订阅的即将上架商品「<%= @product.name %>」现已开售。
+<%= t("mcweb.mail.commerce.availability.body", product: @product.name) %>
 
-前往购买：<%= store_product_url(@product) %>
+<%= t("mcweb.mail.commerce.availability.buy", url: store_product_url(@product)) %>

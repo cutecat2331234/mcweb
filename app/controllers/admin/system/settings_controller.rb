@@ -29,7 +29,7 @@ module Admin
           metadata: { keys: settings_params.keys }
         )
 
-        redirect_to admin_system_settings_path, notice: "系统设置已保存。"
+        redirect_to admin_system_settings_path, notice: t("mcweb.flash.system_settings_saved")
       end
 
       private

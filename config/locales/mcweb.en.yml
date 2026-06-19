@@ -1,0 +1,719 @@
+en:
+  mcweb:
+    flash:
+      invalid_locale: Unsupported language.
+      locale_updated: Language updated.
+      preferences_saved: Notification preferences saved.
+      store_preferences_saved: Store notification preferences saved.
+      sign_in_required: Please sign in to continue.
+      permission_denied: You do not have permission to perform this action.
+      admin_access_denied: You do not have permission to access the admin panel.
+      admin_module_denied: You do not have permission to access this module.
+      sign_in_success: Signed in successfully.
+      sign_out_success: Signed out successfully.
+      registration_success: Registration successful. Please check your email to verify your address.
+      sign_in_required_short: Please sign in first.
+      operation_failed: Operation failed.
+      bookmark_updated: Bookmark updated.
+      marked_read: Marked as read.
+      notification_unavailable: The content for this notification is no longer available.
+      report_submitted: Report submitted.
+      content_not_found: Content not found or access denied.
+      draft_saved: Draft saved.
+      draft_updated: Draft updated.
+      draft_deleted: Draft deleted.
+      topic_published: Topic published.
+      topic_created: Topic created.
+      topic_updated: Topic updated.
+      topic_closed: Topic closed.
+      topic_reopened: Topic reopened.
+      topic_moved: Topic moved.
+      topic_merged: Topic merged.
+      topic_split: Topic split.
+      topic_marked_solved: Marked as solved.
+      topic_unmarked_solved: Solved mark removed.
+      topic_marked_unread: Marked as unread.
+      topic_shared_pm: Topic shared via private message.
+      topic_scheduled: "Topic scheduled for %{time}."
+      staff_note_added: Staff note added.
+      cannot_post_in_section: You are not allowed to post in this section.
+      cannot_moderate_bulk: You are not allowed to perform bulk moderation.
+      cannot_export_topic: You are not allowed to export this topic.
+      cannot_moderate: Not allowed.
+      invalid_close_time: Invalid close time.
+      invalid_open_time: Invalid open time.
+      invalid_pin_time: Invalid pin time.
+      invalid_archive_time: Invalid archive time.
+      user_reply_banned: "Reply from %{username} has been banned in this topic."
+      user_reply_unbanned: "Reply ban removed for %{username}."
+      user_invited_watch: "Invited %{username} to watch this topic."
+      cart_cleared: Cart cleared.
+      cart_updated: Cart updated.
+      cart_item_missing: Cart item not found.
+      cart_update_failed: Could not update cart. Please try again.
+      moved_to_wishlist: Moved to wishlist.
+      coupon_cleared: Coupon removed.
+      gift_card_cleared: Gift card removed.
+      added_to_cart: Added to cart.
+      browsing_history_cleared: Browsing history cleared.
+      discussion_topic_created: Discussion topic created.
+      payment_success: Payment successful.
+      payment_access_denied: You do not have access to this payment.
+      payment_expired: Payment session expired. Please start again.
+      password_reset_sent: If that email is registered, we sent a reset link.
+      password_reset_success: Password reset. You can sign in now.
+      session_revoked_current: Current session revoked. Please sign in again.
+      session_revoked: Session revoked.
+      participant_added: Participant added.
+      participant_removed: Participant removed.
+      left_group: You left the group.
+      minecraft_linked: Minecraft account linked successfully.
+      digest_unsubscribed: Forum digest emails disabled.
+      digest_unsubscribe_invalid: Digest unsubscribe link is invalid or expired.
+      all_topics_marked_read: All topics marked as read.
+      topics_marked_read: "Marked %{count} topics as read."
+      section_marked_read: All topics in section marked as read.
+      search_history_deleted: Search history entry deleted.
+      search_history_cleared: Search history cleared.
+      profile_updated: Profile updated.
+      avatar_updated: Avatar updated.
+      avatar_reset: Avatar reset to default.
+      compare_cleared: Compare list cleared.
+      compare_empty: Compare list is empty.
+      compare_share_created: Share link created.
+      compare_product_invalid: Product cannot be added to compare.
+      availability_subscribed: Availability alert subscribed.
+      availability_unsubscribed: Availability alert removed.
+      question_submitted: Question submitted.
+      answer_published: Answer published.
+      gift_card_invalid: Invalid gift card.
+      gift_card_saved: "Gift card %{code} saved to your wallet and will apply at checkout."
+      installation_locked: Installation is already complete. Setup wizard cannot run again.
+      feature_toggles_saved: Feature toggles saved.
+      created: "%{resource} created."
+      updated: "%{resource} updated."
+      deleted: "%{resource} deleted."
+      archived: "%{resource} archived."
+      refund_processed: Refund processed.
+      refund_rejected: Refund request rejected.
+      no_refundable_payment: No refundable payment found.
+      shipping_updated: Shipping information updated.
+      fulfillment_requeued: Fulfillment requeued.
+      fulfillment_updated: Fulfillment updated.
+      webhook_requeued: Webhook requeued for delivery.
+      webhook_retry_failed: Retry failed.
+      template_installed: "Template \"%{name}\" installed."
+      template_deleted: Template deleted.
+      connector_secret_generated: "New secret generated (shown once): %{secret}"
+      system_role_immutable: System roles cannot be modified.
+      system_role_undeletable: System roles cannot be deleted.
+      category_has_sections: Category still has sections and cannot be deleted.
+      user_banned: User banned.
+      user_unbanned: User unbanned.
+      badge_granted: Badge granted.
+      cannot_grant_badge: You are not allowed to grant badges.
+      warning_issued: Warning issued.
+      user_silenced: User silenced (can browse but not post).
+      user_unsilenced: User silence removed.
+      trust_level_auto: Trust level restored to automatic.
+      trust_level_invalid: Trust level must be between 0 and 4.
+      trust_level_set: "Trust level set to TL%{level}."
+      wallet_updated: "Store credit updated to %{amount}."
+      user_muted: User muted.
+      user_unmuted: Mute removed.
+      ip_banned: IP banned.
+      ip_unbanned: IP ban removed.
+      product_copied: Product duplicated as draft. Check SKU and identifiers.
+      merchant_reply_published: Merchant reply published.
+      review_updated: Review updated.
+      subscription:
+        watching:
+          topic: Watching this topic (instant notifications).
+          section: Watching this section (instant notifications).
+          tag: Watching this tag (instant notifications).
+        tracking:
+          topic: Tracking this topic (in-app notifications only).
+          section: Tracking this section (in-app notifications only).
+          tag: Tracking this tag (in-app notifications only).
+        normal:
+          topic: Normal (notify on participation or @mention only).
+          section: Normal (no new topic notifications for this section).
+          tag: Normal (no new topic notifications for this tag).
+        off:
+          topic: Notifications off for this topic.
+          section: Unwatched this section.
+          tag: Unwatched this tag.
+      webhook_retry_queued: "Retried %{count} failed deliveries."
+      webhook_retry_failed_only: Only failed deliveries can be retried.
+      wishlist_product_invalid: Product cannot be added to wishlist.
+      wishlist_note_invalid: Cannot edit note for this product.
+      wishlist_note_saved: Note saved.
+      stock_alert_subscribed: Stock alert subscribed.
+      stock_alert_no_stock: Product is not in stock.
+      stock_alert_unsubscribed: Stock alert removed.
+      conversation_archived: Conversation archived.
+      conversation_restored: Conversation restored.
+      conversation_muted: Conversation muted.
+      conversation_unmuted: Conversation unmuted.
+      report_resolved: Report resolved.
+      minecraft_settings_saved: Minecraft settings saved.
+      system_settings_saved: System settings saved.
+      mapping_added: Mapping added.
+      mapping_updated: Mapping updated.
+      mapping_deleted: Mapping deleted.
+      rule_created: Rule created.
+      rule_updated: Rule updated.
+      rule_deleted: Rule deleted.
+      field_created: Field created.
+      field_updated: Field updated.
+      field_deleted: Field deleted.
+      subscription_update_failed: Update failed.
+      section_muted: Section muted.
+      section_unmuted: Section unmuted.
+      order_confirmed: Order confirmed.
+      payment_method_unavailable: Payment method unavailable. Try again or choose another.
+      user_ignored: User ignored.
+      user_unignored: User unignored.
+      forum_settings_saved: Forum settings saved.
+      webhook_test_queued: "Test webhook queued (%{label})."
+      webhook_test_failed: Test send failed.
+      webhook_batch_test_queued: "Queued %{queued}/%{total} saved-search webhook tests."
+      webhook_batch_order_test_queued: "Queued %{queued}/%{total} order webhook tests."
+      webhook_batch_test_failed: Batch test failed.
+      webhook_batch_retry_failed: Batch retry failed.
+      user_blocked: User blocked.
+      user_unblocked: User unblocked.
+      poll_voted: Vote recorded.
+      poll_unvoted: Vote removed.
+      poll_closed: Poll closed.
+      notification_email_unsubscribed: "Unsubscribed from %{label} email notifications."
+      unsubscribe_invalid: Unsubscribe link invalid or expired.
+      censored_word_added: Censored word added.
+      censored_word_deleted: Censored word removed.
+      question_hidden: Question hidden.
+      question_restored: Question restored.
+      question_deleted: Question deleted.
+      store_settings_saved: Store settings saved.
+      store_settings_save_failed: "Save failed: %{message}"
+      helpful_marked: Marked as helpful.
+      helpful_unmarked: Helpful mark removed.
+      order_cancelled: Order cancelled.
+      refund_requested: Refund request submitted. Please wait for review.
+      no_receipt: No receipt available for this order.
+      no_packing_slip: No packing slip available for this order.
+      product_not_found: Product not found.
+      coupon_invalid: Invalid coupon.
+      coupon_saved: "Coupon %{code} saved and will apply at checkout."
+      review_submitted: Review submitted.
+      review_shared: Review shared to forum.
+      review_deleted: Review deleted.
+      email_verified: Email verified. You can sign in now.
+      price_alert_subscribed: Price alert subscribed.
+      price_alert_unsubscribed: Price alert removed.
+      topic_muted: Topic muted.
+      topic_unmuted: Topic unmuted.
+      bookmark_added: Added to bookmarks.
+      bookmark_removed: Removed from bookmarks.
+      slow_mode_enabled: "Slow mode enabled (%{seconds}s)."
+      slow_mode_disabled: Slow mode disabled.
+      auto_close_scheduled: "Topic will close automatically at %{time}."
+      auto_close_cancelled: Auto-close cancelled.
+      auto_open_scheduled: "Topic will reopen automatically at %{time}."
+      auto_open_cancelled: Auto-open cancelled.
+      auto_pin_scheduled: "Topic will be pinned automatically at %{time}."
+      auto_pin_cancelled: Auto-pin cancelled.
+      auto_archive_scheduled: "Topic will be archived automatically at %{time}."
+      auto_archive_cancelled: Auto-archive cancelled.
+      activity_sign_in_required: Sign in to view following activity.
+      saved_search_notify_disabled: "Daily email disabled for saved search \"%{name}\"."
+      saved_search_unsubscribe_invalid: Unsubscribe link invalid or expired.
+      post_updated: Post updated.
+      topic_unavailable: Topic unavailable.
+      cannot_delete_post: You cannot delete this post.
+      post_deleted: Post deleted.
+      cannot_view_edit_history: You cannot view edit history.
+      post_restored_version: Restored to selected version.
+      post_restored: Post restored.
+      topic_created_from_post: New topic created.
+      canned_response_created: Canned response created.
+      canned_response_updated: Canned response updated.
+      canned_response_deleted: Canned response deleted.
+      shipping_address_saved: Address saved.
+      shipping_address_updated: Address updated.
+      shipping_address_deleted: Address deleted.
+      shipping_address_default_set: Default address updated.
+    resources:
+      user: User
+      role: Role
+      page: Page
+      article: Article
+      category: Category
+      section: Section
+      topic: Topic
+      product: Product
+      coupon: Coupon
+      gift_card: Gift card
+      order: Order
+      server: Server
+      badge: Badge
+      tag_group: Tag group
+      tag: Tag
+      censored_word: Censored word
+      template: Template
+    services:
+      errors:
+        invalid_or_expired_verification_token: Verification link is invalid or expired.
+        invalid_or_expired_reset_token: Reset link is invalid or expired.
+        recipient_not_found: Recipient not found.
+        cannot_message_self: You cannot message yourself.
+        cannot_message_user: You cannot message this user.
+        cannot_message_user_named: "You cannot message %{name}."
+        cannot_message_blocked_named: "This user has blocked you. Cannot message %{name}."
+        users_not_found: "Users not found: %{names}"
+        new_members_cannot_send_pm: New members cannot send private messages yet.
+        new_members_cannot_post_links: New members cannot post links yet.
+        message_too_short: Message is too short.
+        not_a_participant: You are not a participant.
+        invalid_parent_post: Invalid parent post.
+        slow_mode_active: Slow mode is active. Please wait before posting again.
+        wait_before_posting: Please wait before posting again.
+        invalid_or_expired_link_code: Invalid or expired link code.
+        invalid_connector_signature: Invalid connector signature.
+        server_connector_not_configured: Server connector is not configured.
+        invalid_url: Invalid URL.
+        invalid_reaction: Invalid reaction.
+        content_not_found: Content not found.
+        invalid_email_or_password: Invalid email or password.
+        group_title_required: Group title is required.
+        add_other_participant: Add at least one other participant.
+        too_many_participants: Too many participants.
+        cannot_share_topic: You are not allowed to share this topic.
+        not_group_conversation: Not a group conversation.
+        user_not_found: User not found.
+        user_not_participant: User is not a participant.
+        not_allowed: Not allowed.
+        cannot_remove_last_participant: Cannot remove the last participant.
+        only_participants_can_add: Only participants can add members.
+        group_full: Group is full.
+        only_creator_can_add: Only the group creator can add members.
+        user_already_participant: User is already a participant.
+        cannot_add_self: Cannot add yourself.
+        cannot_message_blocked_user: Cannot message blocked user.
+        user_silenced: User is silenced.
+        user_cannot_pm: User cannot participate in private messages.
+        cart_empty: Your cart is empty.
+        order_created: Order created.
+        report_submitted: Report submitted.
+        reset_token_expired: Reset token has expired.
+        email_or_token_required: Email or token with new password is required.
+        cannot_vote_in_topic: You are not allowed to vote in this topic.
+        poll_closed: Poll is closed.
+        no_options_selected: No options selected.
+        too_many_options_selected: Too many options selected.
+        invalid_poll_option: Invalid option.
+        order_cannot_cancel: Order cannot be cancelled.
+        payment_not_refundable: Payment is not refundable.
+        refund_exceeds_balance: Refund amount exceeds remaining balance.
+        payment_not_found: Payment record not found.
+        payment_invalid: Payment is no longer valid.
+        order_not_payable: Order is not payable.
+        order_no_shippable_items: Order has no shippable items.
+        not_authorized_moderate_post: You are not authorized to moderate this post.
+        unknown_moderation_action: Unknown moderation action.
+        small_action_body_required: Action body is required.
+        link_code_used: Link code has already been used.
+        minecraft_already_linked: This Minecraft account is already linked.
+        request_timestamp_invalid: Request timestamp is too old or invalid.
+        cannot_create_topic_in_section: You are not allowed to create topics in this section.
+        trust_level_too_low: Your trust level is too low to create topics in this section.
+        section_read_only: This section is read-only.
+        title_required: Title is required.
+        post_body_too_short: Post body is too short.
+        muted_in_section: You are muted in this section.
+        account_banned: Your account is banned.
+        silenced_cannot_post: You are silenced and cannot post.
+        wait_before_new_topic: Please wait before creating another topic.
+        similar_topic_recent: A similar topic was recently created.
+    minecraft:
+      whois:
+        not_found: Player record not found.
+        not_linked: This player is not linked to a website account.
+        linked_summary: "Linked to website user %{username}"
+      connector:
+        link_success: Enter the bind code on the website to complete linking.
+        link_code: "Bind code: {code} — visit {url}"
+        link_failed: Failed to generate bind code. Try again later.
+      tasks:
+        broadcast_announcement: In-game broadcast announcement
+        run_commands: Run console commands
+        deliver_item: Deliver item (commands)
+      notifications:
+        default_title: Minecraft event
+    admin:
+      minecraft:
+        integration_actions: Integration actions
+        profile_fields: Profile fields
+        permission_mappings: Permission mappings
+        new_server: New server
+        edit_server: Edit server
+        new_rule: New rule
+        edit_rule: Edit rule
+        new_field: New field
+        edit_field: Edit field
+        col_name: Name
+        col_event: Event
+        col_enabled: Enabled
+        col_priority: Priority
+        col_key: Key
+        col_label: Label
+        col_type: Type
+        col_visibility: Visibility
+        col_source: Source
+        col_address: Address
+        col_port: Port
+        col_status: Status
+        servers: Minecraft servers
+        field_address: Address
+        field_port: Port
+        field_status: Status
+        field_server_id: Server ID
+        field_secret_fingerprint: Secret fingerprint
+        field_last_heartbeat: Last heartbeat
+        field_online_players: Online players
+        field_tps: TPS
+        field_version: Version
+        secret_not_generated: Not generated
+        action_edit: Edit
+        action_rotate_secret: Rotate secret
+        action_delete: Delete
+        confirm_rotate_secret: Rotate the Connector secret? The old secret will stop working immediately.
+        confirm_delete_server: Delete this server?
+        status_online: Online
+        status_offline: Offline
+        status_maintenance: Maintenance
+    labels:
+      not_available: "—"
+      yes: "Yes"
+      no: "No"
+      notification_types:
+        forum.topic_reply: Topic reply
+        forum.mention: Mention
+        forum.section_topic: New section topic
+        forum.private_message: Private message
+        forum.followed_topic: Followed user topic
+        forum.followed_reply: Followed user reply
+        forum.tag_topic: New tag topic
+        forum.reaction: Reaction
+        forum.quote: Quote
+        forum.topic_solved: Topic solved
+        forum.saved_search_match: Saved search match
+        forum.badge: Badge earned
+        forum.trust_level: Trust level
+        forum.topic_assigned: Topic assigned
+        forum.post_edited: Post edited
+        forum.topic_invite: Topic invite
+        forum.poll_closed: Poll closed
+        forum.here: "@here mention"
+        commerce.order_created: Order created
+        commerce.payment_confirmed: Payment confirmed
+        commerce.payment_reminder: Payment reminder
+        commerce.order_shipped: Order shipped
+        commerce.order_fulfilled: Order fulfilled
+        commerce.order_completed: Order completed
+        commerce.order_cancelled: Order cancelled
+        commerce.refund_requested: Refund requested
+        commerce.refund_processed: Refund processed
+        commerce.review_request: Review request
+        commerce.merchant_review_reply: Merchant review reply
+        commerce.product_available: Product available
+        commerce.abandoned_cart: Cart reminder
+        commerce.low_stock: Low stock
+        minecraft.custom: Minecraft event
+        minecraft.link_completed: Minecraft linked
+        minecraft.player_join: Player joined
+        minecraft.player_quit: Player quit
+      order_status:
+        pending: Pending payment
+        awaiting_payment: Awaiting payment
+        paid: Paid
+        processing: Processing
+        fulfilling: Fulfilling
+        fulfilled: Fulfilled
+        completed: Completed
+        cancelled: Cancelled
+        refunded: Refunded
+        failed: Failed
+      refund_status:
+        pending: Pending review
+        approved: Approved
+        rejected: Rejected
+        completed: Completed
+        succeeded: Succeeded
+        failed: Failed
+      fulfillment_status:
+        pending: Pending
+        processing: Processing
+        fulfilled: Fulfilled
+        failed: Failed
+      account_type:
+        member: Member
+        staff: Staff
+        admin: Admin
+        owner: Owner
+      trust_level:
+        tl0: New user
+        tl1: Basic user
+        tl2: Member
+        tl3: Regular
+        tl4: Leader
+      order_events:
+        created: Order created
+        payment_submitted: Payment submitted
+        submit_payment: Payment submitted
+        payment_confirmed: Payment confirmed
+        paid: Paid
+        mark_paid: Marked paid
+        cancel: Order cancelled
+        cancelled: Order cancelled
+        refund_requested: Refund requested
+        refund_processed: Refund processed
+        refund_rejected: Refund rejected
+        refunded: Refunded
+        fulfilled: Fulfilled
+      order_restorations:
+        store_credit: Store credit restored
+        gift_card: Gift card balance restored
+        coupon: Coupon usage restored
+        stock: Stock restored
+        stock_units: "%{count} units"
+      payment_expired_at: "Expired at %{time}"
+    mail:
+      greeting: "Hi %{username},"
+      greeting_formal: "Hello %{username},"
+      greeting_short: "Hello,"
+      unsubscribe_type: "Turn off this type of email"
+      manage_preferences: "Manage in notification preferences"
+      view_topic: "View topic"
+      view_reply: "View reply"
+      view_post: "View post"
+      view_profile: "View profile"
+      view_answer: "View answer"
+      view_quote: "View quote"
+      author_label: "Author: %{username}"
+      forum:
+        topic_reply:
+          body: "%{author} replied in topic \"%{title}\":"
+        mention:
+          body: "%{author} mentioned you in topic \"%{title}\":"
+        post_quoted:
+          body: "%{author} quoted your post in topic \"%{title}\":"
+        post_edited:
+          body: "%{editor} edited post #%{floor} in topic \"%{title}\":"
+        post_reaction:
+          body: "%{author} reacted %{emoji} to your post."
+          topic: "Topic: %{title}"
+        followed_topic:
+          body: "%{author} you follow posted a new topic \"%{title}\"."
+        followed_reply:
+          body: "%{author} you follow replied in topic \"%{title}\"."
+        section_topic:
+          body: "New topic \"%{title}\" in a section you watch."
+        tag_topic:
+          body: "New topic under watched tag(s) %{tags}:"
+          title: "\"%{title}\""
+        topic_assigned:
+          body: "%{actor} assigned topic \"%{title}\" to you."
+        topic_invite:
+          body: "%{inviter} invited you to watch topic \"%{title}\"."
+        topic_solved:
+          body: "%{actor} marked your topic \"%{title}\" as solved."
+        trust_level_up:
+          body: "Your trust level is now %{level_name} (Lv.%{level}) with more community privileges."
+        badge_earned:
+          body: "Congratulations! You earned the badge %{badge}."
+          view_badge: "View badge details"
+        bookmark_reminder:
+          body: "Your bookmark reminder is due."
+          note: "Note: %{note}"
+          view_content: "View content"
+        poll_closed:
+          body: "The poll \"%{question}\" in topic \"%{title}\" has closed."
+          view_results: "View poll results"
+        here:
+          body: "%{author} used @here in topic \"%{title}\" and mentioned you."
+        private_message:
+          body: "%{sender} sent you a private message:"
+          view_message: "View message"
+        user_warning:
+          body: "You received a community warning (%{points} points):"
+          total_points: "Total warning points: %{points}"
+        digest:
+          intro: "Here is your forum digest (%{count} notifications):"
+          disable_type: "Turn off this type"
+          view_unread: "View all unread notifications"
+          visit_forum: "Visit forum"
+          unsubscribe_digest: "Unsubscribe from forum digest"
+          unsubscribe_mentions: "Turn off @mention emails"
+        saved_search_digest:
+          intro: "Your saved search \"%{name}\" has %{count} new topics:"
+          filters: "Filters:"
+          view_results: "View full search results"
+          rss: "RSS feed"
+          daily_reminder: "You enabled daily email alerts for this search."
+          unsubscribe_search: "Turn off daily alerts for this search"
+          manage_saved: "Manage all saved searches in preferences"
+      identity:
+        verification:
+          intro: "Please verify your email address using the link below:"
+          ignore: "If you did not create a McWeb account, you can ignore this email."
+        password_reset:
+          intro: "We received a password reset request. Use the link below to set a new password:"
+          ignore: "If you did not request a reset, you can ignore this email."
+      commerce:
+        order_heading: "Order notification"
+        order_number: "Order #: %{number}"
+        order_status: "Status: %{status}"
+        pay_before: "Please pay before %{expires} or the order will be cancelled."
+        pay_now: "Pay now"
+        thanks: "Thank you for shopping with McWeb."
+        view_order: "View order"
+        continue_checkout: "Continue checkout"
+        view_order_detail: "View order details"
+        product_col: "Product"
+        qty_col: "Qty"
+        line_total_col: "Subtotal"
+        shipping_address_label: "Shipping address: %{address}"
+        shipping_method_label: "Shipping method: %{method}"
+        delivery_estimate_label: "Estimated delivery: %{estimate}"
+        discount_line: "Discount%{code}: −%{amount}"
+        gift_card_line: "Gift card%{code}: −%{amount}"
+        subtotal_line: "Subtotal: %{amount}"
+        shipping_line: "Shipping: %{amount}"
+        free_shipping: "Free shipping"
+        total_line: "Total: %{amount}"
+        amount_line: "Amount: %{amount}"
+        contact_support: "Contact support if you have questions."
+        reason_label: "Reason: %{reason}"
+        reply_label: "Reply:"
+        official: "(Official)"
+        view_product: "View product"
+        view_product_detail: "View product details"
+        view_product_reviews: "View reviews"
+        go_reply: "Reply now"
+        default_carrier: "Courier"
+        track_carrier: "Carrier: %{carrier}"
+        track_number: "Tracking #: %{number}"
+        track_url: "Track shipment"
+        payment_confirmed:
+          heading: "Payment confirmed"
+          body: "Order %{number} has been paid."
+        payment_reminder:
+          heading: "Payment reminder"
+          body: "Your order %{number} is still unpaid."
+        order_cancelled:
+          heading: "Order cancelled"
+          body: "Order %{number} has been cancelled."
+        order_shipped:
+          heading: "Order shipped"
+          body: "Order %{number} has shipped."
+        order_processing:
+          body: "Order %{number} is being processed."
+        order_fulfilling:
+          body: "Order %{number} is being fulfilled."
+        order_fulfilled:
+          body: "All items in order %{number} have shipped."
+        order_completed:
+          body: "Order %{number} is complete. Thank you for your purchase."
+        refund_requested:
+          body: "A refund request for order %{number} has been submitted and is under review."
+        refund_processed:
+          body: "A refund has been processed for order %{number}."
+          amount: "Refund amount: %{amount}"
+        refund_rejected:
+          body: "The refund request for order %{number} was not approved."
+        review_request:
+          heading: "Review your purchase"
+          intro: "Order %{number} is complete. Please review the items below."
+          action: "View order and review"
+        question_answered:
+          body: "Your question about \"%{product}\" has been answered:"
+        new_product_question:
+          body: "New question on product %{product}:"
+          asker: "Asked by: %{username}"
+        merchant_review_reply:
+          body: "The seller replied to your review of \"%{product}\":"
+        product_changelog:
+          body: "A product you purchased, %{product}, has been updated:"
+        price_drop:
+          body: "A product you watch, %{product}, dropped in price."
+          was: "Was: %{amount}"
+          now: "Now: %{amount}"
+        abandoned_cart:
+          intro: "You still have items in your cart:"
+          action: "Complete checkout"
+          coupon: "Exclusive coupon: %{code} (applied via link)"
+          text_intro: "You still have items in your cart:"
+          text_action: "Visit %{url} to complete your purchase."
+        stock:
+          body: "Product \"%{product}\"%{variant} you watched is back in stock."
+          visit: "Visit the store: %{url}"
+        availability:
+          body: "Coming-soon product \"%{product}\" you subscribed to is now available."
+          buy: "Buy now: %{url}"
+        gift_card:
+          purchased_intro: "Your purchased gift cards (order %{number}):"
+          code: "Code: %{code}"
+          face_value: "Value: %{amount}"
+          expires: "Expires: %{time}"
+          usage: "View balance in your account or use at checkout."
+          created_title: "Your gift card has been created"
+          balance: "Balance: %{amount} %{currency}"
+          expires_long: "Expires: %{time}"
+          keep_safe: "Keep this code safe. Use it at checkout."
+          expiry_reminder: "Gift card %{code} expires on %{time}."
+          current_balance: "Current balance: %{amount} %{currency}"
+          use_soon: "Please use it before it expires."
+        receipt:
+          title: "Order receipt"
+          page_title: "Receipt %{number}"
+          date: "Date: %{date}"
+          notes: "Notes: %{notes}"
+          footer: "McWeb Store — auto-generated receipt."
+        packing_slip:
+          title: "Packing slip"
+          page_title: "Packing slip %{number}"
+          recipient: "Ship to: %{address}"
+          notes: "Notes: %{notes}"
+          sku_product: "SKU / Product"
+          print: "Print"
+          footer: "McWeb Store — warehouse packing slip"
+        webhook_failure:
+          heading: "Webhook delivery failure"
+          body: "Webhook failures in the last 24 hours exceeded the configured threshold."
+          forum: "Forum saved searches: %{failed} failures (threshold %{threshold}, %{total} total)"
+          store: "Store orders: %{failed} failures (threshold %{threshold}, %{total} total)"
+          view_forum: "View forum delivery failures"
+          view_store: "View store delivery failures"
+
+  datetime:
+    distance_in_words:
+      about_x_hours:
+        one: about 1 hour
+        other: about %{count} hours
+      x_minutes:
+        one: 1 minute
+        other: "%{count} minutes"
+    formats:
+      default: "%Y-%m-%d %H:%M"
+      long: "%B %d, %Y %H:%M"
+      short: "%b %d, %H:%M"
+  date:
+    formats:
+      default: "%Y-%m-%d"
+      long: "%B %d, %Y"
+      short: "%b %d"
+  time:
+    formats:
+      default: "%Y-%m-%d %H:%M"
+      long: "%B %d, %Y %H:%M"
+      short: "%b %d, %H:%M"

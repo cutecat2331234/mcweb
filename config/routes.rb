@@ -5,6 +5,8 @@ Rails.application.routes.draw do
 
   root "website/home#index"
 
+  patch "locale", to: "locale#update", as: :locale
+
   get "theme-assets/:template_key/*path", to: "frontend/template_assets#show", as: :frontend_theme_asset, format: false
 
   namespace :setup, path: "setup" do
@@ -16,7 +18,7 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root "dashboard#index"
-    resources :users, only: %i[index show] do
+    resources :users, only: %i[index show edit update] do
       member do
         post :ban
         post :unban
@@ -29,7 +31,7 @@ Rails.application.routes.draw do
         post :adjust_store_credit
       end
     end
-    resources :roles, only: %i[index show]
+    resources :roles, only: %i[index show create update destroy]
     resources :audit_logs, only: %i[index show]
     namespace :forum do
       resource :settings, only: %i[show update] do
@@ -110,7 +112,15 @@ Rails.application.routes.draw do
       end
     end
     namespace :minecraft do
-      resources :servers, only: %i[index show]
+      resources :servers do
+        member do
+          post :rotate_secret
+        end
+      end
+      resource :settings, only: %i[show update]
+      resources :profile_fields, only: %i[index new create edit update destroy], path: "profile-fields"
+      resources :integration_actions, only: %i[index new create edit update destroy], path: "integration-actions"
+      resources :permission_group_mappings, only: %i[index create update destroy], path: "permission-group-mappings"
     end
     namespace :system do
       resource :feature_toggles, only: %i[show update], path: "feature-toggles"
@@ -407,6 +417,14 @@ Rails.application.routes.draw do
     namespace :connector do
       scope ":server_id" do
         post "heartbeat", to: "api#heartbeat"
+        post "link_codes", to: "api#link_codes"
+        post "presence", to: "api#presence"
+        post "profile_fields", to: "api#profile_fields"
+        post "permission_groups", to: "api#permission_groups"
+        post "server_stats", to: "api#server_stats"
+        get "config", to: "api#fetch_config"
+        post "whois", to: "api#whois"
+        post "events", to: "api#events"
         get "tasks", to: "api#tasks"
         post "tasks/:id/complete", to: "api#complete"
       end

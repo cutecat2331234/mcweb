@@ -123,6 +123,25 @@ jobs:
           test -d "$STAGE/public/vite"
           echo "Release assets OK"
 
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build McWeb connector plugins
+        working-directory: plugins/mcweb-connector
+        run: chmod +x gradlew && ./gradlew build
+
+      - name: Stage connector plugin jars
+        run: |
+          mkdir -p dist/mcweb-${{ steps.version.outputs.value }}/plugins
+          find plugins/mcweb-connector -path '*/build/libs/*.jar' ! -name '*-plain.jar' -exec cp {} dist/mcweb-${{ steps.version.outputs.value }}/plugins/ \;
+          ls -la dist/mcweb-${{ steps.version.outputs.value }}/plugins/
+
       - name: Upload release artifact
         uses: actions/upload-artifact@v7
         with:
@@ -130,6 +149,7 @@ jobs:
           path: |
             dist/mcweb-*.tar.gz
             dist/mcweb-*.tar.gz.sha256
+            dist/mcweb-*/plugins/*.jar
           retention-days: 90
           if-no-files-found: error
 
@@ -140,4 +160,5 @@ jobs:
           files: |
             dist/mcweb-*.tar.gz
             dist/mcweb-*.tar.gz.sha256
+            dist/mcweb-*/plugins/*.jar
           generate_release_notes: true

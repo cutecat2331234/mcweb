@@ -37,7 +37,7 @@ class Round81TitleOnlySearchTest < ActionDispatch::IntegrationTest
   test "search page supports title only filter" do
     content = File.read(Rails.root.join("app/javascript/pages/Community/Search/Index.vue"))
     assert_includes content, "titleOnly"
-    assert_includes content, "仅标题"
+    assert_includes content, "forum.search.titleOnly"
   end
 
   test "parse search query supports in:title" do

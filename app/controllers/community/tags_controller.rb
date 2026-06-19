@@ -118,7 +118,7 @@ module Community
         notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :tag)
         redirect_after_subscription_update(fallback_location: forum_tag_path(tag.slug), notice: notice)
       else
-        redirect_after_subscription_update(fallback_location: forum_tag_path(tag.slug), alert: result.error || "更新失败")
+        redirect_after_subscription_update(fallback_location: forum_tag_path(tag.slug), alert: result.error || t("mcweb.flash.subscription_update_failed"))
       end
     end
   end

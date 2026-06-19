@@ -45,7 +45,7 @@ module Admin
         group = Community::TagGroup.new(tag_group_params)
         if group.save
           sync_tags!(group)
-          redirect_to admin_forum_tag_groups_path, notice: "标签组已创建。"
+          redirect_to admin_forum_tag_groups_path, notice: t("mcweb.flash.created", resource: t("mcweb.resources.tag_group"))
         else
           render inertia: "Admin/Forum/TagGroups/Form", props: form_props(group), status: :unprocessable_entity
         end
@@ -54,7 +54,7 @@ module Admin
       def update
         if @tag_group.update(tag_group_params)
           sync_tags!(@tag_group)
-          redirect_to admin_forum_tag_groups_path, notice: "标签组已更新。"
+          redirect_to admin_forum_tag_groups_path, notice: t("mcweb.flash.updated", resource: t("mcweb.resources.tag_group"))
         else
           render inertia: "Admin/Forum/TagGroups/Form", props: form_props(@tag_group), status: :unprocessable_entity
         end
@@ -62,7 +62,7 @@ module Admin
 
       def destroy
         @tag_group.destroy!
-        redirect_to admin_forum_tag_groups_path, notice: "标签组已删除。"
+        redirect_to admin_forum_tag_groups_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.tag_group"))
       end
 
       private

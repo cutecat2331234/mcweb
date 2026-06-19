@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -9,6 +10,8 @@ import Alert from '@/components/ui/Alert.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 export interface FeatureToggleItem {
   id: string
@@ -32,7 +35,7 @@ const portalBothDisabled = computed(() => !form.features.forum && !form.features
 function submit() {
   localError.value = ''
   if (portalBothDisabled.value) {
-    localError.value = '论坛和商城至少需要保留一个开启。'
+    localError.value = t('admin.featureToggles.portalRequired')
     return
   }
   form.patch(adminRoutes.featureToggles)
@@ -41,8 +44,8 @@ function submit() {
 
 <template>
   <PageHeader
-    title="功能开关"
-    subtitle="关闭后前台对应入口会自动隐藏；侧栏仅保留一个模块时按钮会占满整行。"
+    :title="t('admin.featureToggles.title')"
+    :subtitle="t('admin.featureToggles.subtitle')"
   />
 
   <Alert v-if="localError" variant="destructive" class="mb-4 max-w-2xl">
@@ -61,17 +64,17 @@ function submit() {
       </div>
       <label class="flex shrink-0 cursor-pointer items-center gap-2 text-sm">
         <Checkbox v-model="form.features[feature.id]" />
-        <span>{{ form.features[feature.id] ? '已启用' : '已关闭' }}</span>
+        <span>{{ form.features[feature.id] ? t('admin.ui.enabled') : t('admin.ui.disabled') }}</span>
       </label>
     </div>
 
     <p v-if="portalBothDisabled" class="text-sm text-destructive">
-      论坛和商城不能同时关闭，否则用户登录后将无处可去。
+      {{ t('admin.featureToggles.portalBothDisabled') }}
     </p>
 
     <div class="flex flex-wrap items-center justify-end gap-3 pt-2 sm:justify-start">
-      <Button type="submit" :disabled="form.processing || portalBothDisabled">保存开关</Button>
-      <p v-if="form.recentlySuccessful" class="text-sm text-muted-foreground">已保存</p>
+      <Button type="submit" :disabled="form.processing || portalBothDisabled">{{ t('admin.featureToggles.saveToggles') }}</Button>
+      <p v-if="form.recentlySuccessful" class="text-sm text-muted-foreground">{{ t('admin.common.saved') }}</p>
     </div>
   </form>
 </template>

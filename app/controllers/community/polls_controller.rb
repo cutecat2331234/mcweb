@@ -14,7 +14,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(poll.topic), notice: "投票成功。"
+        redirect_to forum_topic_path(poll.topic), notice: t("mcweb.flash.poll_voted")
       else
         redirect_to forum_topic_path(poll.topic), alert: service_error_message(result)
       end
@@ -25,7 +25,7 @@ module Community
       result = Community::RevokePollVote.call(user: current_user, poll: poll)
 
       if result.success?
-        redirect_to forum_topic_path(poll.topic), notice: "已撤销投票。"
+        redirect_to forum_topic_path(poll.topic), notice: t("mcweb.flash.poll_unvoted")
       else
         redirect_to forum_topic_path(poll.topic), alert: service_error_message(result)
       end
@@ -36,7 +36,7 @@ module Community
       result = Community::ClosePoll.call(user: current_user, poll: poll)
 
       if result.success?
-        redirect_to forum_topic_path(poll.topic), notice: "投票已关闭。"
+        redirect_to forum_topic_path(poll.topic), notice: t("mcweb.flash.poll_closed")
       else
         redirect_to forum_topic_path(poll.topic), alert: service_error_message(result)
       end

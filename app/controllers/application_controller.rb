@@ -9,6 +9,7 @@ class ApplicationController < ActionController::Base
   include BlockedUsersFilterable
   include TouchLastSeen
   include FrontendTemplateShare
+  include LocaleSettable
 
   allow_browser versions: :modern
 
@@ -18,6 +19,8 @@ class ApplicationController < ActionController::Base
 
   inertia_share do
     share = {
+      locale: I18n.locale.to_s,
+      available_locales: I18n.available_locales.map(&:to_s),
       auth: {
         user: inertia_user
       },
@@ -78,6 +81,21 @@ class ApplicationController < ActionController::Base
             title: topic.title,
             url: forum_topic_path(topic),
             id: topic.public_id
+          }
+        end
+      end
+    end
+
+    if FeatureFlags.enabled?(:minecraft)
+      servers = Minecraft::Server.online_servers.limit(5)
+      if servers.any?
+        share[:minecraft_servers] = servers.map do |server|
+          snapshot = server.server_snapshots.order(created_at: :desc).first
+          {
+            name: server.name,
+            online: snapshot&.online_players.to_i,
+            max: snapshot&.max_players.to_i,
+            status: server.status
           }
         end
       end

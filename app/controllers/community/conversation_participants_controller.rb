@@ -13,7 +13,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_conversation_path(@conversation), notice: "已添加成员。"
+        redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.participant_added")
       else
         redirect_to forum_conversation_path(@conversation), alert: service_error_message(result)
       end
@@ -28,9 +28,9 @@ module Community
 
       if result.success?
         if result.value.participant?(current_user)
-          redirect_to forum_conversation_path(@conversation), notice: "已移除成员。"
+          redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.participant_removed")
         else
-          redirect_to forum_conversations_path, notice: "你已离开群组。"
+          redirect_to forum_conversations_path, notice: t("mcweb.flash.left_group")
         end
       else
         redirect_to forum_conversation_path(@conversation), alert: service_error_message(result)

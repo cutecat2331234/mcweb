@@ -52,7 +52,7 @@ module Admin
       def create
         coupon = ::Commerce::Coupon.new(coupon_params)
         if coupon.save
-          redirect_to admin_store_coupon_path(coupon), notice: "优惠券已创建。"
+          redirect_to admin_store_coupon_path(coupon), notice: t("mcweb.flash.created", resource: t("mcweb.resources.coupon"))
         else
           render inertia: "Admin/Store/Coupons/Form",
                  props: form_props(coupon),
@@ -66,7 +66,7 @@ module Admin
 
       def update
         if @coupon.update(coupon_params)
-          redirect_to admin_store_coupon_path(@coupon), notice: "优惠券已更新。"
+          redirect_to admin_store_coupon_path(@coupon), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.coupon"))
         else
           render inertia: "Admin/Store/Coupons/Form",
                  props: form_props(@coupon),

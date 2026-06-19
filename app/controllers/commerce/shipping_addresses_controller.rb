@@ -20,7 +20,7 @@ module Commerce
       )
 
       if result.success?
-        redirect_to store_shipping_addresses_path, notice: "地址已保存。"
+        redirect_to store_shipping_addresses_path, notice: t("mcweb.flash.shipping_address_saved")
       else
         redirect_to store_shipping_addresses_path, alert: service_error_message(result)
       end
@@ -35,7 +35,7 @@ module Commerce
       )
 
       if result.success?
-        redirect_to store_shipping_addresses_path, notice: "地址已更新。"
+        redirect_to store_shipping_addresses_path, notice: t("mcweb.flash.shipping_address_updated")
       else
         redirect_to store_shipping_addresses_path, alert: service_error_message(result)
       end
@@ -43,7 +43,7 @@ module Commerce
 
     def destroy
       @address.destroy!
-      redirect_to store_shipping_addresses_path, notice: "地址已删除。"
+      redirect_to store_shipping_addresses_path, notice: t("mcweb.flash.shipping_address_deleted")
     end
 
     def make_default
@@ -51,7 +51,7 @@ module Commerce
         current_user.shipping_addresses.update_all(default_address: false)
         @address.update!(default_address: true)
       end
-      redirect_to store_shipping_addresses_path, notice: "已设为默认地址。"
+      redirect_to store_shipping_addresses_path, notice: t("mcweb.flash.shipping_address_default_set")
     end
 
     private

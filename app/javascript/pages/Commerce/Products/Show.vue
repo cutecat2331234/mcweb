@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -18,6 +19,8 @@ import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 export interface ProductVariant {
   id: number
@@ -222,26 +225,26 @@ const reviewSort = ref(props.reviewSort || 'newest')
 const reviewRating = ref<number | ''>(props.reviewRating || '')
 const questionSearch = ref(props.questionQuery || '')
 
-const questionSortOptions = [
-  { value: 'newest', label: '最新回答' },
-  { value: 'helpful', label: '最有帮助' },
-]
+const questionSortOptions = computed(() => [
+  { value: 'newest', label: t('commerce.product.sortNewest') },
+  { value: 'helpful', label: t('commerce.product.sortHelpful') },
+])
 
-const reviewSortOptions = [
-  { value: 'newest', label: '最新' },
-  { value: 'helpful', label: '最有帮助' },
-  { value: 'rating', label: '评分最高' },
-]
+const reviewSortOptions = computed(() => [
+  { value: 'newest', label: t('commerce.product.sortNewest') },
+  { value: 'helpful', label: t('commerce.product.sortHelpful') },
+  { value: 'rating', label: t('commerce.product.sortRating') },
+])
 
-const reviewRatingFilterOptions = [
-  { value: '', label: '全部星级' },
-  ...Array.from({ length: 5 }, (_, i) => ({ value: String(i + 1), label: `${i + 1} 星` })),
-]
+const reviewRatingFilterOptions = computed(() => [
+  { value: '', label: t('commerce.product.allStars') },
+  ...Array.from({ length: 5 }, (_, i) => ({ value: String(i + 1), label: t('commerce.product.starLabel', { n: i + 1 }) })),
+])
 
-const reviewRatingFormOptions = Array.from({ length: 5 }, (_, i) => ({
+const reviewRatingFormOptions = computed(() => Array.from({ length: 5 }, (_, i) => ({
   value: String(i + 1),
-  label: `${i + 1} 星`,
-}))
+  label: t('commerce.product.starLabel', { n: i + 1 }),
+})))
 
 const purchaseSectionRef = ref<HTMLElement | null>(null)
 const showStickyBar = ref(false)
@@ -326,9 +329,9 @@ function startEditReview() {
 
 async function deleteReview() {
   const ok = await confirm({
-    title: '删除评价',
-    message: '确定删除你的评价？',
-    confirmLabel: '删除',
+    title: t('commerce.product.deleteReview'),
+    message: t('commerce.product.deleteReviewConfirm'),
+    confirmLabel: t('common.confirm'),
     variant: 'destructive',
   })
   if (!props.deleteReviewUrl || !ok) return
@@ -438,19 +441,19 @@ function submitAnswer(questionId: number, answerUrl: string) {
   <div :class="{ 'pb-24': showStickyActions }">
 
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.store'), href: routes.store },
     { label: product.name, current: true },
   ]" />
 
   <PageHeader :title="product.name" :subtitle="product.description || undefined" />
   <div v-if="product.purchased" class="mb-4 flex flex-wrap items-center gap-2">
-    <Badge variant="default">你已购买此商品</Badge>
-    <Button v-if="reorderUrl" type="button" size="sm" variant="outline" @click="router.post(reorderUrl)">再次购买</Button>
+    <Badge variant="default">{{ t('commerce.product.purchased') }}</Badge>
+    <Button v-if="reorderUrl" type="button" size="sm" variant="outline" @click="router.post(reorderUrl)">{{ t('commerce.product.buyAgain') }}</Button>
   </div>
 
   <p v-if="askFromOrder" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
-    关于订单 {{ askFromOrder.order_number }} 的商品「{{ askFromOrder.item_name }}」提问
+    {{ t('commerce.product.askFromOrder', { order: askFromOrder.order_number, item: askFromOrder.item_name }) }}
   </p>
 
   <div class="mt-6 grid gap-8 lg:grid-cols-2 xl:grid-cols-5 lg:items-start">
@@ -477,22 +480,22 @@ function submitAnswer(questionId: number, answerUrl: string) {
   </div>
 
   <section v-if="product.version || product.changelog" class="rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">版本信息</h2>
-    <p v-if="product.version" class="text-sm">当前版本：{{ product.version }}</p>
+    <h2 class="mb-2 text-sm font-semibold">{{ t('commerce.product.versionInfo') }}</h2>
+    <p v-if="product.version" class="text-sm">{{ t('commerce.product.currentVersion', { version: product.version }) }}</p>
     <p v-if="product.changelog" class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{{ product.changelog }}</p>
   </section>
 
   <section v-if="product.discussion_url || createDiscussionUrl" class="rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">社区讨论</h2>
+    <h2 class="mb-2 text-sm font-semibold">{{ t('commerce.product.discussion') }}</h2>
     <p v-if="product.discussion_replies_count !== null && product.discussion_replies_count !== undefined" class="text-sm text-muted-foreground">
-      {{ product.discussion_replies_count }} 条回复
+      {{ t('commerce.product.discussionReplies', { count: product.discussion_replies_count }) }}
     </p>
     <div class="mt-2 flex gap-2">
       <Button v-if="product.discussion_url" as-child size="sm">
-        <Link :href="product.discussion_url">参与讨论</Link>
+        <Link :href="product.discussion_url">{{ t('commerce.product.joinDiscussion') }}</Link>
       </Button>
       <Button v-else-if="createDiscussionUrl" type="button" size="sm" variant="outline" @click="createDiscussion">
-        开启讨论帖
+        {{ t('commerce.product.startDiscussion') }}
       </Button>
     </div>
   </section>
@@ -503,14 +506,14 @@ function submitAnswer(questionId: number, answerUrl: string) {
   <Card>
     <CardContent class="space-y-3 pt-6">
       <div v-if="product.average_rating" class="text-sm">
-        <span class="text-amber-500">★</span> {{ product.average_rating }} / 5（{{ reviewsCount ?? product.reviews.length }} 条评价）
+        <span class="text-amber-500">★</span> {{ t('commerce.product.reviewsSummary', { rating: product.average_rating, count: reviewsCount ?? product.reviews.length }) }}
       </div>
       <div v-if="product.view_count" class="text-sm text-muted-foreground">
-        {{ product.view_count }} 次浏览
+        {{ t('commerce.product.views', { count: product.view_count }) }}
       </div>
 
       <div v-if="product.variants.length" class="space-y-2">
-        <Label>规格</Label>
+        <Label>{{ t('commerce.product.variant') }}</Label>
         <div class="flex flex-wrap gap-2">
           <button
             v-for="variant in product.variants"
@@ -522,33 +525,33 @@ function submitAnswer(questionId: number, answerUrl: string) {
           >
             {{ variant.name }} · {{ variant.price_label }}
             <span class="ml-1 text-xs text-muted-foreground">
-              {{ !variant.in_stock ? '缺货' : variant.low_stock ? '库存紧张' : '有货' }}
+              {{ !variant.in_stock ? t('commerce.product.outOfStock') : variant.low_stock ? t('commerce.product.lowStock') : t('commerce.product.inStock') }}
             </span>
           </button>
         </div>
       </div>
 
       <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">价格</span>
+        <span class="text-muted-foreground">{{ t('commerce.product.price') }}</span>
         <span class="font-medium">
           {{ displayPrice }}
           <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs font-normal text-muted-foreground line-through">{{ product.compare_at_label }}</span>
-          <Badge v-if="product.on_sale" variant="default" class="ml-2 text-[10px]">促销</Badge>
+          <Badge v-if="product.on_sale" variant="default" class="ml-2 text-[10px]">{{ t('commerce.product.onSale') }}</Badge>
           <Badge v-if="product.discount_label" variant="outline" class="ml-1 text-[10px]">{{ product.discount_label }}</Badge>
         </span>
       </div>
       <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">类型</span>
+        <span class="text-muted-foreground">{{ t('commerce.product.type') }}</span>
         <span>{{ product.product_type }}</span>
       </div>
       <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">分类</span>
+        <span class="text-muted-foreground">{{ t('commerce.product.category') }}</span>
         <span>{{ product.category_name || '—' }}</span>
       </div>
       <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">库存</span>
+        <span class="text-muted-foreground">{{ t('commerce.product.stock') }}</span>
         <span :class="showLowStock ? 'text-amber-600' : ''">
-          {{ product.backorder_available ? '可预订' : !canPurchase ? '缺货' : showLowStock ? '库存紧张' : '有货' }}
+          {{ product.backorder_available ? t('commerce.product.backorder') : !canPurchase ? t('commerce.product.outOfStock') : showLowStock ? t('commerce.product.lowStock') : t('commerce.product.inStock') }}
         </span>
       </div>
       <div v-if="selectedVariant?.sku" class="flex justify-between text-sm">
@@ -556,19 +559,19 @@ function submitAnswer(questionId: number, answerUrl: string) {
         <code class="text-xs">{{ selectedVariant.sku }}</code>
       </div>
       <div v-if="product.minimum_quantity && product.minimum_quantity > 1" class="flex justify-between text-sm">
-        <span class="text-muted-foreground">起购量</span>
-        <span>最少 {{ product.minimum_quantity }} 件</span>
+        <span class="text-muted-foreground">{{ t('commerce.product.minQty') }}</span>
+        <span>{{ t('commerce.product.minQtyValue', { n: product.minimum_quantity }) }}</span>
       </div>
       <div v-if="product.maximum_quantity" class="flex justify-between text-sm">
-        <span class="text-muted-foreground">单次限购</span>
-        <span>最多 {{ product.maximum_quantity }} 件</span>
+        <span class="text-muted-foreground">{{ t('commerce.product.maxQty') }}</span>
+        <span>{{ t('commerce.product.maxQtyValue', { n: product.maximum_quantity }) }}</span>
       </div>
       <div v-if="product.purchase_limit" class="flex justify-between text-sm">
-        <span class="text-muted-foreground">限购</span>
-        <span>每人最多 {{ product.purchase_limit }} 件</span>
+        <span class="text-muted-foreground">{{ t('commerce.product.purchaseLimit') }}</span>
+        <span>{{ t('commerce.product.purchaseLimitValue', { n: product.purchase_limit }) }}</span>
       </div>
       <div v-if="canPurchase" class="space-y-2">
-        <Label for="quantity">数量</Label>
+        <Label for="quantity">{{ t('commerce.product.quantity') }}</Label>
         <Input
           id="quantity"
           v-model.number="quantity"
@@ -588,10 +591,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
       :disabled="product.variants.length > 0 && !selectedVariantId"
       @click="addToCart"
     >
-      加入购物车
+      {{ t('commerce.product.addToCart') }}
     </Button>
     <Button v-if="loggedIn" type="button" variant="outline" @click="toggleWishlist">
-      {{ wishlistedForSelection ? '移出心愿单' : '加入心愿单' }}
+      {{ wishlistedForSelection ? t('commerce.product.removeWishlist') : t('commerce.product.addWishlist') }}
     </Button>
     <Button
       v-if="loggedIn && priceAlertUrl"
@@ -599,10 +602,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
       variant="outline"
       @click="togglePriceAlert"
     >
-      {{ hasPriceAlert ? '已订阅降价' : '降价提醒' }}
+      {{ hasPriceAlert ? t('commerce.product.priceAlertOn') : t('commerce.product.priceAlert') }}
     </Button>
     <Button v-if="compareUrl" type="button" variant="outline" @click="toggleCompare">
-      {{ compared ? '移出对比' : '加入对比' }}{{ compareCount ? ` (${compareCount})` : '' }}
+      {{ compared ? t('commerce.product.removeCompare') : t('commerce.product.addCompare') }}{{ compareCount ? ` (${compareCount})` : '' }}
     </Button>
     <Button
       v-if="loggedIn && !canPurchase && !stockAlertSubscribed"
@@ -611,14 +614,14 @@ function submitAnswer(questionId: number, answerUrl: string) {
       :disabled="product.variants.length > 0 && !selectedVariantId"
       @click="subscribeStockAlert"
     >
-      到货通知
+      {{ t('commerce.product.stockAlert') }}
     </Button>
     <p v-else-if="loggedIn && !canPurchase && stockAlertSubscribed" class="flex items-center gap-2 self-center text-sm text-muted-foreground">
-      已订阅到货通知
-      <Button v-if="stockAlertUnsubscribeUrl" type="button" variant="outline" size="sm" @click="unsubscribeStockAlert">取消订阅</Button>
+      {{ t('commerce.product.stockAlertOn') }}
+      <Button v-if="stockAlertUnsubscribeUrl" type="button" variant="outline" size="sm" @click="unsubscribeStockAlert">{{ t('commerce.product.unsubscribe') }}</Button>
     </p>
     <Button as-child variant="outline">
-      <Link :href="routes.store">返回商城</Link>
+      <Link :href="routes.store">{{ t('commerce.product.backToStore') }}</Link>
     </Button>
   </div>
   </div>
@@ -627,7 +630,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
 
   <section class="mt-10">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-sm font-semibold">商品问答</h2>
+      <h2 class="text-sm font-semibold">{{ t('commerce.product.qa') }}</h2>
       <div class="flex flex-wrap items-center gap-2">
         <Select
           v-if="questions.length"
@@ -637,22 +640,22 @@ function submitAnswer(questionId: number, answerUrl: string) {
           @update:model-value="changeQuestionSort"
         />
         <form class="flex gap-2" @submit.prevent="searchQuestions">
-          <Input v-model="questionSearch" placeholder="搜索问答…" class="h-8 max-w-xs text-sm" />
-          <Button type="submit" size="sm" variant="outline">搜索</Button>
+          <Input v-model="questionSearch" :placeholder="t('commerce.product.searchQa')" class="h-8 max-w-xs text-sm" />
+          <Button type="submit" size="sm" variant="outline">{{ t('commerce.product.search') }}</Button>
         </form>
       </div>
     </div>
     <div v-if="questions.length" class="mb-6 space-y-4">
       <article v-for="q in questions" :key="q.id" class="rounded-lg border p-4">
         <p class="text-sm font-medium">
-          问：{{ q.body }}
-          <Badge v-if="q.from_order" class="ml-2 text-[10px]">已购提问</Badge>
+          {{ t('commerce.product.questionPrefix') }}{{ q.body }}
+          <Badge v-if="q.from_order" class="ml-2 text-[10px]">{{ t('commerce.product.purchasedQuestion') }}</Badge>
         </p>
         <p class="mt-1 text-xs text-muted-foreground">{{ q.author }} · {{ q.created_at }}</p>
         <div v-if="q.answers.length" class="mt-3 space-y-2 border-l-2 pl-3">
           <div v-for="answer in q.answers" :key="answer.id" class="text-sm">
-            <span v-if="answer.official" class="mr-1 rounded bg-primary/10 px-1 text-xs text-primary">官方</span>
-            <span class="font-medium">{{ answer.author }}：</span>{{ answer.body }}
+            <span v-if="answer.official" class="mr-1 rounded bg-primary/10 px-1 text-xs text-primary">{{ t('commerce.product.official') }}</span>
+            <span class="font-medium">{{ answer.author }}{{ t('common.colon') }}</span>{{ answer.body }}
             <p class="text-xs text-muted-foreground">{{ answer.created_at }}</p>
             <div v-if="answer.helpful_url" class="mt-1">
               <Button
@@ -662,22 +665,22 @@ function submitAnswer(questionId: number, answerUrl: string) {
                 :class="answer.helpful ? 'border-primary text-primary' : ''"
                 @click="toggleAnswerHelpful(answer.helpful_url!)"
               >
-                有帮助 ({{ answer.helpful_count || 0 }})
+                {{ t('commerce.product.helpfulCount', { count: answer.helpful_count || 0 }) }}
               </Button>
             </div>
           </div>
         </div>
         <form v-if="loggedIn" class="mt-3 space-y-2" @submit.prevent="submitAnswer(q.id, q.answerUrl)">
-          <Textarea v-model="answerForms[q.id]" rows="2" placeholder="写下回答…" />
-          <Button type="submit" size="sm" variant="outline">回答</Button>
+          <Textarea v-model="answerForms[q.id]" rows="2" :placeholder="t('commerce.product.answerPlaceholder')" />
+          <Button type="submit" size="sm" variant="outline">{{ t('commerce.product.answer') }}</Button>
         </form>
       </article>
     </div>
-    <p v-else class="mb-4 text-sm text-muted-foreground">暂无问答，成为第一个提问的人吧。</p>
+    <p v-else class="mb-4 text-sm text-muted-foreground">{{ t('commerce.product.noQa') }}</p>
     <form v-if="loggedIn" class="space-y-3" @submit.prevent="submitQuestion">
-      <Label>提问</Label>
-      <Textarea v-model="questionForm.question.body" rows="3" placeholder="关于商品的问题…" />
-      <Button type="submit" size="sm" :disabled="questionForm.processing">提交问题</Button>
+      <Label>{{ t('commerce.product.ask') }}</Label>
+      <Textarea v-model="questionForm.question.body" rows="3" :placeholder="t('commerce.product.askPlaceholder')" />
+      <Button type="submit" size="sm" :disabled="questionForm.processing">{{ t('commerce.product.submitQuestion') }}</Button>
     </form>
     <Pagination
       v-if="questionsPagination && questionsPagination.pages > 1"
@@ -689,7 +692,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
   </section>
 
   <section v-if="related_products.length" class="mt-10">
-    <h2 class="mb-4 text-sm font-semibold">相关商品</h2>
+    <h2 class="mb-4 text-sm font-semibold">{{ t('commerce.product.relatedProducts') }}</h2>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Link
         v-for="item in related_products"
@@ -706,7 +709,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
 
   <section v-if="product.reviews.length || userReview || ratingBreakdown?.length" class="mt-10">
     <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-sm font-semibold">用户评价</h2>
+      <h2 class="text-sm font-semibold">{{ t('commerce.product.userReviews') }}</h2>
       <Select
         v-if="product.reviews.length || reviewsCount"
         :model-value="reviewSort"
@@ -729,7 +732,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
         class="flex w-full items-center gap-2 text-xs hover:opacity-80"
         @click="filterByRating(entry.rating)"
       >
-        <span class="w-8">{{ entry.rating }} 星</span>
+        <span class="w-8">{{ t('commerce.product.starLabel', { n: entry.rating }) }}</span>
         <div class="h-2 flex-1 overflow-hidden rounded bg-muted">
           <div class="h-full bg-amber-400" :style="{ width: `${(entry.count / ratingBreakdownMax) * 100}%` }" />
         </div>
@@ -738,14 +741,14 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </div>
     <div v-if="userReview && !editingReview" class="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
       <div class="mb-2 flex items-center justify-between">
-        <p class="text-sm font-medium">你的评价</p>
+        <p class="text-sm font-medium">{{ t('commerce.product.yourReview') }}</p>
         <div class="flex gap-2">
-          <Button v-if="userReview.can_share_to_forum && userReview.share_to_forum_url" type="button" size="sm" variant="outline" @click="shareReviewToForum(userReview.share_to_forum_url!)">分享到论坛</Button>
+          <Button v-if="userReview.can_share_to_forum && userReview.share_to_forum_url" type="button" size="sm" variant="outline" @click="shareReviewToForum(userReview.share_to_forum_url!)">{{ t('commerce.product.shareToForum') }}</Button>
           <Button v-if="userReview.forum_post_url" as-child size="sm" variant="outline">
-            <Link :href="userReview.forum_post_url">查看论坛帖</Link>
+            <Link :href="userReview.forum_post_url">{{ t('commerce.product.viewForumPost') }}</Link>
           </Button>
-          <Button v-if="canEditReview" type="button" size="sm" variant="outline" @click="startEditReview">编辑</Button>
-          <Button v-if="canDeleteReview" type="button" size="sm" variant="destructive" @click="deleteReview">删除</Button>
+          <Button v-if="canEditReview" type="button" size="sm" variant="outline" @click="startEditReview">{{ t('commerce.product.edit') }}</Button>
+          <Button v-if="canDeleteReview" type="button" size="sm" variant="destructive" @click="deleteReview">{{ t('commerce.product.deleteReview') }}</Button>
         </div>
       </div>
       <div class="mb-1 flex items-center justify-between text-sm">
@@ -762,13 +765,13 @@ function submitAnswer(questionId: number, answerUrl: string) {
         <div class="mb-1 flex items-center justify-between text-sm">
           <span class="font-medium">
             {{ review.author }}
-            <Badge v-if="review.verified_purchaser" variant="default" class="ml-2 text-[10px]">已购</Badge>
+            <Badge v-if="review.verified_purchaser" variant="default" class="ml-2 text-[10px]">{{ t('commerce.product.verifiedPurchaser') }}</Badge>
           </span>
           <span class="text-amber-500">{{ '★'.repeat(review.rating) }}</span>
         </div>
         <p v-if="review.body" class="text-sm">{{ review.body }}</p>
         <div v-if="review.merchant_reply" class="mt-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-3 text-sm">
-          <p class="text-xs font-medium text-emerald-800">商家回复<span v-if="review.merchant_replied_at" class="ml-2 font-normal text-muted-foreground">{{ review.merchant_replied_at }}</span></p>
+          <p class="text-xs font-medium text-emerald-800">{{ t('commerce.product.merchantReply') }}<span v-if="review.merchant_replied_at" class="ml-2 font-normal text-muted-foreground">{{ review.merchant_replied_at }}</span></p>
           <p class="mt-1">{{ review.merchant_reply }}</p>
         </div>
         <div v-if="review.photo_urls?.length" class="mt-2 flex flex-wrap gap-2">
@@ -787,10 +790,10 @@ function submitAnswer(questionId: number, answerUrl: string) {
               :class="review.helpful ? 'border-primary' : ''"
               @click="toggleHelpful(review.helpful_url)"
             >
-              有帮助{{ review.helpful_count ? ` (${review.helpful_count})` : '' }}
+              {{ t('commerce.product.helpfulCount', { count: review.helpful_count || 0 }) }}
             </Button>
             <Button v-if="review.report_url" as-child variant="ghost" size="sm">
-              <Link :href="review.report_url">举报</Link>
+              <Link :href="review.report_url">{{ t('commerce.product.report') }}</Link>
             </Button>
           </div>
         </div>
@@ -804,15 +807,15 @@ function submitAnswer(questionId: number, answerUrl: string) {
       class="mt-3"
       @click="loadMoreReviews"
     >
-      加载更多评价
+      {{ t('commerce.product.loadMoreReviews') }}
     </Button>
   </section>
 
   <section v-if="loggedIn && (canReview || (canEditReview && editingReview))" class="mt-8">
-    <h2 class="mb-3 text-sm font-semibold">{{ canEditReview ? '编辑评价' : '写评价' }}</h2>
+    <h2 class="mb-3 text-sm font-semibold">{{ canEditReview ? t('commerce.product.editReview') : t('commerce.product.writeReview') }}</h2>
     <form class="space-y-3" @submit.prevent="submitReview">
       <div class="space-y-2">
-        <Label>评分</Label>
+        <Label>{{ t('commerce.product.rating') }}</Label>
         <Select
           :model-value="String(reviewForm.review.rating)"
           :options="reviewRatingFormOptions"
@@ -820,9 +823,9 @@ function submitAnswer(questionId: number, answerUrl: string) {
           @update:model-value="(v) => { reviewForm.review.rating = Number(v) }"
         />
       </div>
-      <Textarea v-model="reviewForm.review.body" rows="4" placeholder="分享你的使用体验（可选）" />
+      <Textarea v-model="reviewForm.review.body" rows="4" :placeholder="t('commerce.product.reviewBodyPlaceholder')" />
       <div v-if="existingReviewPhotos.length" class="space-y-2">
-        <Label>当前图片（不上传新图则保留）</Label>
+        <Label>{{ t('commerce.product.currentPhotos') }}</Label>
         <div class="flex flex-wrap gap-2">
           <a v-for="(url, i) in existingReviewPhotos" :key="i" :href="url" target="_blank" rel="noopener">
             <img :src="url" alt="" class="h-20 w-20 rounded object-cover ring-1 ring-border" />
@@ -830,18 +833,18 @@ function submitAnswer(questionId: number, answerUrl: string) {
         </div>
       </div>
       <div class="space-y-2">
-        <Label for="review_photos">图片（最多 3 张）</Label>
+        <Label for="review_photos">{{ t('commerce.product.reviewPhotos') }}</Label>
         <FileInput
           accept="image/*"
           multiple
-          button-label="选择图片"
+          :button-label="t('commerce.product.selectPhotos')"
           @change="onReviewPhotosChange"
         />
         <p v-if="reviewForm.review.photos.length" class="text-xs text-muted-foreground">
-          已选 {{ reviewForm.review.photos.length }} 张
+          {{ t('commerce.product.photosSelected', { n: reviewForm.review.photos.length }) }}
         </p>
       </div>
-      <Button type="submit" :disabled="reviewForm.processing">提交评价</Button>
+      <Button type="submit" :disabled="reviewForm.processing">{{ t('commerce.product.submitReview') }}</Button>
     </form>
   </section>
 
@@ -864,13 +867,13 @@ function submitAnswer(questionId: number, answerUrl: string) {
           :disabled="product.variants.length > 0 && !selectedVariantId"
           @click="addToCart"
         >
-          加入购物车
+          {{ t('commerce.product.addToCart') }}
         </Button>
         <Button v-if="loggedIn" type="button" size="sm" variant="outline" @click="toggleWishlist">
-          {{ wishlistedForSelection ? '心愿单' : '收藏' }}
+          {{ wishlistedForSelection ? t('commerce.product.wishlistShort') : t('commerce.product.favorite') }}
         </Button>
         <Button v-if="compareUrl" type="button" size="sm" variant="outline" @click="toggleCompare">
-          {{ compared ? '对比中' : '对比' }}
+          {{ compared ? t('commerce.product.comparing') : t('commerce.product.compareShort') }}
         </Button>
       </div>
     </div>

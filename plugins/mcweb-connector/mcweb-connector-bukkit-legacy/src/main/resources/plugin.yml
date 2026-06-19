@@ -1,0 +1,9 @@
+name: McWebConnector-Legacy
+version: ${version}
+main: com.mcweb.connector.bukkit.legacy.McWebConnectorLegacyPlugin
+api-version: '1.8'
+softdepend: [PlaceholderAPI, Vault, LuckPerms]
+commands:
+  website:
+    description: McWeb website integration
+    usage: /website link|whois

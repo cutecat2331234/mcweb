@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { Link, useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -12,6 +13,8 @@ import Checkbox from '@/components/ui/Checkbox.vue'
 import FileInput from '@/components/ui/FileInput.vue'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   title: string
@@ -59,21 +62,21 @@ const form = useForm({
   },
 })
 
-const productTypeOptions = [
-  { value: 'virtual', label: '虚拟商品' },
-  { value: 'physical', label: '实体商品' },
-  { value: 'gift_card', label: '礼品卡（购买后自动发卡）' },
-  { value: 'digital', label: '数字商品' },
-]
+const productTypeOptions = computed(() => [
+  { value: 'virtual', label: t('admin.forms.product.typeVirtual') },
+  { value: 'physical', label: t('admin.forms.product.typePhysical') },
+  { value: 'gift_card', label: t('admin.forms.product.typeGiftCard') },
+  { value: 'digital', label: t('admin.forms.product.typeDigital') },
+])
 
-const statusOptions = [
-  { value: 'draft', label: '草稿' },
-  { value: 'active', label: '上架' },
-  { value: 'archived', label: '归档' },
-]
+const statusOptions = computed(() => [
+  { value: 'draft', label: t('admin.forms.product.statusDraft') },
+  { value: 'active', label: t('admin.forms.product.statusActive') },
+  { value: 'archived', label: t('admin.forms.product.statusArchived') },
+])
 
 const categoryOptions = computed(() => [
-  { value: '', label: '无分类' },
+  { value: '', label: t('admin.common.noCategory') },
   ...props.categories.map((cat) => ({ value: String(cat.id), label: cat.name })),
 ])
 
@@ -123,57 +126,57 @@ async function uploadCover(file: File) {
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
-      <Label for="name">名称</Label>
+      <Label for="name">{{ t('admin.common.name') }}</Label>
       <Input id="name" v-model="form.product.name" required />
     </div>
     <div class="space-y-2">
-      <Label for="slug">标识 (slug)</Label>
+      <Label for="slug">{{ t('admin.common.slugFull') }}</Label>
       <Input id="slug" v-model="form.product.slug" required />
     </div>
     <div class="space-y-2">
-      <Label for="summary">短描述</Label>
-      <Textarea id="summary" v-model="form.product.summary" rows="2" placeholder="列表页展示的简短介绍（可选）" />
+      <Label for="summary">{{ t('admin.forms.product.summary') }}</Label>
+      <Textarea id="summary" v-model="form.product.summary" rows="2" :placeholder="t('admin.forms.product.summaryPlaceholder')" />
     </div>
     <div class="space-y-2">
-      <Label for="description">描述</Label>
+      <Label for="description">{{ t('admin.common.description') }}</Label>
       <Textarea id="description" v-model="form.product.description" rows="4" />
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
-        <Label for="product_type">类型</Label>
+        <Label for="product_type">{{ t('admin.forms.product.type') }}</Label>
         <Select id="product_type" v-model="form.product.product_type" :options="productTypeOptions" block />
       </div>
       <div class="space-y-2">
-        <Label for="status">状态</Label>
+        <Label for="status">{{ t('admin.common.status') }}</Label>
         <Select id="status" v-model="form.product.status" :options="statusOptions" block />
       </div>
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
-        <Label for="price_cents">价格（分）</Label>
+        <Label for="price_cents">{{ t('admin.forms.product.priceCents') }}</Label>
         <Input id="price_cents" v-model.number="form.product.price_cents" type="number" min="0" required />
       </div>
       <div class="space-y-2">
-        <Label for="compare_at_price_cents">原价（分，促销时填写）</Label>
-        <Input id="compare_at_price_cents" v-model.number="form.product.compare_at_price_cents" type="number" min="0" placeholder="留空表示无促销" />
+        <Label for="compare_at_price_cents">{{ t('admin.forms.product.comparePrice') }}</Label>
+        <Input id="compare_at_price_cents" v-model.number="form.product.compare_at_price_cents" type="number" min="0" :placeholder="t('admin.forms.product.comparePlaceholder')" />
       </div>
       <div class="space-y-2">
-        <Label for="stock">库存（空=无限）</Label>
+        <Label for="stock">{{ t('admin.forms.product.stock') }}</Label>
         <Input id="stock" v-model.number="form.product.stock" type="number" min="0" />
       </div>
     </div>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
-        <Label for="available_at">定时上架</Label>
+        <Label for="available_at">{{ t('admin.forms.product.availableAt') }}</Label>
         <Input id="available_at" v-model="form.product.available_at" type="datetime-local" />
       </div>
       <div class="space-y-2">
-        <Label for="unavailable_at">定时下架</Label>
+        <Label for="unavailable_at">{{ t('admin.forms.product.unavailableAt') }}</Label>
         <Input id="unavailable_at" v-model="form.product.unavailable_at" type="datetime-local" />
       </div>
     </div>
     <div class="space-y-2">
-      <Label for="category">分类</Label>
+      <Label for="category">{{ t('admin.forms.product.category') }}</Label>
       <Select
         id="category"
         :model-value="form.product.store_category_id == null ? '' : String(form.product.store_category_id)"
@@ -183,86 +186,86 @@ async function uploadCover(file: File) {
       />
     </div>
     <div class="space-y-2">
-      <Label for="purchase_limit">限购（空=不限）</Label>
+      <Label for="purchase_limit">{{ t('admin.forms.product.purchaseLimit') }}</Label>
       <Input id="purchase_limit" v-model.number="form.product.purchase_limit" type="number" min="1" />
     </div>
     <div class="space-y-2">
-      <Label for="minimum_quantity">最低购买量</Label>
+      <Label for="minimum_quantity">{{ t('admin.forms.product.minQty') }}</Label>
       <Input id="minimum_quantity" v-model.number="form.product.minimum_quantity" type="number" min="1" />
     </div>
     <div class="space-y-2">
-      <Label for="maximum_quantity">最高购买量（空=不限）</Label>
+      <Label for="maximum_quantity">{{ t('admin.forms.product.maxQty') }}</Label>
       <Input id="maximum_quantity" v-model.number="form.product.maximum_quantity" type="number" min="1" />
     </div>
     <label class="flex items-center gap-2">
       <Checkbox id="requires_shipping" v-model="form.product.requires_shipping" />
-      <Label for="requires_shipping">需要运费（实物商品通常勾选）</Label>
+      <Label for="requires_shipping">{{ t('admin.forms.product.requiresShipping') }}</Label>
     </label>
     <div class="space-y-2">
-      <Label for="image_url">商品图片 URL</Label>
+      <Label for="image_url">{{ t('admin.forms.product.imageUrl') }}</Label>
       <Input id="image_url" v-model="form.product.image_url" placeholder="https://example.com/image.png" />
       <div v-if="uploadUrl" class="mt-2">
-        <Label for="cover_upload">或上传封面图</Label>
-        <FileInput id="cover_upload" accept="image/*" button-label="选择封面图" @change="uploadCover" />
+        <Label for="cover_upload">{{ t('admin.forms.product.uploadCover') }}</Label>
+        <FileInput id="cover_upload" accept="image/*" :button-label="t('admin.forms.product.selectCover')" @change="uploadCover" />
       </div>
     </div>
     <div class="space-y-2">
-      <Label for="gallery_urls">图库 URL（每行一个）</Label>
+      <Label for="gallery_urls">{{ t('admin.forms.product.galleryUrls') }}</Label>
       <Textarea id="gallery_urls" v-model="form.product.gallery_urls" rows="3" placeholder="https://example.com/1.png&#10;https://example.com/2.png" />
     </div>
     <div class="space-y-2">
-      <Label for="fulfillment_config">发货配置（JSON，可含 download_url、Minecraft 命令等）</Label>
+      <Label for="fulfillment_config">{{ t('admin.forms.product.fulfillmentConfig') }}</Label>
       <Textarea id="fulfillment_config" v-model="form.product.fulfillment_config" rows="6" placeholder='{"download_url":"https://example.com/file.zip","commands":["give {player} diamond 1"]}' />
     </div>
     <label class="flex items-center gap-2">
       <Checkbox id="featured" v-model="form.product.featured" />
-      <Label for="featured">精选商品（首页展示）</Label>
+      <Label for="featured">{{ t('admin.forms.product.featured') }}</Label>
     </label>
     <label class="flex items-center gap-2">
       <Checkbox id="allow_backorder" v-model="form.product.allow_backorder" />
-      <Label for="allow_backorder">缺货时可预订（Backorder）</Label>
+      <Label for="allow_backorder">{{ t('admin.forms.product.allowBackorder') }}</Label>
     </label>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
-        <Label for="version">版本号</Label>
+        <Label for="version">{{ t('admin.forms.product.version') }}</Label>
         <Input id="version" v-model="form.product.version" placeholder="1.0.0" />
       </div>
     <div class="space-y-2">
-      <Label for="changelog">更新日志</Label>
-      <Textarea id="changelog" v-model="form.product.changelog" rows="3" placeholder="本次更新内容…" />
+      <Label for="changelog">{{ t('admin.forms.product.changelog') }}</Label>
+      <Textarea id="changelog" v-model="form.product.changelog" rows="3" :placeholder="t('admin.forms.product.changelogPlaceholder')" />
     </div>
     <div class="space-y-2">
-      <Label for="seo_title">SEO 标题（空=商品名）</Label>
+      <Label for="seo_title">{{ t('admin.forms.product.seoTitle') }}</Label>
       <Input id="seo_title" v-model="form.product.seo_title" />
     </div>
     <div class="space-y-2">
-      <Label for="seo_description">SEO 描述</Label>
+      <Label for="seo_description">{{ t('admin.forms.product.seoDescription') }}</Label>
       <Textarea id="seo_description" v-model="form.product.seo_description" rows="2" />
     </div>
     </div>
 
     <div class="space-y-3">
       <div class="flex items-center justify-between">
-        <Label>商品变体</Label>
-        <Button type="button" variant="outline" size="sm" @click="addVariant">添加变体</Button>
+        <Label>{{ t('admin.forms.product.variants') }}</Label>
+        <Button type="button" variant="outline" size="sm" @click="addVariant">{{ t('admin.forms.product.addVariant') }}</Button>
       </div>
       <div
         v-for="(variant, index) in form.product.variants.filter((v: { _destroy?: boolean }) => !v._destroy)"
         :key="index"
         class="grid grid-cols-2 gap-2 rounded-lg border p-3"
       >
-        <Input v-model="variant.name" placeholder="名称" />
-        <Input v-model="variant.sku" placeholder="SKU" />
-        <Input v-model.number="variant.price_cents" type="number" placeholder="价格（分）" />
-        <Input v-model.number="variant.stock" type="number" placeholder="库存" />
-        <Button type="button" variant="outline" size="sm" class="col-span-2" @click="removeVariant(index)">删除</Button>
+        <Input v-model="variant.name" :placeholder="t('admin.common.name')" />
+        <Input v-model="variant.sku" :placeholder="t('admin.forms.product.sku')" />
+        <Input v-model.number="variant.price_cents" type="number" :placeholder="t('admin.forms.product.priceCents')" />
+        <Input v-model.number="variant.stock" type="number" :placeholder="t('admin.forms.product.stock')" />
+        <Button type="button" variant="outline" size="sm" class="col-span-2" @click="removeVariant(index)">{{ t('admin.ui.delete') }}</Button>
       </div>
     </div>
 
     <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">保存</Button>
+      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
       <Button as-child variant="outline">
-        <Link :href="backUrl">取消</Link>
+        <Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link>
       </Button>
     </div>
   </form>

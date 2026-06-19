@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { reactive, watch, ref } from 'vue'
+import { reactive, watch, ref, computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -12,6 +13,8 @@ import { routes } from '@/lib/routes'
 import { prompt } from '@/lib/usePrompt'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   products: Array<{
@@ -56,12 +59,12 @@ const saveName = ref('')
 const saving = ref(false)
 const saveError = ref('')
 
-const wishlistSortOptions = [
-  { value: 'newest', label: '最近添加' },
-  { value: 'price_asc', label: '价格从低到高' },
-  { value: 'price_desc', label: '价格从高到低' },
-  { value: 'name', label: '名称 A-Z' },
-]
+const wishlistSortOptions = computed(() => [
+  { value: 'newest', label: t('commerce.wishlist.sortNewest') },
+  { value: 'price_asc', label: t('commerce.wishlist.sortPriceAsc') },
+  { value: 'price_desc', label: t('commerce.wishlist.sortPriceDesc') },
+  { value: 'name', label: t('commerce.wishlist.sortName') },
+])
 
 const noteDrafts = reactive<Record<string, string>>({})
 
@@ -127,7 +130,7 @@ async function saveFilterPreset() {
     })
     if (!response.ok) {
       const data = await response.json().catch(() => ({}))
-      saveError.value = data.error || '保存失败'
+      saveError.value = data.error || t('commerce.wishlist.saveFailed')
       return
     }
     saveName.value = ''
@@ -150,10 +153,10 @@ async function deleteFilterPreset(deleteUrl: string) {
 async function copyPublicShare(url: string) {
   try {
     await navigator.clipboard.writeText(new URL(url, window.location.origin).href)
-    alert('公开筛选分享链接已复制')
+    alert(t('commerce.wishlist.publicShareCopied'))
   } catch {
     await prompt({
-      title: '复制分享链接',
+      title: t('commerce.wishlist.copyShareLinkTitle'),
       defaultValue: url,
     })
   }
@@ -202,10 +205,10 @@ async function copyShareLink() {
   if (!props.shareUrl) return
   try {
     await navigator.clipboard.writeText(props.shareUrl)
-    alert('分享链接已复制')
+    alert(t('commerce.wishlist.shareLinkCopied'))
   } catch {
     await prompt({
-      title: '复制此链接',
+      title: t('commerce.wishlist.copyLinkPromptTitle'),
       defaultValue: props.shareUrl,
     })
   }
@@ -214,13 +217,13 @@ async function copyShareLink() {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
-    { label: '心愿单', current: true },
+    { label: t('commerce.wishlist.breadcrumbHome'), href: routes.home },
+    { label: t('commerce.wishlist.breadcrumbStore'), href: routes.store },
+    { label: t('commerce.wishlist.breadcrumbWishlist'), current: true },
   ]" />
 
   <div class="mb-4 flex items-center justify-between gap-3">
-    <PageHeader title="我的心愿单" />
+    <PageHeader :title="t('commerce.wishlist.title')" />
     <div class="flex gap-2">
       <Button
         v-if="wishlistImportCompareUrl && wishlistImportableCount"
@@ -229,27 +232,27 @@ async function copyShareLink() {
         size="sm"
         @click="importToCompare"
       >
-        导入对比 ({{ wishlistImportableCount }})
+        {{ t('commerce.wishlist.importCompare', { count: wishlistImportableCount }) }}
       </Button>
       <Button as-child variant="outline" size="sm">
-        <Link :href="routes.storeCompare">商品对比{{ compareCount ? ` (${compareCount})` : '' }}</Link>
+        <Link :href="routes.storeCompare">{{ t('commerce.wishlist.compareList') }}{{ compareCount ? ` (${compareCount})` : '' }}</Link>
       </Button>
-      <Button v-if="addAllToCartUrl && products.length" type="button" size="sm" @click="addAllToCart">全部加入购物车</Button>
-      <Button v-if="shareUrl" type="button" variant="outline" size="sm" @click="copyShareLink">复制分享链接</Button>
-      <Button type="button" variant="outline" size="sm" @click="router.post(routes.storeWishlistShare)">生成分享链接</Button>
+      <Button v-if="addAllToCartUrl && products.length" type="button" size="sm" @click="addAllToCart">{{ t('commerce.wishlist.addAllToCart') }}</Button>
+      <Button v-if="shareUrl" type="button" variant="outline" size="sm" @click="copyShareLink">{{ t('commerce.wishlist.copyShareLink') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="router.post(routes.storeWishlistShare)">{{ t('commerce.wishlist.generateShareLink') }}</Button>
     </div>
   </div>
   <p v-if="shareUrl" class="mb-4 text-xs text-muted-foreground break-all">{{ shareUrl }}</p>
 
   <div class="mb-4 flex flex-wrap items-center gap-2">
     <Button type="button" size="sm" :variant="filters?.in_stock ? 'default' : 'outline'" @click="toggleFilter('in_stock')">
-      仅有货
+      {{ t('commerce.wishlist.inStockOnly') }}
     </Button>
     <Button type="button" size="sm" :variant="filters?.on_sale ? 'default' : 'outline'" @click="toggleFilter('on_sale')">
-      促销中
+      {{ t('commerce.wishlist.onSaleOnly') }}
     </Button>
     <Button type="button" size="sm" :variant="filters?.coming_soon ? 'default' : 'outline'" @click="toggleFilter('coming_soon')">
-      即将上架
+      {{ t('commerce.wishlist.comingSoon') }}
     </Button>
     <Select
       :model-value="filters?.sort || 'newest'"
@@ -257,35 +260,35 @@ async function copyShareLink() {
       size="sm"
       @update:model-value="(value) => applyFilters({ sort: value })"
     />
-    <Button v-if="hasActiveFilters()" type="button" size="sm" variant="ghost" @click="clearFilters">清除筛选</Button>
+    <Button v-if="hasActiveFilters()" type="button" size="sm" variant="ghost" @click="clearFilters">{{ t('commerce.wishlist.clearFilters') }}</Button>
     <span v-if="totalCount !== undefined && filteredCount !== undefined && hasActiveFilters()" class="text-xs text-muted-foreground">
-      显示 {{ filteredCount }} / {{ totalCount }} 件
+      {{ t('commerce.wishlist.showingCount', { filtered: filteredCount, total: totalCount }) }}
     </span>
   </div>
 
   <div v-if="saveFilterPresetUrl && hasActiveFilters()" class="mb-4 flex flex-wrap items-end gap-2 rounded-lg border p-3">
     <div class="space-y-1">
-      <label class="text-sm font-medium">保存当前筛选</label>
-      <Input v-model="saveName" placeholder="筛选名称" class="w-48" />
+      <label class="text-sm font-medium">{{ t('commerce.wishlist.saveCurrentFilter') }}</label>
+      <Input v-model="saveName" :placeholder="t('commerce.wishlist.filterNamePlaceholder')" class="w-48" />
     </div>
     <Button type="button" variant="outline" size="sm" :disabled="saving || !saveName.trim()" @click="saveFilterPreset">
-      {{ saving ? '保存中…' : '保存筛选' }}
+      {{ saving ? t('commerce.wishlist.saving') : t('commerce.wishlist.saveFilter') }}
     </Button>
     <p v-if="saveError" class="text-sm text-destructive">{{ saveError }}</p>
   </div>
 
   <div v-if="savedFilterPresets?.length" class="mb-4 flex flex-wrap gap-2">
-    <span class="text-sm text-muted-foreground">已保存：</span>
+    <span class="text-sm text-muted-foreground">{{ t('commerce.wishlist.savedFilters') }}</span>
     <span v-for="preset in savedFilterPresets" :key="preset.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <Link :href="preset.url" class="hover:underline">{{ preset.name }}</Link>
       <button
         v-if="preset.public_share_url"
         type="button"
         class="text-muted-foreground hover:text-primary"
-        title="复制公开分享链接"
+        :title="t('commerce.wishlist.copyPublicShareTitle')"
         @click="copyPublicShare(preset.public_share_url!)"
       >
-        分享
+        {{ t('commerce.wishlist.share') }}
       </button>
       <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteFilterPreset(preset.delete_url)">×</button>
     </span>
@@ -295,23 +298,23 @@ async function copyShareLink() {
     <div v-for="product in products" :key="product.id" class="flex items-center justify-between gap-4 p-4">
       <div>
         <Link :href="product.url" class="font-medium hover:underline">{{ product.name }}</Link>
-        <Badge v-if="product.coming_soon" variant="outline" class="ml-2 text-[10px]">即将上架</Badge>
+        <Badge v-if="product.coming_soon" variant="outline" class="ml-2 text-[10px]">{{ t('commerce.wishlist.comingSoon') }}</Badge>
         <p class="text-sm">
           <span class="font-medium">{{ product.price_label }}</span>
           <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs text-muted-foreground line-through">{{ product.compare_at_label }}</span>
           <Badge v-if="product.discount_label" variant="outline" class="ml-1 text-[10px]">{{ product.discount_label }}</Badge>
         </p>
-        <p v-if="product.saved_variant_name" class="text-xs text-muted-foreground">规格：{{ product.saved_variant_name }}</p>
+        <p v-if="product.saved_variant_name" class="text-xs text-muted-foreground">{{ t('commerce.wishlist.variant', { name: product.saved_variant_name }) }}</p>
         <div v-if="product.update_note_url" class="mt-2 flex max-w-md gap-2">
           <Input
             v-model="noteDrafts[product.id]"
-            placeholder="添加备注…"
+            :placeholder="t('commerce.wishlist.notePlaceholder')"
             class="h-8 flex-1 text-xs"
             @keydown.enter.prevent="saveNote(product)"
           />
-          <Button type="button" size="sm" variant="outline" @click="saveNote(product)">保存备注</Button>
+          <Button type="button" size="sm" variant="outline" @click="saveNote(product)">{{ t('commerce.wishlist.saveNote') }}</Button>
         </div>
-        <p v-if="product.coming_soon && product.available_at_label" class="text-xs text-muted-foreground">上架时间：{{ product.available_at_label }}</p>
+        <p v-if="product.coming_soon && product.available_at_label" class="text-xs text-muted-foreground">{{ t('commerce.wishlist.availableAt', { at: product.available_at_label }) }}</p>
         <div v-if="product.coming_soon && product.availability_alert_url" class="mt-2">
           <Button
             v-if="!product.has_availability_alert"
@@ -320,7 +323,7 @@ async function copyShareLink() {
             variant="secondary"
             @click="subscribeAvailabilityAlert(product.availability_alert_url!)"
           >
-            上架通知
+            {{ t('commerce.wishlist.availabilityAlert') }}
           </Button>
           <Button
             v-else-if="product.availability_alert_unsubscribe_url"
@@ -329,11 +332,11 @@ async function copyShareLink() {
             variant="outline"
             @click="unsubscribeAvailabilityAlert(product.availability_alert_unsubscribe_url!)"
           >
-            已订阅上架
+            {{ t('commerce.wishlist.availabilitySubscribed') }}
           </Button>
         </div>
-        <Badge v-else-if="!product.in_stock" variant="default" class="mt-1">缺货</Badge>
-        <Badge v-else-if="product.low_stock" variant="default" class="mt-1">库存紧张</Badge>
+        <Badge v-else-if="!product.in_stock" variant="default" class="mt-1">{{ t('commerce.wishlist.outOfStock') }}</Badge>
+        <Badge v-else-if="product.low_stock" variant="default" class="mt-1">{{ t('commerce.wishlist.lowStock') }}</Badge>
       </div>
       <div class="flex gap-2">
         <Button
@@ -343,9 +346,9 @@ async function copyShareLink() {
           :variant="product.compared ? 'outline' : 'secondary'"
           @click="toggleCompare(product.compare_url)"
         >
-          {{ product.compared ? '移出对比' : '加入对比' }}
+          {{ product.compared ? t('commerce.wishlist.removeCompare') : t('commerce.wishlist.addCompare') }}
         </Button>
-        <Button v-if="product.add_to_cart_url && product.in_stock && !product.coming_soon" type="button" size="sm" @click="addToCart(product.add_to_cart_url)">加入购物车</Button>
+        <Button v-if="product.add_to_cart_url && product.in_stock && !product.coming_soon" type="button" size="sm" @click="addToCart(product.add_to_cart_url)">{{ t('commerce.wishlist.addToCart') }}</Button>
         <Button
           v-if="product.price_alert_url"
           type="button"
@@ -353,26 +356,26 @@ async function copyShareLink() {
           :variant="product.has_price_alert ? 'outline' : 'secondary'"
           @click="togglePriceAlert(product.price_alert_url)"
         >
-          {{ product.has_price_alert ? '已订阅降价' : '降价提醒' }}
+          {{ product.has_price_alert ? t('commerce.wishlist.priceAlertOn') : t('commerce.wishlist.priceAlert') }}
         </Button>
-        <Button v-if="product.wishlist_url" type="button" variant="outline" size="sm" @click="removeFromWishlist(product.wishlist_url)">移除</Button>
+        <Button v-if="product.wishlist_url" type="button" variant="outline" size="sm" @click="removeFromWishlist(product.wishlist_url)">{{ t('commerce.wishlist.remove') }}</Button>
         <Button as-child variant="outline" size="sm">
-          <Link :href="product.url">查看</Link>
+          <Link :href="product.url">{{ t('commerce.wishlist.view') }}</Link>
         </Button>
       </div>
     </div>
   </div>
   <div v-else class="rounded-lg border border-dashed p-8 text-center">
     <p class="text-sm text-muted-foreground">
-      {{ hasActiveFilters() ? '没有符合筛选条件的商品。' : '心愿单是空的。浏览商城添加喜欢的商品吧。' }}
+      {{ hasActiveFilters() ? t('commerce.wishlist.emptyFiltered') : t('commerce.wishlist.empty') }}
     </p>
     <div class="mt-4 flex flex-wrap justify-center gap-2">
-      <Button v-if="hasActiveFilters()" type="button" size="sm" variant="outline" @click="clearFilters">清除筛选</Button>
+      <Button v-if="hasActiveFilters()" type="button" size="sm" variant="outline" @click="clearFilters">{{ t('commerce.wishlist.clearFilters') }}</Button>
       <Button as-child size="sm">
-        <Link :href="routes.store">浏览商城</Link>
+        <Link :href="routes.store">{{ t('commerce.wishlist.browseStore') }}</Link>
       </Button>
       <Button as-child variant="outline" size="sm">
-        <Link :href="routes.storeCompare">商品对比</Link>
+        <Link :href="routes.storeCompare">{{ t('commerce.wishlist.compareList') }}</Link>
       </Button>
     </div>
   </div>

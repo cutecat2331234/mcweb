@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import {
   DropdownMenuContent,
   DropdownMenuItem,
@@ -20,6 +21,7 @@ defineProps<{
 }>()
 
 const { features } = useFeatureFlags()
+const { t } = useI18n()
 </script>
 
 <template>
@@ -40,7 +42,7 @@ const { features } = useFeatureFlags()
     >
       <DropdownMenuLabel class="px-2 py-1.5 text-sm font-normal">
         <p class="font-medium leading-none">{{ username }}</p>
-        <p class="mt-1 text-xs text-muted-foreground">用户中心</p>
+        <p class="mt-1 text-xs text-muted-foreground">{{ t('portal.userCenter') }}</p>
       </DropdownMenuLabel>
       <DropdownMenuSeparator class="my-1 h-px bg-border" />
       <DropdownMenuItem v-if="features.forum" as-child>
@@ -49,7 +51,7 @@ const { features } = useFeatureFlags()
           class="relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
         >
           <User class="h-4 w-4" />
-          个人资料
+          {{ t('portal.profile') }}
         </Link>
       </DropdownMenuItem>
       <DropdownMenuItem v-if="features.forum" as-child>
@@ -58,7 +60,7 @@ const { features } = useFeatureFlags()
           class="relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
         >
           <Settings class="h-4 w-4" />
-          论坛偏好
+          {{ t('portal.forumPreferences') }}
         </Link>
       </DropdownMenuItem>
       <DropdownMenuSeparator v-if="features.forum" class="my-1 h-px bg-border" />
@@ -70,7 +72,7 @@ const { features } = useFeatureFlags()
           class="relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-destructive/10"
         >
           <LogOut class="h-4 w-4" />
-          退出登录
+          {{ t('common.signOut') }}
         </Link>
       </DropdownMenuItem>
     </DropdownMenuContent>

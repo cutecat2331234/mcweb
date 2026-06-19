@@ -1,7 +1,7 @@
-<p>您好 <%= @user.display_name %>，</p>
+<p><%= t("mcweb.mail.greeting_formal", username: @user.display_name) %></p>
 
-<p>请点击以下链接验证您的邮箱地址：</p>
+<p><%= t("mcweb.mail.identity.verification.intro") %></p>
 
 <p><%= link_to @verification_url, @verification_url %></p>
 
-<p>如果您没有注册 McWeb 账号，请忽略此邮件。</p>
+<p><%= t("mcweb.mail.identity.verification.ignore") %></p>

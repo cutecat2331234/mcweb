@@ -51,7 +51,7 @@ module Admin
         @article = ::Website::Article.new(article_params)
 
         if @article.save
-          redirect_to admin_website_article_path(@article), notice: "文章已创建。"
+          redirect_to admin_website_article_path(@article), notice: t("mcweb.flash.created", resource: t("mcweb.resources.article"))
         else
           render :new, status: :unprocessable_entity
         end
@@ -62,7 +62,7 @@ module Admin
 
       def update
         if @article.update(article_params)
-          redirect_to admin_website_article_path(@article), notice: "文章已更新。"
+          redirect_to admin_website_article_path(@article), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.article"))
         else
           render :edit, status: :unprocessable_entity
         end
@@ -70,7 +70,7 @@ module Admin
 
       def destroy
         @article.destroy!
-        redirect_to admin_website_articles_path, notice: "文章已删除。"
+        redirect_to admin_website_articles_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.article"))
       end
 
       private

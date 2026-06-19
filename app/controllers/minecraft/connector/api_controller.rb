@@ -9,8 +9,105 @@ module Minecraft
       before_action :authenticate_connector!
 
       def heartbeat
-        @server.heartbeat!
-        render json: { status: "ok", server_id: @server.public_id }
+        result = Minecraft::RecordHeartbeat.call(server: @server, payload: connector_payload)
+        if result.success?
+          render json: result.value
+        else
+          render json: { error: service_error_message(result) }, status: :unprocessable_entity
+        end
+      end
+
+      def link_codes
+        result = Minecraft::GenerateLinkCode.call(
+          server: @server,
+          minecraft_uuid: connector_payload.fetch("uuid"),
+          minecraft_username: connector_payload.fetch("username"),
+          identity_type: connector_payload.fetch("platform", "java")
+        )
+
+        if result.success?
+          player_ref = Minecraft::PlayerRef.resolve(
+            uuid: connector_payload.fetch("uuid"),
+            platform: connector_payload.fetch("platform", "java"),
+            username: connector_payload.fetch("username")
+          )
+          render json: {
+            code: result.value[:code],
+            expires_at: result.value[:link_code].expires_at.iso8601,
+            player_id: player_ref.public_id,
+            link_url: "#{request.base_url}/app/minecraft/link"
+          }
+        else
+          render json: { error: service_error_message(result) }, status: :unprocessable_entity
+        end
+      end
+
+      def presence
+        result = Minecraft::SyncPresence.call(server: @server, payload: connector_payload)
+        if result.success?
+          render json: result.value
+        else
+          render json: { error: service_error_message(result) }, status: :unprocessable_entity
+        end
+      end
+
+      def profile_fields
+        result = Minecraft::SyncProfileFields.call(payload: connector_payload)
+        if result.success?
+          render json: result.value
+        else
+          render json: { error: service_error_message(result) }, status: :unprocessable_entity
+        end
+      end
+
+      def permission_groups
+        result = Minecraft::SyncPermissionGroups.call(payload: connector_payload)
+        if result.success?
+          render json: result.value
+        else
+          render json: { error: service_error_message(result) }, status: :unprocessable_entity
+        end
+      end
+
+      def server_stats
+        result = Minecraft::RecordHeartbeat.call(server: @server, payload: connector_payload)
+        if result.success?
+          render json: result.value.merge(stats: true)
+        else
+          render json: { error: service_error_message(result) }, status: :unprocessable_entity
+        end
+      end
+
+      def fetch_config
+        result = Minecraft::FetchConnectorConfig.call(server: @server)
+        render json: result.value
+      end
+
+      def whois
+        result = Minecraft::LookupPlayer.call(
+          uuid: connector_payload["uuid"],
+          username: connector_payload["username"],
+          platform: connector_payload.fetch("platform", "java")
+        )
+        render json: result.value
+      end
+
+      def events
+        payload = connector_payload.fetch("payload", {}).deep_stringify_keys
+        %w[uuid username platform player_id server_id].each do |key|
+          payload[key] = connector_payload[key] if connector_payload[key].present?
+        end
+
+        result = Minecraft::Integration::ActionRunner.call(
+          event_key: connector_payload.fetch("event"),
+          event_id: connector_payload.fetch("event_id", SecureRandom.uuid),
+          payload: payload
+        )
+        if result.success?
+          render json: result.value
+        else
+          render json: { error: service_error_message(result) }, status: :unprocessable_entity
+        end
       end
 
       def tasks
@@ -58,8 +155,19 @@ module Minecraft
         false
       end
 
+      def connector_payload
+        @connector_payload ||= begin
+          body = request.request_parameters
+          body = JSON.parse(request.raw_post) if body.blank? && request.raw_post.present?
+          body.deep_stringify_keys
+        end
+      end
+
       def signed_payload
-        request.raw_post.presence || request.request_parameters.to_json
+        return request.raw_post if request.raw_post.present?
+        return "" if request.get? || request.head?
+
+        request.request_parameters.to_json
       end
 
       def task_result_params

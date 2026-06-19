@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -10,6 +11,8 @@ import Checkbox from '@/components/ui/Checkbox.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   title: string
@@ -66,27 +69,27 @@ function submit() {
 
   <form class="max-w-lg space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
-      <Label for="name">名称</Label>
+      <Label for="name">{{ t('admin.common.name') }}</Label>
       <Input id="name" v-model="form.tag_group.name" required />
     </div>
     <div class="space-y-2">
-      <Label for="slug">标识</Label>
+      <Label for="slug">{{ t('admin.forms.tag.slug') }}</Label>
       <Input id="slug" v-model="form.tag_group.slug" />
     </div>
     <div class="space-y-2">
-      <Label for="description">描述</Label>
+      <Label for="description">{{ t('admin.common.description') }}</Label>
       <Textarea id="description" v-model="form.tag_group.description" rows="3" />
     </div>
     <div class="space-y-2">
-      <Label for="color_hex">组颜色（Hex，可选）</Label>
+      <Label for="color_hex">{{ t('admin.forms.tagGroup.groupColor') }}</Label>
       <Input id="color_hex" v-model="form.tag_group.color_hex" placeholder="#6366f1" />
     </div>
     <label class="flex items-center gap-2 text-sm">
       <Checkbox v-model="form.tag_group.one_per_topic" />
-      每个主题只能从此组选一个标签（XenForo）
+      {{ t('admin.forms.tagGroup.onePerTopic') }}
     </label>
     <div class="space-y-2">
-      <Label>组内标签</Label>
+      <Label>{{ t('admin.forms.tagGroup.tagsInGroup') }}</Label>
       <div class="max-h-48 space-y-1 overflow-y-auto rounded-md border p-3">
         <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-2 text-sm">
           <Checkbox
@@ -98,9 +101,9 @@ function submit() {
       </div>
     </div>
     <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">保存</Button>
+      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
       <Button as-child variant="outline">
-        <Link :href="backUrl">返回</Link>
+        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
       </Button>
     </div>
   </form>

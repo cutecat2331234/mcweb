@@ -104,7 +104,7 @@ module Commerce
     end
 
     def recently_viewed
-      return redirect_to store_products_path, alert: "请先登录。" unless logged_in?
+      return redirect_to store_products_path, alert: t("mcweb.flash.sign_in_required_short") unless logged_in?
 
       products = Commerce::ProductView.recent_for(current_user)
         .includes(:product)
@@ -124,10 +124,10 @@ module Commerce
     end
 
     def clear_recently_viewed
-      return redirect_to store_products_path, alert: "请先登录。" unless logged_in?
+      return redirect_to store_products_path, alert: t("mcweb.flash.sign_in_required_short") unless logged_in?
 
       Commerce::ProductView.where(user: current_user).delete_all
-      redirect_to recently_viewed_store_products_path, notice: "浏览记录已清空。"
+      redirect_to recently_viewed_store_products_path, notice: t("mcweb.flash.browsing_history_cleared")
     end
 
     def preview
@@ -187,9 +187,7 @@ module Commerce
 
       review_page = [ params[:review_page].to_i, 1 ].max
       per_page = 10
-      total_reviews = reviews_scope.count
-      reviews = reviews_scope.limit(review_page * per_page)
-      @pagy_reviews = Pagy.new(count: total_reviews, page: review_page, limit: per_page)
+      @pagy_reviews, reviews = pagy(reviews_scope, page: review_page, limit: per_page)
       reviews_count = product.reviews.published.count
       avg = product.reviews.published.average(:rating)&.round(1)
       rating_breakdown = product.reviews.published.group(:rating).count
@@ -267,26 +265,26 @@ module Commerce
     end
 
     def reorder
-      return redirect_to store_products_path, alert: "请先登录。" unless logged_in?
+      return redirect_to store_products_path, alert: t("mcweb.flash.sign_in_required_short") unless logged_in?
 
       product = Commerce::Product.available.find_by!(public_id: params[:id])
       result = Commerce::ReorderProduct.call(user: current_user, product: product)
 
       if result.success?
-        redirect_to store_cart_path, notice: "已加入购物车。"
+        redirect_to store_cart_path, notice: t("mcweb.flash.added_to_cart")
       else
         redirect_to store_product_path(product), alert: service_error_message(result)
       end
     end
 
     def create_discussion
-      return redirect_to store_products_path, alert: "请先登录。" unless logged_in?
+      return redirect_to store_products_path, alert: t("mcweb.flash.sign_in_required_short") unless logged_in?
 
       product = Commerce::Product.available.find_by!(public_id: params[:id])
       result = Commerce::EnsureProductDiscussionTopic.call(product: product, creator: current_user)
 
       if result.success?
-        redirect_to forum_topic_path(result.value), notice: "讨论帖已创建。"
+        redirect_to forum_topic_path(result.value), notice: t("mcweb.flash.discussion_topic_created")
       else
         redirect_to store_product_path(product), alert: service_error_message(result)
       end

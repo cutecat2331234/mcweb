@@ -31,7 +31,7 @@ module Community
       )
 
       if result.success?
-        redirect_back fallback_location: forum_ignores_path, notice: result.value[:ignored] ? "已忽略该用户。" : "已取消忽略。"
+        redirect_back fallback_location: forum_ignores_path, notice: result.value[:ignored] ? t("mcweb.flash.user_ignored") : t("mcweb.flash.user_unignored")
       else
         redirect_back fallback_location: forum_ignores_path, alert: service_error_message(result)
       end

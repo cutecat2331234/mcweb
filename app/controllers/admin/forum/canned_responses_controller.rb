@@ -34,7 +34,7 @@ module Admin
         response = ::Community::CannedResponse.new(canned_response_params)
         response.author = current_user
         if response.save
-          redirect_to admin_forum_canned_responses_path, notice: "罐头回复已创建。"
+          redirect_to admin_forum_canned_responses_path, notice: t("mcweb.flash.canned_response_created")
         else
           render inertia: "Admin/Forum/CannedResponses/Form", props: form_props(response), status: :unprocessable_entity
         end
@@ -46,7 +46,7 @@ module Admin
 
       def update
         if @response.update(canned_response_params)
-          redirect_to admin_forum_canned_responses_path, notice: "罐头回复已更新。"
+          redirect_to admin_forum_canned_responses_path, notice: t("mcweb.flash.canned_response_updated")
         else
           render inertia: "Admin/Forum/CannedResponses/Form", props: form_props(@response, editing: true), status: :unprocessable_entity
         end
@@ -54,7 +54,7 @@ module Admin
 
       def destroy
         @response.destroy!
-        redirect_to admin_forum_canned_responses_path, notice: "罐头回复已删除。"
+        redirect_to admin_forum_canned_responses_path, notice: t("mcweb.flash.canned_response_deleted")
       end
 
       private

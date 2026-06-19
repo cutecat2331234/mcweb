@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -14,6 +15,8 @@ import { router } from '@inertiajs/vue3'
 import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 export interface SavedAddress {
   id: number
@@ -103,9 +106,9 @@ function makeDefault(url: string) {
 
 async function removeAddress(url: string) {
   const ok = await confirm({
-    title: '删除地址',
-    message: '确定删除此地址？',
-    confirmLabel: '删除',
+    title: t('commerce.shippingAddresses.deleteTitle'),
+    message: t('commerce.shippingAddresses.deleteConfirm'),
+    confirmLabel: t('commerce.shippingAddresses.delete'),
     variant: 'destructive',
   })
   if (!ok) return
@@ -115,12 +118,12 @@ async function removeAddress(url: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
-    { label: '收货地址', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.store'), href: routes.store },
+    { label: t('commerce.shippingAddresses.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="收货地址" subtitle="管理常用收货地址，结账时可快速选择" />
+  <PageHeader :title="t('commerce.shippingAddresses.title')" :subtitle="t('commerce.shippingAddresses.subtitle')" />
 
   <div v-if="addresses.length" class="mb-8 space-y-3">
     <div
@@ -131,27 +134,27 @@ async function removeAddress(url: string) {
       <template v-if="editingId === address.id">
         <form class="space-y-3" @submit.prevent="submitEdit(address.update_url)">
           <div class="space-y-2">
-            <Label>地址标签</Label>
+            <Label>{{ t('commerce.shippingAddresses.addressLabel') }}</Label>
             <Input v-model="editForm.address.label" />
           </div>
           <div class="grid gap-3 sm:grid-cols-2">
-            <Input v-model="editForm.address.name" placeholder="收件人" required />
-            <Input v-model="editForm.address.phone" placeholder="手机号" required />
+            <Input v-model="editForm.address.name" :placeholder="t('commerce.shippingAddresses.recipient')" required />
+            <Input v-model="editForm.address.phone" :placeholder="t('commerce.shippingAddresses.phone')" required />
           </div>
-          <Input v-model="editForm.address.line1" placeholder="地址" required />
-          <Input v-model="editForm.address.line2" placeholder="地址补充" />
+          <Input v-model="editForm.address.line1" :placeholder="t('commerce.shippingAddresses.line1')" required />
+          <Input v-model="editForm.address.line2" :placeholder="t('commerce.shippingAddresses.line2')" />
           <div class="grid gap-3 sm:grid-cols-3">
-            <Input v-model="editForm.address.province" placeholder="省/州" required />
-            <Input v-model="editForm.address.city" placeholder="城市" required />
-            <Input v-model="editForm.address.postal_code" placeholder="邮编" />
+            <Input v-model="editForm.address.province" :placeholder="t('commerce.shippingAddresses.province')" required />
+            <Input v-model="editForm.address.city" :placeholder="t('commerce.shippingAddresses.city')" required />
+            <Input v-model="editForm.address.postal_code" :placeholder="t('commerce.shippingAddresses.postalCode')" />
           </div>
           <label class="flex items-center gap-2 text-sm">
             <Checkbox v-model="editForm.make_default" />
-            设为默认地址
+            {{ t('commerce.shippingAddresses.makeDefault') }}
           </label>
           <div class="flex gap-2">
-            <Button type="submit" size="sm" :disabled="editForm.processing">保存</Button>
-            <Button type="button" size="sm" variant="outline" @click="editingId = null">取消</Button>
+            <Button type="submit" size="sm" :disabled="editForm.processing">{{ t('commerce.shippingAddresses.save') }}</Button>
+            <Button type="button" size="sm" variant="outline" @click="editingId = null">{{ t('commerce.shippingAddresses.cancel') }}</Button>
           </div>
         </form>
       </template>
@@ -161,7 +164,7 @@ async function removeAddress(url: string) {
             <div class="mb-1 flex flex-wrap items-center gap-2">
               <span class="font-medium">{{ address.name }}</span>
               <span class="text-muted-foreground">{{ address.phone }}</span>
-              <Badge v-if="address.default_address" variant="secondary">默认</Badge>
+              <Badge v-if="address.default_address" variant="secondary">{{ t('commerce.shippingAddresses.defaultBadge') }}</Badge>
               <span v-if="address.label" class="text-xs text-muted-foreground">{{ address.label }}</span>
             </div>
             <p class="text-muted-foreground">
@@ -171,60 +174,60 @@ async function removeAddress(url: string) {
             </p>
           </div>
           <div class="flex flex-wrap gap-2">
-            <Button type="button" size="sm" variant="outline" @click="startEdit(address)">编辑</Button>
+            <Button type="button" size="sm" variant="outline" @click="startEdit(address)">{{ t('commerce.shippingAddresses.edit') }}</Button>
             <Button v-if="!address.default_address" type="button" size="sm" variant="outline" @click="makeDefault(address.make_default_url)">
-              设为默认
+              {{ t('commerce.shippingAddresses.makeDefaultBtn') }}
             </Button>
-            <Button type="button" size="sm" variant="outline" @click="removeAddress(address.delete_url)">删除</Button>
+            <Button type="button" size="sm" variant="outline" @click="removeAddress(address.delete_url)">{{ t('commerce.shippingAddresses.delete') }}</Button>
           </div>
         </div>
       </template>
     </div>
   </div>
-  <p v-else class="mb-8 text-sm text-muted-foreground">暂无保存的地址。</p>
+  <p v-else class="mb-8 text-sm text-muted-foreground">{{ t('commerce.shippingAddresses.empty') }}</p>
 
   <form class="max-w-xl space-y-4 rounded-lg border p-4" @submit.prevent="submit">
-    <h2 class="text-sm font-semibold">添加新地址</h2>
+    <h2 class="text-sm font-semibold">{{ t('commerce.shippingAddresses.addNew') }}</h2>
     <div class="space-y-2">
-      <Label for="addr_label">地址标签（可选）</Label>
-      <Input id="addr_label" v-model="form.address.label" placeholder="例如：家、公司" />
+      <Label for="addr_label">{{ t('commerce.shippingAddresses.addressLabelOptional') }}</Label>
+      <Input id="addr_label" v-model="form.address.label" :placeholder="t('commerce.shippingAddresses.addressLabelPlaceholder')" />
     </div>
     <div class="grid gap-3 sm:grid-cols-2">
       <div class="space-y-2">
-        <Label for="addr_name">收件人</Label>
+        <Label for="addr_name">{{ t('commerce.shippingAddresses.recipient') }}</Label>
         <Input id="addr_name" v-model="form.address.name" required />
       </div>
       <div class="space-y-2">
-        <Label for="addr_phone">手机号</Label>
+        <Label for="addr_phone">{{ t('commerce.shippingAddresses.phone') }}</Label>
         <Input id="addr_phone" v-model="form.address.phone" required />
       </div>
     </div>
     <div class="space-y-2">
-      <Label for="addr_line1">地址</Label>
+      <Label for="addr_line1">{{ t('commerce.shippingAddresses.line1') }}</Label>
       <Input id="addr_line1" v-model="form.address.line1" required />
     </div>
     <div class="space-y-2">
-      <Label for="addr_line2">地址补充（可选）</Label>
+      <Label for="addr_line2">{{ t('commerce.shippingAddresses.line2Optional') }}</Label>
       <Input id="addr_line2" v-model="form.address.line2" />
     </div>
     <div class="grid gap-3 sm:grid-cols-3">
       <div class="space-y-2">
-        <Label for="addr_province">省/州</Label>
+        <Label for="addr_province">{{ t('commerce.shippingAddresses.province') }}</Label>
         <Input id="addr_province" v-model="form.address.province" required />
       </div>
       <div class="space-y-2">
-        <Label for="addr_city">城市</Label>
+        <Label for="addr_city">{{ t('commerce.shippingAddresses.city') }}</Label>
         <Input id="addr_city" v-model="form.address.city" required />
       </div>
       <div class="space-y-2">
-        <Label for="addr_postal">邮编</Label>
+        <Label for="addr_postal">{{ t('commerce.shippingAddresses.postalCode') }}</Label>
         <Input id="addr_postal" v-model="form.address.postal_code" />
       </div>
     </div>
     <label class="flex items-center gap-2 text-sm">
       <Checkbox v-model="form.make_default" />
-      设为默认地址
+      {{ t('commerce.shippingAddresses.makeDefault') }}
     </label>
-    <Button type="submit" :disabled="form.processing">保存地址</Button>
+    <Button type="submit" :disabled="form.processing">{{ t('commerce.shippingAddresses.saveAddress') }}</Button>
   </form>
 </template>

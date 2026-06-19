@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Link, useForm, usePage } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -17,6 +18,7 @@ const props = defineProps<{
 }>()
 
 const page = usePage()
+const { t } = useI18n()
 
 const form = useForm({
   password_reset: { email: '' },
@@ -41,20 +43,20 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader title="重置密码" subtitle="输入注册邮箱，我们将发送重置链接" />
+  <PageHeader :title="t('auth.passwordReset.title')" :subtitle="t('auth.passwordReset.subtitle')" />
 
-  <Alert v-if="formError" variant="destructive" title="无法发送" class="mb-4 max-w-md">
+  <Alert v-if="formError" variant="destructive" :title="t('auth.passwordReset.sendFailed')" class="mb-4 max-w-md">
     {{ formError }}
   </Alert>
 
   <form class="max-w-md space-y-4" @submit.prevent="submit">
     <div class="space-y-2">
-      <Label for="email">邮箱</Label>
+      <Label for="email">{{ t('auth.passwordReset.email') }}</Label>
       <Input id="email" v-model="form.password_reset.email" type="email" required autofocus />
     </div>
     <div class="flex flex-wrap items-center justify-between gap-3">
-      <Button type="submit" :disabled="form.processing">发送重置链接</Button>
-      <Link :href="routes.signIn" class="text-sm text-muted-foreground hover:text-foreground">返回登录</Link>
+      <Button type="submit" :disabled="form.processing">{{ t('auth.passwordReset.submit') }}</Button>
+      <Link :href="routes.signIn" class="text-sm text-muted-foreground hover:text-foreground">{{ t('auth.passwordReset.backToSignIn') }}</Link>
     </div>
   </form>
 </template>

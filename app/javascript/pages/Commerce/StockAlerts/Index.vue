@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -8,6 +9,8 @@ import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 defineProps<{
   alerts: Array<{
@@ -33,26 +36,26 @@ function unsubscribe(url: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '商城', href: routes.store },
-    { label: '到货通知', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.store'), href: routes.store },
+    { label: t('commerce.stockAlerts.breadcrumb'), current: true },
   ]" />
 
-  <PageHeader title="到货通知" subtitle="管理你订阅的商品补货提醒" />
+  <PageHeader :title="t('commerce.stockAlerts.title')" :subtitle="t('commerce.stockAlerts.subtitle')" />
 
   <div v-if="alerts.length" class="space-y-3">
     <div v-for="alert in alerts" :key="alert.id" class="flex items-center justify-between gap-4 rounded-lg border p-4">
       <div>
         <Link :href="alert.product_url" class="font-medium hover:underline">{{ alert.product_name }}</Link>
-        <p v-if="alert.variant_name" class="text-sm text-muted-foreground">规格：{{ alert.variant_name }}</p>
-        <p class="text-xs text-muted-foreground">订阅于 {{ alert.subscribed_at }}</p>
-        <Badge v-if="alert.in_stock" variant="success" class="mt-1">已有货</Badge>
+        <p v-if="alert.variant_name" class="text-sm text-muted-foreground">{{ t('commerce.stockAlerts.variant', { name: alert.variant_name }) }}</p>
+        <p class="text-xs text-muted-foreground">{{ t('commerce.stockAlerts.subscribedAt', { at: alert.subscribed_at }) }}</p>
+        <Badge v-if="alert.in_stock" variant="success" class="mt-1">{{ t('commerce.stockAlerts.inStock') }}</Badge>
       </div>
       <div class="flex gap-2">
-        <Button v-if="alert.add_to_cart_url" type="button" size="sm" @click="addToCart(alert.add_to_cart_url)">加入购物车</Button>
-        <Button type="button" size="sm" variant="outline" @click="unsubscribe(alert.unsubscribe_url)">取消订阅</Button>
+        <Button v-if="alert.add_to_cart_url" type="button" size="sm" @click="addToCart(alert.add_to_cart_url)">{{ t('commerce.stockAlerts.addToCart') }}</Button>
+        <Button type="button" size="sm" variant="outline" @click="unsubscribe(alert.unsubscribe_url)">{{ t('commerce.stockAlerts.unsubscribe') }}</Button>
       </div>
     </div>
   </div>
-  <p v-else class="text-sm text-muted-foreground">暂无到货通知订阅。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('commerce.stockAlerts.empty') }}</p>
 </template>

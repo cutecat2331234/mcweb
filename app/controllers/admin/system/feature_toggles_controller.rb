@@ -24,7 +24,7 @@ module Admin
           metadata: { features: FeatureFlags.frontend_hash }
         )
 
-        redirect_to admin_system_feature_toggles_path, notice: "功能开关已保存。"
+        redirect_to admin_system_feature_toggles_path, notice: t("mcweb.flash.feature_toggles_saved")
       end
     end
   end

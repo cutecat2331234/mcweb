@@ -31,7 +31,7 @@ module Community
       )
 
       if result.success?
-        redirect_back fallback_location: forum_blocks_path, notice: result.value[:blocked] ? "已拉黑该用户。" : "已取消拉黑。"
+        redirect_back fallback_location: forum_blocks_path, notice: result.value[:blocked] ? t("mcweb.flash.user_blocked") : t("mcweb.flash.user_unblocked")
       else
         redirect_back fallback_location: forum_blocks_path, alert: service_error_message(result)
       end

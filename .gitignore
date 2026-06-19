@@ -45,3 +45,10 @@ node_modules
 *.local
 
 dist/
+
+# Gradle (MC connector plugin)
+plugins/**/build/
+plugins/**/.gradle/
+
+# Local deploy script (contains server credentials)
+scripts/deploy-direct.py

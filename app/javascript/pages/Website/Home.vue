@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import WebsiteLayout from '@/layouts/WebsiteLayout.vue'
 import { routes } from '@/lib/routes'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
 
 defineOptions({ layout: WebsiteLayout })
+
+const { t } = useI18n()
 
 export interface FeaturedArticle {
   id: string
@@ -31,29 +34,29 @@ defineProps<{
 
 const { features } = useFeatureFlags()
 
-const allFeatures = [
+const allFeatures = computed(() => [
   {
-    id: 'forum',
+    id: 'forum' as const,
     icon: '💬',
-    title: '社区论坛',
-    description: '分区讨论、话题追踪、私信与举报审核，让玩家在社区里自然留存。',
+    title: t('website.home.forumTitle'),
+    description: t('website.home.forumDesc'),
   },
   {
-    id: 'store',
+    id: 'store' as const,
     icon: '🛒',
-    title: '数字商城',
-    description: '商品上架、购物车、支付回调与 Minecraft 自动发货，变现与运营一体化。',
+    title: t('website.home.storeTitle'),
+    description: t('website.home.storeDesc'),
   },
   {
-    id: 'identity',
+    id: 'identity' as const,
     icon: '🔐',
-    title: '账号与安全',
-    description: '注册登录、邮箱验证、2FA 与细粒度权限，为服主团队提供可靠后台。',
+    title: t('website.home.identityTitle'),
+    description: t('website.home.identityDesc'),
   },
-] as const
+])
 
 const visibleFeatures = computed(() =>
-  allFeatures.filter((feature) => {
+  allFeatures.value.filter((feature) => {
     if (feature.id === 'forum') return features.value.forum
     if (feature.id === 'store') return features.value.store
     return true
@@ -73,17 +76,15 @@ const appEntryHref = computed(() => {
   return routes.signIn
 })
 
-const stats = [
-  { value: '3 合 1', label: '官网 · 论坛 · 商城' },
-  { value: '/app', label: '独立用户应用模块' },
-  { value: 'Rails 8', label: '现代全栈架构' },
-]
+const stats = computed(() => [
+  { value: t('website.home.stat1Value'), label: t('website.home.stat1Label') },
+  { value: t('website.home.stat2Value'), label: t('website.home.stat2Label') },
+  { value: t('website.home.stat3Value'), label: t('website.home.stat3Label') },
+])
 </script>
 
 <template>
-  <!-- Hero -->
   <section class="website-hero relative overflow-hidden px-4 pb-12 pt-28 text-center md:pt-36">
-    <!-- 背景装饰：像素方块散点 -->
     <div class="pointer-events-none absolute inset-0 overflow-hidden">
       <div class="absolute top-20 left-[10%] h-3 w-3 rounded-sm bg-green-500/20 rotate-12" />
       <div class="absolute top-32 right-[15%] h-2 w-2 rounded-sm bg-purple-500/20 -rotate-12" />
@@ -98,34 +99,31 @@ const stats = [
         <span class="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-400 opacity-75" />
         <span class="relative inline-flex h-2 w-2 rounded-full bg-green-500" />
       </span>
-      开源 Minecraft 服主管理系统
+      {{ t('website.home.badge') }}
     </div>
 
-    <!-- 超大 Minecraft 图标，像素风 -->
     <div class="website-float mx-auto mb-10 flex h-24 w-24 items-center justify-center rounded-2xl border border-green-500/30 bg-green-500/10 text-5xl shadow-2xl shadow-green-500/20">
       ⛏
     </div>
 
     <h1 class="website-hero-title mx-auto max-w-4xl text-5xl font-black tracking-tight leading-none md:text-7xl lg:text-8xl">
-      为你的<br>
-      <span class="shimmer-text">服务器</span><br>
-      打造官网
+      {{ t('website.home.heroLine1') }}<br>
+      <span class="shimmer-text">{{ t('website.home.heroLine2') }}</span><br>
+      {{ t('website.home.heroLine3') }}
     </h1>
     <p class="mx-auto mt-8 max-w-2xl text-lg leading-relaxed text-slate-300 md:text-xl">
-      论坛 · 商城 · 账号系统，三合一。
-      玩家统一入口 <code class="rounded-md bg-green-900/40 px-2 py-0.5 text-green-300 text-sm font-mono">/app</code>，官网管理员自由定制。
+      {{ t('website.home.heroDesc') }}
     </p>
 
     <div class="mt-12 flex flex-wrap items-center justify-center gap-4">
       <Link :href="appEntryHref" class="website-btn website-btn-primary text-base">
-        进入应用中心 →
+        {{ t('website.home.enterApp') }}
       </Link>
       <Link :href="routes.page('about')" class="website-btn website-btn-ghost text-base">
-        了解更多
+        {{ t('website.home.learnMore') }}
       </Link>
     </div>
 
-    <!-- 数据统计条带 -->
     <div class="mx-auto mt-16 max-w-3xl">
       <div class="grid grid-cols-3 gap-px overflow-hidden rounded-2xl border border-green-500/20 bg-green-500/10">
         <div v-for="stat in stats" :key="stat.label" class="website-stat bg-[#030a03]/80 py-6">
@@ -136,13 +134,12 @@ const stats = [
     </div>
   </section>
 
-  <!-- 功能特性 -->
   <section class="mx-auto max-w-6xl px-4 py-24">
     <div class="mb-16 text-center">
-      <p class="mb-3 text-xs font-bold uppercase tracking-[0.3em] text-green-400">核心功能</p>
-      <h2 class="website-section-title">一站式服主工具箱</h2>
+      <p class="mb-3 text-xs font-bold uppercase tracking-[0.3em] text-green-400">{{ t('website.home.featuresLabel') }}</p>
+      <h2 class="website-section-title">{{ t('website.home.featuresTitle') }}</h2>
       <p class="website-section-subtitle mt-4">
-        从吸引新玩家到社区运营与付费转化，McWeb 把关键能力整合在同一套系统中。
+        {{ t('website.home.featuresSubtitle') }}
       </p>
     </div>
     <div :class="featureGridClass">
@@ -151,7 +148,6 @@ const stats = [
         :key="feature.title"
         class="website-card group relative overflow-hidden text-left"
       >
-        <!-- 装饰光效 -->
         <div class="absolute -right-8 -top-8 h-32 w-32 rounded-full bg-green-500/5 blur-2xl transition-all group-hover:bg-green-500/10" />
         <div class="website-card-icon relative z-10">{{ feature.icon }}</div>
         <h3 class="relative z-10 mb-2 text-lg font-bold text-white">{{ feature.title }}</h3>
@@ -160,15 +156,14 @@ const stats = [
     </div>
   </section>
 
-  <!-- 精选商品 -->
   <section v-if="features.store && featuredProducts.length" class="mx-auto max-w-6xl px-4 pb-16">
     <div class="mb-10 flex items-end justify-between gap-4">
       <div>
-        <p class="mb-1 text-xs font-bold uppercase tracking-[0.3em] text-green-400">商城</p>
-        <h2 class="website-section-title text-left text-2xl font-bold">精选商品</h2>
+        <p class="mb-1 text-xs font-bold uppercase tracking-[0.3em] text-green-400">{{ t('website.home.storeSection') }}</p>
+        <h2 class="website-section-title text-left text-2xl font-bold">{{ t('website.home.featuredProducts') }}</h2>
       </div>
       <Link :href="routes.store" class="text-sm text-green-400 transition-colors hover:text-green-300">
-        全部商品 →
+        {{ t('website.home.allProducts') }}
       </Link>
     </div>
     <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -195,11 +190,10 @@ const stats = [
     </div>
   </section>
 
-  <!-- 最新动态 -->
   <section v-if="features.website_blog && featuredArticles.length" class="mx-auto max-w-6xl px-4 pb-20">
     <div class="mb-10">
-      <p class="mb-1 text-xs font-bold uppercase tracking-[0.3em] text-green-400">公告</p>
-      <h2 class="website-section-title text-left text-2xl font-bold">最新动态</h2>
+      <p class="mb-1 text-xs font-bold uppercase tracking-[0.3em] text-green-400">{{ t('website.home.announcements') }}</p>
+      <h2 class="website-section-title text-left text-2xl font-bold">{{ t('website.home.latestNews') }}</h2>
     </div>
     <div class="grid gap-5 md:grid-cols-2">
       <Link
@@ -222,7 +216,6 @@ const stats = [
     </div>
   </section>
 
-  <!-- CTA -->
   <section class="mx-auto max-w-5xl px-4 pb-28">
     <div class="website-cta-band scan-effect relative">
       <div class="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]">
@@ -230,14 +223,14 @@ const stats = [
         <div class="absolute -bottom-20 -right-20 h-48 w-48 rounded-full bg-purple-500/8 blur-3xl" />
       </div>
       <div class="relative">
-        <p class="mb-3 text-xs font-bold uppercase tracking-[0.3em] text-green-400">开始使用</p>
-        <h2 class="text-3xl font-black tracking-tight md:text-4xl">准备好上线你的服务器官网了吗？</h2>
+        <p class="mb-3 text-xs font-bold uppercase tracking-[0.3em] text-green-400">{{ t('website.home.ctaLabel') }}</p>
+        <h2 class="text-3xl font-black tracking-tight md:text-4xl">{{ t('website.home.ctaTitle') }}</h2>
         <p class="mx-auto mt-4 max-w-xl text-slate-300">
-          立即进入应用中心，体验论坛与商城；或通过后台自定义官网页面。
+          {{ t('website.home.ctaDesc') }}
         </p>
         <div class="mt-10 flex flex-wrap justify-center gap-4">
-          <Link :href="routes.register" class="website-btn website-btn-primary text-base">免费注册</Link>
-          <Link v-if="features.website_blog" :href="routes.blog" class="website-btn website-btn-ghost text-base">查看公告</Link>
+          <Link :href="routes.register" class="website-btn website-btn-primary text-base">{{ t('website.home.registerFree') }}</Link>
+          <Link v-if="features.website_blog" :href="routes.blog" class="website-btn website-btn-ghost text-base">{{ t('website.home.viewAnnouncements') }}</Link>
         </div>
       </div>
     </div>

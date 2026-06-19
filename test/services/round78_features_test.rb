@@ -162,8 +162,7 @@ end
 class Round78OrderMailDeliveryEstimateTest < ActiveSupport::TestCase
   test "order details partial shows delivery estimate" do
     content = File.read(Rails.root.join("app/views/commerce/order_mailer/_order_details.html.erb"))
-    assert_includes content, "delivery_estimate_label"
-    assert_includes content, "预计送达"
+    assert_includes content, "mcweb.mail.commerce.delivery_estimate_label"
   end
 end
 

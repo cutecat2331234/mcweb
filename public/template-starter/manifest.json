@@ -5,8 +5,7 @@
   "scopes": ["website", "portal"],
   "tokens": {
     "primary_color": "#38bdf8",
-    "website_bg": "#0f172a",
-    "portal_header_bg": "rgba(15,23,42,0.95)"
+    "website_bg": "#0f172a"
   },
   "assets": {
     "css": ["styles/theme.css"]

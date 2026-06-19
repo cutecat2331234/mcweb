@@ -52,6 +52,11 @@ module Community
       else
                          {}
       end
+      verified_purchaser_ids = Commerce::Order
+        .where(user_id: posts.map(&:user_id).uniq, status: %w[paid processing fulfilling fulfilled completed])
+        .distinct
+        .pluck(:user_id)
+        .to_set
 
       render inertia: "Community/Topics/Show", props: {
         topic: serialize_topic_detail(
@@ -87,7 +92,8 @@ module Community
             current_user: current_user,
             can_moderate: can_moderate_topic?,
             solved_post_id: @topic.solved_post_id,
-            post_bookmark: post_bookmarks[post.id]
+            post_bookmark: post_bookmarks[post.id],
+            verified_purchaser: verified_purchaser_ids.include?(post.user_id)
           )
         end,
         pagination: pagy_props(@pagy),
@@ -96,7 +102,7 @@ module Community
         markUnreadUrl: logged_in? ? mark_unread_forum_topic_path(@topic) : nil,
         jumpToUnreadUrl: first_unread_floor ? forum_topic_path(@topic, unread: 1) : nil,
         canReply: can_reply_to_topic?,
-        cannedResponses: can_moderate_topic? ? Community::CannedResponse.ordered.map { |r| { title: r.title, body: r.body } } : [],
+        cannedResponses: can_moderate_topic? ? Community::CannedResponse.ordered.limit(50).map { |r| { title: r.title, body: r.body } } : [],
         section_read_only: @topic.section.read_only?,
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction.allowed_emoji,
@@ -124,7 +130,7 @@ module Community
 
     def new
       unless @section.allowed?(current_user, :create_topic)
-        return redirect_to forum_section_path(@section), alert: "你无权在此分区发帖。"
+        return redirect_to forum_section_path(@section), alert: t("mcweb.flash.cannot_post_in_section")
       end
 
       render inertia: "Community/Topics/New", props: {
@@ -161,7 +167,7 @@ module Community
             ip_address: request.remote_ip
           )
           if result.success?
-            return redirect_to forum_drafts_path, notice: "主题已定时，将于 #{l(scheduled_at, format: :short)} 发布。"
+            return redirect_to forum_drafts_path, notice: t("mcweb.flash.topic_scheduled", time: l(scheduled_at, format: :short))
           end
           return render inertia: "Community/Topics/New",
                         props: {
@@ -191,7 +197,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(result.value), notice: "主题已创建。"
+        redirect_to forum_topic_path(result.value), notice: t("mcweb.flash.topic_created")
       else
         render inertia: "Community/Topics/New",
                props: {
@@ -214,7 +220,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "主题已更新。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.topic_updated")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -242,7 +248,7 @@ module Community
         notice = subscription_notice(result.value[:watching], result.value[:notification_level], context: :topic)
         redirect_after_subscription_update(fallback_location: forum_topic_path(@topic), notice: notice)
       else
-        redirect_after_subscription_update(fallback_location: forum_topic_path(@topic), alert: result.error || "更新失败")
+        redirect_after_subscription_update(fallback_location: forum_topic_path(@topic), alert: result.error || t("mcweb.flash.subscription_update_failed"))
       end
     end
 
@@ -250,7 +256,7 @@ module Community
       result = Community::ToggleTopicMute.call(user: current_user, topic: @topic)
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: result.value[:muted] ? "已静音此主题。" : "已取消静音。"
+        redirect_to forum_topic_path(@topic), notice: result.value[:muted] ? t("mcweb.flash.topic_muted") : t("mcweb.flash.topic_unmuted")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -260,7 +266,7 @@ module Community
       result = Community::ToggleBookmark.call(user: current_user, topic: @topic)
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: result.value[:bookmarked] ? "已加入书签。" : "已移除书签。"
+        redirect_to forum_topic_path(@topic), notice: result.value[:bookmarked] ? t("mcweb.flash.bookmark_added") : t("mcweb.flash.bookmark_removed")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -276,7 +282,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "主题已更新。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.topic_updated")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -284,7 +290,7 @@ module Community
 
     def bulk_moderate
       unless current_user.permission?("forum.topics.lock")
-        return redirect_back fallback_location: forum_latest_path, alert: "无权执行批量版主操作。"
+        return redirect_back fallback_location: forum_latest_path, alert: t("mcweb.flash.cannot_moderate_bulk")
       end
 
       result = Community::BulkModerateTopics.call(
@@ -299,13 +305,13 @@ module Community
         notice += "，#{result.value[:failed]} 个失败" if result.value[:failed].positive?
         redirect_to bulk_moderate_destination, notice: notice
       else
-        redirect_to bulk_moderate_destination, alert: result.error || "操作失败"
+        redirect_to bulk_moderate_destination, alert: result.error || t("mcweb.flash.operation_failed")
       end
     end
 
     def export
       unless can_moderate_topic?
-        return redirect_to forum_topic_path(@topic), alert: "无权导出此主题。"
+        return redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.cannot_export_topic")
       end
 
       result = Community::ExportTopicPosts.call(topic: @topic)
@@ -322,7 +328,7 @@ module Community
 
       if result.success?
         conversation = result.value[:conversation]
-        redirect_to forum_conversation_path(conversation), notice: "主题已通过私信分享。"
+        redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.topic_shared_pm")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -337,7 +343,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "主题已关闭。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.topic_closed")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -347,7 +353,7 @@ module Community
       result = Community::CloseOwnTopic.call(user: current_user, topic: @topic, action: "reopen")
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "主题已重新打开。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.topic_reopened")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -358,7 +364,7 @@ module Community
       result = Community::MoveTopic.call(user: current_user, topic: @topic, section: section)
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "主题已移动。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.topic_moved")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -372,7 +378,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(result.value), notice: "主题已合并。"
+        redirect_to forum_topic_path(result.value), notice: t("mcweb.flash.topic_merged")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -390,7 +396,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(result.value), notice: "主题已拆分。"
+        redirect_to forum_topic_path(result.value), notice: t("mcweb.flash.topic_split")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -401,7 +407,7 @@ module Community
       result = Community::MarkTopicSolved.call(user: current_user, topic: @topic, post: post)
 
       if result.success?
-        redirect_to forum_topic_path(@topic, anchor: "post-#{post.id}"), notice: "已标记为已解决。"
+        redirect_to forum_topic_path(@topic, anchor: "post-#{post.id}"), notice: t("mcweb.flash.topic_marked_solved")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -411,65 +417,65 @@ module Community
       result = Community::UnsolveTopic.call(user: current_user, topic: @topic)
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "已取消已解决标记。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.topic_unmarked_solved")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
     end
 
     def update_slow_mode
-      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+      return redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.cannot_moderate") unless can_moderate_topic?
 
       seconds = params[:seconds].to_i
       @topic.update!(slow_mode_seconds: seconds.positive? ? seconds : nil)
-      redirect_to forum_topic_path(@topic), notice: seconds.positive? ? "慢速模式已启用（#{seconds} 秒）。" : "慢速模式已关闭。"
+      redirect_to forum_topic_path(@topic), notice: seconds.positive? ? t("mcweb.flash.slow_mode_enabled", seconds: seconds) : t("mcweb.flash.slow_mode_disabled")
     end
 
     def update_auto_close
-      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+      return redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.cannot_moderate") unless can_moderate_topic?
 
       at = params[:auto_close_at].present? ? Time.zone.parse(params[:auto_close_at].to_s) : nil
       @topic.update!(auto_close_at: at)
-      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动关闭。" : "自动关闭已取消。"
+      redirect_to forum_topic_path(@topic), notice: at ? t("mcweb.flash.auto_close_scheduled", time: l(at, format: :short)) : t("mcweb.flash.auto_close_cancelled")
     rescue ArgumentError
-      redirect_to forum_topic_path(@topic), alert: "无效的关闭时间。"
+      redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.invalid_close_time")
     end
 
     def update_auto_open
-      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+      return redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.cannot_moderate") unless can_moderate_topic?
 
       at = params[:auto_open_at].present? ? Time.zone.parse(params[:auto_open_at].to_s) : nil
       @topic.update!(auto_open_at: at)
-      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动重新开放。" : "自动开放已取消。"
+      redirect_to forum_topic_path(@topic), notice: at ? t("mcweb.flash.auto_open_scheduled", time: l(at, format: :short)) : t("mcweb.flash.auto_open_cancelled")
     rescue ArgumentError
-      redirect_to forum_topic_path(@topic), alert: "无效的开放时间。"
+      redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.invalid_open_time")
     end
 
     def update_auto_bump
-      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+      return redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.cannot_moderate") unless can_moderate_topic?
 
       at = params[:auto_bump_at].present? ? Time.zone.parse(params[:auto_bump_at].to_s) : nil
       @topic.update!(auto_bump_at: at)
-      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动提升。" : "自动提升已取消。"
+      redirect_to forum_topic_path(@topic), notice: at ? t("mcweb.flash.auto_pin_scheduled", time: l(at, format: :short)) : t("mcweb.flash.auto_pin_cancelled")
     rescue ArgumentError
-      redirect_to forum_topic_path(@topic), alert: "无效的提升时间。"
+      redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.invalid_pin_time")
     end
 
     def update_auto_archive
-      return redirect_to forum_topic_path(@topic), alert: "无权操作。" unless can_moderate_topic?
+      return redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.cannot_moderate") unless can_moderate_topic?
 
       at = params[:auto_archive_at].present? ? Time.zone.parse(params[:auto_archive_at].to_s) : nil
       @topic.update!(auto_archive_at: at)
-      redirect_to forum_topic_path(@topic), notice: at ? "主题将于 #{l(at, format: :short)} 自动归档。" : "自动归档已取消。"
+      redirect_to forum_topic_path(@topic), notice: at ? t("mcweb.flash.auto_archive_scheduled", time: l(at, format: :short)) : t("mcweb.flash.auto_archive_cancelled")
     rescue ArgumentError
-      redirect_to forum_topic_path(@topic), alert: "无效的归档时间。"
+      redirect_to forum_topic_path(@topic), alert: t("mcweb.flash.invalid_archive_time")
     end
 
     def mark_unread
       result = Community::MarkTopicUnread.call(user: current_user, topic: @topic)
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "已标记为未读。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.topic_marked_unread")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -483,7 +489,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "员工备注已添加。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.staff_note_added")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -501,7 +507,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "已禁止 #{user.username} 在此主题回复。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.user_reply_banned", username: user.username)
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -512,7 +518,7 @@ module Community
       result = Community::UnbanTopicReply.call(actor: current_user, topic: @topic, user: user)
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "已解除 #{user.username} 的回复限制。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.user_reply_unbanned", username: user.username)
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
@@ -526,7 +532,7 @@ module Community
       )
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: "已邀请 #{params[:username]} 关注此主题。"
+        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.user_invited_watch", username: params[:username])
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end

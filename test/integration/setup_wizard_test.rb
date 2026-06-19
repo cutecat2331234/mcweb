@@ -38,7 +38,8 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     assert_redirected_to identity_sign_in_path
     assert InstallationLock.locked?
     user = User.find_by!(email: "owner@example.com")
-    assert user.roles.exists?(key: "super_admin")
+    assert user.roles.exists?(key: "owner")
+    assert_equal "owner", user.account_type
     follow_redirect!
     assert_response :success
   end

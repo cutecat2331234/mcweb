@@ -1,5 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import Button from '@/components/ui/Button.vue'
+
+const { t } = useI18n()
 
 defineProps<{
   count: number
@@ -13,16 +16,16 @@ const emit = defineEmits<{
 <template>
   <template v-if="count > 0">
     <Button type="button" variant="outline" size="sm" @click="emit('moderate', 'lock')">
-      锁定选中（{{ count }}）
+      {{ t('components.bulkModerate.lockSelected', { count }) }}
     </Button>
     <Button type="button" variant="outline" size="sm" @click="emit('moderate', 'unlock')">
-      解锁选中
+      {{ t('components.bulkModerate.unlockSelected') }}
     </Button>
     <Button type="button" variant="outline" size="sm" @click="emit('moderate', 'archive')">
-      归档选中
+      {{ t('components.bulkModerate.archiveSelected') }}
     </Button>
     <Button type="button" variant="outline" size="sm" @click="emit('moderate', 'unarchive')">
-      取消归档
+      {{ t('components.bulkModerate.unarchiveSelected') }}
     </Button>
   </template>
 </template>

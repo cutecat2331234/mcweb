@@ -70,7 +70,7 @@ module Commerce
         end
       end
 
-      redirect_to store_preferences_path, notice: "商城通知偏好已保存。"
+      redirect_to store_preferences_path, notice: t("mcweb.flash.store_preferences_saved")
     end
 
     private

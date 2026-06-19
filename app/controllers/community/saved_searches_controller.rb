@@ -37,9 +37,9 @@ module Community
       search_id = Community::SavedSearchUnsubscribeToken.verify(params[:token])
       search = Community::SavedSearch.find(search_id)
       search.update!(notify_daily: false)
-      redirect_to forum_preferences_path, notice: "已关闭「#{search.name}」的每日邮件提醒。"
+      redirect_to forum_preferences_path, notice: t("mcweb.flash.saved_search_notify_disabled", name: search.name)
     rescue Community::SavedSearchUnsubscribeToken::InvalidToken, ActiveRecord::RecordNotFound
-      redirect_to forum_search_path, alert: "取消提醒链接无效或已过期。"
+      redirect_to forum_search_path, alert: t("mcweb.flash.saved_search_unsubscribe_invalid")
     end
 
     private

@@ -1,5 +1,5 @@
-您好 <%= @user.username %>，
+<%= t("mcweb.mail.greeting_formal", username: @user.username) %>
 
-您关注的商品「<%= @product.name %>」<% if @alert.variant %>（<%= @alert.variant.name %>）<% end %> 已补货。
+<%= t("mcweb.mail.commerce.stock.body", product: @product.name, variant: @alert.variant ? "（#{@alert.variant.name}）" : "") %>
 
-请访问商城查看：<%= store_product_url(@product) %>
+<%= t("mcweb.mail.commerce.stock.visit", url: store_product_url(@product)) %>

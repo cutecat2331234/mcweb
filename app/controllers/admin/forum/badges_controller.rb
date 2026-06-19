@@ -42,7 +42,7 @@ module Admin
       def create
         badge = Community::Badge.new(badge_params)
         if badge.save
-          redirect_to admin_forum_badges_path, notice: "徽章已创建。"
+          redirect_to admin_forum_badges_path, notice: t("mcweb.flash.created", resource: t("mcweb.resources.badge"))
         else
           render inertia: "Admin/Forum/Badges/Form", props: form_props(badge), status: :unprocessable_entity
         end
@@ -50,7 +50,7 @@ module Admin
 
       def update
         if @badge.update(badge_params)
-          redirect_to admin_forum_badges_path, notice: "徽章已更新。"
+          redirect_to admin_forum_badges_path, notice: t("mcweb.flash.updated", resource: t("mcweb.resources.badge"))
         else
           render inertia: "Admin/Forum/Badges/Form", props: form_props(@badge), status: :unprocessable_entity
         end
@@ -58,7 +58,7 @@ module Admin
 
       def destroy
         @badge.destroy!
-        redirect_to admin_forum_badges_path, notice: "徽章已删除。"
+        redirect_to admin_forum_badges_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.badge"))
       end
 
       private

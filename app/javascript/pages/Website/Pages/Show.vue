@@ -1,7 +1,10 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import WebsiteLayout from '@/layouts/WebsiteLayout.vue'
 
 defineOptions({ layout: WebsiteLayout })
+
+const { t } = useI18n()
 
 defineProps<{
   page: { title: string; slug?: string }
@@ -43,7 +46,9 @@ defineProps<{
         class="website-prose p-6 md:p-8"
         v-html="block.settings.html"
       />
-      <div v-else class="p-6 text-sm text-slate-400">[{{ block.block_type }}]</div>
+      <div v-else class="p-6 text-sm text-slate-400">
+        {{ t('website.pages.unknownBlock', { type: block.block_type }) }}
+      </div>
     </article>
   </section>
 </template>

@@ -16,7 +16,7 @@ module Commerce
       )
 
       if result.success?
-        redirect_to store_product_path(@product), notice: "评价已提交。"
+        redirect_to store_product_path(@product), notice: t("mcweb.flash.review_submitted")
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end
@@ -26,7 +26,7 @@ module Commerce
       result = Commerce::ShareReviewToForum.call(user: current_user, review: @review)
 
       if result.success?
-        redirect_to forum_topic_path(result.value[:topic]), notice: "评价已分享到论坛。"
+        redirect_to forum_topic_path(result.value[:topic]), notice: t("mcweb.flash.review_shared")
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end
@@ -36,7 +36,7 @@ module Commerce
       result = Commerce::ToggleReviewHelpful.call(user: current_user, review: @review)
 
       if result.success?
-        redirect_to store_product_path(@product), notice: result.value[:helpful] ? "已标记为有帮助。" : "已取消标记。"
+        redirect_to store_product_path(@product), notice: result.value[:helpful] ? t("mcweb.flash.helpful_marked") : t("mcweb.flash.helpful_unmarked")
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end
@@ -46,7 +46,7 @@ module Commerce
       result = Commerce::DeleteReview.call(user: current_user, review: @review)
 
       if result.success?
-        redirect_to store_product_path(@product), notice: "评价已删除。"
+        redirect_to store_product_path(@product), notice: t("mcweb.flash.review_deleted")
       else
         redirect_to store_product_path(@product), alert: service_error_message(result)
       end

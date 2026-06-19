@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -11,6 +12,8 @@ import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   topics: TopicListItem[]
@@ -41,13 +44,13 @@ function bulkModerate(action: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '指派给我', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.assigned.breadcrumb'), current: true },
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader title="指派给我" subtitle="Discourse 风格：分配给你处理的主题收件箱" />
+    <PageHeader :title="t('forum.assigned.title')" :subtitle="t('forum.assigned.subtitle')" />
     <div class="flex flex-wrap items-center gap-2">
       <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
       <BulkModerateToolbar
@@ -67,5 +70,5 @@ function bulkModerate(action: string) {
     @update:selected-ids="selectedIds = $event"
   />
   <Pagination v-if="topics.length" :pagination="pagination" :base-path="routes.forumAssigned" class="mt-4" />
-  <p v-else class="text-sm text-muted-foreground">暂无指派给你的主题。</p>
+  <p v-else class="text-sm text-muted-foreground">{{ t('forum.assigned.empty') }}</p>
 </template>

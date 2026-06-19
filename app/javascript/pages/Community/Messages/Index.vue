@@ -1,15 +1,19 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
+import Pagination from '@/components/portal/Pagination.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   conversations: Array<{
@@ -27,6 +31,13 @@ const props = defineProps<{
   showArchived?: boolean
   archivedToggleUrl?: string
   query?: string
+  pagination?: {
+    page: number
+    pages: number
+    count: number
+    prev: number | null
+    next: number | null
+  }
 }>()
 
 const searchQuery = ref(props.query || '')
@@ -41,29 +52,29 @@ function searchMessages() {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '私信', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.messages.title'), current: true },
   ]" />
 
   <div class="mb-4 flex items-center justify-between">
-    <PageHeader title="私信" :subtitle="showArchived ? '已归档会话' : '与站友一对一交流'" />
+    <PageHeader :title="t('forum.messages.title')" :subtitle="showArchived ? t('forum.messages.subtitleArchived') : t('forum.messages.subtitleActive')" />
     <div class="flex gap-2">
       <Button v-if="archivedToggleUrl" as-child size="sm" variant="outline">
-        <Link :href="archivedToggleUrl">{{ showArchived ? '返回活跃会话' : '查看归档' }}</Link>
+        <Link :href="archivedToggleUrl">{{ showArchived ? t('forum.messages.backToActive') : t('forum.messages.viewArchived') }}</Link>
       </Button>
       <Button as-child size="sm">
-        <Link :href="routes.forumMessagesNew">发私信</Link>
+        <Link :href="routes.forumMessagesNew">{{ t('forum.messages.newMessage') }}</Link>
       </Button>
       <Button as-child size="sm" variant="outline">
-        <Link :href="routes.forumMessagesGroupNew">群组</Link>
+        <Link :href="routes.forumMessagesGroupNew">{{ t('forum.messages.group') }}</Link>
       </Button>
     </div>
   </div>
 
   <form class="mb-4 flex max-w-md gap-2" @submit.prevent="searchMessages">
-    <Input v-model="searchQuery" placeholder="搜索消息内容…" class="flex-1" />
-    <Button type="submit" variant="outline">搜索</Button>
+    <Input v-model="searchQuery" :placeholder="t('forum.messages.searchPlaceholder')" class="flex-1" />
+    <Button type="submit" variant="outline">{{ t('forum.messages.search') }}</Button>
   </form>
 
   <div v-if="conversations.length" class="divide-y rounded-lg border">
@@ -79,12 +90,14 @@ function searchMessages() {
           <span class="font-medium text-foreground">{{ conv.display_name || conv.other_username }}</span>
           <span class="text-xs text-muted-foreground">{{ conv.last_message_at || '' }}</span>
         </div>
-        <p class="truncate text-sm text-muted-foreground">{{ conv.last_message_preview || '暂无消息' }}</p>
+        <p class="truncate text-sm text-muted-foreground">{{ conv.last_message_preview || t('forum.messages.noMessages') }}</p>
       </div>
       <Badge v-if="conv.unread_count > 0" variant="danger">{{ conv.unread_count }}</Badge>
     </Link>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    暂无私信。点击「发私信」开始对话。
+    {{ t('forum.messages.empty') }}
   </p>
+
+  <Pagination v-if="pagination && pagination.pages > 1" :meta="pagination" class="mt-4" />
 </template>

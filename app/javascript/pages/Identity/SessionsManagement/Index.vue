@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -12,6 +13,8 @@ import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 defineProps<{
   sessions: Array<{
@@ -29,15 +32,15 @@ function revokeSession(id: number) {
 </script>
 
 <template>
-  <PageHeader title="活跃会话" subtitle="管理你的登录设备" />
+  <PageHeader :title="t('identity.sessions.title')" :subtitle="t('identity.sessions.subtitle')" />
 
   <div class="rounded-lg border">
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead>IP</TableHead>
-          <TableHead>设备</TableHead>
-          <TableHead>最后活跃</TableHead>
+          <TableHead>{{ t('identity.sessions.colIp') }}</TableHead>
+          <TableHead>{{ t('identity.sessions.colDevice') }}</TableHead>
+          <TableHead>{{ t('identity.sessions.colLastActive') }}</TableHead>
           <TableHead />
         </TableRow>
       </TableHeader>
@@ -47,11 +50,11 @@ function revokeSession(id: number) {
           <TableCell class="max-w-xs truncate">{{ session.user_agent || '—' }}</TableCell>
           <TableCell>
             {{ session.last_active_at || '—' }}
-            <Badge v-if="session.current" class="ml-2" variant="success">当前</Badge>
+            <Badge v-if="session.current" class="ml-2" variant="success">{{ t('identity.sessions.current') }}</Badge>
           </TableCell>
           <TableCell>
             <Button v-if="!session.current" variant="ghost" size="sm" type="button" @click="revokeSession(session.id)">
-              撤销
+              {{ t('identity.sessions.revoke') }}
             </Button>
           </TableCell>
         </TableRow>

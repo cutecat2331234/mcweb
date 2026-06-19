@@ -1,5 +1,5 @@
-<p>你好 <%= @user.username %>，</p>
-<p>关注标签 <strong><%= @tag_names %></strong> 下有新主题：</p>
+<p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
+<p><%= t("mcweb.mail.forum.tag_topic.body", tags: @tag_names) %></p>
 <p><a href="<%= @url %>"><%= @topic.title %></a></p>
-<p>作者：<%= @topic.user.username %></p>
+<p><%= t("mcweb.mail.author_label", username: @topic.user.username) %></p>
 <%= render "notification_unsubscribe" %>

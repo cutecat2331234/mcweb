@@ -69,6 +69,7 @@ module Community
         @topic.update!(wiki: false)
       when "global_announcement"
         @topic.update!(global_announcement: true)
+        Minecraft::EnqueueBroadcastJob.perform_later("【公告】#{@topic.title}")
       when "remove_global_announcement"
         @topic.update!(global_announcement: false)
       when "unlist"

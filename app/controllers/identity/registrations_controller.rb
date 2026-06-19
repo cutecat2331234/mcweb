@@ -21,7 +21,7 @@ module Identity
       )
 
       if result.success?
-        redirect_to identity_sign_in_path, notice: "注册成功。请查收邮件验证邮箱地址。"
+        redirect_to identity_sign_in_path, notice: t("mcweb.flash.registration_success")
       else
         render inertia: "Identity/Registrations/New",
                status: :unprocessable_entity,

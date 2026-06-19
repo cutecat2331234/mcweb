@@ -145,7 +145,7 @@ class Round68CompareDiffToggleTest < ActiveSupport::TestCase
     content = File.read(Rails.root.join("app/javascript/pages/Commerce/Compare/Show.vue"))
     assert_includes content, "onlyDiffRows"
     assert_includes content, "visibleRows"
-    assert_includes content, "仅差异行"
+    assert_includes content, "commerce.compare.onlyDiffRows"
   end
 end
 

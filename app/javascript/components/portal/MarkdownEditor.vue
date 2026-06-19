@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { usePage } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import Button from '@/components/ui/Button.vue'
 import MentionAutocomplete from '@/components/portal/MentionAutocomplete.vue'
 import ImageUploadButton from '@/components/portal/ImageUploadButton.vue'
@@ -25,6 +26,7 @@ const emit = defineEmits<{
 
 const previewHtml = ref<string | null>(null)
 const previewLoading = ref(false)
+const { t } = useI18n()
 const page = usePage()
 const canUploadImages = computed(() => {
   const user = (page.props.auth as { user?: { can_upload_images?: boolean } } | undefined)?.user
@@ -67,14 +69,14 @@ async function preview() {
 <template>
   <div class="space-y-2">
     <div class="flex flex-wrap gap-1">
-      <Button type="button" variant="outline" size="sm" @click="wrap('**', '**')">粗体</Button>
-      <Button type="button" variant="outline" size="sm" @click="wrap('*', '*')">斜体</Button>
-      <Button type="button" variant="outline" size="sm" @click="wrap('`', '`')">代码</Button>
-      <Button type="button" variant="outline" size="sm" @click="wrap('[', '](https://)')">链接</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('**', '**')">{{ t('components.markdownEditor.bold') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('*', '*')">{{ t('components.markdownEditor.italic') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('`', '`')">{{ t('components.markdownEditor.code') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('[', '](https://)')">{{ t('components.markdownEditor.link') }}</Button>
       <ImageUploadButton v-if="showImageUpload && canUploadImages" @insert="insertImage" />
-      <p v-else-if="showImageUpload && !canUploadImages" class="text-xs text-muted-foreground">Lv.1 后可上传图片</p>
+      <p v-else-if="showImageUpload && !canUploadImages" class="text-xs text-muted-foreground">{{ t('components.markdownEditor.uploadLevelHint') }}</p>
       <Button type="button" variant="outline" size="sm" :disabled="previewLoading || !modelValue" @click="preview">
-        {{ previewLoading ? '预览中…' : '预览' }}
+        {{ previewLoading ? t('components.markdownEditor.previewing') : t('components.markdownEditor.preview') }}
       </Button>
     </div>
     <MentionAutocomplete v-if="showMention" :model-value="modelValue" @update:model-value="update">

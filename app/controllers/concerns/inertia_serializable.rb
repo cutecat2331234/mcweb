@@ -24,6 +24,10 @@ module InertiaSerializable
       id: current_user.public_id,
       username: current_user.username,
       email: current_user.email,
+      account_type: current_user.account_type,
+      locale: current_user.locale,
+      can_access_admin: current_user.can_access_admin?,
+      admin_modules: current_user.admin_module_grants.pluck(:module_key),
       can_upload_images: Community::TrustLevel.can_upload_images?(current_user)
     }
   end
@@ -228,7 +232,7 @@ module InertiaSerializable
     { bump_cooldown_remaining_seconds: remaining.positive? ? remaining : nil }
   end
 
-  def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil, post_bookmark: nil)
+  def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil, post_bookmark: nil, verified_purchaser: nil)
     formatted = Community::FormatPostBody.call(body: post.body)
     body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(post.body)
     body_long = post.body.length > 800
@@ -237,11 +241,15 @@ module InertiaSerializable
       reactions.map { |reaction| reaction.user.username }.uniq.first(15)
     end
     user_reactions = if current_user
-                       post.reactions.where(user: current_user).pluck(:emoji)
+                       if post.association(:reactions).loaded?
+                         post.reactions.select { |reaction| reaction.user_id == current_user.id }.map(&:emoji)
+                       else
+                         post.reactions.where(user: current_user).pluck(:emoji)
+                       end
     else
                        []
     end
-    bookmarked = post_bookmark.present? || (current_user && Community::Bookmark.exists?(user: current_user, post: post))
+    bookmarked = post_bookmark.present? || (current_user && post_bookmark.nil? && Community::Bookmark.exists?(user: current_user, post: post))
     bookmark_meta = if post_bookmark
                       {
                         id: post_bookmark.id,
@@ -257,11 +265,14 @@ module InertiaSerializable
       signature_html = formatted_sig.success? ? formatted_sig.value : ERB::Util.html_escape(post.user.forum_signature)
     end
 
-    last_edit = post.edits.order(created_at: :desc).first
+    last_edit = post.association(:edits).loaded? ? post.edits.max_by(&:created_at) : post.edits.order(created_at: :desc).first
     edit_diff_lines = if last_edit
                         diff = Community::DiffLines.call(before_text: last_edit.body_before, after_text: last_edit.body_after)
                         diff.success? ? diff.value : nil
     end
+    edits_loaded = post.association(:edits).loaded?
+    edit_count = edits_loaded ? post.edits.size : post.edits.count
+    has_edits = edits_loaded ? post.edits.any? : post.edits.exists?
 
     {
       id: post.id,
@@ -276,7 +287,7 @@ module InertiaSerializable
       author_url: forum_user_path(post.user.username),
       author_card_url: card_forum_user_path(post.user.username),
       author_badges: serialize_user_badges(post.user),
-      verified_purchaser: verified_purchaser?(post.user),
+      verified_purchaser: verified_purchaser.nil? ? verified_purchaser?(post.user) : verified_purchaser,
       avatar_url: post.user.avatar_url,
       body: post.body,
       body_html: body_html,
@@ -287,8 +298,8 @@ module InertiaSerializable
       created_at: l(post.created_at, format: :short),
       edited_at: post.edited_at ? l(post.edited_at, format: :short) : nil,
       last_edit_reason: last_edit&.reason.presence,
-      edit_count: post.edits.count,
-      edits_url: post.edits.any? ? edits_forum_post_path(post) : nil,
+      edit_count: edit_count,
+      edits_url: has_edits ? edits_forum_post_path(post) : nil,
       quoted_post: serialize_quoted_post(post.quoted_post, current_user: current_user),
       reaction_counts: reaction_counts,
       reaction_users: reaction_users,
@@ -646,48 +657,23 @@ module InertiaSerializable
     }
   end
 
-  ORDER_STATUS_LABELS = {
-    "pending" => "待支付",
-    "awaiting_payment" => "等待支付",
-    "paid" => "已支付",
-    "processing" => "处理中",
-    "fulfilling" => "发货中",
-    "fulfilled" => "已发货",
-    "completed" => "已完成",
-    "cancelled" => "已取消",
-    "refunded" => "已退款",
-    "failed" => "失败"
-  }.freeze
+  def order_status_label(status)
+    I18n.t("mcweb.labels.order_status.#{status}", default: status.to_s.humanize)
+  end
 
-  REFUND_STATUS_LABELS = {
-    "pending" => "待审核",
-    "approved" => "已批准",
-    "rejected" => "已拒绝",
-    "completed" => "已完成"
-  }.freeze
+  def refund_status_label(status)
+    I18n.t("mcweb.labels.refund_status.#{status}", default: status.to_s.humanize)
+  end
 
-  FULFILLMENT_STATUS_LABELS = {
-    "pending" => "待处理",
-    "processing" => "处理中",
-    "fulfilled" => "已完成",
-    "failed" => "失败"
-  }.freeze
+  def fulfillment_status_label(status)
+    return nil if status.blank?
 
-  ORDER_EVENT_LABELS = {
-    "created" => "订单创建",
-    "payment_submitted" => "提交支付",
-    "submit_payment" => "提交支付",
-    "payment_confirmed" => "支付成功",
-    "paid" => "支付成功",
-    "mark_paid" => "支付成功",
-    "cancel" => "订单取消",
-    "cancelled" => "订单取消",
-    "refund_requested" => "退款申请",
-    "refund_processed" => "退款完成",
-    "refund_rejected" => "退款拒绝",
-    "refunded" => "已退款",
-    "fulfilled" => "发货完成"
-  }.freeze
+    I18n.t("mcweb.labels.fulfillment_status.#{status}", default: status.to_s.humanize)
+  end
+
+  def order_event_label(event_type)
+    I18n.t("mcweb.labels.order_events.#{event_type}", default: event_type.to_s.humanize)
+  end
 
   def serialize_order_list_item(order)
     {
@@ -759,7 +745,7 @@ module InertiaSerializable
         {
           amount_label: format_money(refund.amount_cents, order.currency),
           status: refund.status,
-          status_label: REFUND_STATUS_LABELS[refund.status] || refund.status,
+          status_label: refund_status_label(refund.status),
           reason: refund.reason,
           created_at: l(refund.created_at, format: :short),
           customer_requested: refund.requested_by_customer?
@@ -768,7 +754,7 @@ module InertiaSerializable
       events: order.events.chronological.map do |event|
         {
           event_type: event.event_type,
-          label: ORDER_EVENT_LABELS[event.event_type] || event.event_type.humanize,
+          label: order_event_label(event.event_type),
           created_at: l(event.created_at, format: :short)
         }
       end,
@@ -843,34 +829,30 @@ module InertiaSerializable
     items = []
     if order.store_credit_restored_cents.to_i.positive?
       items << {
-        label: "商店余额已恢复",
+        label: I18n.t("mcweb.labels.order_restorations.store_credit"),
         amount_label: format_money(order.store_credit_restored_cents, order.currency)
       }
     end
     if order.gift_card_restored_cents.to_i.positive?
       items << {
-        label: "礼品卡余额已恢复",
+        label: I18n.t("mcweb.labels.order_restorations.gift_card"),
         amount_label: format_money(order.gift_card_restored_cents, order.currency)
       }
     end
     if order.coupon_usage_restored? && order.coupon
       items << {
-        label: "优惠券使用次数已恢复",
+        label: I18n.t("mcweb.labels.order_restorations.coupon"),
         amount_label: order.coupon.code
       }
     end
     stock_qty = order.items.sum { |item| item.stock_restored_quantity.to_i }
     if stock_qty.positive?
       items << {
-        label: "库存已恢复",
-        amount_label: "#{stock_qty} 件"
+        label: I18n.t("mcweb.labels.order_restorations.stock"),
+        amount_label: I18n.t("mcweb.labels.order_restorations.stock_units", count: stock_qty),
       }
     end
     items
-  end
-
-  def order_status_label(status)
-    ORDER_STATUS_LABELS[status.to_s] || status.to_s.humanize
   end
 
   def serialize_article(article)
@@ -969,17 +951,11 @@ module InertiaSerializable
     expires = payment_expires_at(order)
     return nil unless expires
 
-    payment_expired?(order) ? "已于 #{l(expires, format: :short)} 过期" : l(expires, format: :short)
+    payment_expired?(order) ? I18n.t("mcweb.labels.payment_expired_at", time: l(expires, format: :short)) : l(expires, format: :short)
   end
 
   def payment_actionable?(order)
     order.payable?
-  end
-
-  def fulfillment_status_label(status)
-    return nil if status.blank?
-
-    FULFILLMENT_STATUS_LABELS[status.to_s] || status.to_s.humanize
   end
 
   def serialize_shipping_quote(subtotal_cents, currency: "CNY", cart_items: nil, coupon: nil, shipping_method_code: nil)

@@ -14,7 +14,7 @@ module Community
 
     def create
       reportable = find_reportable
-      return redirect_back fallback_location: root_path, alert: "内容不存在或无权访问。" unless reportable
+      return redirect_back fallback_location: root_path, alert: t("mcweb.flash.content_not_found") unless reportable
 
       reason_code = report_params[:reason_code].presence
       detail = report_params[:reason_detail].to_s.strip
@@ -41,7 +41,7 @@ module Community
         resource: report
       )
 
-      redirect_back fallback_location: root_path, notice: "举报已提交。"
+      redirect_back fallback_location: root_path, notice: t("mcweb.flash.report_submitted")
     rescue ActiveRecord::RecordInvalid => e
       render inertia: "Community/Reports/New",
              props: {

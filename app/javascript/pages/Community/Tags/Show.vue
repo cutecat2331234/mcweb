@@ -1,5 +1,7 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -10,6 +12,8 @@ import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 const props = defineProps<{
   tag: {
@@ -29,13 +33,13 @@ const props = defineProps<{
   subscriptionLevels?: SubscriptionLevelOption[]
 }>()
 
-const sortOptions = [
-  { value: 'activity', label: '最近活跃' },
-  { value: 'hot', label: '热门' },
-  { value: 'newest', label: '最新发布' },
-  { value: 'replies', label: '最多回复' },
-  { value: 'views', label: '最多浏览' },
-]
+const sortOptions = computed(() => [
+  { value: 'activity', label: t('forum.latest.sortActivity') },
+  { value: 'hot', label: t('forum.latest.sortHot') },
+  { value: 'newest', label: t('forum.latest.sortNewest') },
+  { value: 'replies', label: t('forum.latest.sortReplies') },
+  { value: 'views', label: t('forum.latest.sortViews') },
+])
 
 function changeSort(value: string) {
   router.get(`/app/forum/tags/${props.tag.slug}`, { sort: value }, { preserveState: true })
@@ -44,15 +48,15 @@ function changeSort(value: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: `标签：${tag.name}`, current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.tags.tagBreadcrumb', { name: tag.name }), current: true },
   ]" />
 
   <div v-if="tag.color_hex" class="mb-4 h-1 w-full max-w-xl rounded-full" :style="{ backgroundColor: tag.color_hex }" />
 
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-    <PageHeader :title="`#${tag.name}`" subtitle="按标签浏览主题" />
+    <PageHeader :title="`#${tag.name}`" :subtitle="t('forum.tags.browseSubtitle')" />
     <SubscriptionLevelSelect
       v-if="loggedIn && tag.subscription_url && subscriptionLevels?.length"
       :options="subscriptionLevels"
@@ -65,11 +69,11 @@ function changeSort(value: string) {
   <p v-if="tag.description" class="mb-4 text-sm text-muted-foreground">{{ tag.description }}</p>
 
   <p class="mb-4">
-    <a :href="tag.rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">RSS 订阅</a>
+    <a :href="tag.rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">{{ t('forum.tags.rss') }}</a>
   </p>
 
   <div class="mb-4 flex items-center gap-2">
-    <label class="text-sm text-muted-foreground">排序：</label>
+    <label class="text-sm text-muted-foreground">{{ t('forum.lists.sortLabel') }}</label>
     <Select
       :model-value="sort || 'activity'"
       :options="sortOptions"

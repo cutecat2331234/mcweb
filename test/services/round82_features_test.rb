@@ -90,7 +90,7 @@ class Round82PostsOnlySearchTest < ActionDispatch::IntegrationTest
   test "search page supports posts only and share link" do
     content = File.read(Rails.root.join("app/javascript/pages/Community/Search/Index.vue"))
     assert_includes content, "postsOnly"
-    assert_includes content, "仅帖子"
+    assert_includes content, "forum.search.postsOnly"
     assert_includes content, "copySearchLink"
   end
 end

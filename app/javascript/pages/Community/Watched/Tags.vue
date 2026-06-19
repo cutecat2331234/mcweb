@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -7,6 +8,8 @@ import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
+
+const { t } = useI18n()
 
 defineProps<{
   tags: Array<{
@@ -27,13 +30,13 @@ function unsubscribe(url: string) {
 
 <template>
   <Breadcrumb :items="[
-    { label: '首页', href: routes.home },
-    { label: '论坛', href: routes.forum },
-    { label: '关注标签', current: true },
+    { label: t('breadcrumb.home'), href: routes.home },
+    { label: t('breadcrumb.forum'), href: routes.forum },
+    { label: t('forum.watched.tagsBreadcrumb'), current: true },
   ]" />
 
   <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-    <PageHeader title="关注的标签" subtitle="有新主题使用这些标签时会通知你" />
+    <PageHeader :title="t('forum.watched.watchedTagsTitle')" :subtitle="t('forum.watched.watchedTagsSubtitle')" />
     <div class="flex flex-wrap items-center gap-2">
       <a
         v-if="watchingOpmlUrl"
@@ -42,10 +45,10 @@ function unsubscribe(url: string) {
         target="_blank"
         rel="noopener noreferrer"
       >
-        导出关注 OPML
+        {{ t('forum.watched.exportOpml') }}
       </a>
       <Button as-child variant="outline" size="sm">
-        <Link :href="tagTopicsUrl">标签主题流</Link>
+        <Link :href="tagTopicsUrl">{{ t('forum.watched.tagTopicsFeed') }}</Link>
       </Button>
     </div>
   </div>
@@ -56,10 +59,10 @@ function unsubscribe(url: string) {
         <Link :href="tag.url" class="font-medium hover:underline">#{{ tag.name }}</Link>
         <p v-if="tag.description" class="mt-1 text-sm text-muted-foreground">{{ tag.description }}</p>
       </div>
-      <Button type="button" variant="outline" size="sm" @click="unsubscribe(tag.subscription_url)">取消关注</Button>
+      <Button type="button" variant="outline" size="sm" @click="unsubscribe(tag.subscription_url)">{{ t('forum.watched.unfollow') }}</Button>
     </div>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    尚未关注任何标签。在标签页点击「关注此标签」即可订阅。
+    {{ t('forum.watched.emptyTagsHint') }}
   </p>
 </template>

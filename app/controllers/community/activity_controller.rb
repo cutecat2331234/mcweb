@@ -43,7 +43,7 @@ module Community
 
     def render_following_tab(tab)
       unless logged_in?
-        return redirect_to forum_activity_path, alert: "请先登录查看关注动态。"
+        return redirect_to forum_activity_path, alert: t("mcweb.flash.activity_sign_in_required")
       end
 
       followed_ids = Community::UserFollow.where(follower: current_user).pluck(:followed_id) - blocked_user_ids

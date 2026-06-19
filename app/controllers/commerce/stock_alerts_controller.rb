@@ -32,7 +32,7 @@ module Commerce
       result = Commerce::SubscribeStockAlert.call(user: current_user, product: product, variant: variant)
 
       if result.success?
-        redirect_to store_product_path(product), notice: "到货通知已订阅。"
+        redirect_to store_product_path(product), notice: t("mcweb.flash.stock_alert_subscribed")
       else
         redirect_to store_product_path(product), alert: service_error_message(result)
       end
@@ -43,7 +43,7 @@ module Commerce
       product = alert.product
       variant = alert.variant
       in_stock = variant ? variant.in_stock? : product.in_stock?
-      return redirect_to store_stock_alerts_path, alert: "商品暂无库存。" unless in_stock
+      return redirect_to store_stock_alerts_path, alert: t("mcweb.flash.stock_alert_no_stock") unless in_stock
 
       cart = Commerce::Cart.find_or_create_by!(user: current_user)
       validation = Commerce::ValidateCartItem.call(
@@ -56,14 +56,14 @@ module Commerce
       return redirect_to store_stock_alerts_path, alert: service_error_message(validation) unless validation.success?
 
       cart.add_item!(product: product, variant: variant, quantity: 1)
-      redirect_to store_cart_path, notice: "已加入购物车。"
+      redirect_to store_cart_path, notice: t("mcweb.flash.added_to_cart")
     end
 
     def destroy
       alert = Commerce::StockAlert.find_by!(id: params[:id], user: current_user)
       product = alert.product
       Commerce::UnsubscribeStockAlert.call(user: current_user, product: product, variant: alert.variant)
-      redirect_back fallback_location: store_stock_alerts_path, notice: "已取消到货通知。"
+      redirect_back fallback_location: store_stock_alerts_path, notice: t("mcweb.flash.stock_alert_unsubscribed")
     end
   end
 end

@@ -1,4 +1,4 @@
-<p>您好 <%= @user.username %>，</p>
-<p>商家已回复您对「<%= @product.name %>」的评价：</p>
-<blockquote><%= @review.merchant_reply %></blockquote>
-<p><a href="<%= @url %>">查看商品评价</a></p>
+<p><%= t("mcweb.mail.greeting_formal", username: @user.username) %></p>
+<p><%= t("mcweb.mail.commerce.merchant_review_reply.body", product: @product.name) %></p>
+<blockquote><%= simple_format(@reply.body) %></blockquote>
+<p><a href="<%= @url %>"><%= t("mcweb.mail.commerce.view_product_reviews") %></a></p>

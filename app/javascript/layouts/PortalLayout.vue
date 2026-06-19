@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import { Moon, Sun, Bell, Mail, ShoppingCart, Menu, X } from '@lucide/vue'
 import { routes } from '@/lib/routes'
 import FlashMessages from '@/components/portal/FlashMessages.vue'
 import ForumShortcuts from '@/components/portal/ForumShortcuts.vue'
 import PortalSidebar from '@/components/portal/PortalSidebar.vue'
 import PortalUserMenu from '@/components/portal/PortalUserMenu.vue'
+import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -16,6 +18,7 @@ import { readCsrfToken } from '@/lib/csrf'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
 
 const page = usePage()
+const { t } = useI18n()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const notifications = computed(() => page.props.notifications as { unread_count: number; url: string } | undefined)
 const forumUnread = computed(() => page.props.forum_unread as { count: number; url: string } | undefined)
@@ -108,14 +111,14 @@ const sidebarProps = computed(() => ({
 
       <!-- Main column -->
       <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
-        <header class="sticky top-0 z-30 border-b border-primary/10 bg-background/85 backdrop-blur-xl supports-[backdrop-filter]:bg-background/70">
+        <header class="portal-header sticky top-0 z-30 border-b border-primary/10 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90">
           <div class="flex h-14 items-center gap-2 px-4 sm:px-6">
             <Button
               variant="ghost"
               size="icon"
               class="lg:hidden hover:bg-primary/10"
               type="button"
-              aria-label="打开菜单"
+              :aria-label="t('common.openMenu')"
               @click="mobileNavOpen = true"
             >
               <Menu class="h-5 w-5" />
@@ -127,18 +130,20 @@ const sidebarProps = computed(() => ({
                 class="flex items-center gap-2 font-semibold tracking-tight text-foreground no-underline lg:hidden"
               >
                 <img v-if="activeTemplate?.logoUrl" :src="activeTemplate.logoUrl" alt="" class="h-7 w-auto">
-                <span class="truncate">McWeb</span>
+                <span class="truncate">{{ t('portal.brand') }}</span>
               </Link>
             </div>
 
             <div class="flex items-center gap-0.5 sm:gap-1">
-              <Button variant="ghost" size="icon" type="button" aria-label="切换主题" @click="toggleTheme">
+              <LanguageSwitcher />
+
+              <Button variant="ghost" size="icon" type="button" :aria-label="t('common.toggleTheme')" @click="toggleTheme">
                 <Sun v-if="isDark" class="h-4 w-4" />
                 <Moon v-else class="h-4 w-4" />
               </Button>
 
               <Button v-if="features.forum && auth.user && notifications" as-child variant="ghost" size="icon" class="relative">
-                <Link :href="notifications.url" aria-label="通知">
+                <Link :href="notifications.url" :aria-label="t('common.notifications')">
                   <Bell class="h-4 w-4" />
                   <Badge
                     v-if="notifications.unread_count > 0"
@@ -151,7 +156,7 @@ const sidebarProps = computed(() => ({
               </Button>
 
               <Button v-if="features.forum && auth.user && messagesUnread" as-child variant="ghost" size="icon" class="relative">
-                <Link :href="messagesUnread.url" aria-label="私信">
+                <Link :href="messagesUnread.url" :aria-label="t('common.messages')">
                   <Mail class="h-4 w-4" />
                   <Badge
                     v-if="messagesUnread.count > 0"
@@ -164,7 +169,7 @@ const sidebarProps = computed(() => ({
               </Button>
 
               <Button v-if="features.store && cart" as-child variant="ghost" size="icon" class="relative">
-                <Link :href="cart.url" aria-label="购物车">
+                <Link :href="cart.url" :aria-label="t('common.cart')">
                   <ShoppingCart class="h-4 w-4" />
                   <Badge
                     v-if="cart.count > 0"
@@ -180,7 +185,7 @@ const sidebarProps = computed(() => ({
 
               <PortalUserMenu v-if="auth.user" :username="auth.user.username" />
               <Button v-else as-child variant="default" size="sm">
-                <Link :href="routes.signIn">登录</Link>
+                <Link :href="routes.signIn">{{ t('common.signIn') }}</Link>
               </Button>
             </div>
           </div>
@@ -192,7 +197,7 @@ const sidebarProps = computed(() => ({
         >
           <div class="flex flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2.5 text-sm sm:px-6">
             <span class="shrink-0 rounded-md bg-amber-500/20 px-2 py-0.5 text-xs font-semibold uppercase tracking-wide">
-              公告
+              {{ t('common.announcement') }}
             </span>
             <Link
               v-for="item in visibleAnnouncements"
@@ -205,7 +210,7 @@ const sidebarProps = computed(() => ({
             <button
               type="button"
               class="ml-auto shrink-0 rounded-md p-1 hover:bg-amber-500/20"
-              aria-label="关闭公告"
+              :aria-label="t('common.closeAnnouncement')"
               @click="visibleAnnouncements.forEach((item) => dismissAnnouncement(item.id))"
             >
               <X class="h-4 w-4" />

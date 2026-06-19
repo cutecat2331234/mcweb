@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 const props = defineProps<{
   emoji: string
@@ -30,7 +33,7 @@ function toggle() {
       v-if="open && users.length"
       class="absolute bottom-full left-0 z-10 mb-1 min-w-[10rem] rounded-md border bg-popover p-2 text-xs shadow-md"
     >
-      <p class="mb-1 font-medium text-muted-foreground">反应用户</p>
+      <p class="mb-1 font-medium text-muted-foreground">{{ t('components.reactionUsers.title') }}</p>
       <ul class="space-y-0.5">
         <li v-for="username in users" :key="username">{{ username }}</li>
       </ul>

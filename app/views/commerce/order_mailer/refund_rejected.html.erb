@@ -1,6 +1,6 @@
-<p>你好，</p>
-<p>你的订单 <strong><%= @order.order_number %></strong> 退款申请未通过审核。</p>
+<p><%= t("mcweb.mail.greeting_short") %></p>
+<p><%= t("mcweb.mail.commerce.refund_rejected.body", number: @order.order_number) %></p>
 <% if @refund.reason.present? %>
-  <p>原因：<%= @refund.reason %></p>
+  <p><%= t("mcweb.mail.commerce.reason_label", reason: @refund.reason) %></p>
 <% end %>
-<p>如有疑问请联系客服。</p>
+<p><%= t("mcweb.mail.commerce.contact_support") %></p>

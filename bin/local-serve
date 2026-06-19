@@ -1,0 +1,34 @@
+#!/usr/bin/env sh
+set -e
+
+cd "$(dirname "$0")/.."
+
+export PORT="${PORT:-3000}"
+export VITE_RUBY_AUTO_BUILD="${VITE_RUBY_AUTO_BUILD:-false}"
+export SOLID_QUEUE_IN_PUMA="${SOLID_QUEUE_IN_PUMA:-true}"
+export RUBY_DEBUG_OPEN="${RUBY_DEBUG_OPEN:-true}"
+export RUBY_DEBUG_LAZY="${RUBY_DEBUG_LAZY:-true}"
+
+if [ "${MCWEB_SYNC_ASSETS:-}" = "1" ]; then
+  if command -v pwsh >/dev/null 2>&1; then
+    pwsh -NoProfile -File scripts/sync-github-assets.ps1
+  elif command -v powershell >/dev/null 2>&1; then
+    powershell -NoProfile -File scripts/sync-github-assets.ps1
+  else
+    echo "MCWEB_SYNC_ASSETS=1 but PowerShell not found; using existing assets."
+  fi
+elif [ ! -f public/vite/.vite/manifest.json ] && [ ! -f public/vite/manifest.json ]; then
+  echo "No Vite manifest found. Set MCWEB_SYNC_ASSETS=1 to pull from GitHub Actions, or run: npx vite build"
+  exit 1
+fi
+
+echo "==> Preparing database…"
+bundle exec rails db:prepare
+
+if ! gem list foreman -i --silent; then
+  echo "Installing foreman…"
+  gem install foreman
+fi
+
+echo "==> McWeb local server http://localhost:${PORT} (no local frontend build)"
+exec foreman start -f Procfile.local "$@"

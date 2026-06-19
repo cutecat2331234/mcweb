@@ -6,7 +6,7 @@
   background: linear-gradient(90deg, rgba(56, 189, 248, 0.15), transparent);
 }
 
-.portal-themed header {
-  background: color-mix(in oklch, var(--background) 94%, transparent);
+.portal-themed header.portal-header {
+  background: var(--template-portal-header-bg, color-mix(in oklch, var(--background) 94%, transparent));
   backdrop-filter: blur(12px);
 }

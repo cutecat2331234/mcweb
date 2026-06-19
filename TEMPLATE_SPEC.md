@@ -147,8 +147,8 @@ manifest `tokens` 键名 `snake_case` → 前端变量 `--template-{kebab-case}`
   background: var(--template-website-bg, #0f172a);
 }
 
-.portal-themed .sticky.top-0 {
-  background: var(--template-portal-header-bg, rgba(15, 23, 42, 0.95));
+.portal-themed header.portal-header {
+  background: var(--template-portal-header-bg, color-mix(in oklch, var(--background) 94%, transparent));
 }
 ```
 

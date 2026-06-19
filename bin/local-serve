@@ -5,7 +5,6 @@ cd "$(dirname "$0")/.."
 
 export PORT="${PORT:-3000}"
 export VITE_RUBY_AUTO_BUILD="${VITE_RUBY_AUTO_BUILD:-false}"
-export SOLID_QUEUE_IN_PUMA="${SOLID_QUEUE_IN_PUMA:-true}"
 export RUBY_DEBUG_OPEN="${RUBY_DEBUG_OPEN:-true}"
 export RUBY_DEBUG_LAZY="${RUBY_DEBUG_LAZY:-true}"
 

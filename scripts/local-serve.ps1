@@ -9,7 +9,6 @@ Set-Location $Root
 
 $env:PORT = if ($env:PORT) { $env:PORT } else { "3000" }
 $env:VITE_RUBY_AUTO_BUILD = "false"
-$env:SOLID_QUEUE_IN_PUMA = "true"
 
 if ($SyncAssets) {
     $env:MCWEB_SYNC_ASSETS = "1"

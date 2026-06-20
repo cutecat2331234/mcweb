@@ -3,11 +3,8 @@
 
 
 module Admin
-
   module Store
-
     class FulfillmentsController < BaseController
-
       before_action -> { require_permission("minecraft.fulfillments.retry") }
 
       before_action :set_fulfillment, only: %i[show update]
@@ -15,7 +12,6 @@ module Admin
 
 
       def index
-
         fulfillments = ::Commerce::Fulfillment.order(created_at: :desc).limit(50)
 
 
@@ -37,7 +33,6 @@ module Admin
           ],
 
           rows: fulfillments.map do |fulfillment|
-
             admin_row(
 
               delivery_id: fulfillment.delivery_id,
@@ -51,17 +46,14 @@ module Admin
               url: admin_store_fulfillment_path(fulfillment)
 
             )
-
           end
 
         }
-
       end
 
 
 
       def show
-
         server = resolve_fulfillment_server(@fulfillment)
         render inertia: "Admin/Store/Fulfillments/Show", props: {
 
@@ -90,13 +82,11 @@ module Admin
           }
 
         }
-
       end
 
 
 
       def update
-
         if retry_fulfillment?
 
           result = Commerce::RetryFulfillment.call(fulfillment: @fulfillment)
@@ -120,7 +110,6 @@ module Admin
           redirect_to admin_store_fulfillment_path(@fulfillment), alert: @fulfillment.errors.full_messages.to_sentence
 
         end
-
       end
 
 
@@ -130,25 +119,19 @@ module Admin
 
 
       def set_fulfillment
-
         @fulfillment = ::Commerce::Fulfillment.find(params[:id])
-
       end
 
 
 
       def fulfillment_params
-
         params.expect(fulfillment: [ :last_error ])[:fulfillment]
-
       end
 
 
 
       def retry_fulfillment?
-
         params[:retry] == "1"
-
       end
 
       def resolve_fulfillment_server(fulfillment)
@@ -159,10 +142,6 @@ module Admin
 
         Minecraft::Server.find_by(public_id: server_public_id.to_s)
       end
-
     end
-
   end
-
 end
-

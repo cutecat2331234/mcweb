@@ -3,11 +3,8 @@
 
 
 module Admin
-
   module Store
-
     class CouponsController < BaseController
-
       before_action -> { require_permission("store.products.manage") }
 
       before_action :set_coupon, only: %i[show edit update]
@@ -15,7 +12,6 @@ module Admin
 
 
       def index
-
         coupons = ::Commerce::Coupon.order(created_at: :desc)
 
 
@@ -37,7 +33,6 @@ module Admin
           ],
 
           rows: coupons.map do |coupon|
-
             admin_row(
 
               code: coupon.code,
@@ -51,19 +46,16 @@ module Admin
               url: admin_store_coupon_path(coupon)
 
             )
-
           end,
 
           actions: [ { label: t("mcweb.admin.store.coupons.new"), href: new_admin_store_coupon_path } ]
 
         }
-
       end
 
 
 
       def show
-
         render inertia: "Admin/Generic/Show", props: {
 
           title: @coupon.code,
@@ -101,21 +93,17 @@ module Admin
           actions: [ { label: t("mcweb.admin.store.action_edit"), href: edit_admin_store_coupon_path(@coupon) } ]
 
         }
-
       end
 
 
 
       def new
-
         render inertia: "Admin/Store/Coupons/Form", props: form_props(::Commerce::Coupon.new)
-
       end
 
 
 
       def create
-
         coupon = ::Commerce::Coupon.new(coupon_params)
 
         if coupon.save
@@ -131,21 +119,17 @@ module Admin
                  status: :unprocessable_entity
 
         end
-
       end
 
 
 
       def edit
-
         render inertia: "Admin/Store/Coupons/Form", props: form_props(@coupon)
-
       end
 
 
 
       def update
-
         if @coupon.update(coupon_params)
 
           redirect_to admin_store_coupon_path(@coupon), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.coupon"))
@@ -159,7 +143,6 @@ module Admin
                  status: :unprocessable_entity
 
         end
-
       end
 
 
@@ -169,15 +152,12 @@ module Admin
 
 
       def set_coupon
-
         @coupon = ::Commerce::Coupon.find(params[:id])
-
       end
 
 
 
       def coupon_params
-
         permitted = params.require(:coupon).permit(
 
           :code, :discount_type, :discount_value, :min_amount_cents,
@@ -193,13 +173,11 @@ module Admin
         permitted[:free_shipping] = false unless Commerce::StoreFeatures.enabled?(:shipping)
 
         permitted
-
       end
 
 
 
       def form_props(coupon)
-
         {
 
           title: coupon.persisted? ? t("mcweb.admin.store.coupons.edit") : t("mcweb.admin.store.coupons.new"),
@@ -251,20 +229,13 @@ module Admin
           backUrl: admin_store_coupons_path
 
         }
-
       end
 
 
 
       def coupon_active_label(active)
-
         active ? t("mcweb.admin.store.coupons.status_enabled") : t("mcweb.admin.store.coupons.status_disabled")
-
       end
-
     end
-
   end
-
 end
-

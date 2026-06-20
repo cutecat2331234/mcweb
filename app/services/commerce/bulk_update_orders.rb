@@ -3,27 +3,22 @@
 
 
 module Commerce
-
   class BulkUpdateOrders < ApplicationService
-
     ALLOWED_ACTIONS = %w[cancel_pending mark_fulfilled mark_paid].freeze
 
 
 
     def initialize(actor:, order_public_ids:, action:)
-
       @actor = actor
 
       @order_public_ids = Array(order_public_ids).map(&:to_s).uniq
 
       @action = action.to_s
-
     end
 
 
 
     def call
-
       return ServiceResult.failure(error: I18n.t("mcweb.services.errors.orders_not_selected")) if @order_public_ids.empty?
 
       return ServiceResult.failure(error: I18n.t("mcweb.services.errors.unsupported_bulk_action")) unless ALLOWED_ACTIONS.include?(@action)
@@ -37,7 +32,6 @@ module Commerce
 
 
       Commerce::Order.where(public_id: @order_public_ids).find_each do |order|
-
         result = process_order(order)
 
         if result.success?
@@ -49,13 +43,11 @@ module Commerce
           failures << { id: order.public_id, error: result.error }
 
         end
-
       end
 
 
 
       ServiceResult.success(processed: processed, failed: failures.size, failures: failures)
-
     end
 
 
@@ -65,7 +57,6 @@ module Commerce
 
 
     def process_order(order)
-
       case @action
 
       when "cancel_pending"
@@ -123,7 +114,6 @@ module Commerce
 
 
         Commerce::Order.transaction do
-
           order.lock!
 
           order.reload
@@ -187,7 +177,6 @@ module Commerce
             raise ActiveRecord::Rollback
 
           end
-
         end
 
 
@@ -209,15 +198,12 @@ module Commerce
         ServiceResult.failure(error: I18n.t("mcweb.services.errors.unsupported_bulk_action"))
 
       end
-
     end
 
 
 
     def mc_connector_fulfillment?(order)
-
       order.items.any? do |item|
-
         snapshot = item.fulfillment_snapshot || {}
 
         config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
@@ -227,51 +213,38 @@ module Commerce
         commands = config["commands"] || config[:commands]
 
         server_id.present? || Array(commands).any?
-
       end
-
     end
 
 
 
     def automated_fulfillment_required?(order)
-
       mc_connector_fulfillment?(order) || gift_card_fulfillment?(order) || membership_fulfillment?(order)
-
     end
 
 
 
     def membership_fulfillment?(order)
-
       order.items.any? do |item|
-
         snapshot = item.fulfillment_snapshot || {}
 
         (snapshot["product_type"] || snapshot[:product_type]).to_s == "membership"
-
       end
-
     end
 
 
 
     def gift_card_fulfillment?(order)
-
       order.items.any? do |item|
-
         snapshot = item.fulfillment_snapshot || {}
 
         (snapshot["product_type"] || snapshot[:product_type]).to_s == "gift_card"
-
       end
-
     end
 
 
 
     def incomplete_paid_order?(order)
-
       return true if order.paid? && order.may_start_processing?
 
       return true if (order.paid? || order.processing?) && !order.post_payment_side_effects_completed?
@@ -279,13 +252,11 @@ module Commerce
 
 
       false
-
     end
 
 
 
     def resume_incomplete_payment!(order)
-
       result = Commerce::CompleteOrderPayment.call(order: order, from_status: order.status, staff_marked: true)
 
       return result unless result.success?
@@ -293,11 +264,6 @@ module Commerce
 
 
       ServiceResult.success
-
     end
-
   end
-
 end
-
-

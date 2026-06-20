@@ -33,10 +33,10 @@ module Community
 
     def restriction_message(action, total, threshold)
       key = case action
-            when :post then "block_post"
-            when :link then "block_links"
-            when :pm then "block_pm"
-            end
+      when :post then "block_post"
+      when :link then "block_links"
+      when :pm then "block_pm"
+      end
       I18n.t("mcweb.forum.warning_restrictions.#{key}", total: total, threshold: threshold)
     end
   end

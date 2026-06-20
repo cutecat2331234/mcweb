@@ -87,7 +87,7 @@ class SecurityFixesTest < ActiveSupport::TestCase
         "uuid" => player_ref.active_identity.external_uuid,
         "platform" => "java",
         "username" => "OfflinePlayer",
-        "fields" => [{ "key" => "rank", "value" => "vip" }]
+        "fields" => [ { "key" => "rank", "value" => "vip" } ]
       }
     )
 

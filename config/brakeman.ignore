@@ -1,0 +1,12 @@
+{
+  "ignored_warnings": [
+    {
+      "fingerprint": "6d63281639db67ff87b6ec37e2c765a951a6a4ae3e32d0f248d3d52a5ed03ad6",
+      "note": "Texture path is resolved via ImagePackRegistry and PathContainment before send_file"
+    },
+    {
+      "fingerprint": "7a2ebe76cb9fabcc20e069c9c7284657e3400d5a70c0694fa1cbc0782dac664c",
+      "note": "Sync file path comes from signed token and SyncFilePath.resolve allowlist"
+    }
+  ]
+}

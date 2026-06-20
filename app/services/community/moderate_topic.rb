@@ -86,9 +86,9 @@ module Community
 
       body = if @lock_reason.present? && @action == "lock"
                I18n.t("mcweb.forum.moderate_actions.lock_with_reason", message: message, reason: @lock_reason)
-             else
+      else
                message
-             end
+      end
       Community::CreateSmallActionPost.call(topic: @topic, actor: @user, body: body)
     end
 

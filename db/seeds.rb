@@ -152,7 +152,7 @@ FeatureFlags.definitions.each do |definition|
   SiteSetting.set(definition.key, definition.default ? "true" : "false") unless SiteSetting.exists?(key: definition.key)
 end
 unless SiteSetting.exists?(key: "store.shipping_methods")
-  SiteSetting.set("store.shipping_methods", Commerce::ShippingMethods::DEFAULT_JSON.to_json)
+  SiteSetting.set("store.shipping_methods", Commerce::ShippingMethods.default_json.to_json)
 end
 
 unless Website::Page.exists?

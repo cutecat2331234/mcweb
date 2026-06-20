@@ -24,9 +24,9 @@ module Admin
 
         command = if uuid.present?
                     "minecraft:kick #{uuid}"
-                  elsif username.present?
+        elsif username.present?
                     "kick #{username}"
-                  end
+        end
 
         if command.blank?
           redirect_to admin_minecraft_players_path, alert: t("mcweb.flash.player_kick_target_required")

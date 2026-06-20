@@ -60,9 +60,9 @@ module Admin
                        processed: result.value[:processed],
                        failed: result.value[:failed]
                      )
-                   else
+          else
                      t("mcweb.admin.store.orders.bulk_processed", count: result.value[:processed])
-                   end
+          end
           redirect_to destination, notice: notice
         else
           redirect_to destination, alert: result.error || t("mcweb.flash.operation_failed")

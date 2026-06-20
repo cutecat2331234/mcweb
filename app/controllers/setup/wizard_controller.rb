@@ -182,10 +182,10 @@ module Setup
 
       case outcome
       when :already_complete
-        return redirect_completed_setup
+        redirect_completed_setup
       when :register_failed
         flash[:alert] = register_error
-        return redirect_to setup_step_path("admin")
+        redirect_to setup_step_path("admin")
       when :success
         Frontend::EnsureDefaultTemplate.call
         session.delete(:setup_wizard)
@@ -236,7 +236,7 @@ module Setup
 
     def acquire_installation_finalize_lock!
       ActiveRecord::Base.connection.execute(
-        ActiveRecord::Base.sanitize_sql_array(["SELECT pg_advisory_xact_lock(?)", INSTALLATION_FINALIZE_LOCK_KEY])
+        ActiveRecord::Base.sanitize_sql_array([ "SELECT pg_advisory_xact_lock(?)", INSTALLATION_FINALIZE_LOCK_KEY ])
       )
     end
 

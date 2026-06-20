@@ -11,8 +11,8 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "评分须在 1 到 5 之间。") unless (1..5).cover?(@rating)
-      return ServiceResult.failure(error: "购买后才能评价。") unless purchased?
+      return ServiceResult.failure(error: "review_rating_invalid") unless (1..5).cover?(@rating)
+      return ServiceResult.failure(error: "purchase_required_to_review") unless purchased?
 
       review = Commerce::Review.find_or_initialize_by(user: @user, product: @product)
       review.assign_attributes(rating: @rating, body: @body, status: :published)

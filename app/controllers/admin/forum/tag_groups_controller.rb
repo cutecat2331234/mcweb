@@ -10,13 +10,13 @@ module Admin
         groups = Community::TagGroup.ordered.includes(:tags)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "标签组",
+          title: forum_t("tag_groups.title"),
           columns: [
-            { key: "name", label: "名称" },
-            { key: "slug", label: "标识" },
-            { key: "tags_count", label: "标签数" },
-            { key: "one_per_topic", label: "每主题限一" },
-            { key: "color_hex", label: "颜色" }
+            { key: "name", label: t("mcweb.admin.forum.col_name") },
+            { key: "slug", label: t("mcweb.admin.forum.col_slug") },
+            { key: "tags_count", label: forum_t("tag_groups.col_tags_count") },
+            { key: "one_per_topic", label: forum_t("tag_groups.col_one_per_topic") },
+            { key: "color_hex", label: forum_t("tag_groups.col_color") }
           ],
           rows: groups.map do |group|
             {
@@ -24,12 +24,12 @@ module Admin
               name: group.name,
               slug: group.slug,
               tags_count: group.tags.count,
-              one_per_topic: group.one_per_topic? ? "是" : "否",
-              color_hex: group.color_hex.presence || "—",
+              one_per_topic: forum_yes_no(group.one_per_topic?),
+              color_hex: group.color_hex.presence || forum_na,
               url: edit_admin_forum_tag_group_path(group)
             }
           end,
-          actions: [ { label: "新建标签组", href: new_admin_forum_tag_group_path } ]
+          actions: [ { label: forum_t("tag_groups.action_new"), href: new_admin_forum_tag_group_path } ]
         }
       end
 
@@ -85,7 +85,7 @@ module Admin
 
       def form_props(group)
         {
-          title: group.persisted? ? "编辑标签组" : "新建标签组",
+          title: group.persisted? ? forum_t("tag_groups.form_edit") : forum_t("tag_groups.form_new"),
           tagGroup: {
             id: group.id,
             name: group.name || "",

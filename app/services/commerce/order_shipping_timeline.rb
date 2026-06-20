@@ -2,13 +2,7 @@
 
 module Commerce
   class OrderShippingTimeline
-    STEPS = [
-      { key: "placed", label: "订单已提交" },
-      { key: "paid", label: "已支付" },
-      { key: "shipped", label: "已发货" },
-      { key: "in_transit", label: "运输中" },
-      { key: "delivered", label: "已送达" }
-    ].freeze
+    STEP_KEYS = %w[placed paid shipped in_transit delivered].freeze
 
     def self.call(order)
       new(order).steps
@@ -29,10 +23,10 @@ module Commerce
         "delivered" => delivered_at
       }
 
-      last_done_index = STEPS.rindex { |step| timestamps[step[:key]].present? }
+      last_done_index = STEP_KEYS.rindex { |key| timestamps[key].present? }
 
-      STEPS.map.with_index do |step, index|
-        at = timestamps[step[:key]]
+      STEP_KEYS.map.with_index do |key, index|
+        at = timestamps[key]
         state = if at.present?
                   "done"
         elsif last_done_index.nil? && index.zero?
@@ -43,7 +37,12 @@ module Commerce
                   "pending"
         end
 
-        { key: step[:key], label: step[:label], at: at, state: state }
+        {
+          key: key,
+          label: I18n.t("mcweb.commerce.order_timeline.#{key}"),
+          at: at,
+          state: state
+        }
       end
     end
 

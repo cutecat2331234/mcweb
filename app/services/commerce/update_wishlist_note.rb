@@ -10,7 +10,7 @@ module Commerce
 
     def call
       item = Commerce::WishlistItem.find_by(user: @user, product: @product)
-      return ServiceResult.failure(error: "心愿单中不存在该商品。") unless item
+      return ServiceResult.failure(error: "wishlist_item_missing") unless item
 
       item.update!(note: @note.presence)
       ServiceResult.success(item: item)

@@ -7,16 +7,16 @@ module Community
     end
 
     def call
-      lines = [ "选项,票数,投票用户" ]
+      lines = [ I18n.t("mcweb.forum.exports.poll_header") ]
       @poll.options.each_with_index do |label, index|
         voters = @poll.votes.where(option_index: index).includes(:user).map { |vote| vote.user.username }
-        voter_cell = @poll.anonymous? ? "（匿名）" : voters.join("; ")
+        voter_cell = @poll.anonymous? ? I18n.t("mcweb.forum.exports.poll_anonymous") : voters.join("; ")
         lines << [ escape_csv(label), voters.size, escape_csv(voter_cell) ].join(",")
       end
       lines << ""
-      lines << "问题,#{escape_csv(@poll.question)}"
-      lines << "总票数,#{@poll.votes.count}"
-      lines << "关闭时间,#{@poll.closes_at&.iso8601}"
+      lines << "#{I18n.t('mcweb.forum.exports.poll_question')},#{escape_csv(@poll.question)}"
+      lines << "#{I18n.t('mcweb.forum.exports.poll_total_votes')},#{@poll.votes.count}"
+      lines << "#{I18n.t('mcweb.forum.exports.poll_closed_at')},#{@poll.closes_at&.iso8601}"
 
       ServiceResult.success(csv: lines.join("\n"))
     end

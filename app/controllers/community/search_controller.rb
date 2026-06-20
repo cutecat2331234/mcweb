@@ -4,8 +4,13 @@ module Community
   class SearchController < ApplicationController
     include BlockedUsersFilterable
     include Community::TopicListPreloadable
+    include Community::SectionVisibility
 
     def index
+      if search_index_rate_limited?
+        return redirect_to forum_search_path, alert: t("mcweb.flash.rate_limited")
+      end
+
       raw_query = params[:q].to_s.strip
       parsed = Community::ParseSearchQuery.call(query: raw_query)
       parsed_query = parsed.success? ? parsed.value[:query] : raw_query
@@ -64,6 +69,7 @@ module Community
       if query.present?
         unless posts_only
         topics = search_topic_base_scope(unlisted_filter: unlisted_filter, archived_filter: archived_filter)
+        topics = apply_login_required_topic_scope(topics)
         topics = apply_user_search_scope(topics, mine_filter: mine_filter, scope_filter: scope_filter)
         topics = topics.joins(:section).where(forum_sections: { slug: section_slug }) if section_slug
         topics = apply_category_filter(topics, category_slug) if category_slug
@@ -113,6 +119,8 @@ module Community
           Community::Post.where(status: :published).joins(:topic).where(forum_topics: { status: :published, unlisted: false })
         end
         unless title_only
+        posts = posts.where.not(post_type: "whisper") unless forum_staff?
+        posts = apply_login_required_post_scope(posts)
         posts = apply_user_search_scope(posts, mine_filter: mine_filter, scope_filter: scope_filter, on_posts: true)
         posts = posts.joins(topic: :section).where(forum_sections: { slug: section_slug }) if section_slug
         posts = apply_category_filter_on_posts(posts, category_slug) if category_slug
@@ -253,6 +261,10 @@ module Community
     end
 
     def suggest
+      if search_suggest_rate_limited?
+        return render json: { topics: [], tags: [], users: [], sections: [] }
+      end
+
       q = params[:q].to_s.strip
       if q.length < 2
         return render json: { topics: [], tags: [], users: [] }
@@ -260,6 +272,7 @@ module Community
 
       needle = "%#{ActiveRecord::Base.sanitize_sql_like(q)}%"
       topics = Community::Topic.published_listed
+        .accessible_by(current_user)
         .where("title ILIKE ?", needle)
         .order(last_posted_at: :desc)
         .limit(5)
@@ -543,6 +556,24 @@ module Community
         title_only: params[:title_only],
         posts_only: params[:posts_only]
       }.compact
+    end
+
+    def search_suggest_rate_limited?
+      actor_key = logged_in? ? current_user.id : request.remote_ip
+      Administration::RateLimiter.call(
+        key: "forum_search_suggest:#{actor_key}",
+        limit: 60,
+        window: 1.minute
+      ).failure?
+    end
+
+    def search_index_rate_limited?
+      actor_key = logged_in? ? current_user.id : request.remote_ip
+      Administration::RateLimiter.call(
+        key: "forum_search_index:#{actor_key}",
+        limit: 30,
+        window: 1.minute
+      ).failure?
     end
   end
 end

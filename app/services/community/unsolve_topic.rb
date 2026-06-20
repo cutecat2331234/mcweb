@@ -21,9 +21,7 @@ module Community
     private
 
     def can_unsolve?
-      return true if @user.permission?("forum.topics.lock")
-
-      @user.id == @topic.user_id
+      Community::SectionModeration.can_mark_solved?(user: @user, topic: @topic)
     end
   end
 end

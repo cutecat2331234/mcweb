@@ -13,7 +13,7 @@ module Community
       post_bookmarks = bookmarks.select { |bookmark| bookmark.forum_post_id.present? }
 
       topic_ids = topic_bookmarks.map(&:forum_topic_id).uniq
-      topics = preload_topics(Community::Topic.where(id: topic_ids, status: :published).order(last_posted_at: :desc).limit(50))
+      topics = preload_topics(Community::Topic.where(id: topic_ids, status: :published).accessible_by(current_user).order(last_posted_at: :desc).limit(50))
       topics = filter_blocked_topics(topics)
       attach_participant_users!(topics)
 

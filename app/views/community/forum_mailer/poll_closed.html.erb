@@ -1,3 +1,4 @@
 <p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
 <p><%= t("mcweb.mail.forum.poll_closed.body", title: @topic.title, question: @poll.question) %></p>
 <p><a href="<%= @url %>"><%= t("mcweb.mail.forum.poll_closed.view_results") %></a></p>
+<%= render "notification_unsubscribe" %>

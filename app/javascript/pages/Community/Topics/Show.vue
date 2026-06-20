@@ -10,12 +10,15 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
+import PostAttachmentsList from '@/components/portal/PostAttachmentsList.vue'
 import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import ReactionUsersPopover from '@/components/portal/ReactionUsersPopover.vue'
 import UserHoverCard from '@/components/portal/UserHoverCard.vue'
 import ReadingProgress from '@/components/portal/ReadingProgress.vue'
 import ImageLightbox from '@/components/portal/ImageLightbox.vue'
 import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
+import TopicTitleBadges from '@/components/portal/TopicTitleBadges.vue'
 import { routes } from '@/lib/routes'
 import { readCsrfToken } from '@/lib/csrf'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
@@ -49,6 +52,7 @@ export interface PostItem {
   author_forum_title?: string | null
   author_card_url?: string
   author_badges?: Array<{ name: string; icon: string | null; color: string | null; granted_at?: string }>
+  author_memberships?: Array<{ name: string; slug: string; color?: string | null; icon?: string | null }>
   verified_purchaser?: boolean
   body: string
   body_html: string
@@ -88,6 +92,16 @@ export interface PostItem {
   fork_topic_url?: string | null
   forked_topics?: Array<{ id: string; title: string; url: string }>
   update_url: string
+  pending_approval?: boolean
+  approve_url?: string | null
+  reject_url?: string | null
+  attachments?: Array<{
+    id: number
+    filename: string
+    human_size: string
+    download_url: string
+    download_count?: number
+  }>
 }
 
 export interface SectionOption {
@@ -132,6 +146,7 @@ const props = defineProps<{
     pinned_until?: string | null
     bumped_at?: string | null
     prefix?: string | null
+    prefix_color?: string | null
     hidden: boolean
     views_count: number
     watching: boolean
@@ -166,7 +181,7 @@ const props = defineProps<{
     tags_string: string
     section: { name: string; slug: string; url: string; color_hex?: string | null; icon?: string | null }
     rss_url?: string
-    section_prefixes?: string[]
+    section_prefixes?: Array<string | { name: string; label?: string; color_hex?: string | null }>
     tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }>
     linked_product_name?: string
     linked_product_url?: string
@@ -205,6 +220,7 @@ const props = defineProps<{
     remind_at_input: string | null
   } | null
   replyDraft?: string | null
+  replyDraftAttachments?: PendingAttachment[]
   replyDraftUrl?: string | null
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
   subscriptionLevels?: SubscriptionLevelOption[]
@@ -243,7 +259,10 @@ const editTagsReady = computed(() => missingRequiredGroups(editTags.value, props
 
 const prefixOptions = computed(() => [
   { value: '', label: t('forum.topics.noPrefix') },
-  ...(props.topic.section_prefixes || []).map((prefix) => ({ value: prefix, label: prefix })),
+  ...(props.topic.section_prefixes || []).map((prefix) => {
+    if (typeof prefix === 'string') return { value: prefix, label: prefix }
+    return { value: prefix.name, label: prefix.label || prefix.name }
+  }),
 ])
 
 const sectionMoveOptions = computed(() => [
@@ -280,8 +299,29 @@ const replyForm = useForm({
     quoted_post_id: null as number | null,
     parent_post_id: null as number | null,
     whisper: false,
+    attachment_ids: [] as number[],
   },
 })
+const pendingAttachments = ref<PendingAttachment[]>([])
+const editPendingAttachments = ref<PendingAttachment[]>([])
+
+function onAttachmentUploaded(attachment: PendingAttachment) {
+  pendingAttachments.value.push(attachment)
+  replyForm.post.attachment_ids = pendingAttachments.value.map((item) => item.id)
+}
+
+function onEditAttachmentUploaded(attachment: PendingAttachment) {
+  editPendingAttachments.value.push(attachment)
+}
+
+function removeEditPendingAttachment(id: number) {
+  editPendingAttachments.value = editPendingAttachments.value.filter((item) => item.id !== id)
+}
+
+function removePendingAttachment(id: number) {
+  pendingAttachments.value = pendingAttachments.value.filter((item) => item.id !== id)
+  replyForm.post.attachment_ids = pendingAttachments.value.map((item) => item.id)
+}
 
 const replyBodyHasBlockedLink = computed(() =>
   !!(props.warningRestrictions?.link && containsLink(replyForm.post.body))
@@ -340,6 +380,10 @@ onMounted(() => {
   if (saved && !replyForm.post.body) {
     replyForm.post.body = saved
   }
+  if (props.replyDraftAttachments?.length) {
+    pendingAttachments.value = props.replyDraftAttachments.map((attachment) => ({ ...attachment }))
+    replyForm.post.attachment_ids = pendingAttachments.value.map((item) => item.id)
+  }
   highlightCodeBlocks(document)
   document.querySelectorAll('.code-copy-btn').forEach((button) => {
     button.addEventListener('click', () => {
@@ -383,36 +427,44 @@ onUnmounted(() => {
   if (topicKeydownHandler) document.removeEventListener('keydown', topicKeydownHandler)
 })
 
-watch(() => replyForm.post.body, (body) => {
+watch(() => replyForm.post.body, () => {
+  scheduleReplyDraftSave()
+})
+
+watch(pendingAttachments, () => {
+  scheduleReplyDraftSave()
+}, { deep: true })
+
+function scheduleReplyDraftSave() {
+  const body = replyForm.post.body
+  const attachmentIds = pendingAttachments.value.map((item) => item.id)
   if (body.trim()) {
     localStorage.setItem(draftKey, body)
-    if (props.replyDraftUrl) {
-      if (draftSaveTimer) clearTimeout(draftSaveTimer)
-      draftSaveTimer = setTimeout(() => {
-        fetch(props.replyDraftUrl!, {
-          method: 'PATCH',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-Token': readCsrfToken(),
-          },
-          body: JSON.stringify({ body }),
-          credentials: 'same-origin',
-        }).catch(() => {})
-      }, 800)
-    }
   } else {
     localStorage.removeItem(draftKey)
-    if (props.replyDraftUrl) {
-      fetch(props.replyDraftUrl, {
+  }
+  if (!props.replyDraftUrl) return
+  if (draftSaveTimer) clearTimeout(draftSaveTimer)
+  draftSaveTimer = setTimeout(() => {
+    if (!body.trim() && attachmentIds.length === 0) {
+      fetch(props.replyDraftUrl!, {
         method: 'DELETE',
-        headers: {
-          'X-CSRF-Token': readCsrfToken(),
-        },
+        headers: { 'X-CSRF-Token': readCsrfToken() },
         credentials: 'same-origin',
       }).catch(() => {})
+      return
     }
-  }
-})
+    fetch(props.replyDraftUrl!, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': readCsrfToken(),
+      },
+      body: JSON.stringify({ body, attachment_ids: attachmentIds }),
+      credentials: 'same-origin',
+    }).catch(() => {})
+  }, 800)
+}
 
 function togglePanel(panel: TopicPanel) {
   activePanel.value = activePanel.value === panel ? null : panel
@@ -434,6 +486,8 @@ function submitReply() {
       replyForm.post.body = ''
       replyForm.post.quoted_post_id = null
       replyForm.post.parent_post_id = null
+      replyForm.post.attachment_ids = []
+      pendingAttachments.value = []
       quotePreviews.value = []
       replyPreview.value = null
       localStorage.removeItem(draftKey)
@@ -558,12 +612,18 @@ function startEdit(post: PostItem) {
   closePanel()
   editingPostId.value = post.id
   editBody.value = post.body
+  editPendingAttachments.value = (post.attachments || []).map((attachment) => ({
+    id: attachment.id,
+    filename: attachment.filename,
+    human_size: attachment.human_size,
+  }))
 }
 
 function cancelEdit() {
   editingPostId.value = null
   editBody.value = ''
   editReason.value = ''
+  editPendingAttachments.value = []
 }
 
 function saveEdit(post: PostItem) {
@@ -572,7 +632,13 @@ function saveEdit(post: PostItem) {
     editLinkError.value = props.warningRestrictions.link
     return
   }
-  router.patch(post.update_url, { post: { body: editBody.value, reason: editReason.value } }, {
+  router.patch(post.update_url, {
+    post: {
+      body: editBody.value,
+      reason: editReason.value,
+      attachment_ids: editPendingAttachments.value.map((item) => item.id),
+    },
+  }, {
     preserveScroll: true,
     onSuccess: () => cancelEdit(),
   })
@@ -733,6 +799,16 @@ function isPostExpanded(post: PostItem) {
 
 function moderatePost(post: PostItem, action: string, extra: Record<string, string> = {}) {
   router.post(`/app/forum/posts/${post.id}/moderate`, { action_type: action, ...extra }, { preserveScroll: true })
+}
+
+function approvePost(post: PostItem) {
+  if (!post.approve_url) return
+  router.post(post.approve_url, {}, { preserveScroll: true })
+}
+
+function rejectPost(post: PostItem) {
+  if (!post.reject_url) return
+  router.post(post.reject_url, {}, { preserveScroll: true })
 }
 
 async function changePostAuthor(post: PostItem) {
@@ -1060,10 +1136,24 @@ async function copyPollShareLink() {
   </p>
 
   <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-    <PageHeader
-      :title="`${topic.prefix ? `[${topic.prefix}] ` : ''}${topic.pinned ? `[${t('forum.topics.pinnedLabel')}] ` : ''}${topic.title}`"
-      :subtitle="`${topic.author ? `${t('forum.topics.author')} ${topic.author}` : ''}${topic.author ? ' · ' : ''}${t('forum.topics.views', { count: topic.views_count })}${topic.reading_time_minutes ? ` · ${t('forum.topics.readingTime', { minutes: topic.reading_time_minutes })}` : ''}`"
-    />
+    <div class="min-w-0 flex-1">
+      <TopicTitleBadges
+        :prefix="topic.prefix"
+        :prefix-color="topic.prefix_color"
+        :pinned="topic.pinned"
+        :featured="topic.featured"
+        :locked="topic.locked"
+        :solved="!!topic.solved_post_id"
+        :wiki="topic.wiki"
+        :global-announcement="topic.global_announcement"
+        :unlisted="topic.unlisted"
+        :archived="!!topic.archived_at"
+      />
+      <PageHeader
+        :title="topic.title"
+        :subtitle="`${topic.author ? `${t('forum.topics.author')} ${topic.author}` : ''}${topic.author ? ' · ' : ''}${t('forum.topics.views', { count: topic.views_count })}${topic.reading_time_minutes ? ` · ${t('forum.topics.readingTime', { minutes: topic.reading_time_minutes })}` : ''}`"
+      />
+    </div>
     <div class="flex flex-wrap gap-2">
       <Button v-if="topic.rss_url" as-child variant="outline" size="sm">
         <a :href="topic.rss_url" target="_blank" rel="noopener">RSS</a>
@@ -1527,6 +1617,12 @@ async function copyPollShareLink() {
                 :style="badge.color ? { borderColor: badge.color, color: badge.color } : undefined"
                 :title="badge.granted_at ? `${badge.name} · ${badge.granted_at}` : badge.name"
               >{{ badge.icon || badge.name }}<span v-if="badge.granted_at" class="opacity-70">·{{ badge.granted_at }}</span></span>
+              <span
+                v-for="membership in post.author_memberships || []"
+                :key="membership.slug"
+                class="ml-1 rounded border px-1 text-[10px] font-medium"
+                :style="membership.color ? { borderColor: membership.color, color: membership.color } : undefined"
+              >{{ membership.icon || '' }}{{ membership.name }}</span>
               <span v-if="post.verified_purchaser" class="ml-1 rounded border border-green-300 bg-green-50 px-1 text-[10px] text-green-700">{{ t('forum.topics.verifiedPurchaser') }}</span>
               <span class="mx-2">·</span>
               <span>{{ post.created_at }}</span>
@@ -1538,6 +1634,7 @@ async function copyPollShareLink() {
                 <Link v-if="post.edits_url" :href="post.edits_url" class="hover:underline">{{ t('forum.topics.editHistory') }}</Link>）
               </span>
               <span v-if="post.wiki" class="ml-2 text-xs text-blue-600">{{ t('forum.topics.wikiPost') }}</span>
+              <span v-if="post.pending_approval" class="ml-2 text-amber-600">{{ t('forum.topics.pendingApproval') }}</span>
               <span v-if="post.hidden" class="ml-2 text-amber-600">{{ t('forum.topics.hiddenPost') }}</span>
               <span v-if="post.deleted" class="ml-2 text-destructive">{{ t('forum.topics.deletedPost') }}</span>
             </div>
@@ -1556,6 +1653,8 @@ async function copyPollShareLink() {
               <button v-if="canMarkSolved && !post.is_solved" type="button" class="text-xs text-green-600 hover:underline" @click="markSolved(post)">{{ t('forum.topics.markSolved') }}</button>
               <button v-if="topic.can_move && post.floor_number > 1" type="button" class="text-xs hover:underline" @click="splitPost(post)">{{ t('forum.topics.splitTopic') }}</button>
               <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">{{ t('forum.topics.report') }}</Link>
+              <button v-if="post.approve_url" type="button" class="text-xs text-green-600 hover:underline" @click="approvePost(post)">{{ t('forum.topics.approvePost') }}</button>
+              <button v-if="post.reject_url" type="button" class="text-xs text-destructive hover:underline" @click="rejectPost(post)">{{ t('forum.topics.rejectPost') }}</button>
               <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
                 {{ post.hidden ? t('forum.topics.showPost') : t('forum.topics.hidePost') }}
               </button>
@@ -1610,6 +1709,18 @@ async function copyPollShareLink() {
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
             <MarkdownEditor v-model="editBody" :rows="6" />
             <Input v-model="editReason" :placeholder="t('forum.topics.editReasonOptional')" class="h-8" />
+            <div class="space-y-2">
+              <AttachmentUploadButton @uploaded="onEditAttachmentUploaded" />
+              <ul v-if="editPendingAttachments.length" class="space-y-1 text-sm">
+                <li class="text-xs font-medium text-muted-foreground">{{ t('components.attachmentUpload.pending') }}</li>
+                <li v-for="attachment in editPendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-2 rounded border px-2 py-1">
+                  <span>{{ attachment.filename }} <span class="text-muted-foreground">({{ attachment.human_size }})</span></span>
+                  <button type="button" class="text-xs text-destructive hover:underline" @click="removeEditPendingAttachment(attachment.id)">
+                    {{ t('components.attachmentUpload.remove') }}
+                  </button>
+                </li>
+              </ul>
+            </div>
             <p v-if="editLinkError" class="text-sm text-destructive">{{ editLinkError }}</p>
             <p v-else-if="editBodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
             <div class="flex gap-2">
@@ -1649,6 +1760,7 @@ async function copyPollShareLink() {
             {{ t('forum.topics.editWindowRemaining', { seconds: post.edit_seconds_remaining }) }}
           </p>
           <div v-if="post.signature_html" class="mt-3 border-t pt-2 text-xs text-muted-foreground prose prose-sm max-w-none" v-html="post.signature_html" />
+          <PostAttachmentsList v-if="post.attachments?.length" :attachments="post.attachments" />
 
           <div class="mt-3 flex flex-wrap items-center gap-2" v-if="!post.small_action">
             <span v-if="post.reactions_total" class="text-xs text-muted-foreground">{{ t('forum.topics.reactionsCount', { n: post.reactions_total }) }}</span>
@@ -1746,6 +1858,18 @@ async function copyPollShareLink() {
         <Checkbox v-model="replyForm.post.whisper" />
         {{ t('forum.topics.staffWhisper') }}
       </label>
+      <div class="space-y-2">
+        <AttachmentUploadButton @uploaded="onAttachmentUploaded" />
+        <ul v-if="pendingAttachments.length" class="space-y-1 text-sm">
+          <li class="text-xs font-medium text-muted-foreground">{{ t('components.attachmentUpload.pending') }}</li>
+          <li v-for="attachment in pendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-2 rounded border px-2 py-1">
+            <span>{{ attachment.filename }} <span class="text-muted-foreground">({{ attachment.human_size }})</span></span>
+            <button type="button" class="text-xs text-destructive hover:underline" @click="removePendingAttachment(attachment.id)">
+              {{ t('components.attachmentUpload.remove') }}
+            </button>
+          </li>
+        </ul>
+      </div>
       <Button type="submit" :disabled="replyForm.processing || !canSubmitReply">{{ t('forum.topics.publishReply') }}</Button>
     </form>
   </section>

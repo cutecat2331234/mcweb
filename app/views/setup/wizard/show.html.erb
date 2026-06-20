@@ -8,6 +8,32 @@
 <hr class="mc-divider">
 
 <% case @step %>
+<% when "database" %>
+  <%= form_with url: setup_step_path("database"), method: :patch, scope: :setup, class: "space-y-4" do |f| %>
+    <p class="mc-form-hint">数据库与密钥将写入 <code>config/local.yml</code>，无需配置环境变量。</p>
+    <div>
+      <label class="mc-form-label" for="setup_host">数据库主机</label>
+      <%= f.text_field :host, value: @settings.dig("database", "host") || "127.0.0.1", class: "mc-input w-full", required: true, id: "setup_host" %>
+    </div>
+    <div>
+      <label class="mc-form-label" for="setup_port">端口</label>
+      <%= f.number_field :port, value: @settings.dig("database", "port") || 5432, class: "mc-input w-full", required: true, min: 1, max: 65535, id: "setup_port" %>
+    </div>
+    <div>
+      <label class="mc-form-label" for="setup_username">用户名</label>
+      <%= f.text_field :username, value: @settings.dig("database", "username") || "postgres", class: "mc-input w-full", required: true, id: "setup_username" %>
+    </div>
+    <div>
+      <label class="mc-form-label" for="setup_password">密码</label>
+      <%= f.password_field :password, autocomplete: "new-password", class: "mc-input w-full", required: true, id: "setup_password" %>
+    </div>
+    <div>
+      <label class="mc-form-label" for="setup_development_database">开发库名称</label>
+      <%= f.text_field :development_database, value: @settings.dig("database", "development_database") || "mcweb_development", class: "mc-input w-full", required: true, id: "setup_development_database" %>
+    </div>
+    <%= f.submit "测试连接并继续", class: "mc-btn mc-btn-primary" %>
+  <% end %>
+
 <% when "site" %>
   <%= form_with url: setup_step_path("site"), method: :patch, scope: :setup, class: "space-y-4" do |f| %>
     <div>
@@ -16,9 +42,14 @@
     </div>
     <div>
       <label class="mc-form-label" for="setup_url">站点 URL</label>
-      <%= f.url_field :url, value: @settings.dig("site", "url"), class: "mc-input w-full", placeholder: "https://example.com", required: true, id: "setup_url" %>
+      <%= f.url_field :url, value: @settings.dig("site", "url"), class: "mc-input w-full", placeholder: "http://127.0.0.1:3000", required: true, id: "setup_url" %>
     </div>
-    <%= f.submit "继续", class: "mc-btn mc-btn-primary" %>
+    <div class="flex gap-2">
+      <% if Mcweb::LocalConfig.complete? %>
+        <%= link_to "上一步", setup_step_path("database"), class: "mc-btn no-underline" %>
+      <% end %>
+      <%= f.submit "继续", class: "mc-btn mc-btn-primary" %>
+    </div>
   <% end %>
 
 <% when "admin" %>
@@ -38,7 +69,7 @@
     <div>
       <label class="mc-form-label" for="setup_password">密码</label>
       <%= f.password_field :password, autocomplete: "new-password", class: "mc-input w-full", required: true, minlength: 6, id: "setup_password" %>
-      <p class="mc-form-hint">至少 6 个字符</p>
+      <p class="mc-form-hint">至少 6 个字符，请牢记此密码用于登录。</p>
     </div>
     <div>
       <label class="mc-form-label" for="setup_password_confirmation">确认密码</label>

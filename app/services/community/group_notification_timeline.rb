@@ -2,6 +2,8 @@
 
 module Community
   class GroupNotificationTimeline
+    BUCKETS = %w[today yesterday this_week this_month last_month last_year earlier].freeze
+
     def self.call(groups)
       new(groups).sections
     end
@@ -11,30 +13,16 @@ module Community
     end
 
     def sections
-      buckets = {
-        "today" => [],
-        "yesterday" => [],
-        "this_week" => [],
-        "this_month" => [],
-        "last_month" => [],
-        "last_year" => [],
-        "earlier" => []
-      }
+      buckets = BUCKETS.index_with { [] }
 
       @groups.each do |group|
         bucket = bucket_for(group[:latest_at_ts])
         buckets[bucket] << group
       end
 
-      [
-        section("today", "今天", buckets["today"], default_expanded: true),
-        section("yesterday", "昨天", buckets["yesterday"], default_expanded: true),
-        section("this_week", "本周", buckets["this_week"], default_expanded: true),
-        section("this_month", "本月", buckets["this_month"], default_expanded: false),
-        section("last_month", "上月", buckets["last_month"], default_expanded: false),
-        section("last_year", "去年", buckets["last_year"], default_expanded: false),
-        section("earlier", "更早", buckets["earlier"], default_expanded: false)
-      ].compact
+      BUCKETS.filter_map do |key|
+        section(key, buckets[key], default_expanded: %w[today yesterday this_week].include?(key))
+      end
     end
 
   private
@@ -53,12 +41,12 @@ module Community
       "earlier"
     end
 
-    def section(key, label, groups, default_expanded:)
+    def section(key, groups, default_expanded:)
       return if groups.empty?
 
       {
         key: key,
-        label: label,
+        label: I18n.t("mcweb.forum.notification_timeline.#{key}"),
         count: groups.size,
         groups: groups,
         default_expanded: default_expanded

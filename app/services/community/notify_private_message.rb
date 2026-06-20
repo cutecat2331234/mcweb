@@ -13,11 +13,15 @@ module Community
         next if participant.muted_at.present?
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.private_message")
 
-        Notification.notify!(
+        title_key = @conversation.is_group? ? "private_message.title_group" : "private_message.title_direct"
+        Community::InAppNotification.notify(
           user: user,
           notification_type: "forum.private_message",
-          title: @conversation.is_group? ? "群组「#{@conversation.title}」新消息" : "来自 #{@message.user.username} 的私信",
-          body: @message.body.truncate(120),
+          key: "private_message",
+          title_key: title_key,
+          title: @conversation.title,
+          sender: @message.user.username,
+          excerpt: @message.body.truncate(120),
           metadata: {
             conversation_id: @conversation.id,
             url: "/app/forum/conversations/#{@conversation.id}",

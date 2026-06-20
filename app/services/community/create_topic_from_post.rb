@@ -27,7 +27,7 @@ module Community
         return ServiceResult.failure(error: "This section is read-only.")
       end
 
-      topic_title = @title || "回复：#{@source_topic.title}".truncate(120)
+      topic_title = @title || I18n.t("mcweb.forum.create_topic_from_post.default_title", title: @source_topic.title).truncate(120)
       opening_body = build_opening_body
 
       topic = nil
@@ -78,7 +78,12 @@ module Community
 
     def build_opening_body
       source_url = Rails.application.routes.url_helpers.forum_topic_path(@source_topic, anchor: "post-#{@post.id}")
-      header = "[来自 ##{@post.floor_number} #{@post.user.username} 的回复](#{source_url})"
+      header = I18n.t(
+        "mcweb.forum.create_topic_from_post.quote_header",
+        floor: @post.floor_number,
+        author: @post.user.username,
+        url: source_url
+      )
       quote = @post.body.lines.map { |line| "> #{line.chomp}" }.join("\n")
       parts = [ header, "", quote ]
       parts << "" << @body if @body.present?

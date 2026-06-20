@@ -3,10 +3,10 @@
 module Community
   class NotificationQuickFilters
     FILTERS = [
-      { key: "mention", label: "@提及", type: "forum.mention" },
-      { key: "reply", label: "主题回复", type: "forum.topic_reply" },
-      { key: "reaction", label: "帖子反应", type: "forum.reaction" },
-      { key: "payment", label: "支付确认", type: "commerce.payment_confirmed" }
+      { key: "mention", type: "forum.mention" },
+      { key: "reply", type: "forum.topic_reply" },
+      { key: "reaction", type: "forum.reaction" },
+      { key: "payment", type: "commerce.payment_confirmed" }
     ].freeze
 
     def self.call(user:, category: nil, read: nil, active_type: nil, period: nil)
@@ -36,7 +36,7 @@ module Community
 
         {
           key: filter[:key],
-          label: filter[:label],
+          label: NotificationTypeLabels.label_for(filter[:type]),
           type: filter[:type],
           href: Rails.application.routes.url_helpers.forum_notifications_path(tab_params(filter[:type])),
           active: @active_type == filter[:type],

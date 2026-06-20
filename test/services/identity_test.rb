@@ -4,16 +4,19 @@ require "test_helper"
 
 class Identity::RegisterUserTest < ActiveSupport::TestCase
   test "registers a user with email verification token" do
+    email = "new-#{SecureRandom.hex(4)}@example.com"
+    username = "newuser#{SecureRandom.hex(4)}"
     assert_enqueued_with(job: MailDeliveryJob) do
       result = Identity::RegisterUser.call(
-        email: "new@example.com",
-        username: "newuser",
-        password: "password123"
+        email: email,
+        username: username,
+        password: "password123",
+        ip_address: "127.0.0.1"
       )
 
       assert result.success?
       user = result.value[:user]
-      assert_equal "new@example.com", user.email
+      assert_equal email, user.email
       assert_not user.email_verified?
       assert result.value[:verification_token].present?
     end
@@ -21,9 +24,10 @@ class Identity::RegisterUserTest < ActiveSupport::TestCase
 
   test "rejects passwords shorter than six characters" do
     result = Identity::RegisterUser.call(
-      email: "short@example.com",
-      username: "shortpw",
-      password: "12345"
+      email: "short-#{SecureRandom.hex(4)}@example.com",
+      username: "shortpw#{SecureRandom.hex(4)}",
+      password: "12345",
+      ip_address: "127.0.0.1"
     )
 
     assert result.failure?
@@ -68,7 +72,7 @@ class Identity::AuthenticateUserTest < ActiveSupport::TestCase
     )
 
     assert result.failure?
-    assert_match(/验证邮箱/, result.error)
+    assert_equal I18n.t("mcweb.services.errors.invalid_email_or_password"), result.error
   end
 end
 

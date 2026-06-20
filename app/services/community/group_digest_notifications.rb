@@ -2,8 +2,6 @@
 
 module Community
   class GroupDigestNotifications
-    TYPE_LABELS = NotificationTypeLabels::FORUM
-
     def self.call(notifications)
       new(notifications).sections
     end
@@ -17,7 +15,7 @@ module Community
       grouped.map do |type, items|
         {
           type: type,
-          label: TYPE_LABELS[type] || type.to_s.humanize,
+          label: NotificationTypeLabels.label_for(type),
           notifications: items.sort_by(&:created_at).reverse
         }
       end.sort_by { |section| -section[:notifications].first.created_at.to_i }

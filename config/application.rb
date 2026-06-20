@@ -23,14 +23,16 @@ module Mcweb
     config.load_defaults 8.1
     config.autoload_lib(ignore: %w[assets tasks])
 
+    if (secret_key_base = Mcweb::LocalConfig.load["secret_key_base"]).present?
+      config.secret_key_base = secret_key_base
+    end
+
     config.time_zone = "UTC"
     config.i18n.available_locales = [ "zh-CN", :en ]
     config.i18n.default_locale = "zh-CN"
     config.i18n.fallbacks = [ :en ]
 
-    config.active_job.queue_adapter = :solid_queue
-    config.mission_control.jobs.http_basic_auth_enabled = false
-    config.mission_control.jobs.base_controller_class = "Admin::BaseController"
+    config.active_job.queue_adapter = :sidekiq
 
     config.generators do |g|
       g.test_framework :minitest, fixture: false

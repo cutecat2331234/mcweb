@@ -188,6 +188,7 @@ end
 
 class Commerce::ShippingAddressesIntegrationTest < ActionDispatch::IntegrationTest
   setup do
+    enable_store_feature!(:shipping)
     @user = create_user
     sign_in_as(@user)
   end

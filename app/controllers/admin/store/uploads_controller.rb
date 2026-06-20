@@ -10,14 +10,14 @@ module Admin
 
       def create
         file = params[:file]
-        return render json: { error: "请选择要上传的文件。" }, status: :unprocessable_entity unless file
+        return render json: { error: t("mcweb.admin.store.uploads.file_required") }, status: :unprocessable_entity unless file
 
         if file.size > MAX_SIZE
-          return render json: { error: "文件过大（最大 8MB）。" }, status: :unprocessable_entity
+          return render json: { error: t("mcweb.admin.store.uploads.file_too_large") }, status: :unprocessable_entity
         end
 
         unless ALLOWED_TYPES.include?(file.content_type)
-          return render json: { error: "不支持的文件类型。" }, status: :unprocessable_entity
+          return render json: { error: t("mcweb.admin.store.uploads.unsupported_type") }, status: :unprocessable_entity
         end
 
         blob = ActiveStorage::Blob.create_and_upload!(

@@ -12,7 +12,7 @@ module Community
 
       @topic.update!(bumped_at: Time.current, last_posted_at: Time.current, auto_bump_at: nil)
       actor = Community::SystemActor.user || @topic.user
-      Community::CreateSmallActionPost.call(topic: @topic, actor: actor, body: "此主题已按计划自动提升。") if actor
+      Community::CreateSmallActionPost.call(topic: @topic, actor: actor, body: I18n.t("mcweb.forum.small_actions.scheduled_bump")) if actor
 
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e

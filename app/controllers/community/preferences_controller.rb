@@ -25,6 +25,8 @@ module Community
       forum.topic_assigned
       forum.poll_closed
       forum.here
+      forum.post_pending
+      forum.post_rejected
     ].freeze
 
     DIGEST_OPTIONS = %w[none daily weekly].freeze
@@ -49,7 +51,7 @@ module Community
         digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } },
         watch_email_mode: current_user.forum_watch_email_mode,
         watch_email_mode_options: WATCH_EMAIL_MODES.map { |v| { value: v, label: watch_email_mode_label(v) } },
-        notificationLevelGuide: Community::SubscriptionLevelOptions::GUIDE,
+        notificationLevelGuide: Community::SubscriptionLevelOptions.guide,
         savedSearches: serialize_saved_searches_for_preferences,
         savedSearchesOpmlUrl: Community::SavedSearchPresenter.opml_path(current_user),
         watchingOpmlUrl: forum_watching_opml_path(token: Community::WatchingOpmlToken.generate(current_user)),
@@ -90,40 +92,15 @@ module Community
     private
 
     def notification_label(type)
-      {
-        "forum.topic_reply" => "主题回复",
-        "forum.mention" => "@提及",
-        "forum.section_topic" => "关注分区新主题",
-        "forum.private_message" => "私信",
-        "forum.followed_topic" => "关注用户新主题",
-        "forum.followed_reply" => "关注用户回复",
-        "forum.tag_topic" => "关注标签新主题",
-        "forum.reaction" => "帖子反应",
-        "forum.quote" => "帖子引用",
-        "forum.topic_solved" => "主题已解决",
-        "forum.badge" => "获得徽章",
-        "forum.trust_level" => "信任等级提升",
-        "forum.bookmark_reminder" => "书签提醒",
-        "forum.saved_search_match" => "保存搜索新结果",
-        "forum.post_edited" => "帖子编辑通知",
-        "forum.user_warning" => "社区警告",
-        "forum.topic_invite" => "主题邀请关注",
-        "forum.topic_assigned" => "主题指派",
-        "forum.poll_closed" => "投票关闭",
-        "forum.here" => "@here 提及"
-      }[type] || type.humanize
+      Community::NotificationTypeLabels.label_for(type)
     end
 
     def digest_label(value)
-      { "none" => "关闭摘要", "daily" => "每日摘要", "weekly" => "每周摘要" }[value] || value
+      I18n.t("mcweb.forum.digest.#{value}", default: value)
     end
 
     def watch_email_mode_label(value)
-      {
-        "instant" => "即时邮件（关注时立即通知）",
-        "digest_only" => "仅摘要（不发送即时关注邮件）",
-        "none" => "关闭关注邮件（仍可通过摘要或站内通知）"
-      }[value] || value
+      I18n.t("mcweb.forum.watch_email_mode.#{value}", default: value)
     end
 
     def serialize_saved_searches_for_preferences

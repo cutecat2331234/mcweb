@@ -22,7 +22,10 @@ module Community
     private
 
     def already_finalized?
-      @poll.topic.posts.where(post_type: "small_action").exists?([ "body LIKE ? OR body LIKE ?", "%关闭了投票%", "%投票已%" ])
+      patterns = [ "%关闭了投票%", "%closed the poll%" ]
+      @poll.topic.posts.where(post_type: "small_action").exists?(
+        [ ([ "body LIKE ?" ] * patterns.size).join(" OR "), *patterns ]
+      )
     end
   end
 end

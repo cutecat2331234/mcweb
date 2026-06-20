@@ -8,8 +8,8 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "请先登录。") unless @user
-      return ServiceResult.failure(error: "购物车项不存在。") unless @cart_item
+      return ServiceResult.failure(error: "login_required") unless @user
+      return ServiceResult.failure(error: "cart_item_missing") unless @cart_item
 
       Commerce::ToggleWishlist.call(
         user: @user,

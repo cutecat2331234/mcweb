@@ -14,11 +14,12 @@ module Community
       return ServiceResult.success unless email_enabled || in_app_enabled
 
       if in_app_enabled
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: @user,
           notification_type: "forum.trust_level",
-          title: "信任等级提升：#{@level_name}",
-          body: "你已达到信任等级 #{@level}，解锁更多社区权限。",
+          key: "trust_level_up",
+          level_name: @level_name,
+          level: @level,
           metadata: {
             trust_level: @level,
             path: "#{Mcweb::Paths::APP_PREFIX}/forum/users/#{@user.username}"

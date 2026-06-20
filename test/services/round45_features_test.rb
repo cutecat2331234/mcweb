@@ -96,6 +96,8 @@ end
 
 class Commerce::CalculateShippingRound45Test < ActiveSupport::TestCase
   setup do
+    enable_store_feature!(:physical_products)
+    enable_store_feature!(:shipping)
     SiteSetting.set("store.flat_shipping_cents", "500")
     SiteSetting.set("store.free_shipping_min_order_cents", "0")
     @digital = Commerce::Product.create!(
@@ -148,6 +150,8 @@ end
 
 class Commerce::PreviewCouponFreeShippingTest < ActiveSupport::TestCase
   test "preview includes free shipping total" do
+    enable_store_feature!(:physical_products)
+    enable_store_feature!(:shipping)
     SiteSetting.set("store.flat_shipping_cents", "800")
     product = Commerce::Product.create!(
       name: "Ship",

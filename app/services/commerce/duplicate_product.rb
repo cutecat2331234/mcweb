@@ -12,7 +12,7 @@ module Commerce
         copy = @product.dup
         copy.public_id = "prod_#{SecureRandom.alphanumeric(16)}"
         copy.slug = unique_slug("#{@product.slug}-copy")
-        copy.name = "#{@product.name} (副本)"
+        copy.name = "#{@product.name}#{I18n.t('mcweb.commerce.product_duplicate_suffix')}"
         copy.status = "draft"
         copy.view_count = 0
         copy.forum_topic_id = nil

@@ -34,6 +34,14 @@ module Community
     scope :listed, -> { where(unlisted: false) }
     scope :published_listed, -> { where(status: :published, unlisted: false, archived_at: nil) }
 
+    scope :accessible_by, ->(user) {
+      if user.present?
+        all
+      else
+        joins(:section).where(forum_sections: { login_required: false })
+      end
+    }
+
     def unlisted?
       unlisted == true
     end

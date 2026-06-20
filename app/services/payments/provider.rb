@@ -15,6 +15,13 @@ module Payments
       end
     end
 
+    def self.known?(provider_name)
+      name = provider_name.to_s
+      return false if Rails.env.production? && name == "fake"
+
+      %w[fake stripe].include?(name)
+    end
+
     def create_payment(payment_record)
       raise NotImplementedError
     end

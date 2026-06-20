@@ -10,7 +10,7 @@ module Community
 
     def call
       searches = @user.forum_saved_searches.recent.limit(LIMIT)
-      return ServiceResult.failure(error: "没有可测试的保存搜索") if searches.empty?
+      return ServiceResult.failure(error: "saved_searches_none_for_test") if searches.empty?
 
       queued = 0
       searches.each do |search|

@@ -16,7 +16,7 @@ module Community
       section = Community::Section.includes(:category).find_by(slug: match[1])
       return ServiceResult.success(nil) unless section
 
-      meta = [ section.category&.name, "#{section.topics.where(status: :published).count} 主题" ].compact.join(" · ")
+      meta = [ section.category&.name, I18n.t("mcweb.forum.section_onebox.topics_count", count: section.topics.where(status: :published).count) ].compact.join(" · ")
       ServiceResult.success(
         slug: section.slug,
         name: section.name,

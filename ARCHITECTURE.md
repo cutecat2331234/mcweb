@@ -6,7 +6,7 @@
 app/
   models/          # 按领域命名空间：Website、Community、Commerce、Minecraft、Payments
   services/        # 业务命令对象，Controller 保持精简
-  jobs/            # Active Job + Solid Queue
+  jobs/            # Active Job + Sidekiq (Redis)
   components/ui/   # 通用设计系统（直角、无卡片）
   controllers/     # 按模块分命名空间
 ```
@@ -17,16 +17,19 @@ app/
 
 1. 用户下单 → `Commerce::CreateOrder`
 2. 创建 `Payments::Record` → Provider 发起支付
-3. Webhook → `Payments::WebhookProcessor`（签名验证 + 事件幂等）
+3. Webhook → `Payments::ProcessWebhookJob`（异步入队）→ `Payments::WebhookProcessor`（签名验证 + 事件幂等）
 4. `Commerce::ConfirmPayment`（行锁 + 状态检查）
-5. `Commerce::FulfillOrderJob` → 创建 `Commerce::Fulfillment`
+5. `Commerce::CompleteOrderPayment` → 入队 `Commerce::PostPaymentSideEffectsJob`（徽章/讨论订阅/通知）与 `Commerce::FulfillOrderJob`
 
 ### 发货流程
 
-1. `Commerce::CreateFulfillment` 生成唯一 `delivery_id`
-2. `Minecraft::DispatchFulfillmentJob` 创建 Connector 任务
-3. 插件拉取任务 → 本地检查 `delivery_id` → 执行命令
-4. 回调确认 → 更新 Fulfillment 状态
+1. `Commerce::FulfillOrderJob`：礼品卡同步履约；download-only 商品直接 `mark_fulfilled!`；其余创建 `Commerce::Fulfillment`
+2. `Commerce::BuildConnectorTaskPayload` 扁平化 `commands` 并替换 `{player}` / `{uuid}`
+3. `Minecraft::DispatchFulfillmentJob` 创建 Connector 任务（失败时 `mark_failed!`）
+4. 插件拉取任务 → 本地 `delivery_id` 去重 → 执行命令
+5. 回调 `POST tasks/:id/complete` → `Minecraft::TaskDispatcher` → `Commerce::SyncOrderFulfillmentStatus`（全部 fulfilled 后 `order.complete!`）
+
+`BulkUpdateOrders#mark_fulfilled` 拒绝含 MC connector 命令的订单，避免后台绕过插件履约。
 
 两边均保证幂等：数据库唯一约束 + 状态机检查。
 
@@ -35,9 +38,41 @@ app/
 - 公共官网区块、商品列表使用 Solid Cache
 - 用户权限、购物车不共享缓存
 
-## 后台任务队列
+## 后台任务队列（Sidekiq + Redis）
 
-`critical` / `payments` / `minecraft` / `mailers` / `notifications` / `media` / `maintenance`
+生产环境使用 **Sidekiq**（`config.active_job.queue_adapter = :sidekiq`），开发环境在 Windows 上回退为 `:async` 进程内执行。
+
+| 组件 | 路径 / 说明 |
+|------|-------------|
+| Worker 启动 | `bin/jobs` → `sidekiq -C config/sidekiq.yml` |
+| 队列优先级 | `critical` / `payments` / `minecraft` / `mailers` / `notifications` / `media` / `maintenance` |
+| 定时任务 | `config/sidekiq_cron.yml`（原 `recurring.yml` 已迁移），由 `sidekiq-cron` 在 worker 启动时加载 |
+| 监控 UI | `/jobs`（`Sidekiq::Web`，`SidekiqWebConstraint` 要求管理员 `admin.access`） |
+| systemd | `config/templates/mcweb-worker.service` |
+
+支付 Webhook、支付后副作用、Minecraft 发货等均异步入队，避免阻塞 HTTP 请求。
+
+## 商城功能开关（StoreFeatures）
+
+`Commerce::StoreFeatures` 通过 `SiteSetting` 控制可选商城能力，**默认全部关闭**（纯数字/游戏内发货场景无需物流 UI）。
+
+| 开关 | 后端守卫 | 前端 |
+|------|----------|------|
+| `physical_products` | 后台禁止创建 physical 商品 | `Products/Form.vue` 隐藏实体类型 |
+| `shipping` | `CreateOrder`、`CalculateShipping`、`ValidateShippingAddress`、地址簿控制器 | 结账收货地址、`usePortalNav` 地址簿入口 |
+| `gift_wrap` | `CreateOrder`、`CalculateGiftWrap` | 结账礼品包装选项 |
+| `order_shipping_management` | `UpdateOrderShipping`、后台填单号 | 订单页物流时间线、装箱单 |
+
+`ApplicationController` 通过 Inertia `storeFeatures` 共享至 Portal；后台在 **商城设置** 中切换。
+
+## 本地配置与资源包贴图
+
+| 组件 | 说明 |
+|------|------|
+| `config/local.yml` | 实例数据库与密钥（Git 忽略）；`Mcweb::ResolveLocalConfig` + `bin/setup-local-config` 可从 `server/config/database.yml` 或 example 引导生成 |
+| `config/image_packs.yml` | 可选资源包/Mod 材质根路径；`Mcweb::ImagePackRegistry` 解析商城物品贴图，缺失配置不阻塞启动 |
+
+详见 [`INSTALL.md`](INSTALL.md) 与 [`docs/minecraft-resource-packs.md`](docs/minecraft-resource-packs.md)。
 
 ## 前端架构（官网 vs 业务 Portal vs 管理后台）
 
@@ -455,7 +490,7 @@ app/
 
 | 功能 | 实现 |
 |------|------|
-| 投票过期维护任务 | `CloseExpiredPollsJob` + `recurring.yml` |
+| 投票过期维护任务 | `CloseExpiredPollsJob` + `sidekiq_cron.yml` |
 | 预览审查词过滤 | `PreviewsController` 接入 `FilterCensoredWords` |
 | 帖子书签内联编辑 | `serialize_post` bookmark 元数据 + `Topics/Show.vue` |
 | 编辑主题前缀 | `EditTopic` + 主题编辑 UI |
@@ -1174,7 +1209,7 @@ app/
 |------|------|
 | 保存搜索每日邮件提醒 | `notify_daily` + `last_notified_at` 迁移 |
 | 保存搜索匹配服务 | `SavedSearchMatcher` 按筛选与关键词匹配新主题 |
-| 每日摘要任务 | `SavedSearchDigestJob` + `recurring.yml` 每天 9am |
+| 每日摘要任务 | `SavedSearchDigestJob` + `sidekiq_cron.yml` 每天 9am |
 | 摘要邮件 | `ForumMailer#saved_search_digest` |
 | 搜索建议键盘导航 | ↑↓ Enter Esc + 高亮当前项 |
 | 保存搜索 UI | `saveNotifyDaily` 复选框 + 已保存项 📧 标记 |
@@ -1556,3 +1591,134 @@ app/
 | 未读命名预设 | `UnreadFilterPreset` + 保存/加载命名筛选（对标心愿单） |
 | 主题邮件退订 | `topic_solved`/`topic_invite` 邮件退订链接 |
 | 导出链接复制 | 订单页「复制导出链接」按钮（保留当前筛选参数） |
+
+### 第一百零七轮（去年通知筛选、警告衰减、前缀颜色、登录可见分区）
+
+| 功能 | 实现 |
+|------|------|
+| 去年通知筛选 | `NotificationPeriodFilters` 增加 `last_year` + 与时间线「去年」桶对齐 |
+| 邮件退订补全 | `badge_earned`/`bookmark_reminder`/`trust_level_up`/`topic_assigned`/`user_warning`/`poll_closed`/`post_edited`/`here` |
+| 未读预设分享链接 | `UnreadFilterPresetUrl` + 未读页预设 🔗 复制按钮 |
+| 警告积分过期（XenForo） | `forum_user_warnings.expires_at` + `forum.warning_points_expire_days` + `UserWarning.active` |
+| 主题前缀颜色（XenForo） | `SectionPrefixes` + `prefix_color` 序列化 + `TopicTitleBadges` 彩色 Badge |
+| 分区登录可见 | `forum_sections.login_required` + `SectionVisibility` + 游客重定向登录 |
+
+### 第一百零八轮（login_required 泄漏修复、TL0 帖子审核队列）
+
+| 功能 | 实现 |
+|------|------|
+| login_required 泄漏修复 | `Topic.accessible_by` + latest/activity/tags/rss/sitemap/search 帖子筛选 |
+| Discourse TL0 审核 | `pending_approval` 帖子状态 + `RequiresPostApproval` |
+| 审核通过/拒绝 | `ApprovePost` / `RejectPost` + `PublishPostSideEffects` |
+| 版主待审通知 | `NotifyPendingPost` + `forum.post_pending` 偏好 |
+| 管理审核队列 | `Admin::Forum::ApprovalsController` + `/admin/forum/approvals` |
+| 主题页审核 UI | `Topics/Show.vue` 待审核标记 + 通过/拒绝按钮 |
+| 前缀颜色标题修复 | `TopicTitleBadges` 用于主题页标题区 |
+
+### 第一百零九轮（审核绕过修复、用户自定义字段 XenForo）
+
+| 功能 | 实现 |
+|------|------|
+| 草稿/定时发布审核 | `PublishTopicDraft` / `PublishScheduledTopic` 接入 `RequiresPostApproval` |
+| 搜索建议泄漏修复 | `search#suggest` 增加 `accessible_by` |
+| 用户页泄漏修复 | 用户资料主题/帖子/指派列表 `accessible_by` |
+| 待审通知链接 | `NotifyPendingPost` metadata `path` → 管理审核页 |
+| 论坛用户字段定义 | `forum_user_field_definitions` + `Admin::Forum::UserFieldsController` |
+| 字段值同步 | `SyncUserFieldValues` + `SerializeUserFields` |
+| 资料页/注册 | `Users/Show.vue` + `Registrations/New.vue` + `UserCustomFieldsForm` |
+
+### 第一百一十轮（非图片附件 XenForo、上传权限修复）
+
+| 功能 | 实现 |
+|------|------|
+| 帖子附件模型 | `forum_post_attachments` + `Community::PostAttachment` |
+| 附件上传/下载 | `AttachmentsController` + `CreatePostAttachment` + `PostAttachmentAccess` |
+| 发帖关联附件 | `LinkPostAttachments` + `CreatePost` / `CreateTopic` |
+| 允许类型配置 | `AllowedAttachmentTypes` + `forum.attachments.*` 站点设置 |
+| 主题页附件 UI | `AttachmentUploadButton` + `PostAttachmentsList` |
+| 图片上传权限 bug | `MarkdownEditor` 要求 `can_upload_images === true` |
+| 书签列表过滤 | `bookmarks#index` 增加 `accessible_by` |
+
+### 第一百一十一轮（分区版主 XenForo、审核路由修复）
+
+| 功能 | 实现 |
+|------|------|
+| 分区版主 | `forum_section_moderators` + `SectionModeration` |
+| 版主权限 | 审核/删帖/只读分区发帖/批量管理 |
+| 社区审核路由 | `posts#approve` / `posts#reject`（分区版主可用） |
+| 待审通知 | 通知分区版主 + 链接跳转主题帖 |
+| 管理端配置 | 板块表单 `moderator_usernames` + `SyncSectionModerators` |
+| 分区页展示版主 | `Sections/Show.vue` |
+| 发帖附件 bug | `Topics/New.vue` 支持附件上传 |
+
+### 第一百一十二轮（论坛事件 Webhook、分区版主管理修复）
+
+| 功能 | 实现 |
+|------|------|
+| 论坛事件 Webhook | `forum.event_webhook_*` + `DispatchForumEventWebhook` |
+| 事件类型 | `topic.created` / `post.created` / `post.edited` / `topic.solved` |
+| 投递记录 | `forum_event_webhook_deliveries` + 管理端列表/重试 |
+| 事件挂钩 | `PublishPostSideEffects` / `EditPost` / `MarkTopicSolved` |
+| 测试投递 | 论坛设置页事件 Webhook 测试按钮 |
+| 统计合并 | `WebhookDeliveryStats` 合并保存搜索与事件投递 |
+| 分区版主锁定 bug | `ModerateTopic` / `BulkModerateTopics` 接入 `SectionModeration` |
+| 批量管理 bug | `bulk_moderate` 允许分区版主；逐主题校验权限 |
+| 全局操作限制 | 分区版主不可 `global_announcement` 等全局动作 |
+
+### 第一百一十三轮（分区版主编辑/解决/移动、topic.moved Webhook）
+
+| 功能 | 实现 |
+|------|------|
+| 分区版主编辑帖子 | `EditPost.editable_by?` + `SectionModeration.can_edit_post?` |
+| 分区版主编辑主题 | `EditTopic` / `EditTopicPoll` 接入 `can_edit_topic?` |
+| 标记解决/取消 | `MarkTopicSolved` / `UnsolveTopic` 接入 `can_mark_solved?` |
+| 移动主题 | `MoveTopic` + `can_move_topic?`；目标分区须同为版主辖区 |
+| 可移动分区列表 | `moderated_sections_for` 限制分区版主可见目标 |
+| topic.moved 事件 | `MoveTopic` 触发 + 默认启用事件列表 |
+| 失败重试定时任务 | `RetryFailedForumEventWebhooksJob`（15 分钟） |
+| 解决权限 bug | UI 显示「标记解决」但分区版主被拒 → 已修复 |
+
+### 第一百一十四轮（删帖 Webhook、草稿附件、待审队列）
+
+| 功能 | 实现 |
+|------|------|
+| post.deleted Webhook | `DeletePost` 服务 + 删帖挂钩 |
+| 恢复帖子 | `RestorePost` 允许分区版主 |
+| 草稿附件 | `SaveTopicDraft` / `PublishTopicDraft` + `Drafts/Edit.vue` |
+| 定时发布附件 | `ScheduleTopic` 支持 `attachment_ids` |
+| 发布未保存 bug | `drafts#publish` 先保存再发布 |
+| 社区待审队列 | `/forum/moderation/approvals` + 侧栏徽章 |
+| 待审范围 | `pending_posts_scope_for` 按分区版主辖区过滤 |
+
+### 第一百一十五轮（回复草稿附件、审核 Webhook、管理端待审）
+
+| 功能 | 实现 |
+|------|------|
+| 回复草稿附件 | `forum_reply_drafts.attachment_ids` + `SaveReplyDraft` |
+| 主题页恢复附件 | `replyDraftAttachments` + 自动保存 |
+| post.restored Webhook | `RestorePost` 挂钩 |
+| post.rejected Webhook | `RejectPost` 挂钩 + 通知 `path` |
+| 管理端待审 | 分区版主（有 admin 权限）可看辖区待审 |
+| 管理端审核鉴权 | 跨分区审核拦截 |
+| global_moderator bug | `admin.access` 不再等同全站版主 |
+
+### 第一百一十六轮（编辑帖附件、post.approved Webhook、待审可读性）
+
+| 功能 | 实现 |
+|------|------|
+| 编辑帖附件 | `SyncPostAttachments` + `EditPost` + `Show.vue` 编辑区 |
+| post.approved Webhook | `ApprovePost` 投递；审核通过不再重复 `post.created` |
+| 审核通过通知 | 作者收到 `forum.post_approved` 站内通知 |
+| 待审帖可读 bug | `PostAccess` 分区版主可读辖区 `pending_approval` 帖 |
+| 附件变更 Webhook | 仅改附件也触发 `post.edited` |
+
+### 第一百一十七轮（草稿附件、版主悄悄话、待审附件）
+
+| 功能 | 实现 |
+|------|------|
+| 新建页存草稿附件 | `Topics/New.vue` `saveDraft` 传递 `attachment_ids` |
+| 分区版主悄悄话 | `CreatePost#can_post_whisper?` 允许辖区版主 |
+| 附件序列化鉴权 | `serialize_post_attachments` 按 `PostAttachmentAccess` 过滤 |
+| 待审通知 i18n | `NotifyPendingPost` 使用 `mcweb.labels` 文案 + 路由 helper |
+| 拒绝通知 i18n | `RejectPost` 对齐 `ApprovePost` 国际化 |
+| 待审队列附件 | 社区/管理端待审列表展示附件 |

@@ -1,0 +1,23 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "pathname"
+
+APP_ROOT = Pathname.new(__dir__).join("..").expand_path
+$LOAD_PATH.unshift(APP_ROOT.join("lib").to_s)
+
+require "mcweb/local_config"
+require "mcweb/resolve_local_config"
+
+result = Mcweb::ResolveLocalConfig.call
+
+case result.source
+when :existing
+  puts "config/local.yml already exists at #{result.path}"
+when :database_yml
+  puts "Created #{result.path} from server config/database.yml"
+when :example
+  puts "Created #{result.path} from config/local.yml.example"
+end
+
+puts "Edit #{result.path} or visit /setup to finish database and secret configuration."

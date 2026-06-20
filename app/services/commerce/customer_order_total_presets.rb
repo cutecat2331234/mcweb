@@ -2,11 +2,7 @@
 
 module Commerce
   class CustomerOrderTotalPresets
-    PRESETS = [
-      { key: "under_100", label: "¥100 以下", min_total: nil, max_total: "100" },
-      { key: "100_500", label: "¥100–500", min_total: "100", max_total: "500" },
-      { key: "over_500", label: "¥500 以上", min_total: "500", max_total: nil }
-    ].freeze
+    PRESET_KEYS = %w[under_100 100_500 over_500].freeze
 
     def self.call(min_total:, max_total:, **context)
       new(min_total: min_total, max_total: max_total, **context).presets
@@ -22,10 +18,10 @@ module Commerce
     end
 
     def presets
-      PRESETS.map do |preset|
+      preset_definitions.map do |preset|
         {
           key: preset[:key],
-          label: preset[:label],
+          label: I18n.t("mcweb.commerce.customer_orders.preset_#{preset[:key]}"),
           min_total: preset[:min_total],
           max_total: preset[:max_total],
           active: active?(preset),
@@ -35,6 +31,14 @@ module Commerce
     end
 
   private
+
+    def preset_definitions
+      [
+        { key: "under_100", min_total: nil, max_total: "100" },
+        { key: "100_500", min_total: "100", max_total: "500" },
+        { key: "over_500", min_total: "500", max_total: nil }
+      ]
+    end
 
     def path_params(preset)
       {

@@ -15,7 +15,7 @@ module Community
       end
 
       unless Community::Subscription::NOTIFICATION_LEVELS.include?(@level)
-        return ServiceResult.failure(error: "无效的通知级别")
+        return ServiceResult.failure(error: "invalid_subscription_level")
       end
 
       Community::Subscription.subscribe!(@user, @subscribable, level: @level)

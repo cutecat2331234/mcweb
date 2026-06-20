@@ -15,13 +15,16 @@ class User < ApplicationRecord
   has_many :user_badges, class_name: "Community::UserBadge", dependent: :destroy
   has_many :forum_warnings, class_name: "Community::UserWarning", dependent: :destroy
   has_many :forum_staff_notes, class_name: "Community::StaffNote", dependent: :destroy
-  has_many :user_silences, class_name: "Community::UserSilence", dependent: :destroy
+    has_many :user_silences, class_name: "Community::UserSilence", dependent: :destroy
+  has_many :forum_user_field_values, class_name: "Community::UserFieldValue", dependent: :destroy
     has_many :forum_saved_searches, class_name: "Community::SavedSearch", dependent: :destroy
     has_many :forum_unread_filter_presets, class_name: "Community::UnreadFilterPreset", dependent: :destroy
     has_many :forum_search_histories, class_name: "Community::SearchHistory", dependent: :destroy
     has_many :store_wishlist_filter_presets, class_name: "Commerce::WishlistFilterPreset", dependent: :destroy
     has_many :shipping_addresses, class_name: "Commerce::ShippingAddress", dependent: :destroy
     has_many :store_credit_transactions, class_name: "Commerce::StoreCreditTransaction", dependent: :destroy
+    has_many :memberships, class_name: "Commerce::UserMembership", dependent: :destroy
+    has_many :entitlements, class_name: "Commerce::UserEntitlement", dependent: :destroy
   has_many :admin_module_grants, dependent: :destroy
   has_many :minecraft_identities, class_name: "Minecraft::Identity", dependent: :destroy
   has_many :minecraft_identity_links, class_name: "Minecraft::IdentityLink", dependent: :destroy

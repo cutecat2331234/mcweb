@@ -20,6 +20,14 @@ en:
         invalid: is invalid
         confirmation: doesn't match confirmation
       models:
+        commerce/product:
+          attributes:
+            membership_type:
+              required_for_membership_product: Membership products must have a membership type.
+        commerce/membership_type:
+          attributes:
+            duration_days:
+              blank_for_permanent: Permanent membership types cannot have a duration in days.
         user:
           attributes:
             password:
@@ -28,9 +36,58 @@ en:
   mcweb:
     flash:
       setup_complete: Setup complete. Sign in with your administrator account.
+      setup_complete_with_account: "Setup complete. Sign in with %{email} and the password you chose during setup."
       sign_in_required: Please sign in first.
       permission_denied: You do not have permission to perform this action.
     setup:
       password_required: Password is required.
       password_too_short: Password must be at least 6 characters.
       password_mismatch: Password confirmation does not match.
+      database_saved: Database configuration saved.
+      database_connection_failed: "Database connection failed: %{message}"
+      database_host_not_allowed: Database host is not allowed (metadata and link-local addresses are blocked).
+      database_name_invalid: Database name may only contain letters, numbers, and underscores.
+      database_host_required: Database host is required.
+      database_username_required: Database username is required.
+      already_complete: Setup is already complete. Sign in with your administrator account.
+      complete_prior_steps: Complete the earlier setup steps before creating the administrator account.
+    store_features:
+      physical_products:
+        label: Physical products
+        description: Allow physical product type and requires_shipping field
+      shipping:
+        label: Shipping & delivery
+        description: Checkout addresses, shipping methods, freight, and address book
+      gift_wrap:
+        label: Gift wrap
+        description: Gift wrap option and fee at checkout
+      order_shipping_management:
+        label: Order shipping management
+        description: Admin tracking numbers, mark shipped, and packing slips
+  commerce:
+    prerequisites:
+      login_required: Sign in to purchase this product.
+      not_met: "Purchase requirements not met: %{products}"
+    memberships:
+      permanent: Permanent
+    cart:
+      min_quantity: "Minimum purchase is %{count}."
+      max_quantity: "Maximum purchase is %{count}."
+      quantity_at_least_one: Quantity must be at least 1.
+      product_inactive: This product is no longer available.
+      variant_required: Please select a variant.
+      out_of_stock: Out of stock.
+      purchase_limit_exceeded: Purchase limit exceeded for this product.
+      cart_max_items: "Cart may contain at most %{count} line items."
+      physical_products_disabled: Physical products are not enabled.
+      shipping_disabled: Shipping is not enabled.
+      unsupported_feature_product: Your cart contains items that require disabled store features. Remove them and try again.
+    product:
+      coming_soon_at: Available on %{time}
+    shipping:
+      address_fields:
+        name: Recipient
+        phone: Phone
+        line1: Address
+        city: City
+        province: State / province

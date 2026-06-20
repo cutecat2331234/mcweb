@@ -39,7 +39,7 @@ module Community
       excerpt = @topic.posts.order(:floor_number).first&.body&.truncate(280)
       lines = []
       lines << @message if @message.present?
-      lines << "分享主题：#{@topic.title}"
+      lines << I18n.t("mcweb.forum.share_topic.header", title: @topic.title)
       lines << excerpt if excerpt.present?
       lines << Rails.application.routes.url_helpers.forum_topic_url(@topic, host: default_host)
       lines.join("\n\n")

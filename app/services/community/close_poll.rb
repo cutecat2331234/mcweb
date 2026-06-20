@@ -19,7 +19,7 @@ module Community
       Community::FinalizePollClosed.call(
         poll: @poll,
         actor: @user,
-        body: "#{@user.username} 关闭了投票「#{@poll.question}」。"
+        body: I18n.t("mcweb.forum.small_actions.poll_closed", user: @user.username, question: @poll.question)
       )
 
       ServiceResult.success(@poll)

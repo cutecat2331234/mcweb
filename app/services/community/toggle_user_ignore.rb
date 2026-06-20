@@ -9,7 +9,7 @@ module Community
 
     def call
       ignored = User.find_by!(username: @ignored_username)
-      return ServiceResult.failure(error: "不能忽略自己。") if @ignorer.id == ignored.id
+      return ServiceResult.failure(error: "cannot_ignore_self") if @ignorer.id == ignored.id
 
       record = Community::UserIgnore.find_by(ignorer: @ignorer, ignored: ignored)
       if record
@@ -20,7 +20,7 @@ module Community
         ServiceResult.success(ignored: true)
       end
     rescue ActiveRecord::RecordNotFound
-      ServiceResult.failure(error: "用户不存在。")
+      ServiceResult.failure(error: "user_not_found")
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end

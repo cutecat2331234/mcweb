@@ -20,6 +20,7 @@ const navOptions = computed(() => ({
   loggedIn: props.loggedIn,
   forumUnread: props.forumUnread,
   forumAssigned: props.forumAssigned,
+  forumModerationPending: props.forumModerationPending,
   messagesUnread: props.messagesUnread,
   cart: props.cart,
 }))
@@ -27,7 +28,8 @@ const navOptions = computed(() => ({
 const { navGroups, isActive, isSectionActive, currentPath } = usePortalNav(navOptions)
 const { activeTemplate } = useActiveTemplate()
 const page = usePage()
-const minecraftServers = computed(() => page.props.minecraft_servers as Array<{ name: string; online: number; max: number; status: string }> | undefined)
+const minecraftServers = computed(() => page.props.minecraft_servers as Array<{ name: string; online: number; max: number; status: string; anomaly?: boolean }> | undefined)
+const minecraftHealth = computed(() => page.props.minecraft_health as { alert?: boolean; stale_nodes?: number; process_mismatch?: number; maintenance?: number } | undefined)
 
 const serverStatusLabels: Record<string, string> = {
   online: 'portal.serverStatusOnline',
@@ -164,14 +166,25 @@ watch(
     </div>
 
     <div v-if="features.minecraft && minecraftServers?.length" class="px-3 pb-3">
-      <p class="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50">{{ t('portal.serverStatus') }}</p>
+      <p class="mb-2 flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50">
+        {{ t('portal.serverStatus') }}
+        <span
+          v-if="minecraftHealth?.alert"
+          class="rounded bg-amber-500/20 px-1.5 py-0.5 text-[10px] font-semibold normal-case text-amber-700 dark:text-amber-300"
+          :title="t('portal.serverAnomalyHint')"
+        >!</span>
+      </p>
       <div class="space-y-2">
         <div
           v-for="server in minecraftServers"
           :key="server.name"
           class="rounded-lg border border-sidebar-border/40 bg-sidebar-accent/20 px-3 py-2 text-xs"
+          :class="server.anomaly || server.status === 'maintenance' ? 'border-amber-500/40' : ''"
         >
-          <div class="font-medium text-sidebar-foreground">{{ server.name }}</div>
+          <div class="flex items-center gap-1 font-medium text-sidebar-foreground">
+            {{ server.name }}
+            <span v-if="server.anomaly || server.status === 'maintenance'" class="text-amber-600">⚠</span>
+          </div>
           <div class="text-sidebar-foreground/70">{{ server.online }}/{{ server.max }} {{ t('portal.online') }}{{ t('common.colon') }} {{ serverStatusLabel(server.status) }}</div>
         </div>
       </div>

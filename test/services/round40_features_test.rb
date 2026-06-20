@@ -168,4 +168,33 @@ class Commerce::FulfillGiftCardItemTest < ActiveSupport::TestCase
     assert_equal 10_000, card.balance_cents
     assert_equal @user.id, card.owner_user_id
   end
+
+  test "completes fulfillment when gift cards already exist" do
+    Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.alphanumeric(12).upcase}",
+      balance_cents: 10_000,
+      initial_balance_cents: 10_000,
+      currency: "CNY",
+      active: true,
+      owner_user_id: @user.id,
+      created_by_id: @user.id,
+      source_order_item_id: @item.id
+    )
+    fulfillment = Commerce::Fulfillment.create!(
+      order: @order,
+      order_item: @item,
+      status: "pending"
+    )
+
+    result = Commerce::FulfillGiftCardItem.call(order_item: @item)
+    assert result.success?
+    assert fulfillment.reload.fulfilled?
+    assert_equal 1, Commerce::GiftCard.where(source_order_item_id: @item.id).count
+    assert @order.reload.fulfilled? || @order.completed?
+
+    gift_card_mails = enqueued_jobs.select do |job|
+      job[:job] == MailDeliveryJob && job[:args].first == "Commerce::GiftCardMailer"
+    end
+    assert_empty gift_card_mails
+  end
 end

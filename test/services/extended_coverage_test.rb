@@ -231,7 +231,35 @@ class Minecraft::TaskDispatcherTest < ActiveSupport::TestCase
     )
     assert second.success?
     assert second.value[:idempotent]
+    delivery = Minecraft::ProcessedDelivery.find_by!(server: @server, delivery_id: @fulfillment.delivery_id)
+    assert_equal "completed", delivery.status
     assert_equal 1, Minecraft::ProcessedDelivery.where(server: @server, delivery_id: @fulfillment.delivery_id).count
+  end
+
+  test "reclaims stale claimed tasks when polling" do
+    @task.update!(status: "claimed", claimed_at: 15.minutes.ago)
+
+    result = Minecraft::TaskDispatcher.call(server: @server, action: :claim)
+    assert result.success?
+    assert_equal 1, result.value[:tasks].size
+    assert_equal @task.id, result.value[:tasks].first.id
+    assert_predicate @task.reload.claimed_at, :present?
+    assert @task.claimed_at > 1.minute.ago
+  end
+
+  test "does not reclaim claimed tasks with completed delivery record" do
+    @task.update!(status: "claimed", claimed_at: 15.minutes.ago)
+    Minecraft::ProcessedDelivery.create!(
+      server: @server,
+      delivery_id: @fulfillment.delivery_id,
+      status: "completed",
+      result: { success: true }
+    )
+
+    result = Minecraft::TaskDispatcher.call(server: @server, action: :claim)
+    assert result.success?
+    assert_empty result.value[:tasks]
+    assert_equal "claimed", @task.reload.status
   end
 end
 

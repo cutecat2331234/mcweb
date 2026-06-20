@@ -150,6 +150,8 @@ class Commerce::RequestRefundCompletedTest < ActiveSupport::TestCase
       currency: "CNY",
       status: "succeeded"
     )
+    enable_refund_window!
+    anchor_order_payment_at!(@order)
   end
 
   test "allows refund request for completed order" do

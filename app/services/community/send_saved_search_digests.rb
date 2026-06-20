@@ -47,8 +47,8 @@ module Community
       Notification.notify!(
         user: user,
         notification_type: "forum.saved_search_match",
-        title: "保存的搜索有新结果：#{search.name}",
-        body: topics.map(&:title).join("；").truncate(200),
+        title: I18n.t("mcweb.forum.saved_search_digest.title", name: search.name),
+        body: topics.map(&:title).join(I18n.t("mcweb.commerce.list_separator")).truncate(200),
         metadata: {
           search_id: search.id,
           path: saved_search_notification_path(search)

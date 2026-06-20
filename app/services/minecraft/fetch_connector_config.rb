@@ -20,7 +20,8 @@ module Minecraft
         messages: {
           link_success: SiteSetting.get("minecraft.link_success_message", I18n.t("mcweb.minecraft.connector.link_success")),
           link_code: SiteSetting.get("minecraft.link_code_message", I18n.t("mcweb.minecraft.connector.link_code")),
-          link_failed: SiteSetting.get("minecraft.link_failed_message", I18n.t("mcweb.minecraft.connector.link_failed"))
+          link_failed: SiteSetting.get("minecraft.link_failed_message", I18n.t("mcweb.minecraft.connector.link_failed")),
+          whois_failed: SiteSetting.get("minecraft.whois_failed_message", I18n.t("mcweb.minecraft.whois.lookup_failed"))
         },
         skin_mode: SiteSetting.get("minecraft.profile.skin_mode", "2d"),
         bridges: SiteSetting.get("minecraft.bridges.enabled", "placeholderapi,luckperms,vault").to_s.split(",").map(&:strip),
@@ -30,7 +31,7 @@ module Minecraft
           "run_commands" => { "description" => I18n.t("mcweb.minecraft.tasks.run_commands") },
           "deliver_item" => { "description" => I18n.t("mcweb.minecraft.tasks.deliver_item") }
         },
-        profile_sections: SiteSetting.get("minecraft.profile.sections", "minecraft,trust,roles,game_groups").to_s.split(",").map(&:strip)
+        profile_sections: SiteSetting.get("minecraft.profile.sections", "minecraft,trust,memberships,roles,game_groups").to_s.split(",").map(&:strip)
       )
     end
   end

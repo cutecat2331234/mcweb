@@ -22,7 +22,7 @@ cd plugins/mcweb-connector
 
 在 `config.yml` 中设置：
 
-- `website-url` — McWeb 站点地址
+- `website-url` — McWeb 站点地址（直连 Rails）或本地 mcweb-node 代理地址（如 `http://127.0.0.1:9876`，见 [`NODE_PROTOCOL.md`](../../NODE_PROTOCOL.md)）
 - `server-id` — 后台 Minecraft 服务器 public_id
 - `connector-secret` — Connector 密钥
 

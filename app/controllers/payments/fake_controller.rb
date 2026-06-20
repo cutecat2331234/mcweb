@@ -2,6 +2,7 @@
 
 module Payments
   class FakeController < ApplicationController
+    before_action :ensure_fake_payments_allowed!
     before_action :require_login
     before_action :set_payment
 
@@ -11,6 +12,11 @@ module Payments
       unless order.payable?
         message = order.payment_expired? ? "订单支付已过期。" : "该订单无法继续支付。"
         return redirect_to store_order_path(order), alert: message
+      end
+
+      begin_result = Commerce::BeginOrderPayment.call(order: order)
+      unless begin_result.success?
+        return redirect_to store_order_path(order), alert: service_error_message(begin_result)
       end
 
       if @payment.status == "pending" && @payment.amount_cents != order.total_cents
@@ -59,6 +65,12 @@ module Payments
 
     def set_payment
       @payment = Payments::Record.find_by!(provider: "fake", provider_payment_id: params[:id])
+    end
+
+    def ensure_fake_payments_allowed!
+      return unless Rails.env.production?
+
+      head :not_found
     end
   end
 end

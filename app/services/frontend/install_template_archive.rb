@@ -25,7 +25,11 @@ module Frontend
       key = manifest.fetch("key")
       Frontend::TemplateStorage.ensure_root!
       target = Frontend::TemplateStorage.path_for(key)
-      FileUtils.rm_rf(target) if target.exist?
+      backup_path = nil
+      if target.exist?
+        backup_path = target.parent.join(".#{key}.install-backup-#{Process.pid}")
+        FileUtils.mv(target, backup_path)
+      end
 
       checksum = Digest::SHA256.hexdigest(data)
       template = ::Frontend::Template.find_or_initialize_by(key: key)
@@ -45,9 +49,14 @@ module Frontend
         )
         template.save!
         log_audit(template, "installed")
+        FileUtils.rm_rf(backup_path) if backup_path&.exist?
         ServiceResult.success(template)
       rescue StandardError => e
         FileUtils.rm_rf(target) if target&.exist?
+        if backup_path&.exist?
+          FileUtils.mkdir_p(target.parent) unless target.parent.exist?
+          FileUtils.mv(backup_path, target)
+        end
         if template.persisted?
           template.update!(status: "failed", error_message: e.message)
         end
@@ -66,7 +75,7 @@ module Frontend
           next if entry.directory? || name.end_with?("/")
 
           dest = root.join(name).cleanpath
-          raise "非法路径" unless dest.to_s.start_with?(root.to_s)
+          raise "非法路径" unless Frontend::PathContainment.within_root?(dest, root)
 
           FileUtils.mkdir_p(dest.dirname)
           File.binwrite(dest, entry.get_input_stream.read)

@@ -63,15 +63,14 @@ module Commerce
       if in_app_enabled
         item_count = cart.items.sum(:quantity)
         cart.ensure_recovery_token!
-        title = second ? "购物车再次提醒" : "购物车提醒"
-        body = second ? "你的购物车仍有 #{item_count} 件商品等待结账。" : "你的购物车中有 #{item_count} 件商品尚未结账。"
         recovery_path = "#{Mcweb::Paths::APP_PREFIX}/store/cart?recovery=#{cart.recovery_token}"
         recovery_path += "&coupon=#{ERB::Util.url_encode(coupon_code)}" if coupon_code.present?
+        key = second ? "abandoned_cart_followup" : "abandoned_cart"
         Commerce::NotifyOrderEvent.call(
           user: user,
           notification_type: "commerce.abandoned_cart",
-          title: title,
-          body: body,
+          title: Commerce::InAppNotification.t("#{key}.title"),
+          body: Commerce::InAppNotification.t("#{key}.body", count: item_count),
           path: recovery_path
         )
       end

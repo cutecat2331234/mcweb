@@ -11,7 +11,7 @@ module Community
 
     def call
       unless @actor.permission?("forum.users.mute") || @actor.permission?("admin.access")
-        return ServiceResult.failure(error: "无权禁言用户。")
+        return ServiceResult.failure(error: "silence_user_unauthorized")
       end
 
       silence = Community::UserSilence.create!(

@@ -15,7 +15,10 @@ module Commerce
       @order.items.includes(:product, :variant).find_each do |item|
         product = item.product
         unless product&.active?
-          skipped << { name: item.product_name, reason: "商品已下架。" }
+          skipped << {
+            name: item.product_name,
+            reason: I18n.t("mcweb.services.errors.product_archived")
+          }
           next
         end
 
@@ -31,8 +34,8 @@ module Commerce
           cart.add_item!(product: product, variant: item.variant, quantity: item.quantity)
           added += 1
         else
-          reason = validation.error.presence || "无法加入购物车"
-          skipped << { name: product.name, reason: reason }
+          reason = validation.error.presence || "cart_add_failed"
+          skipped << { name: product.name, reason: ServiceErrorTranslator.translate(reason) }
         end
       end
 

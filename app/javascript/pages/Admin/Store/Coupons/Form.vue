@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3'
+import { Link, useForm, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -9,10 +9,15 @@ import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
+import { resolveStoreFeatures } from '@/lib/storeFeatures'
 
 defineOptions({ layout: AdminLayout })
 
 const { t } = useI18n()
+const page = usePage()
+const storeFeatures = computed(() =>
+  resolveStoreFeatures(page.props.storeFeatures as Parameters<typeof resolveStoreFeatures>[0]),
+)
 
 const props = defineProps<{
   title: string
@@ -123,7 +128,7 @@ function submit() {
       <Checkbox v-model="form.coupon.first_order_only" />
       {{ t('admin.forms.coupon.firstOrderOnly') }}
     </label>
-    <label class="flex items-center gap-2 text-sm">
+    <label v-if="storeFeatures.shipping" class="flex items-center gap-2 text-sm">
       <Checkbox v-model="form.coupon.free_shipping" />
       {{ t('admin.forms.coupon.freeShipping') }}
     </label>

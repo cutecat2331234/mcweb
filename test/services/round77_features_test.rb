@@ -84,7 +84,7 @@ class Round77SavedSearchRssTest < ActionDispatch::IntegrationTest
     get forum_search_path
     assert_response :success
     assert_includes response.body, "rss_url"
-    assert_includes response.body, forum_saved_search_rss_path(id: search.id, token: Community::SavedSearchRssToken.generate(search))
+    assert_match %r{/app/forum/saved_searches/#{search.id}\.rss\?token=}, response.body
   end
 end
 
@@ -117,6 +117,8 @@ end
 
 class Round77CheckoutDeliveryEstimateTest < ActionDispatch::IntegrationTest
   setup do
+    enable_store_feature!(:physical_products)
+    enable_store_feature!(:shipping)
     @user = create_user
     @product = Commerce::Product.create!(
       name: "R77 Ship Product",
@@ -147,7 +149,7 @@ end
 
 class Round77RecurringDigestScheduleTest < ActiveSupport::TestCase
   test "saved search digest runs hourly" do
-    content = File.read(Rails.root.join("config/recurring.yml"))
-    assert_includes content, "every hour at minute 5"
+    content = File.read(Rails.root.join("config/sidekiq_cron.yml"))
+    assert_includes content, "5 * * * *"
   end
 end

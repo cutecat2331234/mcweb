@@ -8,7 +8,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "不能给自己的回答点有帮助。") if @user.id == @answer.user_id
+      return ServiceResult.failure(error: "cannot_mark_own_answer") if @user.id == @answer.user_id
 
       existing = Commerce::AnswerHelpfulVote.find_by(user: @user, answer: @answer)
       if existing

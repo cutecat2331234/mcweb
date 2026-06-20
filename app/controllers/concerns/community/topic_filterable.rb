@@ -63,34 +63,20 @@ module Community
     end
 
     def topic_filter_options(prefixes: [], staff: false)
-      options = [
-        { value: "", label: "全部" },
-        { value: "unsolved", label: "未解决" },
-        { value: "solved", label: "已解决" },
-        { value: "solved_mine", label: "我已解决" },
-        { value: "mine", label: "我的主题" },
-        { value: "participated", label: "我参与的" },
-        { value: "unread", label: "未读" },
-        { value: "no_replies", label: "零回复" },
-        { value: "locked", label: "已锁定" },
-        { value: "unlocked", label: "未锁定" },
-        { value: "pinned", label: "已置顶" },
-        { value: "wiki", label: "Wiki 主题" },
-        { value: "featured", label: "精选主题" },
-        { value: "announcement", label: "全站公告" },
-        { value: "has_poll", label: "含投票" }
-      ]
+      options = %w[
+        unsolved solved solved_mine mine participated unread no_replies locked unlocked
+        pinned wiki featured announcement has_poll
+      ].map { |value| { value: value, label: t("mcweb.forum.topic_filter.#{value}") } }
+      options.unshift({ value: "", label: t("mcweb.forum.topic_filter.all") })
       if staff
-        options += [
-          { value: "assigned", label: "已指派" },
-          { value: "unassigned", label: "未指派" },
-          { value: "assigned_mine", label: "指派给我" }
-        ]
+        %w[assigned unassigned assigned_mine].each do |value|
+          options << { value: value, label: t("mcweb.forum.topic_filter.#{value}") }
+        end
       end
-      options << { value: "unlisted", label: "未列出" } if staff
-      options << { value: "archived", label: "已归档" } if staff
+      options << { value: "unlisted", label: t("mcweb.forum.topic_filter.unlisted") } if staff
+      options << { value: "archived", label: t("mcweb.forum.topic_filter.archived") } if staff
       prefixes.each do |prefix|
-        options << { value: "prefix:#{prefix}", label: "前缀：#{prefix}" }
+        options << { value: "prefix:#{prefix}", label: t("mcweb.forum.topic_filter.prefix", prefix: prefix) }
       end
       options
     end

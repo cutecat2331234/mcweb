@@ -5,16 +5,23 @@ import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public final class ProcessedDeliveryStore {
+    private static final Logger LOGGER = Logger.getLogger(ProcessedDeliveryStore.class.getName());
     private final File file;
     private final Set<String> ids = new HashSet<>();
 
     public ProcessedDeliveryStore(File dataFolder) {
+        this(dataFolder, "processed_deliveries.txt");
+    }
+
+    public ProcessedDeliveryStore(File dataFolder, String filename) {
         if (!dataFolder.exists()) {
             dataFolder.mkdirs();
         }
-        this.file = new File(dataFolder, "processed_deliveries.txt");
+        this.file = new File(dataFolder, filename);
         load();
     }
 
@@ -30,6 +37,21 @@ public final class ProcessedDeliveryStore {
         persist();
     }
 
+    public synchronized boolean registerIfNew(String id) {
+        if (id == null || id.isEmpty() || ids.contains(id)) {
+            return false;
+        }
+        ids.add(id);
+        persist();
+        return true;
+    }
+
+    public synchronized void remove(String id) {
+        if (id != null && ids.remove(id)) {
+            persist();
+        }
+    }
+
     private void load() {
         if (!file.exists()) {
             return;
@@ -41,7 +63,8 @@ public final class ProcessedDeliveryStore {
                     ids.add(line.trim());
                 }
             }
-        } catch (IOException ignored) {
+        } catch (IOException ex) {
+            LOGGER.log(Level.WARNING, "Failed to load delivery store from " + file, ex);
         }
     }
 
@@ -51,11 +74,12 @@ public final class ProcessedDeliveryStore {
                 writer.write(id);
                 writer.newLine();
             }
-        } catch (IOException ignored) {
+        } catch (IOException ex) {
+            LOGGER.log(Level.WARNING, "Failed to persist delivery store to " + file, ex);
         }
     }
 
-    public Set<String> snapshot() {
+    public synchronized Set<String> snapshot() {
         return Collections.unmodifiableSet(new HashSet<>(ids));
     }
 }

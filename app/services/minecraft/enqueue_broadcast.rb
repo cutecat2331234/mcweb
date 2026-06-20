@@ -36,8 +36,9 @@ module Minecraft
     def target_servers
       return [ @server ] if @server
 
-      online = Minecraft::Server.online_servers.to_a
-      online.presence || Minecraft::Server.order(:name).to_a
+      candidates = Minecraft::Server.online_servers.process_running.to_a
+      running = candidates.presence || Minecraft::Server.online_servers.to_a
+      (running.presence || Minecraft::Server.order(:name).to_a)
     end
   end
 end

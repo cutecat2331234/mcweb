@@ -33,11 +33,13 @@ module Community
         Community::ReadState.ensure_tracking!(user, @topic)
 
         tag_names = @tags.map(&:name).join(", ")
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: user,
           notification_type: "forum.tag_topic",
-          title: "关注标签有新主题：#{@topic.title.truncate(60)}",
-          body: "#{@topic.user.username} 使用了标签 #{tag_names}",
+          key: "tag_topic",
+          title: @topic.title.truncate(60),
+          author: @topic.user.username,
+          tags: tag_names,
           metadata: {
             topic_id: @topic.public_id,
             path: "/app/forum/topics/#{@topic.public_id}"

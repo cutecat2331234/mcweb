@@ -11,22 +11,16 @@ module Commerce
       return ServiceResult.success(@product.forum_topic) if @product.forum_topic_id.present? && @product.forum_topic
 
       section = discussion_section
-      return ServiceResult.failure(error: "未配置商品讨论分区。") unless section
+      return ServiceResult.failure(error: "discussion_section_missing") unless section
 
       author = @creator || system_user
-      return ServiceResult.failure(error: "无法创建讨论帖。") unless author
-
-      body = <<~BODY.strip
-        欢迎在此讨论 **#{@product.name}**。
-
-        /store/products/#{@product.public_id}
-      BODY
+      return ServiceResult.failure(error: "discussion_topic_create_failed") unless author
 
       result = Community::CreateTopic.call(
         user: author,
         section: section,
-        title: "[商品] #{@product.name}",
-        body: body
+        title: I18n.t("mcweb.commerce.discussion.topic_title", name: @product.name),
+        body: I18n.t("mcweb.commerce.discussion.topic_body", name: @product.name)
       )
 
       return result unless result.success?

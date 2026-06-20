@@ -41,7 +41,7 @@ class Community::CreateUserSilenceTest < ActiveSupport::TestCase
     Community::CreateUserSilence.call(actor: @mod, user: @user, reason: "Spam", days: 7)
     result = Community::CreatePost.call(user: @user, topic: @topic, body: "reply here", ip_address: "127.0.0.1")
     assert result.failure?
-    assert_includes result.error.to_s, "silenced"
+    assert_includes result.error.to_s, "禁言"
   end
 end
 
@@ -59,7 +59,7 @@ class Community::SectionReadOnlyTest < ActiveSupport::TestCase
   test "read only section blocks replies" do
     result = Community::CreatePost.call(user: @user, topic: @topic, body: "reply text", ip_address: "127.0.0.1")
     assert result.failure?
-    assert_includes result.error.to_s, "read-only"
+    assert_includes result.error.to_s, "只读"
   end
 end
 

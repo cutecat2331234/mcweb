@@ -19,8 +19,8 @@ module Community
 
     def required_tags_error(required)
       names = Community::Tag.where(id: required).order(:name).pluck(:name)
-      label = names.presence&.join("、") || "指定标签"
-      "此分区要求至少包含以下标签之一：#{label}"
+      label = names.presence&.join(I18n.t("mcweb.commerce.list_separator")) || I18n.t("mcweb.forum.validate_section_tags.default_label")
+      I18n.t("mcweb.forum.validate_section_tags.required", label: label)
     end
   end
 end

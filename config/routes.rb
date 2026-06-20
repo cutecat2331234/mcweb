@@ -1,7 +1,9 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
 
-  mount MissionControl::Jobs::Engine, at: "/jobs"
+  constraints SidekiqWebConstraint do
+    mount Sidekiq::Web => "/jobs"
+  end
 
   root "website/home#index"
 
@@ -37,6 +39,8 @@ Rails.application.routes.draw do
       resource :settings, only: %i[show update] do
         post :test_webhook
         post :test_all_webhooks
+        post :test_event_webhook
+        post :test_all_event_webhooks
         get :webhook_test_status
       end
       resources :categories
@@ -49,8 +53,23 @@ Rails.application.routes.draw do
       resources :tags
       resources :tag_groups
       resources :warnings, only: %i[index]
+      resources :approvals, only: %i[index show] do
+        member do
+          post :approve
+          post :reject
+        end
+      end
+      resources :user_fields, path: "user-fields"
       resources :canned_responses
       resources :webhook_deliveries, only: %i[index show] do
+        collection do
+          post :bulk_retry
+        end
+        member do
+          post :retry
+        end
+      end
+      resources :event_webhook_deliveries, only: %i[index show], path: "event-webhook-deliveries" do
         collection do
           post :bulk_retry
         end
@@ -72,6 +91,8 @@ Rails.application.routes.draw do
         end
       end
       resources :coupons
+      resources :membership_types
+      resources :user_memberships, only: %i[index show new create destroy]
       resources :gift_cards, only: %i[index show new create edit update]
       resources :orders, only: %i[index show update] do
         collection do
@@ -115,6 +136,26 @@ Rails.application.routes.draw do
       resources :servers do
         member do
           post :rotate_secret
+          post :start
+          post :stop
+          post :restart
+          post :exec_command
+          post :console_command
+          post :tail_logs
+          post :backup_world
+          post :restore_world
+          post :sync_files
+        end
+      end
+      resources :nodes do
+        member do
+          post :rotate_secret
+          post :generate_pairing_token
+        end
+      end
+      resources :players, only: %i[index], path: "players" do
+        collection do
+          post :kick
         end
       end
       resource :settings, only: %i[show update]
@@ -133,7 +174,7 @@ Rails.application.routes.draw do
   scope path: "app" do
     namespace :identity do
       get "sign-in", to: "sessions#new", as: :sign_in
-      resource :session, only: %i[create destroy]
+      resource :session, only: %i[show create destroy]
       resources :registrations, only: %i[new create], path: "register"
       resources :password_resets, only: %i[new create edit update], param: :token
       resource :email_verification, only: %i[show], path: "verify-email"
@@ -154,6 +195,9 @@ Rails.application.routes.draw do
         get :edit
         post :publish
       end
+    end
+    namespace :moderation, path: "moderation" do
+      resources :approvals, only: %i[index]
     end
     get "blocks", to: "blocks#index", as: :blocks
     get "ignores", to: "ignores#index", as: :ignores
@@ -219,6 +263,8 @@ Rails.application.routes.draw do
         get :raw
         post :restore_edit
         post :restore
+        post :approve
+        post :reject
       end
     end
     resources :reports, only: %i[new create]
@@ -251,6 +297,7 @@ Rails.application.routes.draw do
     resources :unread_filter_presets, only: %i[create destroy], path: "unread/filter_presets"
     post "preview", to: "previews#create"
     post "uploads", to: "uploads#create"
+    resources :attachments, only: %i[create show]
     get "bookmarks", to: "bookmarks#index"
     patch "bookmarks/:id", to: "bookmarks#update", as: :bookmark
     get "preferences", to: "preferences#show"
@@ -299,6 +346,7 @@ Rails.application.routes.draw do
     post "payments/fake/:id", to: "payments/fake#create"
 
     scope module: :commerce, path: "store", as: :store do
+    get "image-packs/:pack_id/*texture_path", to: "image_pack_textures#show", as: :image_pack_texture, format: false
     get "sitemap.xml", to: "sitemaps#index", as: :sitemap, defaults: { format: :xml }
     get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
     get "categories/:slug.rss", to: "rss#category", as: :category_rss, defaults: { format: :rss }
@@ -406,12 +454,22 @@ Rails.application.routes.draw do
 
   get "/forum(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/forum/#{params[:path]}" : "/app/forum" }
   get "/store(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/store/#{params[:path]}" : "/app/store" }
-  get "/identity(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/identity/#{params[:path]}" : "/app/identity" }
+  get "/identity(/*path)", to: redirect { |params, _|
+    path = params[:path].presence
+    if path == "session"
+      "/app/identity/sign-in"
+    elsif path.present?
+      "/app/identity/#{path}"
+    else
+      "/app/identity/sign-in"
+    end
+  }
   get "/minecraft/link", to: redirect("/app/minecraft/link")
   get "/payments/fake/:id", to: redirect("/app/payments/fake/%{id}")
 
   get "health/live", to: "health#live"
   get "health/ready", to: "health#ready"
+  get "minecraft/sync/:token", to: "minecraft/sync_files#show", as: :minecraft_sync_file
 
   namespace :minecraft do
     namespace :connector do
@@ -427,6 +485,15 @@ Rails.application.routes.draw do
         post "events", to: "api#events"
         get "tasks", to: "api#tasks"
         post "tasks/:id/complete", to: "api#complete"
+      end
+    end
+    namespace :nodes do
+      post "pair", to: "pairing#create"
+      scope ":node_id" do
+        post "heartbeat", to: "api#heartbeat"
+        get "tasks", to: "api#tasks"
+        post "tasks/:id/complete", to: "api#complete"
+        post "instances/:server_id/report", to: "api#report"
       end
     end
   end

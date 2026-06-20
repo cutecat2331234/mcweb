@@ -12,6 +12,7 @@ import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
+import AdminAlertBanners, { type AdminAlert } from '@/components/admin/AdminAlertBanners.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
@@ -69,6 +70,7 @@ export interface AdminRow extends Record<string, string> {
 const props = defineProps<{
   title: string
   subtitle?: string
+  alerts?: AdminAlert[]
   exportUrl?: string
   columns: AdminColumn[]
   rows: Array<AdminRow>
@@ -166,6 +168,8 @@ async function bulkOrder(action: string) {
 </script>
 
 <template>
+  <AdminAlertBanners v-if="alerts?.length" :alerts="alerts" />
+
   <div class="mb-4 flex items-center justify-between">
     <PageHeader :title="title" :subtitle="subtitle" />
     <div class="flex gap-2">

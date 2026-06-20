@@ -31,8 +31,8 @@ module Community
       if allowed.any?
         invalid = tags.reject { |tag| allowed.include?(tag.id) }
         if invalid.any?
-          names = invalid.map(&:name).join("、")
-          return ServiceResult.failure(error: "此分区不允许使用以下标签：#{names}")
+          names = invalid.map(&:name).join(I18n.t("mcweb.commerce.list_separator"))
+          return ServiceResult.failure(error: I18n.t("mcweb.services.errors.section_disallowed_tags", names: names))
         end
       end
 

@@ -5,11 +5,15 @@ import com.google.gson.JsonObject;
 import com.mcweb.connector.common.BridgeRegistry;
 import com.mcweb.connector.common.ConnectorClient;
 import com.mcweb.connector.common.PresenceSync;
+import com.mcweb.connector.common.LinkCodes;
 import com.mcweb.connector.common.LinkCommandConfig;
+import com.mcweb.connector.common.LinkResponseHelper;
+import com.mcweb.connector.common.OnlinePlayerRoster;
 import com.mcweb.connector.common.ProcessedDeliveryStore;
 import com.mcweb.connector.common.ProxyBridgeSupport;
 import com.mcweb.connector.common.RemoteBridgeConfig;
 import com.mcweb.connector.common.TaskPoller;
+import com.mcweb.connector.common.WhoisDisplayHelper;
 import net.md_5.bungee.api.ChatColor;
 import net.md_5.bungee.api.CommandSender;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -34,6 +38,7 @@ import java.util.logging.Level;
 public final class McWebBungeePlugin extends Plugin implements Listener {
     private ConnectorClient client;
     private ProcessedDeliveryStore deliveryStore;
+    private ProcessedDeliveryStore seenPlayerStore;
     private TaskPoller taskPoller;
     private JsonObject remoteConfig;
     private RemoteBridgeConfig remoteBridgeConfig = RemoteBridgeConfig.from(null);
@@ -51,15 +56,16 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
                 config.getString("connector-secret", "")
         );
         deliveryStore = new ProcessedDeliveryStore(getDataFolder());
+        seenPlayerStore = new ProcessedDeliveryStore(getDataFolder(), "seen_players.txt");
         taskPoller = new TaskPoller(client, deliveryStore, this::executeTask, getLogger());
         bridges = ProxyBridgeSupport.create(getLogger());
         remoteConfig = new JsonObject();
         refreshRemoteConfig();
 
         getProxy().getPluginManager().registerListener(this, this);
-        getProxy().getScheduler().schedule(this, this::heartbeat, 5, 30, TimeUnit.SECONDS);
-        getProxy().getScheduler().schedule(this, taskPoller::poll, 10, 10, TimeUnit.SECONDS);
-        getProxy().getScheduler().schedule(this, this::refreshRemoteConfig, 1, 5, TimeUnit.MINUTES);
+        getProxy().getScheduler().schedule(this, () -> getProxy().getScheduler().runAsync(this, this::heartbeat), 5, 30, TimeUnit.SECONDS);
+        getProxy().getScheduler().schedule(this, () -> getProxy().getScheduler().runAsync(this, () -> taskPoller.poll()), 10, 10, TimeUnit.SECONDS);
+        getProxy().getScheduler().schedule(this, () -> getProxy().getScheduler().runAsync(this, this::refreshRemoteConfig), 1, 5, TimeUnit.MINUTES);
 
         registerWebsiteCommand();
     }
@@ -86,6 +92,15 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
         }
     }
 
+    private void reloadConnectorClient() {
+        client = new ConnectorClient(
+                config.getString("website-url", "http://localhost:3000"),
+                config.getString("server-id", ""),
+                config.getString("connector-secret", "")
+        );
+        taskPoller = new TaskPoller(client, deliveryStore, this::executeTask, getLogger());
+    }
+
     private void registerWebsiteCommand() {
         ArrayList<String> aliases = new ArrayList<String>();
         aliases.add("mcweb");
@@ -100,10 +115,11 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
     @EventHandler
     public void onPostLogin(PostLoginEvent event) {
         ProxiedPlayer player = event.getPlayer();
+        final boolean firstJoin = seenPlayerStore.registerIfNew(player.getUniqueId().toString());
         getProxy().getScheduler().runAsync(this, new Runnable() {
             @Override
             public void run() {
-                syncPlayer(player, "player.join", false);
+                syncPlayer(player, "player.join", firstJoin);
             }
         });
     }
@@ -121,6 +137,10 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
 
     private void syncPlayer(ProxiedPlayer player, String eventName, boolean firstJoin) {
         String serverId = config.getString("server-id", "");
+        java.util.ArrayList<java.util.UUID> onlineIds = new java.util.ArrayList<java.util.UUID>();
+        for (ProxiedPlayer online : getProxy().getPlayers()) {
+            onlineIds.add(online.getUniqueId());
+        }
         PresenceSync.sync(
                 client,
                 getLogger(),
@@ -129,7 +149,8 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
                 "java",
                 serverId,
                 eventName,
-                firstJoin
+                firstJoin,
+                OnlinePlayerRoster.fromUuids(onlineIds)
         );
         PresenceSync.syncPermissionGroups(
                 client,
@@ -161,15 +182,23 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
                 completion.fail("missing commands payload");
                 return;
             }
-            JsonArray commands = payload.getAsJsonArray("commands");
-            try {
-                for (int i = 0; i < commands.size(); i++) {
-                    getProxy().getPluginManager().dispatchCommand(getProxy().getConsole(), commands.get(i).getAsString());
+            final JsonArray commands = payload.getAsJsonArray("commands");
+            getProxy().getScheduler().schedule(this, new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        for (int i = 0; i < commands.size(); i++) {
+                            getProxy().getPluginManager().dispatchCommand(
+                                    getProxy().getConsole(),
+                                    commands.get(i).getAsString()
+                            );
+                        }
+                        completion.succeed("commands executed");
+                    } catch (Exception ex) {
+                        completion.fail(ex.getMessage() == null ? "command execution failed" : ex.getMessage());
+                    }
                 }
-                completion.succeed("commands executed");
-            } catch (Exception ex) {
-                completion.fail(ex.getMessage() == null ? "command execution failed" : ex.getMessage());
-            }
+            }, 0, TimeUnit.MILLISECONDS);
             return;
         }
 
@@ -178,8 +207,13 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
 
     private void heartbeat() {
         try {
+            java.util.ArrayList<java.util.UUID> onlineIds = new java.util.ArrayList<java.util.UUID>();
+            for (ProxiedPlayer online : getProxy().getPlayers()) {
+                onlineIds.add(online.getUniqueId());
+            }
             JsonObject body = new JsonObject();
             body.addProperty("online_players", getProxy().getOnlineCount());
+            body.add("online_player_uuids", OnlinePlayerRoster.fromUuids(onlineIds));
             body.addProperty("max_players", getProxy().getConfig().getPlayerLimit());
             body.addProperty("version", getProxy().getVersion());
             Runtime runtime = Runtime.getRuntime();
@@ -214,20 +248,34 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
             @Override
             public void run() {
                 try {
+                    String code = LinkCodes.generateCode(8);
                     JsonObject body = new JsonObject();
                     body.addProperty("uuid", player.getUniqueId().toString());
                     body.addProperty("username", player.getName());
                     body.addProperty("platform", "java");
+                    body.addProperty("code_digest", LinkCodes.digestCode(code));
                     JsonObject response = client.post("link_codes", body);
-                    String code = response.get("code").getAsString();
+                    String outboundCode = LinkResponseHelper.resolveCode(response, code);
                     String url = response.has("link_url")
                             ? response.get("link_url").getAsString()
                             : config.getString("website-url", "http://localhost:3000") + "/app/minecraft/link";
-                    String template = message("link_code", "Bind code: {code} - visit {url}");
-                    sender.sendMessage(ChatColor.GREEN + template.replace("{code}", code).replace("{url}", url));
+                    final String template = message("link_code", "Bind code: {code} - visit {url}");
+                    final String outbound = ChatColor.GREEN + template.replace("{code}", outboundCode).replace("{url}", url);
+                    getProxy().getScheduler().schedule(McWebBungeePlugin.this, new Runnable() {
+                        @Override
+                        public void run() {
+                            sender.sendMessage(outbound);
+                        }
+                    }, 0, TimeUnit.MILLISECONDS);
                 } catch (Exception ex) {
                     getLogger().log(Level.WARNING, "link failed", ex);
-                    sender.sendMessage(ChatColor.RED + message("link_failed", "Failed to generate bind code."));
+                    final String failed = ChatColor.RED + message("link_failed", "Failed to generate bind code.");
+                    getProxy().getScheduler().schedule(McWebBungeePlugin.this, new Runnable() {
+                        @Override
+                        public void run() {
+                            sender.sendMessage(failed);
+                        }
+                    }, 0, TimeUnit.MILLISECONDS);
                 }
             }
         });
@@ -245,18 +293,24 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
                     if (online != null) {
                         body.addProperty("uuid", online.getUniqueId().toString());
                     }
-                    JsonObject response = client.post("whois", body);
-                    if (response.has("linked") && response.get("linked").getAsBoolean()) {
-                        sender.sendMessage(ChatColor.GREEN + "Website: " + response.get("website_username").getAsString());
-                        if (response.has("trust_level_label")) {
-                            sender.sendMessage(ChatColor.GRAY + "Trust: " + response.get("trust_level_label").getAsString());
+                JsonObject response = client.post("whois", body);
+                final java.util.List<String> lines = WhoisDisplayHelper.displayLines(response);
+                getProxy().getScheduler().schedule(McWebBungeePlugin.this, new Runnable() {
+                        @Override
+                        public void run() {
+                            for (String line : lines) {
+                                sender.sendMessage(line);
+                            }
                         }
-                    } else {
-                        sender.sendMessage(ChatColor.YELLOW + (response.has("message") ? response.get("message").getAsString() : "Player not linked."));
-                    }
+                    }, 0, TimeUnit.MILLISECONDS);
                 } catch (Exception ex) {
                     getLogger().log(Level.FINE, "whois failed", ex);
-                    sender.sendMessage(ChatColor.RED + "Whois lookup failed.");
+                    getProxy().getScheduler().schedule(McWebBungeePlugin.this, new Runnable() {
+                        @Override
+                        public void run() {
+                            sender.sendMessage(ChatColor.RED + WhoisDisplayHelper.lookupFailedMessage(remoteConfig));
+                        }
+                    }, 0, TimeUnit.MILLISECONDS);
                 }
             }
         });
@@ -280,7 +334,9 @@ public final class McWebBungeePlugin extends Plugin implements Listener {
             }
             if (args.length > 0 && "reload".equalsIgnoreCase(args[0])) {
                 loadConfig();
+                reloadConnectorClient();
                 refreshRemoteConfig();
+                registerWebsiteCommand();
                 sender.sendMessage("McWeb config reloaded.");
                 return;
             }

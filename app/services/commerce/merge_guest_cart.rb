@@ -12,6 +12,7 @@ module Commerce
 
       guest_cart = Commerce::Cart.find_by(session_token: @session_token)
       return ServiceResult.success(merged: false) unless guest_cart
+      return ServiceResult.success(merged: false) if guest_cart.user_id.present?
       return ServiceResult.success(merged: false) if guest_cart.items.none?
 
       user_cart = Commerce::Cart.find_or_create_by!(user: @user)

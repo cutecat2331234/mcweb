@@ -6,10 +6,16 @@ module Community
 
     def self.editable_by?(user, post)
       return false unless user
-      return true if user.permission?("forum.posts.edit_others") || user.permission?("forum.topics.lock")
+      if user.id != post.user_id
+        return true if user.permission?("forum.posts.edit_others") || user.permission?("forum.topics.lock")
+        return true if Community::SectionModeration.section_moderator?(user, post.topic.section)
+        return true if post.topic.wiki?
+        return true if post.wiki_post?
+        return false
+      end
+
       return true if post.topic.wiki?
       return true if post.wiki_post?
-      return false unless user.id == post.user_id
 
       window = Community::TrustLevel.edit_window_for(user)
       return true if window.nil?
@@ -17,12 +23,15 @@ module Community
       post.created_at > window.ago
     end
 
-    def initialize(user:, post:, body:, reason: nil)
+    NOT_PROVIDED = Object.new.freeze
+
+    def initialize(user:, post:, body:, reason: nil, attachment_ids: NOT_PROVIDED)
       @user = user
       @post = post
       @body = body.to_s.strip
       @reason = reason.to_s.strip.presence
       @old_body = post.body
+      @attachment_ids = attachment_ids
     end
 
     def call
@@ -39,6 +48,19 @@ module Community
 
       filter_censored_body!
       @post.edit_body!(@body, editor: @user, reason: @reason)
+
+      attachments_changed = false
+      if @attachment_ids != NOT_PROVIDED
+        sync_result = Community::SyncPostAttachments.call(
+          user: @user,
+          post: @post,
+          attachment_ids: @attachment_ids
+        )
+        return sync_result if sync_result.failure?
+
+        attachments_changed = sync_result.value[:changed]
+      end
+
       Community::ProcessNewMentions.call(
         old_body: @old_body,
         new_body: @body,
@@ -47,7 +69,11 @@ module Community
         topic: @post.topic
       )
       Community::ProcessHashtags.call(topic: @post.topic, body: @body, user: @user)
-      Community::NotifyPostEdited.call(post: @post) if @old_body != @body
+      body_changed = @old_body != @body
+      Community::NotifyPostEdited.call(post: @post) if body_changed
+      if body_changed || attachments_changed
+        Community::DispatchForumEventWebhook.call(event_type: "post.edited", topic: @post.topic, post: @post)
+      end
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

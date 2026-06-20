@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
-import { Link, router, useForm } from '@inertiajs/vue3'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { Link, router, useForm, usePage } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
@@ -17,10 +17,15 @@ import TableRow from '@/components/ui/TableRow.vue'
 import Select from '@/components/ui/Select.vue'
 import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
+import { resolveStoreFeatures } from '@/lib/storeFeatures'
 
 defineOptions({ layout: PortalLayout })
 
 const { t } = useI18n()
+const page = usePage()
+const storeFeatures = computed(() =>
+  resolveStoreFeatures(page.props.storeFeatures as Parameters<typeof resolveStoreFeatures>[0]),
+)
 
 const props = defineProps<{
   order: {
@@ -109,6 +114,7 @@ const props = defineProps<{
       discussion_url?: string | null
       fulfillment_status: string | null
       fulfillment_status_label?: string | null
+      fulfillment_error?: string | null
       download_url?: string | null
       refresh_download_url?: string | null
       issued_gift_cards?: Array<{ code: string; balance_label: string; url: string }>
@@ -119,6 +125,7 @@ const props = defineProps<{
       status: string
       status_label?: string
       fulfilled_at: string | null
+      last_error?: string | null
     }>
   }
 }>()
@@ -132,14 +139,74 @@ const paymentProviderOptions = computed(() =>
   props.order.payment_providers.map((provider) => ({ value: provider.value, label: provider.label })),
 )
 
+const order = computed(() => page.props.order as typeof props.order)
+
+const isFulfilling = computed(() => ['processing', 'fulfilling'].includes(order.value.status))
+
+const hasFailedFulfillment = computed(() =>
+  order.value.fulfillments.some((f) => f.status === 'failed')
+  || order.value.items.some((item) => item.fulfillment_status === 'failed'),
+)
+
+function fulfillmentBadgeVariant(status: string | null | undefined) {
+  if (status === 'fulfilled') return 'success'
+  if (status === 'failed') return 'danger'
+  return 'default'
+}
+
 const cancelForm = useForm({ reason: '' })
 const refundForm = useForm({ reason: '', amount_cents: 0 as number | '' })
+
+const statusSubtitle = computed(() => {
+  if (isFulfilling.value) {
+    return t('commerce.orderShow.fulfillmentPending', { status: order.value.status_label })
+  }
+  if (order.value.status === 'paid') {
+    return t('commerce.orderShow.paidPendingFulfillment', { status: order.value.status_label })
+  }
+  if (order.value.status === 'completed') {
+    return t('commerce.orderShow.statusSubtitleCompleted', { status: order.value.status_label })
+  }
+  return t('commerce.orderShow.statusSubtitle', { status: order.value.status_label })
+})
+
+let pollTimer: ReturnType<typeof setInterval> | null = null
+let pollStopTimer: ReturnType<typeof setTimeout> | null = null
+
+function stopStatusPolling() {
+  if (pollTimer) {
+    clearInterval(pollTimer)
+    pollTimer = null
+  }
+  if (pollStopTimer) {
+    clearTimeout(pollStopTimer)
+    pollStopTimer = null
+  }
+}
+
+function startStatusPolling() {
+  stopStatusPolling()
+  if (!isFulfilling.value) return
+
+  pollTimer = setInterval(() => {
+    const current = page.props.order as typeof props.order
+    if (!['processing', 'fulfilling'].includes(current.status)) {
+      stopStatusPolling()
+      return
+    }
+    router.reload({ only: ['order'], preserveScroll: true, preserveState: true })
+  }, 4000)
+  pollStopTimer = setTimeout(stopStatusPolling, 120_000)
+}
 
 onMounted(() => {
   if (props.order.max_refund_cents) {
     refundForm.amount_cents = props.order.max_refund_cents
   }
+  startStatusPolling()
 })
+
+onUnmounted(stopStatusPolling)
 const questionForms = ref<Record<number, string>>({})
 
 function submitItemQuestion(item: { product_public_id?: string | null; id?: number; ask_question_return_order_id?: string }) {
@@ -165,18 +232,26 @@ function refreshDownload(url: string) {
 <template>
   <PageHeader
     :title="t('commerce.orderShow.title', { number: order.order_number })"
-    :subtitle="t('commerce.orderShow.statusSubtitle', { status: order.status_label })"
+    :subtitle="statusSubtitle"
   />
+
+  <p v-if="isFulfilling" class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+    {{ t('commerce.orderShow.fulfillmentPollingHint') }}
+  </p>
+
+  <p v-if="hasFailedFulfillment" class="mb-4 rounded-md border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900">
+    {{ t('commerce.orderShow.fulfillmentFailedHint') }}
+  </p>
 
   <p v-if="order.notes" class="mb-4 rounded-lg border p-4 text-sm">
     <span class="font-medium">{{ t('commerce.orderShow.orderNotes') }}</span>{{ order.notes }}
   </p>
 
-  <p v-if="order.shipping_address_label" class="mb-4 rounded-lg border p-4 text-sm">
+  <p v-if="storeFeatures.shipping && order.shipping_address_label" class="mb-4 rounded-lg border p-4 text-sm">
     <span class="font-medium">{{ t('commerce.orderShow.shippingAddress') }}</span>{{ order.shipping_address_label }}
     <span v-if="order.shipping_method_label" class="mt-1 block text-muted-foreground">{{ t('commerce.orderShow.shippingMethod', { method: order.shipping_method_label }) }}</span>
   </p>
-  <p v-if="order.tracking_number" class="mb-4 rounded-lg border p-4 text-sm">
+  <p v-if="storeFeatures.order_shipping_management && order.tracking_number" class="mb-4 rounded-lg border p-4 text-sm">
     <span class="font-medium">{{ t('commerce.orderShow.trackingInfo') }}</span>
     {{ order.shipping_carrier || t('commerce.orderShow.defaultCarrier') }} — {{ order.tracking_number }}
     <span v-if="order.shipped_at" class="text-muted-foreground">{{ t('commerce.orderShow.shippedAt', { at: order.shipped_at }) }}</span>
@@ -184,7 +259,7 @@ function refreshDownload(url: string) {
     <a v-if="order.tracking_url" :href="order.tracking_url" target="_blank" rel="noopener" class="ml-2 text-primary hover:underline">{{ t('commerce.orderShow.trackShipment') }}</a>
   </p>
 
-  <div v-if="order.shipping_timeline?.length" class="mb-6 rounded-lg border p-4">
+  <div v-if="storeFeatures.order_shipping_management && order.shipping_timeline?.length" class="mb-6 rounded-lg border p-4">
     <h2 class="mb-4 text-sm font-semibold">{{ t('commerce.orderShow.shippingTimeline') }}</h2>
     <ol class="flex flex-wrap gap-2 sm:flex-nowrap sm:justify-between">
       <li
@@ -304,9 +379,12 @@ function refreshDownload(url: string) {
           <TableCell>{{ item.quantity }}</TableCell>
           <TableCell>{{ item.total_label }}</TableCell>
           <TableCell>
-            <Badge v-if="item.fulfillment_status_label || item.fulfillment_status" :variant="item.fulfillment_status === 'fulfilled' ? 'success' : 'default'">
+            <Badge v-if="item.fulfillment_status_label || item.fulfillment_status" :variant="fulfillmentBadgeVariant(item.fulfillment_status)">
               {{ item.fulfillment_status_label || item.fulfillment_status }}
             </Badge>
+            <p v-if="item.fulfillment_error" class="mt-1 text-xs text-red-600">
+              {{ t('commerce.orderShow.fulfillmentFailed', { error: item.fulfillment_error }) }}
+            </p>
             <a
               v-if="item.download_url"
               :href="item.download_url"
@@ -349,7 +427,10 @@ function refreshDownload(url: string) {
       <li v-for="fulfillment in order.fulfillments" :key="fulfillment.delivery_id" class="flex justify-between gap-4">
         <code class="text-xs">{{ fulfillment.delivery_id }}</code>
         <span>
-          <Badge :variant="fulfillment.status === 'fulfilled' ? 'success' : 'default'">{{ fulfillment.status_label || fulfillment.status }}</Badge>
+          <Badge :variant="fulfillmentBadgeVariant(fulfillment.status)">{{ fulfillment.status_label || fulfillment.status }}</Badge>
+          <span v-if="fulfillment.last_error" class="ml-2 text-xs text-red-600">
+            {{ t('commerce.orderShow.fulfillmentFailed', { error: fulfillment.last_error }) }}
+          </span>
           <span v-if="fulfillment.fulfilled_at" class="ml-2 text-muted-foreground">{{ fulfillment.fulfilled_at }}</span>
         </span>
       </li>
@@ -382,8 +463,8 @@ function refreshDownload(url: string) {
   </div>
 
   <p v-if="order.subtotal_label" class="mb-1 text-sm text-muted-foreground">{{ t('commerce.orderShow.subtotal', { amount: order.subtotal_label }) }}</p>
-  <p v-if="order.shipping_label" class="mb-1 text-sm text-muted-foreground">{{ t('commerce.orderShow.shipping', { amount: order.free_shipping ? t('commerce.orderShow.freeShipping') : order.shipping_label }) }}</p>
-  <p v-if="order.gift_wrap_label" class="mb-1 text-sm text-muted-foreground">{{ t('commerce.orderShow.giftWrap', { amount: order.gift_wrap_label }) }}</p>
+  <p v-if="storeFeatures.shipping && order.shipping_label" class="mb-1 text-sm text-muted-foreground">{{ t('commerce.orderShow.shipping', { amount: order.free_shipping ? t('commerce.orderShow.freeShipping') : order.shipping_label }) }}</p>
+  <p v-if="storeFeatures.gift_wrap && order.gift_wrap_label" class="mb-1 text-sm text-muted-foreground">{{ t('commerce.orderShow.giftWrap', { amount: order.gift_wrap_label }) }}</p>
   <p v-if="order.discount_label" class="mb-1 text-sm text-green-700">{{ t('commerce.orderShow.discount', { code: order.coupon_code ? ` (${order.coupon_code})` : '', amount: order.discount_label }) }}</p>
   <p v-if="order.gift_card_amount_label" class="mb-1 text-sm text-green-700">{{ t('commerce.orderShow.giftCardDiscount', { code: order.gift_card_code ? ` (${order.gift_card_code})` : '', amount: order.gift_card_amount_label }) }}</p>
   <p v-if="order.store_credit_amount_label" class="mb-1 text-sm text-green-700">{{ t('commerce.orderShow.storeCredit', { amount: order.store_credit_amount_label }) }}</p>
@@ -420,7 +501,9 @@ function refreshDownload(url: string) {
     <Button v-if="order.can_reorder && order.reorder_url" type="button" variant="outline" @click="reorderForm.post(order.reorder_url)">{{ t('commerce.orderShow.reorder') }}</Button>
     <Button v-if="order.can_download_receipt" as-child variant="outline">
       <a :href="order.receipt_url" target="_blank" rel="noopener">{{ t('commerce.orderShow.htmlReceipt') }}</a>
-      <a v-if="order.packing_slip_url" :href="order.packing_slip_url" target="_blank" rel="noopener" class="ml-3">{{ t('commerce.orderShow.packingSlip') }}</a>
+    </Button>
+    <Button v-if="storeFeatures.order_shipping_management && order.packing_slip_url" as-child variant="outline">
+      <a :href="order.packing_slip_url" target="_blank" rel="noopener">{{ t('commerce.orderShow.packingSlip') }}</a>
     </Button>
     <Button v-if="order.can_download_receipt" as-child variant="outline">
       <a :href="order.receipt_pdf_url">{{ t('commerce.orderShow.pdfReceipt') }}</a>

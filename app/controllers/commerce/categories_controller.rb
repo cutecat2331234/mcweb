@@ -4,7 +4,9 @@ module Commerce
   class CategoriesController < ApplicationController
     def show
       category = Commerce::Category.find_by!(slug: params[:slug])
-      scope = Commerce::Product.includes(:category).available.where(store_category_id: category.id)
+      scope = Commerce::StoreFeatures.visible_products_scope(
+        Commerce::Product.includes(:category).available.where(store_category_id: category.id)
+      )
       scope = scope.with_stock if params[:in_stock] == "1"
       scope = scope.on_sale if params[:on_sale] == "1"
       if params[:q].present?

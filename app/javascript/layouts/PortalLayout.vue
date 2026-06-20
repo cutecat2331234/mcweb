@@ -23,6 +23,7 @@ const auth = computed(() => page.props.auth as { user: { username: string } | nu
 const notifications = computed(() => page.props.notifications as { unread_count: number; url: string } | undefined)
 const forumUnread = computed(() => page.props.forum_unread as { count: number; url: string } | undefined)
 const forumAssigned = computed(() => page.props.forum_assigned as { count: number; url: string } | undefined)
+const forumModerationPending = computed(() => page.props.forum_moderation_pending as { count: number; url: string } | undefined)
 const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
@@ -68,6 +69,7 @@ const sidebarProps = computed(() => ({
   loggedIn: !!auth.value.user,
   forumUnread: forumUnread.value,
   forumAssigned: forumAssigned.value,
+  forumModerationPending: forumModerationPending.value,
   messagesUnread: messagesUnread.value,
   cart: cart.value,
 }))
@@ -75,7 +77,7 @@ const sidebarProps = computed(() => ({
 
 <template>
   <div class="min-h-dvh bg-background portal-themed" :style="tokenStyle">
-    <TemplateAssets />
+    <TemplateAssets :include-css="false" />
 
     <div v-if="portalHeaderExtraSlot" v-html="portalHeaderExtraSlot" />
 
@@ -111,7 +113,10 @@ const sidebarProps = computed(() => ({
 
       <!-- Main column -->
       <div class="flex min-w-0 flex-1 flex-col lg:pl-64">
-        <header class="portal-header sticky top-0 z-30 border-b border-primary/10 bg-background/95 backdrop-blur-xl supports-[backdrop-filter]:bg-background/90">
+        <header
+          class="portal-header sticky top-0 z-30 border-b border-sidebar-border bg-sidebar text-sidebar-foreground"
+          :style="{ backgroundColor: 'var(--sidebar)', color: 'var(--sidebar-foreground)' }"
+        >
           <div class="flex h-14 items-center gap-2 px-4 sm:px-6">
             <Button
               variant="ghost"

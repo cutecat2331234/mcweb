@@ -16,7 +16,7 @@ module Commerce
         Notification.notify!(
           user: @asker,
           notification_type: "commerce.question_answered",
-          title: "你的问题收到回复",
+          title: Commerce::InAppNotification.t("question_answered.title"),
           body: @answer.body.truncate(200),
           metadata: {
             path: "/app/store/products/#{@product.public_id}",

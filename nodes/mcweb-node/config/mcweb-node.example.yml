@@ -1,0 +1,5 @@
+rails_url: "http://localhost:3000"
+node_id: ""
+node_secret: ""
+proxy_listen: "127.0.0.1:9876"
+poll_interval: 10s

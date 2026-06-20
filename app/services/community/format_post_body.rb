@@ -90,7 +90,7 @@ module Community
         code = Regexp.last_match(2)
         lang_attr = lang.present? ? %( data-lang="#{ERB::Util.html_escape(lang)}") : ""
         escaped = ERB::Util.html_escape(code)
-        placeholders[token] = %(<div class="code-block-wrap"><button type="button" class="code-copy-btn" data-copy-target="code">复制</button><pre class="code-block"><code#{lang_attr}>#{escaped}</code></pre></div>)
+        placeholders[token] = %(<div class="code-block-wrap"><button type="button" class="code-copy-btn" data-copy-target="code">#{ERB::Util.html_escape(I18n.t("mcweb.forum.format_post_body.copy"))}</button><pre class="code-block"><code#{lang_attr}>#{escaped}</code></pre></div>)
         token
       end
 
@@ -278,7 +278,7 @@ module Community
       return nil unless result.success? && result.value
 
       t = result.value
-      meta = [ t[:author], t[:section_name], "#{t[:replies_count]} 回复" ].compact.join(" · ")
+      meta = [ t[:author], t[:section_name], I18n.t("mcweb.forum.format_post_body.topic_replies", count: t[:replies_count]) ].compact.join(" · ")
       %(<aside class="onebox topic-onebox"><a href="#{ERB::Util.html_escape(t[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(t[:title])}</strong><p class="onebox-desc">#{ERB::Util.html_escape(meta)}</p></a></aside>)
     end
 
@@ -288,7 +288,7 @@ module Community
 
       u = result.value
       avatar = safe_onebox_image_html(u[:avatar_url], "onebox-image user-onebox-avatar")
-      meta = [ u[:trust_name], "#{u[:posts_count]} 帖" ].join(" · ")
+      meta = [ u[:trust_name], I18n.t("mcweb.forum.format_post_body.user_posts", count: u[:posts_count]) ].join(" · ")
       %(<aside class="onebox user-onebox"><a href="#{ERB::Util.html_escape(u[:url])}" class="onebox-link">#{avatar}<strong class="onebox-title">#{ERB::Util.html_escape(u[:display_name])}</strong><p class="onebox-desc">@#{ERB::Util.html_escape(u[:username])} · #{ERB::Util.html_escape(meta)}</p></a></aside>)
     end
 
@@ -297,7 +297,7 @@ module Community
       return nil unless result.success? && result.value
 
       c = result.value
-      %(<aside class="onebox coupon-onebox"><a href="#{ERB::Util.html_escape(c[:url])}" class="onebox-link"><strong class="onebox-title">优惠券 #{ERB::Util.html_escape(c[:code])}</strong><span class="onebox-price">#{ERB::Util.html_escape(c[:discount_label])}</span></a></aside>)
+      %(<aside class="onebox coupon-onebox"><a href="#{ERB::Util.html_escape(c[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(I18n.t("mcweb.forum.format_post_body.coupon_title", code: c[:code]))}</strong><span class="onebox-price">#{ERB::Util.html_escape(c[:discount_label])}</span></a></aside>)
     end
 
     def gift_card_onebox_html(url)
@@ -305,8 +305,8 @@ module Community
       return nil unless result.success? && result.value
 
       g = result.value
-      status = g[:redeemable] ? g[:balance_label] : "不可用"
-      %(<aside class="onebox gift-card-onebox"><a href="#{ERB::Util.html_escape(g[:url])}" class="onebox-link"><strong class="onebox-title">礼品卡 #{ERB::Util.html_escape(g[:code])}</strong><span class="onebox-price">余额 #{ERB::Util.html_escape(status)}</span></a></aside>)
+      status = g[:redeemable] ? g[:balance_label] : I18n.t("mcweb.forum.format_post_body.unavailable")
+      %(<aside class="onebox gift-card-onebox"><a href="#{ERB::Util.html_escape(g[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(I18n.t("mcweb.forum.format_post_body.gift_card_title", code: g[:code]))}</strong><span class="onebox-price">#{ERB::Util.html_escape(I18n.t("mcweb.forum.format_post_body.gift_card_balance", status: status))}</span></a></aside>)
     end
 
     def section_onebox_html(url)
@@ -325,7 +325,7 @@ module Community
 
       t = result.value
       desc = t[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(t[:description])}</p>) : ""
-      %(<aside class="onebox tag-onebox"><a href="#{ERB::Util.html_escape(t[:url])}" class="onebox-link"><strong class="onebox-title">##{ERB::Util.html_escape(t[:name])}</strong>#{desc}<span class="onebox-price">#{t[:topics_count]} 主题</span></a></aside>)
+      %(<aside class="onebox tag-onebox"><a href="#{ERB::Util.html_escape(t[:url])}" class="onebox-link"><strong class="onebox-title">##{ERB::Util.html_escape(t[:name])}</strong>#{desc}<span class="onebox-price">#{ERB::Util.html_escape(I18n.t("mcweb.forum.format_post_body.tag_topics", count: t[:topics_count]))}</span></a></aside>)
     end
 
     def category_onebox_html(url)
@@ -334,7 +334,7 @@ module Community
 
       c = result.value
       desc = c[:description].present? ? %(<p class="onebox-desc">#{ERB::Util.html_escape(c[:description])}</p>) : ""
-      %(<aside class="onebox category-onebox"><a href="#{ERB::Util.html_escape(c[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(c[:name])}</strong>#{desc}<span class="onebox-price">#{c[:section_count]} 分区</span></a></aside>)
+      %(<aside class="onebox category-onebox"><a href="#{ERB::Util.html_escape(c[:url])}" class="onebox-link"><strong class="onebox-title">#{ERB::Util.html_escape(c[:name])}</strong>#{desc}<span class="onebox-price">#{ERB::Util.html_escape(I18n.t("mcweb.forum.format_post_body.category_sections", count: c[:section_count]))}</span></a></aside>)
     end
 
     def markdown_to_html(text)

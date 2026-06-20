@@ -6,6 +6,8 @@ module Community
     has_many :topics, class_name: "Community::Topic", foreign_key: :forum_section_id, dependent: :destroy
     has_many :mutes, class_name: "Community::Mute", foreign_key: :forum_section_id, dependent: :destroy
     has_many :subscriptions, as: :subscribable, class_name: "Community::Subscription", dependent: :destroy
+    has_many :section_moderators, class_name: "Community::SectionModerator", foreign_key: :forum_section_id, dependent: :destroy
+    has_many :moderators, through: :section_moderators, source: :user
 
     validates :name, presence: true
     validates :slug, presence: true, uniqueness: { scope: :forum_category_id }
@@ -96,9 +98,39 @@ module Community
 
     def writable_by?(user, action)
       return true unless read_only?
-      return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
+      return true if Community::SectionModeration.can_moderate?(user: user, section: self)
 
       false
+    end
+
+    def moderator?(user)
+      Community::SectionModeration.section_moderator?(user, self)
+    end
+
+    def login_required?
+      login_required == true
+    end
+
+    def visible_to?(user)
+      return true unless login_required?
+
+      user.present?
+    end
+
+    def prefix_definitions
+      Community::SectionPrefixes.normalize(prefixes)
+    end
+
+    def prefix_names
+      Community::SectionPrefixes.names(prefixes)
+    end
+
+    def prefix_color_for(name)
+      Community::SectionPrefixes.color_for(prefixes, name)
+    end
+
+    def prefix_options
+      Community::SectionPrefixes.serialize_options(prefixes)
     end
   end
 end

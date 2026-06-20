@@ -12,6 +12,7 @@ module Commerce
         .includes(product: %i[category variants], variant: [])
         .order(created_at: :desc)
         .to_a
+        .select { |item| Commerce::StoreFeatures.product_visible?(item.product) }
 
       total_count = all_items.size
       items = sort_wishlist_items(filter_wishlist_items(all_items))
@@ -83,6 +84,7 @@ module Commerce
     def public_show
       user = User.find_by!(wishlist_share_token: params[:token])
       all_items = Commerce::WishlistItem.where(user: user).includes(:product, :variant).order(created_at: :desc).to_a
+      all_items = all_items.select { |item| Commerce::StoreFeatures.product_visible?(item.product) }
       total_count = all_items.size
       items = sort_wishlist_items(filter_wishlist_items(all_items))
 
@@ -107,6 +109,9 @@ module Commerce
 
     def toggle
       product = Commerce::Product.active.find_by!(public_id: params[:id])
+      unless Commerce::StoreFeatures.product_visible?(product)
+        return redirect_back fallback_location: store_products_path, alert: t("mcweb.flash.wishlist_product_invalid")
+      end
       unless product.available? || product.coming_soon?
         return redirect_back fallback_location: store_products_path, alert: t("mcweb.flash.wishlist_product_invalid")
       end
@@ -115,7 +120,7 @@ module Commerce
       result = Commerce::ToggleWishlist.call(user: current_user, product: product, variant: variant)
 
       if result.success?
-        notice = result.value[:wishlisted] ? "已加入心愿单。" : "已从心愿单移除。"
+        notice = result.value[:wishlisted] ? t("mcweb.flash.wishlist_toggled_on") : t("mcweb.flash.wishlist_toggled_off")
         redirect_back fallback_location: store_product_path(product), notice: notice
       else
         redirect_back fallback_location: store_product_path(product), alert: service_error_message(result)
@@ -124,6 +129,9 @@ module Commerce
 
     def add_to_cart
       product = Commerce::Product.available.find_by!(public_id: params[:product_id])
+      unless Commerce::StoreFeatures.product_visible?(product)
+        return redirect_to store_wishlist_path, alert: t("mcweb.flash.wishlist_product_invalid")
+      end
       result = Commerce::AddWishlistItemToCart.call(user: current_user, product: product)
 
       if result.success?
@@ -137,8 +145,8 @@ module Commerce
       result = Commerce::AddWishlistToCart.call(user: current_user)
 
       if result.success?
-        notice = "已将 #{result.value[:added]} 件商品加入购物车。"
-        notice += " 跳过：#{result.value[:skipped].join('、')}" if result.value[:skipped].any?
+        notice = t("mcweb.flash.wishlist_bulk_added", count: result.value[:added])
+        notice += t("mcweb.flash.wishlist_bulk_skipped", items: result.value[:skipped].join(I18n.t("mcweb.commerce.list_separator"))) if result.value[:skipped].any?
         redirect_to store_cart_path, notice: notice
       else
         redirect_to store_wishlist_path, alert: service_error_message(result)
@@ -147,6 +155,9 @@ module Commerce
 
     def update_note
       product = Commerce::Product.active.find_by!(public_id: params[:product_id])
+      unless Commerce::StoreFeatures.product_visible?(product)
+        return redirect_to store_wishlist_path, alert: t("mcweb.flash.wishlist_product_invalid")
+      end
       unless product.available? || product.coming_soon?
         return redirect_to store_wishlist_path, alert: t("mcweb.flash.wishlist_note_invalid")
       end

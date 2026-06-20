@@ -71,6 +71,7 @@ module Commerce
 
     def set_product
       @product = Commerce::Product.available.find_by!(public_id: params[:product_id])
+      raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(@product)
     end
 
     def serialize_question(question)

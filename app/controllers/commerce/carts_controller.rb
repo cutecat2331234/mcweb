@@ -2,19 +2,27 @@
 
 module Commerce
   class CartsController < ApplicationController
+    include Commerce::CodePreviewRateLimitable
+
     before_action :set_cart
+    before_action :require_cart_writable!, except: %i[show preview_coupon preview_gift_card]
 
     def show
+      session.delete(:cart_recovery_readonly) if params[:recovery].blank?
+
       items = @cart.items.includes(:product, :variant)
+      blocked_count = items.count { |item| item.product && !Commerce::StoreFeatures.product_visible?(item.product) }
+      visible_items = items.select { |item| item.product && Commerce::StoreFeatures.product_visible?(item.product) }
       pending_coupon = apply_coupon_from_url!(items)
       pending_coupon ||= session[:pending_coupon_code].to_s.presence
       pending_gift_card = session[:pending_gift_card_code].to_s.presence
-      currency = items.first&.product&.currency || "CNY"
-      subtotal_cents = @cart.subtotal_cents
+      currency = visible_items.first&.product&.currency || items.first&.product&.currency || "CNY"
+      subtotal_cents = visible_items.sum(&:total_cents)
       coupon = Commerce::Coupon.find_by(code: pending_coupon) if pending_coupon.present?
 
       render inertia: "Commerce/Carts/Show", props: {
-        items: items.map { |item| serialize_cart_item(item) },
+        items: visible_items.map { |item| serialize_cart_item(item) },
+        blockedItemCount: blocked_count,
         subtotalLabel: format_money(subtotal_cents, currency),
         subtotalCents: subtotal_cents,
         loggedIn: logged_in?,
@@ -27,9 +35,9 @@ module Commerce
         clearGiftCardUrl: clear_gift_card_store_cart_path,
         moveToWishlistUrl: move_to_wishlist_store_cart_path,
         clearCartUrl: clear_store_cart_path,
-        crossSellProducts: cross_sell_products(items),
+        crossSellProducts: cross_sell_products(visible_items),
         cartRecovered: params[:recovery].present? && @cart.recovery_token == params[:recovery].to_s,
-        **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: items, coupon: coupon)
+        **serialize_shipping_quote(subtotal_cents, currency: currency, cart_items: visible_items, coupon: coupon)
       }
     end
 
@@ -59,6 +67,8 @@ module Commerce
     end
 
     def preview_coupon
+      return render_preview_rate_limited if preview_rate_limited?
+
       subtotal_cents = @cart.subtotal_cents
       cart_items = @cart.items.includes(:product)
       currency = cart_items.first&.product&.currency || "CNY"
@@ -94,12 +104,14 @@ module Commerce
     end
 
     def preview_gift_card
+      return render_preview_rate_limited if preview_rate_limited?
+
       subtotal_cents = @cart.subtotal_cents
       discount_cents = 0
-      if params[:coupon_code].present?
+      if session[:pending_coupon_code].present?
         preview = Commerce::PreviewCoupon.call(
           subtotal_cents: subtotal_cents,
-          code: params[:coupon_code],
+          code: session[:pending_coupon_code],
           cart_items: @cart.items.includes(:product),
           user: current_user
         )
@@ -138,7 +150,11 @@ module Commerce
 
     def update
       if params[:product_id].present?
-        product = Commerce::Product.available.find(params[:product_id])
+        product = Commerce::Product.available.find_by(public_id: params[:product_id]) ||
+                  Commerce::Product.available.find_by(id: params[:product_id])
+        unless product && Commerce::StoreFeatures.product_visible?(product)
+          return redirect_to safe_referer_path(fallback: store_cart_path), alert: t("mcweb.flash.product_not_found")
+        end
         variant = product.variants.find_by(id: params[:variant_id])
         quantity = params[:quantity].to_i
         quantity = 1 if quantity < 1
@@ -191,23 +207,55 @@ module Commerce
     private
 
     def set_cart
+      @cart_recovery_readonly = false
+
       if params[:recovery].present?
         recovered = Commerce::Cart.find_by(recovery_token: params[:recovery])
         if recovered && !recovered.empty? && recoverable_cart?(recovered)
           @cart = recovered
-          persist_cart_cookie(@cart) unless logged_in?
+          if recovered.user_id.present? && !logged_in?
+            @cart_recovery_readonly = true
+            session[:cart_recovery_readonly] = true
+          else
+            session.delete(:cart_recovery_readonly)
+            persist_cart_cookie(@cart) unless logged_in?
+          end
           return
         end
       end
 
       @cart = find_user_cart || find_session_cart || create_session_cart
+      session.delete(:cart_recovery_readonly) if logged_in?
       persist_cart_cookie(@cart) unless logged_in?
     end
 
     def recoverable_cart?(cart)
+      if params[:recovery].present? && cart.recovery_token == params[:recovery].to_s
+        if cart.user_id.present? && logged_in? && cart.user_id != current_user.id
+          return false
+        end
+
+        return !cart.empty?
+      end
+
+      return false if cart.user_id.present? && !logged_in?
+
       return true unless logged_in?
 
       cart.user_id.nil? || cart.user_id == current_user.id
+    end
+
+    def require_cart_writable!
+      return if cart_writable?
+
+      redirect_to store_cart_path, alert: t("mcweb.flash.sign_in_required_short")
+    end
+
+    def cart_writable?
+      return false if @cart_recovery_readonly || session[:cart_recovery_readonly]
+      return true if @cart.user_id.nil?
+
+      logged_in? && @cart.user_id == current_user.id
     end
 
     def find_user_cart
@@ -241,11 +289,13 @@ module Commerce
       category_ids = items.filter_map { |item| item.product&.store_category_id }.uniq
       return [] if category_ids.empty?
 
-      scope = Commerce::Product.available
-        .where(store_category_id: category_ids)
-        .where.not(id: cart_product_ids)
-        .order(created_at: :desc)
-        .limit(4)
+      scope = Commerce::StoreFeatures.visible_products_scope(
+        Commerce::Product.available
+          .where(store_category_id: category_ids)
+          .where.not(id: cart_product_ids)
+          .order(created_at: :desc)
+          .limit(4)
+      )
 
       scope.map { |product| serialize_product_list_item(product) }
     end
@@ -261,6 +311,7 @@ module Commerce
     def apply_coupon_from_url!(cart_items)
       code = params[:coupon].to_s.strip
       return nil if code.blank?
+      return nil if preview_rate_limited?
 
       result = Commerce::PreviewCoupon.call(
         subtotal_cents: @cart.subtotal_cents,
@@ -271,9 +322,6 @@ module Commerce
       if result.success?
         session[:pending_coupon_code] = result.value[:code]
         result.value[:code]
-      else
-        flash[:alert] = result.error
-        nil
       end
     end
   end

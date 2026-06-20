@@ -10,11 +10,11 @@ module Admin
         categories = ::Community::Category.ordered
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "论坛分类",
+          title: t("mcweb.admin.forum.categories.title"),
           columns: [
-            admin_column(:name, "名称", link: true),
-            admin_column(:slug, "标识"),
-            admin_column(:position, "排序")
+            admin_column(:name, t("mcweb.admin.forum.col_name"), link: true),
+            admin_column(:slug, t("mcweb.admin.forum.col_slug")),
+            admin_column(:position, t("mcweb.admin.forum.col_position"))
           ],
           rows: categories.map do |category|
             admin_row(
@@ -24,7 +24,7 @@ module Admin
               url: admin_forum_category_path(category)
             )
           end,
-          actions: [ { label: "新建分类", href: new_admin_forum_category_path } ]
+          actions: [ { label: t("mcweb.admin.forum.action_new_category"), href: new_admin_forum_category_path } ]
         }
       end
 
@@ -32,15 +32,15 @@ module Admin
         render inertia: "Admin/Generic/Show", props: {
           title: @category.name,
           fields: [
-            { label: "标识", value: @category.slug },
-            { label: "排序", value: @category.position.to_s },
-            { label: "颜色", value: @category.color_hex.presence || "—" },
-            { label: "图标", value: @category.icon.presence || "—" },
-            { label: "描述", value: @category.description.presence || "—" },
-            { label: "板块数", value: @category.sections.count.to_s }
+            { label: t("mcweb.admin.forum.field_slug"), value: @category.slug },
+            { label: t("mcweb.admin.forum.field_position"), value: @category.position.to_s },
+            { label: t("mcweb.admin.forum.field_color"), value: @category.color_hex.presence || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.forum.field_icon"), value: @category.icon.presence || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.forum.field_description"), value: @category.description.presence || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.forum.field_sections_count"), value: @category.sections.count.to_s }
           ],
           backUrl: admin_forum_categories_path,
-          actions: [ { label: "编辑", href: edit_admin_forum_category_path(@category) } ]
+          actions: [ { label: t("mcweb.admin.forum.action_edit"), href: edit_admin_forum_category_path(@category) } ]
         }
       end
 
@@ -90,7 +90,7 @@ module Admin
 
       def form_props(category)
         {
-          title: category.persisted? ? "编辑分类" : "新建分类",
+          title: category.persisted? ? t("mcweb.admin.forum.form_edit_category") : t("mcweb.admin.forum.form_new_category"),
           category: {
             id: category.id,
             name: category.name || "",

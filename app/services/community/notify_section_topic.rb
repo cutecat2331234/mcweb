@@ -30,11 +30,13 @@ module Community
 
         Community::ReadState.ensure_tracking!(user, @topic)
 
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: user,
           notification_type: "forum.section_topic",
-          title: "分区有新主题：#{@topic.title.truncate(60)}",
-          body: "#{@topic.user.username} 在 #{@section.name} 发布了新主题",
+          key: "section_topic",
+          title: @topic.title.truncate(60),
+          author: @topic.user.username,
+          section: @section.name,
           metadata: {
             topic_id: @topic.public_id,
             section_slug: @section.slug,

@@ -10,6 +10,8 @@ import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
+import PostAttachmentsList from '@/components/portal/PostAttachmentsList.vue'
 import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
@@ -28,6 +30,7 @@ const props = defineProps<{
     tags: string
     prefix?: string | null
     scheduled_at_input?: string | null
+    attachments?: Array<{ id: number; filename: string; human_size: string; download_url: string }>
     section: { name: string; slug: string; prefixes?: string[]; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; required?: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }> }
     poll?: {
       question: string
@@ -64,12 +67,27 @@ const form = useForm({
     poll_multiple_choice: props.draft.poll?.multiple_choice || false,
     poll_max_choices: props.draft.poll?.max_choices || 2,
     poll_hide_results_until_vote: props.draft.poll?.hide_results_until_vote || false,
+    attachment_ids: [] as number[],
   },
 })
+const pendingAttachments = ref<PendingAttachment[]>([])
+
+function onAttachmentUploaded(attachment: PendingAttachment) {
+  pendingAttachments.value.push(attachment)
+  form.draft.attachment_ids = pendingAttachments.value.map((item) => item.id)
+}
+
+function removePendingAttachment(id: number) {
+  pendingAttachments.value = pendingAttachments.value.filter((item) => item.id !== id)
+  form.draft.attachment_ids = pendingAttachments.value.map((item) => item.id)
+}
 
 const prefixOptions = computed(() => [
   { value: '', label: t('forum.topics.noPrefix') },
-  ...(props.draft.section.prefixes || []).map((p) => ({ value: p, label: p })),
+  ...(props.draft.section.prefixes || []).map((p) => {
+    if (typeof p === 'string') return { value: p, label: p }
+    return { value: p.name, label: p.label || p.name }
+  }),
 ])
 
 function missingRequiredGroups(tags: string) {
@@ -114,7 +132,11 @@ function publish() {
     linkError.value = props.warningRestrictions.link
     return
   }
-  router.post(`${routes.app}/forum/drafts/${props.draft.id}/publish`)
+  if (!showPoll.value) {
+    form.draft.poll_question = ''
+    form.draft.poll_options = ''
+  }
+  router.post(`${routes.app}/forum/drafts/${props.draft.id}/publish`, { draft: form.draft })
 }
 
 async function destroy() {
@@ -164,6 +186,19 @@ function clearSchedule() {
       <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
       <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
+    </div>
+    <PostAttachmentsList v-if="draft.attachments?.length" :attachments="draft.attachments" />
+    <div class="space-y-2">
+      <AttachmentUploadButton @uploaded="onAttachmentUploaded" />
+      <ul v-if="pendingAttachments.length" class="space-y-1 text-sm">
+        <li class="text-xs font-medium text-muted-foreground">{{ t('components.attachmentUpload.pending') }}</li>
+        <li v-for="attachment in pendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-2 rounded border px-2 py-1">
+          <span>{{ attachment.filename }} <span class="text-muted-foreground">({{ attachment.human_size }})</span></span>
+          <button type="button" class="text-xs text-destructive hover:underline" @click="removePendingAttachment(attachment.id)">
+            {{ t('components.attachmentUpload.remove') }}
+          </button>
+        </li>
+      </ul>
     </div>
     <div class="space-y-2">
       <Label for="tags">{{ t('forum.topics.tagsLabel') }}</Label>

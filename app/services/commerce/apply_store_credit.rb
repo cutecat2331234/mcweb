@@ -8,7 +8,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "订单无法修改。") unless @order.status == "pending"
+      return ServiceResult.failure(error: "order_not_modifiable") unless @order.status == "pending"
       return ServiceResult.success(order: @order, store_credit_amount_cents: 0) if @user.store_credit_cents.to_i <= 0
 
       payable = [ @order.subtotal_cents - @order.discount_cents + @order.shipping_cents.to_i + @order.gift_wrap_cents.to_i - @order.gift_card_amount_cents.to_i, 0 ].max
@@ -21,6 +21,13 @@ module Commerce
       total_cents = payable - amount
 
       Commerce::Order.transaction do
+        @user.lock!
+        available = @user.available_store_credit_cents(exclude_order_id: @order.id)
+        amount = [ payable, available ].min
+        return ServiceResult.success(order: @order, store_credit_amount_cents: 0) unless amount.positive?
+
+        total_cents = payable - amount
+
         @order.update!(
           store_credit_amount_cents: amount,
           total_cents: total_cents

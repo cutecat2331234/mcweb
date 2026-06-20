@@ -18,8 +18,8 @@
 | 语言 | Ruby 3.4.9（规范要求 Ruby 4.0.x，当前生态以 3.4.x 为稳定选择） |
 | 框架 | Rails 8.1.x |
 | 数据库 | PostgreSQL 18 |
-| 队列/缓存 | Solid Queue、Solid Cache、Solid Cable |
-| 前端 | ERB、Hotwire、ViewComponent、Tailwind CSS 4、Importmap |
+| 队列/缓存 | Sidekiq + Redis（任务队列）、Solid Cache、Solid Cable |
+| 前端 | 官网 ERB/Hotwire；业务 Portal 与管理后台 Inertia + Vue 3 + Vite + Tailwind CSS 4 |
 
 ## 支持环境
 
@@ -67,6 +67,7 @@ cd mcweb
 git checkout main
 bundle install
 npm ci
+bin/setup-local-config   # 生成本地 config/local.yml（若不存在）
 bin/rails db:prepare
 bin/rails db:seed
 bin/dev

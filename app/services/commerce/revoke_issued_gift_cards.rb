@@ -12,18 +12,21 @@ module Commerce
       return ServiceResult.success(revoked: 0) if cards.empty?
 
       revoked = 0
-      cards.find_each do |card|
-        next unless card.active?
+      Commerce::GiftCard.transaction do
+        cards.lock.find_each do |card|
+          next unless card.active?
 
-        balance = card.balance_cents
-        card.update!(active: false, balance_cents: 0, note: [ card.note, "订单 #{@order.order_number} 退款撤销" ].compact.join(" · "))
-        Commerce::RecordGiftCardTransaction.call(
-          gift_card: card,
-          amount_cents: -balance,
-          transaction_type: "revoke",
-          order: @order
-        )
-        revoked += 1
+          balance = card.balance_cents
+          revoke_note = I18n.t("mcweb.commerce.notes.gift_card_order_revoke", number: @order.order_number)
+          card.update!(active: false, balance_cents: 0, note: [ card.note, revoke_note ].compact.join(" · "))
+          Commerce::RecordGiftCardTransaction.call(
+            gift_card: card,
+            amount_cents: -balance,
+            transaction_type: "revoke",
+            order: @order
+          )
+          revoked += 1
+        end
       end
 
       ServiceResult.success(revoked: revoked)

@@ -8,6 +8,10 @@ module Commerce
     end
 
     def call
+      unless Commerce::StoreFeatures.enabled?(:gift_wrap)
+        return ServiceResult.success(gift_wrap: false, gift_wrap_cents: 0)
+      end
+
       unless @enabled && cart_requires_shipping?
         return ServiceResult.success(gift_wrap: false, gift_wrap_cents: 0)
       end

@@ -2,14 +2,6 @@
 
 module Community
   class BadgesController < ApplicationController
-    GRANT_RULE_LABELS = {
-      "manual" => "手动授予",
-      "first_topic" => "发布首个主题",
-      "posts_count" => "发帖数量达标",
-      "likes_received" => "获赞数量达标",
-      "first_purchase" => "首次购买"
-    }.freeze
-
     def index
       badges = Community::Badge.order(:name)
       user_counts = Community::UserBadge.where(forum_badge_id: badges.map(&:id)).group(:forum_badge_id).count
@@ -58,7 +50,7 @@ module Community
     end
 
     def grant_rule_label(badge)
-      base = GRANT_RULE_LABELS[badge.grant_rule] || badge.grant_rule
+      base = I18n.t("mcweb.forum.badges.#{badge.grant_rule}", default: badge.grant_rule)
       if badge.grant_rule.in?(%w[posts_count likes_received]) && badge.grant_threshold.positive?
         "#{base}（#{badge.grant_threshold}）"
       else

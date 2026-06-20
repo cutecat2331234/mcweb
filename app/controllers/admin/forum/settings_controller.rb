@@ -2,13 +2,16 @@
 
 module Admin
   module Forum
-    class SettingsController < BaseController
+    class SettingsController < Admin::BaseController
+      before_action -> { require_admin_module!("system") }
       before_action -> { require_permission("system.settings.manage") }
 
       FORUM_SETTING_KEYS = %w[
         forum.bump_cooldown_hours
         forum.warning_mute_threshold
         forum.warning_mute_days
+        forum.warning_points_expire_days
+        forum.require_post_approval_below_tl
         forum.warning_block_post_threshold
         forum.warning_block_links_threshold
         forum.warning_block_pm_threshold
@@ -23,6 +26,9 @@ module Admin
         forum.min_trust_level_reaction
         forum.saved_search_webhook_secret
         forum.saved_search_webhook_url
+        forum.event_webhook_url
+        forum.event_webhook_secret
+        forum.event_webhook_events
         forum.search_feeds_opml_saved_limit
         forum.search_feeds_opml_history_limit
         webhook.failure_alert_threshold
@@ -37,9 +43,13 @@ module Admin
           settings: forum_settings_props,
           testWebhookUrl: test_webhook_admin_forum_settings_path,
           testAllWebhooksUrl: test_all_webhooks_admin_forum_settings_path,
+          testEventWebhookUrl: test_event_webhook_admin_forum_settings_path,
+          testAllEventWebhooksUrl: test_all_event_webhooks_admin_forum_settings_path,
+          testEventWebhookEvents: Community::DispatchForumEventWebhook::EVENT_TYPES,
           testWebhookStatusUrl: webhook_test_status_admin_forum_settings_path,
           savedSearchesForTest: saved_searches_for_test_props,
-          lastTestWebhook: WebhookTestDeliveryStatus.forum_last
+          lastTestWebhook: WebhookTestDeliveryStatus.forum_last,
+          lastTestEventWebhook: WebhookTestDeliveryStatus.forum_event_last
         }
       end
 
@@ -78,8 +88,31 @@ module Admin
         end
       end
 
+      def test_event_webhook
+        event_type = params[:event].to_s.presence || "topic.created"
+        result = Community::DispatchTestForumEventWebhook.call(event_type: event_type)
+        if result.success?
+          redirect_to admin_forum_settings_path, notice: t("mcweb.flash.webhook_test_queued", label: result.value[:event_type])
+        else
+          redirect_to admin_forum_settings_path, alert: result.error || t("mcweb.flash.webhook_test_failed")
+        end
+      end
+
+      def test_all_event_webhooks
+        result = Community::BatchTestForumEventWebhooks.call
+        if result.success?
+          redirect_to admin_forum_settings_path,
+                      notice: t("mcweb.flash.webhook_batch_event_test_queued", queued: result.value[:queued], total: result.value[:total])
+        else
+          redirect_to admin_forum_settings_path, alert: result.error || t("mcweb.flash.webhook_batch_test_failed")
+        end
+      end
+
       def webhook_test_status
-        render json: { lastTestWebhook: WebhookTestDeliveryStatus.forum_last }
+        render json: {
+          lastTestWebhook: WebhookTestDeliveryStatus.forum_last,
+          lastTestEventWebhook: WebhookTestDeliveryStatus.forum_event_last
+        }
       end
 
     private
@@ -108,6 +141,8 @@ module Admin
         when "forum.bump_cooldown_hours" then "24"
         when "forum.warning_mute_threshold" then "10"
         when "forum.warning_mute_days" then "7"
+        when "forum.warning_points_expire_days" then "90"
+        when "forum.require_post_approval_below_tl" then "1"
         when "forum.report_auto_hide_threshold" then "5"
         when "forum.reaction_emojis" then "👍,❤️,😂,🎉,👀"
         when "forum.saved_search_limit" then "20"
@@ -117,6 +152,9 @@ module Admin
         when "forum.min_trust_level_reaction" then "0"
         when "forum.saved_search_webhook_secret" then ""
         when "forum.saved_search_webhook_url" then ""
+        when "forum.event_webhook_url" then ""
+        when "forum.event_webhook_secret" then ""
+        when "forum.event_webhook_events" then Community::DispatchForumEventWebhook::DEFAULT_EVENTS
         when "forum.search_feeds_opml_saved_limit" then "50"
         when "forum.search_feeds_opml_history_limit" then "20"
         when "webhook.failure_alert_threshold" then "5"
@@ -129,55 +167,17 @@ module Admin
       end
 
       def setting_label(key)
-        {
-          "forum.bump_cooldown_hours" => "主题顶起冷却（小时）",
-          "forum.warning_mute_threshold" => "警告自动禁言阈值",
-          "forum.warning_mute_days" => "警告禁言天数",
-          "forum.warning_block_post_threshold" => "警告禁止发帖阈值",
-          "forum.warning_block_links_threshold" => "警告禁止链接阈值",
-          "forum.warning_block_pm_threshold" => "警告禁止私信阈值",
-          "forum.report_auto_hide_threshold" => "举报自动隐藏阈值",
-          "forum.auto_close_on_solved" => "解决后自动关闭主题",
-          "forum.reaction_emojis" => "可用反应表情（逗号分隔）",
-          "forum.group_pm_creator_only_add" => "仅群主可添加群成员",
-          "forum.saved_search_limit" => "保存搜索数量上限",
-          "forum.saved_search_digest_hour" => "保存搜索摘要发送时间（小时）",
-          "forum.digest_hour" => "论坛通知摘要发送时间（小时）",
-          "forum.allow_op_close" => "允许楼主关闭自己的主题",
-          "forum.min_trust_level_reaction" => "使用反应所需的最低信任等级",
-          "forum.saved_search_webhook_secret" => "保存搜索 Webhook 密钥",
-          "forum.saved_search_webhook_url" => "保存搜索 Webhook URL（测试/全局）",
-          "forum.search_feeds_opml_saved_limit" => "合并 OPML 保存搜索上限",
-          "forum.search_feeds_opml_history_limit" => "合并 OPML 搜索历史上限",
-          "webhook.failure_alert_threshold" => "Webhook 失败告警阈值（24h，兼容）",
-          "webhook.failure_alert_forum_threshold" => "论坛 Webhook 失败告警阈值（24h）",
-          "webhook.failure_alert_store_threshold" => "商城 Webhook 失败告警阈值（24h）",
-          "webhook.failure_alert_email" => "Webhook 失败告警邮箱",
-          "webhook.failure_alert_cooldown_hours" => "Webhook 告警冷却（小时）"
-        }[key] || key
+        labels = I18n.t("mcweb.admin.forum.settings.labels")
+        return key unless labels.is_a?(Hash)
+
+        labels[key.to_sym] || labels[key] || key
       end
 
       def setting_hint(key)
-        {
-          "forum.group_pm_creator_only_add" => "开启后，群聊中只有创建者可邀请新成员（对标 Discourse 群组策略）。",
-          "forum.auto_close_on_solved" => "设为 1 时，主题标记为已解决后自动锁定。",
-          "forum.report_auto_hide_threshold" => "帖子被举报达到此次数后自动隐藏待审。",
-          "forum.reaction_emojis" => "用户可对帖子使用的表情列表。",
-          "forum.saved_search_limit" => "每位用户可保存的搜索数量，0 表示不限制。",
-          "forum.saved_search_digest_hour" => "每日发送保存搜索摘要邮件的小时（0–23，服务器时区）。任务每小时检查一次。",
-          "forum.digest_hour" => "每日发送论坛通知摘要邮件的小时（0–23）。任务每小时检查一次。",
-          "forum.allow_op_close" => "设为 false 时楼主无法自行关闭主题。",
-          "forum.min_trust_level_reaction" => "信任等级低于此值的用户无法对帖子添加反应。",
-          "forum.saved_search_webhook_secret" => "用于 X-McWeb-Signature HMAC 签名的密钥，可选。",
-          "forum.saved_search_webhook_url" => "用于管理后台测试投递与全局 Hook，留空则无法发送测试。",
-          "forum.search_feeds_opml_saved_limit" => "合并 OPML 导出时最多包含的保存搜索数量（1–100）。",
-          "forum.search_feeds_opml_history_limit" => "合并 OPML 导出时最多包含的搜索历史数量（1–50）。",
-          "webhook.failure_alert_threshold" => "旧版统一阈值，论坛/商城未单独配置时回退使用。0 表示关闭。",
-          "webhook.failure_alert_forum_threshold" => "近 24 小时论坛 Webhook 失败达到此值时告警，0 表示不检查论坛。",
-          "webhook.failure_alert_store_threshold" => "近 24 小时商城 Webhook 失败达到此值时告警，0 表示不检查商城。",
-          "webhook.failure_alert_email" => "接收 Webhook 失败告警的管理员邮箱。",
-          "webhook.failure_alert_cooldown_hours" => "两次告警之间的最短间隔，避免重复打扰。"
-        }[key]
+        hints = I18n.t("mcweb.admin.forum.settings.hints")
+        return nil unless hints.is_a?(Hash)
+
+        hints[key.to_sym] || hints[key]
       end
 
       def setting_input_type(key)
@@ -185,6 +185,9 @@ module Admin
         return "boolean" if key == "forum.allow_op_close"
         return "text" if key == "forum.saved_search_webhook_secret"
         return "text" if key == "forum.saved_search_webhook_url"
+        return "text" if key == "forum.event_webhook_secret"
+        return "text" if key == "forum.event_webhook_url"
+        return "text" if key == "forum.event_webhook_events"
         return "text" if key == "webhook.failure_alert_email"
 
         "text"

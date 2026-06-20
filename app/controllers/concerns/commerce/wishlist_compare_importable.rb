@@ -13,7 +13,9 @@ module Commerce
         .includes(:product)
         .count do |item|
           product = item.product
-          product.available? && !compare_set.include?(product.public_id)
+          product.available? &&
+            Commerce::StoreFeatures.product_visible?(product) &&
+            !compare_set.include?(product.public_id)
         end
     end
   end

@@ -89,7 +89,7 @@ class Round71GroupCreatorOnlyAddTest < ActionDispatch::IntegrationTest
       username: invitee.username
     )
     assert add.failure?
-    assert_includes add.error.to_s.downcase, "creator"
+    assert_includes add.error.to_s, "群主"
   end
 
   test "creator can add group members when setting enabled" do

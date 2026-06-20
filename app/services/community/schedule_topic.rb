@@ -2,7 +2,7 @@
 
 module Community
   class ScheduleTopic < ApplicationService
-    def initialize(user:, section:, title:, body:, scheduled_at:, tag_names: nil, ip_address: nil, prefix: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil)
+    def initialize(user:, section:, title:, body:, scheduled_at:, tag_names: nil, ip_address: nil, prefix: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil, attachment_ids: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
@@ -17,6 +17,7 @@ module Community
       @poll_multiple_choice = poll_multiple_choice
       @poll_max_choices = poll_max_choices
       @poll_hide_results_until_vote = poll_hide_results_until_vote
+      @attachment_ids = attachment_ids
     end
 
     def call
@@ -34,7 +35,7 @@ module Community
       end
 
       if @section.prefix_required? && @prefix.blank?
-        return ServiceResult.failure(error: "此分区要求选择主题前缀。")
+        return ServiceResult.failure(error: "section_topic_prefix_required")
       end
 
       topic = nil
@@ -82,6 +83,12 @@ module Community
       return tag_result if tag_result&.failure?
       return poll_result if poll_result&.failure?
 
+      opening_post = topic.posts.first
+      if opening_post
+        link_result = Community::LinkPostAttachments.call(user: @user, post: opening_post, attachment_ids: @attachment_ids)
+        return link_result if link_result.failure?
+      end
+
       ServiceResult.success(topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
@@ -92,7 +99,7 @@ module Community
     def valid_prefix
       return nil if @prefix.blank?
 
-      allowed = Array(@section.prefixes)
+      allowed = @section.prefix_names
       allowed.include?(@prefix) ? @prefix : nil
     end
   end

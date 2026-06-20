@@ -61,7 +61,7 @@ class Community::BanTopicReplyTest < ActiveSupport::TestCase
     Community::BanTopicReply.call(actor: @mod, topic: @topic, user: @user, reason: "Spam")
     result = Community::CreatePost.call(user: @user, topic: @topic, body: "reply text", ip_address: "127.0.0.1")
     assert result.failure?
-    assert_includes result.error.to_s, "banned"
+    assert_includes result.error.to_s, "封禁"
   end
 end
 
@@ -190,7 +190,7 @@ class Commerce::ClaimGiftCardTest < ActiveSupport::TestCase
 
     result = Commerce::ClaimGiftCard.call(user: @user, gift_card: @card)
     assert result.failure?
-    assert_match(/其他账户/, result.error.to_s)
+    assert_equal I18n.t("mcweb.services.errors.gift_card_unavailable"), result.error
   end
 end
 

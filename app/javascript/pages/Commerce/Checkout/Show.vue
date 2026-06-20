@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, watch, computed } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
+import { usePage } from '@inertiajs/vue3'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
@@ -18,10 +19,18 @@ import Checkbox from '@/components/ui/Checkbox.vue'
 import Radio from '@/components/ui/Radio.vue'
 import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
+import { resolveStoreFeatures } from '@/lib/storeFeatures'
 
 defineOptions({ layout: PortalLayout })
 
 const { t } = useI18n()
+const page = usePage()
+const storeFeatures = computed(() =>
+  resolveStoreFeatures(page.props.storeFeatures as Parameters<typeof resolveStoreFeatures>[0]),
+)
+
+const showShipping = computed(() => storeFeatures.value.shipping && props.requiresShipping)
+const showGiftWrap = computed(() => storeFeatures.value.gift_wrap && props.giftWrapAvailable)
 
 export interface CheckoutItem {
   product_name: string
@@ -190,8 +199,6 @@ async function refreshStoreCredit() {
         'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
       },
       body: JSON.stringify({
-        coupon_code: form.checkout.coupon_code,
-        gift_card_code: form.checkout.gift_card_code,
         gift_wrap: form.checkout.gift_wrap,
       }),
     })
@@ -325,8 +332,8 @@ onMounted(() => {
 
     <div class="space-y-1 text-sm">
       <p>{{ t('commerce.checkout.subtotal', { amount: subtotalLabel }) }}</p>
-      <p v-if="shippingLabel">{{ t('commerce.checkout.shipping', { amount: freeShipping ? t('commerce.checkout.freeShipping') : shippingLabel }) }}</p>
-      <p v-if="freeShippingRemainingLabel" class="text-xs text-amber-600">{{ t('commerce.checkout.freeShippingRemaining', { remaining: freeShippingRemainingLabel }) }}</p>
+      <p v-if="storeFeatures.shipping && shippingLabel">{{ t('commerce.checkout.shipping', { amount: freeShipping ? t('commerce.checkout.freeShipping') : shippingLabel }) }}</p>
+      <p v-if="storeFeatures.shipping && freeShippingRemainingLabel" class="text-xs text-amber-600">{{ t('commerce.checkout.freeShippingRemaining', { remaining: freeShippingRemainingLabel }) }}</p>
       <p v-if="discountLabel" class="text-green-600">{{ t('commerce.checkout.discount', { amount: discountLabel }) }}</p>
       <p v-if="giftCardLabel" class="text-green-600">{{ t('commerce.checkout.giftCard', { amount: giftCardLabel }) }}</p>
       <p v-if="storeCreditBalanceLabel" class="text-muted-foreground">{{ t('commerce.checkout.storeCreditBalance', { amount: storeCreditBalanceLabel }) }}</p>
@@ -369,7 +376,7 @@ onMounted(() => {
         <p v-if="giftCardError" class="text-sm text-destructive">{{ giftCardError }}</p>
       </div>
 
-      <div v-if="requiresShipping && shippingMethods?.length" class="space-y-2 rounded-lg border p-4">
+      <div v-if="showShipping && shippingMethods?.length" class="space-y-2 rounded-lg border p-4">
         <p class="text-sm font-medium">{{ t('commerce.checkout.shippingMethods') }}</p>
         <label v-for="method in shippingMethods" :key="method.code" class="flex cursor-pointer items-center gap-2 text-sm">
           <Radio v-model="form.checkout.shipping_method" name="shipping_method" :value="method.code" />
@@ -379,7 +386,7 @@ onMounted(() => {
           {{ t('commerce.checkout.deliveryEstimate', { estimate: selectedShippingEstimate }) }}
         </p>
       </div>
-      <div v-if="requiresShipping" class="space-y-3 rounded-lg border p-4">
+      <div v-if="showShipping" class="space-y-3 rounded-lg border p-4">
         <div class="flex flex-wrap items-center justify-between gap-2">
           <h2 class="text-sm font-semibold">{{ t('commerce.checkout.shippingAddress') }}</h2>
           <Link v-if="shippingAddressesUrl" :href="shippingAddressesUrl" class="text-xs text-primary hover:underline">{{ t('commerce.checkout.manageAddresses') }}</Link>
@@ -428,7 +435,7 @@ onMounted(() => {
         </div>
       </div>
 
-      <label v-if="giftWrapAvailable" class="flex items-center gap-2 rounded-lg border p-4 text-sm">
+      <label v-if="showGiftWrap" class="flex items-center gap-2 rounded-lg border p-4 text-sm">
         <Checkbox v-model="form.checkout.gift_wrap" />
         {{ t('commerce.checkout.giftWrap', { label: giftWrapLabel }) }}
       </label>

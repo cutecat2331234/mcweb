@@ -1,4 +1,9 @@
 "zh-CN":
+  support:
+    array:
+      words_connector: "、"
+      two_words_connector: "和"
+      last_word_connector: "和"
   activerecord:
     models:
       user: 用户
@@ -13,6 +18,8 @@
       commerce/product: 商品
       commerce/order: 订单
       commerce/coupon: 优惠券
+      commerce/membership_type: 会员类型
+      commerce/user_membership: 用户会员
       website/page: 页面
       website/article: 文章
       minecraft/server: 服务器
@@ -39,6 +46,7 @@
         slug: 标识
         price_cents: 价格
         currency: 货币
+        membership_type: 会员类型
       commerce/order:
         order_number: 订单号
         status: 状态
@@ -78,6 +86,14 @@
           has_one: 由于存在关联的 %{record}，无法删除
           has_many: 由于存在关联的 %{record}，无法删除
       models:
+        commerce/product:
+          attributes:
+            membership_type:
+              required_for_membership_product: 会员商品必须关联会员类型
+        commerce/membership_type:
+          attributes:
+            duration_days:
+              blank_for_permanent: 永久会员类型不能设置有效天数
         user:
           attributes:
             email:
@@ -114,12 +130,21 @@
   mcweb:
     flash:
       setup_complete: 安装完成，请使用管理员账号登录。
+      setup_complete_with_account: "安装完成，请使用 %{email} 及安装时设置的密码登录。"
       sign_in_required: 请先登录。
       permission_denied: 没有权限执行此操作。
     setup:
       password_required: 请填写密码。
       password_too_short: 密码至少需要 6 个字符。
       password_mismatch: 两次输入的密码不一致。
+      database_saved: 数据库配置已保存。
+      database_connection_failed: "数据库连接失败：%{message}"
+      database_host_not_allowed: 数据库主机地址不被允许（请勿使用元数据或链路本地地址）。
+      database_name_invalid: 数据库名称只能包含字母、数字和下划线。
+      database_host_required: 请填写数据库主机。
+      database_username_required: 请填写数据库用户名。
+      already_complete: 安装已完成，请使用管理员账号登录。
+      complete_prior_steps: 请先完成前面的安装步骤，再创建管理员账号。
 
   datetime:
     distance_in_words:
@@ -185,3 +210,45 @@
       create: 创建%{model}
       update: 更新%{model}
       submit: 保存%{model}
+
+  mcweb:
+    store_features:
+      physical_products:
+        label: 实体商品
+        description: 允许创建 physical 类型商品及 requires_shipping 字段
+      shipping:
+        label: 物流配送
+        description: 结账收货地址、配送方式、运费计算与用户地址簿
+      gift_wrap:
+        label: 礼品包装
+        description: 结账页礼品包装选项与费用
+      order_shipping_management:
+        label: 订单物流管理
+        description: 后台填写快递单号、标记发货与装箱单
+  commerce:
+    prerequisites:
+      login_required: 购买此商品需要先登录。
+      not_met: 需要先满足前置条件：%{products}
+    memberships:
+      permanent: 永久
+    cart:
+      min_quantity: 最少购买 %{count} 件。
+      max_quantity: 最多购买 %{count} 件。
+      quantity_at_least_one: 数量至少为 1。
+      product_inactive: 商品已下架。
+      variant_required: 请选择规格。
+      out_of_stock: 库存不足。
+      purchase_limit_exceeded: 已超过该商品的限购数量。
+      cart_max_items: 购物车最多 %{count} 件商品。
+      physical_products_disabled: 实体商品功能未开启。
+      shipping_disabled: 物流配送功能未开启。
+      unsupported_feature_product: 购物车包含当前未开放的功能商品，请移除后重试。
+    product:
+      coming_soon_at: 将于 %{time} 上架
+    shipping:
+      address_fields:
+        name: 收件人
+        phone: 手机号
+        line1: 地址
+        city: 城市
+        province: 省/州

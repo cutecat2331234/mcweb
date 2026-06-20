@@ -7,6 +7,7 @@ const { t } = useI18n()
 
 defineProps<{
   prefix?: string | null
+  prefixColor?: string | null
   pinned?: boolean
   featured?: boolean
   locked?: boolean
@@ -27,7 +28,12 @@ defineProps<{
 </script>
 
 <template>
-  <span v-if="prefix" class="mr-1 text-xs text-violet-600">[{{ prefix }}]</span>
+  <span
+    v-if="prefix"
+    class="mr-1 inline-flex items-center rounded px-1.5 py-0.5 text-xs font-medium"
+    :class="prefixColor ? '' : 'text-violet-600'"
+    :style="prefixColor ? { color: prefixColor, backgroundColor: `${prefixColor}1a` } : undefined"
+  >[{{ prefix }}]</span>
   <span v-if="pinned" class="mr-1 text-xs text-amber-600">{{ t('components.topicBadges.pinned') }}</span>
   <span v-if="featured" class="mr-1 text-xs text-blue-600">{{ t('components.topicBadges.featured') }}</span>
   <span v-if="locked" class="mr-1 text-xs text-muted-foreground">{{ t('components.topicBadges.locked') }}</span>

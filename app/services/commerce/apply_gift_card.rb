@@ -8,13 +8,13 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "订单无法修改。") unless @order.status == "pending"
+      return ServiceResult.failure(error: "order_not_modifiable") unless @order.status == "pending"
 
       card = Commerce::GiftCard.find_by(code: @code)
-      return ServiceResult.failure(error: "礼品卡代码无效。") unless card
+      return ServiceResult.failure(error: "gift_card_unavailable") unless card
 
       reason = card.inapplicable_reason
-      return ServiceResult.failure(error: reason) if reason
+      return ServiceResult.failure(error: "gift_card_unavailable") if reason
 
       payable = [ @order.subtotal_cents - @order.discount_cents + @order.shipping_cents.to_i + @order.gift_wrap_cents.to_i, 0 ].max
       amount = 0
@@ -22,10 +22,10 @@ module Commerce
       Commerce::Order.transaction do
         card.lock!
         available = card.available_balance_cents(excluding_order: @order)
-        return ServiceResult.failure(error: "礼品卡余额不足。") unless available.positive?
+        return ServiceResult.failure(error: "gift_card_unavailable") unless available.positive?
 
         amount = card.applicable_amount_cents(payable, excluding_order: @order)
-        return ServiceResult.failure(error: "礼品卡余额不足。") unless amount.positive?
+        return ServiceResult.failure(error: "gift_card_unavailable") unless amount.positive?
 
         total_cents = payable - amount
 

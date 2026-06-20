@@ -8,7 +8,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "商品已上架，无需订阅。") unless @product.coming_soon?
+      return ServiceResult.failure(error: "product_already_available") unless @product.coming_soon?
 
       alert = Commerce::ProductAvailabilityAlert.find_or_initialize_by(user: @user, product: @product)
       alert.notified_at = nil

@@ -80,12 +80,7 @@ module Community
     private
 
     def forum_sort_options
-      [
-        { value: "latest", label: "最新回复" },
-        { value: "hot", label: "热门" },
-        { value: "replies", label: "回复最多" },
-        { value: "newest", label: "最新发布" }
-      ]
+      Community::TopicListSortOptions.call
     end
   end
 end

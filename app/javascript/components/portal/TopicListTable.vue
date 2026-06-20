@@ -32,6 +32,7 @@ export interface TopicListItem {
   unlisted?: boolean
   archived?: boolean
   prefix?: string | null
+  prefix_color?: string | null
   has_unread?: boolean
   unread_count?: number
   linked_product?: boolean
@@ -109,6 +110,7 @@ const allSelected = () =>
               <div class="min-w-0 flex-1">
             <TopicTitleBadges
               :prefix="topic.prefix"
+              :prefix-color="topic.prefix_color"
               :pinned="topic.pinned"
               :featured="topic.featured"
               :locked="topic.locked"

@@ -19,7 +19,7 @@ module Community
         next if group_tag_ids.empty?
 
         unless (@tag_ids & group_tag_ids).any?
-          return ServiceResult.failure(error: "此分区要求从标签组「#{group.name}」中至少选择一个标签。")
+          return ServiceResult.failure(error: I18n.t("mcweb.services.errors.section_tag_group_required", group: group.name))
         end
       end
 

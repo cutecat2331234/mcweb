@@ -5,7 +5,7 @@ require "test_helper"
 class Round99NotificationTypeLabelsTest < ActiveSupport::TestCase
   test "labels forum and commerce notification types" do
     assert_equal "主题回复", Community::NotificationTypeLabels.label_for("forum.topic_reply")
-    assert_equal "支付确认", Community::NotificationTypeLabels.label_for("commerce.payment_confirmed")
+    assert_equal "支付成功", Community::NotificationTypeLabels.label_for("commerce.payment_confirmed")
   end
 end
 

@@ -4,17 +4,22 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.mcweb.connector.common.BridgeRegistry;
 import com.mcweb.connector.common.ConnectorClient;
-import com.mcweb.connector.common.PresenceSync;
+import com.mcweb.connector.common.LinkCodes;
 import com.mcweb.connector.common.LinkCommandConfig;
+import com.mcweb.connector.common.LinkResponseHelper;
+import com.mcweb.connector.common.OnlinePlayerRoster;
+import com.mcweb.connector.common.PresenceSync;
 import com.mcweb.connector.common.ProcessedDeliveryStore;
 import com.mcweb.connector.common.ProxyBridgeSupport;
 import com.mcweb.connector.common.RemoteBridgeConfig;
 import com.mcweb.connector.common.TaskPoller;
+import com.mcweb.connector.common.WhoisDisplayHelper;
 import com.velocitypowered.api.event.Subscribe;
 import com.velocitypowered.api.event.connection.DisconnectEvent;
 import com.velocitypowered.api.event.connection.PostLoginEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.command.CommandManager;
+import com.velocitypowered.api.command.CommandMeta;
 import com.velocitypowered.api.command.SimpleCommand;
 import com.velocitypowered.api.plugin.Plugin;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
@@ -32,6 +37,8 @@ import java.nio.file.Path;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.logging.Level;
 
 @Plugin(id = "mcwebconnector", name = "McWebConnector", version = "1.0.0")
@@ -40,13 +47,21 @@ public final class McWebVelocityPlugin {
     private final Logger logger;
     private final Path dataDirectory;
     private final java.util.logging.Logger javaLogger = java.util.logging.Logger.getLogger("mcweb-velocity");
-    private ConnectorClient client;
+    private final ExecutorService asyncExecutor = Executors.newCachedThreadPool(r -> {
+        Thread thread = new Thread(r, "mcweb-velocity-async");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private volatile ConnectorClient client;
     private ProcessedDeliveryStore deliveryStore;
-    private TaskPoller taskPoller;
-    private JsonObject remoteConfig;
-    private RemoteBridgeConfig remoteBridgeConfig = RemoteBridgeConfig.from(null);
-    private LinkCommandConfig linkCommandConfig = LinkCommandConfig.defaults();
+    private ProcessedDeliveryStore seenPlayerStore;
+    private volatile TaskPoller taskPoller;
+    private volatile JsonObject remoteConfig;
+    private volatile RemoteBridgeConfig remoteBridgeConfig = RemoteBridgeConfig.from(null);
+    private volatile LinkCommandConfig linkCommandConfig = LinkCommandConfig.defaults();
     private BridgeRegistry bridges;
+    private CommandMeta websiteCommandMeta;
+    private WebsiteCommand websiteCommand;
 
     @Inject
     public McWebVelocityPlugin(ProxyServer server, Logger logger, @DataDirectory Path dataDirectory) {
@@ -64,39 +79,55 @@ public final class McWebVelocityPlugin {
 
         client = new ConnectorClient(websiteUrl, serverId, secret);
         deliveryStore = new ProcessedDeliveryStore(dataDirectory.toFile());
+        seenPlayerStore = new ProcessedDeliveryStore(dataDirectory.toFile(), "seen_players.txt");
         taskPoller = new TaskPoller(client, deliveryStore, this::executeTask, javaLogger);
         bridges = ProxyBridgeSupport.create(javaLogger);
         remoteConfig = new JsonObject();
-        refreshRemoteConfig();
+        refreshRemoteConfigAsync();
 
-        server.getScheduler().buildTask(this, this::heartbeat).repeat(Duration.ofSeconds(30)).schedule();
-        server.getScheduler().buildTask(this, taskPoller::poll).repeat(Duration.ofSeconds(10)).schedule();
-        server.getScheduler().buildTask(this, this::refreshRemoteConfig).repeat(Duration.ofMinutes(5)).schedule();
+        server.getScheduler().buildTask(this, () -> runAsync(this::heartbeat)).repeat(Duration.ofSeconds(30)).schedule();
+        server.getScheduler().buildTask(this, () -> runAsync(() -> taskPoller.poll())).repeat(Duration.ofSeconds(10)).schedule();
+        server.getScheduler().buildTask(this, this::refreshRemoteConfigAsync).repeat(Duration.ofMinutes(5)).schedule();
 
+        registerWebsiteCommand();
+    }
+
+    private void runAsync(Runnable task) {
+        asyncExecutor.execute(task);
+    }
+
+    private void registerWebsiteCommand() {
         CommandManager commands = server.getCommandManager();
+        if (websiteCommandMeta != null) {
+            commands.unregister(websiteCommandMeta);
+        }
         java.util.ArrayList<String> aliases = new java.util.ArrayList<>();
         aliases.add("mcweb");
         aliases.addAll(linkCommandConfig.aliasesFor("website"));
-        commands.register(
-                commands.metaBuilder("website").aliases(aliases.toArray(new String[0])).build(),
-                new WebsiteCommand()
-        );
+        websiteCommand = new WebsiteCommand();
+        websiteCommandMeta = commands.metaBuilder("website").aliases(aliases.toArray(new String[0])).build();
+        commands.register(websiteCommandMeta, websiteCommand);
     }
 
     @Subscribe
     public void onPostLogin(PostLoginEvent event) {
         Player player = event.getPlayer();
-        server.getScheduler().buildTask(this, () -> syncPlayer(player, "player.join", false)).schedule();
+        boolean firstJoin = seenPlayerStore.registerIfNew(player.getUniqueId().toString());
+        runAsync(() -> syncPlayer(player, "player.join", firstJoin));
     }
 
     @Subscribe
     public void onDisconnect(DisconnectEvent event) {
         Player player = event.getPlayer();
-        server.getScheduler().buildTask(this, () -> syncPlayer(player, "player.quit", false)).schedule();
+        runAsync(() -> syncPlayer(player, "player.quit", false));
     }
 
     private void syncPlayer(Player player, String eventName, boolean firstJoin) {
         String serverId = readConfig("server-id", "");
+        java.util.ArrayList<java.util.UUID> onlineIds = new java.util.ArrayList<>();
+        for (Player online : server.getAllPlayers()) {
+            onlineIds.add(online.getUniqueId());
+        }
         PresenceSync.sync(
                 client,
                 javaLogger,
@@ -105,7 +136,8 @@ public final class McWebVelocityPlugin {
                 "java",
                 serverId,
                 eventName,
-                firstJoin
+                firstJoin,
+                OnlinePlayerRoster.fromUuids(onlineIds)
         );
         PresenceSync.syncPermissionGroups(
                 client,
@@ -138,24 +170,47 @@ public final class McWebVelocityPlugin {
                 return;
             }
             JsonArray commands = payload.getAsJsonArray("commands");
-            try {
-                for (int i = 0; i < commands.size(); i++) {
-                    server.getCommandManager().executeAsync(server.getConsoleCommandSource(), commands.get(i).getAsString());
-                }
-                completion.succeed("commands executed");
-            } catch (Exception ex) {
-                completion.fail(ex.getMessage() == null ? "command execution failed" : ex.getMessage());
-            }
+            executeCommandsSequentially(commands, 0, completion);
             return;
         }
 
         completion.fail("unsupported task type on proxy: " + taskType);
     }
 
+    private void executeCommandsSequentially(JsonArray commands, int index, TaskPoller.Completion completion) {
+        if (index >= commands.size()) {
+            completion.succeed("commands executed");
+            return;
+        }
+        try {
+            server.getCommandManager().executeAsync(
+                    server.getConsoleCommandSource(),
+                    commands.get(index).getAsString()
+            ).whenComplete((success, error) -> {
+                if (error != null) {
+                    completion.fail(error.getMessage() == null ? "command execution failed" : error.getMessage());
+                    return;
+                }
+                if (!Boolean.TRUE.equals(success)) {
+                    completion.fail("command execution failed");
+                    return;
+                }
+                executeCommandsSequentially(commands, index + 1, completion);
+            });
+        } catch (Exception ex) {
+            completion.fail(ex.getMessage() == null ? "command execution failed" : ex.getMessage());
+        }
+    }
+
     private void heartbeat() {
         try {
+            java.util.ArrayList<java.util.UUID> onlineIds = new java.util.ArrayList<>();
+            for (Player online : server.getAllPlayers()) {
+                onlineIds.add(online.getUniqueId());
+            }
             JsonObject body = new JsonObject();
             body.addProperty("online_players", server.getPlayerCount());
+            body.add("online_player_uuids", OnlinePlayerRoster.fromUuids(onlineIds));
             body.addProperty("max_players", server.getConfiguration().getShowMaxPlayers());
             body.addProperty("version", server.getVersion().getVersion());
             Runtime runtime = Runtime.getRuntime();
@@ -167,39 +222,59 @@ public final class McWebVelocityPlugin {
         }
     }
 
-    private void refreshRemoteConfig() {
-        try {
-            remoteConfig = client.get("config");
-            remoteBridgeConfig = RemoteBridgeConfig.from(remoteConfig);
-            linkCommandConfig = LinkCommandConfig.from(remoteConfig);
-        } catch (Exception ex) {
-            logger.debug("config fetch failed", ex);
-        }
+    private void reloadLocalConfig() {
+        String websiteUrl = readConfig("website-url", "http://localhost:3000");
+        String serverId = readConfig("server-id", "");
+        String secret = readConfig("connector-secret", "");
+        client = new ConnectorClient(websiteUrl, serverId, secret);
+        taskPoller = new TaskPoller(client, deliveryStore, this::executeTask, javaLogger);
+    }
+
+    private void refreshRemoteConfigAsync() {
+        runAsync(() -> {
+            try {
+                JsonObject config = client.get("config");
+                server.getScheduler().buildTask(this, () -> applyRemoteConfig(config)).schedule();
+            } catch (Exception ex) {
+                logger.debug("config fetch failed", ex);
+            }
+        });
+    }
+
+    private void applyRemoteConfig(JsonObject config) {
+        remoteConfig = config;
+        remoteBridgeConfig = RemoteBridgeConfig.from(config);
+        linkCommandConfig = LinkCommandConfig.from(config);
+        registerWebsiteCommand();
     }
 
     private void linkPlayer(com.velocitypowered.api.command.CommandSource sender, Player player) {
-        server.getScheduler().buildTask(this, () -> {
+        runAsync(() -> {
             try {
+                String code = LinkCodes.generateCode(8);
                 JsonObject body = new JsonObject();
                 body.addProperty("uuid", player.getUniqueId().toString());
                 body.addProperty("username", player.getUsername());
                 body.addProperty("platform", "java");
+                body.addProperty("code_digest", LinkCodes.digestCode(code));
                 JsonObject response = client.post("link_codes", body);
-                String code = response.get("code").getAsString();
+                String outboundCode = LinkResponseHelper.resolveCode(response, code);
                 String url = response.has("link_url")
                         ? response.get("link_url").getAsString()
                         : readConfig("website-url", "http://localhost:3000") + "/app/minecraft/link";
                 String template = message("link_code", "Bind code: {code} - visit {url}");
-                sender.sendMessage(Component.text(template.replace("{code}", code).replace("{url}", url)));
+                Component message = Component.text(template.replace("{code}", outboundCode).replace("{url}", url));
+                server.getScheduler().buildTask(this, () -> sender.sendMessage(message)).schedule();
             } catch (Exception ex) {
                 javaLogger.log(Level.WARNING, "link failed", ex);
-                sender.sendMessage(Component.text(message("link_failed", "Failed to generate bind code."), NamedTextColor.RED));
+                Component message = Component.text(message("link_failed", "Failed to generate bind code."), NamedTextColor.RED);
+                server.getScheduler().buildTask(this, () -> sender.sendMessage(message)).schedule();
             }
-        }).schedule();
+        });
     }
 
     private void whoisPlayer(com.velocitypowered.api.command.CommandSource sender, String targetName) {
-        server.getScheduler().buildTask(this, () -> {
+        runAsync(() -> {
             try {
                 JsonObject body = new JsonObject();
                 body.addProperty("username", targetName);
@@ -207,26 +282,24 @@ public final class McWebVelocityPlugin {
                 Optional<Player> online = server.getPlayer(targetName);
                 online.ifPresent(player -> body.addProperty("uuid", player.getUniqueId().toString()));
                 JsonObject response = client.post("whois", body);
-                if (response.has("linked") && response.get("linked").getAsBoolean()) {
-                    sender.sendMessage(Component.text("Website: " + response.get("website_username").getAsString(), NamedTextColor.GREEN));
-                    if (response.has("trust_level_label")) {
-                        sender.sendMessage(Component.text("Trust: " + response.get("trust_level_label").getAsString(), NamedTextColor.GRAY));
+                java.util.List<String> lines = WhoisDisplayHelper.displayLines(response);
+                server.getScheduler().buildTask(this, () -> {
+                    for (String line : lines) {
+                        sender.sendMessage(Component.text(line));
                     }
-                } else {
-                    sender.sendMessage(Component.text(
-                            response.has("message") ? response.get("message").getAsString() : "Player not linked.",
-                            NamedTextColor.YELLOW));
-                }
+                }).schedule();
             } catch (Exception ex) {
                 logger.debug("whois failed", ex);
-                sender.sendMessage(Component.text("Whois lookup failed.", NamedTextColor.RED));
+                Component message = Component.text(WhoisDisplayHelper.lookupFailedMessage(remoteConfig), NamedTextColor.RED);
+                server.getScheduler().buildTask(this, () -> sender.sendMessage(message)).schedule();
             }
-        }).schedule();
+        });
     }
 
     private String message(String key, String fallback) {
-        if (remoteConfig != null && remoteConfig.has("messages") && remoteConfig.getAsJsonObject("messages").has(key)) {
-            return remoteConfig.getAsJsonObject("messages").get(key).getAsString();
+        JsonObject config = remoteConfig;
+        if (config != null && config.has("messages") && config.getAsJsonObject("messages").has(key)) {
+            return config.getAsJsonObject("messages").get(key).getAsString();
         }
         return fallback;
     }
@@ -284,7 +357,8 @@ public final class McWebVelocityPlugin {
                 return;
             }
             if (args.length > 0 && "reload".equalsIgnoreCase(args[0])) {
-                refreshRemoteConfig();
+                reloadLocalConfig();
+                refreshRemoteConfigAsync();
                 source.sendMessage(Component.text("McWeb config reloaded."));
                 return;
             }

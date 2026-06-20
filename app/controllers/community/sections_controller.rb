@@ -5,9 +5,12 @@ module Community
     include Community::TopicFilterable
     include Community::TopicListPreloadable
     include Community::SubscriptionNoticeable
+    include Community::SectionVisibility
 
     def index
-      @pagy, sections = pagy(Community::Section.roots.ordered.includes(:category, :children), limit: 20)
+      scope = Community::Section.roots.ordered.includes(:category, :children)
+      scope = scope.where(login_required: false) unless logged_in?
+      @pagy, sections = pagy(scope, limit: 20)
       unread_map = if logged_in?
                      sections.each_with_object({}) do |section, hash|
                        hash[section.id] = Community::ReadState.unread_count_for_section(current_user, section)
@@ -37,7 +40,12 @@ module Community
     end
 
     def show
-      section = Community::Section.find_by!(slug: params[:id])
+      section = Community::Section.includes(:moderators).find_by!(slug: params[:id])
+      return if performed?
+
+      ensure_section_visible!(section)
+      return if performed?
+
       sort = params[:sort].to_s.presence || "activity"
       filter = params[:filter].to_s.presence
       staff = forum_staff?
@@ -81,18 +89,19 @@ module Community
           required_tags: section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
           required_tag_groups: section.required_tag_groups.map { |g| { name: g.name, slug: g.slug } },
           allowed_tags: section.allowed_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
-          prefix_required: section.prefix_required?
+          prefix_required: section.prefix_required?,
+          moderators: section.moderators.order(:username).map { |user| { username: user.username, url: forum_user_path(user.username) } }
         },
         featuredTopics: serialize_topics(featured, read_states: read_states),
         topics: serialize_topics(topics, read_states: read_states),
         pagination: pagy_props(@pagy),
         sort: sort,
         filter: filter.to_s,
-        filterOptions: topic_filter_options(prefixes: Array(section.prefixes), staff: staff),
-        activeFilters: section_active_filters(sort: sort, filter: filter, prefixes: Array(section.prefixes), staff: staff),
+        filterOptions: topic_filter_options(prefixes: section.prefix_names, staff: staff),
+        activeFilters: section_active_filters(sort: sort, filter: filter, prefixes: section.prefix_names, staff: staff),
         canCreateTopic: logged_in? && section.allowed?(current_user, :create_topic) && section.writable_by?(current_user, :create_topic),
-        canBulkModerate: logged_in? && current_user.permission?("forum.topics.lock"),
-        bulkModerateUrl: logged_in? && current_user.permission?("forum.topics.lock") ? bulk_moderate_forum_topics_path : nil,
+        canBulkModerate: logged_in? && Community::SectionModeration.can_moderate?(user: current_user, section: section),
+        bulkModerateUrl: logged_in? && Community::SectionModeration.can_moderate?(user: current_user, section: section) ? bulk_moderate_forum_topics_path : nil,
         subscriptionLevels: Community::SubscriptionLevelOptions.for(:section),
         meta: {
           title: section.seo["title"].presence || section.name,

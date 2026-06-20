@@ -26,8 +26,12 @@ module Commerce
 
         ServiceResult.success(fulfillment)
       rescue ActiveRecord::RecordNotUnique
+        existing = Commerce::Fulfillment.find_by(order_item: @order_item)
+        return ServiceResult.success(existing) if existing
+
         retries += 1
         retry if retries < MAX_RETRIES
+
         ServiceResult.failure(error: "Unable to generate unique delivery ID.")
       rescue ActiveRecord::RecordInvalid => e
         ServiceResult.failure(errors: e.record.errors.to_hash)

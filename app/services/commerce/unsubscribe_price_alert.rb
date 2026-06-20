@@ -9,7 +9,7 @@ module Commerce
 
     def call
       alert = Commerce::PriceAlert.find_by(user: @user, product: @product)
-      return ServiceResult.failure(error: "未找到订阅记录。") unless alert
+      return ServiceResult.failure(error: "subscription_not_found") unless alert
 
       alert.destroy!
       ServiceResult.success

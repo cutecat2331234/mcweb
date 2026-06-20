@@ -14,6 +14,7 @@ import {
 import Button from '@/components/ui/Button.vue'
 import { cn } from '@/lib/utils'
 import { normalizeAppLocale, type AppLocale } from '@/lib/i18n'
+import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
 import { routes } from '@/lib/routes'
 
 const page = usePage()
@@ -32,7 +33,12 @@ function localeLabel(locale: AppLocale) {
 
 function switchLocale(locale: AppLocale) {
   if (locale === currentLocale.value) return
-  router.patch(routes.locale, { locale }, { preserveScroll: true })
+  const token = readCsrfToken()
+  router.patch(
+    routes.locale,
+    { locale, authenticity_token: token },
+    { preserveScroll: true, headers: csrfHeaders() },
+  )
 }
 </script>
 

@@ -1,0 +1,179 @@
+expire_pending_orders:
+  cron: "*/15 * * * *"
+  class: "Commerce::ExpirePendingOrdersJob"
+  queue: maintenance
+  active_job: true
+
+pending_order_payment_reminders:
+  cron: "*/15 * * * *"
+  class: "Commerce::PendingOrderPaymentReminderJob"
+  queue: mailers
+  active_job: true
+
+abandoned_cart_reminders:
+  cron: "0 10 * * *"
+  class: "Commerce::AbandonedCartReminderJob"
+  queue: mailers
+  active_job: true
+
+forum_digest:
+  cron: "10 * * * *"
+  class: "Community::ForumDigestJob"
+  queue: mailers
+  active_job: true
+
+saved_search_digest:
+  cron: "5 * * * *"
+  class: "Community::SavedSearchDigestJob"
+  queue: mailers
+  active_job: true
+
+publish_scheduled_topics:
+  cron: "*/5 * * * *"
+  class: "Community::PublishScheduledTopicsJob"
+  queue: default
+  active_job: true
+
+close_scheduled_topics:
+  cron: "*/5 * * * *"
+  class: "Community::CloseScheduledTopicsJob"
+  queue: default
+  active_job: true
+
+open_scheduled_topics:
+  cron: "*/5 * * * *"
+  class: "Community::OpenScheduledTopicsJob"
+  queue: default
+  active_job: true
+
+bump_scheduled_topics:
+  cron: "*/5 * * * *"
+  class: "Community::BumpScheduledTopicsJob"
+  queue: default
+  active_job: true
+
+archive_scheduled_topics:
+  cron: "*/5 * * * *"
+  class: "Community::ArchiveScheduledTopicsJob"
+  queue: default
+  active_job: true
+
+bookmark_reminders:
+  cron: "*/15 * * * *"
+  class: "Community::BookmarkReminderJob"
+  queue: notifications
+  active_job: true
+
+unpin_expired_topics:
+  cron: "0 * * * *"
+  class: "Community::UnpinExpiredTopicsJob"
+  queue: maintenance
+  active_job: true
+
+close_expired_polls:
+  cron: "*/15 * * * *"
+  class: "Community::CloseExpiredPollsJob"
+  queue: maintenance
+  active_job: true
+
+gift_card_expiry_reminders:
+  cron: "0 9 * * *"
+  class: "Commerce::GiftCardExpiryReminderJob"
+  queue: mailers
+  active_job: true
+
+expire_memberships:
+  cron: "0 * * * *"
+  class: "Commerce::ExpireMembershipsJob"
+  queue: maintenance
+  active_job: true
+
+activate_scheduled_products:
+  cron: "*/5 * * * *"
+  class: "Commerce::ActivateScheduledProductsJob"
+  queue: maintenance
+  active_job: true
+
+retry_failed_saved_search_webhooks:
+  cron: "*/15 * * * *"
+  class: "Community::RetryFailedSavedSearchWebhooksJob"
+  queue: maintenance
+  active_job: true
+
+retry_failed_order_webhooks:
+  cron: "*/15 * * * *"
+  class: "Commerce::RetryFailedOrderWebhooksJob"
+  queue: maintenance
+  active_job: true
+
+retry_failed_forum_event_webhooks:
+  cron: "*/15 * * * *"
+  class: "Community::RetryFailedForumEventWebhooksJob"
+  queue: maintenance
+  active_job: true
+
+webhook_failure_alert:
+  cron: "45 * * * *"
+  class: "WebhookFailureAlertJob"
+  queue: mailers
+  active_job: true
+
+cleanup_expired_sessions:
+  cron: "0 3 * * *"
+  class: "Maintenance::CleanupExpiredSessionsJob"
+  queue: maintenance
+  active_job: true
+
+cleanup_expired_link_codes:
+  cron: "*/30 * * * *"
+  class: "Maintenance::CleanupExpiredLinkCodesJob"
+  queue: maintenance
+  active_job: true
+
+mark_stale_minecraft_nodes:
+  cron: "*/2 * * * *"
+  class: "Minecraft::MarkStaleNodesOfflineJob"
+  queue: maintenance
+  active_job: true
+
+mark_stale_minecraft_servers:
+  cron: "*/2 * * * *"
+  class: "Minecraft::MarkStaleServersOfflineJob"
+  queue: maintenance
+  active_job: true
+
+reconcile_minecraft_process_state:
+  cron: "*/5 * * * *"
+  class: "Minecraft::ReconcileProcessStateJob"
+  queue: maintenance
+  active_job: true
+
+close_stale_player_sessions:
+  cron: "*/5 * * * *"
+  class: "Minecraft::CloseStalePlayerSessionsJob"
+  queue: maintenance
+  active_job: true
+
+collect_minecraft_metrics:
+  cron: "*/10 * * * *"
+  class: "Minecraft::ScheduleCollectMetricsJob"
+  queue: maintenance
+  active_job: true
+
+scheduled_minecraft_restarts:
+  cron: "*/15 * * * *"
+  class: "Minecraft::ScheduledServerRestartJob"
+  queue: maintenance
+  active_job: true
+
+scheduled_minecraft_backups:
+  cron: "*/30 * * * *"
+  class: "Minecraft::ScheduledBackupWorldJob"
+  queue: maintenance
+  active_job: true
+
+generate_sitemap:
+  cron: "0 2 * * *"
+  class: "Website::GenerateSitemapJob"
+  queue: website
+  active_job: true

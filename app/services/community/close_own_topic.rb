@@ -11,20 +11,22 @@ module Community
 
     def call
       unless SiteSetting.get("forum.allow_op_close", "true") == "true"
-        return ServiceResult.failure(error: "楼主关闭主题功能未启用。")
+        return ServiceResult.failure(error: "topic_close_disabled")
       end
 
       unless @topic.user_id == @user.id
-        return ServiceResult.failure(error: "只有主题作者可以关闭或重新打开自己的主题。")
+        return ServiceResult.failure(error: "topic_close_author_only")
       end
 
       case @action
       when "close"
-        @topic.update!(locked: true, lock_reason: @lock_reason || "作者已关闭此主题。")
-        Community::CreateSmallActionPost.call(topic: @topic, actor: @user, body: "作者已关闭此主题。")
+        lock_body = I18n.t("mcweb.forum.small_actions.author_closed")
+        @topic.update!(locked: true, lock_reason: @lock_reason || lock_body)
+        Community::CreateSmallActionPost.call(topic: @topic, actor: @user, body: lock_body)
       when "reopen"
+        reopen_body = I18n.t("mcweb.forum.small_actions.author_reopened")
         @topic.update!(locked: false, lock_reason: nil)
-        Community::CreateSmallActionPost.call(topic: @topic, actor: @user, body: "作者已重新打开此主题。")
+        Community::CreateSmallActionPost.call(topic: @topic, actor: @user, body: reopen_body)
       else
         return ServiceResult.failure(error: "Unknown action.")
       end

@@ -1,0 +1,14 @@
+[Unit]
+Description=McWeb Minecraft management node
+After=network.target
+
+[Service]
+Type=simple
+User=mcweb
+WorkingDirectory=/opt/mcweb-node
+ExecStart=/opt/mcweb-node/bin/mcweb-node -config /etc/mcweb/node.yml
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

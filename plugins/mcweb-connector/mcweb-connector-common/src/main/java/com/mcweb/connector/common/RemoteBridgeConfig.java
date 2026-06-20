@@ -11,32 +11,59 @@ import java.util.List;
 import java.util.Set;
 
 public final class RemoteBridgeConfig {
+    public enum BridgePolicy {
+        ALL,
+        ONLY_LISTED,
+        NONE
+    }
+
+    private final BridgePolicy bridgePolicy;
     private final Set<String> enabledBridges;
     private final List<String> bridgePlaceholders;
+    private final boolean bridgePlaceholdersConfigured;
 
-    public RemoteBridgeConfig(Set<String> enabledBridges, List<String> bridgePlaceholders) {
+    public RemoteBridgeConfig(
+            BridgePolicy bridgePolicy,
+            Set<String> enabledBridges,
+            List<String> bridgePlaceholders,
+            boolean bridgePlaceholdersConfigured
+    ) {
+        this.bridgePolicy = bridgePolicy;
         this.enabledBridges = enabledBridges;
         this.bridgePlaceholders = bridgePlaceholders;
+        this.bridgePlaceholdersConfigured = bridgePlaceholdersConfigured;
     }
 
     public static RemoteBridgeConfig from(JsonObject config) {
         if (config == null) {
-            return new RemoteBridgeConfig(Collections.<String>emptySet(), Collections.<String>emptyList());
+            return new RemoteBridgeConfig(
+                    BridgePolicy.ALL,
+                    Collections.<String>emptySet(),
+                    Collections.<String>emptyList(),
+                    false
+            );
         }
 
+        BridgePolicy bridgePolicy = BridgePolicy.ALL;
         Set<String> bridges = new HashSet<String>();
         if (config.has("bridges") && config.get("bridges").isJsonArray()) {
             JsonArray array = config.getAsJsonArray("bridges");
-            for (int i = 0; i < array.size(); i++) {
-                JsonElement element = array.get(i);
-                if (element.isJsonPrimitive()) {
-                    bridges.add(element.getAsString().trim().toLowerCase());
+            if (array.size() == 0) {
+                bridgePolicy = BridgePolicy.NONE;
+            } else {
+                bridgePolicy = BridgePolicy.ONLY_LISTED;
+                for (int i = 0; i < array.size(); i++) {
+                    JsonElement element = array.get(i);
+                    if (element.isJsonPrimitive()) {
+                        bridges.add(element.getAsString().trim().toLowerCase());
+                    }
                 }
             }
         }
 
         List<String> placeholders = new ArrayList<String>();
-        if (config.has("bridge_placeholders") && config.get("bridge_placeholders").isJsonArray()) {
+        boolean placeholdersConfigured = config.has("bridge_placeholders") && config.get("bridge_placeholders").isJsonArray();
+        if (placeholdersConfigured) {
             JsonArray array = config.getAsJsonArray("bridge_placeholders");
             for (int i = 0; i < array.size(); i++) {
                 JsonElement element = array.get(i);
@@ -49,17 +76,26 @@ public final class RemoteBridgeConfig {
             }
         }
 
-        return new RemoteBridgeConfig(bridges, placeholders);
+        return new RemoteBridgeConfig(bridgePolicy, bridges, placeholders, placeholdersConfigured);
     }
 
     public boolean bridgeEnabled(String name) {
-        if (enabledBridges.isEmpty()) {
-            return true;
+        switch (bridgePolicy) {
+            case NONE:
+                return false;
+            case ONLY_LISTED:
+                return enabledBridges.contains(name.toLowerCase());
+            case ALL:
+            default:
+                return true;
         }
-        return enabledBridges.contains(name.toLowerCase());
     }
 
     public List<String> bridgePlaceholders() {
         return bridgePlaceholders;
+    }
+
+    public boolean bridgePlaceholdersConfigured() {
+        return bridgePlaceholdersConfigured;
     }
 }

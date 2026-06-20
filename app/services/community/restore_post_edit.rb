@@ -16,7 +16,7 @@ module Community
       return ServiceResult.failure(error: "Nothing to restore.") if body.blank?
 
       old_body = @post.body
-      reason = "恢复至 #{I18n.l(@edit.created_at, format: :short)} 的版本"
+      reason = I18n.t("mcweb.forum.restore_post_edit.reason", time: I18n.l(@edit.created_at, format: :short))
       filter = Community::FilterCensoredWords.call(text: body)
       body = filter.value if filter.success?
 

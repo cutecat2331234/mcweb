@@ -10,12 +10,12 @@ module Admin
         tags = Community::Tag.ordered
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "论坛标签",
+          title: t("mcweb.admin.forum.tags.title"),
           columns: [
-            { key: "name", label: "名称" },
-            { key: "slug", label: "标识" },
-            { key: "topics_count", label: "主题数" },
-            { key: "staff_only", label: "仅工作人员" }
+            { key: "name", label: t("mcweb.admin.forum.col_name") },
+            { key: "slug", label: t("mcweb.admin.forum.col_slug") },
+            { key: "topics_count", label: t("mcweb.admin.forum.col_topics_count") },
+            { key: "staff_only", label: t("mcweb.admin.forum.col_staff_only") }
           ],
           rows: tags.map do |tag|
             {
@@ -23,11 +23,11 @@ module Admin
               name: tag.name,
               slug: tag.slug,
               topics_count: tag.topics.count,
-              staff_only: tag.staff_only? ? "是" : "否",
+              staff_only: tag.staff_only? ? t("mcweb.labels.yes") : t("mcweb.labels.no"),
               url: edit_admin_forum_tag_path(tag)
             }
           end,
-          actions: [ { label: "新建标签", href: new_admin_forum_tag_path } ]
+          actions: [ { label: t("mcweb.admin.forum.action_new_tag"), href: new_admin_forum_tag_path } ]
         }
       end
 
@@ -72,11 +72,11 @@ module Admin
       end
 
       def form_props(tag)
-        canonical_options = Community::Tag.where.not(id: tag.id).where(canonical_tag_id: nil).ordered.map do |t|
-          { id: t.id, name: t.name }
+        canonical_options = Community::Tag.where.not(id: tag.id).where(canonical_tag_id: nil).ordered.map do |entry|
+          { id: entry.id, name: entry.name }
         end
         {
-          title: tag.persisted? ? "编辑标签" : "新建标签",
+          title: tag.persisted? ? t("mcweb.admin.forum.form_edit_tag") : t("mcweb.admin.forum.form_new_tag"),
           tag: {
             id: tag.id,
             name: tag.name || "",

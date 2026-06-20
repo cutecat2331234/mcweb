@@ -9,13 +9,28 @@ module Community
     end
 
     def call
-      unless @user.permission?("forum.topics.move") || @user.permission?("forum.topics.lock")
+      unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
         return ServiceResult.failure(error: "You are not authorized to move this topic.")
       end
 
       return ServiceResult.failure(error: "Topic is already in this section.") if @topic.forum_section_id == @section.id
 
+      from_section = @topic.section
       @topic.update!(section: @section)
+      Community::DispatchForumEventWebhook.call(
+        event_type: "topic.moved",
+        topic: @topic,
+        extra: {
+          from_section: {
+            slug: from_section.slug,
+            name: from_section.name
+          },
+          to_section: {
+            slug: @section.slug,
+            name: @section.name
+          }
+        }
+      )
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

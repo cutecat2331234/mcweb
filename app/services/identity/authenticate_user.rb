@@ -26,9 +26,9 @@ module Identity
       return generic_failure unless user
 
       clear_expired_ban!(user)
-      return ServiceResult.failure(error: "该账户已被封禁。") if user.banned?
-      return ServiceResult.failure(error: "该账户已被删除。") if user.deleted?
-      return ServiceResult.failure(error: "账户已临时锁定，请稍后再试。") if locked?(user)
+      return generic_failure if user.banned?
+      return generic_failure if user.deleted?
+      return generic_failure if locked?(user)
 
       unless user.authenticate(@password)
         record_failed_login(user)
@@ -36,7 +36,7 @@ module Identity
       end
 
       unless user.email_verified?
-        return ServiceResult.failure(error: "请先验证邮箱后再登录。")
+        return generic_failure
       end
 
       if user.totp_enabled? || user.require_totp?

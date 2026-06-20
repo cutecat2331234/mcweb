@@ -9,21 +9,21 @@ module Admin
         cards = ::Commerce::GiftCard.order(created_at: :desc)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "礼品卡",
+          title: t("mcweb.admin.store.gift_cards.title"),
           columns: [
-            admin_column(:code, "代码", link: true),
-            admin_column(:balance, "余额"),
-            admin_column(:active, "状态")
+            admin_column(:code, t("mcweb.admin.store.gift_cards.col_code"), link: true),
+            admin_column(:balance, t("mcweb.admin.store.gift_cards.col_balance")),
+            admin_column(:active, t("mcweb.admin.store.gift_cards.col_status"))
           ],
           rows: cards.map do |card|
             admin_row(
               code: card.code,
               balance: format_money(card.balance_cents, card.currency),
-              active: card.active? ? "可用" : "停用",
+              active: gift_card_status_label(card.active?),
               url: admin_store_gift_card_path(card)
             )
           end,
-          actions: [ { label: "新建礼品卡", href: new_admin_store_gift_card_path } ]
+          actions: [ { label: t("mcweb.admin.store.gift_cards.new"), href: new_admin_store_gift_card_path } ]
         }
       end
 
@@ -33,30 +33,38 @@ module Admin
         render inertia: "Admin/Generic/Show", props: {
           title: card.code,
           fields: [
-            { label: "余额", value: format_money(card.balance_cents, card.currency) },
-            { label: "初始面额", value: format_money(card.initial_balance_cents, card.currency) },
-            { label: "状态", value: card.active? ? "可用" : "停用" },
-            { label: "过期时间", value: card.expires_at ? l(card.expires_at, format: :short) : "—" },
-            { label: "备注", value: card.note.presence || "—" }
+            { label: t("mcweb.admin.store.gift_cards.field_balance"), value: format_money(card.balance_cents, card.currency) },
+            { label: t("mcweb.admin.store.gift_cards.field_initial_balance"), value: format_money(card.initial_balance_cents, card.currency) },
+            { label: t("mcweb.admin.store.gift_cards.field_status"), value: gift_card_status_label(card.active?) },
+            { label: t("mcweb.admin.store.gift_cards.field_expires_at"), value: card.expires_at ? l(card.expires_at, format: :short) : t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.store.gift_cards.field_note"), value: card.note.presence || t("mcweb.labels.not_available") }
           ],
           sections: [
             {
-              title: "使用记录",
+              title: t("mcweb.admin.store.gift_cards.section_usage"),
               items: orders.map do |order|
-                { label: order.order_number, value: "#{format_money(order.gift_card_amount_cents, order.currency)} · #{order.status}" }
-              end.presence || [ { label: "记录", value: "暂无" } ]
+                { label: order.order_number, value: "#{format_money(order.gift_card_amount_cents, order.currency)} · #{order_status_label(order.status)}" }
+              end.presence || [ { label: t("mcweb.admin.store.gift_cards.record_label"), value: t("mcweb.admin.store.gift_cards.empty_records") } ]
             },
             {
-              title: "余额流水",
+              title: t("mcweb.admin.store.gift_cards.section_transactions"),
               items: card.transactions.order(created_at: :desc).limit(15).map do |tx|
                 sign = tx.amount_cents.positive? ? "+" : ""
-                { label: l(tx.created_at, format: :short), value: "#{sign}#{format_money(tx.amount_cents.abs, card.currency)} · 余额 #{format_money(tx.balance_after_cents, card.currency)}" }
-              end.presence || [ { label: "记录", value: "暂无" } ]
+                {
+                  label: l(tx.created_at, format: :short),
+                  value: t(
+                    "mcweb.admin.store.gift_cards.transaction_line",
+                    sign: sign,
+                    amount: format_money(tx.amount_cents.abs, card.currency),
+                    balance: format_money(tx.balance_after_cents, card.currency)
+                  )
+                }
+              end.presence || [ { label: t("mcweb.admin.store.gift_cards.record_label"), value: t("mcweb.admin.store.gift_cards.empty_records") } ]
             }
           ],
           backUrl: admin_store_gift_cards_path,
           actions: [
-            { label: "编辑", href: edit_admin_store_gift_card_path(card) }
+            { label: t("mcweb.admin.store.action_edit"), href: edit_admin_store_gift_card_path(card) }
           ]
         }
       end
@@ -108,7 +116,7 @@ module Admin
 
       def form_props(card, editing: false)
         {
-          title: editing ? "编辑礼品卡" : "新建礼品卡",
+          title: editing ? t("mcweb.admin.store.gift_cards.edit") : t("mcweb.admin.store.gift_cards.new"),
           gift_card: {
             code: card.code || "",
             balance_cents: card.balance_cents || 0,

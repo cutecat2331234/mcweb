@@ -2,12 +2,7 @@
 
 module Community
   class NotificationPeriodFilters
-    FILTERS = [
-      { key: "today", label: "仅今日", period: "today" },
-      { key: "this_week", label: "本周", period: "this_week" },
-      { key: "this_month", label: "本月", period: "this_month" },
-      { key: "last_month", label: "上月", period: "last_month" }
-    ].freeze
+    PERIODS = %w[today this_week this_month last_month last_year].freeze
 
     def self.call(user:, category: nil, read: nil, type: nil, active_period: nil)
       new(user: user, category: category, read: read, type: type, active_period: active_period).filters
@@ -24,16 +19,16 @@ module Community
     def filters
       scope = base_scope
 
-      FILTERS.filter_map do |filter|
-        count = count_for(scope, filter[:period])
+      PERIODS.filter_map do |period|
+        count = count_for(scope, period)
         next if count.zero?
 
         {
-          key: filter[:key],
-          label: filter[:label],
-          period: filter[:period],
-          href: Rails.application.routes.url_helpers.forum_notifications_path(tab_params(filter[:period])),
-          active: @active_period == filter[:period],
+          key: period,
+          label: I18n.t("mcweb.forum.notifications.periods.#{period}"),
+          period: period,
+          href: Rails.application.routes.url_helpers.forum_notifications_path(tab_params(period)),
+          active: @active_period == period,
           count: count
         }
       end

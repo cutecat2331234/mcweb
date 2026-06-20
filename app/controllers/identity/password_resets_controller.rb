@@ -9,7 +9,10 @@ module Identity
     end
 
     def create
-      result = Identity::ResetPassword.call(email: password_reset_params[:email])
+      result = Identity::ResetPassword.call(
+        email: password_reset_params[:email],
+        ip_address: request.remote_ip
+      )
 
       if result.success?
         redirect_to identity_sign_in_path, notice: t("mcweb.flash.password_reset_sent")
@@ -34,7 +37,8 @@ module Identity
 
       result = Identity::ResetPassword.call(
         token: params[:token],
-        new_password: p[:password]
+        new_password: p[:password],
+        ip_address: request.remote_ip
       )
 
       if result.success?

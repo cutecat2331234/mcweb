@@ -74,6 +74,8 @@ end
 
 class Commerce::CalculateShippingTest < ActiveSupport::TestCase
   setup do
+    enable_store_feature!(:physical_products)
+    enable_store_feature!(:shipping)
     @prev_min = SiteSetting.get("store.free_shipping_min_order_cents")
     @prev_flat = SiteSetting.get("store.flat_shipping_cents")
     SiteSetting.set("store.free_shipping_min_order_cents", "10000")
@@ -103,6 +105,8 @@ end
 
 class Commerce::OrderShippingTest < ActiveSupport::TestCase
   setup do
+    enable_store_feature!(:physical_products)
+    enable_store_feature!(:shipping)
     @user = create_user
     @product = Commerce::Product.create!(
       name: "Ship Product",

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
   DropdownMenuContent,
@@ -22,6 +22,10 @@ defineProps<{
 
 const { features } = useFeatureFlags()
 const { t } = useI18n()
+
+function signOut() {
+  router.delete(routes.signOut)
+}
 </script>
 
 <template>
@@ -65,15 +69,14 @@ const { t } = useI18n()
       </DropdownMenuItem>
       <DropdownMenuSeparator v-if="features.forum" class="my-1 h-px bg-border" />
       <DropdownMenuItem as-child>
-        <Link
-          :href="routes.signOut"
-          method="delete"
-          as="button"
+        <button
+          type="button"
           class="relative flex w-full cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-destructive/10"
+          @click="signOut"
         >
           <LogOut class="h-4 w-4" />
           {{ t('common.signOut') }}
-        </Link>
+        </button>
       </DropdownMenuItem>
     </DropdownMenuContent>
   </DropdownMenuRoot>

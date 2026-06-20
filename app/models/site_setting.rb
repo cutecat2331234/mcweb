@@ -10,6 +10,9 @@ class SiteSetting < ApplicationRecord
     setting.value = value
     setting.save!
     value
+  rescue ActiveRecord::RecordNotUnique
+    find_by!(key: key).update!(value: value)
+    value
   end
 
   def self.unset(key)

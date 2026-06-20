@@ -63,6 +63,9 @@ export interface ProductDetail {
   discount_label?: string | null
   purchased?: boolean
   product_type: string
+  membership_type_label?: string | null
+  purchase_blocked?: boolean
+  prerequisite_message?: string | null
   category_name: string | null
   in_stock: boolean
   backorder_available?: boolean
@@ -162,6 +165,22 @@ const allImages = computed(() => {
   return images
 })
 
+const productTypeLabel = computed(() => {
+  const type = props.product.product_type
+  if (!type) return '—'
+  const key = `commerce.product.productTypes.${type}`
+  const label = t(key)
+  return label === key ? type : label
+})
+
+const stockStatusLabel = computed(() => {
+  if (props.product.backorder_available) return t('commerce.product.backorder')
+  if (props.product.purchase_blocked) return t('commerce.product.prerequisiteRequired')
+  if (!canPurchase.value) return t('commerce.product.outOfStock')
+  if (showLowStock.value) return t('commerce.product.lowStock')
+  return t('commerce.product.inStock')
+})
+
 const activeGalleryImage = computed(() => allImages.value[galleryIndex.value] || null)
 
 const reviewForm = useForm<{
@@ -184,6 +203,7 @@ const selectedVariant = computed(() =>
 const displayPrice = computed(() => selectedVariant.value?.price_label || props.product.price_label)
 
 const canPurchase = computed(() => {
+  if (props.product.purchase_blocked) return false
   if (props.product.variants.length > 0) {
     if (!selectedVariant.value) return false
     return selectedVariant.value.in_stock || !!props.product.backorder_available
@@ -447,6 +467,16 @@ function submitAnswer(questionId: number, answerUrl: string) {
   ]" />
 
   <PageHeader :title="product.name" :subtitle="product.description || undefined" />
+  <div v-if="product.membership_type_label" class="mb-2 flex flex-wrap items-center gap-2">
+    <Badge variant="outline">{{ t('commerce.product.membershipProduct') }}</Badge>
+    <Badge variant="secondary">{{ product.membership_type_label }}</Badge>
+  </div>
+  <p v-if="product.prerequisite_message" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+    {{ product.prerequisite_message }}
+  </p>
+  <p v-else-if="product.purchase_blocked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+    {{ t('commerce.product.prerequisiteRequired') }}
+  </p>
   <div v-if="product.purchased" class="mb-4 flex flex-wrap items-center gap-2">
     <Badge variant="default">{{ t('commerce.product.purchased') }}</Badge>
     <Button v-if="reorderUrl" type="button" size="sm" variant="outline" @click="router.post(reorderUrl)">{{ t('commerce.product.buyAgain') }}</Button>
@@ -542,7 +572,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
       </div>
       <div class="flex justify-between text-sm">
         <span class="text-muted-foreground">{{ t('commerce.product.type') }}</span>
-        <span>{{ product.product_type }}</span>
+        <span>{{ productTypeLabel }}</span>
       </div>
       <div class="flex justify-between text-sm">
         <span class="text-muted-foreground">{{ t('commerce.product.category') }}</span>
@@ -550,8 +580,8 @@ function submitAnswer(questionId: number, answerUrl: string) {
       </div>
       <div class="flex justify-between text-sm">
         <span class="text-muted-foreground">{{ t('commerce.product.stock') }}</span>
-        <span :class="showLowStock ? 'text-amber-600' : ''">
-          {{ product.backorder_available ? t('commerce.product.backorder') : !canPurchase ? t('commerce.product.outOfStock') : showLowStock ? t('commerce.product.lowStock') : t('commerce.product.inStock') }}
+        <span :class="showLowStock && !product.purchase_blocked ? 'text-amber-600' : ''">
+          {{ stockStatusLabel }}
         </span>
       </div>
       <div v-if="selectedVariant?.sku" class="flex justify-between text-sm">

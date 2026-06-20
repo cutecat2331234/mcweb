@@ -2,58 +2,47 @@
 
 module Commerce
   class CouponsController < ApplicationController
+    include Commerce::CodePreviewRateLimitable
+
     def show
       code = params[:code].to_s.strip.upcase
-      coupon = Commerce::Coupon.active_coupons.find_by(code: code)
-
-      unless coupon
-        return render inertia: "Commerce/Coupons/Show", props: {
-          coupon: nil,
-          code: code,
-          loggedIn: logged_in?
-        }
-      end
 
       render inertia: "Commerce/Coupons/Show", props: {
         coupon: {
-          code: coupon.code,
-          discount_type: coupon.discount_type,
-          discount_label: discount_label(coupon),
-          min_amount_label: coupon.min_amount_cents.positive? ? format_money(coupon.min_amount_cents) : nil,
-          ends_at: coupon.ends_at ? l(coupon.ends_at, format: :short) : nil,
-          starts_at: coupon.starts_at ? l(coupon.starts_at, format: :short) : nil,
-          first_order_only: coupon.first_order_only?,
-          usage_remaining: coupon.usage_limit ? [ coupon.usage_limit - coupon.used_count, 0 ].max : nil,
-          per_user_limit: coupon.per_user_limit,
-          max_discount_label: coupon.max_discount_cents.present? && coupon.max_discount_cents.positive? ? format_money(coupon.max_discount_cents) : nil,
-          description: coupon.description
+          code: code,
+          available: false,
+          status_label: t("mcweb.labels.coupon_public_status.unavailable")
         },
         code: code,
         loggedIn: logged_in?,
-        applyUrl: apply_store_coupon_path(code: coupon.code)
+        applyUrl: logged_in? ? apply_store_coupon_path(code: code) : nil
       }
     end
 
     def apply
       require_login
+      if apply_code_rate_limited?
+        return redirect_to store_cart_path, alert: t("mcweb.flash.rate_limited", default: "操作过于频繁，请稍后再试。")
+      end
+
       code = params[:code].to_s.strip.upcase
-      coupon = Commerce::Coupon.active_coupons.find_by(code: code)
-      return redirect_to store_coupon_path(code), alert: t("mcweb.flash.coupon_invalid") unless coupon
+      cart = Commerce::Cart.find_by(user: current_user) ||
+             Commerce::Cart.find_by(session_token: cookies.signed[:cart_token])
+      cart_items = cart&.items&.includes(:product) || []
+      subtotal_cents = cart_items.sum(&:total_cents)
 
-      session[:pending_coupon_code] = coupon.code
-      redirect_to store_cart_path, notice: t("mcweb.flash.coupon_saved", code: coupon.code)
-    end
+      result = Commerce::PreviewCoupon.call(
+        subtotal_cents: subtotal_cents,
+        code: code,
+        cart_items: cart_items,
+        user: current_user
+      )
 
-    private
-
-    def discount_label(coupon)
-      case coupon.discount_type
-      when "percentage"
-        "#{coupon.discount_value}% 折扣"
-      when "fixed"
-        "减 #{format_money(coupon.discount_value)}"
+      if result.success?
+        session[:pending_coupon_code] = result.value[:code]
+        redirect_to store_cart_path, notice: t("mcweb.flash.coupon_updated")
       else
-        coupon.code
+        redirect_to store_cart_path, alert: service_error_message(result)
       end
     end
   end

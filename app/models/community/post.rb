@@ -10,8 +10,9 @@ module Community
     has_many :edits, class_name: "Community::PostEdit", foreign_key: :forum_post_id, dependent: :destroy
     has_many :reactions, class_name: "Community::Reaction", foreign_key: :forum_post_id, dependent: :destroy
     has_many :forked_topics, class_name: "Community::Topic", foreign_key: :source_post_id, dependent: :nullify
+    has_many :attachments, class_name: "Community::PostAttachment", foreign_key: :forum_post_id, dependent: :destroy, inverse_of: :post
 
-    enum :status, { published: "published", hidden: "hidden", deleted: "deleted" }, validate: true
+    enum :status, { published: "published", hidden: "hidden", deleted: "deleted", pending_approval: "pending_approval" }, validate: true
     enum :post_type, { regular: "regular", small_action: "small_action", whisper: "whisper" }, validate: true, prefix: true
 
     validates :body, presence: true
@@ -19,6 +20,24 @@ module Community
 
     scope :chronological, -> { order(:floor_number) }
     scope :countable, -> { published.where(post_type: :regular) }
+    scope :pending_review, -> { where(status: :pending_approval).order(created_at: :desc) }
+
+    scope :in_accessible_sections, ->(user) {
+      joins(topic: :section).merge(Community::Topic.accessible_by(user))
+    }
+
+    scope :visible_in_topic, ->(user, moderator: false) {
+      if moderator
+        all
+      elsif user
+        where(status: [ :published, :pending_approval ]).where(
+          "forum_posts.status = 'published' OR forum_posts.user_id = ?",
+          user.id
+        )
+      else
+        published
+      end
+    }
 
     def self.sync_topic_counters!(topic)
       countable = topic.posts.countable.order(:floor_number)

@@ -6,7 +6,7 @@ module Community
     PURPOSE = "search_history_opml"
 
     def self.generate(user)
-      Rails.application.message_verifier(PURPOSE).generate(user.id)
+      Rails.application.message_verifier(PURPOSE).generate(user.id, expires_in: 90.days)
     end
 
     def self.verify(token)

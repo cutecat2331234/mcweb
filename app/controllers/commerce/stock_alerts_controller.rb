@@ -6,6 +6,7 @@ module Commerce
 
     def index
       alerts = Commerce::StockAlert.where(user: current_user).includes(:product, :variant).order(created_at: :desc)
+      alerts = alerts.select { |alert| Commerce::StoreFeatures.product_visible?(alert.product) }
 
       render inertia: "Commerce/StockAlerts/Index", props: {
         alerts: alerts.map do |alert|
@@ -27,6 +28,9 @@ module Commerce
 
     def create
       product = Commerce::Product.available.find_by!(public_id: params[:product_id])
+      unless Commerce::StoreFeatures.product_visible?(product)
+        return redirect_to store_products_path, alert: t("mcweb.flash.product_not_found")
+      end
       variant = product.variants.find_by(id: params[:variant_id])
 
       result = Commerce::SubscribeStockAlert.call(user: current_user, product: product, variant: variant)
@@ -41,6 +45,9 @@ module Commerce
     def add_to_cart
       alert = Commerce::StockAlert.find_by!(id: params[:id], user: current_user)
       product = alert.product
+      unless Commerce::StoreFeatures.product_visible?(product)
+        return redirect_to store_stock_alerts_path, alert: t("mcweb.flash.product_not_found")
+      end
       variant = alert.variant
       in_stock = variant ? variant.in_stock? : product.in_stock?
       return redirect_to store_stock_alerts_path, alert: t("mcweb.flash.stock_alert_no_stock") unless in_stock

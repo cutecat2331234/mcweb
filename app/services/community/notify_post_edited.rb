@@ -25,11 +25,13 @@ module Community
       User.where(id: recipient_ids).find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.post_edited")
 
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: user,
           notification_type: "forum.post_edited",
-          title: "帖子已编辑：#{@topic.title.truncate(60)}",
-          body: "#{@post.user.username} 编辑了 ##{@post.floor_number}",
+          key: "post_edited",
+          title: @topic.title.truncate(60),
+          author: @post.user.username,
+          floor: @post.floor_number,
           metadata: {
             topic_id: @topic.public_id,
             post_id: @post.id,

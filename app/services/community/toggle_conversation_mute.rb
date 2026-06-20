@@ -9,7 +9,7 @@ module Community
 
     def call
       participant = @conversation.participants.find_by(user: @user)
-      return ServiceResult.failure(error: "你不是此会话的参与者") unless participant
+      return ServiceResult.failure(error: "not_a_participant") unless participant
 
       if participant.muted_at.present?
         participant.update!(muted_at: nil)

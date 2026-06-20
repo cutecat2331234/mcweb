@@ -2,16 +2,30 @@
 
 module Commerce
   module ShippingMethods
-    DEFAULT_JSON = [
-      { "code" => "standard", "label" => "标准配送", "cents" => 800, "delivery_days_min" => 3, "delivery_days_max" => 5 },
-      { "code" => "express", "label" => "加急配送", "cents" => 2000, "delivery_days_min" => 1, "delivery_days_max" => 2 }
-    ].freeze
-
     module_function
+
+    def default_json
+      [
+        {
+          "code" => "standard",
+          "label" => I18n.t("mcweb.commerce.shipping.methods.standard"),
+          "cents" => 800,
+          "delivery_days_min" => 3,
+          "delivery_days_max" => 5
+        },
+        {
+          "code" => "express",
+          "label" => I18n.t("mcweb.commerce.shipping.methods.express"),
+          "cents" => 2000,
+          "delivery_days_min" => 1,
+          "delivery_days_max" => 2
+        }
+      ]
+    end
 
     def stored_list
       raw = SiteSetting.get("store.shipping_methods", nil)
-      parsed = raw.present? ? JSON.parse(raw) : DEFAULT_JSON
+      parsed = raw.present? ? JSON.parse(raw) : default_json
       Array(parsed).filter_map do |entry|
         next unless entry.is_a?(Hash) && entry["code"].present?
 
@@ -22,9 +36,9 @@ module Commerce
           "delivery_days_min" => entry["delivery_days_min"].presence&.to_i,
           "delivery_days_max" => entry["delivery_days_max"].presence&.to_i
         }
-      end.presence || DEFAULT_JSON.map(&:dup)
+      end.presence || default_json.map(&:dup)
     rescue JSON::ParserError
-      DEFAULT_JSON.map(&:dup)
+      default_json.map(&:dup)
     end
 
     def list
@@ -49,10 +63,10 @@ module Commerce
       min = method["delivery_days_min"].to_i
       max = method["delivery_days_max"].to_i
       return nil if min <= 0 && max <= 0
-      return "预计 #{min} 天送达" if max <= 0 || min == max
-      return "预计 #{max} 天送达" if min <= 0
+      return I18n.t("mcweb.commerce.shipping.delivery_estimate.single", count: min) if max <= 0 || min == max
+      return I18n.t("mcweb.commerce.shipping.delivery_estimate.max_only", max: max) if min <= 0
 
-      "预计 #{min}-#{max} 天送达"
+      I18n.t("mcweb.commerce.shipping.delivery_estimate.range", min: min, max: max)
     end
   end
 end

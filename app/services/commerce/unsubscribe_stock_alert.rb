@@ -14,7 +14,7 @@ module Commerce
         product: @product,
         store_product_variant_id: @variant&.id
       )
-      return ServiceResult.failure(error: "未找到订阅记录。") unless alert
+      return ServiceResult.failure(error: "subscription_not_found") unless alert
 
       alert.destroy!
       ServiceResult.success

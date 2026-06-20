@@ -16,20 +16,20 @@ module Community
 
       sections = []
       if unread.any?
-        sections << read_state_section("unread", "未读", unread, default_expanded: true)
+        sections << read_state_section("unread", unread, default_expanded: true)
       end
       if read.any?
-        sections << read_state_section("read", "已读", read, default_expanded: false)
+        sections << read_state_section("read", read, default_expanded: false)
       end
       sections
     end
 
   private
 
-    def read_state_section(key, label, groups, default_expanded:)
+    def read_state_section(key, groups, default_expanded:)
       {
         key: key,
-        label: label,
+        label: I18n.t("mcweb.forum.notification_read_state.#{key}"),
         count: groups.size,
         groups: groups,
         timeline_sections: GroupNotificationTimeline.call(groups),

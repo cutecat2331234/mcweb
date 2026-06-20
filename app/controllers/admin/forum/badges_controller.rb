@@ -10,24 +10,24 @@ module Admin
         badges = Community::Badge.order(:name)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "论坛徽章",
+          title: forum_t("badges.title"),
           columns: [
-            { key: "name", label: "名称", link: true },
-            { key: "slug", label: "标识" },
-            { key: "grant_rule", label: "授予规则" },
-            { key: "users_count", label: "用户数" }
+            { key: "name", label: t("mcweb.admin.forum.col_name"), link: true },
+            { key: "slug", label: t("mcweb.admin.forum.col_slug") },
+            { key: "grant_rule", label: forum_t("badges.col_grant_rule") },
+            { key: "users_count", label: forum_t("badges.col_users_count") }
           ],
           rows: badges.map do |badge|
             {
               id: badge.id,
               name: "#{badge.icon} #{badge.name}",
               slug: badge.slug,
-              grant_rule: badge.grant_rule,
+              grant_rule: grant_rule_label(badge.grant_rule),
               users_count: badge.user_badges.count.to_s,
               url: edit_admin_forum_badge_path(badge)
             }
           end,
-          actions: [ { label: "新建徽章", href: new_admin_forum_badge_path } ]
+          actions: [ { label: forum_t("badges.action_new"), href: new_admin_forum_badge_path } ]
         }
       end
 
@@ -73,7 +73,7 @@ module Admin
 
       def form_props(badge)
         {
-          title: badge.persisted? ? "编辑徽章" : "新建徽章",
+          title: badge.persisted? ? forum_t("badges.form_edit") : forum_t("badges.form_new"),
           badge: {
             id: badge.id,
             name: badge.name || "",

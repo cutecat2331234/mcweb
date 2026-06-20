@@ -64,13 +64,13 @@ module Community
       notification_type = group_mention ? "forum.here" : "forum.mention"
       return unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: notification_type)
 
-      title = group_mention ? "#{@author.username} 在主题中 @here 提及了你" : "#{@author.username} 在主题中提到了你"
-
-      Notification.notify!(
+      title_key = group_mention ? "here" : "mention"
+      Community::InAppNotification.notify(
         user: user,
         notification_type: notification_type,
-        title: title,
-        body: @body.truncate(120),
+        key: title_key,
+        author: @author.username,
+        excerpt: @body.truncate(120),
         metadata: {
           topic_id: @topic.public_id,
           post_id: @post.id,

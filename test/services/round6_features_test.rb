@@ -87,7 +87,7 @@ class Community::VotePollTest < ActiveSupport::TestCase
     result = Community::VotePoll.call(user: other, poll: @poll, option_index: 0)
 
     assert result.failure?
-    assert_match(/not allowed/i, result.error)
+    assert_match(/无权/, result.error)
   end
 end
 
@@ -483,6 +483,8 @@ class Commerce::RequestRefundTest < ActiveSupport::TestCase
       status: "succeeded"
     )
     @order.update!(status: "paid")
+    enable_refund_window!
+    anchor_order_payment_at!(@order)
   end
 
   test "customer can request refund" do

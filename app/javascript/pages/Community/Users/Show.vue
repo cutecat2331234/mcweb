@@ -19,6 +19,7 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import MinecraftProfileCard, { type MinecraftProfile } from '@/components/minecraft/MinecraftProfileCard.vue'
 import Badge from '@/components/ui/Badge.vue'
+import UserCustomFieldsForm, { type UserCustomField } from '@/components/portal/UserCustomFieldsForm.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -80,6 +81,8 @@ const props = defineProps<{
     points: number
     issuer: string
     created_at: string
+    expires_at?: string | null
+    expired?: boolean
   }>
   topics: TopicListItem[]
   topicsPagination: PaginationMeta
@@ -133,13 +136,24 @@ const props = defineProps<{
   minecraft?: MinecraftProfile
   skin_mode?: string
   profile_sections?: string[]
+  memberships?: Array<{
+    slug: string
+    name: string
+    color?: string | null
+    icon?: string | null
+    expires_at?: string | null
+    expires_label?: string
+    permanent?: boolean
+    label: string
+  }>
+  custom_fields?: UserCustomField[]
 }>()
 
 const profileSections = computed(() => props.profile_sections?.length
   ? props.profile_sections
-  : [ 'minecraft', 'trust', 'roles', 'game_groups' ])
+  : [ 'minecraft', 'trust', 'memberships', 'roles', 'game_groups' ])
 
-type ProfileEditPanel = 'title' | 'bio' | 'signature' | null
+type ProfileEditPanel = 'title' | 'bio' | 'signature' | 'fields' | null
 const profileEditPanel = ref<ProfileEditPanel>(null)
 const bioForm = useForm({
   user: {
@@ -149,6 +163,14 @@ const bioForm = useForm({
     forum_signature: props.profile.forum_signature || '',
   },
 })
+const initialFieldValues = Object.fromEntries(
+  (props.custom_fields || [])
+    .filter((field) => field.editable)
+    .map((field) => [field.key, field.field_type === 'checkbox' ? field.raw_value === '1' : (field.raw_value || '')]),
+)
+const fieldsForm = useForm({ user_fields: initialFieldValues })
+const visibleCustomFields = computed(() => (props.custom_fields || []).filter((field) => field.value || field.editable))
+const hasEditableCustomFields = computed(() => (props.custom_fields || []).some((field) => field.editable))
 
 function toggleBlock() {
   if (!props.profile.block_url) return
@@ -171,6 +193,15 @@ function toggleProfileEdit(panel: ProfileEditPanel) {
 
 function saveBio() {
   bioForm.patch(`/app/forum/users/${props.profile.username}`, {
+    preserveScroll: true,
+    onSuccess: () => {
+      profileEditPanel.value = null
+    },
+  })
+}
+
+function saveCustomFields() {
+  fieldsForm.patch(`/app/forum/users/${props.profile.username}`, {
     preserveScroll: true,
     onSuccess: () => {
       profileEditPanel.value = null
@@ -303,6 +334,9 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned' | 'minecraft')
             <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('signature')">
               {{ profileEditPanel === 'signature' ? t('userProfile.collapseSignature') : t('userProfile.editSignature') }}
             </Button>
+            <Button v-if="profile.can_edit && hasEditableCustomFields" type="button" size="sm" variant="outline" @click="toggleProfileEdit('fields')">
+              {{ profileEditPanel === 'fields' ? t('userProfile.collapseCustomFields') : t('userProfile.editCustomFields') }}
+            </Button>
             <template v-if="profile.can_edit">
               <FileInput accept="image/*" :button-label="t('userProfile.changeAvatar')" @change="uploadAvatar" />
               <Button type="button" size="sm" variant="outline" @click="removeAvatar">{{ t('userProfile.resetAvatar') }}</Button>
@@ -310,12 +344,29 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned' | 'minecraft')
           </div>
         </div>
 
+        <div v-if="visibleCustomFields.length && profileEditPanel !== 'fields'" class="max-w-xl rounded-lg border p-4">
+          <h3 class="mb-3 text-sm font-semibold">{{ t('userProfile.customFields') }}</h3>
+          <dl class="space-y-2 text-sm">
+            <div v-for="field in visibleCustomFields" :key="field.key" class="flex gap-3 border-b pb-2 last:border-0 last:pb-0">
+              <dt class="w-32 shrink-0 text-muted-foreground">{{ field.label }}</dt>
+              <dd class="min-w-0 break-words">
+                <a v-if="field.field_type === 'url' && field.value" :href="field.value" class="text-primary hover:underline" target="_blank" rel="noopener">{{ field.value }}</a>
+                <span v-else>{{ field.value || '—' }}</span>
+              </dd>
+            </div>
+          </dl>
+        </div>
+
         <div v-if="warnings?.length" class="max-w-xl rounded-lg border p-4">
           <h3 class="mb-2 text-sm font-semibold">{{ t('userProfile.warningsTitle') }}</h3>
           <ul class="space-y-2 text-sm">
             <li v-for="(warning, index) in warnings" :key="index" class="flex justify-between gap-4 border-b pb-2 last:border-0 last:pb-0">
-              <span>{{ warning.reason }}</span>
-              <span class="shrink-0 text-muted-foreground">{{ warning.points }} {{ t('userProfile.warningPointsUnit') }} · {{ warning.issuer }} · {{ warning.created_at }}</span>
+              <span :class="warning.expired ? 'text-muted-foreground line-through' : ''">{{ warning.reason }}</span>
+              <span class="shrink-0 text-muted-foreground">
+                {{ warning.points }} {{ t('userProfile.warningPointsUnit') }} · {{ warning.issuer }} · {{ warning.created_at }}
+                <template v-if="warning.expired"> · {{ t('userProfile.warningExpired') }}</template>
+                <template v-else-if="warning.expires_at"> · {{ t('userProfile.warningExpiresAt', { date: warning.expires_at }) }}</template>
+              </span>
             </li>
           </ul>
         </div>
@@ -332,6 +383,22 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned' | 'minecraft')
           <div v-else-if="section === 'account_type' && account_type" class="max-w-md rounded-lg border p-3 text-sm">
             <p class="font-medium">{{ t('userProfile.accountType') }}</p>
             <p class="mt-1"><Badge variant="outline">{{ account_type }}</Badge></p>
+          </div>
+
+          <div v-else-if="section === 'memberships'" class="max-w-md rounded-lg border p-3 text-sm">
+            <p class="mb-2 font-medium">{{ t('userProfile.memberships') }}</p>
+            <div v-if="memberships?.length" class="flex flex-wrap gap-2">
+              <Badge
+                v-for="membership in memberships"
+                :key="membership.slug"
+                :style="membership.color ? { borderColor: membership.color, color: membership.color } : undefined"
+                variant="outline"
+              >
+                {{ membership.icon }} {{ membership.name }}
+                <span class="text-muted-foreground">· {{ membership.permanent ? t('commerce.memberships.permanent') : membership.expires_label }}</span>
+              </Badge>
+            </div>
+            <p v-else class="text-muted-foreground">{{ t('userProfile.noMemberships') }}</p>
           </div>
 
           <div v-else-if="section === 'roles' && role_names?.length" class="max-w-md rounded-lg border p-3 text-sm">
@@ -408,6 +475,18 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned' | 'minecraft')
     <Textarea id="forum_signature" v-model="bioForm.user.forum_signature" rows="3" :placeholder="t('userProfile.signaturePlaceholder')" />
     <div class="flex gap-2">
       <Button type="submit" size="sm" :disabled="bioForm.processing">{{ t('common.save') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">{{ t('common.cancel') }}</Button>
+    </div>
+  </form>
+
+  <form v-if="profileEditPanel === 'fields'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveCustomFields">
+    <UserCustomFieldsForm
+      :fields="custom_fields || []"
+      v-model="fieldsForm.user_fields"
+      id-prefix="profile-field"
+    />
+    <div class="flex gap-2">
+      <Button type="submit" size="sm" :disabled="fieldsForm.processing">{{ t('common.save') }}</Button>
       <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">{{ t('common.cancel') }}</Button>
     </div>
   </form>

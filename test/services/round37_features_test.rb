@@ -117,6 +117,22 @@ class Commerce::RestoreGiftCardBalanceTest < ActiveSupport::TestCase
     assert result.failure?
     assert_equal "礼品卡信息无效。", result.error
   end
+
+  test "succeeds when order did not use a gift card" do
+    order = Commerce::Order.create!(
+      public_id: "ord_r37n_#{SecureRandom.hex(4)}",
+      order_number: "R37N#{SecureRandom.hex(3).upcase}",
+      user: @user,
+      status: "paid",
+      subtotal_cents: 500,
+      total_cents: 500,
+      gift_card_amount_cents: 0,
+      currency: "CNY"
+    )
+
+    result = Commerce::RestoreGiftCardBalance.call(order: order)
+    assert result.success?
+  end
 end
 
 class Commerce::RestoreGiftCardPartialTest < ActiveSupport::TestCase

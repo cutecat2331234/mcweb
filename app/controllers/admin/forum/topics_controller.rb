@@ -11,15 +11,15 @@ module Admin
         @pagy, topics = pagy(scope, limit: 30)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "论坛主题",
+          title: forum_t("topics.title"),
           columns: [
-            admin_column(:title, "标题", link: true),
-            admin_column(:author, "作者"),
-            admin_column(:section, "分区"),
-            admin_column(:status, "状态"),
-            admin_column(:locked, "锁定"),
-            admin_column(:archived, "归档"),
-            admin_column(:replies, "回复")
+            admin_column(:title, forum_t("topics.col_title"), link: true),
+            admin_column(:author, forum_t("topics.col_author")),
+            admin_column(:section, forum_t("topics.col_section")),
+            admin_column(:status, forum_t("topics.col_status")),
+            admin_column(:locked, forum_t("topics.col_locked")),
+            admin_column(:archived, forum_t("topics.col_archived")),
+            admin_column(:replies, forum_t("topics.col_replies"))
           ],
           rows: topics.map do |topic|
             admin_row(
@@ -27,8 +27,8 @@ module Admin
               author: topic.user&.username,
               section: topic.section&.name,
               status: topic.status,
-              locked: topic.locked? ? "是" : "否",
-              archived: topic.archived_at.present? ? "是" : "否",
+              locked: forum_yes_no(topic.locked?),
+              archived: forum_yes_no(topic.archived_at.present?),
               replies: topic.replies_count.to_s,
               url: admin_forum_topic_path(topic),
               publicId: topic.public_id
@@ -47,14 +47,14 @@ module Admin
           title: @topic.title,
           subtitle: @topic.user&.username,
           fields: [
-            { label: "状态", value: @topic.status },
-            { label: "置顶", value: @topic.pinned? ? "是" : "否" },
-            { label: "锁定", value: @topic.locked? ? "是" : "否" },
-            { label: "回复数", value: @topic.replies_count.to_s }
+            { label: forum_t("topics.col_status"), value: @topic.status },
+            { label: forum_t("topics.field_pinned"), value: forum_yes_no(@topic.pinned?) },
+            { label: forum_t("topics.col_locked"), value: forum_yes_no(@topic.locked?) },
+            { label: forum_t("topics.field_replies"), value: @topic.replies_count.to_s }
           ],
           sections: [
             {
-              title: "帖子",
+              title: forum_t("topics.section_posts"),
               items: posts.map do |post|
                 { label: "##{post.floor_number} #{post.user.username}", value: post.body.truncate(120) }
               end
@@ -83,11 +83,11 @@ module Admin
       private
 
       def set_topic
-        @topic = ::Community::Topic.find_by!(public_id: params[:id])
+        @topic = ::Community::Topic.find(params[:id])
       end
 
       def topic_params
-        params.expect(topic: %i[title status pinned locked])[:topic]
+        params.require(:topic).permit(:title, :status, :locked, :pinned)
       end
     end
   end

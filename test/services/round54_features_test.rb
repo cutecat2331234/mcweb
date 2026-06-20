@@ -96,7 +96,7 @@ class Commerce::CancelOrderReasonTest < ActiveSupport::TestCase
   test "cancel stores reason in order event" do
     result = Commerce::CancelOrder.call(order: @order, actor: @user, reason: "Changed mind")
     assert result.success?
-    event = Commerce::OrderEvent.find_by(order: @order, event_type: "cancelled")
+    event = Commerce::OrderEvent.find_by(order: @order, event_type: "cancel")
     assert_equal "Changed mind", event.metadata["reason"]
   end
 end

@@ -102,7 +102,7 @@ class Community::TrustLevelPmTest < ActiveSupport::TestCase
       body: "hi there"
     )
     assert result.failure?
-    assert_match(/private message/i, result.error.to_s)
+    assert_match(/私信/, result.error.to_s)
   end
 end
 

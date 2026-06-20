@@ -36,18 +36,20 @@ module Community
     def edit
       draft = current_user_draft
       poll = draft.poll
+      opening_post = draft.posts.first
       render inertia: "Community/Drafts/Edit", props: {
         draft: {
           id: draft.public_id,
           title: draft.title,
-          body: draft.posts.first&.body || "",
+          body: opening_post&.body || "",
           tags: draft.tags.map(&:name).join(", "),
           prefix: draft.prefix,
           scheduled_at_input: draft.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
+          attachments: opening_post ? serialize_post_attachments(opening_post) : [],
           section: {
             name: draft.section.name,
             slug: draft.section.slug,
-            prefixes: Array(draft.section.prefixes),
+            prefixes: draft.section.prefix_options,
             tag_groups: section_tag_groups_for(draft.section)
           },
           poll: poll ? {
@@ -78,7 +80,8 @@ module Community
         poll_closes_days: draft_params[:poll_closes_days],
         poll_multiple_choice: draft_params[:poll_multiple_choice],
         poll_max_choices: draft_params[:poll_max_choices],
-        poll_hide_results_until_vote: draft_params[:poll_hide_results_until_vote]
+        poll_hide_results_until_vote: draft_params[:poll_hide_results_until_vote],
+        attachment_ids: draft_params[:attachment_ids]
       )
 
       if result.success?
@@ -105,7 +108,8 @@ module Community
         poll_closes_days: draft_params[:poll_closes_days],
         poll_multiple_choice: draft_params[:poll_multiple_choice],
         poll_max_choices: draft_params[:poll_max_choices],
-        poll_hide_results_until_vote: draft_params[:poll_hide_results_until_vote]
+        poll_hide_results_until_vote: draft_params[:poll_hide_results_until_vote],
+        attachment_ids: draft_params[:attachment_ids]
       )
 
       if result.success?
@@ -117,10 +121,38 @@ module Community
 
     def publish
       draft = current_user_draft
-      result = Community::PublishTopicDraft.call(user: current_user, topic: draft)
+      save_result = Community::SaveTopicDraft.call(
+        user: current_user,
+        section: draft.section,
+        title: draft_params[:title],
+        body: draft_params[:body],
+        tag_names: draft_params[:tags],
+        topic: draft,
+        prefix: draft_params[:prefix],
+        scheduled_at: draft_params[:scheduled_at],
+        clear_schedule: draft_params[:clear_schedule],
+        poll_question: draft_params[:poll_question],
+        poll_options: draft_params[:poll_options],
+        poll_closes_days: draft_params[:poll_closes_days],
+        poll_multiple_choice: draft_params[:poll_multiple_choice],
+        poll_max_choices: draft_params[:poll_max_choices],
+        poll_hide_results_until_vote: draft_params[:poll_hide_results_until_vote],
+        attachment_ids: draft_params[:attachment_ids]
+      )
+      unless save_result.success?
+        return redirect_to edit_forum_draft_path(draft), alert: service_error_message(save_result)
+      end
+
+      draft = draft.reload
+      result = Community::PublishTopicDraft.call(
+        user: current_user,
+        topic: draft,
+        attachment_ids: draft_params[:attachment_ids]
+      )
 
       if result.success?
-        redirect_to forum_topic_path(draft), notice: t("mcweb.flash.topic_published")
+        notice = draft.status == "hidden" ? t("mcweb.flash.post_pending_submitted") : t("mcweb.flash.topic_published")
+        redirect_to forum_topic_path(draft), notice: notice
       else
         redirect_to edit_forum_draft_path(draft), alert: service_error_message(result)
       end
@@ -139,11 +171,14 @@ module Community
     end
 
     def draft_params
-      params.require(:draft).permit(
+      permitted = params.require(:draft).permit(
         :title, :body, :tags, :scheduled_at, :clear_schedule, :prefix,
         :poll_question, :poll_options, :poll_closes_days,
-        :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote
+        :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote,
+        attachment_ids: []
       )
+      permitted[:attachment_ids] ||= params[:attachment_ids]
+      permitted
     end
   end
 end

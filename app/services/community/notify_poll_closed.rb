@@ -43,11 +43,12 @@ module Community
       return unless email_enabled || in_app_enabled
 
       if in_app_enabled
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: user,
           notification_type: "forum.poll_closed",
-          title: "投票已关闭",
-          body: "「#{@topic.title}」的投票「#{@poll.question}」已结束。",
+          key: "poll_closed",
+          title: @topic.title,
+          question: @poll.question,
           metadata: {
             topic_id: @topic.public_id,
             path: "#{Mcweb::Paths::APP_PREFIX}/forum/topics/#{@topic.public_id}"

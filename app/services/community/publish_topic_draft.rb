@@ -2,9 +2,10 @@
 
 module Community
   class PublishTopicDraft < ApplicationService
-    def initialize(user:, topic:)
+    def initialize(user:, topic:, attachment_ids: nil)
       @user = user
       @topic = topic
+      @attachment_ids = attachment_ids
     end
 
     def call
@@ -34,7 +35,7 @@ module Community
       return group_result if group_result.failure?
 
       if @topic.section.prefix_required? && @topic.prefix.blank?
-        return ServiceResult.failure(error: "此分区要求选择主题前缀。")
+        return ServiceResult.failure(error: "section_topic_prefix_required")
       end
 
       if Community::TrustLevel.contains_link?(post.body) && !Community::TrustLevel.can_post_links?(@user)
@@ -47,17 +48,26 @@ module Community
       post_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :post)
       return post_restriction if post_restriction.failure?
 
+      needs_approval = Community::RequiresPostApproval.required_for?(user: @user)
+      topic_status = needs_approval ? "hidden" : "published"
+      post_status = needs_approval ? "pending_approval" : "published"
+
       Community::Topic.transaction do
-        @topic.update!(status: "published", last_posted_at: Time.current, last_post_user: @user)
+        @topic.update!(status: topic_status, last_posted_at: Time.current, last_post_user: @user)
+        post.update!(status: post_status) unless post.status == post_status
         Community::Subscription.subscribe!(@user, @topic)
         Community::ReadState.mark_read!(@user, @topic, floor: post.floor_number)
       end
 
-      Community::ProcessMentions.call(body: post.body, author: @user, post: post, topic: @topic)
-      Community::NotifySectionTopic.call(topic: @topic)
-      Community::NotifyFollowedUserTopic.call(topic: @topic)
-      if @topic.tags.any?
-        Community::NotifyTagTopic.call(topic: @topic, tags: @topic.tags)
+      if @attachment_ids.present?
+        link_result = Community::LinkPostAttachments.call(user: @user, post: post.reload, attachment_ids: @attachment_ids)
+        return link_result if link_result.failure?
+      end
+
+      if needs_approval
+        Community::NotifyPendingPost.call(post: post.reload)
+      else
+        Community::PublishPostSideEffects.call(post: post.reload)
       end
       Community::CheckAutoBadges.call(user: @user)
       ServiceResult.success(@topic)

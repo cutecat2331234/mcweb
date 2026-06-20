@@ -147,7 +147,7 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
 
     result = Commerce::DebitGiftCard.call(order: order)
     assert result.failure?
-    assert_match(/余额不足|无效|停用/, result.error.to_s)
+    assert_equal I18n.t("mcweb.services.errors.gift_card_unavailable"), result.error
   end
 
   test "debit gift card fails when gift card association is missing" do
@@ -163,7 +163,7 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
     @gift_card.update!(expires_at: 1.day.ago)
     result = Commerce::PreviewGiftCard.call(subtotal_cents: 1000, code: @gift_card.code)
     assert result.failure?
-    assert_match(/过期/, result.error.to_s)
+    assert_equal I18n.t("mcweb.services.errors.gift_card_unavailable"), result.error
   end
 
   test "prevents applying same gift card to multiple pending orders" do
@@ -175,7 +175,7 @@ class Commerce::GiftCardTest < ActiveSupport::TestCase
     second = Commerce::CreateOrder.call(cart: cart2, user: @user, gift_card_code: @gift_card.code)
 
     assert second.failure?
-    assert_match(/余额不足/, second.error.to_s)
+    assert_equal I18n.t("mcweb.services.errors.gift_card_unavailable"), second.error
   end
 end
 

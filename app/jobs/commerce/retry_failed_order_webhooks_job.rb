@@ -17,7 +17,7 @@ module Commerce
           else
             delivery.update!(
               status: "failed",
-              response_body: "投递超时".truncate(4000)
+              response_body: I18n.t("mcweb.services.errors.webhook_delivery_timeout").truncate(4000)
             )
           end
         end

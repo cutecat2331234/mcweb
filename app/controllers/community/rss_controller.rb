@@ -2,27 +2,34 @@
 
 module Community
   class RssController < ApplicationController
+    include Community::SectionVisibility
+    include Community::TopicVisibility
+
     def latest
-      topics = Community::Topic.published_listed.sorted("activity").limit(30)
-      render xml: build_feed(topics, title: "Mcweb 论坛最新", url: forum_latest_url), content_type: "application/rss+xml"
+      topics = apply_login_required_topic_scope(Community::Topic.published_listed.sorted("activity")).limit(30)
+      render xml: build_feed(topics, title: t("mcweb.forum.rss.latest_title"), url: forum_latest_url), content_type: "application/rss+xml"
     end
 
     def section
       section = Community::Section.find_by!(slug: params[:id])
+      return head :not_found unless section_visible?(section)
+
       topics = section.topics.published_listed.sorted("activity").limit(30)
-      render xml: build_feed(topics, title: "#{section.name} - Mcweb 论坛", url: forum_section_url(section)), content_type: "application/rss+xml"
+      render xml: build_feed(topics, title: t("mcweb.forum.rss.section_title", name: section.name), url: forum_section_url(section)), content_type: "application/rss+xml"
     end
 
     def tag
       tag = Community::Tag.find_by!(slug: params[:slug])
-      topic_ids = tag.topics.published_listed.pluck(:id)
+      topic_ids = tag.topics.published_listed.merge(Community::Topic.accessible_by(current_user)).pluck(:id)
       topics = Community::Topic.where(id: topic_ids).sorted("activity").limit(30)
-      render xml: build_feed(topics, title: "标签 #{tag.name} - Mcweb 论坛", url: forum_tag_url(tag.slug)), content_type: "application/rss+xml"
+      render xml: build_feed(topics, title: t("mcweb.forum.rss.tag_title", name: tag.name), url: forum_tag_url(tag.slug)), content_type: "application/rss+xml"
     end
 
     def topic
       topic = Community::Topic.find_by!(public_id: params[:id])
       return head :not_found unless topic.published?
+      return head :not_found unless section_visible?(topic.section)
+      return head :not_found unless topic_visible?(topic)
 
       posts = topic.posts.published.where.not(post_type: "whisper").chronological.includes(:user).limit(50)
       render xml: build_topic_feed(topic, posts), content_type: "application/rss+xml"
@@ -30,17 +37,18 @@ module Community
 
     def category
       category = Community::Category.find_by!(slug: params[:slug])
-      section_ids = category.sections.pluck(:id)
+      section_ids = category.sections.where(login_required: false).pluck(:id) unless logged_in?
+      section_ids ||= category.sections.pluck(:id)
       topics = Community::Topic.published_listed.where(forum_section_id: section_ids).sorted("activity").limit(30)
-      render xml: build_feed(topics, title: "#{category.name} - Mcweb 论坛", url: forum_category_url(slug: category.slug)), content_type: "application/rss+xml"
+      render xml: build_feed(topics, title: t("mcweb.forum.rss.category_title", name: category.name), url: forum_category_url(slug: category.slug)), content_type: "application/rss+xml"
     end
 
     def ad_hoc_search
-      permitted = verified_ad_hoc_search_params
-      result = Community::BuildAdHocSearchTopicScope.call(params: permitted, user: current_user)
-      topics = result.value[:scope].limit(30).to_a
+      permitted = verified_ad_hoc_search_params.except("scope", "mine")
+      result = Community::BuildAdHocSearchTopicScope.call(params: permitted, user: nil)
+      topics = apply_login_required_topic_scope(result.value[:scope]).limit(30).to_a
       query = permitted["q"].to_s
-      title = query.present? ? "搜索：#{query}" : "论坛搜索"
+      title = query.present? ? t("mcweb.forum.rss.search_title", query: query) : t("mcweb.forum.rss.search_default")
       url = forum_search_url(permitted.symbolize_keys)
       render xml: build_feed(topics, title: title, url: url), content_type: "application/rss+xml"
     rescue Community::SearchRssToken::InvalidToken
@@ -50,7 +58,7 @@ module Community
     def ad_hoc_search_opml
       permitted = verified_ad_hoc_search_params
       query = permitted["q"].to_s
-      title = query.present? ? "搜索：#{query}" : "论坛搜索"
+      title = query.present? ? t("mcweb.forum.rss.search_title", query: query) : t("mcweb.forum.rss.search_default")
       rss_url = forum_search_rss_url(permitted.symbolize_keys.merge(token: Community::SearchRssToken.generate(permitted)))
       html_url = forum_search_url(permitted.symbolize_keys)
       outline = opml_outline(title, rss_url: rss_url, html_url: html_url)
@@ -64,9 +72,9 @@ module Community
       search = Community::SavedSearch.find(search_id)
       raise ActiveRecord::RecordNotFound unless search.id.to_s == params[:id].to_s
 
-      topics = Community::SavedSearchMatcher.new(search).matching_topics.limit(30).to_a
+      topics = Community::SavedSearchMatcher.new(search).matching_topics(public_rss: true).limit(30).to_a
       url = forum_search_path(Community::SavedSearchPresenter.url_params(search))
-      render xml: build_feed(topics, title: "#{search.name} - 保存的搜索", url: url), content_type: "application/rss+xml"
+      render xml: build_feed(topics, title: t("mcweb.forum.rss.saved_search_title", name: search.name), url: url), content_type: "application/rss+xml"
     rescue Community::SavedSearchRssToken::InvalidToken, ActiveRecord::RecordNotFound
       head :not_found
     end
@@ -121,7 +129,7 @@ module Community
           <channel>
             <title>#{escape_xml(title)}</title>
             <link>#{escape_xml(url)}</link>
-            <description>Mcweb Community Forum</description>
+            <description>#{escape_xml(t("mcweb.forum.rss.description"))}</description>
             <lastBuildDate>#{Time.current.rfc2822}</lastBuildDate>
             #{items}
           </channel>
@@ -149,7 +157,7 @@ module Community
         <?xml version="1.0" encoding="UTF-8"?>
         <rss version="2.0">
           <channel>
-            <title>#{escape_xml(topic.title)} - Mcweb 论坛</title>
+            <title>#{escape_xml("#{topic.title}#{t('mcweb.forum.rss.item_title_suffix')}")}</title>
             <link>#{escape_xml(forum_topic_url(topic))}</link>
             <description>#{escape_xml(topic.title)}</description>
             <lastBuildDate>#{Time.current.rfc2822}</lastBuildDate>
@@ -183,20 +191,20 @@ module Community
         opml_outline(search.name, rss_url: rss_url, html_url: html_url)
       end.join("\n")
 
-      wrap_opml(title: "#{user.username} 的保存搜索", outlines: outlines)
+      wrap_opml(title: t("mcweb.forum.rss.saved_searches_opml", username: user.username), outlines: outlines)
     end
 
     def build_search_histories_opml(user)
       outlines = user.forum_search_histories.recent.limit(20).map do |history|
         params = history.rss_params
         token = Community::SearchRssToken.generate(params)
-        title = history.query.presence || "筛选搜索"
+        title = history.query.presence || t("mcweb.forum.rss.filter_search")
         rss_url = forum_search_rss_url(params.symbolize_keys.merge(token: token))
         html_url = forum_search_url(history.url_params)
         opml_outline("#{title} (#{l(history.updated_at, format: :short)})", rss_url: rss_url, html_url: html_url)
       end.join("\n")
 
-      wrap_opml(title: "#{user.username} 的搜索历史", outlines: outlines)
+      wrap_opml(title: t("mcweb.forum.rss.search_history_opml", username: user.username), outlines: outlines)
     end
 
     def build_search_feeds_opml(user)
@@ -212,17 +220,17 @@ module Community
       history_outlines = user.forum_search_histories.recent.limit(history_limit).map do |history|
         params = history.rss_params
         token = Community::SearchRssToken.generate(params)
-        title = history.query.presence || "筛选搜索"
+        title = history.query.presence || t("mcweb.forum.rss.filter_search")
         rss_url = forum_search_rss_url(params.symbolize_keys.merge(token: token))
         html_url = forum_search_url(history.url_params)
         opml_outline("#{title} (#{l(history.updated_at, format: :short)})", rss_url: rss_url, html_url: html_url)
       end.join("\n")
 
       groups = []
-      groups << nested_opml_group("保存的搜索", saved_outlines) if saved_outlines.present?
-      groups << nested_opml_group("搜索历史", history_outlines) if history_outlines.present?
+      groups << nested_opml_group(t("mcweb.forum.rss.saved_searches_group"), saved_outlines) if saved_outlines.present?
+      groups << nested_opml_group(t("mcweb.forum.rss.search_history_group"), history_outlines) if history_outlines.present?
 
-      wrap_opml(title: "#{user.username} 的搜索订阅", outlines: groups.join("\n"))
+      wrap_opml(title: t("mcweb.forum.rss.subscriptions_opml", username: user.username), outlines: groups.join("\n"))
     end
 
     def build_watching_opml(user)
@@ -244,7 +252,7 @@ module Community
         next unless tag
 
         outlines << opml_outline(
-          "标签 #{tag.name}",
+          t("mcweb.forum.rss.tag_label", name: tag.name),
           rss_url: forum_tag_rss_url(slug: tag.slug),
           html_url: forum_tag_url(tag.slug)
         )
@@ -261,7 +269,7 @@ module Community
         )
       end
 
-      wrap_opml(title: "#{user.username} 的关注订阅", outlines: outlines.join("\n"))
+      wrap_opml(title: t("mcweb.forum.rss.watching_opml", username: user.username), outlines: outlines.join("\n"))
     end
 
     def opml_outline(title, rss_url:, html_url:)

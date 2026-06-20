@@ -87,4 +87,17 @@
 - `broadcast_announcement`、`run_commands` / `deliver_item` 任务
 - 心跳上报在线人数、内存占用
 
-Bukkit 端额外支持：皮肤纹理、`profile_fields` 桥接（PlaceholderAPI/Vault）、TPS 上报。
+Bukkit 端额外支持：皮肤纹理、`profile_fields` 桥接（PlaceholderAPI/Vault/McWeb）、TPS 上报。
+
+## whois 会员字段
+
+`POST whois` 在玩家已绑定时可额外返回：
+
+| 字段 | 说明 |
+|------|------|
+| `memberships` | 活跃会员数组（`slug`, `name`, `expires_at`, `permanent`） |
+| `membership_labels` | 会员名称逗号分隔 |
+| `membership_primary` | 最高优先级会员名 |
+| `membership_expires_at` | 最近到期日（永久会员时为 `永久` / `Permanent`） |
+
+玩家上线后插件会刷新 whois 并缓存，供 McWeb 桥接与 PlaceholderAPI `%mcweb_membership%` 等占位符使用。

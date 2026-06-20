@@ -32,14 +32,12 @@ module Community
     end
 
     def restriction_message(action, total, threshold)
-      case action
-      when :post
-        "警告积分 #{total} 点已达限制阈值（#{threshold}），暂时无法发帖。"
-      when :link
-        "警告积分 #{total} 点已达限制阈值（#{threshold}），暂时无法发布链接。"
-      when :pm
-        "警告积分 #{total} 点已达限制阈值（#{threshold}），暂时无法发送私信。"
-      end
+      key = case action
+            when :post then "block_post"
+            when :link then "block_links"
+            when :pm then "block_pm"
+            end
+      I18n.t("mcweb.forum.warning_restrictions.#{key}", total: total, threshold: threshold)
     end
   end
 end

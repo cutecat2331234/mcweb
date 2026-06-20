@@ -3,6 +3,7 @@
 module Commerce
   class ShippingAddressesController < ApplicationController
     before_action :require_login
+    before_action :require_shipping_feature!
     before_action :set_address, only: %i[update destroy make_default]
 
     def index
@@ -55,6 +56,10 @@ module Commerce
     end
 
     private
+
+    def require_shipping_feature!
+      head :not_found unless Commerce::StoreFeatures.enabled?(:shipping)
+    end
 
     def set_address
       @address = current_user.shipping_addresses.find(params[:id])

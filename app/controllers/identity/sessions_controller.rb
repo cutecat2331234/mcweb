@@ -4,10 +4,14 @@ module Identity
   class SessionsController < ApplicationController
     include GuestCartMergeable
 
-    before_action :redirect_if_signed_in, only: %i[new create]
+    before_action :redirect_if_signed_in, only: %i[new create show]
 
     def new
       render inertia: "Identity/Sessions/New"
+    end
+
+    def show
+      redirect_to identity_sign_in_path
     end
 
     def create

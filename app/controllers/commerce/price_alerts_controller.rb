@@ -7,6 +7,7 @@ module Commerce
 
     def index
       alerts = Commerce::PriceAlert.where(user: current_user).includes(:product, :variant).order(created_at: :desc)
+      alerts = alerts.select { |alert| Commerce::StoreFeatures.product_visible?(alert.product) }
 
       render inertia: "Commerce/PriceAlerts/Index", props: {
         alerts: alerts.map do |alert|
@@ -47,7 +48,8 @@ module Commerce
     private
 
     def set_product
-      @product = Commerce::Product.find_by!(public_id: params[:id])
+      @product = Commerce::Product.available.find_by!(public_id: params[:id])
+      raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(@product)
     end
   end
 end

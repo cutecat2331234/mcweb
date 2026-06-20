@@ -28,12 +28,12 @@ module Commerce
 
     def chips
       items = []
-      items << { param: "q", label: "订单号：#{@query}", value: @query } if @query.present?
+      items << { param: "q", label: I18n.t("mcweb.commerce.customer_orders.filter_order_number", value: @query), value: @query } if @query.present?
       items << { param: "status", label: @status_label, value: @status } if @status.present?
-      items << { param: "created_after", label: "起始于：#{@created_after}", value: @created_after } if @created_after.present?
-      items << { param: "created_before", label: "截止于：#{@created_before}", value: @created_before } if @created_before.present?
-      items << { param: "min_total", label: "最低金额：#{money_label(@min_total)}", value: @min_total } if @min_total.present?
-      items << { param: "max_total", label: "最高金额：#{money_label(@max_total)}", value: @max_total } if @max_total.present?
+      items << { param: "created_after", label: I18n.t("mcweb.commerce.customer_orders.filter_created_after", value: @created_after), value: @created_after } if @created_after.present?
+      items << { param: "created_before", label: I18n.t("mcweb.commerce.customer_orders.filter_created_before", value: @created_before), value: @created_before } if @created_before.present?
+      items << { param: "min_total", label: I18n.t("mcweb.commerce.customer_orders.filter_min_total", value: money_label(@min_total)), value: @min_total } if @min_total.present?
+      items << { param: "max_total", label: I18n.t("mcweb.commerce.customer_orders.filter_max_total", value: money_label(@max_total)), value: @max_total } if @max_total.present?
       items
     end
 

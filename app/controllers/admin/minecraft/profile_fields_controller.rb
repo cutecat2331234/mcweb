@@ -4,7 +4,6 @@ module Admin
   module Minecraft
     class ProfileFieldsController < BaseController
       before_action -> { require_permission("minecraft.servers.manage") }
-      before_action -> { require_admin_module!("minecraft") }
       before_action :set_definition, only: %i[edit update destroy]
 
       def index

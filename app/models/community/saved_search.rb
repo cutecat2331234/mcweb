@@ -15,6 +15,7 @@ module Community
     scope :notify_daily, -> { where(notify_daily: true) }
 
     validates :webhook_url, allow_blank: true, format: { with: %r{\Ahttps?://.+\z}i, message: "必须是有效的 http(s) URL" }
+    validate :webhook_url_public, if: -> { webhook_url.present? }
 
     validate :within_user_limit, on: :create
 
@@ -33,6 +34,12 @@ module Community
 
       count = user.forum_saved_searches.count
       errors.add(:base, "保存搜索已达上限（#{limit.to_i}）") if count >= limit
+    end
+
+    def webhook_url_public
+      return if UrlSafety.public_http_url?(webhook_url)
+
+      errors.add(:webhook_url, "不能指向内网或本地地址")
     end
   end
 end

@@ -10,6 +10,7 @@ module Commerce
       render inertia: "Commerce/Wallet/Show", props: {
         balanceCents: current_user.store_credit_cents.to_i,
         balanceLabel: format_money(current_user.store_credit_cents.to_i, "CNY"),
+        memberships: Commerce::SerializeUserMemberships.for_user(current_user),
         transactions: transactions.map do |tx|
           {
             amount_cents: tx.amount_cents,

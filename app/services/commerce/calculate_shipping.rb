@@ -10,6 +10,19 @@ module Commerce
     end
 
     def call
+      unless Commerce::StoreFeatures.enabled?(:shipping)
+        return ServiceResult.success(
+          shipping_cents: 0,
+          free_shipping: true,
+          free_shipping_min_cents: 0,
+          flat_shipping_cents: 0,
+          amount_remaining_cents: 0,
+          no_shippable_items: true,
+          shipping_method_code: @shipping_method_code,
+          shipping_method_label: nil
+        )
+      end
+
       unless cart_requires_shipping?
         return ServiceResult.success(
           shipping_cents: 0,

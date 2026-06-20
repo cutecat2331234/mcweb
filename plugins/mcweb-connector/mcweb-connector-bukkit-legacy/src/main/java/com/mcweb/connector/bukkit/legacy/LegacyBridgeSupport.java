@@ -2,6 +2,8 @@ package com.mcweb.connector.bukkit.legacy;
 
 import com.mcweb.connector.common.BridgeProvider;
 import com.mcweb.connector.common.BridgeRegistry;
+import com.mcweb.connector.common.LuckPermsBridgeHelper;
+import com.mcweb.connector.common.McWebBridge;
 import com.mcweb.connector.common.RemoteBridgeConfig;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.java.JavaPlugin;
@@ -21,9 +23,14 @@ final class LegacyBridgeSupport {
         }
 
         void applyRemoteConfig(RemoteBridgeConfig config) {
-            if (placeholderApi != null && config != null && !config.bridgePlaceholders().isEmpty()) {
-                placeholderApi.setPlaceholders(config.bridgePlaceholders());
+            if (placeholderApi == null || config == null) {
+                return;
             }
+            if (!config.bridgePlaceholdersConfigured()) {
+                placeholderApi.clearRemotePlaceholders();
+                return;
+            }
+            placeholderApi.setRemotePlaceholders(config.bridgePlaceholders());
         }
     }
 
@@ -32,29 +39,40 @@ final class LegacyBridgeSupport {
 
     static Holder create(JavaPlugin plugin) {
         BridgeRegistry registry = new BridgeRegistry();
+        registry.register(new McWebBridge());
         PlaceholderApiBridge placeholderApi = null;
         if (Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
             placeholderApi = new PlaceholderApiBridge(plugin);
             registry.register(placeholderApi);
         }
         if (Bukkit.getPluginManager().getPlugin("LuckPerms") != null) {
-            registry.register(new LuckPermsBridge());
+            registry.register(new LuckPermsBridge(plugin));
         }
         if (Bukkit.getPluginManager().getPlugin("Vault") != null) {
-            registry.register(new VaultBridge());
+            VaultBridge vaultBridge = new VaultBridge();
+            if (vaultBridge.isAvailable()) {
+                registry.register(vaultBridge);
+            }
         }
         return new Holder(registry, placeholderApi);
     }
 
     static final class PlaceholderApiBridge implements BridgeProvider {
         private final JavaPlugin plugin;
+        private volatile boolean remotePlaceholdersActive = false;
         private volatile List<String> placeholders = Collections.emptyList();
 
         PlaceholderApiBridge(JavaPlugin plugin) {
             this.plugin = plugin;
         }
 
-        void setPlaceholders(List<String> values) {
+        void clearRemotePlaceholders() {
+            remotePlaceholdersActive = false;
+            placeholders = Collections.emptyList();
+        }
+
+        void setRemotePlaceholders(List<String> values) {
+            remotePlaceholdersActive = true;
             placeholders = values == null ? Collections.<String>emptyList() : new ArrayList<String>(values);
         }
 
@@ -67,9 +85,9 @@ final class LegacyBridgeSupport {
         }
 
         public List<FieldValue> profileFields(String playerName) {
-            List<String> active = placeholders.isEmpty()
-                    ? plugin.getConfig().getStringList("bridge-placeholders")
-                    : placeholders;
+            List<String> active = remotePlaceholdersActive
+                    ? placeholders
+                    : plugin.getConfig().getStringList("bridge-placeholders");
             List<FieldValue> values = new ArrayList<FieldValue>();
             try {
                 Class<?> api = Class.forName("me.clip.placeholderapi.PlaceholderAPI");
@@ -89,12 +107,24 @@ final class LegacyBridgeSupport {
     }
 
     static final class LuckPermsBridge implements BridgeProvider {
+        private final JavaPlugin plugin;
+
+        LuckPermsBridge(JavaPlugin plugin) {
+            this.plugin = plugin;
+        }
+
         public String name() {
             return "luckperms";
         }
 
         public boolean isAvailable() {
-            return true;
+            try {
+                Class<?> provider = Class.forName("net.luckperms.api.LuckPermsProvider");
+                provider.getMethod("get").invoke(null);
+                return true;
+            } catch (Exception ex) {
+                return false;
+            }
         }
 
         public List<FieldValue> profileFields(String playerName) {
@@ -102,20 +132,11 @@ final class LegacyBridgeSupport {
         }
 
         public List<PermissionGroup> permissionGroups(String playerName) {
-            List<PermissionGroup> groups = new ArrayList<PermissionGroup>();
-            try {
-                Class<?> provider = Class.forName("net.luckperms.api.LuckPermsProvider");
-                Object api = provider.getMethod("get").invoke(null);
-                Object userManager = api.getClass().getMethod("getUserManager").invoke(api);
-                Object user = userManager.getClass().getMethod("getUser", java.util.UUID.class)
-                        .invoke(userManager, Bukkit.getOfflinePlayer(playerName).getUniqueId());
-                if (user != null) {
-                    Object primary = user.getClass().getMethod("getPrimaryGroup").invoke(user);
-                    groups.add(new PermissionGroup(String.valueOf(primary), String.valueOf(primary), 100));
-                }
-            } catch (Exception ignored) {
-            }
-            return groups;
+            return LuckPermsBridgeHelper.permissionGroups(
+                    playerName,
+                    Bukkit.getOfflinePlayer(playerName).getUniqueId(),
+                    plugin.getLogger()
+            );
         }
     }
 
@@ -125,7 +146,12 @@ final class LegacyBridgeSupport {
         }
 
         public boolean isAvailable() {
-            return true;
+            try {
+                Class<?> economyClass = Class.forName("net.milkbowl.vault.economy.Economy");
+                return Bukkit.getServicesManager().getRegistration(economyClass) != null;
+            } catch (Exception ex) {
+                return false;
+            }
         }
 
         public List<FieldValue> profileFields(String playerName) {

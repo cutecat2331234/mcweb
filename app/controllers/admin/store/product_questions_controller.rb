@@ -16,11 +16,12 @@ module Admin
               product: q.product.name,
               author: q.user.username,
               body: q.body,
-              status: q.status,
+              status: product_question_status_label(q.status),
               created_at: l(q.created_at, format: :short),
               order_number: q.order_item&.order&.order_number,
               hide_url: hide_admin_store_product_question_path(q),
-              unhide_url: unhide_admin_store_product_question_path(q)
+              unhide_url: unhide_admin_store_product_question_path(q),
+              status_key: q.status
             }
           end
         }
@@ -53,6 +54,10 @@ module Admin
 
       def set_question
         @question = Commerce::ProductQuestion.find(params[:id])
+      end
+
+      def product_question_status_label(status)
+        t("mcweb.labels.product_question_status.#{status}", default: status.to_s.humanize)
       end
     end
   end

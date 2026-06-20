@@ -25,7 +25,11 @@ module Community
       when "draft"
         user.present? && user.id == topic.user_id
       when "hidden"
-        user.present? && (user.id == topic.user_id || user.permission?("forum.topics.lock"))
+        return false unless user.present?
+
+        user.id == topic.user_id ||
+          user.permission?("forum.topics.lock") ||
+          Community::SectionModeration.can_moderate_topic?(user: user, topic: topic)
       else
         false
       end

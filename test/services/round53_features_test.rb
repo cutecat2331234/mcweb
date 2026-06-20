@@ -129,13 +129,15 @@ class Commerce::RefundWindowTest < ActiveSupport::TestCase
       amount_cents: 5000,
       currency: "CNY",
       status: "succeeded",
-      created_at: 10.days.ago
+      created_at: 10.days.ago,
+      updated_at: 10.days.ago
     )
+    anchor_order_payment_at!(@order, paid_at: 10.days.ago)
     SiteSetting.set("store.refund_window_days", "7")
   end
 
   teardown do
-    SiteSetting.set("store.refund_window_days", "0")
+    reset_refund_window!
   end
 
   test "rejects refund outside window" do
@@ -145,9 +147,18 @@ class Commerce::RefundWindowTest < ActiveSupport::TestCase
   end
 
   test "allows refund inside window" do
-    @order.payment_records.update_all(created_at: 2.days.ago)
+    paid_at = 2.days.ago
+    anchor_order_payment_at!(@order, paid_at: paid_at)
     result = Commerce::RequestRefund.call(order: @order, user: @user, reason: "ok")
     assert result.success?, result.error
+  end
+
+  test "rejects self-service refund when window is disabled" do
+    SiteSetting.set("store.refund_window_days", "0")
+    anchor_order_payment_at!(@order, paid_at: 1.day.ago)
+    result = Commerce::RequestRefund.call(order: @order, user: @user, reason: "disabled")
+    assert result.failure?
+    assert_equal "Refund window has expired.", result.error
   end
 end
 
@@ -174,6 +185,15 @@ class Commerce::PendingOrderExpiryTest < ActiveSupport::TestCase
   test "expire job cancels old pending orders" do
     Commerce::ExpirePendingOrdersJob.perform_now
     assert_equal "cancelled", @order.reload.status
+  end
+
+  test "does not cancel order while payment window remains" do
+    SiteSetting.set("store.pending_order_expiry_minutes", "60")
+    @order.update!(created_at: 45.minutes.ago)
+
+    Commerce::ExpirePendingOrdersJob.perform_now
+
+    assert_equal "pending", @order.reload.status
   end
 end
 

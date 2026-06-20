@@ -8,8 +8,8 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "无权恢复帖子。") unless can_restore?
-      return ServiceResult.failure(error: "帖子未被删除。") unless discarded_post?
+      return ServiceResult.failure(error: "restore_post_unauthorized") unless can_restore?
+      return ServiceResult.failure(error: "post_not_deleted") unless discarded_post?
 
       topic = @post.topic
       Community::Post.transaction do
@@ -17,6 +17,7 @@ module Community
         Community::SyncTopicLastPost.call(topic: topic)
       end
 
+      Community::DispatchForumEventWebhook.call(event_type: "post.restored", topic: topic, post: @post)
       ServiceResult.success(@post)
     end
 
@@ -24,10 +25,8 @@ module Community
 
     def can_restore?
       return false unless discarded_post?
-      return true if @actor.permission?("forum.topics.lock")
-      return true if @actor.permission?("admin.access")
 
-      false
+      Community::SectionModeration.can_moderate_topic?(user: @actor, topic: @post.topic)
     end
 
     def discarded_post?

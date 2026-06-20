@@ -3,3 +3,4 @@
 <p><strong><%= @warning.reason %></strong></p>
 <p><%= t("mcweb.mail.forum.user_warning.total_points", points: Community::UserWarning.total_points_for(@user)) %></p>
 <p><a href="<%= @url %>"><%= t("mcweb.mail.view_profile") %></a></p>
+<%= render "notification_unsubscribe" %>

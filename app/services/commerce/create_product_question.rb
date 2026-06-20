@@ -13,8 +13,8 @@ module Commerce
       return ServiceResult.failure(error: "Question is required.") if @body.blank?
 
       if @order_item
-        return ServiceResult.failure(error: "订单商品不匹配。") unless @order_item.store_product_id == @product.id
-        return ServiceResult.failure(error: "无权就此订单提问。") unless @order_item.order.user_id == @user.id
+        return ServiceResult.failure(error: "order_item_mismatch") unless @order_item.store_product_id == @product.id
+        return ServiceResult.failure(error: "order_question_unauthorized") unless @order_item.order.user_id == @user.id
       end
 
       question = Commerce::ProductQuestion.create!(

@@ -15,7 +15,13 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "购物车为空。") if @cart.items.empty?
+      return ServiceResult.failure(error: "cart_empty") if @cart.items.empty?
+      unless @cart.user_id.nil? || @cart.user_id == @user.id
+        return ServiceResult.failure(error: "cart_unauthorized")
+      end
+
+      cart_feature_error = validate_cart_store_features!
+      return cart_feature_error if cart_feature_error
 
       @cart.items.includes(:product, :variant).find_each do |item|
         validation = Commerce::ValidateCartItem.call(
@@ -36,7 +42,9 @@ module Commerce
       subtotal_preview = @cart.items.includes(:product, :variant).sum { |item| item.total_cents }
       min_cents = SiteSetting.get("store.min_checkout_subtotal_cents", "0").to_i
       if min_cents.positive? && subtotal_preview < min_cents
-        return ServiceResult.failure(error: "订单未满最低消费金额（#{min_cents / 100.0} 元）。")
+        return ServiceResult.failure(
+          error: I18n.t("mcweb.services.errors.order_min_subtotal_not_met", amount: min_cents / 100.0)
+        )
       end
 
       order = nil
@@ -60,7 +68,7 @@ module Commerce
           currency: "CNY",
           notes: @notes,
           shipping_address: normalized_shipping_address,
-          shipping_method: @shipping_method
+          shipping_method: effective_shipping_method
         )
 
         @cart.items.includes(:product, :variant).find_each do |item|
@@ -93,7 +101,7 @@ module Commerce
 
         cart_items = @cart.items.includes(:product)
         shipping_cents = shipping_cents_for(subtotal_cents, cart_items: cart_items)
-        wrap_result = Commerce::CalculateGiftWrap.call(enabled: @gift_wrap, cart_items: cart_items)
+        wrap_result = Commerce::CalculateGiftWrap.call(enabled: effective_gift_wrap, cart_items: cart_items)
         gift_wrap = wrap_result.success? && wrap_result.value[:gift_wrap]
         gift_wrap_cents = wrap_result.success? ? wrap_result.value[:gift_wrap_cents].to_i : 0
 
@@ -134,8 +142,8 @@ module Commerce
       end
 
       return ServiceResult.failure(error: coupon_error) if coupon_error.present?
-      return ServiceResult.failure(error: "购物车为空。") if empty_cart
-      return ServiceResult.failure(error: "无法创建订单。") unless order&.persisted?
+      return ServiceResult.failure(error: "cart_empty") if empty_cart
+      return ServiceResult.failure(error: "cannot_create_order") unless order&.persisted?
 
       Commerce::OrderEvent.create!(
         order: order,
@@ -151,12 +159,11 @@ module Commerce
       )
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_created", "deliver_now", args: [ order.id ])
-      Commerce::NotifyOrderEvent.call(
+      Commerce::InAppNotification.order_event(
         user: order.user,
         notification_type: "commerce.order_created",
-        title: "订单已创建",
-        body: "订单 #{order.order_number} 等待支付。",
-        path: "/app/store/orders/#{order.public_id}"
+        key: "order_created",
+        order: order
       )
 
       Commerce::DispatchOrderWebhook.call(
@@ -184,7 +191,7 @@ module Commerce
             return ServiceResult.success
           end
 
-          return ServiceResult.failure(error: "库存不足。")
+          return ServiceResult.failure(error: "stock_insufficient")
         end
 
         target.update!(stock: target.stock - quantity)
@@ -195,13 +202,15 @@ module Commerce
 
     def snapshot_fulfillment(product, variant)
       config = variant&.fulfillment_config.presence || product.fulfillment_config
-      {
+      snapshot = {
         product_id: product.id,
         product_public_id: product.public_id,
         variant_id: variant&.id,
         product_type: product.product_type,
         fulfillment_config: config
       }
+      snapshot[:membership_type_id] = product.store_membership_type_id if product.membership_product?
+      snapshot
     end
 
     def generate_public_id
@@ -217,12 +226,35 @@ module Commerce
         subtotal_cents: subtotal_cents,
         cart_items: cart_items,
         coupon: coupon,
-        shipping_method_code: @shipping_method
+        shipping_method_code: effective_shipping_method
       )
       result.success? ? result.value[:shipping_cents].to_i : 0
     end
 
+    def effective_shipping_method
+      return nil unless Commerce::StoreFeatures.enabled?(:shipping)
+
+      @shipping_method
+    end
+
+    def effective_gift_wrap
+      Commerce::StoreFeatures.enabled?(:gift_wrap) && ActiveModel::Type::Boolean.new.cast(@gift_wrap)
+    end
+
+    def validate_cart_store_features!
+      @cart.items.includes(:product).find_each do |item|
+        product = item.product
+        next unless product
+
+        unless Commerce::StoreFeatures.product_visible?(product)
+          return ServiceResult.failure(error: I18n.t("commerce.cart.unsupported_feature_product"))
+        end
+      end
+      nil
+    end
+
     def normalized_shipping_address
+      return {} unless Commerce::StoreFeatures.enabled?(:shipping)
       return {} unless @shipping_address.is_a?(Hash)
 
       {

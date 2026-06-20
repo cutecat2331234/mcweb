@@ -3,14 +3,18 @@
 module Commerce
   class RssController < ApplicationController
     def latest
-      products = Commerce::Product.available.order(created_at: :desc).limit(30)
-      render xml: build_feed(products, title: "Mcweb 商城最新商品", url: store_products_path), content_type: "application/rss+xml"
+      products = Commerce::StoreFeatures.visible_products_scope(
+        Commerce::Product.available.order(created_at: :desc).limit(30)
+      )
+      render xml: build_feed(products, title: t("mcweb.commerce.rss.latest_title"), url: store_products_path), content_type: "application/rss+xml"
     end
 
     def category
       category = Commerce::Category.find_by!(slug: params[:slug])
-      products = Commerce::Product.available.where(store_category_id: category.id).order(created_at: :desc).limit(30)
-      render xml: build_feed(products, title: "#{category.name} - Mcweb 商城", url: store_category_path(category.slug)), content_type: "application/rss+xml"
+      products = Commerce::StoreFeatures.visible_products_scope(
+        Commerce::Product.available.where(store_category_id: category.id).order(created_at: :desc).limit(30)
+      )
+      render xml: build_feed(products, title: t("mcweb.commerce.rss.category_title", name: category.name), url: store_category_path(category.slug)), content_type: "application/rss+xml"
     end
 
     private
@@ -23,7 +27,7 @@ module Commerce
           <channel>
             <title>#{escape_xml(title)}</title>
             <link>#{escape_xml(url)}</link>
-            <description>Mcweb Store</description>
+            <description>#{escape_xml(t("mcweb.commerce.rss.description"))}</description>
             <lastBuildDate>#{Time.current.rfc2822}</lastBuildDate>
             #{items}
           </channel>

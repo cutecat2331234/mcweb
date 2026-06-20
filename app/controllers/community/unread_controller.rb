@@ -122,13 +122,7 @@ module Community
     end
 
     def forum_sort_options
-      [
-        { value: "latest", label: "最新回复" },
-        { value: "unread", label: "未读最多" },
-        { value: "hot", label: "热门" },
-        { value: "replies", label: "回复最多" },
-        { value: "newest", label: "最新发布" }
-      ]
+      Community::TopicListSortOptions.call(include_unread: true)
     end
 
     def unread_section_options
@@ -136,7 +130,7 @@ module Community
       section_ids = Community::Topic.where(id: unread_topic_ids).distinct.pluck(:forum_section_id)
       sections = Community::Section.where(id: section_ids).order(:name)
 
-      options = [ { value: "", label: "全部分区" } ]
+      options = [ { value: "", label: t("mcweb.forum.unread.all_sections") } ]
       sections.each do |section|
         options << { value: section.slug, label: section.name }
       end
@@ -148,7 +142,7 @@ module Community
       tag_ids = Community::TopicTag.where(forum_topic_id: unread_topic_ids).distinct.pluck(:forum_tag_id)
       tags = Community::Tag.where(id: tag_ids).order(:name)
 
-      options = [ { value: "", label: "全部标签" } ]
+      options = [ { value: "", label: t("mcweb.forum.unread.all_tags") } ]
       tags.each do |tag|
         options << { value: tag.slug, label: tag.name }
       end
@@ -176,8 +170,8 @@ module Community
 
     def unread_tag_match_options
       [
-        { value: "all", label: "全部标签" },
-        { value: "any", label: "任意标签" }
+        { value: "all", label: t("mcweb.forum.unread.tag_match_all") },
+        { value: "any", label: t("mcweb.forum.unread.tag_match_any") }
       ]
     end
 
@@ -231,16 +225,16 @@ module Community
         Community::TopicListSortActiveFilters.call(sort: sort, default: "latest")
       if section.present?
         name = Community::Section.find_by(slug: section)&.name || section
-        chips << { param: "section", label: "分区：#{name}", value: section }
+        chips << { param: "section", label: t("mcweb.forum.unread.filter_section", name: name), value: section }
       end
       if tag_slugs.many? && tag_match == "any"
-        chips << { param: "tag_match", label: "标签匹配：任意", value: "any" }
+        chips << { param: "tag_match", label: t("mcweb.forum.unread.filter_tag_match_any"), value: "any" }
       elsif tag_slugs.many?
-        chips << { param: "tag_match", label: "标签匹配：全部", value: "all" }
+        chips << { param: "tag_match", label: t("mcweb.forum.unread.filter_tag_match_all"), value: "all" }
       end
       tag_slugs.each do |slug|
         name = Community::Tag.find_by(slug: slug)&.name || slug
-        chips << { param: "tags", label: "标签：#{name}", value: slug }
+        chips << { param: "tags", label: t("mcweb.forum.unread.filter_tag", name: name), value: slug }
       end
       chips
     end
@@ -253,6 +247,7 @@ module Community
           id: preset.id,
           name: preset.name,
           url: forum_unread_path(query),
+          share_url: Community::UnreadFilterPresetUrl.call(base_url: request.base_url, filters: filters),
           delete_url: forum_unread_filter_preset_path(preset)
         }
       end

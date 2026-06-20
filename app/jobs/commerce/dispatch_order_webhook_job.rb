@@ -31,20 +31,24 @@ module Commerce
     end
 
     def execute_request(delivery, url, payload, secret, attempt)
+      unless UrlSafety.public_http_url?(url)
+        delivery.update!(
+          status: "failed",
+          response_body: "blocked: private or invalid URL",
+          attempt_count: attempt
+        )
+        return
+      end
+
       uri = URI.parse(url)
-      http = Net::HTTP.new(uri.host, uri.port)
-      http.use_ssl = uri.scheme == "https"
-      http.open_timeout = 5
-      http.read_timeout = 10
-
       body = payload.to_json
-      request = Net::HTTP::Post.new(uri.request_uri)
-      request["Content-Type"] = "application/json"
-      request.body = body
+      headers = { "Content-Type" => "application/json" }
       signature = WebhookSignature.header_for(secret, body)
-      request["X-McWeb-Signature"] = signature if signature.present?
+      headers["X-McWeb-Signature"] = signature if signature.present?
 
-      response = http.request(request)
+      response = UrlSafety.safe_http_post(uri, body: body, headers: headers, open_timeout: 5, read_timeout: 10)
+      raise StandardError, "Blocked or unreachable URL" if response.nil?
+
       success = response.code.to_i.between?(200, 299)
       delivery.update!(
         response_code: response.code.to_i,

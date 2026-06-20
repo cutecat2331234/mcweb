@@ -21,6 +21,9 @@ defineProps<{
     product_name: string
     attempts_count: number
     last_error: string | null
+    target_server?: string | null
+    target_server_process_state?: string | null
+    target_server_url?: string | null
   }
 }>()
 </script>
@@ -34,6 +37,13 @@ defineProps<{
       <div class="flex justify-between"><span class="text-muted-foreground">{{ t('admin.common.order') }}</span><span>{{ fulfillment.order_number }}</span></div>
       <div class="flex justify-between"><span class="text-muted-foreground">{{ t('admin.common.product') }}</span><span>{{ fulfillment.product_name }}</span></div>
       <div class="flex justify-between"><span class="text-muted-foreground">{{ t('admin.fulfillments.attempts') }}</span><span>{{ fulfillment.attempts_count }}</span></div>
+      <div v-if="fulfillment.target_server" class="flex justify-between">
+        <span class="text-muted-foreground">{{ t('admin.fulfillments.targetServer') }}</span>
+        <Link v-if="fulfillment.target_server_url" :href="fulfillment.target_server_url" class="text-primary hover:underline">
+          {{ fulfillment.target_server }} ({{ fulfillment.target_server_process_state }})
+        </Link>
+        <span v-else>{{ fulfillment.target_server }}</span>
+      </div>
       <div v-if="fulfillment.last_error" class="text-destructive">{{ fulfillment.last_error }}</div>
     </CardContent>
   </Card>

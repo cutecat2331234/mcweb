@@ -14,6 +14,7 @@ en:
       registration_success: Registration successful. Please check your email to verify your address.
       sign_in_required_short: Please sign in first.
       operation_failed: Operation failed.
+      rate_limited: Too many requests. Please try again later.
       bookmark_updated: Bookmark updated.
       marked_read: Marked as read.
       notification_unavailable: The content for this notification is no longer available.
@@ -88,6 +89,7 @@ en:
       answer_published: Answer published.
       gift_card_invalid: Invalid gift card.
       gift_card_saved: "Gift card %{code} saved to your wallet and will apply at checkout."
+      gift_card_updated: Your cart gift card has been updated.
       installation_locked: Installation is already complete. Setup wizard cannot run again.
       feature_toggles_saved: Feature toggles saved.
       created: "%{resource} created."
@@ -105,6 +107,23 @@ en:
       template_installed: "Template \"%{name}\" installed."
       template_deleted: Template deleted.
       connector_secret_generated: "New secret generated (shown once): %{secret}"
+      connector_secret_rotated: "Connector secret rotated. Copy the new secret shown below immediately."
+      node_secret_generated: New node secret generated. Copy it from the banner below — it is shown only once.
+      server_start_queued: Server start command queued.
+      server_stop_queued: Server stop command queued.
+      server_restart_queued: Server restart command queued.
+      command_queued: Remote command queued.
+      tail_logs_queued: Log tail task queued.
+      console_command_queued: In-game console command queued.
+      backup_queued: World backup task queued.
+      restore_queued: World restore task queued.
+      sync_files_queued: File sync task queued.
+      archive_required: Archive path is required.
+      source_path_required: Source path is required.
+      pairing_token_generated: "Pairing token generated (expires %{expires}). Copy it from the banner below — it is shown only once."
+      player_kick_queued: Player kick command queued.
+      player_kick_target_required: Player username or UUID is required.
+      command_required: Command cannot be empty.
       system_role_immutable: System roles cannot be modified.
       system_role_undeletable: System roles cannot be deleted.
       category_has_sections: Category still has sections and cannot be deleted.
@@ -148,6 +167,20 @@ en:
       wishlist_product_invalid: Product cannot be added to wishlist.
       wishlist_note_invalid: Cannot edit note for this product.
       wishlist_note_saved: Note saved.
+      wishlist_toggled_on: Added to wishlist.
+      wishlist_toggled_off: Removed from wishlist.
+      wishlist_bulk_added: "Added %{count} item(s) to cart."
+      wishlist_bulk_skipped: " Skipped: %{items}"
+      compare_toggled_on: Added to compare.
+      compare_toggled_off: Removed from compare.
+      compare_bulk_added: "Added %{count} item(s) from wishlist to compare."
+      compare_bulk_skipped: " Skipped: %{items}"
+      reorder_bulk_added: "Added %{count} item(s) to cart."
+      reorder_bulk_skipped: " Skipped: %{items}"
+      bulk_moderate_processed: "Processed %{count} topic(s)."
+      bulk_moderate_failed_suffix: ", %{count} failed"
+      following_toggled_on: User followed.
+      following_toggled_off: User unfollowed.
       stock_alert_subscribed: Stock alert subscribed.
       stock_alert_no_stock: Product is not in stock.
       stock_alert_unsubscribed: Stock alert removed.
@@ -161,6 +194,8 @@ en:
       mapping_added: Mapping added.
       mapping_updated: Mapping updated.
       mapping_deleted: Mapping deleted.
+      membership_granted: Membership granted.
+      membership_revoked: Membership revoked.
       rule_created: Rule created.
       rule_updated: Rule updated.
       rule_deleted: Rule deleted.
@@ -178,6 +213,7 @@ en:
       webhook_test_queued: "Test webhook queued (%{label})."
       webhook_test_failed: Test send failed.
       webhook_batch_test_queued: "Queued %{queued}/%{total} saved-search webhook tests."
+      webhook_batch_event_test_queued: "Queued %{queued}/%{total} forum event webhook tests."
       webhook_batch_order_test_queued: "Queued %{queued}/%{total} order webhook tests."
       webhook_batch_test_failed: Batch test failed.
       webhook_batch_retry_failed: Batch retry failed.
@@ -203,6 +239,8 @@ en:
       no_packing_slip: No packing slip available for this order.
       product_not_found: Product not found.
       coupon_invalid: Invalid coupon.
+      coupon_unavailable: This coupon is invalid or unavailable.
+      coupon_updated: Your cart promotions have been updated.
       coupon_saved: "Coupon %{code} saved and will apply at checkout."
       review_submitted: Review submitted.
       review_shared: Review shared to forum.
@@ -234,6 +272,9 @@ en:
       cannot_view_edit_history: You cannot view edit history.
       post_restored_version: Restored to selected version.
       post_restored: Post restored.
+      post_approved: Post approved.
+      post_rejected: Post rejected.
+      post_pending_submitted: Your post was submitted and is awaiting moderator approval.
       topic_created_from_post: New topic created.
       canned_response_created: Canned response created.
       canned_response_updated: Canned response updated.
@@ -253,8 +294,11 @@ en:
       product: Product
       coupon: Coupon
       gift_card: Gift card
+      membership_type: Membership type
+      user_membership: User membership
       order: Order
       server: Server
+      node: Node
       badge: Badge
       tag_group: Tag group
       tag: Tag
@@ -302,6 +346,7 @@ en:
         user_silenced: User is silenced.
         user_cannot_pm: User cannot participate in private messages.
         cart_empty: Your cart is empty.
+        cart_unauthorized: You cannot checkout with this cart.
         order_created: Order created.
         report_submitted: Report submitted.
         reset_token_expired: Reset token has expired.
@@ -312,6 +357,7 @@ en:
         too_many_options_selected: Too many options selected.
         invalid_poll_option: Invalid option.
         order_cannot_cancel: Order cannot be cancelled.
+        order_refund_status_failed: Unable to update order status after refund.
         payment_not_refundable: Payment is not refundable.
         refund_exceeds_balance: Refund amount exceeds remaining balance.
         payment_not_found: Payment record not found.
@@ -332,13 +378,605 @@ en:
         muted_in_section: You are muted in this section.
         account_banned: Your account is banned.
         silenced_cannot_post: You are silenced and cannot post.
+        topic_reply_banned: You are banned from replying in this topic.
         wait_before_new_topic: Please wait before creating another topic.
         similar_topic_recent: A similar topic was recently created.
+        not_a_membership_product: This product is not a membership product.
+        membership_type_not_found: Membership type not found.
+        membership_revoke_failed: Failed to revoke membership.
+        membership_fulfillment_failed: Membership fulfillment failed.
+        store_credit_restore_failed: Failed to restore store credit.
+        stock_restore_failed: Failed to restore stock.
+        coupon_restore_failed: Failed to restore coupon usage.
+        gift_card_balance_restore_failed: Failed to restore gift card balance.
+        gift_card_revoke_failed: Failed to revoke issued gift cards.
+        gift_card_fulfillment_failed: Gift card fulfillment failed.
+        create_fulfillment_failed: Failed to create fulfillment record.
+        orders_not_selected: No orders selected.
+        unsupported_bulk_action: Unsupported action.
+        order_cannot_mark_fulfilled: Order cannot be marked fulfilled.
+        automated_fulfillment_required: Order includes items that require automated fulfillment (including memberships) and cannot be marked fulfilled manually.
+        order_cannot_mark_paid: Order cannot be marked paid.
+        order_payment_expired: Order payment has expired.
+        order_mark_paid_failed: Order could not be marked paid.
+        refund_amount_invalid: Invalid refund amount.
+        refund_amount_exceeds_limit: Refund amount exceeds the refundable limit.
+        cannot_create_order: Could not create order.
+        stock_insufficient: Insufficient stock.
+        order_min_subtotal_not_met: "Order does not meet the minimum subtotal (%{amount})."
+        payment_amount_mismatch: Payment amount does not match the order.
+        gift_card_debit_failed: Gift card debit failed.
+        store_credit_debit_failed: Store credit debit failed.
+        order_payment_not_completed: Order is not paid; payment follow-up cannot run.
+        order_cannot_continue_payment: This order cannot continue to payment.
+        shipping_management_disabled: Order shipping management is disabled.
+        gift_card_invalid: Invalid gift card.
+        store_credit_unauthorized: You are not allowed to adjust store credit.
+        store_credit_adjustment_zero: Adjustment amount cannot be zero.
+        store_credit_negative_balance: Balance cannot be negative.
+        store_credit_below_reserved: Balance cannot fall below amounts reserved on pending orders.
+        user_invalid: Invalid user.
+        store_credit_insufficient: Insufficient store credit.
+        gift_card_insufficient: Insufficient gift card balance.
+        coupon_invalid: Invalid coupon code.
+        coupon_code_required: Enter a coupon code.
+        coupon_unavailable: This coupon is invalid or unavailable.
+        gift_card_unavailable: This gift card is invalid or unavailable.
+        gift_card_code_invalid: Invalid gift card code.
+        order_not_modifiable: Order cannot be modified.
+        product_not_purchasable: This product is not available for purchase.
+        reorder_item_not_found: No order record found to reorder.
+        shipping_address_incomplete: "Complete shipping address: %{fields}."
+        login_required: Please sign in first.
+        cart_item_missing: Cart item not found.
+        wishlist_item_missing: Item is not on your wishlist.
+        variant_required: Please select a variant.
+        product_already_available: Product is already available; no subscription needed.
+        review_rating_invalid: Rating must be between 1 and 5.
+        purchase_required_to_review: Purchase required to leave a review.
+        cannot_review_own: You cannot mark your own review as helpful.
+        cannot_mark_own_answer: You cannot mark your own answer as helpful.
+        compare_limit_reached: "You can compare at most %{count} products."
+        staff_note_unauthorized: You are not allowed to add staff notes.
+        staff_note_blank: Enter note content.
+        webhook_event_unsupported: Unsupported event type.
+        webhook_url_missing: Webhook URL is not configured.
+        webhook_retry_not_failed: Only failed deliveries can be retried.
+        webhook_retry_no_payload: Missing request payload; cannot retry.
+        deliveries_not_selected: No deliveries selected.
+        gift_card_claim_invalid: Invalid gift card.
+        gift_card_claimed_by_other: This gift card is linked to another account.
+        merchant_reply_unauthorized: You are not allowed to reply to this review.
+        merchant_reply_blank: Reply cannot be blank.
+        delete_review_unauthorized: You are not allowed to delete this review.
+        share_review_unauthorized: You can only share your own review.
+        share_review_already_shared: Review was already shared to the forum.
+        subscription_not_found: Subscription not found.
+        wishlist_note_item_missing: Item is not on your wishlist.
+        order_item_mismatch: Order item does not match this product.
+        order_question_unauthorized: You are not allowed to ask about this order item.
+        webhook_url_private: Webhook URL cannot point to private or local addresses.
+        webhook_delivery_timeout: Delivery timed out.
+        product_inactive: Product is no longer available.
+        product_archived: Product is no longer available.
+        cart_add_failed: Could not add to cart.
+        discussion_section_missing: Product discussion section is not configured.
+        discussion_topic_create_failed: Could not create discussion topic.
+        wishlist_item_not_in_list: Item is not on your wishlist.
+        section_topic_prefix_required: This section requires a topic prefix.
+        attachment_invalid_or_unauthorized: Attachment is invalid or you are not allowed to use it.
+        new_members_cannot_upload_attachments: New members cannot upload attachments yet. Post more to unlock this.
+        upload_file_required: Select a file to upload.
+        invalid_filename: Invalid filename.
+        unsupported_attachment_type: Unsupported attachment type.
+        attachment_too_large: "Attachment is too large (max %{max})."
+        post_moderation_unauthorized: You are not allowed to moderate posts.
+        post_not_pending_approval: Post is not pending approval.
+        warn_user_unauthorized: You are not allowed to issue warnings.
+        cannot_warn_self: You cannot warn yourself.
+        warning_reason_required: Enter a warning reason.
+        saved_search_missing: Linked saved search was not found.
+        bump_cooldown_active: "Bump is on cooldown. Try again in %{hours} hour(s)."
+        assignee_not_found: Assignee user was not found.
+        topics_not_selected: No topics selected.
+        staff_notice_blank: Staff notice cannot be blank.
+        section_tag_group_required: "Select at least one tag from group “%{group}”."
+        tag_group_single_only: "Only one tag from group “%{group}” is allowed. Selected: %{names}"
+        unban_reply_unauthorized: You are not allowed to lift the reply ban.
+        cannot_ignore_self: You cannot ignore yourself.
+        section_disallowed_tags: "These tags are not allowed in this section: %{names}"
+        cannot_react_to_own_post: You cannot react to your own post.
+        trust_level_cannot_react: Your trust level is too low to use reactions.
+        invalid_subscription_level: Invalid notification level.
+        unsilence_unauthorized: You are not allowed to remove silences.
+        restore_post_unauthorized: You are not allowed to restore this post.
+        post_not_deleted: Post has not been deleted.
+        invite_username_required: Enter a username.
+        invite_watcher_unauthorized: You are not allowed to invite watchers to this topic.
+        invite_cannot_self: You cannot invite yourself.
+        invite_user_cannot_access: This user cannot access the topic.
+        invite_already_sent: This user was already invited.
+        auto_silence_failed: Automatic silence could not be applied.
+        silence_user_unauthorized: You are not allowed to silence users.
+        topic_close_disabled: Topic close-by-author is not enabled.
+        topic_close_author_only: Only the topic author can close or reopen their topic.
+        change_post_author_unauthorized: You are not allowed to change the post author.
+        saved_searches_none_for_test: No saved searches available to test.
+        ban_reply_unauthorized: You are not allowed to ban replies.
+        new_members_cannot_upload_images: New members cannot upload images yet. Post more to unlock this.
+        image_upload_too_large: "File is too large (max %{max})."
+        unsupported_upload_type: Unsupported file type.
+        avatar_file_required: Select an image file.
+        avatar_unsupported_format: Unsupported image format (JPEG, PNG, GIF, and WebP only).
+        avatar_too_large: Image is too large (max 2MB).
+    commerce:
+      default_store_title: Store
+      list_separator: ", "
+      coupon_discount:
+        percentage: "%{value}% off"
+        fixed: "%{amount} off"
+      rss:
+        latest_title: Mcweb Store — Latest products
+        category_title: "%{name} - Mcweb Store"
+        description: Mcweb Store
+      shipping:
+        methods:
+          standard: Standard delivery
+          express: Express delivery
+        delivery_estimate:
+          single: "Estimated delivery in %{count} days"
+          max_only: "Estimated delivery in %{max} days"
+          range: "Estimated delivery in %{min}-%{max} days"
+      order_timeline:
+        placed: Order placed
+        paid: Paid
+        shipped: Shipped
+        in_transit: In transit
+        delivered: Delivered
+      in_app:
+        order_created:
+          title: Order created
+          body: "Order %{number} is awaiting payment."
+        payment_confirmed:
+          title: Payment successful
+          body: "Order %{number} has been paid successfully."
+        order_cancelled:
+          title: Order cancelled
+          body: "Order %{number} has been cancelled."
+        order_status_updated:
+          title: Order status updated
+          body: "Order %{number} is now: %{status}."
+        order_shipped:
+          title: Order shipped
+          body: "Order %{number} has shipped."
+          tracking: "%{carrier}: %{tracking_number}"
+        order_fulfilled:
+          title: Order fulfilled
+          body: "All items in order %{number} have been fulfilled."
+        order_completed:
+          title: Order completed
+          body: "Order %{number} is complete. Thank you for your purchase."
+        order_processing:
+          title: Order processing
+          body: "Order %{number} is being processed."
+        order_fulfilling:
+          title: Order fulfilling
+          body: "Order %{number} is being fulfilled."
+        payment_reminder:
+          title: Payment reminder
+          body: "Order %{number} — please pay before %{expires}."
+        product_available:
+          title: Product now available
+          body: "%{product} is now on sale."
+        stock_restocked:
+          title: Back in stock
+          body: "%{product} is back in stock and ready to purchase."
+        stock_restocked_variant:
+          body: "%{product} (%{variant}) is back in stock and ready to purchase."
+        product_changelog:
+          title: "Product update: %{product}"
+        price_drop:
+          title: Price drop
+          body: "%{product} is now %{current} (was %{was})."
+        abandoned_cart:
+          title: Cart reminder
+          body: "You have %{count} item(s) in your cart waiting for checkout."
+        abandoned_cart_followup:
+          title: Cart reminder
+          body: "You still have %{count} item(s) in your cart."
+        merchant_review_reply:
+          title: Seller replied to your review
+          body: "Your review of \"%{product}\" received a seller reply."
+        review_request:
+          title: Review your purchase
+          body: "Order %{number} is complete — share your experience."
+        new_product_question:
+          title: "New product question: %{product}"
+        question_answered:
+          title: Your question was answered
+        low_stock_staff:
+          title: "Low stock: %{product}"
+          body: Product stock is low. Please restock soon.
+        low_stock_staff_variant:
+          body: Variant stock is low. Please restock soon.
+      skipped:
+        feature_disabled: "%{product} (feature not available)"
+        coming_soon: "%{product} (not yet available)"
+        inactive: "%{product} (unavailable)"
+        unavailable: "%{product} (not for sale)"
+        already_in_compare: "%{product} (already in compare)"
+        compare_full: "%{product} (compare list full)"
+        compare_limit_summary: "Compare limit reached (%{count} items)"
+      notes:
+        admin_store_credit_adjustment: Admin adjustment
+        store_credit_order_debit: "Order %{number} applied"
+        store_credit_order_refund: "Order %{number} refund credit"
+        gift_card_order_purchase: "Order %{number} purchase"
+        gift_card_order_revoke: "Order %{number} refund revoked"
+      customer_orders:
+        status_all: All
+        skipped_item: "%{name} (%{reason})"
+        filter_order_number: "Order #: %{value}"
+        filter_created_after: "From: %{value}"
+        filter_created_before: "Until: %{value}"
+        filter_min_total: "Min total: %{value}"
+        filter_max_total: "Max total: %{value}"
+        preset_under_100: Under ¥100
+        preset_100_500: ¥100–500
+        preset_over_500: Over ¥500
+      discussion:
+        section_missing: Product discussion section is not configured.
+        topic_create_failed: Could not create discussion topic.
+        topic_title: "[Product] %{name}"
+        topic_body: "Discuss **%{name}** here.\n\nShare tips, ask questions, and help other buyers."
+        review_no_body: "(No written review)"
+      webhook_test:
+        product_name: Webhook test product
+        variant_name: Default
+        cancel_reason: Test cancellation
+      product_duplicate_suffix: " (copy)"
+    forum:
+      topic_sort:
+        latest: Latest reply
+        hot: Hot
+        replies: Most replies
+        newest: Newest
+        unread: Most unread
+      topic_filter:
+        all: All
+        unsolved: Unsolved
+        solved: Solved
+        solved_mine: Solved by me
+        mine: My topics
+        participated: Participated
+        unread: Unread
+        no_replies: No replies
+        locked: Locked
+        unlocked: Unlocked
+        pinned: Pinned
+        wiki: Wiki topics
+        featured: Featured
+        announcement: Site announcements
+        has_poll: Has poll
+        assigned: Assigned
+        unassigned: Unassigned
+        assigned_mine: Assigned to me
+        unlisted: Unlisted
+        archived: Archived
+        prefix: "Prefix: %{prefix}"
+      mute:
+        site_wide: Entire site
+        permanent: Permanent
+      digest:
+        none: No digest
+        daily: Daily digest
+        weekly: Weekly digest
+      watch_email_mode:
+        instant: Instant email (notify when watching)
+        digest_only: Digest only (no instant watch emails)
+        none: No watch emails (digests and in-app still available)
+      rss:
+        latest_title: Mcweb Forum — Latest
+        section_title: "%{name} - Mcweb Forum"
+        tag_title: "Tag %{name} - Mcweb Forum"
+        tag_label: "Tag %{name}"
+        category_title: "%{name} - Mcweb Forum"
+        search_title: "Search: %{query}"
+        search_default: Forum search
+        saved_search_title: "%{name} - Saved search"
+        item_title_suffix: " - Mcweb Forum"
+        description: Mcweb Forum
+        saved_searches_opml: "%{username}'s saved searches"
+        search_history_opml: "%{username}'s search history"
+        filter_search: Filtered search
+        subscriptions_opml: "%{username}'s search subscriptions"
+        saved_searches_group: Saved searches
+        search_history_group: Search history
+        watching_opml: "%{username}'s watching subscriptions"
+      poll_meta:
+        title_suffix: Poll
+        description_prefix: "Poll: "
+      notifications:
+        content_unavailable: Content unavailable
+        content_unavailable_body: The content linked to this notification is no longer available.
+        grouped_body: "%{count} related notifications"
+        order_title: "Order %{number}"
+        category_forum: Forum
+        category_commerce: Store
+        unread_only: Unread only
+        periods:
+          today: Today only
+          this_week: This week
+          this_month: This month
+          last_month: Last month
+          last_year: Last year
+      badges:
+        manual: Manual grant
+        first_topic: First topic
+        posts_count: Post count milestone
+        likes_received: Likes received milestone
+        first_purchase: First purchase
+      unread:
+        all_sections: All sections
+        all_tags: All tags
+        tag_match_all: All tags
+        tag_match_any: Any tag
+        filter_section: "Section: %{name}"
+        filter_tag_match_any: "Tag match: any"
+        filter_tag_match_all: "Tag match: all"
+        filter_tag: "Tag: %{name}"
+      topic_sort_extended:
+        activity: Recently active
+        views: Most views
+      sort_chip: "Sort: %{label}"
+      search:
+        keywords: "Keywords: %{value}"
+        section: "Section: %{value}"
+        category: "Category: %{value}"
+        tag: "Tag: %{value}"
+        author: "Author: %{value}"
+        assignee: "Assignee: %{value}"
+        created_after: "From: %{value}"
+        created_before: "Until: %{value}"
+        exclude: "Exclude: %{value}"
+        filter_search: Filtered search
+        tag_label: "Tag %{name}"
+      saved_search:
+        values:
+          solved:
+            solved: Solved
+            unsolved: Unsolved
+          locked:
+            locked: Locked
+            unlocked: Unlocked
+          pinned:
+            pinned: Pinned
+            unpinned: Unpinned
+          wiki:
+            wiki: Wiki topics
+            nonwiki: Non-wiki
+          featured:
+            featured: Featured
+          announcement:
+            announcement: Announcement
+          assigned:
+            assigned: Assigned
+            unassigned: Unassigned
+          unlisted:
+            unlisted: Unlisted
+            listed: Listed
+          archived:
+            archived: Archived
+            active: Active
+          mine:
+            mine: My topics
+          scope:
+            bookmarks: My bookmarks
+            watching: Watching
+            unread: Unread
+          poll:
+            poll: Has poll
+          noreplies:
+            noreplies: No replies
+          images:
+            images: Has images
+          topic_sort:
+            recent: "Topics: newest"
+            oldest: "Topics: oldest"
+          post_sort:
+            recent: "Posts: newest"
+            oldest: "Posts: oldest"
+          title_only:
+            "1": Title only
+            "true": Title only
+          posts_only:
+            "1": Posts only
+            "true": Posts only
+      subscription_levels:
+        watching: Watching
+        tracking: Tracking
+        normal: Normal
+        "off": Off
+        topic:
+          watching_desc: Notify on every reply; email when watching
+          tracking_desc: In-app notification on every reply; no email
+          normal_desc: Notify only when you participate or are @mentioned
+          off_desc: Do not receive notifications for this topic
+        section:
+          watching_desc: Notify on new topics in this section; email when watching
+          tracking_desc: In-app notification on new section topics
+          normal_desc: Do not receive new-topic notifications for this section
+          off_desc: Unwatch this section
+        tag:
+          watching_desc: Notify on new topics with this tag; email when watching
+          tracking_desc: In-app notification on new tag topics
+          normal_desc: Do not receive new-topic notifications for this tag
+          off_desc: Unwatch this tag
+      moderate_actions:
+        lock: This topic has been locked.
+        unlock: This topic has been unlocked.
+        pin: This topic has been pinned.
+        unpin: This topic has been unpinned.
+        pin_days: "This topic has been pinned for %{days} day(s)."
+        lock_with_reason: "%{message} Reason: %{reason}"
+        hide: This topic has been hidden.
+        unhide: This topic has been restored.
+        feature: This topic has been featured.
+        unfeature: This topic is no longer featured.
+        enable_wiki: Wiki mode enabled for this topic.
+        disable_wiki: Wiki mode disabled for this topic.
+        global_announcement: This topic is now a site-wide announcement.
+        remove_global_announcement: Site-wide announcement removed.
+        unlist: This topic is now unlisted (link-only).
+        list: This topic is listed again.
+        archive: This topic has been archived.
+        unarchive: This topic has been unarchived.
+        assign: This topic has been assigned.
+        unassign: Assignment removed from this topic.
+      notification_timeline:
+        today: Today
+        yesterday: Yesterday
+        this_week: This week
+        this_month: This month
+        last_month: Last month
+        last_year: Last year
+        earlier: Earlier
+      notification_read_state:
+        unread: Unread
+        read: Read
+      in_app:
+        topic_reply:
+          title: "New reply: %{title}"
+          body: "%{author}: %{excerpt}"
+        section_topic:
+          title: "New topic in section: %{title}"
+          body: "%{author} posted in %{section}"
+        tag_topic:
+          title: "New topic for watched tags: %{title}"
+          body: "%{author} used tags %{tags}"
+        followed_user_topic:
+          title: "%{author} posted a new topic"
+          body: "%{title}"
+        followed_user_reply:
+          title: "%{author} replied to a topic"
+          body: "%{title} — %{excerpt}"
+        post_quoted:
+          title: "%{quoter} quoted your post"
+          body: "%{excerpt}"
+        post_edited:
+          title: "Post edited: %{title}"
+          body: "%{author} edited #%{floor}"
+        topic_solved:
+          title: Your topic was marked solved
+          body: "「%{title}」"
+        badge_earned:
+          title: "Badge earned: %{badge}"
+          body: "%{description}"
+        user_warning:
+          title: You received a community warning
+          body: "%{reason}"
+        topic_invite:
+          title: "%{inviter} invited you to watch a topic"
+          body: "「%{title}」"
+        poll_closed:
+          title: Poll closed
+          body: "Poll「%{question}」in「%{title}」has ended."
+        topic_assigned:
+          title: A topic was assigned to you
+          body: "%{actor} assigned「%{title}」to you."
+        post_reaction:
+          title: "%{reactor} reacted %{emoji} to your post"
+          body: "%{excerpt}"
+        trust_level_up:
+          title: "Trust level up: %{level_name}"
+          body: "You reached trust level %{level} and unlocked more permissions."
+        private_message:
+          title_group: "New message in「%{title}」"
+          title_direct: "Message from %{sender}"
+          body: "%{excerpt}"
+        bookmark_reminder:
+          title: "Bookmark reminder: %{title}"
+          body: "%{note}"
+          default_note: Your bookmark reminder is due.
+        mention:
+          title: "%{author} mentioned you in a topic"
+          body: "%{excerpt}"
+        here:
+          title: "%{author} mentioned you with @here"
+          body: "%{excerpt}"
+      format_post_body:
+        copy: Copy
+        topic_replies: "%{count} replies"
+        user_posts: "%{count} posts"
+        coupon_title: "Coupon %{code}"
+        gift_card_title: "Gift card %{code}"
+        gift_card_balance: "Balance %{status}"
+        unavailable: Unavailable
+        tag_topics: "%{count} topics"
+        category_sections: "%{count} sections"
+      small_actions:
+        author_closed: The author closed this topic.
+        author_reopened: The author reopened this topic.
+        topic_solved_closed: Topic marked solved and auto-closed.
+        scheduled_reopen: This topic was reopened on schedule.
+        scheduled_close: This topic was closed on schedule.
+        scheduled_bump: This topic was bumped on schedule.
+        scheduled_archive: This topic was archived on schedule.
+        poll_closed: "%{user} closed the poll「%{question}」."
+      exports:
+        posts_header: Floor,Author,Time,Content
+        poll_header: Option,Votes,Voters
+        poll_anonymous: (anonymous)
+        poll_question: Question
+        poll_total_votes: Total votes
+        poll_closed_at: Closed at
+      announcement_broadcast: "[Announcement] %{title}"
+      user_fields:
+        required: "%{label} is required."
+        number: "%{label} must be a number."
+        url: "%{label} must be a valid URL."
+        invalid_choice: "%{label} has an invalid option."
+      warning_restrictions:
+        block_post: "Warning points %{total} reached the limit (%{threshold}); posting is temporarily disabled."
+        block_links: "Warning points %{total} reached the limit (%{threshold}); links are temporarily disabled."
+        block_pm: "Warning points %{total} reached the limit (%{threshold}); private messages are temporarily disabled."
+      saved_search_digest:
+        title: "New saved search results: %{name}"
+      section_onebox:
+        topics_count: "%{count} topics"
+      validate_section_tags:
+        required: "This section requires at least one of these tags: %{label}"
+        default_label: specified tags
+      share_topic:
+        header: "Shared topic: %{title}"
+      split_topic:
+        default_title: "Split from: %{title}"
+      create_topic_from_post:
+        default_title: "Re: %{title}"
+        quote_header: "[Reply from #%{floor} %{author}](%{url})"
+      restore_post_edit:
+        reason: "Restored to version from %{time}"
+      enforce_warning:
+        reason: "Warning points reached %{total} (threshold %{threshold})"
+      sync_section_moderators:
+        users_missing: "Users not found: %{users}"
+      webhook_test:
+        search_name: Webhook test
+        topic_title: Test topic
+        event_topic_title: Webhook test topic
+        section_name: General
+        body_excerpt: Test post content
     minecraft:
       whois:
         not_found: Player record not found.
         not_linked: This player is not linked to a website account.
+        not_linked_default: Player not linked.
         linked_summary: "Linked to website user %{username}"
+        website: "Website account: %{username}"
+        trust: "Trust level: %{label}"
+        membership: "Membership: %{labels}"
+        membership_expires: "Membership expires: %{expires}"
+        lookup_failed: Whois lookup failed.
       connector:
         link_success: Enter the bind code on the website to complete linking.
         link_code: "Bind code: {code} — visit {url}"
@@ -350,6 +988,247 @@ en:
       notifications:
         default_title: Minecraft event
     admin:
+      dashboard:
+        metrics:
+          users: Users
+          orders: Orders
+          pending_reports: Pending reports
+          total_revenue: Total revenue (¥)
+          revenue_7d: 7-day revenue (¥)
+          aov: Average order value (¥)
+          pending_orders: Pending orders
+          low_stock_products: Low-stock products
+          refunds_7d: 7-day refunds
+          abandoned_carts: Abandoned carts
+      forum:
+        filter_all: All
+        filter_all_events: All events
+        filter_all_sources: All sources
+        col_name: Name
+        col_slug: Slug
+        col_position: Position
+        col_category: Category
+        col_topics_count: Topics
+        col_staff_only: Staff only
+        field_slug: Slug
+        field_position: Position
+        field_description: Description
+        field_color: Color
+        field_icon: Icon
+        field_sections_count: Sections
+        action_edit: Edit
+        action_new_category: New category
+        action_new_section: New section
+        action_new_tag: New tag
+        form_edit_category: Edit category
+        form_new_category: New category
+        form_edit_tag: Edit tag
+        form_new_tag: New tag
+        categories:
+          title: Forum categories
+        sections:
+          title: Forum sections
+          field_category: Category
+          field_create_permission: Create permission
+          field_reply_permission: Reply permission
+          field_required_tags: Required tags
+          field_required_tag_groups: Required tag groups
+          field_allowed_tags: Allowed tags
+          field_prefix_required: Prefix required
+          field_min_trust_create: Min trust to create
+          field_min_trust_reply: Min trust to reply
+          field_read_only: Read-only section
+          field_login_required: Login required
+          field_banner: Banner text
+          field_link_url: External link
+          field_default_notification: Default notification level
+          field_moderators: Section moderators
+          notification_watching: Watching
+          notification_tracking: Tracking
+          notification_normal: Normal
+          permission_everyone: Everyone
+          form_edit: Edit section
+          form_new: New section
+        tags:
+          title: Forum tags
+        webhook_deliveries:
+          title: Saved search webhook deliveries
+          show_title: "Webhook delivery #%{id}"
+          col_search: Search
+          col_user: User
+          field_user: User
+          field_event: Event
+          field_response_code: Response code
+          field_attempt_count: Attempt count
+          field_url: URL
+          field_time: Time
+          section_request_body: Request body
+          section_response_body: Response body
+          action_retry: Retry delivery
+          bulk_retry_label: "Retry failed on this page (%{count})"
+          status_failed: Failed
+          status_success: Success
+          status_pending: Pending
+          kind_test: Test
+          kind_production: Production
+        event_webhook_deliveries:
+          title: Forum event webhook deliveries
+          show_title: "Event webhook delivery #%{id}"
+          col_topic: Topic
+          col_event: Event
+          col_status: Status
+          col_code: Response code
+          col_attempts: Attempts
+          col_created_at: Time
+          field_event: Event
+          field_topic: Topic
+          field_status: Status
+          field_response_code: Response code
+          field_attempt_count: Attempt count
+          field_time: Time
+        approvals:
+          title: Pending posts
+          show_title: Review post
+          col_author: Author
+          col_topic: Topic
+          col_section: Section
+          col_excerpt: Content
+          col_time: Time
+          field_author: Author
+          field_topic: Topic
+          field_section: Section
+          field_floor: Post #
+          field_body: Content
+          field_submitted_at: Submitted at
+          field_attachments: Attachments
+          action_approve: Approve
+          action_reject: Reject
+        settings:
+          labels:
+            forum.bump_cooldown_hours: Topic bump cooldown (hours)
+            forum.warning_mute_threshold: Auto-mute warning threshold
+            forum.warning_mute_days: Warning mute duration (days)
+            forum.warning_points_expire_days: Warning points expire after days (0 = never)
+            forum.require_post_approval_below_tl: Posts below this trust level need approval (0 = off)
+            forum.warning_block_post_threshold: Warning threshold to block posting
+            forum.warning_block_links_threshold: Warning threshold to block links
+            forum.warning_block_pm_threshold: Warning threshold to block PMs
+            forum.report_auto_hide_threshold: Report auto-hide threshold
+            forum.auto_close_on_solved: Auto-close topic when solved
+            forum.reaction_emojis: Allowed reaction emojis (comma-separated)
+            forum.group_pm_creator_only_add: Only group creator can add members
+            forum.saved_search_limit: Saved search limit per user
+            forum.saved_search_digest_hour: Saved search digest hour (0–23)
+            forum.digest_hour: Forum digest hour (0–23)
+            forum.allow_op_close: Allow OP to close own topic
+            forum.min_trust_level_reaction: Minimum trust level for reactions
+            forum.saved_search_webhook_secret: Saved search webhook secret
+            forum.saved_search_webhook_url: Saved search webhook URL (test/global)
+            forum.event_webhook_url: Forum event webhook URL
+            forum.event_webhook_secret: Forum event webhook secret
+            forum.event_webhook_events: Enabled forum event webhook events (comma-separated)
+            forum.search_feeds_opml_saved_limit: OPML saved search limit
+            forum.search_feeds_opml_history_limit: OPML search history limit
+            webhook.failure_alert_threshold: Webhook failure alert threshold (24h, legacy)
+            webhook.failure_alert_forum_threshold: Forum webhook failure alert threshold (24h)
+            webhook.failure_alert_store_threshold: Store webhook failure alert threshold (24h)
+            webhook.failure_alert_email: Webhook failure alert email
+            webhook.failure_alert_cooldown_hours: Webhook alert cooldown (hours)
+          hints:
+            forum.group_pm_creator_only_add: When enabled, only the group creator can invite members.
+            forum.auto_close_on_solved: Set to 1 to lock the topic when marked solved.
+            forum.report_auto_hide_threshold: Hide posts automatically after this many reports.
+            forum.reaction_emojis: Emojis users can add as post reactions.
+            forum.saved_search_limit: Max saved searches per user; 0 = unlimited.
+            forum.saved_search_digest_hour: Hour to send saved search digest emails (server timezone).
+            forum.digest_hour: Hour to send forum notification digest emails.
+            forum.allow_op_close: Set to false to prevent OP from closing their topic.
+            forum.min_trust_level_reaction: Users below this trust level cannot react to posts.
+            forum.saved_search_webhook_secret: Optional HMAC secret for X-McWeb-Signature.
+            forum.saved_search_webhook_url: Target URL for admin test deliveries; blank disables tests.
+            forum.event_webhook_url: Webhook URL for topic/post lifecycle events.
+            forum.event_webhook_secret: Optional HMAC secret for forum event webhooks.
+            forum.event_webhook_events: "Enabled events: topic.created, post.created, post.edited, post.deleted, post.restored, post.rejected, post.approved, topic.solved, topic.moved."
+            forum.search_feeds_opml_saved_limit: Max saved searches in combined OPML export (1–100).
+            forum.search_feeds_opml_history_limit: Max search history entries in combined OPML (1–50).
+            webhook.failure_alert_threshold: Legacy unified threshold when forum/store thresholds are unset; 0 = off.
+            webhook.failure_alert_forum_threshold: Alert when forum webhook failures in 24h reach this value; 0 = off.
+            webhook.failure_alert_store_threshold: Alert when store webhook failures in 24h reach this value; 0 = off.
+            webhook.failure_alert_email: Admin email for webhook failure alerts.
+            webhook.failure_alert_cooldown_hours: Minimum hours between duplicate alerts.
+        badges:
+          title: Forum badges
+          col_grant_rule: Grant rule
+          col_users_count: Users
+          action_new: New badge
+          form_edit: Edit badge
+          form_new: New badge
+        tag_groups:
+          title: Tag groups
+          col_tags_count: Tags
+          col_one_per_topic: One per topic
+          col_color: Color
+          action_new: New tag group
+          form_edit: Edit tag group
+          form_new: New tag group
+        topics:
+          title: Forum topics
+          col_title: Title
+          col_author: Author
+          col_section: Section
+          col_status: Status
+          col_locked: Locked
+          col_archived: Archived
+          col_replies: Replies
+          field_pinned: Pinned
+          field_replies: Replies
+          section_posts: Posts
+        reports:
+          title: Content reports
+          col_reason: Reason
+          col_reporter: Reporter
+          col_status: Status
+          col_time: Time
+          show_title: Report details
+          field_type: Type
+          field_reason: Reason
+          field_reporter: Reporter
+          field_status: Status
+          field_target: Target
+          field_time: Time
+          action_reviewed: Mark reviewed
+          action_dismiss: Dismiss report
+          target_topic: "Topic: %{title}"
+          target_post: "Post #%{floor} (%{title})"
+          target_review: "Review #%{id} (%{product})"
+          action_view_topic: View topic
+          action_view_post: View post
+          action_view_product: View product
+        warnings:
+          title: User warnings
+          col_user: User
+          col_issuer: Issuer
+          col_points: Points
+          col_reason: Reason
+          col_time: Time
+          export_headers:
+            - User
+            - Issuer
+            - Points
+            - Reason
+            - Time
+        canned_responses:
+          title: Canned responses
+          col_title: Title
+          col_author: Author
+          action_new: New canned response
+          form_edit: Edit canned response
+          form_new: New canned response
+        user_fields:
+          title: User fields
+          new: New user field
+          edit: Edit user field
+          col_registration: Registration
       minecraft:
         integration_actions: Integration actions
         profile_fields: Profile fields
@@ -357,9 +1236,9 @@ en:
         new_server: New server
         edit_server: Edit server
         new_rule: New rule
-        edit_rule: Edit rule
-        new_field: New field
         edit_field: Edit field
+        new_field: New field
+        edit_rule: Edit rule
         col_name: Name
         col_event: Event
         col_enabled: Enabled
@@ -391,10 +1270,342 @@ en:
         status_online: Online
         status_offline: Offline
         status_maintenance: Maintenance
+        nodes: Minecraft nodes
+        players: Online players
+        new_node: New node
+        edit_node: Edit node
+        col_hostname: Hostname
+        col_process_state: Process
+        field_process_state: Process state
+        field_connection_mode: Connection mode
+        field_node: Node
+        field_working_directory: Working directory
+        process_state_stopped: Stopped
+        process_state_starting: Starting
+        process_state_running: Running
+        process_state_stopping: Stopping
+        process_state_error: Error
+        action_rotate_node_secret: Rotate node secret
+        action_generate_pairing_token: Generate pairing token
+        confirm_rotate_node_secret: Rotate the node secret? The agent must be reconfigured immediately.
+        confirm_delete_node: Delete this node?
+        alert_node_offline: This node is offline.
+        alert_node_stale: Heartbeat is stale — the node may be unreachable.
+        alert_stale_nodes: "%{count} node(s) marked online but heartbeat is stale."
+        alert_process_mismatch: "%{count} managed server(s) have a process/connector state mismatch."
+      store:
+        action_edit: Edit
+        membership_types:
+          title: Membership types
+          new: New membership type
+          edit: Edit membership type
+          col_name: Name
+          col_slug: Slug
+          col_duration: Duration
+          col_status: Status
+          field_duration: Duration
+          field_game_permission: Game permissions
+          field_game_permission_mode: Permission mode
+          field_luckperms_group: LP group
+          field_display_priority: Display priority
+          field_description: Description
+          field_icon: Display icon
+          field_color: Display color
+          field_grant_commands: Grant commands
+          field_revoke_commands: Revoke commands
+          duration_days: "%{count} days"
+          game_permission_on: Enabled
+          game_permission_off: Disabled
+          status_enabled: Enabled
+          status_disabled: Disabled
+          commands_json_invalid: Invalid commands JSON
+        user_memberships:
+          title: User memberships
+          grant: Grant membership
+          grant_title: Grant membership
+          col_user: User
+          col_type: Membership type
+          col_status: Status
+          col_expires_at: Expires
+          field_user: User
+          field_type: Membership type
+          field_status: Status
+          field_starts_at: Starts
+          field_expires_at: Expires
+          field_source: Source
+          action_revoke: Revoke
+          confirm_revoke: Revoke this membership?
+          filter_all: All
+          filter_all_types: All types
+        products:
+          title: Products
+          col_name: Name
+          col_slug: Slug
+          col_status: Status
+          col_price: Price
+          col_stock: Stock
+          field_type: Type
+          field_status: Status
+          field_price: Price
+          field_stock: Stock
+          field_backorder: Allow backorder
+          field_minimum_quantity: Minimum quantity
+          field_description: Description
+          field_membership_type: Membership type
+          field_prerequisites: Prerequisites
+          prerequisite_count: "%{count} rule(s)"
+          prerequisite_none: None
+          action_duplicate: Duplicate product
+          action_archive: Archive
+          confirm_archive: Archive this product?
+          new: New product
+          edit: Edit product
+          physical_products_disabled: Physical products are disabled
+          fulfillment_config_json_invalid: Invalid fulfillment config JSON
+          field_prerequisite_match: Prerequisite match
+        filter_all: All
+        filter_all_events: All events
+        filter_all_sources: All sources
+        coupons:
+          title: Coupons
+          new: New coupon
+          edit: Edit coupon
+          col_code: Code
+          col_type: Type
+          col_discount: Discount
+          col_status: Status
+          field_type: Type
+          field_discount_value: Discount value
+          field_min_amount: Minimum spend
+          field_usage_count: Usage
+          usage_count: "%{used} / %{limit}"
+          status_enabled: Enabled
+          status_disabled: Disabled
+        categories:
+          title: Product categories
+          new: New category
+          edit: Edit category
+          col_name: Name
+          col_slug: Slug
+          col_position: Position
+          field_slug: Slug
+          field_position: Position
+          field_description: Description
+          field_icon: Icon
+          field_color: Color
+          field_seo_title: SEO title
+          field_seo_description: SEO description
+        fulfillments:
+          title: Fulfillment records
+          col_delivery_id: Delivery ID
+          col_status: Status
+          col_order: Order
+          col_product: Product
+        orders:
+          title: Orders
+          show_title: "Order %{number}"
+          col_order_number: Order number
+          col_customer: Customer
+          col_status: Status
+          col_total: Total
+          export_headers:
+            order_number: Order number
+            customer: Customer
+            status: Status
+            total: Total
+            created_at: Created at
+          bulk_processed: "Processed %{count} order(s)."
+          bulk_processed_with_failures: "Processed %{processed} order(s), %{failed} failed."
+          filter_all: All
+          section_items: Items
+          section_fulfillments: Fulfillments
+          section_refunds: Refunds
+          section_restorations: Refund restorations
+          section_staff_notes: Staff notes
+          section_webhooks: Webhook deliveries
+          empty_fulfillments: No fulfillment records
+          empty_refunds: No refunds
+          empty_restorations: No restoration records
+          empty_staff_notes: No staff notes
+          empty_webhooks: No webhook deliveries
+          field_customer: Customer
+          field_subtotal: Subtotal
+          field_shipping: Shipping
+          field_shipping_free: Free shipping
+          field_shipping_address: Shipping address
+          field_shipping_method: Shipping method
+          field_tracking_number: Tracking number
+          field_carrier: Carrier
+          field_shipped_at: Shipped at
+          field_discount: Discount
+          field_gift_card: Gift card
+          field_store_credit: Store credit applied
+          field_gift_wrap: Gift wrap
+          field_buyer_notes: Buyer notes
+          field_total: Total
+          field_created_at: Created at
+          action_full_refund: Full refund
+          action_approve_refund: "Approve refund %{amount}"
+          action_reject_refund: Reject refund request
+          bulk_cancel_pending: Bulk cancel pending
+          bulk_mark_paid: Bulk mark paid
+          bulk_mark_fulfilled: Bulk mark fulfilled
+          admin_refund_reason: Admin refund
+          superseded_refund_reason: Superseded by admin refund
+        gift_cards:
+          title: Gift cards
+          new: New gift card
+          edit: Edit gift card
+          col_code: Code
+          col_balance: Balance
+          col_status: Status
+          field_balance: Balance
+          field_initial_balance: Initial balance
+          field_status: Status
+          field_expires_at: Expires at
+          field_note: Note
+          status_active: Active
+          status_inactive: Inactive
+          section_usage: Usage history
+          section_transactions: Balance transactions
+          empty_records: None yet
+          record_label: Record
+          transaction_line: "%{sign}%{amount} · balance %{balance}"
+        webhook_deliveries:
+          title: Order webhook deliveries
+          show_title: "Order webhook delivery #%{id}"
+          col_order: Order
+          col_event: Event
+          col_status: Status
+          col_code: Response code
+          col_attempts: Attempts
+          col_created_at: Time
+          field_order: Order
+          field_status: Status
+          field_event: Event
+          field_response_code: Response code
+          field_attempt_count: Attempts
+          field_url: URL
+          field_time: Time
+          section_request_body: Request body
+          section_response_body: Response body
+          action_retry: Retry delivery
+          bulk_retry_label: "Retry failed on this page (%{count})"
+          status_failed: Failed
+          status_success: Success
+          status_pending: Pending
+          kind_test: Test
+          kind_production: Production
+        reviews:
+          title: Product reviews
+          show_title: "Review — %{product}"
+          col_product: Product
+          col_author: User
+          col_rating: Rating
+          col_status: Status
+          field_user: User
+          field_rating: Rating
+          field_status: Status
+          field_body: Content
+          field_merchant_reply: Merchant reply
+          field_time: Time
+          action_hide: Hide review
+          action_show: Show review
+        uploads:
+          file_required: Please select a file to upload.
+          file_too_large: File is too large (max 8MB).
+          unsupported_type: Unsupported file type.
+        settings:
+          labels:
+            store.seo_title: Store SEO title
+            store.seo_description: Store SEO description
+            store.free_shipping_min_order_cents: Free shipping minimum order (cents)
+            store.flat_shipping_cents: Flat shipping fee (cents)
+            store.gift_wrap_cents: Gift wrap fee (cents)
+            store.min_checkout_subtotal_cents: Minimum checkout subtotal (cents)
+            store.refund_window_days: Refund window (days)
+            store.pending_order_expiry_minutes: Pending order expiry (minutes)
+            store.review_request_delay_days: Review request delay (days)
+            store.compare_max_items: Compare list limit
+            store.cart_max_items: Cart line-item limit
+            store.abandoned_cart_coupon_code: Abandoned cart coupon code
+            store.order_webhook_secret: Order webhook secret
+            store.order_webhook_url: Order webhook URL
+          hints:
+            store.free_shipping_min_order_cents: Order subtotal in cents for free shipping; 0 disables.
+            store.refund_window_days: 0 disables self-service refund requests.
+            store.compare_max_items: Max products a user can compare at once.
+            store.cart_max_items: Max distinct line items in cart; 0 means unlimited.
+            store.abandoned_cart_coupon_code: Coupon code in abandoned-cart emails; blank to skip.
+            store.flat_shipping_cents: Actual fee for standard shipping at checkout (cents); overrides standard method price below.
+            store.order_webhook_url: POST JSON target on order status changes; blank to disable.
+            store.order_webhook_secret: Optional HMAC secret for X-McWeb-Signature.
+          errors:
+            shipping_methods_required: Keep at least one shipping method.
+            shipping_methods_invalid: Shipping methods must be a JSON array.
+            webhook_url_private: Webhook URL cannot point to a private or local address.
     labels:
       not_available: "—"
       yes: "Yes"
       no: "No"
+      enabled: Enabled
+      disabled: Disabled
+      unlimited: "∞"
+      gift_card_status:
+        active: Active
+        inactive: Inactive
+      gift_card_public_status:
+        claimed: Claimed
+        redeemable: Redeemable
+        inactive: Inactive
+        expired: Expired
+        zero_balance: Zero balance
+        available: Available
+        unavailable: Invalid or unavailable
+      coupon_public_status:
+        unavailable: Invalid or unavailable
+      webhook_delivery_status:
+        failed: Failed
+        success: Success
+        pending: Pending
+      review_status:
+        published: Published
+        hidden: Hidden
+        pending: Pending
+      product_question_status:
+        published: Published
+        hidden: Hidden
+      membership_status:
+        active: Active
+        expired: Expired
+        revoked: Revoked
+      membership_source:
+        purchase: Purchase
+        admin_grant: Admin grant
+        import: Import
+      game_permission_mode:
+        website_managed: Website-managed
+        lp_timed: LP timed
+      duration_mode:
+        permanent: Permanent
+        fixed_days: Fixed days
+      product_types:
+        virtual: Virtual
+        physical: Physical
+        gift_card: Gift card
+        digital: Digital
+        membership: Membership
+        vip: VIP
+      product_status:
+        draft: Draft
+        active: Active
+        archived: Archived
+      prerequisite_match_mode:
+        all: Require all (AND)
+        any: Require any (OR)
+      requirement_mode:
+        ever_purchased: Ever purchased
+        active: Still active
       notification_types:
         forum.topic_reply: Topic reply
         forum.mention: Mention
@@ -414,24 +1625,42 @@ en:
         forum.topic_invite: Topic invite
         forum.poll_closed: Poll closed
         forum.here: "@here mention"
-        commerce.order_created: Order created
-        commerce.payment_confirmed: Payment confirmed
-        commerce.payment_reminder: Payment reminder
-        commerce.order_shipped: Order shipped
-        commerce.order_fulfilled: Order fulfilled
+        forum.bookmark_reminder: Bookmark reminder
+        forum.user_warning: Community warning
+        forum.post_pending: Pending post
+        forum.post_rejected: Post rejected
+        forum.post_approved: Post approved
+        commerce.order_created: Order confirmation
+        commerce.payment_confirmed: Payment successful
+        commerce.order_processing: Order processing
+        commerce.order_fulfilling: Fulfillment in progress
+        commerce.order_fulfilled: Fulfillment complete
+        commerce.order_shipped: Shipped
         commerce.order_completed: Order completed
         commerce.order_cancelled: Order cancelled
+        commerce.payment_reminder: Payment reminder
         commerce.refund_requested: Refund requested
         commerce.refund_processed: Refund processed
-        commerce.review_request: Review request
+        commerce.refund_rejected: Refund rejected
+        commerce.abandoned_cart: Abandoned cart reminder
+        commerce.stock_restocked: Back in stock
+        commerce.price_drop: Price drop alert
+        commerce.product_changelog: Product changelog
+        commerce.question_answered: Question answered
+        commerce.new_product_question: New product question (staff)
         commerce.merchant_review_reply: Merchant review reply
+        commerce.review_request: Review request
         commerce.product_available: Product available
-        commerce.abandoned_cart: Cart reminder
-        commerce.low_stock: Low stock
+        commerce.low_stock_staff: Low stock alert (staff)
         minecraft.custom: Minecraft event
-        minecraft.link_completed: Minecraft linked
+        minecraft.link_completed: Minecraft link completed
         minecraft.player_join: Player joined
         minecraft.player_quit: Player quit
+      notification_bodies:
+        forum:
+          post_approved: "Your post in «%{title}» was approved."
+          post_pending: "%{username} posted content awaiting approval in «%{title}»."
+          post_rejected: "Your post in «%{title}» was not approved."
       order_status:
         pending: Pending payment
         awaiting_payment: Awaiting payment
@@ -480,6 +1709,8 @@ en:
         refund_rejected: Refund rejected
         refunded: Refunded
         fulfilled: Fulfilled
+        membership_granted: Membership granted
+        membership_revoked: Membership revoked
       order_restorations:
         store_credit: Store credit restored
         gift_card: Gift card balance restored

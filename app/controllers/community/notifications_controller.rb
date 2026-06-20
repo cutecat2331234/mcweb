@@ -89,8 +89,8 @@ module Community
       visible = notification_content_visible?(notification, topic_visibility: topic_visibility)
       {
         id: notification.id,
-        title: visible ? notification.title : "内容不可用",
-        body: visible ? notification.body : "此通知关联的内容已不可用。",
+        title: visible ? notification.title : t("mcweb.forum.notifications.content_unavailable"),
+        body: visible ? notification.body : t("mcweb.forum.notifications.content_unavailable_body"),
         notification_type: notification.notification_type,
         category: notification_category(notification),
         read: notification.read?,
@@ -241,8 +241,8 @@ module Community
           key: "#{type}-#{group_key}",
           notification_type: type == "commerce_order" ? latest.notification_type : type,
           category: notification_category(latest),
-          title: type == "commerce_order" ? "订单 #{group_key.to_s.sub(/\Aord_/, '').truncate(8)}" : (notification_content_visible?(latest, topic_visibility: topic_visibility) ? latest.title : "内容不可用"),
-          body: items.size > 1 ? "共 #{items.size} 条相关通知" : (notification_content_visible?(latest, topic_visibility: topic_visibility) ? latest.body : "此通知关联的内容已不可用。"),
+          title: type == "commerce_order" ? t("mcweb.forum.notifications.order_title", number: group_key.to_s.sub(/\Aord_/, "").truncate(8)) : (notification_content_visible?(latest, topic_visibility: topic_visibility) ? latest.title : t("mcweb.forum.notifications.content_unavailable")),
+          body: items.size > 1 ? t("mcweb.forum.notifications.grouped_body", count: items.size) : (notification_content_visible?(latest, topic_visibility: topic_visibility) ? latest.body : t("mcweb.forum.notifications.content_unavailable_body")),
           count: items.size,
           unread_count: unread,
           read: unread.zero?,

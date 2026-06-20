@@ -49,6 +49,7 @@ module Minecraft
       decoded = JSON.parse(Base64.decode64(property["value"]))
       texture_url = decoded.dig("textures", "SKIN", "url")
       return nil if texture_url.blank?
+      return nil unless UrlSafety.safe_image_src?(texture_url)
 
       metadata = decoded.dig("textures", "SKIN", "metadata") || {}
       {

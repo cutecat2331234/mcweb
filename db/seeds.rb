@@ -20,6 +20,9 @@ PERMISSIONS = [
   { key: "store.orders.read", name: "查看订单", category: "store" },
   { key: "store.orders.refund", name: "退款", category: "store" },
   { key: "minecraft.servers.manage", name: "管理 Minecraft 服务器", category: "minecraft" },
+  { key: "minecraft.nodes.manage", name: "管理 Minecraft 节点", category: "minecraft" },
+  { key: "minecraft.servers.control", name: "远程控制 Minecraft 服务器", category: "minecraft" },
+  { key: "minecraft.players.view", name: "查看在线玩家", category: "minecraft" },
   { key: "minecraft.fulfillments.retry", name: "重试发货", category: "minecraft" },
   { key: "system.settings.manage", name: "管理系统设置", category: "system" },
   { key: "system.jobs.read", name: "查看后台任务", category: "system" },
@@ -78,6 +81,10 @@ ROLES = {
 
 SiteSetting.set("minecraft.profile.skin_mode", "2d") unless SiteSetting.exists?(key: "minecraft.profile.skin_mode")
 SiteSetting.set("minecraft.bridges.enabled", "placeholderapi,luckperms,vault") unless SiteSetting.exists?(key: "minecraft.bridges.enabled")
+SiteSetting.set("minecraft.graceful_stop.enabled", "true") unless SiteSetting.exists?(key: "minecraft.graceful_stop.enabled")
+SiteSetting.set("minecraft.graceful_stop.countdown_seconds", "30") unless SiteSetting.exists?(key: "minecraft.graceful_stop.countdown_seconds")
+SiteSetting.set("minecraft.graceful_stop.message", "Server shutting down in {seconds} seconds") unless SiteSetting.exists?(key: "minecraft.graceful_stop.message")
+SiteSetting.set("minecraft.graceful_stop.commands", "save-all,stop") unless SiteSetting.exists?(key: "minecraft.graceful_stop.commands")
 
 puts "Seeding permissions and roles..."
 PERMISSIONS.each do |attrs|
@@ -107,6 +114,8 @@ end
 SiteSetting.set("forum.bump_cooldown_hours", "24") unless SiteSetting.exists?(key: "forum.bump_cooldown_hours")
 SiteSetting.set("forum.warning_mute_threshold", "10") unless SiteSetting.exists?(key: "forum.warning_mute_threshold")
 SiteSetting.set("forum.warning_mute_days", "7") unless SiteSetting.exists?(key: "forum.warning_mute_days")
+SiteSetting.set("forum.warning_points_expire_days", "90") unless SiteSetting.exists?(key: "forum.warning_points_expire_days")
+SiteSetting.set("forum.require_post_approval_below_tl", "1") unless SiteSetting.exists?(key: "forum.require_post_approval_below_tl")
 SiteSetting.set("forum.warning_block_post_threshold", "0") unless SiteSetting.exists?(key: "forum.warning_block_post_threshold")
 SiteSetting.set("forum.warning_block_links_threshold", "0") unless SiteSetting.exists?(key: "forum.warning_block_links_threshold")
 SiteSetting.set("forum.warning_block_pm_threshold", "0") unless SiteSetting.exists?(key: "forum.warning_block_pm_threshold")
@@ -127,6 +136,9 @@ SiteSetting.set("forum.saved_search_limit", "20") unless SiteSetting.exists?(key
 SiteSetting.set("forum.saved_search_digest_hour", "9") unless SiteSetting.exists?(key: "forum.saved_search_digest_hour")
 SiteSetting.set("forum.saved_search_webhook_secret", "") unless SiteSetting.exists?(key: "forum.saved_search_webhook_secret")
 SiteSetting.set("forum.saved_search_webhook_url", "") unless SiteSetting.exists?(key: "forum.saved_search_webhook_url")
+SiteSetting.set("forum.event_webhook_url", "") unless SiteSetting.exists?(key: "forum.event_webhook_url")
+SiteSetting.set("forum.event_webhook_secret", "") unless SiteSetting.exists?(key: "forum.event_webhook_secret")
+SiteSetting.set("forum.event_webhook_events", Community::DispatchForumEventWebhook::DEFAULT_EVENTS) unless SiteSetting.exists?(key: "forum.event_webhook_events")
 SiteSetting.set("webhook.failure_alert_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_threshold")
 SiteSetting.set("webhook.failure_alert_forum_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_forum_threshold")
 SiteSetting.set("webhook.failure_alert_store_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_store_threshold")
@@ -239,14 +251,28 @@ if Rails.env.development?
     c.name = "VIP"
   end
 
+  vip_type = Commerce::MembershipType.find_or_create_by!(slug: "vip") do |t|
+    t.name = "VIP"
+    t.description = "VIP 会员"
+    t.duration_mode = "fixed_days"
+    t.duration_days = 30
+    t.luckperms_group = "vip"
+    t.game_permission_mode = "website_managed"
+    t.color = "#f59e0b"
+    t.display_priority = 10
+    t.grant_commands = [ "lp user {player} parent add vip" ]
+    t.revoke_commands = [ "lp user {player} parent remove vip" ]
+  end
+
   Commerce::Product.find_or_create_by!(slug: "vip-monthly") do |p|
     p.category = store_category
     p.name = "VIP 月卡"
     p.description = "30 天 VIP 权限"
-    p.product_type = "vip"
+    p.product_type = "membership"
+    p.membership_type = vip_type
     p.status = "active"
     p.price_cents = 3000
-    p.fulfillment_config = { commands: [ "lp user {player} parent addtemp vip 30d" ] }
+    p.fulfillment_config = {}
   end
 
   Payments::ProviderConfig.find_or_create_by!(provider: "fake") do |c|

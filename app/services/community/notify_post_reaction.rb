@@ -23,11 +23,13 @@ module Community
       return ServiceResult.success unless email_enabled || in_app_enabled
 
       if in_app_enabled
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: author,
           notification_type: "forum.reaction",
-          title: "#{@reactor.username} 对你的帖子做出了反应 #{@emoji}",
-          body: @topic.title.truncate(80),
+          key: "post_reaction",
+          reactor: @reactor.username,
+          emoji: @emoji,
+          excerpt: @topic.title.truncate(80),
           metadata: {
             topic_id: @topic.public_id,
             post_id: @post.id,

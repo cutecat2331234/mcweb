@@ -9,6 +9,7 @@ module Minecraft
     has_many :users, through: :identity_links
     has_many :permission_groups, class_name: "Minecraft::PermissionGroup", foreign_key: :player_profile_id, dependent: :destroy
     has_many :profile_field_values, class_name: "Minecraft::ProfileFieldValue", foreign_key: :player_profile_id, dependent: :destroy
+    has_many :player_sessions, class_name: "Minecraft::PlayerSession", foreign_key: :player_profile_id, dependent: :destroy
     has_many :legacy_identities, class_name: "Minecraft::Identity", foreign_key: :player_profile_id, dependent: :nullify
 
     def active_identity(platform: "java")

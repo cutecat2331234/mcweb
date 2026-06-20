@@ -11,16 +11,17 @@ module Commerce
       return ServiceResult.success unless amount.positive?
 
       card = @order.gift_card
-      return ServiceResult.failure(error: "礼品卡信息无效。") unless card
-      return ServiceResult.success if card.transactions.exists?(order: @order, transaction_type: :debit)
+      return ServiceResult.failure(error: "gift_card_invalid") unless card
 
       Commerce::GiftCard.transaction do
         card.lock!
+        return ServiceResult.success if card.transactions.exists?(order: @order, transaction_type: :debit)
+
         reason = card.inapplicable_reason
-        return ServiceResult.failure(error: reason) if reason
+        return ServiceResult.failure(error: "gift_card_unavailable") if reason
 
         available = card.available_balance_cents(excluding_order: @order)
-        return ServiceResult.failure(error: "礼品卡余额不足。") if amount > available
+        return ServiceResult.failure(error: "gift_card_unavailable") if amount > available
 
         card.update!(
           balance_cents: card.balance_cents - amount,

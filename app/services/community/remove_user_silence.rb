@@ -9,7 +9,7 @@ module Community
 
     def call
       unless @actor.permission?("forum.users.mute") || @actor.permission?("admin.access")
-        return ServiceResult.failure(error: "无权解除禁言。")
+        return ServiceResult.failure(error: "unsilence_unauthorized")
       end
 
       Community::UserSilence.active.where(user: @user).destroy_all

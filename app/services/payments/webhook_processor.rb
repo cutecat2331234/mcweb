@@ -2,6 +2,8 @@
 
 module Payments
   class WebhookProcessor < ApplicationService
+    STALE_PROCESSING_AFTER = 5.minutes
+
     def initialize(provider:, event_id:, event_type:, payload:, signature:, headers: {})
       @provider = provider.to_s
       @event_id = event_id.to_s
@@ -12,14 +14,14 @@ module Payments
     end
 
     def call
-      event = find_or_create_event
-      return ServiceResult.success(event: event, idempotent: true) if event.status == "processed"
+      event = claim_event!
+      return event if event.is_a?(ServiceResult)
 
       adapter = Provider.for(@provider)
       payload_body = @payload.is_a?(String) ? @payload : @payload.to_json
 
       unless adapter.verify_webhook_signature(payload: payload_body, signature: @signature, headers: @headers)
-        event.update!(status: "failed", error_message: "Invalid webhook signature.")
+        event.mark_failed!("Invalid webhook signature.")
         return ServiceResult.failure(error: "Invalid webhook signature.")
       end
 
@@ -38,12 +40,37 @@ module Payments
 
     private
 
-    def find_or_create_event
-      Payments::WebhookEvent.find_or_create_by!(provider: @provider, event_id: @event_id) do |event|
-        event.event_type = @event_type
-        event.payload = normalize_payload
-        event.status = "received"
+    def claim_event!
+      idempotent = false
+
+      event = Payments::WebhookEvent.transaction do
+        record = Payments::WebhookEvent.lock.find_or_create_by!(provider: @provider, event_id: @event_id) do |created|
+          created.event_type = @event_type
+          created.payload = normalize_payload
+          created.status = "received"
+        end
+
+        if record.status == "processed"
+          idempotent = true
+          next record
+        end
+
+        if record.status == "processing" && record.updated_at >= STALE_PROCESSING_AFTER.ago
+          idempotent = true
+          next record
+        end
+
+        record.update!(
+          status: "processing",
+          event_type: @event_type,
+          error_message: nil
+        )
+        record
       end
+
+      return ServiceResult.success(event: event, idempotent: true) if idempotent
+
+      event
     end
 
     def normalize_payload

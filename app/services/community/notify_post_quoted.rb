@@ -23,11 +23,12 @@ module Community
       return ServiceResult.success unless email_enabled || in_app_enabled
 
       if in_app_enabled
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: author,
           notification_type: "forum.quote",
-          title: "#{@quoter.username} 引用了你的帖子",
-          body: @topic.title.truncate(80),
+          key: "post_quoted",
+          quoter: @quoter.username,
+          excerpt: @topic.title.truncate(80),
           metadata: {
             topic_id: @topic.public_id,
             post_id: @post.id,

@@ -10,11 +10,11 @@ module Community
     def call
       return ServiceResult.success unless NotificationPreference.enabled?(@user, channel: "in_app", notification_type: "forum.user_warning")
 
-      Notification.notify!(
+      Community::InAppNotification.notify(
         user: @user,
         notification_type: "forum.user_warning",
-        title: "你收到了一条社区警告",
-        body: @warning.reason.truncate(200),
+        key: "user_warning",
+        reason: @warning.reason.truncate(200),
         metadata: {
           path: "/app/forum/users/#{@user.username}",
           warning_id: @warning.id,

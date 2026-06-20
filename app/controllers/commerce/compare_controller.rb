@@ -8,11 +8,12 @@ module Commerce
 
     def show
       ids = Array(session[:compare_product_ids])
-      active_ids = Commerce::Product.active.where(public_id: ids).pluck(:public_id)
+      visible_scope = Commerce::StoreFeatures.visible_products_scope(Commerce::Product.active.where(public_id: ids))
+      active_ids = visible_scope.pluck(:public_id)
       session[:compare_product_ids] = ids.filter { |id| active_ids.include?(id) }
       ids = session[:compare_product_ids]
 
-      products_by_id = Commerce::Product.active.where(public_id: ids).includes(:variants, :category).index_by(&:public_id)
+      products_by_id = visible_scope.includes(:variants, :category).index_by(&:public_id)
       products = ids.filter_map { |id| products_by_id[id] }
       share_url = compare_share_url_for(current_user, ids)
 
@@ -28,6 +29,9 @@ module Commerce
 
     def toggle
       product = Commerce::Product.active.find_by!(public_id: params[:product_id])
+      unless Commerce::StoreFeatures.product_visible?(product)
+        return redirect_back fallback_location: store_products_path, alert: t("mcweb.flash.compare_product_invalid")
+      end
       unless product.available? || product.coming_soon?
         return redirect_back fallback_location: store_products_path, alert: t("mcweb.flash.compare_product_invalid")
       end
@@ -35,7 +39,7 @@ module Commerce
       result = Commerce::ToggleCompare.call(session: session, product: product)
 
       if result.success?
-        notice = result.value[:compared] ? "已加入对比。" : "已从对比移除。"
+        notice = result.value[:compared] ? t("mcweb.flash.compare_toggled_on") : t("mcweb.flash.compare_toggled_off")
         redirect_back fallback_location: compare_fallback_path(product), notice: notice
       else
         redirect_back fallback_location: compare_fallback_path(product), alert: service_error_message(result)
@@ -63,8 +67,8 @@ module Commerce
       result = Commerce::AddWishlistToCompare.call(user: current_user, session: session)
 
       if result.success?
-        notice = "已从心愿单添加 #{result.value[:added]} 件商品到对比。"
-        notice += " 跳过：#{result.value[:skipped].join('、')}" if result.value[:skipped].any?
+        notice = t("mcweb.flash.compare_bulk_added", count: result.value[:added])
+        notice += t("mcweb.flash.compare_bulk_skipped", items: result.value[:skipped].join(I18n.t("mcweb.commerce.list_separator"))) if result.value[:skipped].any?
         redirect_back fallback_location: store_compare_path, notice: notice
       else
         redirect_back fallback_location: store_compare_path, alert: service_error_message(result)
@@ -74,7 +78,9 @@ module Commerce
     def public_show
       user = User.find_by!(compare_share_token: params[:token])
       ids = Array(user.compare_product_ids)
-      products_by_id = Commerce::Product.active.where(public_id: ids).includes(:variants, :category).index_by(&:public_id)
+      products_by_id = Commerce::StoreFeatures.visible_products_scope(
+        Commerce::Product.active.where(public_id: ids)
+      ).includes(:variants, :category).index_by(&:public_id)
       products = ids.filter_map { |id| products_by_id[id] }
 
       render inertia: "Commerce/Compare/Public", props: {

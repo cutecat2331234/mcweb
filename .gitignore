@@ -33,6 +33,11 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# Local instance configuration (database, secrets) written during setup.
+/config/local*.yml
+!/config/local.yml.example
+/config/image_packs.yml
+
 
 /app/assets/builds/*
 !/app/assets/builds/.keep
@@ -53,3 +58,7 @@ plugins/**/.gradle/
 
 # Local deploy script (contains server credentials)
 scripts/deploy-direct.py
+
+# Test / build artifacts
+test_errors.txt
+nodes/**/bin/

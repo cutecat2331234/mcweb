@@ -1,3 +1,4 @@
 <p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
 <p><%= t("mcweb.mail.forum.topic_assigned.body", actor: @actor.username, title: @topic.title) %></p>
 <p><a href="<%= @url %>"><%= t("mcweb.mail.view_topic") %></a></p>
+<%= render "notification_unsubscribe" %>

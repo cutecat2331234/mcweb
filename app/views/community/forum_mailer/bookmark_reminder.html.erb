@@ -5,4 +5,5 @@
 <p><%= t("mcweb.mail.forum.bookmark_reminder.note", note: @note) %></p>
 <% end %>
 <p><a href="<%= @url %>"><%= t("mcweb.mail.forum.bookmark_reminder.view_content") %></a></p>
+<%= render "notification_unsubscribe" %>
 <p class="text-muted"><a href="<%= @preferences_url %>"><%= t("mcweb.mail.manage_preferences") %></a></p>

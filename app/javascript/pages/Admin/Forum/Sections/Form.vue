@@ -36,6 +36,7 @@ const props = defineProps<{
     min_trust_level_create: number
     min_trust_level_reply: number
     read_only: boolean
+    login_required: boolean
     color_hex: string
     icon: string
     banner_text: string
@@ -45,6 +46,7 @@ const props = defineProps<{
     seo_title: string
     seo_description: string
     topic_template?: string
+    moderator_usernames?: string
   }
   tags: Array<{ id: number; name: string }>
   tagGroups?: Array<{ id: number; name: string }>
@@ -188,7 +190,7 @@ function submit() {
     </div>
     <div class="space-y-2">
       <Label for="prefixes">{{ t('admin.forms.section.prefixes') }}</Label>
-      <Textarea id="prefixes" v-model="form.section.prefixes" rows="3" />
+      <Textarea id="prefixes" v-model="form.section.prefixes" rows="3" :placeholder="t('admin.forms.section.prefixColorHint')" />
       <label class="flex items-center gap-2 text-sm">
         <Checkbox v-model="form.section.prefix_required" />
         {{ t('admin.forms.section.prefixRequired') }}
@@ -197,6 +199,10 @@ function submit() {
     <label class="flex items-center gap-2 text-sm">
       <Checkbox v-model="form.section.read_only" />
       {{ t('admin.forms.section.readOnly') }}
+    </label>
+    <label class="flex items-center gap-2 text-sm">
+      <Checkbox v-model="form.section.login_required" />
+      {{ t('admin.forms.section.loginRequired') }}
     </label>
     <div class="grid grid-cols-2 gap-4">
       <div class="space-y-2">
@@ -245,6 +251,11 @@ function submit() {
     <div class="space-y-2">
       <Label for="topic_template">{{ t('admin.forms.section.topicTemplate') }}</Label>
       <Textarea id="topic_template" v-model="form.section.topic_template" rows="5" :placeholder="t('admin.forms.section.topicTemplatePlaceholder')" />
+    </div>
+    <div class="space-y-2">
+      <Label for="moderator_usernames">{{ t('admin.forms.section.moderators') }}</Label>
+      <Textarea id="moderator_usernames" v-model="form.section.moderator_usernames" rows="3" :placeholder="t('admin.forms.section.moderatorsPlaceholder')" />
+      <p class="text-xs text-muted-foreground">{{ t('admin.forms.section.moderatorsHint') }}</p>
     </div>
     <div v-if="tags.length" class="space-y-2">
       <Label>{{ t('admin.forms.section.requiredTags') }}</Label>

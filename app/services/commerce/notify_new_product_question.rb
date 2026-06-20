@@ -29,7 +29,7 @@ module Commerce
         Notification.notify!(
           user: user,
           notification_type: "commerce.new_product_question",
-          title: "新商品提问：#{@product.name}",
+          title: Commerce::InAppNotification.t("new_product_question.title", product: @product.name),
           body: @question.body.truncate(120),
           metadata: {
             path: "/app/store/products/#{@product.public_id}",

@@ -41,6 +41,7 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @post = Community::Post.find(post_id)
       @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      assign_notification_unsubscribe("forum.here")
 
       mail(to: @user.email, subject: "#{@post.user.username} 在主题中 @here 提及了你")
     end
@@ -115,6 +116,7 @@ module Community
       @post = Community::Post.find(post_id)
       @editor = @post.user
       @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"}"
+      assign_notification_unsubscribe("forum.post_edited")
 
       mail(to: @user.email, subject: "帖子已编辑：#{@topic.title.truncate(60)}")
     end
@@ -131,7 +133,7 @@ module Community
                "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
       end
       @note = @bookmark.note
-      @preferences_url = "#{root_url.chomp('/')}#{forum_preferences_path}"
+      assign_notification_unsubscribe("forum.bookmark_reminder")
 
       mail(to: @user.email, subject: "书签提醒：#{@topic.title.truncate(60)}")
     end
@@ -140,6 +142,7 @@ module Community
       @user = User.find(user_id)
       @warning = Community::UserWarning.find(warning_id)
       @url = "#{root_url.chomp('/')}#{"/app/forum/users/#{@user.username}"}"
+      assign_notification_unsubscribe("forum.user_warning")
       mail(to: @user.email, subject: "社区警告通知")
     end
 
@@ -147,6 +150,7 @@ module Community
       @user = User.find(user_id)
       @badge = Community::Badge.find(badge_id)
       @url = "#{root_url.chomp('/')}#{forum_badge_path(@badge.slug)}"
+      assign_notification_unsubscribe("forum.badge_earned")
       mail(to: @user.email, subject: "你获得了徽章：#{@badge.name}")
     end
 
@@ -155,6 +159,7 @@ module Community
       @topic = Community::Topic.find_by!(public_id: topic_id)
       @actor = User.find(actor_id)
       @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
+      assign_notification_unsubscribe("forum.topic_assigned")
       mail(to: @user.email, subject: "主题已指派给你：#{@topic.title.truncate(60)}")
     end
 
@@ -163,6 +168,7 @@ module Community
       @level = level
       @level_name = level_name
       @url = "#{root_url.chomp('/')}#{forum_user_path(@user.username)}"
+      assign_notification_unsubscribe("forum.trust_level_up")
       mail(to: @user.email, subject: "信任等级提升：#{@level_name}")
     end
 
@@ -214,6 +220,7 @@ module Community
       @topic = @poll.topic
       @actor = User.find(actor_id)
       @url = "#{root_url.chomp('/')}#{"/app/forum/topics/#{@topic.public_id}"}"
+      assign_notification_unsubscribe("forum.poll_closed")
       mail(to: @user.email, subject: "投票已关闭：#{@poll.question.truncate(60)}")
     end
 

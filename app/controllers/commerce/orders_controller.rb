@@ -120,6 +120,10 @@ module Commerce
     end
 
     def packing_slip
+      unless Commerce::StoreFeatures.enabled?(:order_shipping_management)
+        return redirect_to store_order_path(@order), alert: t("mcweb.flash.permission_denied")
+      end
+
       unless %w[paid processing fulfilling fulfilled completed].include?(@order.status)
         return redirect_to store_order_path(@order), alert: t("mcweb.flash.no_packing_slip")
       end
@@ -131,11 +135,11 @@ module Commerce
       result = Commerce::ReorderFromOrder.call(user: current_user, order: @order)
 
       if result.success?
-        notice = "已将 #{result.value[:added]} 件商品加入购物车。"
+        notice = t("mcweb.flash.reorder_bulk_added", count: result.value[:added])
         skipped = result.value[:skipped] || []
         if skipped.any?
-          details = skipped.map { |entry| "#{entry[:name]}（#{entry[:reason]}）" }.join("、")
-          notice += " 跳过：#{details}"
+          details = skipped.map { |entry| t("mcweb.commerce.customer_orders.skipped_item", name: entry[:name], reason: entry[:reason]) }.join(I18n.t("mcweb.commerce.list_separator"))
+          notice += t("mcweb.flash.reorder_bulk_skipped", items: details)
         end
         redirect_to store_cart_path, notice: notice
       else
@@ -202,7 +206,7 @@ module Commerce
       total = counts.values.sum
 
       tabs = [ {
-        label: "全部",
+        label: t("mcweb.commerce.customer_orders.status_all"),
         href: store_orders_path(base_params),
         active: current.blank?,
         count: total,

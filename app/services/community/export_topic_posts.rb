@@ -7,7 +7,7 @@ module Community
     end
 
     def call
-      lines = [ "楼层,作者,时间,内容" ]
+      lines = [ I18n.t("mcweb.forum.exports.posts_header") ]
       @topic.posts.where(status: :published).order(:floor_number).includes(:user).find_each do |post|
         lines << [
           post.floor_number,

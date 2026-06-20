@@ -18,10 +18,15 @@ module InstallationGuard
   private
 
   def redirect_to_setup_unless_locked
-    return if InstallationLock.locked?
     return if setup_request?
+    return if InstallationLock.locked?
 
     redirect_to setup_root_path
+  rescue ActiveRecord::ConnectionNotEstablished,
+         ActiveRecord::NoDatabaseError,
+         PG::ConnectionBad,
+         PG::Error
+    redirect_to setup_root_path unless setup_request?
   end
 
   def block_setup_when_locked

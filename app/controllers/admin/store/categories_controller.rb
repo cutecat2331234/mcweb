@@ -10,11 +10,11 @@ module Admin
         categories = ::Commerce::Category.ordered
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "商品分类",
+          title: t("mcweb.admin.store.categories.title"),
           columns: [
-            admin_column(:name, "名称", link: true),
-            admin_column(:slug, "标识"),
-            admin_column(:position, "排序")
+            admin_column(:name, t("mcweb.admin.store.categories.col_name"), link: true),
+            admin_column(:slug, t("mcweb.admin.store.categories.col_slug")),
+            admin_column(:position, t("mcweb.admin.store.categories.col_position"))
           ],
           rows: categories.map do |category|
             admin_row(
@@ -24,7 +24,7 @@ module Admin
               url: admin_store_category_path(category)
             )
           end,
-          actions: [ { label: "新建分类", href: new_admin_store_category_path } ]
+          actions: [ { label: t("mcweb.admin.store.categories.new"), href: new_admin_store_category_path } ]
         }
       end
 
@@ -32,16 +32,16 @@ module Admin
         render inertia: "Admin/Generic/Show", props: {
           title: @category.name,
           fields: [
-            { label: "标识", value: @category.slug },
-            { label: "排序", value: @category.position.to_s },
-            { label: "描述", value: @category.description.presence || "—" },
-            { label: "图标", value: @category.icon.presence || "—" },
-            { label: "颜色", value: @category.color_hex.presence || "—" },
-            { label: "SEO 标题", value: @category.seo["title"].presence || "—" },
-            { label: "SEO 描述", value: @category.seo["description"].presence || "—" }
+            { label: t("mcweb.admin.store.categories.field_slug"), value: @category.slug },
+            { label: t("mcweb.admin.store.categories.field_position"), value: @category.position.to_s },
+            { label: t("mcweb.admin.store.categories.field_description"), value: @category.description.presence || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.store.categories.field_icon"), value: @category.icon.presence || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.store.categories.field_color"), value: @category.color_hex.presence || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.store.categories.field_seo_title"), value: @category.seo["title"].presence || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.store.categories.field_seo_description"), value: @category.seo["description"].presence || t("mcweb.labels.not_available") }
           ],
           backUrl: admin_store_categories_path,
-          actions: [ { label: "编辑", href: edit_admin_store_category_path(@category) } ]
+          actions: [ { label: t("mcweb.admin.store.action_edit"), href: edit_admin_store_category_path(@category) } ]
         }
       end
 
@@ -96,7 +96,7 @@ module Admin
 
       def form_props(category)
         {
-          title: category.persisted? ? "编辑分类" : "新建分类",
+          title: category.persisted? ? t("mcweb.admin.store.categories.edit") : t("mcweb.admin.store.categories.new"),
           category: {
             id: category.id,
             name: category.name || "",

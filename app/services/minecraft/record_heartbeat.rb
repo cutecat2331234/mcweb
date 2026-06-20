@@ -9,6 +9,10 @@ module Minecraft
 
     def call
       @server.heartbeat!
+
+      uuids = Array(@payload["online_player_uuids"]).presence
+      Minecraft::ConnectorOnlineRoster.record!(server: @server, uuids: uuids) if uuids
+
       snapshot_attrs = {
         online_players: @payload["online_players"].to_i,
         max_players: @payload["max_players"].to_i,

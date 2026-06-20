@@ -13,8 +13,12 @@ module Commerce
 
       Commerce::WishlistItem.where(user: @user).includes(:product, :variant).find_each do |item|
         product = item.product
+        unless Commerce::StoreFeatures.product_visible?(product)
+          skipped << SkippedItemLabel.for_product(product.name, :feature_disabled)
+          next
+        end
         if product.coming_soon?
-          skipped << "#{product.name}（未上架）"
+          skipped << SkippedItemLabel.for_product(product.name, :coming_soon)
           next
         end
         next unless product.active? && product.in_stock?

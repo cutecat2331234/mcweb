@@ -27,8 +27,8 @@ module Commerce
         Notification.notify!(
           user: user,
           notification_type: "commerce.low_stock",
-          title: "低库存提醒：#{product.name}",
-          body: variant_id ? "变体库存紧张，请及时补货。" : "商品库存紧张，请及时补货。",
+          title: Commerce::InAppNotification.t("low_stock_staff.title", product: product.name),
+          body: Commerce::InAppNotification.t(variant_id ? "low_stock_staff_variant.body" : "low_stock_staff.body", product: product.name),
           metadata: {
             product_id: product.public_id,
             path: "/admin/store/products/#{product.public_id}"

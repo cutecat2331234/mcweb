@@ -56,14 +56,14 @@ class Round80RetrySavedSearchWebhookTest < ActiveSupport::TestCase
   test "retry rejects other user" do
     result = Community::RetrySavedSearchWebhook.call(delivery: @delivery, actor: @other)
     assert_not result.success?
-    assert_equal "无权操作", result.error
+    assert_equal I18n.t("mcweb.services.errors.not_allowed"), result.error
   end
 
   test "retry rejects missing payload" do
     @delivery.update!(request_payload: {})
     result = Community::RetrySavedSearchWebhook.call(delivery: @delivery, actor: @user)
     assert_not result.success?
-    assert_equal "缺少请求内容，无法重试", result.error
+    assert_equal I18n.t("mcweb.services.errors.webhook_retry_no_payload"), result.error
   end
 end
 
@@ -187,6 +187,11 @@ class Round80OrderShippingTimelineTest < ActiveSupport::TestCase
 end
 
 class Round80OrderShowShippingTimelineTest < ActionDispatch::IntegrationTest
+  setup do
+    enable_store_feature!(:shipping)
+    enable_store_feature!(:order_shipping_management)
+  end
+
   test "order show includes shipping timeline props" do
     user = create_user
     order = Commerce::Order.create!(

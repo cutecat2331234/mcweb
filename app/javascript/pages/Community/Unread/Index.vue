@@ -34,13 +34,14 @@ const props = defineProps<{
   sectionOptions: Array<{ value: string; label: string }>
   tagOptions: Array<{ value: string; label: string }>
   filterBookmarkUrl?: string | null
-  savedFilterPresets?: Array<{ id: number; name: string; url: string; delete_url: string }>
+  savedFilterPresets?: Array<{ id: number; name: string; url: string; share_url?: string | null; delete_url: string }>
   saveFilterPresetUrl?: string
   activeFilters?: Array<{ param: string; label: string; value?: string }>
 }>()
 
 const selectedIds = ref<string[]>([])
 const bookmarkCopied = ref(false)
+const presetCopiedId = ref<number | null>(null)
 const saveName = ref('')
 const saving = ref(false)
 const saveError = ref('')
@@ -135,6 +136,17 @@ function hasActiveFilters() {
     || selectedTagSlugs.value.length
     || (selectedTagSlugs.value.length > 1 && props.tagMatch === 'any')
   )
+}
+
+async function copyPresetLink(shareUrl: string | null | undefined, presetId: number) {
+  if (!shareUrl) return
+  try {
+    await navigator.clipboard.writeText(shareUrl)
+    presetCopiedId.value = presetId
+    window.setTimeout(() => { presetCopiedId.value = null }, 2000)
+  } catch {
+    // ignore clipboard errors
+  }
 }
 
 async function copyFilterBookmark() {
@@ -249,6 +261,15 @@ async function deleteFilterPreset(deleteUrl: string) {
     <span class="text-sm text-muted-foreground">{{ t('forum.lists.savedFilters') }}</span>
     <span v-for="preset in savedFilterPresets" :key="preset.id" class="inline-flex items-center gap-1 rounded-full border px-3 py-1 text-sm">
       <Link :href="preset.url" class="hover:underline">{{ preset.name }}</Link>
+      <button
+        v-if="preset.share_url"
+        type="button"
+        class="text-xs text-muted-foreground hover:text-foreground"
+        :title="t('forum.lists.copyPresetLink')"
+        @click="copyPresetLink(preset.share_url, preset.id)"
+      >
+        {{ presetCopiedId === preset.id ? t('forum.lists.presetLinkCopied') : '🔗' }}
+      </button>
       <button type="button" class="text-muted-foreground hover:text-destructive" @click="deleteFilterPreset(preset.delete_url)">×</button>
     </span>
   </div>

@@ -44,9 +44,13 @@ module Identity
     def self.module_allowed?(user, module_key)
       return false unless user
       return true if user.account_type.in?(%w[owner admin])
-      return false unless user.account_type == "staff"
 
-      user.admin_module_grants.exists?(module_key: module_key)
+      if user.account_type == "staff"
+        return user.admin_module_grants.exists?(module_key: module_key)
+      end
+
+      permissions = ADMIN_MODULES[module_key.to_s] || []
+      permissions.any? { |key| user.permission?(key) }
     end
 
     private

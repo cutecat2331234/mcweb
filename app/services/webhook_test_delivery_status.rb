@@ -10,6 +10,15 @@ class WebhookTestDeliveryStatus
     )
   end
 
+  def self.forum_event_last
+    serialize(
+      Community::EventWebhookDelivery
+        .where("request_payload @> ?", { test: true }.to_json)
+        .order(created_at: :desc)
+        .first
+    )
+  end
+
   def self.store_last
     serialize(
       Commerce::OrderWebhookDelivery

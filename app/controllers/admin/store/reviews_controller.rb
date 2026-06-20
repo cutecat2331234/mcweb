@@ -10,19 +10,19 @@ module Admin
         reviews = ::Commerce::Review.includes(:user, :product).order(created_at: :desc).limit(100)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "商品评价",
+          title: t("mcweb.admin.store.reviews.title"),
           columns: [
-            admin_column(:product, "商品", link: true),
-            admin_column(:author, "用户"),
-            admin_column(:rating, "评分"),
-            admin_column(:status, "状态")
+            admin_column(:product, t("mcweb.admin.store.reviews.col_product"), link: true),
+            admin_column(:author, t("mcweb.admin.store.reviews.col_author")),
+            admin_column(:rating, t("mcweb.admin.store.reviews.col_rating")),
+            admin_column(:status, t("mcweb.admin.store.reviews.col_status"))
           ],
           rows: reviews.map do |review|
             admin_row(
               product: review.product.name,
               author: review.user.username,
               rating: "#{review.rating}★",
-              status: review.status,
+              status: review_status_label(review.status),
               url: admin_store_review_path(review)
             )
           end
@@ -31,14 +31,14 @@ module Admin
 
       def show
         render inertia: "Admin/Generic/Show", props: {
-          title: "评价 — #{@review.product.name}",
+          title: t("mcweb.admin.store.reviews.show_title", product: @review.product.name),
           fields: [
-            { label: "用户", value: @review.user.username },
-            { label: "评分", value: "#{@review.rating}★" },
-            { label: "状态", value: @review.status },
-            { label: "内容", value: @review.body || "—" },
-            { label: "商家回复", value: @review.merchant_reply || "—" },
-            { label: "时间", value: l(@review.created_at, format: :long) }
+            { label: t("mcweb.admin.store.reviews.field_user"), value: @review.user.username },
+            { label: t("mcweb.admin.store.reviews.field_rating"), value: "#{@review.rating}★" },
+            { label: t("mcweb.admin.store.reviews.field_status"), value: review_status_label(@review.status) },
+            { label: t("mcweb.admin.store.reviews.field_body"), value: @review.body || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.store.reviews.field_merchant_reply"), value: @review.merchant_reply || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.store.reviews.field_time"), value: l(@review.created_at, format: :long) }
           ],
           backUrl: admin_store_reviews_path,
           actions: review_actions
@@ -78,9 +78,19 @@ module Admin
       def review_actions
         actions = []
         if @review.published?
-          actions << { label: "隐藏评价", href: admin_store_review_path(@review), method: "patch", data: { review: { status: "hidden" } } }
+          actions << {
+            label: t("mcweb.admin.store.reviews.action_hide"),
+            href: admin_store_review_path(@review),
+            method: "patch",
+            data: { review: { status: "hidden" } }
+          }
         elsif @review.hidden?
-          actions << { label: "显示评价", href: admin_store_review_path(@review), method: "patch", data: { review: { status: "published" } } }
+          actions << {
+            label: t("mcweb.admin.store.reviews.action_show"),
+            href: admin_store_review_path(@review),
+            method: "patch",
+            data: { review: { status: "published" } }
+          }
         end
         actions
       end

@@ -35,7 +35,7 @@ class Identity::DeletedUserAuthTest < ActiveSupport::TestCase
     )
 
     assert result.failure?
-    assert_match(/删除/, result.error)
+    assert_equal I18n.t("mcweb.services.errors.invalid_email_or_password"), result.error
   end
 end
 
@@ -196,6 +196,7 @@ end
 
 class Commerce::UpdateOrderShippingTest < ActiveSupport::TestCase
   setup do
+    enable_store_feature!(:order_shipping_management)
     @user = create_user
     @admin = create_user
     @order = Commerce::Order.create!(
@@ -230,5 +231,14 @@ class Commerce::UpdateOrderShippingTest < ActiveSupport::TestCase
     @order.reload
     assert_equal "SF123456", @order.tracking_number
     assert @order.shipped_at.present?
+    assert_equal "completed", @order.status
+
+    event = @order.events.find_by!(event_type: "shipped")
+    assert_equal "paid", event.from_status
+    assert_equal "completed", event.to_status
+
+    fulfillment = @order.fulfillments.first
+    assert_not_nil fulfillment
+    assert_equal "fulfilled", fulfillment.status
   end
 end

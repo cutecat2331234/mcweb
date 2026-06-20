@@ -10,6 +10,7 @@ module Community
     def call
       url = @saved_search.webhook_url.to_s.strip
       return ServiceResult.success(skipped: true) if url.blank?
+      return ServiceResult.success(skipped: true) unless UrlSafety.public_http_url?(url)
 
       payload = {
         event: "saved_search.match",

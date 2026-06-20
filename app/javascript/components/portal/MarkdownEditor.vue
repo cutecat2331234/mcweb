@@ -30,7 +30,7 @@ const { t } = useI18n()
 const page = usePage()
 const canUploadImages = computed(() => {
   const user = (page.props.auth as { user?: { can_upload_images?: boolean } } | undefined)?.user
-  return user?.can_upload_images !== false
+  return user?.can_upload_images === true
 })
 
 function update(value: string) {

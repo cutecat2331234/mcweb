@@ -93,8 +93,9 @@ class Round84WebhookFailureAlertTest < ActiveSupport::TestCase
   end
 
   test "recurring config schedules webhook failure alert job" do
-    content = File.read(Rails.root.join("config/recurring.yml"))
+    content = File.read(Rails.root.join("config/sidekiq_cron.yml"))
     assert_includes content, "WebhookFailureAlertJob"
+    assert_includes content, "Website::GenerateSitemapJob"
   end
 
   test "forum settings include webhook alert keys" do

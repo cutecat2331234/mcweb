@@ -2,27 +2,6 @@
 
 module Community
   class ModerateTopic < ApplicationService
-    SMALL_ACTION_MESSAGES = {
-      "lock" => "此主题已锁定。",
-      "unlock" => "此主题已解锁。",
-      "pin" => "此主题已置顶。",
-      "unpin" => "此主题已取消置顶。",
-      "hide" => "此主题已隐藏。",
-      "unhide" => "此主题已恢复显示。",
-      "feature" => "此主题已设为精选。",
-      "unfeature" => "此主题已取消精选。",
-      "enable_wiki" => "此主题已开启 Wiki 模式。",
-      "disable_wiki" => "此主题已关闭 Wiki 模式。",
-      "global_announcement" => "此主题已设为全站公告。",
-      "remove_global_announcement" => "此主题已取消全站公告。",
-      "unlist" => "此主题已设为未列出（仅链接可访问）。",
-      "list" => "此主题已恢复公开列表显示。",
-      "archive" => "此主题已归档。",
-      "unarchive" => "此主题已取消归档。",
-      "assign" => "此主题已指派给员工。",
-      "unassign" => "此主题已取消指派。"
-    }.freeze
-
     def initialize(user:, topic:, action:, lock_reason: nil, assignee_username: nil)
       @user = user
       @topic = topic
@@ -32,7 +11,7 @@ module Community
     end
 
     def call
-      unless @user.permission?("forum.topics.lock")
+      unless Community::SectionModeration.can_moderate_topic_action?(user: @user, topic: @topic, action: @action)
         return ServiceResult.failure(error: "You are not authorized to moderate this topic.")
       end
 
@@ -52,7 +31,7 @@ module Community
         cooldown_hours = SiteSetting.get("forum.bump_cooldown_hours", "24").to_i
         if cooldown_hours.positive? && @topic.bumped_at && @topic.bumped_at > cooldown_hours.hours.ago
           remaining = ((@topic.bumped_at + cooldown_hours.hours) - Time.current).to_i
-          return ServiceResult.failure(error: "提升冷却中，请 #{remaining / 3600} 小时后再试。")
+          return ServiceResult.failure(error: I18n.t("mcweb.services.errors.bump_cooldown_active", hours: remaining / 3600))
         end
         @topic.update!(bumped_at: Time.current, last_posted_at: Time.current)
       when "hide"
@@ -69,7 +48,7 @@ module Community
         @topic.update!(wiki: false)
       when "global_announcement"
         @topic.update!(global_announcement: true)
-        Minecraft::EnqueueBroadcastJob.perform_later("【公告】#{@topic.title}")
+        Minecraft::EnqueueBroadcastJob.perform_later(I18n.t("mcweb.forum.announcement_broadcast", title: @topic.title))
       when "remove_global_announcement"
         @topic.update!(global_announcement: false)
       when "unlist"
@@ -82,7 +61,7 @@ module Community
         @topic.update!(archived_at: nil)
       when "assign"
         assignee = User.find_by(username: @assignee_username)
-        return ServiceResult.failure(error: "指派用户不存在。") unless assignee
+        return ServiceResult.failure(error: "assignee_not_found") unless assignee
 
         @topic.update!(assigned_to: assignee)
         Community::NotifyTopicAssigned.call(topic: @topic, assignee: assignee, actor: @user)
@@ -102,12 +81,23 @@ module Community
     private
 
     def record_small_action!
-      message = SMALL_ACTION_MESSAGES[@action]
-      message = "此主题已置顶 #{Regexp.last_match(1)} 天。" if @action.match?(/\Apin_(\d+)\z/)
+      message = moderation_message
       return if message.blank?
 
-      body = @lock_reason.present? && @action == "lock" ? "#{message} 原因：#{@lock_reason}" : message
+      body = if @lock_reason.present? && @action == "lock"
+               I18n.t("mcweb.forum.moderate_actions.lock_with_reason", message: message, reason: @lock_reason)
+             else
+               message
+             end
       Community::CreateSmallActionPost.call(topic: @topic, actor: @user, body: body)
+    end
+
+    def moderation_message
+      if (match = @action.match(/\Apin_(\d+)\z/))
+        return I18n.t("mcweb.forum.moderate_actions.pin_days", days: match[1])
+      end
+
+      I18n.t("mcweb.forum.moderate_actions.#{@action}", default: nil)
     end
   end
 end

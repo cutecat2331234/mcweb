@@ -13,7 +13,7 @@ module Community
       @topic.update!(archived_at: Time.current, auto_archive_at: nil)
       actor = Community::SystemActor.user || @topic.user
       if actor
-        Community::CreateSmallActionPost.call(topic: @topic, actor: actor, body: "此主题已到达预定时间并自动归档。")
+        Community::CreateSmallActionPost.call(topic: @topic, actor: actor, body: I18n.t("mcweb.forum.small_actions.scheduled_archive"))
       end
 
       ServiceResult.success(@topic)

@@ -13,8 +13,8 @@ module Community
 
         selected = @tag_ids & group_tag_ids
         if group.one_per_topic? && selected.size > 1
-          names = Community::Tag.where(id: selected).pluck(:name).join("、")
-          return ServiceResult.failure(error: "标签组「#{group.name}」每个主题只能选一个标签，当前选了：#{names}")
+          names = Community::Tag.where(id: selected).pluck(:name).join(I18n.t("mcweb.commerce.list_separator"))
+          return ServiceResult.failure(error: I18n.t("mcweb.services.errors.tag_group_single_only", group: group.name, names: names))
         end
       end
 

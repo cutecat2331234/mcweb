@@ -7,6 +7,7 @@ module Community
     include Community::SectionTagGroupsSerializable
     include Community::WarningRestrictionsSerializable
     include Community::SubscriptionNoticeable
+    include Community::SectionVisibility
 
     before_action :require_login, only: %i[new create update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate bulk_moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
@@ -18,10 +19,12 @@ module Community
 
       posts_scope = if can_moderate_topic?
                       @topic.posts.with_discarded.chronological
+      elsif logged_in?
+                      @topic.posts.visible_in_topic(current_user).chronological
       else
                       @topic.posts.published.chronological
       end
-      posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits, :forked_topics, user: { user_badges: :badge })
+      posts_scope = posts_scope.includes(:user, :quoted_post, :parent_post, :reactions, :edits, :forked_topics, :attachments, user: { user_badges: :badge })
       posts_scope = filter_blocked_posts(posts_scope)
       posts_scope = posts_scope.where.not(post_type: "whisper") unless can_moderate_topic?
       posts_scope = case params[:post_sort]
@@ -70,7 +73,7 @@ module Community
           can_edit: can_edit_topic?,
           viewer: current_user
         ).merge(
-          section_prefixes: Array(@topic.section.prefixes),
+          section_prefixes: @topic.section.prefix_options,
           tag_groups: section_tag_groups_for(@topic.section),
           global_announcement: @topic.global_announcement?,
           staff_notes: can_moderate_topic? ? @topic.staff_notes.includes(:author).order(created_at: :desc).map { |note|
@@ -120,6 +123,7 @@ module Community
           remind_at_input: topic_bookmark.remind_at&.strftime("%Y-%m-%dT%H:%M")
         } : nil,
         replyDraft: logged_in? ? Community::ReplyDraft.find_by(user: current_user, topic: @topic)&.body : nil,
+        replyDraftAttachments: logged_in? ? reply_draft_attachments_props(@topic) : [],
         replyDraftUrl: logged_in? ? forum_topic_reply_draft_path(@topic) : nil,
         warningRestrictions: warning_restrictions_props,
         subscriptionLevels: Community::SubscriptionLevelOptions.for(:topic),
@@ -164,7 +168,8 @@ module Community
             poll_multiple_choice: topic_params[:poll_multiple_choice],
             poll_max_choices: topic_params[:poll_max_choices],
             poll_hide_results_until_vote: topic_params[:poll_hide_results_until_vote],
-            ip_address: request.remote_ip
+            ip_address: request.remote_ip,
+            attachment_ids: topic_params[:attachment_ids]
           )
           if result.success?
             return redirect_to forum_drafts_path, notice: t("mcweb.flash.topic_scheduled", time: l(scheduled_at, format: :short))
@@ -193,11 +198,13 @@ module Community
         poll_hide_results_until_vote: topic_params[:poll_hide_results_until_vote],
         poll_anonymous: topic_params[:poll_anonymous],
         prefix: topic_params[:prefix],
-        ip_address: request.remote_ip
+        ip_address: request.remote_ip,
+        attachment_ids: topic_params[:attachment_ids]
       )
 
       if result.success?
-        redirect_to forum_topic_path(result.value), notice: t("mcweb.flash.topic_created")
+        notice = result.value.status == "hidden" ? t("mcweb.flash.post_pending_submitted") : t("mcweb.flash.topic_created")
+        redirect_to forum_topic_path(result.value), notice: notice
       else
         render inertia: "Community/Topics/New",
                props: {
@@ -289,7 +296,7 @@ module Community
     end
 
     def bulk_moderate
-      unless current_user.permission?("forum.topics.lock")
+      unless Community::SectionModeration.bulk_moderate_authorized?(user: current_user)
         return redirect_back fallback_location: forum_latest_path, alert: t("mcweb.flash.cannot_moderate_bulk")
       end
 
@@ -301,8 +308,8 @@ module Community
       )
 
       if result.success?
-        notice = "已处理 #{result.value[:moderated]} 个主题"
-        notice += "，#{result.value[:failed]} 个失败" if result.value[:failed].positive?
+        notice = t("mcweb.flash.bulk_moderate_processed", count: result.value[:moderated])
+        notice += t("mcweb.flash.bulk_moderate_failed_suffix", count: result.value[:failed]) if result.value[:failed].positive?
         redirect_to bulk_moderate_destination, notice: notice
       else
         redirect_to bulk_moderate_destination, alert: result.error || t("mcweb.flash.operation_failed")
@@ -542,18 +549,20 @@ module Community
 
     def set_section
       @section = Community::Section.find_by!(slug: params[:section_id])
+      ensure_section_visible!(@section)
     end
 
     def set_topic
       @topic = Community::Topic.includes(:section, :user, :tags, :poll, :solved_post, :linked_product).find_by!(public_id: params[:id])
       ensure_topic_visible!(@topic)
+      ensure_section_visible!(@topic.section)
     end
 
     def topic_params
       params.require(:topic).permit(
         :title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days,
         :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :poll_anonymous,
-        :scheduled_at, :remove_poll
+        :scheduled_at, :remove_poll, attachment_ids: []
       )
     end
 
@@ -576,7 +585,7 @@ module Community
         name: @section.name,
         slug: @section.slug,
         url: forum_section_path(@section),
-        prefixes: Array(@section.prefixes),
+        prefixes: @section.prefix_options,
         prefix_required: @section.prefix_required?,
         topic_template: @section.topic_template,
         required_tags: @section.required_tags.map { |tag| { name: tag.name, slug: tag.slug, url: forum_tag_path(tag.slug) } },
@@ -652,7 +661,7 @@ module Community
     end
 
     def can_moderate_topic?
-      current_user&.permission?("forum.topics.lock")
+      Community::SectionModeration.can_moderate_topic?(user: current_user, topic: @topic)
     end
 
     def can_invite_topic?
@@ -662,13 +671,13 @@ module Community
     end
 
     def can_move_topic?
-      current_user&.permission?("forum.topics.move") || current_user&.permission?("forum.topics.lock")
+      return false unless current_user
+
+      Community::SectionModeration.can_move_topic?(user: current_user, topic: @topic)
     end
 
     def can_edit_topic?
-      return false unless current_user
-
-      current_user.id == @topic.user_id || current_user.permission?("forum.topics.lock")
+      Community::SectionModeration.can_edit_topic?(user: current_user, topic: @topic)
     end
 
     def can_close_own_topic?
@@ -679,7 +688,10 @@ module Community
     end
 
     def movable_sections
-      Community::Section.ordered.includes(:category).map do |section|
+      Community::SectionModeration.moderated_sections_for(current_user)
+        .ordered
+        .includes(:category)
+        .map do |section|
         { slug: section.slug, name: section.name, category: section.category&.name }
       end
     end
@@ -707,8 +719,8 @@ module Community
       }
 
       if (poll = topic.poll)
-        meta[:title] = "#{topic.title} — 投票"
-        meta[:description] = "投票：#{poll.question}"
+        meta[:title] = "#{topic.title} — #{t('mcweb.forum.poll_meta.title_suffix')}"
+        meta[:description] = "#{t('mcweb.forum.poll_meta.description_prefix')}#{poll.question}"
         meta[:url] = "#{request.base_url}#{forum_topic_path(topic)}#poll"
         meta[:poll_question] = poll.question
         meta[:twitter_card] = "summary"
@@ -723,6 +735,23 @@ module Community
 
     def bulk_moderate_destination
       safe_local_path(params[:return_to]) || safe_referer_path(fallback: forum_latest_path)
+    end
+
+    def reply_draft_attachments_props(topic)
+      draft = Community::ReplyDraft.find_by(user: current_user, topic: topic)
+      ids = draft&.attachment_id_list || []
+      return [] if ids.empty?
+
+      Community::PostAttachment.unlinked.where(user: current_user, id: ids).filter_map do |attachment|
+        next unless attachment.file.attached?
+
+        {
+          id: attachment.id,
+          filename: attachment.filename,
+          human_size: attachment.human_size,
+          download_url: forum_attachment_path(attachment)
+        }
+      end
     end
   end
 end

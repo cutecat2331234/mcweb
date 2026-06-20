@@ -22,11 +22,11 @@ module Community
       return unless email_enabled || in_app_enabled
 
       if in_app_enabled
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: user,
           notification_type: "forum.topic_solved",
-          title: "你的主题已标记为已解决",
-          body: @topic.title.truncate(80),
+          key: "topic_solved",
+          title: @topic.title.truncate(80),
           metadata: {
             topic_id: @topic.public_id,
             post_id: @post.id,

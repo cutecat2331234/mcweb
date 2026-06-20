@@ -16,19 +16,21 @@ const props = defineProps<{
     bridges_enabled: string
     bridge_placeholders: string
     profile_sections: string
+    graceful_stop_enabled: string
+    graceful_stop_countdown: string
+    graceful_stop_message: string
+    graceful_stop_commands: string
+    exec_command_allowed_prefixes: string
+    pause_fulfill_during_maintenance: string
+    backup_enabled: string
+    backup_schedule: string
   }
   updateUrl: string
 }>()
 
 const { t } = useI18n()
 
-const form = useForm({
-  link_command: props.settings.link_command,
-  skin_mode: props.settings.skin_mode,
-  bridges_enabled: props.settings.bridges_enabled,
-  bridge_placeholders: props.settings.bridge_placeholders,
-  profile_sections: props.settings.profile_sections,
-})
+const form = useForm({ ...props.settings })
 
 function submit() {
   form.patch(props.updateUrl)
@@ -67,6 +69,64 @@ function submit() {
         <Label for="profile_sections">{{ t('adminMinecraft.profileSections') }}</Label>
         <Input id="profile_sections" v-model="form.profile_sections" />
       </div>
+
+      <h2 class="pt-4 text-lg font-semibold">{{ t('adminMinecraft.gracefulStopSection') }}</h2>
+      <div>
+        <Label for="graceful_stop_enabled">{{ t('adminMinecraft.gracefulStopEnabled') }}</Label>
+        <Select
+          id="graceful_stop_enabled"
+          v-model="form.graceful_stop_enabled"
+          :options="[
+            { value: 'true', label: t('adminMinecraft.yes') },
+            { value: 'false', label: t('adminMinecraft.no') },
+          ]"
+        />
+      </div>
+      <div>
+        <Label for="graceful_stop_countdown">{{ t('adminMinecraft.gracefulStopCountdown') }}</Label>
+        <Input id="graceful_stop_countdown" v-model="form.graceful_stop_countdown" type="number" min="0" />
+      </div>
+      <div>
+        <Label for="graceful_stop_message">{{ t('adminMinecraft.gracefulStopMessage') }}</Label>
+        <Input id="graceful_stop_message" v-model="form.graceful_stop_message" />
+      </div>
+      <div>
+        <Label for="graceful_stop_commands">{{ t('adminMinecraft.gracefulStopCommands') }}</Label>
+        <Input id="graceful_stop_commands" v-model="form.graceful_stop_commands" placeholder="save-all,stop" />
+      </div>
+
+      <h2 class="pt-4 text-lg font-semibold">{{ t('adminMinecraft.nodeOpsSection') }}</h2>
+      <div>
+        <Label for="exec_command_allowed_prefixes">{{ t('adminMinecraft.execAllowedPrefixes') }}</Label>
+        <Input id="exec_command_allowed_prefixes" v-model="form.exec_command_allowed_prefixes" placeholder="ls,tail,systemctl" />
+      </div>
+      <div>
+        <Label for="pause_fulfill_during_maintenance">{{ t('adminMinecraft.pauseFulfillMaintenance') }}</Label>
+        <Select
+          id="pause_fulfill_during_maintenance"
+          v-model="form.pause_fulfill_during_maintenance"
+          :options="[
+            { value: 'true', label: t('adminMinecraft.yes') },
+            { value: 'false', label: t('adminMinecraft.no') },
+          ]"
+        />
+      </div>
+      <div>
+        <Label for="backup_enabled">{{ t('adminMinecraft.backupEnabled') }}</Label>
+        <Select
+          id="backup_enabled"
+          v-model="form.backup_enabled"
+          :options="[
+            { value: 'true', label: t('adminMinecraft.yes') },
+            { value: 'false', label: t('adminMinecraft.no') },
+          ]"
+        />
+      </div>
+      <div>
+        <Label for="backup_schedule">{{ t('adminMinecraft.backupSchedule') }}</Label>
+        <Input id="backup_schedule" v-model="form.backup_schedule" placeholder="0 3 * * *" />
+      </div>
+
       <Button type="submit" :disabled="form.processing">{{ t('common.save') }}</Button>
     </form>
   </div>

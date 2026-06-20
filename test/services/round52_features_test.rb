@@ -97,6 +97,8 @@ class Commerce::PartialRefundRequestTest < ActiveSupport::TestCase
       currency: "CNY",
       status: "succeeded"
     )
+    enable_refund_window!
+    anchor_order_payment_at!(@order)
   end
 
   test "customer can request partial refund" do
@@ -147,6 +149,7 @@ class Commerce::ShippedWebhookTest < ActiveSupport::TestCase
   include ActiveJob::TestHelper
 
   setup do
+    enable_store_feature!(:order_shipping_management)
     @admin = create_user
     grant_permission(@admin, "store.orders.manage")
     @user = create_user

@@ -44,7 +44,7 @@ module Commerce
     end
 
     def pending_reserved_cents(excluding_order: nil)
-      scope = orders.where(status: "pending")
+      scope = orders.where(status: %w[pending awaiting_payment])
       scope = scope.where.not(id: excluding_order.id) if excluding_order&.persisted?
       scope.sum(:gift_card_amount_cents)
     end

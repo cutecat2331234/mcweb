@@ -3,24 +3,25 @@
 module Community
   class UploadsController < ApplicationController
     before_action :require_login
+    before_action :rate_limit_upload!, only: :create
 
     MAX_SIZE = 5.megabytes
     ALLOWED_TYPES = %w[image/jpeg image/png image/gif image/webp].freeze
 
     def create
       unless Community::TrustLevel.can_upload_images?(current_user)
-        return render json: { error: "新成员暂不能上传图片，多发帖后即可解锁。" }, status: :forbidden
+        return render json: { error: t("mcweb.services.errors.new_members_cannot_upload_images") }, status: :forbidden
       end
 
       file = params[:file]
-      return render json: { error: "请选择要上传的文件。" }, status: :unprocessable_entity unless file
+      return render json: { error: t("mcweb.services.errors.upload_file_required") }, status: :unprocessable_entity unless file
 
       if file.size > MAX_SIZE
-        return render json: { error: "文件过大（最大 5MB）。" }, status: :unprocessable_entity
+        return render json: { error: t("mcweb.services.errors.image_upload_too_large", max: "5MB") }, status: :unprocessable_entity
       end
 
       unless ALLOWED_TYPES.include?(file.content_type)
-        return render json: { error: "不支持的文件类型。" }, status: :unprocessable_entity
+        return render json: { error: t("mcweb.services.errors.unsupported_upload_type") }, status: :unprocessable_entity
       end
 
       blob = ActiveStorage::Blob.create_and_upload!(
@@ -34,6 +35,19 @@ module Community
         url: url,
         markdown: "![#{file.original_filename}](#{url})"
       }
+    end
+
+    private
+
+    def rate_limit_upload!
+      result = Administration::RateLimiter.call(
+        key: "forum_upload:#{current_user.id}",
+        limit: 30,
+        window: 1.hour
+      )
+      return unless result.failure?
+
+      render json: { error: t("mcweb.flash.rate_limited") }, status: :too_many_requests
     end
   end
 end

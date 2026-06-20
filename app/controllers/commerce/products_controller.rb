@@ -3,7 +3,7 @@
 module Commerce
   class ProductsController < ApplicationController
     def index
-      scope = Commerce::Product.includes(:category).available
+      scope = Commerce::StoreFeatures.visible_products_scope(Commerce::Product.includes(:category).available)
       scope = scope.with_stock if params[:in_stock] == "1"
       scope = scope.on_sale if params[:on_sale] == "1"
       if params[:q].present?
@@ -37,7 +37,7 @@ module Commerce
         scope = scope.where("price_cents <= ?", max_cents) if max_cents.positive?
       end
 
-      featured_scope = Commerce::Product.available.where(featured: true)
+      featured_scope = Commerce::StoreFeatures.visible_products_scope(Commerce::Product.available.where(featured: true))
       featured_scope = featured_scope.with_stock if params[:in_stock] == "1"
       featured = featured_scope.order(created_at: :desc).limit(6)
 
@@ -45,12 +45,14 @@ module Commerce
                           Commerce::ProductView.recent_for(current_user)
                             .includes(:product)
                             .limit(6)
-                            .filter_map { |view| view.product if view.product&.active? }
+                            .filter_map { |view| view.product if view.product&.active? && Commerce::StoreFeatures.product_visible?(view.product) }
       else
                           []
       end
 
-      upcoming = Commerce::Product.upcoming.includes(:category).limit(8)
+      upcoming = Commerce::StoreFeatures.visible_products_scope(
+        Commerce::Product.upcoming.includes(:category)
+      ).limit(8)
       availability_alert_ids = if logged_in?
                                  Commerce::ProductAvailabilityAlert
                                    .where(user: current_user, store_product_id: upcoming.map(&:id))
@@ -97,7 +99,7 @@ module Commerce
         priceMax: params[:price_max].to_s,
         compareCount: compare_product_count,
         pagination: pagy_props(@pagy),
-        seo_title: SiteSetting.get("store.seo_title", "").presence || "商城",
+        seo_title: SiteSetting.get("store.seo_title", "").presence || t("mcweb.commerce.default_store_title"),
         seo_description: SiteSetting.get("store.seo_description", "").presence,
         rss_url: store_latest_rss_path
       }
@@ -109,7 +111,7 @@ module Commerce
       products = Commerce::ProductView.recent_for(current_user)
         .includes(:product)
         .limit(20)
-        .filter_map { |view| view.product if view.product&.active? }
+        .filter_map { |view| view.product if view.product&.active? && Commerce::StoreFeatures.product_visible?(view.product) }
 
       render inertia: "Commerce/RecentlyViewed/Index", props: {
         products: products.map { |product|
@@ -132,6 +134,7 @@ module Commerce
 
     def preview
       product = Commerce::Product.upcoming.includes(:category).find_by!(public_id: params[:id])
+      raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(product)
       alert = logged_in? ? Commerce::ProductAvailabilityAlert.find_by(user: current_user, product: product) : nil
       wishlist_item = logged_in? ? Commerce::WishlistItem.find_by(user: current_user, product: product) : nil
 
@@ -165,7 +168,8 @@ module Commerce
     end
 
     def show
-      product = Commerce::Product.available.includes(:variants, :category, :forum_topic).find_by!(public_id: params[:id])
+      product = Commerce::Product.available.includes(:variants, :category, :forum_topic, :membership_type, :prerequisites).find_by!(public_id: params[:id])
+      raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(product)
       product.increment!(:view_count)
       Commerce::RecordProductView.call(user: current_user, product: product) if logged_in?
 
@@ -206,7 +210,9 @@ module Commerce
       can_edit_review = logged_in? && purchased && user_review.present?
       can_delete_review = logged_in? && user_review.present? && user_review.user_id == current_user.id
       related = if product.store_category_id
-                  product.category.products.available.where.not(id: product.id).order(created_at: :desc).limit(4)
+                  Commerce::StoreFeatures.visible_products_scope(
+                    product.category.products.available.where.not(id: product.id)
+                  ).order(created_at: :desc).limit(4)
       else
                   Commerce::Product.none
       end
@@ -268,6 +274,7 @@ module Commerce
       return redirect_to store_products_path, alert: t("mcweb.flash.sign_in_required_short") unless logged_in?
 
       product = Commerce::Product.available.find_by!(public_id: params[:id])
+      raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(product)
       result = Commerce::ReorderProduct.call(user: current_user, product: product)
 
       if result.success?
@@ -281,6 +288,7 @@ module Commerce
       return redirect_to store_products_path, alert: t("mcweb.flash.sign_in_required_short") unless logged_in?
 
       product = Commerce::Product.available.find_by!(public_id: params[:id])
+      raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(product)
       result = Commerce::EnsureProductDiscussionTopic.call(product: product, creator: current_user)
 
       if result.success?

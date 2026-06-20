@@ -42,13 +42,21 @@ module Frontend
     def asset_url(path)
       return if path.blank?
 
-      Frontend::BuildTemplateAssetUrl.call(template_key: @template.key, path: path)
+      file = Pathname(@template.installed_path).join(path.to_s)
+      cache_version = file.file? ? Digest::SHA256.file(file).hexdigest.first(12) : nil
+
+      Frontend::BuildTemplateAssetUrl.call(
+        template_key: @template.key,
+        path: path,
+        cache_version: cache_version
+      )
     end
 
     def slot_html(slots)
+      root = Pathname(@template.installed_path).cleanpath
       slots.each_with_object({}) do |(name, path), memo|
-        file = Pathname(@template.installed_path).join(path.to_s)
-        next unless file.exist? && file.to_s.start_with?(@template.installed_path)
+        file = root.join(path.to_s).cleanpath
+        next unless file.file? && Frontend::PathContainment.within_root?(file, root)
 
         raw = file.read
         sanitized = Frontend::SanitizeTemplateSlot.call(raw).value

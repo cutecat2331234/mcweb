@@ -23,11 +23,12 @@ module Community
 
         Community::ReadState.ensure_tracking!(user, @topic)
 
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: user,
           notification_type: "forum.followed_topic",
-          title: "#{@topic.user.username} 发布了新主题",
-          body: @topic.title,
+          key: "followed_user_topic",
+          author: @topic.user.username,
+          title: @topic.title,
           metadata: { path: "/app/forum/topics/#{@topic.public_id}", topic_id: @topic.public_id }
         )
 

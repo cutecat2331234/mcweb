@@ -4,11 +4,21 @@ module Identity
   class VerifyEmail < ApplicationService
     TOKEN_TTL = 24.hours
 
-    def initialize(token:)
+    def initialize(token:, ip_address: nil)
       @token = token.to_s
+      @ip_address = ip_address
     end
 
     def call
+      if @ip_address.present?
+        rate_limit_result = Administration::RateLimiter.call(
+          key: "verify_email:#{@ip_address}",
+          limit: 30,
+          window: 15.minutes
+        )
+        return ServiceResult.failure(error: "验证链接无效或已过期。") if rate_limit_result.failure?
+      end
+
       user = User.find_by(email_verification_token_digest: digest_token(@token))
       return ServiceResult.failure(error: "验证链接无效或已过期。") unless user
       return ServiceResult.failure(error: "验证链接无效或已过期。") if token_expired?(user)

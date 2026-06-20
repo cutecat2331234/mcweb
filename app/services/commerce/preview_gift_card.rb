@@ -12,14 +12,14 @@ module Commerce
 
     def call
       card = Commerce::GiftCard.find_by(code: @code)
-      return ServiceResult.failure(error: "礼品卡代码无效。") unless card
+      return ServiceResult.failure(error: "gift_card_unavailable") unless card
 
       reason = card.inapplicable_reason
-      return ServiceResult.failure(error: reason) if reason
+      return ServiceResult.failure(error: "gift_card_unavailable") if reason
 
       payable = [ @subtotal_cents - @discount_cents + @shipping_cents + @gift_wrap_cents, 0 ].max
       amount = card.applicable_amount_cents(payable)
-      return ServiceResult.failure(error: "礼品卡余额不足。") unless amount.positive?
+      return ServiceResult.failure(error: "gift_card_unavailable") unless amount.positive?
 
       ServiceResult.success(
         code: card.code,

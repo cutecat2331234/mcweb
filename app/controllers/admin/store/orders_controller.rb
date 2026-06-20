@@ -18,14 +18,14 @@ module Admin
         @pagy, orders = pagy(orders_scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "订单",
+          title: t("mcweb.admin.store.orders.title"),
           exportUrl: export_admin_store_orders_path(q: params[:q], status: params[:status]),
           statusTabs: order_status_tabs,
           columns: [
-            admin_column(:order_number, "订单号", link: true),
-            admin_column(:customer, "客户"),
-            admin_column(:status, "状态"),
-            admin_column(:total, "金额")
+            admin_column(:order_number, t("mcweb.admin.store.orders.col_order_number"), link: true),
+            admin_column(:customer, t("mcweb.admin.store.orders.col_customer")),
+            admin_column(:status, t("mcweb.admin.store.orders.col_status")),
+            admin_column(:total, t("mcweb.admin.store.orders.col_total"))
           ],
           rows: orders.map do |order|
             admin_row(
@@ -38,14 +38,14 @@ module Admin
             )
           end,
           pagination: pagy_props(@pagy),
-          selectable: current_user.permission?("store.orders.read"),
-          bulkOrderUrl: current_user.permission?("store.orders.read") ? bulk_update_admin_store_orders_path : nil,
+          selectable: current_user.permission?("store.orders.refund"),
+          bulkOrderUrl: current_user.permission?("store.orders.refund") ? bulk_update_admin_store_orders_path : nil,
           bulkOrderActions: bulk_order_actions
         }
       end
 
       def bulk_update
-        require_permission("store.orders.read")
+        require_bulk_update_permission!
         result = Commerce::BulkUpdateOrders.call(
           actor: current_user,
           order_public_ids: params[:order_ids],
@@ -54,8 +54,15 @@ module Admin
 
         destination = safe_local_path(params[:return_to]) || admin_store_orders_path
         if result.success?
-          notice = "已处理 #{result.value[:processed]} 个订单"
-          notice += "，#{result.value[:failed]} 个失败" if result.value[:failed].positive?
+          notice = if result.value[:failed].positive?
+                     t(
+                       "mcweb.admin.store.orders.bulk_processed_with_failures",
+                       processed: result.value[:processed],
+                       failed: result.value[:failed]
+                     )
+                   else
+                     t("mcweb.admin.store.orders.bulk_processed", count: result.value[:processed])
+                   end
           redirect_to destination, notice: notice
         else
           redirect_to destination, alert: result.error || t("mcweb.flash.operation_failed")
@@ -75,7 +82,13 @@ module Admin
         orders = orders_scope.limit(5000)
 
         csv = ::CSV.generate(headers: true) do |rows|
-          rows << %w[订单号 客户 状态 金额 创建时间]
+          rows << [
+            t("mcweb.admin.store.orders.export_headers.order_number"),
+            t("mcweb.admin.store.orders.export_headers.customer"),
+            t("mcweb.admin.store.orders.export_headers.status"),
+            t("mcweb.admin.store.orders.export_headers.total"),
+            t("mcweb.admin.store.orders.export_headers.created_at")
+          ]
           orders.each do |order|
             rows << [
               order.order_number,
@@ -92,69 +105,53 @@ module Admin
 
       def show
         fulfillments = @order.fulfillments.includes(:order_item)
-        payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
+        payment = @order.primary_succeeded_payment_record
 
         pending_refunds = @order.refunds.pending
         webhook_deliveries = Commerce::OrderWebhookDelivery.where(order_public_id: @order.public_id).order(created_at: :desc).limit(20)
         render inertia: "Admin/Generic/Show", props: {
-          title: "订单 #{@order.order_number}",
-          subtitle: @order.status,
-          fields: [
-            { label: "客户", value: @order.user.username },
-            { label: "小计", value: format_money(@order.subtotal_cents, @order.currency) },
-            { label: "运费", value: @order.shipping_cents.positive? ? format_money(@order.shipping_cents, @order.currency) : (@order.shipping_cents.zero? && @order.subtotal_cents.positive? ? "免运费" : "—") },
-            { label: "收货地址", value: format_shipping_address(@order.shipping_address).presence || "—" },
-            { label: "配送方式", value: Commerce::ShippingMethods.label_for(@order.shipping_method).presence || "—" },
-            { label: "物流单号", value: @order.tracking_number.presence || "—" },
-            { label: "承运商", value: @order.shipping_carrier.presence || "—" },
-            { label: "发货时间", value: @order.shipped_at ? l(@order.shipped_at, format: :long) : "—" },
-            { label: "优惠", value: @order.discount_cents.positive? ? "-#{format_money(@order.discount_cents, @order.currency)}#{@order.coupon ? " (#{@order.coupon.code})" : ""}" : "—" },
-            { label: "礼品卡", value: @order.gift_card_amount_cents.positive? ? "-#{format_money(@order.gift_card_amount_cents, @order.currency)}#{@order.gift_card ? " (#{@order.gift_card.code})" : ""}" : "—" },
-            { label: "商店余额抵扣", value: @order.store_credit_amount_cents.positive? ? "-#{format_money(@order.store_credit_amount_cents, @order.currency)}" : "—" },
-            { label: "礼品包装", value: @order.gift_wrap_cents.positive? ? format_money(@order.gift_wrap_cents, @order.currency) : "—" },
-            { label: "买家备注", value: @order.notes.presence || "—" },
-            { label: "总额", value: format_money(@order.total_cents, @order.currency) },
-            { label: "创建时间", value: l(@order.created_at, format: :long) }
-          ],
+          title: t("mcweb.admin.store.orders.show_title", number: @order.order_number),
+          subtitle: order_status_label(@order.status),
+          fields: order_detail_fields,
           sections: [
             {
-              title: "商品",
+              title: t("mcweb.admin.store.orders.section_items"),
               items: @order.items.map do |item|
                 { label: item.product_name, value: "x#{item.quantity} #{format_money(item.total_cents, @order.currency)}" }
               end
             },
             {
-              title: "发货",
+              title: t("mcweb.admin.store.orders.section_fulfillments"),
               items: fulfillments.map do |fulfillment|
-                { label: fulfillment.delivery_id, value: "#{fulfillment.status} — #{fulfillment.order_item.product_name}" }
-              end.presence || [ { label: "暂无发货记录", value: nil } ]
+                { label: fulfillment.delivery_id, value: "#{fulfillment_status_label(fulfillment.status)} — #{fulfillment.order_item.product_name}" }
+              end.presence || [ { label: t("mcweb.admin.store.orders.empty_fulfillments"), value: nil } ]
             },
             {
-              title: "退款记录",
+              title: t("mcweb.admin.store.orders.section_refunds"),
               items: @order.refunds.map do |refund|
-                { label: l(refund.created_at, format: :short), value: "#{format_money(refund.amount_cents, @order.currency)} · #{refund.status}" }
-              end.presence || [ { label: "暂无退款", value: nil } ]
+                { label: l(refund.created_at, format: :short), value: "#{format_money(refund.amount_cents, @order.currency)} · #{refund_status_label(refund.status)}" }
+              end.presence || [ { label: t("mcweb.admin.store.orders.empty_refunds"), value: nil } ]
             },
             {
-              title: "退款恢复明细",
+              title: t("mcweb.admin.store.orders.section_restorations"),
               items: serialize_order_restorations(@order).map do |item|
                 { label: item[:label], value: item[:amount_label] }
-              end.presence || [ { label: "暂无恢复记录", value: nil } ]
+              end.presence || [ { label: t("mcweb.admin.store.orders.empty_restorations"), value: nil } ]
             },
             {
-              title: "员工备注",
+              title: t("mcweb.admin.store.orders.section_staff_notes"),
               items: @order.staff_notes.includes(:author).recent.limit(10).map do |note|
                 { label: "#{note.author.username} · #{l(note.created_at, format: :short)}", value: note.body }
-              end.presence || [ { label: "暂无员工备注", value: nil } ]
+              end.presence || [ { label: t("mcweb.admin.store.orders.empty_staff_notes"), value: nil } ]
             },
             {
-              title: "Webhook 投递记录",
+              title: t("mcweb.admin.store.orders.section_webhooks"),
               items: webhook_deliveries.map do |delivery|
                 {
                   label: "#{delivery.event_type} · #{l(delivery.created_at, format: :short)}",
-                  value: "#{delivery.status} · HTTP #{delivery.response_code || '—'} · #{delivery.url.truncate(60)}"
+                  value: "#{webhook_delivery_status_label(delivery.status)} · HTTP #{delivery.response_code || t('mcweb.labels.not_available')} · #{delivery.url.truncate(60)}"
                 }
-              end.presence || [ { label: "暂无投递记录", value: nil } ]
+              end.presence || [ { label: t("mcweb.admin.store.orders.empty_webhooks"), value: nil } ]
             }
           ],
           backUrl: admin_store_orders_path,
@@ -181,6 +178,10 @@ module Admin
       end
 
       def update_shipping
+        if ActiveModel::Type::Boolean.new.cast(params[:mark_shipped]) && !current_user.permission?("store.orders.refund")
+          return redirect_to admin_store_order_path(@order), alert: t("mcweb.flash.permission_denied")
+        end
+
         result = Commerce::UpdateOrderShipping.call(
           order: @order,
           actor: current_user,
@@ -237,19 +238,21 @@ module Admin
       def refund_actions(payment)
         return [] unless payment && refundable_admin_status? && current_user.permission?("store.orders.refund")
 
+        remaining = refund_remaining_cents(payment)
+        return [] if remaining <= 0
+
         [ {
-          label: "全额退款",
+          label: t("mcweb.admin.store.orders.action_full_refund"),
           href: admin_store_order_path(@order),
           method: "patch",
-          data: { refund: true, amount_cents: payment.amount_cents }
+          data: { refund: true, amount_cents: remaining }
         } ]
       end
 
       def refund_form_props(payment)
         return nil unless payment && refundable_admin_status? && current_user.permission?("store.orders.refund")
 
-        refunded_cents = @order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
-        remaining = [ payment.amount_cents - refunded_cents, 0 ].max
+        remaining = refund_remaining_cents(payment)
         return nil if remaining <= 0
 
         {
@@ -259,40 +262,47 @@ module Admin
         }
       end
 
+      def refund_remaining_cents(payment)
+        reserved = @order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
+        [ payment.amount_cents - reserved, 0 ].max
+      end
+
       def refund_amount_cents(payment)
         cents = params[:amount_cents].to_i
         if params[:refund_id].present?
           refund = @order.refunds.find_by(id: params[:refund_id])
           cents = refund.amount_cents if refund
+          reserved = @order.refunds.where(status: %w[pending completed]).where.not(id: refund&.id).sum(:amount_cents)
+        else
+          reserved = @order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
         end
-        cents = payment.amount_cents if cents <= 0
-        refunded = @order.refunds.where(status: %w[pending completed]).where.not(id: params[:refund_id]).sum(:amount_cents)
-        remaining = payment.amount_cents - refunded
+        cents = refund_remaining_cents(payment) if cents <= 0
+        remaining = payment.amount_cents - reserved
         [ cents, remaining ].min
       end
 
       def find_existing_refund
-        return @order.refunds.find_by(id: params[:refund_id]) if params[:refund_id].present?
+        return unless params[:refund_id].present?
 
-        @order.refunds.pending.order(created_at: :asc).first
+        @order.refunds.find_by(id: params[:refund_id])
       end
 
       def pending_refund_actions(pending_refunds)
+        return [] unless current_user.permission?("store.orders.refund")
+
         pending_refunds.flat_map do |refund|
           actions = [ {
-            label: "批准退款申请 #{format_money(refund.amount_cents, @order.currency)}",
+            label: t("mcweb.admin.store.orders.action_approve_refund", amount: format_money(refund.amount_cents, @order.currency)),
             href: admin_store_order_path(@order),
             method: "patch",
             data: { refund: true, refund_id: refund.id, amount_cents: refund.amount_cents }
           } ]
-          if current_user.permission?("store.orders.refund")
-            actions << {
-              label: "拒绝退款申请",
-              href: admin_store_order_path(@order),
-              method: "patch",
-              data: { reject_refund: true, refund_id: refund.id }
-            }
-          end
+          actions << {
+            label: t("mcweb.admin.store.orders.action_reject_refund"),
+            href: admin_store_order_path(@order),
+            method: "patch",
+            data: { reject_refund: true, refund_id: refund.id }
+          }
           actions
         end
       end
@@ -313,14 +323,16 @@ module Admin
       def process_refund
         return redirect_to admin_store_order_path(@order), alert: t("mcweb.flash.permission_denied") unless current_user.permission?("store.orders.refund")
 
-        payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
+        reject_superseded_pending_refunds! if params[:refund_id].blank?
+
+        payment = @order.primary_succeeded_payment_record
         return redirect_to admin_store_order_path(@order), alert: t("mcweb.flash.no_refundable_payment") unless payment
 
         result = Commerce::ProcessRefund.call(
           order: @order,
           payment_record: payment,
           amount_cents: refund_amount_cents(payment),
-          reason: params[:reason].presence || "Admin refund",
+          reason: params[:reason].presence || t("mcweb.admin.store.orders.admin_refund_reason"),
           approved_by: current_user,
           existing_refund: find_existing_refund
         )
@@ -333,18 +345,12 @@ module Admin
       end
 
       def shipping_actions
-        return [] unless current_user.permission?("store.orders.read")
-
-        [ {
-          label: @order.shipped_at.present? ? "更新物流" : "标记发货",
-          href: admin_store_order_path(@order),
-          method: "patch",
-          data: { shipping: true }
-        } ]
+        []
       end
 
       def shipping_form_props
-        return nil unless current_user.permission?("store.orders.read")
+        return nil unless Commerce::StoreFeatures.enabled?(:order_shipping_management)
+        return nil unless current_user.permission?("store.orders.refund")
 
         {
           action_url: admin_store_order_path(@order),
@@ -354,16 +360,72 @@ module Admin
         }
       end
 
+      def order_detail_fields
+        fields = [
+          { label: t("mcweb.admin.store.orders.field_customer"), value: @order.user.username },
+          { label: t("mcweb.admin.store.orders.field_subtotal"), value: format_money(@order.subtotal_cents, @order.currency) }
+        ]
+
+        if Commerce::StoreFeatures.enabled?(:shipping)
+          fields << {
+            label: t("mcweb.admin.store.orders.field_shipping"),
+            value: @order.shipping_cents.positive? ? format_money(@order.shipping_cents, @order.currency) : (@order.shipping_cents.zero? && @order.subtotal_cents.positive? ? t("mcweb.admin.store.orders.field_shipping_free") : t("mcweb.labels.not_available"))
+          }
+          fields << { label: t("mcweb.admin.store.orders.field_shipping_address"), value: format_shipping_address(@order.shipping_address).presence || t("mcweb.labels.not_available") }
+          fields << { label: t("mcweb.admin.store.orders.field_shipping_method"), value: Commerce::ShippingMethods.label_for(@order.shipping_method).presence || t("mcweb.labels.not_available") }
+        end
+
+        if Commerce::StoreFeatures.enabled?(:order_shipping_management)
+          fields << { label: t("mcweb.admin.store.orders.field_tracking_number"), value: @order.tracking_number.presence || t("mcweb.labels.not_available") }
+          fields << { label: t("mcweb.admin.store.orders.field_carrier"), value: @order.shipping_carrier.presence || t("mcweb.labels.not_available") }
+          fields << { label: t("mcweb.admin.store.orders.field_shipped_at"), value: @order.shipped_at ? l(@order.shipped_at, format: :long) : t("mcweb.labels.not_available") }
+        end
+
+        fields << { label: t("mcweb.admin.store.orders.field_discount"), value: @order.discount_cents.positive? ? "-#{format_money(@order.discount_cents, @order.currency)}#{@order.coupon ? " (#{@order.coupon.code})" : ""}" : t("mcweb.labels.not_available") }
+        fields << { label: t("mcweb.admin.store.orders.field_gift_card"), value: @order.gift_card_amount_cents.positive? ? "-#{format_money(@order.gift_card_amount_cents, @order.currency)}#{@order.gift_card ? " (#{@order.gift_card.code})" : ""}" : t("mcweb.labels.not_available") }
+        fields << { label: t("mcweb.admin.store.orders.field_store_credit"), value: @order.store_credit_amount_cents.positive? ? "-#{format_money(@order.store_credit_amount_cents, @order.currency)}" : t("mcweb.labels.not_available") }
+
+        if Commerce::StoreFeatures.enabled?(:gift_wrap)
+          fields << { label: t("mcweb.admin.store.orders.field_gift_wrap"), value: @order.gift_wrap_cents.positive? ? format_money(@order.gift_wrap_cents, @order.currency) : t("mcweb.labels.not_available") }
+        end
+
+        fields << { label: t("mcweb.admin.store.orders.field_buyer_notes"), value: @order.notes.presence || t("mcweb.labels.not_available") }
+        fields << { label: t("mcweb.admin.store.orders.field_total"), value: format_money(@order.total_cents, @order.currency) }
+        fields << { label: t("mcweb.admin.store.orders.field_created_at"), value: l(@order.created_at, format: :long) }
+        fields
+      end
+
       def refundable_admin_status?
         %w[paid fulfilled completed].include?(@order.status)
       end
 
       def bulk_order_actions
         actions = []
-        actions << { label: "批量取消待支付", action: "cancel_pending" } if current_user.permission?("store.orders.read")
-        actions << { label: "批量标记已支付", action: "mark_paid" } if current_user.permission?("store.orders.read")
-        actions << { label: "批量标记发货完成", action: "mark_fulfilled" } if current_user.permission?("store.orders.read")
+        if current_user.permission?("store.orders.refund")
+          actions << { label: t("mcweb.admin.store.orders.bulk_cancel_pending"), action: "cancel_pending" }
+          actions << { label: t("mcweb.admin.store.orders.bulk_mark_paid"), action: "mark_paid" }
+          actions << { label: t("mcweb.admin.store.orders.bulk_mark_fulfilled"), action: "mark_fulfilled" }
+        end
         actions
+      end
+
+      def require_bulk_update_permission!
+        action = params[:action_type].to_s
+        if %w[mark_paid mark_fulfilled cancel_pending].include?(action)
+          require_permission("store.orders.refund")
+        else
+          require_permission("store.orders.read")
+        end
+      end
+
+      def reject_superseded_pending_refunds!
+        @order.refunds.pending.find_each do |refund|
+          Commerce::RejectRefund.call(
+            refund: refund,
+            actor: current_user,
+            reason: t("mcweb.admin.store.orders.superseded_refund_reason")
+          )
+        end
       end
 
       def order_status_tabs
@@ -373,7 +435,7 @@ module Admin
         total = counts.values.sum
 
         tabs = [ {
-          label: "全部",
+          label: t("mcweb.admin.store.orders.filter_all"),
           href: admin_store_orders_path(base_params),
           active: current.blank?,
           count: total
@@ -399,10 +461,6 @@ module Admin
           scope = scope.where("order_number ILIKE ?", q)
         end
         scope
-      end
-
-      def order_status_label(status)
-        I18n.t("mcweb.labels.order_status.#{status}", default: status.to_s.humanize)
       end
 
       def order_status_labels

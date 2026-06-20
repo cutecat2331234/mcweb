@@ -13,11 +13,13 @@ module Commerce
 
     def call
       balance = @user.store_credit_cents.to_i
+      available = @user.available_store_credit_cents
       payable = [ @subtotal_cents - @discount_cents + @shipping_cents + @gift_wrap_cents - @gift_card_amount_cents, 0 ].max
-      amount = [ payable, balance ].min
+      amount = [ payable, available ].min
 
       ServiceResult.success(
         balance_cents: balance,
+        available_balance_cents: available,
         store_credit_amount_cents: amount,
         total_cents: payable - amount
       )

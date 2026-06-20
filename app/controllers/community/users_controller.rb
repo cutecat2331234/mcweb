@@ -18,8 +18,11 @@ module Community
           granted_at: l(ub.granted_at, format: :short)
         }
       end
+      memberships = Commerce::SerializeUserMemberships.for_user(user, limit: 3)
       likes_received = Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count
       following = logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user)
+      ingame = Minecraft::IngameStatusForUser.call(user: user)
+      ingame_data = ingame.success? ? ingame.value : {}
 
       render json: {
         username: user.username,
@@ -35,9 +38,13 @@ module Community
         last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
         online: user.last_seen_at.present? && user.last_seen_at > 5.minutes.ago,
         badges: badges,
+        memberships: memberships,
         message_url: (logged_in? && current_user.id != user.id && Community::TrustLevel.can_send_pm?(current_user)) ? new_forum_conversation_path(to: user.username) : nil,
         follow_url: (logged_in? && current_user.id != user.id) ? forum_user_follow_path(user.username) : nil,
-        following: following
+        following: following,
+        ingame_online: ingame_data[:ingame_online] == true,
+        ingame_server: ingame_data[:ingame_server],
+        last_seen_ingame_at: ingame_data[:last_seen_ingame_at]
       }
     end
 
@@ -48,24 +55,25 @@ module Community
                        Community::Topic.where(user: user, status: :published)
       else
                        Community::Topic.where(user: user, status: :published, unlisted: false)
-      end.order(created_at: :desc)
+      end.merge(Community::Topic.accessible_by(current_user)).order(created_at: :desc)
       posts_scope = Community::Post.where(user: user, status: :published).joins(:topic)
       posts_scope = if logged_in? && (current_user.id == user.id || current_user.permission?("forum.topics.lock"))
                       posts_scope.where(forum_topics: { status: :published })
       else
                       posts_scope.where(forum_topics: { status: :published, unlisted: false })
       end
+      posts_scope = posts_scope.merge(Community::Topic.accessible_by(current_user))
       posts_scope = posts_scope.includes(:topic).order(created_at: :desc)
       posts_count = posts_scope.count
       @pagy_topics, topics = pagy(preload_topics(topics_scope), limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
       @pagy_posts, posts = pagy(posts_scope, limit: 20, page: [ params[:posts_page].to_i, 1 ].max)
-      assigned_scope = Community::Topic.published_listed.where(assigned_to: user).order(last_posted_at: :desc)
+      assigned_scope = Community::Topic.published_listed.accessible_by(current_user).where(assigned_to: user).order(last_posted_at: :desc)
       @pagy_assigned, assigned_topics = pagy(preload_topics(assigned_scope), limit: 20, page: [ params[:assigned_page].to_i, 1 ].max)
       trust = Community::TrustLevel.level_info(user)
       progress = Community::TrustLevel.progress_for(user)
       liked_rows = Community::Post.where(user: user, status: :published)
         .joins(:topic)
-        .where(forum_topics: { status: :published, unlisted: false })
+        .merge(Community::Topic.where(status: :published, unlisted: false).accessible_by(current_user))
         .joins(:reactions)
         .group("forum_posts.id")
         .order(Arel.sql("COUNT(forum_reactions.id) DESC"))
@@ -155,7 +163,9 @@ module Community
             reason: warning.reason,
             points: warning.points,
             issuer: warning.issuer.username,
-            created_at: l(warning.created_at, format: :short)
+            created_at: l(warning.created_at, format: :short),
+            expires_at: warning.expires_at ? l(warning.expires_at, format: :short) : nil,
+            expired: warning.expired?
           }
         end : [],
         badges: user.user_badges.includes(:badge).order(granted_at: :desc).map do |ub|
@@ -191,9 +201,11 @@ module Community
         account_type: account_type_label(user.account_type),
         role_names: user.roles.order(:name).pluck(:name),
         game_permission_groups: serialize_game_permission_groups(user),
+        memberships: Commerce::SerializeUserMemberships.for_user(user),
         minecraft: serialize_minecraft_profile(user),
         skin_mode: SiteSetting.get("minecraft.profile.skin_mode", "2d"),
-        profile_sections: SiteSetting.get("minecraft.profile.sections", "minecraft,trust,roles,game_groups").to_s.split(",").map(&:strip).reject(&:blank?)
+        profile_sections: SiteSetting.get("minecraft.profile.sections", "minecraft,trust,roles,game_groups").to_s.split(",").map(&:strip).reject(&:blank?),
+        custom_fields: Community::SerializeUserFields.for(user: user, viewer: current_user)
       }
     end
 
@@ -218,6 +230,15 @@ module Community
       end
 
       if user.update(user_params)
+        field_result = Community::SyncUserFieldValues.call(
+          user: user,
+          values: params[:user_fields].present? ? params[:user_fields].to_unsafe_h : {},
+          context: :profile
+        )
+        unless field_result.success?
+          redirect_to forum_user_path(user.username), alert: field_result.errors.values.join(" ")
+          return
+        end
         redirect_to forum_user_path(user.username), notice: t("mcweb.flash.profile_updated")
       else
         redirect_to forum_user_path(user.username), alert: user.errors.full_messages.to_sentence
@@ -231,11 +252,11 @@ module Community
     end
 
     def attach_forum_avatar!(user, file:)
-      return "请选择图片文件。" unless file.respond_to?(:content_type)
+      return t("mcweb.services.errors.avatar_file_required") unless file.respond_to?(:content_type)
 
       allowed = %w[image/jpeg image/png image/gif image/webp]
-      return "不支持的图片格式（仅支持 JPEG、PNG、GIF、WebP）。" unless allowed.include?(file.content_type)
-      return "图片过大（最大 2MB）。" if file.size > 2.megabytes
+      return t("mcweb.services.errors.avatar_unsupported_format") unless allowed.include?(file.content_type)
+      return t("mcweb.services.errors.avatar_too_large") if file.size > 2.megabytes
 
       user.forum_avatar.attach(file)
       nil
@@ -253,9 +274,9 @@ module Community
       return nil unless mute
 
       {
-        section: mute.section&.name || "全站",
+        section: mute.section&.name || t("mcweb.forum.mute.site_wide"),
         reason: mute.reason,
-        expires_at: mute.expires_at ? l(mute.expires_at, format: :short) : "永久"
+        expires_at: mute.expires_at ? l(mute.expires_at, format: :short) : t("mcweb.forum.mute.permanent")
       }
     end
 

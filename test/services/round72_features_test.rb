@@ -177,7 +177,7 @@ end
 
 class Round72RecurringDigestJobTest < ActiveSupport::TestCase
   test "recurring config schedules saved search digest" do
-    content = File.read(Rails.root.join("config/recurring.yml"))
+    content = File.read(Rails.root.join("config/sidekiq_cron.yml"))
     assert_includes content, "saved_search_digest"
     assert_includes content, "Community::SavedSearchDigestJob"
   end

@@ -59,7 +59,7 @@ class Community::FetchLinkPreviewTest < ActiveSupport::TestCase
   test "rejects unsafe urls without fetching" do
     result = Community::FetchLinkPreview.call(url: "http://127.0.0.1/admin")
     assert result.failure?
-    assert_equal "Invalid URL.", result.error
+    assert_equal I18n.t("mcweb.services.errors.invalid_url"), result.error
   end
 
   test "scrape_preview returns nil for unsafe urls" do

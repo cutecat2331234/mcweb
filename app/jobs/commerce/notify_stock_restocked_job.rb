@@ -22,8 +22,16 @@ module Commerce
           Notification.notify!(
             user: user,
             notification_type: "commerce.stock_restocked",
-            title: "商品已补货",
-            body: "#{product.name}#{alert.variant ? "（#{alert.variant.name}）" : ""} 已有货，可以购买了。",
+            title: Commerce::InAppNotification.t("stock_restocked.title", product: product.name),
+            body: if alert.variant
+                    Commerce::InAppNotification.t(
+                      "stock_restocked_variant.body",
+                      product: product.name,
+                      variant: alert.variant.name
+                    )
+                  else
+                    Commerce::InAppNotification.t("stock_restocked.body", product: product.name)
+                  end,
             metadata: {
               path: "/app/store/products/#{product.public_id}",
               product_id: product.public_id,

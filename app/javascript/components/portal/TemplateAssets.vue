@@ -2,6 +2,14 @@
 import { watchEffect } from 'vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
 
+withDefaults(
+  defineProps<{
+    /** 门户布局由 PortalLayout 控制样式，默认不注入模板 CSS，避免 website 主题覆盖顶栏 */
+    includeCss?: boolean
+  }>(),
+  { includeCss: true },
+)
+
 const { activeTemplate } = useActiveTemplate()
 
 watchEffect(() => {
@@ -19,7 +27,7 @@ watchEffect(() => {
 </script>
 
 <template>
-  <template v-if="activeTemplate?.cssUrls?.length">
+  <template v-if="includeCss && activeTemplate?.cssUrls?.length">
     <link
       v-for="(href, index) in activeTemplate.cssUrls"
       :key="`${activeTemplate.key}-${index}`"

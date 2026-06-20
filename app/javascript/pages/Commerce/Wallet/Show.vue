@@ -13,6 +13,14 @@ const { t } = useI18n()
 defineProps<{
   balanceCents: number
   balanceLabel: string
+  memberships?: Array<{
+    slug: string
+    name: string
+    color?: string | null
+    icon?: string | null
+    expires_label?: string
+    permanent?: boolean
+  }>
   transactions: Array<{
     amount_cents: number
     amount_label: string
@@ -30,6 +38,22 @@ defineProps<{
   <p class="mb-6 text-sm text-muted-foreground">
     {{ t('commerce.wallet.description') }}
   </p>
+
+  <div v-if="memberships != null" class="mb-6 max-w-2xl rounded-lg border p-4">
+    <h2 class="mb-3 text-sm font-semibold">{{ t('commerce.wallet.myMemberships') }}</h2>
+    <div v-if="memberships.length" class="flex flex-wrap gap-2">
+      <Badge
+        v-for="membership in memberships"
+        :key="membership.slug"
+        variant="outline"
+        :style="membership.color ? { borderColor: membership.color, color: membership.color } : undefined"
+      >
+        {{ membership.icon }} {{ membership.name }}
+        <span class="text-muted-foreground">· {{ membership.permanent ? t('commerce.memberships.permanent') : membership.expires_label }}</span>
+      </Badge>
+    </div>
+    <p v-else class="text-sm text-muted-foreground">{{ t('commerce.wallet.noMemberships') }}</p>
+  </div>
 
   <div class="mb-4 flex gap-3 text-sm">
     <Link :href="routes.storeCheckout" class="text-primary hover:underline">{{ t('commerce.wallet.checkout') }}</Link>

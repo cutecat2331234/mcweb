@@ -21,7 +21,7 @@ module Community
       new_topic = nil
       Community::Topic.transaction do
         posts_to_move = @topic.posts.where("floor_number >= ?", @post.floor_number).order(:floor_number)
-        split_title = @title || "拆分自：#{@topic.title}".truncate(120)
+        split_title = @title || I18n.t("mcweb.forum.split_topic.default_title", title: @topic.title).truncate(120)
         target_section = @section || @topic.section
 
         new_topic = Community::Topic.create!(

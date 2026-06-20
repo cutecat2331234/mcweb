@@ -16,10 +16,10 @@ module Community
     def chips
       items = []
       if @category.present? && @category != "all"
-        label = @category == "commerce" ? "商城" : "论坛"
+        label = @category == "commerce" ? I18n.t("mcweb.forum.notifications.category_commerce") : I18n.t("mcweb.forum.notifications.category_forum")
         items << { param: "category", label: label, value: @category }
       end
-      items << { param: "read", label: "仅未读", value: "unread" } if @read == "unread"
+      items << { param: "read", label: I18n.t("mcweb.forum.notifications.unread_only"), value: "unread" } if @read == "unread"
       items << { param: "period", label: period_label(@period), value: @period } if @period.present?
       if @type.present?
         items << { param: "type", label: NotificationTypeLabels.label_for(@type), value: @type }
@@ -30,14 +30,7 @@ module Community
   private
 
     def period_label(period)
-      case period
-      when "today" then "仅今日"
-      when "this_week" then "本周"
-      when "this_month" then "本月"
-      when "last_month" then "上月"
-      when "last_year" then "去年"
-      else period
-      end
+      I18n.t("mcweb.forum.notifications.periods.#{period}", default: period)
     end
   end
 end

@@ -9,29 +9,48 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Order cannot be cancelled.") unless @order.pending? || @order.awaiting_payment?
+      cancelled = false
+      previous_status = nil
 
-      previous_status = @order.status
       Commerce::Order.transaction do
-        @order.cancel! if @order.may_cancel?
+        @order.lock!
+        @order.reload
+
+        unless @order.pending? || @order.awaiting_payment?
+          next
+        end
+
+        unless @order.may_cancel?
+          next
+        end
+
+        previous_status = @order.status
+        @order.cancel!
         restore_stock!
+        restore_coupon_usage!
+        restore_gift_card_balance_if_debited!
+        restore_store_credit_if_debited!
+        cancel_pending_payments!
+        cancelled = true
       end
 
-      Commerce::OrderEvent.create!(
-        order: @order,
-        actor: @actor || @order.user,
-        event_type: "cancelled",
-        metadata: { reason: @reason }.compact
-      ) if @reason.present?
+      return ServiceResult.failure(error: "order_cannot_cancel") unless cancelled
+
+      if @reason.present?
+        cancel_event = @order.events.where(event_type: "cancel").order(created_at: :desc).first
+        cancel_event&.update!(
+          actor: @actor || @order.user,
+          metadata: (cancel_event.metadata || {}).merge("reason" => @reason)
+        )
+      end
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_cancelled", "deliver_now", args: [ @order.id ])
 
-      Commerce::NotifyOrderEvent.call(
+      Commerce::InAppNotification.order_event(
         user: @order.user,
         notification_type: "commerce.order_cancelled",
-        title: "订单已取消",
-        body: "订单 #{@order.order_number} 已取消。",
-        path: "/app/store/orders/#{@order.public_id}"
+        key: "order_cancelled",
+        order: @order
       )
 
       Commerce::DispatchOrderWebhook.call(
@@ -42,12 +61,9 @@ module Commerce
         extra: { cancel_reason: @reason }
       )
 
-      restore_coupon_usage!
-      cancel_pending_payments!
-
       ServiceResult.success(@order)
-    rescue ActiveRecord::RecordInvalid, AASM::InvalidTransition => e
-      ServiceResult.failure(error: e.message)
+    rescue ActiveRecord::RecordInvalid, AASM::InvalidTransition
+      ServiceResult.failure(error: "order_cannot_cancel")
     end
 
     private
@@ -73,7 +89,21 @@ module Commerce
     end
 
     def cancel_pending_payments!
-      @order.payment_records.where(status: "pending").update_all(status: "failed", updated_at: Time.current)
+      @order.payment_records.where(status: %w[pending processing]).update_all(status: "failed", updated_at: Time.current)
+    end
+
+    def restore_gift_card_balance_if_debited!
+      card = @order.gift_card
+      return unless card
+      return unless card.transactions.exists?(order: @order, transaction_type: :debit)
+
+      Commerce::RestoreGiftCardBalance.call(order: @order)
+    end
+
+    def restore_store_credit_if_debited!
+      return unless Commerce::StoreCreditTransaction.where(order: @order).where("amount_cents < 0").exists?
+
+      Commerce::RestoreStoreCredit.call(order: @order)
     end
   end
 end

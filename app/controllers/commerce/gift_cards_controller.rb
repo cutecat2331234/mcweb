@@ -2,6 +2,8 @@
 
 module Commerce
   class GiftCardsController < ApplicationController
+    include Commerce::CodePreviewRateLimitable
+
     before_action :require_login, only: %i[index apply]
 
     def index
@@ -18,34 +20,40 @@ module Commerce
       code = params[:code].to_s.strip.upcase
       card = Commerce::GiftCard.find_by(code: code)
 
-      unless card
+      if card && gift_card_owner?(card)
         return render inertia: "Commerce/GiftCards/Show", props: {
-          gift_card: nil,
+          gift_card: serialize_gift_card_detail(card, for_owner: true),
           code: code,
-          loggedIn: logged_in?
+          loggedIn: logged_in?,
+          applyUrl: store_apply_gift_card_path(code: card.code)
         }
       end
 
-      render inertia: "Commerce/GiftCards/Show", props: {
-        gift_card: serialize_gift_card_detail(card, for_owner: gift_card_owner?(card)),
-        code: code,
-        loggedIn: logged_in?,
-        applyUrl: store_apply_gift_card_path(code: card.code)
-      }
+      render inertia: "Commerce/GiftCards/Show", props: public_gift_card_props(code)
     end
 
     def apply
-      code = params[:code].to_s.strip.upcase
-      card = Commerce::GiftCard.find_by(code: code)
-      return redirect_to store_gift_card_path(code), alert: t("mcweb.flash.gift_card_invalid") unless card
-
-      claim = Commerce::ClaimGiftCard.call(user: current_user, gift_card: card)
-      unless claim.success?
-        return redirect_to store_gift_card_path(code), alert: service_error_message(claim)
+      return redirect_to identity_sign_in_path, alert: t("mcweb.flash.sign_in_required_short") unless logged_in?
+      if apply_code_rate_limited?
+        return redirect_to store_cart_path, alert: t("mcweb.flash.rate_limited", default: "操作过于频繁，请稍后再试。")
       end
 
-      session[:pending_gift_card_code] = card.code
-      redirect_to store_cart_path, notice: t("mcweb.flash.gift_card_saved", code: card.code)
+      code = params[:code].to_s.strip.upcase
+      card = Commerce::GiftCard.find_by(code: code)
+
+      unless card&.redeemable?
+        return redirect_to store_cart_path, alert: service_error_message(
+          ServiceResult.failure(error: "gift_card_unavailable")
+        )
+      end
+
+      claim = Commerce::ClaimGiftCard.call(user: current_user, gift_card: card)
+      if claim.success?
+        session[:pending_gift_card_code] = card.code
+        redirect_to store_cart_path, notice: t("mcweb.flash.gift_card_updated")
+      else
+        redirect_to store_cart_path, alert: service_error_message(claim)
+      end
     end
 
     private
@@ -78,21 +86,35 @@ module Commerce
     end
 
     def gift_card_owner?(card)
-      logged_in? && card.owner_user_id == current_user.id
+      card && logged_in? && card.owner_user_id == current_user.id
+    end
+
+    def public_gift_card_props(code)
+      {
+        gift_card: {
+          code: code,
+          redeemable: false,
+          status_label: t("mcweb.labels.gift_card_public_status.unavailable"),
+          owned: false
+        },
+        code: code,
+        loggedIn: logged_in?,
+        applyUrl: logged_in? ? store_apply_gift_card_path(code: code) : nil
+      }
     end
 
     def public_card_status_label(card)
-      return "已绑定" if card.owner_user_id.present?
+      return t("mcweb.labels.gift_card_public_status.claimed") if card.owner_user_id.present?
 
-      card.redeemable? ? "可领取" : card_status_label(card)
+      card.redeemable? ? t("mcweb.labels.gift_card_public_status.redeemable") : card_status_label(card)
     end
 
     def card_status_label(card)
-      return "已停用" unless card.active?
-      return "已过期" if card.expired?
-      return "余额为零" unless card.balance_cents.positive?
+      return t("mcweb.labels.gift_card_public_status.inactive") unless card.active?
+      return t("mcweb.labels.gift_card_public_status.expired") if card.expired?
+      return t("mcweb.labels.gift_card_public_status.zero_balance") unless card.balance_cents.positive?
 
-      "可用"
+      t("mcweb.labels.gift_card_public_status.available")
     end
   end
 end

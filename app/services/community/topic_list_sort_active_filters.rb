@@ -2,16 +2,6 @@
 
 module Community
   class TopicListSortActiveFilters
-    LABELS = {
-      "activity" => "最近活跃",
-      "hot" => "热门",
-      "newest" => "最新发布",
-      "replies" => "最多回复",
-      "views" => "最多浏览",
-      "latest" => "最新回复",
-      "unread" => "未读最多"
-    }.freeze
-
     def self.call(sort:, default: "activity")
       new(sort: sort, default: default).chips
     end
@@ -24,8 +14,8 @@ module Community
     def chips
       return [] if @sort.blank? || @sort == @default
 
-      label = LABELS[@sort] || @sort
-      [ { param: "sort", label: "排序：#{label}", value: @sort } ]
+      label = I18n.t("mcweb.forum.topic_sort.#{@sort}", default: I18n.t("mcweb.forum.topic_sort_extended.#{@sort}", default: @sort))
+      [ { param: "sort", label: I18n.t("mcweb.forum.sort_chip", label: label), value: @sort } ]
     end
   end
 end

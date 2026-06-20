@@ -2,10 +2,11 @@
 
 module Community
   class BuildSavedSearchTopicScope < ApplicationService
-    def initialize(saved_search:, since: nil)
+    def initialize(saved_search:, since: nil, public_rss: false)
       @saved_search = saved_search
       @user = saved_search.user
       @since = since
+      @public_rss = public_rss
       @stored_filters = saved_search.filters.symbolize_keys
     end
 
@@ -26,6 +27,7 @@ module Community
       scope = apply_query(scope, query) if query.present?
       scope = apply_exclusions(scope, filters[:exclude_terms])
       scope = apply_sort(scope, filters[:topic_sort])
+      scope = scope.merge(Community::Topic.accessible_by(nil)) if @public_rss
 
       ServiceResult.success(scope)
     end
@@ -67,7 +69,9 @@ module Community
     end
 
     def base_scope(filters)
-      if filters[:archived] == "archived" && forum_staff?
+      if @public_rss
+        Community::Topic.published_listed
+      elsif filters[:archived] == "archived" && forum_staff?
         Community::Topic.where(status: :published).where.not(archived_at: nil)
       elsif filters[:unlisted] == "unlisted" && forum_staff?
         Community::Topic.where(status: :published, unlisted: true)
@@ -138,6 +142,8 @@ module Community
     end
 
     def apply_user_scope(scope, filters)
+      return scope if @public_rss
+
       if filters[:mine] == "mine"
         return scope.where(user_id: @user.id)
       end

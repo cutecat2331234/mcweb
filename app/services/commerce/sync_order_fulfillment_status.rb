@@ -7,54 +7,55 @@ module Commerce
     end
 
     def call
-      return ServiceResult.success(@order) if @order.completed?
+      Commerce::Order.transaction do
+        @order = Commerce::Order.lock.find(@order.id)
+        return ServiceResult.success(@order) if @order.completed?
 
-      item_count = @order.items.count
-      return ServiceResult.success(@order) if item_count.zero?
+        return ServiceResult.success(@order) unless all_items_fulfilled?
 
-      fulfilled_count = @order.fulfillments.where(status: "fulfilled").count
-      return ServiceResult.success(@order) unless fulfilled_count >= item_count
+        was_fulfilled = @order.fulfilled?
+        previous_status = @order.status
 
-      was_fulfilled = @order.fulfilled?
-      previous_status = @order.status
+        @order.mark_fulfilled! if @order.may_mark_fulfilled?
 
-      if @order.may_mark_fulfilled?
-        @order.mark_fulfilled!
-      elsif %w[paid processing fulfilling].include?(@order.status)
-        @order.update!(status: "fulfilled")
+        if !was_fulfilled && @order.fulfilled?
+          MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_fulfilled", "deliver_now", args: [ @order.id ])
+          Commerce::InAppNotification.order_event(
+            user: @order.user,
+            notification_type: "commerce.order_fulfilled",
+            key: "order_fulfilled",
+            order: @order
+          )
+        end
+
+        if @order.fulfilled? && @order.may_complete?
+          @order.complete!
+          notify_completed! unless previous_status == "completed"
+        end
+
+        ServiceResult.success(@order)
       end
-
-      if !was_fulfilled && @order.fulfilled?
-        MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_fulfilled", "deliver_now", args: [ @order.id ])
-        Commerce::NotifyOrderEvent.call(
-          user: @order.user,
-          notification_type: "commerce.order_fulfilled",
-          title: "订单已发货",
-          body: "订单 #{@order.order_number} 商品已发货完成。",
-          path: "/app/store/orders/#{@order.public_id}"
-        )
-      end
-
-      if @order.fulfilled? && @order.may_complete?
-        @order.complete!
-        notify_completed! unless previous_status == "completed"
-      end
-
-      ServiceResult.success(@order)
     rescue AASM::InvalidTransition => e
       ServiceResult.failure(error: e.message)
     end
 
     private
 
+    def all_items_fulfilled?
+      item_ids = @order.items.pluck(:id)
+      return false if item_ids.empty?
+
+      fulfilled_item_ids = @order.fulfillments.where(status: "fulfilled").distinct.pluck(:store_order_item_id)
+      (item_ids - fulfilled_item_ids).empty?
+    end
+
     def notify_completed!
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_completed", "deliver_now", args: [ @order.id ])
-      Commerce::NotifyOrderEvent.call(
+      Commerce::InAppNotification.order_event(
         user: @order.user,
         notification_type: "commerce.order_completed",
-        title: "订单已完成",
-        body: "订单 #{@order.order_number} 已全部完成，感谢购买。",
-        path: "/app/store/orders/#{@order.public_id}"
+        key: "order_completed",
+        order: @order
       )
 
       delay_days = SiteSetting.get("store.review_request_delay_days", "3").to_i

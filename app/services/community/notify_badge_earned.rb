@@ -13,11 +13,12 @@ module Community
       return ServiceResult.success unless email_enabled || in_app_enabled
 
       if in_app_enabled
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: @user,
           notification_type: "forum.badge",
-          title: "你获得了徽章：#{@badge.name}",
-          body: @badge.description.to_s.truncate(120),
+          key: "badge_earned",
+          badge: @badge.name,
+          description: @badge.description.to_s.truncate(120),
           metadata: {
             badge_slug: @badge.slug,
             path: "#{Mcweb::Paths::APP_PREFIX}/forum/badges/#{@badge.slug}"

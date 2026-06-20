@@ -11,7 +11,8 @@ module Community
       result = Community::SaveReplyDraft.call(
         user: current_user,
         topic: @topic,
-        body: params[:body]
+        body: reply_draft_params[:body],
+        attachment_ids: reply_draft_params[:attachment_ids]
       )
 
       if result.success?
@@ -31,6 +32,13 @@ module Community
     def set_topic
       @topic = Community::Topic.find_by!(public_id: params[:topic_id])
       ensure_topic_visible!(@topic)
+    end
+
+    def reply_draft_params
+      {
+        body: params[:body],
+        attachment_ids: params[:attachment_ids]
+      }
     end
   end
 end

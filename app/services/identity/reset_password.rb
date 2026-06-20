@@ -4,10 +4,11 @@ module Identity
   class ResetPassword < ApplicationService
     TOKEN_TTL = 1.hour
 
-    def initialize(email: nil, token: nil, new_password: nil)
+    def initialize(email: nil, token: nil, new_password: nil, ip_address: nil)
       @email = email&.to_s&.strip&.downcase
       @token = token
       @new_password = new_password
+      @ip_address = ip_address
     end
 
     def call
@@ -23,6 +24,13 @@ module Identity
     private
 
     def request_reset
+      rate_limit_result = Administration::RateLimiter.call(
+        key: "password_reset:email:#{@email}:#{@ip_address}",
+        limit: 5,
+        window: 1.hour
+      )
+      return ServiceResult.success(message: "If the email exists, a reset link has been sent.") if rate_limit_result.failure?
+
       user = User.find_by(email: @email)
       return ServiceResult.success(message: "If the email exists, a reset link has been sent.") unless user
 
@@ -49,6 +57,13 @@ module Identity
     end
 
     def complete_reset
+      rate_limit_result = Administration::RateLimiter.call(
+        key: "password_reset_complete:#{@ip_address}",
+        limit: 20,
+        window: 15.minutes
+      )
+      return ServiceResult.failure(error: "操作过于频繁，请稍后再试。") if rate_limit_result.failure?
+
       user = User.find_by(password_reset_token_digest: digest_token(@token))
       return ServiceResult.failure(error: "重置链接无效或已过期。") unless user
       return ServiceResult.failure(error: "重置链接已过期。") if token_expired?(user)

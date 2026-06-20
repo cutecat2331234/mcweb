@@ -128,4 +128,10 @@
   .portal-themed main .page-header {
     background: transparent;
   }
+
+  .portal-themed header.portal-header {
+    background-color: var(--sidebar) !important;
+    color: var(--sidebar-foreground) !important;
+    backdrop-filter: none !important;
+  }
 }

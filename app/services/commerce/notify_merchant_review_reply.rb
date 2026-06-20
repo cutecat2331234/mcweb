@@ -14,8 +14,8 @@ module Commerce
       Commerce::NotifyOrderEvent.call(
         user: user,
         notification_type: "commerce.merchant_review_reply",
-        title: "商家回复了你的评价",
-        body: "「#{product.name}」的评价收到商家回复。",
+        title: Commerce::InAppNotification.t("merchant_review_reply.title"),
+        body: Commerce::InAppNotification.t("merchant_review_reply.body", product: product.name),
         path: path
       )
 

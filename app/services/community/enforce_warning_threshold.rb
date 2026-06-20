@@ -14,14 +14,14 @@ module Community
       total = Community::UserWarning.total_points_for(@user)
       return ServiceResult.success(skipped: true) if total < threshold
       return ServiceResult.success(skipped: true) if Community::Mute.muted?(@user)
-      return ServiceResult.failure(error: "无法执行自动禁言。") unless @actor
+      return ServiceResult.failure(error: "auto_silence_failed") unless @actor
 
       expires_at = SiteSetting.get("forum.warning_mute_days", "7").to_i
       expires_at = expires_at.positive? ? expires_at.days.from_now : nil
 
       Community::Mute.create!(
         user: @user,
-        reason: "警告积分达到 #{total} 点（阈值 #{threshold}）",
+        reason: I18n.t("mcweb.forum.enforce_warning.reason", total: total, threshold: threshold),
         expires_at: expires_at,
         created_by: @actor
       )

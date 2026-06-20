@@ -33,7 +33,6 @@ module Payments
     end
 
     def process_refund(refund)
-      refund.update!(status: "completed") if refund.status == "pending"
       ServiceResult.success(refund)
     end
 
@@ -43,7 +42,9 @@ module Payments
       secret = Rails.application.credentials.dig(:payments, :fake, :webhook_secret)
       return secret if secret.present?
 
-      "fake_webhook_secret" unless Rails.env.production?
+      return "fake_webhook_secret" if Rails.env.development? || Rails.env.test?
+
+      nil
     end
   end
 end

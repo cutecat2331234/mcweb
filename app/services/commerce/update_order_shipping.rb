@@ -11,24 +11,31 @@ module Commerce
     end
 
     def call
+      unless Commerce::StoreFeatures.enabled?(:order_shipping_management)
+        return ServiceResult.failure(error: "shipping_management_disabled")
+      end
+
       return ServiceResult.failure(error: "Order has no shippable items.") unless order_requires_tracking?
 
       was_shipped = @order.shipped_at.present?
+      previous_status = @order.status
       attrs = {}
       attrs[:tracking_number] = @tracking_number if @tracking_number
       attrs[:shipping_carrier] = @shipping_carrier if @shipping_carrier
-      if @mark_shipped
-        attrs[:shipped_at] = Time.current
-        attrs[:status] = "fulfilled" if %w[paid processing fulfilling].include?(@order.status)
-      end
+      attrs[:shipped_at] = Time.current if @mark_shipped
 
       @order.update!(attrs) if attrs.any?
 
       if @mark_shipped && !was_shipped
+        ensure_physical_fulfillments_fulfilled!
+        @order.mark_fulfilled! if @order.may_mark_fulfilled?
+        Commerce::SyncOrderFulfillmentStatus.call(order: @order.reload)
+        @order.reload
+
         Commerce::OrderEvent.create!(
           order: @order,
           event_type: "shipped",
-          from_status: @order.status,
+          from_status: previous_status,
           to_status: @order.status,
           actor: @actor,
           metadata: { tracking_number: @order.tracking_number, shipping_carrier: @order.shipping_carrier }
@@ -44,12 +51,13 @@ module Commerce
           }
         )
         MailDeliveryJob.perform_later("Commerce::OrderMailer", "order_shipped", "deliver_now", args: [ @order.id ])
-        Commerce::NotifyOrderEvent.call(
+        Commerce::InAppNotification.order_event(
           user: @order.user,
           notification_type: "commerce.order_shipped",
-          title: "订单已发货",
-          body: tracking_summary,
-          path: "/app/store/orders/#{@order.public_id}"
+          key: "order_shipped",
+          order: @order,
+          path: "/app/store/orders/#{@order.public_id}",
+          body: tracking_summary
         )
       end
 
@@ -68,9 +76,32 @@ module Commerce
       end
     end
 
+    def ensure_physical_fulfillments_fulfilled!
+      @order.items.find_each do |item|
+        snapshot = item.fulfillment_snapshot || {}
+        next unless (snapshot["product_type"] || snapshot[:product_type]).to_s == "physical"
+
+        fulfillment = Commerce::Fulfillment.find_by(order_item: item)
+        unless fulfillment
+          result = Commerce::CreateFulfillment.call(order_item: item)
+          next if result.failure?
+
+          fulfillment = result.value
+        end
+
+        fulfillment.mark_fulfilled! unless fulfillment.fulfilled?
+      end
+    end
+
     def tracking_summary
-      parts = [ "订单 #{@order.order_number} 已发货。" ]
-      parts << "#{@order.shipping_carrier}：#{@order.tracking_number}" if @order.tracking_number.present?
+      parts = [ Commerce::InAppNotification.t("order_shipped.body", number: @order.order_number) ]
+      if @order.tracking_number.present?
+        parts << Commerce::InAppNotification.t(
+          "order_shipped.tracking",
+          carrier: @order.shipping_carrier,
+          tracking_number: @order.tracking_number
+        )
+      end
       parts.join(" ")
     end
   end

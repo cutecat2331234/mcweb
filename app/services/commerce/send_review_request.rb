@@ -15,12 +15,11 @@ module Commerce
 
       @order.update!(review_request_sent_at: Time.current)
 
-      Commerce::NotifyOrderEvent.call(
+      Commerce::InAppNotification.order_event(
         user: @order.user,
         notification_type: "commerce.review_request",
-        title: "邀请你评价已购商品",
-        body: "订单 #{@order.order_number} 已完成，欢迎分享购买体验。",
-        path: "#{Mcweb::Paths::APP_PREFIX}/store/orders/#{@order.public_id}"
+        key: "review_request",
+        order: @order
       )
 
       if NotificationPreference.enabled?(@order.user, channel: "email", notification_type: "commerce.review_request")

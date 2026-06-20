@@ -10,11 +10,31 @@ class HealthController < ApplicationController
 
   def ready
     result = Operations::HealthChecker.call
+    healthy = result.success? && result.value[:status] == "ok"
 
-    if result.success? && result.value[:status] == "ok"
-      render json: result.value
+    if detailed_health_check_allowed?
+      render json: result.value, status: healthy ? :ok : :service_unavailable
     else
-      render json: result.value || { status: "degraded" }, status: :service_unavailable
+      render json: { status: healthy ? "ok" : "degraded" }, status: healthy ? :ok : :service_unavailable
     end
+  end
+
+  private
+
+  def detailed_health_check_allowed?
+    return true if Rails.env.local?
+
+    token = health_check_token
+    return false if token.blank?
+
+    ActiveSupport::SecurityUtils.secure_compare(
+      request.headers["X-Health-Token"].to_s,
+      token
+    )
+  end
+
+  def health_check_token
+    Mcweb::LocalConfig.load["health_check_token"].presence ||
+      Rails.application.credentials.dig(:health, :token).to_s.presence
   end
 end

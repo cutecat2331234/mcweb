@@ -6,7 +6,7 @@ module Community
 
     before_action :require_login, except: %i[raw edits]
     before_action :set_topic, only: :create
-    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit raw restore fork_topic]
+    before_action :set_post, only: %i[update destroy toggle_reaction toggle_bookmark moderate edits restore_edit raw restore fork_topic approve reject]
 
     def create
       result = Community::CreatePost.call(
@@ -16,23 +16,30 @@ module Community
         quoted_post: find_quoted_post,
         parent_post: find_parent_post,
         ip_address: request.remote_ip,
-        whisper: post_params[:whisper] == "1" || post_params[:whisper] == true
+        whisper: post_params[:whisper] == "1" || post_params[:whisper] == true,
+        attachment_ids: post_params[:attachment_ids]
       )
 
       if result.success?
-        redirect_to forum_topic_path(@topic, anchor: "post-#{result.value.id}")
+        notice = result.value.status == "pending_approval" ? t("mcweb.flash.post_pending_submitted") : nil
+        redirect_to forum_topic_path(@topic, anchor: "post-#{result.value.id}"), notice: notice
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
     end
 
     def update
-      result = Community::EditPost.call(
+      edit_args = {
         user: current_user,
         post: @post,
         body: post_params[:body],
         reason: post_params[:reason]
-      )
+      }
+      if params[:post].key?(:attachment_ids)
+        edit_args[:attachment_ids] = post_params[:attachment_ids]
+      end
+
+      result = Community::EditPost.call(**edit_args)
 
       if result.success?
         redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: t("mcweb.flash.post_updated")
@@ -50,10 +57,12 @@ module Community
         return redirect_to forum_topic_path(@post.topic), alert: t("mcweb.flash.cannot_delete_post")
       end
 
-      topic = @post.topic
-      @post.soft_delete!
-      Community::SyncTopicLastPost.call(topic: topic)
-      redirect_to forum_topic_path(topic), notice: t("mcweb.flash.post_deleted")
+      result = Community::DeletePost.call(actor: current_user, post: @post)
+      if result.success?
+        redirect_to forum_topic_path(@post.topic), notice: t("mcweb.flash.post_deleted")
+      else
+        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+      end
     end
 
     def toggle_reaction
@@ -91,6 +100,24 @@ module Community
 
       if result.success?
         redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: t("mcweb.flash.post_updated")
+      else
+        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+      end
+    end
+
+    def approve
+      result = Community::ApprovePost.call(actor: current_user, post: @post)
+      if result.success?
+        redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: t("mcweb.flash.post_approved")
+      else
+        redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
+      end
+    end
+
+    def reject
+      result = Community::RejectPost.call(actor: current_user, post: @post, reason: params[:reason])
+      if result.success?
+        redirect_to forum_topic_path(@post.topic), notice: t("mcweb.flash.post_rejected")
       else
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
       end
@@ -187,7 +214,9 @@ module Community
     end
 
     def post_params
-      params.require(:post).permit(:body, :quoted_post_id, :parent_post_id, :reason, :whisper)
+      permitted = params.require(:post).permit(:body, :quoted_post_id, :parent_post_id, :reason, :whisper, attachment_ids: [])
+      permitted[:attachment_ids] ||= params[:attachment_ids]
+      permitted
     end
 
     def find_quoted_post

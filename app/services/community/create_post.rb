@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 10.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, topic:, body:, quoted_post: nil, parent_post: nil, ip_address: nil, skip_interval_check: false, whisper: false)
+    def initialize(user:, topic:, body:, quoted_post: nil, parent_post: nil, ip_address: nil, skip_interval_check: false, whisper: false, attachment_ids: nil)
       @user = user
       @topic = topic
       @body = body.to_s.strip
@@ -15,6 +15,7 @@ module Community
       @ip_address = ip_address
       @skip_interval_check = skip_interval_check
       @whisper = ActiveModel::Type::Boolean.new.cast(whisper)
+      @attachment_ids = attachment_ids
     end
 
     def call
@@ -23,7 +24,7 @@ module Community
 
       return ServiceResult.failure(error: "Topic not available.") unless PollParticipation.visible?(topic: @topic, user: @user)
 
-      if @whisper && !@user.permission?("forum.topics.lock")
+      if @whisper && !can_post_whisper?
         return ServiceResult.failure(error: "You are not allowed to post staff whispers.")
       end
 
@@ -40,7 +41,7 @@ module Community
       end
 
       if Community::TopicReplyBan.active.exists?(forum_topic_id: @topic.id, user_id: @user.id)
-        return ServiceResult.failure(error: "You are banned from replying in this topic.")
+        return ServiceResult.failure(error: I18n.t("mcweb.services.errors.topic_reply_banned"))
       end
 
       if @parent_post && @parent_post.forum_topic_id != @topic.id
@@ -56,6 +57,8 @@ module Community
       end
 
       old_trust_level = Community::TrustLevel.level_for(@user)
+      needs_approval = Community::RequiresPostApproval.required_for?(user: @user, whisper: @whisper)
+      post_status = needs_approval ? "pending_approval" : "published"
       post = nil
       @topic.with_lock do
         if @topic.locked?
@@ -71,7 +74,7 @@ module Community
           body: @body,
           quoted_post: @quoted_post,
           parent_post: @parent_post,
-          status: "published",
+          status: post_status,
           post_type: @whisper ? "whisper" : "regular"
         )
       end
@@ -86,13 +89,13 @@ module Community
         ip_address: @ip_address
       )
 
-      unless @whisper
-        Community::NotifyTopicReply.call(post: post)
-        Community::NotifyFollowedUserReply.call(post: post)
-        Community::ProcessMentions.call(body: @body, author: @user, post: post, topic: @topic)
-        Community::ProcessHashtags.call(topic: @topic, body: @body, user: @user)
-        Community::NotifyPostQuoted.call(post: post, quoter: @user, quoted_post: @quoted_post) if @quoted_post
+      if needs_approval
+        Community::NotifyPendingPost.call(post: post)
+      elsif !@whisper
+        Community::PublishPostSideEffects.call(post: post)
       end
+      link_result = Community::LinkPostAttachments.call(user: @user, post: post, attachment_ids: @attachment_ids)
+      return link_result if link_result.failure?
       Community::CheckAutoBadges.call(user: @user)
       notify_trust_level_up!(old_trust_level)
 
@@ -186,6 +189,13 @@ module Community
       return if info[:level] <= old_level
 
       Community::NotifyTrustLevelUp.call(user: @user, level: info[:level], level_name: info[:name])
+    end
+
+    def can_post_whisper?
+      return true if @user.permission?("forum.topics.lock")
+      return true if Community::SectionModeration.can_moderate_topic?(user: @user, topic: @topic)
+
+      false
     end
   end
 end

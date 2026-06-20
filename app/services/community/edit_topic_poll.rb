@@ -53,9 +53,7 @@ module Community
     private
 
     def can_edit?
-      return false unless @user
-
-      @user.id == @topic.user_id || @user.permission?("forum.topics.lock")
+      Community::SectionModeration.can_edit_topic?(user: @user, topic: @topic)
     end
 
     def poll_removal_requested?(poll)

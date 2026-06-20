@@ -71,7 +71,7 @@ class Round96BulkMarkPaidNotifyTest < ActiveSupport::TestCase
   end
 
   test "bulk mark paid sends payment confirmed email" do
-    assert_enqueued_jobs 1, only: MailDeliveryJob do
+    assert_enqueued_with(job: Commerce::PostPaymentSideEffectsJob, args: [ @order.id ]) do
       result = Commerce::BulkUpdateOrders.call(
         actor: @admin,
         order_public_ids: [ @order.public_id ],
@@ -79,6 +79,11 @@ class Round96BulkMarkPaidNotifyTest < ActiveSupport::TestCase
       )
       assert result.success?
     end
+
+    assert_enqueued_jobs 1, only: MailDeliveryJob do
+      perform_enqueued_jobs(only: Commerce::PostPaymentSideEffectsJob)
+    end
+
     assert_equal "paid", @order.reload.status
     assert Notification.exists?(user: @user, notification_type: "commerce.payment_confirmed")
   end

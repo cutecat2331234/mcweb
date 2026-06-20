@@ -3,7 +3,9 @@
 module Commerce
   class SitemapsController < ApplicationController
     def index
-      products = Commerce::Product.available.order(updated_at: :desc).limit(500)
+      products = Commerce::StoreFeatures.visible_products_scope(
+        Commerce::Product.available.order(updated_at: :desc).limit(500)
+      )
       urls = products.map do |product|
         <<~XML
           <url>

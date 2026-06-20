@@ -22,6 +22,7 @@ defineProps<{
     author: string
     body: string
     status: string
+    status_key?: string
     created_at: string
     order_number?: string | null
     hide_url: string
@@ -63,7 +64,7 @@ function unhideQuestion(url: string) {
           <TableCell>{{ q.status }}</TableCell>
           <TableCell>{{ q.created_at }}</TableCell>
           <TableCell class="flex gap-2">
-            <Button v-if="q.status === 'published'" type="button" size="sm" variant="outline" @click="hideQuestion(q.hide_url)">
+            <Button v-if="q.status_key === 'published'" type="button" size="sm" variant="outline" @click="hideQuestion(q.hide_url)">
               {{ t('admin.common.hide') }}
             </Button>
             <Button v-else type="button" size="sm" variant="outline" @click="unhideQuestion(q.unhide_url)">

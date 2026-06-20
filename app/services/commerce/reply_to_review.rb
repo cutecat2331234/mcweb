@@ -9,9 +9,9 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "回复内容不能为空。") if @body.blank?
+      return ServiceResult.failure(error: "merchant_reply_blank") if @body.blank?
       unless @actor.permission?("store.products.manage") || @actor.permission?("admin.access")
-        return ServiceResult.failure(error: "无权回复评价。")
+        return ServiceResult.failure(error: "merchant_reply_unauthorized")
       end
 
       @review.update!(merchant_reply: @body, merchant_replied_at: Time.current)

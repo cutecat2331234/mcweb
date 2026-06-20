@@ -1,0 +1,12 @@
+# Copy to config/image_packs.yml to enable custom item textures on the storefront.
+# Paths point at extracted resource pack or mod asset roots on the host filesystem.
+
+packs:
+  vanilla:
+    label: Minecraft Vanilla
+    namespace: minecraft
+  japaricraft:
+    label: JapariCraft (Kemono Friends)
+    namespace: japaricraft
+    # Example: /srv/minecraft/resourcepacks/JapariCraft/assets/japaricraft/textures
+    root: /path/to/japaricraft/assets/japaricraft/textures

@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Alert from '@/components/ui/Alert.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
 import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import Select from '@/components/ui/Select.vue'
@@ -59,8 +60,20 @@ const form = useForm({
     poll_max_choices: 2,
     poll_hide_results_until_vote: false,
     scheduled_at: '',
+    attachment_ids: [] as number[],
   },
 })
+const pendingAttachments = ref<PendingAttachment[]>([])
+
+function onAttachmentUploaded(attachment: PendingAttachment) {
+  pendingAttachments.value.push(attachment)
+  form.topic.attachment_ids = pendingAttachments.value.map((item) => item.id)
+}
+
+function removePendingAttachment(id: number) {
+  pendingAttachments.value = pendingAttachments.value.filter((item) => item.id !== id)
+  form.topic.attachment_ids = pendingAttachments.value.map((item) => item.id)
+}
 
 watch(
   () => props.form_errors,
@@ -84,7 +97,10 @@ function fieldError(key: string) {
 
 const prefixOptions = computed(() => [
   ...(props.section.prefix_required ? [] : [{ value: '', label: t('forum.topics.noPrefix') }]),
-  ...(props.section.prefixes || []).map((p) => ({ value: p, label: p })),
+  ...(props.section.prefixes || []).map((p) => {
+    if (typeof p === 'string') return { value: p, label: p }
+    return { value: p.name, label: p.label || p.name }
+  }),
 ])
 
 const tagsReady = computed(() => missingRequiredGroups(form.topic.tags).length === 0)
@@ -162,6 +178,7 @@ function saveDraft() {
       poll_multiple_choice: showPoll.value ? form.topic.poll_multiple_choice : false,
       poll_max_choices: form.topic.poll_max_choices,
       poll_hide_results_until_vote: showPoll.value ? form.topic.poll_hide_results_until_vote : false,
+      attachment_ids: form.topic.attachment_ids,
     },
   })
 }
@@ -261,6 +278,19 @@ function saveDraft() {
           {{ t('forum.topics.pollHideResults') }}
         </label>
       </div>
+    </div>
+
+    <div class="space-y-2">
+      <AttachmentUploadButton @uploaded="onAttachmentUploaded" />
+      <ul v-if="pendingAttachments.length" class="space-y-1 text-sm">
+        <li class="text-xs font-medium text-muted-foreground">{{ t('components.attachmentUpload.pending') }}</li>
+        <li v-for="attachment in pendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-2 rounded border px-2 py-1">
+          <span>{{ attachment.filename }} <span class="text-muted-foreground">({{ attachment.human_size }})</span></span>
+          <button type="button" class="text-xs text-destructive hover:underline" @click="removePendingAttachment(attachment.id)">
+            {{ t('components.attachmentUpload.remove') }}
+          </button>
+        </li>
+      </ul>
     </div>
 
     <div class="space-y-2">

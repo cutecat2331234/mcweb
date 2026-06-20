@@ -24,6 +24,14 @@ class ServiceErrorTranslatorTest < ActiveSupport::TestCase
     end
   end
 
+  test "translates slug service error keys in zh-CN" do
+    I18n.with_locale("zh-CN") do
+      assert_equal "会员履约失败。", ServiceErrorTranslator.translate("membership_fulfillment_failed")
+      assert_equal "订单含需自动履约的项目（含会员商品），不可手动标记发货完成。",
+                   ServiceErrorTranslator.translate("automated_fulfillment_required")
+    end
+  end
+
   test "translates exact service errors in en" do
     I18n.with_locale(:en) do
       assert_equal "Recipient not found.", ServiceErrorTranslator.translate("Recipient not found.")

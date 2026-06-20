@@ -6,8 +6,8 @@ module Community
       @saved_search = saved_search
     end
 
-    def matching_topics(since: nil)
-      result = Community::BuildSavedSearchTopicScope.call(saved_search: @saved_search, since: since)
+    def matching_topics(since: nil, public_rss: false)
+      result = Community::BuildSavedSearchTopicScope.call(saved_search: @saved_search, since: since, public_rss: public_rss)
       result.success? ? result.value : Community::Topic.none
     end
   end

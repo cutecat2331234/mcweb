@@ -21,11 +21,13 @@ module Community
         user = follow.follower
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.followed_reply")
 
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: user,
           notification_type: "forum.followed_reply",
-          title: "#{@author.username} 回复了主题",
-          body: "#{@topic.title.truncate(60)} — #{@post.body.truncate(120)}",
+          key: "followed_user_reply",
+          author: @author.username,
+          title: @topic.title.truncate(60),
+          excerpt: @post.body.truncate(120),
           metadata: {
             topic_id: @topic.public_id,
             post_id: @post.id,

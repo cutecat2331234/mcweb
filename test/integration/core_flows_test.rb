@@ -77,4 +77,82 @@ class Payments::WebhookProcessorTest < ActiveSupport::TestCase
     assert result.success?
     assert result.value[:idempotent]
   end
+
+  test "reclaims stale processing webhook events" do
+    payload = { payment_id: "fake_pay_wh" }.to_json
+    signature = OpenSSL::HMAC.hexdigest("SHA256", "fake_webhook_secret", payload)
+    event = Payments::WebhookEvent.create!(
+      provider: "fake",
+      event_id: "evt_stale",
+      event_type: "payment.succeeded",
+      payload: JSON.parse(payload),
+      status: "processing",
+      updated_at: 10.minutes.ago
+    )
+
+    result = Payments::WebhookProcessor.call(
+      provider: "fake",
+      event_id: event.event_id,
+      event_type: "payment.succeeded",
+      payload: payload,
+      signature: signature
+    )
+
+    assert result.success?
+    assert_equal "processed", event.reload.status
+    assert_equal "succeeded", @payment.reload.status
+  end
+
+  test "stripe ignores non-payment webhook events" do
+    Payments::ProviderConfig.create!(
+      provider: "stripe",
+      enabled: true,
+      credentials: { "webhook_secret" => "whsec_test" }
+    )
+    payload = {
+      type: "charge.refunded",
+      data: { object: { id: "ch_123", metadata: { payment_record_id: @payment.id.to_s } } }
+    }.to_json
+    signature = OpenSSL::HMAC.hexdigest("SHA256", "whsec_test", payload)
+
+    result = Payments::WebhookProcessor.call(
+      provider: "stripe",
+      event_id: "evt_refund",
+      event_type: "charge.refunded",
+      payload: payload,
+      signature: signature
+    )
+
+    assert result.success?
+    assert_equal "pending", @payment.reload.status
+  end
+end
+
+class Minecraft::IntegrationActionRunnerRetryTest < ActiveSupport::TestCase
+  test "retries failed integration event" do
+    Minecraft::IntegrationAction.create!(
+      name: "Retry test",
+      event_key: "player.join",
+      conditions: {},
+      actions: [ { "type" => "set_profile_field", "field_key" => "retry_flag", "value" => "yes" } ],
+      enabled: true
+    )
+    event_id = "evt-retry-#{SecureRandom.hex(4)}"
+    Minecraft::IntegrationActionLog.create!(
+      event_key: "player.join",
+      event_id: event_id,
+      payload: {},
+      status: "failed",
+      error_message: "boom"
+    )
+
+    result = Minecraft::Integration::ActionRunner.call(
+      event_key: "player.join",
+      event_id: event_id,
+      payload: { "uuid" => "550e8400-e29b-41d4-a716-446655440099", "platform" => "java" }
+    )
+
+    assert result.success?, result.error
+    assert_equal "completed", Minecraft::IntegrationActionLog.find_by!(event_id: event_id).status
+  end
 end

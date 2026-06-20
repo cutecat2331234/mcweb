@@ -2,6 +2,7 @@
 
 module Minecraft
   class TaskDispatcher < ApplicationService
+    STALE_CLAIM_AFTER = 10.minutes
     def initialize(server:, task: nil, task_id: nil, result: {}, action: :claim)
       @server = server
       @task = task
@@ -24,6 +25,8 @@ module Minecraft
     def claim_tasks
       tasks = []
       Minecraft::ConnectorTask.transaction do
+        reclaim_stale_claimed_tasks!
+
         pending = Minecraft::ConnectorTask
           .lock
           .where(server: @server, status: "pending")
@@ -39,19 +42,33 @@ module Minecraft
       ServiceResult.success(tasks: tasks)
     end
 
+    def reclaim_stale_claimed_tasks!
+      processed_delivery_ids = Minecraft::ProcessedDelivery
+        .where(server: @server, status: "completed")
+        .select(:delivery_id)
+
+      Minecraft::ConnectorTask
+        .where(server: @server, status: "claimed")
+        .where("claimed_at IS NULL OR claimed_at < ?", STALE_CLAIM_AFTER.ago)
+        .where("delivery_id IS NULL OR delivery_id NOT IN (?)", processed_delivery_ids)
+        .update_all(status: "pending", claimed_at: nil, updated_at: Time.current)
+    end
+
     def complete_task
       task = @task || Minecraft::ConnectorTask.find_by(id: @task_id, server: @server)
       return ServiceResult.failure(error: "Task not found.") unless task
 
       Minecraft::ConnectorTask.transaction do
         task.lock!
-        return ServiceResult.success(task: task, idempotent: true) if task.status == "completed"
+        if task.completed? || task.failed?
+          return ServiceResult.success(task: task, idempotent: true)
+        end
 
-        task.update!(
-          status: "completed",
-          result: @result,
-          completed_at: Time.current
-        )
+        if delivery_successful?
+          task.complete!(@result)
+        else
+          task.fail!(@result)
+        end
 
         if task.fulfillment
           if delivery_successful?
@@ -60,7 +77,7 @@ module Minecraft
               fulfilled_at: Time.current,
               last_error: nil
             )
-            Commerce::SyncOrderFulfillmentStatus.call(order: task.fulfillment.order)
+            Commerce::SyncOrderFulfillmentStatusJob.perform_later(task.fulfillment.store_order_id)
           else
             error_message = extract_error_message
             task.fulfillment.mark_failed!(error: error_message)
@@ -68,13 +85,14 @@ module Minecraft
         end
 
         if task.delivery_id.present?
-          Minecraft::ProcessedDelivery.find_or_create_by!(
+          delivery_status = delivery_successful? ? "completed" : "failed"
+          record = Minecraft::ProcessedDelivery.find_or_initialize_by(
             server: @server,
             delivery_id: task.delivery_id
-          ) do |record|
-            record.status = "completed"
-            record.result = @result
-          end
+          )
+          record.status = delivery_status
+          record.result = @result
+          record.save!
         end
       end
 
@@ -84,7 +102,7 @@ module Minecraft
     end
 
     def delivery_successful?
-      return true if @result.blank?
+      return false if @result.blank?
 
       value = @result
       value = value.with_indifferent_access if value.respond_to?(:with_indifferent_access)

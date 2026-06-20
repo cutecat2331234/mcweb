@@ -162,6 +162,8 @@ class Commerce::ProductVariantStockTest < ActiveSupport::TestCase
 end
 
 class Commerce::RetryFulfillmentTest < ActiveSupport::TestCase
+  include ActiveJob::TestHelper
+
   setup do
     @user = create_user
     @product = Commerce::Product.create!(
@@ -187,5 +189,38 @@ class Commerce::RetryFulfillmentTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal "pending", @fulfillment.reload.status
     assert_nil @fulfillment.last_error
+  end
+
+  test "retry supersedes pending connector task before re-dispatch" do
+    server = Minecraft::Server.create!(
+      public_id: "srv_retry_#{SecureRandom.hex(4)}",
+      name: "Retry Server",
+      connector_secret: "secret_#{SecureRandom.hex(8)}"
+    )
+    task = Minecraft::ConnectorTask.create!(
+      server: server,
+      fulfillment: @fulfillment,
+      task_type: "deliver_item",
+      delivery_id: @fulfillment.delivery_id,
+      status: "pending",
+      payload: { "commands" => [ "say stuck" ] }
+    )
+
+    assert_enqueued_with(job: Minecraft::EnsureInstanceRunningJob, args: [ @fulfillment.id ]) do
+      result = Commerce::RetryFulfillment.call(fulfillment: @fulfillment)
+      assert result.success?
+    end
+
+    assert_equal "failed", task.reload.status
+    assert_equal "superseded_by_retry", task.result["error"]
+  end
+
+  test "rejects retry when order is refunded" do
+    @fulfillment.order.update!(status: "refunded")
+
+    result = Commerce::RetryFulfillment.call(fulfillment: @fulfillment)
+
+    assert result.failure?
+    assert_equal "failed", @fulfillment.reload.status
   end
 end

@@ -8,6 +8,7 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Select from '@/components/ui/Select.vue'
+import Checkbox from '@/components/ui/Checkbox.vue'
 import { confirm } from '@/lib/useConfirm'
 import { adminRoutes } from '@/lib/adminRoutes'
 
@@ -38,9 +39,17 @@ export interface LastTestWebhook {
   created_at: string
 }
 
+export interface StoreFeatureToggle {
+  id: string
+  label: string
+  description: string
+  enabled: boolean
+}
+
 const props = defineProps<{
   settings: StoreSettingItem[]
-  shippingMethods: ShippingMethodItem[]
+  storeFeatures: StoreFeatureToggle[]
+  shippingMethods?: ShippingMethodItem[]
   testWebhookUrl?: string | null
   testAllWebhooksUrl?: string | null
   testWebhookStatusUrl?: string | null
@@ -84,10 +93,26 @@ function startPollingWebhookStatus() {
 
 const form = useForm({
   settings: Object.fromEntries(props.settings.map((s) => [s.key, s.value])),
+  store_features: Object.fromEntries((props.storeFeatures || []).map((feature) => [feature.id, feature.enabled])),
 })
 
+const shippingFeatureEnabled = computed(() => form.store_features.shipping === true)
+const giftWrapFeatureEnabled = computed(() => form.store_features.gift_wrap === true)
+
+const visibleSettings = computed(() =>
+  props.settings.filter((setting) => {
+    if (!shippingFeatureEnabled.value && ['store.free_shipping_min_order_cents', 'store.flat_shipping_cents'].includes(setting.key)) {
+      return false
+    }
+    if (!giftWrapFeatureEnabled.value && setting.key === 'store.gift_wrap_cents') {
+      return false
+    }
+    return true
+  }),
+)
+
 const shippingMethods = ref(
-  props.shippingMethods.map((method) => ({
+  (props.shippingMethods || []).map((method) => ({
     code: method.code,
     label: method.label,
     cents: method.cents,
@@ -112,16 +137,19 @@ function removeShippingMethod(index: number) {
 
 function submit() {
   form
-    .transform((data) => ({
-      ...data,
-      shipping_methods: shippingMethods.value.map((method) => ({
-        code: method.code,
-        label: method.label,
-        cents: Number(method.cents) || 0,
-        delivery_days_min: method.delivery_days_min === '' ? null : Number(method.delivery_days_min),
-        delivery_days_max: method.delivery_days_max === '' ? null : Number(method.delivery_days_max),
-      })),
-    }))
+    .transform((data) => {
+      const payload: Record<string, unknown> = { ...data }
+      if (shippingFeatureEnabled.value) {
+        payload.shipping_methods = shippingMethods.value.map((method) => ({
+          code: method.code,
+          label: method.label,
+          cents: Number(method.cents) || 0,
+          delivery_days_min: method.delivery_days_min === '' ? null : Number(method.delivery_days_min),
+          delivery_days_max: method.delivery_days_max === '' ? null : Number(method.delivery_days_max),
+        }))
+      }
+      return payload
+    })
     .patch(adminRoutes.storeSettings)
 }
 
@@ -153,6 +181,26 @@ async function sendTestAllWebhooks() {
 
   <form class="max-w-3xl space-y-6" @submit.prevent="submit">
     <section class="space-y-4 rounded-lg border p-4">
+      <div>
+        <h2 class="text-sm font-semibold">{{ t('admin.storeSettings.featureToggles') }}</h2>
+        <p class="text-xs text-muted-foreground">{{ t('admin.storeSettings.featureTogglesHint') }}</p>
+      </div>
+      <div class="space-y-3">
+        <label
+          v-for="feature in storeFeatures"
+          :key="feature.id"
+          class="flex items-start gap-3 rounded-md border p-3"
+        >
+          <Checkbox v-model="form.store_features[feature.id]" class="mt-0.5" />
+          <span class="min-w-0">
+            <span class="block text-sm font-medium">{{ feature.label }}</span>
+            <span class="block text-xs text-muted-foreground">{{ feature.description }}</span>
+          </span>
+        </label>
+      </div>
+    </section>
+
+    <section v-if="shippingFeatureEnabled" class="space-y-4 rounded-lg border p-4">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 class="text-sm font-semibold">{{ t('admin.storeSettings.shippingMethods') }}</h2>
@@ -195,7 +243,7 @@ async function sendTestAllWebhooks() {
       <p v-else class="text-sm text-muted-foreground">{{ t('admin.storeSettings.emptyShipping') }}</p>
     </section>
 
-    <div v-for="setting in settings" :key="setting.key" class="rounded-lg border p-4 space-y-2">
+    <div v-for="setting in visibleSettings" :key="setting.key" class="rounded-lg border p-4 space-y-2">
       <Label :for="setting.key" class="text-sm font-medium">{{ setting.label }}</Label>
       <p v-if="setting.hint" class="text-xs text-muted-foreground">{{ setting.hint }}</p>
       <Input

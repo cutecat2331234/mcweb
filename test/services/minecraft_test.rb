@@ -2,6 +2,23 @@
 
 require "test_helper"
 
+class Minecraft::ServerProcessStateTest < ActiveSupport::TestCase
+  test "process_running? reflects process_state enum" do
+    server = Minecraft::Server.create!(
+      public_id: "srv_proc_#{SecureRandom.hex(4)}",
+      name: "Process State",
+      port: 25565
+    )
+
+    server.update!(process_state: :stopped)
+    assert_not server.process_running?
+
+    server.update!(process_state: :running)
+    assert server.process_running?
+    assert server.process_state_running?
+  end
+end
+
 class Minecraft::GenerateLinkCodeTest < ActiveSupport::TestCase
   setup do
     @server = Minecraft::Server.create!(
@@ -12,9 +29,12 @@ class Minecraft::GenerateLinkCodeTest < ActiveSupport::TestCase
   end
 
   test "generates expiring link code" do
+    uuid = "550e8400-e29b-41d4-a716-446655440000"
+    ensure_connector_player_session!(server: @server, uuid: uuid, username: "Steve")
+
     result = Minecraft::GenerateLinkCode.call(
       server: @server,
-      minecraft_uuid: "550e8400-e29b-41d4-a716-446655440000",
+      minecraft_uuid: uuid,
       minecraft_username: "Steve",
       identity_type: "java"
     )
@@ -22,6 +42,17 @@ class Minecraft::GenerateLinkCodeTest < ActiveSupport::TestCase
     assert result.success?
     assert result.value[:code].present?
     assert result.value[:link_code].expires_at > Time.current
+  end
+
+  test "rejects link code when player is not on server" do
+    result = Minecraft::GenerateLinkCode.call(
+      server: @server,
+      minecraft_uuid: "550e8400-e29b-41d4-a716-446655440099",
+      minecraft_username: "Steve",
+      identity_type: "java"
+    )
+
+    assert_not result.success?
   end
 end
 
@@ -33,9 +64,11 @@ class Minecraft::CompleteLinkTest < ActiveSupport::TestCase
       name: "Test Server 2",
       connector_secret: "test_secret_#{SecureRandom.hex(16)}"
     )
+    uuid = "550e8400-e29b-41d4-a716-446655440001"
+    ensure_connector_player_session!(server: @server, uuid: uuid, username: "Alex")
     gen = Minecraft::GenerateLinkCode.call(
       server: @server,
-      minecraft_uuid: "550e8400-e29b-41d4-a716-446655440001",
+      minecraft_uuid: uuid,
       minecraft_username: "Alex",
       identity_type: "java"
     )
@@ -105,6 +138,6 @@ class Minecraft::ConnectorAuthenticatorTest < ActiveSupport::TestCase
     )
 
     assert result.failure?
-    assert_match(/timestamp/i, result.error)
+    assert_match(/timestamp|时间戳/i, result.error)
   end
 end

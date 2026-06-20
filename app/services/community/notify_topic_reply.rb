@@ -37,11 +37,13 @@ module Community
 
         Community::ReadState.ensure_tracking!(user, @topic)
 
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: user,
           notification_type: "forum.topic_reply",
-          title: "主题有新回复：#{@topic.title.truncate(60)}",
-          body: "#{@post.user.username}：#{@post.body.truncate(120)}",
+          key: "topic_reply",
+          title: @topic.title.truncate(60),
+          author: @post.user.username,
+          excerpt: @post.body.truncate(120),
           metadata: {
             topic_id: @topic.public_id,
             post_id: @post.id,

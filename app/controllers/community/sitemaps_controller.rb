@@ -2,8 +2,10 @@
 
 module Community
   class SitemapsController < ApplicationController
+    include Community::SectionVisibility
+
     def index
-      topics = Community::Topic.published_listed.order(updated_at: :desc).limit(500)
+      topics = apply_login_required_topic_scope(Community::Topic.published_listed).order(updated_at: :desc).limit(500)
       urls = topics.map do |topic|
         <<~XML
           <url>

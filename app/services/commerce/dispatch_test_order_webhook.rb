@@ -12,10 +12,11 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "不支持的事件类型") unless EVENT_TYPES.include?(@event_type)
+      return ServiceResult.failure(error: "webhook_event_unsupported") unless EVENT_TYPES.include?(@event_type)
 
       url = SiteSetting.get("store.order_webhook_url", "").to_s.strip
-      return ServiceResult.failure(error: "未配置 Webhook URL") if url.blank?
+      return ServiceResult.failure(error: "webhook_url_missing") if url.blank?
+      return ServiceResult.failure(error: "webhook_url_private") unless UrlSafety.public_http_url?(url)
 
       payload = build_payload
       secret = SiteSetting.get("store.order_webhook_secret", "").to_s.strip.presence
@@ -37,8 +38,8 @@ module Commerce
         occurred_at: Time.current.iso8601,
         items: [
           {
-            product_name: "Webhook 测试商品",
-            variant_name: "默认",
+            product_name: I18n.t("mcweb.commerce.webhook_test.product_name"),
+            variant_name: I18n.t("mcweb.commerce.webhook_test.variant_name"),
             quantity: 1,
             unit_price_cents: 1000,
             total_cents: 1000
@@ -59,7 +60,7 @@ module Commerce
       when "order.refunded"
         base.merge(from_status: "paid", to_status: "refunded", refund_amount_cents: 1000, refund_id: "test_refund_#{SecureRandom.hex(4)}")
       when "order.cancelled"
-        base.merge(from_status: "pending", to_status: "cancelled", cancel_reason: "测试取消")
+        base.merge(from_status: "pending", to_status: "cancelled", cancel_reason: I18n.t("mcweb.commerce.webhook_test.cancel_reason"))
       when "order.fulfilled"
         base.merge(from_status: "processing", to_status: "fulfilled")
       else

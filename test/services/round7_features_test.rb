@@ -80,7 +80,7 @@ class Community::SlowModeTest < ActiveSupport::TestCase
   test "slow mode blocks rapid replies" do
     result = Community::CreatePost.call(user: @user, topic: @topic, body: "Too fast")
     assert result.failure?
-    assert_match(/Slow mode/i, result.error)
+    assert_match(/慢速模式/, result.error)
   end
 end
 
@@ -176,7 +176,12 @@ class Commerce::ProcessRefundPendingTest < ActiveSupport::TestCase
       status: "succeeded"
     )
     @order.update!(status: "paid")
-    @pending = Commerce::RequestRefund.call(order: @order, user: @user).value
+    enable_refund_window!
+    anchor_order_payment_at!(@order)
+    refund_result = Commerce::RequestRefund.call(order: @order, user: @user)
+    assert refund_result.success?, refund_result.error
+    @pending = refund_result.value
+    assert @pending.present?, "expected pending refund"
   end
 
   test "approves existing pending refund instead of duplicating" do

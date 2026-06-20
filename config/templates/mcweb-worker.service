@@ -1,5 +1,5 @@
 [Unit]
-Description=McWeb Solid Queue Worker
+Description=McWeb Sidekiq Worker
 After=network.target postgresql.service mcweb-web.service
 
 [Service]
@@ -7,7 +7,7 @@ Type=simple
 User=mcweb
 WorkingDirectory=/opt/mcweb/current
 EnvironmentFile=/etc/mcweb/mcweb.env
-ExecStart=/home/mcweb/.rbenv/shims/bundle exec rails solid_queue:start
+ExecStart=/home/mcweb/.rbenv/shims/bundle exec sidekiq -C config/sidekiq.yml
 Restart=on-failure
 RestartSec=5
 

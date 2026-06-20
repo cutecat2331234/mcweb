@@ -44,25 +44,42 @@ class Commerce::ConfirmPaymentTest < ActiveSupport::TestCase
     assert_equal 1, Payments::Record.where(order: @order, status: "succeeded").count
   end
 
-  test "rejects payment confirmation for cancelled order" do
+  test "duplicate callback resumes completion when order paid but side effects missing" do
+    Commerce::ConfirmPayment.call(payment_record: @payment, provider_payment_id: "fake_pay_123")
+    @order.events.where(event_type: Commerce::PostPaymentSideEffectsJob::COMPLETED_EVENT).delete_all
+    @order.update!(status: "paid")
+
+    assert_enqueued_with(job: Commerce::PostPaymentSideEffectsJob, args: [ @order.id ]) do
+      result = Commerce::ConfirmPayment.call(payment_record: @payment, provider_payment_id: "fake_pay_123")
+      assert result.success?
+      assert result.value[:idempotent]
+    end
+  end
+
+  test "rejects payment confirmation for cancelled order and records orphaned payment" do
     @order.update!(status: "cancelled")
 
     result = Commerce::ConfirmPayment.call(payment_record: @payment, provider_payment_id: "late_pay")
 
     assert result.failure?
-    assert_equal "pending", @payment.reload.status
+    assert result.value[:orphaned]
+    assert_equal "succeeded", @payment.reload.status
+    assert @payment.metadata["orphaned"]
+    assert_equal "order_cancelled", @payment.metadata["orphan_reason"]
     assert_equal "cancelled", @order.reload.status
   end
 
-  test "rejects payment confirmation for expired pending order" do
+  test "rejects payment confirmation for expired pending order and records orphaned payment" do
     SiteSetting.set("store.pending_order_expiry_minutes", "30")
     @order.update!(created_at: 2.hours.ago)
 
     result = Commerce::ConfirmPayment.call(payment_record: @payment, provider_payment_id: "late_pay")
 
     assert result.failure?
+    assert result.value[:orphaned]
     assert_equal "订单支付已过期。", result.error
-    assert_equal "pending", @payment.reload.status
+    assert_equal "succeeded", @payment.reload.status
+    assert_equal "order_expired", @payment.metadata["orphan_reason"]
     assert_equal "pending", @order.reload.status
   end
 
@@ -96,6 +113,43 @@ class Commerce::ConfirmPaymentTest < ActiveSupport::TestCase
     )
 
     assert payment.valid?
+  end
+end
+
+class Commerce::BeginOrderPaymentTest < ActiveSupport::TestCase
+  setup do
+    SiteSetting.set("store.pending_order_expiry_minutes", "30")
+    @user = create_user
+    @order = Commerce::Order.create!(
+      public_id: "ord_begin_pay_#{SecureRandom.hex(6)}",
+      order_number: "BOP#{SecureRandom.hex(4)}",
+      user: @user,
+      status: "pending",
+      subtotal_cents: 1000,
+      total_cents: 1000,
+      currency: "CNY",
+      created_at: 25.minutes.ago
+    )
+  end
+
+  test "transitions pending order to awaiting payment and anchors payment window" do
+    result = Commerce::BeginOrderPayment.call(order: @order)
+
+    assert result.success?
+    assert_equal "awaiting_payment", @order.reload.status
+
+    @order.update_columns(created_at: 2.hours.ago)
+    assert_not @order.payment_expired?
+  end
+
+  test "rejects expired pending order that never started checkout" do
+    @order.update!(created_at: 2.hours.ago)
+
+    result = Commerce::BeginOrderPayment.call(order: @order)
+
+    assert result.failure?
+    assert_equal "订单支付已过期。", result.error
+    assert_equal "pending", @order.reload.status
   end
 end
 
@@ -222,6 +276,22 @@ class Commerce::CancelOrderCouponTest < ActiveSupport::TestCase
     assert_equal 0, @coupon.reload.used_count
     assert @order.reload.coupon_usage_restored?
   end
+
+  test "marks processing payment records failed on cancel" do
+    payment = Payments::Record.create!(
+      order: @order,
+      provider: "stripe",
+      status: "processing",
+      amount_cents: @order.total_cents,
+      currency: "CNY",
+      provider_payment_id: "pi_#{SecureRandom.hex(6)}"
+    )
+
+    result = Commerce::CancelOrder.call(order: @order, actor: @user)
+
+    assert result.success?
+    assert_equal "failed", payment.reload.status
+  end
 end
 
 class Commerce::ProcessRefundRestoreFailureTest < ActiveSupport::TestCase
@@ -279,6 +349,45 @@ class Commerce::PreviewCouponGiftWrapTest < ActiveSupport::TestCase
   end
 end
 
+class Commerce::PrimarySucceededPaymentTest < ActiveSupport::TestCase
+  setup do
+    @user = create_user
+    @order = Commerce::Order.create!(
+      public_id: "ord_#{SecureRandom.alphanumeric(16)}",
+      order_number: "ORD#{SecureRandom.hex(6).upcase}",
+      user: @user,
+      status: "paid",
+      subtotal_cents: 1000,
+      total_cents: 1000,
+      currency: "CNY"
+    )
+  end
+
+  test "prefers real payment over newer staff fake record" do
+    Payments::Record.create!(
+      order: @order,
+      provider: "stripe",
+      status: "succeeded",
+      amount_cents: 1000,
+      currency: "CNY",
+      provider_payment_id: "pi_real",
+      created_at: 2.hours.ago
+    )
+    Payments::Record.create!(
+      order: @order,
+      provider: "fake",
+      status: "succeeded",
+      amount_cents: 1000,
+      currency: "CNY",
+      provider_payment_id: "staff-fake",
+      metadata: { staff_marked: true },
+      created_at: 1.hour.ago
+    )
+
+    assert_equal "stripe", @order.primary_succeeded_payment_record.provider
+  end
+end
+
 class Commerce::BulkUpdateOrdersMarkPaidTest < ActiveSupport::TestCase
   setup do
     @admin = create_user
@@ -307,6 +416,56 @@ class Commerce::BulkUpdateOrdersMarkPaidTest < ActiveSupport::TestCase
     assert_equal 1, result.value[:failed]
     assert_equal "awaiting_payment", @order.reload.status
     assert_equal 100, @user.reload.store_credit_cents
+  end
+
+  test "bulk mark paid rolls back gift card debit when store credit is insufficient" do
+    card = Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.hex(4).upcase}",
+      balance_cents: 1000,
+      currency: "CNY",
+      active: true
+    )
+    @order.update!(
+      gift_card: card,
+      gift_card_amount_cents: 200,
+      store_credit_amount_cents: 400,
+      total_cents: 400
+    )
+
+    result = Commerce::BulkUpdateOrders.call(
+      actor: @admin,
+      order_public_ids: [ @order.public_id ],
+      action: "mark_paid"
+    )
+
+    assert result.success?
+    assert_equal 0, result.value[:processed]
+    assert_equal 1, result.value[:failed]
+    assert_equal "awaiting_payment", @order.reload.status
+    assert_equal 1000, card.reload.balance_cents
+    assert_not card.transactions.exists?(order: @order, transaction_type: :debit)
+  end
+
+  test "bulk mark paid rejects expired orders" do
+    SiteSetting.set("store.pending_order_expiry_minutes", "30")
+    @order.update!(
+      status: "pending",
+      created_at: 2.hours.ago,
+      store_credit_amount_cents: 0,
+      total_cents: 1000
+    )
+
+    result = Commerce::BulkUpdateOrders.call(
+      actor: @admin,
+      order_public_ids: [ @order.public_id ],
+      action: "mark_paid"
+    )
+
+    assert result.success?
+    assert_equal 0, result.value[:processed]
+    assert_equal 1, result.value[:failed]
+    assert_match(/过期/, result.value[:failures].first[:error].to_s)
+    assert_equal "pending", @order.reload.status
   end
 end
 
@@ -412,5 +571,52 @@ class Commerce::ApplyCouponTest < ActiveSupport::TestCase
     order.reload
     assert_equal 100, order.discount_cents
     assert_equal 1200, order.total_cents
+  end
+end
+
+class Commerce::AdminFullRefundWithPendingTest < ActiveSupport::TestCase
+  setup do
+    @admin = create_user
+    @user = create_user
+    @order = Commerce::Order.create!(
+      public_id: "ord_refund_#{SecureRandom.hex(6)}",
+      order_number: "REF#{SecureRandom.hex(4)}",
+      user: @user,
+      status: "paid",
+      subtotal_cents: 1000,
+      total_cents: 1000,
+      currency: "CNY"
+    )
+    @payment = Payments::Record.create!(
+      order: @order,
+      provider: "fake",
+      amount_cents: 1000,
+      currency: "CNY",
+      status: :succeeded,
+      provider_payment_id: "pay_#{SecureRandom.hex(6)}"
+    )
+    @pending_refund = Commerce::Refund.create!(
+      order: @order,
+      payment_record: @payment,
+      amount_cents: 300,
+      status: "pending",
+      reason: "Customer request"
+    )
+  end
+
+  test "admin full refund rejects pending request and refunds full payment" do
+    Commerce::RejectRefund.call(refund: @pending_refund, actor: @admin, reason: "Superseded by admin refund")
+
+    result = Commerce::ProcessRefund.call(
+      order: @order,
+      payment_record: @payment,
+      amount_cents: 1000,
+      reason: "Admin full refund",
+      approved_by: @admin
+    )
+
+    assert result.success?, result.error
+    assert_equal "refunded", @order.reload.status
+    assert_equal 1000, @order.refunds.where(status: "completed").sum(:amount_cents)
   end
 end

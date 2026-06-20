@@ -28,14 +28,15 @@ module Community
       end
 
       title = topic.title
-      body = @bookmark.note.presence || "你设置的书签提醒时间到了。"
+      note = @bookmark.note.presence || Community::InAppNotification.t("bookmark_reminder.default_note")
 
       if in_app_enabled
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: @user,
           notification_type: "forum.bookmark_reminder",
-          title: "书签提醒：#{title}",
-          body: body.truncate(200),
+          key: "bookmark_reminder",
+          title: title,
+          note: note.truncate(200),
           metadata: { path: path, bookmark_id: @bookmark.id }
         )
       end

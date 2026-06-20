@@ -152,7 +152,7 @@ class Commerce::CouponLimitsTest < ActiveSupport::TestCase
       user: @user
     )
     assert result.failure?
-    assert_equal "仅限首单使用", result.error
+    assert_equal I18n.t("mcweb.services.errors.coupon_unavailable"), result.error
   end
 
   test "max discount cap" do

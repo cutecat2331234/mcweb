@@ -13,6 +13,7 @@ module Commerce
     def call
       url = SiteSetting.get("store.order_webhook_url", "").to_s.strip
       return ServiceResult.success(skipped: true) if url.blank?
+      return ServiceResult.success(skipped: true) unless UrlSafety.public_http_url?(url)
 
       payload = {
         event: @event_type,

@@ -83,7 +83,7 @@ class Round70AddParticipantValidationTest < ActionDispatch::IntegrationTest
       username: silenced.username
     )
     assert add.failure?
-    assert_includes add.error.to_s.downcase, "silenced"
+    assert_includes add.error.to_s, "禁言"
   end
 
   test "cannot add user without pm permission" do
@@ -105,7 +105,7 @@ class Round70AddParticipantValidationTest < ActionDispatch::IntegrationTest
       username: newbie.username
     )
     assert add.failure?
-    assert_includes add.error.to_s.downcase, "private messages"
+    assert_includes add.error.to_s, "私信"
   end
 end
 

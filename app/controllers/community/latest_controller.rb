@@ -4,11 +4,12 @@ module Community
   class LatestController < ApplicationController
     include Community::TopicFilterable
     include Community::TopicListPreloadable
+    include Community::SectionVisibility
 
     def index
       sort = params[:sort].to_s.presence || "activity"
       filter = params[:filter].to_s.presence
-      scope = preload_topics(Community::Topic.published_listed.sorted(sort))
+      scope = preload_topics(Community::Topic.published_listed.accessible_by(current_user).sorted(sort))
       scope = filter_blocked_topics(scope)
       scope = apply_topic_filter(scope, filter: filter, user: current_user)
 

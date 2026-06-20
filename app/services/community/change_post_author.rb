@@ -10,11 +10,11 @@ module Community
 
     def call
       unless @user.permission?("forum.topics.lock")
-        return ServiceResult.failure(error: "无权更改帖子作者。")
+        return ServiceResult.failure(error: "change_post_author_unauthorized")
       end
 
       new_author = User.find_by(username: @new_username)
-      return ServiceResult.failure(error: "用户不存在。") unless new_author
+      return ServiceResult.failure(error: "user_not_found") unless new_author
 
       old_author_id = @post.user_id
       topic = @post.topic

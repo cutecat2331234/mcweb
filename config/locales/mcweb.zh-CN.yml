@@ -14,6 +14,7 @@
       registration_success: 注册成功。请查收邮件验证邮箱地址。
       sign_in_required_short: 请先登录。
       operation_failed: 操作失败。
+      rate_limited: 操作过于频繁，请稍后再试。
       bookmark_updated: 书签已更新。
       marked_read: 已标记为已读。
       notification_unavailable: 此通知关联的内容已不可用。
@@ -88,6 +89,7 @@
       answer_published: 回答已发布。
       gift_card_invalid: 礼品卡无效。
       gift_card_saved: "礼品卡 %{code} 已保存到您的钱包，结账时自动使用。"
+      gift_card_updated: 购物车礼品卡已更新。
       installation_locked: 系统已完成安装，无法重复运行安装向导。
       feature_toggles_saved: 功能开关已保存。
       created: "%{resource}已创建。"
@@ -105,6 +107,23 @@
       template_installed: "模板「%{name}」安装成功。"
       template_deleted: 模板已删除。
       connector_secret_generated: "新密钥已生成（仅此一次显示）：%{secret}"
+      connector_secret_rotated: "Connector 密钥已轮换，请立即复制下方显示的新密钥。"
+      node_secret_generated: 节点密钥已生成。请从下方横幅复制，仅显示一次。
+      server_start_queued: 已下发启动命令。
+      server_stop_queued: 已下发停止命令。
+      server_restart_queued: 已下发重启命令。
+      command_queued: 已下发远程命令。
+      tail_logs_queued: 已下发日志读取任务。
+      console_command_queued: 已下发游戏内控制台命令。
+      backup_queued: 已下发世界备份任务。
+      restore_queued: 已下发世界恢复任务。
+      sync_files_queued: 已下发文件同步任务。
+      archive_required: 请填写归档路径。
+      source_path_required: 请填写源文件路径。
+      pairing_token_generated: 配对令牌已生成（%{expires} 过期）。请从下方横幅复制，仅显示一次。
+      player_kick_queued: 已下发踢出玩家命令。
+      player_kick_target_required: 需要玩家用户名或 UUID。
+      command_required: 命令不能为空。
       system_role_immutable: 系统内置角色不可修改。
       system_role_undeletable: 系统内置角色不可删除。
       category_has_sections: 分类下仍有板块，无法删除。
@@ -148,6 +167,30 @@
       wishlist_product_invalid: 商品不可加入心愿单。
       wishlist_note_invalid: 商品不可编辑备注。
       wishlist_note_saved: 备注已保存。
+      wishlist_toggled_on: 已加入心愿单。
+      wishlist_toggled_off: 已从心愿单移除。
+      wishlist_bulk_added: "已将 %{count} 件商品加入购物车。"
+      wishlist_bulk_skipped: " 跳过：%{items}"
+      compare_toggled_on: 已加入对比。
+      compare_toggled_off: 已从对比移除。
+      compare_bulk_added: "已从心愿单添加 %{count} 件商品到对比。"
+      compare_bulk_skipped: " 跳过：%{items}"
+      reorder_bulk_added: "已将 %{count} 件商品加入购物车。"
+      reorder_bulk_skipped: " 跳过：%{items}"
+      bulk_moderate_processed: "已处理 %{count} 个主题"
+      bulk_moderate_failed_suffix: "，%{count} 个失败"
+      following_toggled_on: 已关注用户。
+      following_toggled_off: 已取消关注。
+      wishlist_toggled_on: 已加入心愿单。
+      wishlist_toggled_off: 已从心愿单移除。
+      wishlist_bulk_added: "已将 %{count} 件商品加入购物车。"
+      wishlist_bulk_skipped: " 跳过：%{items}"
+      compare_toggled_on: 已加入对比。
+      compare_toggled_off: 已从对比移除。
+      compare_bulk_added: "已从心愿单添加 %{count} 件商品到对比。"
+      compare_bulk_skipped: " 跳过：%{items}"
+      reorder_bulk_added: "已将 %{count} 件商品加入购物车。"
+      reorder_bulk_skipped: " 跳过：%{items}"
       stock_alert_subscribed: 到货通知已订阅。
       stock_alert_no_stock: 商品暂无库存。
       stock_alert_unsubscribed: 已取消到货通知。
@@ -161,6 +204,8 @@
       mapping_added: 映射已添加。
       mapping_updated: 映射已更新。
       mapping_deleted: 映射已删除。
+      membership_granted: 会员已授予。
+      membership_revoked: 会员已撤销。
       rule_created: 规则已创建。
       rule_updated: 规则已更新。
       rule_deleted: 规则已删除。
@@ -178,6 +223,7 @@
       webhook_test_queued: "测试 Webhook 已加入发送队列（%{label}）。"
       webhook_test_failed: 测试发送失败。
       webhook_batch_test_queued: "已加入 %{queued}/%{total} 条保存搜索 Webhook 测试队列。"
+      webhook_batch_event_test_queued: "已加入 %{queued}/%{total} 条论坛事件 Webhook 测试队列。"
       webhook_batch_order_test_queued: "已加入 %{queued}/%{total} 条订单 Webhook 测试队列。"
       webhook_batch_test_failed: 批量测试失败。
       webhook_batch_retry_failed: 批量重试失败。
@@ -203,6 +249,8 @@
       no_packing_slip: 该订单暂无装箱单。
       product_not_found: 商品不存在。
       coupon_invalid: 优惠券无效。
+      coupon_unavailable: 优惠券无效或不可用。
+      coupon_updated: 购物车优惠已更新。
       coupon_saved: "优惠码 %{code} 已保存，结账时自动使用。"
       review_submitted: 评价已提交。
       review_shared: 评价已分享到论坛。
@@ -234,6 +282,9 @@
       cannot_view_edit_history: 无权查看编辑历史。
       post_restored_version: 已恢复至选定版本。
       post_restored: 帖子已恢复。
+      post_approved: 帖子已通过审核。
+      post_rejected: 帖子已拒绝。
+      post_pending_submitted: 帖子已提交，等待版主审核。
       topic_created_from_post: 已创建新主题。
       canned_response_created: 罐头回复已创建。
       canned_response_updated: 罐头回复已更新。
@@ -253,8 +304,11 @@
       product: 商品
       coupon: 优惠券
       gift_card: 礼品卡
+      membership_type: 会员类型
+      user_membership: 用户会员
       order: 订单
       server: 服务器
+      node: 节点
       badge: 徽章
       tag_group: 标签组
       tag: 标签
@@ -302,6 +356,7 @@
         user_silenced: 该用户已被禁言。
         user_cannot_pm: 该用户无法参与私信。
         cart_empty: 购物车是空的。
+        cart_unauthorized: 无法使用该购物车结账。
         order_created: 订单已创建。
         report_submitted: 举报已提交。
         reset_token_expired: 重置链接已过期。
@@ -312,6 +367,7 @@
         too_many_options_selected: 选择的选项过多。
         invalid_poll_option: 无效的投票选项。
         order_cannot_cancel: 该订单无法取消。
+        order_refund_status_failed: 退款成功后无法更新订单状态。
         payment_not_refundable: 该支付记录不可退款。
         refund_exceeds_balance: 退款金额超过可退余额。
         payment_not_found: 找不到支付记录。
@@ -332,13 +388,605 @@
         muted_in_section: 你在此分区已被禁言。
         account_banned: 账户已被封禁。
         silenced_cannot_post: 你已被禁言，无法发帖。
+        topic_reply_banned: 你已被封禁，无法在此主题回复。
         wait_before_new_topic: 请稍后再创建新主题。
         similar_topic_recent: 最近已有相似主题，请勿重复发帖。
+        not_a_membership_product: 该商品不是会员商品。
+        membership_type_not_found: 找不到会员类型。
+        membership_revoke_failed: 会员撤销失败。
+        membership_fulfillment_failed: 会员履约失败。
+        store_credit_restore_failed: 商店余额恢复失败。
+        stock_restore_failed: 库存恢复失败。
+        coupon_restore_failed: 优惠券恢复失败。
+        gift_card_balance_restore_failed: 礼品卡余额恢复失败。
+        gift_card_revoke_failed: 礼品卡撤销失败。
+        gift_card_fulfillment_failed: 礼品卡履约失败。
+        create_fulfillment_failed: 创建履约记录失败。
+        orders_not_selected: 未选择订单。
+        unsupported_bulk_action: 不支持的操作。
+        order_cannot_mark_fulfilled: 订单不可标记发货完成。
+        automated_fulfillment_required: 订单含需自动履约的项目（含会员商品），不可手动标记发货完成。
+        order_cannot_mark_paid: 订单不可标记已支付。
+        order_payment_expired: 订单支付已过期。
+        order_mark_paid_failed: 订单无法标记为已支付。
+        refund_amount_invalid: 退款金额无效。
+        refund_amount_exceeds_limit: 退款金额超过可退上限。
+        cannot_create_order: 无法创建订单。
+        stock_insufficient: 库存不足。
+        order_min_subtotal_not_met: "订单未满最低消费金额（%{amount}）。"
+        payment_amount_mismatch: 支付金额与订单不符。
+        gift_card_debit_failed: 礼品卡扣款失败。
+        store_credit_debit_failed: 商店余额扣款失败。
+        order_payment_not_completed: 订单尚未支付，无法完成支付后续流程。
+        order_cannot_continue_payment: 该订单无法继续支付。
+        shipping_management_disabled: 订单物流管理功能已关闭。
+        gift_card_invalid: 礼品卡信息无效。
+        store_credit_unauthorized: 无权调整商店余额。
+        store_credit_adjustment_zero: 调整金额不能为零。
+        store_credit_negative_balance: 余额不能为负数。
+        store_credit_below_reserved: 余额不能低于待付款订单已预留的金额。
+        user_invalid: 用户信息无效。
+        store_credit_insufficient: 商店余额不足。
+        gift_card_insufficient: 礼品卡余额不足。
+        coupon_invalid: 优惠券代码无效。
+        coupon_code_required: 请输入优惠券代码。
+        coupon_unavailable: 优惠券无效或不可用。
+        gift_card_unavailable: 礼品卡无效或不可用。
+        gift_card_code_invalid: 礼品卡代码无效。
+        order_not_modifiable: 订单无法修改。
+        product_not_purchasable: 当前商品不可购买。
+        reorder_item_not_found: 未找到可再次购买的订单记录。
+        shipping_address_incomplete: "请填写收货地址：%{fields}。"
+        login_required: 请先登录。
+        cart_item_missing: 购物车项不存在。
+        wishlist_item_missing: 商品不在心愿单中。
+        variant_required: 请选择规格。
+        product_already_available: 商品已上架，无需订阅。
+        review_rating_invalid: 评分须在 1 到 5 之间。
+        purchase_required_to_review: 购买后才能评价。
+        cannot_review_own: 不能给自己的评价点有帮助。
+        cannot_mark_own_answer: 不能给自己的回答点有帮助。
+        compare_limit_reached: "最多只能对比 %{count} 件商品。"
+        staff_note_unauthorized: 无权添加员工备注。
+        staff_note_blank: 请填写备注内容。
+        webhook_event_unsupported: 不支持的事件类型。
+        webhook_url_missing: 未配置 Webhook URL。
+        webhook_retry_not_failed: 仅失败记录可重试。
+        webhook_retry_no_payload: 缺少请求内容，无法重试。
+        deliveries_not_selected: 未选择投递记录。
+        gift_card_claim_invalid: 礼品卡无效。
+        gift_card_claimed_by_other: 此礼品卡已绑定其他账户。
+        merchant_reply_unauthorized: 无权回复评价。
+        merchant_reply_blank: 回复内容不能为空。
+        delete_review_unauthorized: 无权删除此评价。
+        share_review_unauthorized: 只能分享自己的评价。
+        share_review_already_shared: 评价已分享到论坛。
+        subscription_not_found: 未找到订阅记录。
+        wishlist_note_item_missing: 心愿单中不存在该商品。
+        order_item_mismatch: 订单商品不匹配。
+        order_question_unauthorized: 无权就此订单提问。
+        webhook_url_private: Webhook URL 不能指向内网或本地地址。
+        webhook_delivery_timeout: 投递超时。
+        product_inactive: 商品已下架。
+        product_archived: 商品已下架。
+        cart_add_failed: 无法加入购物车。
+        discussion_section_missing: 未配置商品讨论分区。
+        discussion_topic_create_failed: 无法创建讨论帖。
+        wishlist_item_not_in_list: 商品不在心愿单中。
+        section_topic_prefix_required: 此分区要求选择主题前缀。
+        attachment_invalid_or_unauthorized: 附件无效或无权使用。
+        new_members_cannot_upload_attachments: 新成员暂不能上传附件，多发帖后即可解锁。
+        upload_file_required: 请选择要上传的文件。
+        invalid_filename: 文件名无效。
+        unsupported_attachment_type: 不支持的附件类型。
+        attachment_too_large: "附件过大（最大 %{max}）。"
+        post_moderation_unauthorized: 无权审核帖子。
+        post_not_pending_approval: 帖子不在待审核状态。
+        warn_user_unauthorized: 无权发出警告。
+        cannot_warn_self: 不能警告自己。
+        warning_reason_required: 请填写警告原因。
+        saved_search_missing: 关联搜索不存在。
+        bump_cooldown_active: "提升冷却中，请 %{hours} 小时后再试。"
+        assignee_not_found: 指派用户不存在。
+        topics_not_selected: 未选择主题。
+        staff_notice_blank: 员工提示内容不能为空。
+        section_tag_group_required: "此分区要求从标签组「%{group}」中至少选择一个标签。"
+        tag_group_single_only: "标签组「%{group}」每个主题只能选一个标签，当前选了：%{names}"
+        unban_reply_unauthorized: 无权解除回复禁言。
+        cannot_ignore_self: 不能忽略自己。
+        section_disallowed_tags: "此分区不允许使用以下标签：%{names}"
+        cannot_react_to_own_post: 不能给自己的帖子点反应。
+        trust_level_cannot_react: 你的信任等级不足以使用反应功能。
+        invalid_subscription_level: 无效的通知级别。
+        unsilence_unauthorized: 无权解除禁言。
+        restore_post_unauthorized: 无权恢复帖子。
+        post_not_deleted: 帖子未被删除。
+        invite_username_required: 请输入用户名。
+        invite_watcher_unauthorized: 无权邀请用户关注此主题。
+        invite_cannot_self: 不能邀请自己。
+        invite_user_cannot_access: 该用户无法访问此主题。
+        invite_already_sent: 该用户已被邀请过。
+        auto_silence_failed: 无法执行自动禁言。
+        silence_user_unauthorized: 无权禁言用户。
+        topic_close_disabled: 楼主关闭主题功能未启用。
+        topic_close_author_only: 只有主题作者可以关闭或重新打开自己的主题。
+        change_post_author_unauthorized: 无权更改帖子作者。
+        saved_searches_none_for_test: 没有可测试的保存搜索。
+        ban_reply_unauthorized: 无权禁止用户回复。
+        new_members_cannot_upload_images: 新成员暂不能上传图片，多发帖后即可解锁。
+        image_upload_too_large: "文件过大（最大 %{max}）。"
+        unsupported_upload_type: 不支持的文件类型。
+        avatar_file_required: 请选择图片文件。
+        avatar_unsupported_format: 不支持的图片格式（仅支持 JPEG、PNG、GIF、WebP）。
+        avatar_too_large: 图片过大（最大 2MB）。
+    commerce:
+      default_store_title: 商城
+      list_separator: "、"
+      coupon_discount:
+        percentage: "%{value}% 折扣"
+        fixed: "减 %{amount}"
+      rss:
+        latest_title: Mcweb 商城最新商品
+        category_title: "%{name} - Mcweb 商城"
+        description: Mcweb Store
+      shipping:
+        methods:
+          standard: 标准配送
+          express: 加急配送
+        delivery_estimate:
+          single: "预计 %{count} 天送达"
+          max_only: "预计 %{max} 天送达"
+          range: "预计 %{min}-%{max} 天送达"
+      order_timeline:
+        placed: 订单已提交
+        paid: 已支付
+        shipped: 已发货
+        in_transit: 运输中
+        delivered: 已送达
+      in_app:
+        order_created:
+          title: 订单已创建
+          body: "订单 %{number} 等待支付。"
+        payment_confirmed:
+          title: 支付成功
+          body: "订单 %{number} 已支付成功。"
+        order_cancelled:
+          title: 订单已取消
+          body: "订单 %{number} 已取消。"
+        order_status_updated:
+          title: 订单状态更新
+          body: "订单 %{number} 现为：%{status}。"
+        order_shipped:
+          title: 订单已发货
+          body: "订单 %{number} 已发货。"
+          tracking: "%{carrier}：%{tracking_number}"
+        order_fulfilled:
+          title: 订单已发货
+          body: "订单 %{number} 商品已发货完成。"
+        order_completed:
+          title: 订单已完成
+          body: "订单 %{number} 已全部完成，感谢购买。"
+        order_processing:
+          title: 订单处理中
+          body: "订单 %{number} 正在处理，请稍候。"
+        order_fulfilling:
+          title: 订单发货中
+          body: "订单 %{number} 正在发货处理。"
+        payment_reminder:
+          title: 订单待支付提醒
+          body: "订单 %{number} 请在 %{expires} 前完成支付。"
+        product_available:
+          title: 商品已上架
+          body: "%{product} 现已开售，可以购买了。"
+        stock_restocked:
+          title: 商品已补货
+          body: "%{product} 已有货，可以购买了。"
+        stock_restocked_variant:
+          body: "%{product}（%{variant}）已有货，可以购买了。"
+        product_changelog:
+          title: "商品更新：%{product}"
+        price_drop:
+          title: 商品降价了
+          body: "%{product} 现价 %{current}（原价 %{was}）。"
+        abandoned_cart:
+          title: 购物车提醒
+          body: "你的购物车中有 %{count} 件商品尚未结账。"
+        abandoned_cart_followup:
+          title: 购物车再次提醒
+          body: "你的购物车仍有 %{count} 件商品等待结账。"
+        merchant_review_reply:
+          title: 商家回复了你的评价
+          body: "「%{product}」的评价收到商家回复。"
+        review_request:
+          title: 邀请你评价已购商品
+          body: "订单 %{number} 已完成，欢迎分享购买体验。"
+        new_product_question:
+          title: "新商品提问：%{product}"
+        question_answered:
+          title: 你的问题收到回复
+        low_stock_staff:
+          title: "低库存提醒：%{product}"
+          body: 商品库存紧张，请及时补货。
+        low_stock_staff_variant:
+          body: 变体库存紧张，请及时补货。
+      skipped:
+        feature_disabled: "%{product}（当前未开放）"
+        coming_soon: "%{product}（未上架）"
+        inactive: "%{product}（不可售）"
+        unavailable: "%{product}（不可售）"
+        already_in_compare: "%{product}（已在对比）"
+        compare_full: "%{product}（对比已满）"
+        compare_limit_summary: "已达对比上限（%{count} 件）"
+      notes:
+        admin_store_credit_adjustment: 管理员调整
+        store_credit_order_debit: "订单 %{number} 抵扣"
+        store_credit_order_refund: "订单 %{number} 退款退还余额"
+        gift_card_order_purchase: "订单 %{number} 购买"
+        gift_card_order_revoke: "订单 %{number} 退款撤销"
+      customer_orders:
+        status_all: 全部
+        skipped_item: "%{name}（%{reason}）"
+        filter_order_number: "订单号：%{value}"
+        filter_created_after: "起始于：%{value}"
+        filter_created_before: "截止于：%{value}"
+        filter_min_total: "最低金额：%{value}"
+        filter_max_total: "最高金额：%{value}"
+        preset_under_100: ¥100 以下
+        preset_100_500: ¥100–500
+        preset_over_500: ¥500 以上
+      discussion:
+        section_missing: 未配置商品讨论分区。
+        topic_create_failed: 无法创建讨论帖。
+        topic_title: "[商品] %{name}"
+        topic_body: "欢迎在此讨论 **%{name}**。\n\n分享心得、提问互助。"
+        review_no_body: "（无文字评价）"
+      webhook_test:
+        product_name: Webhook 测试商品
+        variant_name: 默认
+        cancel_reason: 测试取消
+      product_duplicate_suffix: " (副本)"
+    forum:
+      topic_sort:
+        latest: 最新回复
+        hot: 热门
+        replies: 回复最多
+        newest: 最新发布
+        unread: 未读最多
+      topic_filter:
+        all: 全部
+        unsolved: 未解决
+        solved: 已解决
+        solved_mine: 我已解决
+        mine: 我的主题
+        participated: 我参与的
+        unread: 未读
+        no_replies: 零回复
+        locked: 已锁定
+        unlocked: 未锁定
+        pinned: 已置顶
+        wiki: Wiki 主题
+        featured: 精选主题
+        announcement: 全站公告
+        has_poll: 含投票
+        assigned: 已指派
+        unassigned: 未指派
+        assigned_mine: 指派给我
+        unlisted: 未列出
+        archived: 已归档
+        prefix: "前缀：%{prefix}"
+      mute:
+        site_wide: 全站
+        permanent: 永久
+      digest:
+        none: 关闭摘要
+        daily: 每日摘要
+        weekly: 每周摘要
+      watch_email_mode:
+        instant: 即时邮件（关注时立即通知）
+        digest_only: 仅摘要（不发送即时关注邮件）
+        none: 关闭关注邮件（仍可通过摘要或站内通知）
+      rss:
+        latest_title: Mcweb 论坛最新
+        section_title: "%{name} - Mcweb 论坛"
+        tag_title: "标签 %{name} - Mcweb 论坛"
+        tag_label: "标签 %{name}"
+        category_title: "%{name} - Mcweb 论坛"
+        search_title: "搜索：%{query}"
+        search_default: 论坛搜索
+        saved_search_title: "%{name} - 保存的搜索"
+        item_title_suffix: " - Mcweb 论坛"
+        description: Mcweb Forum
+        saved_searches_opml: "%{username} 的保存搜索"
+        search_history_opml: "%{username} 的搜索历史"
+        filter_search: 筛选搜索
+        subscriptions_opml: "%{username} 的搜索订阅"
+        saved_searches_group: 保存的搜索
+        search_history_group: 搜索历史
+        watching_opml: "%{username} 的关注订阅"
+      poll_meta:
+        title_suffix: 投票
+        description_prefix: "投票："
+      notifications:
+        content_unavailable: 内容不可用
+        content_unavailable_body: 此通知关联的内容已不可用。
+        grouped_body: "共 %{count} 条相关通知"
+        order_title: "订单 %{number}"
+        category_forum: 论坛
+        category_commerce: 商城
+        unread_only: 仅未读
+        periods:
+          today: 仅今日
+          this_week: 本周
+          this_month: 本月
+          last_month: 上月
+          last_year: 去年
+      badges:
+        manual: 手动授予
+        first_topic: 发布首个主题
+        posts_count: 发帖数量达标
+        likes_received: 获赞数量达标
+        first_purchase: 首次购买
+      unread:
+        all_sections: 全部分区
+        all_tags: 全部标签
+        tag_match_all: 全部标签
+        tag_match_any: 任意标签
+        filter_section: "分区：%{name}"
+        filter_tag_match_any: 标签匹配：任意
+        filter_tag_match_all: 标签匹配：全部
+        filter_tag: "标签：%{name}"
+      topic_sort_extended:
+        activity: 最近活跃
+        views: 最多浏览
+      sort_chip: "排序：%{label}"
+      search:
+        keywords: "关键词：%{value}"
+        section: "分区：%{value}"
+        category: "分类：%{value}"
+        tag: "标签：%{value}"
+        author: "作者：%{value}"
+        assignee: "负责人：%{value}"
+        created_after: "起始于：%{value}"
+        created_before: "截止于：%{value}"
+        exclude: "排除：%{value}"
+        filter_search: 筛选搜索
+        tag_label: "标签 %{name}"
+      saved_search:
+        values:
+          solved:
+            solved: 已解决
+            unsolved: 未解决
+          locked:
+            locked: 已锁定
+            unlocked: 未锁定
+          pinned:
+            pinned: 已置顶
+            unpinned: 未置顶
+          wiki:
+            wiki: Wiki 主题
+            nonwiki: 非 Wiki
+          featured:
+            featured: 精选主题
+          announcement:
+            announcement: 公告
+          assigned:
+            assigned: 已分配
+            unassigned: 未分配
+          unlisted:
+            unlisted: 未列出
+            listed: 已列出
+          archived:
+            archived: 已归档
+            active: 未归档
+          mine:
+            mine: 我的主题
+          scope:
+            bookmarks: 我的收藏
+            watching: 正在关注
+            unread: 未读
+          poll:
+            poll: 含投票
+          noreplies:
+            noreplies: 无回复
+          images:
+            images: 含图片
+          topic_sort:
+            recent: 主题：最新
+            oldest: 主题：最早
+          post_sort:
+            recent: 帖子：最新
+            oldest: 帖子：最早
+          title_only:
+            "1": 仅标题
+            "true": 仅标题
+          posts_only:
+            "1": 仅帖子
+            "true": 仅帖子
+      subscription_levels:
+        watching: 关注
+        tracking: 跟踪
+        normal: 普通
+        "off": 关闭
+        topic:
+          watching_desc: 所有新回复通知，关注时可发邮件
+          tracking_desc: 所有新回复站内通知，不发邮件
+          normal_desc: 仅在你参与过或被 @提及时通知
+          off_desc: 不接收此主题通知
+        section:
+          watching_desc: 分区内所有新主题通知，关注时可发邮件
+          tracking_desc: 分区内所有新主题站内通知
+          normal_desc: 不接收分区新主题通知
+          off_desc: 取消关注此分区
+        tag:
+          watching_desc: 标签下所有新主题通知，关注时可发邮件
+          tracking_desc: 标签下所有新主题站内通知
+          normal_desc: 不接收标签新主题通知
+          off_desc: 取消关注此标签
+      moderate_actions:
+        lock: 此主题已锁定。
+        unlock: 此主题已解锁。
+        pin: 此主题已置顶。
+        unpin: 此主题已取消置顶。
+        pin_days: "此主题已置顶 %{days} 天。"
+        lock_with_reason: "%{message} 原因：%{reason}"
+        hide: 此主题已隐藏。
+        unhide: 此主题已恢复显示。
+        feature: 此主题已设为精选。
+        unfeature: 此主题已取消精选。
+        enable_wiki: 此主题已开启 Wiki 模式。
+        disable_wiki: 此主题已关闭 Wiki 模式。
+        global_announcement: 此主题已设为全站公告。
+        remove_global_announcement: 此主题已取消全站公告。
+        unlist: 此主题已设为未列出（仅链接可访问）。
+        list: 此主题已恢复公开列表显示。
+        archive: 此主题已归档。
+        unarchive: 此主题已取消归档。
+        assign: 此主题已指派给员工。
+        unassign: 此主题已取消指派。
+      notification_timeline:
+        today: 今天
+        yesterday: 昨天
+        this_week: 本周
+        this_month: 本月
+        last_month: 上月
+        last_year: 去年
+        earlier: 更早
+      notification_read_state:
+        unread: 未读
+        read: 已读
+      in_app:
+        topic_reply:
+          title: "主题有新回复：%{title}"
+          body: "%{author}：%{excerpt}"
+        section_topic:
+          title: "分区有新主题：%{title}"
+          body: "%{author} 在 %{section} 发布了新主题"
+        tag_topic:
+          title: "关注标签有新主题：%{title}"
+          body: "%{author} 使用了标签 %{tags}"
+        followed_user_topic:
+          title: "%{author} 发布了新主题"
+          body: "%{title}"
+        followed_user_reply:
+          title: "%{author} 回复了主题"
+          body: "%{title} — %{excerpt}"
+        post_quoted:
+          title: "%{quoter} 引用了你的帖子"
+          body: "%{excerpt}"
+        post_edited:
+          title: "帖子已编辑：%{title}"
+          body: "%{author} 编辑了 #%{floor}"
+        topic_solved:
+          title: 你的主题已标记为已解决
+          body: "「%{title}」"
+        badge_earned:
+          title: "你获得了徽章：%{badge}"
+          body: "%{description}"
+        user_warning:
+          title: 你收到了一条社区警告
+          body: "%{reason}"
+        topic_invite:
+          title: "%{inviter} 邀请你关注主题"
+          body: "「%{title}」"
+        poll_closed:
+          title: 投票已关闭
+          body: "「%{title}」的投票「%{question}」已结束。"
+        topic_assigned:
+          title: 你被指派了一个主题
+          body: "%{actor} 将「%{title}」指派给你。"
+        post_reaction:
+          title: "%{reactor} 对你的帖子做出了反应 %{emoji}"
+          body: "%{excerpt}"
+        trust_level_up:
+          title: "信任等级提升：%{level_name}"
+          body: "你已达到信任等级 %{level}，解锁更多社区权限。"
+        private_message:
+          title_group: "群组「%{title}」新消息"
+          title_direct: "来自 %{sender} 的私信"
+          body: "%{excerpt}"
+        bookmark_reminder:
+          title: "书签提醒：%{title}"
+          body: "%{note}"
+          default_note: 你设置的书签提醒时间到了。
+        mention:
+          title: "%{author} 在主题中提到了你"
+          body: "%{excerpt}"
+        here:
+          title: "%{author} 在主题中 @here 提及了你"
+          body: "%{excerpt}"
+      format_post_body:
+        copy: 复制
+        topic_replies: "%{count} 回复"
+        user_posts: "%{count} 帖"
+        coupon_title: "优惠券 %{code}"
+        gift_card_title: "礼品卡 %{code}"
+        gift_card_balance: "余额 %{status}"
+        unavailable: 不可用
+        tag_topics: "%{count} 主题"
+        category_sections: "%{count} 分区"
+      small_actions:
+        author_closed: 作者已关闭此主题。
+        author_reopened: 作者已重新打开此主题。
+        topic_solved_closed: 主题已标记为解决并自动关闭。
+        scheduled_reopen: 此主题已按计划自动重新开放。
+        scheduled_close: 此主题已到达预定时间并自动关闭。
+        scheduled_bump: 此主题已按计划自动提升。
+        scheduled_archive: 此主题已到达预定时间并自动归档。
+        poll_closed: "%{user} 关闭了投票「%{question}」。"
+      exports:
+        posts_header: 楼层,作者,时间,内容
+        poll_header: 选项,票数,投票用户
+        poll_anonymous: （匿名）
+        poll_question: 问题
+        poll_total_votes: 总票数
+        poll_closed_at: 关闭时间
+      announcement_broadcast: "【公告】%{title}"
+      user_fields:
+        required: "%{label} 为必填项。"
+        number: "%{label} 必须是数字。"
+        url: "%{label} 必须是有效 URL。"
+        invalid_choice: "%{label} 选项无效。"
+      warning_restrictions:
+        block_post: "警告积分 %{total} 点已达限制阈值（%{threshold}），暂时无法发帖。"
+        block_links: "警告积分 %{total} 点已达限制阈值（%{threshold}），暂时无法发布链接。"
+        block_pm: "警告积分 %{total} 点已达限制阈值（%{threshold}），暂时无法发送私信。"
+      saved_search_digest:
+        title: "保存的搜索有新结果：%{name}"
+      section_onebox:
+        topics_count: "%{count} 主题"
+      validate_section_tags:
+        required: "此分区要求至少包含以下标签之一：%{label}"
+        default_label: 指定标签
+      share_topic:
+        header: "分享主题：%{title}"
+      split_topic:
+        default_title: "拆分自：%{title}"
+      create_topic_from_post:
+        default_title: "回复：%{title}"
+        quote_header: "[来自 #%{floor} %{author} 的回复](%{url})"
+      restore_post_edit:
+        reason: "恢复至 %{time} 的版本"
+      enforce_warning:
+        reason: "警告积分达到 %{total} 点（阈值 %{threshold}）"
+      sync_section_moderators:
+        users_missing: "用户不存在：%{users}"
+      webhook_test:
+        search_name: Webhook 测试
+        topic_title: 测试主题
+        event_topic_title: Webhook 测试主题
+        section_name: 综合讨论
+        body_excerpt: 测试帖子内容
     minecraft:
       whois:
         not_found: 未找到该玩家记录。
         not_linked: 该玩家尚未绑定网站账户。
+        not_linked_default: 玩家未绑定网站账户。
         linked_summary: "已绑定网站用户 %{username}"
+        website: "网站账户：%{username}"
+        trust: "信任等级：%{label}"
+        membership: "会员：%{labels}"
+        membership_expires: "会员到期：%{expires}"
+        lookup_failed: Whois 查询失败。
       connector:
         link_success: 请在网站输入绑定码完成关联。
         link_code: "绑定码：{code}，访问 {url}"
@@ -350,6 +998,247 @@
       notifications:
         default_title: Minecraft 事件
     admin:
+      dashboard:
+        metrics:
+          users: 用户
+          orders: 订单
+          pending_reports: 待处理举报
+          total_revenue: 总营收 (¥)
+          revenue_7d: 7日营收 (¥)
+          aov: 客单价 (¥)
+          pending_orders: 待支付订单
+          low_stock_products: 低库存商品
+          refunds_7d: 7日退款
+          abandoned_carts: 弃购购物车
+      forum:
+        filter_all: 全部
+        filter_all_events: 全部事件
+        filter_all_sources: 全部来源
+        col_name: 名称
+        col_slug: 标识
+        col_position: 排序
+        col_category: 分类
+        col_topics_count: 主题数
+        col_staff_only: 仅工作人员
+        field_slug: 标识
+        field_position: 排序
+        field_description: 描述
+        field_color: 颜色
+        field_icon: 图标
+        field_sections_count: 板块数
+        action_edit: 编辑
+        action_new_category: 新建分类
+        action_new_section: 新建板块
+        action_new_tag: 新建标签
+        form_edit_category: 编辑分类
+        form_new_category: 新建分类
+        form_edit_tag: 编辑标签
+        form_new_tag: 新建标签
+        categories:
+          title: 论坛分类
+        sections:
+          title: 论坛板块
+          field_category: 分类
+          field_create_permission: 发帖权限
+          field_reply_permission: 回复权限
+          field_required_tags: 必填标签
+          field_required_tag_groups: 必填标签组
+          field_allowed_tags: 允许标签
+          field_prefix_required: 前缀必填
+          field_min_trust_create: 最低发帖信任等级
+          field_min_trust_reply: 最低回复信任等级
+          field_read_only: 只读分区
+          field_login_required: 登录可见
+          field_banner: 公告横幅
+          field_link_url: 外链
+          field_default_notification: 默认订阅级别
+          field_moderators: 分区版主
+          notification_watching: 关注
+          notification_tracking: 跟踪
+          notification_normal: 普通
+          permission_everyone: 所有人
+          form_edit: 编辑板块
+          form_new: 新建板块
+        tags:
+          title: 论坛标签
+        webhook_deliveries:
+          title: 保存搜索 Webhook 投递
+          show_title: "Webhook 投递 #%{id}"
+          col_search: 搜索
+          col_user: 用户
+          field_user: 用户
+          field_event: 事件
+          field_response_code: 响应码
+          field_attempt_count: 尝试次数
+          field_url: URL
+          field_time: 时间
+          section_request_body: 请求体
+          section_response_body: 响应体
+          action_retry: 重试发送
+          bulk_retry_label: "重试本页失败项 (%{count})"
+          status_failed: 失败
+          status_success: 成功
+          status_pending: 进行中
+          kind_test: 测试
+          kind_production: 正式
+        event_webhook_deliveries:
+          title: 论坛事件 Webhook 投递
+          show_title: "事件 Webhook 投递 #%{id}"
+          col_topic: 主题
+          col_event: 事件
+          col_status: 状态
+          col_code: 响应码
+          col_attempts: 尝试
+          col_created_at: 时间
+          field_event: 事件
+          field_topic: 主题
+          field_status: 状态
+          field_response_code: 响应码
+          field_attempt_count: 尝试次数
+          field_time: 时间
+        approvals:
+          title: 待审核帖子
+          show_title: 审核帖子
+          col_author: 作者
+          col_topic: 主题
+          col_section: 分区
+          col_excerpt: 内容
+          col_time: 时间
+          field_author: 作者
+          field_topic: 主题
+          field_section: 分区
+          field_floor: 楼层
+          field_body: 内容
+          field_submitted_at: 提交时间
+          field_attachments: 附件
+          action_approve: 通过审核
+          action_reject: 拒绝
+        settings:
+          labels:
+            forum.bump_cooldown_hours: 主题顶起冷却（小时）
+            forum.warning_mute_threshold: 警告自动禁言阈值
+            forum.warning_mute_days: 警告禁言天数
+            forum.warning_points_expire_days: 警告积分在多少天后过期（0=永不过期）
+            forum.require_post_approval_below_tl: 低于此信任等级的帖子需审核（0=关闭）
+            forum.warning_block_post_threshold: 警告禁止发帖阈值
+            forum.warning_block_links_threshold: 警告禁止链接阈值
+            forum.warning_block_pm_threshold: 警告禁止私信阈值
+            forum.report_auto_hide_threshold: 举报自动隐藏阈值
+            forum.auto_close_on_solved: 解决后自动关闭主题
+            forum.reaction_emojis: 可用反应表情（逗号分隔）
+            forum.group_pm_creator_only_add: 仅群主可添加群成员
+            forum.saved_search_limit: 保存搜索数量上限
+            forum.saved_search_digest_hour: 保存搜索摘要发送时间（小时）
+            forum.digest_hour: 论坛通知摘要发送时间（小时）
+            forum.allow_op_close: 允许楼主关闭自己的主题
+            forum.min_trust_level_reaction: 使用反应所需的最低信任等级
+            forum.saved_search_webhook_secret: 保存搜索 Webhook 密钥
+            forum.saved_search_webhook_url: 保存搜索 Webhook URL（测试/全局）
+            forum.event_webhook_url: 论坛事件 Webhook URL
+            forum.event_webhook_secret: 论坛事件 Webhook 密钥
+            forum.event_webhook_events: 论坛事件 Webhook 启用事件（逗号分隔）
+            forum.search_feeds_opml_saved_limit: 合并 OPML 保存搜索上限
+            forum.search_feeds_opml_history_limit: 合并 OPML 搜索历史上限
+            webhook.failure_alert_threshold: Webhook 失败告警阈值（24h，兼容）
+            webhook.failure_alert_forum_threshold: 论坛 Webhook 失败告警阈值（24h）
+            webhook.failure_alert_store_threshold: 商城 Webhook 失败告警阈值（24h）
+            webhook.failure_alert_email: Webhook 失败告警邮箱
+            webhook.failure_alert_cooldown_hours: Webhook 告警冷却（小时）
+          hints:
+            forum.group_pm_creator_only_add: 开启后，群聊中只有创建者可邀请新成员（对标 Discourse 群组策略）。
+            forum.auto_close_on_solved: 设为 1 时，主题标记为已解决后自动锁定。
+            forum.report_auto_hide_threshold: 帖子被举报达到此次数后自动隐藏待审。
+            forum.reaction_emojis: 用户可对帖子使用的表情列表。
+            forum.saved_search_limit: 每位用户可保存的搜索数量，0 表示不限制。
+            forum.saved_search_digest_hour: 每日发送保存搜索摘要邮件的小时（0–23，服务器时区）。任务每小时检查一次。
+            forum.digest_hour: 每日发送论坛通知摘要邮件的小时（0–23）。任务每小时检查一次。
+            forum.allow_op_close: 设为 false 时楼主无法自行关闭主题。
+            forum.min_trust_level_reaction: 信任等级低于此值的用户无法对帖子添加反应。
+            forum.saved_search_webhook_secret: 用于 X-McWeb-Signature HMAC 签名的密钥，可选。
+            forum.saved_search_webhook_url: 用于管理后台测试投递与全局 Hook，留空则无法发送测试。
+            forum.event_webhook_url: 主题/帖子事件（创建、编辑、解决）的 Webhook 接收地址。
+            forum.event_webhook_secret: 论坛事件 Webhook HMAC 签名密钥，可选。
+            forum.event_webhook_events: 启用的事件类型：topic.created、post.created、post.edited、post.deleted、post.restored、post.rejected、post.approved、topic.solved、topic.moved。
+            forum.search_feeds_opml_saved_limit: 合并 OPML 导出时最多包含的保存搜索数量（1–100）。
+            forum.search_feeds_opml_history_limit: 合并 OPML 导出时最多包含的搜索历史数量（1–50）。
+            webhook.failure_alert_threshold: 旧版统一阈值，论坛/商城未单独配置时回退使用。0 表示关闭。
+            webhook.failure_alert_forum_threshold: 近 24 小时论坛 Webhook 失败达到此值时告警，0 表示不检查论坛。
+            webhook.failure_alert_store_threshold: 近 24 小时商城 Webhook 失败达到此值时告警，0 表示不检查商城。
+            webhook.failure_alert_email: 接收 Webhook 失败告警的管理员邮箱。
+            webhook.failure_alert_cooldown_hours: 两次告警之间的最短间隔，避免重复打扰。
+        badges:
+          title: 论坛徽章
+          col_grant_rule: 授予规则
+          col_users_count: 用户数
+          action_new: 新建徽章
+          form_edit: 编辑徽章
+          form_new: 新建徽章
+        tag_groups:
+          title: 标签组
+          col_tags_count: 标签数
+          col_one_per_topic: 每主题限一
+          col_color: 颜色
+          action_new: 新建标签组
+          form_edit: 编辑标签组
+          form_new: 新建标签组
+        topics:
+          title: 论坛主题
+          col_title: 标题
+          col_author: 作者
+          col_section: 分区
+          col_status: 状态
+          col_locked: 锁定
+          col_archived: 归档
+          col_replies: 回复
+          field_pinned: 置顶
+          field_replies: 回复数
+          section_posts: 帖子
+        reports:
+          title: 内容举报
+          col_reason: 原因
+          col_reporter: 举报人
+          col_status: 状态
+          col_time: 时间
+          show_title: 举报详情
+          field_type: 类型
+          field_reason: 原因
+          field_reporter: 举报人
+          field_status: 状态
+          field_target: 对象
+          field_time: 时间
+          action_reviewed: 标记已审核
+          action_dismiss: 驳回举报
+          target_topic: "主题：%{title}"
+          target_post: "帖子 #%{floor}（%{title}）"
+          target_review: "评价 #%{id}（%{product}）"
+          action_view_topic: 查看主题
+          action_view_post: 查看帖子
+          action_view_product: 查看商品
+        warnings:
+          title: 用户警告记录
+          col_user: 用户
+          col_issuer: 发出者
+          col_points: 积分
+          col_reason: 原因
+          col_time: 时间
+          export_headers:
+            - 用户
+            - 发出者
+            - 积分
+            - 原因
+            - 时间
+        canned_responses:
+          title: 罐头回复
+          col_title: 标题
+          col_author: 作者
+          action_new: 新建罐头回复
+          form_edit: 编辑罐头回复
+          form_new: 新建罐头回复
+        user_fields:
+          title: 用户字段
+          new: 新建用户字段
+          edit: 编辑用户字段
+          col_registration: 注册
       minecraft:
         integration_actions: 集成动作
         profile_fields: 资料字段
@@ -391,10 +1280,342 @@
         status_online: 在线
         status_offline: 离线
         status_maintenance: 维护中
+        nodes: Minecraft 节点
+        players: 在线玩家
+        new_node: 新建节点
+        edit_node: 编辑节点
+        col_hostname: 主机名
+        col_process_state: 进程
+        field_process_state: 进程状态
+        field_connection_mode: 连接模式
+        field_node: 节点
+        field_working_directory: 工作目录
+        process_state_stopped: 已停止
+        process_state_starting: 启动中
+        process_state_running: 运行中
+        process_state_stopping: 停止中
+        process_state_error: 异常
+        action_rotate_node_secret: 轮换节点密钥
+        action_generate_pairing_token: 生成配对令牌
+        confirm_rotate_node_secret: 确定轮换节点密钥？需立即更新 mcweb-node 配置。
+        confirm_delete_node: 确定删除此节点？
+        alert_node_offline: 该节点当前离线。
+        alert_node_stale: 心跳超时，节点可能不可达。
+        alert_stale_nodes: "有 %{count} 个节点标记为在线但心跳已超时。"
+        alert_process_mismatch: "有 %{count} 个托管服务器的进程/Connector 状态不一致。"
+      store:
+        action_edit: 编辑
+        membership_types:
+          title: 会员类型
+          new: 新建会员类型
+          edit: 编辑会员类型
+          col_name: 名称
+          col_slug: 标识
+          col_duration: 时长
+          col_status: 状态
+          field_duration: 时长
+          field_game_permission: 游戏权限
+          field_game_permission_mode: 权限模式
+          field_luckperms_group: LP 组
+          field_display_priority: 展示优先级
+          field_description: 描述
+          field_icon: 展示图标
+          field_color: 展示颜色
+          field_grant_commands: 授予命令
+          field_revoke_commands: 撤销命令
+          duration_days: "%{count} 天"
+          game_permission_on: 启用
+          game_permission_off: 关闭
+          status_enabled: 启用
+          status_disabled: 禁用
+          commands_json_invalid: 命令 JSON 格式无效
+        user_memberships:
+          title: 用户会员
+          grant: 授予会员
+          grant_title: 授予会员
+          col_user: 用户
+          col_type: 会员类型
+          col_status: 状态
+          col_expires_at: 到期时间
+          field_user: 用户
+          field_type: 会员类型
+          field_status: 状态
+          field_starts_at: 开始
+          field_expires_at: 到期
+          field_source: 来源
+          action_revoke: 撤销
+          confirm_revoke: 确定撤销此会员？
+          filter_all: 全部
+          filter_all_types: 全部类型
+        products:
+          title: 商品
+          col_name: 名称
+          col_slug: 标识
+          col_status: 状态
+          col_price: 价格
+          col_stock: 库存
+          field_type: 类型
+          field_status: 状态
+          field_price: 价格
+          field_stock: 库存
+          field_backorder: 缺货可预订
+          field_minimum_quantity: 最低购买量
+          field_description: 描述
+          field_membership_type: 会员类型
+          field_prerequisites: 购买前置
+          prerequisite_count: "%{count} 条"
+          prerequisite_none: 无
+          action_duplicate: 复制商品
+          action_archive: 归档
+          confirm_archive: 确定归档此商品？
+          new: 新建商品
+          edit: 编辑商品
+          physical_products_disabled: 实体商品功能已关闭
+          fulfillment_config_json_invalid: 发货配置 JSON 格式无效
+          field_prerequisite_match: 前置匹配模式
+        filter_all: 全部
+        filter_all_events: 全部事件
+        filter_all_sources: 全部来源
+        coupons:
+          title: 优惠券
+          new: 新建优惠券
+          edit: 编辑优惠券
+          col_code: 代码
+          col_type: 类型
+          col_discount: 折扣
+          col_status: 状态
+          field_type: 类型
+          field_discount_value: 折扣值
+          field_min_amount: 最低消费
+          field_usage_count: 使用次数
+          usage_count: "%{used} / %{limit}"
+          status_enabled: 启用
+          status_disabled: 禁用
+        categories:
+          title: 商品分类
+          new: 新建分类
+          edit: 编辑分类
+          col_name: 名称
+          col_slug: 标识
+          col_position: 排序
+          field_slug: 标识
+          field_position: 排序
+          field_description: 描述
+          field_icon: 图标
+          field_color: 颜色
+          field_seo_title: SEO 标题
+          field_seo_description: SEO 描述
+        fulfillments:
+          title: 发货记录
+          col_delivery_id: Delivery ID
+          col_status: 状态
+          col_order: 订单
+          col_product: 商品
+        orders:
+          title: 订单
+          show_title: "订单 %{number}"
+          col_order_number: 订单号
+          col_customer: 客户
+          col_status: 状态
+          col_total: 金额
+          export_headers:
+            order_number: 订单号
+            customer: 客户
+            status: 状态
+            total: 金额
+            created_at: 创建时间
+          bulk_processed: "已处理 %{count} 个订单。"
+          bulk_processed_with_failures: "已处理 %{processed} 个订单，%{failed} 个失败。"
+          filter_all: 全部
+          section_items: 商品
+          section_fulfillments: 发货
+          section_refunds: 退款记录
+          section_restorations: 退款恢复明细
+          section_staff_notes: 员工备注
+          section_webhooks: Webhook 投递记录
+          empty_fulfillments: 暂无发货记录
+          empty_refunds: 暂无退款
+          empty_restorations: 暂无恢复记录
+          empty_staff_notes: 暂无员工备注
+          empty_webhooks: 暂无投递记录
+          field_customer: 客户
+          field_subtotal: 小计
+          field_shipping: 运费
+          field_shipping_free: 免运费
+          field_shipping_address: 收货地址
+          field_shipping_method: 配送方式
+          field_tracking_number: 物流单号
+          field_carrier: 承运商
+          field_shipped_at: 发货时间
+          field_discount: 优惠
+          field_gift_card: 礼品卡
+          field_store_credit: 商店余额抵扣
+          field_gift_wrap: 礼品包装
+          field_buyer_notes: 买家备注
+          field_total: 总额
+          field_created_at: 创建时间
+          action_full_refund: 全额退款
+          action_approve_refund: "批准退款申请 %{amount}"
+          action_reject_refund: 拒绝退款申请
+          bulk_cancel_pending: 批量取消待支付
+          bulk_mark_paid: 批量标记已支付
+          bulk_mark_fulfilled: 批量标记发货完成
+          admin_refund_reason: 后台退款
+          superseded_refund_reason: 已被后台退款取代
+        gift_cards:
+          title: 礼品卡
+          new: 新建礼品卡
+          edit: 编辑礼品卡
+          col_code: 代码
+          col_balance: 余额
+          col_status: 状态
+          field_balance: 余额
+          field_initial_balance: 初始面额
+          field_status: 状态
+          field_expires_at: 过期时间
+          field_note: 备注
+          status_active: 可用
+          status_inactive: 停用
+          section_usage: 使用记录
+          section_transactions: 余额流水
+          empty_records: 暂无
+          record_label: 记录
+          transaction_line: "%{sign}%{amount} · 余额 %{balance}"
+        webhook_deliveries:
+          title: 订单 Webhook 投递
+          show_title: "订单 Webhook 投递 #%{id}"
+          col_order: 订单
+          col_event: 事件
+          col_status: 状态
+          col_code: 响应码
+          col_attempts: 尝试
+          col_created_at: 时间
+          field_order: 订单
+          field_status: 状态
+          field_event: 事件
+          field_response_code: 响应码
+          field_attempt_count: 尝试次数
+          field_url: URL
+          field_time: 时间
+          section_request_body: 请求体
+          section_response_body: 响应体
+          action_retry: 重试发送
+          bulk_retry_label: "重试本页失败项 (%{count})"
+          status_failed: 失败
+          status_success: 成功
+          status_pending: 进行中
+          kind_test: 测试
+          kind_production: 正式
+        reviews:
+          title: 商品评价
+          show_title: "评价 — %{product}"
+          col_product: 商品
+          col_author: 用户
+          col_rating: 评分
+          col_status: 状态
+          field_user: 用户
+          field_rating: 评分
+          field_status: 状态
+          field_body: 内容
+          field_merchant_reply: 商家回复
+          field_time: 时间
+          action_hide: 隐藏评价
+          action_show: 显示评价
+        uploads:
+          file_required: 请选择要上传的文件。
+          file_too_large: 文件过大（最大 8MB）。
+          unsupported_type: 不支持的文件类型。
+        settings:
+          labels:
+            store.seo_title: 商城 SEO 标题
+            store.seo_description: 商城 SEO 描述
+            store.free_shipping_min_order_cents: 免运费最低订单（分）
+            store.flat_shipping_cents: 固定运费（分）
+            store.gift_wrap_cents: 礼品包装费（分）
+            store.min_checkout_subtotal_cents: 最低结账金额（分）
+            store.refund_window_days: 退款窗口（天）
+            store.pending_order_expiry_minutes: 待支付订单过期（分钟）
+            store.review_request_delay_days: 评价邀请延迟（天）
+            store.compare_max_items: 对比列表上限
+            store.cart_max_items: 购物车商品种类上限
+            store.abandoned_cart_coupon_code: 弃购提醒优惠券代码
+            store.order_webhook_secret: 订单 Webhook 密钥
+            store.order_webhook_url: 订单 Webhook URL
+          hints:
+            store.free_shipping_min_order_cents: 订单小计达到此金额（分）免运费，0 表示不启用。
+            store.refund_window_days: 0 表示不允许用户自助申请退款。
+            store.compare_max_items: 用户可同时对比的商品数量。
+            store.cart_max_items: 购物车中不同商品种类上限，0 表示不限制。
+            store.abandoned_cart_coupon_code: 弃购邮件中附带的优惠券，留空则不发放。
+            store.flat_shipping_cents: 结账时「标准配送」的实际运费（分），会覆盖下方配送方式中 standard 的价格。
+            store.order_webhook_url: 订单状态变更时 POST JSON 的目标 URL，留空则不发送。
+            store.order_webhook_secret: 用于 X-McWeb-Signature HMAC 签名的密钥，可选。
+          errors:
+            shipping_methods_required: 至少保留一种配送方式
+            shipping_methods_invalid: 配送方式必须是 JSON 数组
+            webhook_url_private: Webhook URL 不能指向内网或本地地址
     labels:
       not_available: "—"
       yes: 是
       no: 否
+      enabled: 启用
+      disabled: 禁用
+      unlimited: "∞"
+      gift_card_status:
+        active: 可用
+        inactive: 停用
+      gift_card_public_status:
+        claimed: 已绑定
+        redeemable: 可领取
+        inactive: 已停用
+        expired: 已过期
+        zero_balance: 余额为零
+        available: 可用
+        unavailable: 无效或不可用
+      coupon_public_status:
+        unavailable: 无效或不可用
+      webhook_delivery_status:
+        failed: 失败
+        success: 成功
+        pending: 进行中
+      review_status:
+        published: 已发布
+        hidden: 已隐藏
+        pending: 待审核
+      product_question_status:
+        published: 已发布
+        hidden: 已隐藏
+      membership_status:
+        active: 有效
+        expired: 已过期
+        revoked: 已撤销
+      membership_source:
+        purchase: 购买
+        admin_grant: 后台授予
+        import: 导入
+      game_permission_mode:
+        website_managed: 网站计时
+        lp_timed: LP 时效
+      duration_mode:
+        permanent: 永久
+        fixed_days: 固定天数
+      product_types:
+        virtual: 虚拟商品
+        physical: 实体商品
+        gift_card: 礼品卡
+        digital: 数字商品
+        membership: 会员商品
+        vip: VIP
+      product_status:
+        draft: 草稿
+        active: 上架
+        archived: 归档
+      prerequisite_match_mode:
+        all: 全部满足（AND）
+        any: 满足其一（OR）
+      requirement_mode:
+        ever_purchased: 曾购买过
+        active: 仍在有效期
       notification_types:
         forum.topic_reply: 主题回复
         forum.mention: "@提及"
@@ -414,24 +1635,42 @@
         forum.topic_invite: 主题邀请
         forum.poll_closed: 投票关闭
         forum.here: "@here 提及"
-        commerce.order_created: 订单创建
-        commerce.payment_confirmed: 支付确认
-        commerce.payment_reminder: 付款提醒
-        commerce.order_shipped: 订单发货
-        commerce.order_fulfilled: 订单履约
+        forum.bookmark_reminder: 书签提醒
+        forum.user_warning: 社区警告
+        forum.post_pending: 待审核帖子
+        forum.post_rejected: 审核未通过
+        forum.post_approved: 审核通过
+        commerce.order_created: 订单确认
+        commerce.payment_confirmed: 支付成功
+        commerce.order_processing: 订单处理中
+        commerce.order_fulfilling: 发货处理中
+        commerce.order_fulfilled: 发货完成
+        commerce.order_shipped: 物流发货
         commerce.order_completed: 订单完成
-        commerce.order_cancelled: 订单已取消
-        commerce.refund_requested: 退款申请
-        commerce.refund_processed: 退款完成
-        commerce.review_request: 评价邀请
-        commerce.merchant_review_reply: 商家回复评价
-        commerce.product_available: 商品到货
+        commerce.order_cancelled: 订单取消
+        commerce.payment_reminder: 待支付提醒
+        commerce.refund_requested: 退款申请提交
+        commerce.refund_processed: 退款通知
+        commerce.refund_rejected: 退款拒绝通知
         commerce.abandoned_cart: 购物车提醒
-        commerce.low_stock: 库存预警
+        commerce.stock_restocked: 到货通知
+        commerce.price_drop: 降价提醒
+        commerce.product_changelog: 商品更新日志
+        commerce.question_answered: 问答回复通知
+        commerce.new_product_question: 新商品提问（员工）
+        commerce.merchant_review_reply: 商家评价回复
+        commerce.review_request: 购后评价邀请
+        commerce.product_available: 商品上架通知
+        commerce.low_stock_staff: 低库存提醒（员工）
         minecraft.custom: Minecraft 事件
         minecraft.link_completed: Minecraft 绑定成功
         minecraft.player_join: 玩家上线
         minecraft.player_quit: 玩家下线
+      notification_bodies:
+        forum:
+          post_approved: "你在「%{title}」的帖子已通过审核。"
+          post_pending: "%{username} 在「%{title}」发布了待审核内容。"
+          post_rejected: "你在「%{title}」的帖子未通过审核。"
       order_status:
         pending: 待支付
         awaiting_payment: 待支付
@@ -480,6 +1719,8 @@
         refund_rejected: 退款拒绝
         refunded: 已退款
         fulfilled: 发货完成
+        membership_granted: 会员已授予
+        membership_revoked: 会员已撤销
       order_restorations:
         store_credit: 商店余额已恢复
         gift_card: 礼品卡余额已恢复

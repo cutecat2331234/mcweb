@@ -24,9 +24,13 @@ export interface UserCardData {
   last_seen_at?: string | null
   online?: boolean
   badges: Array<{ name: string; icon: string | null; color: string | null; granted_at?: string }>
+  memberships?: Array<{ name: string; slug: string; color?: string | null; icon?: string | null; expires_label?: string; permanent?: boolean }>
   message_url: string | null
   follow_url?: string | null
   following?: boolean
+  ingame_online?: boolean
+  ingame_server?: string | null
+  last_seen_ingame_at?: string | null
 }
 
 const open = ref(false)
@@ -90,7 +94,11 @@ onBeforeUnmount(() => {
           <img :src="card.avatar_url" :alt="card.username" class="h-10 w-10 rounded-full" />
           <div class="min-w-0">
             <p class="font-medium">{{ card.display_name || card.username }}</p>
-            <p class="text-xs text-muted-foreground">@{{ card.username }} · {{ card.trust_name }}<span v-if="card.online" class="ml-1 text-green-600">{{ t('components.userHover.online') }}</span></p>
+            <p class="text-xs text-muted-foreground">
+              @{{ card.username }} · {{ card.trust_name }}
+              <span v-if="card.online" class="ml-1 text-green-600">{{ t('components.userHover.online') }}</span>
+              <span v-if="card.ingame_online && card.ingame_server" class="ml-1 text-emerald-600">{{ t('components.userHover.ingameOn', { server: card.ingame_server }) }}</span>
+            </p>
           </div>
         </div>
         <p v-if="card.bio" class="mt-2 line-clamp-2 text-xs text-muted-foreground">{{ card.bio }}</p>
@@ -98,6 +106,16 @@ onBeforeUnmount(() => {
           {{ t('components.userHover.posts', { count: card.posts_count }) }}<span v-if="card.likes_received != null">{{ t('components.userHover.likes', { count: card.likes_received }) }}</span> · {{ t('components.userHover.memberSince', { date: card.member_since }) }}
           <span v-if="card.last_seen_at && !card.online">{{ t('components.userHover.lastSeen', { date: card.last_seen_at }) }}</span>
         </p>
+        <div v-if="card.memberships?.length" class="mt-2 flex flex-wrap gap-1">
+          <span
+            v-for="membership in card.memberships"
+            :key="membership.slug"
+            class="rounded border px-1.5 py-0.5 text-[10px] font-medium"
+            :style="membership.color ? { borderColor: membership.color, color: membership.color } : undefined"
+          >
+            {{ membership.icon ? `${membership.icon} ` : '' }}{{ membership.name }}
+          </span>
+        </div>
         <div v-if="card.badges.length" class="mt-2 flex flex-wrap gap-1">
           <span
             v-for="badge in card.badges"

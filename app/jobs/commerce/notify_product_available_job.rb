@@ -16,15 +16,12 @@ module Commerce
           user = alert.user
 
           if NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.product_available")
-            Notification.notify!(
+            Commerce::InAppNotification.product_event(
               user: user,
               notification_type: "commerce.product_available",
-              title: "商品已上架",
-              body: "#{product.name} 现已开售，可以购买了。",
-              metadata: {
-                path: "#{Mcweb::Paths::APP_PREFIX}/store/products/#{product.public_id}",
-                product_id: product.public_id
-              }
+              key: "product_available",
+              product: product,
+              path: "#{Mcweb::Paths::APP_PREFIX}/store/products/#{product.public_id}"
             )
           end
 

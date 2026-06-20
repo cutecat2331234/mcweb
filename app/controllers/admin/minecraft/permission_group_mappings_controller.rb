@@ -4,8 +4,6 @@ module Admin
   module Minecraft
     class PermissionGroupMappingsController < BaseController
       before_action -> { require_permission("minecraft.servers.manage") }
-      before_action -> { require_admin_module!("minecraft") }
-
       SETTING_KEY = "minecraft.permission_group_mappings"
 
       def index

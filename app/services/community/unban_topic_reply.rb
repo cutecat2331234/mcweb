@@ -10,7 +10,7 @@ module Community
 
     def call
       unless @actor.permission?("forum.topics.lock")
-        return ServiceResult.failure(error: "无权解除回复禁言。")
+        return ServiceResult.failure(error: "unban_reply_unauthorized")
       end
 
       ban = Community::TopicReplyBan.find_by(topic: @topic, user: @user)

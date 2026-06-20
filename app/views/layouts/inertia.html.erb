@@ -13,8 +13,8 @@
       (function () {
         var key = "mc-theme";
         var stored = localStorage.getItem(key);
-        var theme = stored || (window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
-        if (theme === "dark") document.documentElement.classList.add("dark");
+        // 门户默认浅色；仅当用户明确选择 dark 时才启用暗色
+        if (stored === "dark") document.documentElement.classList.add("dark");
       })();
     </script>
   </head>

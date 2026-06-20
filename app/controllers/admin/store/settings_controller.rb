@@ -2,7 +2,8 @@
 
 module Admin
   module Store
-    class SettingsController < BaseController
+    class SettingsController < Admin::BaseController
+      before_action -> { require_admin_module!("system") }
       before_action -> { require_permission("system.settings.manage") }
 
       STORE_SETTING_KEYS = %w[
@@ -25,6 +26,7 @@ module Admin
       def show
         render inertia: "Admin/Store/Settings/Show", props: {
           settings: store_settings_props,
+          storeFeatures: Commerce::StoreFeatures.admin_props,
           shippingMethods: Commerce::ShippingMethods.stored_list,
           testWebhookUrl: test_webhook_admin_store_settings_path,
           testAllWebhooksUrl: test_all_webhooks_admin_store_settings_path,
@@ -35,6 +37,10 @@ module Admin
       end
 
       def update
+        if params[:store_features].present?
+          Commerce::StoreFeatures.update_from_params!(params[:store_features])
+        end
+
         if params[:shipping_methods].present?
           json = normalize_shipping_methods(params[:shipping_methods]).to_json
           validate_shipping_methods!(json)
@@ -42,13 +48,14 @@ module Admin
         end
 
         settings_params.each do |key, value|
+          validate_setting_value!(key, value)
           SiteSetting.set(key, value)
         end
 
         Administration::AuditLogger.call(
           actor: current_user,
           action: "admin.store_settings_updated",
-          metadata: { keys: settings_params.keys + (params[:shipping_methods].present? ? [ "store.shipping_methods" ] : []) }
+          metadata: { keys: settings_params.keys + (params[:shipping_methods].present? ? [ "store.shipping_methods" ] : []) + (params[:store_features].present? ? Commerce::StoreFeatures.definitions.map(&:key) : []) }
         )
 
         redirect_to admin_store_settings_path, notice: t("mcweb.flash.store_settings_saved")
@@ -128,35 +135,17 @@ module Admin
       end
 
       def setting_label(key)
-        {
-          "store.seo_title" => "商城 SEO 标题",
-          "store.seo_description" => "商城 SEO 描述",
-          "store.free_shipping_min_order_cents" => "免运费最低订单（分）",
-          "store.flat_shipping_cents" => "固定运费（分）",
-          "store.gift_wrap_cents" => "礼品包装费（分）",
-          "store.min_checkout_subtotal_cents" => "最低结账金额（分）",
-          "store.refund_window_days" => "退款窗口（天）",
-          "store.pending_order_expiry_minutes" => "待支付订单过期（分钟）",
-          "store.review_request_delay_days" => "评价邀请延迟（天）",
-          "store.compare_max_items" => "对比列表上限",
-          "store.cart_max_items" => "购物车商品种类上限",
-          "store.abandoned_cart_coupon_code" => "弃购提醒优惠券代码",
-          "store.order_webhook_secret" => "订单 Webhook 密钥",
-          "store.order_webhook_url" => "订单 Webhook URL"
-        }[key] || key
+        labels = I18n.t("mcweb.admin.store.settings.labels")
+        return key unless labels.is_a?(Hash)
+
+        labels[key.to_sym] || labels[key] || key
       end
 
       def setting_hint(key)
-        {
-          "store.free_shipping_min_order_cents" => "订单小计达到此金额（分）免运费，0 表示不启用。",
-          "store.refund_window_days" => "0 表示不允许用户自助申请退款。",
-          "store.compare_max_items" => "用户可同时对比的商品数量（对标 XenForo 资源对比）。",
-          "store.cart_max_items" => "购物车中不同商品种类上限，0 表示不限制。",
-          "store.abandoned_cart_coupon_code" => "弃购邮件中附带的优惠券，留空则不发放。",
-          "store.flat_shipping_cents" => "结账时「标准配送」的实际运费（分），会覆盖下方配送方式中 standard 的价格。",
-          "store.order_webhook_url" => "订单状态变更时 POST JSON 的目标 URL，留空则不发送。",
-          "store.order_webhook_secret" => "用于 X-McWeb-Signature HMAC 签名的密钥，可选。"
-        }[key]
+        hints = I18n.t("mcweb.admin.store.settings.hints")
+        return nil unless hints.is_a?(Hash)
+
+        hints[key.to_sym] || hints[key]
       end
 
       def setting_input_type(key)
@@ -167,8 +156,18 @@ module Admin
 
       def validate_shipping_methods!(json)
         parsed = JSON.parse(json)
-        raise ArgumentError, "至少保留一种配送方式" if parsed.blank?
-        raise ArgumentError, "配送方式必须是 JSON 数组" unless parsed.is_a?(Array)
+        raise ArgumentError, t("mcweb.admin.store.settings.errors.shipping_methods_required") if parsed.blank?
+        raise ArgumentError, t("mcweb.admin.store.settings.errors.shipping_methods_invalid") unless parsed.is_a?(Array)
+      end
+
+      def validate_setting_value!(key, value)
+        return unless key == "store.order_webhook_url"
+
+        url = value.to_s.strip
+        return if url.blank?
+        return if UrlSafety.public_http_url?(url)
+
+        raise ArgumentError, t("mcweb.admin.store.settings.errors.webhook_url_private")
       end
     end
   end

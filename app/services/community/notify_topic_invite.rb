@@ -15,11 +15,12 @@ module Community
       return ServiceResult.success unless email_enabled || in_app_enabled
 
       if in_app_enabled
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: @user,
           notification_type: "forum.topic_invite",
-          title: "#{@inviter.username} 邀请你关注主题",
-          body: @topic.title,
+          key: "topic_invite",
+          inviter: @inviter.username,
+          title: @topic.title,
           metadata: { path: "#{Mcweb::Paths::APP_PREFIX}/forum/topics/#{@topic.public_id}", topic_id: @topic.public_id }
         )
       end

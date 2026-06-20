@@ -32,11 +32,15 @@ class Minecraft::ConnectorApiV2Test < ActionDispatch::IntegrationTest
     )
   end
 
-  test "link_codes endpoint returns code and player_id" do
+  test "link_codes endpoint returns player_id for client-generated digest" do
+    uuid = "550e8400-e29b-41d4-a716-446655440010"
+    ensure_connector_player_session!(server: @server, uuid: uuid, username: "Steve")
+    code = "ABCD1234"
     payload = {
-      uuid: "550e8400-e29b-41d4-a716-446655440010",
+      uuid: uuid,
       username: "Steve",
-      platform: "java"
+      platform: "java",
+      code_digest: Minecraft::LinkCode.digest_code(code)
     }.to_json
 
     post "/minecraft/connector/#{@server.public_id}/link_codes",
@@ -45,7 +49,7 @@ class Minecraft::ConnectorApiV2Test < ActionDispatch::IntegrationTest
 
     assert_response :success
     body = JSON.parse(response.body)
-    assert body["code"].present?
+    assert_nil body["code"]
     assert body["player_id"].present?
   end
 
@@ -119,6 +123,9 @@ class Minecraft::ConnectorApiV2Test < ActionDispatch::IntegrationTest
   end
 
   test "events endpoint triggers integration runner" do
+    uuid = "550e8400-e29b-41d4-a716-446655440020"
+    ensure_connector_player_session!(server: @server, uuid: uuid, username: "Joiner")
+
     Minecraft::IntegrationAction.create!(
       name: "Welcome join",
       event_key: "player.join",
@@ -131,7 +138,7 @@ class Minecraft::ConnectorApiV2Test < ActionDispatch::IntegrationTest
     payload = {
       event: "player.join",
       event_id: event_id,
-      uuid: "550e8400-e29b-41d4-a716-446655440020",
+      uuid: uuid,
       username: "Joiner",
       platform: "java",
       payload: {}

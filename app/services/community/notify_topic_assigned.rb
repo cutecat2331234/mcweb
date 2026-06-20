@@ -16,11 +16,12 @@ module Community
       return ServiceResult.success(skipped: true) unless email_enabled || in_app_enabled
 
       if in_app_enabled
-        Notification.notify!(
+        Community::InAppNotification.notify(
           user: @assignee,
           notification_type: "forum.topic_assigned",
-          title: "你被指派了一个主题",
-          body: "#{@actor.username} 将「#{@topic.title}」指派给你。",
+          key: "topic_assigned",
+          actor: @actor.username,
+          title: @topic.title,
           metadata: {
             topic_id: @topic.public_id,
             path: "#{Mcweb::Paths::APP_PREFIX}/forum/topics/#{@topic.public_id}"

@@ -15,7 +15,9 @@ module Website
 
       featured_products = if FeatureFlags.enabled?(:store)
         begin
-          Commerce::Product.available.where(featured: true).order(created_at: :desc).limit(6)
+          Commerce::StoreFeatures.visible_products_scope(
+            Commerce::Product.available.where(featured: true).order(created_at: :desc).limit(6)
+          )
         rescue ActiveRecord::StatementInvalid
           []
         end

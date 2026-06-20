@@ -14,40 +14,65 @@ module Commerce
       return ServiceResult.failure(error: "Order is not refundable.") unless %w[paid fulfilled completed].include?(@order.status)
       return ServiceResult.failure(error: "Refund window has expired.") unless within_refund_window?
 
-      payment = @order.payment_records.where(status: "succeeded").order(created_at: :desc).first
-      return ServiceResult.failure(error: "No payment found.") unless payment
+      refund = nil
+      failure_error = nil
 
-      return ServiceResult.failure(error: "Refund already pending.") if Commerce::Refund.where(order: @order, status: "pending").exists?
+      Commerce::Order.transaction do
+        @order.lock!
+        @order.reload
 
-      max_cents = refundable_cents(payment)
-      return ServiceResult.failure(error: "No refundable amount remaining.") if max_cents <= 0
+        payment = succeeded_payment
+        unless payment
+          failure_error = "No payment found."
+          raise ActiveRecord::Rollback
+        end
 
-      requested = @amount_cents.present? ? @amount_cents.to_i : max_cents
-      return ServiceResult.failure(error: "退款金额无效。") if requested <= 0
-      return ServiceResult.failure(error: "退款金额超过可退上限。") if requested > max_cents
+        if Commerce::Refund.where(order: @order, status: "pending").exists?
+          failure_error = "Refund already pending."
+          raise ActiveRecord::Rollback
+        end
 
-      refund = Commerce::Refund.create!(
-        order: @order,
-        payment_record: payment,
-        status: "pending",
-        amount_cents: requested,
-        reason: @reason || "Customer request",
-        requested_by: @user,
-        requested_by_customer: true
-      )
+        max_cents = refundable_cents(payment)
+        if max_cents <= 0
+          failure_error = "No refundable amount remaining."
+          raise ActiveRecord::Rollback
+        end
+
+        requested = @amount_cents.present? ? @amount_cents.to_i : max_cents
+        if requested <= 0
+          failure_error = "refund_amount_invalid"
+          raise ActiveRecord::Rollback
+        end
+        if requested > max_cents
+          failure_error = "refund_amount_exceeds_limit"
+          raise ActiveRecord::Rollback
+        end
+
+        refund = Commerce::Refund.create!(
+          order: @order,
+          payment_record: payment,
+          status: "pending",
+          amount_cents: requested,
+          reason: @reason || "Customer request",
+          requested_by: @user,
+          requested_by_customer: true
+        )
+      end
+
+      return ServiceResult.failure(error: failure_error) if failure_error.present?
 
       Commerce::OrderEvent.create!(
         order: @order,
         actor: @user,
         event_type: "refund_requested",
-        metadata: { refund_id: refund.id, amount_cents: requested }
+        metadata: { refund_id: refund.id, amount_cents: refund.amount_cents }
       )
 
       Commerce::NotifyOrderEvent.call(
         user: @order.user,
         notification_type: "commerce.refund_requested",
-        title: "退款申请已提交",
-        body: "订单 #{@order.order_number} 退款申请正在审核。",
+        title: I18n.t("mcweb.labels.notification_types.commerce.refund_requested"),
+        body: I18n.t("mcweb.mail.order.refund_requested.body", number: @order.order_number),
         path: "/app/store/orders/#{@order.public_id}"
       )
 
@@ -66,13 +91,11 @@ module Commerce
     end
 
     def within_refund_window?
-      window_days = SiteSetting.get("store.refund_window_days", "0").to_i
-      return true if window_days <= 0
+      Commerce::RefundWindow.within_window?(@order)
+    end
 
-      payment = @order.payment_records.where(status: "succeeded").order(created_at: :asc).first
-      return false unless payment
-
-      Time.current <= payment.created_at + window_days.days
+    def succeeded_payment
+      @order.primary_succeeded_payment_record
     end
   end
 end

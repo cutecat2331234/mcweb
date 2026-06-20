@@ -25,7 +25,7 @@ module Commerce
         Notification.notify!(
           user: user,
           notification_type: "commerce.product_changelog",
-          title: "商品更新：#{product.name}",
+          title: Commerce::InAppNotification.t("product_changelog.title", product: product.name),
           body: product.changelog.truncate(200),
           metadata: {
             path: "/app/store/products/#{product.public_id}",

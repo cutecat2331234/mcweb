@@ -69,6 +69,7 @@ module ServiceErrorTranslator
     "You are muted in this section." => "mcweb.services.errors.muted_in_section",
     "Your account is banned." => "mcweb.services.errors.account_banned",
     "You are silenced and cannot post." => "mcweb.services.errors.silenced_cannot_post",
+    "You are banned from replying in this topic." => "mcweb.services.errors.topic_reply_banned",
     "Please wait before creating another topic." => "mcweb.services.errors.wait_before_new_topic",
     "A similar topic was recently created." => "mcweb.services.errors.similar_topic_recent"
   }.freeze
@@ -92,6 +93,10 @@ module ServiceErrorTranslator
     PATTERNS.each do |pattern, key, param|
       match = text.match(pattern)
       return I18n.t(key, param => match[1], default: text) if match
+    end
+
+    if text.match?(/\A[a-z][a-z0-9_]*\z/) && I18n.exists?("mcweb.services.errors.#{text}", locale: I18n.locale)
+      return I18n.t("mcweb.services.errors.#{text}")
     end
 
     text

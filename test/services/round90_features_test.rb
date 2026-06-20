@@ -37,6 +37,8 @@ class Round90FollowedUserReplyTest < ActiveSupport::TestCase
 
   test "skips notification when preference disabled" do
     NotificationPreference.set!(@follower, channel: "in_app", notification_type: "forum.followed_reply", enabled: false)
+    before_count = Notification.where(user: @follower, notification_type: "forum.followed_reply").count
+
     Community::CreatePost.call(
       user: @author,
       topic: @topic,
@@ -45,7 +47,8 @@ class Round90FollowedUserReplyTest < ActiveSupport::TestCase
       skip_interval_check: true
     )
 
-    assert_not Notification.exists?(user: @follower, notification_type: "forum.followed_reply")
+    after_count = Notification.where(user: @follower, notification_type: "forum.followed_reply").count
+    assert_equal before_count, after_count
   end
 end
 

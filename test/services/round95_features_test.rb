@@ -104,6 +104,38 @@ class Round95BulkMarkPaidTest < ActiveSupport::TestCase
     assert_equal 1, result.value[:processed]
     assert_equal "paid", @order.reload.status
   end
+
+  test "bulk mark paid resumes stuck paid order without re-marking" do
+    @order.update!(status: "paid")
+
+    assert_enqueued_with(job: Commerce::FulfillOrderJob, args: [ @order.id ]) do
+      result = Commerce::BulkUpdateOrders.call(
+        actor: @admin,
+        order_public_ids: [ @order.public_id ],
+        action: "mark_paid"
+      )
+      assert result.success?
+      assert_equal 1, result.value[:processed]
+    end
+
+    assert_equal "paid", @order.reload.status
+  end
+
+  test "bulk mark paid resumes processing order missing post payment side effects" do
+    @order.update!(status: "processing")
+
+    assert_enqueued_with(job: Commerce::PostPaymentSideEffectsJob, args: [ @order.id ]) do
+      result = Commerce::BulkUpdateOrders.call(
+        actor: @admin,
+        order_public_ids: [ @order.public_id ],
+        action: "mark_paid"
+      )
+      assert result.success?
+      assert_equal 1, result.value[:processed]
+    end
+
+    assert_equal "processing", @order.reload.status
+  end
 end
 
 class Round95AuthorBadgesGrantedAtTest < ActionDispatch::IntegrationTest

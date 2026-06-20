@@ -9,13 +9,18 @@ module Commerce
     def call
       card = @order.gift_card
       original = @order.gift_card_amount_cents.to_i
-      already_restored = @order.gift_card_restored_cents.to_i
-      amount = original - already_restored
-      return ServiceResult.success unless amount.positive?
-      return ServiceResult.failure(error: "礼品卡信息无效。") unless card
+      return ServiceResult.success unless original.positive?
+      return ServiceResult.failure(error: "gift_card_invalid") unless card
 
       Commerce::GiftCard.transaction do
+        @order.lock!
+        @order.reload
         card.lock!
+
+        already_restored = @order.gift_card_restored_cents.to_i
+        amount = original - already_restored
+        next if amount <= 0
+
         card.update!(
           balance_cents: card.balance_cents + amount,
           active: true

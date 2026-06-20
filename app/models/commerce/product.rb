@@ -4,6 +4,10 @@ module Commerce
 
     belongs_to :category, class_name: "Commerce::Category", foreign_key: :store_category_id, optional: true
     belongs_to :forum_topic, class_name: "Community::Topic", foreign_key: :forum_topic_id, optional: true
+    belongs_to :membership_type, class_name: "Commerce::MembershipType", foreign_key: :store_membership_type_id, optional: true
+    has_many :prerequisites, class_name: "Commerce::ProductPrerequisite", foreign_key: :store_product_id, dependent: :destroy
+    has_many :required_products, through: :prerequisites, source: :required_product
+    accepts_nested_attributes_for :prerequisites, allow_destroy: true, reject_if: proc { |attrs| attrs["required_product_id"].blank? }
     has_many :variants, class_name: "Commerce::ProductVariant", foreign_key: :store_product_id, dependent: :destroy
     accepts_nested_attributes_for :variants, allow_destroy: true, reject_if: :all_blank
     has_many :wishlist_items, class_name: "Commerce::WishlistItem", foreign_key: :store_product_id, dependent: :destroy
@@ -13,6 +17,7 @@ module Commerce
     has_one_attached :cover_image
 
     enum :status, { draft: "draft", active: "active", archived: "archived" }, validate: true
+    enum :prerequisite_match_mode, { all: "all", any: "any" }, validate: true, prefix: :prerequisite_match
 
     validates :name, presence: true
     validates :slug, presence: true, uniqueness: true
@@ -26,6 +31,11 @@ module Commerce
     validate :maximum_quantity_valid
     validate :image_url_safe
     validate :gallery_urls_safe
+    validate :membership_type_required_for_membership_product
+
+    def membership_product?
+      product_type == "membership"
+    end
 
     def on_sale?
       compare_at_price_cents.present? && compare_at_price_cents > price_cents
@@ -67,7 +77,7 @@ module Commerce
     def coming_soon_label
       return nil unless coming_soon?
 
-      "将于 #{I18n.l(available_at, format: :short)} 上架"
+      I18n.t("commerce.product.coming_soon_at", time: I18n.l(available_at, format: :short))
     end
 
     scope :with_stock, -> {
@@ -139,6 +149,12 @@ module Commerce
       if compare_at_price_cents < price_cents
         errors.add(:compare_at_price_cents, "must be greater than or equal to sale price")
       end
+    end
+
+    def membership_type_required_for_membership_product
+      return unless membership_product?
+
+      errors.add(:membership_type, :required_for_membership_product) if store_membership_type_id.blank?
     end
 
     def image_url_safe

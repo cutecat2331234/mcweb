@@ -2,16 +2,34 @@
 
 module Identity
   class RegisterUser < ApplicationService
-    def initialize(email:, username:, password:, display_name: nil, locale: "zh-CN", time_zone: "Asia/Shanghai")
+    def initialize(email:, username:, password:, display_name: nil, locale: "zh-CN", time_zone: "Asia/Shanghai", user_fields: nil, ip_address: nil)
       @email = email.to_s.strip.downcase
       @username = username.to_s.strip
       @password = password
       @display_name = display_name.presence || @username
       @locale = locale
       @time_zone = time_zone
+      @user_fields = user_fields
+      @ip_address = ip_address
     end
 
     def call
+      if @ip_address.present?
+        rate_limit_result = Administration::RateLimiter.call(
+          key: "register:ip:#{@ip_address}",
+          limit: 5,
+          window: 1.hour
+        )
+        return ServiceResult.failure(error: "注册过于频繁，请稍后再试。") if rate_limit_result.failure?
+      end
+
+      email_rate_result = Administration::RateLimiter.call(
+        key: "register:email:#{@email}",
+        limit: 3,
+        window: 24.hours
+      )
+      return ServiceResult.failure(error: "该邮箱注册过于频繁，请稍后再试。") if email_rate_result.failure?
+
       verification_token = generate_token
 
       user = User.create!(
@@ -26,6 +44,14 @@ module Identity
         email_verification_token_digest: digest_token(verification_token),
         email_verification_sent_at: Time.current
       )
+
+      if Community::UserFieldDefinition.for_registration.exists?
+        field_result = Community::SyncUserFieldValues.call(user: user, values: @user_fields || {}, context: :registration)
+        unless field_result.success?
+          user.destroy!
+          return ServiceResult.failure(errors: field_result.errors)
+        end
+      end
 
       Administration::AuditLogger.call(
         actor: user,

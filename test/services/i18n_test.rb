@@ -23,9 +23,16 @@ class I18nZhCNTest < ActiveSupport::TestCase
 
   test "register user failure returns translated errors" do
     I18n.with_locale("zh-CN") do
-      result = Identity::RegisterUser.call(email: "a@b.com", username: "abuser", password: "")
+      Rails.cache.clear
+      result = Identity::RegisterUser.call(
+        email: "a@b.com",
+        username: "abuser#{SecureRandom.hex(3)}",
+        password: "",
+        ip_address: "127.0.0.1"
+      )
       assert result.failure?
-      assert result.errors[:password].any? { |m| m.include?("不能为空") }
+      password_errors = result.errors[:password] || result.errors["password"]
+      assert password_errors&.any? { |m| m.include?("不能为空") }
     end
   end
 

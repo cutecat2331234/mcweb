@@ -8,10 +8,10 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "订单无法修改。") unless @order.status == "pending"
+      return ServiceResult.failure(error: "order_not_modifiable") unless @order.status == "pending"
 
       coupon = Commerce::Coupon.find_by(code: @code)
-      return ServiceResult.failure(error: "优惠券代码无效。") unless coupon
+      return ServiceResult.failure(error: "coupon_unavailable") unless coupon
 
       cart_items = @order.items.includes(:product)
       discount_cents = 0
@@ -27,7 +27,7 @@ module Commerce
           exclude_order_id: @order.id
         )
         if reason
-          coupon_error = reason
+          coupon_error = "coupon_unavailable"
           raise ActiveRecord::Rollback
         end
 

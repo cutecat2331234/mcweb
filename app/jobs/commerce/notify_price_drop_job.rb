@@ -18,8 +18,13 @@ module Commerce
         Notification.notify!(
           user: user,
           notification_type: "commerce.price_drop",
-          title: "商品降价了",
-          body: "#{product.name} 现价 #{format_price(current_price, product.currency)}（原价 #{format_price(alert.baseline_price_cents, product.currency)}）",
+          title: Commerce::InAppNotification.t("price_drop.title"),
+          body: Commerce::InAppNotification.t(
+            "price_drop.body",
+            product: product.name,
+            current: format_price(current_price, product.currency),
+            was: format_price(alert.baseline_price_cents, product.currency)
+          ),
           metadata: {
             path: "/app/store/products/#{product.public_id}",
             product_public_id: product.public_id

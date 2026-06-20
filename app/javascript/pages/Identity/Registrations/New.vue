@@ -9,6 +9,7 @@ import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Alert from '@/components/ui/Alert.vue'
 import Select from '@/components/ui/Select.vue'
+import UserCustomFieldsForm, { type UserCustomField } from '@/components/portal/UserCustomFieldsForm.vue'
 import { routes } from '@/lib/routes'
 import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
 import { normalizeAppLocale, type AppLocale } from '@/lib/i18n'
@@ -17,6 +18,7 @@ defineOptions({ layout: PortalLayout })
 
 const props = defineProps<{
   form_errors?: Record<string, string>
+  registration_fields?: UserCustomField[]
 }>()
 
 const page = usePage()
@@ -37,6 +39,12 @@ const form = useForm({
     locale: normalizeAppLocale(page.props.locale),
     time_zone: 'Asia/Shanghai',
   },
+  user_fields: Object.fromEntries(
+    (props.registration_fields || []).map((field) => [
+      field.key,
+      field.field_type === 'checkbox' ? false : '',
+    ]),
+  ) as Record<string, string | boolean>,
 })
 
 watch(
@@ -56,7 +64,11 @@ const formError = computed(() => {
 })
 
 function fieldError(key: string) {
-  return form.errors[`registration.${key}` as keyof typeof form.errors] || props.form_errors?.[`registration.${key}`] || ''
+  return form.errors[`registration.${key}` as keyof typeof form.errors] || props.form_errors?.[`registration.${key}`] || props.form_errors?.[key] || ''
+}
+
+function customFieldError(key: string) {
+  return props.form_errors?.[key] || ''
 }
 
 function submit() {
@@ -97,6 +109,13 @@ function submit() {
       <Input id="password" v-model="form.registration.password" type="password" required autocomplete="new-password" />
       <p v-if="fieldError('password')" class="text-sm text-destructive">{{ fieldError('password') }}</p>
     </div>
+    <UserCustomFieldsForm
+      v-if="registration_fields?.length"
+      :fields="registration_fields"
+      v-model="form.user_fields"
+      id-prefix="register-field"
+      :errors="form_errors"
+    />
     <div class="space-y-2">
       <Label for="locale">{{ t('auth.register.locale') }}</Label>
       <Select id="locale" v-model="form.registration.locale">

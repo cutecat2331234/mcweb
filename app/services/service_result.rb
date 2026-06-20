@@ -22,7 +22,8 @@ class ServiceResult
     new(success: true, value: value)
   end
 
-  def self.failure(error: nil, errors: nil)
-    new(success: false, error: error, errors: errors)
+  def self.failure(error: nil, errors: nil, value: nil)
+    error = ServiceErrorTranslator.translate(error) if error.present?
+    new(success: false, error: error, errors: errors, value: value)
   end
 end

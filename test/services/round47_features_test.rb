@@ -57,6 +57,8 @@ end
 
 class Commerce::ShippingAddressOrderTest < ActiveSupport::TestCase
   setup do
+    enable_store_feature!(:physical_products)
+    enable_store_feature!(:shipping)
     @user = create_user
     @product = Commerce::Product.create!(
       name: "Physical",
@@ -131,10 +133,18 @@ class Commerce::CartRecoveryIntegrationTest < ActionDispatch::IntegrationTest
     @cart.ensure_recovery_token!
   end
 
-  test "cart show accepts recovery token" do
+  test "cart show accepts recovery token when owner is signed in" do
+    sign_in_as(@user)
     get store_cart_path(recovery: @cart.recovery_token)
     assert_response :success
     assert_includes response.body, "Recovery Item"
+  end
+
+  test "cart show accepts recovery token when anonymous via email link" do
+    get store_cart_path(recovery: @cart.recovery_token)
+    assert_response :success
+    assert_includes response.body, "Recovery Item"
+    assert_includes response.body, '"cartRecovered":true'
   end
 end
 

@@ -3,6 +3,7 @@
 module Community
   class TagsController < ApplicationController
     include Community::TopicListPreloadable
+    include Community::SectionVisibility
 
     include Community::SubscriptionNoticeable
 
@@ -62,7 +63,7 @@ module Community
 
       tag = Community::Tag.usable_by(current_user).find_by!(id: tag.id)
       sort = params[:sort].to_s.presence || "activity"
-      topic_ids = tag.topics.published_listed.pluck(:id)
+      topic_ids = tag.topics.published_listed.merge(Community::Topic.accessible_by(current_user)).pluck(:id)
       scope = preload_topics(Community::Topic.where(id: topic_ids).sorted(sort))
       scope = filter_blocked_topics(scope)
       @pagy, topics = pagy(scope, limit: 20)

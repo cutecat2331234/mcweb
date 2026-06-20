@@ -10,12 +10,12 @@ module Admin
         reports = ::Community::Report.pending_review.order(created_at: :desc)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "内容举报",
+          title: forum_t("reports.title"),
           columns: [
-            admin_column(:reason, "原因", link: true),
-            admin_column(:reporter, "举报人"),
-            admin_column(:status, "状态"),
-            admin_column(:time, "时间")
+            admin_column(:reason, forum_t("reports.col_reason"), link: true),
+            admin_column(:reporter, forum_t("reports.col_reporter")),
+            admin_column(:status, forum_t("reports.col_status")),
+            admin_column(:time, forum_t("reports.col_time"))
           ],
           rows: reports.map do |report|
             admin_row(
@@ -31,14 +31,14 @@ module Admin
 
       def show
         render inertia: "Admin/Generic/Show", props: {
-          title: "举报详情",
+          title: forum_t("reports.show_title"),
           fields: [
-            { label: "类型", value: @report.reason_label || "—" },
-            { label: "原因", value: @report.reason },
-            { label: "举报人", value: @report.reporter&.username || "—" },
-            { label: "状态", value: @report.status },
-            { label: "对象", value: reportable_label },
-            { label: "时间", value: l(@report.created_at, format: :long) }
+            { label: forum_t("reports.field_type"), value: @report.reason_label || forum_na },
+            { label: forum_t("reports.field_reason"), value: @report.reason },
+            { label: forum_t("reports.field_reporter"), value: @report.reporter&.username || forum_na },
+            { label: forum_t("reports.field_status"), value: @report.status },
+            { label: forum_t("reports.field_target"), value: reportable_label },
+            { label: forum_t("reports.field_time"), value: l(@report.created_at, format: :long) }
           ],
           backUrl: admin_forum_reports_path,
           actions: report_actions + reportable_actions
@@ -81,13 +81,13 @@ module Admin
 
         [
           {
-            label: "标记已审核",
+            label: forum_t("reports.action_reviewed"),
             href: admin_forum_report_path(@report),
             method: "patch",
             data: { report: { status: "reviewed" } }
           },
           {
-            label: "驳回举报",
+            label: forum_t("reports.action_dismiss"),
             href: admin_forum_report_path(@report),
             method: "patch",
             variant: "outline",
@@ -99,11 +99,11 @@ module Admin
       def reportable_label
         case @report.reportable
         when ::Community::Topic
-          "主题：#{@report.reportable.title}"
+          forum_t("reports.target_topic", title: @report.reportable.title)
         when ::Community::Post
-          "帖子 ##{@report.reportable.floor_number}（#{@report.reportable.topic.title}）"
+          forum_t("reports.target_post", floor: @report.reportable.floor_number, title: @report.reportable.topic.title)
         when ::Commerce::Review
-          "评价 ##{@report.reportable.id}（#{@report.reportable.product.name}）"
+          forum_t("reports.target_review", id: @report.reportable.id, product: @report.reportable.product.name)
         else
           "#{@report.reportable_type} ##{@report.reportable_id}"
         end
@@ -112,11 +112,11 @@ module Admin
       def reportable_actions
         case @report.reportable
         when ::Community::Topic
-          [ { label: "查看主题", href: forum_topic_path(@report.reportable) } ]
+          [ { label: forum_t("reports.action_view_topic"), href: forum_topic_path(@report.reportable) } ]
         when ::Community::Post
-          [ { label: "查看帖子", href: "#{forum_topic_path(@report.reportable.topic)}#post-#{@report.reportable.id}" } ]
+          [ { label: forum_t("reports.action_view_post"), href: "#{forum_topic_path(@report.reportable.topic)}#post-#{@report.reportable.id}" } ]
         when ::Commerce::Review
-          [ { label: "查看商品", href: store_product_path(@report.reportable.product) } ]
+          [ { label: forum_t("reports.action_view_product"), href: store_product_path(@report.reportable.product) } ]
         else
           []
         end

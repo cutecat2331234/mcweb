@@ -12,22 +12,25 @@ module Commerce
     end
 
     def call
+      feature_error = validate_store_features!
+      return feature_error if feature_error
+
       @quantity = resolved_quantity
       min_qty = [ @product.minimum_quantity.to_i, 1 ].max
-      return ServiceResult.failure(error: "最少购买 #{min_qty} 件。") if @quantity < min_qty
+      return ServiceResult.failure(error: I18n.t("commerce.cart.min_quantity", count: min_qty)) if @quantity < min_qty
       if @product.maximum_quantity.present? && @quantity > @product.maximum_quantity
-        return ServiceResult.failure(error: "最多购买 #{@product.maximum_quantity} 件。")
+        return ServiceResult.failure(error: I18n.t("commerce.cart.max_quantity", count: @product.maximum_quantity))
       end
-      return ServiceResult.failure(error: "数量至少为 1。") if @quantity < 1
-      return ServiceResult.failure(error: "商品已下架。") unless @product.active?
+      return ServiceResult.failure(error: I18n.t("commerce.cart.quantity_at_least_one")) if @quantity < 1
+      return ServiceResult.failure(error: I18n.t("commerce.cart.product_inactive")) unless @product.active?
 
       if @product.variants.exists? && @variant.nil?
-        return ServiceResult.failure(error: "请选择规格。")
+        return ServiceResult.failure(error: I18n.t("commerce.cart.variant_required"))
       end
 
       purchasable = @variant || @product
       if purchasable.stock.present? && purchasable.stock < @quantity
-        return ServiceResult.failure(error: "库存不足。") unless @product.allow_backorder?
+        return ServiceResult.failure(error: I18n.t("commerce.cart.out_of_stock")) unless @product.allow_backorder?
       end
 
       if @product.purchase_limit.present? && @user
@@ -39,7 +42,7 @@ module Commerce
           .sum(:quantity)
 
         if purchased + @quantity > @product.purchase_limit
-          return ServiceResult.failure(error: "已超过该商品的限购数量。")
+          return ServiceResult.failure(error: I18n.t("commerce.cart.purchase_limit_exceeded"))
         end
       end
 
@@ -53,14 +56,29 @@ module Commerce
                      (existing&.quantity || 0) + @quantity
         end
         if other_qty + line_qty > cart_limit
-          return ServiceResult.failure(error: "购物车最多 #{cart_limit} 件商品。")
+          return ServiceResult.failure(error: I18n.t("commerce.cart.cart_max_items", count: cart_limit))
         end
       end
+
+      prereq_result = Commerce::CheckProductPrerequisites.call(user: @user, product: @product)
+      return prereq_result if prereq_result.failure?
 
       ServiceResult.success
     end
 
     private
+
+    def validate_store_features!
+      if @product.product_type == "physical" && !Commerce::StoreFeatures.enabled?(:physical_products)
+        return ServiceResult.failure(error: I18n.t("commerce.cart.physical_products_disabled"))
+      end
+
+      if @product.requires_shipping? && !Commerce::StoreFeatures.enabled?(:shipping)
+        return ServiceResult.failure(error: I18n.t("commerce.cart.shipping_disabled"))
+      end
+
+      nil
+    end
 
     def resolved_quantity
       return @quantity if @replace_quantity || @cart.nil?

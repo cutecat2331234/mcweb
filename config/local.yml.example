@@ -1,0 +1,18 @@
+# Copy to config/local.yml during setup (or manually for local development).
+# This file is gitignored and stores long-lived instance configuration.
+
+database:
+  host: 127.0.0.1
+  port: 5432
+  username: postgres
+  password: your-database-password
+  development: mcweb_development
+  test: mcweb_test
+  production: mcweb_production
+
+secret_key_base: generate-during-setup
+lockbox_master_key: generate-during-setup
+
+# Sidekiq（本地开发可选；生产环境建议写入 /etc/mcweb/mcweb.env）
+redis_url: redis://127.0.0.1:6379/0
+job_concurrency: 5

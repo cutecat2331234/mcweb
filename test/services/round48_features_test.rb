@@ -65,6 +65,8 @@ end
 
 class Commerce::ValidateShippingAddressTest < ActiveSupport::TestCase
   setup do
+    enable_store_feature!(:physical_products)
+    enable_store_feature!(:shipping)
     @product = Commerce::Product.create!(
       name: "Ship Product",
       slug: "ship-#{SecureRandom.hex(4)}",
@@ -115,6 +117,8 @@ end
 
 class Commerce::CheckoutPrefillAddressTest < ActionDispatch::IntegrationTest
   setup do
+    enable_store_feature!(:physical_products)
+    enable_store_feature!(:shipping)
     @user = create_user
     sign_in_as(@user)
     @product = Commerce::Product.create!(
@@ -157,8 +161,7 @@ end
 
 class Commerce::CartRecoveryBannerTest < ActionDispatch::IntegrationTest
   setup do
-    @user = create_user
-    @cart = Commerce::Cart.create!(user: @user)
+    @cart = Commerce::Cart.create!
     @product = Commerce::Product.create!(
       name: "Recovery Banner",
       slug: "rb-#{SecureRandom.hex(4)}",

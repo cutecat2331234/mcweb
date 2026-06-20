@@ -10,8 +10,8 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "无权添加员工备注。") unless authorized?
-      return ServiceResult.failure(error: "请填写备注内容。") if @body.blank?
+      return ServiceResult.failure(error: "staff_note_unauthorized") unless authorized?
+      return ServiceResult.failure(error: "staff_note_blank") if @body.blank?
 
       note = Commerce::OrderStaffNote.create!(
         order: @order,

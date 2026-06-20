@@ -2,12 +2,16 @@
 
 module Minecraft
   class SyncPermissionGroups < ApplicationService
-    def initialize(payload:)
+    def initialize(server:, payload:)
+      @server = server
       @payload = payload.deep_stringify_keys
     end
 
     def call
       player_ref = resolve_player_ref
+      access = Minecraft::AssertPlayerOnServer.call(server: @server, player_ref: player_ref)
+      return access unless access.success?
+
       groups = Array(@payload["groups"])
       source = @payload["source"].presence || "plugin"
 

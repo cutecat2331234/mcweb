@@ -48,7 +48,7 @@ module Community
       result = Community::ToggleUserFollow.call(follower: current_user, followed_username: params[:username])
 
       if result.success?
-        notice = result.value[:following] ? "已关注用户。" : "已取消关注。"
+        notice = result.value[:following] ? t("mcweb.flash.following_toggled_on") : t("mcweb.flash.following_toggled_off")
         redirect_back fallback_location: forum_user_path(params[:username]), notice: notice
       else
         redirect_back fallback_location: forum_path, alert: service_error_message(result)
@@ -58,12 +58,7 @@ module Community
     private
 
     def forum_sort_options
-      [
-        { value: "latest", label: "最新回复" },
-        { value: "hot", label: "热门" },
-        { value: "replies", label: "回复最多" },
-        { value: "newest", label: "最新发布" }
-      ]
+      Community::TopicListSortOptions.call
     end
   end
 end

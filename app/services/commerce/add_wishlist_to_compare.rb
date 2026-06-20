@@ -17,22 +17,26 @@ module Commerce
       Commerce::WishlistItem.where(user: @user).includes(:product).order(created_at: :desc).find_each do |item|
         product = item.product
         if product.coming_soon?
-          skipped << "#{product.name}（未上架）"
+          skipped << SkippedItemLabel.for_product(product.name, :coming_soon)
           next
         end
         unless product.available?
-          skipped << "#{product.name}（不可售）"
+          skipped << SkippedItemLabel.for_product(product.name, :unavailable)
+          next
+        end
+        unless Commerce::StoreFeatures.product_visible?(product)
+          skipped << SkippedItemLabel.for_product(product.name, :feature_disabled)
           next
         end
 
         public_id = product.public_id
         if ids.include?(public_id)
-          skipped << "#{product.name}（已在对比）"
+          skipped << SkippedItemLabel.for_product(product.name, :already_in_compare)
           next
         end
         if ids.size >= max_items
           limit_reached = true
-          skipped << "#{product.name}（对比已满）"
+          skipped << SkippedItemLabel.for_product(product.name, :compare_full)
           next
         end
 
@@ -40,7 +44,7 @@ module Commerce
         added += 1
       end
 
-      skipped << "已达对比上限（#{max_items} 件）" if limit_reached && added.zero? && skipped.empty?
+      skipped << SkippedItemLabel.compare_limit(max_items) if limit_reached && added.zero? && skipped.empty?
 
       @session[:compare_product_ids] = ids
       ServiceResult.success(added: added, skipped: skipped.uniq, count: ids.size, max_items: max_items)

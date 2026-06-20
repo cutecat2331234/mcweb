@@ -2,8 +2,10 @@
 
 module Admin
   class UsersController < BaseController
+    before_action -> { require_admin_module!("system") }
     before_action -> { require_permission("system.settings.manage") }
     before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note silence unsilence set_trust_level adjust_store_credit]
+    before_action :ensure_manageable_target!, only: %i[ban unban silence unsilence set_trust_level adjust_store_credit warn grant_badge]
 
     def index
       users_scope = User.order(created_at: :desc)
@@ -124,15 +126,7 @@ module Admin
           balance_cents: @user.store_credit_cents.to_i,
           balance_label: format_money(@user.store_credit_cents.to_i, "CNY")
         } : nil,
-        accountForm: current_user.account_owner? || current_user.permission?("system.settings.manage") ? {
-          action_url: admin_user_path(@user),
-          account_type: @user.account_type,
-          account_types: User.account_types.keys.map { |key| { value: key, label: account_type_label(key) } },
-          role_ids: @user.role_ids,
-          roles: Role.order(:name).map { |role| { id: role.id, name: role.name, key: role.key } },
-          admin_modules: @user.admin_module_grants.pluck(:module_key),
-          module_options: AdminModuleGrant::MODULE_KEYS
-        } : nil,
+        accountForm: account_form_props,
         actions: mute_actions.map do |m|
           { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
         end
@@ -143,6 +137,10 @@ module Admin
     end
 
     def update
+      unless manageable_user?(@user)
+        return redirect_to admin_user_path(@user), alert: t("mcweb.flash.permission_denied")
+      end
+
       if @user.update(user_params)
         sync_roles_and_modules!
         Administration::AuditLogger.call(actor: current_user, action: "admin.user_updated", resource: @user)
@@ -153,6 +151,10 @@ module Admin
     end
 
     def destroy
+      unless manageable_user?(@user)
+        return redirect_to admin_users_path, alert: t("mcweb.flash.permission_denied")
+      end
+
       @user.soft_delete!
       Administration::AuditLogger.call(actor: current_user, action: "admin.user_deleted", resource: @user)
       redirect_to admin_users_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.user"))
@@ -199,7 +201,8 @@ module Admin
         actor: current_user,
         user: @user,
         reason: params[:reason],
-        points: params[:points]
+        points: params[:points],
+        expire_days: params[:expire_days]
       )
       if result.success?
         redirect_to admin_user_path(@user), notice: t("mcweb.flash.warning_issued")
@@ -295,11 +298,11 @@ module Admin
     def sync_roles_and_modules!
       return unless params[:user]
 
-      if params[:user][:role_ids]
+      if current_user.account_owner? && params[:user][:role_ids]
         @user.role_ids = Array(params[:user][:role_ids]).reject(&:blank?).map(&:to_i)
       end
 
-      if params[:user][:admin_modules] && (@user.account_staff? || params[:user][:account_type] == "staff")
+      if current_user.account_owner? && params[:user][:admin_modules] && @user.account_staff?
         modules = Array(params[:user][:admin_modules]).reject(&:blank?)
         @user.admin_module_grants.where.not(module_key: modules).delete_all
         modules.each do |module_key|
@@ -317,8 +320,41 @@ module Admin
 
     def user_params
       permitted = %i[display_name locale time_zone]
-      permitted << :account_type if current_user.account_owner? || current_user.permission?("system.settings.manage")
-      params.expect(user: permitted)[:user]
+      permitted << :account_type if current_user.account_owner?
+      params.fetch(:user, ActionController::Parameters.new).permit(permitted)
+    end
+
+    def account_form_props
+      return nil unless current_user.account_owner? || current_user.permission?("system.settings.manage")
+
+      props = {
+        action_url: admin_user_path(@user)
+      }
+
+      if current_user.account_owner?
+        props.merge!(
+          admin_modules: @user.admin_module_grants.pluck(:module_key),
+          module_options: AdminModuleGrant::MODULE_KEYS,
+          account_type: @user.account_type,
+          account_types: User.account_types.keys.map { |key| { value: key, label: account_type_label(key) } },
+          role_ids: @user.role_ids,
+          roles: Role.order(:name).map { |role| { id: role.id, name: role.name, key: role.key } }
+        )
+      end
+
+      props
+    end
+
+    def manageable_user?(user)
+      return false if user.account_owner? && !current_user.account_owner?
+
+      true
+    end
+
+    def ensure_manageable_target!
+      return if manageable_user?(@user)
+
+      redirect_to admin_user_path(@user), alert: t("mcweb.flash.permission_denied")
     end
   end
 end

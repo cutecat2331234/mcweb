@@ -63,6 +63,16 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_redirected_to forum_sections_path
   end
 
+  test "get session redirects to sign in" do
+    get identity_session_path
+    assert_redirected_to identity_sign_in_path
+  end
+
+  test "legacy identity session path redirects to sign in" do
+    get "/identity/session"
+    assert_redirected_to identity_sign_in_path
+  end
+
   test "destroy session signs user out" do
     post identity_session_path, params: {
       session: { email: @user.email, password: "password123", remember_me: "0" }

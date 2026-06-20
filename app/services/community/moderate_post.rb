@@ -11,7 +11,7 @@ module Community
     end
 
     def call
-      unless @user.permission?("forum.topics.lock")
+      unless Community::SectionModeration.can_moderate_topic?(user: @user, topic: @post.topic)
         return ServiceResult.failure(error: "You are not authorized to moderate this post.")
       end
 
@@ -27,7 +27,7 @@ module Community
       when "disable_wiki"
         @post.update!(wiki: false)
       when "set_staff_notice"
-        return ServiceResult.failure(error: "员工提示内容不能为空。") if @staff_notice.blank?
+        return ServiceResult.failure(error: "staff_notice_blank") if @staff_notice.blank?
 
         @post.update!(staff_notice: @staff_notice)
       when "clear_staff_notice"

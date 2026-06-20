@@ -64,6 +64,9 @@ end
 
 class Commerce::GiftWrapTest < ActiveSupport::TestCase
   setup do
+    enable_store_feature!(:physical_products)
+    enable_store_feature!(:shipping)
+    enable_store_feature!(:gift_wrap)
     @user = create_user
     SiteSetting.set("store.gift_wrap_cents", "300")
     @product = Commerce::Product.create!(

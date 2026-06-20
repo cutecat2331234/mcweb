@@ -8,6 +8,8 @@ module Commerce
     end
 
     def call
+      return ServiceResult.failure(error: "product_not_purchasable") unless Commerce::StoreFeatures.product_visible?(@product)
+
       item = Commerce::OrderItem
         .joins(:order)
         .where(store_orders: { user_id: @user.id, status: %w[paid processing fulfilling fulfilled completed] })
@@ -15,7 +17,7 @@ module Commerce
         .order("store_orders.created_at DESC")
         .first
 
-      return ServiceResult.failure(error: "未找到可再次购买的订单记录。") unless item
+      return ServiceResult.failure(error: "reorder_item_not_found") unless item
 
       cart = Commerce::Cart.find_or_create_by!(user: @user)
       validation = Commerce::ValidateCartItem.call(

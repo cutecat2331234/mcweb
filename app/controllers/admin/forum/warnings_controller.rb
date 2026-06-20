@@ -19,14 +19,14 @@ module Admin
         @pagy, warnings = pagy(warnings, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "用户警告记录",
+          title: forum_t("warnings.title"),
           exportUrl: admin_forum_warnings_path(format: :csv, user: params[:user]),
           columns: [
-            { key: "user", label: "用户" },
-            { key: "issuer", label: "发出者" },
-            { key: "points", label: "积分" },
-            { key: "reason", label: "原因" },
-            { key: "created_at", label: "时间" }
+            { key: "user", label: forum_t("warnings.col_user") },
+            { key: "issuer", label: forum_t("warnings.col_issuer") },
+            { key: "points", label: forum_t("warnings.col_points") },
+            { key: "reason", label: forum_t("warnings.col_reason") },
+            { key: "created_at", label: forum_t("warnings.col_time") }
           ],
           rows: warnings.map do |warning|
             {
@@ -46,8 +46,9 @@ module Admin
       private
 
       def export_warnings(scope)
+        headers = I18n.t("mcweb.admin.forum.warnings.export_headers")
         csv = CSV.generate(headers: true) do |rows|
-          rows << %w[用户 发出者 积分 原因 时间]
+          rows << headers
           scope.find_each do |warning|
             rows << [
               warning.user.username,

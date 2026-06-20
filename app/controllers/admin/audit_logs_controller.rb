@@ -2,6 +2,7 @@
 
 module Admin
   class AuditLogsController < BaseController
+    before_action -> { require_admin_module!("system") }
     before_action -> { require_permission("system.audit.read") }
 
     def index

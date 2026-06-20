@@ -1,3 +1,8 @@
+<%
+  def local_db(env)
+    Mcweb::LocalConfig.database_settings_for(env)
+  end
+%>
 default: &default
   adapter: postgresql
   encoding: unicode
@@ -5,33 +10,37 @@ default: &default
 
 development:
   <<: *default
-  database: mcweb_development
-
+<% dev = local_db("development") %>
+  database: <%= dev["database"] || "mcweb_development" %>
+<% if dev["username"] %>  username: <%= dev["username"] %>
+<% end %><% if dev["password"] %>  password: <%= dev["password"] %>
+<% end %><% if dev["host"] %>  host: <%= dev["host"] %>
+<% end %><% if dev["port"] %>  port: <%= dev["port"] %>
+<% end %>
 test:
   <<: *default
-  database: mcweb_test
-
+<% test_cfg = local_db("test") %>
+  database: <%= (test_cfg["database"] || "mcweb_test") %><%= ENV["TEST_ENV_NUMBER"] %>
+<% if test_cfg["username"] %>  username: <%= test_cfg["username"] %>
+<% end %><% if test_cfg["password"] %>  password: <%= test_cfg["password"] %>
+<% end %><% if test_cfg["host"] %>  host: <%= test_cfg["host"] %>
+<% end %><% if test_cfg["port"] %>  port: <%= test_cfg["port"] %>
+<% end %>
 production:
   primary: &primary_production
     <<: *default
-    database: mcweb_production
-    username: <%= ENV.fetch("MCWEB_DATABASE_USERNAME", "mcweb") %>
-    password: <%= ENV["MCWEB_DATABASE_PASSWORD"] %>
-<% if ENV["MCWEB_DATABASE_HOST"].present? %>
-    host: <%= ENV["MCWEB_DATABASE_HOST"] %>
-<% end %>
-<% if ENV["MCWEB_DATABASE_PORT"].present? %>
-    port: <%= ENV["MCWEB_DATABASE_PORT"] %>
+<% prod = local_db("production") %>
+    database: <%= prod["database"] || "mcweb_production" %>
+<% if prod["username"] %>    username: <%= prod["username"] %>
+<% end %><% if prod["password"] %>    password: <%= prod["password"] %>
+<% end %><% if prod["host"] %>    host: <%= prod["host"] %>
+<% end %><% if prod["port"] %>    port: <%= prod["port"] %>
 <% end %>
   cache:
     <<: *primary_production
-    database: mcweb_production_cache
+    database: <%= (prod["database"] || "mcweb_production") %>_cache
     migrations_paths: db/cache_migrate
-  queue:
-    <<: *primary_production
-    database: mcweb_production_queue
-    migrations_paths: db/queue_migrate
   cable:
     <<: *primary_production
-    database: mcweb_production_cable
+    database: <%= (prod["database"] || "mcweb_production") %>_cable
     migrations_paths: db/cable_migrate

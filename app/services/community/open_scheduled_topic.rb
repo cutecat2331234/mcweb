@@ -14,7 +14,7 @@ module Community
       Community::CreateSmallActionPost.call(
         topic: @topic,
         actor: Community::SystemActor.user,
-        body: "此主题已按计划自动重新开放。"
+        body: I18n.t("mcweb.forum.small_actions.scheduled_reopen")
       )
       ServiceResult.success(@topic)
     end

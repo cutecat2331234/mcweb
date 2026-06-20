@@ -68,6 +68,13 @@ export interface StaffNoteForm {
   action_url: string
 }
 
+export interface ShippingForm {
+  action_url: string
+  tracking_number: string
+  shipping_carrier: string
+  shipped: boolean
+}
+
 export interface SilenceForm {
   silenced: boolean
   silence_url: string
@@ -101,6 +108,7 @@ const props = defineProps<{
   badgeForm?: BadgeForm | null
   warningForm?: WarningForm | null
   staffNoteForm?: StaffNoteForm | null
+  shippingForm?: ShippingForm | null
   silenceForm?: SilenceForm | null
   trustLevelForm?: TrustLevelForm | null
   storeCreditForm?: StoreCreditForm | null
@@ -124,6 +132,7 @@ const trustLevelOptions = computed(() => [
 const warningForm = useForm({
   reason: '',
   points: 1,
+  expire_days: '' as number | string,
 })
 
 const staffNoteForm = useForm({
@@ -155,6 +164,12 @@ const banForm = useForm({
 const refundForm = useForm({
   amount_cents: props.refundForm?.max_cents || 0,
   reason: '',
+})
+
+const shippingForm = useForm({
+  tracking_number: props.shippingForm?.tracking_number || '',
+  shipping_carrier: props.shippingForm?.shipping_carrier || '',
+  mark_shipped: false,
 })
 
 async function runAction(action: DetailAction) {
@@ -197,6 +212,16 @@ function submitRefund() {
     amount_cents: refundForm.amount_cents,
     reason: refundForm.reason,
   })
+}
+
+function submitShipping() {
+  if (!props.shippingForm) return
+  router.patch(props.shippingForm.action_url, {
+    shipping: true,
+    tracking_number: shippingForm.tracking_number,
+    shipping_carrier: shippingForm.shipping_carrier,
+    mark_shipped: shippingForm.mark_shipped,
+  }, { preserveScroll: true })
 }
 
 function submitBadge() {
@@ -347,7 +372,29 @@ function submitTrustLevel() {
       <Label>{{ t('admin.genericShow.warningPointsLabel') }}</Label>
       <Input v-model.number="warningForm.points" type="number" min="1" max="10" />
     </div>
+    <div class="space-y-2">
+      <Label>{{ t('admin.genericShow.warningExpireDays') }}</Label>
+      <Input v-model.number="warningForm.expire_days" type="number" min="0" :placeholder="t('admin.genericShow.warningExpireDaysPlaceholder')" />
+    </div>
     <Button type="submit" variant="destructive" size="sm" :disabled="warningForm.processing">{{ t('admin.genericShow.issueWarning') }}</Button>
+  </form>
+
+  <form v-if="props.shippingForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitShipping">
+    <h2 class="text-sm font-semibold">{{ t('admin.genericShow.shippingManagement') }}</h2>
+    <p v-if="props.shippingForm.shipped" class="text-xs text-muted-foreground">{{ t('admin.genericShow.orderAlreadyShipped') }}</p>
+    <div class="space-y-2">
+      <Label>{{ t('admin.genericShow.trackingNumber') }}</Label>
+      <Input v-model="shippingForm.tracking_number" :placeholder="t('admin.genericShow.trackingNumberPlaceholder')" />
+    </div>
+    <div class="space-y-2">
+      <Label>{{ t('admin.genericShow.shippingCarrier') }}</Label>
+      <Input v-model="shippingForm.shipping_carrier" :placeholder="t('admin.genericShow.shippingCarrierPlaceholder')" />
+    </div>
+    <label v-if="!props.shippingForm.shipped" class="flex items-center gap-2 text-sm">
+      <Checkbox v-model="shippingForm.mark_shipped" />
+      {{ t('admin.genericShow.markShipped') }}
+    </label>
+    <Button type="submit" size="sm" :disabled="shippingForm.processing">{{ t('admin.genericShow.saveShipping') }}</Button>
   </form>
 
   <form v-if="props.staffNoteForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitStaffNote">

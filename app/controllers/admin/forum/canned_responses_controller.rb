@@ -10,10 +10,10 @@ module Admin
         responses = ::Community::CannedResponse.ordered.includes(:author)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "罐头回复",
+          title: forum_t("canned_responses.title"),
           columns: [
-            admin_column(:title, "标题", link: true),
-            admin_column(:author, "作者")
+            admin_column(:title, forum_t("canned_responses.col_title"), link: true),
+            admin_column(:author, forum_t("canned_responses.col_author"))
           ],
           rows: responses.map do |response|
             admin_row(
@@ -22,7 +22,7 @@ module Admin
               url: edit_admin_forum_canned_response_path(response)
             )
           end,
-          actions: [ { label: "新建罐头回复", href: new_admin_forum_canned_response_path } ]
+          actions: [ { label: forum_t("canned_responses.action_new"), href: new_admin_forum_canned_response_path } ]
         }
       end
 
@@ -69,7 +69,7 @@ module Admin
 
       def form_props(response, editing: false)
         {
-          title: editing ? "编辑罐头回复" : "新建罐头回复",
+          title: editing ? forum_t("canned_responses.form_edit") : forum_t("canned_responses.form_new"),
           canned_response: {
             title: response.title || "",
             body: response.body || ""

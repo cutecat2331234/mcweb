@@ -23,7 +23,7 @@ module Commerce
       return ServiceResult.success(restored_cents: 0) unless restore.positive?
 
       user = @order.user
-      return ServiceResult.failure(error: "用户信息无效。") unless user
+      return ServiceResult.failure(error: "user_invalid") unless user
 
       Commerce::Order.transaction do
         user.lock!
@@ -32,7 +32,7 @@ module Commerce
           user: user,
           order: @order,
           amount_cents: restore,
-          note: "订单 #{@order.order_number} 退款退还余额"
+          note: I18n.t("mcweb.commerce.notes.store_credit_order_refund", number: @order.order_number),
         )
         new_restored = already_restored + restore
         updates = { store_credit_restored_cents: new_restored }

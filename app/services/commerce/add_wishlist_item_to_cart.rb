@@ -9,16 +9,16 @@ module Commerce
 
     def call
       item = Commerce::WishlistItem.find_by(user: @user, product: @product)
-      return ServiceResult.failure(error: "商品不在心愿单中。") unless item
+      return ServiceResult.failure(error: "wishlist_item_missing") unless item
 
       product = item.product
-      return ServiceResult.failure(error: "商品已下架。") unless product.active?
+      return ServiceResult.failure(error: "product_inactive") unless product.active?
 
       variant = item.variant
       if variant.nil? && product.variants.exists?
         variant = product.variants.order(:id).find { |entry| entry.stock.nil? || entry.stock.positive? }
       end
-      return ServiceResult.failure(error: "请选择有货规格。") if product.variants.exists? && variant.nil?
+      return ServiceResult.failure(error: "variant_required") if product.variants.exists? && variant.nil?
 
       cart = Commerce::Cart.find_or_create_by!(user: @user)
       validation = Commerce::ValidateCartItem.call(

@@ -1,3 +1,4 @@
 <p><%= t("mcweb.mail.greeting", username: @user.username) %></p>
 <p><%= t("mcweb.mail.forum.trust_level_up.body", level_name: @level_name, level: @level) %></p>
 <p><a href="<%= @url %>"><%= t("mcweb.mail.view_profile") %></a></p>
+<%= render "notification_unsubscribe" %>

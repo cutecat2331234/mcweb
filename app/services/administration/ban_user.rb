@@ -11,6 +11,7 @@ module Administration
 
     def call
       return ServiceResult.failure(error: "Cannot ban yourself.") if @actor.id == @user.id
+      return ServiceResult.failure(error: "Cannot ban site owner.") if @user.account_owner? && !@actor.account_owner?
 
       @user.ban!(reason: @reason, expires_at: @expires_at)
       Session.where(user: @user, revoked_at: nil).find_each(&:revoke!)

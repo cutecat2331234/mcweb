@@ -18,7 +18,8 @@ gem "rqrcode", "~> 3.2"
 gem "sanitize", "~> 7.0"
 gem "diff-lcs", "~> 2.0"
 gem "lockbox", "~> 2.2"
-gem "mission_control-jobs", "~> 1.0"
+gem "sidekiq", "~> 8.0"
+gem "sidekiq-cron", "~> 2.0"
 gem "aasm", "~> 5.5"
 gem "csv"
 gem "rubyzip", "~> 3.3"
@@ -26,7 +27,6 @@ gem "rubyzip", "~> 3.3"
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
 gem "solid_cache"
-gem "solid_queue"
 gem "solid_cable"
 
 gem "bootsnap", require: false

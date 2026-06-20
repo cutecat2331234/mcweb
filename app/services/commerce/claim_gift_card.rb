@@ -8,13 +8,13 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "礼品卡无效。") unless @gift_card
-      return ServiceResult.failure(error: @gift_card.inapplicable_reason) if @gift_card.inapplicable_reason
+      return ServiceResult.failure(error: "gift_card_unavailable") unless @gift_card
+      return ServiceResult.failure(error: "gift_card_unavailable") if @gift_card.inapplicable_reason
 
       Commerce::GiftCard.transaction do
         @gift_card.lock!
         if @gift_card.owner_user_id.present? && @gift_card.owner_user_id != @user.id
-          return ServiceResult.failure(error: "此礼品卡已绑定其他账户。")
+          return ServiceResult.failure(error: "gift_card_unavailable")
         end
 
         if @gift_card.owner_user_id.blank?

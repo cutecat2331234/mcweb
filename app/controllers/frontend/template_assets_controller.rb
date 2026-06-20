@@ -9,12 +9,12 @@ module Frontend
 
       file = Pathname(template.installed_path).join(relative).cleanpath
       root = Pathname(template.installed_path).cleanpath
-      raise ActiveRecord::RecordNotFound unless file.to_s.start_with?(root.to_s) && file.file?
+      raise ActiveRecord::RecordNotFound unless Frontend::PathContainment.within_root?(file, root) && file.file?
 
       ext = file.extname.downcase
       raise ActiveRecord::RecordNotFound unless Frontend::ValidateTemplateArchive::ALLOWED_EXTENSIONS.include?(ext)
 
-      expires_in 1.year, public: true
+      expires_in Rails.env.development? ? 0.seconds : 1.year, public: true
       return unless stale?(etag: Digest::SHA256.file(file).hexdigest, last_modified: file.mtime, public: true)
 
       send_data File.binread(file), disposition: "inline", type: mime_type_for(ext), filename: file.basename.to_s

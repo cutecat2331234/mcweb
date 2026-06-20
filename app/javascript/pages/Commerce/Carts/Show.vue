@@ -63,6 +63,7 @@ const props = defineProps<{
     summary?: string | null
   }>
   cartRecovered?: boolean
+  blockedItemCount?: number
 }>()
 
 const couponCode = ref(props.pendingCouponCode || '')
@@ -197,6 +198,13 @@ function updateGiftNote(itemId: number, giftNote: string) {
 
   <p v-if="cartRecovered" class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
     {{ t('commerce.cart.recovered') }}
+  </p>
+
+  <p
+    v-if="blockedItemCount && blockedItemCount > 0"
+    class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+  >
+    {{ t('commerce.cart.blockedItemsHint', { count: blockedItemCount }) }}
   </p>
 
   <div v-if="items.length" class="space-y-6">

@@ -32,6 +32,10 @@ class ApplicationController < ActionController::Base
     }
 
     if FeatureFlags.enabled?(:store)
+      share[:storeFeatures] = Commerce::StoreFeatures.frontend_hash
+      image_packs = Mcweb::ImagePackRegistry.frontend_hash
+      share[:imagePacks] = image_packs if image_packs.present?
+
       cart = if logged_in?
                Commerce::Cart.find_by(user: current_user)
       else
@@ -63,6 +67,13 @@ class ApplicationController < ActionController::Base
           url: forum_assigned_path
         }
       end
+      if Community::SectionModeration.staff_for_any_section?(current_user)
+        pending_count = Community::SectionModeration.pending_posts_scope_for(current_user).count
+        share[:forum_moderation_pending] = {
+          count: pending_count,
+          url: forum_moderation_approvals_path
+        }
+      end
       share[:messages_unread] = {
         count: Community::Conversation.total_unread_count_for(current_user),
         url: forum_conversations_path
@@ -88,6 +99,11 @@ class ApplicationController < ActionController::Base
 
     if FeatureFlags.enabled?(:minecraft)
       servers = Minecraft::Server.online_servers.limit(5)
+      stale_nodes = Minecraft::Node.where(status: :online)
+        .where("last_heartbeat_at IS NULL OR last_heartbeat_at < ?", 3.minutes.ago).count
+      mismatched = Minecraft::Server.managed_by_node.where("metadata ? 'process_mismatch_alert'").count
+      maintenance_count = Minecraft::Server.where(status: :maintenance).count +
+        Minecraft::Node.where(status: :maintenance).count
       if servers.any?
         share[:minecraft_servers] = servers.map do |server|
           snapshot = server.server_snapshots.order(created_at: :desc).first
@@ -95,9 +111,16 @@ class ApplicationController < ActionController::Base
             name: server.name,
             online: snapshot&.online_players.to_i,
             max: snapshot&.max_players.to_i,
-            status: server.status
+            status: server.status,
+            anomaly: server.metadata.key?("process_mismatch_alert") || server.status == "maintenance"
           }
         end
+        share[:minecraft_health] = {
+          stale_nodes: stale_nodes,
+          process_mismatch: mismatched,
+          maintenance: maintenance_count,
+          alert: stale_nodes.positive? || mismatched.positive? || maintenance_count.positive?
+        }
       end
     end
 

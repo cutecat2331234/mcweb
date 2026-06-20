@@ -16,9 +16,16 @@ if [ "${MCWEB_SYNC_ASSETS:-}" = "1" ]; then
   else
     echo "MCWEB_SYNC_ASSETS=1 but PowerShell not found; using existing assets."
   fi
-elif [ ! -f public/vite/.vite/manifest.json ] && [ ! -f public/vite/manifest.json ]; then
-  echo "No Vite manifest found. Set MCWEB_SYNC_ASSETS=1 to pull from GitHub Actions, or run: npx vite build"
+elif [ ! -f public/vite-dev/.vite/manifest.json ] && [ ! -f public/vite/.vite/manifest.json ]; then
+  echo "No Vite manifest found. Run: npx vite build --mode development"
+  echo "Or set MCWEB_SYNC_ASSETS=1 to pull from GitHub Actions."
   exit 1
+fi
+
+if [[ ! -f config/local.yml ]]; then
+  echo "==> config/local.yml missing — running bin/setup-local-config"
+  bin/setup-local-config || true
+  echo "    Or open http://localhost:${PORT}/setup after the server starts."
 fi
 
 echo "==> Preparing database…"

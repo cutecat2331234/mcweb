@@ -134,7 +134,7 @@ class Commerce::CouponChineseReasonTest < ActiveSupport::TestCase
   test "preview coupon uses chinese errors" do
     result = Commerce::PreviewCoupon.call(subtotal_cents: 1000, code: @coupon.code, user: @user)
     assert result.failure?
-    assert_equal "已达到每人限用次数", result.error
+    assert_equal I18n.t("mcweb.services.errors.coupon_unavailable"), result.error
   end
 
   test "per user limit counts pending orders" do

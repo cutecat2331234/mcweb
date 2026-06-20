@@ -12,7 +12,7 @@ module Community
 
       @topic.update!(locked: true, auto_close_at: nil)
       actor = Community::SystemActor.user || @topic.user
-      Community::CreateSmallActionPost.call(topic: @topic, actor: actor, body: "此主题已到达预定时间并自动关闭。") if actor
+      Community::CreateSmallActionPost.call(topic: @topic, actor: actor, body: I18n.t("mcweb.forum.small_actions.scheduled_close")) if actor
 
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e

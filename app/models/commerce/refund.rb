@@ -15,7 +15,6 @@ module Commerce
 
     def complete!
       update!(status: :completed)
-      order.refund! if order.may_refund?
     end
   end
 end

@@ -11,8 +11,10 @@ module Commerce
         .order(created_at: :desc)
 
       render inertia: "Commerce/AvailabilityAlerts/Index", props: {
-        alerts: alerts.map do |alert|
+        alerts: alerts.filter_map do |alert|
           product = alert.product
+          next unless product && Commerce::StoreFeatures.product_visible?(product)
+
           {
             id: alert.id,
             product_name: product.name,
@@ -27,6 +29,8 @@ module Commerce
 
     def create
       product = Commerce::Product.upcoming.find_by!(public_id: params[:product_id])
+      raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(product)
+
       result = Commerce::SubscribeProductAvailabilityAlert.call(user: current_user, product: product)
 
       if result.success?

@@ -25,8 +25,8 @@ module Commerce
       Commerce::NotifyOrderEvent.call(
         user: @refund.order.user,
         notification_type: "commerce.refund_rejected",
-        title: "退款申请被拒绝",
-        body: "订单 #{@refund.order.order_number} 的退款申请未通过审核。",
+        title: I18n.t("mcweb.labels.notification_types.commerce.refund_rejected"),
+        body: I18n.t("mcweb.mail.order.refund_rejected.body", number: @refund.order.order_number),
         path: "/app/store/orders/#{@refund.order.public_id}"
       )
 

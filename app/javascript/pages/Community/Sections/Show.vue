@@ -44,6 +44,7 @@ const props = defineProps<{
     required_tags?: Array<{ name: string; slug: string; url: string }>
     allowed_tags?: Array<{ name: string; slug: string; url: string }>
     prefix_required?: boolean
+    moderators?: Array<{ username: string; url: string }>
   }
   featuredTopics: TopicItem[]
   topics: TopicItem[]
@@ -166,6 +167,13 @@ function bulkModerate(action: string) {
 
   <p v-if="section.banner_text" class="mb-4 rounded-md border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-sky-900 dark:border-sky-900 dark:bg-sky-950 dark:text-sky-100">
     {{ section.banner_text }}
+  </p>
+
+  <p v-if="section.moderators?.length" class="mb-4 text-sm text-muted-foreground">
+    {{ t('forum.sections.moderators') }}
+    <template v-for="(mod, index) in section.moderators" :key="mod.username">
+      <Link :href="mod.url" class="text-primary hover:underline">{{ mod.username }}</Link><span v-if="index < section.moderators.length - 1">{{ t('common.listSeparator') }}</span>
+    </template>
   </p>
 
   <p v-if="section.link_url" class="mb-4 text-sm">

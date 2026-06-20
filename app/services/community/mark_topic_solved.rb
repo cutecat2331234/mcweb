@@ -23,6 +23,7 @@ module Community
 
       @topic.update!(solved_post: @post)
       Community::NotifyTopicSolved.call(topic: @topic, post: @post, actor: @user)
+      Community::DispatchForumEventWebhook.call(event_type: "topic.solved", topic: @topic, post: @post)
       auto_close_on_solved!
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e
@@ -32,9 +33,7 @@ module Community
     private
 
     def can_mark?
-      return true if @user.permission?("forum.topics.lock")
-
-      @user.id == @topic.user_id
+      Community::SectionModeration.can_mark_solved?(user: @user, topic: @topic)
     end
 
     def auto_close_on_solved!
@@ -46,7 +45,7 @@ module Community
       Community::CreateSmallActionPost.call(
         topic: @topic,
         actor: actor,
-        body: "主题已标记为解决并自动关闭。"
+        body: I18n.t("mcweb.forum.small_actions.topic_solved_closed")
       )
     end
   end

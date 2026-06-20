@@ -34,6 +34,15 @@ export interface AuditLogItem {
   created_at: string
 }
 
+export interface MinecraftHealth {
+  status: string
+  nodes?: number
+  managed_servers?: number
+  stale_online_nodes?: number
+  process_mismatch_servers?: number
+  message?: string
+}
+
 export interface StoreEventStat {
   event_type: string
   total: number
@@ -44,6 +53,7 @@ export interface StoreEventStat {
 
 defineProps<{
   metrics: Metric[]
+  minecraftHealth?: MinecraftHealth
   webhookStats: {
     forum: WebhookStatBlock
     store: WebhookStatBlock
@@ -65,6 +75,18 @@ defineProps<{
       <p class="text-sm text-muted-foreground">{{ metric.label }}</p>
       <p class="mt-1 text-2xl font-semibold">{{ metric.value }}</p>
     </div>
+  </div>
+
+  <div v-if="minecraftHealth" class="mb-8 rounded-lg border p-4" :class="minecraftHealth.status === 'ok' ? '' : 'border-amber-500/50 bg-amber-50 dark:bg-amber-950/20'">
+    <h2 class="mb-2 text-sm font-semibold">{{ t('admin.dashboard.minecraftHealth') }}</h2>
+    <p class="text-sm text-muted-foreground">
+      <template v-if="minecraftHealth.status === 'ok'">
+        {{ t('admin.dashboard.minecraftHealthOk', { nodes: minecraftHealth.nodes ?? 0, servers: minecraftHealth.managed_servers ?? 0 }) }}
+      </template>
+      <template v-else>
+        {{ t('admin.dashboard.minecraftHealthDegraded', { stale: minecraftHealth.stale_online_nodes ?? 0, mismatch: minecraftHealth.process_mismatch_servers ?? 0 }) }}
+      </template>
+    </p>
   </div>
 
   <h2 class="mb-3 text-sm font-semibold">{{ t('admin.dashboard.webhookTitle') }}</h2>

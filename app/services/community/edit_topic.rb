@@ -37,15 +37,13 @@ module Community
     private
 
     def can_edit?
-      return false unless @user
-
-      @user.id == @topic.user_id || @user.permission?("forum.topics.edit_others") || @user.permission?("forum.topics.lock")
+      Community::SectionModeration.can_edit_topic?(user: @user, topic: @topic)
     end
 
     def valid_prefix
       return nil if @prefix.blank?
 
-      allowed = Array(@topic.section.prefixes)
+      allowed = @topic.section.prefix_names
       allowed.include?(@prefix) ? @prefix : nil
     end
   end

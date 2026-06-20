@@ -28,7 +28,8 @@ module InertiaSerializable
       locale: current_user.locale,
       can_access_admin: current_user.can_access_admin?,
       admin_modules: current_user.admin_module_grants.pluck(:module_key),
-      can_upload_images: Community::TrustLevel.can_upload_images?(current_user)
+      can_upload_images: Community::TrustLevel.can_upload_images?(current_user),
+      can_upload_attachments: Community::TrustLevel.can_upload_attachments?(current_user)
     }
   end
 
@@ -38,6 +39,32 @@ module InertiaSerializable
 
   def admin_row(**attrs)
     attrs.transform_values { |v| v.nil? ? "—" : v.to_s }
+  end
+
+  def serialize_node_task(task)
+    result = task.result || {}
+    {
+      id: task.id,
+      task_type: task.task_type,
+      status: task.status,
+      completed_at: task.completed_at ? l(task.completed_at, format: :long) : nil,
+      completed_at_iso: task.completed_at&.iso8601,
+      created_at_iso: task.created_at.iso8601,
+      result: {
+        stdout: result["stdout"],
+        stderr: result["stderr"],
+        output: result["output"],
+        error: result["error"],
+        message: result["message"],
+        success: result["success"]
+      }.compact,
+      payload: task.payload.slice("command", "path", "lines").compact
+    }
+  end
+
+  def minecraft_node_stale?(node)
+    node.status == "online" &&
+      (node.last_heartbeat_at.nil? || node.last_heartbeat_at < 3.minutes.ago)
   end
 
   def serialize_section(section, include_children: true, unread_map: {})
@@ -57,7 +84,9 @@ module InertiaSerializable
     }
 
     if include_children && section.children.any?
-      data[:children] = section.children.ordered.map { |child| serialize_section(child, include_children: false, unread_map: unread_map) }
+      children = section.children.ordered
+      children = children.select { |child| child.visible_to?(current_user) } unless logged_in?
+      data[:children] = children.map { |child| serialize_section(child, include_children: false, unread_map: unread_map) }
     end
 
     data
@@ -87,6 +116,7 @@ module InertiaSerializable
       last_poster_url: topic.last_post_user ? forum_user_path(topic.last_post_user.username) : nil,
       pinned: topic.pinned?,
       prefix: topic.prefix,
+      prefix_color: topic.section&.prefix_color_for(topic.prefix),
       locked: topic.locked?,
       featured: topic.featured?,
       wiki: topic.wiki?,
@@ -129,6 +159,7 @@ module InertiaSerializable
   def linked_product_props(topic)
     product = topic.association(:linked_product).loaded? ? topic.linked_product : Commerce::Product.find_by(forum_topic_id: topic.id)
     return {} unless product
+    return {} unless Commerce::StoreFeatures.product_visible?(product)
 
     {
       linked_product: true,
@@ -171,6 +202,8 @@ module InertiaSerializable
       can_moderate: can_moderate,
       can_move: can_move,
       can_edit: can_edit,
+      prefix: topic.prefix,
+      prefix_color: topic.section.prefix_color_for(topic.prefix),
       tags: topic.tags.map { |tag| serialize_topic_tag(tag) },
       tags_string: topic.tags.map(&:name).join(", "),
       section: {
@@ -287,6 +320,7 @@ module InertiaSerializable
       author_url: forum_user_path(post.user.username),
       author_card_url: card_forum_user_path(post.user.username),
       author_badges: serialize_user_badges(post.user),
+      author_memberships: serialize_user_memberships(post.user, limit: 2),
       verified_purchaser: verified_purchaser.nil? ? verified_purchaser?(post.user) : verified_purchaser,
       avatar_url: post.user.avatar_url,
       body: post.body,
@@ -312,6 +346,7 @@ module InertiaSerializable
       bookmark_url: current_user ? bookmark_forum_post_path(post) : nil,
       bookmark: bookmark_meta,
       hidden: post.status == "hidden",
+      pending_approval: post.status == "pending_approval",
       deleted: post.deleted_at.present?,
       small_action: post.small_action?,
       whisper: post.whisper?,
@@ -324,8 +359,33 @@ module InertiaSerializable
       forked_topics: visible_forked_topics(post, current_user).map { |topic|
         { id: topic.public_id, title: topic.title, url: forum_topic_path(topic) }
       },
-      update_url: forum_post_path(post)
+      update_url: forum_post_path(post),
+      approve_url: (can_moderate && post.status == "pending_approval") ? approve_forum_post_path(post) : nil,
+      reject_url: (can_moderate && post.status == "pending_approval") ? reject_forum_post_path(post) : nil,
+      attachments: serialize_post_attachments(post, user: current_user)
     }
+  end
+
+  def serialize_post_attachments(post, user: current_user)
+    records = if post.association(:attachments).loaded?
+                post.attachments.select { |attachment| attachment.file.attached? }
+    else
+                post.attachments.includes(file_attachment: :blob).select { |attachment| attachment.file.attached? }
+    end
+
+    records.filter_map do |attachment|
+      next unless Community::PostAttachmentAccess.downloadable?(attachment, user: user)
+
+      {
+        id: attachment.id,
+        filename: attachment.filename,
+        content_type: attachment.content_type,
+        byte_size: attachment.byte_size,
+        human_size: attachment.human_size,
+        download_url: forum_attachment_path(attachment),
+        download_count: attachment.download_count
+      }
+    end
   end
 
   def serialize_quoted_post(post, current_user: nil)
@@ -369,7 +429,7 @@ module InertiaSerializable
     return false unless user
     return false if post.floor_number == 1
 
-    user.id == post.user_id || user.permission?("forum.topics.lock")
+    user.id == post.user_id || Community::SectionModeration.can_moderate_topic?(user: user, topic: post.topic)
   end
 
   def post_depth(post)
@@ -434,6 +494,10 @@ module InertiaSerializable
     end
   end
 
+  def serialize_user_memberships(user, limit: nil)
+    Commerce::SerializeUserMemberships.for_user(user, limit: limit)
+  end
+
   def serialize_product_list_item(product)
     avg = product.reviews.published.average(:rating)&.round(1)
     {
@@ -483,11 +547,7 @@ module InertiaSerializable
   end
 
   def product_image_url(product)
-    if product.cover_image.attached?
-      rails_blob_path(product.cover_image, only_path: true)
-    else
-      safe_product_image_url(product.image_url)
-    end
+    Commerce::ResolveProductImageUrl.call(product: product).value[:url]
   end
 
   def safe_product_image_url(url)
@@ -500,6 +560,7 @@ module InertiaSerializable
   end
 
   def serialize_product_detail(product, wishlisted: false, reviews: [], average_rating: nil)
+    prereq = Commerce::CheckProductPrerequisites.call(user: current_user, product: product)
     {
       id: product.public_id,
       db_id: product.id,
@@ -513,6 +574,9 @@ module InertiaSerializable
       discount_percent: product.discount_percent,
       discount_label: product.discount_percent ? "-#{product.discount_percent}%" : nil,
       product_type: product.product_type,
+      membership_type_label: product.membership_product? ? product.membership_type&.name : nil,
+      purchase_blocked: prereq.failure?,
+      prerequisite_message: prereq.failure? ? prereq.error : nil,
       category_name: product.category&.name,
       in_stock: product.in_stock?,
       backorder_available: product.backorder_available?,
@@ -631,7 +695,9 @@ module InertiaSerializable
       name: category.name,
       icon: category.icon,
       color_hex: category.color_hex,
-      product_count: Commerce::Product.available.where(store_category_id: category.id).count,
+      product_count: Commerce::StoreFeatures.visible_products_scope(
+        Commerce::Product.available.where(store_category_id: category.id)
+      ).count,
       url: store_category_path(category.slug, **query.compact)
     }
   end
@@ -691,24 +757,17 @@ module InertiaSerializable
 
   def serialize_order_detail(order)
     providers = Payments::ProviderConfig.enabled_providers.map { |config| serialize_checkout_provider(config) }
-    {
+    shipping_enabled = Commerce::StoreFeatures.enabled?(:shipping)
+    shipping_mgmt_enabled = Commerce::StoreFeatures.enabled?(:order_shipping_management)
+    gift_wrap_enabled = Commerce::StoreFeatures.enabled?(:gift_wrap)
+
+    payload = {
       id: order.public_id,
       order_number: order.order_number,
       status: order.status,
       status_label: order_status_label(order.status),
       notes: order.notes,
-      shipping_address: order.shipping_address.presence,
-      shipping_address_label: format_shipping_address(order.shipping_address),
-      shipping_method: order.shipping_method,
-      shipping_method_label: Commerce::ShippingMethods.label_for(order.shipping_method),
-      tracking_number: order.tracking_number,
-      shipping_carrier: order.shipping_carrier,
-      shipped_at: order.shipped_at ? l(order.shipped_at, format: :short) : nil,
-      tracking_url: tracking_url_for(order),
-      packing_slip_url: packing_slip_store_order_path(order),
       subtotal_label: format_money(order.subtotal_cents, order.currency),
-      shipping_label: order.shipping_cents.positive? ? format_money(order.shipping_cents, order.currency) : nil,
-      free_shipping: order.shipping_cents.zero? && order.subtotal_cents.positive?,
       discount_label: order.discount_cents.positive? ? format_money(order.discount_cents, order.currency) : nil,
       coupon_code: order.coupon&.code,
       gift_card_code: order.gift_card&.code,
@@ -721,8 +780,6 @@ module InertiaSerializable
           created_at: l(note.created_at, format: :short)
         }
       end,
-      gift_wrap: order.gift_wrap?,
-      gift_wrap_label: order.gift_wrap_cents.positive? ? format_money(order.gift_wrap_cents, order.currency) : nil,
       total_label: format_money(order.total_cents, order.currency),
       receipt_url: receipt_store_order_path(order),
       receipt_pdf_url: receipt_pdf_store_order_path(order),
@@ -758,15 +815,6 @@ module InertiaSerializable
           created_at: l(event.created_at, format: :short)
         }
       end,
-      shipping_timeline: Commerce::OrderShippingTimeline.call(order).map do |step|
-        {
-          key: step[:key],
-          label: step[:label],
-          state: step[:state],
-          at: step[:at] ? l(step[:at], format: :short) : nil
-        }
-      end,
-      delivery_estimate: order.shipping_method.present? ? Commerce::ShippingMethods.delivery_estimate_label(Commerce::ShippingMethods.find(order.shipping_method)) : nil,
       cancel_url: cancel_store_order_path(order),
       reorder_url: reorder_store_order_path(order),
       can_reorder: order.items.any?,
@@ -795,6 +843,7 @@ module InertiaSerializable
           discussion_url: product&.forum_topic ? forum_topic_path(product.forum_topic) : nil,
           fulfillment_status: fulfillment&.status,
           fulfillment_status_label: fulfillment_status_label(fulfillment&.status),
+          fulfillment_error: fulfillment&.status == "failed" ? ServiceErrorTranslator.translate(fulfillment.last_error) : nil,
           download_url: download_url,
           refresh_download_url: refresh_download_url,
           issued_gift_cards: issued_cards.map do |card|
@@ -817,12 +866,52 @@ module InertiaSerializable
           delivery_id: f.delivery_id,
           status: f.status,
           status_label: fulfillment_status_label(f.status),
-          fulfilled_at: f.fulfilled_at ? l(f.fulfilled_at, format: :short) : nil
+          fulfilled_at: f.fulfilled_at ? l(f.fulfilled_at, format: :short) : nil,
+          last_error: f.status == "failed" ? ServiceErrorTranslator.translate(f.last_error) : nil
         }
       end,
       payment_providers: providers,
       default_provider: providers.first&.dig(:value) || "fake"
     }
+
+    if shipping_enabled
+      payload.merge!(
+        shipping_address: order.shipping_address.presence,
+        shipping_address_label: format_shipping_address(order.shipping_address),
+        shipping_method: order.shipping_method,
+        shipping_method_label: Commerce::ShippingMethods.label_for(order.shipping_method),
+        shipping_label: order.shipping_cents.positive? ? format_money(order.shipping_cents, order.currency) : nil,
+        free_shipping: order.shipping_cents.zero? && order.subtotal_cents.positive?,
+        shipping_timeline: Commerce::OrderShippingTimeline.call(order).map do |step|
+          {
+            key: step[:key],
+            label: step[:label],
+            state: step[:state],
+            at: step[:at] ? l(step[:at], format: :short) : nil
+          }
+        end,
+        delivery_estimate: order.shipping_method.present? ? Commerce::ShippingMethods.delivery_estimate_label(Commerce::ShippingMethods.find(order.shipping_method)) : nil
+      )
+    end
+
+    if shipping_mgmt_enabled
+      payload.merge!(
+        tracking_number: order.tracking_number,
+        shipping_carrier: order.shipping_carrier,
+        shipped_at: order.shipped_at ? l(order.shipped_at, format: :short) : nil,
+        tracking_url: tracking_url_for(order),
+        packing_slip_url: packing_slip_store_order_path(order)
+      )
+    end
+
+    if gift_wrap_enabled
+      payload.merge!(
+        gift_wrap: order.gift_wrap?,
+        gift_wrap_label: order.gift_wrap_cents.positive? ? format_money(order.gift_wrap_cents, order.currency) : nil
+      )
+    end
+
+    payload
   end
 
   def serialize_order_restorations(order)
@@ -849,7 +938,7 @@ module InertiaSerializable
     if stock_qty.positive?
       items << {
         label: I18n.t("mcweb.labels.order_restorations.stock"),
-        amount_label: I18n.t("mcweb.labels.order_restorations.stock_units", count: stock_qty),
+        amount_label: I18n.t("mcweb.labels.order_restorations.stock_units", count: stock_qty)
       }
     end
     items
@@ -905,17 +994,11 @@ module InertiaSerializable
   end
 
   def within_refund_window?(order)
-    window_days = SiteSetting.get("store.refund_window_days", "0").to_i
-    return true if window_days <= 0
-
-    payment = order.payment_records.where(status: "succeeded").order(created_at: :asc).first
-    return false unless payment
-
-    Time.current <= payment.created_at + window_days.days
+    Commerce::RefundWindow.within_window?(order)
   end
 
   def max_refundable_cents(order)
-    payment = order.payment_records.where(status: "succeeded").order(created_at: :desc).first
+    payment = succeeded_payment_for(order)
     return 0 unless payment
 
     refunded = order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
@@ -923,13 +1006,7 @@ module InertiaSerializable
   end
 
   def refund_window_expires_at(order)
-    window_days = SiteSetting.get("store.refund_window_days", "0").to_i
-    return nil if window_days <= 0
-
-    payment = order.payment_records.where(status: "succeeded").order(created_at: :asc).first
-    return nil unless payment
-
-    payment.created_at + window_days.days
+    Commerce::RefundWindow.expires_at(order)
   end
 
   def refund_window_expires_label(order)
@@ -959,6 +1036,8 @@ module InertiaSerializable
   end
 
   def serialize_shipping_quote(subtotal_cents, currency: "CNY", cart_items: nil, coupon: nil, shipping_method_code: nil)
+    return {} unless Commerce::StoreFeatures.enabled?(:shipping)
+
     result = Commerce::CalculateShipping.call(
       subtotal_cents: subtotal_cents,
       cart_items: cart_items,
@@ -994,7 +1073,9 @@ module InertiaSerializable
 
   def compare_product_count
     ids = Array(session[:compare_product_ids])
-    Commerce::Product.active.where(public_id: ids).count
+    Commerce::StoreFeatures.visible_products_scope(
+      Commerce::Product.active.where(public_id: ids)
+    ).count
   end
 
   def product_compare_props(product)
@@ -1089,5 +1170,9 @@ module InertiaSerializable
         }
       end
     }
+  end
+
+  def succeeded_payment_for(order)
+    order.primary_succeeded_payment_record
   end
 end

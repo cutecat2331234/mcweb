@@ -8,7 +8,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "不能给自己的评价点有帮助。") if @user.id == @review.user_id
+      return ServiceResult.failure(error: "cannot_review_own") if @user.id == @review.user_id
 
       existing = Commerce::ReviewHelpfulVote.find_by(user: @user, review: @review)
       if existing

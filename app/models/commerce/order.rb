@@ -83,7 +83,15 @@ module Commerce
 
       minutes = SiteSetting.get("store.pending_order_expiry_minutes", "30").to_i
       minutes = 30 if minutes <= 0
-      created_at + minutes.minutes
+      payment_window_anchor_at + minutes.minutes
+    end
+
+    def payment_window_anchor_at
+      if awaiting_payment?
+        events.where(to_status: "awaiting_payment").order(created_at: :desc).pick(:created_at) || created_at
+      else
+        created_at
+      end
     end
 
     def payment_expired?
@@ -93,6 +101,15 @@ module Commerce
 
     def payable?
       (pending? || awaiting_payment?) && !payment_expired?
+    end
+
+    def primary_succeeded_payment_record
+      payment_records.where(status: "succeeded").where.not(provider: "fake").order(created_at: :desc).first ||
+        payment_records.where(status: "succeeded").order(created_at: :desc).first
+    end
+
+    def post_payment_side_effects_completed?
+      events.exists?(event_type: Commerce::PostPaymentSideEffectsJob::COMPLETED_EVENT)
     end
 
     private

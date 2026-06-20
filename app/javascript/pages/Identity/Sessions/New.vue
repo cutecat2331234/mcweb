@@ -56,22 +56,28 @@ function submit() {
     {{ loginError }}
   </Alert>
 
-  <form class="max-w-md space-y-4" @submit.prevent="submit">
+  <form
+    class="max-w-md space-y-4"
+    method="post"
+    :action="routes.identitySession"
+    @submit.prevent="submit"
+  >
+    <input type="hidden" name="authenticity_token" :value="String(page.props.csrf_token || readCsrfToken())" />
     <div class="space-y-2">
       <Label for="email">{{ t('auth.signIn.email') }}</Label>
-      <Input id="email" v-model="form.session.email" type="email" autocomplete="email" required autofocus />
+      <Input id="email" v-model="form.session.email" name="session[email]" type="email" autocomplete="email" required autofocus />
       <p v-if="form.errors['session.email']" class="text-sm text-destructive">{{ form.errors['session.email'] }}</p>
     </div>
 
     <div class="space-y-2">
       <Label for="password">{{ t('auth.signIn.password') }}</Label>
-      <Input id="password" v-model="form.session.password" type="password" autocomplete="current-password" required />
+      <Input id="password" v-model="form.session.password" name="session[password]" type="password" autocomplete="current-password" required />
       <p v-if="form.errors['session.password']" class="text-sm text-destructive">{{ form.errors['session.password'] }}</p>
     </div>
 
     <div class="space-y-2">
       <Label for="totp_code">{{ t('auth.signIn.totp') }}</Label>
-      <Input id="totp_code" v-model="form.session.totp_code" autocomplete="one-time-code" />
+      <Input id="totp_code" v-model="form.session.totp_code" name="session[totp_code]" autocomplete="one-time-code" />
     </div>
 
     <label class="flex cursor-pointer items-center gap-2 text-sm">

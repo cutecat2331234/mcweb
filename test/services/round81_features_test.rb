@@ -65,7 +65,11 @@ class Round81WebhookAutoRetryTest < ActiveSupport::TestCase
     payload = { "event" => "saved_search.match", "search_id" => @search.id }
 
     assert_enqueued_jobs 1, only: Community::DispatchSavedSearchWebhookJob do
-      Community::DispatchSavedSearchWebhookJob.perform_now(@search.id, "http://127.0.0.1:1/invalid", payload)
+      Community::DispatchSavedSearchWebhookJob.perform_now(
+        @search.id,
+        "https://example.com/invalid-webhook-#{SecureRandom.hex(4)}",
+        payload
+      )
     end
 
     delivery = Community::SavedSearchWebhookDelivery.last

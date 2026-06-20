@@ -8,7 +8,7 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "未选择主题") if @topic_public_ids.empty?
+      return ServiceResult.failure(error: "topics_not_selected") if @topic_public_ids.empty?
 
       marked = 0
       Community::Topic.where(public_id: @topic_public_ids).find_each do |topic|

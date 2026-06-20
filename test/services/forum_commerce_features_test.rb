@@ -248,6 +248,24 @@ class Commerce::CancelOrderTest < ActiveSupport::TestCase
     assert_equal "cancelled", order.reload.status
     assert_equal 5, product.reload.stock
   end
+
+  test "does not cancel paid order" do
+    user = create_user
+    order = Commerce::Order.create!(
+      public_id: "ord_cancel_paid",
+      order_number: "ORD-CAN-PAID",
+      user: user,
+      status: "paid",
+      subtotal_cents: 100,
+      total_cents: 100,
+      discount_cents: 0,
+      currency: "CNY"
+    )
+
+    result = Commerce::CancelOrder.call(order: order, actor: user)
+    assert_not result.success?
+    assert_equal "paid", order.reload.status
+  end
 end
 
 class Commerce::PreviewCouponTest < ActiveSupport::TestCase

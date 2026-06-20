@@ -3,6 +3,7 @@ import { useI18n } from 'vue-i18n'
 import { usePage } from '@inertiajs/vue3'
 import { routes, appPrefix } from '@/lib/routes'
 import { resolveFeatureFlags } from '@/lib/featureFlags'
+import { resolveStoreFeatures } from '@/lib/storeFeatures'
 
 export interface PortalNavItem {
   label: string
@@ -23,6 +24,7 @@ export interface PortalNavOptions {
   loggedIn: boolean
   forumUnread?: { count: number; url: string }
   forumAssigned?: { count: number; url: string }
+  forumModerationPending?: { count: number; url: string }
   messagesUnread?: { count: number; url: string }
   cart?: { count: number; url: string }
 }
@@ -40,6 +42,10 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
 
   const features = computed(() =>
     resolveFeatureFlags(page.props.features as Parameters<typeof resolveFeatureFlags>[0]),
+  )
+
+  const storeFeatures = computed(() =>
+    resolveStoreFeatures(page.props.storeFeatures as Parameters<typeof resolveStoreFeatures>[0]),
   )
 
   const activeSection = computed<'forum' | 'store'>(() => {
@@ -82,6 +88,13 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
         loginRequired: true,
         icon: 'list',
       } ] : []),
+      ...(opts.value.forumModerationPending ? [ {
+        label: t('nav.moderationApprovals'),
+        href: opts.value.forumModerationPending.url,
+        badge: opts.value.forumModerationPending.count,
+        loginRequired: true,
+        icon: 'shield',
+      } ] : []),
       {
         label: t('nav.messages'),
         href: opts.value.messagesUnread?.url || routes.forumMessages,
@@ -105,10 +118,22 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
 
   const storePersonalItems = computed<PortalNavItem[]>(() => {
     if (!opts.value.loggedIn) return []
-    const items: PortalNavItem[] = [
+    return [
       { label: t('nav.orders'), href: routes.storeOrders, loginRequired: true, icon: 'package' },
+      ...(opts.value.cart ? [ {
+        label: t('nav.cart'),
+        href: opts.value.cart.url,
+        badge: opts.value.cart.count > 0 ? opts.value.cart.count : undefined,
+        loginRequired: true,
+        icon: 'shopping-cart',
+      } ] : []),
       { label: t('nav.wishlist'), href: routes.storeWishlist, loginRequired: true, icon: 'heart' },
-      { label: t('nav.shippingAddresses'), href: routes.storeShippingAddresses, loginRequired: true, icon: 'map-pin' },
+      ...(storeFeatures.value.shipping ? [ {
+        label: t('nav.shippingAddresses'),
+        href: routes.storeShippingAddresses,
+        loginRequired: true,
+        icon: 'map-pin',
+      } ] : []),
       { label: t('nav.wallet'), href: routes.storeWallet, loginRequired: true, icon: 'wallet' },
       { label: t('nav.giftCards'), href: routes.storeGiftCards, loginRequired: true, icon: 'gift' },
       { label: t('nav.stockAlerts'), href: routes.storeStockAlerts, loginRequired: true, icon: 'bell' },
@@ -116,16 +141,6 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
       { label: t('nav.availabilityAlerts'), href: routes.storeAvailabilityAlerts, loginRequired: true, icon: 'bell' },
       { label: t('nav.storePreferences'), href: routes.storePreferences, loginRequired: true, icon: 'settings' },
     ]
-    if (opts.value.cart) {
-      items.splice(1, 0, {
-        label: t('nav.cart'),
-        href: opts.value.cart.url,
-        badge: opts.value.cart.count > 0 ? opts.value.cart.count : undefined,
-        loginRequired: true,
-        icon: 'shopping-cart',
-      })
-    }
-    return items
   })
 
   const navGroups = computed<PortalNavGroup[]>(() => {

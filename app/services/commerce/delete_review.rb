@@ -8,7 +8,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "无权删除此评价。") unless @user.id == @review.user_id
+      return ServiceResult.failure(error: "delete_review_unauthorized") unless @user.id == @review.user_id
 
       @review.update!(status: :hidden)
       ServiceResult.success

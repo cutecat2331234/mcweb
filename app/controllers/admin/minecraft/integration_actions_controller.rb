@@ -4,7 +4,6 @@ module Admin
   module Minecraft
     class IntegrationActionsController < BaseController
       before_action -> { require_permission("minecraft.servers.manage") }
-      before_action -> { require_admin_module!("minecraft") }
       before_action :set_action, only: %i[edit update destroy]
 
       def index
@@ -40,7 +39,14 @@ module Admin
       end
 
       def create
-        action = ::Minecraft::IntegrationAction.new(parsed_action_params)
+        parsed = parsed_action_params
+        unless parsed
+          action = ::Minecraft::IntegrationAction.new(action_params.except(:conditions_json, :actions_json))
+          action.errors.add(:base, "JSON 格式无效")
+          return render inertia: "Admin/Minecraft/IntegrationActions/Form", props: form_props(action), status: :unprocessable_entity
+        end
+
+        action = ::Minecraft::IntegrationAction.new(parsed)
         if action.save
           redirect_to admin_minecraft_integration_actions_path, notice: t("mcweb.flash.rule_created")
         else
@@ -49,7 +55,14 @@ module Admin
       end
 
       def update
-        if @action.update(parsed_action_params)
+        parsed = parsed_action_params
+        unless parsed
+          @action.assign_attributes(action_params.except(:conditions_json, :actions_json))
+          @action.errors.add(:base, "JSON 格式无效")
+          return render inertia: "Admin/Minecraft/IntegrationActions/Form", props: form_props(@action), status: :unprocessable_entity
+        end
+
+        if @action.update(parsed)
           redirect_to admin_minecraft_integration_actions_path, notice: t("mcweb.flash.rule_updated")
         else
           render inertia: "Admin/Minecraft/IntegrationActions/Form", props: form_props(@action), status: :unprocessable_entity
@@ -73,10 +86,7 @@ module Admin
         raw[:actions] = JSON.parse(raw[:actions_json].presence || "[]")
         raw.except(:conditions_json, :actions_json)
       rescue JSON::ParserError
-        raw ||= action_params.to_h
-        raw[:conditions] = {}
-        raw[:actions] = []
-        raw.except(:conditions_json, :actions_json)
+        nil
       end
 
       def action_params

@@ -48,6 +48,10 @@ module Community
       level_for(user) >= 1
     end
 
+    def self.can_upload_attachments?(user)
+      can_upload_images?(user)
+    end
+
     def self.can_react?(user)
       return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
 

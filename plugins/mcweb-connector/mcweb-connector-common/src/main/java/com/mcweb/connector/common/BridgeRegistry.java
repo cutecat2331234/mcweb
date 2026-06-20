@@ -28,7 +28,11 @@ public final class BridgeRegistry {
                 continue;
             }
             try {
-                for (BridgeProvider.FieldValue field : provider.profileFields(playerName)) {
+                List<BridgeProvider.FieldValue> profileFields = provider.profileFields(playerName);
+                if (profileFields == null) {
+                    continue;
+                }
+                for (BridgeProvider.FieldValue field : profileFields) {
                     JsonObject entry = new JsonObject();
                     entry.addProperty("key", field.key);
                     entry.addProperty("value", field.value);
@@ -51,8 +55,15 @@ public final class BridgeRegistry {
             if (remoteConfig != null && !remoteConfig.bridgeEnabled(provider.name())) {
                 continue;
             }
+            if (!provider.isAvailable()) {
+                continue;
+            }
             try {
-                for (BridgeProvider.PermissionGroup group : provider.permissionGroups(playerName)) {
+                List<BridgeProvider.PermissionGroup> permissionGroups = provider.permissionGroups(playerName);
+                if (permissionGroups == null) {
+                    continue;
+                }
+                for (BridgeProvider.PermissionGroup group : permissionGroups) {
                     JsonObject entry = new JsonObject();
                     entry.addProperty("key", group.key);
                     entry.addProperty("label", group.label);

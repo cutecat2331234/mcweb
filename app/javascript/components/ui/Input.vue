@@ -4,6 +4,8 @@ import { cn } from '@/lib/utils'
 
 const model = defineModel<string | number>()
 
+defineOptions({ inheritAttrs: false })
+
 defineProps<{
   class?: HTMLAttributes['class']
   type?: string
@@ -16,6 +18,7 @@ defineProps<{
 
 <template>
   <input
+    v-bind="$attrs"
     v-model="model"
     :type="type ?? 'text'"
     :placeholder="placeholder"

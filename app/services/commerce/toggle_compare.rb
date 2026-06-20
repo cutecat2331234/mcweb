@@ -16,7 +16,7 @@ module Commerce
         ids.delete(public_id)
         compared = false
       else
-        return ServiceResult.failure(error: "最多只能对比 #{max_items} 件商品。") if ids.size >= max_items
+        return ServiceResult.failure(error: I18n.t("mcweb.services.errors.compare_limit_reached", count: max_items)) if ids.size >= max_items
 
         ids << public_id
         compared = true

@@ -7,7 +7,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "未选择投递记录") if @delivery_ids.empty?
+      return ServiceResult.failure(error: "deliveries_not_selected") if @delivery_ids.empty?
 
       queued = 0
       Commerce::OrderWebhookDelivery

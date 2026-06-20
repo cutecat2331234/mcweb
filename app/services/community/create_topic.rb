@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 30.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil, poll_anonymous: nil, prefix: nil)
+    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil, poll_anonymous: nil, prefix: nil, attachment_ids: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
@@ -21,6 +21,7 @@ module Community
       @poll_hide_results_until_vote = ActiveModel::Type::Boolean.new.cast(poll_hide_results_until_vote) || false
       @poll_anonymous = ActiveModel::Type::Boolean.new.cast(poll_anonymous) || false
       @prefix = prefix.to_s.strip.presence
+      @attachment_ids = attachment_ids
     end
 
     def call
@@ -41,6 +42,9 @@ module Community
 
       topic = nil
       tag_result = nil
+      needs_approval = Community::RequiresPostApproval.required_for?(user: @user)
+      topic_status = needs_approval ? "hidden" : "published"
+      post_status = needs_approval ? "pending_approval" : "published"
       Community::Topic.transaction do
         topic = Community::Topic.create!(
           public_id: generate_public_id,
@@ -48,7 +52,7 @@ module Community
           user: @user,
           title: @title,
           prefix: valid_prefix,
-          status: "published",
+          status: topic_status,
           last_posted_at: Time.current,
           last_post_user: @user,
           replies_count: 0
@@ -59,7 +63,7 @@ module Community
           user: @user,
           floor_number: 1,
           body: @body,
-          status: "published"
+          status: post_status
         )
 
         Community::Subscription.subscribe!(@user, topic)
@@ -81,12 +85,17 @@ module Community
       )
 
       opening_post = topic.posts.first
-      Community::ProcessMentions.call(body: @body, author: @user, post: opening_post, topic: topic) if opening_post
-      Community::ProcessHashtags.call(topic: topic, body: @body, user: @user) if opening_post
-      Community::NotifySectionTopic.call(topic: topic)
-      Community::NotifyFollowedUserTopic.call(topic: topic)
-      if @tag_names.present? && topic.tags.any?
-        Community::NotifyTagTopic.call(topic: topic, tags: topic.tags)
+      if opening_post
+        link_result = Community::LinkPostAttachments.call(user: @user, post: opening_post, attachment_ids: @attachment_ids)
+        return link_result if link_result.failure?
+      end
+
+      if needs_approval
+        Community::NotifyPendingPost.call(post: opening_post)
+      else
+        Community::ProcessMentions.call(body: @body, author: @user, post: opening_post, topic: topic) if opening_post
+        Community::ProcessHashtags.call(topic: topic, body: @body, user: @user) if opening_post
+        Community::PublishPostSideEffects.call(post: opening_post) if opening_post
       end
       Community::CheckAutoBadges.call(user: @user)
 
@@ -122,7 +131,7 @@ module Community
       end
 
       if @section.prefix_required? && @prefix.blank?
-        return ServiceResult.failure(error: "此分区要求选择主题前缀。")
+        return ServiceResult.failure(error: "section_topic_prefix_required")
       end
 
       if @user.banned?
@@ -177,7 +186,7 @@ module Community
     def valid_prefix
       return nil if @prefix.blank?
 
-      allowed = Array(@section.prefixes)
+      allowed = @section.prefix_names
       allowed.include?(@prefix) ? @prefix : nil
     end
 

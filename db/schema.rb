@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_20_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -157,6 +157,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["creator_id"], name: "index_forum_conversations_on_creator_id"
   end
 
+  create_table "forum_event_webhook_deliveries", force: :cascade do |t|
+    t.integer "attempt_count", default: 1, null: false
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.bigint "forum_post_id"
+    t.bigint "forum_topic_id"
+    t.jsonb "request_payload", default: {}
+    t.text "response_body"
+    t.integer "response_code"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.index ["created_at"], name: "index_forum_event_webhook_deliveries_on_created_at"
+    t.index ["event_type"], name: "index_forum_event_webhook_deliveries_on_event_type"
+    t.index ["forum_post_id"], name: "index_forum_event_webhook_deliveries_on_forum_post_id"
+    t.index ["forum_topic_id"], name: "index_forum_event_webhook_deliveries_on_forum_topic_id"
+    t.index ["status"], name: "index_forum_event_webhook_deliveries_on_status"
+  end
+
   create_table "forum_messages", force: :cascade do |t|
     t.text "body", null: false
     t.datetime "created_at", null: false
@@ -204,6 +223,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.string "question", null: false
     t.datetime "updated_at", null: false
     t.index ["forum_topic_id"], name: "index_forum_polls_on_forum_topic_id", unique: true
+  end
+
+  create_table "forum_post_attachments", force: :cascade do |t|
+    t.bigint "byte_size", default: 0, null: false
+    t.string "content_type"
+    t.datetime "created_at", null: false
+    t.integer "download_count", default: 0, null: false
+    t.string "filename", null: false
+    t.bigint "forum_post_id"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_post_id"], name: "index_forum_post_attachments_on_forum_post_id"
+    t.index ["user_id", "forum_post_id"], name: "index_forum_post_attachments_on_user_id_and_forum_post_id"
+    t.index ["user_id"], name: "index_forum_post_attachments_on_user_id"
   end
 
   create_table "forum_post_edits", force: :cascade do |t|
@@ -265,6 +298,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   end
 
   create_table "forum_reply_drafts", force: :cascade do |t|
+    t.jsonb "attachment_ids", default: [], null: false
     t.text "body", default: "", null: false
     t.datetime "created_at", null: false
     t.bigint "forum_topic_id", null: false
@@ -335,6 +369,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["user_id"], name: "index_forum_search_histories_on_user_id"
   end
 
+  create_table "forum_section_moderators", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_section_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_section_id", "user_id"], name: "index_forum_section_moderators_on_forum_section_id_and_user_id", unique: true
+    t.index ["forum_section_id"], name: "index_forum_section_moderators_on_forum_section_id"
+    t.index ["user_id"], name: "index_forum_section_moderators_on_user_id"
+  end
+
   create_table "forum_section_mutes", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "forum_section_id", null: false
@@ -357,6 +401,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.string "icon"
     t.string "link_label"
     t.string "link_url"
+    t.boolean "login_required", default: false, null: false
     t.integer "min_trust_level_create", default: 0, null: false
     t.integer "min_trust_level_reply", default: 0, null: false
     t.string "name", null: false
@@ -572,6 +617,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["blocker_id"], name: "index_forum_user_blocks_on_blocker_id"
   end
 
+  create_table "forum_user_field_definitions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.text "choices"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.boolean "editable_by_user", default: true, null: false
+    t.string "field_type", default: "text", null: false
+    t.string "key", null: false
+    t.string "label", null: false
+    t.boolean "required", default: false, null: false
+    t.boolean "show_on_profile", default: true, null: false
+    t.boolean "show_on_registration", default: false, null: false
+    t.integer "sort_order", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.string "visibility", default: "public", null: false
+    t.index ["key"], name: "index_forum_user_field_definitions_on_key", unique: true
+  end
+
+  create_table "forum_user_field_values", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_user_field_definition_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.text "value"
+    t.index ["forum_user_field_definition_id"], name: "idx_on_forum_user_field_definition_id_df4b56a372"
+    t.index ["user_id", "forum_user_field_definition_id"], name: "index_forum_user_field_values_on_user_and_definition", unique: true
+    t.index ["user_id"], name: "index_forum_user_field_values_on_user_id"
+  end
+
   create_table "forum_user_follows", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "followed_id", null: false
@@ -607,11 +681,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   create_table "forum_user_warnings", force: :cascade do |t|
     t.boolean "acknowledged", default: false, null: false
     t.datetime "created_at", null: false
+    t.datetime "expires_at"
     t.bigint "issuer_id", null: false
     t.integer "points", default: 1, null: false
     t.text "reason", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["expires_at"], name: "index_forum_user_warnings_on_expires_at"
     t.index ["issuer_id"], name: "index_forum_user_warnings_on_issuer_id"
     t.index ["user_id"], name: "index_forum_user_warnings_on_user_id"
   end
@@ -666,7 +742,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.datetime "updated_at", null: false
     t.index ["delivery_id"], name: "index_minecraft_connector_tasks_on_delivery_id", unique: true, where: "(delivery_id IS NOT NULL)"
     t.index ["minecraft_server_id"], name: "index_minecraft_connector_tasks_on_minecraft_server_id"
-    t.index ["store_fulfillment_id"], name: "index_minecraft_connector_tasks_on_store_fulfillment_id"
+    t.index ["store_fulfillment_id"], name: "index_minecraft_connector_tasks_on_store_fulfillment_id", unique: true
   end
 
   create_table "minecraft_identities", force: :cascade do |t|
@@ -743,6 +819,60 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["used_by_id"], name: "index_minecraft_link_codes_on_used_by_id"
   end
 
+  create_table "minecraft_node_metric_snapshots", force: :cascade do |t|
+    t.float "cpu_percent"
+    t.datetime "created_at", null: false
+    t.bigint "disk_total_bytes"
+    t.bigint "disk_used_bytes"
+    t.integer "max_players"
+    t.bigint "mem_total_bytes"
+    t.bigint "mem_used_bytes"
+    t.jsonb "metadata", default: {}, null: false
+    t.bigint "minecraft_node_id", null: false
+    t.bigint "minecraft_server_id"
+    t.integer "online_players"
+    t.datetime "recorded_at", null: false
+    t.float "tps"
+    t.datetime "updated_at", null: false
+    t.index ["minecraft_node_id", "recorded_at"], name: "idx_on_minecraft_node_id_recorded_at_bbb9851ffe"
+    t.index ["minecraft_node_id"], name: "index_minecraft_node_metric_snapshots_on_minecraft_node_id"
+    t.index ["minecraft_server_id", "recorded_at"], name: "idx_on_minecraft_server_id_recorded_at_d82cc9af1c"
+    t.index ["minecraft_server_id"], name: "index_minecraft_node_metric_snapshots_on_minecraft_server_id"
+  end
+
+  create_table "minecraft_node_tasks", force: :cascade do |t|
+    t.datetime "claimed_at"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "delivery_id"
+    t.bigint "minecraft_node_id", null: false
+    t.bigint "minecraft_server_id"
+    t.jsonb "payload", default: {}, null: false
+    t.jsonb "result", default: {}, null: false
+    t.string "status", default: "pending", null: false
+    t.string "task_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["delivery_id"], name: "index_minecraft_node_tasks_on_delivery_id", unique: true, where: "(delivery_id IS NOT NULL)"
+    t.index ["minecraft_node_id", "status"], name: "index_minecraft_node_tasks_on_minecraft_node_id_and_status"
+    t.index ["minecraft_node_id"], name: "index_minecraft_node_tasks_on_minecraft_node_id"
+    t.index ["minecraft_server_id"], name: "index_minecraft_node_tasks_on_minecraft_server_id"
+  end
+
+  create_table "minecraft_nodes", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.text "encrypted_node_secret"
+    t.string "hostname"
+    t.datetime "last_heartbeat_at"
+    t.jsonb "metadata", default: {}, null: false
+    t.string "name", null: false
+    t.string "node_secret_fingerprint"
+    t.string "proxy_listen_url", default: "http://127.0.0.1:9876"
+    t.string "public_id", null: false
+    t.string "status", default: "offline", null: false
+    t.datetime "updated_at", null: false
+    t.index ["public_id"], name: "index_minecraft_nodes_on_public_id", unique: true
+  end
+
   create_table "minecraft_permission_groups", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.string "group_key", null: false
@@ -784,6 +914,21 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.string "public_id", null: false
     t.datetime "updated_at", null: false
     t.index ["public_id"], name: "index_minecraft_player_profiles_on_public_id", unique: true
+  end
+
+  create_table "minecraft_player_sessions", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "ended_at"
+    t.datetime "joined_at", null: false
+    t.bigint "minecraft_server_id", null: false
+    t.bigint "player_profile_id", null: false
+    t.string "source", default: "connector", null: false
+    t.datetime "updated_at", null: false
+    t.string "username", null: false
+    t.index ["minecraft_server_id", "ended_at"], name: "idx_on_minecraft_server_id_ended_at_3aaf29f636"
+    t.index ["minecraft_server_id"], name: "index_minecraft_player_sessions_on_minecraft_server_id"
+    t.index ["player_profile_id", "ended_at"], name: "idx_on_player_profile_id_ended_at_a039423057"
+    t.index ["player_profile_id"], name: "index_minecraft_player_sessions_on_player_profile_id"
   end
 
   create_table "minecraft_processed_deliveries", force: :cascade do |t|
@@ -843,19 +988,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
 
   create_table "minecraft_servers", force: :cascade do |t|
     t.string "address"
+    t.string "connection_mode", default: "direct", null: false
     t.string "connector_secret_fingerprint"
     t.datetime "created_at", null: false
     t.text "encrypted_connector_secret"
     t.datetime "last_heartbeat_at"
     t.integer "max_players", default: 0, null: false
     t.jsonb "metadata", default: {}, null: false
+    t.bigint "minecraft_node_id"
     t.string "name", null: false
     t.integer "online_players", default: 0, null: false
     t.integer "port", default: 25565, null: false
+    t.jsonb "process_config", default: {}, null: false
+    t.string "process_driver"
+    t.string "process_state", default: "stopped", null: false
+    t.string "proxy_listen_url"
     t.string "public_id", null: false
     t.string "status", default: "offline", null: false
     t.datetime "updated_at", null: false
     t.string "version"
+    t.string "working_directory"
+    t.index ["minecraft_node_id"], name: "index_minecraft_servers_on_minecraft_node_id"
     t.index ["public_id"], name: "index_minecraft_servers_on_public_id", unique: true
   end
 
@@ -1090,7 +1243,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.datetime "updated_at", null: false
     t.index ["delivery_id"], name: "index_store_fulfillments_on_delivery_id", unique: true
     t.index ["store_order_id"], name: "index_store_fulfillments_on_store_order_id"
-    t.index ["store_order_item_id"], name: "index_store_fulfillments_on_store_order_item_id"
+    t.index ["store_order_item_id"], name: "index_store_fulfillments_on_store_order_item_id", unique: true
   end
 
   create_table "store_gift_card_transactions", force: :cascade do |t|
@@ -1122,6 +1275,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["created_by_id"], name: "index_store_gift_cards_on_created_by_id"
     t.index ["owner_user_id"], name: "index_store_gift_cards_on_owner_user_id"
     t.index ["source_order_item_id"], name: "index_store_gift_cards_on_source_order_item_id"
+  end
+
+  create_table "store_membership_types", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "color"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.integer "display_priority", default: 0, null: false
+    t.integer "duration_days"
+    t.string "duration_mode", default: "fixed_days", null: false
+    t.boolean "game_permission_enabled", default: true, null: false
+    t.string "game_permission_mode", default: "website_managed", null: false
+    t.jsonb "grant_commands", default: [], null: false
+    t.string "icon"
+    t.string "luckperms_group"
+    t.string "name", null: false
+    t.jsonb "revoke_commands", default: [], null: false
+    t.string "slug", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active"], name: "index_store_membership_types_on_active"
+    t.index ["slug"], name: "index_store_membership_types_on_slug", unique: true
   end
 
   create_table "store_order_events", force: :cascade do |t|
@@ -1265,6 +1439,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["user_id"], name: "index_store_product_availability_alerts_on_user_id"
   end
 
+  create_table "store_product_prerequisites", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "required_product_id", null: false
+    t.string "requirement_mode", default: "ever_purchased", null: false
+    t.bigint "store_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["required_product_id"], name: "index_store_product_prerequisites_on_required_product_id"
+    t.index ["store_product_id", "required_product_id"], name: "idx_product_prerequisites_unique", unique: true
+    t.index ["store_product_id"], name: "index_store_product_prerequisites_on_store_product_id"
+  end
+
   create_table "store_product_questions", force: :cascade do |t|
     t.text "body", null: false
     t.datetime "created_at", null: false
@@ -1322,6 +1507,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.jsonb "metadata", default: {}, null: false
     t.integer "minimum_quantity", default: 1, null: false
     t.string "name", null: false
+    t.string "prerequisite_match_mode", default: "all", null: false
     t.integer "price_cents", default: 0, null: false
     t.string "product_type", null: false
     t.string "public_id", null: false
@@ -1332,6 +1518,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.string "status", default: "draft", null: false
     t.integer "stock"
     t.bigint "store_category_id"
+    t.bigint "store_membership_type_id"
     t.text "summary"
     t.datetime "unavailable_at"
     t.datetime "updated_at", null: false
@@ -1342,6 +1529,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["public_id"], name: "index_store_products_on_public_id", unique: true
     t.index ["slug"], name: "index_store_products_on_slug", unique: true
     t.index ["store_category_id"], name: "index_store_products_on_store_category_id"
+    t.index ["store_membership_type_id"], name: "index_store_products_on_store_membership_type_id"
     t.index ["unavailable_at"], name: "index_store_products_on_unavailable_at"
   end
 
@@ -1416,6 +1604,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
     t.index ["store_product_variant_id"], name: "index_store_stock_alerts_on_store_product_variant_id"
     t.index ["user_id", "store_product_id", "store_product_variant_id"], name: "index_stock_alerts_on_user_product_variant", unique: true
     t.index ["user_id"], name: "index_store_stock_alerts_on_user_id"
+  end
+
+  create_table "store_user_entitlements", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.bigint "source_order_item_id"
+    t.datetime "starts_at", null: false
+    t.bigint "store_product_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["expires_at"], name: "index_store_user_entitlements_on_expires_at"
+    t.index ["source_order_item_id"], name: "idx_user_entitlements_source_order_item_unique", unique: true, where: "(source_order_item_id IS NOT NULL)"
+    t.index ["store_product_id"], name: "index_store_user_entitlements_on_store_product_id"
+    t.index ["user_id", "store_product_id"], name: "index_store_user_entitlements_on_user_id_and_store_product_id"
+    t.index ["user_id"], name: "index_store_user_entitlements_on_user_id"
+  end
+
+  create_table "store_user_memberships", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.string "source", default: "purchase", null: false
+    t.bigint "source_order_item_id"
+    t.datetime "starts_at", null: false
+    t.string "status", default: "active", null: false
+    t.bigint "store_membership_type_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["expires_at"], name: "index_store_user_memberships_on_expires_at"
+    t.index ["source_order_item_id"], name: "idx_user_memberships_source_order_item_unique", unique: true, where: "(source_order_item_id IS NOT NULL)"
+    t.index ["store_membership_type_id"], name: "index_store_user_memberships_on_store_membership_type_id"
+    t.index ["user_id", "store_membership_type_id", "status"], name: "idx_user_memberships_user_type_status"
+    t.index ["user_id"], name: "index_store_user_memberships_on_user_id"
   end
 
   create_table "store_wishlist_filter_presets", force: :cascade do |t|
@@ -1605,6 +1825,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   add_foreign_key "forum_conversation_participants", "forum_conversations"
   add_foreign_key "forum_conversation_participants", "users"
   add_foreign_key "forum_conversations", "users", column: "creator_id"
+  add_foreign_key "forum_event_webhook_deliveries", "forum_posts"
+  add_foreign_key "forum_event_webhook_deliveries", "forum_topics"
   add_foreign_key "forum_messages", "forum_conversations"
   add_foreign_key "forum_messages", "users"
   add_foreign_key "forum_mutes", "forum_sections"
@@ -1613,6 +1835,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   add_foreign_key "forum_poll_votes", "forum_polls"
   add_foreign_key "forum_poll_votes", "users"
   add_foreign_key "forum_polls", "forum_topics"
+  add_foreign_key "forum_post_attachments", "forum_posts"
+  add_foreign_key "forum_post_attachments", "users"
   add_foreign_key "forum_post_edits", "forum_posts"
   add_foreign_key "forum_post_edits", "users", column: "editor_id"
   add_foreign_key "forum_posts", "forum_posts", column: "parent_post_id"
@@ -1630,6 +1854,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   add_foreign_key "forum_saved_search_webhook_deliveries", "forum_saved_searches", column: "saved_search_id"
   add_foreign_key "forum_saved_searches", "users"
   add_foreign_key "forum_search_histories", "users"
+  add_foreign_key "forum_section_moderators", "forum_sections"
+  add_foreign_key "forum_section_moderators", "users"
   add_foreign_key "forum_section_mutes", "forum_sections"
   add_foreign_key "forum_section_mutes", "users"
   add_foreign_key "forum_sections", "forum_categories"
@@ -1663,6 +1889,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   add_foreign_key "forum_user_badges", "users"
   add_foreign_key "forum_user_blocks", "users", column: "blocked_id"
   add_foreign_key "forum_user_blocks", "users", column: "blocker_id"
+  add_foreign_key "forum_user_field_values", "forum_user_field_definitions"
+  add_foreign_key "forum_user_field_values", "users"
   add_foreign_key "forum_user_follows", "users", column: "followed_id"
   add_foreign_key "forum_user_follows", "users", column: "follower_id"
   add_foreign_key "forum_user_ignores", "users", column: "ignored_id"
@@ -1683,12 +1911,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   add_foreign_key "minecraft_integration_action_logs", "minecraft_integration_actions", column: "integration_action_id"
   add_foreign_key "minecraft_link_codes", "minecraft_servers"
   add_foreign_key "minecraft_link_codes", "users", column: "used_by_id"
+  add_foreign_key "minecraft_node_metric_snapshots", "minecraft_nodes"
+  add_foreign_key "minecraft_node_metric_snapshots", "minecraft_servers"
+  add_foreign_key "minecraft_node_tasks", "minecraft_nodes"
+  add_foreign_key "minecraft_node_tasks", "minecraft_servers"
   add_foreign_key "minecraft_permission_groups", "minecraft_player_profiles", column: "player_profile_id"
   add_foreign_key "minecraft_player_identities", "minecraft_player_profiles", column: "player_profile_id"
   add_foreign_key "minecraft_player_identities", "minecraft_servers", column: "primary_server_id"
+  add_foreign_key "minecraft_player_sessions", "minecraft_player_profiles", column: "player_profile_id"
+  add_foreign_key "minecraft_player_sessions", "minecraft_servers"
   add_foreign_key "minecraft_processed_deliveries", "minecraft_servers"
   add_foreign_key "minecraft_profile_field_values", "minecraft_player_profiles", column: "player_profile_id"
   add_foreign_key "minecraft_server_snapshots", "minecraft_servers"
+  add_foreign_key "minecraft_servers", "minecraft_nodes"
   add_foreign_key "notification_preferences", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "payment_attempts", "payment_records"
@@ -1730,6 +1965,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   add_foreign_key "store_product_answers", "users"
   add_foreign_key "store_product_availability_alerts", "store_products"
   add_foreign_key "store_product_availability_alerts", "users"
+  add_foreign_key "store_product_prerequisites", "store_products"
+  add_foreign_key "store_product_prerequisites", "store_products", column: "required_product_id"
   add_foreign_key "store_product_questions", "store_order_items"
   add_foreign_key "store_product_questions", "store_products"
   add_foreign_key "store_product_questions", "users"
@@ -1738,6 +1975,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   add_foreign_key "store_product_views", "users"
   add_foreign_key "store_products", "forum_topics"
   add_foreign_key "store_products", "store_categories"
+  add_foreign_key "store_products", "store_membership_types"
   add_foreign_key "store_refunds", "payment_records"
   add_foreign_key "store_refunds", "store_orders"
   add_foreign_key "store_refunds", "users", column: "approved_by_id"
@@ -1751,6 +1989,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_17_000001) do
   add_foreign_key "store_stock_alerts", "store_product_variants"
   add_foreign_key "store_stock_alerts", "store_products"
   add_foreign_key "store_stock_alerts", "users"
+  add_foreign_key "store_user_entitlements", "store_order_items", column: "source_order_item_id"
+  add_foreign_key "store_user_entitlements", "store_products"
+  add_foreign_key "store_user_entitlements", "users"
+  add_foreign_key "store_user_memberships", "store_membership_types"
+  add_foreign_key "store_user_memberships", "store_order_items", column: "source_order_item_id"
+  add_foreign_key "store_user_memberships", "users"
   add_foreign_key "store_wishlist_filter_presets", "users"
   add_foreign_key "store_wishlist_items", "store_product_variants", column: "variant_id"
   add_foreign_key "store_wishlist_items", "store_products"

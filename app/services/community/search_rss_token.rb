@@ -17,7 +17,7 @@ module Community
     end
 
     def self.generate(params)
-      Rails.application.message_verifier(PURPOSE).generate(normalize(params))
+      Rails.application.message_verifier(PURPOSE).generate(normalize(params), expires_in: 90.days)
     end
 
     def self.verify(token)

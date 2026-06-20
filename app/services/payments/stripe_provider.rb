@@ -3,11 +3,21 @@
 module Payments
   class StripeProvider < Provider
     WEBHOOK_TOLERANCE_SECONDS = 5.minutes.to_i
+    PAYMENT_SUCCEEDED_EVENTS = %w[
+      checkout.session.completed
+      payment_intent.succeeded
+      unknown
+    ].freeze
+
     def create_payment(payment_record)
       config = Payments::ProviderConfig.find_by(provider: "stripe")
       secret_key = config&.credentials_hash&.dig("secret_key")
 
       if secret_key.blank?
+        if Rails.env.production?
+          return ServiceResult.failure(error: "Stripe is not configured for production payments.")
+        end
+
         provider_payment_id = "stripe_test_#{SecureRandom.alphanumeric(16)}"
         payment_record.update!(provider: "fake", provider_payment_id: provider_payment_id)
         return ServiceResult.success(
@@ -18,7 +28,10 @@ module Payments
       end
 
       provider_payment_id = "stripe_#{SecureRandom.alphanumeric(16)}"
-      payment_record.update!(provider_payment_id: provider_payment_id)
+      payment_record.update!(
+        provider_payment_id: provider_payment_id,
+        metadata: payment_record.metadata.merge("payment_record_id" => payment_record.id.to_s)
+      )
       ServiceResult.success(
         payment_record: payment_record,
         checkout_url: "https://checkout.stripe.com/c/pay/#{provider_payment_id}"
@@ -47,6 +60,8 @@ module Payments
     end
 
     def process_webhook_event(event)
+      return ServiceResult.success(idempotent: true) unless payable_event?(event)
+
       payment_record = locate_payment_record(event)
       return ServiceResult.failure(error: "Payment record not found.") unless payment_record
 
@@ -58,11 +73,14 @@ module Payments
     end
 
     def process_refund(refund)
-      refund.update!(status: "completed") if refund.status == "pending"
       ServiceResult.success(refund)
     end
 
     private
+
+    def payable_event?(event)
+      PAYMENT_SUCCEEDED_EVENTS.include?(event.event_type.to_s)
+    end
 
     def locate_payment_record(event)
       payload = event.payload

@@ -48,12 +48,12 @@ class Commerce::ResolveProductImageUrlTest < ActiveSupport::TestCase
 
   test "falls back to external image_url when pack texture missing" do
     product = Commerce::Product.new(
-      image_url: "https://cdn.example.com/item.png",
+      image_url: "https://example.com/item.png",
       fulfillment_config: { "image_pack" => "demo", "image_texture" => "item/missing" }
     )
 
     url = Commerce::ResolveProductImageUrl.call(product: product).value[:url]
-    assert_equal "https://cdn.example.com/item.png", url
+    assert_equal "https://example.com/item.png", url
   end
 end
 

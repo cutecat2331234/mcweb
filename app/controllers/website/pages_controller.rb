@@ -4,18 +4,19 @@ module Website
   class PagesController < ApplicationController
     def show
       page = Website::Page.published.find_by!(slug: params[:slug])
-      blocks = page.blocks.visible_blocks.ordered.map do |block|
-        settings = block.settings.deep_dup
-        if block.block_type == "rich_text" && settings["html"].present?
-          result = Website::BlockSanitizer.call(html: settings["html"])
-          settings["html"] = result.success? ? result.value.to_s : ""
-        end
-        serialize_page_block(block).merge(settings: settings)
+
+      if page.page_type == "home" && Website::Page.cms_home.exists?
+        redirect_to root_path, status: :moved_permanently
+        return
       end
+
+      blocks_result = Website::SerializePageBlocks.call(page: page)
+      seo_result = Website::ResolveSeo.call(record: page)
 
       render inertia: "Website/Pages/Show", props: {
         page: { title: page.title, slug: page.slug },
-        blocks: blocks
+        blocks: blocks_result.value,
+        seo: seo_result.value
       }
     end
   end

@@ -960,7 +960,8 @@ module InertiaSerializable
     {
       title: article.title,
       summary: article.summary,
-      published_at: article.published_at ? l(article.published_at, format: :long) : nil
+      published_at: article.published_at ? l(article.published_at, format: :long) : nil,
+      slug: article.slug
     }
   end
 

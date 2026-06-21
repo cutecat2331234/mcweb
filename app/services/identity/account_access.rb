@@ -7,7 +7,11 @@ module Identity
       "store" => %w[store.products.manage store.orders.read store.orders.refund store.questions.answer store.questions.manage],
       "minecraft" => %w[minecraft.servers.manage minecraft.fulfillments.retry],
       "system" => %w[system.settings.manage system.jobs.read system.jobs.retry system.audit.read],
-      "website" => %w[website.pages.read website.pages.edit website.pages.publish website.templates.manage]
+      "website" => %w[
+        website.pages.read website.pages.edit website.pages.publish
+        website.articles.read website.articles.edit website.articles.publish
+        website.templates.manage
+      ]
     }.freeze
 
     def initialize(user:, module_key: nil)

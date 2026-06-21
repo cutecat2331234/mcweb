@@ -3,8 +3,10 @@
 module Admin
   module Website
     class ArticlesController < BaseController
-      before_action -> { require_permission("website.pages.edit") }
-      before_action :set_article, only: %i[show edit update destroy]
+      before_action -> { require_permission("website.articles.read") }, only: %i[index show]
+      before_action -> { require_permission("website.articles.edit") }, only: %i[new create edit update destroy]
+      before_action -> { require_permission("website.articles.publish") }, only: %i[publish schedule]
+      before_action :set_article, only: %i[show edit update destroy publish schedule]
 
       def index
         articles = ::Website::Article.order(updated_at: :desc)
@@ -41,7 +43,7 @@ module Admin
             { label: t("mcweb.admin.website.articles.col_published"), value: @article.published_at ? l(@article.published_at, format: :long) : "—" }
           ],
           backUrl: admin_website_articles_path,
-          actions: [ { label: t("mcweb.admin.ui.edit"), href: edit_admin_website_article_path(@article) } ]
+          actions: show_actions
         }
       end
 
@@ -77,6 +79,25 @@ module Admin
         redirect_to admin_website_articles_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.article"))
       end
 
+      def publish
+        result = ::Website::ArticlePublisher.call(article: @article, actor: current_user)
+        if result.success?
+          redirect_to admin_website_article_path(@article), notice: t("mcweb.admin.website.published", default: "Published")
+        else
+          redirect_to admin_website_article_path(@article), alert: service_error_message(result)
+        end
+      end
+
+      def schedule
+        publish_at = Time.zone.parse(params[:publish_at].to_s)
+        result = ::Website::ArticlePublisher.call(article: @article, publish_at: publish_at, actor: current_user)
+        if result.success?
+          redirect_to admin_website_article_path(@article), notice: t("mcweb.admin.website.scheduled", default: "Scheduled")
+        else
+          redirect_to admin_website_article_path(@article), alert: service_error_message(result)
+        end
+      end
+
       private
 
       def set_article
@@ -84,7 +105,14 @@ module Admin
       end
 
       def article_params
-        params.require(:article).permit(:title, :slug, :article_type, :status, :summary, :published_at)
+        permitted = params.require(:article).permit(
+          :title, :slug, :article_type, :status, :summary, :body, :published_at, :scheduled_at,
+          seo: {},
+          translations: {}
+        )
+        permitted[:seo] = permitted[:seo].to_unsafe_h if permitted[:seo].is_a?(ActionController::Parameters)
+        permitted[:translations] = permitted[:translations].to_unsafe_h if permitted[:translations].is_a?(ActionController::Parameters)
+        permitted
       end
 
       def form_props(article)
@@ -96,15 +124,37 @@ module Admin
             article_type: article.article_type.presence || "news",
             status: article.status.presence || "draft",
             summary: article.summary,
-            published_at: article.published_at&.strftime("%Y-%m-%dT%H:%M")
+            body: article.body,
+            published_at: article.published_at&.strftime("%Y-%m-%dT%H:%M"),
+            scheduled_at: article.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
+            seo: article.seo.presence || { "title" => "", "description" => "", "og_image" => "" },
+            translations: article.translations.presence || {}
           },
           articleTypeOptions: %w[news blog].map { |value| { value:, label: value } },
           statusOptions: ::Website::Article.statuses.keys.map { |value| { value:, label: value } },
+          locales: %w[en zh-CN],
           submitUrl: article.persisted? ? admin_website_article_path(article) : admin_website_articles_path,
+          publishUrl: article.persisted? ? publish_admin_website_article_path(article) : nil,
+          scheduleUrl: article.persisted? ? schedule_admin_website_article_path(article) : nil,
           method: article.persisted? ? "patch" : "post",
           backUrl: article.persisted? ? admin_website_article_path(article) : admin_website_articles_path,
-          form_errors: article.errors.to_hash(true)
+          form_errors: article.errors.to_hash(true),
+          canPublish: current_user.permission?("website.articles.publish")
         }
+      end
+
+      def show_actions
+        actions = [
+          { label: t("mcweb.admin.ui.edit"), href: edit_admin_website_article_path(@article) },
+          { label: t("mcweb.admin.website.preview", default: "Preview"), href: "/blog/#{@article.slug}", external: true }
+        ]
+        if current_user.permission?("website.articles.publish")
+          actions << { label: t("mcweb.admin.website.publish", default: "Publish"), href: publish_admin_website_article_path(@article), method: "post" }
+        end
+        if current_user.permission?("website.articles.edit")
+          actions << { label: t("mcweb.admin.ui.delete", default: "Delete"), href: admin_website_article_path(@article), method: "delete", confirm: t("mcweb.admin.website.confirm_delete", default: "Delete this article?") }
+        end
+        actions
       end
     end
   end

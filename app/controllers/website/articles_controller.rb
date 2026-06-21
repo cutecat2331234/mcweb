@@ -13,9 +13,15 @@ module Website
 
     def show
       article = Website::Article.published.find_by!(slug: params[:id])
+      body_result = Website::RenderArticleBody.call(body: article.body)
+      seo_result = Website::ResolveSeo.call(record: article)
 
       render inertia: "Website/Articles/Show", props: {
-        article: serialize_article_detail(article)
+        article: serialize_article_detail(article).merge(
+          body_html: body_result.success? ? body_result.value.to_s : "",
+          slug: article.slug
+        ),
+        seo: seo_result.value
       }
     end
   end

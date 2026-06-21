@@ -5,8 +5,8 @@ module Website
     queue_as :website
 
     def perform
-      pages = Website::Page.where(status: "published").pluck(:slug, :updated_at)
-      articles = Website::Article.where(status: "published").pluck(:slug, :updated_at, :article_type)
+      pages = Website::Page.where(status: "published").pluck(:slug, :updated_at, :page_type)
+      articles = Website::Article.where(status: "published").pluck(:slug, :updated_at)
 
       sitemap_path = Rails.root.join("public", "sitemap.xml")
       File.write(sitemap_path, build_sitemap(pages, articles))
@@ -16,14 +16,20 @@ module Website
 
     def build_sitemap(pages, articles)
       host = Rails.application.routes.default_url_options[:host] || "localhost"
+      base = "https://#{host}"
       entries = []
 
-      pages.each do |slug, updated_at|
-        entries << url_entry("https://#{host}/#{slug}", updated_at)
+      entries << url_entry("#{base}/", Time.current)
+      entries << url_entry("#{base}/blog", Time.current)
+
+      pages.each do |slug, updated_at, page_type|
+        next if page_type == "home"
+
+        entries << url_entry("#{base}/#{slug}", updated_at)
       end
 
-      articles.each do |slug, updated_at, article_type|
-        entries << url_entry("https://#{host}/#{article_type}/#{slug}", updated_at)
+      articles.each do |slug, updated_at|
+        entries << url_entry("#{base}/blog/#{slug}", updated_at)
       end
 
       <<~XML

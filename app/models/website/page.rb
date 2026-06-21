@@ -17,6 +17,7 @@ module Website
 
     scope :published, -> { where(status: :published) }
     scope :by_slug, ->(slug) { find_by!(slug: slug) }
+    scope :cms_home, -> { published.where(page_type: "home") }
 
     def publish!
       update!(status: :published, published_at: Time.current)

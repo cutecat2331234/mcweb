@@ -94,7 +94,7 @@ class AdminWebsitePagesIntegrationTest < ActionDispatch::IntegrationTest
     end
 
     page = Website::Page.find_by!(slug: slug)
-    assert_redirected_to admin_website_page_path(page)
+    assert_redirected_to edit_admin_website_page_path(page)
   end
 end
 

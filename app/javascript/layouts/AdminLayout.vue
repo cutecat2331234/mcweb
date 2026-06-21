@@ -26,6 +26,8 @@ const nav = computed(() => [
   { label: t('admin.website'), items: [
     { label: t('admin.pages'), href: adminRoutes.websitePages },
     { label: t('admin.articles'), href: adminRoutes.websiteArticles },
+    { label: t('admin.website.nav.title', 'Navigation'), href: adminRoutes.websiteNavItems },
+    { label: t('admin.website.themes.title', 'Themes'), href: adminRoutes.websiteThemes },
     { label: t('admin.frontendTemplates'), href: adminRoutes.frontendTemplates },
   ]},
   { label: t('admin.community'), items: [

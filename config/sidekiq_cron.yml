@@ -177,3 +177,9 @@ generate_sitemap:
   class: "Website::GenerateSitemapJob"
   queue: website
   active_job: true
+
+publish_scheduled_website_content:
+  cron: "*/5 * * * *"
+  class: "Website::PublishScheduledContentJob"
+  queue: website
+  active_job: true

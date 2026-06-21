@@ -4,6 +4,9 @@ PERMISSIONS = [
   { key: "website.pages.read", name: "查看官网页面", category: "website" },
   { key: "website.pages.edit", name: "编辑官网页面", category: "website" },
   { key: "website.pages.publish", name: "发布官网页面", category: "website" },
+  { key: "website.articles.read", name: "查看官网文章", category: "website" },
+  { key: "website.articles.edit", name: "编辑官网文章", category: "website" },
+  { key: "website.articles.publish", name: "发布官网文章", category: "website" },
   { key: "website.templates.manage", name: "管理前台模板", category: "website" },
   { key: "forum.sections.manage", name: "管理论坛分区", category: "forum" },
   { key: "forum.topics.lock", name: "锁定主题", category: "forum" },
@@ -45,7 +48,11 @@ ROLES = {
   "editor" => {
     name: "网站编辑",
     description: "管理官网内容",
-    permissions: %w[website.pages.read website.pages.edit website.pages.publish website.templates.manage admin.access]
+    permissions: %w[
+      website.pages.read website.pages.edit website.pages.publish
+      website.articles.read website.articles.edit website.articles.publish
+      website.templates.manage admin.access
+    ]
   },
   "forum_admin" => {
     name: "论坛管理员",
@@ -204,7 +211,7 @@ unless Website::Page.exists?
 
   Website::Block.find_or_create_by!(page: about_page, block_type: "rich_text", position: 1) do |b|
     b.settings = {
-      html: "<p>McWeb 是一套面向服主的开源官网系统，将营销页面、玩家论坛与数字商城整合在一起。</p><p>官网使用简洁路径如 <strong>/home</strong> 与 <strong>/about</strong>，玩家功能则集中在 <strong>/app</strong> 应用模块。</p>"
+      html: "<p>McWeb 是一套面向服主的开源官网系统，将营销页面、玩家论坛与数字商城整合在一起。</p><p>官网首页使用 <strong>/</strong>，其他 CMS 页面如 <strong>/about</strong>，玩家功能集中在 <strong>/app</strong> 应用模块。</p>"
     }
     b.visible = true
   end

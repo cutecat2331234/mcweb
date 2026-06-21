@@ -122,8 +122,38 @@ Rails.application.routes.draw do
       post :uploads, to: "uploads#create"
     end
     namespace :website do
-      resources :pages
-      resources :articles
+      resources :pages do
+        member do
+          post :publish
+          post :schedule
+        end
+        resources :blocks, only: %i[create update destroy] do
+          collection do
+            patch :reorder
+          end
+        end
+        resources :revisions, controller: "page_revisions", only: %i[index show] do
+          member do
+            post :restore_draft
+          end
+        end
+      end
+      resources :articles do
+        member do
+          post :publish
+          post :schedule
+        end
+      end
+      resources :nav_items do
+        collection do
+          patch :reorder
+        end
+      end
+      resources :themes do
+        member do
+          post :activate
+        end
+      end
     end
     namespace :frontend do
       resources :templates, only: %i[index create update destroy] do

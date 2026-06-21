@@ -41,6 +41,8 @@ module Website
       {
         title: title,
         slug: slug,
+        page_type: page_type,
+        website_theme_id: website_theme_id,
         status: status,
         seo: seo,
         translations: translations,

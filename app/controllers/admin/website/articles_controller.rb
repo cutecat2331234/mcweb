@@ -3,10 +3,12 @@
 module Admin
   module Website
     class ArticlesController < BaseController
-      before_action -> { require_permission("website.articles.read") }, only: %i[index show]
+      include NestedLocaleParams
+
+      before_action -> { require_permission("website.articles.read") }, only: %i[index show preview]
       before_action -> { require_permission("website.articles.edit") }, only: %i[new create edit update destroy]
       before_action -> { require_permission("website.articles.publish") }, only: %i[publish schedule]
-      before_action :set_article, only: %i[show edit update destroy publish schedule]
+      before_action :set_article, only: %i[show edit update destroy publish schedule preview]
 
       def index
         articles = ::Website::Article.order(updated_at: :desc)
@@ -89,13 +91,32 @@ module Admin
       end
 
       def schedule
-        publish_at = Time.zone.parse(params[:publish_at].to_s)
+        publish_at = parse_schedule_time(params[:publish_at])
+        unless publish_at&.future?
+          redirect_to admin_website_article_path(@article),
+                      alert: t("mcweb.admin.website.invalid_schedule", default: "Choose a future publish date and time")
+          return
+        end
+
         result = ::Website::ArticlePublisher.call(article: @article, publish_at: publish_at, actor: current_user)
         if result.success?
           redirect_to admin_website_article_path(@article), notice: t("mcweb.admin.website.scheduled", default: "Scheduled")
         else
           redirect_to admin_website_article_path(@article), alert: service_error_message(result)
         end
+      end
+
+      def preview
+        body_result = ::Website::RenderArticleBody.call(body: @article.body)
+        seo_result = ::Website::ResolveSeo.call(record: @article)
+
+        render inertia: "Website/Articles/Show", props: {
+          article: serialize_article_detail(@article).merge(
+            body_html: body_result.success? ? body_result.value.to_s : "",
+            slug: @article.slug
+          ),
+          seo: seo_result.value
+        }
       end
 
       private
@@ -106,13 +127,20 @@ module Admin
 
       def article_params
         permitted = params.require(:article).permit(
-          :title, :slug, :article_type, :status, :summary, :body, :published_at, :scheduled_at,
-          seo: {},
-          translations: {}
+          :title, :slug, :article_type, :summary, :body,
+          seo: {}
         )
         permitted[:seo] = permitted[:seo].to_unsafe_h if permitted[:seo].is_a?(ActionController::Parameters)
-        permitted[:translations] = permitted[:translations].to_unsafe_h if permitted[:translations].is_a?(ActionController::Parameters)
+        merge_nested_translations!(permitted, :article)
         permitted
+      end
+
+      def parse_schedule_time(value)
+        return nil if value.blank?
+
+        Time.zone.parse(value.to_s)
+      rescue ArgumentError, TypeError
+        nil
       end
 
       def form_props(article)
@@ -136,6 +164,7 @@ module Admin
           submitUrl: article.persisted? ? admin_website_article_path(article) : admin_website_articles_path,
           publishUrl: article.persisted? ? publish_admin_website_article_path(article) : nil,
           scheduleUrl: article.persisted? ? schedule_admin_website_article_path(article) : nil,
+          previewUrl: article.persisted? ? preview_admin_website_article_path(article) : nil,
           method: article.persisted? ? "patch" : "post",
           backUrl: article.persisted? ? admin_website_article_path(article) : admin_website_articles_path,
           form_errors: article.errors.to_hash(true),
@@ -146,7 +175,7 @@ module Admin
       def show_actions
         actions = [
           { label: t("mcweb.admin.ui.edit"), href: edit_admin_website_article_path(@article) },
-          { label: t("mcweb.admin.website.preview", default: "Preview"), href: "/blog/#{@article.slug}", external: true }
+          { label: t("mcweb.admin.website.preview", default: "Preview"), href: preview_admin_website_article_path(@article), external: true }
         ]
         if current_user.permission?("website.articles.publish")
           actions << { label: t("mcweb.admin.website.publish", default: "Publish"), href: publish_admin_website_article_path(@article), method: "post" }

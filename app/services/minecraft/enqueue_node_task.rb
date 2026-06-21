@@ -27,6 +27,11 @@ module Minecraft
       return ServiceResult.failure(error: "Server is required for this task.") if instance_task? && @server.nil?
       return ServiceResult.failure(error: "Server is not managed by this node.") if @server && @server.minecraft_node_id != @node.id
 
+      if @task_type == "sync_files"
+        url_check = Minecraft::ValidateSyncFileUrl.call(url: @payload["url"])
+        return url_check unless url_check.success?
+      end
+
       if @server && instance_lifecycle_task?
         @server.update!(process_state: lifecycle_state)
       end

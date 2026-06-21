@@ -6,9 +6,9 @@ module Community
       user_id = Community::ForumDigestUnsubscribeToken.verify(params[:token])
       user = User.find(user_id)
       user.update!(forum_digest_frequency: "none")
-      redirect_to forum_preferences_path, notice: t("mcweb.flash.digest_unsubscribed")
+      redirect_to root_path, notice: t("mcweb.flash.digest_unsubscribed")
     rescue Community::ForumDigestUnsubscribeToken::InvalidToken, ActiveRecord::RecordNotFound
-      redirect_to forum_preferences_path, alert: t("mcweb.flash.digest_unsubscribe_invalid")
+      redirect_to root_path, alert: t("mcweb.flash.digest_unsubscribe_invalid")
     end
   end
 end

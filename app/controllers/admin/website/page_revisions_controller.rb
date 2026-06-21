@@ -37,6 +37,7 @@ module Admin
           title: snapshot["title"],
           slug: "#{snapshot['slug']}-restored-#{SecureRandom.hex(3)}",
           page_type: snapshot["page_type"] || "custom",
+          website_theme_id: snapshot["website_theme_id"],
           status: "draft",
           seo: snapshot["seo"] || {},
           translations: snapshot["translations"] || {},

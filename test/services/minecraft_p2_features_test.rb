@@ -25,9 +25,32 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
     assert Minecraft::ValidateExecCommand.call(command: "rm -rf /").failure?
   end
 
-  test "ValidateExecCommand allows all when empty whitelist in non production" do
+  test "ValidateExecCommand allows all when empty whitelist in non production with env opt-in" do
     SiteSetting.set("minecraft.exec_command.allowed_prefixes", "")
+    previous = ENV["MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND"]
+    ENV["MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND"] = "1"
     assert Minecraft::ValidateExecCommand.call(command: "anything").success?
+  ensure
+    if previous.nil?
+      ENV.delete("MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND")
+    else
+      ENV["MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND"] = previous
+    end
+  end
+
+  test "ValidateExecCommand rejects empty whitelist in non production by default" do
+    SiteSetting.set("minecraft.exec_command.allowed_prefixes", "")
+    previous = ENV["MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND"]
+    ENV.delete("MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND")
+    result = Minecraft::ValidateExecCommand.call(command: "anything")
+    assert result.failure?
+    assert_includes result.error, "not configured"
+  ensure
+    if previous.nil?
+      ENV.delete("MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND")
+    else
+      ENV["MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND"] = previous
+    end
   end
 
   test "ValidateExecCommand rejects empty whitelist in production" do
@@ -99,7 +122,7 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
   end
 
   test "EnqueueNodeTask accepts backup_world and sync_files" do
-    %w[backup_world restore_world sync_files].each do |task_type|
+    %w[backup_world restore_world].each do |task_type|
       result = Minecraft::EnqueueNodeTask.call(
         node: @node,
         server: @server,
@@ -108,6 +131,17 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
       )
       assert result.success?, "expected success for #{task_type}"
     end
+
+    sync_result = Minecraft::EnqueueNodeTask.call(
+      node: @node,
+      server: @server,
+      task_type: "sync_files",
+      payload: {
+        url: "http://127.0.0.1:3000/minecraft/sync/test-token",
+        destination: "/tmp/x"
+      }
+    )
+    assert sync_result.success?
   end
 
   test "ScheduleCollectMetricsJob enqueues metrics tasks" do

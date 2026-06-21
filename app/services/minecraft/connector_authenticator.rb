@@ -18,6 +18,10 @@ module Minecraft
       expected = OpenSSL::HMAC.hexdigest("SHA256", secret, signed_payload)
 
       if ActiveSupport::SecurityUtils.secure_compare(expected, @signature)
+        if Minecraft::HmacReplayGuard.replayed?(scope: "connector:#{@server.id}", signature: @signature, expires_in: @max_skew)
+          return ServiceResult.failure(error: "Replay detected.")
+        end
+
         ServiceResult.success(server: @server)
       else
         ServiceResult.failure(error: "Invalid connector signature.")

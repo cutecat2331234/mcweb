@@ -6,7 +6,7 @@ module Website
 
     enum :status, { draft: "draft", published: "published", scheduled: "scheduled", archived: "archived" }, validate: true
 
-    validates :slug, presence: true, uniqueness: { scope: :article_type },
+    validates :slug, presence: true, uniqueness: true,
                      format: { with: /\A[a-z0-9]+(?:-[a-z0-9]+)*\z/ }
     validates :title, presence: true
     validates :article_type, presence: true

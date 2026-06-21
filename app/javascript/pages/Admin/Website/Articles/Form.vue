@@ -90,10 +90,8 @@ function schedulePublish() {
       </Select>
     </div>
     <div class="space-y-2">
-      <Label for="status">{{ t('admin.common.status') }}</Label>
-      <Select id="status" v-model="form.article.status">
-        <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-      </Select>
+      <Label>{{ t('admin.common.status') }}</Label>
+      <p class="text-sm text-muted-foreground">{{ form.article.status }}</p>
     </div>
     <div class="space-y-2"><Label for="summary">{{ t('admin.website.summary') }}</Label><Textarea id="summary" v-model="form.article.summary" rows="3" /></div>
     <div v-if="canPublish && publishUrl" class="flex flex-wrap gap-2 border-t pt-4">

@@ -31,9 +31,9 @@ sudo -u mcweb bundle exec rails db:migrate
 
 ## 已实现（2026-06-20）
 
-### 紧急任务推送（SSE）
+### 紧急任务推送（即时轮询）
 
-`stop_instance` / `restart_instance` 标记为 `urgent` 优先级，并更新节点的 `tasks_wake_at`。节点通过 `GET /minecraft/nodes/:id/events`（SSE）接收 `tasks_available` 事件后立即拉取任务；心跳响应亦含 `urgent_tasks_pending` 与 `tasks_wake_at` 作为兜底。
+`stop_instance` / `restart_instance` 标记为 `urgent` 优先级，并更新节点的 `tasks_wake_at`。节点每 2 秒调用 `GET /minecraft/nodes/:id/events?since=...`（即时 JSON/204，不占用长连接）；有 urgent 任务时立即拉取。心跳响应亦含 `urgent_tasks_pending` 与 `tasks_wake_at` 作为兜底。
 
 ### 节点 completion spool
 

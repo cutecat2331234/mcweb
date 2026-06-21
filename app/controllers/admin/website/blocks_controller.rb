@@ -35,7 +35,7 @@ module Admin
         Array(params[:block_ids]).each_with_index do |id, index|
           @page.blocks.find(id).update!(position: index)
         end
-        head :ok
+        redirect_to edit_admin_website_page_path(@page)
       end
 
       private
@@ -53,7 +53,17 @@ module Admin
         if permitted[:settings].is_a?(ActionController::Parameters)
           permitted[:settings] = permitted[:settings].to_unsafe_h
         end
+        sanitize_block_settings!(permitted)
         permitted
+      end
+
+      def sanitize_block_settings!(permitted)
+        settings = permitted[:settings]
+        return unless settings.is_a?(Hash)
+
+        if settings["cta_url"].present?
+          settings["cta_url"] = ::Website::SafeLink.sanitize_href(settings["cta_url"])
+        end
       end
     end
   end

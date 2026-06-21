@@ -51,7 +51,11 @@ module Admin
       end
 
       def create
-        theme = ::Website::Theme.new(theme_params)
+        theme = ::Website::Theme.new
+        attrs = theme_attributes(theme)
+        return render_theme_form(theme, :unprocessable_entity) if attrs.nil?
+
+        theme.assign_attributes(attrs)
         if theme.save
           redirect_to admin_website_theme_path(theme), notice: t("mcweb.flash.created", resource: "Theme")
         else
@@ -64,7 +68,10 @@ module Admin
       end
 
       def update
-        if @theme.update(theme_params)
+        attrs = theme_attributes(@theme)
+        return render_theme_form(@theme, :unprocessable_entity) if attrs.nil?
+
+        if @theme.update(attrs)
           redirect_to admin_website_theme_path(@theme), notice: t("mcweb.flash.updated", resource: "Theme")
         else
           render inertia: "Admin/Website/Themes/Form", props: form_props(@theme), status: :unprocessable_entity
@@ -87,14 +94,23 @@ module Admin
         @theme = ::Website::Theme.find(params[:id])
       end
 
-      def theme_params
+      def theme_attributes(theme)
         permitted = params.require(:theme).permit(:name, :key, :active, :tokens_json, tokens: {})
         if permitted[:tokens_json].present?
-          permitted[:tokens] = JSON.parse(permitted.delete(:tokens_json))
+          begin
+            permitted[:tokens] = JSON.parse(permitted.delete(:tokens_json))
+          rescue JSON::ParserError
+            theme.errors.add(:tokens, "must be valid JSON")
+            return nil
+          end
         elsif permitted[:tokens].is_a?(ActionController::Parameters)
           permitted[:tokens] = permitted[:tokens].to_unsafe_h
         end
         permitted
+      end
+
+      def render_theme_form(theme, status)
+        render inertia: "Admin/Website/Themes/Form", props: form_props(theme), status: status
       end
 
       def form_props(theme)

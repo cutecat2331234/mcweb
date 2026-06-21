@@ -12,7 +12,7 @@ module Minecraft
 
       prefixes = allowed_prefixes
       if prefixes.empty?
-        return ServiceResult.failure(error: "Exec command prefixes are not configured.") if Rails.env.production?
+        return ServiceResult.failure(error: "Exec command prefixes are not configured.") unless unrestricted_exec_allowed?
 
         return ServiceResult.success(true)
       end
@@ -30,6 +30,12 @@ module Minecraft
       return [] if raw.blank?
 
       raw.split(/[,\n]/).map(&:strip).reject(&:blank?)
+    end
+
+    def unrestricted_exec_allowed?
+      return false if Rails.env.production?
+
+      ActiveModel::Type::Boolean.new.cast(ENV["MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND"])
     end
   end
 end

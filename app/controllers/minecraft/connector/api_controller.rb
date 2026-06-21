@@ -95,6 +95,10 @@ module Minecraft
       end
 
       def events
+        unless connector_payload["event_id"].present?
+          return render json: { error: "event_id required" }, status: :unprocessable_entity
+        end
+
         payload = connector_payload.fetch("payload", {}).deep_stringify_keys
         %w[uuid username platform player_id].each do |key|
           payload[key] = connector_payload[key] if connector_payload[key].present?
@@ -108,7 +112,7 @@ module Minecraft
 
         result = Minecraft::Integration::ActionRunner.acquire_or_enqueue(
           event_key: connector_payload.fetch("event"),
-          event_id: connector_payload.fetch("event_id", SecureRandom.uuid),
+          event_id: connector_payload.fetch("event_id"),
           payload: payload
         )
         if result.success?

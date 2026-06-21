@@ -92,6 +92,7 @@ public final class TaskPoller {
             @Override
             public void succeed(String message) {
                 if (deliveryId != null) {
+                    deliveryStore.add(deliveryId);
                     pendingAckDeliveries.add(deliveryId);
                 }
                 clearInFlight(deliveryId, taskId);

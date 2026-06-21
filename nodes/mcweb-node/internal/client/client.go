@@ -1,18 +1,38 @@
 package client
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"net/url"
 	"time"
 
 	"github.com/mcweb/mcweb-node/internal/auth"
 )
+
+type HTTPError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("HTTP %d: %s", e.StatusCode, e.Body)
+}
+
+func IsPermanentHTTPError(err error) bool {
+	var httpErr *HTTPError
+	if !errors.As(err, &httpErr) {
+		return false
+	}
+	if httpErr.StatusCode == http.StatusRequestTimeout || httpErr.StatusCode == http.StatusTooManyRequests {
+		return false
+	}
+	return httpErr.StatusCode >= 400 && httpErr.StatusCode < 500
+}
 
 type Client struct {
 	baseURL    string
@@ -93,7 +113,7 @@ func (c *Client) do(method, path string, body interface{}) (map[string]interface
 			continue
 		}
 		if resp.StatusCode >= 400 {
-			return nil, fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(data))
+			return nil, &HTTPError{StatusCode: resp.StatusCode, Body: string(data)}
 		}
 
 		var out map[string]interface{}
@@ -111,11 +131,11 @@ func (c *Client) NodePath(suffix string) string {
 	return fmt.Sprintf("/minecraft/nodes/%s/%s", c.nodeID, suffix)
 }
 
-// StreamEvents opens the Rails SSE push channel until ctx is cancelled or an event arrives.
-func (c *Client) StreamEvents(ctx context.Context, since string, onEvent func(event string)) error {
+// PollTaskWake checks whether urgent tasks are available without holding a long-lived connection.
+func (c *Client) PollTaskWake(ctx context.Context, since string) (bool, string, error) {
 	path := c.NodePath("events")
 	if since != "" {
-		path += "?since=" + since
+		path += "?since=" + url.QueryEscape(since)
 	}
 
 	ts := auth.Timestamp()
@@ -123,35 +143,33 @@ func (c *Client) StreamEvents(ctx context.Context, since string, onEvent func(ev
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
 	if err != nil {
-		return err
+		return false, "", err
 	}
 	req.Header.Set("X-Node-Timestamp", fmt.Sprintf("%d", ts))
 	req.Header.Set("X-Node-Signature", sig)
-	req.Header.Set("Accept", "text/event-stream")
+	req.Header.Set("Accept", "application/json")
 
-	client := &http.Client{Timeout: 70 * time.Second}
+	client := &http.Client{Timeout: 10 * time.Second}
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return false, "", err
 	}
 	defer resp.Body.Close()
 
+	data, _ := io.ReadAll(resp.Body)
+	if resp.StatusCode == http.StatusNoContent {
+		return false, "", nil
+	}
 	if resp.StatusCode >= 400 {
-		data, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(data))
+		return false, "", fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(data))
 	}
 
-	scanner := bufio.NewScanner(resp.Body)
-	var eventName string
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "event:") {
-			eventName = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
-		}
-		if line == "" && eventName != "" {
-			onEvent(eventName)
-			return nil
+	var out map[string]interface{}
+	if len(data) > 0 {
+		if err := json.Unmarshal(data, &out); err != nil {
+			return false, "", err
 		}
 	}
-	return scanner.Err()
+	wakeAt, _ := out["wake_at"].(string)
+	return out["event"] == "tasks_available", wakeAt, nil
 }

@@ -197,8 +197,7 @@ module Setup
     end
 
     def ensure_setup_accessible!
-      return if Rails.env.local?
-      return if request.local?
+      return unless Rails.env.production?
 
       expected = setup_access_token
       if expected.blank?

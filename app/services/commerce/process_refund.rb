@@ -222,7 +222,7 @@ module Commerce
         remaining = item.quantity - item.stock_restored_quantity.to_i
         next unless remaining.positive?
 
-        target.update!(stock: target.stock + remaining)
+        Commerce::IncrementStock.call(target: target, quantity: remaining)
         item.update!(stock_restored_quantity: item.quantity)
       end
     end

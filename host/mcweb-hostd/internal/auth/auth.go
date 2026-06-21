@@ -2,6 +2,7 @@ package auth
 
 import (
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
@@ -74,7 +75,7 @@ func (m *Manager) VerifySession(token string) (string, bool) {
 	return segments[0], true
 }
 
-func (m *Manager) SetSessionCookie(w http.ResponseWriter, username string) error {
+func (m *Manager) SetSessionCookie(w http.ResponseWriter, r *http.Request, username string) error {
 	token, err := m.SignSession(username)
 	if err != nil {
 		return err
@@ -84,6 +85,7 @@ func (m *Manager) SetSessionCookie(w http.ResponseWriter, username string) error
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   requestIsSecure(r),
 		SameSite: http.SameSiteLaxMode,
 		MaxAge:   int(sessionTTL.Seconds()),
 	})
@@ -104,20 +106,28 @@ func (m *Manager) UsernameFromRequest(r *http.Request) (string, bool) {
 
 func (m *Manager) NewCSRF() string {
 	buf := make([]byte, 16)
-	for i := range buf {
-		buf[i] = byte(time.Now().UnixNano() >> (i * 3))
+	if _, err := rand.Read(buf); err != nil {
+		panic(err)
 	}
 	return base64.RawURLEncoding.EncodeToString(buf)
 }
 
-func (m *Manager) SetCSRFCookie(w http.ResponseWriter, token string) {
+func (m *Manager) SetCSRFCookie(w http.ResponseWriter, r *http.Request, token string) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     csrfCookie,
 		Value:    token,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   requestIsSecure(r),
 		SameSite: http.SameSiteStrictMode,
 	})
+}
+
+func requestIsSecure(r *http.Request) bool {
+	if r.TLS != nil {
+		return true
+	}
+	return strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
 }
 
 func (m *Manager) ValidateCSRF(r *http.Request) bool {

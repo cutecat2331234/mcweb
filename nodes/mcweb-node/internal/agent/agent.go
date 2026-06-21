@@ -90,13 +90,15 @@ func (a *Agent) watchEvents(ctx context.Context) {
 		}
 
 		since := a.currentWakeSince()
-		err := a.client.StreamEvents(ctx, since, func(event string) {
-			if event == "tasks_available" {
-				a.requestPoll()
-			}
-		})
+		available, wakeAt, err := a.client.PollTaskWake(ctx, since)
 		if err != nil && ctx.Err() == nil {
-			log.Printf("event stream ended: %v", err)
+			log.Printf("task wake poll failed: %v", err)
+		}
+		if available {
+			if wakeAt != "" {
+				a.setWakeSince(wakeAt)
+			}
+			a.requestPoll()
 		}
 
 		select {
@@ -140,6 +142,11 @@ func (a *Agent) flushSpool(ctx context.Context) {
 	for _, item := range items {
 		path := fmt.Sprintf("/minecraft/nodes/%s/tasks/%s/complete", a.cfg.NodeID, item.TaskID)
 		if _, err := a.client.Post(path, item.Body); err != nil {
+			if client.IsPermanentHTTPError(err) {
+				log.Printf("spool drop task %s after permanent error: %v", item.TaskID, err)
+				_ = a.spool.Remove(item.TaskID)
+				continue
+			}
 			log.Printf("spool replay task %s failed: %v", item.TaskID, err)
 			continue
 		}

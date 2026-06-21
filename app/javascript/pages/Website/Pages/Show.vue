@@ -31,7 +31,7 @@ defineProps<{
         <div class="website-block-hero">
           <h2>{{ block.settings.headline }}</h2>
           <p v-if="block.settings.subheadline" class="mx-auto mt-3 max-w-2xl text-lg text-slate-300">{{ block.settings.subheadline }}</p>
-          <a v-if="block.settings.cta_text && block.settings.cta_url" :href="block.settings.cta_url" class="website-btn website-btn-primary mt-8 inline-flex">{{ block.settings.cta_text }}</a>
+          <a v-if="block.settings.cta_text && block.settings.cta_url" :href="block.settings.cta_url" rel="noopener noreferrer" class="website-btn website-btn-primary mt-8 inline-flex">{{ block.settings.cta_text }}</a>
         </div>
       </template>
       <div v-else-if="block.block_type === 'rich_text'" class="website-prose p-6 md:p-8" v-html="block.settings.html" />

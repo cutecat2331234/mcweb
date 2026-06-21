@@ -17,6 +17,10 @@ module Minecraft
       expected = OpenSSL::HMAC.hexdigest("SHA256", @node.node_secret, signed_payload)
 
       if ActiveSupport::SecurityUtils.secure_compare(expected, @signature)
+        if Minecraft::HmacReplayGuard.replayed?(scope: "node:#{@node.id}", signature: @signature, expires_in: @max_skew)
+          return ServiceResult.failure(error: "Replay detected.")
+        end
+
         ServiceResult.success(node: @node)
       else
         ServiceResult.failure(error: "Invalid node signature.")

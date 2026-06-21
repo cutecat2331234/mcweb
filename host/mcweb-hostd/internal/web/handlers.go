@@ -17,7 +17,7 @@ func (s *Server) handleInitGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	csrf := s.auth.NewCSRF()
-	s.auth.SetCSRFCookie(w, csrf)
+	s.auth.SetCSRFCookie(w, r, csrf)
 	s.render(w, "init", map[string]any{
 		"CSRF": csrf,
 	})
@@ -53,7 +53,7 @@ func (s *Server) handleLoginGet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	csrf := s.auth.NewCSRF()
-	s.auth.SetCSRFCookie(w, csrf)
+	s.auth.SetCSRFCookie(w, r, csrf)
 	s.render(w, "login", map[string]any{"CSRF": csrf})
 }
 
@@ -68,11 +68,11 @@ func (s *Server) handleLoginPost(w http.ResponseWriter, r *http.Request) {
 	}
 	if !config.CheckAdminPassword(s.cfg, r.FormValue("username"), r.FormValue("password")) {
 		csrf := s.auth.NewCSRF()
-		s.auth.SetCSRFCookie(w, csrf)
+		s.auth.SetCSRFCookie(w, r, csrf)
 		s.render(w, "login", map[string]any{"CSRF": csrf, "Error": "Invalid credentials"})
 		return
 	}
-	_ = s.auth.SetSessionCookie(w, r.FormValue("username"))
+	_ = s.auth.SetSessionCookie(w, r, r.FormValue("username"))
 	http.Redirect(w, r, "/", http.StatusSeeOther)
 }
 
@@ -89,7 +89,7 @@ func (s *Server) handleDashboard(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleOperationsGet(w http.ResponseWriter, r *http.Request) {
 	csrf := s.auth.NewCSRF()
-	s.auth.SetCSRFCookie(w, csrf)
+	s.auth.SetCSRFCookie(w, r, csrf)
 	data := s.dashboardData()
 	data["Title"] = "Operations"
 	data["CSRF"] = csrf
@@ -174,7 +174,7 @@ func (s *Server) handleJobGet(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleSettingsGet(w http.ResponseWriter, r *http.Request) {
 	csrf := s.auth.NewCSRF()
-	s.auth.SetCSRFCookie(w, csrf)
+	s.auth.SetCSRFCookie(w, r, csrf)
 	data := s.dashboardData()
 	data["Title"] = "Settings"
 	data["CSRF"] = csrf
@@ -219,7 +219,7 @@ func NewInstallState() *InstallState {
 
 func (s *Server) handleInstallGet(w http.ResponseWriter, r *http.Request) {
 	csrf := s.auth.NewCSRF()
-	s.auth.SetCSRFCookie(w, csrf)
+	s.auth.SetCSRFCookie(w, r, csrf)
 	data := s.dashboardData()
 	data["Title"] = "Install McWeb"
 	data["CSRF"] = csrf

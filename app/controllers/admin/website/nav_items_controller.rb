@@ -44,10 +44,14 @@ module Admin
       end
 
       def reorder
-        Array(params[:item_ids]).each_with_index do |id, index|
-          ::Website::NavItem.find(id).update!(position: index)
+        location = params[:location].to_s.presence
+        ids = Array(params[:item_ids])
+        scope = location.present? ? ::Website::NavItem.where(location: location) : ::Website::NavItem.all
+
+        ids.each_with_index do |id, index|
+          scope.find(id).update!(position: index)
         end
-        head :ok
+        redirect_to admin_website_nav_items_path
       end
 
       private

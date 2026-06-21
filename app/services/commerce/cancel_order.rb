@@ -71,9 +71,7 @@ module Commerce
     def restore_stock!
       @order.items.includes(:product, :variant).find_each do |item|
         target = item.variant || item.product
-        next if target.stock.nil?
-
-        target.update!(stock: target.stock + item.quantity)
+        Commerce::IncrementStock.call(target: target, quantity: item.quantity)
       end
     end
 

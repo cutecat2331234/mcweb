@@ -105,10 +105,8 @@ function schedulePublish() {
       </Select>
     </div>
     <div class="space-y-2">
-      <Label for="status">{{ t('admin.common.status') }}</Label>
-      <Select id="status" v-model="form.page.status">
-        <option v-for="option in statusOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-      </Select>
+      <Label>{{ t('admin.common.status') }}</Label>
+      <p class="text-sm text-muted-foreground">{{ form.page.status }}</p>
     </div>
     <div v-if="themeOptions.length" class="space-y-2">
       <Label for="theme">{{ t('admin.website.theme', 'Theme') }}</Label>

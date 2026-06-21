@@ -90,6 +90,120 @@ class WebsiteCmsIntegrationTest < ActionDispatch::IntegrationTest
   end
 end
 
+class WebsiteCmsBugfixTest < ActionDispatch::IntegrationTest
+  setup do
+    @admin = create_user
+    grant_permission(@admin, "admin.access")
+    grant_admin_module(@admin, "website")
+    %w[
+      website.pages.read website.pages.edit website.pages.publish
+      website.articles.read website.articles.edit website.articles.publish
+    ].each { |key| grant_permission(@admin, key) }
+    sign_in_as(@admin)
+  end
+
+  test "page update persists nested translation seo" do
+    page = Website::Page.create!(
+      public_id: "page_i18n_#{SecureRandom.hex(4)}",
+      title: "I18n Page",
+      slug: "i18n-page-#{SecureRandom.hex(3)}",
+      page_type: "custom",
+      status: "draft",
+      author: @admin
+    )
+
+    patch admin_website_page_path(page), params: {
+      page: {
+        title: page.title,
+        slug: page.slug,
+        page_type: "custom",
+        seo: { title: "", description: "", og_image: "" },
+        translations: {
+          "en" => { "title" => "English title", "seo" => { "title" => "EN SEO", "description" => "EN desc" } }
+        }
+      }
+    }
+
+    assert_redirected_to admin_website_page_path(page)
+    translation = page.reload.translations.dig("en", "seo")
+    assert_equal "EN SEO", translation["title"]
+    assert_equal "EN desc", translation["description"]
+  end
+
+  test "schedule rejects blank publish_at" do
+    page = Website::Page.create!(
+      public_id: "page_sched_#{SecureRandom.hex(4)}",
+      title: "Schedule Page",
+      slug: "schedule-page-#{SecureRandom.hex(3)}",
+      page_type: "custom",
+      status: "draft",
+      author: @admin
+    )
+
+    post schedule_admin_website_page_path(page), params: { publish_at: "" }
+    assert_redirected_to admin_website_page_path(page)
+    assert_equal "draft", page.reload.status
+  end
+
+  test "admin preview renders draft page" do
+    page = Website::Page.create!(
+      public_id: "page_prev_#{SecureRandom.hex(4)}",
+      title: "Draft Preview",
+      slug: "draft-preview-#{SecureRandom.hex(3)}",
+      page_type: "custom",
+      status: "draft",
+      author: @admin
+    )
+    Website::Block.create!(page: page, block_type: "rich_text", position: 0, settings: { html: "<p>Draft only</p>" }, visible: true)
+
+    get preview_admin_website_page_path(page)
+    assert_response :success
+    assert_includes response.body, "Draft only"
+  end
+
+  test "article slug is globally unique" do
+    Website::Article.create!(
+      public_id: "art_a_#{SecureRandom.hex(4)}",
+      title: "News",
+      slug: "shared-slug-#{SecureRandom.hex(3)}",
+      article_type: "news",
+      status: "draft"
+    )
+
+    article = Website::Article.new(
+      public_id: "art_b_#{SecureRandom.hex(4)}",
+      title: "Blog",
+      slug: Website::Article.order(:id).last.slug,
+      article_type: "blog",
+      status: "draft"
+    )
+
+    assert_not article.valid?
+    assert article.errors[:slug].present?
+  end
+
+  test "hero cta url is sanitized on output" do
+    page = Website::Page.create!(
+      public_id: "page_xss_#{SecureRandom.hex(4)}",
+      title: "XSS",
+      slug: "xss-page-#{SecureRandom.hex(3)}",
+      page_type: "custom",
+      status: "published",
+      published_at: Time.current
+    )
+    Website::Block.create!(
+      page: page,
+      block_type: "hero",
+      position: 0,
+      settings: { headline: "Hi", cta_text: "Click", cta_url: "javascript:alert(1)" },
+      visible: true
+    )
+
+    result = Website::SerializePageBlocks.call(page: page)
+    assert_nil result.value.first[:settings]["cta_url"]
+  end
+end
+
 class Website::ArticlePublisherTest < ActiveSupport::TestCase
   test "publishes article immediately" do
     article = Website::Article.create!(

@@ -3,10 +3,12 @@
 module Admin
   module Website
     class PagesController < BaseController
-      before_action -> { require_permission("website.pages.read") }, only: %i[index show]
+      include NestedLocaleParams
+
+      before_action -> { require_permission("website.pages.read") }, only: %i[index show preview]
       before_action -> { require_permission("website.pages.edit") }, only: %i[new create edit update destroy]
       before_action -> { require_permission("website.pages.publish") }, only: %i[publish schedule]
-      before_action :set_page, only: %i[show edit update destroy publish schedule]
+      before_action :set_page, only: %i[show edit update destroy publish schedule preview]
 
       def index
         pages = ::Website::Page.order(updated_at: :desc)
@@ -33,7 +35,7 @@ module Admin
       end
 
       def show
-        preview_url = @page.page_type == "home" && @page.published? ? "/" : "/#{@page.slug}"
+        preview_url = preview_admin_website_page_path(@page)
         render inertia: "Admin/Generic/Show", props: {
           title: @page.title,
           subtitle: @page.slug,
@@ -92,13 +94,30 @@ module Admin
       end
 
       def schedule
-        publish_at = Time.zone.parse(params[:publish_at].to_s)
+        publish_at = parse_schedule_time(params[:publish_at])
+        unless publish_at&.future?
+          redirect_to admin_website_page_path(@page),
+                      alert: t("mcweb.admin.website.invalid_schedule", default: "Choose a future publish date and time")
+          return
+        end
+
         result = ::Website::PagePublisher.call(page: @page, publish_at: publish_at, actor: current_user)
         if result.success?
           redirect_to admin_website_page_path(@page), notice: t("mcweb.admin.website.scheduled", default: "Scheduled")
         else
           redirect_to admin_website_page_path(@page), alert: service_error_message(result)
         end
+      end
+
+      def preview
+        blocks_result = ::Website::SerializePageBlocks.call(page: @page)
+        seo_result = ::Website::ResolveSeo.call(record: @page)
+
+        render inertia: "Website/Pages/Show", props: {
+          page: { title: @page.title, slug: @page.slug },
+          blocks: blocks_result.value,
+          seo: seo_result.value
+        }
       end
 
       private
@@ -109,13 +128,20 @@ module Admin
 
       def page_params
         permitted = params.require(:page).permit(
-          :title, :slug, :page_type, :status, :website_theme_id, :scheduled_at,
-          seo: {},
-          translations: {}
+          :title, :slug, :page_type, :website_theme_id,
+          seo: {}
         )
         permitted[:seo] = permitted[:seo].to_unsafe_h if permitted[:seo].is_a?(ActionController::Parameters)
-        permitted[:translations] = permitted[:translations].to_unsafe_h if permitted[:translations].is_a?(ActionController::Parameters)
+        merge_nested_translations!(permitted, :page)
         permitted
+      end
+
+      def parse_schedule_time(value)
+        return nil if value.blank?
+
+        Time.zone.parse(value.to_s)
+      rescue ArgumentError, TypeError
+        nil
       end
 
       def form_props(page)
@@ -130,6 +156,7 @@ module Admin
           submitUrl: page.persisted? ? admin_website_page_path(page) : admin_website_pages_path,
           publishUrl: page.persisted? ? publish_admin_website_page_path(page) : nil,
           scheduleUrl: page.persisted? ? schedule_admin_website_page_path(page) : nil,
+          previewUrl: page.persisted? ? preview_admin_website_page_path(page) : nil,
           blocksBaseUrl: page.persisted? ? admin_website_page_blocks_path(page) : nil,
           revisionsUrl: page.persisted? ? admin_website_page_revisions_path(page) : nil,
           method: page.persisted? ? "patch" : "post",

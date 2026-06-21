@@ -118,7 +118,7 @@ class Round78ForumDigestUnsubscribeTest < ActionDispatch::IntegrationTest
     token = Community::ForumDigestUnsubscribeToken.generate(user)
 
     get forum_unsubscribe_forum_digest_path(token: token)
-    assert_redirected_to forum_preferences_path
+    assert_redirected_to root_path
     assert_equal "none", user.reload.forum_digest_frequency
   end
 

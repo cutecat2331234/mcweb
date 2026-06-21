@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_20_120000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_20_160000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -779,6 +779,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_120000) do
   end
 
   create_table "minecraft_integration_action_logs", force: :cascade do |t|
+    t.jsonb "completed_effects", default: [], null: false
     t.datetime "created_at", null: false
     t.text "error_message"
     t.string "event_id", null: false
@@ -1745,9 +1746,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_120000) do
     t.string "title", null: false
     t.jsonb "translations", default: {}, null: false
     t.datetime "updated_at", null: false
-    t.index ["article_type", "slug"], name: "index_website_articles_on_article_type_and_slug", unique: true
     t.index ["author_id"], name: "index_website_articles_on_author_id"
     t.index ["public_id"], name: "index_website_articles_on_public_id", unique: true
+    t.index ["slug"], name: "index_website_articles_on_slug", unique: true
   end
 
   create_table "website_blocks", force: :cascade do |t|

@@ -25,7 +25,7 @@ module Commerce
         restore_qty = [ restore_qty, remaining ].min
         next unless restore_qty.positive?
 
-        target.update!(stock: target.stock + restore_qty)
+        Commerce::IncrementStock.call(target: target, quantity: restore_qty)
         item.update!(stock_restored_quantity: item.stock_restored_quantity.to_i + restore_qty)
         restored_units += restore_qty
       end

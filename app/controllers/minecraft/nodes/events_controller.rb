@@ -3,31 +3,23 @@
 module Minecraft
   module Nodes
     class EventsController < ActionController::API
-      include ActionController::Live
       include ServiceResponder
 
       before_action :set_node
       before_action :authenticate_node!
 
       def show
-        response.headers["Content-Type"] = "text/event-stream"
-        response.headers["Cache-Control"] = "no-cache"
-        response.headers["Connection"] = "keep-alive"
-        response.headers["X-Accel-Buffering"] = "no"
-
         since = parse_since_param
-        deadline = Time.current + 55.seconds
+        @node.reload
 
-        while Time.current < deadline
-          @node.reload
-          if @node.tasks_wake_at.present? && @node.tasks_wake_at > since
-            response.stream.write("event: tasks_available\ndata: {\"wake_at\":\"#{@node.tasks_wake_at.iso8601}\"}\n\n")
-            break
-          end
-          sleep 0.25
+        if @node.tasks_wake_at.present? && @node.tasks_wake_at > since
+          render json: {
+            event: "tasks_available",
+            wake_at: @node.tasks_wake_at.iso8601(3)
+          }
+        else
+          head :no_content
         end
-      ensure
-        response.stream.close
       end
 
       private

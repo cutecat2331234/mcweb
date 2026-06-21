@@ -126,6 +126,7 @@ Rails.application.routes.draw do
         member do
           post :publish
           post :schedule
+          get :preview
         end
         resources :blocks, only: %i[create update destroy] do
           collection do
@@ -142,6 +143,7 @@ Rails.application.routes.draw do
         member do
           post :publish
           post :schedule
+          get :preview
         end
       end
       resources :nav_items do

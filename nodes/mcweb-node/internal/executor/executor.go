@@ -236,6 +236,9 @@ func (e *Executor) syncFiles(ctx context.Context, payload map[string]interface{}
 	if url == "" || dest == "" {
 		return fail("url and destination required")
 	}
+	if err := validateSyncURL(url); err != nil {
+		return fail(err.Error())
+	}
 	if err := os.MkdirAll(filepathDir(dest), 0o755); err != nil {
 		return fail(err.Error())
 	}

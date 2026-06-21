@@ -122,8 +122,8 @@ Rails.application.routes.draw do
       post :uploads, to: "uploads#create"
     end
     namespace :website do
-      resources :pages, only: %i[index show]
-      resources :articles, only: %i[index show]
+      resources :pages
+      resources :articles
     end
     namespace :frontend do
       resources :templates, only: %i[index create update destroy] do
@@ -178,6 +178,11 @@ Rails.application.routes.draw do
       resources :registrations, only: %i[new create], path: "register"
       resources :password_resets, only: %i[new create edit update], param: :token
       resource :email_verification, only: %i[show], path: "verify-email"
+      resource :email_verification_resend, only: %i[new create], path: "resend-verification"
+      get "security", to: "security#show"
+      post "security/totp/setup", to: "security#setup_totp"
+      post "security/totp/confirm", to: "security#confirm_totp"
+      post "security/totp/disable", to: "security#disable_totp"
       resources :sessions_management, only: %i[index destroy], path: "sessions"
     end
 

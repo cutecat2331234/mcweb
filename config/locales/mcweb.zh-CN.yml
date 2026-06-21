@@ -12,6 +12,15 @@
       sign_in_success: 登录成功。
       sign_out_success: 已退出登录。
       registration_success: 注册成功。请查收邮件验证邮箱地址。
+      verification_email_resent: 如果该邮箱已注册且尚未验证，我们已重新发送验证邮件。
+      totp_setup_started: 请使用验证器应用扫描二维码，然后输入验证码完成绑定。
+      totp_setup_missing: 请先开始两步验证设置。
+      totp_invalid: 两步验证码无效。
+      totp_enabled: 两步验证已启用。
+      totp_disabled: 两步验证已关闭。
+      totp_already_enabled: 两步验证已经启用。
+      totp_setup_required: 管理员要求启用两步验证，请先完成设置。
+      password_incorrect: 密码不正确。
       sign_in_required_short: 请先登录。
       operation_failed: 操作失败。
       rate_limited: 操作过于频繁，请稍后再试。
@@ -998,6 +1007,27 @@
       notifications:
         default_title: Minecraft 事件
     admin:
+      common:
+        status: 状态
+        updated: 更新时间
+      ui:
+        edit: 编辑
+      website:
+        pages:
+          title: 官网页面
+          new: 新建页面
+          edit: 编辑页面
+          col_title: 标题
+          col_slug: 标识
+          field_type: 页面类型
+        articles:
+          title: 官网文章
+          new: 新建文章
+          edit: 编辑文章
+          col_title: 标题
+          col_type: 类型
+          col_published: 发布时间
+          field_summary: 摘要
       dashboard:
         metrics:
           users: 用户

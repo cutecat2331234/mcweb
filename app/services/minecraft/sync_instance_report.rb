@@ -30,6 +30,10 @@ module Minecraft
             "online_players" => snapshot&.online_players,
             "max_players" => snapshot&.max_players,
             "process_state" => instance["process_state"]
+          },
+          metadata: {
+            "source" => "instance_report",
+            "process_state" => instance["process_state"]
           }
         )
       end

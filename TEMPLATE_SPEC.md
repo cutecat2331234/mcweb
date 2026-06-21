@@ -238,9 +238,10 @@ TemplateAssets (CSS/favicon) + Layout (tokens/slots/logo)
 ### 8.3 规划中的扩展（未实现）
 
 - `portal_footer` / `portal_sidebar_extra` 插槽
-- `portal-themed` 根类正式挂载
-- 废弃或接入 `Website::Theme`
+- `Website::Theme` 数据库主题与 ZIP 模板体系合并
 - 插槽内 `{{theme_asset:path}}` 占位符
+
+`portal-themed` 根类已在 `PortalLayout.vue` 挂载，自定义 CSS 应以此限定选择器。
 
 ## 9. 权限与后台入口
 

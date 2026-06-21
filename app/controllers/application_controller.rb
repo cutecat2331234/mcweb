@@ -11,6 +11,8 @@ class ApplicationController < ActionController::Base
   include FrontendTemplateShare
   include LocaleSettable
 
+  before_action :require_totp_setup
+
   allow_browser versions: :modern
 
   stale_when_importmap_changes

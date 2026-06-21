@@ -88,5 +88,5 @@ MIT License — 见 [LICENSE](LICENSE)
 ## 当前限制（v0.1.0）
 
 - 支付适配器首版仅完整实现 Fake Provider，支付宝/微信/Stripe 为扩展骨架
-- Minecraft Connector Java 插件为协议文档 + Fake 测试适配器
+- Minecraft Connector 提供完整 Java 多平台插件（Bukkit / Velocity / Bungee）；节点代理为 Go 版 `mcweb-node`
 - 多语言 UI 部分完成，数据结构已支持翻译字段

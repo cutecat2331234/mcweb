@@ -13,7 +13,11 @@ module Minecraft
       if (host_metrics = @payload.dig("metadata", "host_metrics")).present?
         metadata["host_metrics"] = host_metrics
         metadata["host_metrics_at"] = Time.current.iso8601
-        Minecraft::RecordNodeMetricSnapshot.call(node: @node, host_metrics: host_metrics)
+        Minecraft::RecordNodeMetricSnapshot.call(
+          node: @node,
+          host_metrics: host_metrics,
+          metadata: { "source" => "heartbeat" }
+        )
       end
 
       @node.update!(

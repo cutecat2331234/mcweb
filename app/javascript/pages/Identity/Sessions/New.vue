@@ -87,9 +87,14 @@ function submit() {
 
     <div class="flex flex-wrap items-center justify-between gap-3 pt-2">
       <Button type="submit" :disabled="form.processing">{{ t('common.signIn') }}</Button>
-      <Link :href="routes.register" class="text-sm text-muted-foreground hover:text-foreground">
-        {{ t('auth.signIn.createAccount') }}
-      </Link>
+      <div class="flex flex-col items-end gap-1 text-sm">
+        <Link :href="routes.register" class="text-muted-foreground hover:text-foreground">
+          {{ t('auth.signIn.createAccount') }}
+        </Link>
+        <Link :href="routes.resendVerification" class="text-muted-foreground hover:text-foreground">
+          {{ t('identity.resendVerification.submit') }}
+        </Link>
+      </div>
     </div>
   </form>
 </template>

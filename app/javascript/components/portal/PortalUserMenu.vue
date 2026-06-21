@@ -49,6 +49,15 @@ function signOut() {
         <p class="mt-1 text-xs text-muted-foreground">{{ t('portal.userCenter') }}</p>
       </DropdownMenuLabel>
       <DropdownMenuSeparator class="my-1 h-px bg-border" />
+      <DropdownMenuItem as-child>
+        <Link
+          :href="routes.security"
+          class="relative flex cursor-pointer select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground"
+        >
+          <Settings class="h-4 w-4" />
+          {{ t('identity.security.title') }}
+        </Link>
+      </DropdownMenuItem>
       <DropdownMenuItem v-if="features.forum" as-child>
         <Link
           :href="routes.forumUser(username)"

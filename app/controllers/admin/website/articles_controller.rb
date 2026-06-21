@@ -10,12 +10,12 @@ module Admin
         articles = ::Website::Article.order(updated_at: :desc)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "官网文章",
+          title: t("mcweb.admin.website.articles.title"),
           columns: [
-            admin_column(:title, "标题", link: true),
-            admin_column(:type, "类型"),
-            admin_column(:status, "状态"),
-            admin_column(:published, "发布")
+            admin_column(:title, t("mcweb.admin.website.articles.col_title"), link: true),
+            admin_column(:type, t("mcweb.admin.website.articles.col_type")),
+            admin_column(:status, t("mcweb.admin.common.status")),
+            admin_column(:published, t("mcweb.admin.website.articles.col_published"))
           ],
           rows: articles.map do |article|
             admin_row(
@@ -25,7 +25,8 @@ module Admin
               published: article.published_at ? l(article.published_at, format: :short) : "—",
               url: admin_website_article_path(article)
             )
-          end
+          end,
+          actions: [ { label: t("mcweb.admin.website.articles.new"), href: new_admin_website_article_path } ]
         }
       end
 
@@ -34,37 +35,40 @@ module Admin
           title: @article.title,
           subtitle: @article.slug,
           fields: [
-            { label: "类型", value: @article.article_type },
-            { label: "状态", value: @article.status },
-            { label: "摘要", value: @article.summary || "—" },
-            { label: "发布时间", value: @article.published_at ? l(@article.published_at, format: :long) : "—" }
+            { label: t("mcweb.admin.website.articles.col_type"), value: @article.article_type },
+            { label: t("mcweb.admin.common.status"), value: @article.status },
+            { label: t("mcweb.admin.website.articles.field_summary"), value: @article.summary.presence || "—" },
+            { label: t("mcweb.admin.website.articles.col_published"), value: @article.published_at ? l(@article.published_at, format: :long) : "—" }
           ],
-          backUrl: admin_website_articles_path
+          backUrl: admin_website_articles_path,
+          actions: [ { label: t("mcweb.admin.ui.edit"), href: edit_admin_website_article_path(@article) } ]
         }
       end
 
       def new
-        @article = ::Website::Article.new
+        render inertia: "Admin/Website/Articles/Form", props: form_props(::Website::Article.new)
       end
 
       def create
-        @article = ::Website::Article.new(article_params)
+        article = ::Website::Article.new(article_params)
+        article.author = current_user
 
-        if @article.save
-          redirect_to admin_website_article_path(@article), notice: t("mcweb.flash.created", resource: t("mcweb.resources.article"))
+        if article.save
+          redirect_to admin_website_article_path(article), notice: t("mcweb.flash.created", resource: t("mcweb.resources.article"))
         else
-          render :new, status: :unprocessable_entity
+          render inertia: "Admin/Website/Articles/Form", props: form_props(article), status: :unprocessable_entity
         end
       end
 
       def edit
+        render inertia: "Admin/Website/Articles/Form", props: form_props(@article)
       end
 
       def update
         if @article.update(article_params)
           redirect_to admin_website_article_path(@article), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.article"))
         else
-          render :edit, status: :unprocessable_entity
+          render inertia: "Admin/Website/Articles/Form", props: form_props(@article), status: :unprocessable_entity
         end
       end
 
@@ -80,7 +84,27 @@ module Admin
       end
 
       def article_params
-        params.expect(article: %i[title slug article_type status summary published_at scheduled_at seo translations])[:article]
+        params.expect(article: %i[title slug article_type status summary published_at])[:article]
+      end
+
+      def form_props(article)
+        {
+          title: article.persisted? ? t("mcweb.admin.website.articles.edit") : t("mcweb.admin.website.articles.new"),
+          article: {
+            title: article.title,
+            slug: article.slug,
+            article_type: article.article_type.presence || "news",
+            status: article.status.presence || "draft",
+            summary: article.summary,
+            published_at: article.published_at&.strftime("%Y-%m-%dT%H:%M")
+          },
+          articleTypeOptions: %w[news blog].map { |value| { value:, label: value } },
+          statusOptions: ::Website::Article.statuses.keys.map { |value| { value:, label: value } },
+          submitUrl: article.persisted? ? admin_website_article_path(article) : admin_website_articles_path,
+          method: article.persisted? ? "patch" : "post",
+          backUrl: article.persisted? ? admin_website_article_path(article) : admin_website_articles_path,
+          form_errors: article.errors.to_hash(true)
+        }
       end
     end
   end

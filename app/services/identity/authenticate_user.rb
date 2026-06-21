@@ -39,9 +39,9 @@ module Identity
         return generic_failure
       end
 
-      if user.totp_enabled? || user.require_totp?
+      if user.totp_enabled?
         return ServiceResult.failure(error: "请输入两步验证码。") if @totp_code.blank?
-        return ServiceResult.failure(error: "两步验证码无效。") unless verify_totp(user)
+        return ServiceResult.failure(error: "两步验证码无效。") unless verify_second_factor(user)
       end
 
       user.update!(
@@ -81,6 +81,10 @@ module Identity
 
     def locked?(user)
       user.locked_until&.future?
+    end
+
+    def verify_second_factor(user)
+      verify_totp(user) || user.consume_recovery_code!(@totp_code.to_s)
     end
 
     def verify_totp(user)

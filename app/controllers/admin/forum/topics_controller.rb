@@ -4,7 +4,7 @@ module Admin
   module Forum
     class TopicsController < BaseController
       before_action -> { require_permission("forum.topics.lock") }
-      before_action :set_topic, only: %i[show edit update destroy]
+      before_action :set_topic, only: %i[show]
 
       def index
         scope = ::Community::Topic.includes(:user, :section).order(last_posted_at: :desc)
@@ -64,30 +64,10 @@ module Admin
         }
       end
 
-      def edit
-      end
-
-      def update
-        if @topic.update(topic_params)
-          redirect_to admin_forum_topic_path(@topic), notice: t("mcweb.flash.topic_updated")
-        else
-          render :edit, status: :unprocessable_entity
-        end
-      end
-
-      def destroy
-        @topic.soft_delete!
-        redirect_to admin_forum_topics_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.topic"))
-      end
-
       private
 
       def set_topic
         @topic = ::Community::Topic.find(params[:id])
-      end
-
-      def topic_params
-        params.require(:topic).permit(:title, :status, :locked, :pinned)
       end
     end
   end

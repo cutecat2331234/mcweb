@@ -12,6 +12,15 @@ en:
       sign_in_success: Signed in successfully.
       sign_out_success: Signed out successfully.
       registration_success: Registration successful. Please check your email to verify your address.
+      verification_email_resent: If that address is registered and not yet verified, we sent a new verification email.
+      totp_setup_started: Scan the QR code with your authenticator app, then enter the code to finish setup.
+      totp_setup_missing: Start two-factor setup before confirming.
+      totp_invalid: Invalid two-factor code.
+      totp_enabled: Two-factor authentication is enabled.
+      totp_disabled: Two-factor authentication is disabled.
+      totp_already_enabled: Two-factor authentication is already enabled.
+      totp_setup_required: Your account must enable two-factor authentication before continuing.
+      password_incorrect: Incorrect password.
       sign_in_required_short: Please sign in first.
       operation_failed: Operation failed.
       rate_limited: Too many requests. Please try again later.
@@ -988,6 +997,27 @@ en:
       notifications:
         default_title: Minecraft event
     admin:
+      common:
+        status: Status
+        updated: Updated
+      ui:
+        edit: Edit
+      website:
+        pages:
+          title: Website pages
+          new: New page
+          edit: Edit page
+          col_title: Title
+          col_slug: Slug
+          field_type: Page type
+        articles:
+          title: Website articles
+          new: New article
+          edit: Edit article
+          col_title: Title
+          col_type: Type
+          col_published: Published
+          field_summary: Summary
       dashboard:
         metrics:
           users: Users

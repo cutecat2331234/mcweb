@@ -53,6 +53,16 @@ module Authentication
     redirect_to identity_sign_in_path, alert: t("mcweb.flash.sign_in_required")
   end
 
+  def require_totp_setup
+    return unless logged_in?
+    return if current_user.totp_enabled?
+    return unless current_user.require_totp?
+
+    return if controller_path.start_with?("identity/security", "identity/sessions", "identity/email_verification", "identity/email_verification_resends")
+
+    redirect_to identity_security_path, alert: t("mcweb.flash.totp_setup_required")
+  end
+
   alias_method :authenticate_user!, :require_login
 
   def require_permission(key)

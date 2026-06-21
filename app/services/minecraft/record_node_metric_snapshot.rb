@@ -2,11 +2,12 @@
 
 module Minecraft
   class RecordNodeMetricSnapshot < ApplicationService
-    def initialize(node:, host_metrics: nil, server: nil, instance_metrics: nil)
+    def initialize(node:, host_metrics: nil, server: nil, instance_metrics: nil, metadata: nil)
       @node = node
       @host_metrics = (host_metrics || {}).stringify_keys
       @server = server
       @instance_metrics = (instance_metrics || {}).stringify_keys
+      @metadata = (metadata || {}).stringify_keys
     end
 
     def call
@@ -21,6 +22,7 @@ module Minecraft
         tps: numeric(@instance_metrics["tps"]),
         online_players: int(@instance_metrics["online_players"]),
         max_players: int(@instance_metrics["max_players"]),
+        metadata: @metadata,
         recorded_at: Time.current
       )
 

@@ -39,8 +39,11 @@ module Minecraft
         task_type: @task_type,
         delivery_id: @delivery_id || SecureRandom.uuid,
         status: "pending",
+        priority: urgent_task? ? "urgent" : "normal",
         payload: merged_payload
       )
+
+      @node.wake_for_tasks! if urgent_task?
 
       ServiceResult.success(task: task)
     rescue ActiveRecord::RecordInvalid => e
@@ -48,6 +51,10 @@ module Minecraft
     end
 
     private
+
+    def urgent_task?
+      Minecraft::NodeTask.urgent_task_type?(@task_type)
+    end
 
     def instance_task?
       %w[start_instance stop_instance restart_instance exec_command tail_logs backup_world restore_world sync_files].include?(@task_type)

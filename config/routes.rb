@@ -168,6 +168,7 @@ Rails.application.routes.draw do
       resource :settings, only: %i[show update]
       resources :jobs, only: %i[index]
       resources :ip_bans, only: %i[index create destroy]
+      resources :applications, only: %i[index]
     end
   end
 
@@ -497,6 +498,7 @@ Rails.application.routes.draw do
       scope ":node_id" do
         post "heartbeat", to: "api#heartbeat"
         get "tasks", to: "api#tasks"
+        get "events", to: "events#show"
         post "tasks/:id/complete", to: "api#complete"
         post "instances/:server_id/report", to: "api#report"
       end

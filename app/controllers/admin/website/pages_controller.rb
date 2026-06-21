@@ -83,7 +83,7 @@ module Admin
       end
 
       def page_params
-        params.expect(page: %i[title slug page_type status])[:page]
+        params.require(:page).permit(:title, :slug, :page_type, :status)
       end
 
       def form_props(page)

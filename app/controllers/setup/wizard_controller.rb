@@ -140,59 +140,21 @@ module Setup
 
       save_step_data("admin", admin_data.except(:password, :password_confirmation).merge("password" => "[FILTERED]"))
 
-      outcome = :unknown
-      register_error = nil
-      user = nil
+      result = Setup::FinalizeInstallation.call(
+        database: {},
+        site: site_data,
+        admin: admin_data,
+        ip_address: request.remote_ip,
+        skip_database: true
+      )
 
-      ActiveRecord::Base.transaction do
-        acquire_installation_finalize_lock!
-
-        if InstallationLock.locked? || installation_owner_exists?
-          outcome = :already_complete
-          next
-        end
-
-        result = Identity::RegisterUser.call(
-          email: admin_data[:email],
-          username: admin_data[:username],
-          password: password,
-          display_name: admin_data[:display_name],
-          ip_address: request.remote_ip
-        )
-
-        unless result.success?
-          outcome = :register_failed
-          register_error = service_error_message(result)
-          raise ActiveRecord::Rollback
-        end
-
-        user = result.value[:user]
-        user.update!(email_verified: true, email_verified_at: Time.current, account_type: :owner)
-
-        Rails.application.load_seed unless Role.exists?(key: "owner")
-        admin_role = Role.find_by!(key: "owner")
-        user.roles << admin_role unless user.roles.include?(admin_role)
-
-        SiteSetting.set("site.name", site_data[:name]) if site_data[:name].present?
-        SiteSetting.set("site.url", site_data[:url]) if site_data[:url].present?
-
-        InstallationLock.lock!(user: user)
-        outcome = :success
-      end
-
-      case outcome
-      when :already_complete
-        redirect_completed_setup
-      when :register_failed
-        flash[:alert] = register_error
-        redirect_to setup_step_path("admin")
-      when :success
-        Frontend::EnsureDefaultTemplate.call
+      if result.success?
         session.delete(:setup_wizard)
         redirect_to identity_sign_in_path,
-                    notice: t("mcweb.flash.setup_complete_with_account", email: user.email)
+                    notice: t("mcweb.flash.setup_complete_with_account", email: result.value[:user]&.email || admin_data[:email])
       else
-        redirect_completed_setup
+        flash[:alert] = service_error_message(result)
+        redirect_to setup_step_path("admin")
       end
     end
 
@@ -234,12 +196,6 @@ module Setup
       redirect_to identity_sign_in_path, alert: t("mcweb.setup.already_complete")
     end
 
-    def acquire_installation_finalize_lock!
-      ActiveRecord::Base.connection.execute(
-        ActiveRecord::Base.sanitize_sql_array([ "SELECT pg_advisory_xact_lock(?)", INSTALLATION_FINALIZE_LOCK_KEY ])
-      )
-    end
-
     def ensure_setup_accessible!
       return if Rails.env.local?
       return if request.local?
@@ -275,7 +231,5 @@ module Setup
       flash[:alert] = t("mcweb.flash.rate_limited", default: "操作过于频繁，请稍后再试。")
       redirect_to setup_step_path(@step.presence || first_step)
     end
-
-    INSTALLATION_FINALIZE_LOCK_KEY = 748_239_013
   end
 end

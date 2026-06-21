@@ -23,7 +23,7 @@ module Minecraft
       error: "error"
     }, validate: true, prefix: true
 
-    PROCESS_DRIVERS = %w[systemd docker script].freeze
+    PROCESS_DRIVERS = %w[systemd docker script nssm].freeze
 
     validates :name, presence: true
     validates :port, numericality: { only_integer: true, in: 1..65535 }

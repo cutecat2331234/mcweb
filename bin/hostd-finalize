@@ -1,0 +1,45 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "fileutils"
+require_relative "../config/environment"
+require "json"
+require "optparse"
+
+options = { input: nil, stdin: false }
+OptionParser.new do |opts|
+  opts.banner = "Usage: bin/hostd-finalize [options]"
+  opts.on("--input PATH", "JSON file with database, site, admin keys") { |v| options[:input] = v }
+  opts.on("--stdin", "Read JSON from stdin") { options[:stdin] = true }
+end.parse!
+
+payload =
+  if options[:stdin]
+    JSON.parse($stdin.read)
+  elsif options[:input]
+    JSON.parse(File.read(options[:input]))
+  else
+    puts JSON.generate(success: false, error: "provide --input or --stdin")
+    exit 1
+  end
+
+result = Setup::FinalizeInstallation.call(
+  database: payload.fetch("database", {}),
+  site: payload.fetch("site", {}),
+  admin: payload.fetch("admin", {}),
+  ip_address: payload["ip_address"].presence || "127.0.0.1"
+)
+
+if result.success?
+  begin
+    FileUtils.mkdir_p("/etc/mcweb")
+    File.write("/etc/mcweb/installed_via_hostd", "1\n") if Process.euid.zero?
+  rescue StandardError
+    # non-root dev environments
+  end
+  puts JSON.generate(success: true, message: result.value[:message] || "ok")
+  exit 0
+end
+
+puts JSON.generate(success: false, error: result.error)
+exit 1

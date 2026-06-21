@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mcweb}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mcweb}
+      POSTGRES_DB: ${POSTGRES_DB:-mcweb_production}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mcweb}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mcweb-web:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-mcweb}:${POSTGRES_PASSWORD:-mcweb}@postgres:5432/${POSTGRES_DB:-mcweb_production}
+      REDIS_URL: redis://redis:6379/0
+      MCWEB_LOCAL_CONFIG_PATH: /var/lib/mcweb/local.yml
+    ports:
+      - "${MCWEB_WEB_PORT:-3000}:3000"
+    volumes:
+      - mcweb_data:/var/lib/mcweb
+    command: ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+
+  mcweb-worker:
+    build:
+      context: ../..
+      dockerfile: deploy/docker/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      RAILS_ENV: production
+      DATABASE_URL: postgres://${POSTGRES_USER:-mcweb}:${POSTGRES_PASSWORD:-mcweb}@postgres:5432/${POSTGRES_DB:-mcweb_production}
+      REDIS_URL: redis://redis:6379/0
+      MCWEB_LOCAL_CONFIG_PATH: /var/lib/mcweb/local.yml
+    volumes:
+      - mcweb_data:/var/lib/mcweb
+    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+
+volumes:
+  pgdata:
+  redisdata:
+  mcweb_data:

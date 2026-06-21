@@ -9,7 +9,14 @@ module Minecraft
 
     validates :task_type, presence: true
 
-    scope :claimable, -> { where(status: :pending).order(:created_at) }
+    URGENT_TASK_TYPES = %w[stop_instance restart_instance].freeze
+
+    scope :urgent, -> { where(priority: "urgent") }
+    scope :claimable, -> { where(status: :pending).order(Arel.sql("CASE WHEN priority = 'urgent' THEN 0 ELSE 1 END"), :created_at) }
+
+    def self.urgent_task_type?(task_type)
+      URGENT_TASK_TYPES.include?(task_type.to_s)
+    end
 
     def claim!
       update!(status: :claimed, claimed_at: Time.current)

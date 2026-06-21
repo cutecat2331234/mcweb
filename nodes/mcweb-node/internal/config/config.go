@@ -13,6 +13,7 @@ type Config struct {
 	NodeSecret   string        `yaml:"node_secret"`
 	ProxyListen  string        `yaml:"proxy_listen"`
 	PollInterval time.Duration `yaml:"poll_interval"`
+	SpoolDir     string        `yaml:"spool_dir"`
 }
 
 func Load(path string) (*Config, error) {
@@ -29,6 +30,9 @@ func Load(path string) (*Config, error) {
 	}
 	if cfg.PollInterval == 0 {
 		cfg.PollInterval = 10 * time.Second
+	}
+	if cfg.SpoolDir == "" {
+		cfg.SpoolDir = "spool"
 	}
 	return &cfg, nil
 }

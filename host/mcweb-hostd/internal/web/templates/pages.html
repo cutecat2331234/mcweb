@@ -1,0 +1,182 @@
+{{define "init.html"}}
+<div class="card">
+  <h1>Initialize Hostd</h1>
+  <p>Create the host console administrator account.</p>
+  {{if .Error}}<div class="flash error">{{.Error}}</div>{{end}}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <label>Username</label>
+    <input name="username" required autocomplete="username">
+    <label>Password</label>
+    <input name="password" type="password" required autocomplete="new-password">
+    <p style="margin-top:1rem"><button type="submit">Initialize</button></p>
+  </form>
+</div>
+{{end}}
+
+{{define "login.html"}}
+<div class="card">
+  <h1>Login</h1>
+  {{if .Error}}<div class="flash error">{{.Error}}</div>{{end}}
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <label>Username</label>
+    <input name="username" required autocomplete="username">
+    <label>Password</label>
+    <input name="password" type="password" required autocomplete="current-password">
+    <p style="margin-top:1rem"><button type="submit">Sign in</button></p>
+  </form>
+</div>
+{{end}}
+
+{{define "dashboard.html"}}
+<h1>Dashboard</h1>
+<div class="card">
+  <h2>McWeb</h2>
+  <p>Version: <strong>{{.Report.McwebVersion}}</strong> · Mode: {{.Report.DeployMode}}
+  {{if .Report.InstalledViaHostd}} · Installed via hostd{{end}}</p>
+  <p>Health live: {{if .Report.Health.Live}}<span class="badge ok">ok</span>{{else}}<span class="badge bad">down</span>{{end}}
+  · Ready: {{if .Report.Health.Ready}}<span class="badge ok">ok</span>{{else}}<span class="badge bad">degraded</span>{{end}}</p>
+  {{if not .McwebInstalled}}<p><a class="btn" href="/install">Start installation wizard</a></p>{{end}}
+</div>
+<div class="card">
+  <h2>Services</h2>
+  <table>
+    <tr><th>Unit</th><th>State</th><th>Since</th></tr>
+    {{range .Report.Units}}
+    <tr>
+      <td>{{.Name}}</td>
+      <td>{{if .Active}}<span class="badge ok">{{.State}}</span>{{else}}<span class="badge bad">{{.State}}</span>{{end}}</td>
+      <td>{{.Since}}</td>
+    </tr>
+    {{end}}
+  </table>
+</div>
+{{if .Report.DiskFree}}
+<div class="card"><h2>Disk</h2><pre>{{.Report.DiskFree}}</pre></div>
+{{end}}
+<p><a class="btn" href="/operations">Operations</a></p>
+{{end}}
+
+{{define "install.html"}}
+<h1>Install McWeb</h1>
+<div class="steps">
+  <span class="step {{if eq .Step 1}}active{{end}}">1 Mode</span>
+  <span class="step {{if eq .Step 2}}active{{end}}">2 Check</span>
+  <span class="step {{if eq .Step 3}}active{{end}}">3 Deploy</span>
+  <span class="step {{if eq .Step 4}}active{{end}}">4 Database</span>
+  <span class="step {{if eq .Step 5}}active{{end}}">5 Site</span>
+  <span class="step {{if eq .Step 6}}active{{end}}">6 Admin</span>
+  <span class="step {{if eq .Step 7}}active{{end}}">7 Finalize</span>
+  <span class="step {{if eq .Step 8}}active{{end}}">8 Done</span>
+</div>
+<div class="card">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input type="hidden" name="step" value="{{.Step}}">
+    {{if eq .Step 1}}
+    <h2>Choose deployment mode</h2>
+    <label><input type="radio" name="mode" value="native" checked> Native (systemd)</label>
+    <label><input type="radio" name="mode" value="docker"> Docker Compose</label>
+    {{else if eq .Step 2}}
+    <h2>Environment check</h2>
+    <label><input type="checkbox" name="run_check" value="1" checked> Run check before deploy</label>
+    {{else if eq .Step 3}}
+    <h2>Deploy application</h2>
+    {{if eq .Mode "docker"}}
+    <label><input type="checkbox" name="pull" value="1"> Pull images first</label>
+    {{else}}
+    <label><input type="checkbox" name="fresh" value="1"> Fresh install (bin/install)</label>
+    <label>Release version (optional)</label>
+    <input name="version" placeholder="v1.0.0">
+    {{end}}
+    {{else if eq .Step 4}}
+    <h2>Database</h2>
+    <label>Host</label><input name="host" value="127.0.0.1" required>
+    <label>Port</label><input name="port" value="5432" required>
+    <label>Username</label><input name="username" value="mcweb" required>
+    <label>Password</label><input name="password" type="password" required>
+    <label>Development database</label><input name="development_database" value="mcweb_development">
+    {{else if eq .Step 5}}
+    <h2>Site</h2>
+    <label>Site name</label><input name="name" required>
+    <label>Site URL</label><input name="url" placeholder="https://example.com" required>
+    {{else if eq .Step 6}}
+    <h2>Administrator</h2>
+    <label>Email</label><input name="email" type="email" required>
+    <label>Username</label><input name="username" required>
+    <label>Display name</label><input name="display_name">
+    <label>Password</label><input name="password" type="password" required minlength="6">
+    {{else if eq .Step 7}}
+    <h2>Finalize</h2>
+    <p>Click continue to create the administrator account and lock installation.</p>
+    {{else}}
+    <h2>Complete</h2>
+    {{if .Install.JobID}}<p>Job: <a href="/operations/jobs/{{.Install.JobID}}">{{.Install.JobID}}</a></p>{{end}}
+    <p>McWeb should now be ready. Visit your site URL to sign in.</p>
+    <p><a class="btn" href="/">Go to dashboard</a></p>
+    {{end}}
+    {{if lt .Step 8}}<p style="margin-top:1rem"><button type="submit">Continue</button></p>{{end}}
+  </form>
+</div>
+{{end}}
+
+{{define "operations.html"}}
+<h1>Operations</h1>
+<div class="card">
+  <h2>Lifecycle</h2>
+  <form method="post" action="/operations/start" style="display:inline"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button type="submit">Start</button></form>
+  <form method="post" action="/operations/stop" style="display:inline"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button type="submit" class="secondary">Stop</button></form>
+  <form method="post" action="/operations/restart" style="display:inline"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button type="submit" class="secondary">Restart</button></form>
+  <form method="post" action="/operations/check" style="display:inline"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button type="submit" class="secondary">Check</button></form>
+  <form method="post" action="/operations/update" style="display:inline;margin-left:1rem">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <input name="version" placeholder="version (optional)" style="width:auto;display:inline">
+    <button type="submit" class="secondary">Update</button>
+  </form>
+</div>
+<div class="card">
+  <h2>Extended</h2>
+  <form method="post" action="/operations/backup" style="display:inline"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button type="submit" class="secondary">Backup</button></form>
+  <form method="post" action="/operations/install-node" style="display:inline"><input type="hidden" name="csrf_token" value="{{.CSRF}}"><button type="submit" class="secondary">Install mcweb-node</button></form>
+</div>
+<div class="card">
+  <h2>Recent jobs</h2>
+  <table>
+    <tr><th>ID</th><th>Kind</th><th>Status</th></tr>
+    {{range .Jobs}}
+    <tr><td><a href="/operations/jobs/{{.ID}}">{{.ID}}</a></td><td>{{.Kind}}</td><td>{{.Status}}</td></tr>
+    {{end}}
+  </table>
+</div>
+{{end}}
+
+{{define "job.html"}}
+<h1>Job {{.Job.ID}}</h1>
+<div class="card">
+  <p>Kind: {{.Job.Kind}} · Status: {{.Job.Status}}</p>
+  <pre>{{.Job.LogText}}</pre>
+  <p><a href="/operations">Back</a></p>
+</div>
+{{end}}
+
+{{define "settings.html"}}
+<h1>Settings</h1>
+<div class="card">
+  <form method="post">
+    <input type="hidden" name="csrf_token" value="{{.CSRF}}">
+    <label>Listen</label><input name="listen" value="{{.Config.Listen}}">
+    <label>McWeb root</label><input name="mcweb_root" value="{{.Config.McwebRoot}}">
+    <label>McWeb env file</label><input name="mcweb_env_file" value="{{.Config.McwebEnvFile}}">
+    <label>Compose directory</label><input name="compose_dir" value="{{.Config.ComposeDir}}">
+    <label>Deploy mode</label>
+    <select name="deploy_mode">
+      <option value="native" {{if eq .Config.DeployMode "native"}}selected{{end}}>native</option>
+      <option value="docker" {{if eq .Config.DeployMode "docker"}}selected{{end}}>docker</option>
+    </select>
+    <label>Release URL</label><input name="release_url" value="{{.Config.ReleaseURL}}">
+    <label>Health URL</label><input name="health_url" value="{{.Config.HealthURL}}">
+    <p style="margin-top:1rem"><button type="submit">Save</button></p>
+  </form>
+</div>
+{{end}}

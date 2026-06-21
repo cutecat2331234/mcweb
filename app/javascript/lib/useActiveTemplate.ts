@@ -20,6 +20,8 @@ export function useActiveTemplate() {
   const websiteHeaderSlot = computed(() => activeTemplate.value?.slots?.website_header || null)
   const websiteFooterSlot = computed(() => activeTemplate.value?.slots?.website_footer || null)
   const portalHeaderExtraSlot = computed(() => activeTemplate.value?.slots?.portal_header_extra || null)
+  const portalSidebarExtraSlot = computed(() => activeTemplate.value?.slots?.portal_sidebar_extra || null)
+  const portalFooterSlot = computed(() => activeTemplate.value?.slots?.portal_footer || null)
 
   return {
     activeTemplate,
@@ -27,5 +29,7 @@ export function useActiveTemplate() {
     websiteHeaderSlot,
     websiteFooterSlot,
     portalHeaderExtraSlot,
+    portalSidebarExtraSlot,
+    portalFooterSlot,
   }
 }

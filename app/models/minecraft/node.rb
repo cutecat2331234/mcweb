@@ -14,6 +14,10 @@ module Minecraft
 
     validates :name, presence: true
 
+    def wake_for_tasks!
+      update!(tasks_wake_at: Time.current)
+    end
+
     def heartbeat!
       update!(last_heartbeat_at: Time.current, status: :online)
     end

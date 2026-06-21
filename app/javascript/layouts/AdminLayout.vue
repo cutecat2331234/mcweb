@@ -66,6 +66,7 @@ const nav = computed(() => [
     { label: t('admin.auditLogs'), href: adminRoutes.auditLogs },
     { label: t('admin.ipBans'), href: adminRoutes.ipBans },
     { label: t('admin.featureToggles'), href: adminRoutes.featureToggles },
+    { label: t('admin.applications.nav'), href: adminRoutes.applications },
     { label: t('admin.settings'), href: adminRoutes.settings },
     { label: t('admin.jobs'), href: adminRoutes.jobs },
   ]},

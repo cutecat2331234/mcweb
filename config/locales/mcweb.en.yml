@@ -1018,6 +1018,9 @@ en:
           col_type: Type
           col_published: Published
           field_summary: Summary
+      system:
+        applications:
+          title: Apps & extensions
       dashboard:
         metrics:
           users: Users

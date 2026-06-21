@@ -84,7 +84,7 @@ module Admin
       end
 
       def article_params
-        params.expect(article: %i[title slug article_type status summary published_at])[:article]
+        params.require(:article).permit(:title, :slug, :article_type, :status, :summary, :published_at)
       end
 
       def form_props(article)

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_20_000004) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_20_000005) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -848,11 +848,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_000004) do
     t.bigint "minecraft_node_id", null: false
     t.bigint "minecraft_server_id"
     t.jsonb "payload", default: {}, null: false
+    t.string "priority", default: "normal", null: false
     t.jsonb "result", default: {}, null: false
     t.string "status", default: "pending", null: false
     t.string "task_type", null: false
     t.datetime "updated_at", null: false
     t.index ["delivery_id"], name: "index_minecraft_node_tasks_on_delivery_id", unique: true, where: "(delivery_id IS NOT NULL)"
+    t.index ["minecraft_node_id", "status", "priority"], name: "idx_on_minecraft_node_id_status_priority_8716bbda9c"
     t.index ["minecraft_node_id", "status"], name: "index_minecraft_node_tasks_on_minecraft_node_id_and_status"
     t.index ["minecraft_node_id"], name: "index_minecraft_node_tasks_on_minecraft_node_id"
     t.index ["minecraft_server_id"], name: "index_minecraft_node_tasks_on_minecraft_server_id"
@@ -869,6 +871,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_000004) do
     t.string "proxy_listen_url", default: "http://127.0.0.1:9876"
     t.string "public_id", null: false
     t.string "status", default: "offline", null: false
+    t.datetime "tasks_wake_at"
     t.datetime "updated_at", null: false
     t.index ["public_id"], name: "index_minecraft_nodes_on_public_id", unique: true
   end

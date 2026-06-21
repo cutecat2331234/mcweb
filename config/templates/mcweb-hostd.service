@@ -1,0 +1,15 @@
+[Unit]
+Description=McWeb Host Console
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/mcweb-hostd
+ExecStart=/usr/local/bin/mcweb-hostd serve --config /etc/mcweb/hostd.yml
+Restart=on-failure
+RestartSec=5
+Environment=MCWEB_HOSTD_CONFIG=/etc/mcweb/hostd.yml
+
+[Install]
+WantedBy=multi-user.target

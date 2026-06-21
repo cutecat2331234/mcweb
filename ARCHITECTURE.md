@@ -2,6 +2,8 @@
 
 ## 模块边界
 
+McWeb 采用 **平台内核 + 大应用 + 插件扩展** 三层模型，详见 [`docs/APPS_AND_PLUGINS.md`](docs/APPS_AND_PLUGINS.md)。代码注册表：`Mcweb::ApplicationRegistry`。
+
 ```
 app/
   models/          # 按领域命名空间：Website、Community、Commerce、Minecraft、Payments

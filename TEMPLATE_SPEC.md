@@ -159,6 +159,8 @@ manifest `tokens` 键名 `snake_case` → 前端变量 `--template-{kebab-case}`
 | `website_header` | website | **替换**默认 `<header>`（有插槽时） |
 | `website_footer` | website | **替换**默认 `<footer>` |
 | `portal_header_extra` | portal | 在顶栏**上方**追加 HTML（不替换侧栏/顶栏结构） |
+| `portal_sidebar_extra` | portal | 在侧栏品牌区下方追加 HTML |
+| `portal_footer` | portal | 在页面底部追加 HTML |
 
 ### 5.1 消毒白名单
 
@@ -225,7 +227,7 @@ TemplateAssets (CSS/favicon) + Layout (tokens/slots/logo)
 - 颜色 token、自定义 CSS
 - Logo、Favicon
 - 官网页眉/页脚 HTML
-- Portal 顶栏上方额外 HTML 条
+- Portal 顶栏上方、侧栏额外区、页脚 HTML
 
 ### 8.2 当前**不能**定制
 
@@ -237,7 +239,6 @@ TemplateAssets (CSS/favicon) + Layout (tokens/slots/logo)
 
 ### 8.3 规划中的扩展（未实现）
 
-- `portal_footer` / `portal_sidebar_extra` 插槽
 - `Website::Theme` 数据库主题与 ZIP 模板体系合并
 - 插槽内 `{{theme_asset:path}}` 占位符
 

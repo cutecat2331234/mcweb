@@ -1,0 +1,59 @@
+{{define "layout.html"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{if .Title}}{{.Title}} · {{end}}McWeb Hostd</title>
+  <style>
+    :root { --bg:#0f1419; --card:#1a2332; --text:#e7ecf3; --muted:#8b9cb3; --accent:#3b82f6; --ok:#22c55e; --bad:#ef4444; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family:system-ui,sans-serif; background:var(--bg); color:var(--text); line-height:1.5; }
+    a { color:var(--accent); }
+    header { background:var(--card); border-bottom:1px solid #2a3548; padding:1rem 1.5rem; display:flex; gap:1.5rem; align-items:center; }
+    header nav a { color:var(--muted); text-decoration:none; margin-right:1rem; }
+    header nav a:hover { color:var(--text); }
+    main { max-width:960px; margin:0 auto; padding:1.5rem; }
+    .card { background:var(--card); border-radius:8px; padding:1.25rem; margin-bottom:1rem; border:1px solid #2a3548; }
+    h1,h2 { margin-top:0; }
+    label { display:block; margin:.75rem 0 .25rem; color:var(--muted); font-size:.875rem; }
+    input,select,textarea { width:100%; padding:.5rem .75rem; border:1px solid #2a3548; border-radius:6px; background:#0f1419; color:var(--text); }
+    button,.btn { display:inline-block; background:var(--accent); color:#fff; border:none; padding:.5rem 1rem; border-radius:6px; cursor:pointer; text-decoration:none; font-size:.875rem; }
+    button.secondary { background:#374151; }
+    .flash { padding:.75rem; border-radius:6px; margin-bottom:1rem; }
+    .flash.error { background:#451a1a; color:#fecaca; }
+    table { width:100%; border-collapse:collapse; }
+    th,td { text-align:left; padding:.5rem; border-bottom:1px solid #2a3548; }
+    .badge { display:inline-block; padding:.15rem .5rem; border-radius:999px; font-size:.75rem; }
+    .badge.ok { background:#14532d; color:#bbf7d0; }
+    .badge.bad { background:#450a0a; color:#fecaca; }
+    pre { background:#0f1419; padding:1rem; overflow:auto; border-radius:6px; font-size:.8rem; }
+    .steps { display:flex; gap:.5rem; flex-wrap:wrap; margin-bottom:1rem; }
+    .step { padding:.25rem .75rem; border-radius:999px; background:#2a3548; font-size:.75rem; }
+    .step.active { background:var(--accent); }
+  </style>
+  {{if .Refresh}}<meta http-equiv="refresh" content="3">{{end}}
+</head>
+<body>
+  <header>
+    <strong>McWeb Hostd</strong>
+    <nav>
+      <a href="/">Dashboard</a>
+      <a href="/install">Install</a>
+      <a href="/operations">Operations</a>
+      <a href="/settings">Settings</a>
+    </nav>
+    <form method="post" action="/logout" style="margin-left:auto"><button type="submit" class="secondary">Logout</button></form>
+  </header>
+  <main>
+    {{if eq .Page "init"}}{{template "init.html" .}}{{end}}
+    {{if eq .Page "login"}}{{template "login.html" .}}{{end}}
+    {{if eq .Page "dashboard"}}{{template "dashboard.html" .}}{{end}}
+    {{if eq .Page "install"}}{{template "install.html" .}}{{end}}
+    {{if eq .Page "operations"}}{{template "operations.html" .}}{{end}}
+    {{if eq .Page "job"}}{{template "job.html" .}}{{end}}
+    {{if eq .Page "settings"}}{{template "settings.html" .}}{{end}}
+  </main>
+</body>
+</html>
+{{end}}

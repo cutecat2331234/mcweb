@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"runtime"
+	"sync"
 	"time"
 
 	"github.com/mcweb/mcweb-node/internal/client"
@@ -14,23 +15,34 @@ import (
 	"github.com/mcweb/mcweb-node/internal/executor"
 	"github.com/mcweb/mcweb-node/internal/metrics"
 	"github.com/mcweb/mcweb-node/internal/proxy"
+	"github.com/mcweb/mcweb-node/internal/spool"
 )
 
 type Agent struct {
-	cfg      *config.Config
-	client   *client.Client
-	exec     *executor.Executor
-	stats    *proxy.Stats
-	hostname string
+	cfg       *config.Config
+	client    *client.Client
+	exec      *executor.Executor
+	stats     *proxy.Stats
+	hostname  string
+	spool     *spool.Spool
+	pollNow   chan struct{}
+	wakeSince string
+	wakeMu    sync.Mutex
 }
 
 func New(cfg *config.Config, stats *proxy.Stats) *Agent {
+	s, err := spool.New(cfg.SpoolDir)
+	if err != nil {
+		log.Printf("spool disabled: %v", err)
+	}
 	return &Agent{
 		cfg:      cfg,
 		client:   client.New(cfg.RailsURL, cfg.NodeID, cfg.NodeSecret),
 		exec:     executor.New(),
 		stats:    stats,
 		hostname: hostname(),
+		spool:    s,
+		pollNow:  make(chan struct{}, 1),
 	}
 }
 
@@ -43,6 +55,8 @@ func hostname() string {
 }
 
 func (a *Agent) Run(ctx context.Context) {
+	go a.watchEvents(ctx)
+
 	ticker := time.NewTicker(a.cfg.PollInterval)
 	defer ticker.Stop()
 
@@ -52,18 +66,91 @@ func (a *Agent) Run(ctx context.Context) {
 		select {
 		case <-ctx.Done():
 			return
+		case <-a.pollNow:
+			a.tick(ctx)
 		case <-ticker.C:
 			a.tick(ctx)
 		}
 	}
 }
 
-func (a *Agent) tick(ctx context.Context) {
-	a.heartbeat(ctx)
-	a.pollTasks(ctx)
+func (a *Agent) requestPoll() {
+	select {
+	case a.pollNow <- struct{}{}:
+	default:
+	}
 }
 
-func (a *Agent) heartbeat(ctx context.Context) {
+func (a *Agent) watchEvents(ctx context.Context) {
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+
+		since := a.currentWakeSince()
+		err := a.client.StreamEvents(ctx, since, func(event string) {
+			if event == "tasks_available" {
+				a.requestPoll()
+			}
+		})
+		if err != nil && ctx.Err() == nil {
+			log.Printf("event stream ended: %v", err)
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(2 * time.Second):
+		}
+	}
+}
+
+func (a *Agent) currentWakeSince() string {
+	a.wakeMu.Lock()
+	defer a.wakeMu.Unlock()
+	return a.wakeSince
+}
+
+func (a *Agent) setWakeSince(value string) {
+	a.wakeMu.Lock()
+	a.wakeSince = value
+	a.wakeMu.Unlock()
+}
+
+func (a *Agent) tick(ctx context.Context) {
+	a.flushSpool(ctx)
+	urgent := a.heartbeat(ctx)
+	a.pollTasks(ctx)
+	if urgent {
+		a.pollTasks(ctx)
+	}
+}
+
+func (a *Agent) flushSpool(ctx context.Context) {
+	if a.spool == nil {
+		return
+	}
+	items, err := a.spool.List()
+	if err != nil {
+		log.Printf("spool list failed: %v", err)
+		return
+	}
+	for _, item := range items {
+		path := fmt.Sprintf("/minecraft/nodes/%s/tasks/%s/complete", a.cfg.NodeID, item.TaskID)
+		if _, err := a.client.Post(path, item.Body); err != nil {
+			log.Printf("spool replay task %s failed: %v", item.TaskID, err)
+			continue
+		}
+		if err := a.spool.Remove(item.TaskID); err != nil {
+			log.Printf("spool remove task %s failed: %v", item.TaskID, err)
+		}
+	}
+	_ = ctx
+}
+
+func (a *Agent) heartbeat(ctx context.Context) bool {
 	body := map[string]interface{}{
 		"hostname": a.hostname,
 		"metadata": map[string]interface{}{
@@ -77,9 +164,16 @@ func (a *Agent) heartbeat(ctx context.Context) {
 	resp, err := a.client.Post(a.client.NodePath("heartbeat"), body)
 	if err != nil {
 		log.Printf("heartbeat failed: %v", err)
-		return
+		return false
 	}
-	_ = resp
+
+	if wakeAt, ok := resp["tasks_wake_at"].(string); ok && wakeAt != "" {
+		a.setWakeSince(wakeAt)
+	}
+	if urgent, ok := resp["urgent_tasks_pending"].(bool); ok && urgent {
+		return true
+	}
+	return false
 }
 
 func (a *Agent) pollTasks(ctx context.Context) {
@@ -114,9 +208,13 @@ func (a *Agent) handleTask(ctx context.Context, task map[string]interface{}) {
 
 	completeBody := map[string]interface{}{"result": result}
 	path := fmt.Sprintf("/minecraft/nodes/%s/tasks/%s/complete", a.cfg.NodeID, taskID)
-	_, err := a.client.Post(path, completeBody)
-	if err != nil {
+	if _, err := a.client.Post(path, completeBody); err != nil {
 		log.Printf("complete task %s failed: %v", taskID, err)
+		if a.spool != nil {
+			if spoolErr := a.spool.Enqueue(taskID, completeBody); spoolErr != nil {
+				log.Printf("spool task %s failed: %v", taskID, spoolErr)
+			}
+		}
 	}
 }
 
@@ -162,7 +260,6 @@ func enrichTask(task map[string]interface{}) map[string]interface{} {
 	if payload == nil {
 		payload = map[string]interface{}{}
 	}
-	// payload from Rails may already include process fields
 	task["payload"] = payload
 	return task
 }
@@ -172,4 +269,3 @@ func _debug(v interface{}) string {
 	b, _ := json.Marshal(v)
 	return string(b)
 }
-

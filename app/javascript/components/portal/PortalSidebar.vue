@@ -26,7 +26,7 @@ const navOptions = computed(() => ({
 }))
 
 const { navGroups, isActive, isSectionActive, currentPath } = usePortalNav(navOptions)
-const { activeTemplate } = useActiveTemplate()
+const { activeTemplate, portalSidebarExtraSlot } = useActiveTemplate()
 const page = usePage()
 const minecraftServers = computed(() => page.props.minecraft_servers as Array<{ name: string; online: number; max: number; status: string; anomaly?: boolean }> | undefined)
 const minecraftHealth = computed(() => page.props.minecraft_health as { alert?: boolean; stale_nodes?: number; process_mismatch?: number; maintenance?: number } | undefined)
@@ -126,6 +126,8 @@ watch(
         <X class="h-5 w-5" />
       </Button>
     </div>
+
+    <div v-if="portalSidebarExtraSlot" class="px-3 pt-3 text-sm text-sidebar-foreground/80" v-html="portalSidebarExtraSlot" />
 
     <div v-if="showPortalSectionTabs" class="p-3">
       <div

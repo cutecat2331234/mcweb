@@ -1028,6 +1028,9 @@
           col_type: 类型
           col_published: 发布时间
           field_summary: 摘要
+      system:
+        applications:
+          title: 应用与扩展
       dashboard:
         metrics:
           users: 用户

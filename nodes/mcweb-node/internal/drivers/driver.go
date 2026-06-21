@@ -36,6 +36,8 @@ func For(driver string) Driver {
 		return &DockerDriver{}
 	case "script":
 		return &ScriptDriver{}
+	case "nssm":
+		return &NssmDriver{}
 	default:
 		return &ScriptDriver{}
 	}

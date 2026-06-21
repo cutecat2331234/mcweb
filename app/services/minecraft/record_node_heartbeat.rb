@@ -30,6 +30,8 @@ module Minecraft
       ServiceResult.success(
         node_id: @node.public_id,
         status: "ok",
+        urgent_tasks_pending: @node.node_tasks.where(status: :pending, priority: "urgent").exists?,
+        tasks_wake_at: @node.tasks_wake_at&.iso8601,
         instances: serialize_instances
       )
     end

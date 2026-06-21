@@ -1,5 +1,25 @@
 # 安装指南
 
+McWeb 支持两种安装路径：
+
+| 路径 | 说明 |
+|------|------|
+| **宿主机控制台（推荐）** | 安装 [`mcweb-hostd`](docs/HOSTD.md)，在控制台内完成部署、数据库、站点与管理员配置，**无需**访问 `/setup`。 |
+| **手动安装** | 按下方脚本部署后，浏览器打开 **`/setup`** 完成网页向导。 |
+
+## 宿主机控制台（mcweb-hostd）
+
+详见 [docs/HOSTD.md](docs/HOSTD.md)。简要步骤：
+
+```bash
+sudo install -m 755 mcweb-hostd /usr/local/bin/
+sudo mkdir -p /etc/mcweb
+sudo cp host/mcweb-hostd/config/hostd.example.yml /etc/mcweb/hostd.yml
+sudo mcweb-hostd init
+sudo systemctl enable --now mcweb-hostd
+# 浏览器访问 :8787，完成 Install 向导
+```
+
 ## 前置条件
 
 - Ubuntu 22.04/24.04 或 Debian 12+ x86_64
@@ -49,11 +69,14 @@ sudo systemctl enable --now mcweb-web mcweb-worker caddy
 
 ## 初始化向导
 
-安装后访问 `/setup`：
+**手动安装路径**：安装后访问 `/setup`：
 
-1. 站点信息
-2. 管理员账号
-3. 完成后自动锁定安装入口
+1. 数据库连接
+2. 站点信息
+3. 管理员账号
+4. 完成后自动锁定安装入口
+
+**控制台路径**：在 hostd `/install` 向导中完成上述步骤，安装锁定后 `/setup` 不可再访问。
 
 ## Minecraft Connector 插件
 

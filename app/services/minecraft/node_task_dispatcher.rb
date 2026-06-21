@@ -28,11 +28,7 @@ module Minecraft
       Minecraft::NodeTask.transaction do
         reclaim_stale_claimed_tasks!
 
-        pending = Minecraft::NodeTask
-          .lock
-          .where(node: @node, status: "pending")
-          .order(:created_at)
-          .limit(10)
+        pending = @node.node_tasks.claimable.lock.limit(10)
 
         pending.each do |task|
           task.update!(status: "claimed", claimed_at: Time.current)

@@ -1,11 +1,14 @@
 package client
 
 import (
+	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/mcweb/mcweb-node/internal/auth"
@@ -106,4 +109,49 @@ func (c *Client) do(method, path string, body interface{}) (map[string]interface
 
 func (c *Client) NodePath(suffix string) string {
 	return fmt.Sprintf("/minecraft/nodes/%s/%s", c.nodeID, suffix)
+}
+
+// StreamEvents opens the Rails SSE push channel until ctx is cancelled or an event arrives.
+func (c *Client) StreamEvents(ctx context.Context, since string, onEvent func(event string)) error {
+	path := c.NodePath("events")
+	if since != "" {
+		path += "?since=" + since
+	}
+
+	ts := auth.Timestamp()
+	sig := auth.Sign(c.secret, "", ts)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, c.baseURL+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("X-Node-Timestamp", fmt.Sprintf("%d", ts))
+	req.Header.Set("X-Node-Signature", sig)
+	req.Header.Set("Accept", "text/event-stream")
+
+	client := &http.Client{Timeout: 70 * time.Second}
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode >= 400 {
+		data, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(data))
+	}
+
+	scanner := bufio.NewScanner(resp.Body)
+	var eventName string
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "event:") {
+			eventName = strings.TrimSpace(strings.TrimPrefix(line, "event:"))
+		}
+		if line == "" && eventName != "" {
+			onEvent(eventName)
+			return nil
+		}
+	}
+	return scanner.Err()
 }

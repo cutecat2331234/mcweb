@@ -91,6 +91,7 @@ export const adminRoutes = {
   minecraftServer: (id: string | number) => `/admin/minecraft/servers/${id}`,
   settings: '/admin/system/settings',
   featureToggles: '/admin/system/feature-toggles',
+  applications: '/admin/system/applications',
   jobs: '/admin/system/jobs',
   site: '/',
 } as const

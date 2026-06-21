@@ -1,0 +1,12 @@
+listen: ":8787"
+secret_key: ""
+admin_username: ""
+admin_password_hash: ""
+mcweb_root: "/opt/mcweb/current"
+mcweb_env_file: "/etc/mcweb/mcweb.env"
+compose_dir: "/opt/mcweb/docker"
+deploy_mode: "native"
+release_url: "https://github.com/your-org/mcweb/releases/download"
+health_url: "http://127.0.0.1:3000"
+job_log_dir: "/var/log/mcweb/hostd/jobs"
+initialized: false

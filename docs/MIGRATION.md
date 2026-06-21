@@ -29,18 +29,26 @@ sudo -u mcweb bundle exec rails db:migrate
 | `backup_enabled` / `backup_schedule` | 每服备份 |
 | `world_directory` | 相对世界目录，默认 `world` |
 
-## 未来工作（未实现）
+## 已实现（2026-06-20）
 
-以下能力在 Phase 5 中仅作规划，尚未落地：
+### 紧急任务推送（SSE）
 
-### Rails 离线 spool buffer
+`stop_instance` / `restart_instance` 标记为 `urgent` 优先级，并更新节点的 `tasks_wake_at`。节点通过 `GET /minecraft/nodes/:id/events`（SSE）接收 `tasks_available` 事件后立即拉取任务；心跳响应亦含 `urgent_tasks_pending` 与 `tasks_wake_at` 作为兜底。
 
-当节点长时间不可达时，将 NodeTask 暂存本地 spool 并在恢复后重放，避免任务丢失。当前依赖 PostgreSQL 持久化 + 节点轮询拉取。
+### 节点 completion spool
 
-### WebSocket 紧急任务推送
-
-用 WebSocket 从 Rails 向节点推送高优先级任务（如紧急停服），替代纯 HTTP 轮询以降低延迟。
+`mcweb-node` 在无法向 Rails 回报任务完成时，将结果写入本地 `spool/` 目录（配置项 `spool_dir`），下次 tick 自动重放。
 
 ### Windows nssm 进程 driver
 
-在 `mcweb-node` 增加 `nssm` driver，支持将 MC 实例注册为 Windows 服务。当前 Windows 节点仅支持 `script` driver 与指标采集。
+在 `mcweb-node` 增加 `nssm` driver，配置示例：`{"service": "McWeb-Survival", "nssm_path": "C:\\nssm\\nssm.exe"}`。后台服务器表单的进程 driver 选项已包含 `nssm`。
+
+## 未来工作（未实现）
+
+### Website::Theme 与 ZIP 模板合并
+
+数据库 `website_themes` 仍为遗留字段，前台主题以 `Frontend::Template`（ZIP）为准。
+
+### 插槽内 theme_asset 占位符
+
+在 HTML 插槽中支持 `{{theme_asset:path}}` 语法，尚未实现。

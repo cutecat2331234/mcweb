@@ -27,7 +27,7 @@ const forumModerationPending = computed(() => page.props.forum_moderation_pendin
 const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
-const { activeTemplate, tokenStyle, portalHeaderExtraSlot } = useActiveTemplate()
+const { activeTemplate, tokenStyle, portalHeaderExtraSlot, portalFooterSlot } = useActiveTemplate()
 const { isDark, toggleTheme } = useTheme()
 const { features } = useFeatureFlags()
 
@@ -237,5 +237,7 @@ const sidebarProps = computed(() => ({
     </div>
 
     <ForumShortcuts v-if="features.forum" />
+
+    <footer v-if="portalFooterSlot" class="portal-footer border-t border-border bg-background px-4 py-6 sm:px-6" v-html="portalFooterSlot" />
   </div>
 </template>

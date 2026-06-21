@@ -11,6 +11,8 @@
     "css": ["styles/theme.css"]
   },
   "slots": {
-    "website_footer": "slots/website_footer.html"
+    "website_footer": "slots/website_footer.html",
+    "portal_sidebar_extra": "slots/portal_sidebar_extra.html",
+    "portal_footer": "slots/portal_footer.html"
   }
 }

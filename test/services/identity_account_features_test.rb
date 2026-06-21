@@ -76,6 +76,76 @@ class AdminWebsitePagesTest < ActiveSupport::TestCase
   end
 end
 
+class AdminWebsitePagesIntegrationTest < ActionDispatch::IntegrationTest
+  setup do
+    @admin = create_user
+    grant_permission(@admin, "admin.access")
+    grant_permission(@admin, "website.pages.edit")
+  end
+
+  test "admin creates website page" do
+    sign_in_as(@admin)
+    slug = "about-#{SecureRandom.hex(4)}"
+
+    assert_difference -> { Website::Page.count }, 1 do
+      post admin_website_pages_path, params: {
+        page: { title: "About", slug: slug, page_type: "custom", status: "draft" }
+      }
+    end
+
+    page = Website::Page.find_by!(slug: slug)
+    assert_redirected_to admin_website_page_path(page)
+  end
+end
+
+class MinecraftNodeUrgentTaskTest < ActiveSupport::TestCase
+  setup do
+    @node = Minecraft::Node.create!(name: "Urgent Node", status: :offline)
+    @server = Minecraft::Server.create!(
+      name: "Survival",
+      node: @node,
+      process_driver: "script",
+      working_directory: "/opt/mc"
+    )
+  end
+
+  test "stop_instance enqueues urgent task and wakes node" do
+    result = Minecraft::EnqueueNodeTask.call(
+      node: @node,
+      server: @server,
+      task_type: "stop_instance"
+    )
+
+    assert result.success?
+    task = result.value[:task]
+    assert_equal "urgent", task.priority
+    assert @node.reload.tasks_wake_at.present?
+  end
+
+  test "claimable scope returns urgent tasks first" do
+    normal = Minecraft::NodeTask.create!(
+      node: @node,
+      task_type: "collect_metrics",
+      delivery_id: SecureRandom.uuid,
+      status: "pending",
+      priority: "normal",
+      payload: {}
+    )
+    urgent = Minecraft::NodeTask.create!(
+      node: @node,
+      server: @server,
+      task_type: "stop_instance",
+      delivery_id: SecureRandom.uuid,
+      status: "pending",
+      priority: "urgent",
+      payload: {}
+    )
+
+    claimed = @node.node_tasks.claimable.limit(2).pluck(:id)
+    assert_equal [ urgent.id, normal.id ], claimed
+  end
+end
+
 class MinecraftNodeMetricMetadataTest < ActiveSupport::TestCase
   setup do
     @node = Minecraft::Node.create!(name: "meta-node", public_id: "node-meta-#{SecureRandom.hex(4)}")

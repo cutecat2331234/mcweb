@@ -183,7 +183,10 @@ module Minecraft
       end
 
       def task_result_params
-        params.fetch(:result, {}).permit(:success, :status, :message, :error, :output, :detail, data: {}).to_h
+        result = params.fetch(:result, {})
+        return {} unless result.respond_to?(:permit)
+
+        result.permit(:success, :status, :message, :error, :output, :detail, data: {}).to_h
       end
 
       def serialize_task(task)

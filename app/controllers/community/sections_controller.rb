@@ -10,7 +10,7 @@ module Community
     def index
       scope = Community::Section.roots.ordered.includes(:category, :children)
       scope = scope.where(login_required: false) unless logged_in?
-      @pagy, sections = pagy(scope, limit: 20)
+      @pagy, sections = pagy(:offset, scope, limit: 20)
       unread_map = if logged_in?
                      sections.each_with_object({}) do |section, hash|
                        hash[section.id] = Community::ReadState.unread_count_for_section(current_user, section)
@@ -60,7 +60,7 @@ module Community
       featured = preload_topics(section.topics.featured_topics.pinned_first.limit(5))
       featured = filter_blocked_topics(featured)
 
-      @pagy, topics = pagy(scope, limit: 20)
+      @pagy, topics = pagy(:offset, scope, limit: 20)
       read_states = if logged_in?
                       Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id) + featured.map(&:id)).index_by(&:forum_topic_id)
       else

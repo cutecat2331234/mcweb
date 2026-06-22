@@ -165,8 +165,8 @@ module Community
         end
       end
 
-      @pagy_topics, topics = pagy(topics, limit: 15, page_param: :topic_page)
-      @pagy_posts, posts = pagy(posts, limit: 15, page_param: :post_page)
+      @pagy_topics, topics = pagy(:offset, topics, limit: 15, page_key: 'topic_page')
+      @pagy_posts, posts = pagy(:offset, posts, limit: 15, page_key: 'post_page')
 
       sections = Community::Section.ordered.includes(:category).map do |section|
         { slug: section.slug, name: section.name, category: section.category&.name }

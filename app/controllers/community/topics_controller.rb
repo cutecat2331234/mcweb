@@ -44,7 +44,7 @@ module Community
         target_page = Community::ReadState.page_for_floor(first_unread_floor, per_page: per_page)
       end
 
-      @pagy, posts = pagy(posts_scope, limit: per_page, page: target_page)
+      @pagy, posts = pagy(:offset, posts_scope, limit: per_page, page: target_page)
       mark_topic_read!(posts) unless params[:unread] == "1"
       last_read_floor = logged_in? ? Community::ReadState.find_by(user: current_user, topic: @topic)&.last_read_floor.to_i : 0
       topic_bookmark = if logged_in?

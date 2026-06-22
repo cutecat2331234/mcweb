@@ -4,7 +4,7 @@ plugins {
 
 dependencies {
     implementation(project(":mcweb-connector-common"))
-    compileOnly("com.velocitypowered:velocity-api:3.3.0-SNAPSHOT")
+    compileOnly("com.velocitypowered:velocity-api:3.4.0-SNAPSHOT")
 }
 
 java {

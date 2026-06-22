@@ -8,7 +8,7 @@ module Admin
 
       def index
         scope = ::Community::Topic.includes(:user, :section).order(last_posted_at: :desc)
-        @pagy, topics = pagy(scope, limit: 30)
+        @pagy, topics = pagy(:offset, scope, limit: 30)
 
         render inertia: "Admin/Generic/Index", props: {
           title: forum_t("topics.title"),

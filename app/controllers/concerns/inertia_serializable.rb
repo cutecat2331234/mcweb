@@ -12,7 +12,7 @@ module InertiaSerializable
       count: pagy.count,
       from: pagy.from,
       to: pagy.to,
-      prev: pagy.prev,
+      prev: pagy.previous,
       next: pagy.next
     }
   end

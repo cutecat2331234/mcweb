@@ -17,7 +17,7 @@ module Community
       scope = filter_blocked_topics(scope)
       scope = apply_forum_topic_sort(scope, sort)
 
-      @pagy, topics = pagy(scope, limit: 20)
+      @pagy, topics = pagy(:offset, scope, limit: 20)
       read_states = Community::ReadState
         .where(user: current_user, forum_topic_id: topics.map(&:id))
         .index_by(&:forum_topic_id)

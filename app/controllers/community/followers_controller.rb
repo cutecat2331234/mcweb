@@ -5,7 +5,7 @@ module Community
     def index
       user = User.find_by!(username: params[:username])
       scope = Community::UserFollow.where(followed: user).includes(:follower).order(created_at: :desc)
-      @pagy, follows = pagy(scope, limit: 30)
+      @pagy, follows = pagy(:offset, scope, limit: 30)
 
       render inertia: "Community/Followers/Index", props: {
         profile: {

@@ -17,7 +17,7 @@ module Commerce
       orders_scope = apply_created_at_filters(orders_scope)
       orders_scope = apply_total_filters(orders_scope)
 
-      @pagy, orders = pagy(orders_scope, limit: 20)
+      @pagy, orders = pagy(:offset, orders_scope, limit: 20)
 
       render inertia: "Commerce/Orders/Index", props: {
         orders: orders.map { |order| serialize_order_list_item(order) },

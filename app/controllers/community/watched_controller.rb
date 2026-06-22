@@ -17,7 +17,7 @@ module Community
       topics_scope = filter_blocked_topics(topics_scope)
       topics_scope = apply_forum_topic_sort(topics_scope, sort)
 
-      @pagy, topics = pagy(topics_scope, limit: 20)
+      @pagy, topics = pagy(:offset, topics_scope, limit: 20)
 
       read_states = Community::ReadState
         .where(user: current_user, forum_topic_id: topics.map(&:id))
@@ -63,7 +63,7 @@ module Community
       topics_scope = preload_topics(Community::Topic.where(id: topic_ids, status: :published, unlisted: false))
       topics_scope = filter_blocked_topics(topics_scope)
       topics_scope = apply_forum_topic_sort(topics_scope, sort)
-      @pagy, topics = pagy(topics_scope, limit: 20)
+      @pagy, topics = pagy(:offset, topics_scope, limit: 20)
 
       read_states = Community::ReadState
         .where(user: current_user, forum_topic_id: topics.map(&:id))

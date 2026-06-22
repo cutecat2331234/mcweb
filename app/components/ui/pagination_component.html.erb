@@ -1,7 +1,7 @@
 <nav aria-label="Pagination">
   <ul class="mc-pagination">
-    <% if pagy.prev %>
-      <li><%= link_to "‹", url_for(page: pagy.prev), rel: "prev" %></li>
+    <% if pagy.previous %>
+      <li><%= link_to "‹", url_for(page: pagy.previous), rel: "prev" %></li>
     <% else %>
       <li><span class="disabled">‹</span></li>
     <% end %>

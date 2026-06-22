@@ -15,7 +15,7 @@ module Community
       page = params[:page].to_i
       page = last_page if page < 1
 
-      @pagy, messages = pagy(scope, page: page, limit: limit)
+      @pagy, messages = pagy(:offset, scope, page: page, limit: limit)
       participants_by_user = conversation.participants.index_by(&:user_id)
 
       {

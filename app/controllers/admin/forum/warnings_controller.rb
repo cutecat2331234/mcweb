@@ -16,7 +16,7 @@ module Admin
           return export_warnings(warnings.limit(5000))
         end
 
-        @pagy, warnings = pagy(warnings, limit: 50)
+        @pagy, warnings = pagy(:offset, warnings, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: forum_t("warnings.title"),

@@ -65,10 +65,10 @@ module Community
       posts_scope = posts_scope.merge(Community::Topic.accessible_by(current_user))
       posts_scope = posts_scope.includes(:topic).order(created_at: :desc)
       posts_count = posts_scope.count
-      @pagy_topics, topics = pagy(preload_topics(topics_scope), limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
-      @pagy_posts, posts = pagy(posts_scope, limit: 20, page: [ params[:posts_page].to_i, 1 ].max)
+      @pagy_topics, topics = pagy(:offset, preload_topics(topics_scope), limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
+      @pagy_posts, posts = pagy(:offset, posts_scope, limit: 20, page: [ params[:posts_page].to_i, 1 ].max)
       assigned_scope = Community::Topic.published_listed.accessible_by(current_user).where(assigned_to: user).order(last_posted_at: :desc)
-      @pagy_assigned, assigned_topics = pagy(preload_topics(assigned_scope), limit: 20, page: [ params[:assigned_page].to_i, 1 ].max)
+      @pagy_assigned, assigned_topics = pagy(:offset, preload_topics(assigned_scope), limit: 20, page: [ params[:assigned_page].to_i, 1 ].max)
       trust = Community::TrustLevel.level_info(user)
       progress = Community::TrustLevel.progress_for(user)
       liked_rows = Community::Post.where(user: user, status: :published)

@@ -62,7 +62,7 @@ module Commerce
                                  {}
       end
 
-      @pagy, products = pagy(scope, limit: 20)
+      @pagy, products = pagy(:offset, scope, limit: 20)
       categories = Commerce::Category.ordered
       category_query = index_filter_params
 
@@ -191,7 +191,7 @@ module Commerce
 
       review_page = [ params[:review_page].to_i, 1 ].max
       per_page = 10
-      @pagy_reviews, reviews = pagy(reviews_scope, page: review_page, limit: per_page)
+      @pagy_reviews, reviews = pagy(:offset, reviews_scope, page: review_page, limit: per_page)
       reviews_count = product.reviews.published.count
       avg = product.reviews.published.average(:rating)&.round(1)
       rating_breakdown = product.reviews.published.group(:rating).count
@@ -224,7 +224,7 @@ module Commerce
       end
       question_page = [ params[:question_page].to_i, 1 ].max
       question_sort = params[:question_sort].to_s.presence || "newest"
-      @pagy_questions, questions = pagy(questions_scope, limit: 10, page: question_page)
+      @pagy_questions, questions = pagy(:offset, questions_scope, limit: 10, page: question_page)
 
       price_alert = logged_in? ? Commerce::PriceAlert.find_by(user: current_user, product: product) : nil
 

@@ -33,7 +33,7 @@ module Commerce
       else scope.order(created_at: :desc)
       end
 
-      @pagy, products = pagy(scope, limit: 20)
+      @pagy, products = pagy(:offset, scope, limit: 20)
 
       render inertia: "Commerce/Categories/Show", props: {
         category: {

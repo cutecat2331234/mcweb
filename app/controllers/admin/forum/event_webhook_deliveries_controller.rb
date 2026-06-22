@@ -15,7 +15,7 @@ module Admin
         scope = scope.where(event_type: params[:event]) if params[:event].present?
         scope = apply_webhook_kind_scope(scope)
         scope = apply_webhook_date_scope(scope)
-        @pagy, deliveries = pagy(scope, limit: 50)
+        @pagy, deliveries = pagy(:offset, scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: t("mcweb.admin.forum.event_webhook_deliveries.title"),

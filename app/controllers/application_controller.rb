@@ -4,7 +4,7 @@ class ApplicationController < ActionController::Base
   include InstallationGuard
   include FeatureGuard
   include ServiceResponder
-  include Pagy::Backend
+  include Pagy::Method
   include InertiaSerializable
   include BlockedUsersFilterable
   include TouchLastSeen

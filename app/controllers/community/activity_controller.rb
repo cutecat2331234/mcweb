@@ -34,7 +34,7 @@ module Community
         scope = scope.where.not(user_id: blocked_ids) if blocked_ids.any?
       end
 
-      @pagy, posts = pagy(scope, limit: 30)
+      @pagy, posts = pagy(:offset, scope, limit: 30)
 
       render inertia: "Community/Activity/Index", props: activity_props(
         tab: tab,
@@ -55,7 +55,7 @@ module Community
       scope = scope.joins(:topic).merge(Community::Topic.where(status: :published, unlisted: false).accessible_by(current_user))
       scope = scope.where.not(forum_topics: { user_id: blocked_user_ids }) if blocked_user_ids.any?
 
-      @pagy, posts = pagy(scope, limit: 30)
+      @pagy, posts = pagy(:offset, scope, limit: 30)
 
       render inertia: "Community/Activity/Index", props: activity_props(
         tab: tab,
@@ -68,7 +68,7 @@ module Community
       scope = preload_topics(Community::Topic.published_listed.accessible_by(current_user).joins(:section))
       scope = filter_blocked_topics(scope) if logged_in?
       scope = apply_forum_topic_sort(scope, sort)
-      @pagy, topics = pagy(scope, limit: 30)
+      @pagy, topics = pagy(:offset, scope, limit: 30)
 
       read_states = if logged_in?
                       Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id)).index_by(&:forum_topic_id)

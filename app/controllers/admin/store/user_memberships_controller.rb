@@ -11,7 +11,7 @@ module Admin
         scope = scope.where(store_membership_type_id: params[:membership_type_id]) if params[:membership_type_id].present?
         scope = scope.where(status: params[:status]) if params[:status].present?
 
-        @pagy, memberships = pagy(scope, limit: 50)
+        @pagy, memberships = pagy(:offset, scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: t("mcweb.admin.store.user_memberships.title"),

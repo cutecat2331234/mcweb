@@ -8,7 +8,7 @@ CONFIG_DIR="/etc/mcweb"
 DATA_DIR="/var/lib/mcweb"
 LOG_DIR="/var/log/mcweb"
 BACKUP_DIR="/var/backups/mcweb"
-RUBY_VERSION="3.4.9"
+RUBY_VERSION="4.0.5"
 
 usage() {
   cat <<EOF

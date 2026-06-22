@@ -14,7 +14,7 @@ module Community
       scope = apply_member_sort(scope, sort)
       scope = apply_trust_level_filter(scope, trust_level) if trust_level.present?
 
-      @pagy, members = pagy(scope, limit: 30)
+      @pagy, members = pagy(:offset, scope, limit: 30)
       stats = member_stats(members)
 
       render inertia: "Community/Members/Index", props: {

@@ -66,7 +66,7 @@ module Community
       topic_ids = tag.topics.published_listed.merge(Community::Topic.accessible_by(current_user)).pluck(:id)
       scope = preload_topics(Community::Topic.where(id: topic_ids).sorted(sort))
       scope = filter_blocked_topics(scope)
-      @pagy, topics = pagy(scope, limit: 20)
+      @pagy, topics = pagy(:offset, scope, limit: 20)
 
       read_states = if logged_in?
                       Community::ReadState.where(user: current_user, forum_topic_id: topics.map(&:id)).index_by(&:forum_topic_id)

@@ -13,7 +13,7 @@ module Community
 
     def show
       badge = Community::Badge.find_by!(slug: params[:id])
-      @pagy, user_badges = pagy(
+      @pagy, user_badges = pagy(:offset, 
         badge.user_badges.includes(:user).order(granted_at: :desc),
         limit: 30
       )

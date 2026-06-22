@@ -25,7 +25,7 @@ module Community
         conversations_scope = conversations_scope.where(id: conversation_ids)
       end
 
-      @pagy, conversations = pagy(conversations_scope, limit: 30)
+      @pagy, conversations = pagy(:offset, conversations_scope, limit: 30)
       conversation_ids = conversations.map(&:id)
       unread_counts = Community::Conversation.unread_counts_for(current_user, conversation_ids)
       last_previews = Community::Conversation.last_message_previews_for(conversation_ids)

@@ -4,7 +4,7 @@ module Community
   class CategoriesController < ApplicationController
     def show
       category = Community::Category.find_by!(slug: params[:slug])
-      @pagy, sections = pagy(category.sections.roots.ordered.includes(:category, :children), limit: 20)
+      @pagy, sections = pagy(:offset, category.sections.roots.ordered.includes(:category, :children), limit: 20)
       unread_map = if logged_in?
                      sections.each_with_object({}) do |section, hash|
                        hash[section.id] = Community::ReadState.unread_count_for_section(current_user, section)

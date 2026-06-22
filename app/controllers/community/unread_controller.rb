@@ -18,7 +18,7 @@ module Community
       scope = scope.includes(topic: TOPIC_LIST_INCLUDES)
       scope = apply_forum_topic_sort(scope, sort)
 
-      @pagy, read_states = pagy(scope, limit: 20)
+      @pagy, read_states = pagy(:offset, scope, limit: 20)
       topics = read_states.map(&:topic)
       states_by_topic = read_states.index_by(&:forum_topic_id)
 

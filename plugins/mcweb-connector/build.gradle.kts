@@ -18,7 +18,7 @@ subprojects {
     }
 
     dependencies {
-        testImplementation("org.junit.jupiter:junit-jupiter:5.10.2")
+        testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
     }
 
     tasks.test {

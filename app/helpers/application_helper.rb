@@ -1,6 +1,4 @@
 module ApplicationHelper
-  include Pagy::Frontend
-
   def format_shipping_address(address)
     return nil unless address.is_a?(Hash) && address.values.any?(&:present?)
 

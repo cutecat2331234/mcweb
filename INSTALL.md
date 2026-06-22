@@ -212,7 +212,7 @@ REDIS_URL=redis://127.0.0.1:6379/0
 
 ## 决策记录
 
-- **Ruby 3.4.9 而非 4.0**：Rails 8.1 生态在 3.4.x 上最稳定；4.0 发布后将在下一版本评估升级
+- **Ruby 4.0.5**：与 Rails 8.1.3 配套使用
 - **无 Docker 默认依赖**：降低服主部署门槛，使用 systemd + Caddy 原生部署
 - **Sidekiq + Redis 处理后台任务**：替代原 Solid Queue（PostgreSQL 队列）；`solid_cache` 仍基于 PostgreSQL，Redis 仅用于任务队列
 - **PostgreSQL 18**：通过 PGDG 源安装最新稳定版，避免发行版默认版本滞后

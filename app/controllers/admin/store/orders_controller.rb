@@ -15,7 +15,7 @@ module Admin
         if params[:status].present?
           orders_scope = orders_scope.where(status: params[:status])
         end
-        @pagy, orders = pagy(orders_scope, limit: 50)
+        @pagy, orders = pagy(:offset, orders_scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: t("mcweb.admin.store.orders.title"),

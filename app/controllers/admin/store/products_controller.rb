@@ -12,7 +12,7 @@ module Admin
           q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].to_s.strip)}%"
           products_scope = products_scope.where("name ILIKE :q OR slug ILIKE :q", q: q)
         end
-        @pagy, products = pagy(products_scope, limit: 50)
+        @pagy, products = pagy(:offset, products_scope, limit: 50)
 
         render inertia: "Admin/Generic/Index", props: {
           title: t("mcweb.admin.store.products.title"),

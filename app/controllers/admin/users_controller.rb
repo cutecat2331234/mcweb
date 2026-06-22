@@ -13,7 +13,7 @@ module Admin
         q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].to_s.strip)}%"
         users_scope = users_scope.where("username ILIKE :q OR email ILIKE :q", q: q)
       end
-      @pagy, users = pagy(users_scope, limit: 50)
+      @pagy, users = pagy(:offset, users_scope, limit: 50)
 
       render inertia: "Admin/Generic/Index", props: {
         title: "用户",

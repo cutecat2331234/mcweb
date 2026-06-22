@@ -52,7 +52,8 @@ module Minecraft
       def parse_since_param
         return 1.hour.ago if params[:since].blank?
 
-        Time.zone.parse(params[:since].to_s)
+        parsed = Time.zone.parse(params[:since].to_s)
+        parsed.presence || 1.hour.ago
       rescue ArgumentError
         1.hour.ago
       end

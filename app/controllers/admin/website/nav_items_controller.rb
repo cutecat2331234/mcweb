@@ -21,6 +21,8 @@ module Admin
 
       def create
         item = ::Website::NavItem.new(nav_item_params)
+        return redirect_with_page_error if @invalid_page_reference
+
         item.position = (::Website::NavItem.where(location: item.location).maximum(:position) || -1) + 1
 
         if item.save
@@ -31,6 +33,8 @@ module Admin
       end
 
       def update
+        return redirect_with_page_error if @invalid_page_reference
+
         if @nav_item.update(nav_item_params)
           redirect_to admin_website_nav_items_path, notice: t("mcweb.flash.updated", resource: "Nav item")
         else
@@ -68,15 +72,26 @@ module Admin
       end
 
       def resolve_page_public_id!(permitted)
+        @invalid_page_reference = false
         ref = permitted[:website_page_id]
         return if ref.blank?
 
         if ref.to_s.match?(/\A\d+\z/)
           permitted[:website_page_id] = ref.to_i
         else
-          page = ::Website::Page.find_by!(public_id: ref)
+          page = ::Website::Page.find_by(public_id: ref)
+          unless page
+            @invalid_page_reference = true
+            permitted.delete(:website_page_id)
+            return
+          end
           permitted[:website_page_id] = page.id
         end
+      end
+
+      def redirect_with_page_error
+        redirect_to admin_website_nav_items_path,
+                    alert: t("mcweb.admin.website.nav.invalid_page", default: "Selected page was not found")
       end
 
       def serialize_nav_item(item)

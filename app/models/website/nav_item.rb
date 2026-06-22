@@ -32,7 +32,7 @@ module Website
         return
       end
 
-      if url.match?(/\A(javascript:|data:|\/\/)/i)
+      if url.match?(/\A(javascript:|data:|vbscript:|\/\/)/i)
         errors.add(:url, "不允许使用该协议")
       end
     end

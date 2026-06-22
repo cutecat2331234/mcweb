@@ -151,6 +151,62 @@ class IntegrationActionIdempotentRetryTest < ActiveSupport::TestCase
   end
 end
 
+class IntegrationActionPendingEffectsTest < ActiveSupport::TestCase
+  test "marks failed when notification cannot be delivered" do
+    uuid = "550e8400-e29b-41d4-a716-446655440022"
+    Minecraft::PlayerRef.resolve(uuid: uuid, platform: "java", username: "Unlinked")
+
+    Minecraft::IntegrationAction.create!(
+      name: "Notify only",
+      event_key: "player.join",
+      conditions: {},
+      actions: [ { "type" => "create_notification", "title" => "Hi", "body" => "joined" } ],
+      enabled: true
+    )
+
+    event_id = "evt-pending-#{SecureRandom.hex(4)}"
+    result = Minecraft::Integration::ActionRunner.call(
+      event_key: "player.join",
+      event_id: event_id,
+      payload: { "uuid" => uuid, "platform" => "java", "username" => "Unlinked" }
+    )
+
+    assert result.failure?
+    log = Minecraft::IntegrationActionLog.find_by!(event_id: event_id)
+    assert_equal "failed", log.status
+    assert_includes log.error_message, "pending effects"
+    assert_equal 0, Notification.count
+  end
+
+  test "reclaims stale processing logs" do
+    event_id = "evt-stale-#{SecureRandom.hex(4)}"
+    log = Minecraft::IntegrationActionLog.create!(
+      event_key: "player.join",
+      event_id: event_id,
+      payload: {},
+      status: "processing",
+      updated_at: 20.minutes.ago
+    )
+
+    Minecraft::IntegrationAction.create!(
+      name: "Stale retry",
+      event_key: "player.join",
+      conditions: {},
+      actions: [ { "type" => "set_profile_field", "field_key" => "x", "value" => "1" } ],
+      enabled: true
+    )
+
+    result = Minecraft::Integration::ActionRunner.call(
+      event_key: "player.join",
+      event_id: event_id,
+      payload: {}
+    )
+
+    assert result.failure?
+    assert_equal "failed", log.reload.status
+  end
+end
+
 class MinecraftNodeEventsPollTest < ActionDispatch::IntegrationTest
   setup do
     @node = Minecraft::Node.create!(name: "Events Node", status: :online)
@@ -174,6 +230,16 @@ class MinecraftNodeEventsPollTest < ActionDispatch::IntegrationTest
 
     get "/minecraft/nodes/#{@node.public_id}/events",
         params: { since: Time.current.iso8601 },
+        headers: node_headers("")
+
+    assert_response :no_content
+  end
+
+  test "invalid since parameter does not error" do
+    @node.update!(tasks_wake_at: nil)
+
+    get "/minecraft/nodes/#{@node.public_id}/events",
+        params: { since: "not-a-timestamp" },
         headers: node_headers("")
 
     assert_response :no_content

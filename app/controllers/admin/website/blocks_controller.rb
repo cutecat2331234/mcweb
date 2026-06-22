@@ -32,8 +32,10 @@ module Admin
       end
 
       def reorder
-        Array(params[:block_ids]).each_with_index do |id, index|
-          @page.blocks.find(id).update!(position: index)
+        ::Website::Block.transaction do
+          Array(params[:block_ids]).each_with_index do |id, index|
+            @page.blocks.find(id).update!(position: index)
+          end
         end
         redirect_to edit_admin_website_page_path(@page)
       end

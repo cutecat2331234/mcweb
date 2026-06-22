@@ -3,6 +3,8 @@
 module Minecraft
   module Integration
     class ActionRunner < ApplicationService
+      STALE_PROCESSING_AFTER = 10.minutes
+
       def self.acquire_or_enqueue(event_key:, event_id:, payload: {})
         return ServiceResult.failure(error: "event_id required") if event_id.blank?
 
@@ -46,11 +48,20 @@ module Minecraft
         return ServiceResult.success(skipped: true) unless log
 
         tracker = EffectTracker.new(log: log, event_id: @event_id)
+        pending_effects = []
 
         Minecraft::IntegrationAction.for_event(@event_key).each do |rule|
           next unless conditions_match?(rule.conditions)
 
-          execute_actions(rule, tracker)
+          pending_effects.concat(execute_actions(rule, tracker))
+        end
+
+        if pending_effects.any?
+          log.update!(
+            status: "failed",
+            error_message: "pending effects (#{pending_effects.size})"
+          )
+          return ServiceResult.failure(error: "pending_effects")
         end
 
         log.update!(status: "completed", error_message: nil)
@@ -67,7 +78,13 @@ module Minecraft
         existing = Minecraft::IntegrationActionLog.find_by(event_id: @event_id)
         if existing
           case existing.status
-          when "completed", "processing"
+          when "completed"
+            return nil
+          when "processing"
+            if existing.updated_at < STALE_PROCESSING_AFTER.ago
+              existing.update!(status: "processing", error_message: nil)
+              return existing
+            end
             return nil
           when "failed"
             existing.update!(status: "processing", error_message: nil)
@@ -86,7 +103,10 @@ module Minecraft
         )
       rescue ActiveRecord::RecordNotUnique
         existing = Minecraft::IntegrationActionLog.find_by!(event_id: @event_id)
-        return nil if existing.status.in?(%w[completed processing])
+        return nil if existing.status == "completed"
+        if existing.status == "processing" && existing.updated_at >= STALE_PROCESSING_AFTER.ago
+          return nil
+        end
 
         existing.update!(status: "processing", error_message: nil)
         existing
@@ -108,13 +128,20 @@ module Minecraft
       end
 
       def execute_actions(rule, tracker)
+        pending = []
+
         Array(rule.actions).each_with_index do |action, index|
           effect_key = tracker.fingerprint(rule: rule, action: action, index: index)
           next if tracker.completed?(effect_key)
 
-          applied = apply_action(action, tracker, effect_key)
-          tracker.mark_completed!(effect_key) if applied
+          if apply_action(action, tracker, effect_key)
+            tracker.mark_completed!(effect_key)
+          else
+            pending << effect_key
+          end
         end
+
+        pending
       end
 
       def apply_action(action, tracker, effect_key)

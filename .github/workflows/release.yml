@@ -34,7 +34,7 @@ jobs:
       RAILS_ENV: test
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/mcweb_test
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -87,7 +87,7 @@ jobs:
       MCWEB_DATABASE_USERNAME: postgres
       MCWEB_DATABASE_PASSWORD: postgres
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - uses: ruby/setup-ruby@v1
         with:

@@ -140,6 +140,7 @@ en:
       user_banned: User banned.
       user_unbanned: User unbanned.
       badge_granted: Badge granted.
+      badge_revoked: Badge revoked.
       cannot_grant_badge: You are not allowed to grant badges.
       warning_issued: Warning issued.
       user_silenced: User silenced (can browse but not post).

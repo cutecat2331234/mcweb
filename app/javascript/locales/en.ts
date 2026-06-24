@@ -542,6 +542,7 @@ export default {
       earnedBadges: 'Earned: {badges}',
       selectBadge: 'Select badge',
       grant: 'Grant',
+      revoke: 'Revoke',
       warning: 'Issue warning',
       warningPoints: 'Warning points: {points}',
       warningReason: 'Warning reason',

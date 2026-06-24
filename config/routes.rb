@@ -25,6 +25,7 @@ Rails.application.routes.draw do
         post :ban
         post :unban
         post :grant_badge
+        post :revoke_badge
         post :warn
         post :staff_note
         post :silence

@@ -55,6 +55,7 @@ export interface BanForm {
 
 export interface BadgeForm {
   action_url: string
+  revoke_url?: string
   badges: Array<{ slug: string; name: string }>
   earned: string[]
 }
@@ -229,6 +230,11 @@ function submitBadge() {
   router.post(props.badgeForm.action_url, { badge_slug: badgeSlug.value })
 }
 
+function revokeBadge() {
+  if (!props.badgeForm?.revoke_url || !badgeSlug.value) return
+  router.post(props.badgeForm.revoke_url, { badge_slug: badgeSlug.value })
+}
+
 function submitWarning() {
   if (!props.warningForm) return
   warningForm.post(props.warningForm.action_url, {
@@ -358,7 +364,10 @@ function submitTrustLevel() {
       <Label>{{ t('admin.genericShow.selectBadge') }}</Label>
       <Select v-model="badgeSlug" :options="badgeOptions" block />
     </div>
-    <Button type="submit" size="sm">{{ t('admin.genericShow.grant') }}</Button>
+    <div class="flex gap-2">
+      <Button type="submit" size="sm">{{ t('admin.genericShow.grant') }}</Button>
+      <Button v-if="props.badgeForm.revoke_url" type="button" size="sm" variant="outline" @click="revokeBadge">{{ t('admin.genericShow.revoke') }}</Button>
+    </div>
   </form>
 
   <form v-if="props.warningForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitWarning">

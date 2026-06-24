@@ -100,6 +100,7 @@ module Admin
         },
         badgeForm: current_user.permission?("forum.badges.manage") || current_user.permission?("admin.access") ? {
           action_url: grant_badge_admin_user_path(@user),
+          revoke_url: revoke_badge_admin_user_path(@user),
           badges: Community::Badge.order(:name).map { |badge| { slug: badge.slug, name: badge.name } },
           earned: @user.user_badges.includes(:badge).map { |ub| ub.badge.name }
         } : nil,
@@ -191,6 +192,17 @@ module Admin
       result = Community::AwardBadge.call(user: @user, badge_slug: params[:badge_slug])
       if result.success?
         redirect_to admin_user_path(@user), notice: t("mcweb.flash.badge_granted")
+      else
+        redirect_to admin_user_path(@user), alert: service_error_message(result)
+      end
+    end
+
+    def revoke_badge
+      return redirect_to admin_user_path(@user), alert: t("mcweb.flash.cannot_grant_badge") unless current_user.permission?("forum.badges.manage") || current_user.permission?("admin.access")
+
+      result = Community::RevokeBadge.call(user: @user, badge_slug: params[:badge_slug])
+      if result.success?
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.badge_revoked")
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end

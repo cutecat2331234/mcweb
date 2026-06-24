@@ -542,6 +542,7 @@ export default {
       earnedBadges: '已拥有：{badges}',
       selectBadge: '选择徽章',
       grant: '授予',
+      revoke: '撤销',
       warning: '发出警告（XenForo）',
       warningPoints: '当前累计警告积分：{points}',
       warningReason: '警告原因',

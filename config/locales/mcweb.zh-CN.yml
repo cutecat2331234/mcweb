@@ -140,6 +140,7 @@
       user_banned: 用户已封禁。
       user_unbanned: 用户已解封。
       badge_granted: 徽章已授予。
+      badge_revoked: 徽章已撤销。
       cannot_grant_badge: 无权授予徽章。
       warning_issued: 警告已发出。
       user_silenced: 用户已被沉默（可浏览不可发帖）。

@@ -51,6 +51,8 @@ const props = defineProps<{
   archiveUrl?: string
   unarchiveUrl?: string
   markUnreadUrl?: string
+  messageDraft?: string | null
+  messageDraftUrl?: string
   archived?: boolean
   muted?: boolean
   muteUrl?: string
@@ -75,7 +77,23 @@ function containsLink(text: string) {
 const pmBlocked = computed(() => !!props.warningRestrictions?.pm)
 
 const form = useForm({
-  message: { body: props.initialBody || '' },
+  message: { body: props.initialBody || props.messageDraft || '' },
+})
+
+let draftTimer: ReturnType<typeof setTimeout> | null = null
+function saveDraft(body: string) {
+  if (!props.messageDraftUrl) return
+  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
+  fetch(props.messageDraftUrl, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token || '', Accept: 'application/json' },
+    body: JSON.stringify({ body }),
+    credentials: 'same-origin',
+  })
+}
+watch(() => form.message.body, (body) => {
+  if (draftTimer) clearTimeout(draftTimer)
+  draftTimer = setTimeout(() => saveDraft(body), 800)
 })
 
 watch(
@@ -175,7 +193,7 @@ function submit() {
   }
   form.post(`${routes.app}/forum/conversations/${props.conversation.id}/messages`, {
     preserveScroll: true,
-    onSuccess: () => { form.message.body = '' },
+    onSuccess: () => { form.message.body = ''; saveDraft('') },
   })
 }
 </script>

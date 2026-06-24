@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -175,6 +175,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000006) do
     t.index ["forum_post_id"], name: "index_forum_event_webhook_deliveries_on_forum_post_id"
     t.index ["forum_topic_id"], name: "index_forum_event_webhook_deliveries_on_forum_topic_id"
     t.index ["status"], name: "index_forum_event_webhook_deliveries_on_status"
+  end
+
+  create_table "forum_message_drafts", force: :cascade do |t|
+    t.text "body", default: "", null: false
+    t.datetime "created_at", null: false
+    t.bigint "forum_conversation_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_conversation_id"], name: "index_forum_message_drafts_on_forum_conversation_id"
+    t.index ["user_id", "forum_conversation_id"], name: "index_forum_message_drafts_on_user_and_conversation", unique: true
   end
 
   create_table "forum_messages", force: :cascade do |t|

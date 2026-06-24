@@ -375,6 +375,7 @@ Rails.application.routes.draw do
         post :mark_unread
       end
       resources :messages, only: %i[create update destroy], controller: "conversation_messages"
+      resource :message_draft, only: %i[update destroy], controller: "conversation_message_drafts"
       resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username
     end
     get "members", to: "members#index", as: :members

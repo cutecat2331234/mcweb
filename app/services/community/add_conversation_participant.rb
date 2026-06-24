@@ -4,6 +4,10 @@ module Community
   class AddConversationParticipant < ApplicationService
     MAX_PARTICIPANTS = 10
 
+    def self.max_participants
+      [ SiteSetting.get("forum.group_pm_max_participants", MAX_PARTICIPANTS.to_s).to_i, 1 ].max
+    end
+
     def initialize(actor:, conversation:, username:)
       @actor = actor
       @conversation = conversation
@@ -13,7 +17,7 @@ module Community
     def call
       return ServiceResult.failure(error: "Not a group conversation.") unless @conversation.is_group?
       return ServiceResult.failure(error: "Only participants can add members.") unless @conversation.participant?(@actor)
-      return ServiceResult.failure(error: "Group is full.") if @conversation.participants.count >= MAX_PARTICIPANTS
+      return ServiceResult.failure(error: "Group is full.") if @conversation.participants.count >= self.class.max_participants
       return ServiceResult.failure(error: "Only the group creator can add members.") unless can_add_member?(@actor)
 
       user = User.find_by(username: @username)

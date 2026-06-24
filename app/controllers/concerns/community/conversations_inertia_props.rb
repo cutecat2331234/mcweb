@@ -44,7 +44,7 @@ module Community
     def group_add_participant_url(conversation)
       return nil unless conversation.is_group?
       return nil unless conversation.participant?(current_user)
-      return nil if conversation.participants.count >= Community::AddConversationParticipant::MAX_PARTICIPANTS
+      return nil if conversation.participants.count >= Community::AddConversationParticipant.max_participants
       return nil unless Community::TrustLevel.can_send_pm?(current_user)
 
       return nil unless Community::AddConversationParticipant.can_add_member?(current_user, conversation)
@@ -65,7 +65,7 @@ module Community
         return "仅群主可添加新成员。"
       end
 
-      if conversation.participants.count >= Community::AddConversationParticipant::MAX_PARTICIPANTS
+      if conversation.participants.count >= Community::AddConversationParticipant.max_participants
         return "群组人数已满。"
       end
 

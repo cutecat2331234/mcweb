@@ -33,7 +33,7 @@ module Community
     def self.can_send_pm?(user)
       return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
 
-      level_for(user) >= 1
+      level_for(user) >= SiteSetting.get("forum.min_trust_level_pm", "1").to_i
     end
 
     def self.can_post_links?(user)

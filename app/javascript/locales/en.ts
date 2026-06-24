@@ -1171,6 +1171,7 @@ export default {
       groupOwner: '(owner)',
       lockInvites: 'Lock invites (owner only)',
       unlockInvites: 'Allow members to invite',
+      deleteMessage: 'Delete',
       leaveGroup: 'Leave group',
       removeMember: 'Remove member',
       leave: 'Leave',

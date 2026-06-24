@@ -1171,6 +1171,7 @@ export default {
       groupOwner: '（群主）',
       lockInvites: '锁定邀请（仅群主）',
       unlockInvites: '允许成员邀请',
+      deleteMessage: '删除',
       leaveGroup: '离开群组',
       removeMember: '移除成员',
       leave: '离开',

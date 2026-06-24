@@ -28,6 +28,16 @@ module Community
       end
     end
 
+    def destroy
+      message = @conversation.messages.find(params[:id])
+      unless message.user_id == current_user.id || current_user.permission?("forum.topics.lock")
+        return head :forbidden
+      end
+
+      message.soft_delete!
+      redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.message_deleted", default: "消息已删除")
+    end
+
     private
 
     def set_conversation

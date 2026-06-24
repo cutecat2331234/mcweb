@@ -371,7 +371,7 @@ Rails.application.routes.draw do
         post :lock_invites
         post :unlock_invites
       end
-      resources :messages, only: %i[create], controller: "conversation_messages"
+      resources :messages, only: %i[create destroy], controller: "conversation_messages"
       resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username
     end
     get "members", to: "members#index", as: :members

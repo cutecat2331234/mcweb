@@ -34,6 +34,7 @@ const props = defineProps<{
     is_mine: boolean
     created_at: string
     read_by?: string[]
+    delete_url?: string | null
   }>
   pagination: PaginationMeta
   participants: Array<{
@@ -133,6 +134,11 @@ async function removeParticipant(participant: { username: string; remove_url?: s
   router.delete(participant.remove_url, { preserveScroll: true })
 }
 
+function deleteMessage(msg: { delete_url?: string | null }) {
+  if (!msg.delete_url) return
+  router.delete(msg.delete_url, { preserveScroll: true })
+}
+
 const title = props.conversation.display_name || props.conversation.other_user?.username || t('forum.messages.titleFallback')
 const subtitle = props.conversation.is_group ? props.conversation.participants_label : t('forum.messages.subtitleDm')
 
@@ -227,6 +233,7 @@ function submit() {
         <p class="mt-1 text-[10px] opacity-70">
           {{ msg.created_at }}
           <span v-if="msg.is_mine && msg.read_by?.length" class="ml-1">{{ t('forum.messages.readBy', { users: msg.read_by.join(t('common.listSeparator')) }) }}</span>
+          <button v-if="msg.delete_url" type="button" class="ml-1 underline hover:opacity-100" @click="deleteMessage(msg)">{{ t('forum.messages.deleteMessage') }}</button>
         </p>
       </div>
     </div>

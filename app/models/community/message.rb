@@ -2,6 +2,8 @@
 
 module Community
   class Message < ApplicationRecord
+    include SoftDeletable
+
     belongs_to :conversation, class_name: "Community::Conversation", foreign_key: :forum_conversation_id
     belongs_to :user
 

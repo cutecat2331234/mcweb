@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_000008) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_000009) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1744,6 +1744,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000008) do
     t.string "forum_digest_frequency", default: "none", null: false
     t.datetime "forum_digest_last_sent_at"
     t.boolean "forum_digest_watched_only", default: false, null: false
+    t.datetime "forum_dnd_until"
     t.string "forum_flair_color_hex"
     t.string "forum_pm_policy", default: "everyone", null: false
     t.integer "forum_profile_views", default: 0, null: false

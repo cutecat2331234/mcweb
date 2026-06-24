@@ -52,6 +52,8 @@ module Community
         digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } },
         watch_email_mode: current_user.forum_watch_email_mode,
         watch_email_mode_options: WATCH_EMAIL_MODES.map { |v| { value: v, label: watch_email_mode_label(v) } },
+        dnd_active: current_user.forum_dnd_until.present? && current_user.forum_dnd_until > Time.current,
+        dnd_until: (current_user.forum_dnd_until.present? && current_user.forum_dnd_until > Time.current) ? l(current_user.forum_dnd_until, format: :short) : nil,
         notificationLevelGuide: Community::SubscriptionLevelOptions.guide,
         savedSearches: serialize_saved_searches_for_preferences,
         savedSearchesOpmlUrl: Community::SavedSearchPresenter.opml_path(current_user),
@@ -85,6 +87,11 @@ module Community
 
       if params[:watch_email_mode].present? && WATCH_EMAIL_MODES.include?(params[:watch_email_mode])
         current_user.update!(forum_watch_email_mode: params[:watch_email_mode])
+      end
+
+      if params.key?(:dnd_minutes)
+        minutes = params[:dnd_minutes].to_i
+        current_user.update!(forum_dnd_until: minutes.positive? ? [ minutes, 10_080 ].min.minutes.from_now : nil)
       end
 
       redirect_to forum_preferences_path, notice: t("mcweb.flash.preferences_saved")

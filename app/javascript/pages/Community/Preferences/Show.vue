@@ -43,6 +43,8 @@ const props = defineProps<{
   digest_options: Array<{ value: string; label: string }>
   watch_email_mode: string
   watch_email_mode_options: Array<{ value: string; label: string }>
+  dnd_active?: boolean
+  dnd_until?: string | null
   notificationLevelGuide?: Array<{ value: string; label: string; description: string }>
   savedSearches?: SavedSearchItem[]
   savedSearchesOpmlUrl?: string | null
@@ -77,6 +79,10 @@ const renamingSearchId = ref<number | null>(null)
 
 function submit() {
   form.patch(routes.forumPreferences)
+}
+
+function pauseDnd(minutes: number) {
+  router.patch(routes.forumPreferences, { dnd_minutes: minutes }, { preserveScroll: true })
 }
 
 function retryWebhook(url: string) {
@@ -171,6 +177,18 @@ async function saveRenameSearch(search: SavedSearchItem) {
         <p class="mt-1 text-sm text-muted-foreground">{{ t('preferences.languageHint') }}</p>
       </div>
       <LanguageSwitcher />
+    </div>
+  </section>
+
+  <section class="mb-6 max-w-lg rounded-lg border p-4">
+    <h2 class="text-sm font-semibold">{{ t('preferences.dnd.title') }}</h2>
+    <p v-if="dnd_active" class="mt-1 text-sm text-muted-foreground">{{ t('preferences.dnd.activeUntil', { time: dnd_until }) }}</p>
+    <p v-else class="mt-1 text-sm text-muted-foreground">{{ t('preferences.dnd.description') }}</p>
+    <div class="mt-3 flex flex-wrap gap-2">
+      <Button type="button" size="sm" variant="outline" @click="pauseDnd(60)">{{ t('preferences.dnd.pause1h') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="pauseDnd(480)">{{ t('preferences.dnd.pause8h') }}</Button>
+      <Button type="button" size="sm" variant="outline" @click="pauseDnd(1440)">{{ t('preferences.dnd.pause24h') }}</Button>
+      <Button v-if="dnd_active" type="button" size="sm" @click="pauseDnd(0)">{{ t('preferences.dnd.resume') }}</Button>
     </div>
   </section>
 

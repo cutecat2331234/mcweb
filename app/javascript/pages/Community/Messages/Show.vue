@@ -33,8 +33,10 @@ const props = defineProps<{
     avatar_url: string
     is_mine: boolean
     created_at: string
+    edited?: boolean
     read_by?: string[]
     delete_url?: string | null
+    edit_url?: string | null
   }>
   pagination: PaginationMeta
   participants: Array<{
@@ -139,6 +141,27 @@ function deleteMessage(msg: { delete_url?: string | null }) {
   router.delete(msg.delete_url, { preserveScroll: true })
 }
 
+const editingId = ref<number | null>(null)
+const editBody = ref('')
+
+function startEdit(msg: { id: number; body: string }) {
+  editingId.value = msg.id
+  editBody.value = msg.body
+}
+
+function cancelEdit() {
+  editingId.value = null
+  editBody.value = ''
+}
+
+function saveEdit(msg: { id: number; edit_url?: string | null }) {
+  if (!msg.edit_url || !editBody.value.trim()) return
+  router.patch(msg.edit_url, { message: { body: editBody.value } }, {
+    preserveScroll: true,
+    onSuccess: () => cancelEdit(),
+  })
+}
+
 const title = props.conversation.display_name || props.conversation.other_user?.username || t('forum.messages.titleFallback')
 const subtitle = props.conversation.is_group ? props.conversation.participants_label : t('forum.messages.subtitleDm')
 
@@ -229,10 +252,19 @@ function submit() {
         :class="msg.is_mine ? 'bg-primary text-primary-foreground' : 'bg-muted'"
       >
         <p v-if="conversation.is_group && !msg.is_mine" class="mb-1 text-xs font-medium opacity-80">{{ msg.author }}</p>
-        <div class="prose prose-sm max-w-none dark:prose-invert" v-html="msg.body_html" />
+        <div v-if="editingId === msg.id" class="space-y-1">
+          <textarea v-model="editBody" rows="3" class="w-full rounded border bg-background px-2 py-1 text-sm text-foreground" />
+          <div class="flex gap-2">
+            <button type="button" class="text-xs underline" @click="saveEdit(msg)">{{ t('forum.messages.saveEdit') }}</button>
+            <button type="button" class="text-xs underline" @click="cancelEdit">{{ t('forum.messages.cancelEdit') }}</button>
+          </div>
+        </div>
+        <div v-else class="prose prose-sm max-w-none dark:prose-invert" v-html="msg.body_html" />
         <p class="mt-1 text-[10px] opacity-70">
           {{ msg.created_at }}
+          <span v-if="msg.edited" class="ml-1 italic">{{ t('forum.messages.editedMarker') }}</span>
           <span v-if="msg.is_mine && msg.read_by?.length" class="ml-1">{{ t('forum.messages.readBy', { users: msg.read_by.join(t('common.listSeparator')) }) }}</span>
+          <button v-if="msg.edit_url && editingId !== msg.id" type="button" class="ml-1 underline hover:opacity-100" @click="startEdit(msg)">{{ t('forum.messages.editMessage') }}</button>
           <button v-if="msg.delete_url" type="button" class="ml-1 underline hover:opacity-100" @click="deleteMessage(msg)">{{ t('forum.messages.deleteMessage') }}</button>
         </p>
       </div>

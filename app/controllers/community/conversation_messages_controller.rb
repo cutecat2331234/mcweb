@@ -28,6 +28,17 @@ module Community
       end
     end
 
+    def update
+      message = @conversation.messages.find(params[:id])
+      result = Community::EditMessage.call(user: current_user, message: message, body: message_params[:body])
+
+      if result.success?
+        redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.message_updated", default: "消息已更新")
+      else
+        redirect_to forum_conversation_path(@conversation), alert: service_error_message(result)
+      end
+    end
+
     def destroy
       message = @conversation.messages.find(params[:id])
       unless message.user_id == current_user.id || current_user.permission?("forum.topics.lock")

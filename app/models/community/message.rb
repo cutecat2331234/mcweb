@@ -11,6 +11,10 @@ module Community
 
     after_create :touch_conversation
 
+    def edited?
+      edited_at.present?
+    end
+
     private
 
     def touch_conversation

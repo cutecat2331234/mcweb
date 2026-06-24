@@ -140,7 +140,9 @@ module Community
         avatar_url: message.user.avatar_url,
         is_mine: message.user_id == current_user.id,
         created_at: l(message.created_at, format: :short),
+        edited: message.edited?,
         delete_url: (conversation && message.user_id == current_user.id) ? forum_conversation_message_path(conversation, message) : nil,
+        edit_url: (conversation && message.user_id == current_user.id) ? forum_conversation_message_path(conversation, message) : nil,
         read_by: read_by
       }
     end

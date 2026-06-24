@@ -142,6 +142,25 @@ function insertEmoji(emoji: string) {
   showEmoji.value = false
 }
 
+// Standard composer formatting shortcuts: Ctrl/Cmd+B (bold), +I (italic), +K (link).
+function handleKeydown(event: KeyboardEvent) {
+  if (!(event.ctrlKey || event.metaKey) || event.altKey || event.shiftKey) return
+  switch (event.key.toLowerCase()) {
+    case 'b':
+      event.preventDefault()
+      wrap('**', '**')
+      break
+    case 'i':
+      event.preventDefault()
+      wrap('*', '*')
+      break
+    case 'k':
+      event.preventDefault()
+      wrap('[', '](https://)')
+      break
+  }
+}
+
 async function preview() {
   if (!props.modelValue.trim()) return
   previewLoading.value = true
@@ -200,6 +219,7 @@ async function preview() {
           class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           ref="textareaEl"
           @input="onInput"
+          @keydown="handleKeydown"
           @paste="handlePaste"
           @drop="handleDrop"
           @dragover="handleDragOver"
@@ -215,6 +235,7 @@ async function preview() {
       class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       ref="textareaEl"
       @input="update(($event.target as HTMLTextAreaElement).value)"
+      @keydown="handleKeydown"
       @paste="handlePaste"
       @drop="handleDrop"
       @dragover="handleDragOver"

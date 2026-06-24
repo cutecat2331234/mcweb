@@ -32,9 +32,22 @@ module Community
       return pm_restriction if pm_restriction.failure?
 
       @conversation.participants.create!(user: user)
+      notify_added!(user)
       ServiceResult.success(@conversation)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    def notify_added!(user)
+      return unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.conversation_invite")
+
+      Community::InAppNotification.notify(
+        user: user,
+        notification_type: "forum.conversation_invite",
+        key: "added_to_conversation",
+        adder: @actor.username,
+        metadata: { conversation_id: @conversation.id }
+      )
     end
 
     def self.can_add_member?(actor, conversation)

@@ -884,6 +884,9 @@
         silenced:
           title: 你已被禁言
           body: "范围：%{area} · 原因：%{reason}"
+        added_to_conversation:
+          title: 你被加入了一个会话
+          body: "%{adder} 把你加入了一个群组会话。"
         topic_reply:
           title: "主题有新回复：%{title}"
           body: "%{author}：%{excerpt}"
@@ -1686,6 +1689,7 @@
         forum.mention: "@提及"
         forum.section_topic: 分区新主题
         forum.private_message: 私信
+        forum.conversation_invite: 被加入会话
         forum.followed_topic: 关注用户新主题
         forum.followed_reply: 关注用户回复
         forum.tag_topic: 标签新主题

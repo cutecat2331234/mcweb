@@ -874,6 +874,9 @@ en:
         silenced:
           title: "You have been muted"
           body: "%{area} · %{reason}"
+        added_to_conversation:
+          title: "Added to a conversation"
+          body: "%{adder} added you to a group conversation."
         topic_reply:
           title: "New reply: %{title}"
           body: "%{author}: %{excerpt}"
@@ -1676,6 +1679,7 @@ en:
         forum.mention: Mention
         forum.section_topic: New section topic
         forum.private_message: Private message
+        forum.conversation_invite: Added to a conversation
         forum.followed_topic: Followed user topic
         forum.followed_reply: Followed user reply
         forum.tag_topic: New tag topic

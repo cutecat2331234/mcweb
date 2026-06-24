@@ -22,6 +22,7 @@ module Community
       forum.post_edited
       forum.user_warning
       forum.topic_invite
+      forum.conversation_invite
       forum.topic_assigned
       forum.poll_closed
       forum.here

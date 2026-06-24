@@ -222,6 +222,9 @@ async function preview() {
       <Button type="button" variant="outline" size="sm" @click="wrap('> ', '')">{{ t('components.markdownEditor.quote') }}</Button>
       <Button type="button" variant="outline" size="sm" @click="wrap('## ', '')">{{ t('components.markdownEditor.heading') }}</Button>
       <Button type="button" variant="outline" size="sm" @click="wrap('- ', '')">{{ t('components.markdownEditor.bulletList') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('\n```\n', '\n```\n')">{{ t('components.markdownEditor.codeBlock') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('\n| Column | Column |\n| --- | --- |\n| Cell | Cell |\n', '')">{{ t('components.markdownEditor.table') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('\n---\n', '')">{{ t('components.markdownEditor.horizontalRule') }}</Button>
       <Button type="button" variant="outline" size="sm" @click="showEmoji = !showEmoji">{{ t('components.markdownEditor.emoji') }}</Button>
       <ImageUploadButton v-if="showImageUpload && canUploadImages" @insert="insertImage" />
       <p v-else-if="showImageUpload && !canUploadImages" class="text-xs text-muted-foreground">{{ t('components.markdownEditor.uploadLevelHint') }}</p>

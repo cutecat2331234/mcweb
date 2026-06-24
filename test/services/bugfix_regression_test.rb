@@ -62,6 +62,37 @@ class IntegrationActionRunnerAcquireTest < ActiveSupport::TestCase
     assert_equal "failed", Minecraft::IntegrationActionLog.find_by!(event_id: event_id).status
     assert_no_enqueued_jobs only: Minecraft::RunIntegrationActionJob
   end
+
+  test "enqueued integration job actually executes effects" do
+    uuid = "550e8400-e29b-41d4-a716-446655440099"
+    player_ref = Minecraft::PlayerRef.resolve(uuid: uuid, platform: "java", username: "Joiner")
+    Minecraft::IntegrationAction.create!(
+      name: "Welcome join",
+      event_key: "player.join",
+      conditions: {},
+      actions: [ { "type" => "set_profile_field", "field_key" => "last_join", "value" => "yes" } ],
+      enabled: true
+    )
+    event_id = "evt-acq-#{SecureRandom.hex(4)}"
+    payload = { "uuid" => uuid, "platform" => "java", "username" => "Joiner" }
+
+    result = nil
+    assert_enqueued_with(job: Minecraft::RunIntegrationActionJob) do
+      result = Minecraft::Integration::ActionRunner.acquire_or_enqueue(
+        event_key: "player.join", event_id: event_id, payload: payload
+      )
+    end
+    assert result.success?
+    assert_equal "queued", Minecraft::IntegrationActionLog.find_by!(event_id: event_id).status
+
+    perform_enqueued_jobs
+
+    log = Minecraft::IntegrationActionLog.find_by!(event_id: event_id)
+    assert_equal "completed", log.status, "enqueued integration actions must run, not be skipped as in-progress"
+    field = Minecraft::ProfileFieldValue.find_by(player_profile_id: player_ref.profile.id, field_key: "last_join")
+    assert field, "set_profile_field effect should have been applied by the worker"
+    assert_equal "yes", field.value
+  end
 end
 
 class Minecraft::HmacReplayGuardTest < ActiveSupport::TestCase

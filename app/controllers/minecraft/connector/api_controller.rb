@@ -170,7 +170,14 @@ module Minecraft
       def connector_payload
         @connector_payload ||= begin
           body = request.request_parameters
-          body = JSON.parse(request.raw_post) if body.blank? && request.raw_post.present?
+          if body.blank? && request.raw_post.present?
+            body = begin
+              JSON.parse(request.raw_post)
+            rescue JSON::ParserError
+              {}
+            end
+          end
+          body = {} unless body.is_a?(Hash)
           body.deep_stringify_keys
         end
       end

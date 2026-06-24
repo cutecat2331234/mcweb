@@ -9,18 +9,27 @@ module Administration
     end
 
     def call
-      RateLimitCounter.transaction do
-        counter = RateLimitCounter.lock.find_or_initialize_by(key: @key)
-        reset_counter_if_expired!(counter)
+      attempts = 0
+      begin
+        RateLimitCounter.transaction do
+          counter = RateLimitCounter.lock.find_or_initialize_by(key: @key)
+          reset_counter_if_expired!(counter)
 
-        if counter.count >= @limit
-          return ServiceResult.failure(error: "Rate limit exceeded.")
+          if counter.count >= @limit
+            return ServiceResult.failure(error: "Rate limit exceeded.")
+          end
+
+          counter.count += 1
+          counter.save!
+
+          ServiceResult.success(remaining: @limit - counter.count)
         end
-
-        counter.count += 1
-        counter.save!
-
-        ServiceResult.success(remaining: @limit - counter.count)
+      rescue ActiveRecord::RecordNotUnique
+        # Two concurrent first-hits for a brand-new key raced to insert. Retry: the row
+        # now exists, so the locked find_or_initialize_by becomes a normal update.
+        attempts += 1
+        retry if attempts < 3
+        raise
       end
     end
 

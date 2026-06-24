@@ -7,7 +7,9 @@ module Minecraft
     def perform
       Minecraft::Server.managed_by_node.find_each do |server|
         next unless backup_enabled?(server)
-        next unless backup_due?(server)
+
+        occurrence = backup_occurrence(server)
+        next unless occurrence
 
         backup_dir = server.metadata["backup_directory"].presence ||
           File.join(server.working_directory.to_s, "backups")
@@ -18,7 +20,9 @@ module Minecraft
           node: server.node,
           server: server,
           task_type: "backup_world",
-          delivery_id: "backup-#{server.public_id}-#{Time.current.to_i}",
+          # Key the delivery on the scheduled occurrence (not Time.now) so a retry or a
+          # second wrapper tick within the window dedups to one backup per occurrence.
+          delivery_id: "backup-#{server.public_id}-#{occurrence.strftime('%Y%m%d%H%M')}",
           payload: {
             source: server.metadata["world_directory"].presence || "world",
             destination: dest
@@ -36,19 +40,24 @@ module Minecraft
       ActiveModel::Type::Boolean.new.cast(val)
     end
 
-    def backup_due?(server)
+    # Returns the most recent scheduled occurrence if it falls within the wrapper-cron
+    # cadence (this job runs every 30 min), else nil. The window must be >= the run
+    # interval, otherwise occurrences not aligned to the */30 ticks are silently missed.
+    def backup_occurrence(server)
       schedule = server.metadata["backup_schedule"].presence ||
         SiteSetting.get("minecraft.backup.schedule", "0 3 * * *")
-      return false if schedule.blank?
+      return nil if schedule.blank?
 
       require "fugit"
       cron = Fugit::Cron.parse(schedule)
-      return false unless cron
+      return nil unless cron
 
       previous = cron.previous_time(Time.current)
-      previous && previous > 5.minutes.ago
+      return nil unless previous && previous > 30.minutes.ago
+
+      previous
     rescue LoadError, StandardError
-      false
+      nil
     end
   end
 end

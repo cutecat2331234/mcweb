@@ -159,22 +159,36 @@ class User < ApplicationRecord
     ROTP::TOTP.new(secret, issuer: "Mcweb")
   end
 
+  # Accepted clock drift (seconds) on either side of the current TOTP step.
+  # Kept tight and consistent across login, confirm, and disable paths.
+  TOTP_DRIFT_SECONDS = 15
+
+  def self.verify_totp_code(secret, code, drift: TOTP_DRIFT_SECONDS)
+    return false if secret.blank? || code.blank?
+
+    ROTP::TOTP.new(secret).verify(code.to_s, drift_behind: drift, drift_ahead: drift).present?
+  end
+
   def verify_totp(code)
     return false unless totp_enabled? && totp_secret.present?
 
-    totp = ROTP::TOTP.new(totp_secret)
-    totp.verify(code, drift_behind: 30, drift_ahead: 30)
+    self.class.verify_totp_code(totp_secret, code)
   end
 
   def consume_recovery_code!(code)
     return false unless recovery_codes.present?
 
     normalized = code.to_s.strip.upcase
-    return false unless recovery_codes.include?(normalized)
+    consumed = false
+    # Lock + reload so two concurrent logins can't both spend the same recovery code.
+    with_lock do
+      codes = Array(recovery_codes)
+      next unless codes.include?(normalized)
 
-    self.recovery_codes = recovery_codes - [ normalized ]
-    save!
-    true
+      update!(recovery_codes: codes - [ normalized ])
+      consumed = true
+    end
+    consumed
   end
 
   def record_failed_login!

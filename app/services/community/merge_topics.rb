@@ -19,7 +19,9 @@ module Community
 
       Community::Topic.transaction do
         posts_to_move = @source.posts.order(:floor_number).offset(1)
-        next_floor = target.posts.maximum(:floor_number).to_i
+        # Include soft-deleted posts: the unique [forum_topic_id, floor_number] index
+        # covers discarded rows too, so reassigned floors must clear them or save! fails.
+        next_floor = target.posts.with_discarded.maximum(:floor_number).to_i
 
         posts_to_move.each_with_index do |post, index|
           post.update!(topic: target, floor_number: next_floor + index + 1)

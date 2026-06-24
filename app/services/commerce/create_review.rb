@@ -15,7 +15,11 @@ module Commerce
       return ServiceResult.failure(error: "purchase_required_to_review") unless purchased?
 
       review = Commerce::Review.find_or_initialize_by(user: @user, product: @product)
-      review.assign_attributes(rating: @rating, body: @body, status: :published)
+      # Don't let a resubmit silently un-hide a review that a moderator (or the user) hid:
+      # there is exactly one review row per (user, product), so forcing :published would
+      # resurrect moderated/deleted content. Preserve a hidden status on resubmit.
+      new_status = review.persisted? && review.hidden? ? :hidden : :published
+      review.assign_attributes(rating: @rating, body: @body, status: new_status)
       review.save!
       attach_photos!(review)
 

@@ -10,14 +10,16 @@ module Identity
     end
 
     def call
-      if @ip_address.present?
-        rate_limit_result = Administration::RateLimiter.call(
-          key: "verify_email:#{@ip_address}",
-          limit: 30,
-          window: 15.minutes
-        )
-        return ServiceResult.failure(error: "验证链接无效或已过期。") if rate_limit_result.failure?
-      end
+      # Always rate-limit. Fall back to a shared bucket when the IP is unknown so a
+      # missing IP can't silently disable the limit (defense-in-depth; the token is
+      # high-entropy, so this guards request volume rather than brute force).
+      rate_limit_key = @ip_address.present? ? "verify_email:#{@ip_address}" : "verify_email:no_ip"
+      rate_limit_result = Administration::RateLimiter.call(
+        key: rate_limit_key,
+        limit: 30,
+        window: 15.minutes
+      )
+      return ServiceResult.failure(error: "验证链接无效或已过期。") if rate_limit_result.failure?
 
       user = User.find_by(email_verification_token_digest: digest_token(@token))
       return ServiceResult.failure(error: "验证链接无效或已过期。") unless user

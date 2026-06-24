@@ -107,7 +107,7 @@ module Community
 
     def mute
       conversation = find_accessible_conversation!
-      result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
+      result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation, muted: true)
 
       if result.success?
         redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.conversation_muted")
@@ -118,7 +118,7 @@ module Community
 
     def unmute
       conversation = find_accessible_conversation!
-      result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation)
+      result = Community::ToggleConversationMute.call(user: current_user, conversation: conversation, muted: false)
 
       if result.success?
         redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.conversation_unmuted")

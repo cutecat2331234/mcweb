@@ -7,6 +7,8 @@ require "uri"
 module UrlSafety
   BLOCKED_HOSTS = %w[localhost metadata.google.internal 169.254.169.254].freeze
   CGNAT_NETWORK = IPAddr.new("100.64.0.0/10")
+  UNSPECIFIED_HOSTS = %w[0.0.0.0 ::].freeze
+  RESERVED_V4_NETWORKS = [ IPAddr.new("0.0.0.0/8"), IPAddr.new("240.0.0.0/4") ].freeze
 
   module_function
 
@@ -102,6 +104,11 @@ module UrlSafety
   def public_ip?(address)
     return false if address.loopback? || address.private? || address.link_local?
     return false if CGNAT_NETWORK.include?(address)
+    # Unspecified (0.0.0.0 / ::) routes to local services on many stacks; reserved/
+    # future ranges are not routable. Centralized here so every caller (incl. resolved
+    # addresses in safe_http_get/post) is covered, not just the literal-host check.
+    return false if UNSPECIFIED_HOSTS.include?(address.to_s)
+    return false if address.ipv4? && RESERVED_V4_NETWORKS.any? { |net| net.include?(address) }
 
     true
   end

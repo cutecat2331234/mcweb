@@ -9,21 +9,24 @@ module Minecraft
         return ServiceResult.failure(error: "event_id required") if event_id.blank?
 
         existing = Minecraft::IntegrationActionLog.find_by(event_id: event_id)
-        if existing&.status.in?(%w[completed processing failed])
+        if existing&.status.in?(%w[completed processing failed queued])
           return ServiceResult.success(skipped: true)
         end
 
         unless existing
           begin
+            # Pre-create as "queued" (not "processing"): the worker re-acquires the log
+            # via #acquire_log!, which treats a fresh "processing" log as "another worker
+            # owns it" and skips. "queued" is claimed by acquire_log!'s default branch.
             Minecraft::IntegrationActionLog.create!(
               event_key: event_key.to_s,
               event_id: event_id.to_s,
               payload: payload.deep_stringify_keys,
-              status: "processing"
+              status: "queued"
             )
           rescue ActiveRecord::RecordNotUnique
             existing = Minecraft::IntegrationActionLog.find_by!(event_id: event_id)
-            return ServiceResult.success(skipped: true) if existing.status.in?(%w[completed processing failed])
+            return ServiceResult.success(skipped: true) if existing.status.in?(%w[completed processing failed queued])
           end
         end
 
@@ -86,7 +89,7 @@ module Minecraft
               return existing
             end
             return nil
-          when "failed"
+          when "failed", "queued"
             existing.update!(status: "processing", error_message: nil)
             return existing
           else
@@ -186,7 +189,7 @@ module Minecraft
         return false unless user
 
         integration_key = "integration:#{@event_id}:#{effect_key}"
-        return true if user.notifications.exists?(["metadata ->> 'integration_effect_key' = ?", integration_key])
+        return true if user.notifications.exists?([ "metadata ->> 'integration_effect_key' = ?", integration_key ])
 
         user.notifications.create!(
           notification_type: action["notification_type"] || "minecraft.custom",

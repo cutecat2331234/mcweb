@@ -6,7 +6,8 @@
       <li><span class="disabled">‹</span></li>
     <% end %>
 
-    <% pagy.series.each do |item| %>
+    <%# Pagy 43 marks #series protected; call via send to read the page-number series. %>
+    <% pagy.send(:series).each do |item| %>
       <% if item == :gap %>
         <li><span class="disabled">…</span></li>
       <% elsif item == pagy.page %>

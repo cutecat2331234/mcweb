@@ -88,10 +88,7 @@ module Identity
     end
 
     def verify_totp(user)
-      secret = user.totp_secret
-      return false if secret.blank?
-
-      ROTP::TOTP.new(secret).verify(@totp_code.to_s, drift_behind: 15, drift_ahead: 15)
+      User.verify_totp_code(user.totp_secret, @totp_code)
     end
 
     def record_failed_login(user)

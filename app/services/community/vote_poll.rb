@@ -20,7 +20,9 @@ module Community
       invalid = @option_indices.any? { |index| !index.between?(0, @poll.options.size - 1) }
       return ServiceResult.failure(error: "Invalid option.") if invalid
 
-      Community::PollVote.transaction do
+      # Lock the poll so concurrent votes by the same user can't interleave their
+      # destroy/create and leave more rows than max_choices (double-vote / overflow).
+      @poll.with_lock do
         @poll.votes.where(user: @user).destroy_all
         @option_indices.each do |index|
           @poll.votes.create!(user: @user, option_index: index)

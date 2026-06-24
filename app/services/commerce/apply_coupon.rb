@@ -35,7 +35,8 @@ module Commerce
         shipping_result = Commerce::CalculateShipping.call(
           subtotal_cents: @order.subtotal_cents,
           cart_items: cart_items,
-          coupon: coupon
+          coupon: coupon,
+          shipping_method_code: @order.shipping_method
         )
         shipping_cents = shipping_result.success? ? shipping_result.value[:shipping_cents].to_i : @order.shipping_cents.to_i
         total_cents = [ @order.subtotal_cents - discount_cents + shipping_cents + @order.gift_wrap_cents.to_i, 0 ].max

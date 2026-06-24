@@ -28,8 +28,7 @@ module Identity
       secret = session[:pending_totp_secret].presence || current_user.totp_secret
       return redirect_to identity_security_path, alert: t("mcweb.flash.totp_setup_missing") if secret.blank?
 
-      totp = ROTP::TOTP.new(secret, issuer: "Mcweb")
-      unless totp.verify(confirm_params[:code].to_s, drift_behind: 30, drift_ahead: 30)
+      unless User.verify_totp_code(secret, confirm_params[:code])
         return redirect_to identity_security_path, alert: t("mcweb.flash.totp_invalid")
       end
 

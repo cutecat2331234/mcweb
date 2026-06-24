@@ -29,12 +29,41 @@ func validateSyncURL(raw string) error {
 	if blockedSyncHost(host) {
 		return fmt.Errorf("sync url host blocked")
 	}
-	if ip := net.ParseIP(host); ip != nil {
-		if ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() {
-			return fmt.Errorf("sync url host not allowed")
+
+	// Resolve the host and reject if ANY resolved address is non-public. Previously only
+	// literal private IPs were rejected, so a public hostname with an A/AAAA record
+	// pointing at an internal/metadata/private address bypassed the SSRF guard. Resolving
+	// here also covers the literal-IP case (LookupIP returns the literal unchanged).
+	// Note: this does not close DNS-rebinding (curl re-resolves); pinning the resolved IP
+	// would require replacing the curl shell-out.
+	ips, err := net.LookupIP(host)
+	if err != nil {
+		return fmt.Errorf("sync url host resolution failed: %w", err)
+	}
+	if len(ips) == 0 {
+		return fmt.Errorf("sync url host did not resolve")
+	}
+	for _, ip := range ips {
+		if !isPublicIP(ip) {
+			return fmt.Errorf("sync url host resolves to a non-public address")
 		}
 	}
 	return nil
+}
+
+func isPublicIP(ip net.IP) bool {
+	if ip == nil {
+		return false
+	}
+	if ip.IsLoopback() || ip.IsPrivate() || ip.IsUnspecified() ||
+		ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
+		return false
+	}
+	// Cloud metadata endpoint (link-local range already covers 169.254/16, but be explicit).
+	if ip.Equal(net.ParseIP("169.254.169.254")) {
+		return false
+	}
+	return true
 }
 
 func isLoopbackHost(host string) bool {

@@ -35,6 +35,13 @@ module Minecraft
         )
       end
       new(profile)
+    rescue ActiveRecord::RecordNotUnique
+      # Concurrent first-touch for the same uuid: the partial-unique index raced us.
+      # Re-resolve the row the winner created instead of surfacing a 500.
+      identity = PlayerIdentity.active.find_by(platform: platform, external_uuid: uuid)
+      raise unless identity
+
+      new(identity.player_profile)
     end
 
     def active_uuid(platform: "java")

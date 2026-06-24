@@ -27,7 +27,10 @@ module Minecraft
       return false unless cron
 
       previous = cron.previous_time(Time.current)
-      previous && previous > 5.minutes.ago
+      # Window must cover this job's run interval (every 15 min) or occurrences not
+      # aligned to the */15 ticks are silently skipped. The hour-bucketed delivery_id
+      # still prevents more than one restart per scheduled hour.
+      previous && previous > 15.minutes.ago
     rescue LoadError, StandardError
       false
     end

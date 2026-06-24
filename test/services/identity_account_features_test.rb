@@ -54,6 +54,17 @@ class IdentityAccountFeaturesTest < ActiveSupport::TestCase
     assert result.success?
     assert_equal 9, user.reload.recovery_codes.size
   end
+
+  test "verify_totp_code accepts current code and rejects out-of-window or blank input" do
+    secret = ROTP::Base32.random
+    totp = ROTP::TOTP.new(secret)
+
+    assert User.verify_totp_code(secret, totp.now), "current code should verify"
+    assert_not User.verify_totp_code(secret, totp.at(Time.now - 5.minutes)),
+               "a code from 5 minutes ago must fall outside the tightened drift window"
+    assert_not User.verify_totp_code(secret, "")
+    assert_not User.verify_totp_code("", totp.now)
+  end
 end
 
 class AdminWebsitePagesTest < ActiveSupport::TestCase

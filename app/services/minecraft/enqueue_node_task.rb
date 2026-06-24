@@ -51,6 +51,13 @@ module Minecraft
       @node.wake_for_tasks! if urgent_task?
 
       ServiceResult.success(task: task)
+    rescue ActiveRecord::RecordNotUnique
+      # Same delivery_id already enqueued (scheduled re-dispatch of one occurrence, or a
+      # job retry): treat as an idempotent success instead of surfacing a 500.
+      existing = @delivery_id.present? ? Minecraft::NodeTask.find_by(delivery_id: @delivery_id) : nil
+      return ServiceResult.success(task: existing) if existing
+
+      raise
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end

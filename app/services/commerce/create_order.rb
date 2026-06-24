@@ -185,15 +185,13 @@ module Commerce
       return ServiceResult.success if target.stock.nil?
 
       target.with_lock do
-        if target.stock < quantity
-          if product.allow_backorder?
-            target.update!(stock: 0)
-            return ServiceResult.success
-          end
-
+        if target.stock < quantity && !product.allow_backorder?
           return ServiceResult.failure(error: "stock_insufficient")
         end
 
+        # Decrement by the full quantity even past zero for backorders. The negative
+        # value records the oversold count and keeps decrement/restore symmetric, so a
+        # later refund or cancel cannot create phantom inventory (capping at 0 did).
         target.update!(stock: target.stock - quantity)
       end
 

@@ -94,7 +94,7 @@ func (c *Client) do(method, path string, body interface{}) (map[string]interface
 		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			lastErr = err
-			time.Sleep(time.Duration(500*(attempt+1)) * time.Millisecond)
+			time.Sleep(retryDelay(attempt))
 			if body != nil {
 				reader = bytes.NewReader([]byte(payload))
 			}
@@ -106,7 +106,7 @@ func (c *Client) do(method, path string, body interface{}) (map[string]interface
 
 		if resp.StatusCode >= 500 {
 			lastErr = fmt.Errorf("HTTP %d: %s", resp.StatusCode, string(data))
-			time.Sleep(time.Duration(500*(attempt+1)) * time.Millisecond)
+			time.Sleep(retryDelay(attempt))
 			if body != nil {
 				reader = bytes.NewReader([]byte(payload))
 			}
@@ -125,6 +125,14 @@ func (c *Client) do(method, path string, body interface{}) (map[string]interface
 		return out, nil
 	}
 	return nil, lastErr
+}
+
+// retryDelay waits at least one second between attempts so each retry is signed with a
+// distinct second-granular timestamp. A sub-second retry would reuse the previous
+// timestamp+signature, which the server's HMAC replay guard rejects as a replay —
+// silently dropping the (e.g. task-completion) request.
+func retryDelay(attempt int) time.Duration {
+	return time.Duration(1000*(attempt+1)) * time.Millisecond
 }
 
 func (c *Client) NodePath(suffix string) string {

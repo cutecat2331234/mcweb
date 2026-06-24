@@ -96,3 +96,46 @@ class UrlSafetyPublicIpTest < ActiveSupport::TestCase
     end
   end
 end
+
+class BackorderStockSymmetryTest < ActiveSupport::TestCase
+  test "backorder purchase decrements stock past zero so refund restores symmetrically" do
+    user = create_user
+    product = Commerce::Product.create!(
+      public_id: "prod_bo_#{SecureRandom.hex(4)}",
+      name: "Backorderable",
+      slug: "backorderable-#{SecureRandom.hex(3)}",
+      product_type: "digital",
+      status: "active",
+      price_cents: 1000,
+      currency: "CNY",
+      stock: 3,
+      allow_backorder: true
+    )
+    cart = Commerce::Cart.create!(user: user)
+    Commerce::CartItem.create!(cart: cart, product: product, quantity: 10)
+
+    result = Commerce::CreateOrder.call(cart: cart, user: user)
+    assert result.success?, result.error
+    assert_equal(-7, product.reload.stock,
+                 "backorder must decrement the full quantity (capping at 0 caused phantom inventory on refund)")
+  end
+end
+
+class AdminRetryOrderWebhookReuseTest < ActiveSupport::TestCase
+  test "admin retry reuses the failed delivery row instead of creating a duplicate" do
+    delivery = Commerce::OrderWebhookDelivery.create!(
+      event_type: "order.paid",
+      order_public_id: "ord_x",
+      url: "https://8.8.8.8/order-hook",
+      status: "failed",
+      request_payload: { "event" => "order.paid", "order_id" => "ord_x" },
+      attempt_count: 3
+    )
+
+    assert_no_difference -> { Commerce::OrderWebhookDelivery.count } do
+      result = Commerce::AdminRetryOrderWebhook.call(delivery: delivery)
+      assert result.success?, result.error
+    end
+    assert_enqueued_with(job: Commerce::DispatchOrderWebhookJob)
+  end
+end

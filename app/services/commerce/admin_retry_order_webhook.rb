@@ -16,7 +16,9 @@ module Commerce
 
       payload = @delivery.request_payload.deep_stringify_keys
       secret = SiteSetting.get("store.order_webhook_secret", "").to_s.strip.presence
-      Commerce::DispatchOrderWebhookJob.perform_later(url, payload, secret)
+      # Reuse the existing delivery row (like the automatic retry path) instead of
+      # creating a duplicate and leaving the original stuck on "failed".
+      Commerce::DispatchOrderWebhookJob.perform_later(url, payload, secret, delivery_id: @delivery.id, attempt: 1)
       ServiceResult.success(queued: true)
     end
   end

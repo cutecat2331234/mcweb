@@ -81,12 +81,14 @@ class Commerce::AllowBackorderTest < ActiveSupport::TestCase
     assert result.success?
   end
 
-  test "create order with backorder keeps stock at zero" do
+  test "create order with backorder decrements stock past zero" do
     cart = Commerce::Cart.create!(user: @user)
     cart.add_item!(product: @product, quantity: 1)
     order = Commerce::CreateOrder.call(cart: cart, user: @user).value
     assert order.persisted?
-    assert_equal 0, @product.reload.stock
+    # Decrement fully (to -1) rather than capping at 0, so the oversold unit is tracked
+    # and a later refund/cancel restores symmetrically without creating phantom inventory.
+    assert_equal(-1, @product.reload.stock)
   end
 end
 

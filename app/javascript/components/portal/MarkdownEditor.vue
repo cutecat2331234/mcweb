@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import { usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import Button from '@/components/ui/Button.vue'
@@ -33,18 +33,51 @@ const canUploadImages = computed(() => {
   return user?.can_upload_images === true
 })
 
+const textareaEl = ref<HTMLTextAreaElement | null>(null)
+
 function update(value: string) {
   emit('update:modelValue', value)
 }
 
+function restoreSelection(el: HTMLTextAreaElement, start: number, end: number) {
+  nextTick(() => {
+    el.focus()
+    el.setSelectionRange(start, end)
+  })
+}
+
+// Wrap the current selection (or insert markers at the caret) instead of appending
+// to the end, matching XenForo/Discourse composer behaviour.
 function wrap(before: string, after: string) {
   const value = props.modelValue
-  emit('update:modelValue', `${value}${before}${after}`)
+  const el = textareaEl.value
+  if (!el) {
+    emit('update:modelValue', `${value}${before}${after}`)
+    return
+  }
+
+  const start = el.selectionStart ?? value.length
+  const end = el.selectionEnd ?? value.length
+  const selected = value.slice(start, end)
+  emit('update:modelValue', value.slice(0, start) + before + selected + after + value.slice(end))
+  // Keep the selection wrapped (or place the caret between the markers when nothing was selected).
+  restoreSelection(el, start + before.length, start + before.length + selected.length)
 }
 
 function insertImage(markdown: string) {
   const value = props.modelValue
-  emit('update:modelValue', `${value}${value ? '\n\n' : ''}${markdown}`)
+  const el = textareaEl.value
+  if (!el) {
+    emit('update:modelValue', `${value}${value ? '\n\n' : ''}${markdown}`)
+    return
+  }
+
+  const start = el.selectionStart ?? value.length
+  const end = el.selectionEnd ?? value.length
+  const prefix = start > 0 && value[start - 1] !== '\n' ? '\n' : ''
+  const inserted = `${prefix}${markdown}`
+  emit('update:modelValue', value.slice(0, start) + inserted + value.slice(end))
+  restoreSelection(el, start + inserted.length, start + inserted.length)
 }
 
 async function preview() {
@@ -87,6 +120,7 @@ async function preview() {
           :placeholder="placeholder"
           :required="required"
           class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          ref="textareaEl"
           @input="onInput"
         />
       </template>
@@ -98,6 +132,7 @@ async function preview() {
       :placeholder="placeholder"
       :required="required"
       class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      ref="textareaEl"
       @input="update(($event.target as HTMLTextAreaElement).value)"
     />
     <div v-if="previewHtml" class="prose prose-sm max-w-none rounded-md border p-3 text-sm dark:prose-invert" v-html="previewHtml" />

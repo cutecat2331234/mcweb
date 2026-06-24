@@ -31,6 +31,10 @@ module Community
         muted: conversation.participants.find_by(user: current_user)&.muted_at.present?,
         muteUrl: mute_forum_conversation_path(conversation),
         unmuteUrl: unmute_forum_conversation_path(conversation),
+        invitesLocked: conversation.is_group? && conversation.invites_locked?,
+        canManageInvites: conversation.is_group? && conversation.creator_id == current_user.id,
+        lockInvitesUrl: lock_invites_forum_conversation_path(conversation),
+        unlockInvitesUrl: unlock_invites_forum_conversation_path(conversation),
         currentUsername: current_user.username,
         canSendPm: Community::TrustLevel.can_send_pm?(current_user),
         warningRestrictions: warning_restrictions_props
@@ -56,7 +60,7 @@ module Community
       return nil unless conversation.participant?(current_user)
       return nil if group_add_participant_url(conversation)
 
-      if SiteSetting.get("forum.group_pm_creator_only_add", "false") == "true" &&
+      if (conversation.invites_locked? || SiteSetting.get("forum.group_pm_creator_only_add", "false") == "true") &&
          !Community::AddConversationParticipant.can_add_member?(current_user, conversation)
         return "仅群主可添加新成员。"
       end

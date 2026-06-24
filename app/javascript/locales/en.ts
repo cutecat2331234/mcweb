@@ -1169,6 +1169,8 @@ export default {
       mute: 'Mute conversation',
       groupMembers: 'Group members',
       groupOwner: '(owner)',
+      lockInvites: 'Lock invites (owner only)',
+      unlockInvites: 'Allow members to invite',
       leaveGroup: 'Leave group',
       removeMember: 'Remove member',
       leave: 'Leave',

@@ -1169,6 +1169,8 @@ export default {
       mute: '静音会话',
       groupMembers: '群组成员',
       groupOwner: '（群主）',
+      lockInvites: '锁定邀请（仅群主）',
+      unlockInvites: '允许成员邀请',
       leaveGroup: '离开群组',
       removeMember: '移除成员',
       leave: '离开',

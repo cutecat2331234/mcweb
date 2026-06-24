@@ -127,7 +127,26 @@ module Community
       end
     end
 
+    def lock_invites
+      set_invites_locked(true)
+    end
+
+    def unlock_invites
+      set_invites_locked(false)
+    end
+
     private
+
+    def set_invites_locked(locked)
+      conversation = find_accessible_conversation!
+      unless conversation.is_group? && conversation.creator_id == current_user.id
+        return redirect_to forum_conversation_path(conversation), alert: t("mcweb.flash.operation_failed")
+      end
+
+      conversation.update!(invites_locked: locked)
+      key = locked ? "mcweb.flash.conversation_invites_locked" : "mcweb.flash.conversation_invites_unlocked"
+      redirect_to forum_conversation_path(conversation), notice: t(key, default: (locked ? "已锁定邀请" : "已允许成员邀请"))
+    end
 
     def find_accessible_conversation!
       Community::Conversation.for_user(current_user, include_archived: true).find(params[:id])

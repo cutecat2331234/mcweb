@@ -35,7 +35,10 @@ module Community
 
     def self.can_add_member?(actor, conversation)
       return true unless conversation.is_group?
-      return true unless SiteSetting.get("forum.group_pm_creator_only_add", "false") == "true"
+
+      creator_only = conversation.invites_locked? ||
+        SiteSetting.get("forum.group_pm_creator_only_add", "false") == "true"
+      return true unless creator_only
 
       staff = actor.permission?("forum.topics.lock") || actor.permission?("admin.access")
       staff || actor.id == conversation.creator_id

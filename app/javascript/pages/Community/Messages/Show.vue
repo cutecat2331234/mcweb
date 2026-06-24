@@ -51,6 +51,10 @@ const props = defineProps<{
   muted?: boolean
   muteUrl?: string
   unmuteUrl?: string
+  invitesLocked?: boolean
+  canManageInvites?: boolean
+  lockInvitesUrl?: string
+  unlockInvitesUrl?: string
   currentUsername?: string
   canSendPm?: boolean
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
@@ -196,6 +200,14 @@ function submit() {
     <p v-else-if="conversation.is_group && addParticipantRestrictedReason" class="mt-3 text-xs text-muted-foreground">
       {{ addParticipantRestrictedReason }}
     </p>
+    <div v-if="canManageInvites" class="mt-3">
+      <Button v-if="invitesLocked && unlockInvitesUrl" type="button" size="sm" variant="outline" @click="router.post(unlockInvitesUrl)">
+        {{ t('forum.messages.unlockInvites') }}
+      </Button>
+      <Button v-else-if="!invitesLocked && lockInvitesUrl" type="button" size="sm" variant="outline" @click="router.post(lockInvitesUrl)">
+        {{ t('forum.messages.lockInvites') }}
+      </Button>
+    </div>
   </div>
 
   <div class="mb-6 max-h-[50vh] space-y-3 overflow-y-auto rounded-lg border p-4">

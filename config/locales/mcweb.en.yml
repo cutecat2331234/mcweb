@@ -500,6 +500,8 @@ en:
         section_disallowed_tags: "These tags are not allowed in this section: %{names}"
         cannot_react_to_own_post: You cannot react to your own post.
         trust_level_cannot_react: Your trust level is too low to use reactions.
+        reaction_daily_limit_reached: You have reached your daily reaction limit.
+        reaction_too_fast: You are reacting too quickly. Please slow down.
         invalid_subscription_level: Invalid notification level.
         unsilence_unauthorized: You are not allowed to remove silences.
         restore_post_unauthorized: You are not allowed to restore this post.

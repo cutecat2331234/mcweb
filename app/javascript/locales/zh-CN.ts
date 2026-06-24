@@ -858,6 +858,7 @@ export default {
     followers: '粉丝',
     likesReceived: '获赞',
     reactionScore: '声望分',
+    profileViews: '主页访问',
     warningPoints: '警告积分',
     storeCredit: '商店余额',
     wallet: '钱包',

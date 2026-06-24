@@ -51,6 +51,7 @@ module Community
 
     def show
       user = User.find_by!(username: params[:id])
+      User.where(id: user.id).update_all("forum_profile_views = forum_profile_views + 1") if logged_in? && current_user.id != user.id
       tab = params[:tab].to_s.in?(%w[topics posts store assigned minecraft]) ? params[:tab] : "topics"
       topics_scope = if logged_in? && (current_user.id == user.id || current_user.permission?("forum.topics.lock"))
                        Community::Topic.where(user: user, status: :published)
@@ -139,6 +140,7 @@ module Community
           online: user.last_seen_at && user.last_seen_at > 5.minutes.ago,
           forum_signature: user.forum_signature,
           forum_pm_policy: user.forum_pm_policy,
+          profile_views: user.forum_profile_views,
           topics_count: topics_scope.count,
           posts_count: posts_count,
           orders_count: orders_count,

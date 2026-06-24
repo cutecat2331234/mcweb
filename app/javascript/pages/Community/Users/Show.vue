@@ -39,6 +39,7 @@ const props = defineProps<{
     trust_name: string
     likes_received: number
     reaction_score?: number
+    profile_views?: number
     member_since: string
     last_seen_at?: string | null
     online?: boolean
@@ -343,6 +344,7 @@ function deleteWallItem(url: string) {
               </Link>
               <span><strong>{{ profile.likes_received }}</strong> {{ t('userProfile.likesReceived') }}</span>
               <span v-if="profile.reaction_score != null && profile.reaction_score !== profile.likes_received"><strong>{{ profile.reaction_score }}</strong> {{ t('userProfile.reactionScore') }}</span>
+              <span v-if="profile.profile_views"><strong>{{ profile.profile_views }}</strong> {{ t('userProfile.profileViews') }}</span>
               <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> {{ t('userProfile.warningPoints') }}</span>
               <span v-if="profile.store_credit_label">
                 {{ t('userProfile.storeCredit') }} <strong>{{ profile.store_credit_label }}</strong>

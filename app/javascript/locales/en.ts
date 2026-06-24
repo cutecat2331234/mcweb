@@ -858,6 +858,7 @@ export default {
     followers: 'Followers',
     likesReceived: 'Likes received',
     reactionScore: 'Reaction score',
+    profileViews: 'Profile views',
     warningPoints: 'Warning points',
     storeCredit: 'Store credit',
     wallet: 'Wallet',

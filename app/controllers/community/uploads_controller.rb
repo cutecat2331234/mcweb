@@ -16,8 +16,9 @@ module Community
       file = params[:file]
       return render json: { error: t("mcweb.services.errors.upload_file_required") }, status: :unprocessable_entity unless file
 
-      if file.size > MAX_SIZE
-        return render json: { error: t("mcweb.services.errors.image_upload_too_large", max: "5MB") }, status: :unprocessable_entity
+      max = max_upload_size
+      if file.size > max
+        return render json: { error: t("mcweb.services.errors.image_upload_too_large", max: "#{max / 1.megabyte}MB") }, status: :unprocessable_entity
       end
 
       unless ALLOWED_TYPES.include?(file.content_type)
@@ -38,6 +39,11 @@ module Community
     end
 
     private
+
+    def max_upload_size
+      mb = SiteSetting.get("forum.max_upload_size_mb", (MAX_SIZE / 1.megabyte).to_s).to_i
+      [ mb, 1 ].max.megabytes
+    end
 
     def rate_limit_upload!
       result = Administration::RateLimiter.call(

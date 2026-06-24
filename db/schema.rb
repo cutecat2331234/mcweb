@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_000011) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_000012) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -80,6 +80,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000011) do
     t.text "description"
     t.string "grant_rule", default: "manual", null: false
     t.integer "grant_threshold", default: 0
+    t.string "grouping", default: "general", null: false
     t.string "icon", default: "🏅", null: false
     t.string "name", null: false
     t.string "slug", null: false

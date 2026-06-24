@@ -521,6 +521,8 @@ export default {
         tierBronze: '青铜',
         tierSilver: '白银',
         tierGold: '黄金',
+        grouping: '分组',
+        groupingPlaceholder: '如：社区',
         grantThreshold: '阈值（数量 / 等级 / 天数）',
       },
       tagGroup: {

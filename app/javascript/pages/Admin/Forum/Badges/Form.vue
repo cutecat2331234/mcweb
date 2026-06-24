@@ -26,6 +26,7 @@ const props = defineProps<{
     grant_rule: string
     grant_threshold: number
     tier: string
+    grouping: string
   }
   submitUrl: string
   method: 'post' | 'patch'
@@ -82,6 +83,10 @@ function submit() {
     <div class="space-y-2">
       <Label for="tier">{{ t('admin.forms.badge.tier') }}</Label>
       <Select id="tier" v-model="form.badge.tier" :options="tierOptions" block />
+    </div>
+    <div class="space-y-2">
+      <Label for="grouping">{{ t('admin.forms.badge.grouping') }}</Label>
+      <Input id="grouping" v-model="form.badge.grouping" :placeholder="t('admin.forms.badge.groupingPlaceholder')" />
     </div>
     <div class="space-y-2">
       <Label for="grant_rule">{{ t('admin.forms.badge.grantRule') }}</Label>

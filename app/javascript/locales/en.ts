@@ -521,6 +521,8 @@ export default {
         tierBronze: 'Bronze',
         tierSilver: 'Silver',
         tierGold: 'Gold',
+        grouping: 'Grouping',
+        groupingPlaceholder: 'e.g. Community',
         grantThreshold: 'Threshold (count / level / days)',
       },
       tagGroup: {

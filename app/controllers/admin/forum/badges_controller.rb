@@ -68,7 +68,7 @@ module Admin
       end
 
       def badge_params
-        params.require(:badge).permit(:name, :slug, :description, :icon, :color, :grant_rule, :grant_threshold, :tier)
+        params.require(:badge).permit(:name, :slug, :description, :icon, :color, :grant_rule, :grant_threshold, :tier, :grouping)
       end
 
       def form_props(badge)
@@ -83,7 +83,8 @@ module Admin
             color: badge.color || "#6366f1",
             grant_rule: badge.grant_rule || "manual",
             grant_threshold: badge.grant_threshold || 0,
-            tier: badge.tier || "bronze"
+            tier: badge.tier || "bronze",
+            grouping: badge.grouping || "general"
           },
           submitUrl: badge.persisted? ? admin_forum_badge_path(badge) : admin_forum_badges_path,
           method: badge.persisted? ? "patch" : "post",

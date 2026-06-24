@@ -44,6 +44,8 @@ module Community
         description: badge.description,
         grant_rule: badge.grant_rule,
         grant_rule_label: grant_rule_label(badge),
+        tier: badge.tier,
+        grouping: badge.grouping,
         users_count: users_count,
         url: forum_badge_path(badge.slug)
       }

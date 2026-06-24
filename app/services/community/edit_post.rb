@@ -47,7 +47,14 @@ module Community
       return link_restriction if link_restriction.failure? && Community::TrustLevel.contains_link?(@body)
 
       filter_censored_body!
-      @post.edit_body!(@body, editor: @user, reason: @reason)
+      # "Ninja edit" grace window: a quick self-edit right after posting updates the body
+      # in place without creating a revision or an "edited" marker (XF/Discourse parity).
+      silent = grace_edit?
+      if silent
+        @post.update!(body: @body)
+      else
+        @post.edit_body!(@body, editor: @user, reason: @reason)
+      end
 
       attachments_changed = false
       if @attachment_ids != NOT_PROVIDED
@@ -70,8 +77,8 @@ module Community
       )
       Community::ProcessHashtags.call(topic: @post.topic, body: @body, user: @user)
       body_changed = @old_body != @body
-      Community::NotifyPostEdited.call(post: @post) if body_changed
-      if body_changed || attachments_changed
+      Community::NotifyPostEdited.call(post: @post) if body_changed && !silent
+      if (body_changed || attachments_changed) && !silent
         Community::DispatchForumEventWebhook.call(event_type: "post.edited", topic: @post.topic, post: @post)
       end
       ServiceResult.success(@post)
@@ -83,6 +90,16 @@ module Community
 
     def can_edit?
       self.class.editable_by?(@user, @post)
+    end
+
+    # Author editing their own brand-new post, before it has any tracked revision.
+    def grace_edit?
+      return false unless @user.id == @post.user_id
+
+      minutes = SiteSetting.get("forum.edit_grace_period_minutes", "5").to_i
+      return false if minutes <= 0
+
+      @post.edited_at.nil? && @post.created_at > minutes.minutes.ago
     end
 
     def filter_censored_body!

@@ -2268,6 +2268,7 @@ export default {
       quote: '引用',
       heading: '标题',
       bulletList: '列表',
+      emoji: '表情',
       uploadLevelHint: 'Lv.1 后可上传图片',
       previewing: '预览中…',
       preview: '预览',

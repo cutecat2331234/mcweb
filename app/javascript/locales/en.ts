@@ -2268,6 +2268,7 @@ export default {
       quote: 'Quote',
       heading: 'Heading',
       bulletList: 'List',
+      emoji: 'Emoji',
       uploadLevelHint: 'Image upload at Lv.1+',
       previewing: 'Previewing…',
       preview: 'Preview',

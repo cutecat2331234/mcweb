@@ -134,6 +134,14 @@ function handleDragOver(event: DragEvent) {
   }
 }
 
+const showEmoji = ref(false)
+const emojis = ['😀', '😂', '😍', '👍', '👎', '🎉', '❤️', '🔥', '😢', '😡', '🤔', '👀', '🙏', '💯', '✅', '❌', '🚀', '😎', '🥳', '👋']
+
+function insertEmoji(emoji: string) {
+  wrap(emoji, '')
+  showEmoji.value = false
+}
+
 async function preview() {
   if (!props.modelValue.trim()) return
   previewLoading.value = true
@@ -165,11 +173,21 @@ async function preview() {
       <Button type="button" variant="outline" size="sm" @click="wrap('> ', '')">{{ t('components.markdownEditor.quote') }}</Button>
       <Button type="button" variant="outline" size="sm" @click="wrap('## ', '')">{{ t('components.markdownEditor.heading') }}</Button>
       <Button type="button" variant="outline" size="sm" @click="wrap('- ', '')">{{ t('components.markdownEditor.bulletList') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="showEmoji = !showEmoji">{{ t('components.markdownEditor.emoji') }}</Button>
       <ImageUploadButton v-if="showImageUpload && canUploadImages" @insert="insertImage" />
       <p v-else-if="showImageUpload && !canUploadImages" class="text-xs text-muted-foreground">{{ t('components.markdownEditor.uploadLevelHint') }}</p>
       <Button type="button" variant="outline" size="sm" :disabled="previewLoading || !modelValue" @click="preview">
         {{ previewLoading ? t('components.markdownEditor.previewing') : t('components.markdownEditor.preview') }}
       </Button>
+    </div>
+    <div v-if="showEmoji" class="flex flex-wrap gap-1 rounded-md border p-2">
+      <button
+        v-for="e in emojis"
+        :key="e"
+        type="button"
+        class="rounded px-1 text-lg hover:bg-muted"
+        @click="insertEmoji(e)"
+      >{{ e }}</button>
     </div>
     <p v-if="uploadingImage" class="text-xs text-muted-foreground">{{ t('components.imageUpload.uploading') }}</p>
     <MentionAutocomplete v-if="showMention" :model-value="modelValue" @update:model-value="update">

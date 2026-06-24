@@ -870,6 +870,9 @@
         profile_post_comment:
           title: "%{author} 评论了主页留言"
           body: "%{excerpt}"
+        new_follower:
+          title: "%{author} 关注了你"
+          body: 点击查看其主页。
         topic_reply:
           title: "主题有新回复：%{title}"
           body: "%{author}：%{excerpt}"

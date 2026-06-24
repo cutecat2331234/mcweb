@@ -860,6 +860,9 @@ en:
         profile_post_comment:
           title: "%{author} commented on a profile post"
           body: "%{excerpt}"
+        new_follower:
+          title: "%{author} started following you"
+          body: "Tap to view their profile."
         topic_reply:
           title: "New reply: %{title}"
           body: "%{author}: %{excerpt}"

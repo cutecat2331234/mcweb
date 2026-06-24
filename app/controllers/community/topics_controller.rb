@@ -105,7 +105,7 @@ module Community
         markUnreadUrl: logged_in? ? mark_unread_forum_topic_path(@topic) : nil,
         jumpToUnreadUrl: first_unread_floor ? forum_topic_path(@topic, unread: 1) : nil,
         canReply: can_reply_to_topic?,
-        cannedResponses: can_moderate_topic? ? Community::CannedResponse.ordered.limit(50).map { |r| { title: r.title, body: r.body } } : [],
+        cannedResponses: can_moderate_topic? ? Community::CannedResponse.ordered.limit(50).map { |r| { title: r.title, body: r.render_for(topic: @topic) } } : [],
         section_read_only: @topic.section.read_only?,
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction.allowed_emoji,

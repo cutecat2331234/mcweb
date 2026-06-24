@@ -840,6 +840,7 @@ export default {
     orders: 'Orders',
     followers: 'Followers',
     likesReceived: 'Likes received',
+    reactionScore: 'Reaction score',
     warningPoints: 'Warning points',
     storeCredit: 'Store credit',
     wallet: 'Wallet',

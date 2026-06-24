@@ -10,6 +10,8 @@ module Admin
         forum.bump_cooldown_hours
         forum.warning_mute_threshold
         forum.warning_mute_days
+        forum.warning_suspend_threshold
+        forum.warning_suspend_days
         forum.warning_points_expire_days
         forum.require_post_approval_below_tl
         forum.warning_block_post_threshold

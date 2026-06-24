@@ -8,10 +8,11 @@ module Community
     end
 
     def call
+      total = Community::UserWarning.total_points_for(@user)
+      maybe_suspend!(total)
+
       threshold = SiteSetting.get("forum.warning_mute_threshold", "").to_i
       return ServiceResult.success(skipped: true) if threshold <= 0
-
-      total = Community::UserWarning.total_points_for(@user)
       return ServiceResult.success(skipped: true) if total < threshold
       return ServiceResult.success(skipped: true) if Community::Mute.muted?(@user)
       return ServiceResult.failure(error: "auto_silence_failed") unless @actor
@@ -29,6 +30,21 @@ module Community
       ServiceResult.success(muted: true)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    # XenForo-style escalation: suspend (lock out of sign-in) at a higher points
+    # threshold than the auto-mute. Off by default (threshold unset).
+    def maybe_suspend!(total)
+      threshold = SiteSetting.get("forum.warning_suspend_threshold", "").to_i
+      return if threshold <= 0 || total < threshold
+
+      days = SiteSetting.get("forum.warning_suspend_days", "7").to_i
+      return unless days.positive?
+      return if @user.locked_until&.future?
+
+      @user.update!(locked_until: days.days.from_now)
     end
   end
 end

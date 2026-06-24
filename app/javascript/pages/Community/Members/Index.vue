@@ -99,6 +99,9 @@ function changeTrustLevel(value: string) {
     </form>
     <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
     <Select :model-value="trustLevel || ''" :options="trustLevelOptions" size="sm" @update:model-value="changeTrustLevel" />
+    <Button as-child variant="outline" size="sm">
+      <Link :href="routes.forumLeaderboard">{{ t('forum.members.leaderboardLink') }}</Link>
+    </Button>
   </div>
 
   <div v-if="members.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">

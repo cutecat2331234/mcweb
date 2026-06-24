@@ -20,6 +20,7 @@ export const routes = {
   forumIgnores: `${appPrefix}/forum/ignores`,
   forumMuted: `${appPrefix}/forum/muted`,
   forumMembers: `${appPrefix}/forum/members`,
+  forumLeaderboard: `${appPrefix}/forum/leaderboard`,
   forumUnread: `${appPrefix}/forum/unread`,
   forumAssigned: `${appPrefix}/forum/assigned`,
   forumUnreadMarkAllRead: `${appPrefix}/forum/unread/mark_all_read`,

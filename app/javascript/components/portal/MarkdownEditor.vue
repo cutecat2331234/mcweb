@@ -102,6 +102,12 @@ async function uploadImageFile(file: File) {
   }
 }
 
+async function uploadImageFiles(files: File[]) {
+  for (const file of files) {
+    await uploadImageFile(file)
+  }
+}
+
 function handlePaste(event: ClipboardEvent) {
   if (!canUploadImages.value) return
   const items = event.clipboardData?.items
@@ -121,10 +127,10 @@ function handlePaste(event: ClipboardEvent) {
 
 function handleDrop(event: DragEvent) {
   if (!canUploadImages.value) return
-  const image = Array.from(event.dataTransfer?.files ?? []).find((f) => f.type.startsWith('image/'))
-  if (image) {
+  const images = Array.from(event.dataTransfer?.files ?? []).filter((f) => f.type.startsWith('image/'))
+  if (images.length) {
     event.preventDefault()
-    uploadImageFile(image)
+    uploadImageFiles(images)
   }
 }
 

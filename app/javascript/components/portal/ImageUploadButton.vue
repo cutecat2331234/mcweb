@@ -24,27 +24,29 @@ function openPicker() {
 
 async function onFileChange(event: Event) {
   const input = event.target as HTMLInputElement
-  const file = input.files?.[0]
-  if (!file) return
+  const files = Array.from(input.files ?? [])
+  if (!files.length) return
 
   uploading.value = true
   error.value = ''
   try {
     const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
-    const form = new FormData()
-    form.append('file', file)
-    const res = await fetch(routes.forumUpload, {
-      method: 'POST',
-      headers: { 'X-CSRF-Token': token || '', Accept: 'application/json' },
-      body: form,
-      credentials: 'same-origin',
-    })
-    const data = await res.json()
-    if (!res.ok) {
-      error.value = data.error || t('components.imageUpload.uploadFailed')
-      return
+    for (const file of files) {
+      const form = new FormData()
+      form.append('file', file)
+      const res = await fetch(routes.forumUpload, {
+        method: 'POST',
+        headers: { 'X-CSRF-Token': token || '', Accept: 'application/json' },
+        body: form,
+        credentials: 'same-origin',
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        error.value = data.error || t('components.imageUpload.uploadFailed')
+        break
+      }
+      emit('insert', data.markdown)
     }
-    emit('insert', data.markdown)
   } finally {
     uploading.value = false
     input.value = ''
@@ -58,6 +60,7 @@ async function onFileChange(event: Event) {
       ref="fileInput"
       type="file"
       accept="image/jpeg,image/png,image/gif,image/webp"
+      multiple
       class="hidden"
       :disabled="uploading || disabled"
       @change="onFileChange"

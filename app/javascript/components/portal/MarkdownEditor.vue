@@ -106,6 +106,11 @@ async function preview() {
       <Button type="button" variant="outline" size="sm" @click="wrap('*', '*')">{{ t('components.markdownEditor.italic') }}</Button>
       <Button type="button" variant="outline" size="sm" @click="wrap('`', '`')">{{ t('components.markdownEditor.code') }}</Button>
       <Button type="button" variant="outline" size="sm" @click="wrap('[', '](https://)')">{{ t('components.markdownEditor.link') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('~~', '~~')">{{ t('components.markdownEditor.strikethrough') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('||', '||')">{{ t('components.markdownEditor.spoiler') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('> ', '')">{{ t('components.markdownEditor.quote') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('## ', '')">{{ t('components.markdownEditor.heading') }}</Button>
+      <Button type="button" variant="outline" size="sm" @click="wrap('- ', '')">{{ t('components.markdownEditor.bulletList') }}</Button>
       <ImageUploadButton v-if="showImageUpload && canUploadImages" @insert="insertImage" />
       <p v-else-if="showImageUpload && !canUploadImages" class="text-xs text-muted-foreground">{{ t('components.markdownEditor.uploadLevelHint') }}</p>
       <Button type="button" variant="outline" size="sm" :disabled="previewLoading || !modelValue" @click="preview">

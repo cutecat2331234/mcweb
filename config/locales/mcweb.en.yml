@@ -1255,10 +1255,12 @@ en:
           target_post: "Post #%{floor} (%{title})"
           target_review: "Review #%{id} (%{product})"
           target_user: "Member: %{username}"
+          target_profile_post: "Profile post on %{username}'s wall"
           action_view_topic: View topic
           action_view_post: View post
           action_view_product: View product
           action_view_user: View profile
+          action_view_profile_post: View profile
         warnings:
           title: User warnings
           col_user: User

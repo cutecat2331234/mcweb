@@ -895,6 +895,7 @@ export default {
     wallCommentPlaceholder: 'Write a reply…',
     wallSend: 'Send',
     wallDelete: 'Delete',
+    wallReport: 'Report',
     report: 'Report',
     tabTopics: 'Topics',
     tabPosts: 'Replies',

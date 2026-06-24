@@ -20,6 +20,8 @@ module Community
         end
       when Community::Topic
         @reportable.update!(status: :published) if @reportable.status == "hidden"
+      when Community::ProfilePost
+        @reportable.update!(status: :published) if @reportable.status == "hidden" && @reportable.deleted_at.blank?
       end
 
       ServiceResult.success

@@ -161,6 +161,7 @@ const props = defineProps<{
     created_at: string
     can_delete: boolean
     delete_url: string
+    report_url?: string | null
     comment_url: string
     comments: Array<{
       id: number
@@ -530,6 +531,7 @@ function deleteWallItem(url: string) {
             <p class="mt-1 whitespace-pre-wrap break-words text-sm">{{ post.body }}</p>
             <div class="mt-2 flex flex-wrap gap-3 text-xs">
               <button type="button" class="text-muted-foreground hover:text-foreground" @click="toggleCommentBox(post.id)">{{ t('userProfile.wallReply') }}</button>
+              <Link v-if="post.report_url" :href="post.report_url" class="text-muted-foreground hover:text-foreground">{{ t('userProfile.wallReport') }}</Link>
               <button v-if="post.can_delete" type="button" class="text-muted-foreground hover:text-destructive" @click="deleteWallItem(post.delete_url)">{{ t('userProfile.wallDelete') }}</button>
             </div>
 

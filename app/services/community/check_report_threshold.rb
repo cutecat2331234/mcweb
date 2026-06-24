@@ -26,6 +26,8 @@ module Community
         Community::SyncTopicLastPost.call(topic: reportable.topic)
       when Community::Topic
         reportable.update!(status: :hidden)
+      when Community::ProfilePost
+        reportable.update!(status: :hidden) unless reportable.deleted_at.present?
       end
 
       ServiceResult.success(hidden: true, pending_count: pending_count)

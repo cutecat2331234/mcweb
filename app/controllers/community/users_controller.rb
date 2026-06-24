@@ -309,6 +309,7 @@ module Community
           created_at: l(post.created_at, format: :short),
           can_delete: can_manage_profile_post?(post.user_id, user.id),
           delete_url: forum_profile_post_path(post.id),
+          report_url: (logged_in? && current_user.id != post.user_id) ? new_forum_report_path(reportable_type: "Community::ProfilePost", reportable_id: post.id) : nil,
           comment_url: forum_profile_post_comments_path(post.id),
           comments: post.comments.to_a.select(&:published?).sort_by(&:created_at).map do |comment|
             {

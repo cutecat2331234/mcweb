@@ -112,6 +112,8 @@ module Admin
           forum_t("reports.target_post", floor: @report.reportable.floor_number, title: @report.reportable.topic.title)
         when ::Commerce::Review
           forum_t("reports.target_review", id: @report.reportable.id, product: @report.reportable.product.name)
+        when ::Community::ProfilePost
+          forum_t("reports.target_profile_post", username: @report.reportable.profile_user.username)
         when ::User
           forum_t("reports.target_user", username: @report.reportable.username)
         else
@@ -127,6 +129,8 @@ module Admin
           [ { label: forum_t("reports.action_view_post"), href: "#{forum_topic_path(@report.reportable.topic)}#post-#{@report.reportable.id}" } ]
         when ::Commerce::Review
           [ { label: forum_t("reports.action_view_product"), href: store_product_path(@report.reportable.product) } ]
+        when ::Community::ProfilePost
+          [ { label: forum_t("reports.action_view_profile_post"), href: forum_user_path(@report.reportable.profile_user.username) } ]
         when ::User
           [ { label: forum_t("reports.action_view_user"), href: forum_user_path(@report.reportable.username) } ]
         else

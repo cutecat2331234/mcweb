@@ -138,6 +138,7 @@ module Community
           last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
           online: user.last_seen_at && user.last_seen_at > 5.minutes.ago,
           forum_signature: user.forum_signature,
+          forum_pm_policy: user.forum_pm_policy,
           topics_count: topics_scope.count,
           posts_count: posts_count,
           orders_count: orders_count,
@@ -253,7 +254,9 @@ module Community
     private
 
     def user_params
-      params.require(:user).permit(:bio, :forum_title, :forum_signature, :forum_flair_color_hex)
+      permitted = params.require(:user).permit(:bio, :forum_title, :forum_signature, :forum_flair_color_hex, :forum_pm_policy)
+      permitted.delete(:forum_pm_policy) unless Community::PmPolicy::POLICIES.include?(permitted[:forum_pm_policy])
+      permitted
     end
 
     def attach_forum_avatar!(user, file:)

@@ -878,6 +878,12 @@ export default {
     forumTitle: '论坛头衔',
     forumTitlePlaceholder: '如：资深玩家',
     flairColor: '头衔颜色（Hex，可选）',
+    pmPolicy: {
+      label: '谁可以给我发私信',
+      everyone: '所有人',
+      followingOnly: '仅我关注的人',
+      staffOnly: '仅管理团队',
+    },
     bio: '个人简介',
     bioPlaceholder: '介绍一下自己…',
     signaturePrefix: '签名：',

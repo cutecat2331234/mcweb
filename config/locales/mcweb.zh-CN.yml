@@ -514,6 +514,7 @@
         trust_level_cannot_react: 你的信任等级不足以使用反应功能。
         reaction_daily_limit_reached: 你已达到今日反应上限。
         reaction_too_fast: 反应过于频繁，请稍后再试。
+        pm_not_accepted: 该用户不接收你的私信。
         invalid_subscription_level: 无效的通知级别。
         unsilence_unauthorized: 无权解除禁言。
         restore_post_unauthorized: 无权恢复帖子。

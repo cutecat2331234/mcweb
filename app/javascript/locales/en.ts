@@ -878,6 +878,12 @@ export default {
     forumTitle: 'Forum title',
     forumTitlePlaceholder: 'e.g. Veteran player',
     flairColor: 'Title color (hex, optional)',
+    pmPolicy: {
+      label: 'Who can message me',
+      everyone: 'Everyone',
+      followingOnly: 'Only people I follow',
+      staffOnly: 'Staff only',
+    },
     bio: 'Bio',
     bioPlaceholder: 'Tell us about yourself…',
     signaturePrefix: 'Signature:',

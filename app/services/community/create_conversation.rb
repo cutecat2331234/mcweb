@@ -12,6 +12,7 @@ module Community
       return ServiceResult.failure(error: "Recipient not found.") unless @recipient
       return ServiceResult.failure(error: "You cannot message yourself.") if @sender.id == @recipient.id
       return ServiceResult.failure(error: "You cannot message this user.") if Community::UserBlock.blocked?(@sender, @recipient)
+      return ServiceResult.failure(error: "pm_not_accepted") unless Community::PmPolicy.accepts?(recipient: @recipient, sender: @sender)
       return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@sender)
 
       pm_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :pm)

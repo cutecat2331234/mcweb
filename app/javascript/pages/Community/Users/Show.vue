@@ -32,6 +32,7 @@ const props = defineProps<{
     display_name: string | null
     forum_title: string | null
     forum_flair_color_hex?: string | null
+    forum_pm_policy?: string
     avatar_url: string
     bio: string | null
     trust_level: number
@@ -186,6 +187,7 @@ const bioForm = useForm({
     forum_title: props.profile.forum_title || '',
     forum_flair_color_hex: props.profile.forum_flair_color_hex || '',
     forum_signature: props.profile.forum_signature || '',
+    forum_pm_policy: props.profile.forum_pm_policy || 'everyone',
   },
 })
 const initialFieldValues = Object.fromEntries(
@@ -563,6 +565,16 @@ function deleteWallItem(url: string) {
     <Input id="forum_title" v-model="bioForm.user.forum_title" :placeholder="t('userProfile.forumTitlePlaceholder')" />
     <Label for="forum_flair_color_hex">{{ t('userProfile.flairColor') }}</Label>
     <Input id="forum_flair_color_hex" v-model="bioForm.user.forum_flair_color_hex" placeholder="#6366f1" />
+    <Label for="forum_pm_policy">{{ t('userProfile.pmPolicy.label') }}</Label>
+    <select
+      id="forum_pm_policy"
+      v-model="bioForm.user.forum_pm_policy"
+      class="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      <option value="everyone">{{ t('userProfile.pmPolicy.everyone') }}</option>
+      <option value="following_only">{{ t('userProfile.pmPolicy.followingOnly') }}</option>
+      <option value="staff_only">{{ t('userProfile.pmPolicy.staffOnly') }}</option>
+    </select>
     <div class="flex flex-wrap justify-end gap-2 sm:justify-start">
       <Button type="submit" size="sm" :disabled="bioForm.processing">{{ t('common.save') }}</Button>
       <Button type="button" size="sm" variant="outline" @click="profileEditPanel = null">{{ t('common.cancel') }}</Button>

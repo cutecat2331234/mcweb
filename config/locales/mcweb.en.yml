@@ -504,6 +504,7 @@ en:
         trust_level_cannot_react: Your trust level is too low to use reactions.
         reaction_daily_limit_reached: You have reached your daily reaction limit.
         reaction_too_fast: You are reacting too quickly. Please slow down.
+        pm_not_accepted: This member is not accepting messages from you.
         invalid_subscription_level: Invalid notification level.
         unsilence_unauthorized: You are not allowed to remove silences.
         restore_post_unauthorized: You are not allowed to restore this post.

@@ -1205,6 +1205,8 @@ export default {
       unarchive: 'Unarchive',
       archive: 'Archive conversation',
       markUnread: 'Mark as unread',
+      labelPlaceholder: 'Label (e.g. Work)',
+      saveLabel: 'Save label',
       unmute: 'Unmute',
       mute: 'Mute conversation',
       groupMembers: 'Group members',

@@ -25,6 +25,11 @@ module Community
         conversations_scope = conversations_scope.where(id: conversation_ids)
       end
 
+      if params[:label].present?
+        labeled_ids = Community::ConversationParticipant.where(user: current_user, label: params[:label]).pluck(:forum_conversation_id)
+        conversations_scope = conversations_scope.where(id: labeled_ids)
+      end
+
       @pagy, conversations = pagy(:offset, conversations_scope, limit: 30)
       conversation_ids = conversations.map(&:id)
       unread_counts = Community::Conversation.unread_counts_for(current_user, conversation_ids)
@@ -58,6 +63,13 @@ module Community
       conversation = find_accessible_conversation!
       conversation.mark_unread_for!(current_user)
       redirect_to forum_conversations_path, notice: t("mcweb.flash.conversation_marked_unread", default: "已标记为未读")
+    end
+
+    def set_label
+      conversation = find_accessible_conversation!
+      participant = conversation.participants.find_by(user: current_user)
+      participant&.update!(label: params[:label].to_s.strip.presence)
+      redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.conversation_labeled", default: "已更新标签")
     end
 
     def new

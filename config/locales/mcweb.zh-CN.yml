@@ -208,6 +208,7 @@
       conversation_archived: 会话已归档。
       conversation_restored: 会话已恢复。
       conversation_marked_unread: 会话已标记为未读。
+      conversation_labeled: 会话标签已更新。
       conversation_muted: 已静音此会话。
       conversation_unmuted: 已取消静音。
       report_resolved: 举报已处理。

@@ -28,6 +28,8 @@ module Community
         archiveUrl: archive_forum_conversation_path(conversation),
         unarchiveUrl: unarchive_forum_conversation_path(conversation),
         markUnreadUrl: mark_unread_forum_conversation_path(conversation),
+        setLabelUrl: set_label_forum_conversation_path(conversation),
+        conversationLabel: conversation.participants.find_by(user: current_user)&.label,
         messageDraft: Community::MessageDraft.find_by(user: current_user, conversation: conversation)&.body,
         messageDraftUrl: forum_conversation_message_draft_path(conversation),
         archived: conversation.participants.find_by(user: current_user)&.archived_at.present?,
@@ -96,7 +98,8 @@ module Community
         last_message_at: conversation.last_message_at ? l(conversation.last_message_at, format: :short) : nil,
         unread_count: unread_count.nil? ? conversation.unread_count_for(current_user) : unread_count,
         last_message_preview: last_message_preview,
-        archived: participant&.archived_at.present?
+        archived: participant&.archived_at.present?,
+        label: participant&.label
       }
 
       if include_other

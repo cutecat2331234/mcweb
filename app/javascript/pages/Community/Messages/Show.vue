@@ -51,6 +51,8 @@ const props = defineProps<{
   archiveUrl?: string
   unarchiveUrl?: string
   markUnreadUrl?: string
+  setLabelUrl?: string
+  conversationLabel?: string | null
   messageDraft?: string | null
   messageDraftUrl?: string
   archived?: boolean
@@ -95,6 +97,12 @@ watch(() => form.message.body, (body) => {
   if (draftTimer) clearTimeout(draftTimer)
   draftTimer = setTimeout(() => saveDraft(body), 800)
 })
+
+const labelInput = ref(props.conversationLabel || '')
+function saveLabel() {
+  if (!props.setLabelUrl) return
+  router.post(props.setLabelUrl, { label: labelInput.value }, { preserveScroll: true })
+}
 
 watch(
   () => props.form_errors,
@@ -225,6 +233,11 @@ function submit() {
       {{ t('forum.messages.mute') }}
     </Button>
   </div>
+
+  <form v-if="setLabelUrl" class="mb-4 flex max-w-xs items-center gap-2" @submit.prevent="saveLabel">
+    <Input v-model="labelInput" :placeholder="t('forum.messages.labelPlaceholder')" class="h-8" />
+    <Button type="submit" size="sm" variant="outline">{{ t('forum.messages.saveLabel') }}</Button>
+  </form>
 
   <div v-if="conversation.is_group && participants.length" class="mb-4">
     <p class="mb-2 text-xs font-semibold text-muted-foreground">{{ t('forum.messages.groupMembers') }}</p>

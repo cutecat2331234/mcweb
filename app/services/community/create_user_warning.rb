@@ -2,12 +2,13 @@
 
 module Community
   class CreateUserWarning < ApplicationService
-    def initialize(actor:, user:, reason:, points: 1, expire_days: nil)
+    def initialize(actor:, user:, reason: nil, points: nil, expire_days: nil, template_id: nil)
       @actor = actor
       @user = user
-      @reason = reason.to_s.strip
-      @points = [ points.to_i, 1 ].max
-      @expire_days = expire_days
+      template = template_id.present? ? Community::WarningTemplate.find_by(id: template_id) : nil
+      @reason = (reason.presence || template&.reason).to_s.strip
+      @points = [ (points || template&.points || 1).to_i, 1 ].max
+      @expire_days = expire_days.nil? ? template&.expire_days : expire_days
     end
 
     def call

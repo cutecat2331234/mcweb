@@ -82,6 +82,7 @@ export default {
     forumApprovals: 'Approvals',
     forumUserFields: 'User fields',
     forumBadges: 'Badges',
+    forumWarningTemplates: 'Warning templates',
     forumTags: 'Tags',
     forumSettings: 'Forum settings',
     forumWebhookDeliveries: 'Webhook deliveries',
@@ -252,6 +253,14 @@ export default {
     cannedResponses: {
       deleteTitle: 'Delete canned response',
       deleteConfirm: 'Delete this canned response?',
+    },
+    warningTemplates: {
+      name: 'Name',
+      reason: 'Reason',
+      points: 'Points',
+      expireDays: 'Expire after (days)',
+      deleteTitle: 'Delete warning template',
+      deleteConfirm: 'Delete this warning template?',
     },
     forumSettings: {
       title: 'Forum settings',

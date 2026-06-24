@@ -53,6 +53,7 @@ Rails.application.routes.draw do
       resources :tags
       resources :tag_groups
       resources :warnings, only: %i[index]
+      resources :warning_templates, path: "warning-templates"
       resources :approvals, only: %i[index show] do
         member do
           post :approve

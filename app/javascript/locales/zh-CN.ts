@@ -82,6 +82,7 @@ export default {
     forumApprovals: '待审核',
     forumUserFields: '用户字段',
     forumBadges: '徽章',
+    forumWarningTemplates: '警告模板',
     forumTags: '标签',
     forumSettings: '论坛设置',
     forumWebhookDeliveries: 'Webhook 投递',
@@ -252,6 +253,14 @@ export default {
     cannedResponses: {
       deleteTitle: '删除罐头回复',
       deleteConfirm: '确定删除此罐头回复？',
+    },
+    warningTemplates: {
+      name: '名称',
+      reason: '原因',
+      points: '分值',
+      expireDays: '过期天数',
+      deleteTitle: '删除警告模板',
+      deleteConfirm: '确定删除此警告模板？',
     },
     forumSettings: {
       title: '论坛设置',

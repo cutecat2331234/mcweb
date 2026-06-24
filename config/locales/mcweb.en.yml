@@ -288,6 +288,9 @@ en:
       canned_response_created: Canned response created.
       canned_response_updated: Canned response updated.
       canned_response_deleted: Canned response deleted.
+      warning_template_created: Warning template created.
+      warning_template_updated: Warning template updated.
+      warning_template_deleted: Warning template deleted.
       shipping_address_saved: Address saved.
       shipping_address_updated: Address updated.
       shipping_address_deleted: Address deleted.
@@ -1270,6 +1273,13 @@ en:
           action_new: New canned response
           form_edit: Edit canned response
           form_new: New canned response
+        warning_templates:
+          title: Warning templates
+          col_name: Name
+          col_points: Points
+          action_new: New warning template
+          form_edit: Edit warning template
+          form_new: New warning template
         user_fields:
           title: User fields
           new: New user field

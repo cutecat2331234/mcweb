@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_000004) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -717,6 +717,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000003) do
     t.index ["expires_at"], name: "index_forum_user_warnings_on_expires_at"
     t.index ["issuer_id"], name: "index_forum_user_warnings_on_issuer_id"
     t.index ["user_id"], name: "index_forum_user_warnings_on_user_id"
+  end
+
+  create_table "forum_warning_templates", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "expire_days"
+    t.string "name", null: false
+    t.integer "points", default: 1, null: false
+    t.integer "position", default: 0, null: false
+    t.text "reason", default: "", null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "frontend_templates", force: :cascade do |t|

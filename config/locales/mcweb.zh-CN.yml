@@ -298,6 +298,9 @@
       canned_response_created: 罐头回复已创建。
       canned_response_updated: 罐头回复已更新。
       canned_response_deleted: 罐头回复已删除。
+      warning_template_created: 警告模板已创建。
+      warning_template_updated: 警告模板已更新。
+      warning_template_deleted: 警告模板已删除。
       shipping_address_saved: 地址已保存。
       shipping_address_updated: 地址已更新。
       shipping_address_deleted: 地址已删除。
@@ -1280,6 +1283,13 @@
           action_new: 新建罐头回复
           form_edit: 编辑罐头回复
           form_new: 新建罐头回复
+        warning_templates:
+          title: 警告模板
+          col_name: 名称
+          col_points: 分值
+          action_new: 新建警告模板
+          form_edit: 编辑警告模板
+          form_new: 新建警告模板
         user_fields:
           title: 用户字段
           new: 新建用户字段

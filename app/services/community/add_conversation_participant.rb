@@ -27,6 +27,7 @@ module Community
       return ServiceResult.failure(error: "Cannot message blocked user.") if Community::UserBlock.blocked?(@actor, user)
       return ServiceResult.failure(error: "User is silenced.") if Community::UserSilence.silenced?(user)
       return ServiceResult.failure(error: "User cannot participate in private messages.") unless Community::TrustLevel.can_send_pm?(user)
+      return ServiceResult.failure(error: "pm_not_accepted") unless Community::PmPolicy.accepts?(recipient: user, sender: @actor)
 
       pm_restriction = Community::CheckWarningRestrictions.call(user: user, action: :pm)
       return pm_restriction if pm_restriction.failure?

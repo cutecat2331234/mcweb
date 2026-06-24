@@ -1259,6 +1259,7 @@
         reports:
           title: 内容举报
           col_reason: 原因
+          col_flags: 举报数
           col_reporter: 举报人
           col_status: 状态
           col_time: 时间

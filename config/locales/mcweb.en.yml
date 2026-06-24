@@ -1249,6 +1249,7 @@ en:
         reports:
           title: Content reports
           col_reason: Reason
+          col_flags: Flags
           col_reporter: Reporter
           col_status: Status
           col_time: Time

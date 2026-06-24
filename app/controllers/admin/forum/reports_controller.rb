@@ -7,12 +7,18 @@ module Admin
       before_action :set_report, only: %i[show update]
 
       def index
-        reports = ::Community::Report.pending_review.order(created_at: :desc)
+        # Reviewables-style prioritization: surface targets with the most pending
+        # flags first (distinct reporters per reportable), then most recent.
+        flag_counts = ::Community::Report.pending_review.group(:reportable_type, :reportable_id).distinct.count(:reporter_id)
+        reports = ::Community::Report.pending_review.order(created_at: :desc).to_a.sort_by do |report|
+          [ -flag_counts.fetch([ report.reportable_type, report.reportable_id ], 1), -report.created_at.to_i ]
+        end
 
         render inertia: "Admin/Generic/Index", props: {
           title: forum_t("reports.title"),
           columns: [
             admin_column(:reason, forum_t("reports.col_reason"), link: true),
+            admin_column(:flags, forum_t("reports.col_flags")),
             admin_column(:reporter, forum_t("reports.col_reporter")),
             admin_column(:status, forum_t("reports.col_status")),
             admin_column(:time, forum_t("reports.col_time"))
@@ -20,6 +26,7 @@ module Admin
           rows: reports.map do |report|
             admin_row(
               reason: report.reason_label.present? ? "#{report.reason_label} — #{report.reason.truncate(40)}" : report.reason.truncate(60),
+              flags: flag_counts.fetch([ report.reportable_type, report.reportable_id ], 1).to_s,
               reporter: report.reporter&.username,
               status: report.status,
               time: l(report.created_at, format: :short),

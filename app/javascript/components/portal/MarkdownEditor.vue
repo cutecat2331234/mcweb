@@ -80,6 +80,60 @@ function insertImage(markdown: string) {
   restoreSelection(el, start + inserted.length, start + inserted.length)
 }
 
+const uploadingImage = ref(false)
+
+async function uploadImageFile(file: File) {
+  if (!canUploadImages.value || uploadingImage.value) return
+  uploadingImage.value = true
+  try {
+    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
+    const form = new FormData()
+    form.append('file', file)
+    const res = await fetch(routes.forumUpload, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': token || '', Accept: 'application/json' },
+      body: form,
+      credentials: 'same-origin',
+    })
+    const data = await res.json()
+    if (res.ok && data.markdown) insertImage(data.markdown)
+  } finally {
+    uploadingImage.value = false
+  }
+}
+
+function handlePaste(event: ClipboardEvent) {
+  if (!canUploadImages.value) return
+  const items = event.clipboardData?.items
+  if (!items) return
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i]
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      const file = item.getAsFile()
+      if (file) {
+        event.preventDefault()
+        uploadImageFile(file)
+        return
+      }
+    }
+  }
+}
+
+function handleDrop(event: DragEvent) {
+  if (!canUploadImages.value) return
+  const image = Array.from(event.dataTransfer?.files ?? []).find((f) => f.type.startsWith('image/'))
+  if (image) {
+    event.preventDefault()
+    uploadImageFile(image)
+  }
+}
+
+function handleDragOver(event: DragEvent) {
+  if (canUploadImages.value && Array.from(event.dataTransfer?.types ?? []).includes('Files')) {
+    event.preventDefault()
+  }
+}
+
 async function preview() {
   if (!props.modelValue.trim()) return
   previewLoading.value = true
@@ -117,6 +171,7 @@ async function preview() {
         {{ previewLoading ? t('components.markdownEditor.previewing') : t('components.markdownEditor.preview') }}
       </Button>
     </div>
+    <p v-if="uploadingImage" class="text-xs text-muted-foreground">{{ t('components.imageUpload.uploading') }}</p>
     <MentionAutocomplete v-if="showMention" :model-value="modelValue" @update:model-value="update">
       <template #default="{ onInput }">
         <textarea
@@ -127,6 +182,9 @@ async function preview() {
           class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           ref="textareaEl"
           @input="onInput"
+          @paste="handlePaste"
+          @drop="handleDrop"
+          @dragover="handleDragOver"
         />
       </template>
     </MentionAutocomplete>
@@ -139,6 +197,9 @@ async function preview() {
       class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       ref="textareaEl"
       @input="update(($event.target as HTMLTextAreaElement).value)"
+      @paste="handlePaste"
+      @drop="handleDrop"
+      @dragover="handleDragOver"
     />
     <div v-if="previewHtml" class="prose prose-sm max-w-none rounded-md border p-3 text-sm dark:prose-invert" v-html="previewHtml" />
   </div>

@@ -1251,6 +1251,7 @@
           field_status: 状态
           field_target: 对象
           field_time: 时间
+          action_agree: 采纳并隐藏
           action_reviewed: 标记已审核
           action_dismiss: 驳回举报
           target_topic: "主题：%{title}"

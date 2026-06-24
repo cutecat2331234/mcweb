@@ -1241,6 +1241,7 @@ en:
           field_status: Status
           field_target: Target
           field_time: Time
+          action_agree: Agree and hide
           action_reviewed: Mark reviewed
           action_dismiss: Dismiss report
           target_topic: "Topic: %{title}"

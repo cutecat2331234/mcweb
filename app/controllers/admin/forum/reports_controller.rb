@@ -60,6 +60,7 @@ module Admin
         )
 
         Community::ClearReportableHide.call(reportable: @report.reportable) if @report.dismissed?
+        Community::HideReportable.call(reportable: @report.reportable) if @report.actioned?
 
         redirect_to admin_forum_report_path(@report), notice: t("mcweb.flash.report_resolved")
       rescue ActiveRecord::RecordInvalid => e
@@ -81,9 +82,16 @@ module Admin
 
         [
           {
+            label: forum_t("reports.action_agree"),
+            href: admin_forum_report_path(@report),
+            method: "patch",
+            data: { report: { status: "actioned" } }
+          },
+          {
             label: forum_t("reports.action_reviewed"),
             href: admin_forum_report_path(@report),
             method: "patch",
+            variant: "outline",
             data: { report: { status: "reviewed" } }
           },
           {

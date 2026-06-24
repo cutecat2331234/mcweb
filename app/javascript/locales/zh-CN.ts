@@ -884,6 +884,7 @@ export default {
     wallCommentPlaceholder: '写下回复…',
     wallSend: '发送',
     wallDelete: '删除',
+    report: '举报',
     tabTopics: '主题',
     tabPosts: '回复',
     tabStore: '商城',

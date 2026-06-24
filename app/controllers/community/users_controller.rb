@@ -146,6 +146,7 @@ module Community
           message_url: logged_in? && current_user.id != user.id ? new_forum_conversation_path(to: user.username) : nil,
           block_url: logged_in? && current_user.id != user.id ? forum_block_user_path(user.username) : nil,
           ignore_url: logged_in? && current_user.id != user.id ? forum_ignore_user_path(user.username) : nil,
+          report_url: (logged_in? && current_user.id != user.id) ? new_forum_report_path(reportable_type: "User", reportable_id: user.id) : nil,
           is_blocked: logged_in? && current_user.id != user.id && Community::UserBlock.exists?(blocker: current_user, blocked: user),
           is_ignored: logged_in? && current_user.id != user.id && Community::UserIgnore.exists?(ignorer: current_user, ignored: user),
           is_muted: logged_in? && current_user.id == user.id && Community::Mute.muted?(user),

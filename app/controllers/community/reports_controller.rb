@@ -61,7 +61,7 @@ module Community
 
     def find_reportable
       type = report_params[:reportable_type]
-      return unless %w[Community::Topic Community::Post Commerce::Review].include?(type)
+      return unless %w[Community::Topic Community::Post Commerce::Review User].include?(type)
 
       record = type.constantize.find_by(id: report_params[:reportable_id])
       return unless record
@@ -78,6 +78,8 @@ module Community
         PostAccess.readable?(post: record, user: current_user)
       when Commerce::Review
         record.published?
+      when User
+        record.id != current_user.id && record.active?
       else
         false
       end

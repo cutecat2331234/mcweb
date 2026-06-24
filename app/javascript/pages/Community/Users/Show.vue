@@ -51,6 +51,7 @@ const props = defineProps<{
     message_url: string | null
     block_url: string | null
     ignore_url?: string | null
+    report_url?: string | null
     is_blocked: boolean
     is_ignored?: boolean
     is_muted: boolean
@@ -375,6 +376,9 @@ function deleteWallItem(url: string) {
               @click="toggleIgnore"
             >
               {{ profile.is_ignored ? t('userProfile.unignore') : t('userProfile.ignore') }}
+            </Button>
+            <Button v-if="profile.report_url" as-child type="button" size="sm" variant="outline">
+              <Link :href="profile.report_url">{{ t('userProfile.report') }}</Link>
             </Button>
             <Button v-if="profile.can_edit" type="button" size="sm" variant="outline" @click="toggleProfileEdit('title')">
               {{ profileEditPanel === 'title' ? t('userProfile.collapseTitle') : t('userProfile.editTitle') }}

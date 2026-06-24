@@ -31,6 +31,12 @@ module Community
           }
         }
       )
+      Administration::AuditLogger.call(
+        actor: @user,
+        action: "forum.topic.move",
+        resource: @topic,
+        metadata: { from_section: from_section.slug, to_section: @section.slug }
+      )
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

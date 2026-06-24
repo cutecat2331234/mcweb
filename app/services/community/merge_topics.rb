@@ -31,6 +31,12 @@ module Community
         Community::SyncTopicLastPost.call(topic: target)
       end
 
+      Administration::AuditLogger.call(
+        actor: @user,
+        action: "forum.topics.merge",
+        resource: target,
+        metadata: { source_topic: @source.public_id, target_topic: target.public_id }
+      )
       ServiceResult.success(target)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

@@ -38,6 +38,12 @@ module Community
         return ServiceResult.failure(error: "Unknown moderation action.")
       end
 
+      Administration::AuditLogger.call(
+        actor: @user,
+        action: "forum.post.moderate",
+        resource: @post,
+        metadata: { moderation_action: @action }
+      )
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

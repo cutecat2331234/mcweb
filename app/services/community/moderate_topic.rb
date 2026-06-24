@@ -71,6 +71,13 @@ module Community
         return ServiceResult.failure(error: "Unknown moderation action.")
       end
 
+      Administration::AuditLogger.call(
+        actor: @user,
+        action: "forum.topic.moderate",
+        resource: @topic,
+        reason: @lock_reason,
+        metadata: { moderation_action: @action, assignee: @assignee_username }.compact
+      )
       record_small_action! unless @action == "bump"
 
       ServiceResult.success(@topic)

@@ -25,6 +25,13 @@ module Community
 
       Community::NotifyUserWarning.call(warning: warning)
       Community::EnforceWarningThreshold.call(user: @user, actor: @actor)
+      Administration::AuditLogger.call(
+        actor: @actor,
+        action: "forum.user.warn",
+        resource: @user,
+        reason: @reason,
+        metadata: { points: warning.points, warning_id: warning.id, expires_at: warning.expires_at }.compact
+      )
       ServiceResult.success(warning)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

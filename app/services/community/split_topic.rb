@@ -53,6 +53,12 @@ module Community
         Community::SyncTopicLastPost.call(topic: new_topic)
       end
 
+      Administration::AuditLogger.call(
+        actor: @user,
+        action: "forum.topic.split",
+        resource: new_topic,
+        metadata: { source_topic: @topic.public_id, from_floor: @post.floor_number }
+      )
       ServiceResult.success(new_topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

@@ -2602,6 +2602,16 @@ export default {
       previewing: 'Previewing…',
       preview: 'Preview',
     },
+    richTextEditor: {
+      orderedList: 'Numbered list',
+      linkPrompt: 'Enter URL',
+    },
+    postEditor: {
+      modeLabel: 'Editor:',
+      markdownMode: 'Markdown',
+      wysiwygMode: 'Visual',
+      wysiwygHint: 'Visual editing — content is saved as Markdown, identical to the source mode.',
+    },
     imageUpload: {
       uploadFailed: 'Upload failed',
       uploading: 'Uploading…',

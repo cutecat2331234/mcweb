@@ -2602,6 +2602,16 @@ export default {
       previewing: '预览中…',
       preview: '预览',
     },
+    richTextEditor: {
+      orderedList: '有序列表',
+      linkPrompt: '输入链接地址',
+    },
+    postEditor: {
+      modeLabel: '编辑器:',
+      markdownMode: 'Markdown',
+      wysiwygMode: '可视化',
+      wysiwygHint: '可视化编辑——内容仍以 Markdown 保存,与源码模式完全一致。',
+    },
     imageUpload: {
       uploadFailed: '上传失败',
       uploading: '上传中…',

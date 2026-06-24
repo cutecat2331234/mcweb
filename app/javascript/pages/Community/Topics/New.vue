@@ -9,7 +9,7 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Alert from '@/components/ui/Alert.vue'
-import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import PostEditor from '@/components/portal/PostEditor.vue'
 import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
 import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import Textarea from '@/components/ui/Textarea.vue'
@@ -223,7 +223,7 @@ function saveDraft() {
     </div>
     <div class="space-y-2">
       <Label for="body">{{ t('forum.topics.firstPost') }}</Label>
-      <MarkdownEditor v-model="form.topic.body" :rows="8" :placeholder="t('forum.topics.firstPostPlaceholder')" />
+      <PostEditor v-model="form.topic.body" :rows="8" :placeholder="t('forum.topics.firstPostPlaceholder')" />
       <p v-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
       <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>

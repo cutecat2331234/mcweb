@@ -141,11 +141,35 @@ function handleDragOver(event: DragEvent) {
 }
 
 const showEmoji = ref(false)
-const emojis = ['😀', '😂', '😍', '👍', '👎', '🎉', '❤️', '🔥', '😢', '😡', '🤔', '👀', '🙏', '💯', '✅', '❌', '🚀', '😎', '🥳', '👋']
+const emojiQuery = ref('')
+const emojiCatalog: Array<{ e: string; k: string }> = [
+  { e: '😀', k: 'grin smile happy' }, { e: '😄', k: 'happy smile joy' }, { e: '😁', k: 'grin beam' },
+  { e: '😂', k: 'laugh tears joy lol' }, { e: '🤣', k: 'rofl laugh' }, { e: '😊', k: 'blush smile' },
+  { e: '😍', k: 'love heart eyes' }, { e: '😎', k: 'cool sunglasses' }, { e: '🤔', k: 'thinking hmm' },
+  { e: '😅', k: 'sweat nervous laugh' }, { e: '😢', k: 'cry sad tear' }, { e: '😭', k: 'sob cry bawl' },
+  { e: '😡', k: 'angry mad rage' }, { e: '😱', k: 'scream shock fear' }, { e: '🥳', k: 'party celebrate' },
+  { e: '😴', k: 'sleep tired zzz' }, { e: '🤯', k: 'mind blown shock' }, { e: '😬', k: 'grimace awkward' },
+  { e: '🙏', k: 'pray thanks please' }, { e: '👍', k: 'thumbs up like yes' }, { e: '👎', k: 'thumbs down dislike no' },
+  { e: '👏', k: 'clap applause' }, { e: '🙌', k: 'raised hands praise' }, { e: '👋', k: 'wave hello bye' },
+  { e: '🤝', k: 'handshake deal' }, { e: '💪', k: 'muscle strong flex' }, { e: '👀', k: 'eyes look watch' },
+  { e: '❤️', k: 'heart love red' }, { e: '🧡', k: 'orange heart' }, { e: '💙', k: 'blue heart' },
+  { e: '💚', k: 'green heart' }, { e: '💜', k: 'purple heart' }, { e: '💔', k: 'broken heart' },
+  { e: '🔥', k: 'fire lit hot' }, { e: '✨', k: 'sparkles shine' }, { e: '🎉', k: 'tada party celebrate' },
+  { e: '🎊', k: 'confetti party' }, { e: '💯', k: 'hundred perfect' }, { e: '✅', k: 'check done yes' },
+  { e: '❌', k: 'cross no wrong' }, { e: '⚠️', k: 'warning caution' }, { e: '🚀', k: 'rocket launch ship' },
+  { e: '⭐', k: 'star favorite' }, { e: '💡', k: 'idea bulb light' }, { e: '🐛', k: 'bug insect' },
+  { e: '🎮', k: 'game controller play' }, { e: '⛏️', k: 'pickaxe mine minecraft' }, { e: '🧱', k: 'brick block build' },
+]
+const filteredEmojis = computed(() => {
+  const q = emojiQuery.value.trim().toLowerCase()
+  const list = q ? emojiCatalog.filter((item) => item.k.includes(q)) : emojiCatalog
+  return list.map((item) => item.e)
+})
 
 function insertEmoji(emoji: string) {
   wrap(emoji, '')
   showEmoji.value = false
+  emojiQuery.value = ''
 }
 
 // Standard composer formatting shortcuts: Ctrl/Cmd+B (bold), +I (italic), +K (link).
@@ -205,14 +229,23 @@ async function preview() {
         {{ previewLoading ? t('components.markdownEditor.previewing') : t('components.markdownEditor.preview') }}
       </Button>
     </div>
-    <div v-if="showEmoji" class="flex flex-wrap gap-1 rounded-md border p-2">
-      <button
-        v-for="e in emojis"
-        :key="e"
-        type="button"
-        class="rounded px-1 text-lg hover:bg-muted"
-        @click="insertEmoji(e)"
-      >{{ e }}</button>
+    <div v-if="showEmoji" class="space-y-2 rounded-md border p-2">
+      <input
+        v-model="emojiQuery"
+        type="text"
+        :placeholder="t('components.markdownEditor.emojiSearch')"
+        class="h-8 w-full rounded-md border border-input bg-transparent px-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      >
+      <div class="flex flex-wrap gap-1">
+        <button
+          v-for="e in filteredEmojis"
+          :key="e"
+          type="button"
+          class="rounded px-1 text-lg hover:bg-muted"
+          @click="insertEmoji(e)"
+        >{{ e }}</button>
+        <p v-if="!filteredEmojis.length" class="px-1 text-xs text-muted-foreground">{{ t('components.markdownEditor.emojiNoResults') }}</p>
+      </div>
     </div>
     <p v-if="uploadingImage" class="text-xs text-muted-foreground">{{ t('components.imageUpload.uploading') }}</p>
     <MentionAutocomplete v-if="showMention" :model-value="modelValue" @update:model-value="update">

@@ -2294,6 +2294,8 @@ export default {
       heading: 'Heading',
       bulletList: 'List',
       emoji: 'Emoji',
+      emojiSearch: 'Search emoji…',
+      emojiNoResults: 'No emoji found',
       uploadLevelHint: 'Image upload at Lv.1+',
       previewing: 'Previewing…',
       preview: 'Preview',

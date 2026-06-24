@@ -2294,6 +2294,8 @@ export default {
       heading: '标题',
       bulletList: '列表',
       emoji: '表情',
+      emojiSearch: '搜索表情…',
+      emojiNoResults: '未找到表情',
       uploadLevelHint: 'Lv.1 后可上传图片',
       previewing: '预览中…',
       preview: '预览',

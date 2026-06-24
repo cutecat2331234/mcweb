@@ -181,6 +181,7 @@ module Community
             icon: ub.badge.icon,
             description: ub.badge.description,
             color: ub.badge.color,
+            tier: ub.badge.tier,
             granted_at: l(ub.granted_at, format: :short),
             url: forum_badge_path(ub.badge.slug)
           }

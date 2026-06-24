@@ -517,6 +517,10 @@ export default {
         ruleTopicsCount: '发起主题数',
         ruleReactionsGiven: '送出反应数',
         ruleFirstReply: '首次回复',
+        tier: '等级',
+        tierBronze: '青铜',
+        tierSilver: '白银',
+        tierGold: '黄金',
         grantThreshold: '阈值（数量 / 等级 / 天数）',
       },
       tagGroup: {

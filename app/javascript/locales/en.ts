@@ -517,6 +517,10 @@ export default {
         ruleTopicsCount: 'Topics started',
         ruleReactionsGiven: 'Reactions given',
         ruleFirstReply: 'First reply',
+        tier: 'Tier',
+        tierBronze: 'Bronze',
+        tierSilver: 'Silver',
+        tierGold: 'Gold',
         grantThreshold: 'Threshold (count / level / days)',
       },
       tagGroup: {

@@ -116,6 +116,7 @@ const props = defineProps<{
     icon: string
     description: string | null
     color: string
+    tier?: string
     granted_at?: string
     url?: string
   }>
@@ -191,6 +192,10 @@ const bioForm = useForm({
     forum_pm_policy: props.profile.forum_pm_policy || 'everyone',
   },
 })
+
+function tierColor(tier?: string) {
+  return { gold: '#facc15', silver: '#9ca3af', bronze: '#b45309' }[tier || 'bronze'] || '#b45309'
+}
 const initialFieldValues = Object.fromEntries(
   (props.custom_fields || [])
     .filter((field) => field.editable)
@@ -496,6 +501,7 @@ function deleteWallItem(url: string) {
             :style="{ borderColor: badge.color, color: badge.color }"
             :title="badge.description ? `${badge.description} · ${badge.granted_at}` : badge.granted_at"
           >
+            <span class="inline-block h-2 w-2 rounded-full" :style="{ backgroundColor: tierColor(badge.tier) }" />
             {{ badge.icon }} {{ badge.name }}
             <span v-if="badge.granted_at" class="text-[10px] opacity-70">{{ badge.granted_at }}</span>
           </Link>

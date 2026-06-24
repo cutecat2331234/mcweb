@@ -22,6 +22,7 @@ module Community
       return ServiceResult.failure(error: "Invalid reaction.") unless self.class.allowed_emoji.include?(@emoji)
       return ServiceResult.failure(error: "cannot_react_to_own_post") if @user.id == @post.user_id
       return ServiceResult.failure(error: "trust_level_cannot_react") unless Community::TrustLevel.can_react?(@user)
+      return ServiceResult.failure(error: "reaction_daily_limit_reached") if adding? && daily_limit_reached?
 
       added = Community::Reaction.toggle!(@user, @post, @emoji)
       counts = @post.reactions.group(:emoji).count
@@ -29,6 +30,24 @@ module Community
       Community::NotifyPostReaction.call(post: @post, reactor: @user, emoji: @emoji) if added
 
       ServiceResult.success(added: added, counts: counts)
+    end
+
+    private
+
+    def adding?
+      !@post.reactions.exists?(user: @user, emoji: @emoji)
+    end
+
+    # Discourse-style daily like cap, scaled by trust level. Off by default
+    # (forum.max_daily_reactions = 0 => unlimited); staff are exempt.
+    def daily_limit_reached?
+      return false if @user.permission?("forum.topics.lock") || @user.permission?("admin.access")
+
+      base = SiteSetting.get("forum.max_daily_reactions", "0").to_i
+      return false if base <= 0
+
+      limit = base * [ Community::TrustLevel.level_for(@user), 1 ].max
+      Community::Reaction.where(user: @user).where("created_at >= ?", Time.current.beginning_of_day).count >= limit
     end
   end
 end

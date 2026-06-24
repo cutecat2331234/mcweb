@@ -514,6 +514,9 @@ export default {
         ruleTrustLevel: 'Trust level reached',
         ruleMemberDays: 'Member for N days',
         ruleSolutions: 'Accepted solutions',
+        ruleTopicsCount: 'Topics started',
+        ruleReactionsGiven: 'Reactions given',
+        ruleFirstReply: 'First reply',
         grantThreshold: 'Threshold (count / level / days)',
       },
       tagGroup: {

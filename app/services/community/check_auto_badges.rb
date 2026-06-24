@@ -37,6 +37,12 @@ module Community
         Community::Post.where(user: @user)
           .where(id: Community::Topic.where.not(solved_post_id: nil).select(:solved_post_id))
           .count >= badge.grant_threshold
+      when "topics_count"
+        Community::Topic.where(user: @user, status: :published).count >= badge.grant_threshold
+      when "reactions_given"
+        Community::Reaction.where(user: @user).count >= badge.grant_threshold
+      when "first_reply"
+        Community::Post.where(user: @user, status: :published).where("floor_number > 1").exists?
       else
         false
       end

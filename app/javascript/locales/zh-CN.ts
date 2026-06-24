@@ -514,6 +514,9 @@ export default {
         ruleTrustLevel: '达到信任等级',
         ruleMemberDays: '注册满 N 天',
         ruleSolutions: '被采纳的答案数',
+        ruleTopicsCount: '发起主题数',
+        ruleReactionsGiven: '送出反应数',
+        ruleFirstReply: '首次回复',
         grantThreshold: '阈值（数量 / 等级 / 天数）',
       },
       tagGroup: {

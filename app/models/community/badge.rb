@@ -4,7 +4,7 @@ module Community
   class Badge < ApplicationRecord
     self.table_name = "forum_badges"
 
-    GRANT_RULES = %w[manual first_topic posts_count likes_received first_purchase trust_level member_days solutions].freeze
+    GRANT_RULES = %w[manual first_topic posts_count likes_received first_purchase trust_level member_days solutions topics_count reactions_given first_reply].freeze
 
     has_many :user_badges, class_name: "Community::UserBadge", foreign_key: :forum_badge_id, dependent: :destroy
     has_many :users, through: :user_badges

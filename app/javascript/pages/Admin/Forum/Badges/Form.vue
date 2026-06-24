@@ -42,6 +42,9 @@ const grantRuleOptions = computed(() => [
   { value: 'trust_level', label: t('admin.forms.badge.ruleTrustLevel') },
   { value: 'member_days', label: t('admin.forms.badge.ruleMemberDays') },
   { value: 'solutions', label: t('admin.forms.badge.ruleSolutions') },
+  { value: 'topics_count', label: t('admin.forms.badge.ruleTopicsCount') },
+  { value: 'reactions_given', label: t('admin.forms.badge.ruleReactionsGiven') },
+  { value: 'first_reply', label: t('admin.forms.badge.ruleFirstReply') },
 ])
 
 function submit() {

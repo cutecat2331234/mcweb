@@ -737,6 +737,9 @@ en:
         trust_level: Trust level reached
         member_days: Member for N days
         solutions: Accepted solutions
+        topics_count: Topics started milestone
+        reactions_given: Reactions given milestone
+        first_reply: First reply
       unread:
         all_sections: All sections
         all_tags: All tags

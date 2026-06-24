@@ -31,6 +31,7 @@ module ActiveSupport
       Frontend::TemplateStorage.ensure_root!
       disable_store_features!
       disable_forum_post_approval!
+      disable_edit_grace_window!
       reset_registration_user_fields!
       reset_refund_window!
     end
@@ -49,6 +50,12 @@ module ActiveSupport
 
     def disable_forum_post_approval!
       SiteSetting.set("forum.require_post_approval_below_tl", "0")
+    end
+
+    # Edit tests assert revisions/notifications fire; the ninja-edit grace window is
+    # opt-in per test (EditPostGraceWindowTest sets it explicitly).
+    def disable_edit_grace_window!
+      SiteSetting.set("forum.edit_grace_period_minutes", "0")
     end
 
     def sign_in_as(user, remember_me: false, password: "password123")

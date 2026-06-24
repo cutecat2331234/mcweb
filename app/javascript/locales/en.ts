@@ -1279,6 +1279,7 @@ export default {
       subtitle: 'Browse community members and online status',
       breadcrumb: 'Members',
       leaderboardLink: 'Leaderboard',
+      onlineNow: '{n} online now',
       searchPlaceholder: 'Search username…',
       search: 'Search',
       sortActive: 'Recently active',

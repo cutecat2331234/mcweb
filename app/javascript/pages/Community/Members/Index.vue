@@ -36,6 +36,7 @@ const props = defineProps<{
   query: string
   sort: string
   trustLevel?: string
+  onlineCount?: number
 }>()
 
 const searchQuery = ref(props.query)
@@ -91,6 +92,8 @@ function changeTrustLevel(value: string) {
   ]" />
 
   <PageHeader :title="t('forum.members.title')" :subtitle="t('forum.members.subtitle')" />
+
+  <p class="mb-4 text-sm text-muted-foreground">{{ t('forum.members.onlineNow', { n: onlineCount ?? 0 }) }}</p>
 
   <div class="mb-4 flex flex-wrap items-center gap-2">
     <form class="flex flex-1 gap-2" @submit.prevent="search">

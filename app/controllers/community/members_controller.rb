@@ -22,7 +22,8 @@ module Community
         pagination: pagy_props(@pagy),
         query: params[:q].to_s,
         sort: sort,
-        trustLevel: trust_level.to_s
+        trustLevel: trust_level.to_s,
+        onlineCount: User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count
       }
     end
 

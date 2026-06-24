@@ -1279,6 +1279,7 @@ export default {
       subtitle: '浏览社区成员与在线状态',
       breadcrumb: '成员目录',
       leaderboardLink: '排行榜',
+      onlineNow: '{n} 人当前在线',
       searchPlaceholder: '搜索用户名…',
       search: '搜索',
       sortActive: '最近活跃',

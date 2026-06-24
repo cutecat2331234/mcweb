@@ -1177,6 +1177,7 @@ export default {
       subtitleDm: 'Private conversation',
       unarchive: 'Unarchive',
       archive: 'Archive conversation',
+      markUnread: 'Mark as unread',
       unmute: 'Unmute',
       mute: 'Mute conversation',
       groupMembers: 'Group members',

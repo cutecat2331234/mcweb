@@ -1177,6 +1177,7 @@ export default {
       subtitleDm: '私信对话',
       unarchive: '取消归档',
       archive: '归档会话',
+      markUnread: '标记为未读',
       unmute: '取消静音',
       mute: '静音会话',
       groupMembers: '群组成员',

@@ -43,6 +43,10 @@ module Community
       participants.find_by(user: user)&.update!(last_read_at: Time.current)
     end
 
+    def mark_unread_for!(user)
+      participants.find_by(user: user)&.update!(last_read_at: nil)
+    end
+
     def unarchive_all_participants!
       participants.where.not(archived_at: nil).update_all(archived_at: nil)
     end

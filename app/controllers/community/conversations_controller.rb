@@ -54,6 +54,12 @@ module Community
       render inertia: "Community/Messages/Show", props: conversation_show_props(conversation)
     end
 
+    def mark_unread
+      conversation = find_accessible_conversation!
+      conversation.mark_unread_for!(current_user)
+      redirect_to forum_conversations_path, notice: t("mcweb.flash.conversation_marked_unread", default: "已标记为未读")
+    end
+
     def new
       render inertia: "Community/Messages/New", props: new_message_form_props
     end

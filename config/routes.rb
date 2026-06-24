@@ -372,6 +372,7 @@ Rails.application.routes.draw do
         post :unmute
         post :lock_invites
         post :unlock_invites
+        post :mark_unread
       end
       resources :messages, only: %i[create update destroy], controller: "conversation_messages"
       resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username

@@ -50,6 +50,7 @@ const props = defineProps<{
   addParticipantRestrictedReason?: string | null
   archiveUrl?: string
   unarchiveUrl?: string
+  markUnreadUrl?: string
   archived?: boolean
   muted?: boolean
   muteUrl?: string
@@ -195,6 +196,9 @@ function submit() {
     </Button>
     <Button v-else-if="!archived && archiveUrl" type="button" size="sm" variant="outline" @click="router.post(archiveUrl)">
       {{ t('forum.messages.archive') }}
+    </Button>
+    <Button v-if="markUnreadUrl" type="button" size="sm" variant="outline" @click="router.post(markUnreadUrl)">
+      {{ t('forum.messages.markUnread') }}
     </Button>
     <Button v-if="muted && unmuteUrl" type="button" size="sm" variant="outline" @click="router.post(unmuteUrl)">
       {{ t('forum.messages.unmute') }}

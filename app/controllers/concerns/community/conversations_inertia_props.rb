@@ -27,6 +27,7 @@ module Community
         addParticipantRestrictedReason: group_add_restricted_reason(conversation),
         archiveUrl: archive_forum_conversation_path(conversation),
         unarchiveUrl: unarchive_forum_conversation_path(conversation),
+        markUnreadUrl: mark_unread_forum_conversation_path(conversation),
         archived: conversation.participants.find_by(user: current_user)&.archived_at.present?,
         muted: conversation.participants.find_by(user: current_user)&.muted_at.present?,
         muteUrl: mute_forum_conversation_path(conversation),

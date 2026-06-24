@@ -197,6 +197,7 @@ en:
       stock_alert_unsubscribed: Stock alert removed.
       conversation_archived: Conversation archived.
       conversation_restored: Conversation restored.
+      conversation_marked_unread: Conversation marked as unread.
       conversation_muted: Conversation muted.
       conversation_unmuted: Conversation unmuted.
       report_resolved: Report resolved.

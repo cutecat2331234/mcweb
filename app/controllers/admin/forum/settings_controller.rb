@@ -18,6 +18,7 @@ module Admin
         forum.warning_block_links_threshold
         forum.warning_block_pm_threshold
         forum.report_auto_hide_threshold
+        forum.max_reports_per_hour
         forum.auto_close_on_solved
         forum.reaction_emojis
         forum.group_pm_creator_only_add
@@ -146,6 +147,7 @@ module Admin
         when "forum.warning_points_expire_days" then "90"
         when "forum.require_post_approval_below_tl" then "1"
         when "forum.report_auto_hide_threshold" then "5"
+        when "forum.max_reports_per_hour" then "10"
         when "forum.reaction_emojis" then "👍,❤️,😂,🎉,👀"
         when "forum.saved_search_limit" then "20"
         when "forum.saved_search_digest_hour" then "9"

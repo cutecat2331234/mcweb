@@ -28,6 +28,7 @@
       marked_read: 已标记为已读。
       notification_unavailable: 此通知关联的内容已不可用。
       report_submitted: 举报已提交。
+      report_rate_limited: 举报过于频繁，请稍后再试。
       content_not_found: 内容不存在或无权访问。
       draft_saved: 草稿已保存。
       draft_updated: 草稿已更新。

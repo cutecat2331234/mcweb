@@ -3,7 +3,7 @@
 module Community
   class LeaderboardController < ApplicationController
     PERIODS = %w[all week month].freeze
-    METRICS = %w[posts likes].freeze
+    METRICS = %w[posts likes score].freeze
     LIMIT = 50
 
     def index
@@ -36,15 +36,33 @@ module Community
     end
 
     def ranked_counts(metric, since)
-      if metric == "likes"
+      case metric
+      when "likes"
         rel = Community::Reaction.joins(:post).where(forum_posts: { status: "published" })
         rel = rel.where("forum_reactions.created_at >= ?", since) if since
         rel.group("forum_posts.user_id").order(Arel.sql("COUNT(forum_reactions.id) DESC")).limit(LIMIT).count("forum_reactions.id")
+      when "score"
+        ranked_reaction_scores(since)
       else
         rel = Community::Post.where(status: "published")
         rel = rel.where("forum_posts.created_at >= ?", since) if since
         rel.group(:user_id).order(Arel.sql("COUNT(forum_posts.id) DESC")).limit(LIMIT).count
       end
+    end
+
+    # Rank by weighted reaction score (forum.reaction_scores) instead of raw count.
+    # Counts are grouped per (user, emoji) and weighted in Ruby so the dynamic
+    # weight map applies; unlisted emoji weigh 1 (matching Reaction.score_for).
+    def ranked_reaction_scores(since)
+      map = Community::Reaction.score_map
+      rel = Community::Reaction.joins(:post).where(forum_posts: { status: "published" })
+      rel = rel.where("forum_reactions.created_at >= ?", since) if since
+
+      scores = Hash.new(0)
+      rel.group("forum_posts.user_id", "forum_reactions.emoji").count.each do |(user_id, emoji), count|
+        scores[user_id] += count * map.fetch(emoji.to_s, 1)
+      end
+      scores.sort_by { |_user_id, score| -score }.first(LIMIT).to_h
     end
 
     def serialize_entry(user, rank:, score:)

@@ -1277,11 +1277,13 @@ export default {
       subtitle: '最活跃的贡献者',
       metricPosts: '发帖',
       metricLikes: '获赞',
+      metricScore: '声望分',
       periodAll: '总榜',
       periodWeek: '本周',
       periodMonth: '本月',
       unitPosts: '帖',
       unitLikes: '赞',
+      unitScore: '分',
       empty: '该时间段暂无数据。',
     },
     members: {

@@ -24,7 +24,7 @@ const props = defineProps<{
     trust_name: string
   }>
   period: 'all' | 'week' | 'month'
-  metric: 'posts' | 'likes'
+  metric: 'posts' | 'likes' | 'score'
 }>()
 
 function apply(next: { period?: string; metric?: string }) {
@@ -57,6 +57,7 @@ function medal(rank: number): string {
     <div class="flex gap-1">
       <Button :variant="metric === 'posts' ? 'default' : 'outline'" size="sm" @click="apply({ metric: 'posts' })">{{ t('forum.leaderboard.metricPosts') }}</Button>
       <Button :variant="metric === 'likes' ? 'default' : 'outline'" size="sm" @click="apply({ metric: 'likes' })">{{ t('forum.leaderboard.metricLikes') }}</Button>
+      <Button :variant="metric === 'score' ? 'default' : 'outline'" size="sm" @click="apply({ metric: 'score' })">{{ t('forum.leaderboard.metricScore') }}</Button>
     </div>
     <div class="flex gap-1">
       <Button :variant="period === 'all' ? 'default' : 'outline'" size="sm" @click="apply({ period: 'all' })">{{ t('forum.leaderboard.periodAll') }}</Button>
@@ -75,7 +76,7 @@ function medal(rank: number): string {
           <p class="text-xs text-muted-foreground">@{{ entry.username }} · {{ entry.trust_name }}</p>
         </div>
         <Badge variant="secondary">
-          {{ entry.score }} {{ metric === 'likes' ? t('forum.leaderboard.unitLikes') : t('forum.leaderboard.unitPosts') }}
+          {{ entry.score }} {{ metric === 'score' ? t('forum.leaderboard.unitScore') : metric === 'likes' ? t('forum.leaderboard.unitLikes') : t('forum.leaderboard.unitPosts') }}
         </Badge>
       </Link>
     </li>

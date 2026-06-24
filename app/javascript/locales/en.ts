@@ -1277,11 +1277,13 @@ export default {
       subtitle: 'Top contributors',
       metricPosts: 'Posts',
       metricLikes: 'Likes received',
+      metricScore: 'Reaction score',
       periodAll: 'All time',
       periodWeek: 'This week',
       periodMonth: 'This month',
       unitPosts: 'posts',
       unitLikes: 'likes',
+      unitScore: 'score',
       empty: 'No data for this period yet.',
     },
     members: {

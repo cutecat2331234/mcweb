@@ -347,6 +347,7 @@ Rails.application.routes.draw do
     get "watching/tags", to: "watched#tags", as: :watched_tags
     get "watching/tag-topics", to: "watched#tag_topics", as: :watched_tag_topics
     get "tags", to: "tags#index", as: :tags
+    get "tag-suggest", to: "tags#suggest", as: :tag_suggest
     get "badges", to: "badges#index", as: :badges
     get "badges/:id", to: "badges#show", as: :badge
     get "tags/:slug.rss", to: "rss#tag", as: :tag_rss, defaults: { format: :rss }

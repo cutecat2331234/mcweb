@@ -8,6 +8,7 @@ export const routes = {
   forumActivity: `${appPrefix}/forum/activity`,
   forumFollowing: `${appPrefix}/forum/following`,
   forumMentionSearch: `${appPrefix}/forum/mentions/search`,
+  forumTagSuggest: `${appPrefix}/forum/tag-suggest`,
   forumSection: (slug: string) => `${appPrefix}/forum/sections/${slug}`,
   forumTopic: (id: string) => `${appPrefix}/forum/topics/${id}`,
   newForumTopic: (sectionSlug: string) => `${appPrefix}/forum/topics/new?section_id=${sectionSlug}`,

@@ -7,7 +7,20 @@ module Community
 
     include Community::SubscriptionNoticeable
 
-    before_action :require_login, only: %i[toggle_subscription update_subscription]
+    before_action :require_login, only: %i[toggle_subscription update_subscription suggest]
+
+    def suggest
+      q = params[:q].to_s.strip
+      return render(json: { tags: [] }) if q.blank?
+
+      needle = "%#{ActiveRecord::Base.sanitize_sql_like(q)}%"
+      tags = Community::Tag.usable_by(current_user)
+        .where("name ILIKE ? OR slug ILIKE ?", needle, needle)
+        .order(:name)
+        .limit(8)
+        .map { |tag| { name: tag.name, slug: tag.slug } }
+      render json: { tags: tags }
+    end
 
     def index
       usable_ids = Community::Tag.usable_by(current_user).pluck(:id).to_set

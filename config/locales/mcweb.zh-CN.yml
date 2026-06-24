@@ -744,6 +744,9 @@
         posts_count: 发帖数量达标
         likes_received: 获赞数量达标
         first_purchase: 首次购买
+        trust_level: 达到信任等级
+        member_days: 注册满 N 天
+        solutions: 被采纳答案数达标
       unread:
         all_sections: 全部分区
         all_tags: 全部标签

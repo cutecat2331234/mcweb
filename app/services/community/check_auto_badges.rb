@@ -29,6 +29,14 @@ module Community
         Community::Reaction.joins(:post).where(forum_posts: { user_id: @user.id }).count >= badge.grant_threshold
       when "first_purchase"
         Commerce::Order.where(user: @user, status: %w[paid processing fulfilling fulfilled completed]).exists?
+      when "trust_level"
+        Community::TrustLevel.level_for(@user) >= badge.grant_threshold
+      when "member_days"
+        @user.created_at <= badge.grant_threshold.days.ago
+      when "solutions"
+        Community::Post.where(user: @user)
+          .where(id: Community::Topic.where.not(solved_post_id: nil).select(:solved_post_id))
+          .count >= badge.grant_threshold
       else
         false
       end

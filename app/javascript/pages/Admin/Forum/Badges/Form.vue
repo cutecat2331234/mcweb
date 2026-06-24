@@ -38,6 +38,10 @@ const grantRuleOptions = computed(() => [
   { value: 'first_topic', label: t('admin.forms.badge.ruleFirstTopic') },
   { value: 'posts_count', label: t('admin.forms.badge.rulePostsCount') },
   { value: 'likes_received', label: t('admin.forms.badge.ruleLikesReceived') },
+  { value: 'first_purchase', label: t('admin.forms.badge.ruleFirstPurchase') },
+  { value: 'trust_level', label: t('admin.forms.badge.ruleTrustLevel') },
+  { value: 'member_days', label: t('admin.forms.badge.ruleMemberDays') },
+  { value: 'solutions', label: t('admin.forms.badge.ruleSolutions') },
 ])
 
 function submit() {

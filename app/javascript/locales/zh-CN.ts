@@ -510,7 +510,11 @@ export default {
         ruleFirstTopic: '首帖',
         rulePostsCount: '发帖数',
         ruleLikesReceived: '获赞数',
-        grantThreshold: '阈值（发帖/获赞规则）',
+        ruleFirstPurchase: '首次购买',
+        ruleTrustLevel: '达到信任等级',
+        ruleMemberDays: '注册满 N 天',
+        ruleSolutions: '被采纳的答案数',
+        grantThreshold: '阈值（数量 / 等级 / 天数）',
       },
       tagGroup: {
         groupColor: '组颜色（Hex，可选）',

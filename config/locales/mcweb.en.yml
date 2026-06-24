@@ -734,6 +734,9 @@ en:
         posts_count: Post count milestone
         likes_received: Likes received milestone
         first_purchase: First purchase
+        trust_level: Trust level reached
+        member_days: Member for N days
+        solutions: Accepted solutions
       unread:
         all_sections: All sections
         all_tags: All tags

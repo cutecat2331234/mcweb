@@ -510,7 +510,11 @@ export default {
         ruleFirstTopic: 'First topic',
         rulePostsCount: 'Post count',
         ruleLikesReceived: 'Likes received',
-        grantThreshold: 'Threshold (posts/likes rules)',
+        ruleFirstPurchase: 'First purchase',
+        ruleTrustLevel: 'Trust level reached',
+        ruleMemberDays: 'Member for N days',
+        ruleSolutions: 'Accepted solutions',
+        grantThreshold: 'Threshold (count / level / days)',
       },
       tagGroup: {
         groupColor: 'Group color (Hex, optional)',

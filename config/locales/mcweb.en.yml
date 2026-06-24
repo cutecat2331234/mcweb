@@ -854,6 +854,12 @@ en:
         unread: Unread
         read: Read
       in_app:
+        profile_post:
+          title: "%{author} posted on your profile"
+          body: "%{excerpt}"
+        profile_post_comment:
+          title: "%{author} commented on a profile post"
+          body: "%{excerpt}"
         topic_reply:
           title: "New reply: %{title}"
           body: "%{author}: %{excerpt}"

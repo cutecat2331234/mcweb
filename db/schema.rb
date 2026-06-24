@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_20_160000) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_24_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -273,6 +273,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_160000) do
     t.index ["parent_post_id"], name: "index_forum_posts_on_parent_post_id"
     t.index ["quoted_post_id"], name: "index_forum_posts_on_quoted_post_id"
     t.index ["user_id"], name: "index_forum_posts_on_user_id"
+  end
+
+  create_table "forum_profile_post_comments", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.bigint "profile_post_id", null: false
+    t.string "status", default: "published", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["profile_post_id", "created_at"], name: "idx_on_profile_post_id_created_at_786d3823a2"
+    t.index ["user_id"], name: "index_forum_profile_post_comments_on_user_id"
+  end
+
+  create_table "forum_profile_posts", force: :cascade do |t|
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.datetime "deleted_at"
+    t.bigint "profile_user_id", null: false
+    t.string "status", default: "published", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["profile_user_id", "created_at"], name: "index_forum_profile_posts_on_profile_user_id_and_created_at"
+    t.index ["user_id"], name: "index_forum_profile_posts_on_user_id"
   end
 
   create_table "forum_reactions", force: :cascade do |t|
@@ -1848,6 +1872,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_20_160000) do
   add_foreign_key "forum_posts", "forum_posts", column: "quoted_post_id"
   add_foreign_key "forum_posts", "forum_topics"
   add_foreign_key "forum_posts", "users"
+  add_foreign_key "forum_profile_post_comments", "forum_profile_posts", column: "profile_post_id"
+  add_foreign_key "forum_profile_post_comments", "users"
+  add_foreign_key "forum_profile_posts", "users"
+  add_foreign_key "forum_profile_posts", "users", column: "profile_user_id"
   add_foreign_key "forum_reactions", "forum_posts"
   add_foreign_key "forum_reactions", "users"
   add_foreign_key "forum_read_states", "forum_topics"

@@ -205,7 +205,9 @@ module Community
         minecraft: serialize_minecraft_profile(user),
         skin_mode: SiteSetting.get("minecraft.profile.skin_mode", "2d"),
         profile_sections: SiteSetting.get("minecraft.profile.sections", "minecraft,trust,roles,game_groups").to_s.split(",").map(&:strip).reject(&:blank?),
-        custom_fields: Community::SerializeUserFields.for(user: user, viewer: current_user)
+        custom_fields: Community::SerializeUserFields.for(user: user, viewer: current_user),
+        profile_wall: profile_wall_props(user),
+        profile_posts: serialize_profile_posts(user)
       }
     end
 
@@ -282,6 +284,59 @@ module Community
 
     def account_type_label(account_type)
       I18n.t("mcweb.labels.account_type.#{account_type}", default: account_type.to_s)
+    end
+
+    def profile_wall_props(user)
+      {
+        enabled: Community::ProfileWallPolicy.enabled?,
+        can_post: logged_in? && Community::ProfileWallPolicy.can_post?(author: current_user, profile_user: user),
+        post_url: forum_user_profile_posts_path(user.username)
+      }
+    end
+
+    def serialize_profile_posts(user)
+      return [] unless Community::ProfileWallPolicy.enabled?
+
+      Community::ProfilePost.where(profile_user: user).published.recent
+        .includes(:author, comments: :author).limit(20).map do |post|
+        {
+          id: post.id,
+          body: post.body,
+          author: profile_actor(post.author),
+          created_at: l(post.created_at, format: :short),
+          can_delete: can_manage_profile_post?(post.user_id, user.id),
+          delete_url: forum_profile_post_path(post.id),
+          comment_url: forum_profile_post_comments_path(post.id),
+          comments: post.comments.to_a.select(&:published?).sort_by(&:created_at).map do |comment|
+            {
+              id: comment.id,
+              body: comment.body,
+              author: profile_actor(comment.author),
+              created_at: l(comment.created_at, format: :short),
+              can_delete: can_manage_profile_post?(comment.user_id, user.id),
+              delete_url: forum_profile_post_comment_path(comment.id)
+            }
+          end
+        }
+      end
+    end
+
+    def profile_actor(actor)
+      {
+        username: actor.username,
+        display_name: actor.display_name,
+        avatar_url: actor.avatar_url,
+        url: forum_user_path(actor.username)
+      }
+    end
+
+    def can_manage_profile_post?(author_id, wall_owner_id)
+      return false unless logged_in?
+
+      author_id == current_user.id ||
+        wall_owner_id == current_user.id ||
+        current_user.permission?("forum.topics.lock") ||
+        current_user.permission?("admin.access")
     end
 
     def serialize_game_permission_groups(user)

@@ -864,6 +864,12 @@
         unread: 未读
         read: 已读
       in_app:
+        profile_post:
+          title: "%{author} 在你的主页留言"
+          body: "%{excerpt}"
+        profile_post_comment:
+          title: "%{author} 评论了主页留言"
+          body: "%{excerpt}"
         topic_reply:
           title: "主题有新回复：%{title}"
           body: "%{author}：%{excerpt}"

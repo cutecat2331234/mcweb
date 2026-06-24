@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -147,6 +147,28 @@ const props = defineProps<{
     label: string
   }>
   custom_fields?: UserCustomField[]
+  profile_wall?: {
+    enabled: boolean
+    can_post: boolean
+    post_url: string
+  }
+  profile_posts?: Array<{
+    id: number
+    body: string
+    author: { username: string; display_name: string | null; avatar_url: string; url: string }
+    created_at: string
+    can_delete: boolean
+    delete_url: string
+    comment_url: string
+    comments: Array<{
+      id: number
+      body: string
+      author: { username: string; display_name: string | null; avatar_url: string; url: string }
+      created_at: string
+      can_delete: boolean
+      delete_url: string
+    }>
+  }>
 }>()
 
 const profileSections = computed(() => props.profile_sections?.length
@@ -228,6 +250,35 @@ function uploadAvatar(file: File) {
 
 function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned' | 'minecraft') {
   router.get(routes.forumUser(props.profile.username), { tab }, { preserveState: true })
+}
+
+const wallForm = useForm({ profile_post: { body: '' } })
+const commentDrafts = reactive<Record<number, string>>({})
+const openComments = reactive<Record<number, boolean>>({})
+
+function submitWallPost() {
+  if (!props.profile_wall?.post_url || !wallForm.profile_post.body.trim()) return
+  wallForm.post(props.profile_wall.post_url, {
+    preserveScroll: true,
+    onSuccess: () => wallForm.reset(),
+  })
+}
+
+function toggleCommentBox(id: number) {
+  openComments[id] = !openComments[id]
+}
+
+function submitComment(post: { id: number; comment_url: string }) {
+  const body = (commentDrafts[post.id] || '').trim()
+  if (!body) return
+  router.post(post.comment_url, { comment: { body } }, {
+    preserveScroll: true,
+    onSuccess: () => { commentDrafts[post.id] = '' },
+  })
+}
+
+function deleteWallItem(url: string) {
+  router.delete(url, { preserveScroll: true })
 }
 </script>
 
@@ -440,6 +491,63 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned' | 'minecraft')
         </div>
       </div>
     </div>
+  </section>
+
+  <section v-if="profile_wall?.enabled" class="mb-8 rounded-xl border bg-card p-6">
+    <h2 class="mb-4 text-sm font-semibold">{{ t('userProfile.wallTitle') }}</h2>
+
+    <form v-if="profile_wall.can_post" class="mb-6 space-y-2" @submit.prevent="submitWallPost">
+      <Textarea
+        v-model="wallForm.profile_post.body"
+        rows="3"
+        maxlength="5000"
+        :placeholder="t('userProfile.wallComposerPlaceholder')"
+      />
+      <div class="flex justify-end">
+        <Button type="submit" size="sm" :disabled="wallForm.processing || !wallForm.profile_post.body.trim()">
+          {{ t('userProfile.wallPost') }}
+        </Button>
+      </div>
+    </form>
+
+    <p v-if="!profile_posts?.length" class="text-sm text-muted-foreground">{{ t('userProfile.wallEmpty') }}</p>
+
+    <ul v-else class="space-y-4">
+      <li v-for="post in profile_posts" :key="post.id" class="rounded-lg border p-4">
+        <div class="flex items-start gap-3">
+          <img :src="post.author.avatar_url" :alt="post.author.username" class="h-9 w-9 shrink-0 rounded-full ring-1 ring-border" />
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-x-2 text-sm">
+              <Link :href="post.author.url" class="font-medium hover:underline">{{ post.author.display_name || post.author.username }}</Link>
+              <span class="text-xs text-muted-foreground">{{ post.created_at }}</span>
+            </div>
+            <p class="mt-1 whitespace-pre-wrap break-words text-sm">{{ post.body }}</p>
+            <div class="mt-2 flex flex-wrap gap-3 text-xs">
+              <button type="button" class="text-muted-foreground hover:text-foreground" @click="toggleCommentBox(post.id)">{{ t('userProfile.wallReply') }}</button>
+              <button v-if="post.can_delete" type="button" class="text-muted-foreground hover:text-destructive" @click="deleteWallItem(post.delete_url)">{{ t('userProfile.wallDelete') }}</button>
+            </div>
+
+            <ul v-if="post.comments.length" class="mt-3 space-y-2 border-l pl-3">
+              <li v-for="comment in post.comments" :key="comment.id" class="text-sm">
+                <div class="flex flex-wrap items-center gap-x-2">
+                  <Link :href="comment.author.url" class="font-medium hover:underline">{{ comment.author.display_name || comment.author.username }}</Link>
+                  <span class="text-xs text-muted-foreground">{{ comment.created_at }}</span>
+                  <button v-if="comment.can_delete" type="button" class="text-xs text-muted-foreground hover:text-destructive" @click="deleteWallItem(comment.delete_url)">{{ t('userProfile.wallDelete') }}</button>
+                </div>
+                <p class="whitespace-pre-wrap break-words text-muted-foreground">{{ comment.body }}</p>
+              </li>
+            </ul>
+
+            <form v-if="openComments[post.id] && profile_wall.can_post" class="mt-3 space-y-2" @submit.prevent="submitComment(post)">
+              <Textarea v-model="commentDrafts[post.id]" rows="2" maxlength="3000" :placeholder="t('userProfile.wallCommentPlaceholder')" />
+              <div class="flex justify-end">
+                <Button type="submit" size="sm" variant="outline">{{ t('userProfile.wallSend') }}</Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </li>
+    </ul>
   </section>
 
   <form v-if="profileEditPanel === 'title'" class="mb-6 max-w-xl space-y-3 rounded-lg border p-4" @submit.prevent="saveBio">

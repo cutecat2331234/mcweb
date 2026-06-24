@@ -1251,9 +1251,11 @@ en:
           target_topic: "Topic: %{title}"
           target_post: "Post #%{floor} (%{title})"
           target_review: "Review #%{id} (%{product})"
+          target_user: "Member: %{username}"
           action_view_topic: View topic
           action_view_post: View post
           action_view_product: View product
+          action_view_user: View profile
         warnings:
           title: User warnings
           col_user: User

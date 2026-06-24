@@ -1261,9 +1261,11 @@
           target_topic: "主题：%{title}"
           target_post: "帖子 #%{floor}（%{title}）"
           target_review: "评价 #%{id}（%{product}）"
+          target_user: "用户：%{username}"
           action_view_topic: 查看主题
           action_view_post: 查看帖子
           action_view_product: 查看商品
+          action_view_user: 查看资料
         warnings:
           title: 用户警告记录
           col_user: 用户

@@ -112,6 +112,8 @@ module Admin
           forum_t("reports.target_post", floor: @report.reportable.floor_number, title: @report.reportable.topic.title)
         when ::Commerce::Review
           forum_t("reports.target_review", id: @report.reportable.id, product: @report.reportable.product.name)
+        when ::User
+          forum_t("reports.target_user", username: @report.reportable.username)
         else
           "#{@report.reportable_type} ##{@report.reportable_id}"
         end
@@ -125,6 +127,8 @@ module Admin
           [ { label: forum_t("reports.action_view_post"), href: "#{forum_topic_path(@report.reportable.topic)}#post-#{@report.reportable.id}" } ]
         when ::Commerce::Review
           [ { label: forum_t("reports.action_view_product"), href: store_product_path(@report.reportable.product) } ]
+        when ::User
+          [ { label: forum_t("reports.action_view_user"), href: forum_user_path(@report.reportable.username) } ]
         else
           []
         end

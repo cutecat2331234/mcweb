@@ -11,6 +11,7 @@ const emit = defineEmits<{
 }>()
 
 const suggestions = ref<Array<{ username: string; display_name?: string | null; avatar_url?: string }>>([])
+const activeIndex = ref(0)
 let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 function onInput(event: Event) {
@@ -35,6 +36,7 @@ async function fetchSuggestions(q: string) {
   })
   const data = await res.json()
   suggestions.value = data.users || []
+  activeIndex.value = 0
 }
 
 function pick(username: string) {
@@ -42,19 +44,40 @@ function pick(username: string) {
   emit('update:modelValue', value)
   suggestions.value = []
 }
+
+function onKeydown(event: KeyboardEvent) {
+  if (!suggestions.value.length) return
+  const count = suggestions.value.length
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    activeIndex.value = (activeIndex.value + 1) % count
+  } else if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    activeIndex.value = (activeIndex.value - 1 + count) % count
+  } else if (event.key === 'Enter' || event.key === 'Tab') {
+    const chosen = suggestions.value[activeIndex.value]
+    if (chosen) {
+      event.preventDefault()
+      pick(chosen.username)
+    }
+  } else if (event.key === 'Escape') {
+    suggestions.value = []
+  }
+}
 </script>
 
 <template>
   <div class="relative">
-    <slot :on-input="onInput" />
+    <slot :on-input="onInput" :on-keydown="onKeydown" />
     <ul
       v-if="suggestions.length"
       class="absolute z-10 mt-1 max-h-48 w-full overflow-auto rounded-md border bg-background shadow"
     >
       <li
-        v-for="user in suggestions"
+        v-for="(user, index) in suggestions"
         :key="user.username"
         class="flex cursor-pointer items-center gap-2 px-3 py-2 text-sm hover:bg-muted"
+        :class="index === activeIndex ? 'bg-muted' : ''"
         @mousedown.prevent="pick(user.username)"
       >
         <img v-if="user.avatar_url" :src="user.avatar_url" :alt="user.username" class="h-6 w-6 rounded-full" />

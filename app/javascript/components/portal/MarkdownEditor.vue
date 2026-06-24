@@ -252,7 +252,7 @@ async function preview() {
     </div>
     <p v-if="uploadingImage" class="text-xs text-muted-foreground">{{ t('components.imageUpload.uploading') }}</p>
     <MentionAutocomplete v-if="showMention" :model-value="modelValue" @update:model-value="update">
-      <template #default="{ onInput }">
+      <template #default="{ onInput, onKeydown }">
         <textarea
           :value="modelValue"
           :rows="rows"
@@ -261,7 +261,7 @@ async function preview() {
           class="flex min-h-[80px] w-full rounded-md border border-input bg-transparent px-3 py-2 text-sm shadow-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           ref="textareaEl"
           @input="onInput"
-          @keydown="handleKeydown"
+          @keydown="(e) => { onKeydown(e); handleKeydown(e) }"
           @paste="handlePaste"
           @drop="handleDrop"
           @dragover="handleDragOver"

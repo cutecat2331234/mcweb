@@ -8,7 +8,7 @@ module Community
       render inertia: "Community/Reports/New", props: {
         reportableType: params[:reportable_type].to_s,
         reportableId: params[:reportable_id].to_s,
-        reasonOptions: Community::Report::REASONS.map { |code, label| { value: code, label: label } }
+        reasonOptions: Community::Report.reason_options.map { |code, label| { value: code, label: label } }
       }
     end
 
@@ -23,7 +23,7 @@ module Community
       reason_code = report_params[:reason_code].presence
       detail = report_params[:reason_detail].to_s.strip
       reason_text = if reason_code.present?
-                      label = Community::Report::REASONS[reason_code] || reason_code
+                      label = Community::Report.reason_options[reason_code] || reason_code
                       detail.present? ? "#{label}：#{detail}" : label
       else
                       report_params[:reason]
@@ -51,7 +51,7 @@ module Community
              props: {
                reportableType: report_params[:reportable_type],
                reportableId: report_params[:reportable_id],
-               reasonOptions: Community::Report::REASONS.map { |code, label| { value: code, label: label } },
+               reasonOptions: Community::Report.reason_options.map { |code, label| { value: code, label: label } },
                form_errors: { "report.reason" => e.record.errors.full_messages.join("；") }
              },
              status: :unprocessable_entity

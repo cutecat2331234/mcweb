@@ -18,6 +18,7 @@ module Admin
         forum.warning_block_links_threshold
         forum.warning_block_pm_threshold
         forum.report_auto_hide_threshold
+        forum.extra_report_reasons
         forum.max_reports_per_hour
         forum.max_reactions_per_minute
         forum.max_upload_size_mb

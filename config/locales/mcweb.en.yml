@@ -863,6 +863,9 @@ en:
         new_follower:
           title: "%{author} started following you"
           body: "Tap to view their profile."
+        silenced:
+          title: "You have been muted"
+          body: "%{area} · %{reason}"
         topic_reply:
           title: "New reply: %{title}"
           body: "%{author}: %{excerpt}"

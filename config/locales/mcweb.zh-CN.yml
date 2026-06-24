@@ -873,6 +873,9 @@
         new_follower:
           title: "%{author} 关注了你"
           body: 点击查看其主页。
+        silenced:
+          title: 你已被禁言
+          body: "范围：%{area} · 原因：%{reason}"
         topic_reply:
           title: "主题有新回复：%{title}"
           body: "%{author}：%{excerpt}"

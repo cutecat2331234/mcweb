@@ -1560,6 +1560,7 @@ export default {
       statPosts: 'posts',
       statMembers: 'members',
       statOnline: 'online now',
+      statPeak: 'Most online: {count} on {date}',
       statLatest: 'Newest member:',
       latestThreads: 'Latest threads',
       replyCount: '{n} replies',

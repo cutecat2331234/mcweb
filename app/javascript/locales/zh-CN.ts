@@ -1560,6 +1560,7 @@ export default {
       statPosts: '帖子',
       statMembers: '会员',
       statOnline: '在线',
+      statPeak: '最高在线:{count}(于 {date})',
       statLatest: '最新会员:',
       latestThreads: '最新主题',
       replyCount: '{n} 回复',

@@ -4,6 +4,7 @@
 
 ### Added
 
+- XenForo 对齐:**最高在线纪录**——论坛首页统计展示「最高在线 X(于日期)」,用 SiteSetting 记录峰值
 - XenForo 对齐:**用户头衔阶梯**——后台按发帖数配置自动头衔(自定义头衔优先);新增 `users.forum_posts_count` 计数缓存,资料页/楼层展示生效
 - XenForo 对齐:**公告横幅(Notices)**——后台 CRUD,按样式(info/success/warning/danger)、受众(所有人/会员/访客)、信任等级区间投放,可关闭(登录用户服务端记忆)
 - XenForo 对齐:**论坛统计后台**——主题/帖子/会员/反应/已解决等指标 + 发帖最多/最新会员榜

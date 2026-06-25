@@ -141,7 +141,7 @@ module Community
           member_since: l(user.created_at, format: :long),
           last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
           online: user.last_seen_at && user.last_seen_at > 5.minutes.ago,
-          forum_signature: user.forum_signature,
+          forum_signature: forum_signatures_enabled? ? user.forum_signature : nil,
           forum_pm_policy: user.forum_pm_policy,
           profile_views: user.forum_profile_views,
           topics_count: topics_scope.count,

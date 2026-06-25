@@ -56,6 +56,7 @@ const props = defineProps<{
     posts: number
     members: number
     online: number
+    online_peak?: { count: number; at: string | null }
     latest_member: { username: string; display_name: string | null; url: string } | null
   }
   latestThreads?: Array<{ title: string; url: string; author: string | null; at: string | null; replies: number }>
@@ -212,6 +213,9 @@ function markAllRead() {
       <span><strong class="text-foreground">{{ forumStats.posts }}</strong> {{ t('forum.sectionsIndex.statPosts') }}</span>
       <span><strong class="text-foreground">{{ forumStats.members }}</strong> {{ t('forum.sectionsIndex.statMembers') }}</span>
       <span><strong class="text-foreground">{{ forumStats.online }}</strong> {{ t('forum.sectionsIndex.statOnline') }}</span>
+      <span v-if="forumStats.online_peak && forumStats.online_peak.count">
+        {{ t('forum.sectionsIndex.statPeak', { count: forumStats.online_peak.count, date: forumStats.online_peak.at || '' }) }}
+      </span>
       <span v-if="forumStats.latest_member">
         {{ t('forum.sectionsIndex.statLatest') }}
         <Link :href="forumStats.latest_member.url" class="text-primary hover:underline">{{ forumStats.latest_member.display_name || forumStats.latest_member.username }}</Link>

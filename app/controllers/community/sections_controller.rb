@@ -63,17 +63,37 @@ module Community
     # XenForo-style forum statistics widget for the index footer.
     def forum_index_stats
       latest = User.where(status: :active).order(created_at: :desc).first
+      online = User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count
       {
         topics: Community::Topic.where(status: :published, unlisted: false).count,
         posts: Community::Post.where(status: :published).count,
         members: User.where(status: :active).count,
-        online: User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count,
+        online: online,
+        online_peak: online_peak_record(online),
         latest_member: latest && {
           username: latest.username,
           display_name: latest.display_name,
           url: forum_user_path(latest.username)
         }
       }
+    end
+
+    # XenForo "Most users ever online" — tracked in SiteSetting, bumped when the
+    # current count sets a new record.
+    def online_peak_record(current)
+      peak = SiteSetting.get("forum.online_peak_count", "0").to_i
+      peak_at = SiteSetting.get("forum.online_peak_at", nil)
+
+      if current > peak
+        peak = current
+        peak_at = Time.current.iso8601
+        SiteSetting.set("forum.online_peak_count", peak.to_s)
+        SiteSetting.set("forum.online_peak_at", peak_at)
+      end
+
+      { count: peak, at: peak_at && l(Time.iso8601(peak_at).to_date, format: :short) }
+    rescue ArgumentError
+      { count: peak, at: nil }
     end
 
     def show

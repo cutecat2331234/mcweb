@@ -1563,6 +1563,7 @@ export default {
       statPeak: '最高在线:{count}(于 {date})',
       statLatest: '最新会员:',
       latestThreads: '最新主题',
+      staffOnline: '在线管理',
       replyCount: '{n} 回复',
       markAllRead: '标记板块已读',
       colLastPost: '最新发帖',

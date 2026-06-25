@@ -38,8 +38,19 @@ module Community
         pagination: pagy_props(@pagy),
         forumStats: forum_index_stats,
         latestThreads: latest_threads,
+        staffOnline: online_staff,
         markAllReadUrl: logged_in? ? forum_unread_mark_all_read_path : nil
       }
+    end
+
+    # XenForo-style "Staff online now" widget.
+    def online_staff
+      User.where(status: :active)
+        .where(id: AdminModuleGrant.select(:user_id))
+        .where("last_seen_at > ?", 5.minutes.ago)
+        .order(:username)
+        .limit(20)
+        .map { |user| { username: user.username, avatar_url: user.avatar_url, url: forum_user_path(user.username) } }
     end
 
     # XenForo-style "Latest threads" widget for the index.

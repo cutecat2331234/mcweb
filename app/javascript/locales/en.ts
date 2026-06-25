@@ -1563,6 +1563,7 @@ export default {
       statPeak: 'Most online: {count} on {date}',
       statLatest: 'Newest member:',
       latestThreads: 'Latest threads',
+      staffOnline: 'Staff online',
       replyCount: '{n} replies',
       markAllRead: 'Mark forums read',
       colLastPost: 'Last post',

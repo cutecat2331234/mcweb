@@ -60,6 +60,7 @@ const props = defineProps<{
     latest_member: { username: string; display_name: string | null; url: string } | null
   }
   latestThreads?: Array<{ title: string; url: string; author: string | null; at: string | null; replies: number }>
+  staffOnline?: Array<{ username: string; avatar_url: string; url: string }>
   markAllReadUrl?: string | null
 }>()
 
@@ -204,6 +205,19 @@ function markAllRead() {
         </span>
       </li>
     </ul>
+  </div>
+
+  <div v-if="staffOnline?.length" class="mt-8 rounded-lg border p-4">
+    <h2 class="mb-3 text-sm font-semibold">{{ t('forum.sectionsIndex.staffOnline') }}</h2>
+    <div class="flex flex-wrap gap-3">
+      <Link v-for="member in staffOnline" :key="member.username" :href="member.url" class="flex items-center gap-2 text-sm hover:underline">
+        <span class="relative">
+          <img :src="member.avatar_url" :alt="member.username" class="h-7 w-7 rounded-full" />
+          <span class="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background bg-emerald-500" />
+        </span>
+        {{ member.username }}
+      </Link>
+    </div>
   </div>
 
   <div v-if="forumStats" class="mt-8 rounded-lg border bg-muted/20 p-4">

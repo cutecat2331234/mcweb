@@ -2,11 +2,12 @@
 
 module Community
   class UpdateBookmark < ApplicationService
-    def initialize(user:, bookmark:, note: nil, remind_at: nil)
+    def initialize(user:, bookmark:, note: nil, remind_at: nil, label: nil)
       @user = user
       @bookmark = bookmark
       @note = note
       @remind_at = remind_at
+      @label = label
     end
 
     def call
@@ -15,6 +16,7 @@ module Community
       attrs = {}
       attrs[:note] = @note unless @note.nil?
       attrs[:remind_at] = parse_remind_at(@remind_at) unless @remind_at.nil?
+      attrs[:label] = @label.to_s.strip.presence unless @label.nil?
       @bookmark.update!(attrs)
 
       ServiceResult.success(@bookmark)

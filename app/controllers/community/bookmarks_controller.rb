@@ -8,7 +8,13 @@ module Community
     before_action :set_bookmark, only: :update
 
     def index
-      bookmarks = Community::Bookmark.where(user: current_user).includes(:topic, :post)
+      all_bookmarks = Community::Bookmark.where(user: current_user)
+      labels = all_bookmarks.where.not(label: [ nil, "" ]).distinct.pluck(:label).sort
+      active_label = params[:label].to_s.presence
+
+      bookmarks = all_bookmarks.includes(:topic, :post)
+      bookmarks = bookmarks.where(label: active_label) if active_label
+      bookmarks = bookmarks.to_a
       topic_bookmarks = bookmarks.select { |bookmark| bookmark.forum_post_id.nil? }
       post_bookmarks = bookmarks.select { |bookmark| bookmark.forum_post_id.present? }
 
@@ -31,6 +37,7 @@ module Community
           bookmark_id: bookmark.id,
           update_url: forum_bookmark_path(bookmark),
           note: bookmark.note,
+          label: bookmark.label,
           remind_at: bookmark.remind_at ? l(bookmark.remind_at, format: :short) : nil,
           remind_at_input: bookmark.remind_at&.strftime("%Y-%m-%dT%H:%M"),
           topic: serialize_topic(topic, read_state: read_states[topic.id])
@@ -50,6 +57,7 @@ module Community
           bookmark_id: bookmark.id,
           update_url: forum_bookmark_path(bookmark),
           note: bookmark.note,
+          label: bookmark.label,
           remind_at: bookmark.remind_at ? l(bookmark.remind_at, format: :short) : nil,
           remind_at_input: bookmark.remind_at&.strftime("%Y-%m-%dT%H:%M"),
           floor_number: post.floor_number,
@@ -62,7 +70,9 @@ module Community
 
       render inertia: "Community/Bookmarks/Index", props: {
         topics: topic_items,
-        postBookmarks: post_items
+        postBookmarks: post_items,
+        labels: labels,
+        activeLabel: active_label.to_s
       }
     end
 
@@ -71,7 +81,8 @@ module Community
         user: current_user,
         bookmark: @bookmark,
         note: bookmark_params[:note],
-        remind_at: bookmark_params[:remind_at]
+        remind_at: bookmark_params[:remind_at],
+        label: bookmark_params[:label]
       )
 
       if result.success?
@@ -88,7 +99,7 @@ module Community
     end
 
     def bookmark_params
-      params.require(:bookmark).permit(:note, :remind_at)
+      params.require(:bookmark).permit(:note, :remind_at, :label)
     end
   end
 end

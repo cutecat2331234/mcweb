@@ -31,6 +31,7 @@ const nav = computed(() => [
     { label: t('admin.frontendTemplates'), href: adminRoutes.frontendTemplates },
   ]},
   { label: t('admin.community'), items: [
+    { label: t('admin.forumStats'), href: adminRoutes.forumStats },
     { label: t('admin.forumSections'), href: adminRoutes.forumSections },
     { label: t('admin.forumCategories'), href: adminRoutes.forumCategories },
     { label: t('admin.forumTopics'), href: adminRoutes.forumTopics },
@@ -39,6 +40,8 @@ const nav = computed(() => [
     { label: t('admin.forumUserFields'), href: adminRoutes.forumUserFields },
     { label: t('admin.forumBadges'), href: adminRoutes.forumBadges },
     { label: t('admin.forumWarningTemplates'), href: adminRoutes.forumWarningTemplates },
+    { label: t('admin.forumUserTitles'), href: adminRoutes.forumUserTitles },
+    { label: t('admin.forumNotices'), href: adminRoutes.forumNotices },
     { label: t('admin.forumTags'), href: adminRoutes.forumTags },
     { label: t('admin.forumSettings'), href: adminRoutes.forumSettings },
     { label: t('admin.forumWebhookDeliveries'), href: adminRoutes.forumWebhookDeliveries },

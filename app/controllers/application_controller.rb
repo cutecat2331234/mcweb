@@ -62,6 +62,10 @@ class ApplicationController < ActionController::Base
         count: Community::ReadState.with_unread_for(current_user).count,
         url: forum_unread_path
       }
+      share[:forum_new] = {
+        count: Community::Topic.unseen_for(current_user).count,
+        url: forum_new_feed_path
+      }
       assigned_count = Community::Topic.published_listed.where(assigned_to: current_user).count
       if assigned_count.positive? || current_user.permission?("forum.topics.lock")
         share[:forum_assigned] = {
@@ -94,6 +98,25 @@ class ApplicationController < ActionController::Base
             title: topic.title,
             url: forum_topic_path(topic),
             id: topic.public_id
+          }
+        end
+      end
+
+      notices = Community::Notice.active.ordered.select { |notice| notice.visible_to?(current_user) }
+      if logged_in?
+        dismissed_notices = Array(current_user.dismissed_forum_notice_ids).map(&:to_s)
+        notices = notices.reject { |notice| dismissed_notices.include?(notice.id.to_s) }
+      end
+      if notices.any?
+        share[:forum_notices] = notices.map do |notice|
+          formatted = Community::FormatPostBody.call(body: notice.message)
+          {
+            id: notice.id,
+            title: notice.title,
+            message_html: formatted.success? ? formatted.value : ERB::Util.html_escape(notice.message),
+            style: notice.style,
+            dismissible: notice.dismissible,
+            dismiss_url: forum_dismiss_notice_path(notice)
           }
         end
       end

@@ -14,6 +14,7 @@ module Community
       forum.tag_topic
       forum.reaction
       forum.quote
+      forum.linked
       forum.topic_solved
       forum.badge
       forum.trust_level
@@ -49,6 +50,7 @@ module Community
         preferences: prefs,
         digest_frequency: current_user.forum_digest_frequency,
         digest_watched_only: current_user.forum_digest_watched_only?,
+        hide_signatures: current_user.forum_hide_signatures?,
         digest_options: DIGEST_OPTIONS.map { |v| { value: v, label: digest_label(v) } },
         watch_email_mode: current_user.forum_watch_email_mode,
         watch_email_mode_options: WATCH_EMAIL_MODES.map { |v| { value: v, label: watch_email_mode_label(v) } },
@@ -83,6 +85,10 @@ module Community
 
       if params.key?(:digest_watched_only)
         current_user.update!(forum_digest_watched_only: ActiveModel::Type::Boolean.new.cast(params[:digest_watched_only]))
+      end
+
+      if params.key?(:hide_signatures)
+        current_user.update!(forum_hide_signatures: ActiveModel::Type::Boolean.new.cast(params[:hide_signatures]))
       end
 
       if params[:watch_email_mode].present? && WATCH_EMAIL_MODES.include?(params[:watch_email_mode])

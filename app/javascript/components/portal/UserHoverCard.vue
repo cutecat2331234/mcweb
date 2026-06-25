@@ -19,6 +19,7 @@ export interface UserCardData {
   trust_name: string
   posts_count: number
   likes_received?: number
+  trophy_points?: number
   bio?: string | null
   member_since: string
   last_seen_at?: string | null
@@ -103,7 +104,7 @@ onBeforeUnmount(() => {
         </div>
         <p v-if="card.bio" class="mt-2 line-clamp-2 text-xs text-muted-foreground">{{ card.bio }}</p>
         <p class="mt-2 text-xs text-muted-foreground">
-          {{ t('components.userHover.posts', { count: card.posts_count }) }}<span v-if="card.likes_received != null">{{ t('components.userHover.likes', { count: card.likes_received }) }}</span> · {{ t('components.userHover.memberSince', { date: card.member_since }) }}
+          {{ t('components.userHover.posts', { count: card.posts_count }) }}<span v-if="card.likes_received != null">{{ t('components.userHover.likes', { count: card.likes_received }) }}</span><span v-if="card.trophy_points">{{ t('components.userHover.trophies', { count: card.trophy_points }) }}</span> · {{ t('components.userHover.memberSince', { date: card.member_since }) }}
           <span v-if="card.last_seen_at && !card.online">{{ t('components.userHover.lastSeen', { date: card.last_seen_at }) }}</span>
         </p>
         <div v-if="card.memberships?.length" class="mt-2 flex flex-wrap gap-1">

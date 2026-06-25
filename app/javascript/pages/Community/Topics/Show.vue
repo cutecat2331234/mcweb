@@ -48,8 +48,11 @@ export interface PostItem {
   author_url: string
   avatar_url: string
   author_username: string
+  author_is_op?: boolean
   author_flair_color?: string | null
   author_forum_title?: string | null
+  author_posts_count?: number
+  author_member_since?: string
   author_card_url?: string
   author_badges?: Array<{ name: string; icon: string | null; color: string | null; granted_at?: string }>
   author_memberships?: Array<{ name: string; slug: string; color?: string | null; icon?: string | null }>
@@ -1605,6 +1608,7 @@ async function copyPollShareLink() {
                 <Link :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
               </UserHoverCard>
               <Link v-else :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
+              <span v-if="post.author_is_op" class="ml-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary" :title="t('forum.topics.threadStarterHint')">{{ t('forum.topics.threadStarter') }}</span>
               <span
                 v-if="post.author_forum_title && post.author_flair_color"
                 class="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
@@ -1626,6 +1630,9 @@ async function copyPollShareLink() {
               <span v-if="post.verified_purchaser" class="ml-1 rounded border border-green-300 bg-green-50 px-1 text-[10px] text-green-700">{{ t('forum.topics.verifiedPurchaser') }}</span>
               <span class="mx-2">·</span>
               <span>{{ post.created_at }}</span>
+              <span v-if="post.author_posts_count != null" class="ml-2 text-xs text-muted-foreground" :title="post.author_member_since ? t('forum.topics.memberSince', { date: post.author_member_since }) : undefined">
+                {{ t('forum.topics.authorPosts', { count: post.author_posts_count }) }}
+              </span>
               <span v-if="post.edited_at" class="ml-2">
                 {{ t('forum.topics.editedAt', { at: post.edited_at }) }}<span v-if="post.last_edit_reason">{{ t('forum.topics.editReasonSuffix', { reason: post.last_edit_reason }) }}</span>
                 <button v-if="post.edit_diff_lines?.length" type="button" class="hover:underline" @click="expandedDiffs[post.id] = !expandedDiffs[post.id]">

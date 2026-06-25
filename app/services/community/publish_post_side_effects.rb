@@ -16,6 +16,7 @@ module Community
       Community::NotifyFollowedUserReply.call(post: @post)
       Community::ProcessMentions.call(body: @post.body, author: @user, post: @post, topic: @topic)
       Community::ProcessHashtags.call(topic: @topic, body: @post.body, user: @user)
+      Community::NotifyTopicLinked.call(post: @post, author: @user)
       if @post.quoted_post
         Community::NotifyPostQuoted.call(post: @post, quoter: @user, quoted_post: @post.quoted_post)
       end

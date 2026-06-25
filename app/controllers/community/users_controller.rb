@@ -34,6 +34,7 @@ module Community
         posts_count: posts_count,
         likes_received: likes_received,
         reaction_score: Community::Reaction.score_for_user(user),
+        trophy_points: Community::TrophyPoints.for_user(user),
         bio: user.bio.presence,
         member_since: l(user.created_at, format: :short),
         last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
@@ -128,6 +129,7 @@ module Community
           username: user.username,
           display_name: user.display_name,
           forum_title: user.forum_title,
+          resolved_title: resolved_user_title(user),
           forum_flair_color_hex: user.forum_flair_color_hex,
           avatar_url: user.avatar_url,
           bio: user.bio,
@@ -135,6 +137,7 @@ module Community
           trust_name: trust[:name],
           likes_received: Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count,
           reaction_score: Community::Reaction.score_for_user(user),
+          trophy_points: Community::TrophyPoints.for_user(user),
           member_since: l(user.created_at, format: :long),
           last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,
           online: user.last_seen_at && user.last_seen_at > 5.minutes.ago,
@@ -259,7 +262,25 @@ module Community
     def user_params
       permitted = params.require(:user).permit(:bio, :forum_title, :forum_signature, :forum_flair_color_hex, :forum_pm_policy)
       permitted.delete(:forum_pm_policy) unless Community::PmPolicy::POLICIES.include?(permitted[:forum_pm_policy])
+      enforce_signature_rules!(permitted)
       permitted
+    end
+
+    # XenForo-style signature policy: respect the admin enable flag, a minimum
+    # trust level, and a max length (all from SiteSetting).
+    def enforce_signature_rules!(permitted)
+      return unless permitted.key?(:forum_signature)
+
+      enabled = SiteSetting.get("forum.signatures_enabled", "true") != "false"
+      min_trust = SiteSetting.get("forum.min_trust_level_signature", "0").to_i
+      max_length = SiteSetting.get("forum.signature_max_length", "1000").to_i
+
+      unless enabled && Community::TrustLevel.level_for(current_user) >= min_trust
+        permitted.delete(:forum_signature)
+        return
+      end
+
+      permitted[:forum_signature] = permitted[:forum_signature].to_s.first(max_length) if max_length.positive?
     end
 
     def attach_forum_avatar!(user, file:)

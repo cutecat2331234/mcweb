@@ -83,6 +83,7 @@
       digest_unsubscribe_invalid: 取消摘要链接无效或已过期。
       all_topics_marked_read: 全部主题已标记为已读。
       topics_marked_read: "已标记 %{count} 个主题为已读。"
+      new_dismissed: 新主题已全部忽略。
       section_marked_read: 分区已全部标为已读。
       search_history_deleted: 已删除该条搜索历史。
       search_history_cleared: 搜索历史已清空。
@@ -305,6 +306,12 @@
       warning_template_created: 警告模板已创建。
       warning_template_updated: 警告模板已更新。
       warning_template_deleted: 警告模板已删除。
+      user_title_created: 头衔等级已创建。
+      user_title_updated: 头衔等级已更新。
+      user_title_deleted: 头衔等级已删除。
+      notice_created: 公告已创建。
+      notice_updated: 公告已更新。
+      notice_deleted: 公告已删除。
       shipping_address_saved: 地址已保存。
       shipping_address_updated: 地址已更新。
       shipping_address_deleted: 地址已删除。
@@ -671,6 +678,13 @@
         replies: 回复最多
         newest: 最新发布
         unread: 未读最多
+      top_period:
+        today: 今日
+        week: 本周
+        month: 本月
+        quarter: 本季度
+        year: 今年
+        all: 全部时间
       topic_filter:
         all: 全部
         unsolved: 未解决
@@ -706,6 +720,7 @@
         none: 关闭关注邮件（仍可通过摘要或站内通知）
       rss:
         latest_title: Mcweb 论坛最新
+        top_title: "Mcweb 论坛热门(%{period})"
         section_title: "%{name} - Mcweb 论坛"
         tag_title: "标签 %{name} - Mcweb 论坛"
         tag_label: "标签 %{name}"
@@ -912,6 +927,9 @@
           body: "%{title} — %{excerpt}"
         post_quoted:
           title: "%{quoter} 引用了你的帖子"
+          body: "%{excerpt}"
+        topic_linked:
+          title: "%{actor} 链接了你的主题"
           body: "%{excerpt}"
         post_edited:
           title: "帖子已编辑：%{title}"
@@ -1189,6 +1207,10 @@
             forum.warning_block_pm_threshold: 警告禁止私信阈值
             forum.report_auto_hide_threshold: 举报自动隐藏阈值
             forum.auto_close_on_solved: 解决后自动关闭主题
+            forum.new_topic_window_days: 新主题窗口（天）
+            forum.signatures_enabled: 启用用户签名
+            forum.signature_max_length: 签名最大长度（字符）
+            forum.min_trust_level_signature: 设置签名的最低信任等级
             forum.reaction_emojis: 可用反应表情（逗号分隔）
             forum.group_pm_creator_only_add: 仅群主可添加群成员
             forum.saved_search_limit: 保存搜索数量上限
@@ -1211,6 +1233,10 @@
           hints:
             forum.group_pm_creator_only_add: 开启后，群聊中只有创建者可邀请新成员（对标 Discourse 群组策略）。
             forum.auto_close_on_solved: 设为 1 时，主题标记为已解决后自动锁定。
+            forum.new_topic_window_days: 主题在「新主题」列表中保持「新」的天数（1–90）。
+            forum.signatures_enabled: 关闭后，用户签名在各处隐藏。
+            forum.signature_max_length: 签名的最大字符数。
+            forum.min_trust_level_signature: 低于此信任等级的用户不能设置签名。
             forum.report_auto_hide_threshold: 帖子被举报达到此次数后自动隐藏待审。
             forum.reaction_emojis: 用户可对帖子使用的表情列表。
             forum.saved_search_limit: 每位用户可保存的搜索数量，0 表示不限制。
@@ -1311,6 +1337,41 @@
           action_new: 新建警告模板
           form_edit: 编辑警告模板
           form_new: 新建警告模板
+        user_titles:
+          title: 用户头衔阶梯
+          description: 按发帖数自动授予的头衔(自定义头衔会优先覆盖)。
+          col_min_posts: 最低发帖数
+          col_title: 头衔
+          action_new: 新建头衔等级
+          form_edit: 编辑头衔等级
+          form_new: 新建头衔等级
+        notices:
+          title: 公告横幅
+          description: 在论坛各页向用户展示的可关闭横幅。
+          col_title: 标题
+          col_style: 样式
+          col_audience: 受众
+          col_active: 启用
+          action_new: 新建公告
+          form_edit: 编辑公告
+          form_new: 新建公告
+          style_info: 信息
+          style_success: 成功
+          style_warning: 警告
+          style_danger: 危险
+          audience_everyone: 所有人
+          audience_members: 仅会员
+          audience_guests: 仅访客
+        stats:
+          topics_total: 主题总数
+          posts_total: 帖子总数
+          members_total: 活跃会员
+          topics_today: 新主题(24 小时)
+          posts_today: 新帖子(24 小时)
+          members_today: 新会员(24 小时)
+          posts_week: 帖子(7 天)
+          reactions_total: 反应总数
+          solved_total: 已解决主题
         user_fields:
           title: 用户字段
           new: 新建用户字段
@@ -1704,6 +1765,7 @@
         forum.tag_topic: 标签新主题
         forum.reaction: 帖子反应
         forum.quote: 帖子引用
+        forum.linked: 主题被链接
         forum.topic_solved: 主题已解决
         forum.saved_search_match: 保存搜索匹配
         forum.badge: 获得徽章

@@ -26,6 +26,7 @@ const props = defineProps<{
     bookmark_id: number
     update_url: string
     note: string | null
+    label?: string | null
     remind_at: string | null
     remind_at_input?: string | null
     topic: TopicListItem
@@ -35,6 +36,7 @@ const props = defineProps<{
     bookmark_id: number
     update_url: string
     note: string | null
+    label?: string | null
     remind_at?: string | null
     remind_at_input?: string | null
     floor_number: number
@@ -43,6 +45,8 @@ const props = defineProps<{
     url: string
     created_at: string
   }>
+  labels?: string[]
+  activeLabel?: string
 }>()
 
 const topicItems = computed(() => props.topics.map((item) => item.topic))
@@ -50,11 +54,13 @@ const topicItems = computed(() => props.topics.map((item) => item.topic))
 const editingId = ref<number | null>(null)
 const editNote = ref('')
 const editRemindAt = ref('')
+const editLabel = ref('')
 
-function startEdit(id: number, note: string | null, remindAtInput: string | null | undefined) {
+function startEdit(id: number, note: string | null, remindAtInput: string | null | undefined, label: string | null | undefined) {
   editingId.value = id
   editNote.value = note || ''
   editRemindAt.value = remindAtInput || ''
+  editLabel.value = label || ''
 }
 
 function saveBookmark(url: string) {
@@ -62,11 +68,16 @@ function saveBookmark(url: string) {
     bookmark: {
       note: editNote.value,
       remind_at: editRemindAt.value || null,
+      label: editLabel.value,
     },
   }, {
     preserveScroll: true,
     onSuccess: () => { editingId.value = null },
   })
+}
+
+function filterByLabel(label: string | null) {
+  router.get(routes.forumBookmarks, label ? { label } : {}, { preserveState: true, preserveScroll: true })
 }
 </script>
 
@@ -78,6 +89,20 @@ function saveBookmark(url: string) {
   ]" />
 
   <PageHeader :title="t('forum.bookmarks.title')" :subtitle="t('forum.bookmarks.subtitle')" />
+
+  <div v-if="labels?.length" class="mb-4 flex flex-wrap items-center gap-2">
+    <span class="text-xs text-muted-foreground">{{ t('forum.bookmarks.labelFilter') }}</span>
+    <Button :variant="!activeLabel ? 'default' : 'outline'" size="sm" @click="filterByLabel(null)">{{ t('forum.bookmarks.allLabels') }}</Button>
+    <Button
+      v-for="label in labels"
+      :key="label"
+      :variant="activeLabel === label ? 'default' : 'outline'"
+      size="sm"
+      @click="filterByLabel(label)"
+    >
+      {{ label }}
+    </Button>
+  </div>
 
   <section v-if="postBookmarks.length" class="mb-8">
     <h2 class="mb-3 text-sm font-semibold">{{ t('forum.bookmarks.postBookmarks') }}</h2>
@@ -100,16 +125,20 @@ function saveBookmark(url: string) {
                 <Link :href="bookmark.url" class="font-medium hover:underline">{{ bookmark.topic_title }}</Link>
               </TableCell>
               <TableCell>#{{ bookmark.floor_number }}</TableCell>
-              <TableCell class="max-w-xs text-muted-foreground">{{ bookmark.note || bookmark.excerpt }}</TableCell>
+              <TableCell class="max-w-xs text-muted-foreground">
+                <span v-if="bookmark.label" class="mr-2 inline-block rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-primary">{{ bookmark.label }}</span>
+                {{ bookmark.note || bookmark.excerpt }}
+              </TableCell>
               <TableCell>{{ bookmark.remind_at || '—' }}</TableCell>
               <TableCell>{{ bookmark.created_at }}</TableCell>
               <TableCell>
-                <Button type="button" variant="outline" size="sm" @click="startEdit(bookmark.bookmark_id, bookmark.note, bookmark.remind_at_input)">{{ t('forum.lists.edit') }}</Button>
+                <Button type="button" variant="outline" size="sm" @click="startEdit(bookmark.bookmark_id, bookmark.note, bookmark.remind_at_input, bookmark.label)">{{ t('forum.lists.edit') }}</Button>
               </TableCell>
             </TableRow>
             <TableRow v-if="editingId === bookmark.bookmark_id">
               <TableCell colspan="6" class="space-y-2 border-t bg-muted/30 p-4">
                 <Textarea v-model="editNote" rows="2" :placeholder="t('forum.bookmarks.notePlaceholder')" />
+                <Input v-model="editLabel" :placeholder="t('forum.bookmarks.labelPlaceholder')" maxlength="40" />
                 <Input v-model="editRemindAt" type="datetime-local" />
                 <div class="flex gap-2">
                   <Button type="button" size="sm" @click="saveBookmark(bookmark.update_url)">{{ t('forum.lists.save') }}</Button>
@@ -134,14 +163,18 @@ function saveBookmark(url: string) {
       >
         <div class="flex flex-wrap items-start justify-between gap-2">
           <div class="min-w-0 flex-1">
+            <p v-if="item.label" class="mb-1">
+              <span class="inline-block rounded-full border border-primary/30 bg-primary/5 px-2 py-0.5 text-xs text-primary">{{ item.label }}</span>
+            </p>
             <p v-if="item.note" class="text-sm text-muted-foreground">{{ t('forum.bookmarks.notePrefix') }}{{ item.note }}</p>
             <p v-if="item.remind_at" class="text-xs text-muted-foreground">{{ t('forum.bookmarks.remindPrefix') }}{{ item.remind_at }}</p>
-            <p v-if="!item.note && !item.remind_at" class="text-xs text-muted-foreground">{{ t('forum.bookmarks.noNoteRemind') }}</p>
+            <p v-if="!item.note && !item.remind_at && !item.label" class="text-xs text-muted-foreground">{{ t('forum.bookmarks.noNoteRemind') }}</p>
           </div>
-          <Button type="button" variant="outline" size="sm" @click="startEdit(item.bookmark_id, item.note, item.remind_at_input)">{{ t('forum.bookmarks.editNote') }}</Button>
+          <Button type="button" variant="outline" size="sm" @click="startEdit(item.bookmark_id, item.note, item.remind_at_input, item.label)">{{ t('forum.bookmarks.editNote') }}</Button>
         </div>
         <div v-if="editingId === item.bookmark_id" class="mt-3 space-y-2 border-t pt-3">
           <Textarea v-model="editNote" rows="2" :placeholder="t('forum.bookmarks.notePlaceholder')" />
+          <Input v-model="editLabel" :placeholder="t('forum.bookmarks.labelPlaceholder')" maxlength="40" />
           <Input v-model="editRemindAt" type="datetime-local" />
           <div class="flex gap-2">
             <Button type="button" size="sm" @click="saveBookmark(item.update_url)">{{ t('forum.lists.save') }}</Button>

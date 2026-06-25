@@ -80,6 +80,7 @@ module InertiaSerializable
       icon: section.icon,
       topics_count: section.topics.where(status: :published).count,
       unread_count: unread_map[section.id].to_i,
+      last_post: section_last_post(section),
       url: forum_section_path(section)
     }
 
@@ -90,6 +91,21 @@ module InertiaSerializable
     end
 
     data
+  end
+
+  # XenForo-style "last post" column on the forum index.
+  def section_last_post(section)
+    topic = section.topics.where(status: :published, unlisted: false).order(last_posted_at: :desc).first
+    return nil unless topic
+
+    author = topic.last_post_user || topic.user
+    {
+      topic_title: topic.title,
+      topic_url: forum_topic_path(topic),
+      author: author&.username,
+      author_url: author ? forum_user_path(author.username) : nil,
+      at: topic.last_posted_at ? l(topic.last_posted_at, format: :short) : nil
+    }
   end
 
   def serialize_topic(topic, read_state: nil, highlight_query: nil)
@@ -293,7 +309,7 @@ module InertiaSerializable
     end
 
     signature_html = nil
-    if post.user.forum_signature.present?
+    if forum_signatures_enabled? && post.user.forum_signature.present?
       formatted_sig = Community::FormatPostBody.call(body: post.user.forum_signature)
       signature_html = formatted_sig.success? ? formatted_sig.value : ERB::Util.html_escape(post.user.forum_signature)
     end
@@ -313,10 +329,13 @@ module InertiaSerializable
       parent_post_id: post.parent_post_id,
       depth: post_depth(post),
       is_solved: solved_post_id == post.id,
+      author_is_op: post.topic.user_id == post.user_id,
       author: forum_author_name(post.user),
       author_username: post.user.username,
       author_flair_color: post.user.forum_flair_color_hex.presence,
-      author_forum_title: post.user.forum_title.presence,
+      author_forum_title: resolved_user_title(post.user),
+      author_posts_count: post.user.forum_posts_count,
+      author_member_since: l(post.user.created_at.to_date, format: :short),
       author_url: forum_user_path(post.user.username),
       author_card_url: card_forum_user_path(post.user.username),
       author_badges: serialize_user_badges(post.user),
@@ -496,6 +515,30 @@ module InertiaSerializable
 
   def serialize_user_memberships(user, limit: nil)
     Commerce::SerializeUserMemberships.for_user(user, limit: limit)
+  end
+
+  # Custom title wins; otherwise fall back to the XenForo-style post-count title
+  # ladder. The ladder is loaded once per request to avoid per-user queries.
+  def resolved_user_title(user)
+    return nil unless user
+
+    user.forum_title.presence || title_ladder_lookup(user.forum_posts_count)
+  end
+
+  def title_ladder_rungs
+    @title_ladder_rungs ||= Community::UserTitleLadder.rungs_desc
+  end
+
+  def forum_signatures_enabled?
+    return @forum_signatures_enabled unless @forum_signatures_enabled.nil?
+
+    @forum_signatures_enabled = SiteSetting.get("forum.signatures_enabled", "true") != "false" &&
+      !(respond_to?(:current_user) && current_user&.forum_hide_signatures?)
+  end
+
+  def title_ladder_lookup(post_count)
+    count = post_count.to_i
+    title_ladder_rungs.find { |min_posts, _| min_posts <= count }&.last
   end
 
   def serialize_product_list_item(product)

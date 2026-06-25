@@ -24,6 +24,10 @@ module Admin
         forum.max_reactions_per_minute
         forum.max_upload_size_mb
         forum.auto_close_on_solved
+        forum.new_topic_window_days
+        forum.signatures_enabled
+        forum.signature_max_length
+        forum.min_trust_level_signature
         forum.reaction_emojis
         forum.group_pm_creator_only_add
         forum.saved_search_limit
@@ -145,6 +149,10 @@ module Admin
         case key
         when "forum.group_pm_creator_only_add" then "false"
         when "forum.auto_close_on_solved" then "0"
+        when "forum.new_topic_window_days" then "14"
+        when "forum.signatures_enabled" then "true"
+        when "forum.signature_max_length" then "1000"
+        when "forum.min_trust_level_signature" then "0"
         when "forum.bump_cooldown_hours" then "24"
         when "forum.warning_mute_threshold" then "10"
         when "forum.warning_mute_days" then "7"
@@ -193,6 +201,7 @@ module Admin
       def setting_input_type(key)
         return "boolean" if key == "forum.group_pm_creator_only_add"
         return "boolean" if key == "forum.allow_op_close"
+        return "boolean" if key == "forum.signatures_enabled"
         return "text" if key == "forum.saved_search_webhook_secret"
         return "text" if key == "forum.saved_search_webhook_url"
         return "text" if key == "forum.event_webhook_secret"

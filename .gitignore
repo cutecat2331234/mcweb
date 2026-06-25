@@ -63,3 +63,6 @@ scripts/deploy-direct.py
 # Test / build artifacts
 test_errors.txt
 nodes/**/bin/
+
+# Claude Code local agent state (worktrees, session data)
+/.claude/

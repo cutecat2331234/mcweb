@@ -3,7 +3,7 @@ module Community
     include SoftDeletable
 
     belongs_to :topic, class_name: "Community::Topic", foreign_key: :forum_topic_id
-    belongs_to :user
+    belongs_to :user, counter_cache: :forum_posts_count
     belongs_to :quoted_post, class_name: "Community::Post", optional: true
     belongs_to :parent_post, class_name: "Community::Post", optional: true
     has_many :child_posts, class_name: "Community::Post", foreign_key: :parent_post_id, dependent: :nullify

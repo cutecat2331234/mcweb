@@ -19,6 +19,7 @@ const { features, showPortalSectionTabs, portalSectionGridClass } = useFeatureFl
 const navOptions = computed(() => ({
   loggedIn: props.loggedIn,
   forumUnread: props.forumUnread,
+  forumNew: props.forumNew,
   forumAssigned: props.forumAssigned,
   forumModerationPending: props.forumModerationPending,
   messagesUnread: props.messagesUnread,

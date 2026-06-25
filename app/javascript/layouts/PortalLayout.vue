@@ -22,11 +22,38 @@ const { t } = useI18n()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const notifications = computed(() => page.props.notifications as { unread_count: number; url: string } | undefined)
 const forumUnread = computed(() => page.props.forum_unread as { count: number; url: string } | undefined)
+const forumNew = computed(() => page.props.forum_new as { count: number; url: string } | undefined)
 const forumAssigned = computed(() => page.props.forum_assigned as { count: number; url: string } | undefined)
 const forumModerationPending = computed(() => page.props.forum_moderation_pending as { count: number; url: string } | undefined)
 const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
+const forumNotices = computed(() => page.props.forum_notices as Array<{ id: number; title: string; message_html: string; style: string; dismissible: boolean; dismiss_url: string }> | undefined)
+const dismissedNoticesLocal = ref<number[]>([])
+const visibleNotices = computed(() => (forumNotices.value || []).filter((n) => !dismissedNoticesLocal.value.includes(n.id)))
+
+const noticeStyleClasses: Record<string, string> = {
+  info: 'border-sky-500/30 bg-sky-500/10 text-sky-950 dark:text-sky-100',
+  success: 'border-emerald-500/30 bg-emerald-500/10 text-emerald-950 dark:text-emerald-100',
+  warning: 'border-amber-500/30 bg-amber-500/10 text-amber-950 dark:text-amber-100',
+  danger: 'border-red-500/30 bg-red-500/10 text-red-950 dark:text-red-100',
+}
+
+function noticeClass(style: string): string {
+  return noticeStyleClasses[style] || noticeStyleClasses.info
+}
+
+async function dismissNotice(notice: { id: number; dismissible: boolean; dismiss_url: string }) {
+  dismissedNoticesLocal.value = [ ...dismissedNoticesLocal.value, notice.id ]
+  if (auth.value.user && notice.dismissible) {
+    const token = readCsrfToken()
+    await fetch(notice.dismiss_url, {
+      method: 'POST',
+      headers: { 'X-CSRF-Token': token },
+      credentials: 'same-origin',
+    })
+  }
+}
 const { activeTemplate, tokenStyle, portalHeaderExtraSlot, portalFooterSlot } = useActiveTemplate()
 const { isDark, toggleTheme } = useTheme()
 const { features } = useFeatureFlags()
@@ -68,6 +95,7 @@ async function dismissAnnouncement(topicId: string) {
 const sidebarProps = computed(() => ({
   loggedIn: !!auth.value.user,
   forumUnread: forumUnread.value,
+  forumNew: forumNew.value,
   forumAssigned: forumAssigned.value,
   forumModerationPending: forumModerationPending.value,
   messagesUnread: messagesUnread.value,
@@ -217,6 +245,29 @@ const sidebarProps = computed(() => ({
               class="ml-auto shrink-0 rounded-md p-1 hover:bg-amber-500/20"
               :aria-label="t('common.closeAnnouncement')"
               @click="visibleAnnouncements.forEach((item) => dismissAnnouncement(item.id))"
+            >
+              <X class="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+
+        <div
+          v-for="notice in visibleNotices"
+          :key="notice.id"
+          class="border-b"
+          :class="noticeClass(notice.style)"
+        >
+          <div class="flex flex-wrap items-start gap-x-4 gap-y-1 px-4 py-2.5 text-sm sm:px-6">
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold">{{ notice.title }}</p>
+              <div class="prose prose-sm max-w-none text-current/90" v-html="notice.message_html" />
+            </div>
+            <button
+              v-if="notice.dismissible"
+              type="button"
+              class="ml-auto shrink-0 rounded-md p-1 hover:bg-black/5 dark:hover:bg-white/10"
+              :aria-label="t('common.closeAnnouncement')"
+              @click="dismissNotice(notice)"
             >
               <X class="h-4 w-4" />
             </button>

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_24_000012) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000006) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -93,6 +93,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000012) do
     t.datetime "created_at", null: false
     t.bigint "forum_post_id"
     t.bigint "forum_topic_id", null: false
+    t.string "label"
     t.text "note"
     t.datetime "remind_at"
     t.datetime "updated_at", null: false
@@ -102,6 +103,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000012) do
     t.index ["remind_at"], name: "index_forum_bookmarks_on_remind_at", where: "(remind_at IS NOT NULL)"
     t.index ["user_id", "forum_post_id"], name: "index_forum_bookmarks_on_user_id_and_forum_post_id", unique: true, where: "(forum_post_id IS NOT NULL)"
     t.index ["user_id", "forum_topic_id"], name: "index_forum_bookmarks_on_user_topic_without_post", unique: true, where: "(forum_post_id IS NULL)"
+    t.index ["user_id", "label"], name: "index_forum_bookmarks_on_user_id_and_label"
     t.index ["user_id"], name: "index_forum_bookmarks_on_user_id"
   end
 
@@ -215,6 +217,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000012) do
     t.index ["created_by_id"], name: "index_forum_mutes_on_created_by_id"
     t.index ["forum_section_id"], name: "index_forum_mutes_on_forum_section_id"
     t.index ["user_id"], name: "index_forum_mutes_on_user_id"
+  end
+
+  create_table "forum_notices", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.string "audience", default: "everyone", null: false
+    t.datetime "created_at", null: false
+    t.boolean "dismissible", default: true, null: false
+    t.datetime "ends_at"
+    t.integer "max_trust_level"
+    t.text "message", null: false
+    t.integer "min_trust_level"
+    t.integer "position", default: 0, null: false
+    t.datetime "starts_at"
+    t.string "style", default: "info", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active", "position"], name: "index_forum_notices_on_active_and_position"
   end
 
   create_table "forum_poll_votes", force: :cascade do |t|
@@ -717,6 +736,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000012) do
     t.index ["created_by_id"], name: "index_forum_user_silences_on_created_by_id"
     t.index ["user_id", "expires_at"], name: "index_forum_user_silences_on_user_id_and_expires_at"
     t.index ["user_id"], name: "index_forum_user_silences_on_user_id"
+  end
+
+  create_table "forum_user_title_ladders", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.integer "min_posts", default: 0, null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["min_posts"], name: "index_forum_user_title_ladders_on_min_posts"
   end
 
   create_table "forum_user_warnings", force: :cascade do |t|
@@ -1736,6 +1763,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000012) do
     t.string "compare_share_token"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
+    t.jsonb "dismissed_forum_notice_ids", default: [], null: false
     t.jsonb "dismissed_global_announcement_ids", default: [], null: false
     t.string "display_name"
     t.string "email", null: false
@@ -1749,7 +1777,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_24_000012) do
     t.boolean "forum_digest_watched_only", default: false, null: false
     t.datetime "forum_dnd_until"
     t.string "forum_flair_color_hex"
+    t.boolean "forum_hide_signatures", default: false, null: false
     t.string "forum_pm_policy", default: "everyone", null: false
+    t.integer "forum_posts_count", default: 0, null: false
     t.integer "forum_profile_views", default: 0, null: false
     t.text "forum_signature"
     t.string "forum_title"

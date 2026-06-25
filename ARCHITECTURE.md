@@ -116,6 +116,8 @@ app/
 | 关注列表 | `/forum/watching` |
 | 书签列表 | `/forum/bookmarks` |
 | 最新动态 | `/forum/latest` |
+| 热门时间窗口 | `Community::TopController` + `Topic.top_ranked` + `/forum/top?period=`（今日/本周/本月/本季度/今年/全部，Discourse Top 对标） |
+| 新主题列表 | `Community::NewController` + `/forum/new`（窗口期内未打开的主题，Discourse New 对标）；`forum.new_topic_window_days` 配置窗口；「忽略全部新」复用 `MarkTopicsRead`，排除已读/静音主题与分区 |
 | 标签云 | `/forum/tags` |
 | 私信 | `Community::CreateConversation` + `/forum/conversations` |
 | 编辑主题/标签 | `Community::EditTopic` |
@@ -178,6 +180,7 @@ app/
 | 子板块父级设置 | 分区后台 `parent_id` 选择器 |
 | 举报详情链接 | 管理后台跳转主题/帖子 |
 | 提及/分区邮件通知 | `ForumMailer#mention` / `#section_topic` |
+| 被链接通知 | `Community::NotifyTopicLinked`（帖子链接其他主题时通知该主题楼主,Discourse linked 对标）；`forum.linked` 偏好开关 |
 | 导航修复 | 「偏好」与通知铃铛分离 |
 
 ## 商城功能

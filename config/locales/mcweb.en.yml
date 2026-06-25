@@ -83,6 +83,7 @@ en:
       digest_unsubscribe_invalid: Digest unsubscribe link is invalid or expired.
       all_topics_marked_read: All topics marked as read.
       topics_marked_read: "Marked %{count} topics as read."
+      new_dismissed: New topics dismissed.
       section_marked_read: All topics in section marked as read.
       search_history_deleted: Search history entry deleted.
       search_history_cleared: Search history cleared.
@@ -295,6 +296,12 @@ en:
       warning_template_created: Warning template created.
       warning_template_updated: Warning template updated.
       warning_template_deleted: Warning template deleted.
+      user_title_created: Title rung created.
+      user_title_updated: Title rung updated.
+      user_title_deleted: Title rung deleted.
+      notice_created: Notice created.
+      notice_updated: Notice updated.
+      notice_deleted: Notice deleted.
       shipping_address_saved: Address saved.
       shipping_address_updated: Address updated.
       shipping_address_deleted: Address deleted.
@@ -661,6 +668,13 @@ en:
         replies: Most replies
         newest: Newest
         unread: Most unread
+      top_period:
+        today: Today
+        week: This week
+        month: This month
+        quarter: This quarter
+        year: This year
+        all: All time
       topic_filter:
         all: All
         unsolved: Unsolved
@@ -696,6 +710,7 @@ en:
         none: No watch emails (digests and in-app still available)
       rss:
         latest_title: Mcweb Forum — Latest
+        top_title: "Mcweb Forum — Top (%{period})"
         section_title: "%{name} - Mcweb Forum"
         tag_title: "Tag %{name} - Mcweb Forum"
         tag_label: "Tag %{name}"
@@ -902,6 +917,9 @@ en:
           body: "%{title} — %{excerpt}"
         post_quoted:
           title: "%{quoter} quoted your post"
+          body: "%{excerpt}"
+        topic_linked:
+          title: "%{actor} linked your topic"
           body: "%{excerpt}"
         post_edited:
           title: "Post edited: %{title}"
@@ -1179,6 +1197,10 @@ en:
             forum.warning_block_pm_threshold: Warning threshold to block PMs
             forum.report_auto_hide_threshold: Report auto-hide threshold
             forum.auto_close_on_solved: Auto-close topic when solved
+            forum.new_topic_window_days: "New topic window (days)"
+            forum.signatures_enabled: Enable user signatures
+            forum.signature_max_length: Signature max length (characters)
+            forum.min_trust_level_signature: Minimum trust level for signatures
             forum.reaction_emojis: Allowed reaction emojis (comma-separated)
             forum.group_pm_creator_only_add: Only group creator can add members
             forum.saved_search_limit: Saved search limit per user
@@ -1201,6 +1223,10 @@ en:
           hints:
             forum.group_pm_creator_only_add: When enabled, only the group creator can invite members.
             forum.auto_close_on_solved: Set to 1 to lock the topic when marked solved.
+            forum.new_topic_window_days: How many days a topic counts as "new" in the New list (1–90).
+            forum.signatures_enabled: When off, user signatures are hidden everywhere.
+            forum.signature_max_length: Maximum signature length in characters.
+            forum.min_trust_level_signature: Users below this trust level cannot set a signature.
             forum.report_auto_hide_threshold: Hide posts automatically after this many reports.
             forum.reaction_emojis: Emojis users can add as post reactions.
             forum.saved_search_limit: Max saved searches per user; 0 = unlimited.
@@ -1301,6 +1327,41 @@ en:
           action_new: New warning template
           form_edit: Edit warning template
           form_new: New warning template
+        user_titles:
+          title: User title ladder
+          description: Automatic titles awarded by post count (a custom title overrides these).
+          col_min_posts: Min posts
+          col_title: Title
+          action_new: New title rung
+          form_edit: Edit title rung
+          form_new: New title rung
+        notices:
+          title: Notices
+          description: Dismissible banners shown to members across the forum.
+          col_title: Title
+          col_style: Style
+          col_audience: Audience
+          col_active: Active
+          action_new: New notice
+          form_edit: Edit notice
+          form_new: New notice
+          style_info: Info
+          style_success: Success
+          style_warning: Warning
+          style_danger: Danger
+          audience_everyone: Everyone
+          audience_members: Members only
+          audience_guests: Guests only
+        stats:
+          topics_total: Total topics
+          posts_total: Total posts
+          members_total: Active members
+          topics_today: New topics (24h)
+          posts_today: New posts (24h)
+          members_today: New members (24h)
+          posts_week: Posts (7 days)
+          reactions_total: Total reactions
+          solved_total: Solved topics
         user_fields:
           title: User fields
           new: New user field
@@ -1694,6 +1755,7 @@ en:
         forum.tag_topic: New tag topic
         forum.reaction: Reaction
         forum.quote: Quote
+        forum.linked: Topic linked
         forum.topic_solved: Topic solved
         forum.saved_search_match: Saved search match
         forum.badge: Badge earned

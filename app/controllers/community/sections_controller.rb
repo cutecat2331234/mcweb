@@ -35,7 +35,44 @@ module Community
             seo_description: category.seo["description"]
           }
         end,
-        pagination: pagy_props(@pagy)
+        pagination: pagy_props(@pagy),
+        forumStats: forum_index_stats,
+        latestThreads: latest_threads,
+        markAllReadUrl: logged_in? ? forum_unread_mark_all_read_path : nil
+      }
+    end
+
+    # XenForo-style "Latest threads" widget for the index.
+    def latest_threads
+      Community::Topic.published_listed.accessible_by(current_user)
+        .includes(:user, :last_post_user)
+        .order(last_posted_at: :desc)
+        .limit(6)
+        .map do |topic|
+          author = topic.last_post_user || topic.user
+          {
+            title: topic.title,
+            url: forum_topic_path(topic),
+            author: author&.username,
+            at: topic.last_posted_at ? l(topic.last_posted_at, format: :short) : nil,
+            replies: topic.replies_count
+          }
+        end
+    end
+
+    # XenForo-style forum statistics widget for the index footer.
+    def forum_index_stats
+      latest = User.where(status: :active).order(created_at: :desc).first
+      {
+        topics: Community::Topic.where(status: :published, unlisted: false).count,
+        posts: Community::Post.where(status: :published).count,
+        members: User.where(status: :active).count,
+        online: User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count,
+        latest_member: latest && {
+          username: latest.username,
+          display_name: latest.display_name,
+          url: forum_user_path(latest.username)
+        }
       }
     end
 

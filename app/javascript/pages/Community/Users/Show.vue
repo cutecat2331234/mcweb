@@ -31,6 +31,7 @@ const props = defineProps<{
     username: string
     display_name: string | null
     forum_title: string | null
+    resolved_title: string | null
     forum_flair_color_hex?: string | null
     forum_pm_policy?: string
     avatar_url: string
@@ -39,6 +40,7 @@ const props = defineProps<{
     trust_name: string
     likes_received: number
     reaction_score?: number
+    trophy_points?: number
     profile_views?: number
     member_since: string
     last_seen_at?: string | null
@@ -327,11 +329,11 @@ function deleteWallItem(url: string) {
                 {{ profile.display_name || profile.username }}
               </h1>
               <span
-                v-if="profile.forum_title"
+                v-if="profile.resolved_title"
                 class="rounded-full border px-2 py-0.5 text-xs font-medium"
                 :style="profile.forum_flair_color_hex ? { borderColor: profile.forum_flair_color_hex, color: profile.forum_flair_color_hex } : undefined"
               >
-                {{ profile.forum_title }}
+                {{ profile.resolved_title }}
               </span>
             </div>
             <p class="text-sm text-muted-foreground">
@@ -349,6 +351,7 @@ function deleteWallItem(url: string) {
               </Link>
               <span><strong>{{ profile.likes_received }}</strong> {{ t('userProfile.likesReceived') }}</span>
               <span v-if="profile.reaction_score != null && profile.reaction_score !== profile.likes_received"><strong>{{ profile.reaction_score }}</strong> {{ t('userProfile.reactionScore') }}</span>
+              <span v-if="profile.trophy_points"><strong>{{ profile.trophy_points }}</strong> {{ t('userProfile.trophyPoints') }}</span>
               <span v-if="profile.profile_views"><strong>{{ profile.profile_views }}</strong> {{ t('userProfile.profileViews') }}</span>
               <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> {{ t('userProfile.warningPoints') }}</span>
               <span v-if="profile.store_credit_label">

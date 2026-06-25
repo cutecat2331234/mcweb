@@ -61,6 +61,78 @@ module Community
       end
     end
 
+    # Discourse-style "Top" periods: how far back the engagement window reaches.
+    # nil means "all time".
+    TOP_PERIODS = {
+      "today" => 1.day,
+      "week" => 1.week,
+      "month" => 1.month,
+      "quarter" => 3.months,
+      "year" => 1.year,
+      "all" => nil
+    }.freeze
+
+    DEFAULT_TOP_PERIOD = "week"
+
+    def self.top_period?(period)
+      TOP_PERIODS.key?(period.to_s)
+    end
+
+    def self.top_period_start(period)
+      window = TOP_PERIODS[period.to_s]
+      window ? window.ago : nil
+    end
+
+    # Rank topics by engagement within a time window. When `since` is present we
+    # only keep topics that received a published post in the window and order them
+    # by how many such posts they got (correlated subquery, so pagination/`includes`
+    # still work without a GROUP BY). For all-time we fall back to cumulative
+    # replies/views weight. `pinned` is ignored on purpose — "Top" is a pure
+    # engagement ranking, not the section view.
+    def self.top_ranked(since)
+      if since
+        # Count only regular replies (mirrors Post.countable) — whispers and
+        # system small_action posts shouldn't inflate a topic's public ranking.
+        window_posts = sanitize_sql_array([
+          "SELECT 1 FROM forum_posts fp WHERE fp.forum_topic_id = forum_topics.id " \
+          "AND fp.status = 'published' AND fp.post_type = 'regular' AND fp.deleted_at IS NULL AND fp.created_at >= ?", since
+        ])
+        window_count = sanitize_sql_array([
+          "(SELECT COUNT(*) FROM forum_posts fp WHERE fp.forum_topic_id = forum_topics.id " \
+          "AND fp.status = 'published' AND fp.post_type = 'regular' AND fp.deleted_at IS NULL AND fp.created_at >= ?)", since
+        ])
+        where("EXISTS (#{window_posts})")
+          .order(Arel.sql("#{window_count} DESC"))
+          .order(views_count: :desc, last_posted_at: :desc, id: :desc)
+      else
+        order(Arel.sql("(forum_topics.replies_count * 3 + forum_topics.views_count) DESC"))
+          .order(last_posted_at: :desc, id: :desc)
+      end
+    end
+
+    # Discourse-style "New": recently created topics the user has never opened,
+    # excluding muted topics/sections. Shared by the New list, the "dismiss new"
+    # action, and the nav badge count. Caller is responsible for login (the window
+    # is per-user). Excludes the user's own topics implicitly — CreateTopic marks
+    # the author's read state at floor 1.
+    NEW_TOPIC_WINDOW_DEFAULT_DAYS = 14
+
+    def self.new_topic_window_days
+      SiteSetting.get("forum.new_topic_window_days", NEW_TOPIC_WINDOW_DEFAULT_DAYS.to_s).to_i.clamp(1, 90)
+    end
+
+    def self.new_topic_window_start
+      new_topic_window_days.days.ago
+    end
+
+    scope :unseen_for, ->(user, since: new_topic_window_start) {
+      published_listed
+        .where("forum_topics.created_at >= ?", since)
+        .where.not(id: Community::ReadState.where(user: user).select(:forum_topic_id))
+        .where.not(id: Community::TopicMute.where(user: user).select(:forum_topic_id))
+        .where.not(forum_section_id: Community::SectionMute.where(user: user).select(:forum_section_id))
+    }
+
     def record_view!
       increment!(:views_count)
     end

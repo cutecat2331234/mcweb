@@ -23,6 +23,7 @@ export interface PortalNavGroup {
 export interface PortalNavOptions {
   loggedIn: boolean
   forumUnread?: { count: number; url: string }
+  forumNew?: { count: number; url: string }
   forumAssigned?: { count: number; url: string }
   forumModerationPending?: { count: number; url: string }
   messagesUnread?: { count: number; url: string }
@@ -59,16 +60,25 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
   const forumBrowseItems = computed<PortalNavItem[]>(() => [
     { label: t('nav.sections'), href: routes.forum, icon: 'layout-grid' },
     { label: t('nav.latest'), href: routes.forumLatest, icon: 'sparkles' },
+    { label: t('nav.top'), href: routes.forumTop, icon: 'flame' },
     { label: t('nav.activity'), href: routes.forumActivity, icon: 'activity' },
     { label: t('nav.search'), href: routes.forumSearch, icon: 'search' },
     { label: t('nav.tags'), href: routes.forumTags, icon: 'tag' },
     { label: t('nav.badges'), href: routes.forumBadges, icon: 'award' },
     { label: t('nav.members'), href: routes.forumMembers, icon: 'users' },
+    { label: t('nav.staff'), href: routes.forumStaff, icon: 'shield' },
   ])
 
   const forumPersonalItems = computed<PortalNavItem[]>(() => {
     if (!opts.value.loggedIn) return []
     return [
+      {
+        label: t('nav.new'),
+        href: opts.value.forumNew?.url || routes.forumNew,
+        badge: opts.value.forumNew?.count,
+        loginRequired: true,
+        icon: 'circle-dot',
+      },
       { label: t('nav.watching'), href: routes.forumWatching, loginRequired: true, icon: 'eye' },
       { label: t('nav.watchedTags'), href: routes.forumWatchedTags, loginRequired: true, icon: 'bookmark' },
       { label: t('nav.watchedTagTopics'), href: routes.forumWatchedTagTopics, loginRequired: true, icon: 'list' },

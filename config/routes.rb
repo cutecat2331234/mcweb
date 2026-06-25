@@ -55,6 +55,9 @@ Rails.application.routes.draw do
       resources :tag_groups
       resources :warnings, only: %i[index]
       resources :warning_templates, path: "warning-templates"
+      resources :user_titles, path: "user-titles"
+      resources :notices
+      get "stats", to: "stats#index"
       resources :approvals, only: %i[index show] do
         member do
           post :approve
@@ -256,6 +259,7 @@ Rails.application.routes.draw do
       end
     end
     get "latest.rss", to: "rss#latest", as: :latest_rss, defaults: { format: :rss }
+    get "top.rss", to: "rss#top", as: :top_rss, defaults: { format: :rss }
     get "sections/:id.rss", to: "rss#section", as: :section_rss, defaults: { format: :rss }
     get "topics/:id.rss", to: "rss#topic", as: :topic_rss, defaults: { format: :rss }
     get "categories/:slug.rss", to: "rss#category", as: :category_rss, defaults: { format: :rss }
@@ -327,9 +331,14 @@ Rails.application.routes.draw do
     get "search/suggest", to: "search#suggest", as: :search_suggest
     get "mentions/search", to: "mentions#search", as: :mention_search
     get "latest", to: "latest#index"
+    get "top", to: "top#index"
+    get "staff", to: "staff#index"
+    get "new", to: "new#index", as: :new_feed
+    post "new/dismiss", to: "new#dismiss", as: :dismiss_new_feed
     get "activity", to: "activity#index"
     get "following", to: "follows#index"
     post "announcements/dismiss", to: "announcements#dismiss", as: :dismiss_announcement
+    post "notices/:id/dismiss", to: "notices#dismiss", as: :dismiss_notice
     get "unread", to: "unread#index"
     get "assigned", to: "assigned#index"
     patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read

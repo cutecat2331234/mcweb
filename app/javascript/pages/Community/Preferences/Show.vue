@@ -40,6 +40,7 @@ const props = defineProps<{
   }>
   digest_frequency: string
   digest_watched_only?: boolean
+  hide_signatures?: boolean
   digest_options: Array<{ value: string; label: string }>
   watch_email_mode: string
   watch_email_mode_options: Array<{ value: string; label: string }>
@@ -69,6 +70,7 @@ const form = useForm({
   ) as Record<string, { in_app: boolean; email: boolean }>,
   digest_frequency: props.digest_frequency,
   digest_watched_only: props.digest_watched_only ?? false,
+  hide_signatures: props.hide_signatures ?? false,
   watch_email_mode: props.watch_email_mode,
 })
 
@@ -243,6 +245,14 @@ async function saveRenameSearch(search: SavedSearchItem) {
       <label v-if="form.digest_frequency !== 'none'" class="mt-3 flex items-center gap-2 text-sm">
         <Checkbox v-model="form.digest_watched_only" />
         {{ t('preferences.digestWatchedOnly') }}
+      </label>
+    </div>
+
+    <div class="rounded-lg border p-4">
+      <Label class="mb-2 block text-sm font-medium">{{ t('preferences.display') }}</Label>
+      <label class="flex items-center gap-2 text-sm">
+        <Checkbox v-model="form.hide_signatures" />
+        {{ t('preferences.hideSignatures') }}
       </label>
     </div>
 

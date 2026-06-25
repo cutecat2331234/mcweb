@@ -10,6 +10,14 @@ module Community
       render xml: build_feed(topics, title: t("mcweb.forum.rss.latest_title"), url: forum_latest_url), content_type: "application/rss+xml"
     end
 
+    def top
+      period = Community::Topic.top_period?(params[:period]) ? params[:period].to_s : Community::Topic::DEFAULT_TOP_PERIOD
+      since = Community::Topic.top_period_start(period)
+      topics = apply_login_required_topic_scope(Community::Topic.published_listed).top_ranked(since).limit(30)
+      title = t("mcweb.forum.rss.top_title", period: t("mcweb.forum.top_period.#{period}"))
+      render xml: build_feed(topics, title: title, url: forum_top_url(period: period)), content_type: "application/rss+xml"
+    end
+
     def section
       section = Community::Section.find_by!(slug: params[:id])
       return head :not_found unless section_visible?(section)

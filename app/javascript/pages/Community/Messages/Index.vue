@@ -27,10 +27,14 @@ const props = defineProps<{
     last_message_preview: string | null
     unread_count: number
     archived?: boolean
+    starred?: boolean
+    star_url?: string
     label?: string | null
   }>
   showArchived?: boolean
   archivedToggleUrl?: string
+  showStarred?: boolean
+  starredToggleUrl?: string
   query?: string
   pagination?: {
     page: number
@@ -47,7 +51,13 @@ function searchMessages() {
   router.get(routes.forumMessages, {
     q: searchQuery.value || undefined,
     archived: props.showArchived ? '1' : undefined,
+    starred: props.showStarred ? '1' : undefined,
   }, { preserveState: true })
+}
+
+function toggleStar(conv: { star_url?: string }) {
+  if (!conv.star_url) return
+  router.post(conv.star_url, {}, { preserveScroll: true, preserveState: true })
 }
 </script>
 
@@ -61,6 +71,9 @@ function searchMessages() {
   <div class="mb-4 flex items-center justify-between">
     <PageHeader :title="t('forum.messages.title')" :subtitle="showArchived ? t('forum.messages.subtitleArchived') : t('forum.messages.subtitleActive')" />
     <div class="flex gap-2">
+      <Button v-if="starredToggleUrl" as-child size="sm" :variant="showStarred ? 'default' : 'outline'">
+        <Link :href="starredToggleUrl">{{ showStarred ? t('forum.messages.allMessages') : t('forum.messages.starred') }}</Link>
+      </Button>
       <Button v-if="archivedToggleUrl" as-child size="sm" variant="outline">
         <Link :href="archivedToggleUrl">{{ showArchived ? t('forum.messages.backToActive') : t('forum.messages.viewArchived') }}</Link>
       </Button>
@@ -97,6 +110,16 @@ function searchMessages() {
         <p class="truncate text-sm text-muted-foreground">{{ conv.last_message_preview || t('forum.messages.noMessages') }}</p>
       </div>
       <Badge v-if="conv.unread_count > 0" variant="danger">{{ conv.unread_count }}</Badge>
+      <button
+        v-if="conv.star_url"
+        type="button"
+        class="shrink-0 rounded p-1 text-base leading-none hover:bg-muted"
+        :class="conv.starred ? 'text-amber-500' : 'text-muted-foreground'"
+        :title="conv.starred ? t('forum.messages.unstar') : t('forum.messages.star')"
+        @click.prevent.stop="toggleStar(conv)"
+      >
+        {{ conv.starred ? '★' : '☆' }}
+      </button>
     </Link>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">

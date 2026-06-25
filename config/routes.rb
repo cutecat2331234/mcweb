@@ -385,6 +385,7 @@ Rails.application.routes.draw do
         post :unlock_invites
         post :mark_unread
         post :set_label
+        post :toggle_star
       end
       resources :messages, only: %i[create update destroy], controller: "conversation_messages"
       resource :message_draft, only: %i[update destroy], controller: "conversation_message_drafts"

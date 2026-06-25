@@ -99,6 +99,8 @@ module Community
         unread_count: unread_count.nil? ? conversation.unread_count_for(current_user) : unread_count,
         last_message_preview: last_message_preview,
         archived: participant&.archived_at.present?,
+        starred: participant&.starred_at.present?,
+        star_url: toggle_star_forum_conversation_path(conversation),
         label: participant&.label
       }
 

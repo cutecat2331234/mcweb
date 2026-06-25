@@ -30,6 +30,12 @@ module Community
         conversations_scope = conversations_scope.where(id: labeled_ids)
       end
 
+      show_starred = params[:starred] == "1"
+      if show_starred
+        starred_ids = Community::ConversationParticipant.where(user: current_user).where.not(starred_at: nil).pluck(:forum_conversation_id)
+        conversations_scope = conversations_scope.where(id: starred_ids)
+      end
+
       @pagy, conversations = pagy(:offset, conversations_scope, limit: 30)
       conversation_ids = conversations.map(&:id)
       unread_counts = Community::Conversation.unread_counts_for(current_user, conversation_ids)
@@ -50,6 +56,8 @@ module Community
         pagination: pagy_props(@pagy),
         showArchived: include_archived,
         archivedToggleUrl: include_archived ? forum_conversations_path : forum_conversations_path(archived: 1),
+        showStarred: show_starred,
+        starredToggleUrl: show_starred ? forum_conversations_path : forum_conversations_path(starred: 1),
         query: params[:q].to_s
       }
     end
@@ -70,6 +78,13 @@ module Community
       participant = conversation.participants.find_by(user: current_user)
       participant&.update!(label: params[:label].to_s.strip.presence)
       redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.conversation_labeled", default: "已更新标签")
+    end
+
+    def toggle_star
+      conversation = find_accessible_conversation!
+      participant = conversation.participants.find_by(user: current_user)
+      participant&.update!(starred_at: participant.starred_at ? nil : Time.current)
+      redirect_back fallback_location: forum_conversations_path
     end
 
     def new

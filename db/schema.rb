@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000007) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000008) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -155,6 +155,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000007) do
     t.string "label"
     t.datetime "last_read_at"
     t.datetime "muted_at"
+    t.datetime "starred_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["forum_conversation_id", "user_id"], name: "idx_forum_conv_participants_unique", unique: true

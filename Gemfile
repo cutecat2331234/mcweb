@@ -24,6 +24,7 @@ gem "sidekiq", "~> 8.0"
 gem "sidekiq-cron", "~> 2.0"
 gem "aasm", "~> 5.5"
 gem "csv"
+gem "ostruct"
 gem "rubyzip", "~> 3.4"
 
 gem "tzinfo-data", platforms: %i[ windows jruby ]

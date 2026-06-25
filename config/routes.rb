@@ -392,6 +392,7 @@ Rails.application.routes.draw do
       resources :participants, only: %i[create destroy], controller: "conversation_participants", param: :username
     end
     get "members", to: "members#index", as: :members
+    get "statistics", to: "forum_stats#index", as: :statistics
     get "leaderboard", to: "leaderboard#index", as: :leaderboard
     resources :users, only: %i[show update], param: :id do
       member do

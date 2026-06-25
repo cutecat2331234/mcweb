@@ -4,15 +4,15 @@
 > 已实现的功能不在此列(头衔阶梯、公告横幅、统计、奖杯积分、管理团队页、首页统计/最新主题/最新发帖/在线管理、postbit、OP 徽章、书签标签、隐藏签名、最高在线纪录、Top/New/被链接通知、prefixes、polls、reactions、solved、warnings、PM、saved search、tags、RSS 等)。
 
 ## 快速高价值(small effort)
-- [ ] **邮箱封禁(Email ban)** — 镜像 `Administration::IpBan`,新增 `Administration::EmailBan`(pattern 支持 `*@domain`、reason、expires_at、active),后台 `Admin::System::EmailBansController` + Vue 页;注册时校验 `EmailBan.match?(email)`。
-- [ ] **私信加星(Star/Favorite)** — `forum_conversation_participants` 加 `starred_at`;`conversations#toggle_star` 镜像 mute/archive;序列化 + `Messages/Index.vue` 加星标筛选。
+- [x] **邮箱封禁(Email ban)** — ✅ `Administration::EmailBan` + `CheckEmailBan`(注册拦截)+ `Admin::System::EmailBans` CRUD,带测试。
+- [x] **私信加星(Star/Favorite)** — ✅ `starred_at` + `toggle_star` + `Messages/Index.vue` 星标按钮/筛选。
+- [x] **侧栏「热门主题」部件** — ✅ 复用 `Topic.top_ranked`,首页 widget。
+- [x] **公开会员统计页** — ✅ `Community::ForumStatsController` + `/forum/statistics`(指标 + 发帖最多/获赞最多/最新会员)。
 - [ ] **主题员工私语后台 UI** — `Community::TopicStaffNote` 模型已存在,缺 CRUD/UI;镜像用户 StaffNote。
-- [ ] **公开会员统计页** — 复用 admin stats + leaderboard 查询,出一个公开 Members 统计页/侧栏部件。
-- [ ] **侧栏「热门主题」部件** — 复用 `Topic.top_ranked`,在 `Sections/Index.vue` 加一个 widget。
 
 ## 中等价值/工作量(medium)
+- [x] **回复我的帖子通知** — ✅ `NotifyPostReply`(parent_post 且作者不同则通知,跳过自回复/已引用),`forum.post_reply` 偏好 + 测试。
 - [ ] **举报中心:指派 + 批量操作** — `Community::Report` 已有 reviewer/状态;扩展 admin reports 控制器加 assign + bulk_review + 排序,镜像 BulkModerateToolbar。
-- [ ] **回复我的帖子通知** — `NotifyPostReply` 服务,`CreatePost` 有 parent_post 且作者不同则通知;接入 NOTIFICATION_TYPES。
 - [ ] **Alerts vs notifications** — 通知加 alert/auto_dismiss 标记,瞬时类型(反应/关注)打开即自动已读。
 - [ ] **主题工具:复制 + 移动重定向桩** — `CopyTopic` 服务 + 移动时可选 redirect 桩。
 - [ ] **附件后台管理** — `Admin::Forum::AttachmentsController` 列表/删除/清理孤儿(复用 `SyncPostAttachments` unlinked scope)。

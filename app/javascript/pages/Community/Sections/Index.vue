@@ -60,6 +60,7 @@ const props = defineProps<{
     latest_member: { username: string; display_name: string | null; url: string } | null
   }
   latestThreads?: Array<{ title: string; url: string; author: string | null; at: string | null; replies: number }>
+  topTopics?: Array<{ title: string; url: string; replies: number }>
   staffOnline?: Array<{ username: string; avatar_url: string; url: string }>
   markAllReadUrl?: string | null
 }>()
@@ -203,6 +204,16 @@ function markAllRead() {
           <span v-if="thread.at"> · {{ thread.at }}</span>
           · {{ t('forum.sectionsIndex.replyCount', { n: thread.replies }) }}
         </span>
+      </li>
+    </ul>
+  </div>
+
+  <div v-if="topTopics?.length" class="mt-8 rounded-lg border p-4">
+    <h2 class="mb-3 text-sm font-semibold">{{ t('forum.sectionsIndex.topTopics') }}</h2>
+    <ul class="space-y-2">
+      <li v-for="topic in topTopics" :key="topic.url" class="flex flex-wrap items-baseline justify-between gap-x-3 text-sm">
+        <Link :href="topic.url" class="min-w-0 flex-1 truncate font-medium hover:underline">{{ topic.title }}</Link>
+        <span class="text-xs text-muted-foreground">{{ t('forum.sectionsIndex.replyCount', { n: topic.replies }) }}</span>
       </li>
     </ul>
   </div>

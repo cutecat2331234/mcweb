@@ -154,6 +154,9 @@ en:
       user_unmuted: Mute removed.
       ip_banned: IP banned.
       ip_unbanned: IP ban removed.
+      email_banned: Email ban created.
+      email_unbanned: Email ban removed.
+      email_ban_updated: Email ban updated.
       product_copied: Product duplicated as draft. Check SKU and identifiers.
       merchant_reply_published: Merchant reply published.
       review_updated: Review updated.
@@ -1046,6 +1049,17 @@ en:
       notifications:
         default_title: Minecraft event
     admin:
+      email_bans:
+        title: Email bans
+        subtitle: Block registration from matching email addresses or domains
+        col_pattern: Pattern
+        col_reason: Reason
+        col_expires: Expires
+        col_created: Created
+        permanent: Permanent
+        action_new: New email ban
+        form_new: New email ban
+        form_edit: Edit email ban
       common:
         status: Status
         updated: Updated

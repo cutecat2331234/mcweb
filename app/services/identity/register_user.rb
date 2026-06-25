@@ -14,6 +14,9 @@ module Identity
     end
 
     def call
+      email_ban_result = Administration::CheckEmailBan.call(email: @email)
+      return ServiceResult.failure(error: email_ban_result.error) if email_ban_result.failure?
+
       if @ip_address.present?
         rate_limit_result = Administration::RateLimiter.call(
           key: "register:ip:#{@ip_address}",

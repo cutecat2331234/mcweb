@@ -154,6 +154,9 @@
       user_unmuted: 禁言已解除。
       ip_banned: IP 已封禁。
       ip_unbanned: IP 封禁已解除。
+      email_banned: 邮箱封禁已创建。
+      email_unbanned: 邮箱封禁已解除。
+      email_ban_updated: 邮箱封禁已更新。
       product_copied: 商品已复制为草稿，请检查 SKU 与标识。
       merchant_reply_published: 商家回复已发布。
       review_updated: 评价已更新。
@@ -1056,6 +1059,17 @@
       notifications:
         default_title: Minecraft 事件
     admin:
+      email_bans:
+        title: 邮箱封禁
+        subtitle: 阻止匹配的邮箱地址或域名注册
+        col_pattern: 模式
+        col_reason: 原因
+        col_expires: 过期
+        col_created: 创建时间
+        permanent: 永久
+        action_new: 新建邮箱封禁
+        form_new: 新建邮箱封禁
+        form_edit: 编辑邮箱封禁
       common:
         status: 状态
         updated: 更新时间

@@ -205,6 +205,7 @@ Rails.application.routes.draw do
       resource :settings, only: %i[show update]
       resources :jobs, only: %i[index]
       resources :ip_bans, only: %i[index create destroy]
+      resources :email_bans, only: %i[index new create edit update destroy]
       resources :applications, only: %i[index]
     end
   end

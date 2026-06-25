@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000006) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000007) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -72,6 +72,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000006) do
     t.index ["actor_id"], name: "index_audit_logs_on_actor_id"
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
     t.index ["resource_type", "resource_id"], name: "index_audit_logs_on_resource_type_and_resource_id"
+  end
+
+  create_table "email_bans", force: :cascade do |t|
+    t.bigint "banned_by_id"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.string "pattern", null: false
+    t.text "reason"
+    t.datetime "updated_at", null: false
+    t.index ["banned_by_id"], name: "index_email_bans_on_banned_by_id"
+    t.index ["pattern"], name: "index_email_bans_on_pattern", unique: true
   end
 
   create_table "forum_badges", force: :cascade do |t|
@@ -1907,6 +1918,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000006) do
   add_foreign_key "admin_module_grants", "users"
   add_foreign_key "admin_module_grants", "users", column: "granted_by_id"
   add_foreign_key "audit_logs", "users", column: "actor_id"
+  add_foreign_key "email_bans", "users", column: "banned_by_id"
   add_foreign_key "forum_bookmarks", "forum_posts"
   add_foreign_key "forum_bookmarks", "forum_topics"
   add_foreign_key "forum_bookmarks", "users"

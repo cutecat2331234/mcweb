@@ -38,9 +38,19 @@ module Community
         pagination: pagy_props(@pagy),
         forumStats: forum_index_stats,
         latestThreads: latest_threads,
+        topTopics: top_topics_widget,
         staffOnline: online_staff,
         markAllReadUrl: logged_in? ? forum_unread_mark_all_read_path : nil
       }
+    end
+
+    # XenForo-style "Top topics" sidebar widget (this week), reusing the Top ranking.
+    def top_topics_widget
+      since = Community::Topic.top_period_start("week")
+      Community::Topic.published_listed.accessible_by(current_user)
+        .top_ranked(since)
+        .limit(6)
+        .map { |topic| { title: topic.title, url: forum_topic_path(topic), replies: topic.replies_count } }
     end
 
     # XenForo-style "Staff online now" widget.

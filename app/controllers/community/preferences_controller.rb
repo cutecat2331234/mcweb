@@ -15,6 +15,7 @@ module Community
       forum.reaction
       forum.quote
       forum.linked
+      forum.post_reply
       forum.topic_solved
       forum.badge
       forum.trust_level

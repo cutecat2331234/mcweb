@@ -934,6 +934,9 @@
         topic_linked:
           title: "%{actor} 链接了你的主题"
           body: "%{excerpt}"
+        post_reply:
+          title: "%{actor} 回复了你的帖子"
+          body: "%{excerpt}"
         post_edited:
           title: "帖子已编辑：%{title}"
           body: "%{author} 编辑了 #%{floor}"
@@ -1780,6 +1783,7 @@
         forum.reaction: 帖子反应
         forum.quote: 帖子引用
         forum.linked: 主题被链接
+        forum.post_reply: 回复你的帖子
         forum.topic_solved: 主题已解决
         forum.saved_search_match: 保存搜索匹配
         forum.badge: 获得徽章

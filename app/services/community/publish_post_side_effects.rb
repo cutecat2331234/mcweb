@@ -20,6 +20,9 @@ module Community
       if @post.quoted_post
         Community::NotifyPostQuoted.call(post: @post, quoter: @user, quoted_post: @post.quoted_post)
       end
+      if @post.parent_post
+        Community::NotifyPostReply.call(post: @post, replier: @user, parent_post: @post.parent_post)
+      end
 
       if @dispatch_webhooks
         if @post.floor_number == 1

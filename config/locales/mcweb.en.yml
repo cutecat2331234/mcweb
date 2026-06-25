@@ -924,6 +924,9 @@ en:
         topic_linked:
           title: "%{actor} linked your topic"
           body: "%{excerpt}"
+        post_reply:
+          title: "%{actor} replied to your post"
+          body: "%{excerpt}"
         post_edited:
           title: "Post edited: %{title}"
           body: "%{author} edited #%{floor}"
@@ -1770,6 +1773,7 @@ en:
         forum.reaction: Reaction
         forum.quote: Quote
         forum.linked: Topic linked
+        forum.post_reply: Reply to your post
         forum.topic_solved: Topic solved
         forum.saved_search_match: Saved search match
         forum.badge: Badge earned

@@ -312,6 +312,9 @@
       user_title_created: 头衔等级已创建。
       user_title_updated: 头衔等级已更新。
       user_title_deleted: 头衔等级已删除。
+      user_group_created: 用户组已创建。
+      user_group_updated: 用户组已更新。
+      user_group_deleted: 用户组已删除。
       notice_created: 公告已创建。
       notice_updated: 公告已更新。
       notice_deleted: 公告已删除。
@@ -1362,6 +1365,16 @@
           action_new: 新建头衔等级
           form_edit: 编辑头衔等级
           form_new: 新建头衔等级
+        user_groups:
+          title: 用户组
+          description: 带展示样式与权限键的用户组(主组 + 副组)。
+          col_name: 名称
+          col_priority: 优先级
+          col_members: 成员数
+          col_primary_default: 默认主组
+          action_new: 新建用户组
+          form_edit: 编辑用户组
+          form_new: 新建用户组
         notices:
           title: 公告横幅
           description: 在论坛各页向用户展示的可关闭横幅。

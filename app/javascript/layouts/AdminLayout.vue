@@ -41,6 +41,7 @@ const nav = computed(() => [
     { label: t('admin.forumBadges'), href: adminRoutes.forumBadges },
     { label: t('admin.forumWarningTemplates'), href: adminRoutes.forumWarningTemplates },
     { label: t('admin.forumUserTitles'), href: adminRoutes.forumUserTitles },
+    { label: t('admin.forumUserGroups'), href: adminRoutes.forumUserGroups },
     { label: t('admin.forumNotices'), href: adminRoutes.forumNotices },
     { label: t('admin.forumTags'), href: adminRoutes.forumTags },
     { label: t('admin.forumSettings'), href: adminRoutes.forumSettings },

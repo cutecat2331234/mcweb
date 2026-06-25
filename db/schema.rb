@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000008) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000009) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -72,6 +72,27 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000008) do
     t.index ["actor_id"], name: "index_audit_logs_on_actor_id"
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
     t.index ["resource_type", "resource_id"], name: "index_audit_logs_on_resource_type_and_resource_id"
+  end
+
+  create_table "community_group_memberships", force: :cascade do |t|
+    t.bigint "community_user_group_id", null: false
+    t.datetime "created_at", null: false
+    t.boolean "is_primary", default: false, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["community_user_group_id"], name: "idx_community_group_memberships_on_group"
+    t.index ["user_id", "community_user_group_id"], name: "idx_community_group_memberships_unique", unique: true
+  end
+
+  create_table "community_user_groups", force: :cascade do |t|
+    t.string "banner_text"
+    t.string "color_hex"
+    t.datetime "created_at", null: false
+    t.boolean "is_primary_default", default: false, null: false
+    t.string "name", null: false
+    t.jsonb "permissions", default: [], null: false
+    t.integer "priority", default: 0, null: false
+    t.datetime "updated_at", null: false
   end
 
   create_table "email_bans", force: :cascade do |t|
@@ -1919,6 +1940,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000008) do
   add_foreign_key "admin_module_grants", "users"
   add_foreign_key "admin_module_grants", "users", column: "granted_by_id"
   add_foreign_key "audit_logs", "users", column: "actor_id"
+  add_foreign_key "community_group_memberships", "community_user_groups"
+  add_foreign_key "community_group_memberships", "users"
   add_foreign_key "email_bans", "users", column: "banned_by_id"
   add_foreign_key "forum_bookmarks", "forum_posts"
   add_foreign_key "forum_bookmarks", "forum_topics"

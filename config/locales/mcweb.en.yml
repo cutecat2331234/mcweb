@@ -302,6 +302,9 @@ en:
       user_title_created: Title rung created.
       user_title_updated: Title rung updated.
       user_title_deleted: Title rung deleted.
+      user_group_created: User group created.
+      user_group_updated: User group updated.
+      user_group_deleted: User group deleted.
       notice_created: Notice created.
       notice_updated: Notice updated.
       notice_deleted: Notice deleted.
@@ -1352,6 +1355,16 @@ en:
           action_new: New title rung
           form_edit: Edit title rung
           form_new: New title rung
+        user_groups:
+          title: User groups
+          description: Groups with display styling and permission keys (primary + secondary memberships).
+          col_name: Name
+          col_priority: Priority
+          col_members: Members
+          col_primary_default: Default primary
+          action_new: New user group
+          form_edit: Edit user group
+          form_new: New user group
         notices:
           title: Notices
           description: Dismissible banners shown to members across the forum.

@@ -10,6 +10,8 @@ class User < ApplicationRecord
   has_many :sessions, dependent: :destroy
   has_many :user_roles, dependent: :destroy
   has_many :roles, through: :user_roles
+  has_many :group_memberships, class_name: "Community::GroupMembership", dependent: :destroy
+  has_many :user_groups, through: :group_memberships, source: :user_group
   has_many :notifications, dependent: :destroy
   has_many :notification_preferences, dependent: :destroy
   has_many :user_badges, class_name: "Community::UserBadge", dependent: :destroy
@@ -46,8 +48,15 @@ class User < ApplicationRecord
 
   def permission?(key)
     return true if account_owner?
+    return true if roles.joins(:permissions).exists?(permissions: { key: key })
 
-    roles.joins(:permissions).exists?(permissions: { key: key })
+    # XenForo-style user groups grant permission keys too (union with roles).
+    group_permission_keys.include?(key.to_s)
+  end
+
+  # Effective permission keys from the user's groups, memoized per request.
+  def group_permission_keys
+    @group_permission_keys ||= Community::UserGroup.permission_keys_for(self)
   end
 
   def can_access_admin?

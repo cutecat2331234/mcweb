@@ -8,7 +8,7 @@
 - [x] **私信加星(Star/Favorite)** — ✅ `starred_at` + `toggle_star` + `Messages/Index.vue` 星标按钮/筛选。
 - [x] **侧栏「热门主题」部件** — ✅ 复用 `Topic.top_ranked`,首页 widget。
 - [x] **公开会员统计页** — ✅ `Community::ForumStatsController` + `/forum/statistics`(指标 + 发帖最多/获赞最多/最新会员)。
-- [ ] **主题员工私语后台 UI** — `Community::TopicStaffNote` 模型已存在,缺 CRUD/UI;镜像用户 StaffNote。
+- [x] **主题员工私语** — ✅ 复核发现已完整(`Topics/Show.vue` 版主笔记面板 + 创建表单 + `staff_note` action + 序列化);仅缺单条删除(极小,可选)。缺口分析曾误标。
 
 ## 中等价值/工作量(medium)
 - [x] **回复我的帖子通知** — ✅ `NotifyPostReply`(parent_post 且作者不同则通知,跳过自回复/已引用),`forum.post_reply` 偏好 + 测试。
@@ -19,7 +19,7 @@
 - [ ] **帮助中心(Help pages)** — `HelpArticle` 模型 + 后台 CRUD + 公开页,复用 `Website::Page` 约定。
 
 ## 大型(多会话,需谨慎)
-- [ ] **用户组 + 副组 + 组权限**(对标 XenForo user groups,最高价值的大件)
+- [~] **用户组 + 副组 + 组权限**(对标 XenForo user groups)——**phase 1+2 已完成**:`Community::UserGroup` + `GroupMembership` 模型/迁移、后台 CRUD(名称/颜色/优先级/权限键/主组默认/横幅)、`User#permission?` 并入组权限(union,请求级 memoize)、注册自动加入默认主组,带测试。**phase 3 待做**:用户卡/资料页组徽章(颜色/横幅)、admin 用户详情页的成员分配 UI、会员名录按组筛选。
 - [ ] **实时通知(ActionCable)** 与 **Web Push**(共享通知扇出基础)
 - [ ] **多引用(Multi-quote)**
 - [ ] **BBCode + 自定义 BBCode 管理**

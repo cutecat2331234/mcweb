@@ -56,6 +56,8 @@ module Identity
         end
       end
 
+      assign_default_groups(user)
+
       Administration::AuditLogger.call(
         actor: user,
         action: "identity.register",
@@ -76,6 +78,14 @@ module Identity
     end
 
     private
+
+    # XenForo-style: new members join the configured default primary group(s).
+    def assign_default_groups(user)
+      defaults = Community::UserGroup.primary_defaults.ordered.to_a
+      defaults.each_with_index do |group, index|
+        Community::GroupMembership.create!(user: user, user_group: group, is_primary: index.zero?)
+      end
+    end
 
     def generate_public_id
       "usr_#{SecureRandom.alphanumeric(16)}"

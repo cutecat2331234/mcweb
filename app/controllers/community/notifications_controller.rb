@@ -68,6 +68,11 @@ module Community
       redirect_to forum_notifications_path(notification_index_query_params), notice: t("mcweb.flash.marked_read")
     end
 
+    def dismiss_alerts
+      current_user.notifications.unread.alerts.update_all(read_at: Time.current)
+      redirect_to forum_notifications_path(notification_index_query_params), notice: t("mcweb.flash.alerts_dismissed")
+    end
+
     private
 
     def notification_index_query_params

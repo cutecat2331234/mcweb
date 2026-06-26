@@ -26,6 +26,7 @@
       rate_limited: 操作过于频繁，请稍后再试。
       bookmark_updated: 书签已更新。
       marked_read: 已标记为已读。
+      alerts_dismissed: 提醒已清除。
       notification_unavailable: 此通知关联的内容已不可用。
       report_submitted: 举报已提交。
       report_rate_limited: 举报过于频繁，请稍后再试。

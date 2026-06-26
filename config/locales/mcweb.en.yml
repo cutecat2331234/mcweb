@@ -26,6 +26,7 @@ en:
       rate_limited: Too many requests. Please try again later.
       bookmark_updated: Bookmark updated.
       marked_read: Marked as read.
+      alerts_dismissed: Alerts dismissed.
       notification_unavailable: The content for this notification is no longer available.
       report_submitted: Report submitted.
       report_rate_limited: You are submitting reports too quickly. Please wait a while and try again.

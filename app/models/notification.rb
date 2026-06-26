@@ -7,6 +7,19 @@ class Notification < ApplicationRecord
   scope :unread, -> { where(read_at: nil) }
   scope :read, -> { where.not(read_at: nil) }
   scope :recent, -> { order(created_at: :desc) }
+  scope :alerts, -> { where(auto_dismiss: true) }
+
+  # XenForo-style transient "alerts" — low-priority types that can be dismissed
+  # in bulk (vs persistent notifications kept until explicitly read).
+  ALERT_TYPES = %w[
+    forum.reaction
+    forum.new_follower
+    forum.linked
+    forum.post_reply
+    forum.quote
+    forum.profile_post
+    forum.profile_post_comment
+  ].freeze
 
   def read?
     read_at.present?
@@ -28,7 +41,8 @@ class Notification < ApplicationRecord
       notification_type: notification_type,
       title: title,
       body: body,
-      metadata: metadata
+      metadata: metadata,
+      auto_dismiss: ALERT_TYPES.include?(notification_type.to_s)
     )
   end
 end

@@ -2590,6 +2590,7 @@ export default {
       title: 'Notifications',
       subtitle: 'Forum and store messages',
       markAllRead: 'Mark all read',
+      dismissAlerts: 'Dismiss alerts',
       all: 'All',
       forum: 'Forum',
       store: 'Store',

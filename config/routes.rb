@@ -335,6 +335,7 @@ Rails.application.routes.draw do
       end
       collection do
         patch :mark_all_read
+        patch :dismiss_alerts
       end
     end
     get "search.rss", to: "rss#ad_hoc_search", as: :search_rss, defaults: { format: :rss }

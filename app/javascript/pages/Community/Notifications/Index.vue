@@ -138,6 +138,10 @@ function markAllRead() {
   router.patch(appendQueryParams(`${routes.app}/forum/notifications/mark_all_read`, filterParams()))
 }
 
+function dismissAlerts() {
+  router.patch(`${routes.app}/forum/notifications/dismiss_alerts`)
+}
+
 function switchRead(read: 'all' | 'unread') {
   router.get(routes.forumNotifications, filterParams({ read: read === 'unread' ? 'unread' : undefined }), { preserveState: true })
 }
@@ -207,6 +211,7 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
   <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
     <PageHeader :title="t('community.notifications.title')" :subtitle="t('community.notifications.subtitle')" />
     <Button type="button" variant="outline" size="sm" @click="markAllRead">{{ t('community.notifications.markAllRead') }}</Button>
+    <Button type="button" variant="outline" size="sm" @click="dismissAlerts">{{ t('community.notifications.dismissAlerts') }}</Button>
   </div>
 
   <div class="mb-4 flex flex-wrap gap-2">

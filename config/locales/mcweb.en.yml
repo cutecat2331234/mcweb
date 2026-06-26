@@ -308,6 +308,10 @@ en:
       user_group_member_added: Member added to the group.
       user_group_member_removed: Member removed from the group.
       user_group_member_not_found: No member found with that username.
+      help_article_created: Help article created.
+      help_article_updated: Help article updated.
+      help_article_deleted: Help article deleted.
+      help_article_missing: That help article is not available.
       notice_created: Notice created.
       notice_updated: Notice updated.
       notice_deleted: Notice deleted.
@@ -1385,6 +1389,15 @@ en:
           audience_everyone: Everyone
           audience_members: Members only
           audience_guests: Guests only
+        help_articles:
+          title: Help articles
+          description: Help center articles grouped by category.
+          col_title: Title
+          col_category: Category
+          col_published: Published
+          action_new: New help article
+          form_edit: Edit help article
+          form_new: New help article
         stats:
           topics_total: Total topics
           posts_total: Total posts

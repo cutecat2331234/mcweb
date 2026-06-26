@@ -27,7 +27,7 @@ module Administration
     end
 
     def self.pattern_to_regex(pattern)
-      escaped = Regexp.escape(pattern.to_s.strip).gsub('\\*', '.*')
+      escaped = Regexp.escape(pattern.to_s.strip).gsub('\\*', ".*")
       /\A#{escaped}\z/i
     end
   end

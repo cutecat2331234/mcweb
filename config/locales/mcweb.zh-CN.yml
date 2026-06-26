@@ -318,6 +318,10 @@
       user_group_member_added: 成员已加入该组。
       user_group_member_removed: 成员已从该组移除。
       user_group_member_not_found: 未找到该用户名的成员。
+      help_article_created: 帮助文章已创建。
+      help_article_updated: 帮助文章已更新。
+      help_article_deleted: 帮助文章已删除。
+      help_article_missing: 该帮助文章不可用。
       notice_created: 公告已创建。
       notice_updated: 公告已更新。
       notice_deleted: 公告已删除。
@@ -1395,6 +1399,15 @@
           audience_everyone: 所有人
           audience_members: 仅会员
           audience_guests: 仅访客
+        help_articles:
+          title: 帮助文章
+          description: 按分类组织的帮助中心文章。
+          col_title: 标题
+          col_category: 分类
+          col_published: 已发布
+          action_new: 新建帮助文章
+          form_edit: 编辑帮助文章
+          form_new: 新建帮助文章
         stats:
           topics_total: 主题总数
           posts_total: 帖子总数

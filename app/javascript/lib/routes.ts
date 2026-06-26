@@ -26,6 +26,8 @@ export const routes = {
   forumMembers: `${appPrefix}/forum/members`,
   forumStaff: `${appPrefix}/forum/staff`,
   forumStatistics: `${appPrefix}/forum/statistics`,
+  forumHelp: `${appPrefix}/forum/help`,
+  forumHelpArticle: (slug: string) => `${appPrefix}/forum/help/${slug}`,
   forumLeaderboard: `${appPrefix}/forum/leaderboard`,
   forumUnread: `${appPrefix}/forum/unread`,
   forumAssigned: `${appPrefix}/forum/assigned`,

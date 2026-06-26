@@ -63,6 +63,7 @@ Rails.application.routes.draw do
         end
       end
       resources :notices
+      resources :help_articles, path: "help-articles"
       get "stats", to: "stats#index"
       resources :approvals, only: %i[index show] do
         member do
@@ -399,6 +400,8 @@ Rails.application.routes.draw do
     end
     get "members", to: "members#index", as: :members
     get "statistics", to: "forum_stats#index", as: :statistics
+    get "help", to: "help#index", as: :help
+    get "help/:slug", to: "help#show", as: :help_article
     get "leaderboard", to: "leaderboard#index", as: :leaderboard
     resources :users, only: %i[show update], param: :id do
       member do

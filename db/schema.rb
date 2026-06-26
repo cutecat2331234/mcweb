@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000009) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000010) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -82,6 +82,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000009) do
     t.bigint "user_id", null: false
     t.index ["community_user_group_id"], name: "idx_community_group_memberships_on_group"
     t.index ["user_id", "community_user_group_id"], name: "idx_community_group_memberships_unique", unique: true
+  end
+
+  create_table "community_help_articles", force: :cascade do |t|
+    t.text "body", default: "", null: false
+    t.string "category", default: "general", null: false
+    t.datetime "created_at", null: false
+    t.integer "position", default: 0, null: false
+    t.boolean "published", default: true, null: false
+    t.string "slug", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["category", "position"], name: "index_community_help_articles_on_category_and_position"
+    t.index ["slug"], name: "index_community_help_articles_on_slug", unique: true
   end
 
   create_table "community_user_groups", force: :cascade do |t|

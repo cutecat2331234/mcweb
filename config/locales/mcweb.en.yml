@@ -313,6 +313,8 @@ en:
       user_group_member_added: Member added to the group.
       user_group_member_removed: Member removed from the group.
       user_group_member_not_found: No member found with that username.
+      phrase_saved: Phrase saved.
+      phrase_deleted: Phrase deleted.
       forum_page_created: Page created.
       forum_page_updated: Page updated.
       forum_page_deleted: Page deleted.
@@ -1413,6 +1415,15 @@ en:
           audience_everyone: Everyone
           audience_members: Members only
           audience_guests: Guests only
+        phrases:
+          title: Phrases
+          description: Override any translation string by its i18n key (falls back to the default).
+          col_key: Key
+          col_locale: Locale
+          col_value: Value
+          action_new: New phrase
+          form_edit: Edit phrase
+          form_new: New phrase
         pages:
           title: Pages
           description: Custom content pages, optionally shown in the forum navigation.

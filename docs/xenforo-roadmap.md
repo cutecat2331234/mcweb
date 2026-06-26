@@ -32,4 +32,6 @@
 - [x] **打字指示器** — ✅ `Community::ConversationChannel`(参与者鉴权 + ephemeral typing 动作)+ 前端 `useConversationTyping`(原生 WebSocket 收发、节流、过滤自己)+ 私信页「X 正在输入…」。
 - [x] **Web Push** — ✅ `web-push` gem + VAPID(`Community::VapidKeys`,存 SiteSetting)+ `Community::PushSubscription` 模型 + `DeliverWebPush` 服务/Job(接入 `notify!`,rescue + DND + 偏好门控,自动清理失效订阅)+ `public/sw.js` service worker + `useWebPush` 客户端 + 偏好页开关。已验证 VAPID 生成 + notify! 正常。
 - [x] **论坛页面节点 CMS** — ✅ `Community::ForumPage`(slug 自动生成,缓存导航项)+ 后台 CRUD + 公开页 `/forum/pages/:slug`(Markdown)+ `show_in_nav` 的页面自动进论坛导航(空时无影响)。
-- [ ] **Phrases 运行时 i18n**(DB 覆盖层 + I18n 后端 + 前端 locale 合并;前端部分较复杂,建议带 CI 实现)
+- [x] **Phrases 运行时 i18n** — ✅ `Community::PhraseOverride`(DB 覆盖)+ `Mcweb::PhraseBackend`(I18n Chain 首链,30s 进程内缓存,无覆盖时回退)+ 后台 CRUD(搜索/分页)。已验证:普通翻译正常回退、覆盖生效、缺失键不崩。注:覆盖服务端 `t`(flash/邮件/管理标签等);前端 Vue locale(en.ts/zh-CN.ts)的运行时覆盖可作后续扩展(需把覆盖以 JSON 注入 vue-i18n `mergeLocaleMessage`)。
+
+> **路线图已全部完成。** 余下仅为可选增强(前端 Vue locale 的 phrases 合并、各大件的深度打磨)。

@@ -48,6 +48,7 @@ const nav = computed(() => [
     { label: t('admin.forumCustomBbcodes'), href: adminRoutes.forumCustomBbcodes },
     { label: t('admin.forumThemes'), href: adminRoutes.forumThemes },
     { label: t('admin.forumPages'), href: adminRoutes.forumPages },
+    { label: t('admin.forumPhrases'), href: adminRoutes.forumPhrases },
     { label: t('admin.forumAttachments'), href: adminRoutes.forumAttachments },
     { label: t('admin.forumScheduledTasks'), href: adminRoutes.forumScheduledTasks },
     { label: t('admin.forumTags'), href: adminRoutes.forumTags },

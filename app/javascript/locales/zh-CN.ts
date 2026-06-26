@@ -98,6 +98,7 @@ export default {
     forumCustomBbcodes: '自定义 BBCode',
     forumThemes: '主题',
     forumPages: '页面',
+    forumPhrases: '词条覆盖',
     forumAttachments: '附件',
     forumTags: '标签',
     forumSettings: '论坛设置',
@@ -345,6 +346,14 @@ export default {
       deleteTitle: '删除附件',
       deleteConfirm: '确定删除「{name}」?',
       empty: '暂无附件。',
+    },
+    phrasesForm: {
+      locale: '语言',
+      key: 'i18n 键',
+      keyHint: '点分翻译键,如 mcweb.flash.report_resolved。',
+      value: '覆盖文本',
+      deleteTitle: '删除词条',
+      deleteConfirm: '确定删除此词条覆盖?',
     },
     forumPagesForm: {
       title: '标题',

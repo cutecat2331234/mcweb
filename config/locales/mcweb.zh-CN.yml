@@ -323,6 +323,8 @@
       user_group_member_added: 成员已加入该组。
       user_group_member_removed: 成员已从该组移除。
       user_group_member_not_found: 未找到该用户名的成员。
+      phrase_saved: 词条已保存。
+      phrase_deleted: 词条已删除。
       forum_page_created: 页面已创建。
       forum_page_updated: 页面已更新。
       forum_page_deleted: 页面已删除。
@@ -1423,6 +1425,15 @@
           audience_everyone: 所有人
           audience_members: 仅会员
           audience_guests: 仅访客
+        phrases:
+          title: 词条覆盖
+          description: 按 i18n 键覆盖任意翻译文本(无覆盖时回退默认)。
+          col_key: 键
+          col_locale: 语言
+          col_value: 文本
+          action_new: 新建词条
+          form_edit: 编辑词条
+          form_new: 新建词条
         pages:
           title: 页面
           description: 自定义内容页面,可选择显示在论坛导航中。

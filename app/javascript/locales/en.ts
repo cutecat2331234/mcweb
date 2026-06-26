@@ -98,6 +98,7 @@ export default {
     forumCustomBbcodes: 'Custom BBCode',
     forumThemes: 'Themes',
     forumPages: 'Pages',
+    forumPhrases: 'Phrases',
     forumAttachments: 'Attachments',
     forumTags: 'Tags',
     forumSettings: 'Forum settings',
@@ -345,6 +346,14 @@ export default {
       deleteTitle: 'Delete attachment',
       deleteConfirm: 'Delete "{name}"?',
       empty: 'No attachments.',
+    },
+    phrasesForm: {
+      locale: 'Locale',
+      key: 'i18n key',
+      keyHint: 'The dotted translation key, e.g. mcweb.flash.report_resolved.',
+      value: 'Override value',
+      deleteTitle: 'Delete phrase',
+      deleteConfirm: 'Delete this phrase override?',
     },
     forumPagesForm: {
       title: 'Title',

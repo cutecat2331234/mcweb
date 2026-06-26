@@ -73,6 +73,7 @@ Rails.application.routes.draw do
       resources :smilies
       resources :themes
       resources :pages
+      resources :phrases
       resources :custom_bbcodes, path: "custom-bbcodes"
       resources :attachments, only: %i[index destroy] do
         collection do

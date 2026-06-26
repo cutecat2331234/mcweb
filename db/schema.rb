@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000016) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000017) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -130,6 +130,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000016) do
     t.datetime "updated_at", null: false
     t.index ["category", "position"], name: "index_community_help_articles_on_category_and_position"
     t.index ["slug"], name: "index_community_help_articles_on_slug", unique: true
+  end
+
+  create_table "community_phrase_overrides", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "key", null: false
+    t.string "locale", null: false
+    t.datetime "updated_at", null: false
+    t.text "value", default: "", null: false
+    t.index ["locale", "key"], name: "index_community_phrase_overrides_on_locale_and_key", unique: true
   end
 
   create_table "community_push_subscriptions", force: :cascade do |t|

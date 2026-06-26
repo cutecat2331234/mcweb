@@ -40,6 +40,7 @@ en:
       topic_reopened: Topic reopened.
       topic_moved: Topic moved.
       topic_copied: Topic copied.
+      spam_cleaned: "Spam cleaned: removed %{topics} topics and %{posts} posts and banned the user."
       topic_merged: Topic merged.
       topic_split: Topic split.
       topic_marked_solved: Marked as solved.

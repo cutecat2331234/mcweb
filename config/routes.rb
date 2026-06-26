@@ -32,6 +32,7 @@ Rails.application.routes.draw do
         post :unsilence
         post :set_trust_level
         post :adjust_store_credit
+        post :clean_spam
       end
     end
     resources :roles, only: %i[index show create update destroy]

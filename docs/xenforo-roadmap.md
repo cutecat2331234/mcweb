@@ -23,6 +23,6 @@
 - [ ] **实时通知(ActionCable)** 与 **Web Push**(共享通知扇出基础)
 - [ ] **多引用(Multi-quote)**
 - [ ] **BBCode + 自定义 BBCode 管理**
-- [ ] **Spam cleaner**(按作者批量清理 + 封禁,需 dry-run + 审计)
+- [x] **Spam cleaner** — ✅ `Community::SpamCleaner`(软删该用户全部主题/帖子 + 封禁,事务 + 审计 + 计数,可按记录恢复)+ 后台用户页危险操作按钮(确认弹窗)。
 - [x] **计划任务只读视图** — ✅ `Admin::Forum::ScheduledTasks` 读取 `sidekiq_cron.yml` 展示周期任务(无 Redis 依赖)。
 - [ ] **论坛主题样式/皮肤**(镜像 `Website::Theme`)、**Phrases 运行时 i18n**、**论坛页面节点 CMS**、**表情(smilies)替换**、**打字指示器**

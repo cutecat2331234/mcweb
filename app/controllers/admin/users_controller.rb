@@ -4,8 +4,8 @@ module Admin
   class UsersController < BaseController
     before_action -> { require_admin_module!("system") }
     before_action -> { require_permission("system.settings.manage") }
-    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note silence unsilence set_trust_level adjust_store_credit]
-    before_action :ensure_manageable_target!, only: %i[ban unban silence unsilence set_trust_level adjust_store_credit warn grant_badge]
+    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note silence unsilence set_trust_level adjust_store_credit clean_spam]
+    before_action :ensure_manageable_target!, only: %i[ban unban silence unsilence set_trust_level adjust_store_credit warn grant_badge clean_spam]
 
     def index
       users_scope = User.order(created_at: :desc)
@@ -110,6 +110,9 @@ module Admin
         } : nil,
         staffNoteForm: current_user.permission?("forum.users.warn") || current_user.permission?("admin.access") ? {
           action_url: staff_note_admin_user_path(@user)
+        } : nil,
+        spamCleanForm: (current_user.permission?("forum.users.warn") || current_user.permission?("admin.access")) && manageable_user?(@user) ? {
+          action_url: clean_spam_admin_user_path(@user)
         } : nil,
         silenceForm: current_user.permission?("forum.users.mute") || current_user.permission?("admin.access") ? {
           silenced: @user.silenced?,
@@ -231,6 +234,15 @@ module Admin
       )
       if result.success?
         redirect_to admin_user_path(@user), notice: t("mcweb.flash.staff_note_added")
+      else
+        redirect_to admin_user_path(@user), alert: service_error_message(result)
+      end
+    end
+
+    def clean_spam
+      result = Community::SpamCleaner.call(actor: current_user, user: @user, ban: true)
+      if result.success?
+        redirect_to admin_user_path(@user), notice: t("mcweb.flash.spam_cleaned", topics: result.value[:topics], posts: result.value[:posts])
       else
         redirect_to admin_user_path(@user), alert: service_error_message(result)
       end

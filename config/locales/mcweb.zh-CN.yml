@@ -40,6 +40,7 @@
       topic_reopened: 主题已重新打开。
       topic_moved: 主题已移动。
       topic_copied: 主题已复制。
+      spam_cleaned: "垃圾已清理:删除了 %{topics} 个主题、%{posts} 个帖子,并已封禁该用户。"
       topic_merged: 主题已合并。
       topic_split: 主题已拆分。
       topic_marked_solved: 已标记为已解决。

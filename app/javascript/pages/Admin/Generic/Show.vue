@@ -109,6 +109,7 @@ const props = defineProps<{
   badgeForm?: BadgeForm | null
   warningForm?: WarningForm | null
   staffNoteForm?: StaffNoteForm | null
+  spamCleanForm?: { action_url: string } | null
   shippingForm?: ShippingForm | null
   silenceForm?: SilenceForm | null
   trustLevelForm?: TrustLevelForm | null
@@ -249,6 +250,18 @@ function submitStaffNote() {
     preserveScroll: true,
     onSuccess: () => { staffNoteForm.reset('body'); staffNoteForm.visible_to_customer = false },
   })
+}
+
+async function cleanSpam() {
+  if (!props.spamCleanForm) return
+  const ok = await confirm({
+    title: t('admin.genericShow.spamCleanTitle'),
+    message: t('admin.genericShow.spamCleanConfirm'),
+    confirmLabel: t('admin.genericShow.spamCleanAction'),
+    variant: 'destructive',
+  })
+  if (!ok) return
+  router.post(props.spamCleanForm.action_url, {}, { preserveScroll: true })
 }
 
 function submitStoreCredit() {
@@ -419,6 +432,12 @@ function submitTrustLevel() {
     </label>
     <Button type="submit" size="sm" :disabled="staffNoteForm.processing">{{ t('admin.genericShow.saveNote') }}</Button>
   </form>
+
+  <div v-if="props.spamCleanForm" class="mt-6 max-w-lg space-y-2 rounded-lg border border-destructive/40 p-4">
+    <h2 class="text-sm font-semibold text-destructive">{{ t('admin.genericShow.spamCleanTitle') }}</h2>
+    <p class="text-xs text-muted-foreground">{{ t('admin.genericShow.spamCleanHint') }}</p>
+    <Button type="button" size="sm" variant="destructive" @click="cleanSpam">{{ t('admin.genericShow.spamCleanAction') }}</Button>
+  </div>
 
   <form v-if="props.storeCreditForm" class="mt-6 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="submitStoreCredit">
     <h2 class="text-sm font-semibold">{{ t('admin.genericShow.storeCredit') }}</h2>

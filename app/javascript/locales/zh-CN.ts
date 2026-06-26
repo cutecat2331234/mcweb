@@ -805,6 +805,12 @@ export default {
   preferences: {
     language: '界面语言',
     languageHint: '切换后整站界面语言会立即更新。',
+    push: {
+      title: '推送通知',
+      description: '即使关闭此标签页,也能通过浏览器推送接收新提醒。',
+      enable: '开启',
+      disable: '关闭',
+    },
     title: '通知偏好',
     subtitle: '管理站内通知与邮件通知',
     inApp: '站内通知',

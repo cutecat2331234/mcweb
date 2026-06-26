@@ -805,6 +805,12 @@ export default {
   preferences: {
     language: 'Interface language',
     languageHint: 'The site language updates immediately after you switch.',
+    push: {
+      title: 'Push notifications',
+      description: 'Get browser push notifications for new alerts, even when this tab is closed.',
+      enable: 'Enable',
+      disable: 'Disable',
+    },
     title: 'Notification preferences',
     subtitle: 'Manage in-app and email notifications',
     inApp: 'In-app',

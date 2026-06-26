@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000014) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000015) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -116,6 +116,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000014) do
     t.datetime "updated_at", null: false
     t.index ["category", "position"], name: "index_community_help_articles_on_category_and_position"
     t.index ["slug"], name: "index_community_help_articles_on_slug", unique: true
+  end
+
+  create_table "community_push_subscriptions", force: :cascade do |t|
+    t.string "auth_key", null: false
+    t.datetime "created_at", null: false
+    t.string "endpoint", null: false
+    t.string "p256dh_key", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["endpoint"], name: "index_community_push_subscriptions_on_endpoint", unique: true
+    t.index ["user_id"], name: "index_community_push_subscriptions_on_user_id"
   end
 
   create_table "community_smilies", force: :cascade do |t|
@@ -1988,6 +1999,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000014) do
   add_foreign_key "audit_logs", "users", column: "actor_id"
   add_foreign_key "community_group_memberships", "community_user_groups"
   add_foreign_key "community_group_memberships", "users"
+  add_foreign_key "community_push_subscriptions", "users"
   add_foreign_key "email_bans", "users", column: "banned_by_id"
   add_foreign_key "forum_bookmarks", "forum_posts"
   add_foreign_key "forum_bookmarks", "forum_topics"

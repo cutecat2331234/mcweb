@@ -364,6 +364,9 @@ Rails.application.routes.draw do
     get "following", to: "follows#index"
     post "announcements/dismiss", to: "announcements#dismiss", as: :dismiss_announcement
     post "notices/:id/dismiss", to: "notices#dismiss", as: :dismiss_notice
+    get "push/public_key", to: "push#public_key", as: :push_public_key
+    post "push/subscribe", to: "push#subscribe", as: :push_subscribe
+    delete "push/unsubscribe", to: "push#unsubscribe", as: :push_unsubscribe
     get "unread", to: "unread#index"
     get "assigned", to: "assigned#index"
     patch "unread/mark_all_read", to: "unread#mark_all_read", as: :unread_mark_all_read

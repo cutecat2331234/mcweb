@@ -30,4 +30,5 @@
 - [ ] **Phrases 运行时 i18n**(DB 覆盖层 + I18n 后端,大件)、**论坛页面节点 CMS**(与帮助中心重叠,可在其上加层级/导航)、**打字指示器**(依赖实时通知)
 - [x] **实时通知(ActionCable)** — ✅ `ApplicationCable::Connection`(签名 session cookie 鉴权)+ `Community::NotificationsChannel`(按用户流)+ `Notification.notify!` 广播(rescue 包裹,不阻塞)+ 前端原生 WebSocket 客户端(`useNotificationStream`,无新依赖)+ 顶栏红点实时更新。生产用 `solid_cable`(已在 Gemfile,无需 Redis)。已验证 notify! 正常。
 - [x] **打字指示器** — ✅ `Community::ConversationChannel`(参与者鉴权 + ephemeral typing 动作)+ 前端 `useConversationTyping`(原生 WebSocket 收发、节流、过滤自己)+ 私信页「X 正在输入…」。
-- [ ] **Web Push**(需 `web-push` gem + service worker;可复用通知扇出)、**Phrases 运行时 i18n**、**论坛页面节点 CMS**(与帮助中心重叠)
+- [x] **Web Push** — ✅ `web-push` gem + VAPID(`Community::VapidKeys`,存 SiteSetting)+ `Community::PushSubscription` 模型 + `DeliverWebPush` 服务/Job(接入 `notify!`,rescue + DND + 偏好门控,自动清理失效订阅)+ `public/sw.js` service worker + `useWebPush` 客户端 + 偏好页开关。已验证 VAPID 生成 + notify! 正常。
+- [ ] **Phrases 运行时 i18n**(DB 覆盖层 + I18n 后端)、**论坛页面节点 CMS**(与帮助中心重叠)

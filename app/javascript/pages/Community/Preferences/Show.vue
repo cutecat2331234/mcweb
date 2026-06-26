@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router, useForm } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -13,10 +13,18 @@ import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 import { readCsrfToken } from '@/lib/csrf'
+import { useWebPush } from '@/lib/useWebPush'
 
 defineOptions({ layout: PortalLayout })
 
 const { t } = useI18n()
+
+const { supported: pushSupported, busy: pushBusy, enabled: pushEnabled, enable: enablePush, disable: disablePush, refresh: refreshPush } = useWebPush()
+onMounted(refreshPush)
+function togglePush() {
+  if (pushEnabled.value) disablePush()
+  else enablePush()
+}
 
 export interface SavedSearchItem {
   id: number
@@ -179,6 +187,18 @@ async function saveRenameSearch(search: SavedSearchItem) {
         <p class="mt-1 text-sm text-muted-foreground">{{ t('preferences.languageHint') }}</p>
       </div>
       <LanguageSwitcher />
+    </div>
+  </section>
+
+  <section v-if="pushSupported" class="mb-6 max-w-lg rounded-lg border p-4">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h2 class="text-sm font-medium">{{ t('preferences.push.title') }}</h2>
+        <p class="mt-1 text-sm text-muted-foreground">{{ t('preferences.push.description') }}</p>
+      </div>
+      <Button type="button" variant="outline" size="sm" :disabled="pushBusy" @click="togglePush">
+        {{ pushEnabled ? t('preferences.push.disable') : t('preferences.push.enable') }}
+      </Button>
     </div>
   </section>
 

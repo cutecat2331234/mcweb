@@ -45,7 +45,14 @@ class Notification < ApplicationRecord
       auto_dismiss: ALERT_TYPES.include?(notification_type.to_s)
     )
     broadcast_new(notification)
+    enqueue_web_push(notification)
     notification
+  end
+
+  def self.enqueue_web_push(notification)
+    Community::DeliverWebPushJob.perform_later(notification.id)
+  rescue StandardError
+    nil
   end
 
   # Push a live update to the recipient's notification stream. Never let a

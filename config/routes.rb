@@ -72,6 +72,7 @@ Rails.application.routes.draw do
       resources :help_articles, path: "help-articles"
       resources :smilies
       resources :themes
+      resources :pages
       resources :custom_bbcodes, path: "custom-bbcodes"
       resources :attachments, only: %i[index destroy] do
         collection do
@@ -422,6 +423,7 @@ Rails.application.routes.draw do
     get "statistics", to: "forum_stats#index", as: :statistics
     get "help", to: "help#index", as: :help
     get "help/:slug", to: "help#show", as: :help_article
+    get "pages/:slug", to: "pages#show", as: :page
     get "leaderboard", to: "leaderboard#index", as: :leaderboard
     resources :users, only: %i[show update], param: :id do
       member do

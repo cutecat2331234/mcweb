@@ -323,6 +323,10 @@
       user_group_member_added: 成员已加入该组。
       user_group_member_removed: 成员已从该组移除。
       user_group_member_not_found: 未找到该用户名的成员。
+      forum_page_created: 页面已创建。
+      forum_page_updated: 页面已更新。
+      forum_page_deleted: 页面已删除。
+      forum_page_missing: 该页面不可用。
       forum_theme_created: 主题已创建。
       forum_theme_updated: 主题已更新。
       forum_theme_deleted: 主题已删除。
@@ -1419,6 +1423,15 @@
           audience_everyone: 所有人
           audience_members: 仅会员
           audience_guests: 仅访客
+        pages:
+          title: 页面
+          description: 自定义内容页面,可选择显示在论坛导航中。
+          col_title: 标题
+          col_nav: 在导航
+          col_published: 已发布
+          action_new: 新建页面
+          form_edit: 编辑页面
+          form_new: 新建页面
         themes:
           title: 论坛主题
           description: 应用于论坛的颜色令牌(一个默认主题生效)。

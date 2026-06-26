@@ -69,6 +69,11 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
     { label: t('nav.staff'), href: routes.forumStaff, icon: 'shield' },
     { label: t('nav.statistics'), href: routes.forumStatistics, icon: 'activity' },
     { label: t('nav.help'), href: routes.forumHelp, icon: 'file-text' },
+    ...((page.props.forum_nav_pages as Array<{ label: string; slug: string }> | undefined) || []).map((p) => ({
+      label: p.label,
+      href: routes.forumPage(p.slug),
+      icon: 'file-text',
+    })),
   ])
 
   const forumPersonalItems = computed<PortalNavItem[]>(() => {

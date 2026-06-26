@@ -20,6 +20,7 @@ module Community
 
       {
         conversation: serialize_conversation(conversation, include_other: true),
+        current_user_id: current_user.id,
         messages: messages.map { |msg| serialize_message(msg, conversation: conversation, participants_by_user: participants_by_user) },
         pagination: pagy_props(@pagy),
         participants: conversation.is_group? ? serialize_group_participants(conversation) : [],

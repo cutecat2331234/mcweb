@@ -12,6 +12,7 @@ import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
+import { useConversationTyping } from '@/lib/useConversationTyping'
 
 defineOptions({ layout: PortalLayout })
 
@@ -68,6 +69,7 @@ const props = defineProps<{
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
   form_errors?: Record<string, string>
   initialBody?: string | null
+  current_user_id: number
 }>()
 
 const linkError = ref('')
@@ -81,6 +83,9 @@ const pmBlocked = computed(() => !!props.warningRestrictions?.pm)
 const form = useForm({
   message: { body: props.initialBody || props.messageDraft || '' },
 })
+
+const { typingUsername, notifyTyping } = useConversationTyping(props.conversation.id, props.current_user_id)
+watch(() => form.message.body, () => notifyTyping())
 
 let draftTimer: ReturnType<typeof setTimeout> | null = null
 function saveDraft(body: string) {
@@ -318,6 +323,10 @@ function submit() {
 
   <p v-if="conversation.is_group && warningRestrictions?.link" class="mb-4 max-w-2xl rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
     {{ warningRestrictions.link }}
+  </p>
+
+  <p v-if="typingUsername" class="mb-1 max-w-2xl text-xs italic text-muted-foreground" aria-live="polite">
+    {{ t('forum.messages.typing', { username: typingUsername }) }}
   </p>
 
   <form class="max-w-2xl space-y-3" @submit.prevent="submit">

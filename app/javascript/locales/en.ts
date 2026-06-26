@@ -1377,6 +1377,7 @@ export default {
       readBy: 'Read by: {users}',
       trustLevelBlocked: 'New members (trust level 0) cannot send messages yet. Post in the community to unlock.',
       messagePlaceholder: 'Type a message…',
+      typing: '{username} is typing…',
       send: 'Send',
       confirmLeaveGroup: 'Leave this group?',
       confirmRemoveMember: 'Remove {username}?',

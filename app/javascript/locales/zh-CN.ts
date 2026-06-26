@@ -1377,6 +1377,7 @@ export default {
       readBy: '已读：{users}',
       trustLevelBlocked: '新成员（信任等级 0）暂时无法发送私信，多发帖参与社区即可解锁。',
       messagePlaceholder: '输入消息…',
+      typing: '{username} 正在输入…',
       send: '发送',
       confirmLeaveGroup: '确定离开此群组？',
       confirmRemoveMember: '确定移除 {username}？',

@@ -15,7 +15,7 @@
 - [ ] **举报中心:指派 + 批量操作** — `Community::Report` 已有 reviewer/状态;扩展 admin reports 控制器加 assign + bulk_review + 排序,镜像 BulkModerateToolbar。
 - [ ] **Alerts vs notifications** — 通知加 alert/auto_dismiss 标记,瞬时类型(反应/关注)打开即自动已读。
 - [ ] **主题工具:复制 + 移动重定向桩** — `CopyTopic` 服务 + 移动时可选 redirect 桩。
-- [ ] **附件后台管理** — `Admin::Forum::AttachmentsController` 列表/删除/清理孤儿(复用 `SyncPostAttachments` unlinked scope)。
+- [x] **附件后台管理** — ✅ `Admin::Forum::AttachmentsController` 列表(全部/孤儿筛选 + 分页)/单删/批量清理孤儿,自定义表格页。
 - [x] **帮助中心(Help pages)** — ✅ `Community::HelpArticle`(slug 自动生成)+ 后台 CRUD(`Admin::Forum::HelpArticles`)+ 公开页 `/forum/help`(分类列表 + 文章,Markdown 渲染)+ 导航入口。
 
 ## 大型(多会话,需谨慎)

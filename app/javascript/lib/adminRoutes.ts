@@ -42,6 +42,7 @@ export const adminRoutes = {
   forumHelpArticles: '/admin/forum/help-articles',
   newForumHelpArticle: '/admin/forum/help-articles/new',
   editForumHelpArticle: (id: number) => `/admin/forum/help-articles/${id}/edit`,
+  forumAttachments: '/admin/forum/attachments',
   forumTags: '/admin/forum/tags',
   forumSettings: '/admin/forum/settings',
   forumWebhookDeliveries: '/admin/forum/webhook_deliveries',

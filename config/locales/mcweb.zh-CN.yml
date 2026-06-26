@@ -322,6 +322,8 @@
       help_article_updated: 帮助文章已更新。
       help_article_deleted: 帮助文章已删除。
       help_article_missing: 该帮助文章不可用。
+      attachment_deleted: 附件已删除。
+      attachments_pruned: "已清理 %{count} 个孤儿附件。"
       notice_created: 公告已创建。
       notice_updated: 公告已更新。
       notice_deleted: 公告已删除。

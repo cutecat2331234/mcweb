@@ -64,6 +64,11 @@ Rails.application.routes.draw do
       end
       resources :notices
       resources :help_articles, path: "help-articles"
+      resources :attachments, only: %i[index destroy] do
+        collection do
+          delete :prune_orphans
+        end
+      end
       get "stats", to: "stats#index"
       resources :approvals, only: %i[index show] do
         member do

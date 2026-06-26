@@ -312,6 +312,8 @@ en:
       help_article_updated: Help article updated.
       help_article_deleted: Help article deleted.
       help_article_missing: That help article is not available.
+      attachment_deleted: Attachment deleted.
+      attachments_pruned: "Pruned %{count} orphaned attachments."
       notice_created: Notice created.
       notice_updated: Notice updated.
       notice_deleted: Notice deleted.

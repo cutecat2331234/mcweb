@@ -230,7 +230,8 @@ module InertiaSerializable
         icon: topic.section.icon
       },
       rss_url: forum_topic_rss_path(id: topic.public_id),
-      source_topic: source_topic_props(topic, viewer: viewer)
+      source_topic: source_topic_props(topic, viewer: viewer),
+      redirect_url: topic.redirect? && topic.redirect_target ? forum_topic_path(topic.redirect_target) : nil
     }.merge(linked_product_props(topic)).merge(bump_props(topic, can_moderate: can_moderate)).merge(slow_mode_props(topic, user: viewer)).merge(reading_time_props(topic))
   end
 

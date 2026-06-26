@@ -368,10 +368,17 @@ module Community
 
     def move
       section = Community::Section.find_by!(slug: params[:section_slug])
-      result = Community::MoveTopic.call(user: current_user, topic: @topic, section: section)
+      leave_redirect = ActiveModel::Type::Boolean.new.cast(params[:leave_redirect])
+      result = Community::MoveTopic.call(
+        user: current_user,
+        topic: @topic,
+        section: section,
+        leave_redirect: leave_redirect
+      )
 
       if result.success?
-        redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.topic_moved")
+        notice = leave_redirect ? t("mcweb.flash.topic_moved_with_redirect") : t("mcweb.flash.topic_moved")
+        redirect_to forum_topic_path(@topic), notice: notice
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end

@@ -37,6 +37,8 @@ module Community
 
       Community::NotifyPrivateMessage.call(message: message, conversation: @conversation)
 
+      broadcast_message(message)
+
       ServiceResult.success(message)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
@@ -46,6 +48,30 @@ module Community
 
     def participant?
       @conversation.participants.exists?(user: @user)
+    end
+
+    # Push a small payload to the per-conversation stream so other participants
+    # see the message live. Best-effort: a broadcast failure must never break
+    # message sending.
+    def broadcast_message(message)
+      formatted = Community::FormatPostBody.call(body: message.body)
+      body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(message.body)
+
+      Community::ConversationChannel.broadcast_to(
+        @conversation,
+        kind: "message",
+        message: {
+          id: message.id,
+          body: message.body,
+          body_html: body_html,
+          author: @user.username,
+          author_id: @user.id,
+          avatar_url: @user.avatar_url,
+          created_at: I18n.l(message.created_at, format: :short)
+        }
+      )
+    rescue StandardError
+      nil
     end
   end
 end

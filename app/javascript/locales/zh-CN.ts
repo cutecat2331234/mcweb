@@ -89,6 +89,7 @@ export default {
     forumBadges: '徽章',
     forumWarningTemplates: '警告模板',
     forumStats: '统计',
+    forumScheduledTasks: '计划任务',
     forumUserTitles: '用户头衔',
     forumUserGroups: '用户组',
     forumNotices: '公告横幅',

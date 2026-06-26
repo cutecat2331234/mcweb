@@ -1410,6 +1410,13 @@
           action_new: 新建帮助文章
           form_edit: 编辑帮助文章
           form_new: 新建帮助文章
+        scheduled_tasks:
+          title: 计划任务
+          description: cron 计划中的周期性后台任务(只读)。
+          col_name: 任务
+          col_cron: 计划
+          col_job: 任务类
+          col_queue: 队列
         stats:
           topics_total: 主题总数
           posts_total: 帖子总数

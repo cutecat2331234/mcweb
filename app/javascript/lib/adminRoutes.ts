@@ -39,6 +39,7 @@ export const adminRoutes = {
   newForumNotice: '/admin/forum/notices/new',
   editForumNotice: (id: number) => `/admin/forum/notices/${id}/edit`,
   forumStats: '/admin/forum/stats',
+  forumScheduledTasks: '/admin/forum/scheduled-tasks',
   forumHelpArticles: '/admin/forum/help-articles',
   newForumHelpArticle: '/admin/forum/help-articles/new',
   editForumHelpArticle: (id: number) => `/admin/forum/help-articles/${id}/edit`,

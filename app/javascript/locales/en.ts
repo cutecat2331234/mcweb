@@ -89,6 +89,7 @@ export default {
     forumBadges: 'Badges',
     forumWarningTemplates: 'Warning templates',
     forumStats: 'Statistics',
+    forumScheduledTasks: 'Scheduled tasks',
     forumUserTitles: 'User titles',
     forumUserGroups: 'User groups',
     forumNotices: 'Notices',

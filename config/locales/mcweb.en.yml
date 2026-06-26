@@ -1400,6 +1400,13 @@ en:
           action_new: New help article
           form_edit: Edit help article
           form_new: New help article
+        scheduled_tasks:
+          title: Scheduled tasks
+          description: Recurring background jobs from the cron schedule (read-only).
+          col_name: Task
+          col_cron: Schedule
+          col_job: Job class
+          col_queue: Queue
         stats:
           topics_total: Total topics
           posts_total: Total posts

@@ -24,4 +24,5 @@
 - [ ] **多引用(Multi-quote)**
 - [ ] **BBCode + 自定义 BBCode 管理**
 - [ ] **Spam cleaner**(按作者批量清理 + 封禁,需 dry-run + 审计)
-- [ ] **论坛主题样式/皮肤**(镜像 `Website::Theme`)、**Phrases 运行时 i18n**、**论坛页面节点 CMS**、**表情(smilies)替换**、**打字指示器**、**计划任务只读视图**
+- [x] **计划任务只读视图** — ✅ `Admin::Forum::ScheduledTasks` 读取 `sidekiq_cron.yml` 展示周期任务(无 Redis 依赖)。
+- [ ] **论坛主题样式/皮肤**(镜像 `Website::Theme`)、**Phrases 运行时 i18n**、**论坛页面节点 CMS**、**表情(smilies)替换**、**打字指示器**

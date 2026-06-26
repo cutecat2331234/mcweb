@@ -70,6 +70,7 @@ Rails.application.routes.draw do
         end
       end
       get "stats", to: "stats#index"
+      get "scheduled-tasks", to: "scheduled_tasks#index", as: :scheduled_tasks
       resources :approvals, only: %i[index show] do
         member do
           post :approve

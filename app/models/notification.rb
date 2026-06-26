@@ -36,7 +36,7 @@ class Notification < ApplicationRecord
   end
 
   def self.notify!(user:, notification_type:, title:, body: nil, metadata: {})
-    create!(
+    notification = create!(
       user: user,
       notification_type: notification_type,
       title: title,
@@ -44,5 +44,25 @@ class Notification < ApplicationRecord
       metadata: metadata,
       auto_dismiss: ALERT_TYPES.include?(notification_type.to_s)
     )
+    broadcast_new(notification)
+    notification
+  end
+
+  # Push a live update to the recipient's notification stream. Never let a
+  # broadcast failure (e.g. cable adapter hiccup) block notification creation.
+  def self.broadcast_new(notification)
+    Community::NotificationsChannel.broadcast_to(
+      notification.user,
+      {
+        id: notification.id,
+        title: notification.title,
+        body: notification.body,
+        type: notification.notification_type,
+        path: notification.destination_path,
+        unread_count: notification.user.notifications.unread.count
+      }
+    )
+  rescue StandardError
+    nil
   end
 end

@@ -28,4 +28,5 @@
 - [x] **表情(smilies)替换** — ✅ `Community::Smilie`(缓存,无表情时 no-op)+ 后台 CRUD + `FormatPostBody` 代码块后安全替换(管理员定义后才生效)。
 - [x] **论坛主题样式/皮肤** — ✅ `Community::ForumTheme`(主色/强调色令牌,单默认,缓存)+ 后台 CRUD;激活的默认主题通过 `--primary`/`--accent` CSS 变量合并进 `PortalLayout` 根(无主题时零影响)。
 - [ ] **Phrases 运行时 i18n**(DB 覆盖层 + I18n 后端,大件)、**论坛页面节点 CMS**(与帮助中心重叠,可在其上加层级/导航)、**打字指示器**(依赖实时通知)
-- [ ] **实时通知(ActionCable + Redis)** 与 **Web Push**(需新 gem/基础设施,建议带 CI 的专门会话)
+- [x] **实时通知(ActionCable)** — ✅ `ApplicationCable::Connection`(签名 session cookie 鉴权)+ `Community::NotificationsChannel`(按用户流)+ `Notification.notify!` 广播(rescue 包裹,不阻塞)+ 前端原生 WebSocket 客户端(`useNotificationStream`,无新依赖)+ 顶栏红点实时更新。生产用 `solid_cable`(已在 Gemfile,无需 Redis)。已验证 notify! 正常。
+- [ ] **Web Push**(需 `web-push` gem + service worker;可复用通知扇出)、**Phrases 运行时 i18n**、**论坛页面节点 CMS**、**打字指示器**(可在实时通知频道上加)

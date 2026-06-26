@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { Moon, Sun, Bell, Mail, ShoppingCart, Menu, X } from '@lucide/vue'
@@ -16,11 +16,27 @@ import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import { useTheme } from '@/lib/useTheme'
 import { readCsrfToken } from '@/lib/csrf'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
+import { useNotificationStream } from '@/lib/useNotificationStream'
 
 const page = usePage()
 const { t } = useI18n()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const notifications = computed(() => page.props.notifications as { unread_count: number; url: string } | undefined)
+
+// Live unread count, seeded from the server prop and bumped in real time via
+// ActionCable. Re-syncs whenever a page (re)load brings a fresh server count.
+const liveUnreadCount = ref(notifications.value?.unread_count ?? 0)
+watch(() => notifications.value?.unread_count, (count) => {
+  if (typeof count === 'number') liveUnreadCount.value = count
+})
+
+useNotificationStream((data) => {
+  if (typeof data.unread_count === 'number') {
+    liveUnreadCount.value = data.unread_count
+  } else {
+    liveUnreadCount.value += 1
+  }
+})
 const forumUnread = computed(() => page.props.forum_unread as { count: number; url: string } | undefined)
 const forumNew = computed(() => page.props.forum_new as { count: number; url: string } | undefined)
 const forumAssigned = computed(() => page.props.forum_assigned as { count: number; url: string } | undefined)
@@ -181,11 +197,11 @@ const sidebarProps = computed(() => ({
                 <Link :href="notifications.url" :aria-label="t('common.notifications')">
                   <Bell class="h-4 w-4" />
                   <Badge
-                    v-if="notifications.unread_count > 0"
+                    v-if="liveUnreadCount > 0"
                     variant="danger"
                     class="absolute -right-0.5 -top-0.5 h-4 min-w-4 px-1 text-[10px]"
                   >
-                    {{ notifications.unread_count > 99 ? '99+' : notifications.unread_count }}
+                    {{ liveUnreadCount > 99 ? '99+' : liveUnreadCount }}
                   </Badge>
                 </Link>
               </Button>

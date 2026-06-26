@@ -3,7 +3,7 @@ import { createApp, h, type DefineComponent } from 'vue'
 
 import '@/styles/portal.css'
 import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'
-import { createAppI18n, normalizeAppLocale, syncI18nLocale } from '@/lib/i18n'
+import { applyPhraseOverrides, createAppI18n, normalizeAppLocale, syncI18nLocale } from '@/lib/i18n'
 import AppProvider from '@/components/AppProvider.vue'
 
 const i18n = createAppI18n()
@@ -40,7 +40,9 @@ createInertiaApp({
     } else {
       syncCsrfMetaTag()
     }
-    syncI18nLocale(i18n, initialPage?.props?.locale ?? normalizeAppLocale(document.documentElement.lang))
+    const initialLocale = initialPage?.props?.locale ?? normalizeAppLocale(document.documentElement.lang)
+    syncI18nLocale(i18n, initialLocale)
+    applyPhraseOverrides(i18n, initialLocale, initialPage?.props?.phrase_overrides)
     createApp({ render: () => h(AppProvider, null, { default: () => h(App, props) }) })
       .use(plugin)
       .use(i18n)

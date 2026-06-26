@@ -33,3 +33,11 @@ export function syncI18nLocale(i18n: I18n, locale: unknown) {
     i18n.global.locale.value = next
   }
 }
+
+// Merge DB-backed admin "phrase overrides" (shared as a nested Inertia prop for
+// the current locale) on top of the static locale messages, so overrides win.
+export function applyPhraseOverrides(i18n: I18n, locale: unknown, overrides: unknown) {
+  if (!overrides || typeof overrides !== 'object') return
+  const target = normalizeAppLocale(locale)
+  i18n.global.mergeLocaleMessage(target, overrides as Record<string, unknown>)
+}

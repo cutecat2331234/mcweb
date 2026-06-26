@@ -1260,6 +1260,7 @@ export default {
       editWindowRemaining: '{seconds}s left to edit',
       reactionsCount: '{n} reactions',
       move: 'Move',
+      copy: 'Copy',
       revokePoll: 'Revoke vote',
       rawPost: 'Raw',
       readonlySection: 'This section is read-only; regular users cannot reply (moderators excepted).',

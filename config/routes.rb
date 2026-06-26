@@ -287,6 +287,7 @@ Rails.application.routes.draw do
       member do
         post :moderate
         post :move
+        post :copy
         post :merge
         post :split
         post :mark_solved

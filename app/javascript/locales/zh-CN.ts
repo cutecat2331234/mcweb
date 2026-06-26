@@ -1260,6 +1260,7 @@ export default {
       editWindowRemaining: '编辑窗口剩余 {seconds} 秒',
       reactionsCount: '{n} 个反应',
       move: '移动',
+      copy: '复制',
       revokePoll: '撤销投票',
       rawPost: '原文',
       readonlySection: '此分区为只读模式，普通用户无法回复（版主除外）。',

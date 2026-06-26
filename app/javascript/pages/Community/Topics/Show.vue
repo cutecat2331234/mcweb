@@ -835,6 +835,11 @@ function moveTopic() {
   router.post(`/app/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
 }
 
+function copyTopic() {
+  if (!moveSectionSlug.value) return
+  router.post(`/app/forum/topics/${props.topic.id}/copy`, { section_slug: moveSectionSlug.value })
+}
+
 async function mergeTopic() {
   if (!mergeTargetId.value.trim()) return
   const ok = await confirm({
@@ -1447,6 +1452,7 @@ async function copyPollShareLink() {
     <label class="text-sm text-muted-foreground">{{ t('forum.topics.moveToSection') }}</label>
     <Select v-model="moveSectionSlug" :options="sectionMoveOptions" size="sm" class="min-w-[12rem]" />
     <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">{{ t('forum.topics.move') }}</Button>
+    <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="copyTopic">{{ t('forum.topics.copy') }}</Button>
     <template v-if="topic.can_move">
       <label class="text-sm text-muted-foreground">{{ t('forum.topics.splitToSection') }}</label>
       <Select v-model="splitSectionSlug" :options="sectionSplitOptions" size="sm" class="min-w-[12rem]" />

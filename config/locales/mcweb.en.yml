@@ -39,6 +39,7 @@ en:
       topic_closed: Topic closed.
       topic_reopened: Topic reopened.
       topic_moved: Topic moved.
+      topic_copied: Topic copied.
       topic_merged: Topic merged.
       topic_split: Topic split.
       topic_marked_solved: Marked as solved.

@@ -14,7 +14,7 @@
 - [x] **回复我的帖子通知** — ✅ `NotifyPostReply`(parent_post 且作者不同则通知,跳过自回复/已引用),`forum.post_reply` 偏好 + 测试。
 - [ ] **举报中心:指派 + 批量操作** — `Community::Report` 已有 reviewer/状态;扩展 admin reports 控制器加 assign + bulk_review + 排序,镜像 BulkModerateToolbar。
 - [ ] **Alerts vs notifications** — 通知加 alert/auto_dismiss 标记,瞬时类型(反应/关注)打开即自动已读。
-- [ ] **主题工具:复制 + 移动重定向桩** — `CopyTopic` 服务 + 移动时可选 redirect 桩。
+- [~] **主题工具:复制 + 移动重定向桩** — ✅ **复制已完成**:`Community::CopyTopic`(深拷贝主题+帖子到目标分区,展平引用、不触发通知)+ 主题页复制按钮(复用 move 分区选择器)。待做:移动时留 redirect 桩。
 - [x] **附件后台管理** — ✅ `Admin::Forum::AttachmentsController` 列表(全部/孤儿筛选 + 分页)/单删/批量清理孤儿,自定义表格页。
 - [x] **帮助中心(Help pages)** — ✅ `Community::HelpArticle`(slug 自动生成)+ 后台 CRUD(`Admin::Forum::HelpArticles`)+ 公开页 `/forum/help`(分类列表 + 文章,Markdown 渲染)+ 导航入口。
 

@@ -9,9 +9,9 @@ module Community
     include Community::SubscriptionNoticeable
     include Community::SectionVisibility
 
-    before_action :require_login, only: %i[new create update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate bulk_moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :require_login, only: %i[new create update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate bulk_moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :set_topic, only: %i[show update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
 
     def show
       @topic.record_view!
@@ -372,6 +372,17 @@ module Community
 
       if result.success?
         redirect_to forum_topic_path(@topic), notice: t("mcweb.flash.topic_moved")
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
+    end
+
+    def copy
+      section = Community::Section.find_by!(slug: params[:section_slug])
+      result = Community::CopyTopic.call(user: current_user, topic: @topic, section: section)
+
+      if result.success?
+        redirect_to forum_topic_path(result.value), notice: t("mcweb.flash.topic_copied")
       else
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end

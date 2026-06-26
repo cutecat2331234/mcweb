@@ -105,6 +105,13 @@ class ApplicationController < ActionController::Base
       forum_theme_tokens = Community::ForumTheme.active_tokens
       share[:forum_theme] = forum_theme_tokens if forum_theme_tokens.present?
 
+      begin
+        overrides = unflatten_phrase_overrides(Community::PhraseOverride.map[I18n.locale.to_s])
+        share[:phrase_overrides] = overrides if overrides.present?
+      rescue StandardError
+        nil
+      end
+
       nav_pages = Community::ForumPage.nav_items
       share[:forum_nav_pages] = nav_pages if nav_pages.present?
 
@@ -171,5 +178,26 @@ class ApplicationController < ActionController::Base
 
   def safe_local_path(path)
     safe_local_redirect_path(path, fallback: nil)
+  end
+
+  private
+
+  # Turns a flat map of dotted i18n keys into a nested hash so vue-i18n can
+  # merge it as locale messages. { "forum.top.title" => "x" } becomes
+  # { "forum" => { "top" => { "title" => "x" } } }.
+  def unflatten_phrase_overrides(flat)
+    nested = {}
+    Array(flat).each do |key, value|
+      segments = key.to_s.split(".")
+      next if segments.empty?
+
+      cursor = nested
+      segments[0...-1].each do |segment|
+        existing = cursor[segment]
+        cursor = (existing.is_a?(Hash) ? existing : (cursor[segment] = {}))
+      end
+      cursor[segments[-1]] = value
+    end
+    nested
   end
 end

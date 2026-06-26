@@ -1507,6 +1507,7 @@ export default {
       tl2: 'TL2 Member',
       tl3: 'TL3 Regular',
       tl4: 'TL4 Leader',
+      allGroups: 'All groups',
       online: 'Online',
       posts: '{n} posts',
       likes: '{n} likes',

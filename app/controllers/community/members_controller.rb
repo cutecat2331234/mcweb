@@ -11,8 +11,12 @@ module Community
 
       sort = params[:sort].to_s.presence || "active"
       trust_level = params[:trust_level].to_s.presence
+      group_id = params[:group].to_s.presence
       scope = apply_member_sort(scope, sort)
       scope = apply_trust_level_filter(scope, trust_level) if trust_level.present?
+      if group_id.present?
+        scope = scope.where(id: Community::GroupMembership.where(community_user_group_id: group_id).select(:user_id))
+      end
 
       @pagy, members = pagy(:offset, scope, limit: 30)
       stats = member_stats(members)
@@ -23,6 +27,8 @@ module Community
         query: params[:q].to_s,
         sort: sort,
         trustLevel: trust_level.to_s,
+        group: group_id.to_s,
+        groupOptions: Community::UserGroup.ordered.map { |g| { value: g.id.to_s, label: g.name } },
         onlineCount: User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count
       }
     end

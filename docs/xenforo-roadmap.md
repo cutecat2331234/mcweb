@@ -19,7 +19,7 @@
 - [x] **帮助中心(Help pages)** — ✅ `Community::HelpArticle`(slug 自动生成)+ 后台 CRUD(`Admin::Forum::HelpArticles`)+ 公开页 `/forum/help`(分类列表 + 文章,Markdown 渲染)+ 导航入口。
 
 ## 大型(多会话,需谨慎)
-- [x] **用户组 + 副组 + 组权限**(对标 XenForo user groups)——**已完成**:`Community::UserGroup` + `GroupMembership` 模型/迁移;后台 CRUD(名称/颜色/优先级/权限键/主组默认/横幅);`User#permission?` 并入组权限(union,请求级 memoize);注册自动加入默认主组;用户卡/资料页组徽章(颜色/横幅);**后台组编辑页按用户名增删成员**;带测试。可选后续:会员名录按组筛选、副组/主组切换 UI。
+- [x] **用户组 + 副组 + 组权限**(对标 XenForo user groups)——**已完成**:`Community::UserGroup` + `GroupMembership` 模型/迁移;后台 CRUD(名称/颜色/优先级/权限键/主组默认/横幅);`User#permission?` 并入组权限(union,请求级 memoize);注册自动加入默认主组;用户卡/资料页组徽章(颜色/横幅);**后台组编辑页按用户名增删成员**;**会员名录按组筛选**;带测试。可选后续:副组/主组切换 UI。
 - [ ] **实时通知(ActionCable)** 与 **Web Push**(共享通知扇出基础)
 - [ ] **多引用(Multi-quote)**
 - [ ] **BBCode + 自定义 BBCode 管理**

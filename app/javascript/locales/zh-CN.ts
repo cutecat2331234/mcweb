@@ -1507,6 +1507,7 @@ export default {
       tl2: 'TL2 成员',
       tl3: 'TL3 常客',
       tl4: 'TL4 领导者',
+      allGroups: '全部用户组',
       online: '在线',
       posts: '{n} 帖',
       likes: '{n} 赞',

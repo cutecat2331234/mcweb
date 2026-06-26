@@ -36,6 +36,8 @@ const props = defineProps<{
   query: string
   sort: string
   trustLevel?: string
+  group?: string
+  groupOptions?: Array<{ value: string; label: string }>
   onlineCount?: number
 }>()
 
@@ -64,6 +66,8 @@ function search() {
   router.get(routes.forumMembers, {
     q: searchQuery.value || undefined,
     sort: props.sort !== 'active' ? props.sort : undefined,
+    trust_level: props.trustLevel || undefined,
+    group: props.group || undefined,
   }, { preserveState: true })
 }
 
@@ -72,6 +76,7 @@ function changeSort(value: string) {
     q: searchQuery.value || undefined,
     sort: value !== 'active' ? value : undefined,
     trust_level: props.trustLevel || undefined,
+    group: props.group || undefined,
   }, { preserveState: true })
 }
 
@@ -80,6 +85,16 @@ function changeTrustLevel(value: string) {
     q: searchQuery.value || undefined,
     sort: props.sort !== 'active' ? props.sort : undefined,
     trust_level: value || undefined,
+    group: props.group || undefined,
+  }, { preserveState: true })
+}
+
+function changeGroup(value: string) {
+  router.get(routes.forumMembers, {
+    q: searchQuery.value || undefined,
+    sort: props.sort !== 'active' ? props.sort : undefined,
+    trust_level: props.trustLevel || undefined,
+    group: value || undefined,
   }, { preserveState: true })
 }
 </script>
@@ -102,6 +117,13 @@ function changeTrustLevel(value: string) {
     </form>
     <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
     <Select :model-value="trustLevel || ''" :options="trustLevelOptions" size="sm" @update:model-value="changeTrustLevel" />
+    <Select
+      v-if="groupOptions?.length"
+      :model-value="group || ''"
+      :options="[{ value: '', label: t('forum.members.allGroups') }, ...groupOptions]"
+      size="sm"
+      @update:model-value="changeGroup"
+    />
     <Button as-child variant="outline" size="sm">
       <Link :href="routes.forumLeaderboard">{{ t('forum.members.leaderboardLink') }}</Link>
     </Button>

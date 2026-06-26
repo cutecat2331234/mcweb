@@ -55,6 +55,8 @@ async function dismissNotice(notice: { id: number; dismissible: boolean; dismiss
   }
 }
 const { activeTemplate, tokenStyle, portalHeaderExtraSlot, portalFooterSlot } = useActiveTemplate()
+const forumTheme = computed(() => (page.props.forum_theme as Record<string, string> | undefined) || {})
+const portalStyle = computed(() => ({ ...tokenStyle.value, ...forumTheme.value }))
 const { isDark, toggleTheme } = useTheme()
 const { features } = useFeatureFlags()
 
@@ -104,7 +106,7 @@ const sidebarProps = computed(() => ({
 </script>
 
 <template>
-  <div class="min-h-dvh bg-background portal-themed" :style="tokenStyle">
+  <div class="min-h-dvh bg-background portal-themed" :style="portalStyle">
     <TemplateAssets :include-css="false" />
 
     <div v-if="portalHeaderExtraSlot" v-html="portalHeaderExtraSlot" />

@@ -102,6 +102,9 @@ class ApplicationController < ActionController::Base
         end
       end
 
+      forum_theme_tokens = Community::ForumTheme.active_tokens
+      share[:forum_theme] = forum_theme_tokens if forum_theme_tokens.present?
+
       notices = Community::Notice.active.ordered.select { |notice| notice.visible_to?(current_user) }
       if logged_in?
         dismissed_notices = Array(current_user.dismissed_forum_notice_ids).map(&:to_s)

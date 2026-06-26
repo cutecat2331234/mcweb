@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000013) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000014) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -82,6 +82,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000013) do
     t.string "tag", null: false
     t.datetime "updated_at", null: false
     t.index ["tag"], name: "index_community_custom_bbcodes_on_tag", unique: true
+  end
+
+  create_table "community_forum_themes", force: :cascade do |t|
+    t.string "accent_color"
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.boolean "is_default", default: false, null: false
+    t.string "name", null: false
+    t.string "primary_color"
+    t.datetime "updated_at", null: false
+    t.index ["is_default"], name: "index_community_forum_themes_on_is_default"
   end
 
   create_table "community_group_memberships", force: :cascade do |t|

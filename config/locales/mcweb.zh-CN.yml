@@ -323,6 +323,9 @@
       user_group_member_added: 成员已加入该组。
       user_group_member_removed: 成员已从该组移除。
       user_group_member_not_found: 未找到该用户名的成员。
+      forum_theme_created: 主题已创建。
+      forum_theme_updated: 主题已更新。
+      forum_theme_deleted: 主题已删除。
       custom_bbcode_created: 自定义 BBCode 已创建。
       custom_bbcode_updated: 自定义 BBCode 已更新。
       custom_bbcode_deleted: 自定义 BBCode 已删除。
@@ -1416,6 +1419,15 @@
           audience_everyone: 所有人
           audience_members: 仅会员
           audience_guests: 仅访客
+        themes:
+          title: 论坛主题
+          description: 应用于论坛的颜色令牌(一个默认主题生效)。
+          col_name: 名称
+          col_default: 默认
+          col_active: 启用
+          action_new: 新建主题
+          form_edit: 编辑主题
+          form_new: 新建主题
         custom_bbcodes:
           title: 自定义 BBCode
           description: 管理员自定义的 BBCode 标签,通过 Markdown 模板展开。

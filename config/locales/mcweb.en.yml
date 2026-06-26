@@ -313,6 +313,9 @@ en:
       user_group_member_added: Member added to the group.
       user_group_member_removed: Member removed from the group.
       user_group_member_not_found: No member found with that username.
+      forum_theme_created: Theme created.
+      forum_theme_updated: Theme updated.
+      forum_theme_deleted: Theme deleted.
       custom_bbcode_created: Custom BBCode created.
       custom_bbcode_updated: Custom BBCode updated.
       custom_bbcode_deleted: Custom BBCode deleted.
@@ -1406,6 +1409,15 @@ en:
           audience_everyone: Everyone
           audience_members: Members only
           audience_guests: Guests only
+        themes:
+          title: Forum themes
+          description: Color tokens applied to the forum (one default theme is active).
+          col_name: Name
+          col_default: Default
+          col_active: Active
+          action_new: New theme
+          form_edit: Edit theme
+          form_new: New theme
         custom_bbcodes:
           title: Custom BBCode
           description: Admin-defined BBCode tags expanded via a Markdown template.

@@ -21,9 +21,11 @@
 ## 大型(多会话,需谨慎)
 - [x] **用户组 + 副组 + 组权限**(对标 XenForo user groups)——**已完成**:`Community::UserGroup` + `GroupMembership` 模型/迁移;后台 CRUD(名称/颜色/优先级/权限键/主组默认/横幅);`User#permission?` 并入组权限(union,请求级 memoize);注册自动加入默认主组;用户卡/资料页组徽章(颜色/横幅);**后台组编辑页按用户名增删成员**;**会员名录按组筛选**;带测试。可选后续:副组/主组切换 UI。
 - [ ] **实时通知(ActionCable)** 与 **Web Push**(共享通知扇出基础)
-- [ ] **多引用(Multi-quote)**
+- [x] **多引用(Multi-quote)** — ✅ 复核发现已实现(`Topics/Show.vue` `quotePreviews` 数组累积多个引用 + 引用选区 + composer 多引用预览)。缺口分析曾误标。
 - [x] **BBCode + 自定义 BBCode 管理** — ✅ **已完成**:核心标签 `[b][i][u][s][url][img][quote][spoiler]` → Markdown(`convert_bbcode`);**自定义 BBCode** `Community::CustomBbcode`(缓存、Markdown 模板 + `{content}`,经 sanitize 安全)+ 后台 CRUD;均无定义时 no-op。
 - [x] **Spam cleaner** — ✅ `Community::SpamCleaner`(软删该用户全部主题/帖子 + 封禁,事务 + 审计 + 计数,可按记录恢复)+ 后台用户页危险操作按钮(确认弹窗)。
 - [x] **计划任务只读视图** — ✅ `Admin::Forum::ScheduledTasks` 读取 `sidekiq_cron.yml` 展示周期任务(无 Redis 依赖)。
 - [x] **表情(smilies)替换** — ✅ `Community::Smilie`(缓存,无表情时 no-op)+ 后台 CRUD + `FormatPostBody` 代码块后安全替换(管理员定义后才生效)。
-- [ ] **论坛主题样式/皮肤**(镜像 `Website::Theme`)、**Phrases 运行时 i18n**、**论坛页面节点 CMS**、**打字指示器**(依赖实时通知)
+- [x] **论坛主题样式/皮肤** — ✅ `Community::ForumTheme`(主色/强调色令牌,单默认,缓存)+ 后台 CRUD;激活的默认主题通过 `--primary`/`--accent` CSS 变量合并进 `PortalLayout` 根(无主题时零影响)。
+- [ ] **Phrases 运行时 i18n**(DB 覆盖层 + I18n 后端,大件)、**论坛页面节点 CMS**(与帮助中心重叠,可在其上加层级/导航)、**打字指示器**(依赖实时通知)
+- [ ] **实时通知(ActionCable + Redis)** 与 **Web Push**(需新 gem/基础设施,建议带 CI 的专门会话)

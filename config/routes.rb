@@ -71,6 +71,7 @@ Rails.application.routes.draw do
       resources :notices
       resources :help_articles, path: "help-articles"
       resources :smilies
+      resources :themes
       resources :custom_bbcodes, path: "custom-bbcodes"
       resources :attachments, only: %i[index destroy] do
         collection do

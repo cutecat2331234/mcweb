@@ -197,6 +197,7 @@ const props = defineProps<{
       floor_number: number
       author: string
     } | null
+    redirect_url?: string | null
   }
   posts: PostItem[]
   pagination: PaginationMeta
@@ -345,6 +346,7 @@ const editPollClosesDays = ref('')
 const quotePreviews = ref<QuotedPost[]>([])
 const replyPreview = ref<{ id: number; floor_number: number; author: string } | null>(null)
 const moveSectionSlug = ref('')
+const leaveRedirect = ref(false)
 const mergeTargetId = ref('')
 const splitSectionSlug = ref('')
 const showPollVoters = ref(false)
@@ -832,7 +834,10 @@ function saveStaffNotice(post: PostItem) {
 
 function moveTopic() {
   if (!moveSectionSlug.value) return
-  router.post(`/app/forum/topics/${props.topic.id}/move`, { section_slug: moveSectionSlug.value })
+  router.post(`/app/forum/topics/${props.topic.id}/move`, {
+    section_slug: moveSectionSlug.value,
+    leave_redirect: leaveRedirect.value,
+  })
 }
 
 function copyTopic() {
@@ -1129,6 +1134,16 @@ async function copyPollShareLink() {
     { label: topic.section.name, href: topic.section.url },
     { label: topic.title, current: true },
   ]" />
+
+  <p
+    v-if="topic.redirect_url"
+    class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100"
+  >
+    {{ t('forum.topics.redirectMoved') }}
+    <Link :href="topic.redirect_url" class="ml-1 font-medium text-primary hover:underline">
+      {{ t('forum.topics.redirectMovedLink') }}
+    </Link>
+  </p>
 
   <p v-if="topic.source_topic" class="mb-4 rounded-lg border bg-muted/30 px-4 py-3 text-sm">
     {{ t('forum.topics.forkedFrom') }}
@@ -1451,6 +1466,10 @@ async function copyPollShareLink() {
   <div v-if="topic.can_move && sections.length" class="flex flex-wrap items-center gap-2">
     <label class="text-sm text-muted-foreground">{{ t('forum.topics.moveToSection') }}</label>
     <Select v-model="moveSectionSlug" :options="sectionMoveOptions" size="sm" class="min-w-[12rem]" />
+    <label class="flex items-center gap-1.5 text-sm text-muted-foreground">
+      <Checkbox v-model="leaveRedirect" />
+      {{ t('forum.topics.leaveRedirect') }}
+    </label>
     <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">{{ t('forum.topics.move') }}</Button>
     <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="copyTopic">{{ t('forum.topics.copy') }}</Button>
     <template v-if="topic.can_move">
@@ -1567,13 +1586,13 @@ async function copyPollShareLink() {
     </div>
   </section>
 
-  <form class="mb-4 flex max-w-md flex-wrap items-center gap-2" @submit.prevent="searchInTopic">
+  <form v-if="!topic.redirect_url" class="mb-4 flex max-w-md flex-wrap items-center gap-2" @submit.prevent="searchInTopic">
     <Input v-model="topicSearch" :placeholder="t('forum.topics.searchInTopic')" class="min-w-[12rem] flex-1" />
     <Select v-model="postSort" :options="postSortOptions" class="min-w-[8rem]" @update:model-value="changePostSort" />
     <Button type="submit" variant="outline">{{ t('forum.topics.search') }}</Button>
   </form>
 
-  <div class="space-y-4">
+  <div v-if="!topic.redirect_url" class="space-y-4">
     <template v-for="post in posts" :key="post.id">
       <div
         v-if="lastReadFloor && post.floor_number === lastReadFloor + 1"
@@ -1815,7 +1834,7 @@ async function copyPollShareLink() {
     </template>
   </div>
 
-  <Pagination :pagination="pagination" :base-path="routes.forumTopic(topic.id)" />
+  <Pagination v-if="!topic.redirect_url" :pagination="pagination" :base-path="routes.forumTopic(topic.id)" />
 
   <p v-if="section_read_only" class="mb-4 rounded-md border border-slate-300 bg-slate-50 px-4 py-3 text-sm text-slate-800 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100">
     {{ t('forum.topics.readonlySection') }}

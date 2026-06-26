@@ -40,6 +40,7 @@ en:
       topic_closed: Topic closed.
       topic_reopened: Topic reopened.
       topic_moved: Topic moved.
+      topic_moved_with_redirect: Topic moved and a redirect was left behind.
       topic_copied: Topic copied.
       spam_cleaned: "Spam cleaned: removed %{topics} topics and %{posts} posts and banned the user."
       topic_merged: Topic merged.

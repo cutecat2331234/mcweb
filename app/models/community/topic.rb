@@ -21,6 +21,7 @@ module Community
     has_many :invites, class_name: "Community::TopicInvite", foreign_key: :forum_topic_id, dependent: :destroy
     belongs_to :solved_post, class_name: "Community::Post", optional: true
     belongs_to :source_post, class_name: "Community::Post", optional: true
+    belongs_to :redirect_target, class_name: "Community::Topic", foreign_key: :redirect_to_topic_id, optional: true
 
     scope :global_announcements, -> { where(global_announcement: true, status: :published, unlisted: false) }
 
@@ -45,6 +46,8 @@ module Community
     def unlisted?
       unlisted == true
     end
+
+    def redirect? = redirect_to_topic_id.present?
 
     def self.sorted(sort)
       case sort.to_s

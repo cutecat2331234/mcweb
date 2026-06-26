@@ -77,6 +77,14 @@ module Admin
         redirect_to edit_admin_forum_user_group_path(group), notice: t("mcweb.flash.user_group_member_removed")
       end
 
+      def set_primary
+        group = ::Community::UserGroup.find(params[:id])
+        membership = ::Community::GroupMembership.find_by!(user_group: group, user_id: params[:user_id])
+        ::Community::GroupMembership.where(user_id: membership.user_id).where.not(id: membership.id).update_all(is_primary: false)
+        membership.update!(is_primary: true)
+        redirect_to edit_admin_forum_user_group_path(group), notice: t("mcweb.flash.user_group_primary_set")
+      end
+
       private
 
       def set_group
@@ -127,7 +135,8 @@ module Admin
             user_id: membership.user_id,
             username: membership.user.username,
             is_primary: membership.is_primary,
-            remove_url: remove_member_admin_forum_user_group_path(group, user_id: membership.user_id)
+            remove_url: remove_member_admin_forum_user_group_path(group, user_id: membership.user_id),
+            set_primary_url: set_primary_admin_forum_user_group_path(group, user_id: membership.user_id)
           }
         end
       end

@@ -66,6 +66,7 @@ Rails.application.routes.draw do
         member do
           post :add_member
           delete :remove_member
+          post :set_primary
         end
       end
       resources :notices

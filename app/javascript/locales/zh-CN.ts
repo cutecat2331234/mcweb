@@ -311,6 +311,7 @@ export default {
       addMember: '添加',
       addMemberPlaceholder: '输入要添加的用户名',
       primary: '主组',
+      makePrimary: '设为主组',
       noMembers: '暂无成员。',
     },
     notices: {

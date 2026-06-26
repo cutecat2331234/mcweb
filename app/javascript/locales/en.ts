@@ -311,6 +311,7 @@ export default {
       addMember: 'Add',
       addMemberPlaceholder: 'Username to add',
       primary: 'primary',
+      makePrimary: 'Make primary',
       noMembers: 'No members yet.',
     },
     notices: {

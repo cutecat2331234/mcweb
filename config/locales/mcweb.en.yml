@@ -312,6 +312,7 @@ en:
       user_group_updated: User group updated.
       user_group_deleted: User group deleted.
       user_group_member_added: Member added to the group.
+      user_group_primary_set: Primary group updated for the member.
       user_group_member_removed: Member removed from the group.
       user_group_member_not_found: No member found with that username.
       phrase_saved: Phrase saved.

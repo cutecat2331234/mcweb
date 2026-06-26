@@ -2656,6 +2656,7 @@ export default {
       subtitle: '论坛与商城消息',
       markAllRead: '全部已读',
       dismissAlerts: '清除提醒',
+      alert: '提醒',
       all: '全部',
       forum: '论坛',
       store: '商城',

@@ -34,6 +34,7 @@ export interface NotificationGroup {
     mark_read_url: string
     read: boolean
     category: 'forum' | 'commerce'
+    auto_dismiss?: boolean
   }>
 }
 
@@ -331,7 +332,10 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
               <ul v-if="expanded[group.key] && group.items.length" class="mt-3 space-y-2 border-t pt-3">
                 <li v-for="item in group.items" :key="item.id" class="flex items-start justify-between gap-2 text-sm">
                   <div :class="item.read ? 'text-muted-foreground' : ''">
-                    <p class="font-medium">{{ item.title }}</p>
+                    <p class="font-medium">
+                      <Badge v-if="item.auto_dismiss" variant="outline" class="mr-1 text-[10px]">{{ t('community.notifications.alert') }}</Badge>
+                      {{ item.title }}
+                    </p>
                     <p v-if="item.body" class="text-xs text-muted-foreground">{{ item.body }}</p>
                     <p class="text-xs text-muted-foreground">{{ item.created_at }}</p>
                   </div>

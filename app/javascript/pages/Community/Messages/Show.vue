@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { Link, useForm, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -12,7 +12,7 @@ import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
-import { useConversationTyping } from '@/lib/useConversationTyping'
+import { useConversationTyping, type LiveMessage } from '@/lib/useConversationTyping'
 
 defineOptions({ layout: PortalLayout })
 
@@ -84,7 +84,54 @@ const form = useForm({
   message: { body: props.initialBody || props.messageDraft || '' },
 })
 
-const { typingUsername, notifyTyping } = useConversationTyping(props.conversation.id, props.current_user_id)
+type RenderedMessage = (typeof props.messages)[number]
+
+// Reactive copy of the message list. Seeded from props (so non-realtime
+// rendering is identical) and re-seeded whenever the Inertia props change
+// (e.g. after sending, pagination, or any reload). Live messages from other
+// participants are appended on top.
+const messageList = ref<RenderedMessage[]>([...props.messages])
+
+watch(
+  () => props.messages,
+  (next) => { messageList.value = [...next] },
+)
+
+const messagesContainer = ref<HTMLElement | null>(null)
+
+function scrollToBottom() {
+  nextTick(() => {
+    const el = messagesContainer.value
+    if (el) el.scrollTop = el.scrollHeight
+  })
+}
+
+function onLiveMessage(message: LiveMessage) {
+  // Ignore our own echo (our send reloads via Inertia) and any duplicate.
+  if (message.author_id === props.current_user_id) return
+  if (messageList.value.some((m) => m.id === message.id)) return
+
+  messageList.value.push({
+    id: message.id,
+    body: message.body,
+    body_html: message.body_html,
+    author: message.author,
+    avatar_url: message.avatar_url,
+    is_mine: false,
+    created_at: message.created_at,
+    edited: false,
+    read_by: [],
+    delete_url: null,
+    edit_url: null,
+  })
+  scrollToBottom()
+}
+
+const { typingUsername, notifyTyping } = useConversationTyping(
+  props.conversation.id,
+  props.current_user_id,
+  onLiveMessage,
+)
 watch(() => form.message.body, () => notifyTyping())
 
 let draftTimer: ReturnType<typeof setTimeout> | null = null
@@ -279,9 +326,9 @@ function submit() {
     </div>
   </div>
 
-  <div class="mb-6 max-h-[50vh] space-y-3 overflow-y-auto rounded-lg border p-4">
+  <div ref="messagesContainer" class="mb-6 max-h-[50vh] space-y-3 overflow-y-auto rounded-lg border p-4">
     <div
-      v-for="msg in messages"
+      v-for="msg in messageList"
       :key="msg.id"
       class="flex gap-2"
       :class="msg.is_mine ? 'flex-row-reverse' : ''"

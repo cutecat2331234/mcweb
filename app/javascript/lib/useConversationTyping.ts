@@ -1,9 +1,25 @@
 import { onMounted, onUnmounted, ref } from 'vue'
 
+// A live message pushed over the conversation channel (kind: "message").
+export interface LiveMessage {
+  id: number
+  body: string
+  body_html: string
+  author: string
+  author_id: number
+  avatar_url: string
+  created_at: string
+}
+
 // Ephemeral typing indicator over the native WebSocket API (ActionCable
 // protocol), reusing the /cable endpoint. Sends "typing" signals (throttled)
-// and exposes the username of another participant currently typing.
-export function useConversationTyping(conversationId: number | string, selfUserId: number) {
+// and exposes the username of another participant currently typing. Also relays
+// live "message" broadcasts to an optional onMessage callback.
+export function useConversationTyping(
+  conversationId: number | string,
+  selfUserId: number,
+  onMessage?: (message: LiveMessage) => void,
+) {
   const typingUsername = ref<string | null>(null)
   let socket: WebSocket | null = null
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null
@@ -29,7 +45,17 @@ export function useConversationTyping(conversationId: number | string, selfUserI
     }
 
     socket.onmessage = (event) => {
-      let payload: { type?: string; identifier?: string; message?: { user_id?: number; username?: string } }
+      let payload: {
+        type?: string
+        identifier?: string
+        message?: {
+          kind?: string
+          typing?: boolean
+          user_id?: number
+          username?: string
+          message?: LiveMessage
+        }
+      }
       try {
         payload = JSON.parse(event.data)
       } catch {
@@ -40,8 +66,17 @@ export function useConversationTyping(conversationId: number | string, selfUserI
         return
       }
       if (payload.type === 'ping' || payload.type === 'welcome' || payload.type === 'reject_subscription') return
-      if (payload.identifier === identifier && payload.message && payload.message.user_id !== selfUserId) {
-        typingUsername.value = payload.message.username ?? null
+      if (payload.identifier !== identifier || !payload.message) return
+
+      const data = payload.message
+      // Live persisted message broadcast.
+      if (data.kind === 'message' && data.message) {
+        onMessage?.(data.message)
+        return
+      }
+      // Ephemeral typing signal from another participant.
+      if (data.typing && data.user_id !== selfUserId) {
+        typingUsername.value = data.username ?? null
         if (clearTypingTimer) clearTimeout(clearTypingTimer)
         clearTypingTimer = setTimeout(() => { typingUsername.value = null }, 3500)
       }

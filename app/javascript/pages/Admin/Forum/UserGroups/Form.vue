@@ -26,7 +26,7 @@ const props = defineProps<{
     permissions: string
   }
   availablePermissions: string[]
-  members?: Array<{ user_id: number; username: string; is_primary: boolean; remove_url: string }>
+  members?: Array<{ user_id: number; username: string; is_primary: boolean; remove_url: string; set_primary_url: string }>
   addMemberUrl?: string | null
   submitUrl: string
   method?: 'post' | 'patch'
@@ -47,6 +47,10 @@ function addMember() {
 
 function removeMember(url: string) {
   router.delete(url, { preserveScroll: true })
+}
+
+function setPrimary(url: string) {
+  router.post(url, {}, { preserveScroll: true })
 }
 
 function submit() {
@@ -138,7 +142,10 @@ async function destroy() {
     <ul v-if="members?.length" class="divide-y rounded-lg border">
       <li v-for="m in members" :key="m.user_id" class="flex items-center justify-between px-3 py-2 text-sm">
         <span>@{{ m.username }}<span v-if="m.is_primary" class="ml-2 text-xs text-muted-foreground">({{ t('admin.userGroupsForm.primary') }})</span></span>
-        <button type="button" class="text-xs text-destructive hover:underline" @click="removeMember(m.remove_url)">{{ t('admin.ui.remove') }}</button>
+        <div class="flex items-center gap-3">
+          <button v-if="!m.is_primary" type="button" class="text-xs text-muted-foreground hover:underline" @click="setPrimary(m.set_primary_url)">{{ t('admin.userGroupsForm.makePrimary') }}</button>
+          <button type="button" class="text-xs text-destructive hover:underline" @click="removeMember(m.remove_url)">{{ t('admin.ui.remove') }}</button>
+        </div>
       </li>
     </ul>
     <p v-else class="text-sm text-muted-foreground">{{ t('admin.userGroupsForm.noMembers') }}</p>

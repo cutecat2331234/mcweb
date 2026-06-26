@@ -321,6 +321,7 @@
       user_group_updated: 用户组已更新。
       user_group_deleted: 用户组已删除。
       user_group_member_added: 成员已加入该组。
+      user_group_primary_set: 已更新该成员的主组。
       user_group_member_removed: 成员已从该组移除。
       user_group_member_not_found: 未找到该用户名的成员。
       phrase_saved: 词条已保存。

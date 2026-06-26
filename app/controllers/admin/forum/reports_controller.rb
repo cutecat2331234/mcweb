@@ -4,7 +4,7 @@ module Admin
   module Forum
     class ReportsController < BaseController
       before_action -> { require_permission("forum.topics.lock") }
-      before_action :set_report, only: %i[show update]
+      before_action :set_report, only: %i[show update claim resolve_target]
 
       def index
         # Reviewables-style prioritization: surface targets with the most pending
@@ -43,6 +43,7 @@ module Admin
             { label: forum_t("reports.field_type"), value: @report.reason_label || forum_na },
             { label: forum_t("reports.field_reason"), value: @report.reason },
             { label: forum_t("reports.field_reporter"), value: @report.reporter&.username || forum_na },
+            { label: forum_t("reports.field_reviewer"), value: @report.reviewer&.username || forum_na },
             { label: forum_t("reports.field_status"), value: @report.status },
             { label: forum_t("reports.field_target"), value: reportable_label },
             { label: forum_t("reports.field_time"), value: l(@report.created_at, format: :long) }
@@ -72,6 +73,34 @@ module Admin
         redirect_to admin_forum_report_path(@report), notice: t("mcweb.flash.report_resolved")
       rescue ActiveRecord::RecordInvalid => e
         redirect_to admin_forum_report_path(@report), alert: e.record.errors.full_messages.to_sentence
+      end
+
+      # Claim a report for review without resolving it (assign reviewer).
+      def claim
+        @report.update!(reviewer: current_user)
+        redirect_to admin_forum_report_path(@report), notice: t("mcweb.flash.report_claimed")
+      end
+
+      # Resolve ALL pending reports for the same reported target at once.
+      def resolve_target
+        status = %w[reviewed dismissed actioned].include?(params[:status].to_s) ? params[:status].to_sym : :actioned
+        pending = ::Community::Report.pending_review.where(
+          reportable_type: @report.reportable_type,
+          reportable_id: @report.reportable_id
+        )
+        count = pending.count
+        pending.find_each { |report| report.review!(reviewer: current_user, status: status) }
+
+        Community::HideReportable.call(reportable: @report.reportable) if status == :actioned
+        Community::ClearReportableHide.call(reportable: @report.reportable) if status == :dismissed
+
+        Administration::AuditLogger.call(
+          actor: current_user,
+          action: "admin.forum_reports_bulk_resolved",
+          resource: @report.reportable,
+          metadata: { count: count, status: status }
+        )
+        redirect_to admin_forum_reports_path, notice: t("mcweb.flash.reports_bulk_resolved", count: count)
       end
 
       private
@@ -107,6 +136,26 @@ module Admin
             method: "patch",
             variant: "outline",
             data: { report: { status: "dismissed" } }
+          },
+          {
+            label: forum_t("reports.action_claim"),
+            href: claim_admin_forum_report_path(@report),
+            method: "patch",
+            variant: "outline"
+          },
+          {
+            label: forum_t("reports.action_resolve_target_action"),
+            href: resolve_target_admin_forum_report_path(@report),
+            method: "patch",
+            variant: "outline",
+            data: { status: "actioned" }
+          },
+          {
+            label: forum_t("reports.action_resolve_target_dismiss"),
+            href: resolve_target_admin_forum_report_path(@report),
+            method: "patch",
+            variant: "outline",
+            data: { status: "dismissed" }
           }
         ]
       end

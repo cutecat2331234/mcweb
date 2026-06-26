@@ -209,6 +209,8 @@ en:
       conversation_muted: Conversation muted.
       conversation_unmuted: Conversation unmuted.
       report_resolved: Report resolved.
+      report_claimed: Report claimed.
+      reports_bulk_resolved: "Resolved %{count} reports for this target."
       minecraft_settings_saved: Minecraft settings saved.
       system_settings_saved: System settings saved.
       mapping_added: Mapping added.
@@ -1316,12 +1318,16 @@ en:
           field_type: Type
           field_reason: Reason
           field_reporter: Reporter
+          field_reviewer: Reviewer
           field_status: Status
           field_target: Target
           field_time: Time
           action_agree: Agree and hide
           action_reviewed: Mark reviewed
           action_dismiss: Dismiss report
+          action_claim: Claim
+          action_resolve_target_action: Agree & hide all flags
+          action_resolve_target_dismiss: Dismiss all flags
           target_topic: "Topic: %{title}"
           target_post: "Post #%{floor} (%{title})"
           target_review: "Review #%{id} (%{product})"

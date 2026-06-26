@@ -48,7 +48,12 @@ Rails.application.routes.draw do
       resources :categories
       resources :sections, only: %i[index show new create edit update]
       resources :topics, only: %i[index show]
-      resources :reports, only: %i[index show update]
+      resources :reports, only: %i[index show update] do
+        member do
+          patch :claim
+          patch :resolve_target
+        end
+      end
       resources :mutes, only: %i[create destroy]
       resources :censored_words, only: %i[index create destroy]
       resources :badges, only: %i[index new create edit update destroy]

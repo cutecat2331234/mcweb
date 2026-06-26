@@ -219,6 +219,8 @@
       conversation_muted: 已静音此会话。
       conversation_unmuted: 已取消静音。
       report_resolved: 举报已处理。
+      report_claimed: 举报已认领。
+      reports_bulk_resolved: "已处理该目标的 %{count} 条举报。"
       minecraft_settings_saved: Minecraft 设置已保存。
       system_settings_saved: 系统设置已保存。
       mapping_added: 映射已添加。
@@ -1326,12 +1328,16 @@
           field_type: 类型
           field_reason: 原因
           field_reporter: 举报人
+          field_reviewer: 审核人
           field_status: 状态
           field_target: 对象
           field_time: 时间
           action_agree: 采纳并隐藏
           action_reviewed: 标记已审核
           action_dismiss: 驳回举报
+          action_claim: 认领
+          action_resolve_target_action: 采纳并隐藏全部举报
+          action_resolve_target_dismiss: 驳回全部举报
           target_topic: "主题：%{title}"
           target_post: "帖子 #%{floor}（%{title}）"
           target_review: "评价 #%{id}（%{product}）"

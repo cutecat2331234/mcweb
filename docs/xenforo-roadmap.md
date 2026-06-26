@@ -12,7 +12,7 @@
 
 ## 中等价值/工作量(medium)
 - [x] **回复我的帖子通知** — ✅ `NotifyPostReply`(parent_post 且作者不同则通知,跳过自回复/已引用),`forum.post_reply` 偏好 + 测试。
-- [ ] **举报中心:指派 + 批量操作** — `Community::Report` 已有 reviewer/状态;扩展 admin reports 控制器加 assign + bulk_review + 排序,镜像 BulkModerateToolbar。
+- [x] **举报中心:指派 + 批量操作** — ✅ 举报详情页新增「认领」(设 reviewer)+「采纳并隐藏/驳回 该目标全部举报」批量动作(`claim`/`resolve_target`),展示审核人。
 - [~] **Alerts vs notifications** — ✅ 通知加 `auto_dismiss` 列 + 按类型分类(反应/关注/被链接/回复/引用/资料墙为「提醒」)+ 通知页「清除全部提醒」动作。待做(可选):查看即自动消除、提醒与通知分区展示。
 - [~] **主题工具:复制 + 移动重定向桩** — ✅ **复制已完成**:`Community::CopyTopic`(深拷贝主题+帖子到目标分区,展平引用、不触发通知)+ 主题页复制按钮(复用 move 分区选择器)。待做:移动时留 redirect 桩。
 - [x] **附件后台管理** — ✅ `Admin::Forum::AttachmentsController` 列表(全部/孤儿筛选 + 分页)/单删/批量清理孤儿,自定义表格页。

@@ -517,6 +517,15 @@ module InertiaSerializable
     Commerce::SerializeUserMemberships.for_user(user, limit: limit)
   end
 
+  # XenForo-style user group badges (colored) for profile/card display.
+  def serialize_user_groups(user)
+    return [] unless user
+
+    user.user_groups.ordered.map do |group|
+      { name: group.name, color: group.color_hex.presence, banner: group.banner_text.presence }
+    end
+  end
+
   # Custom title wins; otherwise fall back to the XenForo-style post-count title
   # ladder. The ladder is loaded once per request to avoid per-user queries.
   def resolved_user_title(user)

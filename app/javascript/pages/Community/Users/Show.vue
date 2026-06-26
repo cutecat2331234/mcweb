@@ -32,6 +32,7 @@ const props = defineProps<{
     display_name: string | null
     forum_title: string | null
     resolved_title: string | null
+    groups?: Array<{ name: string; color: string | null; banner: string | null }>
     forum_flair_color_hex?: string | null
     forum_pm_policy?: string
     avatar_url: string
@@ -334,6 +335,16 @@ function deleteWallItem(url: string) {
                 :style="profile.forum_flair_color_hex ? { borderColor: profile.forum_flair_color_hex, color: profile.forum_flair_color_hex } : undefined"
               >
                 {{ profile.resolved_title }}
+              </span>
+              <span
+                v-for="group in profile.groups || []"
+                :key="group.name"
+                class="rounded-full px-2 py-0.5 text-xs font-medium"
+                :style="group.color ? { backgroundColor: group.color + '22', color: group.color } : undefined"
+                :class="group.color ? '' : 'bg-muted text-muted-foreground'"
+                :title="group.banner || undefined"
+              >
+                {{ group.name }}
               </span>
             </div>
             <p class="text-sm text-muted-foreground">

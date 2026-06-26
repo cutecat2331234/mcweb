@@ -25,6 +25,7 @@ export interface UserCardData {
   last_seen_at?: string | null
   online?: boolean
   badges: Array<{ name: string; icon: string | null; color: string | null; granted_at?: string }>
+  groups?: Array<{ name: string; color: string | null; banner: string | null }>
   memberships?: Array<{ name: string; slug: string; color?: string | null; icon?: string | null; expires_label?: string; permanent?: boolean }>
   message_url: string | null
   follow_url?: string | null
@@ -107,6 +108,17 @@ onBeforeUnmount(() => {
           {{ t('components.userHover.posts', { count: card.posts_count }) }}<span v-if="card.likes_received != null">{{ t('components.userHover.likes', { count: card.likes_received }) }}</span><span v-if="card.trophy_points">{{ t('components.userHover.trophies', { count: card.trophy_points }) }}</span> · {{ t('components.userHover.memberSince', { date: card.member_since }) }}
           <span v-if="card.last_seen_at && !card.online">{{ t('components.userHover.lastSeen', { date: card.last_seen_at }) }}</span>
         </p>
+        <div v-if="card.groups?.length" class="mt-2 flex flex-wrap gap-1">
+          <span
+            v-for="group in card.groups"
+            :key="group.name"
+            class="rounded-full px-2 py-0.5 text-[10px] font-medium"
+            :style="group.color ? { backgroundColor: group.color + '22', color: group.color } : undefined"
+            :class="group.color ? '' : 'bg-muted text-muted-foreground'"
+          >
+            {{ group.name }}
+          </span>
+        </div>
         <div v-if="card.memberships?.length" class="mt-2 flex flex-wrap gap-1">
           <span
             v-for="membership in card.memberships"

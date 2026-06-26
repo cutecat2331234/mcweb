@@ -94,6 +94,11 @@ module Community
         token
       end
 
+      # Smilie substitution (admin-defined text codes -> emoji). Runs after code
+      # blocks are placeholdered, so codes inside code blocks are untouched.
+      # No-op until an admin defines smilies.
+      text = apply_smilies(text)
+
       text = text.gsub(/!\[([^\]]*)\]\(([^)]+)\)/) do
         token = placeholder_token(placeholders, "IMG")
         alt = Regexp.last_match(1)
@@ -241,6 +246,16 @@ module Community
 
     def placeholder_token(placeholders, prefix)
       "MCWEB#{prefix}#{placeholders.size}END"
+    end
+
+    def apply_smilies(text)
+      replacements = Community::Smilie.replacements
+      return text if replacements.empty?
+
+      replacements.each do |code, emoji|
+        text = text.gsub(code) { emoji }
+      end
+      text
     end
 
     def safe_onebox_image_html(url, css_class, alt: "")

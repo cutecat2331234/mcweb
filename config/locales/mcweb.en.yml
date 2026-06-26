@@ -313,6 +313,9 @@ en:
       user_group_member_added: Member added to the group.
       user_group_member_removed: Member removed from the group.
       user_group_member_not_found: No member found with that username.
+      smilie_created: Smilie created.
+      smilie_updated: Smilie updated.
+      smilie_deleted: Smilie deleted.
       help_article_created: Help article created.
       help_article_updated: Help article updated.
       help_article_deleted: Help article deleted.
@@ -1400,6 +1403,16 @@ en:
           audience_everyone: Everyone
           audience_members: Members only
           audience_guests: Guests only
+        smilies:
+          title: Smilies
+          description: Text codes substituted with emoji in posts (e.g. ":)" to a smiley).
+          col_code: Code
+          col_emoji: Emoji
+          col_title: Title
+          col_active: Active
+          action_new: New smilie
+          form_edit: Edit smilie
+          form_new: New smilie
         help_articles:
           title: Help articles
           description: Help center articles grouped by category.

@@ -94,6 +94,7 @@ export default {
     forumUserGroups: 'User groups',
     forumNotices: 'Notices',
     forumHelpArticles: 'Help articles',
+    forumSmilies: 'Smilies',
     forumAttachments: 'Attachments',
     forumTags: 'Tags',
     forumSettings: 'Forum settings',
@@ -341,6 +342,15 @@ export default {
       deleteTitle: 'Delete attachment',
       deleteConfirm: 'Delete "{name}"?',
       empty: 'No attachments.',
+    },
+    smilies: {
+      code: 'Code',
+      emoji: 'Emoji',
+      titleLabel: 'Title',
+      position: 'Position',
+      active: 'Active',
+      deleteTitle: 'Delete smilie',
+      deleteConfirm: 'Delete this smilie?',
     },
     helpArticles: {
       titleLabel: 'Title',

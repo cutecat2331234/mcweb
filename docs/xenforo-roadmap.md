@@ -25,4 +25,5 @@
 - [ ] **BBCode + 自定义 BBCode 管理**
 - [x] **Spam cleaner** — ✅ `Community::SpamCleaner`(软删该用户全部主题/帖子 + 封禁,事务 + 审计 + 计数,可按记录恢复)+ 后台用户页危险操作按钮(确认弹窗)。
 - [x] **计划任务只读视图** — ✅ `Admin::Forum::ScheduledTasks` 读取 `sidekiq_cron.yml` 展示周期任务(无 Redis 依赖)。
-- [ ] **论坛主题样式/皮肤**(镜像 `Website::Theme`)、**Phrases 运行时 i18n**、**论坛页面节点 CMS**、**表情(smilies)替换**、**打字指示器**
+- [x] **表情(smilies)替换** — ✅ `Community::Smilie`(缓存,无表情时 no-op)+ 后台 CRUD + `FormatPostBody` 代码块后安全替换(管理员定义后才生效)。
+- [ ] **论坛主题样式/皮肤**(镜像 `Website::Theme`)、**Phrases 运行时 i18n**、**论坛页面节点 CMS**、**打字指示器**(依赖实时通知)

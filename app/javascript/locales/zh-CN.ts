@@ -94,6 +94,7 @@ export default {
     forumUserGroups: '用户组',
     forumNotices: '公告横幅',
     forumHelpArticles: '帮助文章',
+    forumSmilies: '表情',
     forumAttachments: '附件',
     forumTags: '标签',
     forumSettings: '论坛设置',
@@ -341,6 +342,15 @@ export default {
       deleteTitle: '删除附件',
       deleteConfirm: '确定删除「{name}」?',
       empty: '暂无附件。',
+    },
+    smilies: {
+      code: '代码',
+      emoji: '表情',
+      titleLabel: '名称',
+      position: '排序',
+      active: '启用',
+      deleteTitle: '删除表情',
+      deleteConfirm: '确定删除此表情?',
     },
     helpArticles: {
       titleLabel: '标题',

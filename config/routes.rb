@@ -70,6 +70,7 @@ Rails.application.routes.draw do
       end
       resources :notices
       resources :help_articles, path: "help-articles"
+      resources :smilies
       resources :attachments, only: %i[index destroy] do
         collection do
           delete :prune_orphans

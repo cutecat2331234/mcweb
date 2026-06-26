@@ -24,6 +24,10 @@ module Community
 
       grouped = group_notifications(notifications, topic_visibility: topic_visibility)
 
+      # Build the full Inertia response from the PRE-dismissal state above so the
+      # current view still shows transient alerts as unread (unread_count was read
+      # from the DB at line ~23, and each notification's read state is captured
+      # while serializing here).
       render inertia: "Community/Notifications/Index", props: {
         notifications: grouped,
         notificationSections: Community::GroupNotificationsByReadState.call(grouped),
@@ -38,6 +42,12 @@ module Community
         activeFilters: notification_active_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
         unreadCount: unread_count
       }
+
+      # XenForo-style transient alerts auto-dismiss once the page is viewed. This
+      # runs AFTER the props above are computed, so it only affects the NEXT load
+      # and the bell badge — this response's notifications + unread_count are
+      # unchanged.
+      current_user.notifications.unread.alerts.update_all(read_at: Time.current)
     end
 
     def visit
@@ -99,6 +109,7 @@ module Community
         notification_type: notification.notification_type,
         category: notification_category(notification),
         read: notification.read?,
+        auto_dismiss: notification.auto_dismiss,
         created_at: l(notification.created_at, format: :short),
         url: visible ? safe_notification_path(notification.metadata) : nil,
         visit_url: visible ? visit_forum_notification_path(notification) : nil,

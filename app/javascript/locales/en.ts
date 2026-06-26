@@ -2652,6 +2652,7 @@ export default {
       subtitle: 'Forum and store messages',
       markAllRead: 'Mark all read',
       dismissAlerts: 'Dismiss alerts',
+      alert: 'Alert',
       all: 'All',
       forum: 'Forum',
       store: 'Store',

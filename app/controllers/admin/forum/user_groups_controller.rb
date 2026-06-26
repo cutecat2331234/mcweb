@@ -62,6 +62,21 @@ module Admin
         redirect_to admin_forum_user_groups_path, notice: t("mcweb.flash.user_group_deleted")
       end
 
+      def add_member
+        group = ::Community::UserGroup.find(params[:id])
+        user = ::User.find_by("LOWER(username) = ?", params[:username].to_s.strip.downcase)
+        return redirect_to edit_admin_forum_user_group_path(group), alert: t("mcweb.flash.user_group_member_not_found") if user.nil?
+
+        ::Community::GroupMembership.find_or_create_by!(user: user, user_group: group)
+        redirect_to edit_admin_forum_user_group_path(group), notice: t("mcweb.flash.user_group_member_added")
+      end
+
+      def remove_member
+        group = ::Community::UserGroup.find(params[:id])
+        ::Community::GroupMembership.where(user_group: group, user_id: params[:user_id]).destroy_all
+        redirect_to edit_admin_forum_user_group_path(group), notice: t("mcweb.flash.user_group_member_removed")
+      end
+
       private
 
       def set_group
@@ -95,11 +110,26 @@ module Admin
             permissions: group.permission_keys.join("\n")
           },
           availablePermissions: Permission.order(:key).pluck(:key),
+          members: editing ? serialize_members(group) : [],
+          addMemberUrl: editing ? add_member_admin_forum_user_group_path(group) : nil,
           submitUrl: editing ? admin_forum_user_group_path(group) : admin_forum_user_groups_path,
           method: editing ? "patch" : "post",
           backUrl: admin_forum_user_groups_path,
           deleteUrl: editing ? admin_forum_user_group_path(group) : nil
         }
+      end
+
+      def serialize_members(group)
+        group.group_memberships.includes(:user).filter_map do |membership|
+          next unless membership.user
+
+          {
+            user_id: membership.user_id,
+            username: membership.user.username,
+            is_primary: membership.is_primary,
+            remove_url: remove_member_admin_forum_user_group_path(group, user_id: membership.user_id)
+          }
+        end
       end
     end
   end

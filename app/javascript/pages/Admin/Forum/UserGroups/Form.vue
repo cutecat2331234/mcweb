@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3'
+import { ref } from 'vue'
+import { Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -25,6 +26,8 @@ const props = defineProps<{
     permissions: string
   }
   availablePermissions: string[]
+  members?: Array<{ user_id: number; username: string; is_primary: boolean; remove_url: string }>
+  addMemberUrl?: string | null
   submitUrl: string
   method?: 'post' | 'patch'
   backUrl: string
@@ -32,6 +35,19 @@ const props = defineProps<{
 }>()
 
 const form = useForm({ user_group: { ...props.user_group } })
+const newMember = ref('')
+
+function addMember() {
+  if (!props.addMemberUrl || !newMember.value.trim()) return
+  router.post(props.addMemberUrl, { username: newMember.value.trim() }, {
+    onSuccess: () => { newMember.value = '' },
+    preserveScroll: true,
+  })
+}
+
+function removeMember(url: string) {
+  router.delete(url, { preserveScroll: true })
+}
 
 function submit() {
   if (props.method === 'patch') {
@@ -112,4 +128,19 @@ async function destroy() {
       </Button>
     </div>
   </form>
+
+  <div v-if="addMemberUrl" class="mt-8 max-w-2xl space-y-3 border-t pt-6">
+    <h2 class="text-sm font-semibold">{{ t('admin.userGroupsForm.members') }}</h2>
+    <div class="flex gap-2">
+      <Input v-model="newMember" :placeholder="t('admin.userGroupsForm.addMemberPlaceholder')" @keyup.enter="addMember" />
+      <Button type="button" variant="outline" @click="addMember">{{ t('admin.userGroupsForm.addMember') }}</Button>
+    </div>
+    <ul v-if="members?.length" class="divide-y rounded-lg border">
+      <li v-for="m in members" :key="m.user_id" class="flex items-center justify-between px-3 py-2 text-sm">
+        <span>@{{ m.username }}<span v-if="m.is_primary" class="ml-2 text-xs text-muted-foreground">({{ t('admin.userGroupsForm.primary') }})</span></span>
+        <button type="button" class="text-xs text-destructive hover:underline" @click="removeMember(m.remove_url)">{{ t('admin.ui.remove') }}</button>
+      </li>
+    </ul>
+    <p v-else class="text-sm text-muted-foreground">{{ t('admin.userGroupsForm.noMembers') }}</p>
+  </div>
 </template>

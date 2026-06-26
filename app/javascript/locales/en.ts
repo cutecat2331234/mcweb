@@ -298,6 +298,11 @@ export default {
       permissionsHint: 'e.g. forum.topics.lock',
       deleteTitle: 'Delete user group',
       deleteConfirm: 'Delete this user group?',
+      members: 'Members',
+      addMember: 'Add',
+      addMemberPlaceholder: 'Username to add',
+      primary: 'primary',
+      noMembers: 'No members yet.',
     },
     notices: {
       titleLabel: 'Title',

@@ -56,7 +56,12 @@ Rails.application.routes.draw do
       resources :warnings, only: %i[index]
       resources :warning_templates, path: "warning-templates"
       resources :user_titles, path: "user-titles"
-      resources :user_groups, path: "user-groups"
+      resources :user_groups, path: "user-groups" do
+        member do
+          post :add_member
+          delete :remove_member
+        end
+      end
       resources :notices
       get "stats", to: "stats#index"
       resources :approvals, only: %i[index show] do

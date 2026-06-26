@@ -305,6 +305,9 @@ en:
       user_group_created: User group created.
       user_group_updated: User group updated.
       user_group_deleted: User group deleted.
+      user_group_member_added: Member added to the group.
+      user_group_member_removed: Member removed from the group.
+      user_group_member_not_found: No member found with that username.
       notice_created: Notice created.
       notice_updated: Notice updated.
       notice_deleted: Notice deleted.

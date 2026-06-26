@@ -315,6 +315,9 @@
       user_group_created: 用户组已创建。
       user_group_updated: 用户组已更新。
       user_group_deleted: 用户组已删除。
+      user_group_member_added: 成员已加入该组。
+      user_group_member_removed: 成员已从该组移除。
+      user_group_member_not_found: 未找到该用户名的成员。
       notice_created: 公告已创建。
       notice_updated: 公告已更新。
       notice_deleted: 公告已删除。

@@ -298,6 +298,11 @@ export default {
       permissionsHint: '如 forum.topics.lock',
       deleteTitle: '删除用户组',
       deleteConfirm: '确定删除此用户组？',
+      members: '成员',
+      addMember: '添加',
+      addMemberPlaceholder: '输入要添加的用户名',
+      primary: '主组',
+      noMembers: '暂无成员。',
     },
     notices: {
       titleLabel: '标题',

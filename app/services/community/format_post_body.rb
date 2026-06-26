@@ -278,7 +278,21 @@ module Community
       text = text.gsub(/\[spoiler\](.*?)\[\/spoiler\]/mi) { "||#{Regexp.last_match(1)}||" }
       text = text.gsub(/\[url=([^\]\s]+)\](.*?)\[\/url\]/mi) { "[#{Regexp.last_match(2)}](#{Regexp.last_match(1)})" }
       text = text.gsub(/\[url\](.*?)\[\/url\]/mi) { Regexp.last_match(1) }
-      text.gsub(/\[img\](.*?)\[\/img\]/mi) { "![](#{Regexp.last_match(1).strip})" }
+      text = text.gsub(/\[img\](.*?)\[\/img\]/mi) { "![](#{Regexp.last_match(1).strip})" }
+      apply_custom_bbcodes(text)
+    end
+
+    # Admin-defined custom BBCode: [tag]content[/tag] -> the Markdown template
+    # with {content} substituted. No-op until any are defined.
+    def apply_custom_bbcodes(text)
+      definitions = Community::CustomBbcode.definitions
+      return text if definitions.empty?
+
+      definitions.each do |tag, replacement|
+        pattern = /\[#{Regexp.escape(tag)}\](.*?)\[\/#{Regexp.escape(tag)}\]/mi
+        text = text.gsub(pattern) { replacement.gsub("{content}", Regexp.last_match(1)) }
+      end
+      text
     end
 
     def safe_onebox_image_html(url, css_class, alt: "")

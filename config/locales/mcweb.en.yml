@@ -313,6 +313,9 @@ en:
       user_group_member_added: Member added to the group.
       user_group_member_removed: Member removed from the group.
       user_group_member_not_found: No member found with that username.
+      custom_bbcode_created: Custom BBCode created.
+      custom_bbcode_updated: Custom BBCode updated.
+      custom_bbcode_deleted: Custom BBCode deleted.
       smilie_created: Smilie created.
       smilie_updated: Smilie updated.
       smilie_deleted: Smilie deleted.
@@ -1403,6 +1406,15 @@ en:
           audience_everyone: Everyone
           audience_members: Members only
           audience_guests: Guests only
+        custom_bbcodes:
+          title: Custom BBCode
+          description: Admin-defined BBCode tags expanded via a Markdown template.
+          col_tag: Tag
+          col_sample: Sample
+          col_active: Active
+          action_new: New custom BBCode
+          form_edit: Edit custom BBCode
+          form_new: New custom BBCode
         smilies:
           title: Smilies
           description: Text codes substituted with emoji in posts (e.g. ":)" to a smiley).

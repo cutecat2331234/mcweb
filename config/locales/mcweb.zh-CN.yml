@@ -323,6 +323,9 @@
       user_group_member_added: 成员已加入该组。
       user_group_member_removed: 成员已从该组移除。
       user_group_member_not_found: 未找到该用户名的成员。
+      custom_bbcode_created: 自定义 BBCode 已创建。
+      custom_bbcode_updated: 自定义 BBCode 已更新。
+      custom_bbcode_deleted: 自定义 BBCode 已删除。
       smilie_created: 表情已创建。
       smilie_updated: 表情已更新。
       smilie_deleted: 表情已删除。
@@ -1413,6 +1416,15 @@
           audience_everyone: 所有人
           audience_members: 仅会员
           audience_guests: 仅访客
+        custom_bbcodes:
+          title: 自定义 BBCode
+          description: 管理员自定义的 BBCode 标签,通过 Markdown 模板展开。
+          col_tag: 标签
+          col_sample: 示例
+          col_active: 启用
+          action_new: 新建自定义 BBCode
+          form_edit: 编辑自定义 BBCode
+          form_new: 新建自定义 BBCode
         smilies:
           title: 表情
           description: 帖子中将文本代码替换为 emoji(如「:)」→ 笑脸)。

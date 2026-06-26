@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000012) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000013) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -72,6 +72,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000012) do
     t.index ["actor_id"], name: "index_audit_logs_on_actor_id"
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
     t.index ["resource_type", "resource_id"], name: "index_audit_logs_on_resource_type_and_resource_id"
+  end
+
+  create_table "community_custom_bbcodes", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.text "replacement", default: "", null: false
+    t.string "sample"
+    t.string "tag", null: false
+    t.datetime "updated_at", null: false
+    t.index ["tag"], name: "index_community_custom_bbcodes_on_tag", unique: true
   end
 
   create_table "community_group_memberships", force: :cascade do |t|

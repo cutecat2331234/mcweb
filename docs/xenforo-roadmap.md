@@ -13,13 +13,13 @@
 ## 中等价值/工作量(medium)
 - [x] **回复我的帖子通知** — ✅ `NotifyPostReply`(parent_post 且作者不同则通知,跳过自回复/已引用),`forum.post_reply` 偏好 + 测试。
 - [x] **举报中心:指派 + 批量操作** — ✅ 举报详情页新增「认领」(设 reviewer)+「采纳并隐藏/驳回 该目标全部举报」批量动作(`claim`/`resolve_target`),展示审核人。
-- [~] **Alerts vs notifications** — ✅ 通知加 `auto_dismiss` 列 + 按类型分类(反应/关注/被链接/回复/引用/资料墙为「提醒」)+ 通知页「清除全部提醒」动作。待做(可选):查看即自动消除、提醒与通知分区展示。
-- [~] **主题工具:复制 + 移动重定向桩** — ✅ **复制已完成**:`Community::CopyTopic`(深拷贝主题+帖子到目标分区,展平引用、不触发通知)+ 主题页复制按钮(复用 move 分区选择器)。待做:移动时留 redirect 桩。
+- [x] **Alerts vs notifications** — ✅ 通知加 `auto_dismiss` 列 + 按类型分类 + 通知页「清除全部提醒」动作 + **打开通知页后提醒自动消除**(本次响应仍按未读展示,`update_all` 在 props 计算后执行,仅影响下次加载与铃铛角标)+ 提醒项「Alert」徽章。
+- [x] **主题工具:复制 + 移动重定向桩** — ✅ **复制 + 移动重定向桩均完成**:`Community::CopyTopic`(深拷贝)+ 复制按钮;`MoveTopic` 新增 `leave_redirect:`,移动时在原分区留发布态 redirect 桩(唯一 public_id + redirect_to_topic_id + 一条占位首帖),主题页对 redirect 桩显示「已移动 →」横幅并隐藏帖列;move UI 加「留重定向」复选框。
 - [x] **附件后台管理** — ✅ `Admin::Forum::AttachmentsController` 列表(全部/孤儿筛选 + 分页)/单删/批量清理孤儿,自定义表格页。
 - [x] **帮助中心(Help pages)** — ✅ `Community::HelpArticle`(slug 自动生成)+ 后台 CRUD(`Admin::Forum::HelpArticles`)+ 公开页 `/forum/help`(分类列表 + 文章,Markdown 渲染)+ 导航入口。
 
 ## 大型(多会话,需谨慎)
-- [x] **用户组 + 副组 + 组权限**(对标 XenForo user groups)——**已完成**:`Community::UserGroup` + `GroupMembership` 模型/迁移;后台 CRUD(名称/颜色/优先级/权限键/主组默认/横幅);`User#permission?` 并入组权限(union,请求级 memoize);注册自动加入默认主组;用户卡/资料页组徽章(颜色/横幅);**后台组编辑页按用户名增删成员**;**会员名录按组筛选**;带测试。可选后续:副组/主组切换 UI。
+- [x] **用户组 + 副组 + 组权限**(对标 XenForo user groups)——**已完成**:`Community::UserGroup` + `GroupMembership` 模型/迁移;后台 CRUD(名称/颜色/优先级/权限键/主组默认/横幅);`User#permission?` 并入组权限(union,请求级 memoize);注册自动加入默认主组;用户卡/资料页组徽章(颜色/横幅);**后台组编辑页按用户名增删成员**;**会员名录按组筛选**;带测试。✅ **副组/主组切换 UI 已完成**:组编辑页成员行「设为主组」按钮 → `set_primary` action(置该成员此组为主组、清除其全部其他主组)。
 - [ ] **实时通知(ActionCable)** 与 **Web Push**(共享通知扇出基础)
 - [x] **多引用(Multi-quote)** — ✅ 复核发现已实现(`Topics/Show.vue` `quotePreviews` 数组累积多个引用 + 引用选区 + composer 多引用预览)。缺口分析曾误标。
 - [x] **BBCode + 自定义 BBCode 管理** — ✅ **已完成**:核心标签 `[b][i][u][s][url][img][quote][spoiler]` → Markdown(`convert_bbcode`);**自定义 BBCode** `Community::CustomBbcode`(缓存、Markdown 模板 + `{content}`,经 sanitize 安全)+ 后台 CRUD;均无定义时 no-op。
@@ -32,6 +32,6 @@
 - [x] **打字指示器** — ✅ `Community::ConversationChannel`(参与者鉴权 + ephemeral typing 动作)+ 前端 `useConversationTyping`(原生 WebSocket 收发、节流、过滤自己)+ 私信页「X 正在输入…」。
 - [x] **Web Push** — ✅ `web-push` gem + VAPID(`Community::VapidKeys`,存 SiteSetting)+ `Community::PushSubscription` 模型 + `DeliverWebPush` 服务/Job(接入 `notify!`,rescue + DND + 偏好门控,自动清理失效订阅)+ `public/sw.js` service worker + `useWebPush` 客户端 + 偏好页开关。已验证 VAPID 生成 + notify! 正常。
 - [x] **论坛页面节点 CMS** — ✅ `Community::ForumPage`(slug 自动生成,缓存导航项)+ 后台 CRUD + 公开页 `/forum/pages/:slug`(Markdown)+ `show_in_nav` 的页面自动进论坛导航(空时无影响)。
-- [x] **Phrases 运行时 i18n** — ✅ `Community::PhraseOverride`(DB 覆盖)+ `Mcweb::PhraseBackend`(I18n Chain 首链,30s 进程内缓存,无覆盖时回退)+ 后台 CRUD(搜索/分页)。已验证:普通翻译正常回退、覆盖生效、缺失键不崩。注:覆盖服务端 `t`(flash/邮件/管理标签等);前端 Vue locale(en.ts/zh-CN.ts)的运行时覆盖可作后续扩展(需把覆盖以 JSON 注入 vue-i18n `mergeLocaleMessage`)。
+- [x] **Phrases 运行时 i18n** — ✅ `Community::PhraseOverride`(DB 覆盖)+ `Mcweb::PhraseBackend`(I18n Chain 首链,30s 进程内缓存,无覆盖时回退)+ 后台 CRUD(搜索/分页)。已验证:普通翻译正常回退、覆盖生效、缺失键不崩。✅ **前端覆盖也已完成**:`ApplicationController` 把当前 locale 的覆盖反扁平化(`forum.top.title` → 嵌套)经 Inertia 共享,`inertia.ts`/`admin.ts` 入口在挂载前 `mergeLocaleMessage` 注入 vue-i18n,使覆盖同样作用于前端 Vue 文案。
 
-> **路线图已全部完成。** 余下仅为可选增强(前端 Vue locale 的 phrases 合并、各大件的深度打磨)。
+> **路线图已全部完成,可选增强项亦全部完成。** 本轮 5 项可选增强(前端 phrases 合并、移动重定向桩、主组切换、实时私信、提醒查看自动消除)经 5 个隔离 worktree 子代理并行实现、零冲突合并,迁移已跑、冒烟全绿。

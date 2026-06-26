@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000017) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_25_000018) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -726,6 +726,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000017) do
     t.datetime "pinned_until"
     t.string "prefix"
     t.string "public_id", null: false
+    t.bigint "redirect_to_topic_id"
     t.integer "replies_count", default: 0, null: false
     t.datetime "scheduled_at"
     t.integer "slow_mode_seconds"
@@ -752,6 +753,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000017) do
     t.index ["last_post_user_id"], name: "index_forum_topics_on_last_post_user_id"
     t.index ["pinned_until"], name: "index_forum_topics_on_pinned_until"
     t.index ["public_id"], name: "index_forum_topics_on_public_id", unique: true
+    t.index ["redirect_to_topic_id"], name: "index_forum_topics_on_redirect_to_topic_id"
     t.index ["scheduled_at"], name: "index_forum_topics_on_scheduled_at"
     t.index ["solved_post_id"], name: "index_forum_topics_on_solved_post_id"
     t.index ["source_post_id"], name: "index_forum_topics_on_source_post_id"

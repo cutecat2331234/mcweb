@@ -47,6 +47,10 @@ module Community
       text = body.dup
       footnote_used = []
 
+      # XenForo BBCode -> Markdown equivalents (no-op when no BBCode tags present),
+      # so the existing Markdown pipeline renders them.
+      text = convert_bbcode(text)
+
       text = text.gsub(/\[\^([^\]]+)\]/) do
         label = Regexp.last_match(1)
         next Regexp.last_match(0) unless footnote_defs[label]
@@ -256,6 +260,25 @@ module Community
         text = text.gsub(code) { emoji }
       end
       text
+    end
+
+    # Convert common XenForo BBCode tags to their Markdown equivalents so the
+    # existing Markdown pipeline renders them. ([code] is intentionally omitted —
+    # fenced ``` blocks already cover it without the inner-tag-escaping problem.)
+    def convert_bbcode(text)
+      return text unless text.include?("[")
+
+      text = text.gsub(/\[quote(?:=[^\]]*)?\](.*?)\[\/quote\]/mi) do
+        Regexp.last_match(1).strip.split(/\r?\n/).map { |line| "> #{line}" }.join("\n").then { |q| "\n#{q}\n" }
+      end
+      text = text.gsub(/\[b\](.*?)\[\/b\]/mi) { "**#{Regexp.last_match(1)}**" }
+      text = text.gsub(/\[i\](.*?)\[\/i\]/mi) { "*#{Regexp.last_match(1)}*" }
+      text = text.gsub(/\[u\](.*?)\[\/u\]/mi) { Regexp.last_match(1) }
+      text = text.gsub(/\[s\](.*?)\[\/s\]/mi) { "~~#{Regexp.last_match(1)}~~" }
+      text = text.gsub(/\[spoiler\](.*?)\[\/spoiler\]/mi) { "||#{Regexp.last_match(1)}||" }
+      text = text.gsub(/\[url=([^\]\s]+)\](.*?)\[\/url\]/mi) { "[#{Regexp.last_match(2)}](#{Regexp.last_match(1)})" }
+      text = text.gsub(/\[url\](.*?)\[\/url\]/mi) { Regexp.last_match(1) }
+      text.gsub(/\[img\](.*?)\[\/img\]/mi) { "![](#{Regexp.last_match(1).strip})" }
     end
 
     def safe_onebox_image_html(url, css_class, alt: "")

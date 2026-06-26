@@ -22,7 +22,7 @@
 - [x] **用户组 + 副组 + 组权限**(对标 XenForo user groups)——**已完成**:`Community::UserGroup` + `GroupMembership` 模型/迁移;后台 CRUD(名称/颜色/优先级/权限键/主组默认/横幅);`User#permission?` 并入组权限(union,请求级 memoize);注册自动加入默认主组;用户卡/资料页组徽章(颜色/横幅);**后台组编辑页按用户名增删成员**;**会员名录按组筛选**;带测试。可选后续:副组/主组切换 UI。
 - [ ] **实时通知(ActionCable)** 与 **Web Push**(共享通知扇出基础)
 - [ ] **多引用(Multi-quote)**
-- [ ] **BBCode + 自定义 BBCode 管理**
+- [~] **BBCode + 自定义 BBCode 管理** — ✅ **核心 BBCode 标签已完成**:`FormatPostBody#convert_bbcode` 将 `[b][i][u][s][url][img][quote][spoiler]` 转为 Markdown 等价语法(无标签时 no-op,已验证 strong/em/blockquote/link 正确)。待做:管理员自定义 BBCode(`CustomBbcode` 模型 + 后台)。
 - [x] **Spam cleaner** — ✅ `Community::SpamCleaner`(软删该用户全部主题/帖子 + 封禁,事务 + 审计 + 计数,可按记录恢复)+ 后台用户页危险操作按钮(确认弹窗)。
 - [x] **计划任务只读视图** — ✅ `Admin::Forum::ScheduledTasks` 读取 `sidekiq_cron.yml` 展示周期任务(无 Redis 依赖)。
 - [x] **表情(smilies)替换** — ✅ `Community::Smilie`(缓存,无表情时 no-op)+ 后台 CRUD + `FormatPostBody` 代码块后安全替换(管理员定义后才生效)。

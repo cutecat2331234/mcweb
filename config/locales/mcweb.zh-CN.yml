@@ -587,6 +587,9 @@
         avatar_file_required: 请选择图片文件。
         avatar_unsupported_format: 不支持的图片格式（仅支持 JPEG、PNG、GIF、WebP）。
         avatar_too_large: 图片过大（最大 2MB）。
+        point_balance_insufficient: "积分余额不足。"
+        point_user_required: "无法发放积分：缺少用户。"
+        checkin_user_required: "无法签到：缺少用户。"
     commerce:
       default_store_title: 商城
       list_separator: "、"

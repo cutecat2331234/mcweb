@@ -37,6 +37,7 @@ module Community
     # Keyed on source = the topic, so a topic's solution awards at most once,
     # preventing solve/unsolve farming even if the accepted post changes.
     def award_solution_points
+      return if @user.id == @post.user_id
       Community::AwardPoints.for_rule(user: @post.user, rule: "solution_accepted", source: @topic, default: 15)
     rescue StandardError => e
       Rails.logger.error("[AwardPoints] solution_accepted failed for topic=#{@topic.id}: #{e.class}: #{e.message}")

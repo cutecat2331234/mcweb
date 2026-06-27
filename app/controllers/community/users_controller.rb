@@ -139,6 +139,21 @@ module Community
           likes_received: Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count,
           reaction_score: Community::Reaction.score_for_user(user),
           trophy_points: Community::TrophyPoints.for_user(user),
+          forum_points: Community::PointAccount.find_by(user: user, currency: "points")&.balance.to_i,
+          recent_point_transactions: Community::PointTransaction
+            .where(user: user, currency: "points")
+            .order(created_at: :desc)
+            .limit(8)
+            .map do |tx|
+              {
+                amount: tx.amount,
+                reason: t("mcweb.forum.points.reasons.#{tx.reason}", default: tx.reason),
+                balance_after: tx.balance_after,
+                created_at: l(tx.created_at, format: :short)
+              }
+            end,
+          check_in_streak: (Community::CheckIn.where(user: user).order(checked_on: :desc).first&.then { |c| c.checked_on >= Date.current - 1 ? c.streak : 0 }).to_i,
+          check_in_total: Community::CheckIn.where(user: user).count,
           groups: serialize_user_groups(user),
           member_since: l(user.created_at, format: :long),
           last_seen_at: user.last_seen_at ? l(user.last_seen_at, format: :short) : nil,

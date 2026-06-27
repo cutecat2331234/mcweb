@@ -82,6 +82,11 @@ Rails.application.routes.draw do
         end
       end
       get "stats", to: "stats#index"
+      get "points", to: "points#index", as: :points
+      get "points/settings", to: "points#settings", as: :points_settings
+      patch "points/settings", to: "points#update_settings"
+      get "points/adjust", to: "points#new_adjustment", as: :adjust_points
+      post "points/adjust", to: "points#create_adjustment"
       get "scheduled-tasks", to: "scheduled_tasks#index", as: :scheduled_tasks
       resources :approvals, only: %i[index show] do
         member do
@@ -427,6 +432,7 @@ Rails.application.routes.draw do
     get "help/:slug", to: "help#show", as: :help_article
     get "pages/:slug", to: "pages#show", as: :page
     get "leaderboard", to: "leaderboard#index", as: :leaderboard
+    post "check-in", to: "check_ins#create", as: :check_in
     resources :users, only: %i[show update], param: :id do
       member do
         get :card

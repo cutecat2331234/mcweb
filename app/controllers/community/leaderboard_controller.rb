@@ -3,7 +3,7 @@
 module Community
   class LeaderboardController < ApplicationController
     PERIODS = %w[all week month].freeze
-    METRICS = %w[posts likes score].freeze
+    METRICS = %w[posts likes score points].freeze
     LIMIT = 50
 
     def index
@@ -43,6 +43,8 @@ module Community
         rel.group("forum_posts.user_id").order(Arel.sql("COUNT(forum_reactions.id) DESC")).limit(LIMIT).count("forum_reactions.id")
       when "score"
         ranked_reaction_scores(since)
+      when "points"
+        ranked_points
       else
         rel = Community::Post.where(status: "published")
         rel = rel.where("forum_posts.created_at >= ?", since) if since
@@ -63,6 +65,18 @@ module Community
         scores[user_id] += count * map.fetch(emoji.to_s, 1)
       end
       scores.sort_by { |_user_id, score| -score }.first(LIMIT).to_h
+    end
+
+    # Lifetime points balance leaderboard (not period-windowed). Users without a
+    # points account simply don't appear (balance 0); positive balances rank desc.
+    def ranked_points
+      Community::PointAccount
+        .where(currency: "points")
+        .where("balance > 0")
+        .order(balance: :desc)
+        .limit(LIMIT)
+        .pluck(:user_id, :balance)
+        .to_h
     end
 
     def serialize_entry(user, rank:, score:)

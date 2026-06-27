@@ -17,6 +17,7 @@ PERMISSIONS = [
   { key: "forum.users.warn", name: "警告用户", category: "forum" },
   { key: "forum.badges.manage", name: "管理论坛徽章", category: "forum" },
   { key: "forum.tags.manage", name: "管理论坛标签", category: "forum" },
+  { key: "forum.points.manage", name: "管理论坛积分", category: "forum" },
   { key: "store.products.manage", name: "管理商品", category: "store" },
   { key: "store.questions.answer", name: "官方回答商品问答", category: "store" },
   { key: "store.questions.manage", name: "管理商品问答", category: "store" },
@@ -57,7 +58,7 @@ ROLES = {
   "forum_admin" => {
     name: "论坛管理员",
     description: "管理论坛",
-    permissions: %w[forum.sections.manage forum.topics.lock forum.topics.move forum.posts.edit_others forum.topics.edit_others forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage admin.access]
+    permissions: %w[forum.sections.manage forum.topics.lock forum.topics.move forum.posts.edit_others forum.topics.edit_others forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage forum.points.manage admin.access]
   },
   "moderator" => {
     name: "版主",
@@ -128,6 +129,10 @@ SiteSetting.set("forum.warning_block_links_threshold", "0") unless SiteSetting.e
 SiteSetting.set("forum.warning_block_pm_threshold", "0") unless SiteSetting.exists?(key: "forum.warning_block_pm_threshold")
 SiteSetting.set("forum.report_auto_hide_threshold", "5") unless SiteSetting.exists?(key: "forum.report_auto_hide_threshold")
 SiteSetting.set("forum.auto_close_on_solved", "0") unless SiteSetting.exists?(key: "forum.auto_close_on_solved")
+SiteSetting.set("forum.points.post_created", "5") unless SiteSetting.exists?(key: "forum.points.post_created")
+SiteSetting.set("forum.points.reaction_received", "2") unless SiteSetting.exists?(key: "forum.points.reaction_received")
+SiteSetting.set("forum.points.solution_accepted", "15") unless SiteSetting.exists?(key: "forum.points.solution_accepted")
+SiteSetting.set("forum.points.daily_check_in", "2") unless SiteSetting.exists?(key: "forum.points.daily_check_in")
 SiteSetting.set("store.free_shipping_min_order_cents", "0") unless SiteSetting.exists?(key: "store.free_shipping_min_order_cents")
 SiteSetting.set("store.flat_shipping_cents", "0") unless SiteSetting.exists?(key: "store.flat_shipping_cents")
 SiteSetting.set("store.gift_wrap_cents", "500") unless SiteSetting.exists?(key: "store.gift_wrap_cents")

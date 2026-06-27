@@ -8,6 +8,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
+import ListFilterBar from '@/components/portal/ListFilterBar.vue'
 import Button from '@/components/ui/Button.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
@@ -70,7 +71,7 @@ function bulkModerate(action: string) {
 
   <PageHeader :title="t('forum.new.title')" :subtitle="t('forum.new.subtitle', { days: windowDays })" />
 
-  <div class="mb-4 flex flex-wrap items-center gap-4">
+  <ListFilterBar :active-filters="activeFilters ?? []" @remove-filter="removeFilter">
     <div class="flex items-center gap-2">
       <label class="text-sm text-muted-foreground">{{ t('forum.lists.filterLabel') }}</label>
       <Select :model-value="filter" :options="filterOptions" size="sm" @update:model-value="changeFilter" />
@@ -83,19 +84,7 @@ function bulkModerate(action: string) {
       :count="selectedIds.length"
       @moderate="bulkModerate"
     />
-  </div>
-
-  <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">{{ t('forum.lists.activeFilters') }}</span>
-    <span
-      v-for="chip in activeFilters"
-      :key="`${chip.param}-${chip.value || chip.label}`"
-      class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
-    >
-      {{ chip.label }}
-      <button type="button" class="hover:opacity-70" :title="t('forum.lists.removeFilter')" @click="removeFilter">×</button>
-    </span>
-  </div>
+  </ListFilterBar>
 
   <TopicListTable
     v-if="topics.length"

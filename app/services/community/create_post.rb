@@ -93,6 +93,7 @@ module Community
         Community::NotifyPendingPost.call(post: post)
       elsif !@whisper
         Community::PublishPostSideEffects.call(post: post)
+        award_post_points(post)
       end
       link_result = Community::LinkPostAttachments.call(user: @user, post: post, attachment_ids: @attachment_ids)
       return link_result if link_result.failure?
@@ -105,6 +106,14 @@ module Community
     end
 
     private
+
+    # Reward the author for a newly published post. Side effect: never let an
+    # awarding error bubble up and break post creation.
+    def award_post_points(post)
+      Community::AwardPoints.for_rule(user: post.user, rule: "post_created", source: post, default: 5)
+    rescue StandardError => e
+      Rails.logger.error("[AwardPoints] post_created failed for post=#{post.id}: #{e.class}: #{e.message}")
+    end
 
     def check_spam
       if @body.length < MIN_BODY_LENGTH

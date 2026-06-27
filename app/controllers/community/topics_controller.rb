@@ -60,6 +60,12 @@ module Community
         .distinct
         .pluck(:user_id)
         .to_set
+      # Batch-preload points balances for all post authors on the page (avoids an
+      # N+1 find_by inside serialize_post). user_id => balance.
+      point_balances = Community::PointAccount
+        .where(user_id: posts.map(&:user_id).uniq, currency: "points")
+        .pluck(:user_id, :balance)
+        .to_h
 
       render inertia: "Community/Topics/Show", props: {
         topic: serialize_topic_detail(
@@ -96,7 +102,8 @@ module Community
             can_moderate: can_moderate_topic?,
             solved_post_id: @topic.solved_post_id,
             post_bookmark: post_bookmarks[post.id],
-            verified_purchaser: verified_purchaser_ids.include?(post.user_id)
+            verified_purchaser: verified_purchaser_ids.include?(post.user_id),
+            author_forum_points: point_balances[post.user_id].to_i
           )
         end,
         pagination: pagy_props(@pagy),

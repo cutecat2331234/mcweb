@@ -25,6 +25,8 @@ class User < ApplicationRecord
     has_many :store_wishlist_filter_presets, class_name: "Commerce::WishlistFilterPreset", dependent: :destroy
     has_many :shipping_addresses, class_name: "Commerce::ShippingAddress", dependent: :destroy
     has_many :store_credit_transactions, class_name: "Commerce::StoreCreditTransaction", dependent: :destroy
+    has_many :forum_point_accounts, class_name: "Community::PointAccount", dependent: :destroy
+    has_many :forum_point_transactions, class_name: "Community::PointTransaction", dependent: :destroy
     has_many :memberships, class_name: "Commerce::UserMembership", dependent: :destroy
     has_many :entitlements, class_name: "Commerce::UserEntitlement", dependent: :destroy
   has_many :admin_module_grants, dependent: :destroy

@@ -42,6 +42,15 @@ const props = defineProps<{
     likes_received: number
     reaction_score?: number
     trophy_points?: number
+    forum_points?: number
+    check_in_streak?: number
+    check_in_total?: number
+    recent_point_transactions?: Array<{
+      amount: number
+      reason: string
+      balance_after: number
+      created_at: string
+    }>
     profile_views?: number
     member_since: string
     last_seen_at?: string | null
@@ -363,6 +372,8 @@ function deleteWallItem(url: string) {
               <span><strong>{{ profile.likes_received }}</strong> {{ t('userProfile.likesReceived') }}</span>
               <span v-if="profile.reaction_score != null && profile.reaction_score !== profile.likes_received"><strong>{{ profile.reaction_score }}</strong> {{ t('userProfile.reactionScore') }}</span>
               <span v-if="profile.trophy_points"><strong>{{ profile.trophy_points }}</strong> {{ t('userProfile.trophyPoints') }}</span>
+              <span><strong>{{ profile.forum_points ?? 0 }}</strong> {{ t('userProfile.forumPoints') }}</span>
+              <span v-if="profile.check_in_total"><strong>{{ profile.check_in_streak ?? 0 }}</strong> {{ t('userProfile.checkInStreak') }} · <strong>{{ profile.check_in_total }}</strong> {{ t('userProfile.checkInTotal') }}</span>
               <span v-if="profile.profile_views"><strong>{{ profile.profile_views }}</strong> {{ t('userProfile.profileViews') }}</span>
               <span v-if="profile.warning_points != null"><strong>{{ profile.warning_points }}</strong> {{ t('userProfile.warningPoints') }}</span>
               <span v-if="profile.store_credit_label">
@@ -447,6 +458,28 @@ function deleteWallItem(url: string) {
                 {{ warning.points }} {{ t('userProfile.warningPointsUnit') }} · {{ warning.issuer }} · {{ warning.created_at }}
                 <template v-if="warning.expired"> · {{ t('userProfile.warningExpired') }}</template>
                 <template v-else-if="warning.expires_at"> · {{ t('userProfile.warningExpiresAt', { date: warning.expires_at }) }}</template>
+              </span>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="profile.recent_point_transactions?.length" class="max-w-xl rounded-lg border p-4">
+          <h3 class="mb-2 text-sm font-semibold">
+            {{ t('userProfile.pointsActivityTitle') }} ·
+            <span class="font-bold">{{ profile.forum_points ?? 0 }}</span> {{ t('userProfile.forumPoints') }}
+          </h3>
+          <ul class="space-y-2 text-sm">
+            <li
+              v-for="(tx, index) in profile.recent_point_transactions"
+              :key="index"
+              class="flex justify-between gap-4 border-b pb-2 last:border-0 last:pb-0"
+            >
+              <span>{{ tx.reason }}</span>
+              <span class="shrink-0 text-muted-foreground">
+                <span :class="tx.amount >= 0 ? 'text-emerald-600' : 'text-destructive'">
+                  {{ tx.amount >= 0 ? '+' : '' }}{{ tx.amount }}
+                </span>
+                · {{ t('userProfile.pointsBalanceAfter', { balance: tx.balance_after }) }} · {{ tx.created_at }}
               </span>
             </li>
           </ul>

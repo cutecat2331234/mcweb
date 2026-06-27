@@ -8,6 +8,7 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
 import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
+import ListFilterBar from '@/components/portal/ListFilterBar.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
@@ -73,7 +74,7 @@ function bulkModerate(action: string) {
 
   <PageHeader :title="t('forum.latest.title')" :subtitle="t('forum.latest.subtitle')" />
 
-  <div class="mb-4 flex flex-wrap items-center gap-4">
+  <ListFilterBar :active-filters="activeFilters ?? []" @remove-filter="removeFilter">
     <div class="flex items-center gap-2">
       <label class="text-sm text-muted-foreground">{{ t('forum.lists.sortLabel') }}</label>
       <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
@@ -87,20 +88,10 @@ function bulkModerate(action: string) {
       :count="selectedIds.length"
       @moderate="bulkModerate"
     />
-    <a :href="rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">{{ t('forum.lists.rss') }}</a>
-  </div>
-
-  <div v-if="activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">
-    <span class="text-xs text-muted-foreground">{{ t('forum.lists.activeFilters') }}</span>
-    <span
-      v-for="chip in activeFilters"
-      :key="`${chip.param}-${chip.value || chip.label}`"
-      class="inline-flex items-center gap-1 rounded-full border border-primary/30 bg-primary/5 px-2.5 py-0.5 text-xs text-primary"
-    >
-      {{ chip.label }}
-      <button type="button" class="hover:opacity-70" :title="t('forum.lists.removeFilter')" @click="removeFilter(chip)">×</button>
-    </span>
-  </div>
+    <template #rss>
+      <a :href="rss_url" target="_blank" rel="noopener" class="text-sm text-muted-foreground hover:text-foreground">{{ t('forum.lists.rss') }}</a>
+    </template>
+  </ListFilterBar>
 
   <TopicListTable
     :topics="topics"

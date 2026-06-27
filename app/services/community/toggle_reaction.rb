@@ -30,11 +30,28 @@ module Community
       counts = @post.reactions.group(:emoji).count
 
       Community::NotifyPostReaction.call(post: @post, reactor: @user, emoji: @emoji) if added
+      award_reaction_points if added
 
       ServiceResult.success(added: added, counts: counts)
     end
 
     private
+
+    # Reward the POST AUTHOR (not the reactor) when their post receives a reaction.
+    # dedupe_token "reaction:<post_id>:<reactor_id>" ensures each distinct reactor
+    # awards the author at most once per post lifetime, surviving like/unlike/relike
+    # (the token is independent of the toggled Reaction row). Cancelling does not
+    # deduct. Self-reactions are already blocked above.
+    def award_reaction_points
+      Community::AwardPoints.for_rule(
+        user: @post.user,
+        rule: "reaction_received",
+        dedupe_token: "reaction:#{@post.id}:#{@user.id}",
+        default: 2
+      )
+    rescue StandardError => e
+      Rails.logger.error("[AwardPoints] reaction_received failed for post=#{@post.id} reactor=#{@user.id}: #{e.class}: #{e.message}")
+    end
 
     def adding?
       !@post.reactions.exists?(user: @user, emoji: @emoji)

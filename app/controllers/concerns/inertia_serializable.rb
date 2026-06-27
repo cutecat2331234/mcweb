@@ -282,7 +282,7 @@ module InertiaSerializable
     { bump_cooldown_remaining_seconds: remaining.positive? ? remaining : nil }
   end
 
-  def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil, post_bookmark: nil, verified_purchaser: nil)
+  def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil, post_bookmark: nil, verified_purchaser: nil, author_forum_points: nil)
     formatted = Community::FormatPostBody.call(body: post.body)
     body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(post.body)
     body_long = post.body.length > 800
@@ -336,6 +336,7 @@ module InertiaSerializable
       author_flair_color: post.user.forum_flair_color_hex.presence,
       author_forum_title: resolved_user_title(post.user),
       author_posts_count: post.user.forum_posts_count,
+      author_forum_points: author_forum_points.nil? ? Community::PointAccount.find_by(user: post.user, currency: "points")&.balance.to_i : author_forum_points,
       author_member_since: l(post.user.created_at.to_date, format: :short),
       author_url: forum_user_path(post.user.username),
       author_card_url: card_forum_user_path(post.user.username),

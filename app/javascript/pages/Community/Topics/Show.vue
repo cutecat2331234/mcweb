@@ -52,6 +52,7 @@ export interface PostItem {
   author_flair_color?: string | null
   author_forum_title?: string | null
   author_posts_count?: number
+  author_forum_points?: number
   author_member_since?: string
   author_card_url?: string
   author_badges?: Array<{ name: string; icon: string | null; color: string | null; granted_at?: string }>
@@ -1657,6 +1658,9 @@ async function copyPollShareLink() {
               <span>{{ post.created_at }}</span>
               <span v-if="post.author_posts_count != null" class="ml-2 text-xs text-muted-foreground" :title="post.author_member_since ? t('forum.topics.memberSince', { date: post.author_member_since }) : undefined">
                 {{ t('forum.topics.authorPosts', { count: post.author_posts_count }) }}
+              </span>
+              <span v-if="post.author_forum_points != null" class="ml-2 text-xs text-muted-foreground">
+                {{ t('forum.topics.authorPoints', { count: post.author_forum_points }) }}
               </span>
               <span v-if="post.edited_at" class="ml-2">
                 {{ t('forum.topics.editedAt', { at: post.edited_at }) }}<span v-if="post.last_edit_reason">{{ t('forum.topics.editReasonSuffix', { reason: post.last_edit_reason }) }}</span>

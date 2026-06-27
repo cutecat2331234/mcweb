@@ -577,9 +577,6 @@ en:
         avatar_file_required: Select an image file.
         avatar_unsupported_format: Unsupported image format (JPEG, PNG, GIF, and WebP only).
         avatar_too_large: Image is too large (max 2MB).
-        point_balance_insufficient: "Insufficient point balance."
-        point_user_required: "Cannot award points: missing user."
-        checkin_user_required: "Cannot check in: missing user."
     commerce:
       default_store_title: Store
       list_separator: ", "

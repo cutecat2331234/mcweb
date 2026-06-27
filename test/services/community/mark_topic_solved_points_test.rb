@@ -25,7 +25,7 @@ module Community
 
       result = Community::MarkTopicSolved.call(user: @owner, topic: topic, post: own_answer)
       assert result.success?, "mark solved failed: #{result.error || result.errors}"
-      assert_equal topic.id, topic.reload.solved_post_id, "topic should still be marked solved"
+      assert_equal own_answer.id, topic.reload.solved_post_id, "topic should still be marked solved"
 
       # No points awarded to the self-marking author.
       account = Community::PointAccount.find_by(user: @owner, currency: "points")

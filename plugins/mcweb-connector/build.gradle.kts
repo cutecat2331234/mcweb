@@ -18,19 +18,18 @@ subprojects {
     }
 
     dependencies {
-        // Pinned to 5.12.x: junit-jupiter 5.13+ requires Java 17 at runtime,
-        // but these connector modules use a Java 8 toolchain (bukkit-legacy
-        // targets old servers), so the Java 8 test JVM can't load a 5.13 engine.
+        // Pinned to 5.12.x: junit-jupiter 5.13+ requires Java 17 at runtime, but
+        // these connector modules use a Java 8 toolchain (bukkit-legacy targets
+        // old servers). Declare the platform-launcher explicitly and pin it to the
+        // matching 1.12.2 so it stays aligned with the 5.12.2 engine — Gradle's
+        // auto-injected launcher is a different version and breaks JUnit test
+        // discovery with "OutputDirectoryProvider not available".
         testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
+        testRuntimeOnly("org.junit.platform:junit-platform-launcher:1.12.2")
     }
 
     tasks.test {
         useJUnitPlatform()
-        testLogging {
-            events("passed", "skipped", "failed")
-            exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
-            showStandardStreams = true
-        }
     }
 
     tasks.withType<JavaCompile>().configureEach {

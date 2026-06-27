@@ -25,6 +25,7 @@ module Community
       end
 
       Community::PublishPostSideEffects.call(post: @post.reload, dispatch_webhooks: false)
+      award_post_points(@post)
 
       Notification.create!(
         user: @post.user,
@@ -53,6 +54,16 @@ module Community
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    # Award points to the author once their pending post is approved. Idempotent
+    # on (author, "post_created", post); guarded so awarding never breaks approval.
+    def award_post_points(post)
+      Community::AwardPoints.for_rule(user: post.user, rule: "post_created", source: post, default: 5)
+    rescue StandardError => e
+      Rails.logger.error("[AwardPoints] post_created (approve) failed for post=#{post.id}: #{e.class}: #{e.message}")
     end
   end
 end

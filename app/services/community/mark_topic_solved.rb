@@ -22,6 +22,7 @@ module Community
       end
 
       @topic.update!(solved_post: @post)
+      award_solution_points
       Community::NotifyTopicSolved.call(topic: @topic, post: @post, actor: @user)
       Community::DispatchForumEventWebhook.call(event_type: "topic.solved", topic: @topic, post: @post)
       auto_close_on_solved!
@@ -31,6 +32,16 @@ module Community
     end
 
     private
+
+    # Reward the answer author when their post is accepted as the solution.
+    # Keyed on source = the topic, so a topic's solution awards at most once,
+    # preventing solve/unsolve farming even if the accepted post changes.
+    def award_solution_points
+      return if @user.id == @post.user_id
+      Community::AwardPoints.for_rule(user: @post.user, rule: "solution_accepted", source: @topic, default: 15)
+    rescue StandardError => e
+      Rails.logger.error("[AwardPoints] solution_accepted failed for topic=#{@topic.id}: #{e.class}: #{e.message}")
+    end
 
     def can_mark?
       Community::SectionModeration.can_mark_solved?(user: @user, topic: @topic)

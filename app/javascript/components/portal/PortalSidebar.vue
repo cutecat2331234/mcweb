@@ -6,6 +6,7 @@ import { MessageSquare, ShoppingBag, ExternalLink, Home, X } from '@lucide/vue'
 import { routes } from '@/lib/routes'
 import { usePortalNav, type PortalNavOptions } from '@/lib/usePortalNav'
 import PortalNavGroupSection from '@/components/portal/PortalNavGroupSection.vue'
+import CheckInWidget from '@/components/portal/CheckInWidget.vue'
 import Button from '@/components/ui/Button.vue'
 import { cn } from '@/lib/utils'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
@@ -191,6 +192,10 @@ watch(
           <div class="text-sidebar-foreground/70">{{ server.online }}/{{ server.max }} {{ t('portal.online') }}{{ t('common.colon') }} {{ serverStatusLabel(server.status) }}</div>
         </div>
       </div>
+    </div>
+
+    <div class="px-3 pb-3">
+      <CheckInWidget />
     </div>
 
     <nav class="flex-1 space-y-3 overflow-y-auto px-3 pb-4">

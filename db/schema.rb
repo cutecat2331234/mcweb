@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_25_000018) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_28_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -248,6 +248,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000018) do
     t.index ["word"], name: "index_forum_censored_words_on_word", unique: true
   end
 
+  create_table "forum_check_ins", force: :cascade do |t|
+    t.date "checked_on", null: false
+    t.datetime "created_at", null: false
+    t.integer "points_awarded", default: 0, null: false
+    t.integer "streak", default: 1, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["user_id", "checked_on"], name: "idx_forum_check_ins_user_date", unique: true
+  end
+
   create_table "forum_conversation_participants", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
@@ -346,6 +356,35 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000018) do
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.index ["active", "position"], name: "index_forum_notices_on_active_and_position"
+  end
+
+  create_table "forum_point_accounts", force: :cascade do |t|
+    t.integer "balance", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.string "currency", default: "points", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["currency"], name: "index_forum_point_accounts_on_currency"
+    t.index ["user_id", "currency"], name: "idx_forum_point_accounts_user_currency", unique: true
+  end
+
+  create_table "forum_point_transactions", force: :cascade do |t|
+    t.integer "amount", null: false
+    t.integer "balance_after", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", default: "points", null: false
+    t.string "dedupe_token"
+    t.bigint "forum_point_account_id", null: false
+    t.string "reason", null: false
+    t.bigint "source_id"
+    t.string "source_type"
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["dedupe_token"], name: "idx_forum_point_tx_dedupe_token", unique: true, where: "(dedupe_token IS NOT NULL)"
+    t.index ["forum_point_account_id"], name: "idx_forum_point_tx_account"
+    t.index ["source_type", "source_id"], name: "idx_forum_point_tx_source"
+    t.index ["user_id", "created_at"], name: "idx_forum_point_tx_user_created"
+    t.index ["user_id", "currency", "reason", "source_type", "source_id"], name: "idx_forum_point_tx_idempotency", unique: true, where: "(source_id IS NOT NULL)"
   end
 
   create_table "forum_poll_votes", force: :cascade do |t|
@@ -2030,6 +2069,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000018) do
   add_foreign_key "forum_bookmarks", "forum_topics"
   add_foreign_key "forum_bookmarks", "users"
   add_foreign_key "forum_canned_responses", "users", column: "author_id"
+  add_foreign_key "forum_check_ins", "users"
   add_foreign_key "forum_conversation_participants", "forum_conversations"
   add_foreign_key "forum_conversation_participants", "users"
   add_foreign_key "forum_conversations", "users", column: "creator_id"
@@ -2040,6 +2080,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_25_000018) do
   add_foreign_key "forum_mutes", "forum_sections"
   add_foreign_key "forum_mutes", "users"
   add_foreign_key "forum_mutes", "users", column: "created_by_id"
+  add_foreign_key "forum_point_accounts", "users"
+  add_foreign_key "forum_point_transactions", "forum_point_accounts"
+  add_foreign_key "forum_point_transactions", "users"
   add_foreign_key "forum_poll_votes", "forum_polls"
   add_foreign_key "forum_poll_votes", "users"
   add_foreign_key "forum_polls", "forum_topics"

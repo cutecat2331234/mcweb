@@ -27,7 +27,7 @@ public final class LinkCodes {
             byte[] hashed = digest.digest(code.trim().toUpperCase().getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder(hashed.length * 2);
             for (byte value : hashed) {
-                builder.append(String.format("%02x", value));
+                builder.append(String.format("%02x", value & 0xFF));
             }
             return builder.toString();
         } catch (Exception ex) {

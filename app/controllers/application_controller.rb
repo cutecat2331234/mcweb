@@ -84,6 +84,24 @@ class ApplicationController < ActionController::Base
         count: Community::Conversation.total_unread_count_for(current_user),
         url: forum_conversations_path
       }
+
+      checkin_today = Community::CheckIn.find_by(user: current_user, checked_on: Date.current)
+      last_checkin = checkin_today || Community::CheckIn.where(user: current_user).order(checked_on: :desc).first
+      checked_today = checkin_today.present?
+      # The running streak: today's value if already checked in, otherwise the
+      # last check-in's streak only while it is still "alive" (was yesterday).
+      current_streak = if checked_today
+                         checkin_today.streak
+      elsif last_checkin && last_checkin.checked_on == Date.current - 1
+                         last_checkin.streak
+      else
+                         0
+      end
+      share[:forum_check_in] = {
+        checked_today: checked_today,
+        streak: current_streak,
+        url: forum_check_in_path
+      }
     end
 
     if FeatureFlags.enabled?(:forum)

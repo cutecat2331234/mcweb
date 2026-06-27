@@ -233,6 +233,11 @@ en:
       user_ignored: User ignored.
       user_unignored: User unignored.
       forum_settings_saved: Forum settings saved.
+      point_settings_saved: Point rules saved.
+      point_adjustment_saved: Point adjustment applied.
+      point_adjustment_failed: Point adjustment failed.
+      point_user_not_found: User not found.
+      point_amount_required: Please enter a non-zero point amount.
       webhook_test_queued: "Test webhook queued (%{label})."
       webhook_test_failed: Test send failed.
       webhook_batch_test_queued: "Queued %{queued}/%{total} saved-search webhook tests."
@@ -1021,6 +1026,16 @@ en:
         scheduled_bump: This topic was bumped on schedule.
         scheduled_archive: This topic was archived on schedule.
         poll_closed: "%{user} closed the poll「%{question}」."
+      points:
+        reasons:
+          post_created: Post reward
+          reaction_received: Reaction received
+          solution_accepted: Accepted solution
+          admin_adjust: Admin adjustment
+          daily_check_in: Daily check-in
+      check_in:
+        success: "Checked in! +%{points} points · %{streak}-day streak"
+        already: "You already checked in today."
       exports:
         posts_header: Floor,Author,Time,Content
         poll_header: Option,Votes,Voters
@@ -1134,6 +1149,31 @@ en:
           refunds_7d: 7-day refunds
           abandoned_carts: Abandoned carts
       forum:
+        points:
+          log_title: Points Log
+          log_subtitle: Record of forum point awards and deductions
+          col_created_at: Time
+          col_user: User
+          col_amount: Change
+          col_reason: Reason
+          col_balance_after: Balance
+          col_source: Source
+          adjust_action: Adjust Points
+          settings_action: Point Rules
+          labels:
+            forum.points.post_created: Points per post
+            forum.points.reaction_received: Points per reaction received
+            forum.points.solution_accepted: Points for accepted solution
+          hints:
+            forum.points.post_created: Points awarded when a user publishes a post (0 disables).
+            forum.points.reaction_received: Points awarded to the author each time a distinct user reacts to their post (0 disables).
+            forum.points.solution_accepted: Points awarded to the author when their post is accepted as the solution (0 disables).
+          reasons:
+            post_created: Post reward
+            reaction_received: Reaction received
+            solution_accepted: Accepted solution
+            admin_adjust: Admin adjustment
+            daily_check_in: Daily check-in
         filter_all: All
         filter_all_events: All events
         filter_all_sources: All sources

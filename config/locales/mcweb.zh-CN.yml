@@ -243,6 +243,11 @@
       user_ignored: 已忽略该用户。
       user_unignored: 已取消忽略。
       forum_settings_saved: 论坛设置已保存。
+      point_settings_saved: 积分规则已保存。
+      point_adjustment_saved: 积分调整已完成。
+      point_adjustment_failed: 积分调整失败。
+      point_user_not_found: 未找到该用户。
+      point_amount_required: 请填写非零的积分数量。
       webhook_test_queued: "测试 Webhook 已加入发送队列（%{label}）。"
       webhook_test_failed: 测试发送失败。
       webhook_batch_test_queued: "已加入 %{queued}/%{total} 条保存搜索 Webhook 测试队列。"
@@ -1031,6 +1036,16 @@
         scheduled_bump: 此主题已按计划自动提升。
         scheduled_archive: 此主题已到达预定时间并自动归档。
         poll_closed: "%{user} 关闭了投票「%{question}」。"
+      points:
+        reasons:
+          post_created: 发帖奖励
+          reaction_received: 获得点赞
+          solution_accepted: 最佳答案
+          admin_adjust: 管理员调整
+          daily_check_in: 每日签到
+      check_in:
+        success: "签到成功！+%{points} 积分 · 连续 %{streak} 天"
+        already: "今天已经签到过了。"
       exports:
         posts_header: 楼层,作者,时间,内容
         poll_header: 选项,票数,投票用户
@@ -1144,6 +1159,31 @@
           refunds_7d: 7日退款
           abandoned_carts: 弃购购物车
       forum:
+        points:
+          log_title: 积分流水
+          log_subtitle: 论坛积分的发放与扣减记录
+          col_created_at: 时间
+          col_user: 用户
+          col_amount: 变动
+          col_reason: 原因
+          col_balance_after: 余额
+          col_source: 来源
+          adjust_action: 调整积分
+          settings_action: 积分规则
+          labels:
+            forum.points.post_created: 发帖奖励积分
+            forum.points.reaction_received: 获赞奖励积分
+            forum.points.solution_accepted: 最佳答案奖励积分
+          hints:
+            forum.points.post_created: 用户发布一个帖子时获得的积分（0 表示关闭）。
+            forum.points.reaction_received: 帖子每被一位用户点赞时作者获得的积分（0 表示关闭）。
+            forum.points.solution_accepted: 回答被采纳为最佳答案时作者获得的积分（0 表示关闭）。
+          reasons:
+            post_created: 发帖奖励
+            reaction_received: 获得点赞
+            solution_accepted: 最佳答案
+            admin_adjust: 管理员调整
+            daily_check_in: 每日签到
         filter_all: 全部
         filter_all_events: 全部事件
         filter_all_sources: 全部来源

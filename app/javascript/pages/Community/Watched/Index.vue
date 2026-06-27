@@ -6,6 +6,7 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
+import ListFilterBar from '@/components/portal/ListFilterBar.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 
@@ -34,10 +35,12 @@ function changeSort(value: string) {
 
   <PageHeader :title="t('forum.watched.topicsTitle')" :subtitle="t('forum.watched.topicsSubtitle')" />
 
-  <div class="mb-4 flex items-center gap-2">
-    <label class="text-sm text-muted-foreground">{{ t('forum.lists.sortLabel') }}</label>
-    <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
-  </div>
+  <ListFilterBar>
+    <div class="flex items-center gap-2">
+      <label class="text-sm text-muted-foreground">{{ t('forum.lists.sortLabel') }}</label>
+      <Select :model-value="sort" :options="sortOptions" size="sm" @update:model-value="changeSort" />
+    </div>
+  </ListFilterBar>
 
   <TopicListTable :topics="topics" show-views />
 

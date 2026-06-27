@@ -68,7 +68,5 @@ createInertiaApp({
     }
     return loader()
   },
-  progress: {
-    color: '#38bdf8',
-  },
+  progress: false,
 })

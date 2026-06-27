@@ -18,7 +18,10 @@ subprojects {
     }
 
     dependencies {
-        testImplementation("org.junit.jupiter:junit-jupiter:5.13.4")
+        // Pinned to 5.12.x: junit-jupiter 5.13+ requires Java 17 at runtime,
+        // but these connector modules use a Java 8 toolchain (bukkit-legacy
+        // targets old servers), so the Java 8 test JVM can't load a 5.13 engine.
+        testImplementation("org.junit.jupiter:junit-jupiter:5.12.2")
     }
 
     tasks.test {

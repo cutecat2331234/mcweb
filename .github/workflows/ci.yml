@@ -125,6 +125,14 @@ jobs:
         working-directory: plugins/mcweb-connector
         run: chmod +x gradlew && ./gradlew build
 
+      - name: Dump connector test reports on failure
+        if: failure()
+        run: |
+          echo "===== JUnit result XML ====="
+          find plugins/mcweb-connector -path '*/test-results/*' -name '*.xml' -print -exec cat {} \; || true
+          echo "===== test report txt (if any) ====="
+          find plugins/mcweb-connector -path '*/reports/tests/*' -name '*.txt' -print -exec cat {} \; || true
+
   build-frontend:
     runs-on: ubuntu-latest
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'

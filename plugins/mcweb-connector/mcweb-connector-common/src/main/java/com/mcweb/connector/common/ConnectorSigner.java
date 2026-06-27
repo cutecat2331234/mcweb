@@ -16,7 +16,7 @@ public final class ConnectorSigner {
             byte[] raw = mac.doFinal(message.getBytes(StandardCharsets.UTF_8));
             StringBuilder sb = new StringBuilder();
             for (byte b : raw) {
-                sb.append(String.format("%02x", b));
+                sb.append(String.format("%02x", b & 0xFF));
             }
             return sb.toString();
         } catch (Exception e) {

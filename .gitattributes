@@ -8,5 +8,13 @@ vendor/* linguist-vendored
 config/credentials/*.yml.enc diff=rails_credentials
 config/credentials.yml.enc diff=rails_credentials
 
+# Normalize line endings: auto-detect text files, store LF in repo, check out LF.
+# Global rule first; more specific rules below override it.
+* text=auto eol=lf
+
+# Windows batch scripts must stay CRLF to run reliably (e.g. connector/gradlew.bat).
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
 gradlew text eol=lf
 *.sh text eol=lf

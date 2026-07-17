@@ -119,7 +119,7 @@ function unsubscribeAvailabilityAlert(url: string) {
 
 function quickAdd(product: ProductItem) {
   if (!product.db_id) return
-  router.post(routes.storeCart, { product_id: product.db_id, quantity: 1 }, { preserveScroll: true })
+  router.patch(routes.storeCart, { product_id: product.db_id, quantity: 1 }, { preserveScroll: true })
 }
 
 function toggleCompare(url: string) {

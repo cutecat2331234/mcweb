@@ -29,7 +29,9 @@ function signOut() {
 </script>
 
 <template>
-  <DropdownMenuRoot>
+  <!-- Non-modal: keep the page scrollbar. Modal mode hides it and pads <body>,
+       which double-compensates with the html scrollbar-gutter and shifts the layout. -->
+  <DropdownMenuRoot :modal="false">
     <DropdownMenuTrigger as-child>
       <Button variant="ghost" class="h-9 gap-2 px-2">
         <Avatar :fallback="username" class="h-7 w-7 text-xs" />

@@ -43,7 +43,9 @@ function switchLocale(locale: AppLocale) {
 </script>
 
 <template>
-  <DropdownMenuRoot>
+  <!-- Non-modal: keep the page scrollbar. Modal mode hides it and pads <body>,
+       which double-compensates with the html scrollbar-gutter and shifts the layout. -->
+  <DropdownMenuRoot :modal="false">
     <DropdownMenuTrigger as-child>
       <Button variant="ghost" size="icon" type="button" :aria-label="t('locale.label')">
         <Globe class="h-4 w-4" />

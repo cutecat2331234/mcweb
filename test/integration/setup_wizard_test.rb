@@ -19,6 +19,8 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   teardown do
+    # database step 会经 Mcweb::PrepareApplicationDatabase 重连全局连接池，先恢复测试库连接再清理
+    ActiveRecord::Base.establish_connection(:test)
     User.where(account_type: "owner").update_all(account_type: "member")
     ensure_installation_locked!
     FileUtils.rm_f(@local_config_path)
@@ -42,7 +44,7 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     patch setup_step_path("database"), params: {
       setup: {
         host: "127.0.0.1",
-        port: 5432,
+        port: db_port,
         username: db_username,
         password: db_password,
         development_database: "mcweb_test"
@@ -81,7 +83,7 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     patch setup_step_path("database"), params: {
       setup: {
         host: "127.0.0.1",
-        port: 5432,
+        port: db_port,
         username: db_username,
         password: db_password,
         development_database: "mcweb_test"
@@ -120,7 +122,7 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     patch setup_step_path("database"), params: {
       setup: {
         host: "127.0.0.1",
-        port: 5432,
+        port: db_port,
         username: db_username,
         password: db_password,
         development_database: "mcweb_test"
@@ -153,5 +155,9 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
 
   def db_password
     ActiveRecord::Base.connection_db_config.configuration_hash[:password].to_s
+  end
+
+  def db_port
+    ActiveRecord::Base.connection_db_config.configuration_hash[:port] || 5432
   end
 end

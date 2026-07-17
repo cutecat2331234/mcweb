@@ -4,7 +4,7 @@ module Commerce
   class CompareController < ApplicationController
     include Commerce::WishlistCompareImportable
 
-    before_action :require_login, only: %i[share import_wishlist]
+    before_action :require_login, only: %i[import_wishlist]
 
     def show
       ids = Array(session[:compare_product_ids])
@@ -49,18 +49,6 @@ module Commerce
     def clear
       session[:compare_product_ids] = []
       redirect_to store_compare_path, notice: t("mcweb.flash.compare_cleared")
-    end
-
-    def share
-      ids = Array(session[:compare_product_ids])
-      return redirect_to store_compare_path, alert: t("mcweb.flash.compare_empty") if ids.empty?
-
-      result = Commerce::EnsureCompareShareToken.call(user: current_user, product_ids: ids)
-      if result.success?
-        redirect_to store_compare_path, notice: t("mcweb.flash.compare_share_created")
-      else
-        redirect_to store_compare_path, alert: service_error_message(result)
-      end
     end
 
     def import_wishlist

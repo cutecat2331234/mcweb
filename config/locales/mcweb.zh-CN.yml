@@ -95,8 +95,6 @@
       avatar_updated: 头像已更新。
       avatar_reset: 头像已恢复默认。
       compare_cleared: 对比列表已清空。
-      compare_empty: 对比列表为空。
-      compare_share_created: 分享链接已生成。
       compare_product_invalid: 商品不可加入对比。
       availability_subscribed: 上架通知已订阅。
       availability_unsubscribed: 已取消上架通知。
@@ -186,6 +184,7 @@
       wishlist_product_invalid: 商品不可加入心愿单。
       wishlist_note_invalid: 商品不可编辑备注。
       wishlist_note_saved: 备注已保存。
+      wishlist_share_created: 心愿单分享链接已生成。
       wishlist_toggled_on: 已加入心愿单。
       wishlist_toggled_off: 已从心愿单移除。
       wishlist_bulk_added: "已将 %{count} 件商品加入购物车。"

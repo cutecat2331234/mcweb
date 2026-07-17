@@ -482,7 +482,6 @@ Rails.application.routes.draw do
     post "compare/toggle", to: "compare#toggle", as: :toggle_compare
     post "compare/import_wishlist", to: "compare#import_wishlist", as: :import_wishlist_compare
     delete "compare", to: "compare#clear"
-    get "compare/share", to: "compare#share"
     get "compare/:token", to: "compare#public_show", as: :public_compare
     get "wishlist", to: "wishlist#index"
     post "wishlist/add_all_to_cart", to: "wishlist#add_all_to_cart", as: :add_all_to_cart_wishlist
@@ -554,8 +553,8 @@ Rails.application.routes.draw do
   get "website/blog/:slug", to: redirect("/blog/%{slug}")
   get "website/pages/:slug", to: redirect("/%{slug}")
 
-  get "/forum(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/forum/#{params[:path]}" : "/app/forum" }
-  get "/store(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/store/#{params[:path]}" : "/app/store" }
+  get "/forum(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/forum/#{params[:path]}" : "/app/forum/latest" }
+  get "/store(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/store/#{params[:path]}" : "/app/store/products" }
   get "/identity(/*path)", to: redirect { |params, _|
     path = params[:path].presence
     if path == "session"

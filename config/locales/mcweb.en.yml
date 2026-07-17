@@ -95,8 +95,6 @@ en:
       avatar_updated: Avatar updated.
       avatar_reset: Avatar reset to default.
       compare_cleared: Compare list cleared.
-      compare_empty: Compare list is empty.
-      compare_share_created: Share link created.
       compare_product_invalid: Product cannot be added to compare.
       availability_subscribed: Availability alert subscribed.
       availability_unsubscribed: Availability alert removed.
@@ -186,6 +184,7 @@ en:
       wishlist_product_invalid: Product cannot be added to wishlist.
       wishlist_note_invalid: Cannot edit note for this product.
       wishlist_note_saved: Note saved.
+      wishlist_share_created: Wishlist share link created.
       wishlist_toggled_on: Added to wishlist.
       wishlist_toggled_off: Removed from wishlist.
       wishlist_bulk_added: "Added %{count} item(s) to cart."

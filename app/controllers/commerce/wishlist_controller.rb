@@ -75,7 +75,7 @@ module Commerce
     def share
       result = Commerce::EnsureWishlistShareToken.call(user: current_user)
       if result.success?
-        redirect_to store_wishlist_path, notice: t("mcweb.flash.compare_share_created")
+        redirect_to store_wishlist_path, notice: t("mcweb.flash.wishlist_share_created")
       else
         redirect_to store_wishlist_path, alert: service_error_message(result)
       end

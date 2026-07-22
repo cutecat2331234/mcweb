@@ -39,7 +39,7 @@ McWeb 采用 **平台内核 + 大应用 + 插件扩展** 的分层设计，将�
 
 ## 系统架构
 
-McWeb 是 **Rails 模块化单体**（modular monolith）：各业务域以命名空间隔离（`Website`、`Community`、`Commerce`、`Minecraft` 等），共享 PostgreSQL 与 Sidekiq，通过服务层（Service Object）承载业务逻辑，Controller 保持精简。
+McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域以命名空间隔离（`Website`、`Community`、`Commerce`、`Minecraft` 等），共享 PostgreSQL 与 Sidekiq，通过服务层（Service Object）承载业务逻辑，Controller 保持精简。
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -154,7 +154,7 @@ McWeb 是 **Rails 模块化单体**（modular monolith）：各业务域以命�
 | 类别 | 选型 |
 |------|------|
 | 语言 | Ruby 4.0.5 |
-| 框架 | Rails 8.1.3 |
+| 框架 | Ruby on Rails 8.1.3 |
 | 数据库 | PostgreSQL 18 |
 | 队列 / 缓存 | Sidekiq + Redis；Solid Cache；Solid Cable |
 | 前端 | 官网 Inertia + Vue 3.5；Portal / Admin：Inertia + Vue 3 + Vite 8 + Tailwind CSS 4.3 |

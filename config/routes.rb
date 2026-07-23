@@ -254,6 +254,11 @@ Rails.application.routes.draw do
       resources :jobs, only: %i[index]
       resources :ip_bans, only: %i[index create destroy]
       resources :email_bans, only: %i[index new create edit update destroy]
+      resources :api_keys, only: %i[index new create], path: "api-keys" do
+        member do
+          post :revoke
+        end
+      end
       resources :applications, only: %i[index]
     end
   end

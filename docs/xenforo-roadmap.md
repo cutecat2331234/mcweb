@@ -20,14 +20,14 @@
 
 ## 大型(多会话,需谨慎)
 - [x] **用户组 + 副组 + 组权限**(对标 XenForo user groups)——**已完成**:`Community::UserGroup` + `GroupMembership` 模型/迁移;后台 CRUD(名称/颜色/优先级/权限键/主组默认/横幅);`User#permission?` 并入组权限(union,请求级 memoize);注册自动加入默认主组;用户卡/资料页组徽章(颜色/横幅);**后台组编辑页按用户名增删成员**;**会员名录按组筛选**;带测试。✅ **副组/主组切换 UI 已完成**:组编辑页成员行「设为主组」按钮 → `set_primary` action(置该成员此组为主组、清除其全部其他主组)。
-- [ ] **实时通知(ActionCable)** 与 **Web Push**(共享通知扇出基础)
+- [x] **实时通知(ActionCable)** 与 **Web Push**(共享通知扇出基础) — ✅ 已完成,详见下方条目。
 - [x] **多引用(Multi-quote)** — ✅ 复核发现已实现(`Topics/Show.vue` `quotePreviews` 数组累积多个引用 + 引用选区 + composer 多引用预览)。缺口分析曾误标。
 - [x] **BBCode + 自定义 BBCode 管理** — ✅ **已完成**:核心标签 `[b][i][u][s][url][img][quote][spoiler]` → Markdown(`convert_bbcode`);**自定义 BBCode** `Community::CustomBbcode`(缓存、Markdown 模板 + `{content}`,经 sanitize 安全)+ 后台 CRUD;均无定义时 no-op。
 - [x] **Spam cleaner** — ✅ `Community::SpamCleaner`(软删该用户全部主题/帖子 + 封禁,事务 + 审计 + 计数,可按记录恢复)+ 后台用户页危险操作按钮(确认弹窗)。
 - [x] **计划任务只读视图** — ✅ `Admin::Forum::ScheduledTasks` 读取 `sidekiq_cron.yml` 展示周期任务(无 Redis 依赖)。
 - [x] **表情(smilies)替换** — ✅ `Community::Smilie`(缓存,无表情时 no-op)+ 后台 CRUD + `FormatPostBody` 代码块后安全替换(管理员定义后才生效)。
 - [x] **论坛主题样式/皮肤** — ✅ `Community::ForumTheme`(主色/强调色令牌,单默认,缓存)+ 后台 CRUD;激活的默认主题通过 `--primary`/`--accent` CSS 变量合并进 `PortalLayout` 根(无主题时零影响)。
-- [ ] **Phrases 运行时 i18n**(DB 覆盖层 + I18n 后端,大件)、**论坛页面节点 CMS**(与帮助中心重叠,可在其上加层级/导航)、**打字指示器**(依赖实时通知)
+- [x] **Phrases 运行时 i18n**(DB 覆盖层 + I18n 后端,大件)、**论坛页面节点 CMS**(与帮助中心重叠,可在其上加层级/导航)、**打字指示器**(依赖实时通知) — ✅ 三项均已完成,详见下方条目。
 - [x] **实时通知(ActionCable)** — ✅ `ApplicationCable::Connection`(签名 session cookie 鉴权)+ `Community::NotificationsChannel`(按用户流)+ `Notification.notify!` 广播(rescue 包裹,不阻塞)+ 前端原生 WebSocket 客户端(`useNotificationStream`,无新依赖)+ 顶栏红点实时更新。生产用 `solid_cable`(已在 Gemfile,无需 Redis)。已验证 notify! 正常。
 - [x] **打字指示器** — ✅ `Community::ConversationChannel`(参与者鉴权 + ephemeral typing 动作)+ 前端 `useConversationTyping`(原生 WebSocket 收发、节流、过滤自己)+ 私信页「X 正在输入…」。
 - [x] **Web Push** — ✅ `web-push` gem + VAPID(`Community::VapidKeys`,存 SiteSetting)+ `Community::PushSubscription` 模型 + `DeliverWebPush` 服务/Job(接入 `notify!`,rescue + DND + 偏好门控,自动清理失效订阅)+ `public/sw.js` service worker + `useWebPush` 客户端 + 偏好页开关。已验证 VAPID 生成 + notify! 正常。

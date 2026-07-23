@@ -22,7 +22,7 @@ McWeb 宿主机管理节点（`mcweb-node`）与 Rails 控制面的通信协议�
 | POST | `/minecraft/nodes/pair` | 一次性配对（`pairing_token`, `hostname`） |
 | POST | `/minecraft/nodes/:node_id/heartbeat` | 节点心跳 + 拉取所管实例配置 |
 | GET | `/minecraft/nodes/:node_id/tasks` | 拉取待执行节点任务 |
-| GET | `/minecraft/nodes/:node_id/events` | SSE 紧急任务推送（见下文） |
+| GET | `/minecraft/nodes/:node_id/events` | 即时轮询（非阻塞）拉取紧急任务信号，有则返回 JSON 否则 `204`（见下文「紧急任务推送」） |
 | POST | `/minecraft/nodes/:node_id/tasks/:id/complete` | 回报任务执行结果 |
 | POST | `/minecraft/nodes/:node_id/instances/:server_id/report` | 上报实例进程状态 / 指标 |
 | GET | `/minecraft/sync/:token` | 签名 URL 文件下载（`sync_files` 任务用） |

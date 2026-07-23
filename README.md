@@ -67,7 +67,7 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 | 区域 | 布局 / 技术 | 说明 |
 |------|-------------|------|
 | 官网首页 / 博客 | `WebsiteLayout.vue` | 营销风页面，支持 CMS 区块与动效 |
-| 论坛 / 商城 / 账户 | `PortalLayout.vue` | Inertia + Vue 3 + shadcn-vue 功能界面 |
+| 论坛 / 商城 / 账户 | `PortalLayout.vue` | Inertia + Vue 3 + shadcn-vue 风格组件（基于 `reka-ui`）功能界面 |
 | 管理后台 | `AdminLayout.vue` | 侧边栏运维界面，按模块分命名空间 |
 | 安装向导 | ERB（`/setup`） | 一次性初始化；亦可通过 hostd 完成 |
 | Connector / Node API | JSON | Webhook、游戏服通信、节点任务，不经 Inertia |
@@ -76,7 +76,7 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 
 ### 后台任务
 
-生产环境使用 **Sidekiq + Redis** 异步处理支付 Webhook、订单履约、Minecraft 发货、邮件、定时发布、Webhook 投递等。队列按优先级划分：`critical` / `payments` / `minecraft` / `mailers` / `notifications` / `media` / `maintenance`。监控 UI 位于 `/jobs`（需管理员 `admin.access` 权限）。
+生产环境使用 **Sidekiq + Redis** 异步处理支付 Webhook、订单履约、Minecraft 发货、邮件、定时发布、Webhook 投递等。队列（见 `config/sidekiq.yml`）：`default` / `mailers` / `payments` / `minecraft` / `maintenance` / `website` / `notifications`。监控 UI 位于 `/jobs`（需管理员 `admin.access` 权限）。
 
 ---
 
@@ -157,11 +157,11 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 | 框架 | Ruby on Rails 8.1.3 |
 | 数据库 | PostgreSQL 18 |
 | 队列 / 缓存 | Sidekiq + Redis；Solid Cache；Solid Cable |
-| 前端 | 官网 Inertia + Vue 3.5；Portal / Admin：Inertia + Vue 3 + Vite 8 + Tailwind CSS 4.3 |
+| 前端 | 官网 Inertia + Vue 3.5；Portal / Admin：Inertia + Vue 3 + Vite 8 + Tailwind CSS 4.3（后台另含 Arco Design Vue 与 Element Plus 组件库） |
 | 游戏服插件 | Java（Gradle 多模块） |
 | 宿主机组件 | Go 1.26（`mcweb-node`、`mcweb-hostd`） |
 | 加密 | Lockbox（支付密钥、Connector 密钥等） |
-| 分页 | Pagy 43 |
+| 分页 | Pagy 43.6 |
 | PDF | Prawn |
 
 ### 运行环境
@@ -207,7 +207,7 @@ mcweb/
         → Webhook → Payments::WebhookProcessor（签名 + 幂等）
         → Commerce::ConfirmPayment（行锁）
         → Commerce::CompleteOrderPayment
-        → PostPaymentSideEffectsJob（徽章、通知等）
+        → Commerce::PostPaymentSideEffectsJob（徽章、通知等）
         → Commerce::FulfillOrderJob
               ├─ 礼品卡 / 数字下载 / 会员：同步履约
               └─ MC 命令商品：Commerce::BuildConnectorTaskPayload
@@ -284,7 +284,7 @@ sudo ./quick-install.sh --fresh   # 全新服务器
 sudo ./quick-install.sh
 ```
 
-发布包已包含 `vendor/bundle` 与预编译前端资源，服务器上无需再执行 `bundle install` / `npm build`。
+发布包已包含 `vendor/bundle` 与预编译前端资源，服务器上无需再执行 `bundle install` / `bin/vite build`。
 
 ### 方式二：宿主机控制台（mcweb-hostd）
 

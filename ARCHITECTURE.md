@@ -47,7 +47,7 @@ app/
 | 组件 | 路径 / 说明 |
 |------|-------------|
 | Worker 启动 | `bin/jobs` → `sidekiq -C config/sidekiq.yml` |
-| 队列优先级 | `critical` / `payments` / `minecraft` / `mailers` / `notifications` / `media` / `maintenance` |
+| 队列 | `default` / `mailers` / `payments` / `minecraft` / `maintenance` / `website` / `notifications`（见 `config/sidekiq.yml`） |
 | 定时任务 | `config/sidekiq_cron.yml`（原 `recurring.yml` 已迁移），由 `sidekiq-cron` 在 worker 启动时加载 |
 | 监控 UI | `/jobs`（`Sidekiq::Web`，`SidekiqWebConstraint` 要求管理员 `admin.access`） |
 | systemd | `config/templates/mcweb-worker.service` |

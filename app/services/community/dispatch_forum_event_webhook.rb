@@ -19,6 +19,12 @@ module Community
 
     def call
       return ServiceResult.success(skipped: :unsupported_event) unless EVENT_TYPES.include?(@event_type)
+
+      # Central emission point for forum events: notify the in-process plugin event
+      # bus regardless of whether an outbound webhook is configured, so extensions
+      # always observe the event. Listener errors are isolated by Mcweb::Events.
+      Mcweb::Events.publish("forum.#{@event_type}", topic: @topic, post: @post, **@extra)
+
       return ServiceResult.success(skipped: :event_disabled) unless self.class.enabled_events.include?(@event_type)
 
       url = SiteSetting.get("forum.event_webhook_url", "").to_s.strip

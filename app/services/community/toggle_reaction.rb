@@ -32,6 +32,11 @@ module Community
       Community::NotifyPostReaction.call(post: @post, reactor: @user, emoji: @emoji) if added
       award_reaction_points if added
 
+      Mcweb::Events.publish(
+        added ? "forum.reaction.added" : "forum.reaction.removed",
+        post: @post, user: @user, emoji: @emoji, counts: counts
+      )
+
       ServiceResult.success(added: added, counts: counts)
     end
 

@@ -106,7 +106,7 @@ module Payments
       ts = Integer(timestamp, exception: false)
       return false if ts.nil?
 
-      (Time.now.to_i - ts).abs <= WEBHOOK_TOLERANCE_SECONDS
+      (Time.current.to_i - ts).abs <= WEBHOOK_TOLERANCE_SECONDS
     end
   end
 end

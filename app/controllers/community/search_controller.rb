@@ -106,7 +106,7 @@ module Community
         topics = case params[:topic_sort]
         when "oldest" then topics.order(created_at: :asc)
         when "relevance"
-          topics.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_topics.title, '')), plainto_tsquery('simple', #{ActiveRecord::Base.connection.quote(query)})) DESC"))
+          topics.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_topics.title, '')), plainto_tsquery('simple', #{ActiveRecord::Base.lease_connection.quote(query)})) DESC"))
         else topics.order(last_posted_at: :desc)
         end
         topics = filter_blocked_topics(topics)
@@ -158,7 +158,7 @@ module Community
         posts = case params[:post_sort]
         when "oldest" then posts.order(created_at: :asc)
         when "relevance"
-          posts.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_posts.body, '')), plainto_tsquery('simple', #{ActiveRecord::Base.connection.quote(query)})) DESC"))
+          posts.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_posts.body, '')), plainto_tsquery('simple', #{ActiveRecord::Base.lease_connection.quote(query)})) DESC"))
         else posts.order(created_at: :desc)
         end
         posts = filter_blocked_posts(posts)

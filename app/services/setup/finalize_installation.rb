@@ -120,7 +120,7 @@ module Setup
     end
 
     def acquire_installation_finalize_lock!
-      ActiveRecord::Base.connection.execute(
+      ActiveRecord::Base.lease_connection.execute(
         ActiveRecord::Base.sanitize_sql_array([ "SELECT pg_advisory_xact_lock(?)", INSTALLATION_FINALIZE_LOCK_KEY ])
       )
     end

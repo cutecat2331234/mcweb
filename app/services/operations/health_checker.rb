@@ -17,7 +17,7 @@ module Operations
     private
 
     def check_database
-      ActiveRecord::Base.connection.execute("SELECT 1")
+      ActiveRecord::Base.lease_connection.execute("SELECT 1")
       { status: "ok" }
     rescue StandardError => e
       { status: "error", message: e.message }

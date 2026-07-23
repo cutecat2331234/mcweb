@@ -9,8 +9,11 @@ McWeb 是 Rails 8.1.3 模块化单体(modular monolith),命名空间模块:`Iden
 `Community`(论坛,表前缀 `forum_`) / `Commerce`(商城) / `Minecraft`(联动) / `Administration` /
 `Operations`;前端 Vue 3 + Inertia + Vite + Tailwind;数据库 PostgreSQL;后台任务 Active Job。
 
-论坛功能已对齐 XenForo/Discourse(50 个对齐 Wave,1609 测试全绿)。下一步是**架构层面的横向扩展**
+论坛功能已对齐 XenForo/Discourse(50 个对齐 Wave,全套测试全绿)。下一步是**架构层面的横向扩展**
 与 4 个需要独立周期的大型功能。
+
+> 状态更新:下列工作项 ②(TipTap 富文本)与 ⑤(实时通知 ActionCable / Web Push)**已实现**
+> (见 `docs/xenforo-roadmap.md`);本文其余项(①多实例化、③反应类型管理、④邮件回帖)仍为计划中。
 
 ## 工作项(共 5 项,各一个子代理)
 
@@ -54,7 +57,7 @@ McWeb 是 Rails 8.1.3 模块化单体(modular monolith),命名空间模块:`Iden
   `RAILS_ENV=test bundle exec rails db:create db:migrate` 后再跑测试,避免互相踩库。
 - **迁移时间戳**:若新增迁移,使用分配给你的时间戳区段(见各代理任务),避免 version 冲突。
 - **Windows 限制**:跑测试必须 `PARALLEL_WORKERS=1`(MRI 在 Windows 不能 fork)。
-- **质量门禁**:为新行为写测试;**不得破坏现有 1609 个测试**;用户可见文案补 en + zh(`app/javascript/locales/*.ts`
+- **质量门禁**:为新行为写测试;**不得破坏现有测试套件**;用户可见文案补 en + zh(`app/javascript/locales/*.ts`
   与 `config/locales/mcweb.*.yml`);跑 `bundle exec rubocop` 与 `bundle exec brakeman -q`。
 - **范围纪律**:只动你这个功能相关的代码;遵循既有模式(`ApplicationService` + `ServiceResult`、Inertia 页面等)。
 - **务实交付**:这些都是大型功能。目标是**一个连贯、可运行、有测试的首个垂直切片**(能编译、新行为有通过的测试、

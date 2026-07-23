@@ -8,14 +8,17 @@
 sudo bin/update
 ```
 
-脚本将：
+`bin/update` 将（就地升级当前 `current` 发布）：
 
-1. 检查新版本与兼容性
-2. 升级前自动备份数据库与上传文件
-3. 解压到 `/opt/mcweb/releases/<version>` 并切换 `current` 软链接
-4. 执行 `db:migrate` 与资源预编译
-5. 顺序重启 Worker 与 Web
-6. 健康检查；失败时可 `bin/rollback`
+1. 运行 `bin/backup` 备份数据库与上传文件
+2. `bundle install`
+3. 执行 `db:migrate`
+4. 资源预编译（`assets:precompile`）
+5. 重启 `mcweb-worker` 与 `mcweb-web`
+6. 运行 `bin/doctor` 健康检查；失败时可 `bin/rollback`
+
+> 解压到 `/opt/mcweb/releases/<version>` 并切换 `current` 软链接由发布包安装脚本
+> `packaging/quick-install.sh` 完成，`bin/update` 本身不做解压与版本切换。
 
 ## 数据库迁移原则
 

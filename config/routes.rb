@@ -7,6 +7,16 @@ Rails.application.routes.draw do
 
   root "website/home#index"
 
+  # Public REST API (v1). Key-authenticated, JSON only. See docs/API.md.
+  namespace :api do
+    namespace :v1 do
+      resources :categories, only: :index
+      resources :topics, only: %i[index show]
+      resources :posts, only: :show
+      resources :users, only: :show
+    end
+  end
+
   patch "locale", to: "locale#update", as: :locale
 
   get "theme-assets/:template_key/*path", to: "frontend/template_assets#show", as: :frontend_theme_asset, format: false

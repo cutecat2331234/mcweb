@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_06_28_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_01_000001) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -52,6 +52,23 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000002) do
     t.index ["granted_by_id"], name: "index_admin_module_grants_on_granted_by_id"
     t.index ["user_id", "module_key"], name: "index_admin_module_grants_on_user_id_and_module_key", unique: true
     t.index ["user_id"], name: "index_admin_module_grants_on_user_id"
+  end
+
+  create_table "api_keys", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.datetime "last_used_at"
+    t.string "name", null: false
+    t.string "public_id", null: false
+    t.datetime "revoked_at"
+    t.string "scopes", default: "read", null: false
+    t.string "token_digest", null: false
+    t.string "token_prefix", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["public_id"], name: "index_api_keys_on_public_id", unique: true
+    t.index ["token_digest"], name: "index_api_keys_on_token_digest", unique: true
+    t.index ["token_prefix"], name: "index_api_keys_on_token_prefix"
   end
 
   create_table "audit_logs", force: :cascade do |t|
@@ -2060,6 +2077,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_06_28_000002) do
 
   add_foreign_key "admin_module_grants", "users"
   add_foreign_key "admin_module_grants", "users", column: "granted_by_id"
+  add_foreign_key "api_keys", "users", column: "created_by_id", on_delete: :nullify
+  add_foreign_key "api_keys", "users", on_delete: :nullify
   add_foreign_key "audit_logs", "users", column: "actor_id"
   add_foreign_key "community_group_memberships", "community_user_groups"
   add_foreign_key "community_group_memberships", "users"

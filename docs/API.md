@@ -48,8 +48,10 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET | `/api/v1/me` | 当前密钥绑定用户的资料（未绑定用户返回 `403 no_bound_user`） |
 | GET | `/api/v1/categories` | 分类及其可见分区 |
-| GET | `/api/v1/topics?section_id=<slug>` | 主题列表（可按分区 slug 过滤） |
+| GET | `/api/v1/tags` | 可用标签（非同义词、对该密钥可见） |
+| GET | `/api/v1/topics?section_id=<slug>&q=<关键词>` | 主题列表（可按分区 slug 过滤、按标题全文搜索） |
 | GET | `/api/v1/topics/:id` | 主题详情 + 分页帖子（`:id` 为主题 `public_id`） |
 | GET | `/api/v1/posts/:id` | 单帖详情（`:id` 为帖子数值 id） |
 | GET | `/api/v1/users/:id` | 公开用户资料（`:id` 为用户 `public_id`） |

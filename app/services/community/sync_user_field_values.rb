@@ -12,30 +12,36 @@ module Community
       definitions = Community::SerializeUserFields.definitions_for(@context)
       errors = {}
 
-      definitions.each do |definition|
-        next unless definition.editable_by_user? || @context == :registration
+      # Persist inside a transaction so a validation failure on any field does not
+      # leave earlier fields partially saved (all-or-nothing).
+      Community::UserFieldValue.transaction do
+        definitions.each do |definition|
+          next unless definition.editable_by_user? || @context == :registration
 
-        raw = @values[definition.key].to_s
-        if definition.field_type == "checkbox"
-          raw = ActiveModel::Type::Boolean.new.cast(@values[definition.key]) ? "1" : "0"
+          raw = @values[definition.key].to_s
+          if definition.field_type == "checkbox"
+            raw = ActiveModel::Type::Boolean.new.cast(@values[definition.key]) ? "1" : "0"
+          end
+
+          if definition.required? && raw.blank?
+            errors[definition.key] = I18n.t("mcweb.forum.user_fields.required", label: definition.label)
+            next
+          end
+
+          next if raw.blank? && !definition.required?
+
+          validation_error = validate_value(definition, raw)
+          if validation_error
+            errors[definition.key] = validation_error
+            next
+          end
+
+          record = Community::UserFieldValue.find_or_initialize_by(user: @user, definition: definition)
+          record.value = normalize_value(definition, raw)
+          record.save!
         end
 
-        if definition.required? && raw.blank?
-          errors[definition.key] = I18n.t("mcweb.forum.user_fields.required", label: definition.label)
-          next
-        end
-
-        next if raw.blank? && !definition.required?
-
-        validation_error = validate_value(definition, raw)
-        if validation_error
-          errors[definition.key] = validation_error
-          next
-        end
-
-        record = Community::UserFieldValue.find_or_initialize_by(user: @user, definition: definition)
-        record.value = normalize_value(definition, raw)
-        record.save!
+        raise ActiveRecord::Rollback if errors.any?
       end
 
       return ServiceResult.failure(errors: errors) if errors.any?

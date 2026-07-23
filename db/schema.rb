@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_01_000002) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_01_000003) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -1998,6 +1998,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_01_000002) do
     t.index ["wishlist_share_token"], name: "index_users_on_wishlist_share_token", unique: true
   end
 
+  create_table "webhook_subscriptions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id"
+    t.datetime "disabled_at"
+    t.string "event", default: "*", null: false
+    t.integer "failure_count", default: 0, null: false
+    t.datetime "last_delivered_at"
+    t.string "last_status"
+    t.string "name", null: false
+    t.string "secret"
+    t.datetime "updated_at", null: false
+    t.string "url", null: false
+    t.index ["active", "event"], name: "index_webhook_subscriptions_on_active_and_event"
+  end
+
   create_table "website_articles", force: :cascade do |t|
     t.string "article_type", default: "news", null: false
     t.bigint "author_id"
@@ -2287,6 +2303,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_01_000002) do
   add_foreign_key "store_wishlist_items", "users"
   add_foreign_key "user_roles", "roles"
   add_foreign_key "user_roles", "users"
+  add_foreign_key "webhook_subscriptions", "users", column: "created_by_id", on_delete: :nullify
   add_foreign_key "website_articles", "users", column: "author_id"
   add_foreign_key "website_blocks", "website_pages"
   add_foreign_key "website_nav_items", "website_pages"

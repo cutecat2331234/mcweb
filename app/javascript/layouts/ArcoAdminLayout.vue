@@ -126,6 +126,7 @@ const nav = computed<NavGroup[]>(() => [
       { label: t('admin.ipBans'), href: adminRoutes.ipBans },
       { label: t('admin.emailBans'), href: adminRoutes.emailBans },
       { label: t('admin.systemApiKeys'), href: adminRoutes.systemApiKeys },
+      { label: t('admin.systemWebhookSubscriptions'), href: adminRoutes.systemWebhookSubscriptions },
       { label: t('admin.featureToggles.title'), href: adminRoutes.featureToggles },
       { label: t('admin.applications.nav'), href: adminRoutes.applications },
       { label: t('admin.settings'), href: adminRoutes.settings },

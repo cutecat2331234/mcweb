@@ -10,7 +10,9 @@ Rails.application.routes.draw do
   # Public REST API (v1). Key-authenticated, JSON only. See docs/API.md.
   namespace :api do
     namespace :v1 do
+      get "me", to: "me#show"
       resources :categories, only: :index
+      resources :tags, only: :index
       resources :topics, only: %i[index show create]
       resources :posts, only: %i[show create]
       resources :users, only: :show

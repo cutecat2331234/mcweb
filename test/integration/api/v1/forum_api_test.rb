@@ -147,6 +147,45 @@ module Api
         assert_equal "write_requires_user", JSON.parse(response.body)["error"]
       end
 
+      test "GET /me returns the bound user with email" do
+        me = create_user(username: "apime")
+        _rec, mtoken = Administration::ApiKey.generate!(name: "me-key", scopes: %w[read], user: me)
+        get "/api/v1/me", headers: auth_headers(mtoken)
+        assert_response :success
+        body = JSON.parse(response.body)["data"]
+        assert_equal "apime", body["username"]
+        assert_equal me.email, body["email"]
+      end
+
+      test "GET /me without a bound user is forbidden" do
+        get "/api/v1/me", headers: auth_headers
+        assert_response :forbidden
+        assert_equal "no_bound_user", JSON.parse(response.body)["error"]
+      end
+
+      test "GET /tags lists non-staff canonical tags" do
+        Community::Tag.create!(name: "Guides")
+        Community::Tag.create!(name: "Secret").update!(staff_only: true)
+        get "/api/v1/tags", headers: auth_headers
+        assert_response :success
+        names = JSON.parse(response.body)["data"].map { |t| t["name"] }
+        assert_includes names, "Guides"
+        assert_not_includes names, "Secret"
+      end
+
+      test "topic search filters by title" do
+        Community::Topic.create!(
+          public_id: "topic_#{SecureRandom.alphanumeric(16)}", section: @section, user: @author,
+          title: "Completely unrelated subject", status: "published",
+          last_posted_at: Time.current, last_post_user: @author, replies_count: 0
+        )
+        get "/api/v1/topics", params: { q: "Public" }, headers: auth_headers
+        assert_response :success
+        titles = JSON.parse(response.body)["data"].map { |t| t["title"] }
+        assert_includes titles, "Public API topic"
+        assert_not_includes titles, "Completely unrelated subject"
+      end
+
       test "read key cannot use a write-only endpoint guard" do
         # simulate a key without read scope
         key = Administration::ApiKey.create!(

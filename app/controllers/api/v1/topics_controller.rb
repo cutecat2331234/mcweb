@@ -20,6 +20,13 @@ module Api
           scope = scope.where(forum_section_id: section.id)
         end
 
+        if params[:q].present?
+          scope = scope.where(
+            "to_tsvector('simple', coalesce(forum_topics.title, '')) @@ plainto_tsquery('simple', ?)",
+            params[:q].to_s
+          )
+        end
+
         scope = scope.order(pinned: :desc, last_posted_at: :desc)
         pagy, topics = api_paginate(scope)
 

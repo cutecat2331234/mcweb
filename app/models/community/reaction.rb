@@ -19,7 +19,10 @@ module Community
 
     # Optional per-emoji weights, e.g. "👍:1,❤️:2,👀:0". Unlisted emoji count as 1,
     # so with no setting the reaction score equals the flat reaction count.
+    # Managed reaction types (Community::ReactionType) take precedence when configured.
     def self.score_map
+      return Community::ReactionType.score_map if Community::ReactionType.configured?
+
       SiteSetting.get("forum.reaction_scores", "").to_s.split(/[,\s]+/).each_with_object({}) do |pair, map|
         emoji, score = pair.split(":", 2)
         map[emoji] = score.to_i if emoji.present? && score.present?

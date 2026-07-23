@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_01_000001) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_01_000002) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
 
@@ -501,6 +501,18 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_01_000001) do
     t.bigint "user_id", null: false
     t.index ["profile_user_id", "created_at"], name: "index_forum_profile_posts_on_profile_user_id_and_created_at"
     t.index ["user_id"], name: "index_forum_profile_posts_on_user_id"
+  end
+
+  create_table "forum_reaction_types", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.datetime "created_at", null: false
+    t.string "emoji", null: false
+    t.string "name", null: false
+    t.integer "position", default: 0, null: false
+    t.integer "score", default: 1, null: false
+    t.datetime "updated_at", null: false
+    t.index ["active", "position"], name: "index_forum_reaction_types_on_active_and_position"
+    t.index ["emoji"], name: "index_forum_reaction_types_on_emoji", unique: true
   end
 
   create_table "forum_reactions", force: :cascade do |t|

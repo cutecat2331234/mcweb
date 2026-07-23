@@ -334,6 +334,9 @@
       smilie_created: 表情已创建。
       smilie_updated: 表情已更新。
       smilie_deleted: 表情已删除。
+      reaction_type_created: 反应类型已创建。
+      reaction_type_updated: 反应类型已更新。
+      reaction_type_deleted: 反应类型已删除。
       help_article_created: 帮助文章已创建。
       help_article_updated: 帮助文章已更新。
       help_article_deleted: 帮助文章已删除。
@@ -1502,6 +1505,17 @@
           action_new: 新建表情
           form_edit: 编辑表情
           form_new: 新建表情
+        reaction_types:
+          title: 反应类型
+          description: 管理帖子反应(emoji、名称、加权分值、排序、启用)。配置后将作为反应与声望分的唯一来源。
+          col_emoji: 表情
+          col_name: 名称
+          col_score: 分值
+          col_position: 排序
+          col_active: 启用
+          action_new: 新建反应类型
+          form_edit: 编辑反应类型
+          form_new: 新建反应类型
         help_articles:
           title: 帮助文章
           description: 按分类组织的帮助中心文章。

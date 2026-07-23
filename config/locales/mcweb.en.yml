@@ -334,6 +334,9 @@ en:
       smilie_created: Smilie created.
       smilie_updated: Smilie updated.
       smilie_deleted: Smilie deleted.
+      reaction_type_created: Reaction type created.
+      reaction_type_updated: Reaction type updated.
+      reaction_type_deleted: Reaction type deleted.
       help_article_created: Help article created.
       help_article_updated: Help article updated.
       help_article_deleted: Help article deleted.
@@ -1502,6 +1505,17 @@ en:
           action_new: New smilie
           form_edit: Edit smilie
           form_new: New smilie
+        reaction_types:
+          title: Reaction types
+          description: Manage post reactions (emoji, name, weighted score, order, enable). When configured these become the single source of truth for reactions and reputation scores.
+          col_emoji: Emoji
+          col_name: Name
+          col_score: Score
+          col_position: Order
+          col_active: Active
+          action_new: New reaction type
+          form_edit: Edit reaction type
+          form_new: New reaction type
         help_articles:
           title: Help articles
           description: Help center articles grouped by category.

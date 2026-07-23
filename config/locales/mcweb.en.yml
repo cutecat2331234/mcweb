@@ -337,6 +337,9 @@ en:
       reaction_type_created: Reaction type created.
       reaction_type_updated: Reaction type updated.
       reaction_type_deleted: Reaction type deleted.
+      webhook_subscription_created: Webhook subscription created.
+      webhook_subscription_updated: Webhook subscription updated.
+      webhook_subscription_deleted: Webhook subscription deleted.
       help_article_created: Help article created.
       help_article_updated: Help article updated.
       help_article_deleted: Help article deleted.
@@ -1122,6 +1125,11 @@ en:
         revoked: API key revoked.
         name_required: Please enter a key name.
         user_not_found: No user found with that username.
+      webhook_subscriptions:
+        title: Event webhook subscriptions
+        subtitle: Deliver event-bus (Mcweb::Events) events to an external URL, HMAC-signed
+        form_new: New webhook subscription
+        form_edit: Edit webhook subscription
       common:
         status: Status
         updated: Updated

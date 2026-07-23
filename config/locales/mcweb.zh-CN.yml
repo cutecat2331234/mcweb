@@ -337,6 +337,9 @@
       reaction_type_created: 反应类型已创建。
       reaction_type_updated: 反应类型已更新。
       reaction_type_deleted: 反应类型已删除。
+      webhook_subscription_created: Webhook 订阅已创建。
+      webhook_subscription_updated: Webhook 订阅已更新。
+      webhook_subscription_deleted: Webhook 订阅已删除。
       help_article_created: 帮助文章已创建。
       help_article_updated: 帮助文章已更新。
       help_article_deleted: 帮助文章已删除。
@@ -1122,6 +1125,11 @@
         revoked: API 密钥已吊销。
         name_required: 请填写密钥名称。
         user_not_found: 找不到该用户名。
+      webhook_subscriptions:
+        title: 事件 Webhook 订阅
+        subtitle: 将事件总线（Mcweb::Events）事件推送到外部 URL，支持 HMAC 签名
+        form_new: 新建 Webhook 订阅
+        form_edit: 编辑 Webhook 订阅
       common:
         status: 状态
         updated: 更新时间

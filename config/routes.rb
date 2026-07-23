@@ -265,6 +265,7 @@ Rails.application.routes.draw do
           post :revoke
         end
       end
+      resources :webhook_subscriptions, path: "webhook-subscriptions"
       resources :applications, only: %i[index]
     end
   end

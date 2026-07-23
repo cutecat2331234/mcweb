@@ -79,6 +79,8 @@ export const adminRoutes = {
   emailBan: (id: number) => `/admin/system/email_bans/${id}`,
   systemApiKeys: '/admin/system/api-keys',
   newSystemApiKey: '/admin/system/api-keys/new',
+  systemWebhookSubscriptions: '/admin/system/webhook-subscriptions',
+  newSystemWebhookSubscription: '/admin/system/webhook-subscriptions/new',
   storeProductQuestions: '/admin/store/product_questions',
   storeProducts: '/admin/store/products',
   storeCategories: '/admin/store/categories',

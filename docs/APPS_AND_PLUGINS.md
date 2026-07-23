@@ -106,6 +106,13 @@ Mcweb::Events.publish("forum.post.created", post: post, topic: topic)
 > 论坛事件的中央发出点是 `Community::DispatchForumEventWebhook`：无论是否配置了出站 Webhook，
 > 内部事件总线都会收到事件（出站 Webhook 仍受其 URL/开关门控）。
 
+### 事件 Webhook 订阅（事件总线的出站投递）
+
+除了进程内监听器，事件总线还可将任意 catalog 事件（或 `*` 全部）投递到外部 URL：
+后台 **系统 → 事件 Webhook 订阅**（`Administration::WebhookSubscription`）配置 `event` + `url` + 可选签名密钥，
+每次匹配事件触发时经 `Administration::WebhookFanout` 异步投递（HMAC-SHA256 签名、失败自动重试计数、连续失败自动停用）。
+无订阅时零开销，因此这是给插件/外部系统「订阅核心事件」的即用集成点。
+
 ## 能否「随意扩展」？
 
 **结论：不能随意扩展 Rails 业务逻辑；只能在文档列出的边界内扩展。**

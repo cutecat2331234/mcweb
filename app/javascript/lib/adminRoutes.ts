@@ -137,5 +137,6 @@ export const adminRoutes = {
   featureToggles: '/admin/system/feature-toggles',
   applications: '/admin/system/applications',
   jobs: '/admin/system/jobs',
+  arcoDemo: '/admin/arco-demo',
   site: '/',
 } as const

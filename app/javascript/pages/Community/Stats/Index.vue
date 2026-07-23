@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -41,12 +41,11 @@ defineProps<{
       <h2 class="mb-3 text-sm font-semibold">{{ t('forum.stats.topPosters') }}</h2>
       <ol class="space-y-2">
         <li v-for="(row, i) in topPosters" :key="row.username">
-          <Link :href="row.url" class="flex items-center gap-2 rounded-lg border p-2 text-sm hover:bg-muted/50">
+          <div class="flex items-center gap-2 rounded-lg border p-2 text-sm">
             <span class="w-5 shrink-0 text-center text-xs text-muted-foreground">{{ i + 1 }}</span>
-            <img :src="row.avatar_url" :alt="row.username" class="h-7 w-7 rounded-full" />
-            <span class="min-w-0 flex-1 truncate">{{ row.display_name || row.username }}</span>
+            <UserLink variant="inline" size="sm" :user="row" link-class="min-w-0 flex-1 truncate" name-class="truncate" />
             <span class="text-xs font-medium">{{ row.value }}</span>
-          </Link>
+          </div>
         </li>
       </ol>
     </section>
@@ -55,12 +54,11 @@ defineProps<{
       <h2 class="mb-3 text-sm font-semibold">{{ t('forum.stats.mostReacted') }}</h2>
       <ol class="space-y-2">
         <li v-for="(row, i) in mostReacted" :key="row.username">
-          <Link :href="row.url" class="flex items-center gap-2 rounded-lg border p-2 text-sm hover:bg-muted/50">
+          <div class="flex items-center gap-2 rounded-lg border p-2 text-sm">
             <span class="w-5 shrink-0 text-center text-xs text-muted-foreground">{{ i + 1 }}</span>
-            <img :src="row.avatar_url" :alt="row.username" class="h-7 w-7 rounded-full" />
-            <span class="min-w-0 flex-1 truncate">{{ row.display_name || row.username }}</span>
+            <UserLink variant="inline" size="sm" :user="row" link-class="min-w-0 flex-1 truncate" name-class="truncate" />
             <span class="text-xs font-medium">{{ row.value }}</span>
-          </Link>
+          </div>
         </li>
       </ol>
     </section>
@@ -69,11 +67,10 @@ defineProps<{
       <h2 class="mb-3 text-sm font-semibold">{{ t('forum.stats.newestMembers') }}</h2>
       <ol class="space-y-2">
         <li v-for="row in newestMembers" :key="row.username">
-          <Link :href="row.url" class="flex items-center gap-2 rounded-lg border p-2 text-sm hover:bg-muted/50">
-            <img :src="row.avatar_url" :alt="row.username" class="h-7 w-7 rounded-full" />
-            <span class="min-w-0 flex-1 truncate">{{ row.display_name || row.username }}</span>
+          <div class="flex items-center gap-2 rounded-lg border p-2 text-sm">
+            <UserLink variant="inline" size="sm" :user="row" link-class="min-w-0 flex-1 truncate" name-class="truncate" />
             <span class="text-xs text-muted-foreground">{{ row.value }}</span>
-          </Link>
+          </div>
         </li>
       </ol>
     </section>

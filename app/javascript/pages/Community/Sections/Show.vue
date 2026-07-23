@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import { Head } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
@@ -16,6 +16,7 @@ import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import ListFilterBar from '@/components/portal/ListFilterBar.vue'
 import { routes } from '@/lib/routes'
 import { appendQueryParams } from '@/lib/utils'
+import { useBulkModerate } from '@/lib/useBulkModerate'
 
 defineOptions({ layout: PortalLayout })
 
@@ -100,18 +101,7 @@ function markAllRead() {
   router.patch(appendQueryParams(props.section.mark_all_read_url, sectionListParams()))
 }
 
-const selectedIds = ref<string[]>([])
-
-function bulkModerate(action: string) {
-  if (!props.bulkModerateUrl || selectedIds.value.length === 0) return
-  router.patch(props.bulkModerateUrl, {
-    topic_ids: selectedIds.value,
-    action_type: action,
-    return_to: window.location.pathname + window.location.search,
-  }, {
-    onSuccess: () => { selectedIds.value = [] },
-  })
-}
+const { selectedIds, bulkModerate } = useBulkModerate(() => props.bulkModerateUrl)
 </script>
 
 <template>

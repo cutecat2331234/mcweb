@@ -20,6 +20,7 @@ import Button from '@/components/ui/Button.vue'
 import ImageUploadButton from '@/components/portal/ImageUploadButton.vue'
 import { markdownToHtml, docToMarkdown } from '@/lib/richTextMarkdown'
 import { routes } from '@/lib/routes'
+import { csrfHeaders } from '@/lib/csrf'
 
 const props = withDefaults(defineProps<{
   modelValue: string
@@ -115,12 +116,11 @@ async function uploadImageFile(file: File) {
   if (!canUploadImages.value || uploadingImage.value) return
   uploadingImage.value = true
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
     const form = new FormData()
     form.append('file', file)
     const res = await fetch(routes.forumUpload, {
       method: 'POST',
-      headers: { 'X-CSRF-Token': token || '', Accept: 'application/json' },
+      headers: { ...csrfHeaders(), Accept: 'application/json' },
       body: form,
       credentials: 'same-origin',
     })

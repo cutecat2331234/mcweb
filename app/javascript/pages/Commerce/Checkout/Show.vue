@@ -20,6 +20,7 @@ import Radio from '@/components/ui/Radio.vue'
 import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
 import { resolveStoreFeatures } from '@/lib/storeFeatures'
+import { postJson, HttpError } from '@/lib/http'
 
 defineOptions({ layout: PortalLayout })
 
@@ -192,18 +193,11 @@ async function refreshStoreCredit() {
   if (!props.storeCreditBalanceCents) return
 
   try {
-    const response = await fetch(props.previewStoreCreditUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
-      },
-      body: JSON.stringify({
-        gift_wrap: form.checkout.gift_wrap,
-      }),
-    })
-    const data = await response.json()
-    if (response.ok && data.store_credit_amount_cents > 0) {
+    const data = await postJson<{ store_credit_amount_cents: number; store_credit_amount_label: string; total_label: string }>(
+      props.previewStoreCreditUrl,
+      { gift_wrap: form.checkout.gift_wrap },
+    )
+    if (data.store_credit_amount_cents > 0) {
       storeCreditLabel.value = data.store_credit_amount_label
       totalLabel.value = data.total_label
     }
@@ -222,29 +216,24 @@ async function previewGiftCard() {
 
   previewingGiftCard.value = true
   try {
-    const response = await fetch(props.previewGiftCardUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
-      },
-      body: JSON.stringify({
+    const data = await postJson<{ code: string; gift_card_amount_label: string; total_label: string }>(
+      props.previewGiftCardUrl,
+      {
         code: form.checkout.gift_card_code,
         coupon_code: form.checkout.coupon_code,
         gift_wrap: form.checkout.gift_wrap,
-      }),
-    })
-    const data = await response.json()
-    if (response.ok) {
-      giftCardMessage.value = t('commerce.checkout.giftCardApplied', { code: data.code })
-      giftCardLabel.value = data.gift_card_amount_label
-      totalLabel.value = data.total_label
-      await refreshStoreCredit()
+      },
+    )
+    giftCardMessage.value = t('commerce.checkout.giftCardApplied', { code: data.code })
+    giftCardLabel.value = data.gift_card_amount_label
+    totalLabel.value = data.total_label
+    await refreshStoreCredit()
+  } catch (error) {
+    if (error instanceof HttpError) {
+      giftCardError.value = (error.body as { error?: string })?.error || t('commerce.checkout.invalidGiftCard')
     } else {
-      giftCardError.value = data.error || t('commerce.checkout.invalidGiftCard')
+      giftCardError.value = t('commerce.checkout.giftCardVerifyFailed')
     }
-  } catch {
-    giftCardError.value = t('commerce.checkout.giftCardVerifyFailed')
   } finally {
     previewingGiftCard.value = false
   }
@@ -262,34 +251,32 @@ async function previewCoupon() {
 
   previewing.value = true
   try {
-    const response = await fetch(props.previewCouponUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-Token': document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || '',
-      },
-      body: JSON.stringify({
-        code: form.checkout.coupon_code,
-        gift_wrap: form.checkout.gift_wrap,
-      }),
+    const data = await postJson<{
+      code: string
+      discount_label: string
+      total_label: string
+      min_amount_label?: string | null
+      amount_remaining_label?: string | null
+    }>(props.previewCouponUrl, {
+      code: form.checkout.coupon_code,
+      gift_wrap: form.checkout.gift_wrap,
     })
-    const data = await response.json()
-    if (response.ok) {
-      couponMessage.value = t('commerce.checkout.couponApplied', { code: data.code })
-      discountLabel.value = data.discount_label
-      totalLabel.value = data.total_label
-      couponMinAmountHint.value = data.min_amount_label ? t('commerce.checkout.minSpend', { amount: data.min_amount_label }) : null
-      couponRemainingHint.value = data.amount_remaining_label ? t('commerce.checkout.amountRemaining', { amount: data.amount_remaining_label }) : null
-      if (form.checkout.gift_card_code.trim()) {
-        await previewGiftCard()
-      } else {
-        await refreshStoreCredit()
-      }
+    couponMessage.value = t('commerce.checkout.couponApplied', { code: data.code })
+    discountLabel.value = data.discount_label
+    totalLabel.value = data.total_label
+    couponMinAmountHint.value = data.min_amount_label ? t('commerce.checkout.minSpend', { amount: data.min_amount_label }) : null
+    couponRemainingHint.value = data.amount_remaining_label ? t('commerce.checkout.amountRemaining', { amount: data.amount_remaining_label }) : null
+    if (form.checkout.gift_card_code.trim()) {
+      await previewGiftCard()
     } else {
-      couponError.value = data.error || t('commerce.checkout.invalidCoupon')
+      await refreshStoreCredit()
     }
-  } catch {
-    couponError.value = t('commerce.checkout.couponVerifyFailed')
+  } catch (error) {
+    if (error instanceof HttpError) {
+      couponError.value = (error.body as { error?: string })?.error || t('commerce.checkout.invalidCoupon')
+    } else {
+      couponError.value = t('commerce.checkout.couponVerifyFailed')
+    }
   } finally {
     previewing.value = false
   }

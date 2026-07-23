@@ -15,6 +15,7 @@ import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
 import { confirm } from '@/lib/useConfirm'
 import { routes } from '@/lib/routes'
+import { csrfHeaders } from '@/lib/csrf'
 
 defineOptions({ layout: PortalLayout })
 
@@ -101,13 +102,12 @@ async function previewCoupon() {
   couponError.value = ''
   couponPreview.value = null
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
     const res = await fetch(props.previewCouponUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'X-CSRF-Token': token || '',
+        ...csrfHeaders(),
       },
       body: JSON.stringify({ code: couponCode.value.trim() }),
       credentials: 'same-origin',
@@ -134,13 +134,12 @@ async function previewGiftCard() {
   giftCardError.value = ''
   giftCardPreview.value = null
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
     const res = await fetch(props.previewGiftCardUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'X-CSRF-Token': token || '',
+        ...csrfHeaders(),
       },
       body: JSON.stringify({
         code: giftCardCode.value.trim(),

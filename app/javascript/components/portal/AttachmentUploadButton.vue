@@ -4,6 +4,7 @@ import { usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
+import { csrfHeaders } from '@/lib/csrf'
 
 export type PendingAttachment = {
   id: number
@@ -44,12 +45,11 @@ async function onFileChange(event: Event) {
   uploading.value = true
   error.value = ''
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
     const form = new FormData()
     form.append('file', file)
     const res = await fetch(routes.forumAttachments, {
       method: 'POST',
-      headers: { 'X-CSRF-Token': token || '', Accept: 'application/json' },
+      headers: { ...csrfHeaders(), Accept: 'application/json' },
       body: form,
       credentials: 'same-origin',
     })

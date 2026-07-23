@@ -1,0 +1,46 @@
+```yaml
+title:
+  zh-CN: 基本用法
+  en-US: Basic Usage
+```
+
+## zh-CN
+
+通知提醒框的基本用法。
+
+---
+
+## en-US
+
+Basic usage of notification.
+
+---
+
+```vue
+<template>
+  <a-space>
+    <a-button
+      type="primary"
+      @click="
+        Notification.info({
+          title: 'Notification',
+          content: 'This is a notification!',
+        })"
+      >
+      Open Notification
+    </a-button>
+    <a-button @click="handleNotification"> Open Notification </a-button>
+  </a-space>
+</template>
+
+<script setup lang="ts">
+import { Notification } from '@arco-design/web-vue';
+
+const handleNotification = () => {
+  Notification.info({
+    title: 'Notification',
+    content: 'This is a notification!',
+  });
+};
+</script>
+```

@@ -1,0 +1,206 @@
+import { ArcoCalendarLang, ArcoLang } from '../interface';
+
+const calendarLang: ArcoCalendarLang = {
+  formatYear: 'YYYY',
+  formatMonth: 'MMM YYYY',
+  today: 'Oggi',
+  view: {
+    month: 'Mese',
+    year: 'Anno',
+    week: 'Settimana',
+    day: 'Giorno',
+  },
+  month: {
+    long: {
+      January: 'Gennaio',
+      February: 'Febbraio',
+      March: 'Marzo',
+      April: 'Aprile',
+      May: 'Maggio',
+      June: 'Giugno',
+      July: 'Luglio',
+      August: 'Agosto',
+      September: 'Settembre',
+      October: 'Ottobre',
+      November: 'Novembre',
+      December: 'Dicembre',
+    },
+    short: {
+      January: 'Gen',
+      February: 'Feb',
+      March: 'Mar',
+      April: 'Apr',
+      May: 'Mag',
+      June: 'Giu',
+      July: 'Lug',
+      August: 'Ago',
+      September: 'Set',
+      October: 'Ott',
+      November: 'Nov',
+      December: 'Dic',
+    },
+  },
+  week: {
+    long: {
+      self: 'Settimana',
+      monday: 'Lunedì',
+      tuesday: 'Martedì',
+      wednesday: 'Mercoledì',
+      thursday: 'Giovedì',
+      friday: 'Venerdì',
+      saturday: 'Sabato',
+      sunday: 'Domenica',
+    },
+    short: {
+      self: 'Settimana',
+      monday: 'Lun',
+      tuesday: 'Mar',
+      wednesday: 'Mer',
+      thursday: 'Gio',
+      friday: 'Ven',
+      saturday: 'Sab',
+      sunday: 'Dom',
+    },
+  },
+};
+
+const lang: ArcoLang = {
+  locale: 'it-IT',
+  empty: {
+    description: 'Nessun dato',
+  },
+  drawer: {
+    okText: 'OK',
+    cancelText: 'Annulla',
+  },
+  popconfirm: {
+    okText: 'OK',
+    cancelText: 'Annulla',
+  },
+  modal: {
+    okText: 'OK',
+    cancelText: 'Annulla',
+  },
+  pagination: {
+    goto: 'vai a',
+    page: '',
+    countPerPage: '/ pagina',
+    total: 'Totale {0}',
+  },
+  table: {
+    okText: 'OK',
+    resetText: 'Ripristina',
+  },
+  upload: {
+    start: 'Inizio',
+    cancel: 'Annulla',
+    delete: 'Elimina',
+    retry: 'Fare clic per riprovare',
+    buttonText: 'Fare clic per caricare',
+    preview: 'Anteprima',
+    drag: 'Fare clic o trascinare i file da caricare qui',
+    dragHover: 'Libera il file e inizia a caricare',
+    error: 'Caricamento non riuscito',
+  },
+  calendar: calendarLang,
+  datePicker: {
+    view: calendarLang.view,
+    month: calendarLang.month,
+    week: calendarLang.week,
+    placeholder: {
+      date: 'Seleziona una data',
+      week: 'Seleziona la settimana',
+      month: 'Seleziona un mese',
+      year: 'Seleziona un anno',
+      quarter: 'Selezionare il trimestre',
+      time: 'Seleziona un orario',
+    },
+    rangePlaceholder: {
+      date: ['Data di inizio', 'Data di fine'],
+      week: ['Settimana di inizio', 'Settimana di fine'],
+      month: ['Mese di inizio', 'Mese di fine'],
+      year: ['Anno di inizio', 'Anno di fine'],
+      quarter: ['Trimestre di inizio', 'Trimestre di fine'],
+
+      time: ['Orario di inizio', 'Orario di chiusura'],
+    },
+    selectTime: 'Seleziona un orario',
+    today: 'Oggi',
+    now: 'Ora',
+    ok: 'OK',
+  },
+  image: {
+    loading: 'Caricamento in corso',
+  },
+  imagePreview: {
+    fullScreen: 'A schermo intero',
+    rotateRight: 'Ruota a destra',
+    rotateLeft: 'Ruotare a sinistra',
+    zoomIn: 'Ingrandire',
+    zoomOut: 'Rimpicciolire',
+    originalSize: 'Misura originale',
+  },
+  typography: {
+    copy: 'Copia',
+    copied: 'Copia effettuata',
+    edit: 'Modifica',
+    collapse: 'Piega',
+    expand: 'Espandi',
+  },
+  form: {
+    validateMessages: {
+      required: '#{field} è obbligatorio',
+      type: {
+        string: '#{field} non è un testo valido',
+        number: '#{field} non è un numero valido',
+        boolean: '#{field} non è un valore booleano valido',
+        array: '#{field} non è un array valido',
+        object: '#{field} non è un oggetto valido',
+        url: '#{field} non è un URL valido',
+        email: '#{field} non è un indirizzo email valido',
+        ip: '#{field} non è un indirizzo IP valido',
+      },
+      number: {
+        min: '`#{value}` è inferiore al valore minimo `#{min}`',
+        max: '`#{value}` è superiore al valore massimo `#{max}`',
+        equal: '`#{value}` non è uguale a `#{equal}`',
+        range: "`#{value}` non rientra nell'intervallo `#{min} ~ #{max}`",
+        positive: '`#{value}` non è un numero positivo',
+        negative: '`#{value}` non è un numero negativo',
+      },
+      array: {
+        length: 'Il numero di `#{field}` non è uguale a #{length}',
+        minLength: 'Il numero di `#{field}` deve essere almeno #{minLength}',
+        maxLength:
+          'Il numero di `#{field}` deve essere al massimo #{maxLength}',
+        includes: '#{field} non contiene #{includes}',
+        deepEqual: '#{field} non è uguale a #{deepEqual}',
+        empty: '`#{field}` non è un array vuoto',
+      },
+      string: {
+        minLength: 'Il numero di caratteri deve essere almeno #{minLength}',
+        maxLength: 'Il numero di caratteri deve essere al massimo #{maxLength}',
+        length: 'Il numero di caratteri deve essere #{length}',
+        match: '`#{value}` non corrisponde al pattern #{pattern}',
+        uppercase: '`#{value}` deve essere tutto in maiuscolo',
+        lowercase: '`#{value}` deve essere tutto in minuscolo',
+      },
+      object: {
+        deepEqual: '`#{field}` non è uguale al valore previsto',
+        hasKeys: '`#{field}` non contiene i campi obbligatori',
+        empty: '`#{field}` non è un oggetto',
+      },
+      boolean: {
+        true: 'Il valore atteso è `true`',
+        false: 'Il valore atteso è `false`',
+      },
+    },
+  },
+  colorPicker: {
+    history: 'Colori storici',
+    preset: 'Colori preimpostati dal sistema',
+    empty: 'Nessun dato',
+  },
+};
+
+export default lang;

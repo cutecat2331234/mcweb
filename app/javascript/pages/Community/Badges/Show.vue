@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import Badge from '@/components/ui/Badge.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -60,16 +60,14 @@ const props = defineProps<{
   <h2 class="mb-3 text-sm font-semibold">{{ t('forum.badges.holders') }}</h2>
   <div v-if="holders.length" class="divide-y rounded-lg border">
     <div v-for="holder in holders" :key="holder.username" class="flex items-center justify-between gap-3 px-4 py-3">
-      <Link :href="holder.profile_url" class="flex items-center gap-2 hover:underline">
-        <img
-          v-if="holder.avatar_url"
-          :src="holder.avatar_url"
-          :alt="holder.username"
-          class="h-8 w-8 rounded-full"
-        />
-        <span class="font-medium">{{ holder.display_name || holder.username }}</span>
-        <span class="text-sm text-muted-foreground">@{{ holder.username }}</span>
-      </Link>
+      <UserLink
+        variant="inline"
+        size="md"
+        :user="holder"
+        handle
+        link-class="hover:underline"
+        name-class="font-medium"
+      />
       <span class="text-xs text-muted-foreground">{{ holder.granted_at }}</span>
     </div>
   </div>

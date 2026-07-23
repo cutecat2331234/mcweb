@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -10,6 +9,7 @@ import TopicListTable, { type TopicListItem } from '@/components/portal/TopicLis
 import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
+import { useBulkModerate } from '@/lib/useBulkModerate'
 
 defineOptions({ layout: PortalLayout })
 
@@ -24,21 +24,10 @@ const props = defineProps<{
   bulkModerateUrl?: string | null
 }>()
 
-const selectedIds = ref<string[]>([])
+const { selectedIds, bulkModerate } = useBulkModerate(() => props.bulkModerateUrl)
 
 function changeSort(value: string) {
   router.get(routes.forumAssigned, { sort: value }, { preserveState: true })
-}
-
-function bulkModerate(action: string) {
-  if (!props.bulkModerateUrl || selectedIds.value.length === 0) return
-  router.patch(props.bulkModerateUrl, {
-    topic_ids: selectedIds.value,
-    action_type: action,
-    return_to: window.location.pathname + window.location.search,
-  }, {
-    onSuccess: () => { selectedIds.value = [] },
-  })
 }
 </script>
 

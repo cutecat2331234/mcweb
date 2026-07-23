@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Badge from '@/components/ui/Badge.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -35,28 +35,27 @@ defineProps<{
   <PageHeader :title="t('forum.staff.title')" :subtitle="t('forum.staff.subtitle')" />
 
   <div v-if="staff.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-    <Link
+    <div
       v-for="member in staff"
       :key="member.username"
-      :href="member.profile_url"
-      class="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50"
+      class="flex items-center gap-3 rounded-lg border p-3"
     >
       <div class="relative shrink-0">
-        <img :src="member.avatar_url" :alt="member.username" class="h-12 w-12 rounded-full" />
+        <UserLink variant="avatar" size="xl" :user="member" />
         <span
           v-if="member.online"
-          class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-emerald-500"
+          class="pointer-events-none absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-emerald-500"
           :title="t('forum.staff.online')"
         />
       </div>
       <div class="min-w-0 flex-1">
-        <p class="truncate font-medium">{{ member.display_name || member.username }}</p>
+        <UserLink variant="name" :user="member" link-class="truncate font-medium" />
         <p v-if="member.title" class="truncate text-xs text-muted-foreground">{{ member.title }}</p>
         <div class="mt-1 flex flex-wrap gap-1">
           <Badge v-for="mod in member.modules" :key="mod" variant="secondary" class="text-[10px]">{{ mod }}</Badge>
         </div>
       </div>
-    </Link>
+    </div>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{{ t('forum.staff.empty') }}</p>
 </template>

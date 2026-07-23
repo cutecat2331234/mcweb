@@ -8,7 +8,10 @@ CONFIG_DIR="/etc/mcweb"
 DATA_DIR="/var/lib/mcweb"
 LOG_DIR="/var/log/mcweb"
 BACKUP_DIR="/var/backups/mcweb"
-RUBY_VERSION="4.0.5"
+RUBY_VERSION="4.0.6"
+NGINX_SITE="/etc/nginx/sites-available/mcweb"
+NGINX_TEMPLATE="config/templates/mcweb.nginx.conf"
+ACME_WEBROOT="/var/www/certbot"
 
 usage() {
   cat <<EOF
@@ -64,7 +67,7 @@ install_dependencies() {
       apt-get update -qq
       DEBIAN_FRONTEND=noninteractive apt-get install -y \
         build-essential libpq-dev libyaml-dev libssl-dev zlib1g-dev \
-        libvips-dev imagemagick curl git caddy nodejs
+        libvips-dev imagemagick curl git nginx certbot python3-certbot-nginx openssl nodejs
       install_postgresql
       ;;
     *)
@@ -119,10 +122,81 @@ write_systemd_units() {
   systemctl daemon-reload
 }
 
-write_caddyfile() {
-  install -d -m 755 /etc/caddy
-  if [[ ! -f /etc/caddy/Caddyfile ]]; then
-    install -m 644 config/templates/Caddyfile /etc/caddy/Caddyfile
+make_selfsigned() {
+  # Throwaway self-signed cert so nginx can boot before the real Let's Encrypt
+  # certificate exists (its 443 server block references the cert at startup).
+  local domain="$1" dir="/etc/letsencrypt/live/$1"
+  install -d -m 755 "${dir}"
+  openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+    -keyout "${dir}/privkey.pem" -out "${dir}/fullchain.pem" \
+    -subj "/CN=${domain}" >/dev/null 2>&1 || true
+}
+
+request_certificate() {
+  local domain="$1" email="${MCWEB_ACME_EMAIL:-}"
+  local email_arg="--register-unsafely-without-email"
+  [[ -n "${email}" ]] && email_arg="--email ${email}"
+
+  # certbot already manages this domain -> renewals handled by certbot.timer.
+  if [[ -f "/etc/letsencrypt/renewal/${domain}.conf" ]]; then
+    echo "certbot 已管理 ${domain} 证书，续期交由 certbot.timer。"
+    systemctl enable certbot.timer >/dev/null 2>&1 || true
+    return 0
+  fi
+
+  # Bootstrap: nginx will not start while 443 points at a missing cert, and the
+  # HTTP-01 challenge needs nginx already serving :80. Break the cycle with a
+  # temporary self-signed cert, start nginx, then let certbot replace it.
+  make_selfsigned "${domain}"
+  systemctl enable nginx >/dev/null 2>&1 || true
+  if nginx -t; then
+    systemctl reload nginx 2>/dev/null || systemctl restart nginx || true
+  fi
+
+  # Drop the throwaway lineage so certbot writes a clean one.
+  rm -rf "/etc/letsencrypt/live/${domain}" \
+         "/etc/letsencrypt/archive/${domain}" \
+         "/etc/letsencrypt/renewal/${domain}.conf"
+
+  echo "申请 Let's Encrypt 证书 (${domain})…"
+  # shellcheck disable=SC2086
+  if certbot certonly --webroot -w "${ACME_WEBROOT}" -d "${domain}" \
+       ${email_arg} --agree-tos --non-interactive --keep-until-expiring \
+       --deploy-hook "systemctl reload nginx"; then
+    systemctl reload nginx 2>/dev/null || true
+    echo "证书申请成功，HTTPS 已启用。"
+  else
+    make_selfsigned "${domain}"   # keep nginx bootable after a failed request
+    systemctl reload nginx 2>/dev/null || true
+    echo "⚠ 证书申请失败（常见原因：${domain} 未解析到本机、80/443 端口未放行）。" >&2
+    echo "  HTTP 已可用（HTTPS 暂用临时自签证书，浏览器会告警）。解析域名并放行端口后，" >&2
+    echo "  重跑 bin/install，或手动执行：" >&2
+    echo "  sudo certbot certonly --webroot -w ${ACME_WEBROOT} -d ${domain} ${email_arg} --agree-tos --deploy-hook 'systemctl reload nginx'" >&2
+  fi
+  systemctl enable certbot.timer >/dev/null 2>&1 || true
+}
+
+write_nginx_conf() {
+  local domain="${MCWEB_DOMAIN:-}"
+  install -d -m 755 "${ACME_WEBROOT}"
+
+  if [[ -z "${domain}" ]]; then
+    echo "未设置 MCWEB_DOMAIN，跳过 nginx 站点与证书自动配置。" >&2
+    echo "配置域名后：把 ${NGINX_TEMPLATE} 中的 example.com 替换为域名，复制到 ${NGINX_SITE}，" >&2
+    echo "ln 到 /etc/nginx/sites-enabled/，再运行 certbot 申请证书。" >&2
+    return 0
+  fi
+
+  sed "s/example\.com/${domain}/g" "${NGINX_TEMPLATE}" > "${NGINX_SITE}"
+  ln -sfn "${NGINX_SITE}" /etc/nginx/sites-enabled/mcweb
+  rm -f /etc/nginx/sites-enabled/default   # stop the stock site shadowing ours
+
+  request_certificate "${domain}"
+
+  if nginx -t; then
+    systemctl reload nginx 2>/dev/null || systemctl restart nginx || true
+  else
+    echo "nginx 配置校验失败，请检查 ${NGINX_SITE}。" >&2
   fi
 }
 
@@ -152,7 +226,7 @@ main() {
   deploy_release
   configure_app
   write_systemd_units
-  write_caddyfile
+  write_nginx_conf
 
   sudo -u "${APP_USER}" bash -lc "
     export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\"
@@ -163,7 +237,7 @@ main() {
   "
 
   echo "安装完成。请访问 https://\${MCWEB_DOMAIN:-your-domain}/setup 完成初始化。"
-  echo "服务启动: systemctl enable --now mcweb-web mcweb-worker caddy"
+  echo "服务启动: systemctl enable --now mcweb-web mcweb-worker nginx"
 }
 
 main "$@"

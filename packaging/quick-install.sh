@@ -91,7 +91,7 @@ restart_services() {
     fi
     echo "已重启 mcweb-web / mcweb-worker"
   else
-    echo "提示: systemctl enable --now mcweb-web mcweb-worker caddy"
+    echo "提示: systemctl enable --now mcweb-web mcweb-worker nginx"
   fi
 }
 

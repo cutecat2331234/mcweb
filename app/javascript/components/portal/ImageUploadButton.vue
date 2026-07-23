@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Button from '@/components/ui/Button.vue'
 import { routes } from '@/lib/routes'
+import { csrfHeaders } from '@/lib/csrf'
 
 const { t } = useI18n()
 
@@ -30,13 +31,12 @@ async function onFileChange(event: Event) {
   uploading.value = true
   error.value = ''
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
     for (const file of files) {
       const form = new FormData()
       form.append('file', file)
       const res = await fetch(routes.forumUpload, {
         method: 'POST',
-        headers: { 'X-CSRF-Token': token || '', Accept: 'application/json' },
+        headers: { ...csrfHeaders(), Accept: 'application/json' },
         body: form,
         credentials: 'same-origin',
       })

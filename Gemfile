@@ -1,8 +1,8 @@
 source "https://rubygems.org"
 
-ruby ">= 3.4.9"
+ruby ">= 4.0.6"
 
-gem "rails", "~> 8.1.3"
+gem "rails", "~> 8.1"
 gem "propshaft"
 gem "pg", "~> 1.1"
 gem "puma", ">= 5.0"
@@ -14,7 +14,7 @@ gem "jbuilder"
 
 gem "bcrypt", "~> 3.1.7"
 gem "view_component", "~> 4.12"
-gem "pagy", "~> 43.5"
+gem "pagy", "~> 43.6"
 gem "rotp", "~> 6.3"
 gem "rqrcode", "~> 3.2"
 gem "sanitize", "~> 7.0"
@@ -22,7 +22,7 @@ gem "diff-lcs", "~> 2.0"
 gem "lockbox", "~> 2.2"
 gem "sidekiq", "~> 8.0"
 gem "sidekiq-cron", "~> 2.0"
-gem "aasm", "~> 5.5"
+gem "aasm", "~> 6.0"
 gem "csv"
 gem "ostruct"
 gem "rubyzip", "~> 3.4"
@@ -58,4 +58,4 @@ group :test do
 end
 
 gem "vite_rails", "~> 3.11"
-gem "inertia_rails", "~> 3.21"
+gem "inertia_rails", "~> 3.22"

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -11,6 +11,7 @@ import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
 import ListFilterBar from '@/components/portal/ListFilterBar.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
+import { useBulkModerate } from '@/lib/useBulkModerate'
 
 defineOptions({ layout: PortalLayout })
 
@@ -28,7 +29,7 @@ const props = defineProps<{
   bulkModerateUrl?: string | null
 }>()
 
-const selectedIds = ref<string[]>([])
+const { selectedIds, bulkModerate } = useBulkModerate(() => props.bulkModerateUrl)
 
 const sortOptions = computed(() => [
   { value: 'activity', label: t('forum.latest.sortActivity') },
@@ -51,17 +52,6 @@ function removeFilter(chip: { param: string }) {
     sort: chip.param === 'sort' ? undefined : (props.sort === 'activity' ? undefined : props.sort),
     filter: chip.param === 'filter' ? undefined : (props.filter || undefined),
   }, { preserveState: true })
-}
-
-function bulkModerate(action: string) {
-  if (!props.bulkModerateUrl || selectedIds.value.length === 0) return
-  router.patch(props.bulkModerateUrl, {
-    topic_ids: selectedIds.value,
-    action_type: action,
-    return_to: window.location.pathname + window.location.search,
-  }, {
-    onSuccess: () => { selectedIds.value = [] },
-  })
 }
 </script>
 

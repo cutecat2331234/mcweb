@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input.vue'
 import Alert from '@/components/ui/Alert.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
 import { useConversationTyping, type LiveMessage } from '@/lib/useConversationTyping'
@@ -295,8 +296,7 @@ function submit() {
     <p class="mb-2 text-xs font-semibold text-muted-foreground">{{ t('forum.messages.groupMembers') }}</p>
     <div class="flex flex-wrap gap-2">
       <span v-for="p in participants" :key="p.username" class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs">
-        <img :src="p.avatar_url" :alt="p.username" class="h-4 w-4 rounded-full" />
-        {{ p.username }}
+        <UserLink variant="inline" size="xs" :username="p.username" :avatar-url="p.avatar_url" avatar-class="h-4 w-4" name-class="text-xs" />
         <span v-if="p.is_creator" class="text-muted-foreground">{{ t('forum.messages.groupOwner') }}</span>
         <button
           v-if="p.remove_url"

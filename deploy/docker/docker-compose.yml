@@ -15,7 +15,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     restart: unless-stopped
     volumes:
       - redisdata:/data
@@ -65,7 +65,38 @@ services:
       - mcweb_data:/var/lib/mcweb
     command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
 
+  # Reverse proxy + TLS termination. Replaces the former Caddy service.
+  # First-time certificate issuance: run ./nginx/init-letsencrypt.sh once.
+  nginx:
+    image: nginx:1.29-alpine
+    restart: unless-stopped
+    depends_on:
+      - mcweb-web
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/mcweb.conf:/etc/nginx/conf.d/default.conf:ro
+      - letsencrypt:/etc/letsencrypt:ro
+      - certbot_www:/var/www/certbot:ro
+    # Reload every 6h so renewed certificates are picked up without a restart.
+    command: >-
+      /bin/sh -c "while :; do sleep 6h & wait $${!}; nginx -s reload; done & nginx -g 'daemon off;'"
+
+  # Automatic Let's Encrypt renewal (webroot challenge shared via certbot_www).
+  certbot:
+    image: certbot/certbot:latest
+    restart: unless-stopped
+    volumes:
+      - letsencrypt:/etc/letsencrypt
+      - certbot_www:/var/www/certbot
+    # Attempt renewal twice a day (Let's Encrypt's recommended cadence).
+    entrypoint: >-
+      /bin/sh -c "trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done"
+
 volumes:
   pgdata:
   redisdata:
   mcweb_data:
+  letsencrypt:
+  certbot_www:

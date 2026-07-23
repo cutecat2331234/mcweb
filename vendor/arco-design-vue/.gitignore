@@ -1,0 +1,14 @@
+.idea/
+# .vscode/
+
+node_modules/
+storybook-static/
+**/.DS_Store
+
+package-lock.json
+lerna-debug.log
+npm-debug.log
+pnpm-debug.log
+
+package-lock.json
+yarn.lock

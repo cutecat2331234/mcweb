@@ -1,0 +1,59 @@
+/*
+ * Admin-only stylesheet — imported ONLY from entrypoints/admin.ts.
+ *
+ * The public-facing portal (entrypoints/inertia.ts + styles/portal.css, built on
+ * shadcn-vue / reka-ui) is intentionally left untouched: Element Plus never ships
+ * into the front-end bundle and can never pollute the portal design system.
+ *
+ * NOTE ON TAILWIND: portal.css already owns the single `@import "tailwindcss"`
+ * root for the admin entry (it defines every shadcn design token + the base
+ * layer that AdminLayout relies on, and is imported before this file in
+ * admin.ts). We deliberately do NOT re-import "tailwindcss" here — a second root
+ * would emit a duplicate copy of preflight + all utilities. This file therefore
+ * only layers Element Plus on top.
+ *
+ * Element Plus CSS is UNLAYERED, so under Tailwind 4 it naturally outranks
+ * Tailwind's `@layer base` preflight (layered rules lose to unlayered ones),
+ * which dissolves the classic reset-vs-component-library conflict without any
+ * extra plumbing.
+ */
+
+/* Element Plus base theme + dark-mode CSS variables (drives html.dark → EP dark). */
+@import "element-plus/dist/index.css";
+@import "element-plus/theme-chalk/dark/css-vars.css";
+
+/* plus-pro-components aggregate styles (plugin registered in admin.ts). */
+@import "plus-pro-components/index.css";
+
+/*
+ * Brand alignment: map Element Plus' primary ramp onto the project palette so EP
+ * controls and the surrounding shadcn UI read as one identity.
+ *
+ * Light mode mirrors the shadcn --primary indigo/blue; dark mode mirrors the
+ * project's cyan accent (same sky-400 used by the Inertia progress bar). The
+ * light-N / dark-2 steps are the standard EP white/black mixes of the base hue
+ * so hover / active / disabled shades stay on-brand instead of EP default blue.
+ */
+:root {
+  --el-color-primary: #2563eb;
+  --el-color-primary-light-3: #6692f1;
+  --el-color-primary-light-5: #92b1f5;
+  --el-color-primary-light-7: #bed0f9;
+  --el-color-primary-light-8: #d3e0fb;
+  --el-color-primary-light-9: #e9effd;
+  --el-color-primary-dark-2: #1e4fbc;
+
+  /* Round corners to match shadcn --radius (0.625rem). */
+  --el-border-radius-base: 8px;
+  --el-border-radius-small: 6px;
+}
+
+.dark {
+  --el-color-primary: #38bdf8;
+  --el-color-primary-light-3: #2f9fd4;
+  --el-color-primary-light-5: #268bb8;
+  --el-color-primary-light-7: #1d6a8f;
+  --el-color-primary-light-8: #185a7a;
+  --el-color-primary-light-9: #144b66;
+  --el-color-primary-dark-2: #7dd3fc;
+}

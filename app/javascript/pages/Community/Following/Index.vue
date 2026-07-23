@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import Button from '@/components/ui/Button.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
@@ -81,11 +82,9 @@ function unfollow(url: string) {
   <section v-else>
     <div v-if="users.length" class="space-y-3">
       <div v-for="user in users" :key="user.username" class="flex items-center gap-3 rounded-lg border p-4">
-        <img :src="user.avatar_url" :alt="user.username" class="h-10 w-10 rounded-full" />
+        <UserLink variant="avatar" size="lg" :user="user" />
         <div class="min-w-0 flex-1">
-          <Link :href="user.profile_url" class="font-medium hover:underline">
-            {{ user.display_name || user.username }}
-          </Link>
+          <UserLink variant="name" :user="user" link-class="font-medium hover:underline" />
           <p v-if="user.forum_title" class="text-xs text-muted-foreground">{{ user.forum_title }}</p>
         </div>
         <Button type="button" size="sm" variant="outline" @click="unfollow(user.unfollow_url)">{{ t('forum.following.unfollow') }}</Button>

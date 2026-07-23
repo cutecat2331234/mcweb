@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { routes } from '@/lib/routes'
+import { csrfHeaders } from '@/lib/csrf'
+import { useDebouncedCallback } from '@/lib/useDebounce'
 
 const props = defineProps<{
   modelValue: string
@@ -15,7 +17,6 @@ type Suggestion = { insert: string; label: string; sublabel?: string | null; ava
 const suggestions = ref<Suggestion[]>([])
 const activeIndex = ref(0)
 let mode: 'mention' | 'hashtag' | null = null
-let debounceTimer: ReturnType<typeof setTimeout> | null = null
 
 const MENTION_RE = /@([a-zA-Z0-9_]{0,32})$/
 const HASHTAG_RE = /#([a-zA-Z0-9_-]{0,32})$/
@@ -39,15 +40,11 @@ function onInput(event: Event) {
   }
 }
 
-function schedule(fn: () => void) {
-  if (debounceTimer) clearTimeout(debounceTimer)
-  debounceTimer = setTimeout(fn, 200)
-}
+const schedule = useDebouncedCallback((fn: () => void) => { fn() }, 200)
 
 async function getJson(url: string) {
-  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content
   const res = await fetch(url, {
-    headers: { Accept: 'application/json', 'X-CSRF-Token': token || '' },
+    headers: { Accept: 'application/json', ...csrfHeaders() },
     credentials: 'same-origin',
   })
   return res.json()

@@ -1,0 +1,60 @@
+/*
+ * McWeb admin — Arco Design Vue theme overrides.
+ * Imported from entrypoints/admin.ts after @arco-design/web-vue/dist/arco.css.
+ *
+ * Syncs Arco dark mode with the project's html.dark class (useTheme).
+ */
+
+html.dark body[arco-theme='dark'],
+html.dark body {
+  color-scheme: dark;
+}
+
+/* Arco Pro–style page background inside the admin shell */
+.arco-admin-layout .arco-layout-content {
+  background: var(--color-fill-2);
+}
+
+.arco-admin-main {
+  padding: 20px 24px;
+}
+
+@media (max-width: 768px) {
+  .arco-admin-main {
+    padding: 16px;
+  }
+}
+
+/* Stat cards — accent chips like Arco Pro dashboard */
+.arco-stat-card {
+  border-radius: 4px;
+  transition: box-shadow 0.2s ease;
+}
+.arco-stat-card:hover {
+  box-shadow: 0 4px 10px rgb(0 0 0 / 8%);
+}
+.arco-stat-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  font-size: 22px;
+}
+.arco-stat-card__icon--primary {
+  color: rgb(var(--primary-6));
+  background: rgb(var(--primary-1));
+}
+.arco-stat-card__icon--success {
+  color: rgb(var(--success-6));
+  background: rgb(var(--success-1));
+}
+.arco-stat-card__icon--warning {
+  color: rgb(var(--warning-6));
+  background: rgb(var(--warning-1));
+}
+.arco-stat-card__icon--info {
+  color: rgb(var(--arcoblue-6));
+  background: rgb(var(--arcoblue-1));
+}

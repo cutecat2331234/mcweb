@@ -23,7 +23,7 @@ sudo systemctl enable --now mcweb-hostd
 
 Open `http://your-server:8787`, sign in, and go to **Install**.
 
-Default listen address: `:8787`. Put Caddy or Nginx in front for TLS on a separate hostname (recommended).
+Default listen address: `:8787`. Put nginx in front for TLS on a separate hostname (recommended).
 
 ## Web pages
 
@@ -83,13 +83,22 @@ JSON shape:
 
 ## Docker Compose stack
 
-Files live in [`deploy/docker/`](../deploy/docker/). Copy to `/opt/mcweb/docker` on the server:
+Files live in [`deploy/docker/`](../deploy/docker/). The stack bundles `nginx` +
+`certbot` services that terminate TLS and auto-renew Let's Encrypt certificates
+(replacing the former Caddy service). Copy to `/opt/mcweb/docker` on the server:
 
 ```bash
 sudo cp -r deploy/docker /opt/mcweb/docker
 cd /opt/mcweb/docker && cp .env.example .env
+# Edit .env: set POSTGRES_PASSWORD, MCWEB_DOMAIN (real domain), MCWEB_ACME_EMAIL
+./nginx/init-letsencrypt.sh    # one-time: obtain the first certificate
 docker compose up -d
 ```
+
+`init-letsencrypt.sh` bootstraps the first certificate (it needs `MCWEB_DOMAIN`
+resolving to this host and ports 80/443 reachable); afterwards the `certbot`
+service renews automatically and `nginx` reloads periodically to pick up renewals.
+Set `CERTBOT_STAGING=1` in `.env` to test against Let's Encrypt staging first.
 
 Then use hostd **Install** wizard steps 4–7 (database defaults match compose `.env`).
 

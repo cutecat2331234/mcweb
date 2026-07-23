@@ -1,0 +1,71 @@
+```yaml
+title:
+  zh-CN: 消息类型
+  en-US: Message Type
+```
+
+## zh-CN
+
+全局提示有 6 种不同的类型，分别为：`info`, `success`, `warning`, `error`, `loading`。2.41.0 版本增加 `normal` 类型，此类型下默认没有图标。
+
+---
+
+## en-US
+
+There are 6 different types of global prompts, namely: `info`, `success`, `warning`, `error`, `loading`. Version 2.41.0 adds the `normal` type, which has no icon by default.
+
+---
+
+```vue
+<template>
+  <div>
+    <a-space>
+      <a-button @click="handleShowInfoMessage">Info Message</a-button>
+      <a-button @click="handleShowSuccessMessage" status="success"
+        >Success Message
+      </a-button>
+      <a-button @click="handleShowWarningMessage" status="warning"
+        >Warning Message
+      </a-button>
+      <a-button @click="handleShowErrorMessage" status="danger"
+        >Error Message</a-button
+      >
+    </a-space>
+  </div>
+  <div style="margin-top: 20px">
+    <a-space>
+      <a-button @click="handleShowNormalMessage">Normal Message</a-button>
+      <a-button @click="handleShowNormalMessageWithIcon"
+        >Normal Message With Icon
+      </a-button>
+      <a-button @click="handleShowLoadingMessage" status="primary"
+        >Loading Message
+      </a-button>
+    </a-space>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { h } from 'vue';
+import { Message } from '@arco-design/web-vue';
+import { IconExclamationCircleFill } from '@arco-design/web-vue/es/icon';
+
+const renderIcon = () => h(IconExclamationCircleFill);
+
+const handleShowInfoMessage = () => Message.info('This is an info message!');
+const handleShowSuccessMessage = () =>
+  Message.success('This is a success message!');
+const handleShowWarningMessage = () =>
+  Message.warning('This is a warning message!');
+const handleShowErrorMessage = () => Message.error('This is an error message!');
+const handleShowNormalMessage = () =>
+  Message.normal('This is a normal message!');
+const handleShowNormalMessageWithIcon = () =>
+  Message.normal({
+    content: 'This is a normal message!',
+    icon: renderIcon,
+  });
+const handleShowLoadingMessage = () =>
+  Message.loading('This is a loading message!');
+</script>
+```

@@ -145,6 +145,19 @@
       database_username_required: 请填写数据库用户名。
       already_complete: 安装已完成，请使用管理员账号登录。
       complete_prior_steps: 请先完成前面的安装步骤，再创建管理员账号。
+    store_features:
+      physical_products:
+        label: 实体商品
+        description: 允许创建 physical 类型商品及 requires_shipping 字段
+      shipping:
+        label: 物流配送
+        description: 结账收货地址、配送方式、运费计算与用户地址簿
+      gift_wrap:
+        label: 礼品包装
+        description: 结账页礼品包装选项与费用
+      order_shipping_management:
+        label: 订单物流管理
+        description: 后台填写快递单号、标记发货与装箱单
 
   datetime:
     distance_in_words:
@@ -211,20 +224,6 @@
       update: 更新%{model}
       submit: 保存%{model}
 
-  mcweb:
-    store_features:
-      physical_products:
-        label: 实体商品
-        description: 允许创建 physical 类型商品及 requires_shipping 字段
-      shipping:
-        label: 物流配送
-        description: 结账收货地址、配送方式、运费计算与用户地址簿
-      gift_wrap:
-        label: 礼品包装
-        description: 结账页礼品包装选项与费用
-      order_shipping_management:
-        label: 订单物流管理
-        description: 后台填写快递单号、标记发货与装箱单
   commerce:
     prerequisites:
       login_required: 购买此商品需要先登录。

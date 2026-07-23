@@ -10,6 +10,7 @@ import Input from '@/components/ui/Input.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import Select from '@/components/ui/Select.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -130,16 +131,15 @@ function changeGroup(value: string) {
   </div>
 
   <div v-if="members.length" class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-    <Link
+    <div
       v-for="member in members"
       :key="member.username"
-      :href="member.profile_url"
-      class="flex items-center gap-3 rounded-lg border p-4 hover:bg-muted/50"
+      class="flex items-center gap-3 rounded-lg border p-4"
     >
-      <img :src="member.avatar_url" :alt="member.username" class="h-12 w-12 rounded-full" />
+      <UserLink variant="avatar" size="xl" :user="member" />
       <div class="min-w-0">
         <p class="font-medium">
-          {{ member.display_name || member.username }}
+          <UserLink variant="name" :user="member" link-class="hover:underline" />
           <Badge v-if="member.online" class="ml-2 text-[10px]">{{ t('forum.members.online') }}</Badge>
         </p>
         <p class="text-xs text-muted-foreground">
@@ -150,7 +150,7 @@ function changeGroup(value: string) {
           {{ member.last_seen_at ? t('forum.members.lastSeen', { at: member.last_seen_at }) : t('forum.members.joined', { at: member.member_since }) }}
         </p>
       </div>
-    </Link>
+    </div>
   </div>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{{ t('forum.members.empty') }}</p>
 

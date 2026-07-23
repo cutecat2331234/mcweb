@@ -25,8 +25,13 @@ sudo systemctl enable --now mcweb-hostd
 - Ubuntu 22.04/24.04 或 Debian 12+ x86_64
 - PostgreSQL 18（安装脚本通过官方 PGDG 源安装）
 - root 或 sudo 权限
-- 域名已解析到服务器
-- 开放 80、443 端口
+- 域名已解析到服务器（certbot 申请证书前必须先解析到本机）
+- 开放 80、443 端口（80 用于 Let's Encrypt HTTP-01 校验，443 提供 HTTPS）
+
+> HTTPS 由 **nginx + certbot（Let's Encrypt）** 自动申请并续期：安装脚本会安装
+> nginx 与 certbot、部署反向代理配置、为 `MCWEB_DOMAIN` 申请证书，续期由 certbot
+> 自带的 `certbot.timer` 定时任务负责，无需手动干预。域名未解析或 80 端口未放行时
+> 证书申请会失败，但 HTTP 仍可用，可在就绪后重跑 `bin/install` 或手动执行 certbot。
 
 ## 发布包快速安装（推荐）
 
@@ -38,7 +43,7 @@ cd mcweb-*
 sha256sum -c mcweb-*.tar.gz.sha256   # 可选：校验完整性
 sudo ./quick-install.sh --fresh      # 全新安装
 sudo -u mcweb /opt/mcweb/current/bin/setup
-sudo systemctl enable --now mcweb-web mcweb-worker caddy
+sudo systemctl enable --now mcweb-web mcweb-worker nginx
 ```
 
 已部署过的服务器升级：
@@ -53,7 +58,7 @@ sudo ./quick-install.sh
 ```bash
 sudo bin/install
 sudo -u mcweb /opt/mcweb/current/bin/setup
-sudo systemctl enable --now mcweb-web mcweb-worker caddy
+sudo systemctl enable --now mcweb-web mcweb-worker nginx
 ```
 
 ## 目录结构
@@ -212,7 +217,7 @@ REDIS_URL=redis://127.0.0.1:6379/0
 
 ## 决策记录
 
-- **Ruby 4.0.5**：与 Rails 8.1.3 配套使用
-- **无 Docker 默认依赖**：降低服主部署门槛，使用 systemd + Caddy 原生部署
+- **Ruby 4.0.6**：与 Rails 8.1.3 配套使用
+- **无 Docker 默认依赖**：降低服主部署门槛，使用 systemd + nginx + certbot 原生部署
 - **Sidekiq + Redis 处理后台任务**：替代原 Solid Queue（PostgreSQL 队列）；`solid_cache` 仍基于 PostgreSQL，Redis 仅用于任务队列
 - **PostgreSQL 18**：通过 PGDG 源安装最新稳定版，避免发行版默认版本滞后

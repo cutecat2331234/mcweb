@@ -44,7 +44,7 @@ module Community
       when "score"
         ranked_reaction_scores(since)
       when "points"
-        ranked_points
+        ranked_points(since)
       else
         rel = Community::Post.where(status: "published")
         rel = rel.where("forum_posts.created_at >= ?", since) if since
@@ -67,16 +67,32 @@ module Community
       scores.sort_by { |_user_id, score| -score }.first(LIMIT).to_h
     end
 
-    # Lifetime points balance leaderboard (not period-windowed). Users without a
-    # points account simply don't appear (balance 0); positive balances rank desc.
-    def ranked_points
-      Community::PointAccount
-        .where(currency: "points")
-        .where("balance > 0")
-        .order(balance: :desc)
-        .limit(LIMIT)
-        .pluck(:user_id, :balance)
-        .to_h
+    # Points leaderboard.
+    # - Windowed periods (week/month): rank by points EARNED in the window, i.e.
+    #   the SUM of positive point transactions since the window start. Negative
+    #   adjustments (e.g. admin deductions) do not subtract from the period board.
+    # - All-time (since nil): rank by lifetime account balance, matching the
+    #   balance shown on user profiles. Users without a points account simply
+    #   don't appear (balance 0); positive balances rank desc.
+    def ranked_points(since)
+      if since
+        Community::PointTransaction
+          .where(currency: "points")
+          .where("amount > 0")
+          .where("created_at >= ?", since)
+          .group(:user_id)
+          .order(Arel.sql("SUM(amount) DESC"))
+          .limit(LIMIT)
+          .sum(:amount)
+      else
+        Community::PointAccount
+          .where(currency: "points")
+          .where("balance > 0")
+          .order(balance: :desc)
+          .limit(LIMIT)
+          .pluck(:user_id, :balance)
+          .to_h
+      end
     end
 
     def serialize_entry(user, rank:, score:)

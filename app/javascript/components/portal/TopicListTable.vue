@@ -2,6 +2,7 @@
 import { useI18n } from 'vue-i18n'
 import { Link } from '@inertiajs/vue3'
 import TopicTitleBadges from '@/components/portal/TopicTitleBadges.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import Table from '@/components/ui/Table.vue'
 import TableBody from '@/components/ui/TableBody.vue'
 import TableCell from '@/components/ui/TableCell.vue'
@@ -132,13 +133,15 @@ const allSelected = () =>
             <Link v-else :href="topic.url" class="font-medium hover:underline"><span v-html="topic.title_html" /></Link>
             <p v-if="topic.excerpt" class="mt-1 line-clamp-2 text-xs text-muted-foreground">{{ topic.excerpt }}</p>
             <div v-if="showParticipants && topic.participant_avatars?.length" class="mt-1 flex items-center gap-1">
-              <img
+              <UserLink
                 v-for="avatar in topic.participant_avatars"
                 :key="avatar.username"
-                :src="avatar.avatar_url"
-                :alt="avatar.username"
-                :title="avatar.username"
-                class="h-5 w-5 rounded-full border"
+                variant="avatar"
+                size="xs"
+                :username="avatar.username"
+                :avatar-url="avatar.avatar_url"
+                :profile-url="avatar.profile_url"
+                avatar-class="border"
               />
             </div>
               </div>
@@ -149,7 +152,11 @@ const allSelected = () =>
           <TableCell v-if="showViews">{{ topic.views_count ?? '—' }}</TableCell>
           <TableCell>
             <template v-if="topic.last_poster_username && topic.last_poster_url">
-              <Link :href="topic.last_poster_url" class="hover:underline">@{{ topic.last_poster_username }}</Link>
+              <UserLink
+                :username="topic.last_poster_username"
+                :profile-url="topic.last_poster_url"
+                link-class="hover:underline"
+              >@{{ topic.last_poster_username }}</UserLink>
             </template>
             <span v-else>{{ topic.last_posted_at || '—' }}</span>
             <p v-if="topic.last_poster_username" class="text-xs text-muted-foreground">{{ topic.last_posted_at || '—' }}</p>

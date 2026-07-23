@@ -13,7 +13,8 @@
     "noEmit": true,
     "baseUrl": ".",
     "paths": {
-      "@/*": ["app/javascript/*"]
+      "@/*": ["app/javascript/*"],
+      "@mcweb/ui": ["node_modules/@arco-design/web-vue/es/index.js"]
     }
   },
   "include": ["app/javascript/**/*.ts", "app/javascript/**/*.vue", "vite.config.ts"]

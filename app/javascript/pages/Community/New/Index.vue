@@ -12,6 +12,7 @@ import ListFilterBar from '@/components/portal/ListFilterBar.vue'
 import Button from '@/components/ui/Button.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
+import { useBulkModerate } from '@/lib/useBulkModerate'
 
 defineOptions({ layout: PortalLayout })
 
@@ -30,7 +31,7 @@ const props = defineProps<{
   bulkModerateUrl?: string | null
 }>()
 
-const selectedIds = ref<string[]>([])
+const { selectedIds, bulkModerate } = useBulkModerate(() => props.bulkModerateUrl)
 const dismissing = ref(false)
 
 function changeFilter(value: string) {
@@ -47,17 +48,6 @@ function dismissAll() {
   dismissing.value = true
   router.post(props.dismissUrl, { filter: props.filter || undefined }, {
     onFinish: () => { dismissing.value = false },
-  })
-}
-
-function bulkModerate(action: string) {
-  if (!props.bulkModerateUrl || selectedIds.value.length === 0) return
-  router.patch(props.bulkModerateUrl, {
-    topic_ids: selectedIds.value,
-    action_type: action,
-    return_to: window.location.pathname + window.location.search,
-  }, {
-    onSuccess: () => { selectedIds.value = [] },
   })
 }
 </script>

@@ -6,6 +6,7 @@
     <title inertia>Mcweb Admin</title>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
+    <%= render "shared/admin_pwa_guard" %>
     <%= render "shared/tech_fingerprint" %>
     <%= vite_typescript_tag "admin" %>
     <%= inertia_ssr_head %>

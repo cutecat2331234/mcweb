@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { HTMLAttributes } from 'vue'
-import { Primitive, type PrimitiveProps } from 'reka-ui'
+import { Primitive } from 'reka-ui'
 import { cva, type VariantProps } from 'class-variance-authority'
 import { cn } from '@/lib/utils'
 
@@ -32,7 +32,9 @@ const buttonVariants = cva(
 
 type ButtonVariants = VariantProps<typeof buttonVariants>
 
-interface Props extends PrimitiveProps {
+type Props = {
+  as?: string
+  asChild?: boolean
   variant?: ButtonVariants['variant']
   size?: ButtonVariants['size']
   class?: HTMLAttributes['class']

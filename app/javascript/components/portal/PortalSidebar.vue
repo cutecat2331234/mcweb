@@ -4,7 +4,7 @@ import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { MessageSquare, ShoppingBag, ExternalLink, Home, X } from '@lucide/vue'
 import { routes } from '@/lib/routes'
-import { usePortalNav, type PortalNavOptions } from '@/lib/usePortalNav'
+import { usePortalNav } from '@/lib/usePortalNav'
 import PortalNavGroupSection from '@/components/portal/PortalNavGroupSection.vue'
 import CheckInWidget from '@/components/portal/CheckInWidget.vue'
 import Button from '@/components/ui/Button.vue'
@@ -12,7 +12,18 @@ import { cn } from '@/lib/utils'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
 
-const props = defineProps<PortalNavOptions & { class?: string; onNavigate?: () => void; showClose?: boolean }>()
+const props = defineProps<{
+  loggedIn: boolean
+  forumUnread?: { count: number; url: string }
+  forumNew?: { count: number; url: string }
+  forumAssigned?: { count: number; url: string }
+  forumModerationPending?: { count: number; url: string }
+  messagesUnread?: { count: number; url: string }
+  cart?: { count: number; url: string }
+  class?: string
+  onNavigate?: () => void
+  showClose?: boolean
+}>()
 const { t } = useI18n()
 
 const { features, showPortalSectionTabs, portalSectionGridClass } = useFeatureFlags()

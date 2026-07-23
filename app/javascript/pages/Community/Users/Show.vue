@@ -17,6 +17,7 @@ import Label from '@/components/ui/Label.vue'
 import FileInput from '@/components/ui/FileInput.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import TopicListTable, { type TopicListItem } from '@/components/portal/TopicListTable.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import MinecraftProfileCard, { type MinecraftProfile } from '@/components/minecraft/MinecraftProfileCard.vue'
 import Badge from '@/components/ui/Badge.vue'
 import UserCustomFieldsForm, { type UserCustomField } from '@/components/portal/UserCustomFieldsForm.vue'
@@ -579,10 +580,10 @@ function deleteWallItem(url: string) {
     <ul v-else class="space-y-4">
       <li v-for="post in profile_posts" :key="post.id" class="rounded-lg border p-4">
         <div class="flex items-start gap-3">
-          <img :src="post.author.avatar_url" :alt="post.author.username" class="h-9 w-9 shrink-0 rounded-full ring-1 ring-border" />
+          <UserLink variant="avatar" :user="post.author" avatar-class="h-9 w-9 shrink-0 ring-1 ring-border" />
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-x-2 text-sm">
-              <Link :href="post.author.url" class="font-medium hover:underline">{{ post.author.display_name || post.author.username }}</Link>
+              <UserLink variant="name" :user="post.author" link-class="font-medium hover:underline" />
               <span class="text-xs text-muted-foreground">{{ post.created_at }}</span>
             </div>
             <p class="mt-1 whitespace-pre-wrap break-words text-sm">{{ post.body }}</p>
@@ -595,7 +596,7 @@ function deleteWallItem(url: string) {
             <ul v-if="post.comments.length" class="mt-3 space-y-2 border-l pl-3">
               <li v-for="comment in post.comments" :key="comment.id" class="text-sm">
                 <div class="flex flex-wrap items-center gap-x-2">
-                  <Link :href="comment.author.url" class="font-medium hover:underline">{{ comment.author.display_name || comment.author.username }}</Link>
+                  <UserLink variant="name" :user="comment.author" link-class="font-medium hover:underline" />
                   <span class="text-xs text-muted-foreground">{{ comment.created_at }}</span>
                   <button v-if="comment.can_delete" type="button" class="text-xs text-muted-foreground hover:text-destructive" @click="deleteWallItem(comment.delete_url)">{{ t('userProfile.wallDelete') }}</button>
                 </div>

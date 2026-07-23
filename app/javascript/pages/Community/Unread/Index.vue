@@ -13,6 +13,7 @@ import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 import { appendQueryParams } from '@/lib/utils'
 import { readCsrfToken } from '@/lib/csrf'
+import { useCopyToClipboard } from '@/lib/useClipboard'
 
 defineOptions({ layout: PortalLayout })
 
@@ -40,7 +41,8 @@ const props = defineProps<{
 }>()
 
 const selectedIds = ref<string[]>([])
-const bookmarkCopied = ref(false)
+const { copied: bookmarkCopied, copy: copyBookmark } = useCopyToClipboard()
+const { copy: copyPreset } = useCopyToClipboard()
 const presetCopiedId = ref<number | null>(null)
 const saveName = ref('')
 const saving = ref(false)
@@ -140,24 +142,15 @@ function hasActiveFilters() {
 
 async function copyPresetLink(shareUrl: string | null | undefined, presetId: number) {
   if (!shareUrl) return
-  try {
-    await navigator.clipboard.writeText(shareUrl)
+  if (await copyPreset(shareUrl)) {
     presetCopiedId.value = presetId
     window.setTimeout(() => { presetCopiedId.value = null }, 2000)
-  } catch {
-    // ignore clipboard errors
   }
 }
 
 async function copyFilterBookmark() {
   if (!props.filterBookmarkUrl) return
-  try {
-    await navigator.clipboard.writeText(props.filterBookmarkUrl)
-    bookmarkCopied.value = true
-    window.setTimeout(() => { bookmarkCopied.value = false }, 2000)
-  } catch {
-    // ignore clipboard errors
-  }
+  await copyBookmark(props.filterBookmarkUrl)
 }
 
 async function saveFilterPreset() {

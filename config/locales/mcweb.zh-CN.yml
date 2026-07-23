@@ -199,16 +199,6 @@
       bulk_moderate_failed_suffix: "，%{count} 个失败"
       following_toggled_on: 已关注用户。
       following_toggled_off: 已取消关注。
-      wishlist_toggled_on: 已加入心愿单。
-      wishlist_toggled_off: 已从心愿单移除。
-      wishlist_bulk_added: "已将 %{count} 件商品加入购物车。"
-      wishlist_bulk_skipped: " 跳过：%{items}"
-      compare_toggled_on: 已加入对比。
-      compare_toggled_off: 已从对比移除。
-      compare_bulk_added: "已从心愿单添加 %{count} 件商品到对比。"
-      compare_bulk_skipped: " 跳过：%{items}"
-      reorder_bulk_added: "已将 %{count} 件商品加入购物车。"
-      reorder_bulk_skipped: " 跳过：%{items}"
       stock_alert_subscribed: 到货通知已订阅。
       stock_alert_no_stock: 商品暂无库存。
       stock_alert_unsubscribed: 已取消到货通知。

@@ -142,7 +142,7 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 | 组件 | 说明 |
 |------|------|
 | **mcweb-hostd** | 宿主机 Web 控制台 + CLI，完成安装向导、启停服务、健康检查、版本更新 |
-| **发布包安装** | `quick-install.sh` + systemd + Caddy，发布包含预编译前端与 `vendor/bundle` |
+| **发布包安装** | `quick-install.sh` + systemd + nginx + certbot，发布包含预编译前端与 `vendor/bundle` |
 | **备份恢复** | 数据库与世界备份流程，见 [BACKUP.md](BACKUP.md)、[RESTORE.md](RESTORE.md) |
 | **升级** | 版本切换与迁移，见 [UPGRADE.md](UPGRADE.md) |
 | **健康检查** | `Operations::HealthChecker` 供监控与 hostd 仪表盘 |
@@ -153,7 +153,7 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 
 | 类别 | 选型 |
 |------|------|
-| 语言 | Ruby 4.0.5 |
+| 语言 | Ruby 4.0.6 |
 | 框架 | Ruby on Rails 8.1.3 |
 | 数据库 | PostgreSQL 18 |
 | 队列 / 缓存 | Sidekiq + Redis；Solid Cache；Solid Cable |
@@ -298,7 +298,7 @@ cd mcweb
 git checkout main
 sudo bin/install
 sudo -u mcweb /opt/mcweb/current/bin/setup
-sudo systemctl enable --now mcweb-web mcweb-worker caddy
+sudo systemctl enable --now mcweb-web mcweb-worker nginx
 ```
 
 首次访问 `https://your-domain/setup`（或 hostd 向导）完成数据库、站点信息与管理员配置。

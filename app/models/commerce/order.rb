@@ -25,7 +25,7 @@ module Commerce
 
     before_validation :generate_order_number, on: :create
 
-    aasm column: :status, whiny_transitions: false do
+    aasm column: :status, whiny_transitions: false, whiny_persistence: false do
       state :pending, initial: true
       state :awaiting_payment, :paid, :processing, :fulfilling, :fulfilled, :completed, :cancelled, :refunded, :failed
 

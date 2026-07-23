@@ -1,31 +1,38 @@
 {
   "private": true,
   "type": "module",
+  "scripts": {
+    "demo:arco": "vite --config vite.arco-demo.config.ts"
+  },
   "devDependencies": {
-    "@types/node": "^26.0.0",
-    "typescript": "^6.0.3",
-    "vite": "^8.0.16",
+    "@types/node": "^26.1.1",
+    "typescript": "^7.0.2",
+    "vite": "^8.1.5",
     "vite-plugin-ruby": "^5.2.2"
   },
   "dependencies": {
-    "@inertiajs/vue3": "^3.4.0",
-    "@lucide/vue": "^1.21.0",
-    "@tailwindcss/vite": "^4.3.1",
-    "@tiptap/extension-image": "^3.27.1",
-    "@tiptap/extension-link": "^3.27.1",
-    "@tiptap/pm": "^3.27.1",
-    "@tiptap/starter-kit": "^3.27.1",
-    "@tiptap/vue-3": "^3.27.1",
-    "@vitejs/plugin-vue": "^6.0.7",
+    "@arco-design/web-vue": "^2.58.0",
+    "@element-plus/icons-vue": "^2.3.2",
+    "@inertiajs/vue3": "^3.6.1",
+    "@lucide/vue": "^1.26.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tiptap/extension-image": "^3.28.0",
+    "@tiptap/extension-link": "^3.28.0",
+    "@tiptap/pm": "^3.28.0",
+    "@tiptap/starter-kit": "^3.28.0",
+    "@tiptap/vue-3": "^3.28.0",
+    "@vitejs/plugin-vue": "^6.0.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "element-plus": "^2.14.3",
     "gsap": "^3.15.0",
     "highlight.js": "^11.11.1",
-    "reka-ui": "^2.10.0",
+    "plus-pro-components": "^0.1.31",
+    "reka-ui": "^2.10.1",
     "skinview3d": "^3.4.2",
     "tailwind-merge": "^3.6.0",
-    "tailwindcss": "^4.3.1",
-    "vue": "^3.5.38",
-    "vue-i18n": "^11.4.6"
+    "tailwindcss": "^4.3.3",
+    "vue": "^3.5.40",
+    "vue-i18n": "^11.4.7"
   }
 }

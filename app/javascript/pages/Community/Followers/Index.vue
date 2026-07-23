@@ -1,11 +1,11 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -48,11 +48,9 @@ const displayName = computed(() => props.profile.display_name || props.profile.u
 
   <div v-if="followers.length" class="space-y-3">
     <div v-for="follower in followers" :key="follower.username" class="flex items-center gap-3 rounded-lg border p-4">
-      <img :src="follower.avatar_url" :alt="follower.username" class="h-10 w-10 rounded-full" />
+      <UserLink variant="avatar" size="lg" :user="follower" />
       <div class="min-w-0 flex-1">
-        <Link :href="follower.profile_url" class="font-medium hover:underline">
-          {{ follower.display_name || follower.username }}
-        </Link>
+        <UserLink variant="name" :user="follower" link-class="font-medium hover:underline" />
         <p v-if="follower.forum_title" class="text-xs text-muted-foreground">{{ follower.forum_title }}</p>
       </div>
       <span class="text-xs text-muted-foreground">{{ t('forum.followers.followedAt', { at: follower.followed_at }) }}</span>

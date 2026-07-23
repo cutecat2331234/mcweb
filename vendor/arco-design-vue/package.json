@@ -1,0 +1,53 @@
+{
+  "name": "arco-design-vue-monorepo",
+  "description": "Arco Design Vue 2.0 Monorepo",
+  "private": true,
+  "scripts": {
+    "postinstall": "husky install",
+    "init": "pnpm -F @arco-design/arco-changelog -F @arco-design/vite-plugin-arco-vue-docs -F @arco-design/arco-vue-scripts run build && pnpm i && pnpm -F @arco-design/web-vue run init",
+    "start": "pnpm --filter @arco-design/arco-vue-docs run start",
+    "build:site": "pnpm --filter @arco-design/arco-vue-docs run build",
+    "test:screenshot": "pnpm --filter @arco-design/web-vue run test:screenshot",
+    "build:component": "pnpm --filter @arco-design/web-vue run build",
+    "docgen": "pnpm --filter @arco-design/web-vue run docgen",
+    "clean": "pnpm -r exec rimraf dist node_modules",
+    "test": "pnpm --filter @arco-design/web-vue run test",
+    "storybook": "pnpm --filter @arco-design/web-vue-storybook run storybook"
+  },
+  "packageManager": "pnpm@9.5.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "author": "ArcoDesign Team",
+  "license": "MIT",
+  "devDependencies": {
+    "@commitlint/cli": "^11.0.0",
+    "@commitlint/config-conventional": "^12.1.4",
+    "@typescript-eslint/eslint-plugin": "^4.33.0",
+    "@typescript-eslint/parser": "^4.33.0",
+    "eslint": "^7.32.0",
+    "eslint-config-airbnb-base": "^14.2.1",
+    "eslint-config-prettier": "^8.10.0",
+    "eslint-import-resolver-typescript": "^2.7.1",
+    "eslint-plugin-import": "^2.31.0",
+    "eslint-plugin-prettier": "^3.4.1",
+    "eslint-plugin-vue": "^7.20.0",
+    "husky": "^7.0.4",
+    "lint-staged": "^10.5.4",
+    "prettier": "^2.8.8",
+    "rimraf": "^6.0.1",
+    "stylelint": "^13.13.1",
+    "stylelint-config-prettier": "^8.0.2",
+    "stylelint-config-rational-order": "^0.1.2",
+    "stylelint-config-standard": "^20.0.0",
+    "stylelint-order": "^4.1.0",
+    "typescript": "^4.9.5"
+  },
+  "pnpm": {
+    "peerDependencyRules": {
+      "ignoreMissing": [
+        "react-dom"
+      ]
+    }
+  }
+}

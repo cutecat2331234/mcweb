@@ -1,4 +1,4 @@
-FROM ruby:3.4.9-slim-bookworm AS base
+FROM ruby:4.0.6-slim-bookworm AS base
 
 RUN apt-get update -qq && \
     apt-get install -y --no-install-recommends curl libpq-dev nodejs npm && \

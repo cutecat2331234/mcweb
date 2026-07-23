@@ -36,7 +36,69 @@ class ForumLeaderboardTest < ActionDispatch::IntegrationTest
     assert_not_includes usernames, @u1.username
   end
 
+  test "week points ranks by points earned inside the window only" do
+    award_points(@u1, 10)
+    award_points(@u1, 7, at: 2.weeks.ago)
+    award_points(@u2, 4, at: 2.weeks.ago)
+
+    get forum_leaderboard_path(period: "week", metric: "points")
+    assert_response :success
+    assert_inertia_component "Community/Leaderboard/Index"
+
+    scores = points_scores
+    assert_equal 10, scores[@u1.username], "only the in-window transaction counts"
+    assert_not_includes scores.keys, @u2.username
+  end
+
+  test "all points ranks by lifetime balance including old transactions" do
+    award_points(@u1, 10)
+    award_points(@u1, 7, at: 2.weeks.ago)
+    award_points(@u2, 4, at: 2.weeks.ago)
+
+    get forum_leaderboard_path(period: "all", metric: "points")
+    assert_response :success
+
+    scores = points_scores
+    assert_equal 17, scores[@u1.username], "all-time reads the account balance"
+    assert_equal 4, scores[@u2.username]
+  end
+
+  test "negative adjustment reduces all-time balance but not weekly earnings" do
+    award_points(@u1, 10)
+    award_points(@u1, -4)
+
+    get forum_leaderboard_path(period: "week", metric: "points")
+    assert_response :success
+    assert_equal 10, points_scores[@u1.username], "weekly board sums positive transactions only"
+
+    get forum_leaderboard_path(period: "all", metric: "points")
+    assert_response :success
+    assert_equal 6, points_scores[@u1.username], "all-time board reflects the deducted balance"
+  end
+
+  test "month points includes transactions older than a week but within a month" do
+    award_points(@u1, 8, at: 2.weeks.ago)
+
+    get forum_leaderboard_path(period: "month", metric: "points")
+    assert_response :success
+    assert_equal 8, points_scores[@u1.username]
+
+    get forum_leaderboard_path(period: "week", metric: "points")
+    assert_response :success
+    assert_not_includes points_scores.keys, @u1.username
+  end
+
   private
+
+  def award_points(user, amount, at: nil)
+    result = Community::AwardPoints.call(user: user, amount: amount, reason: "admin_adjust")
+    assert result.success?, "award_points failed: #{result.error}"
+    Community::PointTransaction.where(id: result.value[:transaction].id).update_all(created_at: at) if at
+  end
+
+  def points_scores
+    inertia.props.deep_symbolize_keys[:entries].to_h { |e| [ e[:username], e[:score] ] }
+  end
 
   def seed_posts(user, count)
     topic = Community::Topic.create!(

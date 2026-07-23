@@ -12,6 +12,7 @@ import TableCell from '@/components/ui/TableCell.vue'
 import TableHead from '@/components/ui/TableHead.vue'
 import TableHeader from '@/components/ui/TableHeader.vue'
 import TableRow from '@/components/ui/TableRow.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -146,7 +147,7 @@ function markAllRead() {
               <template v-if="section.last_post">
                 <Link :href="section.last_post.topic_url" class="block truncate font-medium hover:underline">{{ section.last_post.topic_title }}</Link>
                 <span class="text-muted-foreground">
-                  <Link v-if="section.last_post.author_url" :href="section.last_post.author_url" class="hover:underline">{{ section.last_post.author }}</Link>
+                  <UserLink v-if="section.last_post.author_url" :username="section.last_post.author || ''" :profile-url="section.last_post.author_url" link-class="hover:underline" />
                   <span v-if="section.last_post.at"> · {{ section.last_post.at }}</span>
                 </span>
               </template>
@@ -173,7 +174,7 @@ function markAllRead() {
               <template v-if="child.last_post">
                 <Link :href="child.last_post.topic_url" class="block truncate font-medium hover:underline">{{ child.last_post.topic_title }}</Link>
                 <span class="text-muted-foreground">
-                  <Link v-if="child.last_post.author_url" :href="child.last_post.author_url" class="hover:underline">{{ child.last_post.author }}</Link>
+                  <UserLink v-if="child.last_post.author_url" :username="child.last_post.author || ''" :profile-url="child.last_post.author_url" link-class="hover:underline" />
                   <span v-if="child.last_post.at"> · {{ child.last_post.at }}</span>
                 </span>
               </template>
@@ -221,13 +222,13 @@ function markAllRead() {
   <div v-if="staffOnline?.length" class="mt-8 rounded-lg border p-4">
     <h2 class="mb-3 text-sm font-semibold">{{ t('forum.sectionsIndex.staffOnline') }}</h2>
     <div class="flex flex-wrap gap-3">
-      <Link v-for="member in staffOnline" :key="member.username" :href="member.url" class="flex items-center gap-2 text-sm hover:underline">
+      <div v-for="member in staffOnline" :key="member.username" class="flex items-center gap-2 text-sm">
         <span class="relative">
-          <img :src="member.avatar_url" :alt="member.username" class="h-7 w-7 rounded-full" />
-          <span class="absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background bg-emerald-500" />
+          <UserLink variant="avatar" size="sm" :username="member.username" :avatar-url="member.avatar_url" :profile-url="member.url" />
+          <span class="pointer-events-none absolute bottom-0 right-0 h-2 w-2 rounded-full border border-background bg-emerald-500" />
         </span>
-        {{ member.username }}
-      </Link>
+        <UserLink variant="name" :username="member.username" :profile-url="member.url" link-class="hover:underline" />
+      </div>
     </div>
   </div>
 
@@ -243,7 +244,7 @@ function markAllRead() {
       </span>
       <span v-if="forumStats.latest_member">
         {{ t('forum.sectionsIndex.statLatest') }}
-        <Link :href="forumStats.latest_member.url" class="text-primary hover:underline">{{ forumStats.latest_member.display_name || forumStats.latest_member.username }}</Link>
+        <UserLink variant="name" :user="forumStats.latest_member" link-class="text-primary hover:underline" />
       </span>
     </div>
   </div>

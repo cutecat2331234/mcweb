@@ -36,7 +36,7 @@ export function useWebPush() {
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') return false
 
-      const reg = await navigator.serviceWorker.register('/sw.js')
+      const reg = await navigator.serviceWorker.register('/sw.js', { updateViaCache: 'none' })
       const res = await fetch(`${routes.app}/forum/push/public_key`, { credentials: 'same-origin' })
       const { public_key: publicKey } = await res.json()
 

@@ -50,6 +50,7 @@ export const routes = {
   forumMessagesGroupNew: `${appPrefix}/forum/conversations/new?group=1`,
   forumMessage: (id: number) => `${appPrefix}/forum/conversations/${id}`,
   forumUser: (username: string) => `${appPrefix}/forum/users/${username}`,
+  forumUserCard: (username: string) => `${appPrefix}/forum/users/${username}/card`,
   forumUserFollowers: (username: string) => `${appPrefix}/forum/users/${username}/followers`,
   forumTag: (slug: string) => `${appPrefix}/forum/tags/${slug}`,
   forumReport: `${appPrefix}/forum/reports/new`,

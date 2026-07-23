@@ -14,7 +14,7 @@ import AttachmentUploadButton, { type PendingAttachment } from '@/components/por
 import PostAttachmentsList from '@/components/portal/PostAttachmentsList.vue'
 import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
 import ReactionUsersPopover from '@/components/portal/ReactionUsersPopover.vue'
-import UserHoverCard from '@/components/portal/UserHoverCard.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import ReadingProgress from '@/components/portal/ReadingProgress.vue'
 import ImageLightbox from '@/components/portal/ImageLightbox.vue'
 import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
@@ -1630,10 +1630,14 @@ async function copyPollShareLink() {
               <span class="font-medium text-foreground">#{{ post.floor_number }}</span>
               <span v-if="post.is_solved" class="ml-2 text-xs text-green-600">{{ t('forum.topics.solvedBadge') }}</span>
               <span class="mx-2">·</span>
-              <UserHoverCard v-if="post.author_card_url" :username="post.author_username" :card-url="post.author_card_url">
-                <Link :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
-              </UserHoverCard>
-              <Link v-else :href="post.author_url" class="font-medium text-foreground hover:underline">{{ post.author }}</Link>
+              <UserLink
+                variant="name"
+                :username="post.author_username"
+                :display-name="post.author"
+                :profile-url="post.author_url"
+                :card-url="post.author_card_url"
+                link-class="font-medium text-foreground hover:underline"
+              />
               <span v-if="post.author_is_op" class="ml-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary" :title="t('forum.topics.threadStarterHint')">{{ t('forum.topics.threadStarter') }}</span>
               <span
                 v-if="post.author_forum_title && post.author_flair_color"

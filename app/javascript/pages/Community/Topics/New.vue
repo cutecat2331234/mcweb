@@ -16,6 +16,7 @@ import Textarea from '@/components/ui/Textarea.vue'
 import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
+import { useDebouncedCallback } from '@/lib/useDebounce'
 
 defineOptions({ layout: PortalLayout })
 
@@ -32,7 +33,20 @@ const similarTitles = ref<Array<{ title: string; url: string }>>([])
 const tagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
 const tagGroupError = ref('')
 const linkError = ref('')
-let similarTimer: ReturnType<typeof setTimeout> | null = null
+const debouncedSimilarTitles = useDebouncedCallback(async (title: string) => {
+  try {
+    const response = await fetch(`${props.similarTitlesUrl}?title=${encodeURIComponent(title)}`, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    })
+    if (response.ok) {
+      const data = await response.json()
+      similarTitles.value = data.titles || []
+    }
+  } catch {
+    similarTitles.value = []
+  }
+}, 400)
 
 function containsLink(text: string) {
   return /https?:\/\/|www\./i.test(text)
@@ -129,21 +143,7 @@ watch(() => form.topic.title, (title) => {
     similarTitles.value = []
     return
   }
-  if (similarTimer) clearTimeout(similarTimer)
-  similarTimer = setTimeout(async () => {
-    try {
-      const response = await fetch(`${props.similarTitlesUrl}?title=${encodeURIComponent(title)}`, {
-        headers: { Accept: 'application/json' },
-        credentials: 'same-origin',
-      })
-      if (response.ok) {
-        const data = await response.json()
-        similarTitles.value = data.titles || []
-      }
-    } catch {
-      similarTitles.value = []
-    }
-  }, 400)
+  debouncedSimilarTitles(title)
 })
 
 watch(() => form.topic.body, (body) => {

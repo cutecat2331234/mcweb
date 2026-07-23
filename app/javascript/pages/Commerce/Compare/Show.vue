@@ -8,11 +8,16 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
-import { prompt } from '@/lib/usePrompt'
+import { useCopyToClipboard } from '@/lib/useClipboard'
 
 defineOptions({ layout: PortalLayout })
 
 const { t } = useI18n()
+
+const { copy: copyToClipboard } = useCopyToClipboard({
+  fallbackPrompt: true,
+  promptTitle: () => t('commerce.compare.copyLinkTitle'),
+})
 
 const props = defineProps<{
   products: Array<{
@@ -96,14 +101,8 @@ function clearAll() {
 
 async function copyShareLink() {
   if (!props.shareUrl) return
-  try {
-    await navigator.clipboard.writeText(props.shareUrl)
+  if (await copyToClipboard(props.shareUrl)) {
     alert(t('commerce.compare.shareLinkCopied'))
-  } catch {
-    await prompt({
-      title: t('commerce.compare.copyLinkTitle'),
-      defaultValue: props.shareUrl,
-    })
   }
 }
 

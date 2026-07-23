@@ -10,7 +10,8 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
-import { prompt } from '@/lib/usePrompt'
+import { csrfHeaders } from '@/lib/csrf'
+import { useCopyToClipboard } from '@/lib/useClipboard'
 
 defineOptions({ layout: PortalLayout })
 
@@ -58,6 +59,14 @@ const props = defineProps<{
 const saveName = ref('')
 const saving = ref(false)
 const saveError = ref('')
+const { copy: copyPublicShareLink } = useCopyToClipboard({
+  fallbackPrompt: true,
+  promptTitle: () => t('commerce.wishlist.copyShareLinkTitle'),
+})
+const { copy: copyWishlistShareLink } = useCopyToClipboard({
+  fallbackPrompt: true,
+  promptTitle: () => t('commerce.wishlist.copyLinkPromptTitle'),
+})
 
 const wishlistSortOptions = computed(() => [
   { value: 'newest', label: t('commerce.wishlist.sortNewest') },
@@ -107,13 +116,12 @@ async function saveFilterPreset() {
   saveError.value = ''
   const f = props.filters || { in_stock: false, on_sale: false, coming_soon: false, sort: 'newest' }
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
     const response = await fetch(props.saveFilterPresetUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'X-CSRF-Token': token,
+        ...csrfHeaders(),
       },
       credentials: 'same-origin',
       body: JSON.stringify({
@@ -141,24 +149,17 @@ async function saveFilterPreset() {
 }
 
 async function deleteFilterPreset(deleteUrl: string) {
-  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
   await fetch(deleteUrl, {
     method: 'DELETE',
-    headers: { 'X-CSRF-Token': token, Accept: 'application/json' },
+    headers: { ...csrfHeaders(), Accept: 'application/json' },
     credentials: 'same-origin',
   })
   router.reload({ only: ['savedFilterPresets'] })
 }
 
 async function copyPublicShare(url: string) {
-  try {
-    await navigator.clipboard.writeText(new URL(url, window.location.origin).href)
+  if (await copyPublicShareLink(new URL(url, window.location.origin).href)) {
     alert(t('commerce.wishlist.publicShareCopied'))
-  } catch {
-    await prompt({
-      title: t('commerce.wishlist.copyShareLinkTitle'),
-      defaultValue: url,
-    })
   }
 }
 
@@ -203,14 +204,8 @@ function saveNote(product: { id: string; update_note_url?: string }) {
 
 async function copyShareLink() {
   if (!props.shareUrl) return
-  try {
-    await navigator.clipboard.writeText(props.shareUrl)
+  if (await copyWishlistShareLink(props.shareUrl)) {
     alert(t('commerce.wishlist.shareLinkCopied'))
-  } catch {
-    await prompt({
-      title: t('commerce.wishlist.copyLinkPromptTitle'),
-      defaultValue: props.shareUrl,
-    })
   }
 }
 </script>

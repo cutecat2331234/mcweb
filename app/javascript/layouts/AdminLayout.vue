@@ -19,11 +19,12 @@ const mobileNavOpen = ref(false)
 
 const nav = computed(() => [
   { label: t('admin.overview'), items: [
-    { label: t('admin.dashboard'), href: adminRoutes.dashboard },
+    { label: t('admin.dashboard.title'), href: adminRoutes.dashboard },
     { label: t('admin.users'), href: adminRoutes.users },
     { label: t('admin.roles'), href: adminRoutes.roles },
+    { label: t('admin.arcoDemo'), href: adminRoutes.arcoDemo },
   ]},
-  { label: t('admin.website'), items: [
+  { label: t('admin.website.title'), items: [
     { label: t('admin.pages'), href: adminRoutes.websitePages },
     { label: t('admin.articles'), href: adminRoutes.websiteArticles },
     { label: t('admin.website.nav.title', 'Navigation'), href: adminRoutes.websiteNavItems },
@@ -53,7 +54,7 @@ const nav = computed(() => [
     { label: t('admin.forumAttachments'), href: adminRoutes.forumAttachments },
     { label: t('admin.forumScheduledTasks'), href: adminRoutes.forumScheduledTasks },
     { label: t('admin.forumTags'), href: adminRoutes.forumTags },
-    { label: t('admin.forumSettings'), href: adminRoutes.forumSettings },
+    { label: t('admin.forumSettings.title'), href: adminRoutes.forumSettings },
     { label: t('admin.forumWebhookDeliveries'), href: adminRoutes.forumWebhookDeliveries },
     { label: t('admin.forumEventWebhookDeliveries'), href: adminRoutes.forumEventWebhookDeliveries },
   ]},
@@ -69,7 +70,7 @@ const nav = computed(() => [
     { label: t('admin.storeReviews'), href: adminRoutes.storeReviews },
     { label: t('admin.storeProductQuestions'), href: adminRoutes.storeProductQuestions },
     { label: t('admin.storeFulfillments'), href: adminRoutes.storeFulfillments },
-    { label: t('admin.storeSettings'), href: adminRoutes.storeSettings },
+    { label: t('admin.storeSettings.title'), href: adminRoutes.storeSettings },
   ]},
   { label: t('admin.system'), items: [
     { label: t('admin.minecraftServers'), href: adminRoutes.minecraftServers },
@@ -82,7 +83,7 @@ const nav = computed(() => [
     { label: t('admin.auditLogs'), href: adminRoutes.auditLogs },
     { label: t('admin.ipBans'), href: adminRoutes.ipBans },
     { label: t('admin.emailBans'), href: adminRoutes.emailBans },
-    { label: t('admin.featureToggles'), href: adminRoutes.featureToggles },
+    { label: t('admin.featureToggles.title'), href: adminRoutes.featureToggles },
     { label: t('admin.applications.nav'), href: adminRoutes.applications },
     { label: t('admin.settings'), href: adminRoutes.settings },
     { label: t('admin.jobs'), href: adminRoutes.jobs },

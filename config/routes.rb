@@ -20,6 +20,10 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root "dashboard#index"
+    # POC — Element Plus overview facade for the backend redesign (safe to remove after review).
+    get "dashboard_pro_demo", to: "dashboard_pro_demo#index"
+    # Arco Design Vue admin UI showcase
+    get "arco-demo", to: "arco_demo#index"
     resources :users, only: %i[index show edit update] do
       member do
         post :ban
@@ -138,6 +142,9 @@ Rails.application.routes.draw do
           post :staff_note
         end
       end
+      # POC — Element Plus ProTable redesign sample (safe to remove after review).
+      get   "orders_pro_demo",      to: "orders_pro_demo#index"
+      patch "orders_pro_demo/bulk", to: "orders_pro_demo#bulk", as: "orders_pro_demo_bulk"
       resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
       resources :webhook_deliveries, only: %i[index show] do

@@ -15,7 +15,7 @@ import Button from '@/components/ui/Button.vue'
 import Select from '@/components/ui/Select.vue'
 import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
-import { prompt } from '@/lib/usePrompt'
+import { useCopyToClipboard } from '@/lib/useClipboard'
 
 defineOptions({ layout: PortalLayout })
 
@@ -70,7 +70,10 @@ const createdAfter = ref(props.createdAfter || '')
 const createdBefore = ref(props.createdBefore || '')
 const minTotal = ref(props.minTotal || '')
 const maxTotal = ref(props.maxTotal || '')
-const exportCopied = ref(false)
+const { copied: exportCopied, copy: copyToClipboard } = useCopyToClipboard({
+  fallbackPrompt: true,
+  promptTitle: () => t('commerce.orders.copyExportLink'),
+})
 
 const statusSelectOptions = computed(() => [
   { value: '', label: t('commerce.orders.allStatus') },
@@ -165,16 +168,7 @@ function switchStatusTab(tab: StatusTab) {
 
 async function copyExportUrl() {
   if (!props.exportUrl) return
-  try {
-    await navigator.clipboard.writeText(new URL(props.exportUrl, window.location.origin).href)
-    exportCopied.value = true
-    window.setTimeout(() => { exportCopied.value = false }, 2000)
-  } catch {
-    await prompt({
-      title: t('commerce.orders.copyExportLink'),
-      defaultValue: props.exportUrl,
-    })
-  }
+  await copyToClipboard(new URL(props.exportUrl, window.location.origin).href)
 }
 </script>
 

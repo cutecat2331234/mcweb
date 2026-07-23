@@ -15,7 +15,7 @@ Rails.application.configure do
   # Turn on fragment caching in view templates.
   config.action_controller.perform_caching = true
 
-  # Serve static files from public/ (required when Caddy only reverse-proxies to Puma).
+  # Serve static files from public/ (required when nginx only reverse-proxies to Puma).
   config.public_file_server.enabled = true
 
   # Cache assets for far-future expiry since they are all digest stamped.

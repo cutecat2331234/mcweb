@@ -1,4 +1,21 @@
-// McWeb Web Push service worker.
+// McWeb Web Push service worker — push notifications only.
+// Never serve offline fallbacks for navigations (overrides stale SWs on this origin).
+
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting())
+})
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim())
+})
+
+// Navigation requests always use the network; no cached offline.html fallback.
+self.addEventListener('fetch', (event) => {
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request))
+  }
+})
+
 self.addEventListener('push', (event) => {
   let data = {}
   try {

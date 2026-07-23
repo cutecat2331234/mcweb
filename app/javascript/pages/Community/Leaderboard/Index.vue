@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
+import UserLink from '@/components/portal/UserLink.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -69,17 +70,17 @@ function medal(rank: number): string {
 
   <ol v-if="entries.length" class="space-y-2">
     <li v-for="entry in entries" :key="entry.username">
-      <Link :href="entry.profile_url" class="flex items-center gap-3 rounded-lg border p-3 hover:bg-muted/50">
+      <div class="flex items-center gap-3 rounded-lg border p-3">
         <span class="w-10 shrink-0 text-center text-lg font-semibold">{{ medal(entry.rank) }}</span>
-        <img :src="entry.avatar_url" :alt="entry.username" class="h-10 w-10 rounded-full" />
+        <UserLink variant="avatar" size="lg" :user="entry" />
         <div class="min-w-0 flex-1">
-          <p class="font-medium">{{ entry.display_name || entry.username }}</p>
+          <UserLink variant="name" :user="entry" link-class="font-medium" />
           <p class="text-xs text-muted-foreground">@{{ entry.username }} · {{ entry.trust_name }}</p>
         </div>
         <Badge variant="secondary">
           {{ entry.score }} {{ metric === 'points' ? t('forum.leaderboard.unitPoints') : metric === 'score' ? t('forum.leaderboard.unitScore') : metric === 'likes' ? t('forum.leaderboard.unitLikes') : t('forum.leaderboard.unitPosts') }}
         </Badge>
-      </Link>
+      </div>
     </li>
   </ol>
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{{ t('forum.leaderboard.empty') }}</p>

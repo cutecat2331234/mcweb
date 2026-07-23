@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
-import { ref, watch, computed, onBeforeUnmount } from 'vue'
+import { ref, watch, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -14,7 +14,11 @@ import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
-import { prompt } from '@/lib/usePrompt'
+import { csrfHeaders } from '@/lib/csrf'
+import { getJson } from '@/lib/http'
+import { useBulkModerate } from '@/lib/useBulkModerate'
+import { useCopyToClipboard } from '@/lib/useClipboard'
+import { useDebouncedCallback } from '@/lib/useDebounce'
 
 defineOptions({ layout: PortalLayout })
 
@@ -139,21 +143,13 @@ const showAdvanced = ref(
 const saveName = ref('')
 const saveNotifyDaily = ref(false)
 const saveWebhookUrl = ref('')
-const selectedTopicIds = ref<string[]>([])
-
-function bulkModerate(action: string) {
-  if (!props.bulkModerateUrl || selectedTopicIds.value.length === 0) return
-  router.patch(props.bulkModerateUrl, {
-    topic_ids: selectedTopicIds.value,
-    action_type: action,
-    return_to: window.location.pathname + window.location.search,
-  }, {
-    onSuccess: () => { selectedTopicIds.value = [] },
-  })
-}
+const { selectedIds: selectedTopicIds, bulkModerate } = useBulkModerate(() => props.bulkModerateUrl)
 const saving = ref(false)
 const saveError = ref('')
-const shareCopied = ref(false)
+const { copied: shareCopied, copy: copyToClipboard } = useCopyToClipboard({
+  fallbackPrompt: true,
+  promptTitle: () => t('forum.search.copyLink'),
+})
 
 const sectionSelectOptions = computed(() => [
   { value: '', label: t('forum.search.allSections') },
@@ -256,7 +252,7 @@ const suggestUsers = ref<SuggestItem[]>([])
 const suggestSections = ref<SuggestItem[]>([])
 const suggestSavedSearches = ref<SuggestItem[]>([])
 const suggestActiveIndex = ref(-1)
-let suggestTimer: ReturnType<typeof setTimeout> | null = null
+const debouncedSuggest = useDebouncedCallback((query: string) => { fetchSuggestions(query) }, 250)
 
 type SuggestSection = 'topics' | 'tags' | 'users' | 'sections' | 'saved_searches'
 
@@ -278,24 +274,20 @@ watch(q, (value) => {
     suggestOpen.value = false
     return
   }
-  if (suggestTimer) clearTimeout(suggestTimer)
-  suggestTimer = setTimeout(() => fetchSuggestions(value.trim()), 250)
-})
-
-onBeforeUnmount(() => {
-  if (suggestTimer) clearTimeout(suggestTimer)
+  debouncedSuggest(value.trim())
 })
 
 async function fetchSuggestions(query: string) {
   if (!props.suggestUrl) return
   suggestLoading.value = true
   try {
-    const response = await fetch(`${props.suggestUrl}?q=${encodeURIComponent(query)}`, {
-      headers: { Accept: 'application/json' },
-      credentials: 'same-origin',
-    })
-    if (!response.ok) return
-    const data = await response.json()
+    const data = await getJson<{
+      topics?: SuggestItem[]
+      tags?: SuggestItem[]
+      users?: SuggestItem[]
+      sections?: SuggestItem[]
+      saved_searches?: SuggestItem[]
+    }>(`${props.suggestUrl}?q=${encodeURIComponent(query)}`)
     suggestTopics.value = data.topics || []
     suggestTags.value = data.tags || []
     suggestUsers.value = data.users || []
@@ -309,6 +301,8 @@ async function fetchSuggestions(query: string) {
       || suggestSections.value.length
       || suggestSavedSearches.value.length
     )
+  } catch {
+    // ignore suggestion fetch errors (leave previous results in place)
   } finally {
     suggestLoading.value = false
   }
@@ -448,37 +442,23 @@ async function copySearchLink() {
     if (value !== undefined && value !== '') params.set(key, String(value))
   })
   const url = `${window.location.origin}${routes.forumSearch}?${params.toString()}`
-  try {
-    await navigator.clipboard.writeText(url)
-    shareCopied.value = true
-    setTimeout(() => { shareCopied.value = false }, 2000)
-  } catch {
-    await prompt({
-      title: t('forum.search.copyLink'),
-      defaultValue: url,
-    })
-  }
+  await copyToClipboard(url)
 }
 
 const liveSearch = ref(true)
-let liveSearchTimer: ReturnType<typeof setTimeout> | null = null
+const debouncedLiveSearch = useDebouncedCallback(() => {
+  router.get(routes.forumSearch, searchParams(), {
+    preserveState: true,
+    preserveScroll: true,
+    only: ['query', 'topics', 'posts', 'topicsPagination', 'postsPagination'],
+  })
+}, 450)
 
 watch(q, (value) => {
   if (!liveSearch.value) return
   const trimmed = value.trim()
   if (trimmed.length < 2) return
-  if (liveSearchTimer) clearTimeout(liveSearchTimer)
-  liveSearchTimer = setTimeout(() => {
-    router.get(routes.forumSearch, searchParams(), {
-      preserveState: true,
-      preserveScroll: true,
-      only: ['query', 'topics', 'posts', 'topicsPagination', 'postsPagination'],
-    })
-  }, 450)
-})
-
-onBeforeUnmount(() => {
-  if (liveSearchTimer) clearTimeout(liveSearchTimer)
+  debouncedLiveSearch()
 })
 
 function saveFilters() {
@@ -511,13 +491,12 @@ async function saveSearch() {
   saving.value = true
   saveError.value = ''
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
     const response = await fetch(props.saveSearchUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'X-CSRF-Token': token,
+        ...csrfHeaders(),
       },
       credentials: 'same-origin',
       body: JSON.stringify({
@@ -545,10 +524,9 @@ async function saveSearch() {
 }
 
 async function deleteSearchHistory(deleteUrl: string) {
-  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
   await fetch(deleteUrl, {
     method: 'DELETE',
-    headers: { 'X-CSRF-Token': token, Accept: 'application/json' },
+    headers: { ...csrfHeaders(), Accept: 'application/json' },
     credentials: 'same-origin',
   })
   router.reload({ only: ['searchHistories'] })
@@ -566,10 +544,9 @@ async function clearSearchHistory() {
 }
 
 async function deleteSavedSearch(deleteUrl: string) {
-  const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
   await fetch(deleteUrl, {
     method: 'DELETE',
-    headers: { 'X-CSRF-Token': token, Accept: 'application/json' },
+    headers: { ...csrfHeaders(), Accept: 'application/json' },
     credentials: 'same-origin',
   })
   router.reload({ only: ['savedSearches'] })
@@ -584,13 +561,12 @@ async function toggleSavedSearchNotify(search: { id: number; notify_daily?: bool
   if (!search.update_url) return
   togglingNotifyId.value = search.id
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
     const response = await fetch(search.update_url, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'X-CSRF-Token': token,
+        ...csrfHeaders(),
       },
       credentials: 'same-origin',
       body: JSON.stringify({
@@ -609,13 +585,12 @@ async function toggleSavedSearchNotifyInApp(search: { id: number; notify_in_app?
   if (!search.update_url) return
   togglingNotifyId.value = search.id
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
     const response = await fetch(search.update_url, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'X-CSRF-Token': token,
+        ...csrfHeaders(),
       },
       credentials: 'same-origin',
       body: JSON.stringify({
@@ -644,13 +619,12 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
   if (!search.update_url || !editingSearchName.value.trim()) return
   renamingSearchId.value = search.id
   try {
-    const token = document.querySelector<HTMLMetaElement>('meta[name="csrf-token"]')?.content || ''
     const response = await fetch(search.update_url, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',
         Accept: 'application/json',
-        'X-CSRF-Token': token,
+        ...csrfHeaders(),
       },
       credentials: 'same-origin',
       body: JSON.stringify({

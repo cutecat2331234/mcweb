@@ -1,0 +1,15 @@
+<%# Admin is not a PWA surface — unregister any stale service workers that may
+    intercept navigations with offline fallbacks (common on localhost:3000). %>
+<script>
+  (function () {
+    if (!("serviceWorker" in navigator)) return;
+    navigator.serviceWorker.getRegistrations().then(function (regs) {
+      regs.forEach(function (reg) { reg.unregister(); });
+    });
+    if ("caches" in window) {
+      caches.keys().then(function (keys) {
+        keys.forEach(function (key) { caches.delete(key); });
+      });
+    }
+  })();
+</script>

@@ -106,6 +106,47 @@ module Api
         assert_response :not_found
       end
 
+      test "write key with acting user can create a topic" do
+        writer = create_user(username: "apiwriter")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "writer", scopes: %w[read write], user: writer)
+
+        assert_difference -> { Community::Topic.count }, 1 do
+          post "/api/v1/topics", params: {
+            section_id: "api-sec", title: "API created topic", body: "Body created via API"
+          }, headers: auth_headers(wtoken)
+        end
+        assert_response :created
+        assert JSON.parse(response.body)["data"]["id"].present?
+      end
+
+      test "write key with acting user can create a reply" do
+        replier = create_user(username: "apireplier")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "replier", scopes: %w[read write], user: replier)
+
+        assert_difference -> { Community::Post.count }, 1 do
+          post "/api/v1/posts", params: {
+            topic_id: @topic.public_id, body: "A reply created via API"
+          }, headers: auth_headers(wtoken)
+        end
+        assert_response :created
+        assert_equal "A reply created via API", JSON.parse(response.body)["data"]["body"]
+      end
+
+      test "read-only key cannot create a topic" do
+        post "/api/v1/topics", params: { section_id: "api-sec", title: "X", body: "Body here" },
+             headers: auth_headers
+        assert_response :forbidden
+        assert_equal "insufficient_scope", JSON.parse(response.body)["error"]
+      end
+
+      test "write key without an acting user cannot create a topic" do
+        _rec, wtoken = Administration::ApiKey.generate!(name: "userless-writer", scopes: %w[read write])
+        post "/api/v1/topics", params: { section_id: "api-sec", title: "X", body: "Body here" },
+             headers: auth_headers(wtoken)
+        assert_response :forbidden
+        assert_equal "write_requires_user", JSON.parse(response.body)["error"]
+      end
+
       test "read key cannot use a write-only endpoint guard" do
         # simulate a key without read scope
         key = Administration::ApiKey.create!(

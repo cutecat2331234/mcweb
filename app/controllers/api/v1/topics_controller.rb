@@ -6,6 +6,9 @@ module Api
       include Serialization
       include ForumVisibility
 
+      skip_before_action :require_read_scope!, only: :create
+      before_action :require_writer!, only: :create
+
       # GET /api/v1/topics?section_id=<slug>&page=&limit=
       def index
         scope = visible_topics_scope.includes(:user, :section, :tags)
@@ -37,6 +40,25 @@ module Api
           data: serialize_topic(topic).merge(posts: posts.map { |post| serialize_post(post) }),
           meta: pagination_meta(pagy)
         }
+      end
+
+      # POST /api/v1/topics  (write scope; acts as the key's user)
+      # params: section_id (slug), title, body, tag_names[], prefix
+      def create
+        section = Community::Section.find_by!(slug: params[:section_id])
+
+        result = Community::CreateTopic.call(
+          user: api_user,
+          section: section,
+          title: params[:title].to_s,
+          body: params[:body].to_s,
+          tag_names: params[:tag_names],
+          prefix: params[:prefix],
+          ip_address: request.remote_ip
+        )
+        return render_service_error(result) if result.failure?
+
+        render json: { data: serialize_topic(result.value) }, status: :created
       end
     end
   end

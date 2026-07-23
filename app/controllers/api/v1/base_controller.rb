@@ -8,6 +8,7 @@ module Api
     # when the key has no user) is allowed to see.
     class BaseController < ActionController::API
       include Pagy::Method
+      include ServiceResponder
 
       before_action :authenticate_api_key!
       before_action :rate_limit!
@@ -36,6 +37,20 @@ module Api
 
         render_error("insufficient_scope", status: :forbidden, extra: { required: scope })
         false
+      end
+
+      # Write actions: require the write scope AND an acting user (mutations are
+      # always performed as a specific user so the domain services can enforce
+      # permissions, trust levels, and rate limits).
+      def require_writer!
+        return render_error("insufficient_scope", status: :forbidden, extra: { required: "write" }) unless current_api_key&.allows?("write")
+        return if api_user
+
+        render_error("write_requires_user", status: :forbidden)
+      end
+
+      def render_service_error(result)
+        render json: { error: "unprocessable", message: service_error_message(result) }, status: :unprocessable_entity
       end
 
       # The user the key acts as, or nil for an anonymous/guest reader.

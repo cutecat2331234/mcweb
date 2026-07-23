@@ -53,6 +53,13 @@ module Api
         render json: { error: "unprocessable", message: service_error_message(result) }, status: :unprocessable_entity
       end
 
+      # Guard for endpoints that operate on the key's own user (e.g. notifications).
+      def require_bound_user!
+        return if api_user
+
+        render_error("no_bound_user", status: :forbidden)
+      end
+
       # The user the key acts as, or nil for an anonymous/guest reader.
       def api_user
         current_api_key&.user

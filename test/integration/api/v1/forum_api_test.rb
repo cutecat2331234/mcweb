@@ -186,6 +186,46 @@ module Api
         assert_not_includes titles, "Completely unrelated subject"
       end
 
+      test "notifications API lists, filters unread, and marks read" do
+        owner = create_user(username: "apinotify")
+        _rec, ntoken = Administration::ApiKey.generate!(name: "notif-key", scopes: %w[read], user: owner)
+        n1 = Notification.notify!(user: owner, notification_type: "forum.reaction", title: "Reacted")
+        Notification.notify!(user: owner, notification_type: "forum.mention", title: "Mentioned")
+
+        get "/api/v1/notifications", headers: auth_headers(ntoken)
+        assert_response :success
+        body = JSON.parse(response.body)
+        assert_equal 2, body["data"].size
+        assert_equal 2, body["meta"]["unread_count"]
+
+        post "/api/v1/notifications/#{n1.id}/read", headers: auth_headers(ntoken)
+        assert_response :success
+        assert n1.reload.read?
+
+        get "/api/v1/notifications", params: { unread: "true" }, headers: auth_headers(ntoken)
+        assert_equal 1, JSON.parse(response.body)["data"].size
+
+        post "/api/v1/notifications/read_all", headers: auth_headers(ntoken)
+        assert_response :success
+        assert_equal 0, owner.notifications.unread.count
+      end
+
+      test "notifications API requires a bound user" do
+        get "/api/v1/notifications", headers: auth_headers
+        assert_response :forbidden
+        assert_equal "no_bound_user", JSON.parse(response.body)["error"]
+      end
+
+      test "cannot read another user's notification" do
+        owner = create_user(username: "apinotifyowner")
+        other = create_user(username: "apinotifyother")
+        _rec, ntoken = Administration::ApiKey.generate!(name: "notif-key2", scopes: %w[read], user: other)
+        n = Notification.notify!(user: owner, notification_type: "forum.reaction", title: "Reacted")
+
+        post "/api/v1/notifications/#{n.id}/read", headers: auth_headers(ntoken)
+        assert_response :not_found
+      end
+
       test "read key cannot use a write-only endpoint guard" do
         # simulate a key without read scope
         key = Administration::ApiKey.create!(

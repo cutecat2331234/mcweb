@@ -11,6 +11,10 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       get "me", to: "me#show"
+      resources :notifications, only: :index do
+        member { post :read }
+        collection { post :read_all }
+      end
       resources :categories, only: :index
       resources :tags, only: :index
       resources :topics, only: %i[index show create]

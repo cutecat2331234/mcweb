@@ -11,8 +11,8 @@ Rails.application.routes.draw do
   namespace :api do
     namespace :v1 do
       resources :categories, only: :index
-      resources :topics, only: %i[index show]
-      resources :posts, only: :show
+      resources :topics, only: %i[index show create]
+      resources :posts, only: %i[show create]
       resources :users, only: :show
     end
   end

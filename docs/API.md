@@ -53,6 +53,18 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | GET | `/api/v1/topics/:id` | 主题详情 + 分页帖子（`:id` 为主题 `public_id`） |
 | GET | `/api/v1/posts/:id` | 单帖详情（`:id` 为帖子数值 id） |
 | GET | `/api/v1/users/:id` | 公开用户资料（`:id` 为用户 `public_id`） |
+| POST | `/api/v1/topics` | 发主题（需 `write` scope + 绑定用户） |
+| POST | `/api/v1/posts` | 发回帖（需 `write` scope + 绑定用户） |
+
+### 写入端点
+
+写入端点要求密钥具备 `write` scope **且**绑定了用户（`user:`）——所有写操作都以该用户身份执行，
+从而复用既有领域服务（`Community::CreateTopic` / `Community::CreatePost`）的权限、信任等级与防刷限制。
+缺少 `write` scope 返回 `403 insufficient_scope`；有 scope 但未绑定用户返回 `403 write_requires_user`；
+领域服务校验失败（如标题为空、发帖过快）返回 `422 unprocessable` 并在 `message` 给出原因。
+
+- `POST /api/v1/topics`：`section_id`（分区 slug）、`title`、`body`、`tag_names[]`（可选）、`prefix`（可选）
+- `POST /api/v1/posts`：`topic_id`（主题 public_id）、`body`、`quoted_post_id`（可选）、`parent_post_id`（可选）
 
 ### 示例
 

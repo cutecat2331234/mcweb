@@ -15,6 +15,12 @@ Rails.application.routes.draw do
         member { post :read }
         collection { post :read_all }
       end
+      resources :conversations, only: %i[index show] do
+        member do
+          post :reply
+          post :read
+        end
+      end
       resources :categories, only: :index
       resources :tags, only: :index
       resources :topics, only: %i[index show create]

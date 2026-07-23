@@ -52,6 +52,10 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | GET | `/api/v1/notifications?unread=true` | 绑定用户的通知列表（需绑定用户） |
 | POST | `/api/v1/notifications/:id/read` | 标记单条通知已读 |
 | POST | `/api/v1/notifications/read_all` | 标记全部通知已读 |
+| GET | `/api/v1/conversations` | 绑定用户的私信会话列表（需绑定用户） |
+| GET | `/api/v1/conversations/:id?mark_read=true` | 会话详情 + 分页消息 |
+| POST | `/api/v1/conversations/:id/reply` | 在会话内回复（需 `write` scope） |
+| POST | `/api/v1/conversations/:id/read` | 标记会话已读 |
 | GET | `/api/v1/categories` | 分类及其可见分区 |
 | GET | `/api/v1/tags` | 可用标签（非同义词、对该密钥可见） |
 | GET | `/api/v1/topics?section_id=<slug>&q=<关键词>` | 主题列表（可按分区 slug 过滤、按标题全文搜索） |

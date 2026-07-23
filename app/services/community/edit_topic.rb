@@ -14,20 +14,25 @@ module Community
     def call
       return ServiceResult.failure(error: "You cannot edit this topic.") unless can_edit?
 
+      tag_result = nil
+      poll_result = nil
       Community::Topic.transaction do
         attrs = {}
         attrs[:title] = @title if @title.present?
         attrs[:prefix] = valid_prefix if @prefix != nil
         @topic.update!(attrs) if attrs.any?
         if @tag_names
-          result = Community::SyncTopicTags.call(topic: @topic, tag_names: @tag_names, user: @user)
-          return result unless result.success?
+          tag_result = Community::SyncTopicTags.call(topic: @topic, tag_names: @tag_names, user: @user)
+          raise ActiveRecord::Rollback unless tag_result.success?
         end
         if @poll_params
           poll_result = Community::EditTopicPoll.call(user: @user, topic: @topic, **@poll_params)
-          return poll_result unless poll_result.success?
+          raise ActiveRecord::Rollback unless poll_result.success?
         end
       end
+
+      return tag_result if tag_result&.failure?
+      return poll_result if poll_result&.failure?
 
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e

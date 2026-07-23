@@ -258,19 +258,28 @@ module Community
         return
       end
 
-      if user.update(user_params)
+      user_saved = false
+      field_result = nil
+      # Persist core profile attributes and custom field values atomically so a
+      # field validation failure does not leave core attributes committed.
+      ActiveRecord::Base.transaction do
+        user_saved = user.update(user_params)
+        raise ActiveRecord::Rollback unless user_saved
+
         field_result = Community::SyncUserFieldValues.call(
           user: user,
           values: params[:user_fields].present? ? params[:user_fields].to_unsafe_h : {},
           context: :profile
         )
-        unless field_result.success?
-          redirect_to forum_user_path(user.username), alert: field_result.errors.values.join(" ")
-          return
-        end
-        redirect_to forum_user_path(user.username), notice: t("mcweb.flash.profile_updated")
-      else
+        raise ActiveRecord::Rollback unless field_result.success?
+      end
+
+      if !user_saved
         redirect_to forum_user_path(user.username), alert: user.errors.full_messages.to_sentence
+      elsif field_result && !field_result.success?
+        redirect_to forum_user_path(user.username), alert: field_result.errors.values.join(" ")
+      else
+        redirect_to forum_user_path(user.username), notice: t("mcweb.flash.profile_updated")
       end
     end
 

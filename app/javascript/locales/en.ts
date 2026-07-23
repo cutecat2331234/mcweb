@@ -95,6 +95,7 @@ export default {
     forumNotices: 'Notices',
     forumHelpArticles: 'Help articles',
     forumSmilies: 'Smilies',
+    forumReactionTypes: 'Reaction types',
     forumCustomBbcodes: 'Custom BBCode',
     forumThemes: 'Themes',
     forumPages: 'Pages',
@@ -413,6 +414,15 @@ export default {
       active: 'Active',
       deleteTitle: 'Delete smilie',
       deleteConfirm: 'Delete this smilie?',
+    },
+    reactionTypes: {
+      emoji: 'Emoji',
+      name: 'Name',
+      score: 'Score',
+      position: 'Position',
+      active: 'Active',
+      deleteTitle: 'Delete reaction type',
+      deleteConfirm: 'Delete this reaction type?',
     },
     helpArticles: {
       titleLabel: 'Title',

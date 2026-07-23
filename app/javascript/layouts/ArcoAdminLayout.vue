@@ -80,6 +80,7 @@ const nav = computed<NavGroup[]>(() => [
       { label: t('admin.forumNotices'), href: adminRoutes.forumNotices },
       { label: t('admin.forumHelpArticles'), href: adminRoutes.forumHelpArticles },
       { label: t('admin.forumSmilies'), href: adminRoutes.forumSmilies },
+      { label: t('admin.forumReactionTypes'), href: adminRoutes.forumReactionTypes },
       { label: t('admin.forumCustomBbcodes'), href: adminRoutes.forumCustomBbcodes },
       { label: t('admin.forumThemes'), href: adminRoutes.forumThemes },
       { label: t('admin.forumPages'), href: adminRoutes.forumPages },

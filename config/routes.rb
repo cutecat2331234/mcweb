@@ -86,6 +86,7 @@ Rails.application.routes.draw do
       resources :notices
       resources :help_articles, path: "help-articles"
       resources :smilies
+      resources :reaction_types, path: "reaction-types"
       resources :themes
       resources :pages
       resources :phrases

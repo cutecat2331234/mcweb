@@ -95,6 +95,7 @@ export default {
     forumNotices: '公告横幅',
     forumHelpArticles: '帮助文章',
     forumSmilies: '表情',
+    forumReactionTypes: '反应类型',
     forumCustomBbcodes: '自定义 BBCode',
     forumThemes: '主题',
     forumPages: '页面',
@@ -413,6 +414,15 @@ export default {
       active: '启用',
       deleteTitle: '删除表情',
       deleteConfirm: '确定删除此表情?',
+    },
+    reactionTypes: {
+      emoji: '表情',
+      name: '名称',
+      score: '分值',
+      position: '排序',
+      active: '启用',
+      deleteTitle: '删除反应类型',
+      deleteConfirm: '确定删除此反应类型?',
     },
     helpArticles: {
       titleLabel: '标题',

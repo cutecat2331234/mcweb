@@ -5,6 +5,10 @@ module Community
     ALLOWED_EMOJI = %w[👍 ❤️ 😂 🎉 👀].freeze
 
     def self.allowed_emoji
+      # Managed reaction types take precedence when configured (XenForo-style);
+      # otherwise fall back to the legacy SiteSetting / built-in defaults.
+      return Community::ReactionType.emojis if Community::ReactionType.configured?
+
       raw = SiteSetting.get("forum.reaction_emojis", "").to_s
       list = raw.split(/[,\s]+/).map(&:strip).reject(&:blank?).uniq
       list = ALLOWED_EMOJI if list.empty?

@@ -214,14 +214,14 @@ class Round84WebhookDateFilterTest < ActionDispatch::IntegrationTest
   test "store webhook index filters by date range" do
     old = Commerce::OrderWebhookDelivery.create!(
       event_type: "order.paid",
-      order_public_id: "old",
+      order_public_id: "ord-filter-old-84",
       url: "https://example.com/h",
       status: "failed",
       created_at: 5.days.ago
     )
     recent = Commerce::OrderWebhookDelivery.create!(
       event_type: "order.paid",
-      order_public_id: "recent",
+      order_public_id: "ord-filter-recent-84",
       url: "https://example.com/h",
       status: "failed"
     )
@@ -230,8 +230,8 @@ class Round84WebhookDateFilterTest < ActionDispatch::IntegrationTest
     get admin_store_webhook_deliveries_path,
         params: { status: "failed", created_from: 1.day.ago.to_date.to_s }
     assert_response :success
-    assert_includes response.body, recent.order_public_id
-    assert_not_includes response.body, old.order_public_id
+    assert_includes response.body, %("order":"#{recent.order_public_id}")
+    assert_not_includes response.body, %("order":"#{old.order_public_id}")
   end
 
   test "dashboard includes webhook failed links" do

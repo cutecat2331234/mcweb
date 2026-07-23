@@ -72,6 +72,8 @@ module Identity
         args: [ user.id, verification_token ]
       )
 
+      Mcweb::Events.publish("identity.user.registered", user: user, ip_address: @ip_address)
+
       ServiceResult.success(user: user, verification_token: verification_token)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

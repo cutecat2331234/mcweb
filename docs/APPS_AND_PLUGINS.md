@@ -59,6 +59,53 @@ McWeb 是 **Rails 模块化单体**，不是 WordPress/Discourse 式「上传 ZI
 | **Minecraft 集成规则** | 后台配置 | 条件触发预置动作 | 执行任意 Ruby |
 | **商城子功能** | `StoreFeatures` | 开关物流/实体商品等 | 新增支付渠道 |
 
+## 事件总线（插件钩子 / code event listeners）
+
+McWeb 提供进程内**事件总线** `Mcweb::Events`（`lib/mcweb/events.rb`），对标 XenForo 的
+「code event listeners」：扩展可以在**不修改核心代码**的前提下订阅核心动作。它是对 Rails 内建
+`ActiveSupport::Notifications` 的轻量封装（不重复造轮子），事件统一发布在 `<event>.mcweb` 命名空间下。
+
+### 订阅
+
+在初始化器中订阅（例如 `config/initializers/`，或你自己的扩展加载入口）：
+
+```ruby
+Mcweb::Events.subscribe("forum.post.created") do |payload|
+  post  = payload[:post]   # Community::Post
+  topic = payload[:topic]  # Community::Topic
+  # 你的扩展逻辑：推送到外部系统、打积分、写审计……
+end
+```
+
+- 监听器**同步**执行，且在触发它的数据库事务**提交之后**（事件从提交后的 side-effect 路径发出），
+  因此可安全读取已持久化记录。
+- 监听器抛出的异常会被**捕获并记录**，绝不会中断核心请求流程（与站内通知广播的 rescue 策略一致）。
+- `Mcweb::Events.subscribe` 返回一个句柄，可用 `Mcweb::Events.unsubscribe(handle)` 退订。
+
+### 发布
+
+核心代码在自然的 side-effect 位置发布事件；你也可以发布自定义事件：
+
+```ruby
+Mcweb::Events.publish("forum.post.created", post: post, topic: topic)
+```
+
+### 核心事件目录（稳定 API）
+
+见 `Mcweb::Events::CATALOG`：
+
+| 事件 | 负载键 | 触发点 |
+|------|--------|--------|
+| `forum.topic.created` | `topic`, `post` | 新主题发布 |
+| `forum.post.created` | `topic`, `post` | 新回帖发布 |
+| `forum.post.edited` / `.deleted` / `.restored` / `.rejected` / `.approved` | `topic`, `post` | 帖子生命周期 |
+| `forum.topic.solved` / `.moved` | `topic`, `post` | 主题状态变更 |
+| `forum.reaction.added` / `.removed` | `post`, `user`, `emoji`, `counts` | 反应增减 |
+| `identity.user.registered` | `user`, `ip_address` | 新用户注册完成 |
+
+> 论坛事件的中央发出点是 `Community::DispatchForumEventWebhook`：无论是否配置了出站 Webhook，
+> 内部事件总线都会收到事件（出站 Webhook 仍受其 URL/开关门控）。
+
 ## 能否「随意扩展」？
 
 **结论：不能随意扩展 Rails 业务逻辑；只能在文档列出的边界内扩展。**
@@ -70,6 +117,7 @@ McWeb 是 **Rails 模块化单体**，不是 WordPress/Discourse 式「上传 ZI
 | 游戏内发货/绑定 | ✅ | Connector + 协议 |
 | 宿主机管服 | ✅ | mcweb-node |
 | 把订单推到 ERP | ✅ | 商城 Webhook |
+| 在核心动作上挂钩自定义逻辑 | ✅ | 事件总线 `Mcweb::Events`（code event listeners） |
 | 新增一种帖子类型/商品类型 | ❌ 需改代码 | Fork McWeb 或提 PR |
 | 第三方 Ruby gem 插件市场 | ❌ 未实现 | 未来可做 Rails Engine，当前无 |
 | 运行时加载 `.rb` 插件 | ❌ 无沙箱 | 安全风险，未做 |

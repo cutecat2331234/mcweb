@@ -107,17 +107,17 @@ module Admin
       DEMO_SEED = [
         [ "MC-20260716-0012", "SteveCrafter", "completed", "paid",     "¥ 128.00", "2026-07-16 14:32" ],
         [ "MC-20260716-0011", "AlexZ",        "paid",      "paid",     "¥ 68.00",  "2026-07-16 11:05" ],
-        [ "MC-20260715-0044", "NotchFan",     "fulfilling","paid",     "¥ 245.00", "2026-07-15 22:18" ],
-        [ "MC-20260715-0043", "EnderQueen",   "processing","paid",     "¥ 32.00",  "2026-07-15 19:47" ],
+        [ "MC-20260715-0044", "NotchFan",     "fulfilling", "paid",     "¥ 245.00", "2026-07-15 22:18" ],
+        [ "MC-20260715-0043", "EnderQueen",   "processing", "paid",     "¥ 32.00",  "2026-07-15 19:47" ],
         [ "MC-20260715-0041", "RedstoneGuru", "pending",   "unpaid",   "¥ 512.00", "2026-07-15 16:03" ],
         [ "MC-20260714-0098", "DiamondMax",   "awaiting_payment", "pending", "¥ 18.00", "2026-07-14 20:55" ],
         [ "MC-20260714-0097", "PixelKnight",  "fulfilled", "paid",     "¥ 99.00",  "2026-07-14 13:22" ],
-        [ "MC-20260714-0090", "CreeperSlayer","cancelled", "unpaid",   "¥ 156.00", "2026-07-14 09:41" ],
+        [ "MC-20260714-0090", "CreeperSlayer", "cancelled", "unpaid",   "¥ 156.00", "2026-07-14 09:41" ],
         [ "MC-20260713-0210", "MobHunter",    "refunded",  "refunded", "¥ 74.00",  "2026-07-13 18:30" ],
         [ "MC-20260713-0208", "SkyWalkerMC",  "failed",    "failed",   "¥ 260.00", "2026-07-13 15:12" ],
         [ "MC-20260713-0205", "GoldDigger",   "completed", "paid",     "¥ 42.00",  "2026-07-13 10:08" ],
         [ "MC-20260712-0177", "NetherLord",   "paid",      "paid",     "¥ 388.00", "2026-07-12 21:44" ],
-        [ "MC-20260712-0175", "VillagerJoe",  "processing","paid",     "¥ 55.00",  "2026-07-12 17:19" ],
+        [ "MC-20260712-0175", "VillagerJoe",  "processing", "paid",     "¥ 55.00",  "2026-07-12 17:19" ],
         [ "MC-20260712-0170", "ObsidianOwl",  "completed", "paid",     "¥ 210.00", "2026-07-12 08:26" ]
       ].freeze
 

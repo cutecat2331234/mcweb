@@ -1,7 +1,9 @@
 name: Release Build
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
     inputs:
@@ -11,11 +13,12 @@ on:
         type: string
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.workflow_run.head_branch || github.ref }}
   cancel-in-progress: true
 
 jobs:
   test:
+    if: github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     services:
       postgres:
@@ -66,6 +69,12 @@ jobs:
 
   build-release:
     needs: test
+    if: >
+      always() &&
+      (
+        (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success' && needs.test.result == 'skipped') ||
+        (github.event_name == 'workflow_dispatch' && needs.test.result == 'success')
+      )
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -88,6 +97,8 @@ jobs:
       MCWEB_DATABASE_PASSWORD: postgres
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
       - uses: ruby/setup-ruby@v1
         with:
@@ -106,8 +117,11 @@ jobs:
             echo "value=${{ github.event.inputs.release_version }}" >> "$GITHUB_OUTPUT"
           elif [[ "${{ github.ref_type }}" == "tag" ]]; then
             echo "value=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.event_name }}" == "workflow_run" ]]; then
+            sha="${{ github.event.workflow_run.head_sha }}"
+            echo "value=${sha:0:12}" >> "$GITHUB_OUTPUT"
           else
-            echo "value=${GITHUB_SHA::12}" >> "$GITHUB_OUTPUT"
+            echo "value=${GITHUB_SHA:0:12}" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Build release tarball

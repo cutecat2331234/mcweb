@@ -76,14 +76,13 @@ module Community
     #   don't appear (balance 0); positive balances rank desc.
     def ranked_points(since)
       if since
-        Community::PointTransaction
+        sums = Community::PointTransaction
           .where(currency: "points")
           .where("amount > 0")
           .where("created_at >= ?", since)
           .group(:user_id)
-          .order(Arel.sql("SUM(amount) DESC"))
-          .limit(LIMIT)
           .sum(:amount)
+        sums.sort_by { |_user_id, score| -score }.first(LIMIT).to_h
       else
         Community::PointAccount
           .where(currency: "points")

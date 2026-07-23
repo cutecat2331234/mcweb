@@ -19,6 +19,9 @@ module Commerce
 
         if order.pending? && order.may_submit_payment?
           order.submit_payment!
+          # AASM runs with whiny_persistence: false, so a failed save would not
+          # raise. Verify the transition actually persisted before reporting success.
+          return ServiceResult.failure(error: "order_cannot_continue_payment") unless order.awaiting_payment?
         elsif !order.awaiting_payment?
           return ServiceResult.failure(error: "order_cannot_continue_payment")
         end

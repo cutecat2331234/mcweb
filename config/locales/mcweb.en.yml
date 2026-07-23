@@ -1114,6 +1114,14 @@ en:
         action_new: New email ban
         form_new: New email ban
         form_edit: Edit email ban
+      api_keys:
+        title: API keys
+        subtitle: Manage access keys for the public REST API (/api/v1)
+        form_new: New API key
+        created_with_token: "API key created. Copy the token now (shown only once): %{token}"
+        revoked: API key revoked.
+        name_required: Please enter a key name.
+        user_not_found: No user found with that username.
       common:
         status: Status
         updated: Updated

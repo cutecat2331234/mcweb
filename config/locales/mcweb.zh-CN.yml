@@ -1114,6 +1114,14 @@
         action_new: 新建邮箱封禁
         form_new: 新建邮箱封禁
         form_edit: 编辑邮箱封禁
+      api_keys:
+        title: API 密钥
+        subtitle: 管理公开 REST API（/api/v1）的访问密钥
+        form_new: 新建 API 密钥
+        created_with_token: "API 密钥已创建。请立即复制令牌（仅显示一次）：%{token}"
+        revoked: API 密钥已吊销。
+        name_required: 请填写密钥名称。
+        user_not_found: 找不到该用户名。
       common:
         status: 状态
         updated: 更新时间

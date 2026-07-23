@@ -339,7 +339,8 @@ bin/dev
 | [SECURITY.md](SECURITY.md) | 密钥、认证、Web 安全、依赖审计 |
 | [CONNECTOR_PROTOCOL.md](CONNECTOR_PROTOCOL.md) | Minecraft 插件通信协议 |
 | [NODE_PROTOCOL.md](NODE_PROTOCOL.md) | 宿主机节点协议 |
-| [docs/APPS_AND_PLUGINS.md](docs/APPS_AND_PLUGINS.md) | 大应用与插件扩展模型 |
+| [docs/APPS_AND_PLUGINS.md](docs/APPS_AND_PLUGINS.md) | 大应用与插件扩展模型（含事件总线钩子） |
+| [docs/API.md](docs/API.md) | 公开 REST API（v1）与密钥认证 |
 | [LICENSE-COMMERCIAL.md](LICENSE-COMMERCIAL.md) | 商业版许可证说明（预留） |
 | [docs/WEBSITE_CMS.md](docs/WEBSITE_CMS.md) | 官网 CMS 使用说明 |
 | [docs/HOSTD.md](docs/HOSTD.md) | 宿主机控制台 |

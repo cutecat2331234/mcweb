@@ -49,6 +49,9 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/api/v1/me` | 当前密钥绑定用户的资料（未绑定用户返回 `403 no_bound_user`） |
+| GET | `/api/v1/notifications?unread=true` | 绑定用户的通知列表（需绑定用户） |
+| POST | `/api/v1/notifications/:id/read` | 标记单条通知已读 |
+| POST | `/api/v1/notifications/read_all` | 标记全部通知已读 |
 | GET | `/api/v1/categories` | 分类及其可见分区 |
 | GET | `/api/v1/tags` | 可用标签（非同义词、对该密钥可见） |
 | GET | `/api/v1/topics?section_id=<slug>&q=<关键词>` | 主题列表（可按分区 slug 过滤、按标题全文搜索） |

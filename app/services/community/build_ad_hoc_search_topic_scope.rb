@@ -163,7 +163,7 @@ module Community
       case topic_sort
       when "oldest" then scope.order(created_at: :asc)
       when "relevance"
-        scope.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_topics.title, '')), plainto_tsquery('simple', #{ActiveRecord::Base.connection.quote(query)})) DESC"))
+        scope.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_topics.title, '')), plainto_tsquery('simple', #{ActiveRecord::Base.lease_connection.quote(query)})) DESC"))
       else scope.order(last_posted_at: :desc)
       end
     end

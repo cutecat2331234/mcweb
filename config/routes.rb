@@ -30,7 +30,12 @@ Rails.application.routes.draw do
           post :subscription
         end
       end
-      resources :posts, only: %i[show create]
+      resources :posts, only: %i[show create] do
+        member do
+          get :reactions
+          post :react
+        end
+      end
       resources :users, only: %i[index show] do
         member { post :follow }
         resources :profile_posts, only: %i[index create], path: "profile-posts"

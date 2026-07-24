@@ -170,6 +170,20 @@ module Api
         assert_response :forbidden
       end
 
+      test "react to a post and read reaction counts" do
+        reactor = create_user(username: "apireactor")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "rx", scopes: %w[read write], user: reactor)
+
+        post "/api/v1/posts/#{@post.id}/react", params: { emoji: "👍" }, headers: auth_headers(wtoken)
+        assert_response :success
+        assert_equal true, JSON.parse(response.body)["data"]["added"]
+
+        get "/api/v1/posts/#{@post.id}/reactions", headers: auth_headers
+        assert_response :success
+        counts = JSON.parse(response.body)["data"]["counts"]
+        assert_equal 1, counts["👍"]
+      end
+
       test "follow toggles following a user" do
         follower = create_user(username: "apifollower")
         target = create_user(username: "apifollowed")

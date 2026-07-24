@@ -6,19 +6,34 @@ module Api
       include Serialization
       include ForumVisibility
 
-      skip_before_action :require_read_scope!, only: :create
-      before_action :require_writer!, only: :create
+      skip_before_action :require_read_scope!, only: %i[create react]
+      before_action :require_writer!, only: %i[create react]
 
       # GET /api/v1/posts/:id  (id = post primary id)
       def show
-        post = Community::Post.includes(:user, :topic).find(params[:id])
-        topic = post.topic
-        unless post.status == "published" && post.post_type != "whisper" &&
-               topic&.status == "published" && section_visible?(topic.section)
-          raise ActiveRecord::RecordNotFound
-        end
+        render json: { data: serialize_post(load_visible_post!(params[:id])) }
+      end
 
-        render json: { data: serialize_post(post) }
+      # GET /api/v1/posts/:id/reactions — reaction counts + allowed emoji
+      def reactions
+        post = load_visible_post!(params[:id])
+        render json: {
+          data: {
+            post_id: post.id,
+            counts: post.reactions.group(:emoji).count,
+            allowed: Community::ToggleReaction.allowed_emoji
+          }
+        }
+      end
+
+      # POST /api/v1/posts/:id/reactions  (write scope) — toggle a reaction
+      # params: emoji
+      def react
+        post = load_visible_post!(params[:id])
+        result = Community::ToggleReaction.call(user: api_user, post: post, emoji: params[:emoji].to_s)
+        return render_service_error(result) if result.failure?
+
+        render json: { data: { post_id: post.id, added: result.value[:added], counts: result.value[:counts] } }
       end
 
       # POST /api/v1/posts  (write scope; acts as the key's user)
@@ -40,6 +55,17 @@ module Api
       end
 
       private
+
+      def load_visible_post!(id)
+        post = Community::Post.includes(:user, :topic).find(id)
+        topic = post.topic
+        unless post.status == "published" && post.post_type != "whisper" &&
+               topic&.status == "published" && section_visible?(topic.section)
+          raise ActiveRecord::RecordNotFound
+        end
+
+        post
+      end
 
       def find_optional_post(id)
         return nil if id.blank?

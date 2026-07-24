@@ -22,7 +22,9 @@ Rails.application.routes.draw do
         end
       end
       resources :categories, only: :index
-      resources :tags, only: :index
+      resources :tags, only: :index do
+        member { post :subscription }
+      end
       resources :bookmarks, only: :index
       resources :topics, only: %i[index show create] do
         member do

@@ -45,6 +45,8 @@ module Community
         resource: report
       )
 
+      Mcweb::Events.publish("forum.report.created", report: report, reporter: current_user, reportable: reportable)
+
       redirect_back fallback_location: root_path, notice: t("mcweb.flash.report_submitted")
     rescue ActiveRecord::RecordInvalid => e
       render inertia: "Community/Reports/New",

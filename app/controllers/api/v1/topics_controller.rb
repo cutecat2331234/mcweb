@@ -6,8 +6,8 @@ module Api
       include Serialization
       include ForumVisibility
 
-      skip_before_action :require_read_scope!, only: :create
-      before_action :require_writer!, only: :create
+      skip_before_action :require_read_scope!, only: %i[create bookmark subscription]
+      before_action :require_writer!, only: %i[create bookmark subscription]
 
       # GET /api/v1/topics?section_id=<slug>&page=&limit=
       def index
@@ -66,6 +66,23 @@ module Api
         return render_service_error(result) if result.failure?
 
         render json: { data: serialize_topic(result.value) }, status: :created
+      end
+
+      # POST /api/v1/topics/:id/bookmark  (write scope) — toggles a topic bookmark
+      def bookmark
+        topic = find_visible_topic!(params[:id])
+        result = Community::ToggleBookmark.call(user: api_user, topic: topic)
+        render json: { data: { topic_id: topic.public_id, bookmarked: result.value[:bookmarked] } }
+      end
+
+      # POST /api/v1/topics/:id/subscription  (write scope) — set watch level
+      # params: level = watching | tracking | normal | off
+      def subscription
+        topic = find_visible_topic!(params[:id])
+        result = Community::SetSubscriptionLevel.call(user: api_user, subscribable: topic, level: params[:level].to_s)
+        return render_service_error(result) if result.failure?
+
+        render json: { data: { topic_id: topic.public_id, notification_level: result.value[:notification_level] } }
       end
     end
   end

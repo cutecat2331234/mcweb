@@ -147,6 +147,29 @@ module Api
         assert_equal "write_requires_user", JSON.parse(response.body)["error"]
       end
 
+      test "bookmark toggle, watch level, and bookmarks list" do
+        member = create_user(username: "apibookmarker")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "bk", scopes: %w[read write], user: member)
+
+        post "/api/v1/topics/#{@topic.public_id}/bookmark", headers: auth_headers(wtoken)
+        assert_response :success
+        assert_equal true, JSON.parse(response.body)["data"]["bookmarked"]
+
+        post "/api/v1/topics/#{@topic.public_id}/subscription", params: { level: "watching" }, headers: auth_headers(wtoken)
+        assert_response :success
+        assert_equal "watching", JSON.parse(response.body)["data"]["notification_level"]
+
+        get "/api/v1/bookmarks", headers: auth_headers(wtoken)
+        assert_response :success
+        topic_ids = JSON.parse(response.body)["data"].map { |b| b["topic"]["id"] }
+        assert_includes topic_ids, @topic.public_id
+      end
+
+      test "bookmarks require a bound user" do
+        get "/api/v1/bookmarks", headers: auth_headers
+        assert_response :forbidden
+      end
+
       test "GET /users lists members and supports q search" do
         create_user(username: "zzz_uniquemember")
         get "/api/v1/users", params: { q: "zzz_uniquemember" }, headers: auth_headers

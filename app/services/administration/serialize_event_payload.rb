@@ -30,6 +30,7 @@ module Administration
       when ::User then serialize_user(value)
       when String, Numeric, TrueClass, FalseClass, NilClass then value
       when Hash then value.transform_keys(&:to_s)
+      when ActiveRecord::Base then serialize_generic_record(value)
       else value.respond_to?(:to_s) ? value.to_s : nil
       end
     end
@@ -54,6 +55,13 @@ module Administration
 
     def serialize_user(user)
       { "id" => user.public_id, "username" => user.username }
+    end
+
+    # Generic fallback for other records: expose only stable identifiers.
+    def serialize_generic_record(record)
+      data = { "type" => record.class.name, "id" => record.id }
+      data["public_id"] = record.public_id if record.respond_to?(:public_id)
+      data
     end
   end
 end

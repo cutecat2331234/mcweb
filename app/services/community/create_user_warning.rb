@@ -33,6 +33,7 @@ module Community
         reason: @reason,
         metadata: { points: warning.points, warning_id: warning.id, expires_at: warning.expires_at }.compact
       )
+      Mcweb::Events.publish("forum.warning.issued", user: @user, actor: @actor, warning: warning)
       ServiceResult.success(warning)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

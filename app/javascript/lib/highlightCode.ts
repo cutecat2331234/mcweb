@@ -51,8 +51,6 @@ export function highlightCodeBlocks(root: ParentNode = document) {
     const lang = el.dataset.lang?.toLowerCase()
     if (lang && hljs.getLanguage(lang)) {
       hljs.highlightElement(el)
-    } else if (lang) {
-      hljs.highlightElement(el, { language: 'plaintext' })
     }
     el.dataset.highlighted = 'yes'
   })

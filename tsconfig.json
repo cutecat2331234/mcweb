@@ -11,10 +11,9 @@
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "skipLibCheck": true,
     "noEmit": true,
-    "baseUrl": ".",
     "paths": {
-      "@/*": ["app/javascript/*"],
-      "@mcweb/ui": ["node_modules/@arco-design/web-vue/es/index.js"]
+      "@/*": ["./app/javascript/*"],
+      "@mcweb/ui": ["./node_modules/@arco-design/web-vue/es/index.d.ts"]
     }
   },
   "include": ["app/javascript/**/*.ts", "app/javascript/**/*.vue", "vite.config.ts"]

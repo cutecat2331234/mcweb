@@ -5,6 +5,18 @@ module Api
     class UsersController < BaseController
       include Serialization
 
+      skip_before_action :require_read_scope!, only: :follow
+      before_action :require_writer!, only: :follow
+
+      # POST /api/v1/users/:id/follow  (write scope) — toggles following the user
+      def follow
+        target = User.find_by!(public_id: params[:id])
+        result = Community::ToggleUserFollow.call(follower: api_user, followed_username: target.username)
+        return render_service_error(result) if result.failure?
+
+        render json: { data: { user_id: target.public_id, following: result.value[:following] } }
+      end
+
       # GET /api/v1/users?q=<name>&sort=<posts|newest|username>
       def index
         scope = User.where(deleted_at: nil, status: "active")

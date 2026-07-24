@@ -31,7 +31,10 @@ Rails.application.routes.draw do
         end
       end
       resources :posts, only: %i[show create]
-      resources :users, only: %i[index show]
+      resources :users, only: %i[index show] do
+        member { post :follow }
+        resources :profile_posts, only: %i[index create], path: "profile-posts"
+      end
     end
   end
 

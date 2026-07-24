@@ -29,6 +29,7 @@ module Admin
     end
 
     test "creating a key bound to a user resolves the username" do
+      @admin.update!(account_type: :owner)
       target = create_user(username: "apibounduser")
       post admin_system_api_keys_path, params: {
         api_key: { name: "Bound", scopes: %w[read write], username: "apibounduser" }
@@ -39,9 +40,32 @@ module Admin
       assert key.allows?("write")
     end
 
+    test "non-owner cannot bind a key to another user" do
+      target = create_user(username: "apiotheruser")
+
+      assert_no_difference -> { Administration::ApiKey.count } do
+        post admin_system_api_keys_path, params: {
+          api_key: { name: "Forbidden", scopes: %w[read], username: target.username }
+        }
+      end
+      assert_redirected_to new_admin_system_api_key_path
+    end
+
     test "unknown username is rejected" do
       assert_no_difference -> { Administration::ApiKey.count } do
         post admin_system_api_keys_path, params: { api_key: { name: "X", scopes: %w[read], username: "nope-nope" } }
+      end
+      assert_redirected_to new_admin_system_api_key_path
+    end
+
+    test "empty or unknown scopes are rejected" do
+      assert_no_difference -> { Administration::ApiKey.count } do
+        post admin_system_api_keys_path, params: { api_key: { name: "NoScope", scopes: [] } }
+      end
+      assert_redirected_to new_admin_system_api_key_path
+
+      assert_no_difference -> { Administration::ApiKey.count } do
+        post admin_system_api_keys_path, params: { api_key: { name: "UnknownScope", scopes: %w[admin] } }
       end
       assert_redirected_to new_admin_system_api_key_path
     end
@@ -58,6 +82,25 @@ module Admin
       post revoke_admin_system_api_key_path(record)
       assert_redirected_to admin_system_api_keys_path
       assert record.reload.revoked?
+    end
+
+    test "admin access alone cannot manage api keys" do
+      delete identity_session_path
+      limited_admin = create_user(account_type: :admin)
+      grant_permission(limited_admin, "admin.access")
+      sign_in_as(limited_admin)
+
+      get admin_system_api_keys_path
+      assert_response :redirect
+
+      assert_no_difference -> { Administration::ApiKey.count } do
+        post admin_system_api_keys_path, params: { api_key: { name: "Forbidden", scopes: %w[read] } }
+      end
+
+      record, = Administration::ApiKey.generate!(name: "Protected", scopes: %w[read])
+      post revoke_admin_system_api_key_path(record)
+      assert_response :redirect
+      assert_not record.reload.revoked?
     end
 
     test "non-admin cannot access api keys" do

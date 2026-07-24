@@ -6,8 +6,9 @@ module Api
     # bound user; access is always scoped to conversations the user participates in.
     class ConversationsController < BaseController
       before_action :require_bound_user!
-      skip_before_action :require_read_scope!, only: :reply
-      before_action :require_writer!, only: :reply
+      skip_before_action :require_read_scope!, only: %i[reply read]
+      before_action :require_writer!, only: %i[reply read]
+      before_action :require_writer_for_mark_read!, only: :show
       before_action :set_conversation, only: %i[show reply read]
 
       # GET /api/v1/conversations
@@ -45,6 +46,10 @@ module Api
       end
 
       private
+
+      def require_writer_for_mark_read!
+        require_writer! if params[:mark_read] == "true"
+      end
 
       def set_conversation
         @conversation = Community::Conversation.for_user(api_user).find(params[:id])

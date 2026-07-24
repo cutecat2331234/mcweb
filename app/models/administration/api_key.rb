@@ -25,8 +25,10 @@ module Administration
     # Generate a new key. Returns [record, plaintext_token]. The plaintext is not
     # persisted and cannot be recovered later.
     def self.generate!(name:, scopes: %w[read], user: nil, created_by: nil)
-      scope_list = Array(scopes).map(&:to_s).map(&:strip).reject(&:blank?) & VALID_SCOPES
-      scope_list = %w[read] if scope_list.empty?
+      requested_scopes = Array(scopes).map(&:to_s).map(&:strip).reject(&:blank?).uniq
+      if requested_scopes.empty? || (requested_scopes - VALID_SCOPES).any?
+        raise ArgumentError, "scopes must contain at least one of: #{VALID_SCOPES.join(', ')}"
+      end
 
       secret = SecureRandom.urlsafe_base64(32)
       plaintext = "#{TOKEN_PREFIX}#{secret}"
@@ -35,7 +37,7 @@ module Administration
         name: name,
         token_digest: digest(plaintext),
         token_prefix: plaintext[0, 12],
-        scopes: scope_list.join(","),
+        scopes: requested_scopes.join(","),
         user: user,
         created_by: created_by
       )
@@ -49,6 +51,7 @@ module Administration
 
       key = active.find_by(token_digest: digest(token))
       return nil unless key
+      return nil if key.user && (key.user.deleted? || key.user.banned?)
 
       key.touch(:last_used_at)
       key

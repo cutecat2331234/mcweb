@@ -129,4 +129,20 @@ class Administration::WebhookSubscriptionsAdminTest < ActionDispatch::Integratio
     end
     assert_response :unprocessable_entity
   end
+
+  test "admin access alone cannot manage webhook subscriptions" do
+    delete identity_session_path
+    limited_admin = create_user(account_type: :admin)
+    grant_permission(limited_admin, "admin.access")
+    sign_in_as(limited_admin)
+
+    get admin_system_webhook_subscriptions_path
+    assert_response :redirect
+
+    assert_no_difference -> { Administration::WebhookSubscription.count } do
+      post admin_system_webhook_subscriptions_path, params: {
+        webhook_subscription: { name: "Forbidden", url: "https://example.com/hook", event: "*" }
+      }
+    end
+  end
 end

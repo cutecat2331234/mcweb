@@ -52,6 +52,18 @@ module Api
         assert_equal 0, @conversation.unread_count_for(@owner)
       end
 
+      test "read-only key cannot mark a conversation read" do
+        _record, token = Administration::ApiKey.generate!(name: "conv-read-only", scopes: %w[read], user: @owner)
+
+        get "/api/v1/conversations/#{@conversation.id}", params: { mark_read: "true" }, headers: h(token)
+        assert_response :forbidden
+        assert_equal 1, @conversation.unread_count_for(@owner)
+
+        post "/api/v1/conversations/#{@conversation.id}/read", headers: h(token)
+        assert_response :forbidden
+        assert_equal 1, @conversation.unread_count_for(@owner)
+      end
+
       test "a non-participant cannot access the conversation" do
         stranger = create_user(username: "apiconvstranger")
         _rec, stoken = Administration::ApiKey.generate!(name: "stranger", scopes: %w[read write], user: stranger)

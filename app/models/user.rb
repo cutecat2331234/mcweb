@@ -119,6 +119,8 @@ class User < ApplicationRecord
   def soft_delete!
     update!(status: :deleted, deleted_at: Time.current)
     Session.where(id: sessions.active.select(:id)).find_each(&:revoke!)
+    Administration::ApiKey.where(user: self, revoked_at: nil)
+      .update_all(revoked_at: Time.current, updated_at: Time.current)
   end
 
   def generate_email_verification_token!

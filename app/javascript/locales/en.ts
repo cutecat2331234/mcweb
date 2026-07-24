@@ -434,7 +434,7 @@ export default {
       scopeWrite: 'Write',
       user: 'Bound user',
       actAsUser: 'Act as user (optional)',
-      actAsUserHint: 'Username (required for write operations)',
+      actAsUserHint: 'Username (required for write operations; only the site owner may bind another user)',
       lastUsed: 'Last used',
       status: 'Status',
       active: 'Active',

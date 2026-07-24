@@ -175,6 +175,37 @@ module Api
         assert_includes topic_ids, @topic.public_id
       end
 
+      test "bookmarks hide topics after the bound user loses section visibility" do
+        member = create_user(username: "apiprivatebookmarker")
+        grant_permission(member, "forum.private.view")
+        private_section = Community::Section.create!(
+          category: @category,
+          slug: "api-private-bookmarks",
+          name: "Private bookmarks",
+          position: 2,
+          permissions: { "view" => [ "forum.private.view" ] }
+        )
+        private_topic = Community::Topic.create!(
+          public_id: "topic_#{SecureRandom.alphanumeric(16)}",
+          section: private_section,
+          user: @author,
+          title: "Private bookmark",
+          status: "published",
+          last_posted_at: Time.current,
+          last_post_user: @author,
+          replies_count: 0
+        )
+        Community::Bookmark.create!(user: member, topic: private_topic)
+        _record, token = Administration::ApiKey.generate!(name: "private-bookmarks", scopes: %w[read], user: member)
+
+        get "/api/v1/bookmarks", headers: auth_headers(token)
+        assert_includes JSON.parse(response.body)["data"].map { |b| b["topic"]["id"] }, private_topic.public_id
+
+        member.roles.clear
+        get "/api/v1/bookmarks", headers: auth_headers(token)
+        assert_not_includes JSON.parse(response.body)["data"].map { |b| b["topic"]["id"] }, private_topic.public_id
+      end
+
       test "bookmarks require a bound user" do
         get "/api/v1/bookmarks", headers: auth_headers
         assert_response :forbidden
@@ -302,7 +333,7 @@ module Api
 
       test "notifications API lists, filters unread, and marks read" do
         owner = create_user(username: "apinotify")
-        _rec, ntoken = Administration::ApiKey.generate!(name: "notif-key", scopes: %w[read], user: owner)
+        _rec, ntoken = Administration::ApiKey.generate!(name: "notif-key", scopes: %w[read write], user: owner)
         n1 = Notification.notify!(user: owner, notification_type: "forum.reaction", title: "Reacted")
         Notification.notify!(user: owner, notification_type: "forum.mention", title: "Mentioned")
 
@@ -333,11 +364,25 @@ module Api
       test "cannot read another user's notification" do
         owner = create_user(username: "apinotifyowner")
         other = create_user(username: "apinotifyother")
-        _rec, ntoken = Administration::ApiKey.generate!(name: "notif-key2", scopes: %w[read], user: other)
+        _rec, ntoken = Administration::ApiKey.generate!(name: "notif-key2", scopes: %w[read write], user: other)
         n = Notification.notify!(user: owner, notification_type: "forum.reaction", title: "Reacted")
 
         post "/api/v1/notifications/#{n.id}/read", headers: auth_headers(ntoken)
         assert_response :not_found
+      end
+
+      test "read-only key cannot mutate notification read state" do
+        owner = create_user(username: "apinotifyreadonly")
+        _record, token = Administration::ApiKey.generate!(name: "notif-read-only", scopes: %w[read], user: owner)
+        notification = Notification.notify!(user: owner, notification_type: "forum.reaction", title: "Reacted")
+
+        post "/api/v1/notifications/#{notification.id}/read", headers: auth_headers(token)
+        assert_response :forbidden
+        assert_not notification.reload.read?
+
+        post "/api/v1/notifications/read_all", headers: auth_headers(token)
+        assert_response :forbidden
+        assert_equal 1, owner.notifications.unread.count
       end
 
       test "read key cannot use a write-only endpoint guard" do

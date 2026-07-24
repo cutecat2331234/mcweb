@@ -5,6 +5,8 @@ module Api
     # Notifications for the user the API key acts as. Requires a bound user.
     class NotificationsController < BaseController
       before_action :require_bound_user!
+      skip_before_action :require_read_scope!, only: %i[read read_all]
+      before_action :require_writer!, only: %i[read read_all]
       before_action :set_notification, only: :read
 
       # GET /api/v1/notifications?unread=true

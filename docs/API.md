@@ -1,6 +1,6 @@
-# 公开 REST API（v1）
+# REST API（v1）
 
-McWeb 提供只读的公开 REST API（`/api/v1`），供插件、外部集成或前端消费论坛数据。所有响应为 JSON。
+McWeb 提供带权限范围控制的 REST API（`/api/v1`），供插件、外部集成或前端读取论坛数据并执行受控写入。所有响应为 JSON。
 
 ## 认证
 
@@ -20,16 +20,18 @@ X-Api-Key: mcw_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 ### 生成密钥
 
-当前通过 Rails 控制台生成（后台管理 UI 可后续加入）：
+可在后台的“系统 → API 密钥”页面生成，也可通过 Rails 控制台生成：
 
 ```ruby
 record, token = Administration::ApiKey.generate!(name: "My integration", scopes: %w[read])
 puts token   # => mcw_...  仅此一次可见
 ```
 
-- `scopes`：目前支持 `read`（`write` 预留）。缺少所需 scope 返回 `403 insufficient_scope`。
+- `scopes`：支持 `read` 与 `write`，必须至少选择一个。缺少所需 scope 返回 `403 insufficient_scope`。
 - `user:`：可选。绑定后 API 以该用户的可见范围读取内容；不绑定则按**游客**可见范围（仅公开内容）。
 - 吊销：`record.revoke!`。
+
+`read` 密钥绑定用户后可读取该用户有权访问的个人资料、通知和私信，应当像登录会话凭据一样妥善保管。除站点所有者外，后台操作者只能将密钥绑定到自己；已封禁或删除用户的密钥不可使用。
 
 ## 限流
 
@@ -51,12 +53,12 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | GET | `/api/v1` | API 自描述（版本、当前密钥 scope/用户、事件目录、可用资源） |
 | GET | `/api/v1/me` | 当前密钥绑定用户的资料（未绑定用户返回 `403 no_bound_user`） |
 | GET | `/api/v1/notifications?unread=true` | 绑定用户的通知列表（需绑定用户） |
-| POST | `/api/v1/notifications/:id/read` | 标记单条通知已读 |
-| POST | `/api/v1/notifications/read_all` | 标记全部通知已读 |
+| POST | `/api/v1/notifications/:id/read` | 标记单条通知已读（需 `write`） |
+| POST | `/api/v1/notifications/read_all` | 标记全部通知已读（需 `write`） |
 | GET | `/api/v1/conversations` | 绑定用户的私信会话列表（需绑定用户） |
-| GET | `/api/v1/conversations/:id?mark_read=true` | 会话详情 + 分页消息 |
+| GET | `/api/v1/conversations/:id?mark_read=true` | 会话详情 + 分页消息；`mark_read=true` 另需 `write` |
 | POST | `/api/v1/conversations/:id/reply` | 在会话内回复（需 `write` scope） |
-| POST | `/api/v1/conversations/:id/read` | 标记会话已读 |
+| POST | `/api/v1/conversations/:id/read` | 标记会话已读（需 `write`） |
 | GET | `/api/v1/categories` | 分类及其可见分区 |
 | GET | `/api/v1/tags` | 可用标签（非同义词、对该密钥可见） |
 | POST | `/api/v1/tags/:id/subscription` | 关注标签 `level=...`（需 `write`，`:id` 为 slug） |

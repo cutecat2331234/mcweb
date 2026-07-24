@@ -4,7 +4,7 @@ module Admin
   module System
     # Manage generic outbound webhook subscriptions driven by the Mcweb::Events bus.
     class WebhookSubscriptionsController < BaseController
-      before_action -> { require_permission("admin.access") }
+      before_action -> { require_permission("system.settings.manage") }
       before_action :set_subscription, only: %i[edit update destroy]
 
       def index

@@ -1124,7 +1124,10 @@ en:
         created_with_token: "API key created. Copy the token now (shown only once): %{token}"
         revoked: API key revoked.
         name_required: Please enter a key name.
+        scopes_invalid: Select at least one valid API scope.
         user_not_found: No user found with that username.
+        user_binding_forbidden: Only the site owner can bind an API key to another user.
+        user_unavailable: API keys cannot be bound to a banned or deleted user.
       webhook_subscriptions:
         title: Event webhook subscriptions
         subtitle: Deliver event-bus (Mcweb::Events) events to an external URL, HMAC-signed

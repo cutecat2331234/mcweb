@@ -5,7 +5,7 @@ module Admin
     # Manage public REST API keys (see Api::V1). The plaintext token is shown once,
     # at creation time, then only its prefix is displayed.
     class ApiKeysController < BaseController
-      before_action -> { require_permission("admin.access") }
+      before_action -> { require_permission("system.settings.manage") }
       before_action :set_api_key, only: :revoke
 
       def index
@@ -36,8 +36,17 @@ module Admin
         if name.blank?
           return redirect_to new_admin_system_api_key_path, alert: t("mcweb.admin.api_keys.name_required")
         end
+        if scopes.empty? || (scopes - Administration::ApiKey::VALID_SCOPES).any?
+          return redirect_to new_admin_system_api_key_path, alert: t("mcweb.admin.api_keys.scopes_invalid")
+        end
         if username.present? && user.nil?
           return redirect_to new_admin_system_api_key_path, alert: t("mcweb.admin.api_keys.user_not_found")
+        end
+        if user && user != current_user && !current_user.account_owner?
+          return redirect_to new_admin_system_api_key_path, alert: t("mcweb.admin.api_keys.user_binding_forbidden")
+        end
+        if user && (user.deleted? || user.banned?)
+          return redirect_to new_admin_system_api_key_path, alert: t("mcweb.admin.api_keys.user_unavailable")
         end
 
         record, token = Administration::ApiKey.generate!(

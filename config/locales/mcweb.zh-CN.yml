@@ -1124,7 +1124,10 @@
         created_with_token: "API 密钥已创建。请立即复制令牌（仅显示一次）：%{token}"
         revoked: API 密钥已吊销。
         name_required: 请填写密钥名称。
+        scopes_invalid: 请至少选择一个有效的 API 权限范围。
         user_not_found: 找不到该用户名。
+        user_binding_forbidden: 只有站点所有者可以将 API 密钥绑定到其他用户。
+        user_unavailable: API 密钥不能绑定到已封禁或已删除的用户。
       webhook_subscriptions:
         title: 事件 Webhook 订阅
         subtitle: 将事件总线（Mcweb::Events）事件推送到外部 URL，支持 HMAC 签名

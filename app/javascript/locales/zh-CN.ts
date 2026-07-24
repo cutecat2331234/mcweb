@@ -434,7 +434,7 @@ export default {
       scopeWrite: '写入(write)',
       user: '绑定用户',
       actAsUser: '以用户身份(可选)',
-      actAsUserHint: '用户名(写入操作必填)',
+      actAsUserHint: '用户名（写入操作必填；仅站点所有者可绑定其他用户）',
       lastUsed: '最近使用',
       status: '状态',
       active: '有效',

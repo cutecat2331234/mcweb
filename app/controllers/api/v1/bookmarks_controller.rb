@@ -5,11 +5,17 @@ module Api
     # The bound user's bookmarks. Requires a bound user.
     class BookmarksController < BaseController
       include Serialization
+      include ForumVisibility
       before_action :require_bound_user!
 
       # GET /api/v1/bookmarks
       def index
-        scope = Community::Bookmark.where(user: api_user).includes(topic: %i[user section]).order(created_at: :desc)
+        scope = Community::Bookmark
+          .where(user: api_user)
+          .joins(:topic)
+          .merge(visible_topics_scope)
+          .includes(topic: %i[user section])
+          .order(Community::Bookmark.arel_table[:created_at].desc)
         pagy, bookmarks = api_paginate(scope)
         render json: {
           data: bookmarks.filter_map { |b| b.topic && serialize_bookmark(b) },

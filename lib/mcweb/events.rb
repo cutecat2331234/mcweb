@@ -39,6 +39,7 @@ module Mcweb
       forum.topic.moved
       forum.reaction.added
       forum.reaction.removed
+      forum.report.created
       forum.warning.issued
       identity.user.registered
       identity.user.banned

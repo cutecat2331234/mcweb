@@ -147,6 +147,16 @@ module Api
         assert_equal "write_requires_user", JSON.parse(response.body)["error"]
       end
 
+      test "GET /users lists members and supports q search" do
+        create_user(username: "zzz_uniquemember")
+        get "/api/v1/users", params: { q: "zzz_uniquemember" }, headers: auth_headers
+        assert_response :success
+        body = JSON.parse(response.body)
+        usernames = body["data"].map { |u| u["username"] }
+        assert_includes usernames, "zzz_uniquemember"
+        assert body["data"].none? { |u| u.key?("email") }, "must not leak email in member listing"
+      end
+
       test "GET /me returns the bound user with email" do
         me = create_user(username: "apime")
         _rec, mtoken = Administration::ApiKey.generate!(name: "me-key", scopes: %w[read], user: me)

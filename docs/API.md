@@ -61,6 +61,7 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | GET | `/api/v1/topics?section_id=<slug>&q=<关键词>` | 主题列表（可按分区 slug 过滤、按标题全文搜索） |
 | GET | `/api/v1/topics/:id` | 主题详情 + 分页帖子（`:id` 为主题 `public_id`） |
 | GET | `/api/v1/posts/:id` | 单帖详情（`:id` 为帖子数值 id） |
+| GET | `/api/v1/users?q=<名>&sort=<posts\|username\|newest>` | 会员列表（按用户名搜索 / 排序） |
 | GET | `/api/v1/users/:id` | 公开用户资料（`:id` 为用户 `public_id`） |
 | POST | `/api/v1/topics` | 发主题（需 `write` scope + 绑定用户） |
 | POST | `/api/v1/posts` | 发回帖（需 `write` scope + 绑定用户） |

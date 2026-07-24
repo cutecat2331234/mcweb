@@ -31,6 +31,16 @@ module Api
         { "Authorization" => "Bearer #{token}" }
       end
 
+      test "root index describes the API and the authenticated key" do
+        get "/api/v1", headers: auth_headers
+        assert_response :success
+        body = JSON.parse(response.body)
+        assert_equal "v1", body["version"]
+        assert_equal "test key", body["authenticated_as"]["key"]
+        assert_includes body["resources"], "conversations"
+        assert_includes body["events"], "forum.post.created"
+      end
+
       test "rejects request without an API key" do
         get "/api/v1/categories"
         assert_response :unauthorized

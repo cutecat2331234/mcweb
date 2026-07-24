@@ -6,8 +6,8 @@ module Api
       include Serialization
       include ForumVisibility
 
-      skip_before_action :require_read_scope!, only: %i[create bookmark subscription]
-      before_action :require_writer!, only: %i[create bookmark subscription]
+      skip_before_action :require_read_scope!, only: %i[create bookmark subscription solve unsolve]
+      before_action :require_writer!, only: %i[create bookmark subscription solve unsolve]
 
       # GET /api/v1/topics?section_id=<slug>&page=&limit=
       def index
@@ -83,6 +83,25 @@ module Api
         return render_service_error(result) if result.failure?
 
         render json: { data: { topic_id: topic.public_id, notification_level: result.value[:notification_level] } }
+      end
+
+      # POST /api/v1/topics/:id/solve  (write scope) — params: post_id (marked answer)
+      def solve
+        topic = find_visible_topic!(params[:id])
+        post = topic.posts.find(params[:post_id])
+        result = Community::MarkTopicSolved.call(user: api_user, topic: topic, post: post)
+        return render_service_error(result) if result.failure?
+
+        render json: { data: { topic_id: topic.public_id, solved_post_id: post.id } }
+      end
+
+      # POST /api/v1/topics/:id/unsolve  (write scope)
+      def unsolve
+        topic = find_visible_topic!(params[:id])
+        result = Community::UnsolveTopic.call(user: api_user, topic: topic)
+        return render_service_error(result) if result.failure?
+
+        render json: { data: { topic_id: topic.public_id, solved: false } }
       end
     end
   end

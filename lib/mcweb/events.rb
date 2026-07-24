@@ -39,7 +39,9 @@ module Mcweb
       forum.topic.moved
       forum.reaction.added
       forum.reaction.removed
+      forum.warning.issued
       identity.user.registered
+      identity.user.banned
     ].freeze
 
     class << self

@@ -16,6 +16,7 @@ module Administration
       @user.ban!(reason: @reason, expires_at: @expires_at)
       Session.where(user: @user, revoked_at: nil).find_each(&:revoke!)
       AuditLogger.call(actor: @actor, action: "admin.user_banned", resource: @user)
+      Mcweb::Events.publish("identity.user.banned", user: @user, actor: @actor, reason: @reason)
       ServiceResult.success(@user)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

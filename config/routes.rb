@@ -30,6 +30,8 @@ Rails.application.routes.draw do
         member do
           post :bookmark
           post :subscription
+          post :solve
+          post :unsolve
         end
       end
       resources :posts, only: %i[show create] do

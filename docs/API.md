@@ -74,6 +74,8 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | GET | `/api/v1/bookmarks` | 绑定用户的书签列表 |
 | POST | `/api/v1/topics/:id/bookmark` | 切换主题书签（需 `write`） |
 | POST | `/api/v1/topics/:id/subscription` | 设置关注级别 `level=watching\|tracking\|normal\|off`（需 `write`） |
+| POST | `/api/v1/topics/:id/solve` | 标记最佳答案 `post_id=...`（需 `write`） |
+| POST | `/api/v1/topics/:id/unsolve` | 取消标记（需 `write`） |
 
 ### 写入端点
 

@@ -170,6 +170,20 @@ module Api
         assert_response :forbidden
       end
 
+      test "topic author can mark solved and unsolve via API" do
+        replier = create_user(username: "apisolvereplier")
+        reply = Community::Post.create!(topic: @topic, user: replier, floor_number: 2, body: "The answer", status: "published")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "sv", scopes: %w[read write], user: @author)
+
+        post "/api/v1/topics/#{@topic.public_id}/solve", params: { post_id: reply.id }, headers: auth_headers(wtoken)
+        assert_response :success
+        assert_equal reply.id, @topic.reload.solved_post_id
+
+        post "/api/v1/topics/#{@topic.public_id}/unsolve", headers: auth_headers(wtoken)
+        assert_response :success
+        assert_nil @topic.reload.solved_post_id
+      end
+
       test "subscribe to a tag" do
         Community::Tag.create!(name: "Announcements")
         member = create_user(username: "apitagfollower")

@@ -25,7 +25,7 @@ Rails.application.routes.draw do
       resources :tags, only: :index
       resources :topics, only: %i[index show create]
       resources :posts, only: %i[show create]
-      resources :users, only: :show
+      resources :users, only: %i[index show]
     end
   end
 

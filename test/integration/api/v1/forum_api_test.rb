@@ -170,6 +170,18 @@ module Api
         assert_response :forbidden
       end
 
+      test "subscribe to a tag" do
+        Community::Tag.create!(name: "Announcements")
+        member = create_user(username: "apitagfollower")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "tg", scopes: %w[read write], user: member)
+
+        post "/api/v1/tags/announcements/subscription", params: { level: "watching" }, headers: auth_headers(wtoken)
+        assert_response :success
+        assert_equal "watching", JSON.parse(response.body)["data"]["notification_level"]
+        tag = Community::Tag.find_by(slug: "announcements")
+        assert Community::Subscription.exists?(user: member, subscribable: tag)
+      end
+
       test "react to a post and read reaction counts" do
         reactor = create_user(username: "apireactor")
         _rec, wtoken = Administration::ApiKey.generate!(name: "rx", scopes: %w[read write], user: reactor)

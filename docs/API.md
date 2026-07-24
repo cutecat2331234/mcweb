@@ -58,6 +58,7 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | POST | `/api/v1/conversations/:id/read` | 标记会话已读 |
 | GET | `/api/v1/categories` | 分类及其可见分区 |
 | GET | `/api/v1/tags` | 可用标签（非同义词、对该密钥可见） |
+| POST | `/api/v1/tags/:id/subscription` | 关注标签 `level=...`（需 `write`，`:id` 为 slug） |
 | GET | `/api/v1/topics?section_id=<slug>&q=<关键词>` | 主题列表（可按分区 slug 过滤、按标题全文搜索） |
 | GET | `/api/v1/topics/:id` | 主题详情 + 分页帖子（`:id` 为主题 `public_id`） |
 | GET | `/api/v1/posts/:id` | 单帖详情（`:id` 为帖子数值 id） |

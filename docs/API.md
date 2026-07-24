@@ -48,6 +48,7 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
+| GET | `/api/v1` | API 自描述（版本、当前密钥 scope/用户、事件目录、可用资源） |
 | GET | `/api/v1/me` | 当前密钥绑定用户的资料（未绑定用户返回 `403 no_bound_user`） |
 | GET | `/api/v1/notifications?unread=true` | 绑定用户的通知列表（需绑定用户） |
 | POST | `/api/v1/notifications/:id/read` | 标记单条通知已读 |

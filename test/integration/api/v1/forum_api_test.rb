@@ -170,6 +170,37 @@ module Api
         assert_response :forbidden
       end
 
+      test "follow toggles following a user" do
+        follower = create_user(username: "apifollower")
+        target = create_user(username: "apifollowed")
+        _rec, wtoken = Administration::ApiKey.generate!(name: "fl", scopes: %w[read write], user: follower)
+
+        post "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        assert_response :success
+        assert_equal true, JSON.parse(response.body)["data"]["following"]
+        assert Community::UserFollow.exists?(follower: follower, followed: target)
+
+        post "/api/v1/users/#{target.public_id}/follow", headers: auth_headers(wtoken)
+        assert_equal false, JSON.parse(response.body)["data"]["following"]
+      end
+
+      test "profile posts list and create" do
+        wall_owner = create_user(username: "apiwallowner")
+        author = create_user(username: "apiwallauthor")
+        grant_permission(author, "forum.topics.lock") # staff bypass for profile-wall trust gate
+        _rec, wtoken = Administration::ApiKey.generate!(name: "pp", scopes: %w[read write], user: author)
+
+        assert_difference -> { Community::ProfilePost.count }, 1 do
+          post "/api/v1/users/#{wall_owner.public_id}/profile-posts", params: { body: "Nice profile!" }, headers: auth_headers(wtoken)
+        end
+        assert_response :created
+
+        get "/api/v1/users/#{wall_owner.public_id}/profile-posts", headers: auth_headers
+        assert_response :success
+        bodies = JSON.parse(response.body)["data"].map { |p| p["body"] }
+        assert_includes bodies, "Nice profile!"
+      end
+
       test "GET /users lists members and supports q search" do
         create_user(username: "zzz_uniquemember")
         get "/api/v1/users", params: { q: "zzz_uniquemember" }, headers: auth_headers

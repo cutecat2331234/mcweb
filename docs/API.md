@@ -65,6 +65,9 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 | GET | `/api/v1/users/:id` | 公开用户资料（`:id` 为用户 `public_id`） |
 | POST | `/api/v1/topics` | 发主题（需 `write` scope + 绑定用户） |
 | POST | `/api/v1/posts` | 发回帖（需 `write` scope + 绑定用户） |
+| GET | `/api/v1/bookmarks` | 绑定用户的书签列表 |
+| POST | `/api/v1/topics/:id/bookmark` | 切换主题书签（需 `write`） |
+| POST | `/api/v1/topics/:id/subscription` | 设置关注级别 `level=watching\|tracking\|normal\|off`（需 `write`） |
 
 ### 写入端点
 

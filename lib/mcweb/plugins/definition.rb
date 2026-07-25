@@ -6,6 +6,7 @@ module Mcweb
   module Plugins
     Listener = Data.define(:plugin_id, :event, :priority, :sequence, :callback)
     Filter = Data.define(:plugin_id, :name, :priority, :sequence, :callback)
+    ServiceDecorator = Data.define(:plugin_id, :name, :priority, :sequence, :callback)
 
     class Definition
       EVENT_PATTERN = /\A[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+\z/
@@ -23,6 +24,7 @@ module Mcweb
         )
         @listeners = []
         @filters = []
+        @service_decorators = []
         @sealed = false
         @status = :registered
         @failure_count = 0
@@ -81,12 +83,40 @@ module Mcweb
         self
       end
 
+      # Around-service decorators are the stable alternative to prepending or
+      # monkey-patching a core service. The continuation passed to the callback
+      # is memoized and the registry guarantees that the core operation still
+      # runs exactly once when a decorator raises or forgets to continue.
+      def decorate_service(name, priority: 100, &callback)
+        raise ArgumentError, "service decorator callback is required" unless callback
+
+        name = normalize_extension_name(name, label: "service")
+        validate_priority!(priority)
+
+        @mutex.synchronize do
+          raise LifecycleError, "plugin definition is sealed" if @sealed
+
+          @service_decorators << ServiceDecorator.new(
+            plugin_id: id,
+            name: name.freeze,
+            priority: priority,
+            sequence: @service_decorators.length,
+            callback:
+          )
+        end
+        self
+      end
+
       def listeners
         @mutex.synchronize { @listeners.dup.freeze }
       end
 
       def filters
         @mutex.synchronize { @filters.dup.freeze }
+      end
+
+      def service_decorators
+        @mutex.synchronize { @service_decorators.dup.freeze }
       end
 
       def declares_capability?(capability)
@@ -118,6 +148,7 @@ module Mcweb
           @sealed = true
           @listeners.freeze
           @filters.freeze
+          @service_decorators.freeze
         end
         self
       end
@@ -155,6 +186,10 @@ module Mcweb
         record_extension_failure!(error)
       end
 
+      def record_service_decorator_failure!(error)
+        record_extension_failure!(error)
+      end
+
       def record_extension_failure!(error)
         @mutex.synchronize do
           @status = :degraded
@@ -170,6 +205,7 @@ module Mcweb
             status: @status.to_s.freeze,
             listener_count: @listeners.length,
             filter_count: @filters.length,
+            service_decorator_count: @service_decorators.length,
             failure_count: @failure_count,
             last_error: @last_error,
             activation_order: @activation_order

@@ -59,6 +59,37 @@ class Community::PluginFilterIntegrationTest < ActiveSupport::TestCase
     assert_equal "Original body\n\nExtended by plugin", result.value.posts.first.body
   end
 
+  test "topic creation exposes a stable around-service decorator boundary" do
+    calls = []
+    register do |plugin|
+      plugin.decorate_service("forum.topic.create") do |proceed, input, context|
+        calls << "before"
+        assert_equal @user.id, context.dig("user", "id")
+        assert_equal @section.id, context.dig("section", "id")
+
+        result = proceed.call(
+          input.merge("title" => "[Decorated] #{input.fetch('title')}")
+        )
+        calls << "after"
+        result
+      end
+    end
+    @registry.boot!
+
+    result = with_plugin_registry do
+      Community::CreateTopic.call(
+        user: @user,
+        section: @section,
+        title: "Extension point",
+        body: "Original body"
+      )
+    end
+
+    assert_predicate result, :success?
+    assert_equal "[Decorated] Extension point", result.value.title
+    assert_equal %w[before after], calls
+  end
+
   test "reply creation applies plugin output while preserving core permission and state checks" do
     topic, = create_visible_forum_notification_resource(
       user: @user,
@@ -156,13 +187,18 @@ class Community::PluginFilterIntegrationTest < ActiveSupport::TestCase
   end
 
   def with_plugin_registry(&block)
-    original = Mcweb::Plugins.method(:apply_filter)
+    original_filter = Mcweb::Plugins.method(:apply_filter)
+    original_service = Mcweb::Plugins.method(:call_service)
     registry = @registry
     Mcweb::Plugins.singleton_class.define_method(:apply_filter) do |name, value, context: {}|
       registry.apply_filter(name, value, context:)
     end
+    Mcweb::Plugins.singleton_class.define_method(:call_service) do |name, input: {}, context: {}, &operation|
+      registry.call_service(name, input:, context:, &operation)
+    end
     block.call
   ensure
-    Mcweb::Plugins.singleton_class.define_method(:apply_filter, original) if original
+    Mcweb::Plugins.singleton_class.define_method(:apply_filter, original_filter) if original_filter
+    Mcweb::Plugins.singleton_class.define_method(:call_service, original_service) if original_service
   end
 end

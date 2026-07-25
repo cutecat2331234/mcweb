@@ -192,6 +192,52 @@ Declare `forum.extend` when registering forum filters. Capabilities remain
 compatibility and audit metadata for fully trusted deployment code rather than
 a sandbox boundary.
 
+## Around-service decorators
+
+Use an around-service decorator when a trusted plugin must wrap a complete core
+operation rather than only transform its input:
+
+```ruby
+Mcweb::Plugins.register do |plugin|
+  plugin.decorate_service("forum.topic.create", priority: 50) do |proceed, input, context|
+    result = proceed.call(
+      input.merge("title" => "[Support] #{input.fetch('title')}")
+    )
+    result
+  end
+end
+
+Mcweb::Plugins.call_service(
+  "forum.topic.create",
+  input: topic_attributes,
+  context: { actor: current_user }
+) do |input, context|
+  Community::CreateTopic.call(
+    user: User.find(context.dig("actor", "id")),
+    **input.symbolize_keys
+  )
+end
+```
+
+The host explicitly defines each stable service boundary with
+`Mcweb::Plugins.call_service`; registering a decorator does not monkey-patch
+arbitrary Ruby classes. Decorators run by priority, plugin ID, then declaration
+order. Inputs and contexts are deeply normalized and frozen. A replacement
+input must preserve the original root kind.
+
+The continuation is memoized and thread-safe. The downstream operation runs
+exactly once even if a plugin calls `proceed` repeatedly, raises before or after
+continuing, or forgets to continue. Plugin failures are diagnosed and isolated;
+an exception from the core operation is propagated unchanged and is not
+attributed to a plugin. Recursive decoration of the same service is bypassed
+and diagnosed, including when the continuation runs on a worker thread.
+
+Service results stay host-native so Active Record objects and `ServiceResult`
+instances retain identity and behavior. A decorator may return a replacement
+result only when it preserves the downstream root kind or class. Declare the
+matching `<domain>.extend` capability, such as `forum.extend`, for capability
+auditing.
+
 ## Versioned host API
 
 Every v1 definition exposes one reusable facade through `plugin.api`:
@@ -651,8 +697,8 @@ internals:
 
 ```ruby
 Mcweb::Plugins.list
-# [{ id:, name:, version:, status:, listener_count:, filter_count:, failure_count:,
-#    last_error:, activation_order:, ... }]
+# [{ id:, name:, version:, status:, listener_count:, filter_count:,
+#    service_decorator_count:, failure_count:, last_error:, activation_order:, ... }]
 
 Mcweb::Plugins.diagnostics
 # [{ level:, code:, phase:, plugin_id:, event:, message:, exception:,

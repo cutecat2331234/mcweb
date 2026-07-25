@@ -27,6 +27,21 @@ module Community
     end
 
     def call
+      return call_core unless plugin_service_decorators_available?
+
+      Mcweb::Plugins.call_service(
+        "forum.topic.create",
+        input: plugin_attributes,
+        context: { user: @user, section: @section }
+      ) do |input, _context|
+        apply_plugin_attributes!(input)
+        call_core
+      end
+    rescue ActiveRecord::RecordInvalid => e
+      ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    def call_core
       unless Community::SectionAccess.view?(section: @section, user: @user)
         return ServiceResult.failure(error: "Section not available.")
       end
@@ -113,11 +128,23 @@ module Community
       Community::CheckAutoBadges.call(user: @user)
 
       ServiceResult.success(topic)
-    rescue ActiveRecord::RecordInvalid => e
-      ServiceResult.failure(errors: e.record.errors.to_hash)
     end
 
     private
+
+    def plugin_service_decorators_available?
+      defined?(Mcweb::Plugins) && Mcweb::Plugins.respond_to?(:call_service)
+    end
+
+    def plugin_attributes
+      {
+        title: @title,
+        body: @body,
+        tag_names: @tag_names,
+        prefix: @prefix,
+        custom_fields: @custom_fields
+      }
+    end
 
     def check_spam
       if @title.blank?
@@ -228,15 +255,16 @@ module Community
 
       filtered = Mcweb::Plugins.apply_filter(
         "forum.topic.create.attributes",
-        {
-          title: @title,
-          body: @body,
-          tag_names: @tag_names,
-          prefix: @prefix,
-          custom_fields: @custom_fields
-        },
+        plugin_attributes,
         context: { user: @user, section: @section }
       )
+
+      apply_plugin_attributes!(filtered)
+    rescue StandardError => e
+      Rails.logger.error("[mcweb.plugins] forum.topic.create.attributes host integration failed: #{e.class}: #{e.message}")
+    end
+
+    def apply_plugin_attributes!(filtered)
       return unless filtered.is_a?(Hash)
 
       @title = filtered.fetch("title", @title).to_s.strip
@@ -244,8 +272,6 @@ module Community
       @tag_names = filtered["tag_names"] if filtered.key?("tag_names")
       @prefix = filtered.fetch("prefix", @prefix).to_s.strip.presence
       @custom_fields = filtered["custom_fields"] if filtered.key?("custom_fields")
-    rescue StandardError => e
-      Rails.logger.error("[mcweb.plugins] forum.topic.create.attributes host integration failed: #{e.class}: #{e.message}")
     end
 
     def normalize_custom_fields(values)

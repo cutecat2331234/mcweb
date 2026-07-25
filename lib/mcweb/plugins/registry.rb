@@ -17,6 +17,100 @@ module Mcweb
     REGISTRY_MUTEX = Mutex.new
     LIFECYCLE_MONITOR = Monitor.new
 
+    class ServiceContinuation
+      def initialize(default_input:, normalizer:, input_validator:, &operation)
+        @default_input = default_input
+        @normalizer = normalizer
+        @input_validator = input_validator
+        @operation = operation
+        @monitor = Monitor.new
+        @condition = @monitor.new_cond
+        @calls = 0
+        @state = :idle
+        @owner = nil
+        @called = false
+        @value = nil
+        @error = nil
+      end
+
+      def call(input = @default_input)
+        normalized_input = nil
+        @monitor.synchronize do
+          @calls += 1
+          loop do
+            case @state
+            when :complete
+              return result_without_lock
+            when :running
+              raise LifecycleError, "service continuation cannot be re-entered" if @owner == Thread.current
+
+              @condition.wait
+            else
+              normalized_input = @normalizer.call(input)
+              @input_validator.call(normalized_input)
+              @state = :running
+              @called = true
+              @owner = Thread.current
+              break
+            end
+          end
+        end
+
+        value = nil
+        error = nil
+        begin
+          value = @operation.call(normalized_input)
+        # Continuation waiters must observe the exact same terminal outcome,
+        # including non-StandardError exceptions that the registry itself does
+        # not isolate.
+        rescue Exception => e # rubocop:disable Lint/RescueException
+          error = e
+        ensure
+          @monitor.synchronize do
+            @value = value
+            @error = error
+            @state = :complete
+            @owner = nil
+            @condition.broadcast
+          end
+        end
+        raise error if error
+
+        value
+      end
+
+      def calls
+        @monitor.synchronize { @calls }
+      end
+
+      def called?
+        @monitor.synchronize { @called }
+      end
+
+      def failed_with?(error)
+        @monitor.synchronize { @called && @error.equal?(error) }
+      end
+
+      def result
+        @monitor.synchronize do
+          if @state == :running && @owner == Thread.current
+            raise LifecycleError, "service continuation result is unavailable while it is running"
+          end
+
+          @condition.wait_while { @state == :running }
+          result_without_lock
+        end
+      end
+
+      private
+
+      def result_without_lock
+        raise @error if @error
+
+        @value
+      end
+    end
+
     class Registry
       EVENT_CAPABILITY = "forum.events.read"
       FILTER_CAPABILITY_SUFFIX = ".extend"
@@ -104,6 +198,7 @@ module Mcweb
             activation_index += 1
             audit_listener_capabilities(definition)
             audit_filter_capabilities(definition)
+            audit_service_decorator_capabilities(definition)
           end
 
           subscribe_to_active_events!
@@ -203,6 +298,56 @@ module Mcweb
         current
       ensure
         Thread.current.thread_variable_set(filter_stack_key, filter_stack) if defined?(filter_stack)
+      end
+
+      # Runs a core operation through deterministic, synchronous service
+      # decorators. Each decorator receives a memoized continuation plus
+      # immutable, normalized input and context:
+      #
+      #   plugin.decorate_service("forum.topic.create") do |proceed, input, context|
+      #     result = proceed.call(input.merge("title" => "[Plugin] #{input.fetch('title')}"))
+      #     result
+      #   end
+      #
+      # A decorator cannot suppress the core operation: omitting +proceed+,
+      # raising, or returning an incompatible root type is diagnosed and falls
+      # back to the downstream result. Exceptions raised by the core operation
+      # are never attributed to a plugin and still propagate to the caller.
+      # Results deliberately remain host-native (for example ServiceResult or
+      # an Active Record object) rather than being serialized or frozen; the
+      # stable boundary requires decorators to preserve their exact root class.
+      def call_service(name, input: {}, context: {}, &operation)
+        raise ArgumentError, "core service operation is required" unless operation
+
+        stack_pushed = false
+        name = normalize_service_name(name)
+        normalized_input = Mcweb::PluginApi::V1::Normalizer.call(input)
+        immutable_context = Mcweb::PluginApi::V1::Normalizer.call(context)
+        service_stack = Thread.current.thread_variable_get(service_stack_key) || []
+
+        if service_stack.include?(name)
+          record_diagnostic(
+            level: :error,
+            code: :service_recursion,
+            phase: :service,
+            event: name,
+            message: "recursive service decoration was bypassed"
+          )
+          return operation.call(normalized_input, immutable_context)
+        end
+
+        Thread.current.thread_variable_set(service_stack_key, service_stack + [ name ])
+        stack_pushed = true
+        invoke_service_decorator(
+          name:,
+          decorators: service_decorators_for(name),
+          index: 0,
+          input: normalized_input,
+          context: immutable_context,
+          operation:
+        )
+      ensure
+        Thread.current.thread_variable_set(service_stack_key, service_stack) if stack_pushed
       end
 
       def record_diagnostic(level:, code:, message:, phase:, plugin_id: nil, event: nil, exception: nil)
@@ -378,6 +523,25 @@ module Mcweb
           end
       end
 
+      def audit_service_decorator_capabilities(definition)
+        definition.service_decorators
+          .map(&:name)
+          .map { |name| "#{name.split('.', 2).first}#{FILTER_CAPABILITY_SUFFIX}" }
+          .uniq
+          .sort
+          .each do |capability|
+            next if definition.declares_capability?(capability)
+
+            record_diagnostic(
+              level: :warning,
+              code: :undeclared_capability,
+              phase: :activation,
+              plugin_id: definition.id,
+              message: "service decorators are registered without declaring #{capability}; allowed because plugins are fully trusted"
+            )
+          end
+      end
+
       def audit_capability_use(manifest, capability)
         return if manifest.capabilities.include?(capability)
 
@@ -457,6 +621,15 @@ module Mcweb
         normalized
       end
 
+      def normalize_service_name(name)
+        normalized = name.to_s
+        unless normalized.length <= Definition::MAX_EVENT_NAME_LENGTH &&
+            normalized.match?(Definition::EVENT_PATTERN)
+          raise ArgumentError, "invalid service name #{normalized.inspect}"
+        end
+        normalized
+      end
+
       def filters_for(name)
         definition_snapshot
           .select(&:dispatchable?)
@@ -465,8 +638,127 @@ module Mcweb
           .sort_by { |filter| [ filter.priority, filter.plugin_id, filter.sequence ] }
       end
 
+      def service_decorators_for(name)
+        definition_snapshot
+          .select(&:dispatchable?)
+          .flat_map(&:service_decorators)
+          .select { |decorator| decorator.name == name }
+          .sort_by { |decorator| [ decorator.priority, decorator.plugin_id, decorator.sequence ] }
+      end
+
+      def invoke_service_decorator(name:, decorators:, index:, input:, context:, operation:)
+        decorator = decorators[index]
+        return operation.call(input, context) unless decorator
+
+        continuation = ServiceContinuation.new(
+          default_input: input,
+          normalizer: Mcweb::PluginApi::V1::Normalizer.method(:call),
+          input_validator: lambda do |candidate|
+            next if compatible_service_value?(input, candidate)
+
+            raise LifecycleError,
+              "service continuation changed the root input type from " \
+                "#{service_value_type_label(input)} to #{service_value_type_label(candidate)}"
+          end
+        ) do |next_input|
+          with_service_stack(name) do
+            invoke_service_decorator(
+              name:,
+              decorators:,
+              index: index + 1,
+              input: next_input,
+              context:,
+              operation:
+            )
+          end
+        end
+
+        begin
+          candidate = decorator.callback.call(continuation, input, context)
+          unless continuation.called?
+            error = LifecycleError.new("service decorator must call its continuation")
+            definition_for(decorator.plugin_id)&.record_service_decorator_failure!(error)
+            record_diagnostic(
+              level: :error,
+              code: :service_decorator_skipped_core,
+              phase: :service,
+              plugin_id: decorator.plugin_id,
+              event: name,
+              message: error.message,
+              exception: error
+            )
+            return continuation.call
+          end
+
+          downstream = continuation.result
+          if continuation.calls > 1
+            record_diagnostic(
+              level: :warning,
+              code: :service_decorator_multiple_proceed,
+              phase: :service,
+              plugin_id: decorator.plugin_id,
+              event: name,
+              message: "service continuation was called #{continuation.calls} times; the downstream operation ran once"
+            )
+          end
+
+          unless compatible_service_value?(downstream, candidate)
+            record_diagnostic(
+              level: :error,
+              code: :invalid_service_decorator_result,
+              phase: :service,
+              plugin_id: decorator.plugin_id,
+              event: name,
+              message: "service decorator changed the root result type from " \
+                "#{service_value_type_label(downstream)} to #{service_value_type_label(candidate)}"
+            )
+            return downstream
+          end
+
+          candidate
+        rescue StandardError, SystemStackError => e
+          raise if continuation.failed_with?(e)
+
+          definition_for(decorator.plugin_id)&.record_service_decorator_failure!(e)
+          record_diagnostic(
+            level: :error,
+            code: :service_decorator_error,
+            phase: :service,
+            plugin_id: decorator.plugin_id,
+            event: name,
+            message: e.message,
+            exception: e
+          )
+          logger&.error("[mcweb.plugins] #{decorator.plugin_id} service decorator #{name} failed: #{e.class}: #{e.message}")
+          continuation.call
+        end
+      end
+
       def compatible_filter_value?(current, candidate)
         filter_value_type(current) == filter_value_type(candidate)
+      end
+
+      def compatible_service_value?(current, candidate)
+        service_value_type(current) == service_value_type(candidate)
+      end
+
+      def service_value_type_label(value)
+        type = service_value_type(value)
+        return type unless type.is_a?(Class)
+
+        type.name.to_s.empty? ? type.inspect : type.name
+      end
+
+      def service_value_type(value)
+        case value
+        when Hash then :hash
+        when Array then :array
+        when String then :string
+        when Numeric then :number
+        when TrueClass, FalseClass then :boolean
+        when NilClass then :null
+        else value.class
+        end
       end
 
       def filter_value_type(value)
@@ -483,6 +775,19 @@ module Mcweb
 
       def filter_stack_key
         @filter_stack_key ||= :"mcweb_plugin_filter_stack_#{object_id}"
+      end
+
+      def service_stack_key
+        @service_stack_key ||= :"mcweb_plugin_service_stack_#{object_id}"
+      end
+
+      def with_service_stack(name)
+        service_stack = Thread.current.thread_variable_get(service_stack_key) || []
+        added = !service_stack.include?(name)
+        Thread.current.thread_variable_set(service_stack_key, service_stack + [ name ]) if added
+        yield
+      ensure
+        Thread.current.thread_variable_set(service_stack_key, service_stack) if added
       end
 
       def unsubscribe_all!
@@ -526,6 +831,10 @@ module Mcweb
 
       def apply_filter(name, value, context: {})
         registry.apply_filter(name, value, context:)
+      end
+
+      def call_service(name, input: {}, context: {}, &operation)
+        registry.call_service(name, input:, context:, &operation)
       end
 
       def boot!

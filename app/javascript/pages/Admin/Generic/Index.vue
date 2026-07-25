@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -227,7 +227,7 @@ function syncViewport(event?: MediaQueryListEvent) {
 }
 
 onMounted(() => {
-  viewportQuery = window.matchMedia('(max-width: 767px)')
+  viewportQuery = window.matchMedia('(max-width: 1023px)')
   syncViewport()
   viewportQuery.addEventListener('change', syncViewport)
 })
@@ -248,22 +248,21 @@ onBeforeUnmount(() => {
         v-if="exportUrl || actions?.length || bulkRetry || selectedPublicIds.length"
         #extra
       >
-        <a-space wrap :size="[8, 8]">
-          <a
+        <a-space wrap size="small">
+          <a-button
             v-if="exportUrl"
             :href="exportUrl"
-            class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
           >
             {{ t('admin.common.exportCsv') }}
-          </a>
-          <Link
-            v-for="action in actions || []"
+          </a-button>
+          <a-button
+            v-for="(action, actionIndex) in actions || []"
             :key="action.href"
             :href="action.href"
-            class="arco-btn arco-btn-primary arco-btn-size-medium no-underline"
+            :type="actionIndex === 0 ? 'primary' : 'secondary'"
           >
             {{ action.label }}
-          </Link>
+          </a-button>
           <a-button
             v-if="bulkRetry"
             type="outline"
@@ -271,32 +270,51 @@ onBeforeUnmount(() => {
           >
             {{ bulkRetry.label }}
           </a-button>
-          <template v-if="selectable && bulkModerateUrl && selectedPublicIds.length">
-            <a-button type="outline" @click="bulkModerate('lock')">
-              {{ t('components.bulkModerate.lockSelected', { count: selectedPublicIds.length }) }}
-            </a-button>
-            <a-button type="outline" @click="bulkModerate('unlock')">
-              {{ t('components.bulkModerate.unlockSelected') }}
-            </a-button>
-            <a-button type="outline" @click="bulkModerate('archive')">
-              {{ t('components.bulkModerate.archiveSelected') }}
-            </a-button>
-            <a-button type="outline" @click="bulkModerate('unarchive')">
-              {{ t('components.bulkModerate.unarchiveSelected') }}
-            </a-button>
-          </template>
-          <template
-            v-if="selectable && bulkOrderUrl && bulkOrderActions?.length && selectedPublicIds.length"
+          <a-dropdown
+            v-if="selectable && bulkModerateUrl && selectedPublicIds.length"
+            trigger="click"
+            position="br"
+            @select="(value) => bulkModerate(String(value))"
           >
-            <a-button
-              v-for="item in bulkOrderActions"
-              :key="item.action"
-              type="outline"
-              @click="bulkOrder(item.action)"
-            >
-              {{ item.label }}（{{ selectedPublicIds.length }}）
+            <a-button type="primary">
+              {{ t('admin.common.bulkAction') }}
+              <a-badge :count="selectedPublicIds.length" />
             </a-button>
-          </template>
+            <template #content>
+              <a-doption value="lock">
+                {{ t('components.bulkModerate.lockSelected', { count: selectedPublicIds.length }) }}
+              </a-doption>
+              <a-doption value="unlock">
+                {{ t('components.bulkModerate.unlockSelected') }}
+              </a-doption>
+              <a-doption value="archive">
+                {{ t('components.bulkModerate.archiveSelected') }}
+              </a-doption>
+              <a-doption value="unarchive">
+                {{ t('components.bulkModerate.unarchiveSelected') }}
+              </a-doption>
+            </template>
+          </a-dropdown>
+          <a-dropdown
+            v-if="selectable && bulkOrderUrl && bulkOrderActions?.length && selectedPublicIds.length"
+            trigger="click"
+            position="br"
+            @select="(value) => bulkOrder(String(value))"
+          >
+            <a-button type="primary">
+              {{ t('admin.common.bulkAction') }}
+              <a-badge :count="selectedPublicIds.length" />
+            </a-button>
+            <template #content>
+              <a-doption
+                v-for="item in bulkOrderActions"
+                :key="item.action"
+                :value="item.action"
+              >
+                {{ item.label }}
+              </a-doption>
+            </template>
+          </a-dropdown>
         </a-space>
       </template>
     </a-page-header>
@@ -434,12 +452,12 @@ onBeforeUnmount(() => {
               tooltip
             >
               <template #cell="{ record }">
-                <Link
+                <a-link
                   v-if="column.link && record.url"
                   :href="record.url"
                 >
                   {{ record[column.key] }}
-                </Link>
+                </a-link>
                 <a-typography-text v-else>{{ record[column.key] }}</a-typography-text>
               </template>
             </a-table-column>
@@ -467,12 +485,12 @@ onBeforeUnmount(() => {
                 :key="column.key"
                 :label="column.label"
               >
-                <Link
+                <a-link
                   v-if="column.link && record.url"
                   :href="record.url"
                 >
                   {{ record[column.key] }}
-                </Link>
+                </a-link>
                 <a-typography-text v-else>{{ record[column.key] }}</a-typography-text>
               </a-descriptions-item>
             </a-descriptions>

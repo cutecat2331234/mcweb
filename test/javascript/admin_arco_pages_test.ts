@@ -46,6 +46,9 @@ test('generic admin index uses Arco for navigation, table, empty state, and pagi
   assert.match(source, /<a-tabs/)
   assert.match(source, /<a-date-picker/)
   assert.match(source, /<a-table/)
+  assert.match(source, /window\.matchMedia\('\(max-width: 1023px\)'\)/)
+  assert.match(source, /<a-dropdown[\s\S]*?bulkModerate/)
+  assert.doesNotMatch(source, /<Link\b|class="arco-btn/)
   assert.match(source, /<a-empty/)
   assert.match(source, /<a-pagination/)
   assert.match(source, /v-if="!isMobile"/)
@@ -153,16 +156,16 @@ test('system email ban form uses Arco controls while retaining all mutations', (
   assert.match(source, /form\.delete\(props\.deleteUrl\)/)
 })
 
-test('system feature toggles use Arco cards, alerts, and switches while retaining the portal invariant', () => {
+test('system feature toggles use an Arco list, alerts, and switches while retaining the portal invariant', () => {
   const source = pageSource('System/FeatureToggles/Show.vue')
 
   assertNoLegacyPagePrimitives(source)
   assertNoNativeAdminControls(source)
   assert.match(source, /<a-page-header/)
   assert.match(source, /<a-alert/)
-  assert.match(source, /<a-card/)
-  assert.match(source, /<a-grid/)
-  assert.match(source, /:cols="\{ xs: 1, sm: 1, lg: 2 \}"/)
+  assert.match(source, /<a-list/)
+  assert.match(source, /<a-list-item/)
+  assert.match(source, /<a-list-item-meta/)
   assert.match(source, /<a-switch/)
   assert.match(source, /!form\.features\.forum && !form\.features\.store/)
   assert.match(source, /form\.patch\(adminRoutes\.featureToggles\)/)

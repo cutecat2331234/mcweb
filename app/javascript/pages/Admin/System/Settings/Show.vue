@@ -69,7 +69,7 @@ function submit() {
             layout="vertical"
             @submit="submit"
           >
-            <a-grid :cols="{ xs: 1, sm: 1, lg: 2 }" :col-gap="20">
+            <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="20">
               <a-grid-item v-for="setting in settings" :key="setting.key">
                 <a-form-item
                   :field="setting.key"

@@ -1155,6 +1155,101 @@ en:
           col_published: Published
           field_summary: Summary
       system:
+        settings:
+          custom_label: Custom setting
+          portal_required: Keep at least one of Forum or Store enabled.
+          labels:
+            features.forum.enabled: Community feature
+            features.minecraft.enabled: Minecraft feature
+            features.store.enabled: Store feature
+            features.website_blog.enabled: Website articles
+            general.site_name: Legacy site name
+            forum.edit_grace_period_minutes: Edit grace period
+            forum.extra_report_reasons: Custom report reasons
+            forum.flag_abuse_threshold: Flag-abuse threshold
+            forum.group_pm_max_participants: Group message participant limit
+            forum.max_daily_reactions: Daily reaction limit
+            forum.max_reactions_per_minute: Reactions per minute
+            forum.max_reports_per_hour: Reports per hour
+            forum.max_upload_size_mb: Community upload size limit
+            forum.min_trust_level_pm: Minimum trust level for messages
+            forum.min_trust_level_profile_post: Minimum trust level for profile posts
+            forum.online_peak_at: Peak online time
+            forum.online_peak_count: Peak online users
+            forum.points.daily_check_in: Daily check-in points
+            forum.profile_posts_enabled: Enable profile posts
+            forum.reaction_scores: Reaction point rules
+            forum.vapid_private_key: Web Push VAPID private key
+            forum.vapid_public_key: Web Push VAPID public key
+            forum.warning_suspend_days: Warning suspension duration
+            forum.warning_suspend_threshold: Auto-suspend warning threshold
+            frontend.active_portal_template: Active community frontend template
+            frontend.active_website_template: Active website template
+            minecraft.backup.enabled: Enable scheduled world backups
+            minecraft.backup.schedule: World backup schedule
+            minecraft.bridges.enabled: Enabled Minecraft bridges
+            minecraft.bridges.placeholders: Allowed bridge placeholders
+            minecraft.commerce.pause_fulfill_during_maintenance: Pause store fulfillment during maintenance
+            minecraft.exec_command.allowed_prefixes: Allowed command prefixes
+            minecraft.graceful_stop.commands: Graceful-stop commands
+            minecraft.graceful_stop.countdown_seconds: Graceful-stop countdown
+            minecraft.graceful_stop.enabled: Enable graceful stop
+            minecraft.graceful_stop.message: Graceful-stop message
+            minecraft.link_command: In-game account-link command
+            minecraft.profile.sections: Player profile sections
+            minecraft.profile.skin_mode: Player skin display mode
+            site.name: Site name
+            site.url: Public site URL
+            store.product_discussion_section_slug: Product discussion section
+            store.shipping_methods: Shipping methods
+            webhook.failure_alert_last_sent_at: Last Webhook alert time
+            api.rate_limit_per_minute: API requests per minute
+          hints:
+            features.forum.enabled: Controls whether the community forum entry points and features are available.
+            features.minecraft.enabled: Controls whether Minecraft servers, players, and account linking are available.
+            features.store.enabled: Controls whether store, product, and order features are available.
+            features.website_blog.enabled: Controls whether website article listings and articles are shown.
+            general.site_name: Legacy value used by older templates and canned responses; normally keep it aligned with Site name.
+            forum.edit_grace_period_minutes: Edits within this many minutes after posting do not show an edit record.
+            forum.extra_report_reasons: Additional report reasons as comma-separated identifier:label pairs.
+            forum.flag_abuse_threshold: Flag possible report abuse after this many occurrences.
+            forum.group_pm_max_participants: Maximum number of participants in one group message.
+            forum.max_daily_reactions: Maximum reactions a user may add each day; 0 means unlimited.
+            forum.max_reactions_per_minute: Maximum reactions a user may add per minute; 0 means unlimited.
+            forum.max_reports_per_hour: Maximum reports one user may submit per hour.
+            forum.max_upload_size_mb: Maximum community attachment size in MB.
+            forum.min_trust_level_pm: Users below this trust level cannot start private messages.
+            forum.min_trust_level_profile_post: Users below this trust level cannot publish profile posts.
+            forum.online_peak_at: Recorded automatically when a new peak online count is reached.
+            forum.online_peak_count: The highest online user count recorded by the system.
+            forum.points.daily_check_in: Points awarded when a user completes the daily check-in.
+            forum.profile_posts_enabled: Controls profile-post publishing on user profiles.
+            forum.reaction_scores: Point values for reactions as comma-separated emoji:value pairs.
+            forum.vapid_private_key: Web Push signing key. The existing value is never sent to the browser; leave blank to keep it.
+            forum.vapid_public_key: Public key used by browsers when subscribing to Web Push.
+            forum.warning_suspend_days: Days an account remains suspended after reaching the threshold.
+            forum.warning_suspend_threshold: Suspend accounts at this warning-point total; 0 disables it.
+            frontend.active_portal_template: Template identifier currently used by the community and store frontend.
+            frontend.active_website_template: Template identifier currently used by the public website.
+            minecraft.backup.enabled: Back up Minecraft worlds automatically according to the schedule.
+            minecraft.backup.schedule: Cron expression used by the scheduled world backup job.
+            minecraft.bridges.enabled: Comma-separated bridge modules to enable.
+            minecraft.bridges.placeholders: Comma-separated PlaceholderAPI placeholders allowed through the bridge.
+            minecraft.commerce.pause_fulfill_during_maintenance: Delay in-game order fulfillment while a server is in maintenance.
+            minecraft.exec_command.allowed_prefixes: Comma-separated allowlist of command prefixes nodes may execute.
+            minecraft.graceful_stop.commands: Comma-separated commands run after the shutdown countdown.
+            minecraft.graceful_stop.countdown_seconds: Seconds to wait before running the shutdown commands.
+            minecraft.graceful_stop.enabled: Broadcast a countdown and safely save the world when stopping a server.
+            minecraft.graceful_stop.message: Countdown broadcast text; supports the {seconds} placeholder.
+            minecraft.link_command: Command players enter in game to begin website account linking.
+            minecraft.profile.sections: Comma-separated sections displayed on player profiles.
+            minecraft.profile.skin_mode: Skin rendering mode used on player profiles.
+            site.name: Site name shown in page titles, navigation, and system email.
+            site.url: Full public URL where users can reach the site, including http:// or https://.
+            store.product_discussion_section_slug: Community section used when product discussion topics are created.
+            store.shipping_methods: Structured shipping JSON; manage it from Store settings where possible.
+            webhook.failure_alert_last_sent_at: Last failure-alert delivery recorded by the system; do not edit manually.
+            api.rate_limit_per_minute: Maximum requests allowed per API identity each minute.
         applications:
           title: Apps & extensions
           marketplace:

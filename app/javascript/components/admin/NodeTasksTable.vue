@@ -1,13 +1,6 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
-import Button from '@/components/ui/Button.vue'
 
 export interface NodeTaskRow {
   id: number
@@ -34,89 +27,119 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-const expanded = ref<Record<number, boolean>>({})
-
-function toggle(id: number) {
-  expanded.value[id] = !expanded.value[id]
-}
+const resultTask = ref<NodeTaskRow | null>(null)
+const resultVisible = computed({
+  get: () => resultTask.value !== null,
+  set: (visible: boolean) => {
+    if (!visible) resultTask.value = null
+  },
+})
 
 function hasResult(task: NodeTaskRow): boolean {
-  const r = task.result
-  if (!r) return false
-  return !!(r.stdout || r.stderr || r.output || r.error || r.message)
+  const result = task.result
+  if (!result) return false
+  return Boolean(result.stdout || result.stderr || result.output || result.error || result.message)
 }
 
 function resultText(task: NodeTaskRow): string {
-  const r = task.result || {}
+  const result = task.result || {}
   const parts: string[] = []
-  if (r.message) parts.push(r.message)
-  if (r.error) parts.push(`Error: ${r.error}`)
-  if (r.stdout) parts.push(`stdout:\n${r.stdout}`)
-  if (r.stderr) parts.push(`stderr:\n${r.stderr}`)
-  if (r.output) parts.push(r.output)
+  if (result.message) parts.push(result.message)
+  if (result.error) parts.push(`Error: ${result.error}`)
+  if (result.stdout) parts.push(`stdout:\n${result.stdout}`)
+  if (result.stderr) parts.push(`stderr:\n${result.stderr}`)
+  if (result.output) parts.push(result.output)
   return parts.join('\n\n') || '—'
 }
 
 function payloadHint(task: NodeTaskRow): string {
-  const p = task.payload
-  if (!p) return '—'
-  if (p.command) return p.command
-  if (p.path) return p.path
+  const payload = task.payload
+  if (!payload) return '—'
+  if (payload.command) return payload.command
+  if (payload.path) return payload.path
   return '—'
 }
 
-function statusClass(status: string): string {
-  if (status === 'completed') return 'text-green-700 dark:text-green-400'
-  if (status === 'failed') return 'text-red-700 dark:text-red-400'
-  if (status === 'pending' || status === 'claimed') return 'text-amber-700 dark:text-amber-400'
-  return ''
+function statusColor(status: string): string {
+  if (status === 'completed') return 'green'
+  if (status === 'failed') return 'red'
+  if (status === 'pending' || status === 'claimed') return 'orangered'
+  return 'gray'
 }
+
+const columns = computed(() => [
+  { title: t('adminMinecraft.colType'), dataIndex: 'task_type', slotName: 'taskType' },
+  { title: t('adminMinecraft.colStatus'), dataIndex: 'status', slotName: 'status', width: 120 },
+  { title: t('adminMinecraft.taskDetail'), dataIndex: 'payload', slotName: 'detail' },
+  {
+    title: t('adminMinecraft.completedAt'),
+    dataIndex: 'completed_at',
+    slotName: 'completedAt',
+    width: 180,
+  },
+  { title: '', slotName: 'actions', width: 120 },
+])
 </script>
 
 <template>
-  <section class="mt-8">
-    <h2 class="mb-3 text-lg font-semibold">{{ t('adminMinecraft.nodeTasks') }}</h2>
-    <div class="overflow-x-auto rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{{ t('adminMinecraft.colType') }}</TableHead>
-            <TableHead>{{ t('adminMinecraft.colStatus') }}</TableHead>
-            <TableHead>{{ t('adminMinecraft.taskDetail') }}</TableHead>
-            <TableHead>{{ t('adminMinecraft.completedAt') }}</TableHead>
-            <TableHead class="w-24" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <template v-for="task in props.tasks" :key="task.id">
-            <TableRow>
-              <TableCell class="font-mono text-xs">{{ task.task_type }}</TableCell>
-              <TableCell :class="statusClass(task.status)">{{ task.status }}</TableCell>
-              <TableCell class="max-w-xs truncate font-mono text-xs">{{ payloadHint(task) }}</TableCell>
-              <TableCell class="text-xs text-muted-foreground">{{ task.completed_at || '—' }}</TableCell>
-              <TableCell>
-                <Button
-                  v-if="hasResult(task)"
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  @click="toggle(task.id)"
-                >
-                  {{ expanded[task.id] ? t('adminMinecraft.hideResult') : t('adminMinecraft.showResult') }}
-                </Button>
-              </TableCell>
-            </TableRow>
-            <TableRow v-if="expanded[task.id]">
-              <TableCell colspan="5" class="bg-muted/40 p-0">
-                <pre class="max-h-80 overflow-auto p-3 text-xs whitespace-pre-wrap">{{ resultText(task) }}</pre>
-              </TableCell>
-            </TableRow>
-          </template>
-          <TableRow v-if="!props.tasks.length">
-            <TableCell colspan="5" class="text-muted-foreground">{{ t('adminMinecraft.noNodeTasks') }}</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </div>
-  </section>
+  <a-card class="mt-8" :title="t('adminMinecraft.nodeTasks')" :bordered="true">
+    <a-table
+      :columns="columns"
+      :data="props.tasks"
+      row-key="id"
+      :pagination="false"
+      :scroll="{ x: 760 }"
+    >
+      <template #taskType="{ record }">
+        <a-typography-text code>{{ record.task_type }}</a-typography-text>
+      </template>
+      <template #status="{ record }">
+        <a-tag :color="statusColor(record.status)">{{ record.status }}</a-tag>
+      </template>
+      <template #detail="{ record }">
+        <a-typography-text :ellipsis="{ showTooltip: true }">
+          {{ payloadHint(record) }}
+        </a-typography-text>
+      </template>
+      <template #completedAt="{ record }">
+        {{ record.completed_at || '—' }}
+      </template>
+      <template #actions="{ record }">
+        <a-button
+          v-if="hasResult(record)"
+          type="text"
+          size="small"
+          @click="resultTask = record"
+        >
+          {{ t('adminMinecraft.showResult') }}
+        </a-button>
+      </template>
+      <template #empty>
+        <a-empty :description="t('adminMinecraft.noNodeTasks')" />
+      </template>
+    </a-table>
+  </a-card>
+
+  <a-modal
+    v-model:visible="resultVisible"
+    :title="t('adminMinecraft.taskDetail')"
+    :footer="false"
+    :width="'min(720px, calc(100vw - 32px))'"
+  >
+    <pre class="node-task-result">{{ resultTask ? resultText(resultTask) : '' }}</pre>
+  </a-modal>
 </template>
+
+<style scoped>
+.node-task-result {
+  max-height: 60vh;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  color: var(--color-text-1);
+  background: var(--color-fill-2);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+</style>

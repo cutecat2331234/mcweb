@@ -1,13 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -25,7 +21,21 @@ const props = defineProps<{
 
 const form = useForm({ email_ban: { ...props.email_ban } })
 
-function submit() {
+const expiresAt = computed<string | undefined>({
+  get: () => form.email_ban.expires_at || undefined,
+  set: (value) => {
+    form.email_ban.expires_at = value || null
+  },
+})
+
+function fieldError(field: string) {
+  return props.errors?.[field]
+    || form.errors[field]
+    || form.errors[`email_ban.${field}`]
+}
+
+function submit(event?: { errors?: unknown }) {
+  if (event?.errors) return
   if (props.method === 'patch') {
     form.patch(props.submitUrl)
   } else {
@@ -46,30 +56,79 @@ async function destroy() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <section class="admin-system-email-ban-form">
+    <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
 
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="pattern">{{ t('admin.emailBansForm.pattern') }}</Label>
-      <Input id="pattern" v-model="form.email_ban.pattern" required placeholder="*@spam.com" />
-      <p class="text-xs text-muted-foreground">{{ t('admin.emailBansForm.patternHint') }}</p>
-      <p v-if="errors?.pattern" class="text-xs text-destructive">{{ errors.pattern }}</p>
-    </div>
-    <div class="space-y-2">
-      <Label for="reason">{{ t('admin.emailBansForm.reason') }}</Label>
-      <Textarea id="reason" v-model="form.email_ban.reason" rows="2" />
-    </div>
-    <div class="space-y-2">
-      <Label for="expires_at">{{ t('admin.emailBansForm.expiresAt') }}</Label>
-      <Input id="expires_at" v-model="form.email_ban.expires_at" type="datetime-local" />
-      <p class="text-xs text-muted-foreground">{{ t('admin.emailBansForm.expiresHint') }}</p>
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button v-if="deleteUrl" type="button" variant="destructive" @click="destroy">{{ t('admin.ui.delete') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+    <a-card class="max-w-2xl" :bordered="true">
+      <a-form :model="form.email_ban" layout="vertical" @submit="submit">
+        <a-form-item
+          field="pattern"
+          :label="t('admin.emailBansForm.pattern')"
+          :rules="[{ required: true, message: t('admin.emailBansForm.pattern') }]"
+          :validate-status="fieldError('pattern') ? 'error' : undefined"
+          :help="fieldError('pattern') || t('admin.emailBansForm.patternHint')"
+        >
+          <a-input
+            v-model="form.email_ban.pattern"
+            placeholder="*@spam.com"
+            allow-clear
+          />
+        </a-form-item>
+
+        <a-form-item
+          field="reason"
+          :label="t('admin.emailBansForm.reason')"
+          :validate-status="fieldError('reason') ? 'error' : undefined"
+          :help="fieldError('reason')"
+        >
+          <a-textarea
+            v-model="form.email_ban.reason"
+            :auto-size="{ minRows: 2, maxRows: 6 }"
+            allow-clear
+          />
+        </a-form-item>
+
+        <a-form-item
+          field="expires_at"
+          :label="t('admin.emailBansForm.expiresAt')"
+          :validate-status="fieldError('expires_at') ? 'error' : undefined"
+          :help="fieldError('expires_at') || t('admin.emailBansForm.expiresHint')"
+        >
+          <a-date-picker
+            v-model="expiresAt"
+            class="w-full"
+            show-time
+            format="YYYY-MM-DD HH:mm"
+            value-format="YYYY-MM-DDTHH:mm"
+            allow-clear
+          />
+        </a-form-item>
+
+        <a-space wrap>
+          <a-button
+            type="primary"
+            html-type="submit"
+            :loading="form.processing"
+          >
+            {{ t('admin.ui.save') }}
+          </a-button>
+          <a-button
+            v-if="deleteUrl"
+            type="primary"
+            status="danger"
+            :disabled="form.processing"
+            @click="destroy"
+          >
+            {{ t('admin.ui.delete') }}
+          </a-button>
+          <Link
+            :href="backUrl"
+            class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
+          >
+            {{ t('admin.ui.back') }}
+          </Link>
+        </a-space>
+      </a-form>
+    </a-card>
+  </section>
 </template>

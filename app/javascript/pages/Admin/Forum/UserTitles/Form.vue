@@ -2,11 +2,7 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -44,24 +40,37 @@ async function destroy() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="title">{{ t('admin.userTitles.title') }}</Label>
-      <Input id="title" v-model="form.user_title.title" required maxlength="100" />
-    </div>
-    <div class="space-y-2">
-      <Label for="min_posts">{{ t('admin.userTitles.minPosts') }}</Label>
-      <Input id="min_posts" v-model="form.user_title.min_posts" type="number" min="0" required />
-      <p class="text-xs text-muted-foreground">{{ t('admin.userTitles.minPostsHint') }}</p>
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button v-if="deleteUrl" type="button" variant="destructive" @click="destroy">{{ t('admin.ui.delete') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <label class="admin-forum-field">
+        <span>{{ t('admin.userTitles.title') }}</span>
+        <a-input
+          v-model="form.user_title.title"
+          :input-attrs="{ required: true, maxlength: 100 }"
+          allow-clear
+        />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.userTitles.minPosts') }}</span>
+        <a-input-number
+          v-model="form.user_title.min_posts"
+          :min="0"
+          :input-attrs="{ required: true }"
+          class="w-full"
+        />
+        <small>{{ t('admin.userTitles.minPostsHint') }}</small>
+      </label>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <a-button v-if="deleteUrl" type="primary" status="danger" @click="destroy">{{ t('admin.ui.delete') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+.admin-forum-field small { color: var(--color-text-3); }
+</style>

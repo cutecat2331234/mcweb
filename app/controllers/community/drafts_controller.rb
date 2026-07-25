@@ -45,6 +45,11 @@ module Community
           tags: draft.tags.map(&:name).join(", "),
           prefix: draft.prefix,
           scheduled_at_input: draft.scheduled_at&.strftime("%Y-%m-%dT%H:%M"),
+          custom_fields: Community::SerializeTopicFields.for_form(
+            section: draft.section,
+            user: current_user,
+            topic: draft
+          ),
           attachments: opening_post ? serialize_post_attachments(opening_post) : [],
           section: {
             name: draft.section.name,
@@ -81,7 +86,8 @@ module Community
         poll_multiple_choice: draft_params[:poll_multiple_choice],
         poll_max_choices: draft_params[:poll_max_choices],
         poll_hide_results_until_vote: draft_params[:poll_hide_results_until_vote],
-        attachment_ids: draft_params[:attachment_ids]
+        attachment_ids: draft_params[:attachment_ids],
+        custom_fields: submitted_draft_custom_fields
       )
 
       if result.success?
@@ -109,7 +115,8 @@ module Community
         poll_multiple_choice: draft_params[:poll_multiple_choice],
         poll_max_choices: draft_params[:poll_max_choices],
         poll_hide_results_until_vote: draft_params[:poll_hide_results_until_vote],
-        attachment_ids: draft_params[:attachment_ids]
+        attachment_ids: draft_params[:attachment_ids],
+        custom_fields: submitted_draft_custom_fields
       )
 
       if result.success?
@@ -137,7 +144,8 @@ module Community
         poll_multiple_choice: draft_params[:poll_multiple_choice],
         poll_max_choices: draft_params[:poll_max_choices],
         poll_hide_results_until_vote: draft_params[:poll_hide_results_until_vote],
-        attachment_ids: draft_params[:attachment_ids]
+        attachment_ids: draft_params[:attachment_ids],
+        custom_fields: submitted_draft_custom_fields
       )
       unless save_result.success?
         return redirect_to edit_forum_draft_path(draft), alert: service_error_message(save_result)
@@ -175,10 +183,16 @@ module Community
         :title, :body, :tags, :scheduled_at, :clear_schedule, :prefix,
         :poll_question, :poll_options, :poll_closes_days,
         :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote,
-        attachment_ids: []
+        attachment_ids: [], custom_fields: {}
       )
       permitted[:attachment_ids] ||= params[:attachment_ids]
       permitted
+    end
+
+    def submitted_draft_custom_fields
+      return Community::SaveTopicDraft::NOT_PROVIDED unless params[:draft]&.key?(:custom_fields)
+
+      draft_params[:custom_fields]
     end
   end
 end

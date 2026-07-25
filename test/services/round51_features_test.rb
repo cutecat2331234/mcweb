@@ -88,7 +88,10 @@ class Community::DigestWatchedOnlyTest < ActiveSupport::TestCase
       notification_type: "forum.topic_reply",
       title: "Watched reply",
       body: "On watched topic",
-      metadata: { topic_id: @watched_topic.public_id }
+      metadata: {
+        topic_id: @watched_topic.public_id,
+        post_id: @watched_topic.posts.first.id
+      }
     )
     @user.notifications.create!(
       notification_type: "forum.topic_reply",

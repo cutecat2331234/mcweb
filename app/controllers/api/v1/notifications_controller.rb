@@ -15,9 +15,13 @@ module Api
         scope = scope.unread if params[:unread].to_s == "true"
 
         pagy, notifications = api_paginate(scope)
+        notification_access = Community::NotificationAccess.new(
+          user: api_user,
+          notifications: notifications
+        )
 
         render json: {
-          data: notifications.map { |n| serialize_notification(n) },
+          data: notifications.map { |n| serialize_notification(n, notification_access: notification_access) },
           meta: pagination_meta(pagy).merge(unread_count: api_user.notifications.unread.count)
         }
       end
@@ -40,13 +44,20 @@ module Api
         @notification = api_user.notifications.find(params[:id])
       end
 
-      def serialize_notification(notification)
+      def serialize_notification(notification, notification_access: nil)
+        access = notification_access || Community::NotificationAccess.new(
+          user: api_user,
+          notifications: [ notification ]
+        )
+        visible = access.visible?(notification)
+
         {
           id: notification.id,
           type: notification.notification_type,
-          title: notification.title,
-          body: notification.body,
-          url: notification.destination_path,
+          title: visible ? notification.title : nil,
+          body: visible ? notification.body : nil,
+          url: visible ? notification.destination_path : nil,
+          content_available: visible,
           read: notification.read?,
           created_at: notification.created_at&.iso8601
         }

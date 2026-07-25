@@ -12,8 +12,10 @@ module Community
       return ServiceResult.failure(error: "delete_post_unauthorized") unless authorized?
 
       topic = @post.topic
-      @post.soft_delete!
-      Community::SyncTopicLastPost.call(topic: topic)
+      topic.with_lock do
+        @post.soft_delete!
+        Community::SyncTopicLastPost.call(topic: topic)
+      end
       Community::DispatchForumEventWebhook.call(event_type: "post.deleted", topic: topic, post: @post)
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e
@@ -25,7 +27,12 @@ module Community
     def authorized?
       return false unless @actor
 
-      @actor.id == @post.user_id || Community::SectionModeration.can_moderate_topic?(user: @actor, topic: @post.topic)
+      topic = @post.topic
+      return true if Community::SectionModeration.can_moderate_topic?(user: @actor, topic: topic)
+      return false if topic.archived_at.present?
+
+      @actor.id == @post.user_id &&
+        Community::PostAccess.readable?(post: @post, user: @actor)
     end
   end
 end

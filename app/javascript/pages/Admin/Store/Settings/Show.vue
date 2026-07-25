@@ -3,13 +3,7 @@ import { useForm, router } from '@inertiajs/vue3'
 import { ref, onBeforeUnmount, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
@@ -63,6 +57,7 @@ const lastTestWebhookDisplay = ref<LastTestWebhook | null>(props.lastTestWebhook
 const testEventOptions = computed(() =>
   (props.testWebhookEvents || ['order.test']).map((event) => ({ value: event, label: event })),
 )
+
 let pollTimer: ReturnType<typeof setInterval> | null = null
 
 onBeforeUnmount(() => {
@@ -77,7 +72,7 @@ async function pollWebhookStatus() {
     const data = await response.json()
     if (data.lastTestWebhook) lastTestWebhookDisplay.value = data.lastTestWebhook
   } catch {
-    // ignore polling errors
+    // Polling is best-effort and should not block settings updates.
   }
 }
 
@@ -92,8 +87,10 @@ function startPollingWebhookStatus() {
 }
 
 const form = useForm({
-  settings: Object.fromEntries(props.settings.map((s) => [s.key, s.value])),
-  store_features: Object.fromEntries((props.storeFeatures || []).map((feature) => [feature.id, feature.enabled])),
+  settings: Object.fromEntries(props.settings.map((setting) => [setting.key, setting.value])),
+  store_features: Object.fromEntries(
+    (props.storeFeatures || []).map((feature) => [feature.id, feature.enabled]),
+  ),
 })
 
 const shippingFeatureEnabled = computed(() => form.store_features.shipping === true)
@@ -101,7 +98,10 @@ const giftWrapFeatureEnabled = computed(() => form.store_features.gift_wrap === 
 
 const visibleSettings = computed(() =>
   props.settings.filter((setting) => {
-    if (!shippingFeatureEnabled.value && ['store.free_shipping_min_order_cents', 'store.flat_shipping_cents'].includes(setting.key)) {
+    if (
+      !shippingFeatureEnabled.value
+      && ['store.free_shipping_min_order_cents', 'store.flat_shipping_cents'].includes(setting.key)
+    ) {
       return false
     }
     if (!giftWrapFeatureEnabled.value && setting.key === 'store.gift_wrap_cents') {
@@ -116,9 +116,9 @@ const shippingMethods = ref(
     code: method.code,
     label: method.label,
     cents: method.cents,
-    delivery_days_min: method.delivery_days_min ?? '',
-    delivery_days_max: method.delivery_days_max ?? '',
-  }))
+    delivery_days_min: method.delivery_days_min ?? undefined,
+    delivery_days_max: method.delivery_days_max ?? undefined,
+  })),
 )
 
 function addShippingMethod() {
@@ -126,13 +126,17 @@ function addShippingMethod() {
     code: `method_${shippingMethods.value.length + 1}`,
     label: t('admin.storeSettings.newShippingLabel'),
     cents: 0,
-    delivery_days_min: '',
-    delivery_days_max: '',
+    delivery_days_min: undefined,
+    delivery_days_max: undefined,
   })
 }
 
 function removeShippingMethod(index: number) {
   shippingMethods.value.splice(index, 1)
+}
+
+function fieldError(field: string) {
+  return form.errors[field]
 }
 
 function submit() {
@@ -144,8 +148,12 @@ function submit() {
           code: method.code,
           label: method.label,
           cents: Number(method.cents) || 0,
-          delivery_days_min: method.delivery_days_min === '' ? null : Number(method.delivery_days_min),
-          delivery_days_max: method.delivery_days_max === '' ? null : Number(method.delivery_days_max),
+          delivery_days_min: method.delivery_days_min == null
+            ? null
+            : Number(method.delivery_days_min),
+          delivery_days_max: method.delivery_days_max == null
+            ? null
+            : Number(method.delivery_days_max),
         }))
       }
       return payload
@@ -159,9 +167,11 @@ async function sendTestWebhook() {
     message: t('admin.storeSettings.sendWebhookTestConfirm', { event: selectedTestEvent.value }),
   })
   if (!props.testWebhookUrl || !ok) return
-  router.post(props.testWebhookUrl, { event: selectedTestEvent.value }, {
-    onSuccess: () => startPollingWebhookStatus(),
-  })
+  router.post(
+    props.testWebhookUrl,
+    { event: selectedTestEvent.value },
+    { onSuccess: () => startPollingWebhookStatus() },
+  )
 }
 
 async function sendTestAllWebhooks() {
@@ -170,114 +180,186 @@ async function sendTestAllWebhooks() {
     message: t('admin.storeSettings.batchWebhookTestConfirm'),
   })
   if (!props.testAllWebhooksUrl || !ok) return
-  router.post(props.testAllWebhooksUrl, {}, {
-    onSuccess: () => startPollingWebhookStatus(),
-  })
+  router.post(
+    props.testAllWebhooksUrl,
+    {},
+    { onSuccess: () => startPollingWebhookStatus() },
+  )
 }
 </script>
 
 <template>
-  <PageHeader :title="t('admin.storeSettings.title')" :subtitle="t('admin.storeSettings.subtitle')" />
+  <section class="admin-store-settings">
+    <a-page-header
+      :title="t('admin.storeSettings.title')"
+      :subtitle="t('admin.storeSettings.subtitle')"
+      :show-back="false"
+      class="mb-4 !px-0"
+    />
 
-  <form class="max-w-3xl space-y-6" @submit.prevent="submit">
-    <section class="space-y-4 rounded-lg border p-4">
-      <div>
-        <h2 class="text-sm font-semibold">{{ t('admin.storeSettings.featureToggles') }}</h2>
-        <p class="text-xs text-muted-foreground">{{ t('admin.storeSettings.featureTogglesHint') }}</p>
-      </div>
-      <div class="space-y-3">
-        <label
-          v-for="feature in storeFeatures"
-          :key="feature.id"
-          class="flex items-start gap-3 rounded-md border p-3"
+    <a-form
+      :model="{ ...form.settings, ...form.store_features }"
+      layout="vertical"
+      class="max-w-5xl"
+      @submit="submit"
+    >
+      <a-space direction="vertical" fill :size="16">
+        <a-card
+          :title="t('admin.storeSettings.featureToggles')"
+          :bordered="true"
         >
-          <Checkbox v-model="form.store_features[feature.id]" class="mt-0.5" />
-          <span class="min-w-0">
-            <span class="block text-sm font-medium">{{ feature.label }}</span>
-            <span class="block text-xs text-muted-foreground">{{ feature.description }}</span>
-          </span>
-        </label>
-      </div>
-    </section>
+          <template #extra>
+            <a-typography-text type="secondary">
+              {{ t('admin.storeSettings.featureTogglesHint') }}
+            </a-typography-text>
+          </template>
 
-    <section v-if="shippingFeatureEnabled" class="space-y-4 rounded-lg border p-4">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 class="text-sm font-semibold">{{ t('admin.storeSettings.shippingMethods') }}</h2>
-          <p class="text-xs text-muted-foreground">{{ t('admin.storeSettings.shippingHint') }}</p>
-        </div>
-        <Button type="button" size="sm" variant="outline" @click="addShippingMethod">{{ t('admin.storeSettings.addShipping') }}</Button>
-      </div>
+          <a-list :bordered="false" :split="true">
+            <a-list-item v-for="feature in storeFeatures" :key="feature.id">
+              <a-list-item-meta
+                :title="feature.label"
+                :description="feature.description"
+              />
+              <template #actions>
+                <a-switch v-model="form.store_features[feature.id]" />
+              </template>
+            </a-list-item>
+          </a-list>
+        </a-card>
 
-      <div v-if="shippingMethods.length" class="space-y-3">
-        <div
-          v-for="(method, index) in shippingMethods"
-          :key="`${method.code}-${index}`"
-          class="grid gap-2 rounded-md border p-3 sm:grid-cols-2 lg:grid-cols-6"
+        <a-card
+          v-if="shippingFeatureEnabled"
+          :title="t('admin.storeSettings.shippingMethods')"
+          :bordered="true"
         >
-          <div class="space-y-1">
-            <Label class="text-xs">{{ t('admin.storeSettings.code') }}</Label>
-            <Input v-model="method.code" placeholder="standard" />
-          </div>
-          <div class="space-y-1 lg:col-span-2">
-            <Label class="text-xs">{{ t('admin.storeSettings.label') }}</Label>
-            <Input v-model="method.label" />
-          </div>
-          <div class="space-y-1">
-            <Label class="text-xs">{{ t('admin.storeSettings.cents') }}</Label>
-            <Input v-model="method.cents" type="number" min="0" />
-          </div>
-          <div class="space-y-1">
-            <Label class="text-xs">{{ t('admin.storeSettings.minDays') }}</Label>
-            <Input v-model="method.delivery_days_min" type="number" min="0" />
-          </div>
-          <div class="flex items-end gap-2">
-            <div class="min-w-0 flex-1 space-y-1">
-              <Label class="text-xs">{{ t('admin.storeSettings.maxDays') }}</Label>
-              <Input v-model="method.delivery_days_max" type="number" min="0" />
-            </div>
-            <Button type="button" size="sm" variant="ghost" class="shrink-0 text-destructive" @click="removeShippingMethod(index)">{{ t('admin.ui.delete') }}</Button>
-          </div>
-        </div>
-      </div>
-      <p v-else class="text-sm text-muted-foreground">{{ t('admin.storeSettings.emptyShipping') }}</p>
-    </section>
+          <template #extra>
+            <a-button size="small" @click="addShippingMethod">
+              {{ t('admin.storeSettings.addShipping') }}
+            </a-button>
+          </template>
 
-    <div v-for="setting in visibleSettings" :key="setting.key" class="rounded-lg border p-4 space-y-2">
-      <Label :for="setting.key" class="text-sm font-medium">{{ setting.label }}</Label>
-      <p v-if="setting.hint" class="text-xs text-muted-foreground">{{ setting.hint }}</p>
-      <Input
-        :id="setting.key"
-        v-model="form.settings[setting.key]"
-        :type="setting.input_type === 'number' ? 'number' : 'text'"
-        :min="setting.input_type === 'number' ? 0 : undefined"
-      />
-    </div>
-    <Button type="submit" :disabled="form.processing">{{ t('admin.storeSettings.save') }}</Button>
-    <template v-if="testWebhookUrl">
-      <Select v-model="selectedTestEvent" :options="testEventOptions" class="ml-2" size="sm" />
-      <Button
-        type="button"
-        variant="outline"
-        class="ml-2"
-        @click="sendTestWebhook"
-      >
-        {{ t('admin.storeSettings.sendWebhookTest') }}
-      </Button>
-      <Button
-        v-if="testAllWebhooksUrl"
-        type="button"
-        variant="outline"
-        class="ml-2"
-        @click="sendTestAllWebhooks"
-      >
-        {{ t('admin.storeSettings.batchWebhookTest') }}
-      </Button>
-      <p v-if="lastTestWebhookDisplay" class="mt-2 text-xs text-muted-foreground">
-        {{ t('admin.storeSettings.lastTest', { event: lastTestWebhookDisplay.event_type, status: lastTestWebhookDisplay.status }) }}
-        <span v-if="lastTestWebhookDisplay.response_code != null">{{ t('admin.storeSettings.lastTestHttp', { code: lastTestWebhookDisplay.response_code }) }}</span>
-        · {{ lastTestWebhookDisplay.created_at }}
-      </p>
-    </template>
-  </form>
+          <a-alert
+            type="info"
+            :title="t('admin.storeSettings.shippingHint')"
+            class="mb-4"
+          />
+
+          <a-space v-if="shippingMethods.length" direction="vertical" fill :size="12">
+            <a-card
+              v-for="(method, index) in shippingMethods"
+              :key="`${method.code}-${index}`"
+              :bordered="true"
+              size="small"
+            >
+              <a-grid
+                :cols="{ xs: 1, sm: 2, lg: 6 }"
+                :col-gap="12"
+                :row-gap="4"
+                align="end"
+              >
+                <a-grid-item>
+                  <a-form-item :label="t('admin.storeSettings.code')" hide-asterisk>
+                    <a-input v-model="method.code" placeholder="standard" />
+                  </a-form-item>
+                </a-grid-item>
+                <a-grid-item :span="{ xs: 1, sm: 1, lg: 2 }">
+                  <a-form-item :label="t('admin.storeSettings.label')" hide-asterisk>
+                    <a-input v-model="method.label" />
+                  </a-form-item>
+                </a-grid-item>
+                <a-grid-item>
+                  <a-form-item :label="t('admin.storeSettings.cents')" hide-asterisk>
+                    <a-input-number v-model="method.cents" :min="0" class="w-full" />
+                  </a-form-item>
+                </a-grid-item>
+                <a-grid-item>
+                  <a-form-item :label="t('admin.storeSettings.minDays')" hide-asterisk>
+                    <a-input-number
+                      v-model="method.delivery_days_min"
+                      :min="0"
+                      class="w-full"
+                    />
+                  </a-form-item>
+                </a-grid-item>
+                <a-grid-item>
+                  <a-form-item :label="t('admin.storeSettings.maxDays')" hide-asterisk>
+                    <a-space>
+                      <a-input-number
+                        v-model="method.delivery_days_max"
+                        :min="0"
+                        class="w-full"
+                      />
+                      <a-button status="danger" size="small" @click="removeShippingMethod(index)">
+                        {{ t('admin.ui.delete') }}
+                      </a-button>
+                    </a-space>
+                  </a-form-item>
+                </a-grid-item>
+              </a-grid>
+            </a-card>
+          </a-space>
+          <a-empty v-else :description="t('admin.storeSettings.emptyShipping')" />
+        </a-card>
+
+        <a-card :bordered="true">
+          <a-form-item
+            v-for="setting in visibleSettings"
+            :key="setting.key"
+            :field="setting.key"
+            :label="setting.label"
+            :validate-status="fieldError(setting.key) ? 'error' : undefined"
+            :help="fieldError(setting.key) || setting.hint || undefined"
+          >
+            <a-input
+              v-model="form.settings[setting.key]"
+              :input-attrs="setting.input_type === 'number' ? { type: 'number', min: 0 } : undefined"
+              allow-clear
+            />
+          </a-form-item>
+
+          <a-space wrap>
+            <a-button type="primary" html-type="submit" :loading="form.processing">
+              {{ t('admin.storeSettings.save') }}
+            </a-button>
+
+            <template v-if="testWebhookUrl">
+              <a-select
+                v-model="selectedTestEvent"
+                :options="testEventOptions"
+                class="min-w-48"
+              />
+              <a-button @click="sendTestWebhook">
+                {{ t('admin.storeSettings.sendWebhookTest') }}
+              </a-button>
+              <a-button v-if="testAllWebhooksUrl" @click="sendTestAllWebhooks">
+                {{ t('admin.storeSettings.batchWebhookTest') }}
+              </a-button>
+            </template>
+          </a-space>
+
+          <a-alert
+            v-if="lastTestWebhookDisplay"
+            type="info"
+            show-icon
+            class="mt-4"
+          >
+            {{
+              t('admin.storeSettings.lastTest', {
+                event: lastTestWebhookDisplay.event_type,
+                status: lastTestWebhookDisplay.status,
+              })
+            }}
+            <span v-if="lastTestWebhookDisplay.response_code != null">
+              {{
+                t('admin.storeSettings.lastTestHttp', {
+                  code: lastTestWebhookDisplay.response_code,
+                })
+              }}
+            </span>
+            · {{ lastTestWebhookDisplay.created_at }}
+          </a-alert>
+        </a-card>
+      </a-space>
+    </a-form>
+  </section>
 </template>

@@ -2,12 +2,7 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -45,31 +40,45 @@ async function destroy() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.warningTemplates.name') }}</Label>
-      <Input id="name" v-model="form.warning_template.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="reason">{{ t('admin.warningTemplates.reason') }}</Label>
-      <Textarea id="reason" v-model="form.warning_template.reason" rows="4" />
-    </div>
-    <div class="space-y-2">
-      <Label for="points">{{ t('admin.warningTemplates.points') }}</Label>
-      <Input id="points" v-model="form.warning_template.points" type="number" min="0" max="10" />
-    </div>
-    <div class="space-y-2">
-      <Label for="expire_days">{{ t('admin.warningTemplates.expireDays') }}</Label>
-      <Input id="expire_days" v-model="form.warning_template.expire_days" type="number" min="0" />
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button v-if="deleteUrl" type="button" variant="destructive" @click="destroy">{{ t('admin.ui.delete') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <label class="admin-forum-field">
+        <span>{{ t('admin.warningTemplates.name') }}</span>
+        <a-input v-model="form.warning_template.name" :input-attrs="{ required: true }" allow-clear />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.warningTemplates.reason') }}</span>
+        <a-textarea v-model="form.warning_template.reason" :auto-size="{ minRows: 4, maxRows: 8 }" />
+      </label>
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.warningTemplates.points') }}</span>
+            <a-input-number v-model="form.warning_template.points" :min="0" :max="10" class="w-full" />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.warningTemplates.expireDays') }}</span>
+            <a-input-number
+              :model-value="form.warning_template.expire_days ?? undefined"
+              :min="0"
+              class="w-full"
+              @update:model-value="(value: number | undefined) => { form.warning_template.expire_days = value ?? null }"
+            />
+          </label>
+        </a-col>
+      </a-row>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <a-button v-if="deleteUrl" type="primary" status="danger" @click="destroy">{{ t('admin.ui.delete') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+</style>

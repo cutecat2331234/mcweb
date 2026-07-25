@@ -9,20 +9,26 @@ module Community
       @user = user
       @topic = topic
       @body = body.to_s.strip
-      filter_censored_body!
       @quoted_post = quoted_post
       @parent_post = parent_post
       @ip_address = ip_address
       @skip_interval_check = skip_interval_check
       @whisper = ActiveModel::Type::Boolean.new.cast(whisper)
       @attachment_ids = attachment_ids
+      apply_plugin_filters!
+      filter_censored_body!
     end
 
     def call
+      unless Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
+        return ServiceResult.failure(error: "Topic not available.")
+      end
+
+      state_error = topic_reply_state_error
+      return ServiceResult.failure(error: state_error) if state_error
+
       spam_result = check_spam
       return spam_result if spam_result.failure?
-
-      return ServiceResult.failure(error: "Topic not available.") unless PollParticipation.visible?(topic: @topic, user: @user)
 
       if @whisper && !can_post_whisper?
         return ServiceResult.failure(error: "You are not allowed to post staff whispers.")
@@ -61,11 +67,12 @@ module Community
       post_status = needs_approval ? "pending_approval" : "published"
       post = nil
       @topic.with_lock do
-        if @topic.locked?
-          return ServiceResult.failure(error: "This topic is locked.")
-        end
+        state_error = topic_reply_state_error
+        return ServiceResult.failure(error: state_error) if state_error
 
-        floor_number = @topic.posts.maximum(:floor_number).to_i + 1
+        # Soft-deleted rows still participate in the database uniqueness
+        # constraint, so their floor numbers must never be reused.
+        floor_number = @topic.posts.with_discarded.maximum(:floor_number).to_i + 1
 
         post = Community::Post.create!(
           topic: @topic,
@@ -106,6 +113,13 @@ module Community
     end
 
     private
+
+    def topic_reply_state_error
+      return "This topic is archived." if @topic.archived_at.present?
+      return "This topic is not open for replies." unless @topic.status == "published"
+
+      "This topic is locked." if @topic.locked?
+    end
 
     # Reward the author for a newly published post. Side effect: never let an
     # awarding error bubble up and break post creation.
@@ -191,6 +205,25 @@ module Community
     def filter_censored_body!
       result = Community::FilterCensoredWords.call(text: @body)
       @body = result.value if result.success?
+    end
+
+    def apply_plugin_filters!
+      return unless defined?(Mcweb::Plugins) && Mcweb::Plugins.respond_to?(:apply_filter)
+
+      filtered = Mcweb::Plugins.apply_filter(
+        "forum.post.create.attributes",
+        {
+          body: @body,
+          whisper: @whisper
+        },
+        context: { user: @user, topic: @topic }
+      )
+      return unless filtered.is_a?(Hash)
+
+      @body = filtered.fetch("body", @body).to_s.strip
+      @whisper = ActiveModel::Type::Boolean.new.cast(filtered.fetch("whisper", @whisper))
+    rescue StandardError => e
+      Rails.logger.error("[mcweb.plugins] forum.post.create.attributes host integration failed: #{e.class}: #{e.message}")
     end
 
     def notify_trust_level_up!(old_level)

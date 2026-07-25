@@ -14,11 +14,19 @@ module Api
           .where(user: api_user)
           .joins(:topic)
           .merge(visible_topics_scope)
-          .includes(topic: %i[user section])
+          .includes(:post, topic: %i[user section])
           .order(Community::Bookmark.arel_table[:created_at].desc)
         pagy, bookmarks = api_paginate(scope)
         render json: {
-          data: bookmarks.filter_map { |b| b.topic && serialize_bookmark(b) },
+          data: bookmarks.filter_map do |bookmark|
+            next unless bookmark.topic
+            if bookmark.post &&
+               !Community::ForumAccess.public_api_post_visible?(post: bookmark.post, user: api_user)
+              next
+            end
+
+            serialize_bookmark(bookmark)
+          end,
           meta: pagination_meta(pagy)
         }
       end

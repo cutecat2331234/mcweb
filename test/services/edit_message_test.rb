@@ -32,4 +32,19 @@ class EditMessageTest < ActionDispatch::IntegrationTest
     patch forum_conversation_message_path(@conversation, @msg), params: { message: { body: "   " } }
     assert_equal "original body", @msg.reload.body
   end
+
+  test "a soft-deleted message cannot be edited or republished" do
+    @msg.soft_delete!
+
+    result = Community::EditMessage.call(
+      user: @a,
+      message: @msg,
+      body: "resurrected body"
+    )
+
+    assert result.failure?
+    assert_equal "message_deleted", result.error
+    assert_equal "original body", @msg.reload.body
+    assert @msg.deleted?
+  end
 end

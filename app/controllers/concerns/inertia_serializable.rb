@@ -78,15 +78,20 @@ module InertiaSerializable
       category_color_hex: section.category&.color_hex,
       color_hex: section.color_hex,
       icon: section.icon,
-      topics_count: section.topics.where(status: :published).count,
+      topics_count: Community::ForumAccess.listed_topic_scope(
+        relation: section.topics,
+        user: current_user
+      ).count,
       unread_count: unread_map[section.id].to_i,
       last_post: section_last_post(section),
       url: forum_section_path(section)
     }
 
     if include_children && section.children.any?
-      children = section.children.ordered
-      children = children.select { |child| child.visible_to?(current_user) } unless logged_in?
+      children = Community::SectionAccess.select(
+        sections: section.children.ordered,
+        user: current_user
+      )
       data[:children] = children.map { |child| serialize_section(child, include_children: false, unread_map: unread_map) }
     end
 
@@ -95,7 +100,10 @@ module InertiaSerializable
 
   # XenForo-style "last post" column on the forum index.
   def section_last_post(section)
-    topic = section.topics.where(status: :published, unlisted: false).order(last_posted_at: :desc).first
+    topic = Community::ForumAccess.listed_topic_scope(
+      relation: section.topics,
+      user: current_user
+    ).order(last_posted_at: :desc).first
     return nil unless topic
 
     author = topic.last_post_user || topic.user
@@ -166,9 +174,14 @@ module InertiaSerializable
 
   def topic_first_post_body(topic)
     if topic.association(:posts).loaded?
-      topic.posts.min_by(&:floor_number)&.body
+      topic.posts
+        .select { |post| Community::ForumAccess.listed_post_visible?(post: post, user: current_user) }
+        .min_by(&:floor_number)&.body
     else
-      topic.posts.order(:floor_number).pick(:body)
+      Community::ForumAccess.listed_post_scope(
+        relation: topic.posts,
+        user: current_user
+      ).order(:floor_number).pick(:body)
     end
   end
 
@@ -240,13 +253,11 @@ module InertiaSerializable
 
     source_post = topic.association(:source_post).loaded? ? topic.source_post : Community::Post.find_by(id: topic.source_post_id)
     return nil unless source_post
-
-    source = source_post.topic
-    return nil unless PollParticipation.visible?(topic: source, user: viewer)
+    return nil unless Community::ForumAccess.listed_post_visible?(post: source_post, user: viewer)
 
     {
-      title: source.title,
-      url: forum_topic_path(source, anchor: "post-#{source_post.id}"),
+      title: source_post.topic.title,
+      url: forum_topic_path(source_post.topic, anchor: "post-#{source_post.id}"),
       floor_number: source_post.floor_number,
       author: source_post.user.username
     }
@@ -282,7 +293,7 @@ module InertiaSerializable
     { bump_cooldown_remaining_seconds: remaining.positive? ? remaining : nil }
   end
 
-  def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil, post_bookmark: nil, verified_purchaser: nil, author_forum_points: nil)
+  def serialize_post(post, current_user: nil, can_moderate: false, solved_post_id: nil, post_bookmark: nil, verified_purchaser: nil, author_forum_points: nil, author_posts_count: nil)
     formatted = Community::FormatPostBody.call(body: post.body)
     body_html = formatted.success? ? formatted.value : ERB::Util.html_escape(post.body)
     body_long = post.body.length > 800
@@ -334,8 +345,8 @@ module InertiaSerializable
       author: forum_author_name(post.user),
       author_username: post.user.username,
       author_flair_color: post.user.forum_flair_color_hex.presence,
-      author_forum_title: resolved_user_title(post.user),
-      author_posts_count: post.user.forum_posts_count,
+      author_forum_title: resolved_user_title(post.user, posts_count: author_posts_count),
+      author_posts_count: author_posts_count.nil? ? post.user.forum_posts_count : author_posts_count,
       author_forum_points: author_forum_points.nil? ? Community::PointAccount.find_by(user: post.user, currency: "points")&.balance.to_i : author_forum_points,
       author_member_since: l(post.user.created_at.to_date, format: :short),
       author_url: forum_user_path(post.user.username),
@@ -423,10 +434,7 @@ module InertiaSerializable
 
   def visible_forked_topics(post, viewer)
     post.forked_topics.select do |topic|
-      next false unless topic.status == "published"
-      next false if topic.unlisted? && !(viewer&.permission?("forum.topics.lock") || viewer&.id == topic.user_id)
-
-      PollParticipation.visible?(topic: topic, user: viewer)
+      Community::ForumAccess.listed_topic_visible?(topic: topic, user: viewer)
     end
   end
 
@@ -530,10 +538,10 @@ module InertiaSerializable
 
   # Custom title wins; otherwise fall back to the XenForo-style post-count title
   # ladder. The ladder is loaded once per request to avoid per-user queries.
-  def resolved_user_title(user)
+  def resolved_user_title(user, posts_count: nil)
     return nil unless user
 
-    user.forum_title.presence || title_ladder_lookup(user.forum_posts_count)
+    user.forum_title.presence || title_ladder_lookup(posts_count.nil? ? user.forum_posts_count : posts_count)
   end
 
   def title_ladder_rungs
@@ -665,7 +673,7 @@ module InertiaSerializable
 
   def product_discussion_props(product)
     topic = product.forum_topic
-    if topic
+    if Community::ForumAccess.listed_topic_visible?(topic: topic, user: current_user)
       {
         discussion_url: forum_topic_path(topic),
         discussion_replies_count: topic.replies_count

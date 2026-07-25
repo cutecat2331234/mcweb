@@ -1,12 +1,9 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Modal } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
 import AdminAlertBanners, { type AdminAlert } from '@/components/admin/AdminAlertBanners.vue'
 import NodeTasksTable, { type NodeTaskRow } from '@/components/admin/NodeTasksTable.vue'
 import MetricHistoryPanel, { type MetricPoint } from '@/components/admin/MetricHistoryPanel.vue'
@@ -18,6 +15,13 @@ interface ProcessMismatchAlert {
   at?: string
   connector_online?: boolean
   process_state?: string
+}
+
+interface PageAction {
+  label: string
+  href: string
+  method?: string
+  confirm?: string
 }
 
 const props = defineProps<{
@@ -34,7 +38,7 @@ const props = defineProps<{
   defaultLogPath: string
   controlUrls: Record<string, string>
   backUrl: string
-  actions: Array<{ label: string; href: string; method?: string; confirm?: string }>
+  actions: PageAction[]
   connectorSecretOnce?: string | null
 }>()
 
@@ -69,7 +73,9 @@ const alerts = computed<AdminAlert[]>(() => {
       level: 'warning',
       message: t('adminMinecraft.processMismatchAlert', {
         processState: alert.process_state || '—',
-        connectorOnline: alert.connector_online ? t('adminMinecraft.yes') : t('adminMinecraft.no'),
+        connectorOnline: alert.connector_online
+          ? t('adminMinecraft.yes')
+          : t('adminMinecraft.no'),
       }),
     })
   }
@@ -78,138 +84,231 @@ const alerts = computed<AdminAlert[]>(() => {
 
 function runCommand() {
   if (!props.controlUrls.exec || !command.value.trim()) return
-  router.post(props.controlUrls.exec, { command: command.value })
+  router.post(props.controlUrls.exec, { command: command.value.trim() })
 }
 
 function runConsoleCommand() {
   if (!props.controlUrls.console || !consoleCommand.value.trim()) return
-  router.post(props.controlUrls.console, { command: consoleCommand.value })
+  router.post(props.controlUrls.console, { command: consoleCommand.value.trim() })
+}
+
+function confirmOperation(title: string, content: string, operation: () => void, danger = false) {
+  Modal.warning({
+    title,
+    content,
+    okText: title,
+    cancelText: t('common.cancel'),
+    hideCancel: false,
+    okButtonProps: danger ? { status: 'danger' } : undefined,
+    onOk: operation,
+  })
 }
 
 function backupWorld() {
   if (!props.controlUrls.backup) return
-  if (!window.confirm(t('adminMinecraft.confirmBackup'))) return
-  router.post(props.controlUrls.backup)
+  confirmOperation(
+    t('adminMinecraft.backupNow'),
+    t('adminMinecraft.confirmBackup'),
+    () => router.post(props.controlUrls.backup),
+  )
 }
 
 function restoreWorld() {
   if (!props.controlUrls.restore || !restoreArchive.value.trim()) return
-  if (!window.confirm(t('adminMinecraft.confirmRestore'))) return
-  router.post(props.controlUrls.restore, { archive: restoreArchive.value })
+  confirmOperation(
+    t('adminMinecraft.restoreWorld'),
+    t('adminMinecraft.confirmRestore'),
+    () => router.post(props.controlUrls.restore, { archive: restoreArchive.value.trim() }),
+    true,
+  )
 }
 
 function tailLogs() {
   if (!props.controlUrls.tail_logs) return
   router.post(props.controlUrls.tail_logs, { path: logPath.value })
 }
+
+function runPageAction(action: PageAction) {
+  const perform = () => {
+    if (action.method === 'post') router.post(action.href)
+    else if (action.method === 'delete') router.delete(action.href)
+    else router.visit(action.href)
+  }
+
+  if (action.confirm) {
+    confirmOperation(action.label, action.confirm, perform, action.method === 'delete')
+  } else {
+    perform()
+  }
+}
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <a-page-header :title="title" :show-back="false">
+    <template #extra>
+      <a-space wrap>
+        <a-button @click="router.visit(adminRoutes.minecraftPlayers)">
+          {{ t('adminMinecraft.players') }}
+        </a-button>
+        <a-button @click="router.visit(backUrl)">
+          {{ t('adminMinecraft.backToServers') }}
+        </a-button>
+      </a-space>
+    </template>
+  </a-page-header>
 
   <AdminAlertBanners :alerts="alerts" />
 
-  <section
+  <a-alert
     v-if="connectorSecretOnce"
-    class="mb-4 max-w-2xl rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
+    type="warning"
+    show-icon
+    class="mb-4 admin-secret-alert"
   >
-    <p class="mb-2 font-medium">{{ t('adminMinecraft.newConnectorSecret') }}</p>
-    <pre class="overflow-x-auto rounded bg-background p-2 text-xs">{{ connectorSecretOnce }}</pre>
-  </section>
+    <template #title>{{ t('adminMinecraft.newConnectorSecret') }}</template>
+    <pre class="admin-code-block">{{ connectorSecretOnce }}</pre>
+  </a-alert>
 
-  <dl class="grid max-w-2xl gap-3 text-sm">
-    <div
-      v-for="field in serverFields"
-      :key="field.key"
-      class="grid grid-cols-3 gap-2 border-b border-border pb-2"
-    >
-      <dt class="font-medium text-muted-foreground">{{ field.label }}</dt>
-      <dd class="col-span-2 break-all">
-        <Link
+  <a-card :bordered="true">
+    <a-descriptions :column="{ xs: 1, md: 2 }" bordered>
+      <a-descriptions-item v-for="field in serverFields" :key="field.key" :label="field.label">
+        <a-link
           v-if="field.key === 'node_name' && server.node_url"
-          :href="server.node_url"
-          class="text-primary hover:underline"
+          @click="router.visit(String(server.node_url))"
         >
           {{ server.node_name }}
-        </Link>
-        <template v-else>{{ server[field.key] }}</template>
-      </dd>
-    </div>
-  </dl>
+        </a-link>
+        <span v-else class="break-all">{{ server[field.key] ?? '—' }}</span>
+      </a-descriptions-item>
+    </a-descriptions>
+  </a-card>
 
-  <section v-if="server.plugin_config" class="mt-6 max-w-2xl">
-    <h2 class="mb-2 font-semibold">{{ t('adminMinecraft.pluginConfig') }}</h2>
-    <pre class="overflow-x-auto rounded border bg-muted p-3 text-xs">website-url: "{{ server.plugin_config.website_url }}"
+  <a-card
+    v-if="server.plugin_config"
+    :title="t('adminMinecraft.pluginConfig')"
+    :bordered="true"
+    class="mt-4"
+  >
+    <pre class="admin-code-block">website-url: "{{ server.plugin_config.website_url }}"
 server-id: "{{ server.plugin_config.server_id }}"
 connector-secret: "{{ server.plugin_config.connector_secret }}"</pre>
-  </section>
+  </a-card>
 
-  <section v-if="server.node_managed" class="mt-6 flex flex-wrap gap-2">
-    <Button v-if="controlUrls.start" as-child>
-      <Link :href="controlUrls.start" method="post" as="button">{{ t('adminMinecraft.startServer') }}</Link>
-    </Button>
-    <Button v-if="controlUrls.stop" variant="outline" as-child>
-      <Link :href="controlUrls.stop" method="post" as="button">{{ t('adminMinecraft.stopServer') }}</Link>
-    </Button>
-    <Button v-if="controlUrls.restart" variant="outline" as-child>
-      <Link :href="controlUrls.restart" method="post" as="button">{{ t('adminMinecraft.restartServer') }}</Link>
-    </Button>
-  </section>
+  <a-card
+    v-if="server.node_managed"
+    :title="t('adminMinecraft.actions')"
+    :bordered="true"
+    class="mt-4"
+  >
+    <a-space wrap>
+      <a-button
+        v-if="controlUrls.start"
+        type="primary"
+        status="success"
+        @click="router.post(controlUrls.start)"
+      >
+        {{ t('adminMinecraft.startServer') }}
+      </a-button>
+      <a-button v-if="controlUrls.stop" @click="router.post(controlUrls.stop)">
+        {{ t('adminMinecraft.stopServer') }}
+      </a-button>
+      <a-button v-if="controlUrls.restart" status="warning" @click="router.post(controlUrls.restart)">
+        {{ t('adminMinecraft.restartServer') }}
+      </a-button>
+    </a-space>
+  </a-card>
 
-  <section v-if="controlUrls.exec" class="mt-6 max-w-xl space-y-2">
-    <Label for="cmd">{{ t('adminMinecraft.remoteCommand') }}</Label>
-    <div class="flex gap-2">
-      <Input id="cmd" v-model="command" :placeholder="t('adminMinecraft.remoteCommandPlaceholder')" />
-      <Button type="button" @click="runCommand">{{ t('adminMinecraft.runCommand') }}</Button>
-    </div>
-  </section>
+  <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16" class="mt-4">
+    <a-grid-item v-if="controlUrls.exec">
+      <a-card :title="t('adminMinecraft.remoteCommand')" :bordered="true">
+        <a-input-search
+          v-model="command"
+          :button-text="t('adminMinecraft.runCommand')"
+          :placeholder="t('adminMinecraft.remoteCommandPlaceholder')"
+          search-button
+          @search="runCommand"
+        />
+      </a-card>
+    </a-grid-item>
+    <a-grid-item v-if="controlUrls.console">
+      <a-card :title="t('adminMinecraft.consoleCommand')" :bordered="true">
+        <a-input-search
+          v-model="consoleCommand"
+          :button-text="t('adminMinecraft.runCommand')"
+          :placeholder="t('adminMinecraft.consoleCommandPlaceholder')"
+          search-button
+          @search="runConsoleCommand"
+        />
+      </a-card>
+    </a-grid-item>
+    <a-grid-item v-if="controlUrls.backup || controlUrls.restore">
+      <a-card :title="t('adminMinecraft.worldBackup')" :bordered="true">
+        <a-space direction="vertical" fill>
+          <a-button v-if="controlUrls.backup" @click="backupWorld">
+            {{ t('adminMinecraft.backupNow') }}
+          </a-button>
+          <a-input-search
+            v-if="controlUrls.restore"
+            v-model="restoreArchive"
+            :button-text="t('adminMinecraft.restoreWorld')"
+            :placeholder="t('adminMinecraft.restoreArchivePlaceholder')"
+            search-button
+            @search="restoreWorld"
+          />
+        </a-space>
+      </a-card>
+    </a-grid-item>
+    <a-grid-item v-if="controlUrls.tail_logs">
+      <a-card :title="t('adminMinecraft.tailLogs')" :bordered="true">
+        <a-input-search
+          v-model="logPath"
+          :button-text="t('adminMinecraft.tailLogsRun')"
+          :placeholder="t('adminMinecraft.tailLogsPlaceholder')"
+          search-button
+          @search="tailLogs"
+        />
+      </a-card>
+    </a-grid-item>
+  </a-grid>
 
-  <section v-if="controlUrls.console" class="mt-6 max-w-xl space-y-2">
-    <Label for="console-cmd">{{ t('adminMinecraft.consoleCommand') }}</Label>
-    <div class="flex gap-2">
-      <Input id="console-cmd" v-model="consoleCommand" :placeholder="t('adminMinecraft.consoleCommandPlaceholder')" />
-      <Button type="button" variant="outline" @click="runConsoleCommand">{{ t('adminMinecraft.runCommand') }}</Button>
-    </div>
-  </section>
-
-  <section v-if="controlUrls.backup || controlUrls.restore" class="mt-6 max-w-xl space-y-3">
-    <h2 class="font-semibold">{{ t('adminMinecraft.worldBackup') }}</h2>
-    <Button v-if="controlUrls.backup" type="button" variant="outline" @click="backupWorld">{{ t('adminMinecraft.backupNow') }}</Button>
-    <div v-if="controlUrls.restore" class="flex gap-2">
-      <Input v-model="restoreArchive" :placeholder="t('adminMinecraft.restoreArchivePlaceholder')" />
-      <Button type="button" variant="outline" @click="restoreWorld">{{ t('adminMinecraft.restoreWorld') }}</Button>
-    </div>
-  </section>
-
-  <MetricHistoryPanel v-if="metricHistory" class="mt-8" :points="metricHistory" :title="t('adminMinecraft.metricHistory')" />
-
-  <section v-if="controlUrls.tail_logs" class="mt-6 max-w-xl space-y-2">
-    <Label for="log-path">{{ t('adminMinecraft.tailLogs') }}</Label>
-    <div class="flex gap-2">
-      <Input id="log-path" v-model="logPath" :placeholder="t('adminMinecraft.tailLogsPlaceholder')" />
-      <Button type="button" variant="outline" @click="tailLogs">{{ t('adminMinecraft.tailLogsRun') }}</Button>
-    </div>
-  </section>
-
+  <MetricHistoryPanel
+    v-if="metricHistory"
+    class="mt-8"
+    :points="metricHistory"
+    :title="t('adminMinecraft.metricHistory')"
+  />
   <NodeTasksTable :tasks="nodeTasks" />
 
-  <div class="mt-6 flex flex-wrap gap-2">
-    <template v-for="action in actions" :key="action.href">
-      <Button v-if="action.method === 'post'" variant="outline" as-child>
-        <Link :href="action.href" method="post" as="button" :data="{ confirm: action.confirm }">{{ action.label }}</Link>
-      </Button>
-      <Button v-else-if="action.method === 'delete'" variant="destructive" as-child>
-        <Link :href="action.href" method="delete" as="button" :data="{ confirm: action.confirm }">{{ action.label }}</Link>
-      </Button>
-      <Button v-else variant="outline" as-child>
-        <a :href="action.href">{{ action.label }}</a>
-      </Button>
-    </template>
-    <Button variant="ghost" as-child>
-      <a :href="backUrl">{{ t('adminMinecraft.backToServers') }}</a>
-    </Button>
-    <Button variant="ghost" as-child>
-      <Link :href="adminRoutes.minecraftPlayers">{{ t('adminMinecraft.players') }}</Link>
-    </Button>
-  </div>
+  <a-card v-if="actions.length" :title="t('adminMinecraft.actions')" :bordered="true" class="mt-4">
+    <a-space wrap>
+      <a-button
+        v-for="action in actions"
+        :key="action.href"
+        :status="action.method === 'delete' ? 'danger' : undefined"
+        @click="runPageAction(action)"
+      >
+        {{ action.label }}
+      </a-button>
+    </a-space>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-secret-alert {
+  max-width: 880px;
+}
+.admin-code-block {
+  max-width: 100%;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  color: var(--color-text-1);
+  background: var(--color-fill-2);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.break-all {
+  word-break: break-all;
+}
+</style>

@@ -1,34 +1,16 @@
 <script setup lang="ts">
-/**
- * ProTable — a thin Element Plus wrapper that keeps the project's existing
- * server-driven list semantics (Rails offset pagination + URL-param filters +
- * Inertia bulk actions) while adding the affordances the hand-rolled shadcn
- * table in pages/Admin/Generic/Index.vue lacks: column show/hide, density
- * switching, per-column client sort of the visible page, and colored cells via
- * scoped slots.
- *
- * It deliberately does NOT introduce a client-side data source: `rows` are the
- * current server page, `pagination` describes the server's offset window, and
- * page changes navigate (`router.get ?page=`) rather than slicing locally — so
- * Rails stays the single source of truth.
- *
- * Per-column colored badges (order status, payment status, ...) are provided by
- * the parent via a `cell-<key>` scoped slot, keeping ProTable domain-agnostic.
- */
 import { computed, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
-import { Grid, Setting } from '@element-plus/icons-vue'
+import { IconApps, IconSettings } from '@arco-design/web-vue/es/icon'
 
 export interface ProColumn {
   key: string
   label: string
-  /** Render the value as an Inertia <Link> to `row.url` when present. */
   link?: boolean
   width?: string | number
   minWidth?: string | number
   align?: 'left' | 'center' | 'right'
   fixed?: boolean | 'left' | 'right'
-  /** Enable client-side sort of the CURRENT server page (does not re-query). */
   sortable?: boolean
 }
 
@@ -48,25 +30,20 @@ export interface ProBulkAction {
   type?: 'primary' | 'success' | 'warning' | 'danger' | 'info'
 }
 
-type Density = 'large' | 'default' | 'small'
+type Density = 'large' | 'medium' | 'small'
 
 const props = withDefaults(
   defineProps<{
     columns: ProColumn[]
     rows: Array<Record<string, unknown>>
     pagination?: ProPagination
-    /** Field used as el-table row-key + selection identity (default publicId). */
     rowKey?: string
     selectable?: boolean
-    /** Inertia endpoint the bulk action posts to (null = emit-only demo). */
     bulkActionUrl?: string | null
     bulkActions?: ProBulkAction[]
     bulkMethod?: 'patch' | 'post'
-    /** Payload key holding the selected ids (e.g. 'order_ids'). */
     bulkParamKey?: string
-    /** Payload key holding the action name (e.g. 'action_type'). */
     bulkActionKey?: string
-    /** Query param used for server-side paging. */
     pageParam?: string
   }>(),
   {
@@ -82,46 +59,52 @@ const props = withDefaults(
 )
 
 const emit = defineEmits<{
-  (e: 'bulk', action: string, ids: Array<string | number>): void
+  (event: 'bulk', action: string, ids: Array<string | number>): void
 }>()
 
-/* ---- density -------------------------------------------------------------- */
-const density = ref<Density>('default')
+const density = ref<Density>('medium')
 const densityOptions: Array<{ label: string; value: Density }> = [
-  { label: '宽松', value: 'large' },
-  { label: '默认', value: 'default' },
-  { label: '紧凑', value: 'small' },
+  { label: 'Comfortable', value: 'large' },
+  { label: 'Default', value: 'medium' },
+  { label: 'Compact', value: 'small' },
 ]
-function setDensity(value: Density) {
-  density.value = value
-}
-
-/* ---- column visibility ---------------------------------------------------- */
-const visibleKeys = ref<string[]>(props.columns.map((c) => c.key))
-const visibleColumns = computed(() =>
-  props.columns.filter((c) => visibleKeys.value.includes(c.key)),
-)
-
-/* ---- selection ------------------------------------------------------------ */
+const visibleKeys = ref(props.columns.map((column) => column.key))
 const selectedIds = ref<Array<string | number>>([])
-function onSelectionChange(rows: Array<Record<string, unknown>>) {
-  selectedIds.value = rows
-    .map((r) => r[props.rowKey] as string | number)
-    .filter((v) => v != null)
-}
+const visibleColumns = computed(() =>
+  props.columns.filter((column) => visibleKeys.value.includes(column.key)),
+)
+const rowSelection = computed(() =>
+  props.selectable
+    ? {
+        type: 'checkbox' as const,
+        showCheckedAll: true,
+        onlyCurrent: true,
+        width: 46,
+      }
+    : undefined,
+)
+const pageSize = computed(() => {
+  if (!props.pagination) return 20
+  if (props.pagination.page > 1) {
+    return Math.max(
+      Math.round((props.pagination.from - 1) / (props.pagination.page - 1)),
+      1,
+    )
+  }
+  return Math.max(props.pagination.to - props.pagination.from + 1, 1)
+})
 
-/* ---- server-side pagination ---------------------------------------------- */
 function goToPage(page: number) {
   const url = new URL(window.location.href)
   url.searchParams.set(props.pageParam, String(page))
   router.get(url.pathname + url.search, {}, { preserveScroll: true, preserveState: false })
 }
 
-/* ---- bulk actions (Inertia round-trip, mirrors Generic/Index semantics) --- */
 function runBulk(action: string) {
   if (!selectedIds.value.length) return
   emit('bulk', action, [...selectedIds.value])
   if (!props.bulkActionUrl) return
+
   const payload: Record<string, unknown> = {
     [props.bulkParamKey]: selectedIds.value,
     [props.bulkActionKey]: action,
@@ -134,115 +117,144 @@ function runBulk(action: string) {
     },
   })
 }
+
+function actionStatus(type?: ProBulkAction['type']) {
+  if (type === 'success' || type === 'warning' || type === 'danger') return type
+  return undefined
+}
+
+function columnSorter(column: ProColumn) {
+  if (!column.sortable) return undefined
+  return {
+    sortDirections: ['ascend', 'descend'] as Array<'ascend' | 'descend'>,
+    sorter: (left: Record<string, unknown>, right: Record<string, unknown>) =>
+      String(left[column.key] ?? '').localeCompare(String(right[column.key] ?? '')),
+  }
+}
 </script>
 
 <template>
-  <div class="pro-table">
-    <!-- Toolbar -->
+  <div>
     <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div class="flex flex-wrap items-center gap-3">
+      <a-space wrap>
         <slot name="toolbar-left" />
-      </div>
-      <div class="flex items-center gap-3">
-        <template v-if="selectable && bulkActions.length && selectedIds.length">
-          <el-button
-            v-for="a in bulkActions"
-            :key="a.action"
-            :type="a.type || 'default'"
-            @click="runBulk(a.action)"
-          >
-            {{ a.label }}（{{ selectedIds.length }}）
-          </el-button>
-        </template>
+      </a-space>
+      <a-space wrap>
+        <a-button
+          v-for="action in selectable && selectedIds.length ? bulkActions : []"
+          :key="action.action"
+          :type="action.type === 'primary' ? 'primary' : 'secondary'"
+          :status="actionStatus(action.type)"
+          @click="runBulk(action.action)"
+        >
+          {{ action.label }} ({{ selectedIds.length }})
+        </a-button>
 
         <slot name="toolbar-right" />
 
-        <!-- density -->
-        <el-dropdown trigger="click" @command="setDensity">
-          <el-button :icon="Grid" circle title="密度" />
-          <template #dropdown>
-            <el-dropdown-menu>
-              <el-dropdown-item
-                v-for="d in densityOptions"
-                :key="d.value"
-                :command="d.value"
-                :disabled="density === d.value"
-              >
-                {{ d.label }}
-              </el-dropdown-item>
-            </el-dropdown-menu>
+        <a-dropdown trigger="click" @select="density = $event as Density">
+          <a-tooltip content="Density">
+            <a-button shape="circle" :aria-label="'Density'">
+              <template #icon><icon-apps /></template>
+            </a-button>
+          </a-tooltip>
+          <template #content>
+            <a-doption
+              v-for="option in densityOptions"
+              :key="option.value"
+              :value="option.value"
+              :disabled="density === option.value"
+            >
+              {{ option.label }}
+            </a-doption>
           </template>
-        </el-dropdown>
+        </a-dropdown>
 
-        <!-- column settings -->
-        <el-popover trigger="click" :width="180" placement="bottom-end">
-          <template #reference>
-            <el-button :icon="Setting" circle title="列设置" />
+        <a-popover trigger="click" position="br">
+          <a-tooltip content="Columns">
+            <a-button shape="circle" :aria-label="'Columns'">
+              <template #icon><icon-settings /></template>
+            </a-button>
+          </a-tooltip>
+          <template #content>
+            <a-checkbox-group v-model="visibleKeys">
+              <a-space direction="vertical">
+                <a-checkbox
+                  v-for="column in columns"
+                  :key="column.key"
+                  :value="column.key"
+                >
+                  {{ column.label }}
+                </a-checkbox>
+              </a-space>
+            </a-checkbox-group>
           </template>
-          <p class="mb-2 text-xs text-[var(--el-text-color-secondary)]">列设置</p>
-          <el-checkbox-group v-model="visibleKeys" class="flex flex-col gap-1">
-            <el-checkbox v-for="c in columns" :key="c.key" :value="c.key">
-              {{ c.label }}
-            </el-checkbox>
-          </el-checkbox-group>
-        </el-popover>
-      </div>
+        </a-popover>
+      </a-space>
     </div>
 
-    <!-- Table (data = current server page only) -->
-    <el-table
+    <a-table
+      v-model:selected-keys="selectedIds"
       :data="rows"
-      :size="density"
       :row-key="rowKey"
-      border
+      :row-selection="rowSelection"
+      :pagination="false"
+      :size="density"
+      :bordered="{ cell: true }"
+      :scroll="{ x: 720 }"
       stripe
-      style="width: 100%"
-      @selection-change="onSelectionChange"
     >
-      <el-table-column v-if="selectable" type="selection" width="46" />
-      <el-table-column
-        v-for="c in visibleColumns"
-        :key="c.key"
-        :prop="c.key"
-        :label="c.label"
-        :width="c.width"
-        :min-width="c.minWidth || 120"
-        :align="c.align || 'left'"
-        :fixed="c.fixed"
-        :sortable="c.sortable || false"
-        show-overflow-tooltip
-      >
-        <template #default="{ row }">
-          <slot :name="`cell-${c.key}`" :row="row" :value="row[c.key]">
-            <Link
-              v-if="c.link && row.url"
-              :href="row.url as string"
-              class="font-medium text-[var(--el-color-primary)] no-underline hover:underline"
+      <template #columns>
+        <a-table-column
+          v-for="column in visibleColumns"
+          :key="column.key"
+          :title="column.label"
+          :data-index="column.key"
+          :width="column.width"
+          :min-width="column.minWidth || 120"
+          :align="column.align || 'left'"
+          :fixed="column.fixed"
+          :sortable="columnSorter(column)"
+          ellipsis
+          tooltip
+        >
+          <template #cell="{ record }">
+            <slot
+              :name="`cell-${column.key}`"
+              :row="record"
+              :value="record[column.key]"
             >
-              {{ row[c.key] }}
-            </Link>
-            <span v-else>{{ row[c.key] }}</span>
-          </slot>
-        </template>
-      </el-table-column>
-
-      <template #empty>
-        <slot name="empty">暂无数据</slot>
+              <Link
+                v-if="column.link && record.url"
+                :href="String(record.url)"
+                class="arco-link font-medium no-underline"
+              >
+                {{ record[column.key] }}
+              </Link>
+              <span v-else>{{ record[column.key] }}</span>
+            </slot>
+          </template>
+        </a-table-column>
       </template>
-    </el-table>
+      <template #empty>
+        <slot name="empty"><a-empty /></slot>
+      </template>
+    </a-table>
 
-    <!-- Pagination summary + server-side pager -->
-    <div class="mt-4 flex flex-wrap items-center justify-between gap-3">
-      <span v-if="pagination" class="text-xs text-[var(--el-text-color-secondary)]">
-        共 {{ pagination.count }} 条 · 显示第 {{ pagination.from }}–{{ pagination.to }} 条
-      </span>
-      <el-pagination
-        v-if="pagination && pagination.pages > 1"
-        background
-        layout="prev, pager, next"
-        :page-count="pagination.pages"
-        :current-page="pagination.page"
-        @current-change="goToPage"
+    <div
+      v-if="pagination"
+      class="mt-4 flex flex-wrap items-center justify-between gap-3"
+    >
+      <a-typography-text type="secondary">
+        {{ pagination.count }} total · {{ pagination.from }}–{{ pagination.to }}
+      </a-typography-text>
+      <a-pagination
+        v-if="pagination.pages > 1"
+        :current="pagination.page"
+        :total="pagination.count"
+        :page-size="pageSize"
+        :show-total="true"
+        @change="goToPage"
       />
     </div>
   </div>

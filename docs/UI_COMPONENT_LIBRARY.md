@@ -38,9 +38,9 @@ The **portal** entry (`entrypoints/inertia.ts`) keeps the existing shadcn/reka-u
 
 | Layout | Stack | Use when |
 |--------|-------|----------|
-| `layouts/AdminLayout.vue` | shadcn + Tailwind | Legacy admin pages (~55 pages) |
-| `layouts/ArcoAdminLayout.vue` | Arco + Inertia | New Arco-based admin / plugins |
-| `components/admin-pro/ProLayout.vue` | Element Plus (POC) | EP redesign demos only |
+| `layouts/AdminLayout.vue` | Arco + Inertia | Compatibility alias used by existing admin pages |
+| `layouts/ArcoAdminLayout.vue` | Arco + Inertia | Canonical admin shell |
+| `components/admin-pro/ProLayout.vue` | Arco + Inertia | Compatibility alias for former POC imports |
 
 Example Arco page:
 
@@ -79,7 +79,7 @@ npm install
 bin/dev          # or: bundle exec rails server + bin/vite dev
 ```
 
-Admin assets compile through `app/javascript/entrypoints/admin.ts` (Arco + optional Element Plus POC styles).
+Admin assets compile through `app/javascript/entrypoints/admin.ts` with Arco only. Element Plus and its POC runtime dependencies have been removed.
 
 Smoke-build admin bundle:
 

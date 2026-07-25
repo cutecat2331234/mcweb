@@ -2,11 +2,6 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -34,7 +29,20 @@ const form = useForm({
   category: { ...props.category },
 })
 
-function submit() {
+function fieldError(field: string) {
+  return form.errors[field] || form.errors[`category.${field}`]
+}
+
+function normalizeEmptyNumbers(record: object, fields: string[]) {
+  const values = record as Record<string, unknown>
+  fields.forEach((field) => {
+    if (values[field] === undefined) values[field] = null
+  })
+}
+
+function submit(event?: { errors?: unknown }) {
+  if (event?.errors) return
+  normalizeEmptyNumbers(form.category, ['position'])
   if (props.method === 'patch') {
     form.patch(props.submitUrl)
   } else {
@@ -44,48 +52,113 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <section class="admin-store-category-form">
+    <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
 
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.common.name') }}</Label>
-      <Input id="name" v-model="form.category.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="slug">{{ t('admin.forms.category.slug') }}</Label>
-      <Input id="slug" v-model="form.category.slug" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="position">{{ t('admin.common.position') }}</Label>
-      <Input id="position" v-model.number="form.category.position" type="number" min="0" />
-    </div>
-    <div class="space-y-2">
-      <Label for="description">{{ t('admin.forms.category.descriptionPublic') }}</Label>
-      <Input id="description" v-model="form.category.description" />
-    </div>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="icon">{{ t('admin.forms.category.icon') }}</Label>
-        <Input id="icon" v-model="form.category.icon" placeholder="🛍️" />
-      </div>
-      <div class="space-y-2">
-        <Label for="color_hex">{{ t('admin.common.colorHex') }}</Label>
-        <Input id="color_hex" v-model="form.category.color_hex" placeholder="#3b82f6" />
-      </div>
-    </div>
-    <div class="space-y-2">
-      <Label for="seo_title">{{ t('admin.forms.category.seoTitle') }}</Label>
-      <Input id="seo_title" v-model="form.category.seo_title" />
-    </div>
-    <div class="space-y-2">
-      <Label for="seo_description">{{ t('admin.forms.category.seoDescription') }}</Label>
-      <Textarea id="seo_description" v-model="form.category.seo_description" rows="2" />
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link>
-      </Button>
-    </div>
-  </form>
+    <a-card class="max-w-3xl" :bordered="true">
+      <a-form :model="form.category" layout="vertical" @submit="submit">
+        <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="4">
+          <a-grid-item>
+            <a-form-item
+              field="name"
+              :label="t('admin.common.name')"
+              :rules="[{ required: true, message: t('admin.common.name') }]"
+              :validate-status="fieldError('name') ? 'error' : undefined"
+              :help="fieldError('name')"
+            >
+              <a-input v-model="form.category.name" allow-clear />
+            </a-form-item>
+          </a-grid-item>
+
+          <a-grid-item>
+            <a-form-item
+              field="slug"
+              :label="t('admin.forms.category.slug')"
+              :rules="[{ required: true, message: t('admin.forms.category.slug') }]"
+              :validate-status="fieldError('slug') ? 'error' : undefined"
+              :help="fieldError('slug')"
+            >
+              <a-input v-model="form.category.slug" allow-clear />
+            </a-form-item>
+          </a-grid-item>
+        </a-grid>
+
+        <a-form-item
+          field="position"
+          :label="t('admin.common.position')"
+          :validate-status="fieldError('position') ? 'error' : undefined"
+          :help="fieldError('position')"
+        >
+          <a-input-number v-model="form.category.position" :min="0" class="w-full" />
+        </a-form-item>
+
+        <a-form-item
+          field="description"
+          :label="t('admin.forms.category.descriptionPublic')"
+          :validate-status="fieldError('description') ? 'error' : undefined"
+          :help="fieldError('description')"
+        >
+          <a-input v-model="form.category.description" allow-clear />
+        </a-form-item>
+
+        <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="4">
+          <a-grid-item>
+            <a-form-item
+              field="icon"
+              :label="t('admin.forms.category.icon')"
+              :validate-status="fieldError('icon') ? 'error' : undefined"
+              :help="fieldError('icon')"
+            >
+              <a-input v-model="form.category.icon" placeholder="🛍️" allow-clear />
+            </a-form-item>
+          </a-grid-item>
+
+          <a-grid-item>
+            <a-form-item
+              field="color_hex"
+              :label="t('admin.common.colorHex')"
+              :validate-status="fieldError('color_hex') ? 'error' : undefined"
+              :help="fieldError('color_hex')"
+            >
+              <a-input v-model="form.category.color_hex" placeholder="#3b82f6" allow-clear />
+            </a-form-item>
+          </a-grid-item>
+        </a-grid>
+
+        <a-form-item
+          field="seo_title"
+          :label="t('admin.forms.category.seoTitle')"
+          :validate-status="fieldError('seo_title') ? 'error' : undefined"
+          :help="fieldError('seo_title')"
+        >
+          <a-input v-model="form.category.seo_title" allow-clear />
+        </a-form-item>
+
+        <a-form-item
+          field="seo_description"
+          :label="t('admin.forms.category.seoDescription')"
+          :validate-status="fieldError('seo_description') ? 'error' : undefined"
+          :help="fieldError('seo_description')"
+        >
+          <a-textarea
+            v-model="form.category.seo_description"
+            :auto-size="{ minRows: 2, maxRows: 5 }"
+            allow-clear
+          />
+        </a-form-item>
+
+        <a-space wrap>
+          <a-button type="primary" html-type="submit" :loading="form.processing">
+            {{ t('admin.ui.save') }}
+          </a-button>
+          <Link
+            :href="backUrl"
+            class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
+          >
+            {{ t('admin.ui.cancel') }}
+          </Link>
+        </a-space>
+      </a-form>
+    </a-card>
+  </section>
 </template>

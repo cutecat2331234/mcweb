@@ -12,9 +12,24 @@ module Community
       return ServiceResult.success(skipped: true) if @poll.closes_at.nil?
       return ServiceResult.success(skipped: true) if already_finalized?
 
-      Community::CreateSmallActionPost.call(topic: @poll.topic, actor: @actor, body: @body) if @actor
-      Community::NotifyPollClosed.call(poll: @poll, actor: @actor || @poll.topic.user)
-      @poll.touch
+      action_result = nil
+      Community::Poll.transaction do
+        if @actor
+          action_result = Community::CreateSmallActionPost.call(
+            topic: @poll.topic,
+            actor: @actor,
+            body: @body
+          )
+          raise ActiveRecord::Rollback if action_result.failure?
+        end
+
+        Community::NotifyPollClosed.call(
+          poll: @poll,
+          actor: @actor || @poll.topic.user
+        )
+        @poll.touch
+      end
+      return action_result if action_result&.failure?
 
       ServiceResult.success
     end

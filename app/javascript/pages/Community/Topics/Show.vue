@@ -19,6 +19,10 @@ import ReadingProgress from '@/components/portal/ReadingProgress.vue'
 import ImageLightbox from '@/components/portal/ImageLightbox.vue'
 import SubscriptionLevelSelect, { type SubscriptionLevelOption } from '@/components/portal/SubscriptionLevelSelect.vue'
 import TopicTitleBadges from '@/components/portal/TopicTitleBadges.vue'
+import TopicCustomFieldsForm, {
+  type TopicCustomField,
+  type TopicCustomFieldValue,
+} from '@/components/portal/TopicCustomFieldsForm.vue'
 import { routes } from '@/lib/routes'
 import { readCsrfToken } from '@/lib/csrf'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
@@ -199,6 +203,7 @@ const props = defineProps<{
       author: string
     } | null
     redirect_url?: string | null
+    custom_fields?: TopicCustomField[]
   }
   posts: PostItem[]
   pagination: PaginationMeta
@@ -236,6 +241,43 @@ const props = defineProps<{
 const page = usePage<{ auth: { user: { id: string; username: string } | null } }>()
 const loggedIn = !!page.props.auth.user
 
+function initialCustomFieldValues(fields: TopicCustomField[]) {
+  return Object.fromEntries(
+    fields
+      .filter((field) => field.editable !== false)
+      .map((field) => {
+        const value = field.raw_value ?? field.value ?? ''
+        if (field.field_type === 'checkbox') {
+          return [field.key, value === true || value === 1 || value === '1' || value === 'true']
+        }
+        return [field.key, Array.isArray(value) ? value : String(value)]
+      }),
+  ) as Record<string, TopicCustomFieldValue>
+}
+
+function hasCustomFieldValue(field: TopicCustomField) {
+  const value = field.display_value ?? field.value ?? field.raw_value
+  if (Array.isArray(value)) return value.length > 0
+  return value !== null && value !== undefined && value !== ''
+}
+
+function customFieldDisplayValue(field: TopicCustomField) {
+  const value = field.display_value ?? field.value ?? field.raw_value
+  if (Array.isArray(value)) return value.join(t('common.listSeparator'))
+  if (field.field_type === 'checkbox') {
+    return value === true || value === 1 || value === '1' || value === 'true'
+      ? t('forum.topics.customFieldYes')
+      : t('forum.topics.customFieldNo')
+  }
+  return String(value ?? '')
+}
+
+function customFieldsAt(location: 'topic_status' | 'before_message' | 'after_message') {
+  return (props.topic.custom_fields || []).filter(
+    (field) => field.display_location === location && hasCustomFieldValue(field),
+  )
+}
+
 const editingPostId = ref<number | null>(null)
 const copiedPostId = ref<number | null>(null)
 const editBody = ref('')
@@ -246,6 +288,10 @@ const moderateToolsOpen = ref(false)
 const editTitle = ref(props.topic.title)
 const editTags = ref(props.topic.tags_string)
 const editPrefix = ref(props.topic.prefix || '')
+const editCustomFields = ref(initialCustomFieldValues(props.topic.custom_fields || []))
+const editableCustomFields = computed(() =>
+  (props.topic.custom_fields || []).filter((field) => field.editable === true),
+)
 const editTagPickerRef = ref<InstanceType<typeof TagGroupPicker> | null>(null)
 const editTagError = ref('')
 const replyLinkError = ref('')
@@ -919,6 +965,7 @@ function saveTopicEdit() {
     title: editTitle.value,
     tags: editTags.value,
     prefix: editPrefix.value,
+    custom_fields: editCustomFields.value,
   }
   if (props.topic.can_edit_poll && props.poll) {
     payload.poll_question = editPollQuestion.value
@@ -1264,6 +1311,16 @@ async function copyPollShareLink() {
     </div>
   </div>
 
+  <dl
+    v-if="customFieldsAt('topic_status').length"
+    class="mb-4 grid max-w-2xl gap-3 rounded-lg border bg-muted/20 p-4 sm:grid-cols-2"
+  >
+    <div v-for="field in customFieldsAt('topic_status')" :key="field.key">
+      <dt class="text-xs font-medium text-muted-foreground">{{ field.label }}</dt>
+      <dd class="mt-1 whitespace-pre-wrap text-sm">{{ customFieldDisplayValue(field) }}</dd>
+    </div>
+  </dl>
+
   <div v-if="activePanel === 'assign'" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
     <p class="text-sm font-medium">{{ t('forum.topics.assignTitle') }}</p>
     <Input
@@ -1305,6 +1362,14 @@ async function copyPollShareLink() {
     </div>
     <TagGroupPicker ref="editTagPickerRef" v-model="editTags" :tag-groups="topic.tag_groups" :max-tags="5" />
     <p v-if="editTagError" class="text-sm text-destructive">{{ editTagError }}</p>
+    <section v-if="editableCustomFields.length" class="space-y-3 rounded-lg border p-3">
+      <h2 class="text-sm font-semibold">{{ t('forum.topics.customFields') }}</h2>
+      <TopicCustomFieldsForm
+        v-model="editCustomFields"
+        :fields="editableCustomFields"
+        id-prefix="edit-topic-field"
+      />
+    </section>
     <template v-if="topic.can_edit_poll && poll">
       <Input v-model="editPollQuestion" :placeholder="t('forum.topics.pollQuestion')" />
       <Textarea v-model="editPollOptions" rows="4" :placeholder="t('forum.topics.pollOptions')" />
@@ -1746,6 +1811,16 @@ async function copyPollShareLink() {
             </div>
           </div>
 
+          <dl
+            v-if="post.floor_number === 1 && customFieldsAt('before_message').length"
+            class="mb-3 grid gap-2 rounded-md border bg-muted/20 p-3 sm:grid-cols-2"
+          >
+            <div v-for="field in customFieldsAt('before_message')" :key="field.key">
+              <dt class="text-xs font-medium text-muted-foreground">{{ field.label }}</dt>
+              <dd class="mt-0.5 whitespace-pre-wrap text-sm">{{ customFieldDisplayValue(field) }}</dd>
+            </div>
+          </dl>
+
           <div v-if="editingPostId === post.id" class="mt-2 space-y-2">
             <MarkdownEditor v-model="editBody" :rows="6" />
             <Input v-model="editReason" :placeholder="t('forum.topics.editReasonOptional')" class="h-8" />
@@ -1796,6 +1871,15 @@ async function copyPollShareLink() {
               {{ isPostExpanded(post) ? t('forum.topics.collapseFull') : t('forum.topics.expandFull') }}
             </button>
           </div>
+          <dl
+            v-if="post.floor_number === 1 && customFieldsAt('after_message').length"
+            class="mt-3 grid gap-2 rounded-md border bg-muted/20 p-3 sm:grid-cols-2"
+          >
+            <div v-for="field in customFieldsAt('after_message')" :key="field.key">
+              <dt class="text-xs font-medium text-muted-foreground">{{ field.label }}</dt>
+              <dd class="mt-0.5 whitespace-pre-wrap text-sm">{{ customFieldDisplayValue(field) }}</dd>
+            </div>
+          </dl>
           <p v-if="post.edit_seconds_remaining && post.can_edit" class="mt-1 text-xs text-muted-foreground">
             {{ t('forum.topics.editWindowRemaining', { seconds: post.edit_seconds_remaining }) }}
           </p>

@@ -721,17 +721,44 @@ end
 
 class ForumEventWebhookRetrySecurityTest < ActiveSupport::TestCase
   test "admin retry rejects private webhook urls" do
+    suffix = SecureRandom.hex(4)
+    author = create_user(username: "webhook_retry_#{suffix}")
+    category = Community::Category.create!(
+      name: "Webhook retry security",
+      slug: "webhook-retry-security-#{suffix}"
+    )
+    section = Community::Section.create!(
+      category: category,
+      name: "Webhook retry security",
+      slug: "webhook-retry-security-#{suffix}",
+      position: 0
+    )
+    topic = Community::Topic.create!(
+      section: section,
+      user: author,
+      title: "Public webhook retry",
+      status: "published",
+      last_posted_at: Time.current,
+      last_post_user: author,
+      replies_count: 0
+    )
     delivery = Community::EventWebhookDelivery.create!(
       event_type: "topic.created",
+      topic: topic,
       url: "http://127.0.0.1/hook",
       status: "failed",
-      request_payload: { "event" => "topic.created" },
+      request_payload: {
+        "event" => "topic.created",
+        "topic" => { "id" => topic.public_id }
+      },
       attempt_count: 1
     )
 
-    result = Community::AdminRetryForumEventWebhook.call(delivery: delivery)
-    assert_not result.success?
-    assert_includes result.error.to_s, "内网"
+    assert_no_enqueued_jobs only: Community::DispatchForumEventWebhookJob do
+      result = Community::AdminRetryForumEventWebhook.call(delivery: delivery)
+      assert_predicate result, :failure?
+      assert_equal I18n.t("mcweb.services.errors.webhook_url_private"), result.error
+    end
   end
 end
 

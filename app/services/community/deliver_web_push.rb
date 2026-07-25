@@ -7,10 +7,14 @@ module Community
   class DeliverWebPush < ApplicationService
     def initialize(notification:)
       @notification = notification
-      @user = notification.user
     end
 
     def call
+      @notification = Notification.find_by(id: @notification.id)
+      return ServiceResult.success(skipped: true) unless @notification
+
+      @user = User.find_by(id: @notification.user_id)
+      return ServiceResult.success(skipped: true) unless deliverable_notification?
       return ServiceResult.success(skipped: true) unless push_allowed?
 
       subscriptions = Community::PushSubscription.where(user_id: @user.id)
@@ -28,6 +32,14 @@ module Community
     end
 
     private
+
+    def deliverable_notification?
+      @user&.session_eligible? &&
+        Community::NotificationAccess.visible?(
+          notification: @notification,
+          user: @user
+        )
+    end
 
     def push_allowed?
       return false if @user.forum_dnd_until.present? && @user.forum_dnd_until > Time.current

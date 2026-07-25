@@ -1,13 +1,9 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -24,8 +20,16 @@ const props = defineProps<{
 }>()
 
 const form = useForm({ webhook_subscription: { ...props.subscription } })
+const eventOptions = computed(() =>
+  props.events.map((event) => ({ value: event, label: event })),
+)
 
-function submit() {
+function fieldError(field: string) {
+  return form.errors[field] || form.errors[`webhook_subscription.${field}`]
+}
+
+function submit(event?: { errors?: unknown }) {
+  if (event?.errors) return
   if (props.method === 'patch') form.patch(props.submitUrl)
   else form.post(props.submitUrl)
 }
@@ -43,37 +47,109 @@ async function destroy() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <section class="admin-system-webhook-subscription-form">
+    <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
 
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.webhookSubscriptions.name') }}</Label>
-      <Input id="name" v-model="form.webhook_subscription.name" required maxlength="80" />
-    </div>
-    <div class="space-y-2">
-      <Label for="url">{{ t('admin.webhookSubscriptions.url') }}</Label>
-      <Input id="url" v-model="form.webhook_subscription.url" required placeholder="https://example.com/hook" />
-    </div>
-    <div class="space-y-2">
-      <Label for="event">{{ t('admin.webhookSubscriptions.event') }}</Label>
-      <select id="event" v-model="form.webhook_subscription.event" class="w-full rounded-md border px-3 py-2 text-sm">
-        <option v-for="ev in events" :key="ev" :value="ev">{{ ev }}</option>
-      </select>
-    </div>
-    <div class="space-y-2">
-      <Label for="secret">{{ t('admin.webhookSubscriptions.secret') }}</Label>
-      <Input id="secret" v-model="form.webhook_subscription.secret" :placeholder="t('admin.webhookSubscriptions.secretHint')" />
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.webhook_subscription.active" />
-      {{ t('admin.webhookSubscriptions.activeLabel') }}
-    </label>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button v-if="deleteUrl" type="button" variant="destructive" @click="destroy">{{ t('admin.ui.delete') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+    <a-card class="max-w-2xl" :bordered="true">
+      <a-form :model="form.webhook_subscription" layout="vertical" @submit="submit">
+        <a-form-item
+          field="name"
+          :label="t('admin.webhookSubscriptions.name')"
+          :rules="[{ required: true, message: t('admin.webhookSubscriptions.name') }]"
+          :validate-status="fieldError('name') ? 'error' : undefined"
+          :help="fieldError('name')"
+        >
+          <a-input
+            v-model="form.webhook_subscription.name"
+            :max-length="80"
+            show-word-limit
+            allow-clear
+          />
+        </a-form-item>
+
+        <a-form-item
+          field="url"
+          :label="t('admin.webhookSubscriptions.url')"
+          :rules="[{ required: true, message: t('admin.webhookSubscriptions.url') }]"
+          :validate-status="fieldError('url') ? 'error' : undefined"
+          :help="fieldError('url')"
+        >
+          <a-input
+            v-model="form.webhook_subscription.url"
+            placeholder="https://example.com/hook"
+            allow-clear
+          />
+        </a-form-item>
+
+        <a-form-item
+          field="event"
+          :label="t('admin.webhookSubscriptions.event')"
+          :validate-status="fieldError('event') ? 'error' : undefined"
+          :help="fieldError('event')"
+        >
+          <a-select
+            v-model="form.webhook_subscription.event"
+            :options="eventOptions"
+            allow-search
+          />
+        </a-form-item>
+
+        <a-form-item
+          field="secret"
+          :label="t('admin.webhookSubscriptions.secret')"
+          :validate-status="fieldError('secret') ? 'error' : undefined"
+          :help="fieldError('secret') || t('admin.webhookSubscriptions.secretHint')"
+        >
+          <a-input
+            v-model="form.webhook_subscription.secret"
+            :placeholder="t('admin.webhookSubscriptions.secretHint')"
+            allow-clear
+          />
+        </a-form-item>
+
+        <a-form-item
+          field="active"
+          :label="t('admin.webhookSubscriptions.activeLabel')"
+          :validate-status="fieldError('active') ? 'error' : undefined"
+          :help="fieldError('active')"
+        >
+          <a-space>
+            <a-switch v-model="form.webhook_subscription.active" />
+            <a-tag :color="form.webhook_subscription.active ? 'green' : 'gray'">
+              {{
+                form.webhook_subscription.active
+                  ? t('admin.webhookSubscriptions.active')
+                  : t('admin.webhookSubscriptions.disabled')
+              }}
+            </a-tag>
+          </a-space>
+        </a-form-item>
+
+        <a-space wrap>
+          <a-button
+            type="primary"
+            html-type="submit"
+            :loading="form.processing"
+          >
+            {{ t('admin.ui.save') }}
+          </a-button>
+          <a-button
+            v-if="deleteUrl"
+            type="primary"
+            status="danger"
+            :disabled="form.processing"
+            @click="destroy"
+          >
+            {{ t('admin.ui.delete') }}
+          </a-button>
+          <Link
+            :href="backUrl"
+            class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
+          >
+            {{ t('admin.ui.back') }}
+          </Link>
+        </a-space>
+      </a-form>
+    </a-card>
+  </section>
 </template>

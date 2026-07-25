@@ -2,17 +2,8 @@
 import { Link, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
-import Button from '@/components/ui/Button.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -31,6 +22,16 @@ type Attachment = {
   delete_url: string
 }
 
+type PaginationMeta = {
+  page: number
+  pages: number
+  count: number
+  from: number | null
+  to: number | null
+  prev: number | null
+  next: number | null
+}
+
 const props = defineProps<{
   attachments: Attachment[]
   pagination: PaginationMeta
@@ -41,6 +42,14 @@ const props = defineProps<{
 
 function setFilter(value: string) {
   router.get(adminRoutes.forumAttachments, value ? { filter: value } : {}, { preserveState: true })
+}
+
+function visitPage(page: number) {
+  router.get(
+    adminRoutes.forumAttachments,
+    { ...(props.filter ? { filter: props.filter } : {}), page },
+    { preserveState: true, preserveScroll: true },
+  )
 }
 
 async function removeAttachment(a: Attachment) {
@@ -67,58 +76,95 @@ async function prune() {
 </script>
 
 <template>
-  <div class="mb-4 flex items-center justify-between">
-    <PageHeader :title="t('admin.attachments.title')" :subtitle="t('admin.attachments.subtitle')" />
-    <Button v-if="orphanCount > 0" type="button" variant="destructive" size="sm" @click="prune">
-      {{ t('admin.attachments.prune', { count: orphanCount }) }}
-    </Button>
-  </div>
+  <a-page-header
+    :title="t('admin.attachments.title')"
+    :subtitle="t('admin.attachments.subtitle')"
+    :show-back="false"
+    class="mb-4 !px-0"
+  >
+    <template v-if="orphanCount > 0" #extra>
+      <a-button type="primary" status="danger" size="small" @click="prune">
+        {{ t('admin.attachments.prune', { count: orphanCount }) }}
+      </a-button>
+    </template>
+  </a-page-header>
 
-  <div class="mb-4 flex gap-2">
-    <button
-      type="button"
-      class="rounded-md border px-3 py-1.5 text-sm no-underline"
-      :class="!filter ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
-      @click="setFilter('')"
-    >{{ t('admin.attachments.tabAll') }}</button>
-    <button
-      type="button"
-      class="rounded-md border px-3 py-1.5 text-sm no-underline"
-      :class="filter === 'orphans' ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
-      @click="setFilter('orphans')"
-    >{{ t('admin.attachments.tabOrphans') }} ({{ orphanCount }})</button>
-  </div>
+  <a-card class="mb-4" :bordered="true">
+    <a-space wrap>
+      <a-button :type="!filter ? 'primary' : 'outline'" @click="setFilter('')">
+        {{ t('admin.attachments.tabAll') }}
+      </a-button>
+      <a-button
+        :type="filter === 'orphans' ? 'primary' : 'outline'"
+        @click="setFilter('orphans')"
+      >
+        {{ t('admin.attachments.tabOrphans') }} ({{ orphanCount }})
+      </a-button>
+    </a-space>
+  </a-card>
 
-  <div v-if="attachments.length" class="rounded-lg border">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{{ t('admin.attachments.colFile') }}</TableHead>
-          <TableHead>{{ t('admin.attachments.colSize') }}</TableHead>
-          <TableHead>{{ t('admin.attachments.colUploader') }}</TableHead>
-          <TableHead>{{ t('admin.attachments.colDownloads') }}</TableHead>
-          <TableHead>{{ t('admin.attachments.colLinked') }}</TableHead>
-          <TableHead></TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="a in attachments" :key="a.id">
-          <TableCell class="font-medium">{{ a.filename }}</TableCell>
-          <TableCell>{{ a.size }}</TableCell>
-          <TableCell>{{ a.uploader ? '@' + a.uploader : '—' }}</TableCell>
-          <TableCell>{{ a.downloads }}</TableCell>
-          <TableCell>
-            <Link v-if="a.linked && a.post_url" :href="a.post_url" class="text-primary hover:underline">{{ t('admin.attachments.linked') }}</Link>
-            <span v-else class="text-amber-600">{{ t('admin.attachments.orphan') }}</span>
-          </TableCell>
-          <TableCell>
-            <button type="button" class="text-xs text-destructive hover:underline" @click="removeAttachment(a)">{{ t('admin.ui.delete') }}</button>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </div>
-  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">{{ t('admin.attachments.empty') }}</p>
+  <a-card class="attachments-index__table-card" :bordered="true">
+    <div class="overflow-x-auto">
+      <a-table
+        :data="attachments"
+        :pagination="false"
+        row-key="id"
+        :bordered="{ cell: true }"
+        stripe
+      >
+        <template #columns>
+          <a-table-column :title="t('admin.attachments.colFile')" data-index="filename">
+            <template #cell="{ record }"><strong>{{ record.filename }}</strong></template>
+          </a-table-column>
+          <a-table-column :title="t('admin.attachments.colSize')" data-index="size" />
+          <a-table-column :title="t('admin.attachments.colUploader')" data-index="uploader">
+            <template #cell="{ record }">{{ record.uploader ? `@${record.uploader}` : '—' }}</template>
+          </a-table-column>
+          <a-table-column :title="t('admin.attachments.colDownloads')" data-index="downloads" />
+          <a-table-column :title="t('admin.attachments.colLinked')">
+            <template #cell="{ record }">
+              <Link
+                v-if="record.linked && record.post_url"
+                :href="record.post_url"
+                class="text-[rgb(var(--primary-6))] no-underline hover:underline"
+              >
+                {{ t('admin.attachments.linked') }}
+              </Link>
+              <a-tag v-else color="orange">{{ t('admin.attachments.orphan') }}</a-tag>
+            </template>
+          </a-table-column>
+          <a-table-column :width="100">
+            <template #cell="{ record }">
+              <a-button type="text" status="danger" size="small" @click="removeAttachment(record)">
+                {{ t('admin.ui.delete') }}
+              </a-button>
+            </template>
+          </a-table-column>
+        </template>
+        <template #empty><a-empty :description="t('admin.attachments.empty')" /></template>
+      </a-table>
+    </div>
+  </a-card>
 
-  <Pagination :pagination="pagination" :base-path="adminRoutes.forumAttachments" />
+  <div
+    v-if="pagination.pages > 1"
+    class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+  >
+    <span class="text-sm text-[var(--color-text-3)]">
+      {{ pagination.from }}–{{ pagination.to }} / {{ pagination.count }}
+    </span>
+    <a-pagination
+      :current="pagination.page"
+      :total="pagination.pages"
+      :page-size="1"
+      :show-page-size="false"
+      @change="visitPage"
+    />
+  </div>
 </template>
+
+<style scoped>
+.attachments-index__table-card :deep(.arco-card-body) {
+  padding: 0;
+}
+</style>

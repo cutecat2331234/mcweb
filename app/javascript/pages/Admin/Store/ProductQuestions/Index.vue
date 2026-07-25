@@ -2,14 +2,6 @@
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -30,6 +22,13 @@ defineProps<{
   }>
 }>()
 
+function statusColor(status: string | undefined) {
+  if (status === 'published') return 'green'
+  if (status === 'hidden') return 'gray'
+  if (status === 'pending') return 'orange'
+  return 'arcoblue'
+}
+
 function hideQuestion(url: string) {
   router.patch(url)
 }
@@ -40,40 +39,83 @@ function unhideQuestion(url: string) {
 </script>
 
 <template>
-  <PageHeader :title="t('admin.productQuestions.title')" />
+  <section class="admin-store-product-questions">
+    <a-page-header
+      :title="t('admin.productQuestions.title')"
+      :show-back="false"
+      class="mb-4 !px-0"
+    />
 
-  <div v-if="questions.length" class="rounded-lg border">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>{{ t('admin.productQuestions.colProduct') }}</TableHead>
-          <TableHead>{{ t('admin.productQuestions.colAuthor') }}</TableHead>
-          <TableHead>{{ t('admin.productQuestions.colQuestion') }}</TableHead>
-          <TableHead>{{ t('admin.productQuestions.colOrder') }}</TableHead>
-          <TableHead>{{ t('admin.productQuestions.colStatus') }}</TableHead>
-          <TableHead>{{ t('admin.common.time') }}</TableHead>
-          <TableHead />
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="q in questions" :key="q.id">
-          <TableCell>{{ q.product }}</TableCell>
-          <TableCell>{{ q.author }}</TableCell>
-          <TableCell class="max-w-xs truncate">{{ q.body }}</TableCell>
-          <TableCell>{{ q.order_number || '—' }}</TableCell>
-          <TableCell>{{ q.status }}</TableCell>
-          <TableCell>{{ q.created_at }}</TableCell>
-          <TableCell class="flex gap-2">
-            <Button v-if="q.status_key === 'published'" type="button" size="sm" variant="outline" @click="hideQuestion(q.hide_url)">
-              {{ t('admin.common.hide') }}
-            </Button>
-            <Button v-else type="button" size="sm" variant="outline" @click="unhideQuestion(q.unhide_url)">
-              {{ t('admin.common.restore') }}
-            </Button>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </div>
-  <p v-else class="text-sm text-muted-foreground">{{ t('admin.productQuestions.empty') }}</p>
+    <a-card :bordered="true" :body-style="{ padding: 0 }">
+      <a-table
+        :data="questions"
+        row-key="id"
+        :pagination="false"
+        :bordered="{ cell: true }"
+        :scroll="{ x: 1120 }"
+        stripe
+      >
+        <template #columns>
+          <a-table-column
+            :title="t('admin.productQuestions.colProduct')"
+            data-index="product"
+            :width="180"
+          />
+          <a-table-column
+            :title="t('admin.productQuestions.colAuthor')"
+            data-index="author"
+            :width="150"
+          />
+          <a-table-column :title="t('admin.productQuestions.colQuestion')" :width="320">
+            <template #cell="{ record }">
+              <a-tooltip :content="record.body">
+                <a-typography-text ellipsis class="block max-w-[290px]">
+                  {{ record.body }}
+                </a-typography-text>
+              </a-tooltip>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.productQuestions.colOrder')" :width="150">
+            <template #cell="{ record }">
+              {{ record.order_number || '—' }}
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.productQuestions.colStatus')" :width="130">
+            <template #cell="{ record }">
+              <a-tag :color="statusColor(record.status_key)">
+                {{ record.status }}
+              </a-tag>
+            </template>
+          </a-table-column>
+          <a-table-column
+            :title="t('admin.common.time')"
+            data-index="created_at"
+            :width="180"
+          />
+          <a-table-column :title="t('admin.ui.actions')" :width="120" fixed="right">
+            <template #cell="{ record }">
+              <a-button
+                v-if="record.status_key === 'published'"
+                size="small"
+                @click="hideQuestion(record.hide_url)"
+              >
+                {{ t('admin.common.hide') }}
+              </a-button>
+              <a-button
+                v-else
+                size="small"
+                @click="unhideQuestion(record.unhide_url)"
+              >
+                {{ t('admin.common.restore') }}
+              </a-button>
+            </template>
+          </a-table-column>
+        </template>
+
+        <template #empty>
+          <a-empty :description="t('admin.productQuestions.empty')" />
+        </template>
+      </a-table>
+    </a-card>
+  </section>
 </template>

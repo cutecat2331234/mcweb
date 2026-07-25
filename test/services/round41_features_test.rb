@@ -139,6 +139,9 @@ class Commerce::RevokeIssuedGiftCardsTest < ActiveSupport::TestCase
     @card.reload
     assert_not @card.active?
     assert_equal 0, @card.balance_cents
+    revoke = @card.transactions.find_by!(order: @order, transaction_type: "revoke")
+    assert_equal(-5000, revoke.amount_cents)
+    assert_equal 0, revoke.balance_after_cents
   end
 end
 

@@ -7,6 +7,11 @@ module Community
     end
 
     def call
+      user = @topic&.user
+      unless Community::ForumAccess.topic_visible?(topic: @topic, user: user)
+        return ServiceResult.failure(error: "Topic not available.")
+      end
+
       return ServiceResult.failure(error: "Topic is not scheduled.") unless @topic.scheduled_at.present?
       return ServiceResult.failure(error: "Topic is not ready.") unless @topic.scheduled_at <= Time.current
       return ServiceResult.failure(error: "Topic already published.") unless @topic.draft?
@@ -28,7 +33,9 @@ module Community
         return ServiceResult.failure(error: "section_topic_prefix_required")
       end
 
-      user = @topic.user
+      field_result = Community::ValidateTopicFieldValues.call(topic: @topic, user: user)
+      return field_result if field_result.failure?
+
       needs_approval = Community::RequiresPostApproval.required_for?(user: user)
       topic_status = needs_approval ? "hidden" : "published"
       post_status = needs_approval ? "pending_approval" : "published"

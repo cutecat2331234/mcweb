@@ -15,27 +15,29 @@ module Community
         return ServiceResult.failure(error: "You are not authorized to moderate this post.")
       end
 
-      case @action
-      when "hide"
-        @post.update!(status: "hidden")
-        Community::SyncTopicLastPost.call(topic: @post.topic)
-      when "unhide"
-        @post.update!(status: "published")
-        Community::SyncTopicLastPost.call(topic: @post.topic)
-      when "enable_wiki"
-        @post.update!(wiki: true)
-      when "disable_wiki"
-        @post.update!(wiki: false)
-      when "set_staff_notice"
-        return ServiceResult.failure(error: "staff_notice_blank") if @staff_notice.blank?
+      Community::Post.transaction do
+        case @action
+        when "hide"
+          @post.update!(status: "hidden")
+          Community::SyncTopicLastPost.call(topic: @post.topic)
+        when "unhide"
+          @post.update!(status: "published")
+          Community::SyncTopicLastPost.call(topic: @post.topic)
+        when "enable_wiki"
+          @post.update!(wiki: true)
+        when "disable_wiki"
+          @post.update!(wiki: false)
+        when "set_staff_notice"
+          return ServiceResult.failure(error: "staff_notice_blank") if @staff_notice.blank?
 
-        @post.update!(staff_notice: @staff_notice)
-      when "clear_staff_notice"
-        @post.update!(staff_notice: nil)
-      when "change_author"
-        return Community::ChangePostAuthor.call(user: @user, post: @post, new_username: @new_username)
-      else
-        return ServiceResult.failure(error: "Unknown moderation action.")
+          @post.update!(staff_notice: @staff_notice)
+        when "clear_staff_notice"
+          @post.update!(staff_notice: nil)
+        when "change_author"
+          return Community::ChangePostAuthor.call(user: @user, post: @post, new_username: @new_username)
+        else
+          return ServiceResult.failure(error: "Unknown moderation action.")
+        end
       end
 
       Administration::AuditLogger.call(

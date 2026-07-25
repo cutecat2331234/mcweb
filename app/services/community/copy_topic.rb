@@ -12,15 +12,16 @@ module Community
     end
 
     def call
-      unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
-        return ServiceResult.failure(error: "You are not authorized to copy this topic.")
-      end
-
       new_topic = nil
-      ActiveRecord::Base.transaction do
+      @topic.with_lock do
+        unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
+          return ServiceResult.failure(error: "You are not authorized to copy this topic.")
+        end
+
         new_topic = duplicate_topic
         duplicate_tags(new_topic)
         duplicate_posts(new_topic)
+        duplicate_topic_fields(new_topic)
       end
 
       Administration::AuditLogger.call(
@@ -29,7 +30,6 @@ module Community
         resource: new_topic,
         metadata: { source_topic: @topic.public_id, to_section: @section.slug }
       )
-
       ServiceResult.success(new_topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
@@ -53,8 +53,8 @@ module Community
     end
 
     def duplicate_tags(new_topic)
-      @topic.topic_tags.pluck(:tag_id).each do |tag_id|
-        Community::TopicTag.create!(forum_topic_id: new_topic.id, tag_id: tag_id)
+      @topic.topic_tags.pluck(:forum_tag_id).each do |tag_id|
+        Community::TopicTag.create!(forum_topic_id: new_topic.id, forum_tag_id: tag_id)
       end
     end
 
@@ -68,6 +68,27 @@ module Community
           status: "published",
           post_type: post.post_type,
           created_at: post.created_at
+        )
+      end
+    end
+
+    def duplicate_topic_fields(new_topic)
+      field_keys = []
+      @topic.topic_field_values.includes(:definition).find_each do |field_value|
+        Community::TopicFieldValue.create!(
+          topic: new_topic,
+          definition: field_value.definition,
+          value: field_value.value
+        )
+        field_keys << field_value.definition.key
+      end
+      return if field_keys.empty?
+
+      ActiveRecord.after_all_transactions_commit do
+        Mcweb::Events.publish(
+          "forum.topic.fields.updated",
+          topic: new_topic,
+          field_keys: field_keys.freeze
         )
       end
     end

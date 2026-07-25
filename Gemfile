@@ -30,7 +30,6 @@ gem "rubyzip", "~> 3.4"
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
 gem "solid_cache"
-gem "solid_cable"
 
 gem "bootsnap", require: false
 gem "thruster", require: false

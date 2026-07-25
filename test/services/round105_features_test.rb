@@ -18,8 +18,9 @@ end
 class Round105NotificationThisMonthFilterTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
-    Notification.create!(user: @user, notification_type: "forum.mention", title: "ThisMonth", body: "b", created_at: Time.zone.now.beginning_of_month + 1.day)
-    Notification.create!(user: @user, notification_type: "forum.reaction", title: "Old", body: "b", created_at: 2.months.ago)
+    # This test covers the date boundary, not forum-resource authorization.
+    Notification.create!(user: @user, notification_type: "commerce.order_fulfilled", title: "ThisMonth", body: "b", created_at: Time.zone.now.beginning_of_month + 1.day)
+    Notification.create!(user: @user, notification_type: "commerce.payment_confirmed", title: "Old", body: "b", created_at: 2.months.ago)
     sign_in_as(@user)
   end
 

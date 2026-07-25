@@ -1,15 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Link, router, useForm } from '@inertiajs/vue3'
+import { router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Modal } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import MarkdownEditor from '@/components/admin/MarkdownEditor.vue'
 import SeoFields from '@/components/admin/website/SeoFields.vue'
 import TranslationsPanel from '@/components/admin/website/TranslationsPanel.vue'
 
@@ -45,13 +40,11 @@ const props = defineProps<{
 
 const tab = ref<'basic' | 'body' | 'seo' | 'i18n'>('basic')
 const scheduleAt = ref(props.article.scheduled_at || '')
-
-const form = useForm({
-  article: { ...props.article },
-})
+const form = useForm({ article: { ...props.article } })
 
 function fieldError(key: string) {
-  return props.form_errors?.[key]?.join(' ') || form.errors[`article.${key}` as keyof typeof form.errors] || ''
+  const inertiaError = form.errors[`article.${key}` as keyof typeof form.errors]
+  return props.form_errors?.[key]?.join(' ') || (inertiaError ? String(inertiaError) : '')
 }
 
 function submit() {
@@ -60,7 +53,15 @@ function submit() {
 }
 
 function publishNow() {
-  if (props.publishUrl) router.post(props.publishUrl)
+  if (!props.publishUrl) return
+  Modal.warning({
+    title: t('admin.website.publish', 'Publish now'),
+    content: t('admin.website.publishConfirm', 'Publish this article now?'),
+    okText: t('admin.website.publish', 'Publish now'),
+    cancelText: t('admin.ui.cancel'),
+    hideCancel: false,
+    onOk: () => router.post(props.publishUrl!),
+  })
 }
 
 function schedulePublish() {
@@ -71,52 +72,119 @@ function schedulePublish() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <a-page-header :title="title" :show-back="false">
+    <template #extra>
+      <a-button @click="router.visit(backUrl)">{{ t('admin.ui.cancel') }}</a-button>
+    </template>
+  </a-page-header>
 
-  <div class="mb-4 flex flex-wrap gap-2">
-    <Button type="button" size="sm" :variant="tab === 'basic' ? 'default' : 'outline'" @click="tab = 'basic'">{{ t('admin.website.tabs.basic', 'Basic') }}</Button>
-    <Button type="button" size="sm" :variant="tab === 'body' ? 'default' : 'outline'" @click="tab = 'body'">{{ t('admin.website.tabs.body', 'Body') }}</Button>
-    <Button type="button" size="sm" :variant="tab === 'seo' ? 'default' : 'outline'" @click="tab = 'seo'">SEO</Button>
-    <Button type="button" size="sm" :variant="tab === 'i18n' ? 'default' : 'outline'" @click="tab = 'i18n'">{{ t('admin.website.tabs.translations', 'Translations') }}</Button>
-  </div>
+  <a-tabs v-model:active-key="tab" type="card-gutter">
+    <a-tab-pane key="basic" :title="t('admin.website.tabs.basic', 'Basic')">
+      <a-card :bordered="true" class="admin-form-card">
+        <a-form :model="form.article" layout="vertical" @submit="submit">
+          <a-form-item
+            field="title"
+            :label="t('admin.common.title')"
+            required
+            :validate-status="fieldError('title') ? 'error' : undefined"
+            :help="fieldError('title')"
+          >
+            <a-input v-model="form.article.title" allow-clear />
+          </a-form-item>
+          <a-form-item
+            field="slug"
+            :label="t('admin.forms.category.slug')"
+            required
+            :validate-status="fieldError('slug') ? 'error' : undefined"
+            :help="fieldError('slug')"
+          >
+            <a-input v-model="form.article.slug" allow-clear />
+          </a-form-item>
+          <a-form-item field="article_type" :label="t('admin.website.articleType')">
+            <a-select v-model="form.article.article_type" :options="articleTypeOptions" />
+          </a-form-item>
+          <a-form-item :label="t('admin.common.status')">
+            <a-tag>{{ form.article.status }}</a-tag>
+          </a-form-item>
+          <a-form-item
+            field="summary"
+            :label="t('admin.website.summary')"
+            :validate-status="fieldError('summary') ? 'error' : undefined"
+            :help="fieldError('summary')"
+          >
+            <a-textarea
+              v-model="form.article.summary"
+              :auto-size="{ minRows: 3, maxRows: 8 }"
+            />
+          </a-form-item>
 
-  <form v-show="tab === 'basic'" class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2"><Label for="title">{{ t('admin.common.title') }}</Label><Input id="title" v-model="form.article.title" required /></div>
-    <div class="space-y-2"><Label for="slug">{{ t('admin.forms.category.slug') }}</Label><Input id="slug" v-model="form.article.slug" required /></div>
-    <div class="space-y-2">
-      <Label for="article_type">{{ t('admin.website.articleType') }}</Label>
-      <Select id="article_type" v-model="form.article.article_type">
-        <option v-for="option in articleTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-      </Select>
-    </div>
-    <div class="space-y-2">
-      <Label>{{ t('admin.common.status') }}</Label>
-      <p class="text-sm text-muted-foreground">{{ form.article.status }}</p>
-    </div>
-    <div class="space-y-2"><Label for="summary">{{ t('admin.website.summary') }}</Label><Textarea id="summary" v-model="form.article.summary" rows="3" /></div>
-    <div v-if="canPublish && publishUrl" class="flex flex-wrap gap-2 border-t pt-4">
-      <Button type="button" @click="publishNow">{{ t('admin.website.publish', 'Publish now') }}</Button>
-      <Input v-model="scheduleAt" type="datetime-local" class="w-auto" />
-      <Button type="button" variant="outline" @click="schedulePublish">{{ t('admin.website.schedule', 'Schedule') }}</Button>
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline"><Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link></Button>
-    </div>
-  </form>
+          <a-card
+            v-if="canPublish && publishUrl"
+            :title="t('admin.website.publish', 'Publish')"
+            :bordered="true"
+            class="mb-4"
+          >
+            <a-space wrap>
+              <a-button type="primary" status="success" @click="publishNow">
+                {{ t('admin.website.publish', 'Publish now') }}
+              </a-button>
+              <a-date-picker
+                v-model="scheduleAt"
+                show-time
+                value-format="YYYY-MM-DDTHH:mm"
+                style="width: 230px"
+              />
+              <a-button
+                :disabled="!scheduleAt"
+                @click="schedulePublish"
+              >
+                {{ t('admin.website.schedule', 'Schedule') }}
+              </a-button>
+            </a-space>
+          </a-card>
 
-  <form v-show="tab === 'body'" class="max-w-3xl space-y-4" @submit.prevent="submit">
-    <MarkdownEditor v-model="form.article.body" :rows="16" />
-    <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-  </form>
+          <a-button html-type="submit" type="primary" :loading="form.processing">
+            {{ t('admin.ui.save') }}
+          </a-button>
+        </a-form>
+      </a-card>
+    </a-tab-pane>
 
-  <form v-show="tab === 'seo'" class="max-w-lg space-y-4" @submit.prevent="submit">
-    <SeoFields v-model:seo="form.article.seo" />
-    <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-  </form>
+    <a-tab-pane key="body" :title="t('admin.website.tabs.body', 'Body')">
+      <a-card :bordered="true">
+        <MarkdownEditor v-model="form.article.body" :rows="16" />
+        <a-button type="primary" class="mt-4" :loading="form.processing" @click="submit">
+          {{ t('admin.ui.save') }}
+        </a-button>
+      </a-card>
+    </a-tab-pane>
 
-  <form v-show="tab === 'i18n'" class="max-w-lg space-y-4" @submit.prevent="submit">
-    <TranslationsPanel v-model:translations="form.article.translations" :locales="locales" :fields="['title', 'summary']" />
-    <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-  </form>
+    <a-tab-pane key="seo" title="SEO">
+      <a-card :bordered="true" class="admin-form-card">
+        <SeoFields v-model:seo="form.article.seo" />
+        <a-button type="primary" :loading="form.processing" @click="submit">
+          {{ t('admin.ui.save') }}
+        </a-button>
+      </a-card>
+    </a-tab-pane>
+
+    <a-tab-pane key="i18n" :title="t('admin.website.tabs.translations', 'Translations')">
+      <div class="admin-form-card">
+        <TranslationsPanel
+          v-model:translations="form.article.translations"
+          :locales="locales"
+          :fields="['title', 'summary']"
+        />
+        <a-button type="primary" class="mt-4" :loading="form.processing" @click="submit">
+          {{ t('admin.ui.save') }}
+        </a-button>
+      </div>
+    </a-tab-pane>
+  </a-tabs>
 </template>
+
+<style scoped>
+.admin-form-card {
+  max-width: 880px;
+}
+</style>

@@ -18,8 +18,9 @@ end
 class Round104NotificationThisWeekFilterTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
-    Notification.create!(user: @user, notification_type: "forum.mention", title: "ThisWeek", body: "b", created_at: Time.zone.now.beginning_of_week + 1.day)
-    Notification.create!(user: @user, notification_type: "forum.reaction", title: "Old", body: "b", created_at: 20.days.ago)
+    # This test covers the date boundary, not forum-resource authorization.
+    Notification.create!(user: @user, notification_type: "commerce.order_fulfilled", title: "ThisWeek", body: "b", created_at: Time.zone.now.beginning_of_week + 1.day)
+    Notification.create!(user: @user, notification_type: "commerce.payment_confirmed", title: "Old", body: "b", created_at: 20.days.ago)
     sign_in_as(@user)
   end
 
@@ -136,10 +137,20 @@ class Round104TagTopicUnsubscribeTest < ActiveSupport::TestCase
       last_post_user: @author,
       replies_count: 0
     )
+    @tag = Community::Tag.create!(
+      name: "Ruby #{SecureRandom.hex(3)}",
+      slug: "ruby-#{SecureRandom.hex(4)}"
+    )
+    @topic.tags << @tag
+    Community::Subscription.create!(
+      user: @user,
+      subscribable: @tag,
+      notification_level: "watching"
+    )
   end
 
   test "tag topic email includes unsubscribe link" do
-    email = Community::ForumMailer.tag_topic(@user.id, @topic.public_id, "Ruby")
+    email = Community::ForumMailer.tag_topic(@user.id, @topic.public_id, [ @tag.id ])
     body = email.html_part&.body&.decoded || email.body.decoded
     assert_includes body, "关闭此类邮件通知"
   end

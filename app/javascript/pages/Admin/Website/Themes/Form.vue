@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3'
+import { router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -23,6 +18,10 @@ const props = defineProps<{
 
 const form = useForm({ theme: { ...props.theme } })
 
+function fieldError(key: string) {
+  return props.form_errors?.[key]?.join(' ') || ''
+}
+
 function submit() {
   if (props.method === 'patch') form.patch(props.submitUrl)
   else form.post(props.submitUrl)
@@ -30,14 +29,51 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2"><Label>Name</Label><Input v-model="form.theme.name" required /></div>
-    <div class="space-y-2"><Label>Key</Label><Input v-model="form.theme.key" required /></div>
-    <div class="space-y-2"><Label>Tokens (JSON)</Label><Textarea v-model="form.theme.tokens_json" rows="10" class="font-mono text-sm" /></div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline"><Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link></Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" />
+  <a-card class="admin-form-card" :bordered="true">
+    <a-form :model="form.theme" layout="vertical" @submit="submit">
+      <a-form-item
+        field="name"
+        label="Name"
+        required
+        :validate-status="fieldError('name') ? 'error' : undefined"
+        :help="fieldError('name')"
+      >
+        <a-input v-model="form.theme.name" allow-clear />
+      </a-form-item>
+      <a-form-item
+        field="key"
+        label="Key"
+        required
+        :validate-status="fieldError('key') ? 'error' : undefined"
+        :help="fieldError('key')"
+      >
+        <a-input v-model="form.theme.key" allow-clear />
+      </a-form-item>
+      <a-form-item
+        field="tokens_json"
+        label="Tokens (JSON)"
+        :validate-status="fieldError('tokens_json') ? 'error' : undefined"
+        :help="fieldError('tokens_json')"
+      >
+        <a-textarea
+          v-model="form.theme.tokens_json"
+          class="font-mono"
+          :auto-size="{ minRows: 10, maxRows: 24 }"
+        />
+      </a-form-item>
+      <a-space>
+        <a-button html-type="submit" type="primary" :loading="form.processing">
+          {{ t('admin.ui.save') }}
+        </a-button>
+        <a-button @click="router.visit(backUrl)">{{ t('admin.ui.cancel') }}</a-button>
+      </a-space>
+    </a-form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-form-card {
+  max-width: 720px;
+}
+</style>

@@ -83,6 +83,23 @@ class Commerce::RejectRefundTest < ActiveSupport::TestCase
     assert_equal "rejected", @refund.reload.status
     assert Commerce::OrderEvent.exists?(order: @order, event_type: "refund_rejected")
   end
+
+  test "stale concurrent rejection cannot overwrite the first decision or duplicate its event" do
+    stale_refund = Commerce::Refund.find(@refund.id)
+    second_admin = create_user
+
+    first = Commerce::RejectRefund.call(refund: @refund, actor: @admin, reason: "first decision")
+    second = Commerce::RejectRefund.call(refund: stale_refund, actor: second_admin, reason: "stale decision")
+
+    assert first.success?
+    assert second.failure?
+    assert_equal "Refund is not pending.", second.error
+
+    @refund.reload
+    assert_equal @admin.id, @refund.approved_by_id
+    assert_equal "first decision", @refund.reason
+    assert_equal 1, @order.events.where(event_type: "refund_rejected").count
+  end
 end
 
 class Commerce::ToggleReviewHelpfulSelfTest < ActiveSupport::TestCase

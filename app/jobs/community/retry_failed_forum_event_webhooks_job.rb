@@ -26,14 +26,31 @@ module Community
   private
 
     def requeue_delivery(delivery)
-      payload = delivery.request_payload.deep_stringify_keys
+      payload = Community::BuildForumEventWebhookPayload.sanitize(
+        delivery.request_payload,
+        event_type: delivery.event_type,
+        topic_id: delivery.topic&.public_id,
+        post_id: delivery.forum_post_id
+      )
+      exportable = payload.present? &&
+        Community::ForumEventWebhookPolicy.exportable_payload?(
+          payload: payload,
+          delivery: delivery
+        )
+      unless exportable && UrlSafety.public_http_url?(delivery.url)
+        delivery.update!(
+          status: "failed",
+          request_payload: payload,
+          response_body: I18n.t("mcweb.services.errors.webhook_delivery_timeout").truncate(4000)
+        )
+        return
+      end
+
       attempt = delivery.attempt_count + 1
-      delivery.update!(attempt_count: attempt)
-      secret = SiteSetting.get("forum.event_webhook_secret", "").to_s.strip.presence
+      delivery.update!(attempt_count: attempt, request_payload: payload)
       Community::DispatchForumEventWebhookJob.perform_later(
         delivery.url,
         payload,
-        secret,
         delivery_id: delivery.id,
         attempt: attempt
       )

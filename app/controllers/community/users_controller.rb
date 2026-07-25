@@ -9,7 +9,7 @@ module Community
     def card
       user = User.active.find_by!(username: params[:id])
       trust = Community::TrustLevel.level_info(user)
-      posts_count = Community::Post.where(user: user, status: :published).count
+      posts_count = listed_posts_by(user).count
       badges = user.user_badges.includes(:badge).order(granted_at: :desc).limit(3).map do |ub|
         {
           name: ub.badge.name,
@@ -19,7 +19,7 @@ module Community
         }
       end
       memberships = Commerce::SerializeUserMemberships.for_user(user, limit: 3)
-      likes_received = Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count
+      likes_received = listed_reactions_received_by(user).count
       following = logged_in? && current_user.id != user.id && Community::UserFollow.exists?(follower: current_user, followed: user)
       ingame = Minecraft::IngameStatusForUser.call(user: user)
       ingame_data = ingame.success? ? ingame.value : {}
@@ -33,7 +33,7 @@ module Community
         trust_name: trust[:name],
         posts_count: posts_count,
         likes_received: likes_received,
-        reaction_score: Community::Reaction.score_for_user(user),
+        reaction_score: listed_reaction_score_for(user),
         trophy_points: Community::TrophyPoints.for_user(user),
         groups: serialize_user_groups(user),
         bio: user.bio.presence,
@@ -55,29 +55,22 @@ module Community
       user = User.find_by!(username: params[:id])
       User.where(id: user.id).update_all("forum_profile_views = forum_profile_views + 1") if logged_in? && current_user.id != user.id
       tab = params[:tab].to_s.in?(%w[topics posts store assigned minecraft]) ? params[:tab] : "topics"
-      topics_scope = if logged_in? && (current_user.id == user.id || current_user.permission?("forum.topics.lock"))
-                       Community::Topic.where(user: user, status: :published)
-      else
-                       Community::Topic.where(user: user, status: :published, unlisted: false)
-      end.merge(Community::Topic.accessible_by(current_user)).order(created_at: :desc)
-      posts_scope = Community::Post.where(user: user, status: :published).joins(:topic)
-      posts_scope = if logged_in? && (current_user.id == user.id || current_user.permission?("forum.topics.lock"))
-                      posts_scope.where(forum_topics: { status: :published })
-      else
-                      posts_scope.where(forum_topics: { status: :published, unlisted: false })
-      end
-      posts_scope = posts_scope.merge(Community::Topic.accessible_by(current_user))
-      posts_scope = posts_scope.includes(:topic).order(created_at: :desc)
+      topics_scope = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.where(user: user),
+        user: current_user
+      ).order(created_at: :desc)
+      posts_scope = listed_posts_by(user).includes(:topic).order(created_at: :desc)
       posts_count = posts_scope.count
       @pagy_topics, topics = pagy(:offset, preload_topics(topics_scope), limit: 20, page: [ params[:topics_page].to_i, 1 ].max)
       @pagy_posts, posts = pagy(:offset, posts_scope, limit: 20, page: [ params[:posts_page].to_i, 1 ].max)
-      assigned_scope = Community::Topic.published_listed.accessible_by(current_user).where(assigned_to: user).order(last_posted_at: :desc)
+      assigned_scope = Community::ForumAccess.topic_scope(
+        relation: Community::Topic.published_listed,
+        user: current_user
+      ).where(assigned_to: user).order(last_posted_at: :desc)
       @pagy_assigned, assigned_topics = pagy(:offset, preload_topics(assigned_scope), limit: 20, page: [ params[:assigned_page].to_i, 1 ].max)
       trust = Community::TrustLevel.level_info(user)
       progress = Community::TrustLevel.progress_for(user)
-      liked_rows = Community::Post.where(user: user, status: :published)
-        .joins(:topic)
-        .merge(Community::Topic.where(status: :published, unlisted: false).accessible_by(current_user))
+      liked_rows = listed_posts_by(user)
         .joins(:reactions)
         .group("forum_posts.id")
         .order(Arel.sql("COUNT(forum_reactions.id) DESC"))
@@ -130,14 +123,14 @@ module Community
           username: user.username,
           display_name: user.display_name,
           forum_title: user.forum_title,
-          resolved_title: resolved_user_title(user),
+          resolved_title: resolved_user_title(user, posts_count: posts_count),
           forum_flair_color_hex: user.forum_flair_color_hex,
           avatar_url: user.avatar_url,
           bio: user.bio,
           trust_level: trust[:level],
           trust_name: trust[:name],
-          likes_received: Community::Reaction.joins(:post).where(forum_posts: { user_id: user.id }).count,
-          reaction_score: Community::Reaction.score_for_user(user),
+          likes_received: listed_reactions_received_by(user).count,
+          reaction_score: listed_reaction_score_for(user),
           trophy_points: Community::TrophyPoints.for_user(user),
           forum_points: Community::PointAccount.find_by(user: user, currency: "points")&.balance.to_i,
           recent_point_transactions: Community::PointTransaction
@@ -284,6 +277,30 @@ module Community
     end
 
     private
+
+    def listed_posts
+      @listed_posts ||= Community::ForumAccess.listed_post_scope(
+        relation: Community::Post.all,
+        user: current_user
+      )
+    end
+
+    def listed_posts_by(user)
+      listed_posts.where(user: user)
+    end
+
+    def listed_reactions_received_by(user)
+      Community::Reaction.where(
+        forum_post_id: listed_posts_by(user).select(:id)
+      )
+    end
+
+    def listed_reaction_score_for(user)
+      score_map = Community::Reaction.score_map
+      listed_reactions_received_by(user).group(:emoji).count.sum do |emoji, count|
+        count * score_map.fetch(emoji.to_s, 1)
+      end
+    end
 
     def user_params
       permitted = params.require(:user).permit(:bio, :forum_title, :forum_signature, :forum_flair_color_hex, :forum_pm_policy)

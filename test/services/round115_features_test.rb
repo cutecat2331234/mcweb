@@ -112,8 +112,8 @@ class Round115PostRejectedWebhookTest < ActiveSupport::TestCase
     SiteSetting.set("forum.event_webhook_events", "post.rejected")
   end
 
-  test "reject post enqueues post.rejected webhook and notification path" do
-    assert_enqueued_with(job: Community::DispatchForumEventWebhookJob) do
+  test "reject post keeps hidden moderation content out of outbound webhooks" do
+    assert_no_enqueued_jobs only: Community::DispatchForumEventWebhookJob do
       result = Community::RejectPost.call(actor: @mod, post: @post, reason: "spam")
       assert result.success?
     end

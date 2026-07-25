@@ -141,6 +141,7 @@ Rails.application.routes.draw do
         end
       end
       resources :user_fields, path: "user-fields"
+      resources :topic_fields, path: "topic-fields"
       resources :canned_responses
       resources :webhook_deliveries, only: %i[index show] do
         collection do
@@ -291,7 +292,14 @@ Rails.application.routes.draw do
         end
       end
       resources :webhook_subscriptions, path: "webhook-subscriptions"
-      resources :applications, only: %i[index]
+      resources :applications, only: %i[index] do
+        collection do
+          post :install_plugin
+          post :enable_plugin
+          post :disable_plugin
+          delete :uninstall_plugin
+        end
+      end
     end
   end
 

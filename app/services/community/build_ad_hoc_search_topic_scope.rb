@@ -29,6 +29,7 @@ module Community
       )
       scope = apply_exclusions(scope, filters[:exclude_terms])
       scope = apply_sort(scope, filters[:topic_sort])
+      scope = Community::ForumAccess.topic_scope(relation: scope, user: @user)
       ServiceResult.success(scope: scope)
     end
 
@@ -111,7 +112,7 @@ module Community
     end
 
     def apply_tag(scope, tag_slug)
-      tag = Community::Tag.find_by(slug: tag_slug) || Community::Tag.find_by(name: tag_slug)
+      tag = Community::Tag.resolve_by_slug_or_name_for(tag_slug, user: @user)
       return scope.none unless tag
 
       scope.joins(:tags).where(forum_tags: { id: tag.id })
@@ -163,7 +164,13 @@ module Community
       case topic_sort
       when "oldest" then scope.order(created_at: :asc)
       when "relevance"
-        scope.order(Arel.sql("ts_rank(to_tsvector('simple', coalesce(forum_topics.title, '')), plainto_tsquery('simple', #{ActiveRecord::Base.lease_connection.quote(query)})) DESC"))
+        scope.order(
+          Community::SearchRankOrder.descending(
+            table: Community::Topic.arel_table,
+            column: :title,
+            query: query
+          )
+        )
       else scope.order(last_posted_at: :desc)
       end
     end

@@ -9,6 +9,12 @@ module Community
     end
 
     def call
+      unless @user && Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
+        return ServiceResult.failure(error: "Topic not available.")
+      end
+
+      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
+
       unless can_mark?
         return ServiceResult.failure(error: "You are not allowed to mark this topic as solved.")
       end
@@ -21,11 +27,21 @@ module Community
         return ServiceResult.failure(error: "Post not available.")
       end
 
-      @topic.update!(solved_post: @post)
+      auto_close_result = nil
+      Community::Topic.transaction do
+        @topic.update!(solved_post: @post)
+        auto_close_result = auto_close_on_solved!
+        raise ActiveRecord::Rollback if auto_close_result&.failure?
+      end
+      return auto_close_result if auto_close_result&.failure?
+
       award_solution_points
       Community::NotifyTopicSolved.call(topic: @topic, post: @post, actor: @user)
-      Community::DispatchForumEventWebhook.call(event_type: "topic.solved", topic: @topic, post: @post)
-      auto_close_on_solved!
+      Community::DispatchForumEventWebhook.call(
+        event_type: "topic.solved",
+        topic: @topic,
+        post: @post
+      )
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
@@ -38,9 +54,18 @@ module Community
     # preventing solve/unsolve farming even if the accepted post changes.
     def award_solution_points
       return if @user.id == @post.user_id
-      Community::AwardPoints.for_rule(user: @post.user, rule: "solution_accepted", source: @topic, default: 15)
+
+      Community::AwardPoints.for_rule(
+        user: @post.user,
+        rule: "solution_accepted",
+        source: @topic,
+        default: 15
+      )
     rescue StandardError => e
-      Rails.logger.error("[AwardPoints] solution_accepted failed for topic=#{@topic.id}: #{e.class}: #{e.message}")
+      Rails.logger.error(
+        "[AwardPoints] solution_accepted failed for topic=#{@topic.id}: " \
+        "#{e.class}: #{e.message}"
+      )
     end
 
     def can_mark?

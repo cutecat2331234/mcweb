@@ -28,7 +28,6 @@ module Community
         post: @post,
         topic: @post.topic
       )
-
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
@@ -39,10 +38,8 @@ module Community
     def can_restore?
       return true if @post.topic.wiki?
       return true if @post.wiki_post?
-      return true if @user.permission?("forum.topics.lock")
-      return true if @user.id == @post.user_id
 
-      false
+      Community::SectionModeration.can_edit_post?(user: @user, post: @post)
     end
   end
 end

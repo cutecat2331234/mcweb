@@ -13,6 +13,10 @@ import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
 import PostAttachmentsList from '@/components/portal/PostAttachmentsList.vue'
 import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
+import TopicCustomFieldsForm, {
+  type TopicCustomField,
+  type TopicCustomFieldValue,
+} from '@/components/portal/TopicCustomFieldsForm.vue'
 import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
@@ -30,6 +34,7 @@ const props = defineProps<{
     tags: string
     prefix?: string | null
     scheduled_at_input?: string | null
+    custom_fields?: TopicCustomField[]
     attachments?: Array<{ id: number; filename: string; human_size: string; download_url: string }>
     section: { name: string; slug: string; prefixes?: string[]; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; required?: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }> }
     poll?: {
@@ -53,6 +58,20 @@ function containsLink(text: string) {
   return /https?:\/\/|www\./i.test(text)
 }
 
+function initialCustomFieldValues(fields: TopicCustomField[]) {
+  return Object.fromEntries(
+    fields
+      .filter((field) => field.editable !== false)
+      .map((field) => {
+        const value = field.raw_value ?? field.value ?? ''
+        if (field.field_type === 'checkbox') {
+          return [field.key, value === true || value === 1 || value === '1' || value === 'true']
+        }
+        return [field.key, Array.isArray(value) ? value : String(value)]
+      }),
+  ) as Record<string, TopicCustomFieldValue>
+}
+
 const form = useForm({
   draft: {
     title: props.draft.title,
@@ -68,6 +87,7 @@ const form = useForm({
     poll_max_choices: props.draft.poll?.max_choices || 2,
     poll_hide_results_until_vote: props.draft.poll?.hide_results_until_vote || false,
     attachment_ids: [] as number[],
+    custom_fields: initialCustomFieldValues(props.draft.custom_fields || []),
   },
 })
 const pendingAttachments = ref<PendingAttachment[]>([])
@@ -205,6 +225,16 @@ function clearSchedule() {
       <TagGroupPicker ref="tagPickerRef" v-model="form.draft.tags" :tag-groups="draft.section.tag_groups" :max-tags="5" />
       <p v-if="tagGroupError" class="text-sm text-destructive">{{ tagGroupError }}</p>
     </div>
+
+    <section v-if="draft.custom_fields?.length" class="space-y-3 rounded-lg border p-4">
+      <h2 class="text-sm font-semibold">{{ t('forum.topics.customFields') }}</h2>
+      <TopicCustomFieldsForm
+        v-model="form.draft.custom_fields"
+        :fields="draft.custom_fields"
+        :errors="form.errors"
+        id-prefix="draft-topic-field"
+      />
+    </section>
 
     <div class="space-y-2">
       <Button type="button" variant="outline" size="sm" @click="showPoll = !showPoll">

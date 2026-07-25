@@ -9,6 +9,12 @@ module Administration
       subscription = Administration::WebhookSubscription.find_by(id: subscription_id)
       return unless subscription&.active?
 
+      payload = Administration::SerializeEventPayload.sanitize_envelope(payload)
+      return if payload.blank?
+      return unless subscription.event == Administration::WebhookSubscription::WILDCARD ||
+        subscription.event == payload["event"]
+      return unless Community::ForumEventWebhookPolicy.exportable_envelope?(payload)
+
       body = payload.to_json
       unless UrlSafety.public_http_url?(subscription.url)
         subscription.record_result!(success: false, status: "blocked")

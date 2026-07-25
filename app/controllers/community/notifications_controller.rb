@@ -17,12 +17,15 @@ module Community
         type: type_filter,
         period: period_filter
       )
-      notifications = filtered_scope.limit(100)
-      topic_visibility = preload_notification_topics(notifications)
+      notifications = filtered_scope.limit(100).to_a
+      notification_access = Community::NotificationAccess.new(
+        user: current_user,
+        notifications: notifications
+      )
 
       unread_count = current_user.notifications.unread.count
 
-      grouped = group_notifications(notifications, topic_visibility: topic_visibility)
+      grouped = group_notifications(notifications, notification_access: notification_access)
 
       # Build the full Inertia response from the PRE-dismissal state above so the
       # current view still shows transient alerts as unread (unread_count was read
@@ -31,7 +34,7 @@ module Community
       render inertia: "Community/Notifications/Index", props: {
         notifications: grouped,
         notificationSections: Community::GroupNotificationsByReadState.call(grouped),
-        flat_notifications: notifications.limit(50).map { |n| serialize_notification(n, topic_visibility: topic_visibility) },
+        flat_notifications: notifications.first(50).map { |n| serialize_notification(n, notification_access: notification_access) },
         activeCategory: category.presence || "all",
         activeRead: read_filter.presence || "all",
         activeType: type_filter.to_s,
@@ -100,8 +103,8 @@ module Community
       safe_local_redirect_path(path, fallback: forum_notifications_path)
     end
 
-    def serialize_notification(notification, topic_visibility: nil)
-      visible = notification_content_visible?(notification, topic_visibility: topic_visibility)
+    def serialize_notification(notification, notification_access: nil)
+      visible = notification_content_visible?(notification, notification_access: notification_access)
       {
         id: notification.id,
         title: visible ? notification.title : t("mcweb.forum.notifications.content_unavailable"),
@@ -117,31 +120,12 @@ module Community
       }
     end
 
-    def notification_content_visible?(notification, topic_visibility: nil)
-      topic = notification_topic(notification, topic_visibility: topic_visibility)
-      return true if topic.nil?
-      return false unless PollParticipation.visible?(topic: topic, user: current_user)
-      return true unless topic.unlisted?
-
-      current_user.id == topic.user_id || current_user.permission?("forum.topics.lock")
-    end
-
-    def notification_topic(notification, topic_visibility: nil)
-      public_id = notification.metadata["topic_id"]
-      return nil unless public_id.present?
-
-      if topic_visibility
-        topic_visibility[public_id.to_s]
-      else
-        Community::Topic.find_by(public_id: public_id.to_s)
-      end
-    end
-
-    def preload_notification_topics(notifications)
-      public_ids = notifications.filter_map { |n| n.metadata["topic_id"].presence }.uniq
-      return {} if public_ids.blank?
-
-      Community::Topic.where(public_id: public_ids).index_by(&:public_id)
+    def notification_content_visible?(notification, notification_access: nil)
+      access = notification_access || Community::NotificationAccess.new(
+        user: current_user,
+        notifications: [ notification ]
+      )
+      access.visible?(notification)
     end
 
     def notification_category(notification)
@@ -236,7 +220,7 @@ module Community
       NotificationActiveFilters.call(category: category.presence || "all", read: read, type: type, period: period)
     end
 
-    def group_notifications(notifications, topic_visibility: nil)
+    def group_notifications(notifications, notification_access: nil)
       grouped = notifications.group_by do |n|
         topic_id = n.metadata["topic_id"] || n.metadata.dig("topic", "id")
         conversation_id = n.metadata["conversation_id"]
@@ -257,15 +241,15 @@ module Community
           key: "#{type}-#{group_key}",
           notification_type: type == "commerce_order" ? latest.notification_type : type,
           category: notification_category(latest),
-          title: type == "commerce_order" ? t("mcweb.forum.notifications.order_title", number: group_key.to_s.sub(/\Aord_/, "").truncate(8)) : (notification_content_visible?(latest, topic_visibility: topic_visibility) ? latest.title : t("mcweb.forum.notifications.content_unavailable")),
-          body: items.size > 1 ? t("mcweb.forum.notifications.grouped_body", count: items.size) : (notification_content_visible?(latest, topic_visibility: topic_visibility) ? latest.body : t("mcweb.forum.notifications.content_unavailable_body")),
+          title: type == "commerce_order" ? t("mcweb.forum.notifications.order_title", number: group_key.to_s.sub(/\Aord_/, "").truncate(8)) : (notification_content_visible?(latest, notification_access: notification_access) ? latest.title : t("mcweb.forum.notifications.content_unavailable")),
+          body: items.size > 1 ? t("mcweb.forum.notifications.grouped_body", count: items.size) : (notification_content_visible?(latest, notification_access: notification_access) ? latest.body : t("mcweb.forum.notifications.content_unavailable_body")),
           count: items.size,
           unread_count: unread,
           read: unread.zero?,
           latest_at: l(latest.created_at, format: :short),
           latest_at_ts: latest.created_at.to_i,
-          visit_url: notification_content_visible?(latest, topic_visibility: topic_visibility) && latest.destination_path.present? ? visit_forum_notification_path(latest) : nil,
-          items: items.first(5).map { |n| serialize_notification(n, topic_visibility: topic_visibility) }
+          visit_url: notification_content_visible?(latest, notification_access: notification_access) && latest.destination_path.present? ? visit_forum_notification_path(latest) : nil,
+          items: items.first(5).map { |n| serialize_notification(n, notification_access: notification_access) }
         }
       end.sort_by { |g| -g[:latest_at_ts] }.first(30)
     end

@@ -41,11 +41,9 @@ module Community
 
     def destroy
       message = @conversation.messages.find(params[:id])
-      unless message.user_id == current_user.id || current_user.permission?("forum.topics.lock")
-        return head :forbidden
-      end
+      result = Community::DeleteMessage.call(user: current_user, message: message)
+      return head :forbidden if result.failure?
 
-      message.soft_delete!
       redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.message_deleted", default: "消息已删除")
     end
 

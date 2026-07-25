@@ -58,11 +58,11 @@ module Api
 
       def load_visible_post!(id)
         post = Community::Post.includes(:user, :topic).find(id)
-        topic = post.topic
-        unless post.status == "published" && post.post_type != "whisper" &&
-               topic&.status == "published" && section_visible?(topic.section)
-          raise ActiveRecord::RecordNotFound
-        end
+        visible = Community::ForumAccess.public_api_post_visible?(
+          post: post,
+          user: api_user
+        )
+        raise ActiveRecord::RecordNotFound unless visible
 
         post
       end

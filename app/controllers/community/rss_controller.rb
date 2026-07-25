@@ -27,8 +27,14 @@ module Community
     end
 
     def tag
-      tag = Community::Tag.find_by!(slug: params[:slug])
-      topic_ids = tag.topics.published_listed.merge(Community::Topic.accessible_by(current_user)).pluck(:id)
+      tag = Community::Tag.resolve_by_slug_for(params[:slug], user: current_user)
+      raise ActiveRecord::RecordNotFound unless tag
+
+      visible_topics = Community::ForumAccess.topic_scope(
+        relation: Community::Topic.all,
+        user: current_user
+      )
+      topic_ids = tag.topics.published_listed.merge(visible_topics).pluck(:id)
       topics = Community::Topic.where(id: topic_ids).sorted("activity").limit(30)
       render xml: build_feed(topics, title: t("mcweb.forum.rss.tag_title", name: tag.name), url: forum_tag_url(tag.slug)), content_type: "application/rss+xml"
     end
@@ -45,8 +51,10 @@ module Community
 
     def category
       category = Community::Category.find_by!(slug: params[:slug])
-      section_ids = category.sections.where(login_required: false).pluck(:id) unless logged_in?
-      section_ids ||= category.sections.pluck(:id)
+      section_ids = Community::SectionAccess.scope(
+        relation: category.sections,
+        user: current_user
+      ).pluck(:id)
       topics = Community::Topic.published_listed.where(forum_section_id: section_ids).sorted("activity").limit(30)
       render xml: build_feed(topics, title: t("mcweb.forum.rss.category_title", name: category.name), url: forum_category_url(slug: category.slug)), content_type: "application/rss+xml"
     end
@@ -148,7 +156,11 @@ module Community
     def feed_item(topic)
       link = forum_topic_url(topic)
       pub_date = (topic.last_posted_at || topic.created_at).rfc2822
-      description = escape_xml(topic.posts.published.order(:floor_number).first&.body&.truncate(300).to_s)
+      opening_post = Community::ForumAccess.listed_post_scope(
+        relation: topic.posts,
+        user: current_user
+      ).order(:floor_number).first
+      description = escape_xml(opening_post&.body&.truncate(300).to_s)
       <<~XML
         <item>
           <title>#{escape_xml(topic.title)}</title>
@@ -246,7 +258,7 @@ module Community
 
       Community::Subscription.where(user: user, subscribable_type: "Community::Section").find_each do |sub|
         section = Community::Section.find_by(id: sub.subscribable_id)
-        next unless section
+        next unless Community::SectionAccess.view?(section: section, user: user)
 
         outlines << opml_outline(
           section.name,
@@ -256,7 +268,7 @@ module Community
       end
 
       Community::Subscription.where(user: user, subscribable_type: "Community::Tag").find_each do |sub|
-        tag = Community::Tag.find_by(id: sub.subscribable_id)
+        tag = Community::Tag.usable_by(user).find_by(id: sub.subscribable_id)
         next unless tag
 
         outlines << opml_outline(
@@ -268,7 +280,7 @@ module Community
 
       Community::Subscription.where(user: user, subscribable_type: "Community::Topic").find_each do |sub|
         topic = Community::Topic.find_by(id: sub.subscribable_id)
-        next unless topic&.published?
+        next unless Community::ForumAccess.listed_topic_visible?(topic: topic, user: user)
 
         outlines << opml_outline(
           topic.title,

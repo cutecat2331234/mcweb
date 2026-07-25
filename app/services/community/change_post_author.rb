@@ -19,13 +19,11 @@ module Community
       old_author_id = @post.user_id
       topic = @post.topic
 
-      @post.update!(user: new_author)
-
-      if @post.floor_number == 1
-        topic.update!(user: new_author)
+      Community::Post.transaction do
+        @post.update!(user: new_author)
+        topic.update!(user: new_author) if @post.floor_number == 1
+        Community::SyncTopicLastPost.call(topic: topic) if topic.last_post_user_id == old_author_id
       end
-
-      Community::SyncTopicLastPost.call(topic: topic) if topic.last_post_user_id == old_author_id
 
       Administration::AuditLogger.call(
         actor: @user,
@@ -33,7 +31,6 @@ module Community
         resource: @post,
         metadata: { from_user_id: old_author_id, to_user_id: new_author.id }
       )
-
       ServiceResult.success(@post)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

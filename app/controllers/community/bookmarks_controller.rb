@@ -19,7 +19,11 @@ module Community
       post_bookmarks = bookmarks.select { |bookmark| bookmark.forum_post_id.present? }
 
       topic_ids = topic_bookmarks.map(&:forum_topic_id).uniq
-      topics = preload_topics(Community::Topic.where(id: topic_ids, status: :published).accessible_by(current_user).order(last_posted_at: :desc).limit(50))
+      topics = Community::ForumAccess.topic_scope(
+        relation: Community::Topic.where(id: topic_ids, status: :published),
+        user: current_user
+      )
+      topics = preload_topics(topics.order(last_posted_at: :desc).limit(50))
       topics = filter_blocked_topics(topics)
       attach_participant_users!(topics)
 
@@ -29,8 +33,7 @@ module Community
 
       topic_items = topic_bookmarks.filter_map do |bookmark|
         topic = bookmark.topic
-        next if topic.nil? || topic.status != "published"
-        next if topic.unlisted?
+        next unless Community::ForumAccess.listed_topic_visible?(topic: topic, user: current_user)
         next if blocked_user_ids.include?(topic.user_id)
 
         {
@@ -47,10 +50,9 @@ module Community
       post_items = post_bookmarks.filter_map do |bookmark|
         post = bookmark.post
         topic = bookmark.topic
-        next if topic.nil? || topic.status != "published"
-        next if topic.unlisted?
+        next unless topic
         next if blocked_user_ids.include?(topic.user_id)
-        next unless Community::PostAccess.readable?(post: post, user: current_user)
+        next unless Community::ForumAccess.listed_post_visible?(post: post, user: current_user)
 
         {
           id: post.id,

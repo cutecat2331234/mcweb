@@ -27,12 +27,20 @@ end
 class Round98DigestLinksTest < ActionMailer::TestCase
   setup do
     @user = create_user
+    topic, post = create_visible_forum_notification_resource(
+      user: @user,
+      public_id: "topic1"
+    )
     @notification = Notification.create!(
       user: @user,
       notification_type: "forum.reaction",
       title: "Reaction",
       body: "Someone reacted",
-      metadata: { path: "/forum/topics/topic1" }
+      metadata: {
+        topic_id: topic.public_id,
+        post_id: post.id,
+        path: "/forum/topics/topic1"
+      }
     )
   end
 
@@ -45,12 +53,20 @@ end
 class Round98NotificationVisitTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
+    topic, post = create_visible_forum_notification_resource(
+      user: @user,
+      public_id: "legacy1"
+    )
     @notification = Notification.create!(
       user: @user,
       notification_type: "forum.topic_reply",
       title: "Reply",
       body: "body",
-      metadata: { path: "/forum/topics/legacy1" }
+      metadata: {
+        topic_id: topic.public_id,
+        post_id: post.id,
+        path: "/forum/topics/legacy1"
+      }
     )
     sign_in_as(@user)
   end

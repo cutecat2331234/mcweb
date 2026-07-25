@@ -29,6 +29,7 @@ PERMISSIONS = [
   { key: "minecraft.players.view", name: "查看在线玩家", category: "minecraft" },
   { key: "minecraft.fulfillments.retry", name: "重试发货", category: "minecraft" },
   { key: "system.settings.manage", name: "管理系统设置", category: "system" },
+  { key: "system.plugins.manage", name: "管理插件包", category: "system" },
   { key: "system.jobs.read", name: "查看后台任务", category: "system" },
   { key: "system.jobs.retry", name: "重试后台任务", category: "system" },
   { key: "system.audit.read", name: "查看审计日志", category: "system" },

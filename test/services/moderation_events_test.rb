@@ -36,7 +36,7 @@ class ModerationEventsTest < ActiveSupport::TestCase
     Mcweb::Events.unsubscribe(sub)
   end
 
-  test "SerializeEventPayload serializes a generic record to type/id" do
+  test "SerializeEventPayload serializes moderation events to identifiers only" do
     actor = create_user(username: "modactor3")
     grant_permission(actor, "forum.users.warn")
     target = create_user(username: "modtarget3")
@@ -45,9 +45,10 @@ class ModerationEventsTest < ActiveSupport::TestCase
     payload = Administration::SerializeEventPayload.call(
       event: "forum.warning.issued", payload: { user: target, actor: actor, warning: warning }
     )
-    assert_equal "Community::UserWarning", payload["data"]["warning"]["type"]
     assert_equal warning.id, payload["data"]["warning"]["id"]
-    assert_equal target.username, payload["data"]["user"]["username"]
+    assert_equal target.public_id, payload["data"]["user"]["id"]
+    refute_includes payload.to_json, target.username
+    refute_match(/reason|username|type/i, payload.to_json)
   end
 
   test "new events are in the catalog" do

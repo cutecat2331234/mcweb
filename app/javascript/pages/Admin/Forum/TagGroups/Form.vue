@@ -3,12 +3,6 @@ import { ref } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -44,16 +38,6 @@ const form = useForm({
   },
 })
 
-function toggleTag(id: number, checked: boolean) {
-  if (checked) {
-    if (!selectedTagIds.value.includes(id)) selectedTagIds.value.push(id)
-  } else {
-    const idx = selectedTagIds.value.indexOf(id)
-    if (idx >= 0) selectedTagIds.value.splice(idx, 1)
-  }
-  form.tag_group.tag_ids = [...selectedTagIds.value]
-}
-
 function submit() {
   form.tag_group.tag_ids = [...selectedTagIds.value]
   if (props.method === 'patch') {
@@ -65,46 +49,49 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.common.name') }}</Label>
-      <Input id="name" v-model="form.tag_group.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="slug">{{ t('admin.forms.tag.slug') }}</Label>
-      <Input id="slug" v-model="form.tag_group.slug" />
-    </div>
-    <div class="space-y-2">
-      <Label for="description">{{ t('admin.common.description') }}</Label>
-      <Textarea id="description" v-model="form.tag_group.description" rows="3" />
-    </div>
-    <div class="space-y-2">
-      <Label for="color_hex">{{ t('admin.forms.tagGroup.groupColor') }}</Label>
-      <Input id="color_hex" v-model="form.tag_group.color_hex" placeholder="#6366f1" />
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.tag_group.one_per_topic" />
-      {{ t('admin.forms.tagGroup.onePerTopic') }}
-    </label>
-    <div class="space-y-2">
-      <Label>{{ t('admin.forms.tagGroup.tagsInGroup') }}</Label>
-      <div class="max-h-48 space-y-1 overflow-y-auto rounded-md border p-3">
-        <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-2 text-sm">
-          <Checkbox
-            :model-value="selectedTagIds.includes(tag.id)"
-            @update:model-value="(checked) => toggleTag(tag.id, checked)"
-          />
-          {{ tag.name }}
-        </label>
-      </div>
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-2xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.common.name') }}</span>
+            <a-input v-model="form.tag_group.name" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.tag.slug') }}</span>
+            <a-input v-model="form.tag_group.slug" allow-clear />
+          </label>
+        </a-col>
+      </a-row>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.common.description') }}</span>
+        <a-textarea v-model="form.tag_group.description" :auto-size="{ minRows: 3, maxRows: 7 }" />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forms.tagGroup.groupColor') }}</span>
+        <a-input v-model="form.tag_group.color_hex" placeholder="#6366f1" allow-clear />
+      </label>
+      <a-checkbox v-model="form.tag_group.one_per_topic">
+        {{ t('admin.forms.tagGroup.onePerTopic') }}
+      </a-checkbox>
+      <a-card :title="t('admin.forms.tagGroup.tagsInGroup')" size="small" :bordered="true">
+        <a-checkbox-group v-model="selectedTagIds" class="admin-forum-choice-grid">
+          <a-checkbox v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</a-checkbox>
+        </a-checkbox-group>
+      </a-card>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+.admin-forum-choice-grid { display: grid; max-height: 12rem; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 12px; overflow-y: auto; }
+@media (max-width: 639px) { .admin-forum-choice-grid { grid-template-columns: minmax(0, 1fr); } }
+</style>

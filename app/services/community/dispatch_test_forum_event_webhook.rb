@@ -14,8 +14,7 @@ module Community
       return ServiceResult.failure(error: "webhook_url_private") unless UrlSafety.public_http_url?(url)
 
       payload = build_payload
-      secret = SiteSetting.get("forum.event_webhook_secret", "").to_s.strip.presence
-      Community::DispatchForumEventWebhookJob.perform_later(url, payload, secret)
+      Community::DispatchForumEventWebhookJob.perform_later(url, payload)
       ServiceResult.success(queued: true, event_type: @event_type)
     end
 
@@ -24,25 +23,12 @@ module Community
     def build_payload
       {
         event: @event_type,
-        occurred_at: Time.current.iso8601,
+        occurred_at: Time.current.iso8601(3),
         test: true,
-        topic: {
-          id: "test_topic",
-          title: I18n.t("mcweb.forum.webhook_test.event_topic_title"),
-          section_slug: "general",
-          section_name: I18n.t("mcweb.forum.webhook_test.section_name"),
-          status: "published",
-          path: "#{Mcweb::Paths::APP_PREFIX}/forum/latest"
-        },
-        post: {
-          id: 0,
-          floor_number: 1,
-          user_id: nil,
-          username: "test_user",
-          body_excerpt: I18n.t("mcweb.forum.webhook_test.body_excerpt"),
-          path: "#{Mcweb::Paths::APP_PREFIX}/forum/latest#post-0"
-        }
-      }
+        topic: { id: "test_topic" }
+      }.tap do |payload|
+        payload[:post] = { id: "test_post" } if @event_type.start_with?("post.") || @event_type == "topic.solved"
+      end
     end
   end
 end

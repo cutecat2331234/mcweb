@@ -10,9 +10,18 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_01_000003) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+
+  create_table "action_mailbox_inbound_emails", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "message_checksum", null: false
+    t.string "message_id", null: false
+    t.integer "status", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["message_id", "message_checksum"], name: "index_action_mailbox_inbound_emails_uniqueness", unique: true
+  end
 
   create_table "active_storage_attachments", force: :cascade do |t|
     t.bigint "blob_id", null: false
@@ -300,6 +309,37 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_01_000003) do
     t.string "title"
     t.datetime "updated_at", null: false
     t.index ["creator_id"], name: "index_forum_conversations_on_creator_id"
+  end
+
+  create_table "forum_email_reply_addresses", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.bigint "forum_topic_id", null: false
+    t.datetime "last_used_at"
+    t.string "purpose", null: false
+    t.datetime "revoked_at"
+    t.string "token_digest", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_topic_id"], name: "index_forum_email_reply_addresses_on_forum_topic_id"
+    t.index ["token_digest"], name: "index_forum_email_reply_addresses_on_token_digest", unique: true
+    t.index ["user_id", "forum_topic_id", "expires_at"], name: "idx_forum_email_reply_addresses_binding"
+    t.index ["user_id"], name: "index_forum_email_reply_addresses_on_user_id"
+  end
+
+  create_table "forum_email_reply_deliveries", force: :cascade do |t|
+    t.bigint "action_mailbox_inbound_email_id"
+    t.datetime "created_at", null: false
+    t.bigint "forum_email_reply_address_id"
+    t.bigint "forum_post_id"
+    t.string "message_id_digest", null: false
+    t.string "rejection_reason"
+    t.string "status", default: "processing", null: false
+    t.datetime "updated_at", null: false
+    t.index ["action_mailbox_inbound_email_id"], name: "idx_forum_email_replies_on_inbound", unique: true
+    t.index ["forum_email_reply_address_id"], name: "idx_forum_email_replies_on_address"
+    t.index ["forum_post_id"], name: "idx_forum_email_replies_on_post"
+    t.index ["message_id_digest"], name: "idx_forum_email_replies_on_message_id", unique: true
   end
 
   create_table "forum_event_webhook_deliveries", force: :cascade do |t|
@@ -715,6 +755,38 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_01_000003) do
     t.datetime "updated_at", null: false
     t.index ["canonical_tag_id"], name: "index_forum_tags_on_canonical_tag_id"
     t.index ["slug"], name: "index_forum_tags_on_slug", unique: true
+  end
+
+  create_table "forum_topic_field_definitions", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.text "choices"
+    t.datetime "created_at", null: false
+    t.text "description"
+    t.string "display_location", default: "before_message", null: false
+    t.boolean "editable_by_user", default: true, null: false
+    t.jsonb "editable_group_ids", default: [], null: false
+    t.string "field_type", default: "text", null: false
+    t.string "key", null: false
+    t.string "label", null: false
+    t.string "owner_plugin_id"
+    t.boolean "required", default: false, null: false
+    t.jsonb "section_ids", default: [], null: false
+    t.integer "sort_order", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["active", "sort_order"], name: "index_forum_topic_field_definitions_on_active_and_sort_order"
+    t.index ["key"], name: "index_forum_topic_field_definitions_on_key", unique: true
+    t.index ["owner_plugin_id"], name: "index_forum_topic_field_definitions_on_owner_plugin_id"
+  end
+
+  create_table "forum_topic_field_values", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_topic_field_definition_id", null: false
+    t.bigint "forum_topic_id", null: false
+    t.datetime "updated_at", null: false
+    t.text "value", null: false
+    t.index ["forum_topic_field_definition_id"], name: "idx_on_forum_topic_field_definition_id_c7ed2b10e6"
+    t.index ["forum_topic_id", "forum_topic_field_definition_id"], name: "idx_forum_topic_field_values_unique", unique: true
+    t.index ["forum_topic_id"], name: "index_forum_topic_field_values_on_forum_topic_id"
   end
 
   create_table "forum_topic_invites", force: :cascade do |t|
@@ -2120,6 +2192,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_01_000003) do
   add_foreign_key "forum_conversation_participants", "forum_conversations"
   add_foreign_key "forum_conversation_participants", "users"
   add_foreign_key "forum_conversations", "users", column: "creator_id"
+  add_foreign_key "forum_email_reply_addresses", "forum_topics"
+  add_foreign_key "forum_email_reply_addresses", "users"
+  add_foreign_key "forum_email_reply_deliveries", "action_mailbox_inbound_emails", on_delete: :nullify
+  add_foreign_key "forum_email_reply_deliveries", "forum_email_reply_addresses"
+  add_foreign_key "forum_email_reply_deliveries", "forum_posts"
   add_foreign_key "forum_event_webhook_deliveries", "forum_posts"
   add_foreign_key "forum_event_webhook_deliveries", "forum_topics"
   add_foreign_key "forum_messages", "forum_conversations"
@@ -2168,6 +2245,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_01_000003) do
   add_foreign_key "forum_tag_group_memberships", "forum_tag_groups"
   add_foreign_key "forum_tag_group_memberships", "forum_tags"
   add_foreign_key "forum_tags", "forum_tags", column: "canonical_tag_id"
+  add_foreign_key "forum_topic_field_values", "forum_topic_field_definitions"
+  add_foreign_key "forum_topic_field_values", "forum_topics"
   add_foreign_key "forum_topic_invites", "forum_topics"
   add_foreign_key "forum_topic_invites", "users"
   add_foreign_key "forum_topic_invites", "users", column: "invited_by_id"

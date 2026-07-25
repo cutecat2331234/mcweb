@@ -80,12 +80,20 @@ end
 class Round99DigestUnreadLinkTest < ActionMailer::TestCase
   setup do
     @user = create_user
+    topic, post = create_visible_forum_notification_resource(
+      user: @user,
+      public_id: "topic1"
+    )
     @notification = Notification.create!(
       user: @user,
       notification_type: "forum.reaction",
       title: "Reaction",
       body: "Someone reacted",
-      metadata: { path: "/forum/topics/topic1" }
+      metadata: {
+        topic_id: topic.public_id,
+        post_id: post.id,
+        path: "/forum/topics/topic1"
+      }
     )
   end
 

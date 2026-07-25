@@ -38,7 +38,7 @@ module Community
     def ranked_counts(metric, since)
       case metric
       when "likes"
-        rel = Community::Reaction.joins(:post).where(forum_posts: { status: "published" })
+        rel = Community::Reaction.joins(:post).where(forum_post_id: listed_posts.select(:id))
         rel = rel.where("forum_reactions.created_at >= ?", since) if since
         rel.group("forum_posts.user_id").order(Arel.sql("COUNT(forum_reactions.id) DESC")).limit(LIMIT).count("forum_reactions.id")
       when "score"
@@ -46,7 +46,7 @@ module Community
       when "points"
         ranked_points(since)
       else
-        rel = Community::Post.where(status: "published")
+        rel = listed_posts
         rel = rel.where("forum_posts.created_at >= ?", since) if since
         rel.group(:user_id).order(Arel.sql("COUNT(forum_posts.id) DESC")).limit(LIMIT).count
       end
@@ -57,7 +57,7 @@ module Community
     # weight map applies; unlisted emoji weigh 1 (matching Reaction.score_for).
     def ranked_reaction_scores(since)
       map = Community::Reaction.score_map
-      rel = Community::Reaction.joins(:post).where(forum_posts: { status: "published" })
+      rel = Community::Reaction.joins(:post).where(forum_post_id: listed_posts.select(:id))
       rel = rel.where("forum_reactions.created_at >= ?", since) if since
 
       scores = Hash.new(0)
@@ -65,6 +65,13 @@ module Community
         scores[user_id] += count * map.fetch(emoji.to_s, 1)
       end
       scores.sort_by { |_user_id, score| -score }.first(LIMIT).to_h
+    end
+
+    def listed_posts
+      @listed_posts ||= Community::ForumAccess.listed_post_scope(
+        relation: Community::Post.all,
+        user: current_user
+      )
     end
 
     # Points leaderboard.

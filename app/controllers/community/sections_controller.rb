@@ -9,12 +9,16 @@ module Community
 
     def index
       scope = Community::Section.roots.ordered.includes(:category, :children)
-      scope = scope.where(login_required: false) unless logged_in?
+      scope = Community::SectionAccess.scope(relation: scope, user: current_user)
       @pagy, sections = pagy(:offset, scope, limit: 20)
       unread_map = if logged_in?
                      sections.each_with_object({}) do |section, hash|
                        hash[section.id] = Community::ReadState.unread_count_for_section(current_user, section)
-                       section.children.each do |child|
+                       visible_children = Community::SectionAccess.select(
+                         sections: section.children,
+                         user: current_user
+                       )
+                       visible_children.each do |child|
                          hash[child.id] = Community::ReadState.unread_count_for_section(current_user, child)
                        end
                      end
@@ -24,7 +28,7 @@ module Community
 
       render inertia: "Community/Sections/Index", props: {
         sections: sections.map { |section| serialize_section(section, unread_map: unread_map) },
-        categories: Community::Category.ordered.map do |category|
+        categories: visible_categories.map do |category|
           {
             slug: category.slug,
             name: category.name,
@@ -44,10 +48,20 @@ module Community
       }
     end
 
+    def visible_categories
+      category_ids = Community::SectionAccess
+        .scope(relation: Community::Section.all, user: current_user)
+        .select(:forum_category_id)
+      Community::Category.ordered.where(id: category_ids)
+    end
+
     # XenForo-style "Top topics" sidebar widget (this week), reusing the Top ranking.
     def top_topics_widget
       since = Community::Topic.top_period_start("week")
-      Community::Topic.published_listed.accessible_by(current_user)
+      Community::ForumAccess.topic_scope(
+        relation: Community::Topic.published_listed,
+        user: current_user
+      )
         .top_ranked(since)
         .limit(6)
         .map { |topic| { title: topic.title, url: forum_topic_path(topic), replies: topic.replies_count } }
@@ -65,7 +79,10 @@ module Community
 
     # XenForo-style "Latest threads" widget for the index.
     def latest_threads
-      Community::Topic.published_listed.accessible_by(current_user)
+      Community::ForumAccess.topic_scope(
+        relation: Community::Topic.published_listed,
+        user: current_user
+      )
         .includes(:user, :last_post_user)
         .order(last_posted_at: :desc)
         .limit(6)
@@ -85,9 +102,17 @@ module Community
     def forum_index_stats
       latest = User.where(status: :active).order(created_at: :desc).first
       online = User.where(status: :active).where("last_seen_at > ?", 5.minutes.ago).count
+      visible_topics = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.all,
+        user: current_user
+      )
+      visible_posts = Community::ForumAccess.listed_post_scope(
+        relation: Community::Post.all,
+        user: current_user
+      )
       {
-        topics: Community::Topic.where(status: :published, unlisted: false).count,
-        posts: Community::Post.where(status: :published).count,
+        topics: visible_topics.count,
+        posts: visible_posts.count,
         members: User.where(status: :active).count,
         online: online,
         online_peak: online_peak_record(online),
@@ -135,7 +160,11 @@ module Community
       scope = preload_topics(base_scope.sorted(sort))
       scope = filter_blocked_topics(scope)
       scope = apply_topic_filter(scope, filter: filter, user: current_user)
-      featured = preload_topics(section.topics.featured_topics.pinned_first.limit(5))
+      featured = Community::ForumAccess.listed_topic_scope(
+        relation: section.topics.where(featured: true),
+        user: current_user
+      )
+      featured = preload_topics(featured.pinned_first.limit(5))
       featured = filter_blocked_topics(featured)
 
       @pagy, topics = pagy(:offset, scope, limit: 20)
@@ -147,6 +176,7 @@ module Community
 
       render inertia: "Community/Sections/Show", props: {
         section: {
+          id: section.id,
           name: section.name,
           slug: section.slug,
           description: section.description,

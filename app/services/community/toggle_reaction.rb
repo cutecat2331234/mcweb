@@ -23,6 +23,7 @@ module Community
 
     def call
       return ServiceResult.failure(error: "Post not available.") unless PostAccess.readable?(post: @post, user: @user)
+      return ServiceResult.failure(error: "This topic is archived.") if @post.topic.archived_at.present?
       return ServiceResult.failure(error: "Invalid reaction.") unless self.class.allowed_emoji.include?(@emoji)
       return ServiceResult.failure(error: "cannot_react_to_own_post") if @user.id == @post.user_id
       return ServiceResult.failure(error: "trust_level_cannot_react") unless Community::TrustLevel.can_react?(@user)
@@ -40,7 +41,6 @@ module Community
         added ? "forum.reaction.added" : "forum.reaction.removed",
         post: @post, user: @user, emoji: @emoji, counts: counts
       )
-
       ServiceResult.success(added: added, counts: counts)
     end
 

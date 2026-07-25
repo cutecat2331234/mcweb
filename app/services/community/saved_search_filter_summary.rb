@@ -18,6 +18,7 @@ module Community
     def initialize(saved_search)
       @saved_search = saved_search
       @filters = saved_search.filters.symbolize_keys
+      @user = saved_search.respond_to?(:user) ? saved_search.user : nil
     end
 
     def labels
@@ -25,9 +26,11 @@ module Community
       query = @saved_search.query.to_s.strip
       chips << I18n.t("mcweb.forum.search.keywords", value: query) if query.present?
 
-      append_lookup_label(chips, :section, "section") { Community::Section.find_by(slug: @filters[:section])&.name }
-      append_lookup_label(chips, :category, "category") { Community::Category.find_by(slug: @filters[:category])&.name }
-      append_lookup_label(chips, :tag, "tag") { Community::Tag.find_by(slug: @filters[:tag])&.name }
+      append_lookup_label(chips, :section, "section") { visible_section_name(@filters[:section]) }
+      append_lookup_label(chips, :category, "category") { visible_category_name(@filters[:category]) }
+      append_lookup_label(chips, :tag, "tag") do
+        Community::Tag.resolve_by_slug_for(@filters[:tag], user: @user)&.name
+      end
 
       append_value_label(chips, :author, "author")
       append_value_label(chips, :assignee, "assignee")
@@ -44,6 +47,20 @@ module Community
     end
 
   private
+
+    def visible_section_name(slug)
+      section = Community::Section.find_by(slug: slug)
+      section&.name if Community::SectionAccess.view?(section: section, user: @user)
+    end
+
+    def visible_category_name(slug)
+      category = Community::Category.find_by(slug: slug)
+      return unless category
+      return category.name unless category.sections.exists?
+
+      visible = Community::SectionAccess.scope(relation: category.sections, user: @user).exists?
+      category.name if visible
+    end
 
     def append_exclude_terms(chips)
       parsed = Community::ParseSearchQuery.call(query: @saved_search.query.to_s)

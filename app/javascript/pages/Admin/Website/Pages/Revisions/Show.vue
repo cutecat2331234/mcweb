@@ -1,28 +1,66 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
+import { Modal } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
 
 defineOptions({ layout: AdminLayout })
 
 const props = defineProps<{
   title: string
   page: { id: string; title: string }
-  revision: { id: number; revision_number: number; author: string | null; created_at: string; snapshot: Record<string, unknown>; restoreUrl: string }
+  revision: {
+    id: number
+    revision_number: number
+    author: string | null
+    created_at: string
+    snapshot: Record<string, unknown>
+    restoreUrl: string
+  }
   backUrl: string
 }>()
 
 function restoreDraft() {
-  router.post(props.revision.restoreUrl)
+  Modal.warning({
+    title: 'Restore revision',
+    content: `Restore revision #${props.revision.revision_number} as the current draft?`,
+    okText: 'Restore',
+    cancelText: 'Cancel',
+    hideCancel: false,
+    onOk: () => router.post(props.revision.restoreUrl),
+  })
 }
 </script>
 
 <template>
-  <PageHeader :title="title" :subtitle="`#${revision.revision_number}`" />
-  <pre class="max-w-4xl overflow-auto rounded-lg border bg-muted p-4 text-xs">{{ JSON.stringify(revision.snapshot, null, 2) }}</pre>
-  <div class="mt-4 flex gap-2">
-    <Button type="button" @click="restoreDraft">Restore as draft</Button>
-    <Button as-child variant="outline"><Link :href="backUrl">Back</Link></Button>
-  </div>
+  <a-page-header
+    :title="title"
+    :subtitle="`${page.title} · #${revision.revision_number}`"
+    :show-back="false"
+  />
+  <a-card :bordered="true">
+    <a-descriptions :column="{ xs: 1, sm: 2 }" bordered>
+      <a-descriptions-item label="Author">{{ revision.author || '—' }}</a-descriptions-item>
+      <a-descriptions-item label="Created at">{{ revision.created_at }}</a-descriptions-item>
+    </a-descriptions>
+    <a-divider />
+    <pre class="revision-snapshot">{{ JSON.stringify(revision.snapshot, null, 2) }}</pre>
+  </a-card>
+  <a-space class="mt-4">
+    <a-button type="primary" status="warning" @click="restoreDraft">Restore as draft</a-button>
+    <a-button @click="router.visit(backUrl)">Back</a-button>
+  </a-space>
 </template>
+
+<style scoped>
+.revision-snapshot {
+  max-height: 65vh;
+  margin: 0;
+  padding: 16px;
+  overflow: auto;
+  color: var(--color-text-1);
+  background: var(--color-fill-2);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+</style>

@@ -23,7 +23,10 @@ module Community
       return ServiceResult.success(nil) unless user
 
       trust = Community::TrustLevel.level_info(user)
-      posts_count = Community::Post.where(user: user, status: :published).count
+      posts_count = Community::ForumAccess.listed_post_scope(
+        relation: Community::Post.where(user: user),
+        user: nil
+      ).count
 
       ServiceResult.success(
         username: user.username,

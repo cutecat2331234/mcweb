@@ -24,12 +24,18 @@ module Community
 
     def index
       usable_ids = Community::Tag.usable_by(current_user).pluck(:id).to_set
+      visible_topic_ids = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.all,
+        user: current_user
+      ).select(:id)
+      counts = Community::TopicTag
+        .where(forum_topic_id: visible_topic_ids, forum_tag_id: usable_ids.to_a)
+        .group(:forum_tag_id)
+        .count
       tags = Community::Tag.usable_by(current_user)
-        .left_joins(:topic_tags)
-        .group(:id)
-        .select("forum_tags.*, COUNT(forum_topic_tags.id) AS topics_count")
-        .order("topics_count DESC")
-        .limit(100)
+        .to_a
+        .sort_by { |tag| [ -counts[tag.id].to_i, tag.name.to_s ] }
+        .first(100)
 
       grouped_tag_ids = Set.new
       tag_groups = Community::TagGroup.includes(:tags).ordered.filter_map do |group|
@@ -42,7 +48,7 @@ module Community
           slug: group.slug,
           color_hex: group.color_hex,
           tags: group_tags.map do |tag|
-            count = tags.find { |t| t.id == tag.id }&.topics_count.to_i
+            count = counts[tag.id].to_i
             {
               name: tag.name,
               slug: tag.slug,
@@ -58,7 +64,7 @@ module Community
         {
           name: tag.name,
           slug: tag.slug,
-          topics_count: tag.topics_count.to_i,
+          topics_count: counts[tag.id].to_i,
           color_hex: tag.color_hex,
           url: forum_tag_path(tag.slug)
         }
@@ -71,12 +77,15 @@ module Community
     end
 
     def show
-      tag = Community::Tag.resolve_by_slug(params[:slug])
+      tag = Community::Tag.resolve_by_slug_for(params[:slug], user: current_user)
       return head :not_found unless tag
 
-      tag = Community::Tag.usable_by(current_user).find_by!(id: tag.id)
       sort = params[:sort].to_s.presence || "activity"
-      topic_ids = tag.topics.published_listed.merge(Community::Topic.accessible_by(current_user)).pluck(:id)
+      visible_topics = Community::ForumAccess.topic_scope(
+        relation: Community::Topic.all,
+        user: current_user
+      )
+      topic_ids = tag.topics.published_listed.merge(visible_topics).pluck(:id)
       scope = preload_topics(Community::Topic.where(id: topic_ids).sorted(sort))
       scope = filter_blocked_topics(scope)
       @pagy, topics = pagy(:offset, scope, limit: 20)
@@ -109,7 +118,9 @@ module Community
     end
 
     def toggle_subscription
-      tag = Community::Tag.usable_by(current_user).find_by!(slug: params[:slug])
+      tag = Community::Tag.resolve_by_slug_for(params[:slug], user: current_user)
+      raise ActiveRecord::RecordNotFound unless tag
+
       result = Community::ToggleTagSubscription.call(user: current_user, tag: tag)
 
       if result.success?
@@ -121,7 +132,9 @@ module Community
     end
 
     def update_subscription
-      tag = Community::Tag.usable_by(current_user).find_by!(slug: params[:slug])
+      tag = Community::Tag.resolve_by_slug_for(params[:slug], user: current_user)
+      raise ActiveRecord::RecordNotFound unless tag
+
       result = Community::SetSubscriptionLevel.call(
         user: current_user,
         subscribable: tag,

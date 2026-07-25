@@ -18,7 +18,10 @@ module Community
         user ? scope.where(user: user) : scope.none
       when "participated"
         if user
-          topic_ids = Community::Post.where(user: user, status: :published).select(:forum_topic_id)
+          topic_ids = Community::Post
+            .where(user: user, status: :published)
+            .where.not(post_type: :whisper)
+            .select(:forum_topic_id)
           scope.where(id: topic_ids)
         else
           scope.none

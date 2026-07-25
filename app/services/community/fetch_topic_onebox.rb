@@ -19,7 +19,10 @@ module Community
       match = path.match(TOPIC_PATH)
       return ServiceResult.success(nil) unless match
 
-      topic = Community::Topic.published_listed.find_by(public_id: match[1])
+      topic = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.where(public_id: match[1]),
+        user: nil
+      ).first
       return ServiceResult.success(nil) unless topic
 
       ServiceResult.success(

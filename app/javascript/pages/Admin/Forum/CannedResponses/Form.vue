@@ -2,12 +2,7 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -45,23 +40,30 @@ async function destroy() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="title">{{ t('admin.common.title') }}</Label>
-      <Input id="title" v-model="form.canned_response.title" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="body">{{ t('admin.common.body') }}</Label>
-      <Textarea id="body" v-model="form.canned_response.body" rows="6" required />
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button v-if="deleteUrl" type="button" variant="destructive" @click="destroy">{{ t('admin.ui.delete') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-2xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <label class="admin-forum-field">
+        <span>{{ t('admin.common.title') }}</span>
+        <a-input v-model="form.canned_response.title" :input-attrs="{ required: true }" allow-clear />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.common.body') }}</span>
+        <a-textarea
+          v-model="form.canned_response.body"
+          :auto-size="{ minRows: 6, maxRows: 14 }"
+          :textarea-attrs="{ required: true }"
+        />
+      </label>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <a-button v-if="deleteUrl" type="primary" status="danger" @click="destroy">{{ t('admin.ui.delete') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+</style>

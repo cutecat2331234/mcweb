@@ -22,10 +22,10 @@ module Community
     private
 
     def render_posts_tab(tab)
-      scope = Community::Post.where(status: :published)
-        .where.not(post_type: "whisper")
-        .joins(:topic)
-        .merge(Community::Topic.where(status: :published, unlisted: false).accessible_by(current_user))
+      scope = Community::ForumAccess.listed_post_scope(
+        relation: Community::Post.all,
+        user: current_user
+      )
         .includes(:user, topic: :section)
         .order(created_at: :desc)
 
@@ -48,11 +48,12 @@ module Community
       end
 
       followed_ids = Community::UserFollow.where(follower: current_user).pluck(:followed_id) - blocked_user_ids
-      scope = Community::Post.where(status: :published, user_id: followed_ids)
-        .where.not(post_type: "whisper")
+      scope = Community::ForumAccess.listed_post_scope(
+        relation: Community::Post.where(user_id: followed_ids),
+        user: current_user
+      )
         .includes(:user, topic: :section)
         .order(created_at: :desc)
-      scope = scope.joins(:topic).merge(Community::Topic.where(status: :published, unlisted: false).accessible_by(current_user))
       scope = scope.where.not(forum_topics: { user_id: blocked_user_ids }) if blocked_user_ids.any?
 
       @pagy, posts = pagy(:offset, scope, limit: 30)
@@ -65,7 +66,11 @@ module Community
 
     def render_topics_tab(tab)
       sort = params[:sort].presence || "latest"
-      scope = preload_topics(Community::Topic.published_listed.accessible_by(current_user).joins(:section))
+      scope = Community::ForumAccess.topic_scope(
+        relation: Community::Topic.published_listed,
+        user: current_user
+      )
+      scope = preload_topics(scope.joins(:section))
       scope = filter_blocked_topics(scope) if logged_in?
       scope = apply_forum_topic_sort(scope, sort)
       @pagy, topics = pagy(:offset, scope, limit: 30)

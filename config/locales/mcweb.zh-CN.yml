@@ -175,7 +175,7 @@
           topic: 已切换为普通（仅参与或被 @提及时通知）。
           section: 已切换为普通（不接收分区新主题通知）。
           tag: 已切换为普通（不接收标签新主题通知）。
-        off:
+        "off":
           topic: 已关闭此主题通知。
           section: 已取消关注此分区。
           tag: 已取消关注此标签。
@@ -1130,7 +1130,7 @@
         user_unavailable: API 密钥不能绑定到已封禁或已删除的用户。
       webhook_subscriptions:
         title: 事件 Webhook 订阅
-        subtitle: 将事件总线（Mcweb::Events）事件推送到外部 URL，支持 HMAC 签名
+        subtitle: 将仅含标识符的事件失效通知以 HMAC 签名后推送到外部 URL
         form_new: 新建 Webhook 订阅
         form_edit: 编辑 Webhook 订阅
       common:
@@ -1157,6 +1157,15 @@
       system:
         applications:
           title: 应用与扩展
+          marketplace:
+            package_required: 请选择要安装的插件 ZIP。
+            zip_required: 插件包必须是 ZIP 文件。
+            package_empty: 插件包为空。
+            package_too_large: 插件包超过 50 MB 限制。
+            invalid_sha256: 预期 SHA-256 必须是 64 位小写十六进制字符。
+            unavailable: 暂时无法读取插件包状态。
+            operation_succeeded: "%{plugin} 的 %{action} 操作已完成。"
+            operation_failed: 无法完成插件包操作。
       dashboard:
         metrics:
           users: 用户
@@ -1348,7 +1357,7 @@
             forum.min_trust_level_reaction: 信任等级低于此值的用户无法对帖子添加反应。
             forum.saved_search_webhook_secret: 用于 X-McWeb-Signature HMAC 签名的密钥，可选。
             forum.saved_search_webhook_url: 用于管理后台测试投递与全局 Hook，留空则无法发送测试。
-            forum.event_webhook_url: 主题/帖子事件（创建、编辑、解决）的 Webhook 接收地址。
+            forum.event_webhook_url: 仅接收主题/帖子标识符失效通知的公网地址；不会发送标题、正文、用户名或私密论坛资源。
             forum.event_webhook_secret: 论坛事件 Webhook HMAC 签名密钥，可选。
             forum.event_webhook_events: 启用的事件类型：topic.created、post.created、post.edited、post.deleted、post.restored、post.rejected、post.approved、topic.solved、topic.moved。
             forum.search_feeds_opml_saved_limit: 合并 OPML 导出时最多包含的保存搜索数量（1–100）。
@@ -1883,8 +1892,8 @@
             webhook_url_private: Webhook URL 不能指向内网或本地地址
     labels:
       not_available: "—"
-      yes: 是
-      no: 否
+      "yes": 是
+      "no": 否
       enabled: 启用
       disabled: 禁用
       unlimited: "∞"

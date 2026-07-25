@@ -9,20 +9,12 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "post_moderation_unauthorized") unless Community::SectionModeration.can_moderate_topic?(user: @actor, topic: @topic)
-      return ServiceResult.failure(error: "post_not_pending_approval") unless @post.status == "pending_approval"
-
-      Community::Post.transaction do
-        @post.update!(status: "published")
-        if @post.floor_number == 1 && @topic.status == "hidden"
-          @topic.update!(
-            status: "published",
-            last_posted_at: @post.created_at,
-            last_post_user: @post.user
-          )
-        end
-        Community::Post.sync_topic_counters!(@topic)
-      end
+      decision = Community::DecidePendingPost.call(
+        actor: @actor,
+        post: @post,
+        decision: :approve
+      )
+      return decision if decision.failure?
 
       Community::PublishPostSideEffects.call(post: @post.reload, dispatch_webhooks: false)
       award_post_points(@post)

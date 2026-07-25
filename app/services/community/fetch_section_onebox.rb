@@ -14,9 +14,14 @@ module Community
       return ServiceResult.success(nil) unless match
 
       section = Community::Section.includes(:category).find_by(slug: match[1])
-      return ServiceResult.success(nil) unless section
+      return ServiceResult.success(nil) unless Community::SectionAccess.view?(section: section, user: nil)
 
-      meta = [ section.category&.name, I18n.t("mcweb.forum.section_onebox.topics_count", count: section.topics.where(status: :published).count) ].compact.join(" · ")
+      topics_count = Community::ForumAccess.listed_topic_scope(
+        relation: section.topics,
+        user: nil
+      ).count
+
+      meta = [ section.category&.name, I18n.t("mcweb.forum.section_onebox.topics_count", count: topics_count) ].compact.join(" · ")
       ServiceResult.success(
         slug: section.slug,
         name: section.name,

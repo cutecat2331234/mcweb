@@ -2,10 +2,6 @@
 import { useForm, Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -36,30 +32,51 @@ function submit() {
 </script>
 
 <template>
-  <div class="mb-4 flex items-center justify-between">
-    <PageHeader :title="t('admin.forum.points.settingsTitle')" :subtitle="t('admin.forum.points.settingsSubtitle')" />
-    <Link :href="back_url" class="rounded-md border px-3 py-1.5 text-sm no-underline hover:bg-muted">
-      {{ t('admin.forum.points.backToLog') }}
-    </Link>
-  </div>
+  <a-page-header
+    :title="t('admin.forum.points.settingsTitle')"
+    :subtitle="t('admin.forum.points.settingsSubtitle')"
+    :show-back="false"
+    class="mb-4 !px-0"
+  >
+    <template #extra>
+      <Link :href="back_url" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">
+        {{ t('admin.forum.points.backToLog') }}
+      </Link>
+    </template>
+  </a-page-header>
 
-  <form class="max-w-xl space-y-5" @submit.prevent="submit">
-    <div v-for="item in settings" :key="item.key" class="space-y-1.5">
-      <Label :for="item.key">{{ item.label }}</Label>
-      <Input
-        :id="item.key"
-        v-model="form.settings[item.key]"
-        type="number"
-        min="0"
-        step="1"
-        class="w-40"
-      />
-      <p v-if="item.hint" class="text-xs text-muted-foreground">{{ item.hint }}</p>
-    </div>
+  <a-card class="max-w-xl" :bordered="true">
+    <form class="grid gap-5" @submit.prevent="submit">
+      <label v-for="item in settings" :key="item.key" class="admin-forum-field">
+        <span>{{ item.label }}</span>
+        <a-input-number
+          :model-value="form.settings[item.key] === '' ? undefined : Number(form.settings[item.key])"
+          :min="0"
+          class="w-full sm:w-48"
+          @update:model-value="(value: number | undefined) => { form.settings[item.key] = value == null ? '' : String(value) }"
+        />
+        <small v-if="item.hint">{{ item.hint }}</small>
+      </label>
 
-    <div class="flex items-center gap-3 pt-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.common.saveSettings') }}</Button>
-      <span v-if="form.recentlySuccessful" class="text-sm text-emerald-600">{{ t('admin.common.saved') }}</span>
-    </div>
-  </form>
+      <a-space>
+        <a-button html-type="submit" type="primary" :loading="form.processing">
+          {{ t('admin.common.saveSettings') }}
+        </a-button>
+        <a-tag v-if="form.recentlySuccessful" color="green">{{ t('admin.common.saved') }}</a-tag>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-2);
+  font-size: 14px;
+}
+
+.admin-forum-field small {
+  color: var(--color-text-3);
+}
+</style>

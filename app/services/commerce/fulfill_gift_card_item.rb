@@ -14,6 +14,7 @@ module Commerce
 
       cards = nil
       newly_issued = false
+      ledger_error = nil
 
       Commerce::OrderItem.transaction do
         @order_item.lock!
@@ -39,16 +40,22 @@ module Commerce
               expires_at: expiry_days.positive? ? expiry_days.days.from_now : nil,
               note: I18n.t("mcweb.commerce.notes.gift_card_order_purchase", number: @order.order_number),
             )
-            Commerce::RecordGiftCardTransaction.call(
+            transaction_result = Commerce::RecordGiftCardTransaction.call(
               gift_card: card,
               amount_cents: amount_cents,
               transaction_type: "issue",
               order: @order
             )
+            unless transaction_result.success?
+              ledger_error = transaction_result.error.presence || "gift_card_transaction_invalid"
+              raise ActiveRecord::Rollback
+            end
             cards << card
           end
         end
       end
+
+      return ServiceResult.failure(error: ledger_error) if ledger_error.present?
 
       fulfillment = Commerce::Fulfillment.find_by(order_item: @order_item)
       unless fulfillment

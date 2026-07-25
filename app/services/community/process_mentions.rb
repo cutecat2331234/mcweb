@@ -34,8 +34,17 @@ module Community
         end
       end
 
-      mentioned_users.uniq.each do |user|
+      mentioned_users.uniq!
+      allowed_recipient_ids = Community::FilterNotificationRecipients.call(
+        actor_id: @author.id,
+        recipient_ids: mentioned_users.map(&:id),
+        topic: @topic
+      ).value
+
+      mentioned_users.each do |user|
+        next unless allowed_recipient_ids.include?(user.id)
         next unless mention_visible_to?(user)
+
         notify_user!(user, group_mention: group_tokens.include?("here"))
       end
 
@@ -62,30 +71,46 @@ module Community
 
     def notify_user!(user, group_mention: false)
       notification_type = group_mention ? "forum.here" : "forum.mention"
-      return unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: notification_type)
+      in_app_enabled = NotificationPreference.enabled?(
+        user,
+        channel: "in_app",
+        notification_type: notification_type
+      )
+      email_enabled = Community::InstantEmailDelivery.allowed?(
+        user,
+        notification_type: notification_type
+      )
+      return unless in_app_enabled || email_enabled
 
       title_key = group_mention ? "here" : "mention"
-      Community::InAppNotification.notify(
-        user: user,
-        notification_type: notification_type,
-        key: title_key,
-        author: @author.username,
-        excerpt: @body.truncate(120),
-        metadata: {
-          topic_id: @topic.public_id,
-          post_id: @post.id,
-          path: Community::PostPermalink.path(@topic, @post)
-        }
-      )
-
-      if Community::InstantEmailDelivery.allowed?(user, notification_type: notification_type)
-        mailer_action = group_mention ? "here" : "mention"
-        MailDeliveryJob.perform_later(
-          "Community::ForumMailer",
-          mailer_action,
-          "deliver_now",
-          args: [ user.id, @topic.public_id, @post.id ]
+      if in_app_enabled
+        Community::InAppNotification.notify(
+          user: user,
+          notification_type: notification_type,
+          key: title_key,
+          author: @author.username,
+          excerpt: @body.truncate(120),
+          metadata: {
+            topic_id: @topic.public_id,
+            post_id: @post.id,
+            path: Community::PostPermalink.path(@topic, @post)
+          }
         )
+      end
+
+      if email_enabled
+        mailer_action = group_mention ? "here" : "mention"
+        user_id = user.id
+        topic_id = @topic.public_id
+        post_id = @post.id
+        ActiveRecord.after_all_transactions_commit do
+          MailDeliveryJob.perform_later(
+            "Community::ForumMailer",
+            mailer_action,
+            "deliver_now",
+            args: [ user_id, topic_id, post_id ]
+          )
+        end
       end
     end
 

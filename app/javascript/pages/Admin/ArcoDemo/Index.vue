@@ -4,6 +4,7 @@
  * Uses ArcoAdminLayout + components from @mcweb/ui.
  */
 import { computed, reactive, ref, type Component } from 'vue'
+import { Message } from '@mcweb/ui'
 import {
   IconCalendar,
   IconCheckCircle,

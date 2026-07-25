@@ -37,6 +37,9 @@ module Community
         if Community::UserBlock.blocked?(@sender, recipient)
           return ServiceResult.failure(error: "You cannot message #{recipient.username}.")
         end
+        unless Community::PmPolicy.accepts?(recipient: recipient, sender: @sender)
+          return ServiceResult.failure(error: "pm_not_accepted")
+        end
       end
 
       conversation = nil

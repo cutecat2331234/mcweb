@@ -57,11 +57,16 @@ end
 class Community::SendForumDigestTest < ActiveSupport::TestCase
   setup do
     @user = create_user(forum_digest_frequency: "daily")
+    topic, post = create_visible_forum_notification_resource(user: @user)
     @user.notifications.create!(
       notification_type: "forum.topic_reply",
       title: "Reply",
       body: "New reply",
-      metadata: { path: "/app/forum/topics/abc" }
+      metadata: {
+        topic_id: topic.public_id,
+        post_id: post.id,
+        path: "/app/forum/topics/#{topic.public_id}"
+      }
     )
   end
 

@@ -17,6 +17,7 @@ module Community
               SELECT 1 FROM forum_posts
               WHERE forum_posts.forum_topic_id = forum_topics.id
               AND forum_posts.status = 'published'
+              AND forum_posts.post_type <> 'whisper'
               AND forum_posts.body ILIKE :pattern
             )
           SQL

@@ -129,6 +129,42 @@ module Api
         assert JSON.parse(response.body)["data"]["id"].present?
       end
 
+      test "API topic creation validates and serializes custom fields" do
+        writer = create_user(username: "apifieldwriter")
+        _record, token = Administration::ApiKey.generate!(
+          name: "field-writer",
+          scopes: %w[read write],
+          user: writer
+        )
+        Community::TopicFieldDefinition.create!(
+          key: "api_code",
+          label: "API code",
+          field_type: "text",
+          display_location: "topic_status",
+          required: true,
+          editable_by_user: true,
+          active: true,
+          section_ids: [ @section.id ]
+        )
+
+        post "/api/v1/topics", params: {
+          section_id: "api-sec",
+          title: "Missing API field",
+          body: "Body created via API"
+        }, headers: auth_headers(token)
+        assert_response :unprocessable_entity
+
+        post "/api/v1/topics", params: {
+          section_id: "api-sec",
+          title: "API custom field",
+          body: "Body created via API",
+          custom_fields: { api_code: "from-api" }
+        }, headers: auth_headers(token)
+        assert_response :created
+        fields = JSON.parse(response.body).dig("data", "custom_fields")
+        assert_equal "from-api", fields.find { |field| field["key"] == "api_code" }["value"]
+      end
+
       test "write key with acting user can create a reply" do
         replier = create_user(username: "apireplier")
         _rec, wtoken = Administration::ApiKey.generate!(name: "replier", scopes: %w[read write], user: replier)

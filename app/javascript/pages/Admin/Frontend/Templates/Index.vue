@@ -1,13 +1,10 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Modal } from '@mcweb/ui'
+import { IconDelete, IconUpload } from '@arco-design/web-vue/es/icon'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Badge from '@/components/ui/Badge.vue'
-import FileInput from '@/components/ui/FileInput.vue'
-import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -39,12 +36,19 @@ const props = defineProps<{
 
 const uploading = ref(false)
 
-function onFileChange(file: File) {
+function uploadTemplate(file: File) {
   uploading.value = true
-  router.post(props.uploadUrl, { archive: file }, {
-    forceFormData: true,
-    onFinish: () => { uploading.value = false },
-  })
+  router.post(
+    props.uploadUrl,
+    { archive: file },
+    {
+      forceFormData: true,
+      onFinish: () => {
+        uploading.value = false
+      },
+    },
+  )
+  return false
 }
 
 function activate(template: TemplateItem, scope: 'website' | 'portal') {
@@ -55,16 +59,17 @@ function deactivate(scope: 'website' | 'portal', template: TemplateItem) {
   router.patch(template.update_url, { scope, template_key: null })
 }
 
-async function removeTemplate(template: TemplateItem) {
+function removeTemplate(template: TemplateItem) {
   if (template.builtin) return
-  const ok = await confirm({
+  Modal.warning({
     title: t('admin.templates.deleteTitle'),
-    message: t('admin.templates.deleteConfirm', { name: template.name }),
-    confirmLabel: t('admin.ui.delete'),
-    variant: 'destructive',
+    content: t('admin.templates.deleteConfirm', { name: template.name }),
+    okText: t('admin.ui.delete'),
+    cancelText: t('admin.ui.cancel'),
+    hideCancel: false,
+    okButtonProps: { status: 'danger' },
+    onOk: () => router.delete(template.delete_url),
   })
-  if (!ok) return
-  router.delete(template.delete_url)
 }
 
 function isActive(template: TemplateItem, scope: 'website' | 'portal') {
@@ -72,119 +77,151 @@ function isActive(template: TemplateItem, scope: 'website' | 'portal') {
     ? props.activeWebsiteTemplate === template.key
     : props.activePortalTemplate === template.key
 }
+
+function statusColor(status: string) {
+  if (status === 'installed') return 'green'
+  if (status === 'error') return 'red'
+  return 'gray'
+}
 </script>
 
 <template>
-  <PageHeader
+  <a-page-header
     :title="t('admin.templates.title')"
     :subtitle="t('admin.templates.subtitle')"
+    :show-back="false"
   />
 
-  <div class="mb-6 rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">{{ t('admin.templates.uploadTitle') }}</h2>
-    <p class="mb-3 text-sm text-muted-foreground">
+  <a-card :title="t('admin.templates.uploadTitle')" :bordered="true" class="mb-4">
+    <a-typography-paragraph type="secondary">
       {{ t('admin.templates.uploadHint') }}
-      <a href="/template-starter/manifest.json" class="underline" target="_blank" rel="noopener">{{ t('admin.templates.manifestSpec') }}</a>
+      <a-link href="/template-starter/manifest.json" target="_blank" rel="noopener">
+        {{ t('admin.templates.manifestSpec') }}
+      </a-link>
       {{ t('admin.templates.orDownload') }}
-      <a :href="starterDownloadUrl" class="underline">{{ t('admin.templates.samplePack') }}</a>。
-    </p>
-    <FileInput
+      <a-link :href="starterDownloadUrl">{{ t('admin.templates.samplePack') }}</a-link>
+    </a-typography-paragraph>
+    <a-upload
       accept=".zip,application/zip"
+      :auto-upload="false"
+      :show-file-list="false"
       :disabled="uploading"
-      :button-label="uploading ? t('admin.templates.uploading') : t('admin.templates.selectZip')"
-      @change="onFileChange"
-    />
-  </div>
+      :before-upload="uploadTemplate"
+    >
+      <template #upload-button>
+        <a-button type="primary" :loading="uploading">
+          <template #icon><icon-upload /></template>
+          {{ uploading ? t('admin.templates.uploading') : t('admin.templates.selectZip') }}
+        </a-button>
+      </template>
+    </a-upload>
+  </a-card>
 
-  <div class="space-y-4">
-    <div
+  <a-space v-if="templates.length" direction="vertical" fill>
+    <a-card
       v-for="template in templates"
       :key="template.id"
-      class="rounded-lg border p-4"
+      :title="template.name"
+      :bordered="true"
     >
-      <div class="flex flex-wrap items-start justify-between gap-3">
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <h3 class="font-medium">{{ template.name }}</h3>
-            <Badge v-if="template.builtin" variant="secondary">{{ t('admin.templates.builtin') }}</Badge>
-            <Badge variant="outline">{{ template.key }}</Badge>
-            <Badge variant="outline">v{{ template.version }}</Badge>
-            <Badge :variant="template.status === 'installed' ? 'default' : 'outline'">{{ template.status }}</Badge>
-          </div>
-          <p class="mt-1 text-xs text-muted-foreground">
-            {{ t('admin.templates.scopes') }}{{ template.scopes.join(t('common.listSeparator')) }}
-            <span v-if="template.checksum" class="ml-2">{{ t('admin.templates.checksum') }}{{ template.checksum.slice(0, 12) }}…</span>
-          </p>
-          <p v-if="template.error_message" class="mt-1 text-sm text-destructive">{{ template.error_message }}</p>
-        </div>
-        <Button
+      <template #extra>
+        <a-button
           v-if="!template.builtin"
-          type="button"
-          variant="outline"
-          size="sm"
+          type="text"
+          status="danger"
+          size="small"
           @click="removeTemplate(template)"
         >
+          <template #icon><icon-delete /></template>
           {{ t('admin.ui.delete') }}
-        </Button>
-      </div>
+        </a-button>
+      </template>
 
-      <div class="mt-4 flex flex-wrap items-center justify-end gap-2 sm:justify-start">
+      <a-space wrap>
+        <a-tag v-if="template.builtin" color="arcoblue">{{ t('admin.templates.builtin') }}</a-tag>
+        <a-tag>{{ template.key }}</a-tag>
+        <a-tag>v{{ template.version }}</a-tag>
+        <a-tag :color="statusColor(template.status)">{{ template.status }}</a-tag>
+      </a-space>
+      <a-typography-paragraph type="secondary" class="mt-2">
+        {{ t('admin.templates.scopes') }}{{ template.scopes.join(t('common.listSeparator')) }}
+        <template v-if="template.checksum">
+          · {{ t('admin.templates.checksum') }}{{ template.checksum.slice(0, 12) }}…
+        </template>
+      </a-typography-paragraph>
+      <a-alert v-if="template.error_message" type="error" show-icon class="mb-3">
+        {{ template.error_message }}
+      </a-alert>
+
+      <a-space wrap>
         <template v-if="template.scopes.includes('website')">
-          <Button
+          <a-button
             v-if="!isActive(template, 'website')"
-            type="button"
-            size="sm"
+            type="primary"
+            size="small"
             @click="activate(template, 'website')"
           >
             {{ t('admin.templates.activateWebsite') }}
-          </Button>
-          <Button
+          </a-button>
+          <a-button
             v-else-if="!template.builtin"
-            type="button"
-            size="sm"
-            variant="secondary"
+            size="small"
             @click="deactivate('website', template)"
           >
             {{ t('admin.templates.deactivateWebsite') }}
-          </Button>
-          <Badge v-else-if="isActive(template, 'website')" variant="secondary">{{ t('admin.templates.builtinDefault') }}</Badge>
-          <Button v-if="template.preview_website_url" as-child size="sm" variant="outline">
-            <a :href="template.preview_website_url" target="_blank" rel="noopener">{{ t('admin.templates.previewWebsite') }}</a>
-          </Button>
+          </a-button>
+          <a-tag v-else color="green">{{ t('admin.templates.builtinDefault') }}</a-tag>
+          <a-link
+            v-if="template.preview_website_url"
+            :href="template.preview_website_url"
+            target="_blank"
+            rel="noopener"
+          >
+            {{ t('admin.templates.previewWebsite') }}
+          </a-link>
         </template>
 
         <template v-if="template.scopes.includes('portal')">
-          <Button
+          <a-button
             v-if="!isActive(template, 'portal')"
-            type="button"
-            size="sm"
+            type="primary"
+            size="small"
             @click="activate(template, 'portal')"
           >
             {{ t('admin.templates.activatePortal') }}
-          </Button>
-          <Button
+          </a-button>
+          <a-button
             v-else-if="!template.builtin"
-            type="button"
-            size="sm"
-            variant="secondary"
+            size="small"
             @click="deactivate('portal', template)"
           >
             {{ t('admin.templates.deactivatePortal') }}
-          </Button>
-          <Badge v-else-if="isActive(template, 'portal')" variant="secondary">{{ t('admin.templates.builtinDefault') }}</Badge>
-          <Button v-if="template.preview_portal_url" as-child size="sm" variant="outline">
-            <a :href="template.preview_portal_url" target="_blank" rel="noopener">{{ t('admin.templates.previewPortal') }}</a>
-          </Button>
+          </a-button>
+          <a-tag v-else color="green">{{ t('admin.templates.builtinDefault') }}</a-tag>
+          <a-link
+            v-if="template.preview_portal_url"
+            :href="template.preview_portal_url"
+            target="_blank"
+            rel="noopener"
+          >
+            {{ t('admin.templates.previewPortal') }}
+          </a-link>
         </template>
-      </div>
-    </div>
+      </a-space>
+    </a-card>
+  </a-space>
+  <a-empty v-else :description="t('admin.templates.loading')" />
 
-    <p v-if="!templates.length" class="text-sm text-muted-foreground">{{ t('admin.templates.loading') }}</p>
-  </div>
-
-  <p class="mt-6 text-xs text-muted-foreground">
+  <a-alert type="info" class="mt-4">
     {{ t('admin.templates.activeNow') }}
-    {{ t('admin.templates.website') }} <code>{{ activeWebsiteTemplate || t('admin.templates.builtinDefault') }}</code>，
-    {{ t('admin.templates.portal') }} <code>{{ activePortalTemplate || t('admin.templates.builtinDefault') }}</code>
-  </p>
+    {{ t('admin.templates.website') }}
+    <a-typography-text code>
+      {{ activeWebsiteTemplate || t('admin.templates.builtinDefault') }}
+    </a-typography-text>
+    ·
+    {{ t('admin.templates.portal') }}
+    <a-typography-text code>
+      {{ activePortalTemplate || t('admin.templates.builtinDefault') }}
+    </a-typography-text>
+  </a-alert>
 </template>

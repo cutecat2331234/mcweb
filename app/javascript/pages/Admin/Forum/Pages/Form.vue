@@ -2,13 +2,7 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -46,45 +40,46 @@ async function destroy() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-
-  <form class="max-w-2xl space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="title">{{ t('admin.forumPagesForm.title') }}</Label>
-      <Input id="title" v-model="form.forum_page.title" required maxlength="200" />
-    </div>
-    <div class="space-y-2">
-      <Label for="slug">{{ t('admin.forumPagesForm.slug') }}</Label>
-      <Input id="slug" v-model="form.forum_page.slug" :placeholder="t('admin.forumPagesForm.slugHint')" />
-    </div>
-    <div class="space-y-2">
-      <Label for="body">{{ t('admin.forumPagesForm.body') }}</Label>
-      <Textarea id="body" v-model="form.forum_page.body" rows="10" />
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.forum_page.show_in_nav" />
-      {{ t('admin.forumPagesForm.showInNav') }}
-    </label>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="nav_label">{{ t('admin.forumPagesForm.navLabel') }}</Label>
-        <Input id="nav_label" v-model="form.forum_page.nav_label" />
-      </div>
-      <div class="space-y-2">
-        <Label for="position">{{ t('admin.forumPagesForm.position') }}</Label>
-        <Input id="position" v-model="form.forum_page.position" type="number" min="0" />
-      </div>
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.forum_page.published" />
-      {{ t('admin.forumPagesForm.published') }}
-    </label>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button v-if="deleteUrl" type="button" variant="destructive" @click="destroy">{{ t('admin.ui.delete') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-3xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forumPagesForm.title') }}</span>
+        <a-input v-model="form.forum_page.title" :input-attrs="{ required: true, maxlength: 200 }" allow-clear />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forumPagesForm.slug') }}</span>
+        <a-input v-model="form.forum_page.slug" :placeholder="t('admin.forumPagesForm.slugHint')" allow-clear />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forumPagesForm.body') }}</span>
+        <a-textarea v-model="form.forum_page.body" :auto-size="{ minRows: 10, maxRows: 24 }" />
+      </label>
+      <a-checkbox v-model="form.forum_page.show_in_nav">{{ t('admin.forumPagesForm.showInNav') }}</a-checkbox>
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forumPagesForm.navLabel') }}</span>
+            <a-input v-model="form.forum_page.nav_label" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forumPagesForm.position') }}</span>
+            <a-input-number v-model="form.forum_page.position" :min="0" class="w-full" />
+          </label>
+        </a-col>
+      </a-row>
+      <a-checkbox v-model="form.forum_page.published">{{ t('admin.forumPagesForm.published') }}</a-checkbox>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <a-button v-if="deleteUrl" type="primary" status="danger" @click="destroy">{{ t('admin.ui.delete') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+</style>

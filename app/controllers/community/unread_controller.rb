@@ -92,10 +92,10 @@ module Community
       tag_slugs = tag_slugs || unread_tag_slugs
       tag_match = tag_match || unread_tag_match
 
-      scope = Community::ReadState.with_unread_for(current_user).joins(:topic)
+      scope = visible_unread_read_states_scope
 
       if filter.present?
-        unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
+        unread_topic_ids = visible_unread_read_states_scope.select(:forum_topic_id)
         filtered_ids = apply_topic_filter(
           Community::Topic.where(id: unread_topic_ids),
           filter: filter,
@@ -126,7 +126,7 @@ module Community
     end
 
     def unread_section_options
-      unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
+      unread_topic_ids = visible_unread_read_states_scope.select(:forum_topic_id)
       section_ids = Community::Topic.where(id: unread_topic_ids).distinct.pluck(:forum_section_id)
       sections = Community::Section.where(id: section_ids).order(:name)
 
@@ -138,7 +138,7 @@ module Community
     end
 
     def unread_tag_options
-      unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
+      unread_topic_ids = visible_unread_read_states_scope.select(:forum_topic_id)
       tag_ids = Community::TopicTag.where(forum_topic_id: unread_topic_ids).distinct.pluck(:forum_tag_id)
       tags = Community::Tag.where(id: tag_ids).order(:name)
 
@@ -154,6 +154,17 @@ module Community
       return [] unless canonical
 
       [ canonical.id ] + Community::Tag.where(canonical_tag_id: canonical.id).pluck(:id)
+    end
+
+    def visible_unread_read_states_scope
+      Community::ReadState
+        .with_unread_for(current_user)
+        .joins(:topic)
+        .where(
+          forum_topics: {
+            forum_section_id: Community::SectionAccess.visible_ids(user: current_user)
+          }
+        )
     end
 
     def unread_tag_slugs
@@ -187,7 +198,7 @@ module Community
     end
 
     def apply_unread_tag_filters(scope, tag_slugs, match:)
-      unread_topic_ids = Community::ReadState.with_unread_for(current_user).select(:forum_topic_id)
+      unread_topic_ids = visible_unread_read_states_scope.select(:forum_topic_id)
 
       if match == "any"
         all_tag_ids = tag_slugs.flat_map { |slug| unread_tag_ids_for(slug) }.uniq

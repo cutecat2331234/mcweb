@@ -10,7 +10,28 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Topic not available.") unless PollParticipation.visible?(topic: @topic, user: @user)
+      unless Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
+        return ServiceResult.failure(error: "Topic not available.")
+      end
+
+      state_error = topic_reply_state_error
+      return ServiceResult.failure(error: state_error) if state_error
+
+      unless @topic.section.allowed?(@user, :reply)
+        return ServiceResult.failure(error: "You are not allowed to reply in this section.")
+      end
+
+      unless @topic.section.trust_allowed?(@user, :reply)
+        return ServiceResult.failure(error: "Your trust level is too low to reply in this section.")
+      end
+
+      unless @topic.section.writable_by?(@user, :reply)
+        return ServiceResult.failure(error: "This section is read-only.")
+      end
+
+      if Community::TopicReplyBan.active.exists?(forum_topic_id: @topic.id, user_id: @user.id)
+        return ServiceResult.failure(error: I18n.t("mcweb.services.errors.topic_reply_banned"))
+      end
 
       attachment_result = Community::ValidateReplyDraftAttachments.call(user: @user, attachment_ids: @attachment_ids)
       return attachment_result if attachment_result.failure?
@@ -28,6 +49,15 @@ module Community
       ServiceResult.success(draft)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    def topic_reply_state_error
+      return "This topic is archived." if @topic.archived_at.present?
+      return "This topic is not open for replies." unless @topic.status == "published"
+
+      "This topic is locked." if @topic.locked?
     end
   end
 end

@@ -40,7 +40,3 @@ production:
     <<: *primary_production
     database: <%= (prod["database"] || "mcweb_production") %>_cache
     migrations_paths: db/cache_migrate
-  cable:
-    <<: *primary_production
-    database: <%= (prod["database"] || "mcweb_production") %>_cable
-    migrations_paths: db/cable_migrate

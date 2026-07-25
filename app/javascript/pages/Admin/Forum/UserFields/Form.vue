@@ -1,14 +1,7 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3'
+import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import Select from '@/components/ui/Select.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -58,61 +51,72 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="key">{{ t('adminMinecraft.colKey') }}</Label>
-      <Input id="key" v-model="form.user_field.key" required pattern="[a-z][a-z0-9_]*" />
-    </div>
-    <div class="space-y-2">
-      <Label for="label">{{ t('adminMinecraft.colLabel') }}</Label>
-      <Input id="label" v-model="form.user_field.label" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="field_type">{{ t('adminMinecraft.colType') }}</Label>
-      <Select id="field_type" v-model="form.user_field.field_type" :options="fieldTypes" />
-    </div>
-    <div class="space-y-2">
-      <Label for="visibility">{{ t('adminMinecraft.colVisibility') }}</Label>
-      <Select id="visibility" v-model="form.user_field.visibility" :options="visibilities" />
-    </div>
-    <div class="space-y-2">
-      <Label for="description">{{ t('adminForum.fieldDescription') }}</Label>
-      <Textarea id="description" v-model="form.user_field.description" rows="2" />
-    </div>
-    <div v-if="form.user_field.field_type === 'select'" class="space-y-2">
-      <Label for="choices">{{ t('adminForum.fieldChoices') }}</Label>
-      <Textarea id="choices" v-model="form.user_field.choices" rows="4" :placeholder="t('adminForum.fieldChoicesPlaceholder')" />
-    </div>
-    <div class="space-y-2">
-      <Label for="sort_order">{{ t('adminMinecraft.sortOrder') }}</Label>
-      <Input id="sort_order" v-model.number="form.user_field.sort_order" type="number" />
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.user_field.required" />
-      {{ t('adminForum.fieldRequired') }}
-    </label>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.user_field.show_on_registration" />
-      {{ t('adminForum.fieldShowOnRegistration') }}
-    </label>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.user_field.show_on_profile" />
-      {{ t('adminForum.fieldShowOnProfile') }}
-    </label>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.user_field.editable_by_user" />
-      {{ t('adminForum.fieldEditableByUser') }}
-    </label>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.user_field.active" />
-      {{ t('adminMinecraft.active') }}
-    </label>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('common.save') }}</Button>
-      <Button type="button" variant="outline" as-child>
-        <a :href="backUrl">{{ t('common.cancel') }}</a>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-3xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('adminMinecraft.colKey') }}</span>
+            <a-input
+              v-model="form.user_field.key"
+              :input-attrs="{ required: true, pattern: '[a-z][a-z0-9_]*' }"
+              allow-clear
+            />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('adminMinecraft.colLabel') }}</span>
+            <a-input v-model="form.user_field.label" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('adminMinecraft.colType') }}</span>
+            <a-select v-model="form.user_field.field_type" :options="fieldTypes" />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('adminMinecraft.colVisibility') }}</span>
+            <a-select v-model="form.user_field.visibility" :options="visibilities" />
+          </label>
+        </a-col>
+      </a-row>
+      <label class="admin-forum-field">
+        <span>{{ t('adminForum.fieldDescription') }}</span>
+        <a-textarea v-model="form.user_field.description" :auto-size="{ minRows: 2, maxRows: 6 }" />
+      </label>
+      <label v-if="form.user_field.field_type === 'select'" class="admin-forum-field">
+        <span>{{ t('adminForum.fieldChoices') }}</span>
+        <a-textarea
+          v-model="form.user_field.choices"
+          :auto-size="{ minRows: 4, maxRows: 10 }"
+          :placeholder="t('adminForum.fieldChoicesPlaceholder')"
+        />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('adminMinecraft.sortOrder') }}</span>
+        <a-input-number v-model="form.user_field.sort_order" class="w-full sm:w-48" />
+      </label>
+      <a-card size="small" :bordered="true">
+        <a-space direction="vertical" align="start">
+          <a-checkbox v-model="form.user_field.required">{{ t('adminForum.fieldRequired') }}</a-checkbox>
+          <a-checkbox v-model="form.user_field.show_on_registration">{{ t('adminForum.fieldShowOnRegistration') }}</a-checkbox>
+          <a-checkbox v-model="form.user_field.show_on_profile">{{ t('adminForum.fieldShowOnProfile') }}</a-checkbox>
+          <a-checkbox v-model="form.user_field.editable_by_user">{{ t('adminForum.fieldEditableByUser') }}</a-checkbox>
+          <a-checkbox v-model="form.user_field.active">{{ t('adminMinecraft.active') }}</a-checkbox>
+        </a-space>
+      </a-card>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('common.save') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('common.cancel') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+</style>

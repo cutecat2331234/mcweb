@@ -24,7 +24,9 @@ module Community
     private
 
     def filter_by_topic_visibility(recipient_ids)
-      User.where(id: recipient_ids).select { |user| PollParticipation.visible?(topic: @topic, user: user) }.map(&:id)
+      User.where(id: recipient_ids).select do |user|
+        Community::ForumAccess.topic_visible?(topic: @topic, user: user)
+      end.map(&:id)
     end
   end
 end

@@ -15,8 +15,8 @@ import {
   IconMoon,
   IconSun,
 } from '@arco-design/web-vue/es/icon'
-import FlashMessages from '@/components/portal/FlashMessages.vue'
-import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
+import AdminFlashMessages from '@/components/admin/AdminFlashMessages.vue'
+import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { useTheme } from '@/lib/useTheme'
 
@@ -32,7 +32,9 @@ interface NavGroup {
 
 const page = usePage()
 const { t } = useI18n()
-const auth = computed(() => page.props.auth as { user: { username: string } | null })
+const auth = computed(
+  () => (page.props.auth ?? { user: null }) as { user: { username: string } | null },
+)
 const { isDark, toggleTheme } = useTheme()
 
 const STORAGE_KEY = 'mc-admin-arco-nav-open'
@@ -72,6 +74,7 @@ const nav = computed<NavGroup[]>(() => [
       { label: t('admin.forumReports'), href: adminRoutes.forumReports },
       { label: t('admin.forumApprovals'), href: adminRoutes.forumApprovals },
       { label: t('admin.forumUserFields'), href: adminRoutes.forumUserFields },
+      { label: t('admin.forumTopicFields'), href: adminRoutes.forumTopicFields },
       { label: t('admin.forumBadges'), href: adminRoutes.forumBadges },
       { label: t('admin.forumPoints'), href: adminRoutes.forumPoints },
       { label: t('admin.forumWarningTemplates'), href: adminRoutes.forumWarningTemplates },
@@ -135,7 +138,10 @@ const nav = computed<NavGroup[]>(() => [
   },
 ])
 
-const currentPath = computed(() => page.url.split('?')[0])
+const currentPath = computed(() => {
+  const path = page.url.split('?')[0].replace(/\/+$/, '')
+  return path || '/'
+})
 
 function isActive(href: string) {
   const url = currentPath.value
@@ -146,6 +152,14 @@ function isActive(href: string) {
 const activeGroupKey = computed(() => {
   for (const group of nav.value) {
     if (group.items.some((item) => isActive(item.href))) return group.key
+  }
+  return ''
+})
+
+const activeItemHref = computed(() => {
+  for (const group of nav.value) {
+    const item = group.items.find((candidate) => isActive(candidate.href))
+    if (item) return item.href
   }
   return ''
 })
@@ -200,6 +214,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
 </script>
 
 <template>
+  <a href="#admin-content" class="arco-admin-skip-link">
+    {{ t('common.skipToContent', 'Skip to content') }}
+  </a>
+
   <a-layout class="arco-admin-layout min-h-dvh">
     <a-layout-sider
       class="arco-admin-sider hidden md:block"
@@ -217,7 +235,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       </div>
       <div class="arco-admin-sider__menu">
         <a-menu
-          :selected-keys="[currentPath]"
+          :selected-keys="activeItemHref ? [activeItemHref] : []"
           v-model:open-keys="openKeys"
           :collapsed="collapsed"
           @menu-item-click="onMenuClick"
@@ -270,7 +288,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
           </a-breadcrumb>
         </div>
         <div class="arco-admin-header__right">
-          <LanguageSwitcher />
+          <AdminLanguageSwitcher />
           <a-button type="text" :aria-label="t('common.toggleTheme')" @click="onToggleTheme">
             <template #icon>
               <icon-moon v-if="isDark" />
@@ -280,9 +298,9 @@ watch(isDark, syncArcoTheme, { immediate: true })
         </div>
       </a-layout-header>
 
-      <a-layout-content class="arco-admin-main">
+      <a-layout-content id="admin-content" class="arco-admin-main" tabindex="-1">
         <div class="arco-admin-main__inner">
-          <FlashMessages />
+          <AdminFlashMessages />
           <slot />
         </div>
       </a-layout-content>
@@ -292,9 +310,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
   <a-drawer
     v-model:visible="mobileNavOpen"
     placement="left"
-    :width="260"
+    :width="'min(280px, 100vw)'"
     :footer="false"
     :header="false"
+    :aria-label="t('common.openMenu')"
     unmount-on-close
   >
     <div class="arco-admin-brand arco-admin-brand--drawer">
@@ -304,11 +323,11 @@ watch(isDark, syncArcoTheme, { immediate: true })
       </Link>
     </div>
     <a-menu
-      :selected-keys="[currentPath]"
-      :default-open-keys="openKeys"
+      :selected-keys="activeItemHref ? [activeItemHref] : []"
+      v-model:open-keys="openKeys"
       @menu-item-click="onMenuClick"
     >
-      <a-sub-menu v-for="group in nav" :key="`m-${group.key}`">
+      <a-sub-menu v-for="group in nav" :key="group.key">
         <template #icon><icon-book /></template>
         <template #title>{{ group.label }}</template>
         <a-menu-item v-for="item in group.items" :key="item.href">
@@ -327,6 +346,22 @@ watch(isDark, syncArcoTheme, { immediate: true })
 <style scoped>
 .arco-admin-layout {
   background: var(--color-bg-1);
+}
+
+.arco-admin-skip-link {
+  position: fixed;
+  z-index: 1101;
+  top: 8px;
+  left: 8px;
+  padding: 8px 12px;
+  color: var(--color-text-1);
+  background: var(--color-bg-2);
+  border: 1px solid rgb(var(--primary-6));
+  border-radius: 4px;
+  transform: translateY(-150%);
+}
+.arco-admin-skip-link:focus {
+  transform: translateY(0);
 }
 
 .arco-admin-sider {
@@ -399,8 +434,19 @@ watch(isDark, syncArcoTheme, { immediate: true })
   gap: 8px;
 }
 
+.arco-admin-main {
+  min-width: 0;
+  padding: 24px;
+  overflow: auto;
+}
 .arco-admin-main__inner {
   max-width: 1200px;
   margin: 0 auto;
+}
+
+@media (max-width: 767px) {
+  .arco-admin-main {
+    padding: 16px;
+  }
 }
 </style>

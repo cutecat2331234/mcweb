@@ -1,13 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Modal } from '@mcweb/ui'
+import { IconArrowDown, IconArrowUp, IconDelete } from '@arco-design/web-vue/es/icon'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -34,7 +31,6 @@ const props = defineProps<{
 }>()
 
 const locations = ['header', 'footer'] as const
-
 const draft = ref({
   label: '',
   url: '',
@@ -42,23 +38,58 @@ const draft = ref({
   location: 'header',
   visible: true,
 })
+const pageOptions = computed(() => [
+  { value: '', label: '— external URL —' },
+  ...props.pages.map((page) => ({
+    value: page.id,
+    label: `${page.title} (/${page.slug})`,
+  })),
+])
+const locationOptions = locations.map((value) => ({ value, label: value }))
 
 function itemsForLocation(location: string) {
   return props.items.filter((item) => item.location === location)
 }
 
-function createItem() {
-  router.post(props.submitUrl, {
-    nav_item: {
-      ...draft.value,
-      website_page_id: draft.value.website_page_id || null,
-      url: draft.value.url || null,
-    },
-  })
+function rowsForLocation(location: string) {
+  return itemsForLocation(location).map((item, index) => ({ ...item, index }))
 }
 
-function removeItem(id: number) {
-  router.delete(`${props.submitUrl}/${id}`)
+function createItem() {
+  router.post(
+    props.submitUrl,
+    {
+      nav_item: {
+        ...draft.value,
+        website_page_id: draft.value.website_page_id || null,
+        url: draft.value.url || null,
+      },
+    },
+    {
+      preserveScroll: true,
+      onSuccess: () => {
+        draft.value = {
+          label: '',
+          url: '',
+          website_page_id: '',
+          location: 'header',
+          visible: true,
+        }
+      },
+    },
+  )
+}
+
+function removeItem(item: NavItem) {
+  Modal.warning({
+    title: t('admin.ui.delete'),
+    content: t('admin.website.nav.deleteConfirm', `Delete “${item.label}”?`),
+    okText: t('admin.ui.delete'),
+    cancelText: t('admin.ui.cancel'),
+    hideCancel: false,
+    okButtonProps: { status: 'danger' },
+    onOk: () => router.delete(`${props.submitUrl}/${item.id}`, { preserveScroll: true }),
+  })
 }
 
 function moveItem(location: string, index: number, direction: -1 | 1) {
@@ -69,54 +100,100 @@ function moveItem(location: string, index: number, direction: -1 | 1) {
   ;[ids[index], ids[next]] = [ids[next], ids[index]]
   router.patch(props.reorderUrl, { item_ids: ids, location }, { preserveScroll: true })
 }
+
+const columns = computed(() => [
+  { title: t('admin.common.title'), dataIndex: 'label', width: 180 },
+  { title: 'URL', dataIndex: 'href' },
+  { title: t('admin.common.visible', 'Visible'), slotName: 'visible', width: 100 },
+  { title: t('adminMinecraft.actions'), slotName: 'actions', width: 190 },
+])
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <a-page-header :title="title" :show-back="false" />
 
-  <form class="mb-8 max-w-lg space-y-3 rounded-lg border p-4" @submit.prevent="createItem">
-    <h2 class="text-sm font-semibold">{{ t('admin.website.nav.add', 'Add item') }}</h2>
-    <div class="space-y-2"><Label>Label</Label><Input v-model="draft.label" required /></div>
-    <div class="space-y-2">
-      <Label>Page</Label>
-      <select v-model="draft.website_page_id" class="w-full rounded-md border bg-background px-3 py-2 text-sm">
-        <option value="">— external URL —</option>
-        <option v-for="page in pages" :key="page.id" :value="page.id">{{ page.title }} (/{{ page.slug }})</option>
-      </select>
-    </div>
-    <div v-if="!draft.website_page_id" class="space-y-2"><Label>URL</Label><Input v-model="draft.url" placeholder="/blog" /></div>
-    <div class="space-y-2">
-      <Label>Location</Label>
-      <select v-model="draft.location" class="w-full rounded-md border bg-background px-3 py-2 text-sm">
-        <option v-for="location in locations" :key="location" :value="location">{{ location }}</option>
-      </select>
-    </div>
-    <label class="flex items-center gap-2 text-sm"><Checkbox v-model="draft.visible" /> Visible</label>
-    <Button type="submit">{{ t('admin.ui.save') }}</Button>
-  </form>
+  <a-card :title="t('admin.website.nav.add', 'Add item')" :bordered="true" class="mb-4">
+    <a-form :model="draft" layout="vertical" @submit="createItem">
+      <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="16">
+        <a-grid-item>
+          <a-form-item field="label" label="Label" required>
+            <a-input v-model="draft.label" allow-clear />
+          </a-form-item>
+        </a-grid-item>
+        <a-grid-item>
+          <a-form-item field="location" label="Location">
+            <a-select v-model="draft.location" :options="locationOptions" />
+          </a-form-item>
+        </a-grid-item>
+        <a-grid-item>
+          <a-form-item field="website_page_id" label="Page">
+            <a-select
+              v-model="draft.website_page_id"
+              :options="pageOptions"
+              allow-search
+              allow-clear
+            />
+          </a-form-item>
+        </a-grid-item>
+        <a-grid-item v-if="!draft.website_page_id">
+          <a-form-item field="url" label="URL">
+            <a-input v-model="draft.url" placeholder="/blog" allow-clear />
+          </a-form-item>
+        </a-grid-item>
+      </a-grid>
+      <a-form-item field="visible" :label="t('admin.common.visible', 'Visible')">
+        <a-switch v-model="draft.visible" />
+      </a-form-item>
+      <a-button html-type="submit" type="primary" :disabled="!draft.label.trim()">
+        {{ t('admin.ui.save') }}
+      </a-button>
+    </a-form>
+  </a-card>
 
-  <div v-for="location in locations" :key="location" class="mb-8 max-w-2xl">
-    <h2 class="mb-2 text-sm font-semibold capitalize">{{ location }}</h2>
-    <ul class="space-y-2">
-      <li
-        v-for="(item, index) in itemsForLocation(location)"
-        :key="item.id"
-        class="flex items-center gap-2 rounded-lg border p-3 text-sm"
+  <a-space direction="vertical" fill>
+    <a-card
+      v-for="location in locations"
+      :key="location"
+      :title="location"
+      :bordered="true"
+    >
+      <a-table
+        :columns="columns"
+        :data="rowsForLocation(location)"
+        row-key="id"
+        :pagination="false"
+        :scroll="{ x: 680 }"
       >
-        <span class="font-medium">{{ item.label }}</span>
-        <span class="text-muted-foreground">{{ item.href }}</span>
-        <div class="ml-auto flex gap-1">
-          <Button type="button" size="sm" variant="outline" :disabled="index === 0" @click="moveItem(location, index, -1)">↑</Button>
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            :disabled="index === itemsForLocation(location).length - 1"
-            @click="moveItem(location, index, 1)"
-          >↓</Button>
-          <Button type="button" size="sm" variant="destructive" @click="removeItem(item.id)">{{ t('admin.ui.delete') }}</Button>
-        </div>
-      </li>
-    </ul>
-  </div>
+        <template #visible="{ record }">
+          <a-tag :color="record.visible ? 'green' : 'gray'">
+            {{ record.visible ? t('adminMinecraft.yes') : t('adminMinecraft.no') }}
+          </a-tag>
+        </template>
+        <template #actions="{ record }">
+          <a-space>
+            <a-button
+              size="small"
+              :disabled="record.index === 0"
+              :aria-label="t('common.moveUp', 'Move up')"
+              @click="moveItem(location, record.index, -1)"
+            >
+              <template #icon><icon-arrow-up /></template>
+            </a-button>
+            <a-button
+              size="small"
+              :disabled="record.index === rowsForLocation(location).length - 1"
+              :aria-label="t('common.moveDown', 'Move down')"
+              @click="moveItem(location, record.index, 1)"
+            >
+              <template #icon><icon-arrow-down /></template>
+            </a-button>
+            <a-button size="small" status="danger" @click="removeItem(record)">
+              <template #icon><icon-delete /></template>
+            </a-button>
+          </a-space>
+        </template>
+        <template #empty><a-empty /></template>
+      </a-table>
+    </a-card>
+  </a-space>
 </template>

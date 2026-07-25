@@ -13,6 +13,11 @@ module Community
     has_many :topic_mutes, class_name: "Community::TopicMute", foreign_key: :forum_topic_id, dependent: :destroy
     has_many :topic_tags, class_name: "Community::TopicTag", foreign_key: :forum_topic_id, dependent: :destroy
     has_many :tags, through: :topic_tags, source: :tag
+    has_many :topic_field_values,
+      class_name: "Community::TopicFieldValue",
+      foreign_key: :forum_topic_id,
+      dependent: :destroy,
+      inverse_of: :topic
     has_many :bookmarks, class_name: "Community::Bookmark", foreign_key: :forum_topic_id, dependent: :destroy
     has_one :poll, class_name: "Community::Poll", foreign_key: :forum_topic_id, dependent: :destroy
     has_one :linked_product, class_name: "Commerce::Product", foreign_key: :forum_topic_id
@@ -147,7 +152,7 @@ module Community
         return @participant_users_preloaded.first(limit)
       end
 
-      ids = posts.where(status: :published)
+      ids = posts.where(status: :published, post_type: :regular)
         .where.not(user_id: user_id)
         .order(created_at: :desc)
         .pluck(:user_id)

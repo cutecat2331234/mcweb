@@ -2,11 +2,6 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -32,46 +27,65 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.common.name') }}</Label>
-      <Input id="name" v-model="form.category.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="slug">{{ t('admin.common.slugFull') }}</Label>
-      <Input id="slug" v-model="form.category.slug" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="position">{{ t('admin.common.position') }}</Label>
-      <Input id="position" v-model.number="form.category.position" type="number" min="0" />
-    </div>
-    <div class="space-y-2">
-      <Label for="color_hex">{{ t('admin.forms.forumCategory.colorHex') }}</Label>
-      <Input id="color_hex" v-model="form.category.color_hex" placeholder="#2563eb" />
-    </div>
-    <div class="space-y-2">
-      <Label for="icon">{{ t('admin.forms.forumCategory.iconEmoji') }}</Label>
-      <Input id="icon" v-model="form.category.icon" placeholder="💬" />
-    </div>
-    <div class="space-y-2">
-      <Label for="description">{{ t('admin.common.description') }}</Label>
-      <Textarea id="description" v-model="form.category.description" rows="3" :placeholder="t('admin.forms.forumCategory.descriptionPlaceholder')" />
-    </div>
-    <div class="space-y-2">
-      <Label for="seo_title">{{ t('admin.forms.category.seoTitle') }}</Label>
-      <Input id="seo_title" v-model="form.category.seo_title" />
-    </div>
-    <div class="space-y-2">
-      <Label for="seo_description">{{ t('admin.forms.category.seoDescription') }}</Label>
-      <Textarea id="seo_description" v-model="form.category.seo_description" rows="2" />
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-3xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.common.name') }}</span>
+            <a-input v-model="form.category.name" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.common.slugFull') }}</span>
+            <a-input v-model="form.category.slug" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="8">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.common.position') }}</span>
+            <a-input-number v-model="form.category.position" :min="0" class="w-full" />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="8">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.forumCategory.colorHex') }}</span>
+            <a-input v-model="form.category.color_hex" placeholder="#2563eb" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="8">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.forumCategory.iconEmoji') }}</span>
+            <a-input v-model="form.category.icon" placeholder="💬" allow-clear />
+          </label>
+        </a-col>
+      </a-row>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.common.description') }}</span>
+        <a-textarea
+          v-model="form.category.description"
+          :auto-size="{ minRows: 3, maxRows: 7 }"
+          :placeholder="t('admin.forms.forumCategory.descriptionPlaceholder')"
+        />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forms.category.seoTitle') }}</span>
+        <a-input v-model="form.category.seo_title" allow-clear />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forms.category.seoDescription') }}</span>
+        <a-textarea v-model="form.category.seo_description" :auto-size="{ minRows: 2, maxRows: 5 }" />
+      </label>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.cancel') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+</style>

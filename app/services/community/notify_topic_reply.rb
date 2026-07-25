@@ -26,46 +26,62 @@ module Community
 
       User.where(id: recipient_ids).find_each do |user|
         level = levels_by_user[user.id] || "watching"
-        next unless NotificationLevelFilter.deliver_in_app?(
+        in_app_enabled = NotificationLevelFilter.deliver_in_app?(
           level: level,
           user: user,
           topic: @topic,
           post: @post,
           context: :topic_reply
+        ) && NotificationPreference.enabled?(
+          user,
+          channel: "in_app",
+          notification_type: "forum.topic_reply"
         )
-        next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.topic_reply")
-
-        Community::ReadState.ensure_tracking!(user, @topic)
-
-        Community::InAppNotification.notify(
-          user: user,
-          notification_type: "forum.topic_reply",
-          key: "topic_reply",
-          title: @topic.title.truncate(60),
-          author: @post.user.username,
-          excerpt: @post.body.truncate(120),
-          metadata: {
-            topic_id: @topic.public_id,
-            post_id: @post.id,
-            path: "/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"
-          }
-        )
-
-        if NotificationLevelFilter.deliver_watch_email?(
+        email_enabled = NotificationLevelFilter.deliver_watch_email?(
           level: level,
           user: user,
           notification_type: "forum.topic_reply"
-        ) && Community::WatchEmailDelivery.email_allowed?(user, notification_type: "forum.topic_reply")
-          MailDeliveryJob.perform_later(
-            "Community::ForumMailer",
-            "topic_reply",
-            "deliver_now",
-            args: [ user.id, @topic.public_id, @post.id ]
+        )
+        next unless in_app_enabled || email_enabled
+
+        Community::ReadState.ensure_tracking!(user, @topic)
+
+        if in_app_enabled
+          Community::InAppNotification.notify(
+            user: user,
+            notification_type: "forum.topic_reply",
+            key: "topic_reply",
+            title: @topic.title.truncate(60),
+            author: @post.user.username,
+            excerpt: @post.body.truncate(120),
+            metadata: {
+              topic_id: @topic.public_id,
+              post_id: @post.id,
+              path: "/app/forum/topics/#{@topic.public_id}#post-#{@post.id}"
+            }
           )
         end
+
+        enqueue_email_after_commit(user) if email_enabled
       end
 
       ServiceResult.success
+    end
+
+    private
+
+    def enqueue_email_after_commit(user)
+      user_id = user.id
+      topic_id = @topic.public_id
+      post_id = @post.id
+      ActiveRecord.after_all_transactions_commit do
+        MailDeliveryJob.perform_later(
+          "Community::ForumMailer",
+          "topic_reply",
+          "deliver_now",
+          args: [ user_id, topic_id, post_id ]
+        )
+      end
     end
   end
 end

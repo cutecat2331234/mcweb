@@ -11,7 +11,6 @@ require "action_mailer/railtie"
 require "action_mailbox/engine"
 require "action_text/engine"
 require "action_view/railtie"
-require "action_cable/engine"
 require "rails/test_unit/railtie"
 
 # Require the gems listed in Gemfile, including any gems
@@ -33,6 +32,7 @@ module Mcweb
     config.i18n.fallbacks = [ :en ]
 
     config.active_job.queue_adapter = :sidekiq
+    config.action_mailbox.ingress = ENV.fetch("MCWEB_ACTION_MAILBOX_INGRESS", "relay").to_sym
 
     config.generators do |g|
       g.test_framework :minitest, fixture: false

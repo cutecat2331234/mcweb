@@ -16,7 +16,15 @@ module Community
       category = Community::Category.find_by(slug: match[1])
       return ServiceResult.success(nil) unless category
 
-      section_count = Community::Section.where(forum_category_id: category.id).count
+      visible_sections = Community::SectionAccess.scope(
+        relation: category.sections,
+        user: nil
+      )
+      if category.sections.exists? && !visible_sections.exists?
+        return ServiceResult.success(nil)
+      end
+
+      section_count = visible_sections.count
       ServiceResult.success(
         slug: category.slug,
         name: category.name,

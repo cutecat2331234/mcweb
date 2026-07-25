@@ -2,10 +2,6 @@
 import { Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Card from '@/components/ui/Card.vue'
-import CardContent from '@/components/ui/CardContent.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
@@ -26,43 +22,80 @@ defineProps<{
     target_server_url?: string | null
   }
 }>()
+
+function statusColor(status: string) {
+  if (status === 'completed' || status === 'fulfilled' || status === 'success') return 'green'
+  if (status === 'pending' || status === 'processing') return 'orange'
+  if (status === 'failed') return 'red'
+  return 'gray'
+}
 </script>
 
 <template>
-  <PageHeader :title="t('admin.fulfillments.title', { id: fulfillment.delivery_id })" />
+  <section class="admin-store-fulfillment">
+    <a-page-header
+      :title="t('admin.fulfillments.title', { id: fulfillment.delivery_id })"
+      :show-back="false"
+      class="mb-4 !px-0"
+    />
 
-  <Card class="mb-6 max-w-2xl">
-    <CardContent class="space-y-3 pt-6 text-sm">
-      <div class="flex justify-between"><span class="text-muted-foreground">{{ t('admin.common.status') }}</span><span>{{ fulfillment.status }}</span></div>
-      <div class="flex justify-between"><span class="text-muted-foreground">{{ t('admin.common.order') }}</span><span>{{ fulfillment.order_number }}</span></div>
-      <div class="flex justify-between"><span class="text-muted-foreground">{{ t('admin.common.product') }}</span><span>{{ fulfillment.product_name }}</span></div>
-      <div class="flex justify-between"><span class="text-muted-foreground">{{ t('admin.fulfillments.attempts') }}</span><span>{{ fulfillment.attempts_count }}</span></div>
-      <div v-if="fulfillment.target_server" class="flex justify-between">
-        <span class="text-muted-foreground">{{ t('admin.fulfillments.targetServer') }}</span>
-        <Link v-if="fulfillment.target_server_url" :href="fulfillment.target_server_url" class="text-primary hover:underline">
-          {{ fulfillment.target_server }} ({{ fulfillment.target_server_process_state }})
-        </Link>
-        <span v-else>{{ fulfillment.target_server }}</span>
-      </div>
-      <div v-if="fulfillment.last_error" class="text-destructive">{{ fulfillment.last_error }}</div>
-    </CardContent>
-  </Card>
-
-  <div class="flex gap-3">
-    <template v-if="fulfillment.status === 'pending' || fulfillment.status === 'failed'">
-      <Button as-child>
-        <Link
-          :href="adminRoutes.storeFulfillment(fulfillment.id)"
-          method="patch"
-          as="button"
-          :data="{ retry: '1' }"
+    <a-card class="mb-6 max-w-3xl" :bordered="true">
+      <a-descriptions :column="1" bordered>
+        <a-descriptions-item :label="t('admin.common.status')">
+          <a-tag :color="statusColor(fulfillment.status)">
+            {{ fulfillment.status }}
+          </a-tag>
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.common.order')">
+          {{ fulfillment.order_number }}
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.common.product')">
+          {{ fulfillment.product_name }}
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.fulfillments.attempts')">
+          {{ fulfillment.attempts_count }}
+        </a-descriptions-item>
+        <a-descriptions-item
+          v-if="fulfillment.target_server"
+          :label="t('admin.fulfillments.targetServer')"
         >
-          {{ t('admin.fulfillments.retry') }}
-        </Link>
-      </Button>
-    </template>
-    <Button as-child variant="outline">
-      <Link :href="adminRoutes.storeFulfillments">{{ t('admin.ui.back') }}</Link>
-    </Button>
-  </div>
+          <Link
+            v-if="fulfillment.target_server_url"
+            :href="fulfillment.target_server_url"
+            class="arco-link no-underline"
+          >
+            {{ fulfillment.target_server }} ({{ fulfillment.target_server_process_state }})
+          </Link>
+          <span v-else>{{ fulfillment.target_server }}</span>
+        </a-descriptions-item>
+      </a-descriptions>
+
+      <a-alert
+        v-if="fulfillment.last_error"
+        type="error"
+        :title="fulfillment.last_error"
+        show-icon
+        class="mt-4"
+      />
+    </a-card>
+
+    <a-space wrap>
+      <Link
+        v-if="fulfillment.status === 'pending' || fulfillment.status === 'failed'"
+        :href="adminRoutes.storeFulfillment(fulfillment.id)"
+        method="patch"
+        as="button"
+        :data="{ retry: '1' }"
+        class="arco-btn arco-btn-primary arco-btn-size-medium"
+      >
+        {{ t('admin.fulfillments.retry') }}
+      </Link>
+      <Link
+        :href="adminRoutes.storeFulfillments"
+        class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
+      >
+        {{ t('admin.ui.back') }}
+      </Link>
+    </a-space>
+  </section>
 </template>

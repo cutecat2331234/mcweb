@@ -4,13 +4,21 @@ module Community
   class SyncTopicTags < ApplicationService
     MAX_TAGS = 5
 
-    def initialize(topic:, tag_names:, user: nil)
+    def initialize(topic:, tag_names:, user: nil, allow_reply_update: false)
       @topic = topic
       @user = user
+      @allow_reply_update = allow_reply_update
       @tag_names = Array(tag_names).flat_map { |n| n.to_s.split(",") }.map(&:strip).reject(&:blank?).first(MAX_TAGS)
     end
 
     def call
+      unless @user && Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
+        return ServiceResult.failure(error: "Topic not available.")
+      end
+
+      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
+      return ServiceResult.failure(error: "You cannot edit this topic.") unless can_update_tags?
+
       @tag_names.each do |name|
         slug = name.to_s.parameterize.presence
         next unless slug
@@ -62,6 +70,12 @@ module Community
     end
 
     private
+
+    def can_update_tags?
+      @allow_reply_update ||
+        Community::SectionModeration.can_edit_topic?(user: @user, topic: @topic) ||
+        @user.permission?("forum.tags.manage")
+    end
 
     def can_use_staff_tags?
       return false unless @user

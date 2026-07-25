@@ -9,7 +9,11 @@ module Community
     def index
       sort = params[:sort].to_s.presence || "activity"
       filter = params[:filter].to_s.presence
-      scope = preload_topics(Community::Topic.published_listed.accessible_by(current_user).sorted(sort))
+      scope = Community::ForumAccess.topic_scope(
+        relation: Community::Topic.published_listed,
+        user: current_user
+      )
+      scope = preload_topics(scope.sorted(sort))
       scope = filter_blocked_topics(scope)
       scope = apply_topic_filter(scope, filter: filter, user: current_user)
 

@@ -13,7 +13,11 @@ module Community
         .where(user: current_user, subscribable_type: "Community::Topic")
         .pluck(:subscribable_id)
 
-      topics_scope = preload_topics(Community::Topic.where(id: topic_ids, status: :published, unlisted: false))
+      topics_scope = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.where(id: topic_ids),
+        user: current_user
+      )
+      topics_scope = preload_topics(topics_scope)
       topics_scope = filter_blocked_topics(topics_scope)
       topics_scope = apply_forum_topic_sort(topics_scope, sort)
 
@@ -36,7 +40,7 @@ module Community
         .where(user: current_user, subscribable_type: "Community::Tag")
         .pluck(:subscribable_id)
 
-      tags = Community::Tag.where(id: tag_ids).order(:name)
+      tags = Community::Tag.usable_by(current_user).where(id: tag_ids).order(:name)
 
       render inertia: "Community/Watched/Tags", props: {
         tags: tags.map do |tag|
@@ -55,12 +59,19 @@ module Community
 
     def tag_topics
       sort = params[:sort].presence || "latest"
-      tag_ids = Community::Subscription
+      subscribed_tag_ids = Community::Subscription
         .where(user: current_user, subscribable_type: "Community::Tag")
         .pluck(:subscribable_id)
+      tag_ids = Community::Tag.usable_by(current_user)
+        .where(id: subscribed_tag_ids)
+        .pluck(:id)
 
       topic_ids = Community::TopicTag.where(forum_tag_id: tag_ids).distinct.pluck(:forum_topic_id)
-      topics_scope = preload_topics(Community::Topic.where(id: topic_ids, status: :published, unlisted: false))
+      topics_scope = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.where(id: topic_ids),
+        user: current_user
+      )
+      topics_scope = preload_topics(topics_scope)
       topics_scope = filter_blocked_topics(topics_scope)
       topics_scope = apply_forum_topic_sort(topics_scope, sort)
       @pagy, topics = pagy(:offset, topics_scope, limit: 20)

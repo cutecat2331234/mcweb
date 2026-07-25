@@ -65,14 +65,20 @@ module Admin
       end
 
       def update
-        settings_params.each do |key, value|
+        updates = normalized_settings_params
+        if (error = forum_event_webhook_settings_error(updates))
+          redirect_to admin_forum_settings_path, alert: error
+          return
+        end
+
+        updates.each do |key, value|
           SiteSetting.set(key, value)
         end
 
         Administration::AuditLogger.call(
           actor: current_user,
           action: "admin.forum_settings_updated",
-          metadata: { keys: settings_params.keys }
+          metadata: { keys: updates.keys }
         )
 
         redirect_to admin_forum_settings_path, notice: t("mcweb.flash.forum_settings_saved")
@@ -143,6 +149,33 @@ module Admin
       def settings_params
         allowed = FORUM_SETTING_KEYS.index_with { |_k| nil }
         params.fetch(:settings, {}).permit(*allowed.keys).to_h
+      end
+
+      def normalized_settings_params
+        settings_params.tap do |updates|
+          if updates.key?("forum.event_webhook_url")
+            updates["forum.event_webhook_url"] = updates["forum.event_webhook_url"].to_s.strip
+          end
+          if updates.key?("forum.event_webhook_events")
+            events = updates["forum.event_webhook_events"].to_s.split(/[,\s]+/).map(&:strip).reject(&:blank?).uniq
+            updates["forum.event_webhook_events"] = events.join(",")
+          end
+        end
+      end
+
+      def forum_event_webhook_settings_error(updates)
+        url = updates["forum.event_webhook_url"]
+        if url.present? && !UrlSafety.public_http_url?(url)
+          return t("mcweb.services.errors.webhook_url_private")
+        end
+
+        raw_events = updates["forum.event_webhook_events"]
+        return if raw_events.nil?
+
+        events = raw_events.split(",")
+        return if (events - Community::DispatchForumEventWebhook::EVENT_TYPES).empty?
+
+        t("mcweb.services.errors.webhook_event_unsupported")
       end
 
       def default_for(key)

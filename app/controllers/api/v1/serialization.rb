@@ -24,7 +24,10 @@ module Api
           description: section.try(:description),
           category_id: section.category&.slug,
           parent_id: section.parent&.slug,
-          topics_count: section.topics.where(status: "published", unlisted: false).count
+          topics_count: Community::ForumAccess.listed_topic_scope(
+            relation: section.topics,
+            user: api_user
+          ).count
         }
       end
 
@@ -42,7 +45,11 @@ module Api
           author: serialize_user_ref(topic.user),
           created_at: topic.created_at&.iso8601,
           last_posted_at: topic.last_posted_at&.iso8601,
-          tags: topic.tags.map { |t| { id: t.slug, name: t.name } }
+          tags: topic.tags.map { |t| { id: t.slug, name: t.name } },
+          custom_fields: Community::SerializeTopicFields.for_display(
+            topic: topic,
+            definitions: serialized_topic_field_definitions
+          )
         }
         data[:section_id] = topic.section&.slug if include_section
         data
@@ -74,10 +81,37 @@ module Api
       def serialize_user(user)
         serialize_user_ref(user).merge(
           forum_title: user.forum_title,
-          forum_posts_count: user.forum_posts_count,
+          forum_posts_count: serialized_forum_post_count(user),
           bio: user.bio,
           created_at: user.created_at&.iso8601
         )
+      end
+
+      def preload_serialized_forum_post_counts(users)
+        user_ids = users.map(&:id)
+        @serialized_forum_post_counts = serialized_forum_posts_scope
+          .where(user_id: user_ids)
+          .group(:user_id)
+          .count
+      end
+
+      def serialized_forum_post_count(user)
+        if defined?(@serialized_forum_post_counts)
+          return @serialized_forum_post_counts[user.id].to_i
+        end
+
+        serialized_forum_posts_scope.where(user: user).count
+      end
+
+      def serialized_forum_posts_scope
+        @serialized_forum_posts_scope ||= Community::ForumAccess.listed_post_scope(
+          relation: Community::Post.all,
+          user: api_user
+        )
+      end
+
+      def serialized_topic_field_definitions
+        @serialized_topic_field_definitions ||= Community::TopicFieldDefinition.active.ordered.to_a
       end
     end
   end

@@ -19,7 +19,11 @@ module Community
       topic_ids = topics.map(&:id)
       authors_by_topic = topics.index_by(&:id).transform_values(&:user_id)
       rows = Community::Post
-        .where(forum_topic_id: topic_ids, status: :published)
+        .where(
+          forum_topic_id: topic_ids,
+          status: :published,
+          post_type: :regular
+        )
         .order(forum_topic_id: :asc, created_at: :desc)
         .pluck(:forum_topic_id, :user_id)
 

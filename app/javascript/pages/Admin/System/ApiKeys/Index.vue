@@ -2,15 +2,7 @@
 import { Link, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
-import Button from '@/components/ui/Button.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -48,43 +40,84 @@ async function revoke(key: ApiKey) {
 </script>
 
 <template>
-  <PageHeader :title="title" :subtitle="subtitle" />
+  <section class="admin-system-api-keys">
+    <a-page-header
+      :title="title"
+      :subtitle="subtitle"
+      :show-back="false"
+      class="mb-4 !px-0"
+    >
+      <template #extra>
+        <Link
+          :href="newUrl"
+          class="arco-btn arco-btn-primary arco-btn-size-medium no-underline"
+        >
+          {{ t('admin.apiKeys.new') }}
+        </Link>
+      </template>
+    </a-page-header>
 
-  <div class="mb-4">
-    <Button as-child>
-      <Link :href="newUrl">{{ t('admin.apiKeys.new') }}</Link>
-    </Button>
-  </div>
+    <a-card :bordered="true" :body-style="{ padding: 0 }">
+      <a-table
+        :data="keys"
+        row-key="id"
+        :pagination="false"
+        :bordered="{ cell: true }"
+        :scroll="{ x: 1080 }"
+        stripe
+      >
+        <template #columns>
+          <a-table-column :title="t('admin.apiKeys.name')" data-index="name" :width="180" />
+          <a-table-column :title="t('admin.apiKeys.prefix')" :width="150">
+            <template #cell="{ record }">
+              <a-typography-text code>{{ record.prefix }}…</a-typography-text>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.apiKeys.scopes')" :width="180">
+            <template #cell="{ record }">
+              <a-space wrap :size="[4, 4]">
+                <a-tag v-for="scope in record.scopes" :key="scope" color="arcoblue">
+                  {{ scope }}
+                </a-tag>
+              </a-space>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.apiKeys.user')" data-index="user" :width="180">
+            <template #cell="{ record }">
+              {{ record.user || '—' }}
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.apiKeys.lastUsed')" data-index="lastUsedAt" :width="180">
+            <template #cell="{ record }">
+              {{ record.lastUsedAt || '—' }}
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.apiKeys.status')" :width="120">
+            <template #cell="{ record }">
+              <a-tag :color="record.revoked ? 'gray' : 'green'">
+                {{ record.revoked ? t('admin.apiKeys.revoked') : t('admin.apiKeys.active') }}
+              </a-tag>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.ui.actions')" :width="120" fixed="right">
+            <template #cell="{ record }">
+              <a-button
+                v-if="!record.revoked"
+                type="primary"
+                status="danger"
+                size="small"
+                @click="revoke(record)"
+              >
+                {{ t('admin.apiKeys.revoke') }}
+              </a-button>
+            </template>
+          </a-table-column>
+        </template>
 
-  <Table>
-    <TableHeader>
-      <TableRow>
-        <TableHead>{{ t('admin.apiKeys.name') }}</TableHead>
-        <TableHead>{{ t('admin.apiKeys.prefix') }}</TableHead>
-        <TableHead>{{ t('admin.apiKeys.scopes') }}</TableHead>
-        <TableHead>{{ t('admin.apiKeys.user') }}</TableHead>
-        <TableHead>{{ t('admin.apiKeys.lastUsed') }}</TableHead>
-        <TableHead>{{ t('admin.apiKeys.status') }}</TableHead>
-        <TableHead></TableHead>
-      </TableRow>
-    </TableHeader>
-    <TableBody>
-      <TableRow v-for="key in keys" :key="key.id">
-        <TableCell>{{ key.name }}</TableCell>
-        <TableCell><code>{{ key.prefix }}…</code></TableCell>
-        <TableCell>{{ key.scopes.join(', ') }}</TableCell>
-        <TableCell>{{ key.user || '—' }}</TableCell>
-        <TableCell>{{ key.lastUsedAt || '—' }}</TableCell>
-        <TableCell>{{ key.revoked ? t('admin.apiKeys.revoked') : t('admin.apiKeys.active') }}</TableCell>
-        <TableCell>
-          <Button v-if="!key.revoked" type="button" variant="destructive" size="sm" @click="revoke(key)">
-            {{ t('admin.apiKeys.revoke') }}
-          </Button>
-        </TableCell>
-      </TableRow>
-      <TableRow v-if="keys.length === 0">
-        <TableCell colspan="7">{{ t('admin.apiKeys.empty') }}</TableCell>
-      </TableRow>
-    </TableBody>
-  </Table>
+        <template #empty>
+          <a-empty :description="t('admin.apiKeys.empty')" />
+        </template>
+      </a-table>
+    </a-card>
+  </section>
 </template>

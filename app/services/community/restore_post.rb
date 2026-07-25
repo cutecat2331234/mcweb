@@ -12,7 +12,7 @@ module Community
       return ServiceResult.failure(error: "post_not_deleted") unless discarded_post?
 
       topic = @post.topic
-      Community::Post.transaction do
+      topic.with_lock do
         @post.restore!
         Community::SyncTopicLastPost.call(topic: topic)
       end

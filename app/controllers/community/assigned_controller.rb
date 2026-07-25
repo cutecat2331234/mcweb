@@ -9,11 +9,11 @@ module Community
 
     def index
       sort = params[:sort].presence || "latest"
-      scope = preload_topics(
-        Community::Topic.published_listed
-          .where(assigned_to: current_user)
-          .includes(:assigned_to)
+      scope = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.where(assigned_to: current_user),
+        user: current_user
       )
+      scope = preload_topics(scope.includes(:assigned_to))
       scope = filter_blocked_topics(scope)
       scope = apply_forum_topic_sort(scope, sort)
 

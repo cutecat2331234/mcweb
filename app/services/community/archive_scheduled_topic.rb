@@ -10,11 +10,18 @@ module Community
       return ServiceResult.success if @topic.archived_at.present?
       return ServiceResult.success unless @topic.auto_archive_at&.<= Time.current
 
-      @topic.update!(archived_at: Time.current, auto_archive_at: nil)
       actor = Community::SystemActor.user || @topic.user
-      if actor
-        Community::CreateSmallActionPost.call(topic: @topic, actor: actor, body: I18n.t("mcweb.forum.small_actions.scheduled_archive"))
+      action_result = nil
+      Community::Topic.transaction do
+        @topic.update!(archived_at: Time.current, auto_archive_at: nil)
+        action_result = Community::CreateSmallActionPost.call(
+          topic: @topic,
+          actor: actor,
+          body: I18n.t("mcweb.forum.small_actions.scheduled_archive")
+        )
+        raise ActiveRecord::Rollback if action_result.failure?
       end
+      return action_result if action_result.failure?
 
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e

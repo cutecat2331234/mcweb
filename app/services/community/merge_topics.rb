@@ -18,16 +18,33 @@ module Community
       return ServiceResult.failure(error: "Cannot merge a topic into itself.") if @source.id == target.id
 
       Community::Topic.transaction do
-        posts_to_move = @source.posts.order(:floor_number).offset(1)
-        # Include soft-deleted posts: the unique [forum_topic_id, floor_number] index
-        # covers discarded rows too, so reassigned floors must clear them or save! fails.
+        # Lock both rows in a stable order. CreatePost uses the same topic-row
+        # lock, preventing a reply from being allocated while the merge snapshot
+        # is being moved.
+        Community::Topic.where(id: [ @source.id, target.id ]).order(:id).lock.load
+        @source.reload
+        target.reload
+        return ServiceResult.failure(error: "Target topic not found.") unless target.status == "published"
+
+        posts_to_move = Community::Post.with_discarded
+          .where(forum_topic_id: @source.id)
+          .where.not(floor_number: 1)
+          .order(:floor_number)
+          .to_a
+        moved_posts_by_id = posts_to_move.index_by(&:id)
         next_floor = target.posts.with_discarded.maximum(:floor_number).to_i
 
         posts_to_move.each_with_index do |post, index|
-          post.update!(topic: target, floor_number: next_floor + index + 1)
+          updates = { topic: target, floor_number: next_floor + index + 1 }
+          if post.parent_post_id.present? && !moved_posts_by_id.key?(post.parent_post_id)
+            updates[:parent_post_id] = nil
+          end
+          post.update!(updates)
         end
 
-        @source.update!(status: :hidden, locked: true)
+        source_solved_post_id = moved_posts_by_id.key?(@source.solved_post_id) ? nil : @source.solved_post_id
+        @source.update!(status: :hidden, locked: true, solved_post_id: source_solved_post_id)
+        Community::SyncTopicLastPost.call(topic: @source)
         Community::SyncTopicLastPost.call(topic: target)
       end
 

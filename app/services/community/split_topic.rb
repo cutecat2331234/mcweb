@@ -19,8 +19,17 @@ module Community
       return ServiceResult.failure(error: "Post does not belong to this topic.") if @post.forum_topic_id != @topic.id
 
       new_topic = nil
-      Community::Topic.transaction do
-        posts_to_move = @topic.posts.where("floor_number >= ?", @post.floor_number).order(:floor_number)
+      @topic.with_lock do
+        @post.reload
+        return ServiceResult.failure(error: "Cannot split the opening post.") if @post.floor_number <= 1
+        return ServiceResult.failure(error: "Post does not belong to this topic.") if @post.forum_topic_id != @topic.id
+
+        posts_to_move = Community::Post.with_discarded
+          .where(forum_topic_id: @topic.id)
+          .where("floor_number >= ?", @post.floor_number)
+          .order(:floor_number)
+          .to_a
+        moved_post_ids = posts_to_move.map(&:id)
         split_title = @title || I18n.t("mcweb.forum.split_topic.default_title", title: @topic.title).truncate(120)
         target_section = @section || @topic.section
 
@@ -32,10 +41,13 @@ module Community
           status: :published,
           last_posted_at: Time.current,
           last_post_user: @post.user,
-          replies_count: [ posts_to_move.count - 1, 0 ].max
+          replies_count: 0
         )
 
-        staying_post_ids = @topic.posts.where("floor_number < ?", @post.floor_number).pluck(:id)
+        staying_post_ids = Community::Post.with_discarded
+          .where(forum_topic_id: @topic.id)
+          .where("floor_number < ?", @post.floor_number)
+          .pluck(:id)
 
         posts_to_move.each_with_index do |moved_post, index|
           updates = { topic: new_topic, floor_number: index + 1 }
@@ -45,7 +57,7 @@ module Community
           moved_post.update!(updates)
         end
 
-        if @topic.solved_post_id.present? && posts_to_move.exists?(id: @topic.solved_post_id)
+        if @topic.solved_post_id.present? && moved_post_ids.include?(@topic.solved_post_id)
           @topic.update!(solved_post_id: nil)
         end
 

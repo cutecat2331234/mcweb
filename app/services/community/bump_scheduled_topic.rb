@@ -10,9 +10,18 @@ module Community
       return ServiceResult.success if @topic.status != "published"
       return ServiceResult.success unless @topic.auto_bump_at&.<= Time.current
 
-      @topic.update!(bumped_at: Time.current, last_posted_at: Time.current, auto_bump_at: nil)
       actor = Community::SystemActor.user || @topic.user
-      Community::CreateSmallActionPost.call(topic: @topic, actor: actor, body: I18n.t("mcweb.forum.small_actions.scheduled_bump")) if actor
+      action_result = nil
+      Community::Topic.transaction do
+        @topic.update!(bumped_at: Time.current, last_posted_at: Time.current, auto_bump_at: nil)
+        action_result = Community::CreateSmallActionPost.call(
+          topic: @topic,
+          actor: actor,
+          body: I18n.t("mcweb.forum.small_actions.scheduled_bump")
+        )
+        raise ActiveRecord::Rollback if action_result.failure?
+      end
+      return action_result if action_result.failure?
 
       ServiceResult.success(@topic)
     rescue ActiveRecord::RecordInvalid => e

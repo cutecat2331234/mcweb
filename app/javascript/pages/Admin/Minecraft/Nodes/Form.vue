@@ -1,12 +1,7 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3'
+import { router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -23,6 +18,10 @@ const props = defineProps<{
 const { t } = useI18n()
 const form = useForm({ node: { ...props.node } })
 
+function fieldError(key: string) {
+  return props.errors?.[key]?.join(' ') || ''
+}
+
 function submit() {
   if (props.method === 'patch') form.patch(props.submitUrl)
   else form.post(props.submitUrl)
@@ -30,29 +29,49 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('adminMinecraft.colName') }}</Label>
-      <Input id="name" v-model="form.node.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="hostname">{{ t('adminMinecraft.colHostname') }}</Label>
-      <Input id="hostname" v-model="form.node.hostname" />
-    </div>
-    <div class="space-y-2">
-      <Label for="proxy_listen_url">{{ t('adminMinecraft.proxyListenUrl') }}</Label>
-      <Input id="proxy_listen_url" v-model="form.node.proxy_listen_url" />
-    </div>
-    <div class="space-y-2">
-      <Label for="status">{{ t('adminMinecraft.colStatus') }}</Label>
-      <Select id="status" v-model="form.node.status" :options="statusOptions" />
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('common.save') }}</Button>
-      <Button type="button" variant="outline" as-child>
-        <a :href="backUrl">{{ t('common.cancel') }}</a>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" />
+  <a-card class="admin-form-card" :bordered="true">
+    <a-form :model="form.node" layout="vertical" @submit="submit">
+      <a-form-item
+        field="name"
+        :label="t('adminMinecraft.colName')"
+        required
+        :validate-status="fieldError('name') ? 'error' : undefined"
+        :help="fieldError('name')"
+      >
+        <a-input v-model="form.node.name" allow-clear />
+      </a-form-item>
+      <a-form-item
+        field="hostname"
+        :label="t('adminMinecraft.colHostname')"
+        :validate-status="fieldError('hostname') ? 'error' : undefined"
+        :help="fieldError('hostname')"
+      >
+        <a-input v-model="form.node.hostname" allow-clear />
+      </a-form-item>
+      <a-form-item
+        field="proxy_listen_url"
+        :label="t('adminMinecraft.proxyListenUrl')"
+        :validate-status="fieldError('proxy_listen_url') ? 'error' : undefined"
+        :help="fieldError('proxy_listen_url')"
+      >
+        <a-input v-model="form.node.proxy_listen_url" allow-clear />
+      </a-form-item>
+      <a-form-item field="status" :label="t('adminMinecraft.colStatus')">
+        <a-select v-model="form.node.status" :options="statusOptions" />
+      </a-form-item>
+      <a-space>
+        <a-button html-type="submit" type="primary" :loading="form.processing">
+          {{ t('common.save') }}
+        </a-button>
+        <a-button @click="router.visit(backUrl)">{{ t('common.cancel') }}</a-button>
+      </a-space>
+    </a-form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-form-card {
+  max-width: 640px;
+}
+</style>

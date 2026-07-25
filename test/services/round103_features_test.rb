@@ -18,8 +18,10 @@ end
 class Round103NotificationPeriodFilterTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
-    Notification.create!(user: @user, notification_type: "forum.mention", title: "Today", body: "b", created_at: Time.zone.now)
-    Notification.create!(user: @user, notification_type: "forum.reaction", title: "Old", body: "b", created_at: 3.days.ago)
+    # Period filtering is resource-agnostic, so use notifications that do not
+    # require forum-resource metadata under NotificationAccess.
+    Notification.create!(user: @user, notification_type: "commerce.order_fulfilled", title: "Today", body: "b", created_at: Time.zone.now)
+    Notification.create!(user: @user, notification_type: "commerce.payment_confirmed", title: "Old", body: "b", created_at: 3.days.ago)
     sign_in_as(@user)
   end
 

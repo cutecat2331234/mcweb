@@ -40,13 +40,9 @@ module Community
       when "joined"
         scope.order(created_at: :desc)
       when "posts"
-        scope.order(Arel.sql("(SELECT COUNT(*) FROM forum_posts WHERE forum_posts.user_id = users.id AND forum_posts.status = 'published') DESC"))
+        scope.order(Arel.sql("(#{member_post_count_sql}) DESC"))
       when "likes"
-        scope.order(Arel.sql(<<~SQL.squish))
-          (SELECT COUNT(*) FROM forum_reactions
-           INNER JOIN forum_posts ON forum_posts.id = forum_reactions.forum_post_id
-           WHERE forum_posts.user_id = users.id) DESC
-        SQL
+        scope.order(Arel.sql("(#{member_reaction_count_sql}) DESC"))
       when "reviews"
         scope.order(Arel.sql("(SELECT COUNT(*) FROM store_reviews WHERE store_reviews.user_id = users.id AND store_reviews.status = 'published') DESC"))
       when "purchases"
@@ -80,12 +76,42 @@ module Community
 
     def member_stats(members)
       ids = members.map(&:id)
+      posts = listed_posts.where(user_id: ids)
       {
-        posts: Community::Post.where(user_id: ids, status: :published).group(:user_id).count,
-        likes: Community::Reaction.joins(:post).where(forum_posts: { user_id: ids }).group("forum_posts.user_id").count,
+        posts: posts.group(:user_id).count,
+        likes: Community::Reaction.joins(:post)
+          .where(forum_post_id: posts.select(:id))
+          .group("forum_posts.user_id").count,
         reviews: Commerce::Review.where(user_id: ids, status: :published).group(:user_id).count,
         purchases: Commerce::Order.where(user_id: ids, status: %w[paid processing fulfilling fulfilled completed]).group(:user_id).count
       }
+    end
+
+    def listed_posts
+      @listed_posts ||= Community::ForumAccess.listed_post_scope(
+        relation: Community::Post.all,
+        user: current_user
+      )
+    end
+
+    def member_post_count_sql
+      listed_posts
+        .where("forum_posts.user_id = users.id")
+        .reorder(nil)
+        .select("COUNT(*)")
+        .to_sql
+    end
+
+    def member_reaction_count_sql
+      Community::Reaction
+        .where(
+          forum_post_id: listed_posts
+            .where("forum_posts.user_id = users.id")
+            .select(:id)
+        )
+        .reorder(nil)
+        .select("COUNT(*)")
+        .to_sql
     end
 
     def serialize_member(user, stats:)

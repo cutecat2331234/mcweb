@@ -3,10 +3,6 @@ import { computed, ref } from 'vue'
 import { useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import Alert from '@/components/ui/Alert.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
@@ -29,7 +25,6 @@ const form = useForm({
 })
 
 const localError = ref('')
-
 const portalBothDisabled = computed(() => !form.features.forum && !form.features.store)
 
 function submit() {
@@ -43,38 +38,78 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader
-    :title="t('admin.featureToggles.title')"
-    :subtitle="t('admin.featureToggles.subtitle')"
-  />
+  <section class="admin-system-feature-toggles">
+    <a-page-header
+      :title="t('admin.featureToggles.title')"
+      :subtitle="t('admin.featureToggles.subtitle')"
+      :show-back="false"
+      class="mb-4 !px-0"
+    />
 
-  <Alert v-if="localError" variant="destructive" class="mb-4 max-w-2xl">
-    {{ localError }}
-  </Alert>
+    <a-alert
+      v-if="localError"
+      type="error"
+      :title="localError"
+      show-icon
+      closable
+      class="mb-4 max-w-3xl"
+      @close="localError = ''"
+    />
 
-  <form class="max-w-2xl space-y-4" @submit.prevent="submit">
-    <div
-      v-for="feature in features"
-      :key="feature.id"
-      class="flex items-start justify-between gap-4 rounded-lg border border-border bg-card p-4"
+    <a-form
+      :model="form.features"
+      layout="vertical"
+      class="max-w-3xl"
+      @submit="submit"
     >
-      <div class="min-w-0 space-y-1">
-        <p class="font-medium leading-none">{{ feature.label }}</p>
-        <p class="text-sm text-muted-foreground">{{ feature.description }}</p>
-      </div>
-      <label class="flex shrink-0 cursor-pointer items-center gap-2 text-sm">
-        <Checkbox v-model="form.features[feature.id]" />
-        <span>{{ form.features[feature.id] ? t('admin.ui.enabled') : t('admin.ui.disabled') }}</span>
-      </label>
-    </div>
+      <a-space direction="vertical" fill :size="12">
+        <a-card
+          v-for="feature in features"
+          :key="feature.id"
+          :bordered="true"
+          hoverable
+        >
+          <div class="flex items-start justify-between gap-6">
+            <a-space direction="vertical" :size="4">
+              <a-typography-title :heading="6" class="!m-0">
+                {{ feature.label }}
+              </a-typography-title>
+              <a-typography-text type="secondary">
+                {{ feature.description }}
+              </a-typography-text>
+            </a-space>
 
-    <p v-if="portalBothDisabled" class="text-sm text-destructive">
-      {{ t('admin.featureToggles.portalBothDisabled') }}
-    </p>
+            <a-space class="shrink-0">
+              <a-tag :color="form.features[feature.id] ? 'green' : 'gray'">
+                {{ form.features[feature.id] ? t('admin.ui.enabled') : t('admin.ui.disabled') }}
+              </a-tag>
+              <a-switch v-model="form.features[feature.id]" />
+            </a-space>
+          </div>
+        </a-card>
+      </a-space>
 
-    <div class="flex flex-wrap items-center justify-end gap-3 pt-2 sm:justify-start">
-      <Button type="submit" :disabled="form.processing || portalBothDisabled">{{ t('admin.featureToggles.saveToggles') }}</Button>
-      <p v-if="form.recentlySuccessful" class="text-sm text-muted-foreground">{{ t('admin.common.saved') }}</p>
-    </div>
-  </form>
+      <a-alert
+        v-if="portalBothDisabled"
+        type="warning"
+        :title="t('admin.featureToggles.portalBothDisabled')"
+        show-icon
+        class="mt-4"
+      />
+
+      <a-space class="mt-4" wrap>
+        <a-button
+          type="primary"
+          html-type="submit"
+          :loading="form.processing"
+          :disabled="portalBothDisabled"
+        >
+          {{ t('admin.featureToggles.saveToggles') }}
+        </a-button>
+        <a-tag v-if="form.recentlySuccessful" color="green">
+          {{ t('admin.common.saved') }}
+        </a-tag>
+      </a-space>
+    </a-form>
+  </section>
 </template>

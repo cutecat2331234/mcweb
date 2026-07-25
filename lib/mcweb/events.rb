@@ -29,6 +29,7 @@ module Mcweb
     # events are treated as a stable extension API.
     CATALOG = %w[
       forum.topic.created
+      forum.topic.fields.updated
       forum.post.created
       forum.post.edited
       forum.post.deleted

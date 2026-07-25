@@ -4,11 +4,20 @@ module Community
   class CategoriesController < ApplicationController
     def show
       category = Community::Category.find_by!(slug: params[:slug])
-      @pagy, sections = pagy(:offset, category.sections.roots.ordered.includes(:category, :children), limit: 20)
+      section_scope = category.sections.roots.ordered.includes(:category, :children)
+      section_scope = Community::SectionAccess.scope(
+        relation: section_scope,
+        user: current_user
+      )
+      @pagy, sections = pagy(:offset, section_scope, limit: 20)
       unread_map = if logged_in?
                      sections.each_with_object({}) do |section, hash|
                        hash[section.id] = Community::ReadState.unread_count_for_section(current_user, section)
-                       section.children.each do |child|
+                       visible_children = Community::SectionAccess.select(
+                         sections: section.children,
+                         user: current_user
+                       )
+                       visible_children.each do |child|
                          hash[child.id] = Community::ReadState.unread_count_for_section(current_user, child)
                        end
                      end

@@ -4,6 +4,7 @@ module Api
   module V1
     class UsersController < BaseController
       include Serialization
+      include ForumVisibility
 
       skip_before_action :require_read_scope!, only: :follow
       before_action :require_writer!, only: :follow
@@ -22,12 +23,13 @@ module Api
         scope = User.where(deleted_at: nil, status: "active")
         scope = scope.where("username ILIKE ?", "%#{params[:q]}%") if params[:q].present?
         scope = case params[:sort]
-        when "posts" then scope.order(forum_posts_count: :desc)
+        when "posts" then scope.order(Arel.sql("(#{visible_post_count_sql}) DESC"))
         when "username" then scope.order(:username)
         else scope.order(created_at: :desc)
         end
 
         pagy, users = api_paginate(scope)
+        preload_serialized_forum_post_counts(users)
         render json: {
           data: users.map { |u| serialize_user(u) },
           meta: pagination_meta(pagy)
@@ -39,7 +41,17 @@ module Api
         user = User.find_by!(public_id: params[:id])
         raise ActiveRecord::RecordNotFound if user.deleted_at.present?
 
+        preload_serialized_forum_post_counts([ user ])
         render json: { data: serialize_user(user) }
+      end
+
+      private
+
+      def visible_post_count_sql
+        Community::ForumAccess.listed_post_scope(
+          relation: Community::Post.where("forum_posts.user_id = users.id"),
+          user: api_user
+        ).reorder(nil).select("COUNT(*)").to_sql
       end
     end
   end

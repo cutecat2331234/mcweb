@@ -18,6 +18,7 @@ module Community
 
     def send_for_search(search)
       user = search.user
+      return ServiceResult.success(skipped: true) unless user&.session_eligible?
       return ServiceResult.success(skipped: true) if user.email.blank?
 
       since = search.last_notified_at || 1.day.ago
@@ -51,6 +52,7 @@ module Community
         body: topics.map(&:title).join(I18n.t("mcweb.commerce.list_separator")).truncate(200),
         metadata: {
           search_id: search.id,
+          topic_ids: topics.map(&:public_id),
           path: saved_search_notification_path(search)
         }
       )

@@ -9,6 +9,10 @@ module Community
     end
 
     def call
+      unless Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
+        return ServiceResult.failure(error: "Topic not available.")
+      end
+
       return ServiceResult.failure(error: "Not your draft.") unless @topic.user_id == @user.id
       return ServiceResult.failure(error: "Topic is not a draft.") unless @topic.status == "draft"
 
@@ -37,6 +41,9 @@ module Community
       if @topic.section.prefix_required? && @topic.prefix.blank?
         return ServiceResult.failure(error: "section_topic_prefix_required")
       end
+
+      field_result = Community::ValidateTopicFieldValues.call(topic: @topic, user: @user)
+      return field_result if field_result.failure?
 
       if Community::TrustLevel.contains_link?(post.body) && !Community::TrustLevel.can_post_links?(@user)
         return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")

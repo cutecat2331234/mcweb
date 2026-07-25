@@ -9,7 +9,11 @@ module Community
     end
 
     def call
-      text = @topic.posts.where(status: :published).pluck(:body).join(" ")
+      text = @topic.posts
+        .where(status: :published)
+        .where.not(post_type: :whisper)
+        .pluck(:body)
+        .join(" ")
       minutes = (text.length.to_f / CHARS_PER_MINUTE).ceil
       minutes = 1 if minutes < 1 && text.present?
       ServiceResult.success(minutes: minutes, word_count: text.length)

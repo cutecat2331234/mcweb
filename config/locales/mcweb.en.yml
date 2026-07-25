@@ -1130,7 +1130,7 @@ en:
         user_unavailable: API keys cannot be bound to a banned or deleted user.
       webhook_subscriptions:
         title: Event webhook subscriptions
-        subtitle: Deliver event-bus (Mcweb::Events) events to an external URL, HMAC-signed
+        subtitle: Deliver HMAC-signed, identifier-only event invalidations to an external URL
         form_new: New webhook subscription
         form_edit: Edit webhook subscription
       common:
@@ -1157,6 +1157,15 @@ en:
       system:
         applications:
           title: Apps & extensions
+          marketplace:
+            package_required: Select a plugin ZIP to install.
+            zip_required: The plugin package must be a ZIP file.
+            package_empty: The plugin package is empty.
+            package_too_large: The plugin package exceeds the 50 MB limit.
+            invalid_sha256: Expected SHA-256 must contain exactly 64 lowercase hexadecimal characters.
+            unavailable: Plugin package state is temporarily unavailable.
+            operation_succeeded: "%{action} completed for %{plugin}."
+            operation_failed: The plugin package operation could not be completed.
       dashboard:
         metrics:
           users: Users
@@ -1348,7 +1357,7 @@ en:
             forum.min_trust_level_reaction: Users below this trust level cannot react to posts.
             forum.saved_search_webhook_secret: Optional HMAC secret for X-McWeb-Signature.
             forum.saved_search_webhook_url: Target URL for admin test deliveries; blank disables tests.
-            forum.event_webhook_url: Webhook URL for topic/post lifecycle events.
+            forum.event_webhook_url: Public Webhook URL for identifier-only topic/post invalidations. Titles, bodies, usernames, and private forum resources are never sent.
             forum.event_webhook_secret: Optional HMAC secret for forum event webhooks.
             forum.event_webhook_events: "Enabled events: topic.created, post.created, post.edited, post.deleted, post.restored, post.rejected, post.approved, topic.solved, topic.moved."
             forum.search_feeds_opml_saved_limit: Max saved searches in combined OPML export (1–100).

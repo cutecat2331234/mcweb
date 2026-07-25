@@ -2,10 +2,6 @@
 import { useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -29,8 +25,17 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-
 const form = useForm({ ...props.settings })
+
+const booleanOptions = [
+  { value: 'true', label: t('adminMinecraft.yes') },
+  { value: 'false', label: t('adminMinecraft.no') },
+]
+const skinOptions = [
+  { value: '2d', label: t('adminMinecraft.skin2d') },
+  { value: '3d', label: t('adminMinecraft.skin3d') },
+  { value: 'both', label: t('adminMinecraft.skinBoth') },
+]
 
 function submit() {
   form.patch(props.updateUrl)
@@ -38,96 +43,120 @@ function submit() {
 </script>
 
 <template>
-  <div class="max-w-2xl space-y-6">
-    <h1 class="text-2xl font-semibold">{{ t('adminMinecraft.title') }}</h1>
-    <form class="space-y-4" @submit.prevent="submit">
-      <div>
-        <Label for="link_command">{{ t('adminMinecraft.linkCommand') }}</Label>
-        <Input id="link_command" v-model="form.link_command" />
-      </div>
-      <div>
-        <Label for="skin_mode">{{ t('adminMinecraft.skinMode') }}</Label>
-        <Select
-          id="skin_mode"
-          v-model="form.skin_mode"
-          :options="[
-            { value: '2d', label: t('adminMinecraft.skin2d') },
-            { value: '3d', label: t('adminMinecraft.skin3d') },
-            { value: 'both', label: t('adminMinecraft.skinBoth') },
-          ]"
-        />
-      </div>
-      <div>
-        <Label for="bridges_enabled">{{ t('adminMinecraft.bridgesEnabled') }}</Label>
-        <Input id="bridges_enabled" v-model="form.bridges_enabled" />
-      </div>
-      <div>
-        <Label for="bridge_placeholders">{{ t('adminMinecraft.bridgePlaceholders') }}</Label>
-        <Input id="bridge_placeholders" v-model="form.bridge_placeholders" placeholder="%player_level%,%vault_eco_balance%" />
-      </div>
-      <div>
-        <Label for="profile_sections">{{ t('adminMinecraft.profileSections') }}</Label>
-        <Input id="profile_sections" v-model="form.profile_sections" />
-      </div>
+  <a-page-header :title="t('adminMinecraft.title')" :show-back="false" />
+  <a-form :model="form" layout="vertical" class="admin-settings-form" @submit="submit">
+    <a-space direction="vertical" fill>
+      <a-card :bordered="true">
+        <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="16">
+          <a-grid-item>
+            <a-form-item field="link_command" :label="t('adminMinecraft.linkCommand')">
+              <a-input v-model="form.link_command" allow-clear />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="skin_mode" :label="t('adminMinecraft.skinMode')">
+              <a-select v-model="form.skin_mode" :options="skinOptions" />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="bridges_enabled" :label="t('adminMinecraft.bridgesEnabled')">
+              <a-select v-model="form.bridges_enabled" :options="booleanOptions" />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item
+              field="bridge_placeholders"
+              :label="t('adminMinecraft.bridgePlaceholders')"
+            >
+              <a-input
+                v-model="form.bridge_placeholders"
+                placeholder="%player_level%,%vault_eco_balance%"
+                allow-clear
+              />
+            </a-form-item>
+          </a-grid-item>
+        </a-grid>
+        <a-form-item field="profile_sections" :label="t('adminMinecraft.profileSections')">
+          <a-input v-model="form.profile_sections" allow-clear />
+        </a-form-item>
+      </a-card>
 
-      <h2 class="pt-4 text-lg font-semibold">{{ t('adminMinecraft.gracefulStopSection') }}</h2>
-      <div>
-        <Label for="graceful_stop_enabled">{{ t('adminMinecraft.gracefulStopEnabled') }}</Label>
-        <Select
-          id="graceful_stop_enabled"
-          v-model="form.graceful_stop_enabled"
-          :options="[
-            { value: 'true', label: t('adminMinecraft.yes') },
-            { value: 'false', label: t('adminMinecraft.no') },
-          ]"
-        />
-      </div>
-      <div>
-        <Label for="graceful_stop_countdown">{{ t('adminMinecraft.gracefulStopCountdown') }}</Label>
-        <Input id="graceful_stop_countdown" v-model="form.graceful_stop_countdown" type="number" min="0" />
-      </div>
-      <div>
-        <Label for="graceful_stop_message">{{ t('adminMinecraft.gracefulStopMessage') }}</Label>
-        <Input id="graceful_stop_message" v-model="form.graceful_stop_message" />
-      </div>
-      <div>
-        <Label for="graceful_stop_commands">{{ t('adminMinecraft.gracefulStopCommands') }}</Label>
-        <Input id="graceful_stop_commands" v-model="form.graceful_stop_commands" placeholder="save-all,stop" />
-      </div>
+      <a-card :title="t('adminMinecraft.gracefulStopSection')" :bordered="true">
+        <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="16">
+          <a-grid-item>
+            <a-form-item
+              field="graceful_stop_enabled"
+              :label="t('adminMinecraft.gracefulStopEnabled')"
+            >
+              <a-select v-model="form.graceful_stop_enabled" :options="booleanOptions" />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item
+              field="graceful_stop_countdown"
+              :label="t('adminMinecraft.gracefulStopCountdown')"
+            >
+              <a-input v-model="form.graceful_stop_countdown" type="number" min="0" />
+            </a-form-item>
+          </a-grid-item>
+        </a-grid>
+        <a-form-item
+          field="graceful_stop_message"
+          :label="t('adminMinecraft.gracefulStopMessage')"
+        >
+          <a-input v-model="form.graceful_stop_message" allow-clear />
+        </a-form-item>
+        <a-form-item
+          field="graceful_stop_commands"
+          :label="t('adminMinecraft.gracefulStopCommands')"
+        >
+          <a-input v-model="form.graceful_stop_commands" placeholder="save-all,stop" allow-clear />
+        </a-form-item>
+      </a-card>
 
-      <h2 class="pt-4 text-lg font-semibold">{{ t('adminMinecraft.nodeOpsSection') }}</h2>
-      <div>
-        <Label for="exec_command_allowed_prefixes">{{ t('adminMinecraft.execAllowedPrefixes') }}</Label>
-        <Input id="exec_command_allowed_prefixes" v-model="form.exec_command_allowed_prefixes" placeholder="ls,tail,systemctl" />
-      </div>
-      <div>
-        <Label for="pause_fulfill_during_maintenance">{{ t('adminMinecraft.pauseFulfillMaintenance') }}</Label>
-        <Select
-          id="pause_fulfill_during_maintenance"
-          v-model="form.pause_fulfill_during_maintenance"
-          :options="[
-            { value: 'true', label: t('adminMinecraft.yes') },
-            { value: 'false', label: t('adminMinecraft.no') },
-          ]"
-        />
-      </div>
-      <div>
-        <Label for="backup_enabled">{{ t('adminMinecraft.backupEnabled') }}</Label>
-        <Select
-          id="backup_enabled"
-          v-model="form.backup_enabled"
-          :options="[
-            { value: 'true', label: t('adminMinecraft.yes') },
-            { value: 'false', label: t('adminMinecraft.no') },
-          ]"
-        />
-      </div>
-      <div>
-        <Label for="backup_schedule">{{ t('adminMinecraft.backupSchedule') }}</Label>
-        <Input id="backup_schedule" v-model="form.backup_schedule" placeholder="0 3 * * *" />
-      </div>
+      <a-card :title="t('adminMinecraft.nodeOpsSection')" :bordered="true">
+        <a-form-item
+          field="exec_command_allowed_prefixes"
+          :label="t('adminMinecraft.execAllowedPrefixes')"
+        >
+          <a-input
+            v-model="form.exec_command_allowed_prefixes"
+            placeholder="ls,tail,systemctl"
+            allow-clear
+          />
+        </a-form-item>
+        <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="16">
+          <a-grid-item>
+            <a-form-item
+              field="pause_fulfill_during_maintenance"
+              :label="t('adminMinecraft.pauseFulfillMaintenance')"
+            >
+              <a-select
+                v-model="form.pause_fulfill_during_maintenance"
+                :options="booleanOptions"
+              />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="backup_enabled" :label="t('adminMinecraft.backupEnabled')">
+              <a-select v-model="form.backup_enabled" :options="booleanOptions" />
+            </a-form-item>
+          </a-grid-item>
+        </a-grid>
+        <a-form-item field="backup_schedule" :label="t('adminMinecraft.backupSchedule')">
+          <a-input v-model="form.backup_schedule" placeholder="0 3 * * *" allow-clear />
+        </a-form-item>
+      </a-card>
 
-      <Button type="submit" :disabled="form.processing">{{ t('common.save') }}</Button>
-    </form>
-  </div>
+      <a-button html-type="submit" type="primary" :loading="form.processing">
+        {{ t('common.save') }}
+      </a-button>
+    </a-space>
+  </a-form>
 </template>
+
+<style scoped>
+.admin-settings-form {
+  max-width: 880px;
+}
+</style>

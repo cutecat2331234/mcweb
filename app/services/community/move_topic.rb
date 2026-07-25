@@ -10,14 +10,14 @@ module Community
     end
 
     def call(leave_redirect: @leave_redirect)
-      unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
-        return ServiceResult.failure(error: "You are not authorized to move this topic.")
-      end
+      from_section = nil
+      @topic.with_lock do
+        unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
+          return ServiceResult.failure(error: "You are not authorized to move this topic.")
+        end
+        return ServiceResult.failure(error: "Topic is already in this section.") if @topic.forum_section_id == @section.id
 
-      return ServiceResult.failure(error: "Topic is already in this section.") if @topic.forum_section_id == @section.id
-
-      from_section = @topic.section
-      ActiveRecord::Base.transaction do
+        from_section = @topic.section
         @topic.update!(section: @section)
         create_redirect_stub(from_section) if leave_redirect
       end

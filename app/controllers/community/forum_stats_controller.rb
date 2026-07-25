@@ -6,8 +6,12 @@ module Community
     def index
       day_ago = 1.day.ago
       week_ago = 1.week.ago
-      posts = Community::Post.where(status: :published)
-      topics = Community::Topic.where(status: :published, unlisted: false)
+      posts = listed_posts
+      topics = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.all,
+        user: current_user
+      )
+      reactions = Community::Reaction.where(forum_post_id: posts.select(:id))
 
       render inertia: "Community/Stats/Index", props: {
         metrics: [
@@ -16,7 +20,7 @@ module Community
           metric("members", User.where(status: :active).count),
           metric("topics_today", topics.where("forum_topics.created_at >= ?", day_ago).count),
           metric("posts_week", posts.where("forum_posts.created_at >= ?", week_ago).count),
-          metric("reactions", Community::Reaction.count)
+          metric("reactions", reactions.count)
         ],
         topPosters: top_posters,
         mostReacted: most_reacted,
@@ -31,21 +35,31 @@ module Community
     end
 
     def top_posters
-      User.where(status: :active)
-        .order(forum_posts_count: :desc)
+      counts = listed_posts
+        .group(:user_id)
+        .order(Arel.sql("COUNT(forum_posts.id) DESC"))
         .limit(10)
-        .map { |user| serialize_member(user, value: user.forum_posts_count) }
+        .count
+      users = User.where(id: counts.keys, status: :active).index_by(&:id)
+      counts.filter_map { |user_id, count| (user = users[user_id]) && serialize_member(user, value: count) }
     end
 
     def most_reacted
       counts = Community::Reaction.joins(:post)
-        .where(forum_posts: { status: "published" })
+        .where(forum_post_id: listed_posts.select(:id))
         .group("forum_posts.user_id")
         .order(Arel.sql("COUNT(forum_reactions.id) DESC"))
         .limit(10)
         .count("forum_reactions.id")
       users = User.where(id: counts.keys, status: :active).index_by(&:id)
       counts.filter_map { |user_id, count| (u = users[user_id]) && serialize_member(u, value: count) }
+    end
+
+    def listed_posts
+      @listed_posts ||= Community::ForumAccess.listed_post_scope(
+        relation: Community::Post.all,
+        user: current_user
+      )
     end
 
     def newest_members

@@ -3,13 +3,6 @@ import { computed } from 'vue'
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -42,42 +35,50 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.common.name') }}</Label>
-      <Input id="name" v-model="form.tag.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="slug">{{ t('admin.forms.tag.slug') }}</Label>
-      <Input id="slug" v-model="form.tag.slug" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="description">{{ t('admin.common.description') }}</Label>
-      <Textarea id="description" v-model="form.tag.description" rows="3" />
-    </div>
-    <div class="space-y-2">
-      <Label for="color_hex">{{ t('admin.common.colorHex') }}</Label>
-      <Input id="color_hex" v-model="form.tag.color_hex" placeholder="#22c55e" />
-    </div>
-    <div v-if="canonicalTags?.length" class="space-y-2">
-      <Label for="canonical_tag_id">{{ t('admin.forms.tag.canonicalLabel') }}</Label>
-      <Select
-        id="canonical_tag_id"
-        :model-value="form.tag.canonical_tag_id == null ? '' : String(form.tag.canonical_tag_id)"
-        :options="canonicalTagOptions"
-        block
-        @update:model-value="updateCanonicalTagId"
-      />
-      <p class="text-xs text-muted-foreground">{{ t('admin.forms.tag.canonicalHint') }}</p>
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.tag.staff_only" />
-      {{ t('admin.forms.tag.staffOnly') }}
-    </label>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline"><Link :href="backUrl">{{ t('admin.ui.back') }}</Link></Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-2xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.common.name') }}</span>
+            <a-input v-model="form.tag.name" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.tag.slug') }}</span>
+            <a-input v-model="form.tag.slug" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+      </a-row>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.common.description') }}</span>
+        <a-textarea v-model="form.tag.description" :auto-size="{ minRows: 3, maxRows: 7 }" />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.common.colorHex') }}</span>
+        <a-input v-model="form.tag.color_hex" placeholder="#22c55e" allow-clear />
+      </label>
+      <label v-if="canonicalTags?.length" class="admin-forum-field">
+        <span>{{ t('admin.forms.tag.canonicalLabel') }}</span>
+        <a-select
+          :model-value="form.tag.canonical_tag_id == null ? '' : String(form.tag.canonical_tag_id)"
+          :options="canonicalTagOptions"
+          @change="updateCanonicalTagId"
+        />
+        <small>{{ t('admin.forms.tag.canonicalHint') }}</small>
+      </label>
+      <a-checkbox v-model="form.tag.staff_only">{{ t('admin.forms.tag.staffOnly') }}</a-checkbox>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+.admin-forum-field small { color: var(--color-text-3); }
+</style>

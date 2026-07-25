@@ -7,7 +7,7 @@ module Commerce
     belongs_to :gift_card, class_name: "Commerce::GiftCard", foreign_key: :store_gift_card_id
     belongs_to :order, class_name: "Commerce::Order", foreign_key: :store_order_id, optional: true
 
-    TYPES = %w[debit credit].freeze
+    TYPES = %w[issue debit credit revoke].freeze
 
     validates :transaction_type, inclusion: { in: TYPES }
     validates :amount_cents, numericality: { other_than: 0 }

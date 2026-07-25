@@ -1,22 +1,9 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Pagination from '@/components/portal/Pagination.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
-import BulkModerateToolbar from '@/components/portal/BulkModerateToolbar.vue'
-import AdminAlertBanners, { type AdminAlert } from '@/components/admin/AdminAlertBanners.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import Input from '@/components/ui/Input.vue'
-import Button from '@/components/ui/Button.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -33,6 +20,11 @@ export interface AdminAction {
   href: string
 }
 
+export interface AdminAlert {
+  level: 'info' | 'warning' | 'error'
+  message: string
+}
+
 export interface StatusTab {
   label: string
   href: string
@@ -46,8 +38,8 @@ export interface PaginationMeta {
   count: number
   from: number
   to: number
-  prev: string | null
-  next: string | null
+  prev: number | string | null
+  next: number | string | null
 }
 
 export interface BulkRetryAction {
@@ -91,6 +83,23 @@ const selectedPublicIds = ref<string[]>([])
 
 const dateFrom = ref('')
 const dateTo = ref('')
+const selectableRowIds = computed(() =>
+  props.rows.map((row) => row.publicId).filter((id): id is string => Boolean(id)),
+)
+const allRowsSelected = computed(
+  () =>
+    selectableRowIds.value.length > 0 &&
+    selectableRowIds.value.every((id) => selectedPublicIds.value.includes(id)),
+)
+const someRowsSelected = computed(
+  () => selectedPublicIds.value.length > 0 && !allRowsSelected.value,
+)
+const tableRows = computed(() =>
+  props.rows.map((row, index) => ({
+    ...row,
+    __rowKey: row.publicId || `admin-row-${index}`,
+  })),
+)
 
 watch(
   () => props.dateFilter,
@@ -99,6 +108,14 @@ watch(
     dateTo.value = filter?.created_to || ''
   },
   { immediate: true }
+)
+
+watch(
+  () => props.rows,
+  () => {
+    const visibleIds = new Set(selectableRowIds.value)
+    selectedPublicIds.value = selectedPublicIds.value.filter((id) => visibleIds.has(id))
+  },
 )
 
 async function submitBulkRetry(action: BulkRetryAction) {
@@ -117,7 +134,11 @@ function applyDateFilter() {
   else params.delete('created_from')
   if (dateTo.value) params.set('created_to', dateTo.value)
   else params.delete('created_to')
-  window.location.href = `${props.dateFilter.action}?${params.toString()}`
+  params.delete('page')
+  const query = params.toString()
+  router.visit(query ? `${props.dateFilter.action}?${query}` : props.dateFilter.action, {
+    preserveScroll: true,
+  })
 }
 
 function toggleRowSelection(publicId: string, checked: boolean) {
@@ -136,7 +157,21 @@ function toggleSelectAll(checked: boolean) {
     selectedPublicIds.value = []
     return
   }
-  selectedPublicIds.value = props.rows.map((row) => row.publicId).filter((id): id is string => !!id)
+  selectedPublicIds.value = [ ...selectableRowIds.value ]
+}
+
+function navigateTab(href: string | number) {
+  if (typeof href === 'string' && href) router.visit(href)
+}
+
+function activeTab(tabs?: StatusTab[]) {
+  return tabs?.find((tab) => tab.active)?.href ?? ''
+}
+
+function visitPage(page: number) {
+  const url = new URL(window.location.href)
+  url.searchParams.set('page', String(page))
+  router.visit(`${url.pathname}${url.search}`, { preserveScroll: true })
 }
 
 function bulkModerate(action: string) {
@@ -168,137 +203,235 @@ async function bulkOrder(action: string) {
 </script>
 
 <template>
-  <AdminAlertBanners v-if="alerts?.length" :alerts="alerts" />
-
-  <div class="mb-4 flex items-center justify-between">
-    <PageHeader :title="title" :subtitle="subtitle" />
-    <div class="flex gap-2">
-      <a v-if="exportUrl" :href="exportUrl" class="inline-flex h-9 items-center rounded-md border px-3 text-sm hover:bg-muted">{{ t('admin.common.exportCsv') }}</a>
-      <Link
-        v-for="action in actions || []"
-        :key="action.href"
-        :href="action.href"
-        class="rounded-md bg-primary px-3 py-1.5 text-sm text-primary-foreground no-underline hover:opacity-90"
+  <div class="admin-generic-index">
+    <a-page-header
+      :title="title"
+      :subtitle="subtitle"
+      :show-back="false"
+      class="mb-4 !px-0"
+    >
+      <template
+        v-if="exportUrl || actions?.length || bulkRetry || selectedPublicIds.length"
+        #extra
       >
-        {{ action.label }}
-      </Link>
-      <button
-        v-if="bulkRetry"
-        type="button"
-        class="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
-        @click="submitBulkRetry(bulkRetry)"
-      >
-        {{ bulkRetry.label }}
-      </button>
-      <BulkModerateToolbar
-        v-if="selectable && bulkModerateUrl"
-        :count="selectedPublicIds.length"
-        @moderate="bulkModerate"
-      />
-      <template v-if="selectable && bulkOrderUrl && bulkOrderActions?.length && selectedPublicIds.length">
-        <button
-          v-for="item in bulkOrderActions"
-          :key="item.action"
-          type="button"
-          class="rounded-md border px-3 py-1.5 text-sm hover:bg-muted"
-          @click="bulkOrder(item.action)"
-        >
-          {{ item.label }}（{{ selectedPublicIds.length }}）
-        </button>
+        <a-space wrap :size="[8, 8]">
+          <a
+            v-if="exportUrl"
+            :href="exportUrl"
+            class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
+          >
+            {{ t('admin.common.exportCsv') }}
+          </a>
+          <Link
+            v-for="action in actions || []"
+            :key="action.href"
+            :href="action.href"
+            class="arco-btn arco-btn-primary arco-btn-size-medium no-underline"
+          >
+            {{ action.label }}
+          </Link>
+          <a-button
+            v-if="bulkRetry"
+            type="outline"
+            @click="submitBulkRetry(bulkRetry)"
+          >
+            {{ bulkRetry.label }}
+          </a-button>
+          <template v-if="selectable && bulkModerateUrl && selectedPublicIds.length">
+            <a-button type="outline" @click="bulkModerate('lock')">
+              {{ t('components.bulkModerate.lockSelected', { count: selectedPublicIds.length }) }}
+            </a-button>
+            <a-button type="outline" @click="bulkModerate('unlock')">
+              {{ t('components.bulkModerate.unlockSelected') }}
+            </a-button>
+            <a-button type="outline" @click="bulkModerate('archive')">
+              {{ t('components.bulkModerate.archiveSelected') }}
+            </a-button>
+            <a-button type="outline" @click="bulkModerate('unarchive')">
+              {{ t('components.bulkModerate.unarchiveSelected') }}
+            </a-button>
+          </template>
+          <template
+            v-if="selectable && bulkOrderUrl && bulkOrderActions?.length && selectedPublicIds.length"
+          >
+            <a-button
+              v-for="item in bulkOrderActions"
+              :key="item.action"
+              type="outline"
+              @click="bulkOrder(item.action)"
+            >
+              {{ item.label }}（{{ selectedPublicIds.length }}）
+            </a-button>
+          </template>
+        </a-space>
       </template>
+    </a-page-header>
+
+    <a-space v-if="alerts?.length" class="mb-4" direction="vertical" fill>
+      <a-alert
+        v-for="(alert, index) in alerts"
+        :key="`${alert.level}-${index}`"
+        :type="alert.level"
+        show-icon
+      >
+        {{ alert.message }}
+      </a-alert>
+    </a-space>
+
+    <a-card
+      v-if="statusTabs?.length || eventTabs?.length || kindTabs?.length || dateFilter"
+      class="mb-4"
+      :bordered="true"
+    >
+      <a-tabs
+        v-if="statusTabs?.length"
+        :active-key="activeTab(statusTabs)"
+        type="rounded"
+        hide-content
+        @change="navigateTab"
+      >
+        <a-tab-pane
+          v-for="tab in statusTabs"
+          :key="tab.href"
+          :title="tab.count == null ? tab.label : `${tab.label} (${tab.count})`"
+        />
+      </a-tabs>
+
+      <a-tabs
+        v-if="eventTabs?.length"
+        :active-key="activeTab(eventTabs)"
+        type="rounded"
+        hide-content
+        @change="navigateTab"
+      >
+        <a-tab-pane
+          v-for="tab in eventTabs"
+          :key="tab.href"
+          :title="tab.count == null ? tab.label : `${tab.label} (${tab.count})`"
+        />
+      </a-tabs>
+
+      <a-tabs
+        v-if="kindTabs?.length"
+        :active-key="activeTab(kindTabs)"
+        type="rounded"
+        hide-content
+        @change="navigateTab"
+      >
+        <a-tab-pane
+          v-for="tab in kindTabs"
+          :key="tab.href"
+          :title="tab.label"
+        />
+      </a-tabs>
+
+      <form
+        v-if="dateFilter"
+        class="flex flex-wrap items-end gap-3"
+        @submit.prevent="applyDateFilter"
+      >
+        <label class="grid gap-1 text-sm">
+          <span class="text-[var(--color-text-2)]">{{ t('admin.common.dateFrom') }}</span>
+          <a-date-picker
+            v-model="dateFrom"
+            value-format="YYYY-MM-DD"
+            format="YYYY-MM-DD"
+            allow-clear
+            style="width: 180px"
+          />
+        </label>
+        <label class="grid gap-1 text-sm">
+          <span class="text-[var(--color-text-2)]">{{ t('admin.common.dateTo') }}</span>
+          <a-date-picker
+            v-model="dateTo"
+            value-format="YYYY-MM-DD"
+            format="YYYY-MM-DD"
+            allow-clear
+            style="width: 180px"
+          />
+        </label>
+        <a-button html-type="submit" type="primary">
+          {{ t('admin.common.filter') }}
+        </a-button>
+      </form>
+    </a-card>
+
+    <a-card class="admin-generic-index__table-card" :bordered="true">
+      <div class="overflow-x-auto">
+        <a-table
+          :data="tableRows"
+          :pagination="false"
+          row-key="__rowKey"
+          :bordered="{ cell: true }"
+          stripe
+        >
+          <template #columns>
+            <a-table-column v-if="selectable" :width="52">
+              <template #title>
+                <a-checkbox
+                  :model-value="allRowsSelected"
+                  :indeterminate="someRowsSelected"
+                  @change="toggleSelectAll"
+                />
+              </template>
+              <template #cell="{ record }">
+                <a-checkbox
+                  v-if="record.publicId"
+                  :model-value="selectedPublicIds.includes(record.publicId)"
+                  @change="(checked: boolean) => toggleRowSelection(record.publicId, checked)"
+                />
+              </template>
+            </a-table-column>
+            <a-table-column
+              v-for="column in columns"
+              :key="column.key"
+              :title="column.label"
+              :data-index="column.key"
+            >
+              <template #cell="{ record }">
+                <Link
+                  v-if="column.link && record.url"
+                  :href="record.url"
+                  class="font-medium text-[rgb(var(--primary-6))] no-underline hover:underline"
+                >
+                  {{ record[column.key] }}
+                </Link>
+                <span v-else>{{ record[column.key] }}</span>
+              </template>
+            </a-table-column>
+          </template>
+          <template #empty>
+            <a-empty :description="t('admin.ui.noResults')" />
+          </template>
+        </a-table>
+      </div>
+    </a-card>
+
+    <div
+      v-if="pagination && pagination.pages > 1"
+      class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    >
+      <span class="text-sm text-[var(--color-text-3)]">
+        {{ pagination.from }}–{{ pagination.to }} / {{ pagination.count }}
+      </span>
+      <a-pagination
+        :current="pagination.page"
+        :total="pagination.pages"
+        :page-size="1"
+        :show-page-size="false"
+        @change="visitPage"
+      />
     </div>
   </div>
-
-  <div v-if="statusTabs?.length" class="mb-4 flex flex-wrap gap-2">
-    <Link
-      v-for="tab in statusTabs"
-      :key="'status-' + tab.href"
-      :href="tab.href"
-      class="rounded-md border px-3 py-1.5 text-sm no-underline"
-      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
-    >
-      {{ tab.label }}<span v-if="tab.count != null" class="ml-1 opacity-80">({{ tab.count }})</span>
-    </Link>
-  </div>
-
-  <div v-if="eventTabs?.length" class="mb-4 flex flex-wrap gap-2">
-    <Link
-      v-for="tab in eventTabs"
-      :key="'event-' + tab.href"
-      :href="tab.href"
-      class="rounded-md border px-3 py-1.5 text-xs no-underline"
-      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
-    >
-      {{ tab.label }}<span v-if="tab.count != null" class="ml-1 opacity-80">({{ tab.count }})</span>
-    </Link>
-  </div>
-
-  <div v-if="kindTabs?.length" class="mb-4 flex flex-wrap gap-2">
-    <Link
-      v-for="tab in kindTabs"
-      :key="'kind-' + tab.href"
-      :href="tab.href"
-      class="rounded-md border px-3 py-1.5 text-xs no-underline"
-      :class="tab.active ? 'border-primary bg-primary text-primary-foreground' : 'hover:bg-muted'"
-    >
-      {{ tab.label }}
-    </Link>
-  </div>
-
-  <form v-if="dateFilter" class="mb-4 flex flex-wrap items-end gap-2" @submit.prevent="applyDateFilter">
-    <label class="text-sm">
-      <span class="mb-1 block text-muted-foreground">{{ t('admin.common.dateFrom') }}</span>
-      <Input v-model="dateFrom" type="date" class="w-40" />
-    </label>
-    <label class="text-sm">
-      <span class="mb-1 block text-muted-foreground">{{ t('admin.common.dateTo') }}</span>
-      <Input v-model="dateTo" type="date" class="w-40" />
-    </label>
-    <Button type="submit" variant="outline" size="sm">{{ t('admin.common.filter') }}</Button>
-  </form>
-
-  <div v-if="rows.length" class="rounded-lg border">
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead v-if="selectable" class="w-10">
-            <Checkbox
-              :model-value="rows.length > 0 && selectedPublicIds.length === rows.filter((r) => r.publicId).length"
-              @update:model-value="toggleSelectAll"
-            />
-          </TableHead>
-          <TableHead v-for="column in columns" :key="column.key">
-            {{ column.label }}
-          </TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        <TableRow v-for="(row, index) in rows" :key="index">
-          <TableCell v-if="selectable">
-            <Checkbox
-              v-if="row.publicId"
-              :model-value="selectedPublicIds.includes(row.publicId)"
-              @update:model-value="(checked) => toggleRowSelection(row.publicId!, checked)"
-            />
-          </TableCell>
-          <TableCell v-for="column in columns" :key="column.key">
-            <Link
-              v-if="column.link && row.url"
-              :href="row.url"
-              class="font-medium hover:underline"
-            >
-              {{ row[column.key] }}
-            </Link>
-            <span v-else>{{ row[column.key] }}</span>
-          </TableCell>
-        </TableRow>
-      </TableBody>
-    </Table>
-  </div>
-
-  <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-    {{ t('admin.ui.noResults') }}
-  </p>
-
-  <Pagination v-if="pagination && pagination.pages > 1" :meta="pagination" class="mt-4" />
 </template>
+
+<style scoped>
+.admin-generic-index :deep(.arco-tabs + .arco-tabs),
+.admin-generic-index :deep(.arco-tabs + form) {
+  margin-top: 12px;
+}
+
+.admin-generic-index__table-card :deep(.arco-card-body) {
+  padding: 0;
+}
+</style>

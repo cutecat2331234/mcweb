@@ -3,12 +3,6 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
-import Textarea from '@/components/ui/Textarea.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -62,47 +56,75 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.common.name') }}</Label>
-      <Input id="name" v-model="form.badge.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="slug">{{ t('admin.forms.tag.slug') }}</Label>
-      <Input id="slug" v-model="form.badge.slug" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="icon">{{ t('admin.forms.badge.icon') }}</Label>
-      <Input id="icon" v-model="form.badge.icon" />
-    </div>
-    <div class="space-y-2">
-      <Label for="color">{{ t('admin.forms.badge.color') }}</Label>
-      <Input id="color" v-model="form.badge.color" placeholder="#6366f1" />
-    </div>
-    <div class="space-y-2">
-      <Label for="tier">{{ t('admin.forms.badge.tier') }}</Label>
-      <Select id="tier" v-model="form.badge.tier" :options="tierOptions" block />
-    </div>
-    <div class="space-y-2">
-      <Label for="grouping">{{ t('admin.forms.badge.grouping') }}</Label>
-      <Input id="grouping" v-model="form.badge.grouping" :placeholder="t('admin.forms.badge.groupingPlaceholder')" />
-    </div>
-    <div class="space-y-2">
-      <Label for="grant_rule">{{ t('admin.forms.badge.grantRule') }}</Label>
-      <Select id="grant_rule" v-model="form.badge.grant_rule" :options="grantRuleOptions" block />
-    </div>
-    <div class="space-y-2">
-      <Label for="grant_threshold">{{ t('admin.forms.badge.grantThreshold') }}</Label>
-      <Input id="grant_threshold" v-model.number="form.badge.grant_threshold" type="number" min="0" />
-    </div>
-    <div class="space-y-2">
-      <Label for="description">{{ t('admin.common.description') }}</Label>
-      <Textarea id="description" v-model="form.badge.description" rows="3" />
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline"><Link :href="backUrl">{{ t('admin.ui.back') }}</Link></Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-3xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.common.name') }}</span>
+            <a-input v-model="form.badge.name" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.tag.slug') }}</span>
+            <a-input v-model="form.badge.slug" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.badge.icon') }}</span>
+            <a-input v-model="form.badge.icon" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.badge.color') }}</span>
+            <a-input v-model="form.badge.color" placeholder="#6366f1" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.badge.tier') }}</span>
+            <a-select v-model="form.badge.tier" :options="tierOptions" />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.badge.grouping') }}</span>
+            <a-input
+              v-model="form.badge.grouping"
+              :placeholder="t('admin.forms.badge.groupingPlaceholder')"
+              allow-clear
+            />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.badge.grantRule') }}</span>
+            <a-select v-model="form.badge.grant_rule" :options="grantRuleOptions" />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.badge.grantThreshold') }}</span>
+            <a-input-number v-model="form.badge.grant_threshold" :min="0" class="w-full" />
+          </label>
+        </a-col>
+      </a-row>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.common.description') }}</span>
+        <a-textarea v-model="form.badge.description" :auto-size="{ minRows: 3, maxRows: 7 }" />
+      </label>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+</style>

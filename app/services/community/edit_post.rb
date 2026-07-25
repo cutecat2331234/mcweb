@@ -32,6 +32,7 @@ module Community
       @reason = reason.to_s.strip.presence
       @old_body = post.body
       @attachment_ids = attachment_ids
+      apply_plugin_filters!
     end
 
     def call
@@ -78,7 +79,7 @@ module Community
       Community::ProcessHashtags.call(topic: @post.topic, body: @body, user: @user)
       body_changed = @old_body != @body
       Community::NotifyPostEdited.call(post: @post) if body_changed && !silent
-      if (body_changed || attachments_changed) && !silent
+      if (body_changed || attachments_changed) && !@post.whisper? && !silent
         Community::DispatchForumEventWebhook.call(event_type: "post.edited", topic: @post.topic, post: @post)
       end
       ServiceResult.success(@post)
@@ -105,6 +106,25 @@ module Community
     def filter_censored_body!
       result = Community::FilterCensoredWords.call(text: @body)
       @body = result.value if result.success?
+    end
+
+    def apply_plugin_filters!
+      return unless defined?(Mcweb::Plugins) && Mcweb::Plugins.respond_to?(:apply_filter)
+
+      filtered = Mcweb::Plugins.apply_filter(
+        "forum.post.edit.attributes",
+        {
+          body: @body,
+          reason: @reason
+        },
+        context: { user: @user, post: @post, topic: @post.topic }
+      )
+      return unless filtered.is_a?(Hash)
+
+      @body = filtered.fetch("body", @body).to_s.strip
+      @reason = filtered.fetch("reason", @reason).to_s.strip.presence
+    rescue StandardError => e
+      Rails.logger.error("[mcweb.plugins] forum.post.edit.attributes host integration failed: #{e.class}: #{e.message}")
     end
   end
 end

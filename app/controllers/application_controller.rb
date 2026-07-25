@@ -54,19 +54,28 @@ class ApplicationController < ActionController::Base
     end
 
     if FeatureFlags.enabled?(:forum) && logged_in?
+      visible_section_ids = Community::SectionAccess.visible_ids(user: current_user)
       share[:notifications] = {
         unread_count: current_user.notifications.unread.count,
         url: forum_notifications_path
       }
       share[:forum_unread] = {
-        count: Community::ReadState.with_unread_for(current_user).count,
+        count: Community::ReadState
+          .with_unread_for(current_user)
+          .where(forum_topics: { forum_section_id: visible_section_ids })
+          .count,
         url: forum_unread_path
       }
       share[:forum_new] = {
-        count: Community::Topic.unseen_for(current_user).count,
+        count: Community::ForumAccess
+          .topic_scope(relation: Community::Topic.unseen_for(current_user), user: current_user)
+          .count,
         url: forum_new_feed_path
       }
-      assigned_count = Community::Topic.published_listed.where(assigned_to: current_user).count
+      assigned_count = Community::ForumAccess.topic_scope(
+        relation: Community::Topic.published_listed.where(assigned_to: current_user),
+        user: current_user
+      ).count
       if assigned_count.positive? || current_user.permission?("forum.topics.lock")
         share[:forum_assigned] = {
           count: assigned_count,
@@ -105,7 +114,10 @@ class ApplicationController < ActionController::Base
     end
 
     if FeatureFlags.enabled?(:forum)
-      announcements = Community::Topic.global_announcements.order(last_posted_at: :desc).limit(3)
+      announcements = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.global_announcements,
+        user: current_user
+      ).order(last_posted_at: :desc).limit(3)
       if logged_in?
         dismissed = Array(current_user.dismissed_global_announcement_ids).map(&:to_s)
         announcements = announcements.reject { |topic| dismissed.include?(topic.public_id) }

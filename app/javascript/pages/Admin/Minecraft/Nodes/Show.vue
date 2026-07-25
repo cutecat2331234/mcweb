@@ -1,19 +1,12 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Modal } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
 import AdminAlertBanners, { type AdminAlert } from '@/components/admin/AdminAlertBanners.vue'
 import NodeTasksTable, { type NodeTaskRow } from '@/components/admin/NodeTasksTable.vue'
 import MetricHistoryPanel, { type MetricPoint } from '@/components/admin/MetricHistoryPanel.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -21,6 +14,13 @@ interface ConnectorProxyEntry {
   last_request_at?: string
   last_success_at?: string
   last_error?: string
+}
+
+interface PageAction {
+  label: string
+  href: string
+  method?: string
+  confirm?: string
 }
 
 const props = defineProps<{
@@ -41,7 +41,7 @@ const props = defineProps<{
   alerts: AdminAlert[]
   servers: Array<{ name: string; public_id: string; process_state: string; url: string }>
   backUrl: string
-  actions: Array<{ label: string; href: string; method?: string; confirm?: string }>
+  actions: PageAction[]
   nodeSecretOnce?: string | null
   pairingTokenOnce?: string | null
   pairingTokenExpiresAt?: string | null
@@ -78,111 +78,152 @@ const hostMetricRows = computed(() => {
     value: value == null ? '—' : String(value),
   }))
 })
+
+const connectorColumns = computed(() => [
+  { title: t('adminMinecraft.fieldServerId'), dataIndex: 'serverId', width: 180 },
+  { title: t('adminMinecraft.lastRequestAt'), dataIndex: 'lastRequestAt', width: 180 },
+  { title: t('adminMinecraft.lastSuccessAt'), dataIndex: 'lastSuccessAt', width: 180 },
+  { title: t('adminMinecraft.lastError'), dataIndex: 'lastError' },
+])
+
+function runPageAction(action: PageAction) {
+  const perform = () => {
+    if (action.method === 'post') router.post(action.href)
+    else if (action.method === 'delete') router.delete(action.href)
+    else router.visit(action.href)
+  }
+
+  if (!action.confirm) {
+    perform()
+    return
+  }
+
+  Modal.warning({
+    title: action.label,
+    content: action.confirm,
+    okText: action.label,
+    cancelText: t('common.cancel'),
+    hideCancel: false,
+    okButtonProps: action.method === 'delete' ? { status: 'danger' } : undefined,
+    onOk: perform,
+  })
+}
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <a-page-header :title="title" :show-back="false">
+    <template #extra>
+      <a-button @click="router.visit(backUrl)">{{ t('adminMinecraft.backToNodes') }}</a-button>
+    </template>
+  </a-page-header>
 
   <AdminAlertBanners :alerts="alerts" />
 
-  <section
-    v-if="nodeSecretOnce"
-    class="mb-4 max-w-2xl rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
+  <a-space
+    v-if="nodeSecretOnce || pairingTokenOnce"
+    direction="vertical"
+    fill
+    class="mb-4 admin-secret-alert"
   >
-    <p class="mb-2 font-medium">{{ t('adminMinecraft.newNodeSecret') }}</p>
-    <pre class="overflow-x-auto rounded bg-background p-2 text-xs">{{ nodeSecretOnce }}</pre>
-  </section>
+    <a-alert v-if="nodeSecretOnce" type="warning" show-icon>
+      <template #title>{{ t('adminMinecraft.newNodeSecret') }}</template>
+      <pre class="admin-code-block">{{ nodeSecretOnce }}</pre>
+    </a-alert>
+    <a-alert v-if="pairingTokenOnce" type="warning" show-icon>
+      <template #title>
+        {{ t('adminMinecraft.newPairingToken') }}
+        <span v-if="pairingTokenExpiresAt">({{ pairingTokenExpiresAt }})</span>
+      </template>
+      <pre class="admin-code-block">{{ pairingTokenOnce }}</pre>
+    </a-alert>
+  </a-space>
 
-  <section
-    v-if="pairingTokenOnce"
-    class="mb-4 max-w-2xl rounded border border-amber-500/40 bg-amber-500/10 p-4 text-sm"
+  <a-card :bordered="true">
+    <a-descriptions :column="{ xs: 1, md: 2 }" bordered>
+      <a-descriptions-item v-for="field in nodeFields" :key="field.key" :label="field.label">
+        <span class="break-all">{{ node[field.key as keyof typeof node] || '—' }}</span>
+      </a-descriptions-item>
+    </a-descriptions>
+  </a-card>
+
+  <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16" class="mt-4">
+    <a-grid-item v-if="hostMetricRows.length">
+      <a-card :title="t('adminMinecraft.hostMetrics')" :bordered="true">
+        <a-descriptions :column="1" bordered size="small">
+          <a-descriptions-item v-for="row in hostMetricRows" :key="row.key" :label="row.key">
+            <span class="break-all">{{ row.value }}</span>
+          </a-descriptions-item>
+        </a-descriptions>
+      </a-card>
+    </a-grid-item>
+    <a-grid-item v-if="servers.length">
+      <a-card :title="t('adminMinecraft.managedServers')" :bordered="true">
+        <a-list :bordered="false">
+          <a-list-item v-for="server in servers" :key="server.public_id">
+            <a-link @click="router.visit(server.url)">{{ server.name }}</a-link>
+            <template #extra>
+              <a-tag>{{ server.process_state }}</a-tag>
+            </template>
+          </a-list-item>
+        </a-list>
+      </a-card>
+    </a-grid-item>
+  </a-grid>
+
+  <MetricHistoryPanel
+    v-if="metricHistory"
+    class="mt-8"
+    :points="metricHistory"
+    :title="t('adminMinecraft.metricHistory')"
+  />
+
+  <a-card
+    v-if="connectorProxyRows.length"
+    :title="t('adminMinecraft.connectorProxy')"
+    :bordered="true"
+    class="mt-8"
   >
-    <p class="mb-2 font-medium">
-      {{ t('adminMinecraft.newPairingToken') }}
-      <span v-if="pairingTokenExpiresAt" class="font-normal text-muted-foreground">
-        ({{ pairingTokenExpiresAt }})
-      </span>
-    </p>
-    <pre class="overflow-x-auto rounded bg-background p-2 text-xs">{{ pairingTokenOnce }}</pre>
-  </section>
-
-  <dl class="grid max-w-2xl gap-3 text-sm">
-    <div
-      v-for="field in nodeFields"
-      :key="field.key"
-      class="grid grid-cols-3 gap-2 border-b border-border pb-2"
-    >
-      <dt class="font-medium text-muted-foreground">{{ field.label }}</dt>
-      <dd class="col-span-2 break-all">{{ node[field.key as keyof typeof node] }}</dd>
-    </div>
-  </dl>
-
-  <section v-if="hostMetricRows.length" class="mt-8 max-w-2xl">
-    <h2 class="mb-3 text-lg font-semibold">{{ t('adminMinecraft.hostMetrics') }}</h2>
-    <dl class="grid gap-2 text-sm">
-      <div
-        v-for="row in hostMetricRows"
-        :key="row.key"
-        class="grid grid-cols-3 gap-2 border-b border-border pb-2"
-      >
-        <dt class="font-medium text-muted-foreground">{{ row.key }}</dt>
-        <dd class="col-span-2 break-all">{{ row.value }}</dd>
-      </div>
-    </dl>
-  </section>
-
-  <MetricHistoryPanel v-if="metricHistory" class="mt-8" :points="metricHistory" :title="t('adminMinecraft.metricHistory')" />
-
-  <section v-if="connectorProxyRows.length" class="mt-8">
-    <h2 class="mb-3 text-lg font-semibold">{{ t('adminMinecraft.connectorProxy') }}</h2>
-    <div class="overflow-x-auto rounded-md border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{{ t('adminMinecraft.fieldServerId') }}</TableHead>
-            <TableHead>{{ t('adminMinecraft.lastRequestAt') }}</TableHead>
-            <TableHead>{{ t('adminMinecraft.lastSuccessAt') }}</TableHead>
-            <TableHead>{{ t('adminMinecraft.lastError') }}</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="row in connectorProxyRows" :key="row.serverId">
-            <TableCell class="font-mono text-xs">{{ row.serverId }}</TableCell>
-            <TableCell class="text-xs">{{ row.lastRequestAt }}</TableCell>
-            <TableCell class="text-xs">{{ row.lastSuccessAt }}</TableCell>
-            <TableCell class="max-w-xs truncate text-xs text-red-700 dark:text-red-400">{{ row.lastError }}</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </div>
-  </section>
+    <a-table
+      :columns="connectorColumns"
+      :data="connectorProxyRows"
+      row-key="serverId"
+      :pagination="false"
+      :scroll="{ x: 760 }"
+    />
+  </a-card>
 
   <NodeTasksTable :tasks="nodeTasks" />
 
-  <section v-if="servers.length" class="mt-8">
-    <h2 class="mb-3 text-lg font-semibold">{{ t('adminMinecraft.managedServers') }}</h2>
-    <ul class="space-y-2">
-      <li v-for="s in servers" :key="s.public_id">
-        <Link :href="s.url" class="text-primary hover:underline">{{ s.name }}</Link>
-        <span class="ml-2 text-muted-foreground">({{ s.process_state }})</span>
-      </li>
-    </ul>
-  </section>
-
-  <div class="mt-6 flex flex-wrap gap-2">
-    <template v-for="action in actions" :key="action.href">
-      <Button v-if="action.method === 'post'" variant="outline" as-child>
-        <Link :href="action.href" method="post" as="button" :data="{ confirm: action.confirm }">{{ action.label }}</Link>
-      </Button>
-      <Button v-else-if="action.method === 'delete'" variant="destructive" as-child>
-        <Link :href="action.href" method="delete" as="button" :data="{ confirm: action.confirm }">{{ action.label }}</Link>
-      </Button>
-      <Button v-else variant="outline" as-child>
-        <a :href="action.href">{{ action.label }}</a>
-      </Button>
-    </template>
-    <Button variant="ghost" as-child>
-      <a :href="backUrl">{{ t('adminMinecraft.backToNodes') }}</a>
-    </Button>
-  </div>
+  <a-card v-if="actions.length" :title="t('adminMinecraft.actions')" :bordered="true" class="mt-4">
+    <a-space wrap>
+      <a-button
+        v-for="action in actions"
+        :key="action.href"
+        :status="action.method === 'delete' ? 'danger' : undefined"
+        @click="runPageAction(action)"
+      >
+        {{ action.label }}
+      </a-button>
+    </a-space>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-secret-alert {
+  max-width: 880px;
+}
+.admin-code-block {
+  max-width: 100%;
+  margin: 0;
+  padding: 12px;
+  overflow: auto;
+  color: var(--color-text-1);
+  background: var(--color-fill-2);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+.break-all {
+  word-break: break-all;
+}
+</style>

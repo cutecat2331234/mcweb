@@ -2,10 +2,6 @@
 import { useForm, Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -28,33 +24,63 @@ function submit() {
 </script>
 
 <template>
-  <div class="mb-4 flex items-center justify-between">
-    <PageHeader :title="t('admin.forum.points.adjustTitle')" :subtitle="t('admin.forum.points.adjustSubtitle')" />
-    <Link :href="back_url" class="rounded-md border px-3 py-1.5 text-sm no-underline hover:bg-muted">
-      {{ t('admin.forum.points.backToLog') }}
-    </Link>
-  </div>
+  <a-page-header
+    :title="t('admin.forum.points.adjustTitle')"
+    :subtitle="t('admin.forum.points.adjustSubtitle')"
+    :show-back="false"
+    class="mb-4 !px-0"
+  >
+    <template #extra>
+      <Link :href="back_url" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">
+        {{ t('admin.forum.points.backToLog') }}
+      </Link>
+    </template>
+  </a-page-header>
 
-  <form class="max-w-xl space-y-5" @submit.prevent="submit">
-    <div class="space-y-1.5">
-      <Label for="username">{{ t('admin.forum.points.fieldUser') }}</Label>
-      <Input id="username" v-model="form.username" type="text" :placeholder="t('admin.forum.points.fieldUserHint')" />
-      <p v-if="form.errors.username" class="text-xs text-destructive">{{ form.errors.username }}</p>
-    </div>
+  <a-card class="max-w-xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forum.points.fieldUser') }}</span>
+        <a-input v-model="form.username" :placeholder="t('admin.forum.points.fieldUserHint')" allow-clear />
+        <small v-if="form.errors.username" class="text-[rgb(var(--danger-6))]">
+          {{ form.errors.username }}
+        </small>
+      </label>
 
-    <div class="space-y-1.5">
-      <Label for="amount">{{ t('admin.forum.points.fieldAmount') }}</Label>
-      <Input id="amount" v-model="form.amount" type="number" step="1" class="w-40" :placeholder="t('admin.forum.points.fieldAmountHint')" />
-      <p class="text-xs text-muted-foreground">{{ t('admin.forum.points.fieldAmountNote') }}</p>
-    </div>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forum.points.fieldAmount') }}</span>
+        <a-input-number
+          :model-value="form.amount === '' ? undefined : Number(form.amount)"
+          :placeholder="t('admin.forum.points.fieldAmountHint')"
+          class="w-full sm:w-48"
+          @update:model-value="(value: number | undefined) => { form.amount = value ?? '' }"
+        />
+        <small>{{ t('admin.forum.points.fieldAmountNote') }}</small>
+      </label>
 
-    <div class="space-y-1.5">
-      <Label for="note">{{ t('admin.forum.points.fieldNote') }}</Label>
-      <Input id="note" v-model="form.note" type="text" :placeholder="t('admin.forum.points.fieldNoteHint')" />
-    </div>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forum.points.fieldNote') }}</span>
+        <a-input v-model="form.note" :placeholder="t('admin.forum.points.fieldNoteHint')" allow-clear />
+      </label>
 
-    <div class="flex items-center gap-3 pt-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.forum.points.applyAdjustment') }}</Button>
-    </div>
-  </form>
+      <div>
+        <a-button html-type="submit" type="primary" :loading="form.processing">
+          {{ t('admin.forum.points.applyAdjustment') }}
+        </a-button>
+      </div>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field {
+  display: grid;
+  gap: 6px;
+  color: var(--color-text-2);
+  font-size: 14px;
+}
+
+.admin-forum-field small {
+  color: var(--color-text-3);
+}
+</style>

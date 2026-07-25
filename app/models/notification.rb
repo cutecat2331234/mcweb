@@ -44,31 +44,16 @@ class Notification < ApplicationRecord
       metadata: metadata,
       auto_dismiss: ALERT_TYPES.include?(notification_type.to_s)
     )
-    broadcast_new(notification)
-    enqueue_web_push(notification)
+    notification_id = notification.id
+    ActiveRecord.after_all_transactions_commit do
+      enqueue_web_push(notification_id)
+    end
     notification
   end
 
-  def self.enqueue_web_push(notification)
-    Community::DeliverWebPushJob.perform_later(notification.id)
-  rescue StandardError
-    nil
-  end
-
-  # Push a live update to the recipient's notification stream. Never let a
-  # broadcast failure (e.g. cable adapter hiccup) block notification creation.
-  def self.broadcast_new(notification)
-    Community::NotificationsChannel.broadcast_to(
-      notification.user,
-      {
-        id: notification.id,
-        title: notification.title,
-        body: notification.body,
-        type: notification.notification_type,
-        path: notification.destination_path,
-        unread_count: notification.user.notifications.unread.count
-      }
-    )
+  def self.enqueue_web_push(notification_or_id)
+    notification_id = notification_or_id.respond_to?(:id) ? notification_or_id.id : notification_or_id
+    Community::DeliverWebPushJob.perform_later(notification_id)
   rescue StandardError
     nil
   end

@@ -233,7 +233,7 @@ end
 
 class Round81AdminNavStoreWebhooksTest < ActiveSupport::TestCase
   test "admin layout links to store webhook deliveries" do
-    content = File.read(Rails.root.join("app/javascript/layouts/AdminLayout.vue"))
+    content = File.read(Rails.root.join("app/javascript/layouts/ArcoAdminLayout.vue"))
     assert_includes content, "storeWebhookDeliveries"
   end
 end

@@ -28,7 +28,6 @@ module Community
           @poll.votes.create!(user: @user, option_index: index)
         end
       end
-
       ServiceResult.success(@poll.votes.where(user: @user))
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

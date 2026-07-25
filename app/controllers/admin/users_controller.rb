@@ -145,13 +145,28 @@ module Admin
         return redirect_to admin_user_path(@user), alert: t("mcweb.flash.permission_denied")
       end
 
-      if @user.update(user_params)
-        sync_roles_and_modules!
+      unknown_modules = unknown_requested_admin_modules
+      if unknown_modules.any?
+        return redirect_to(
+          admin_user_path(@user),
+          alert: t("mcweb.flash.admin_module_denied")
+        )
+      end
+
+      updated = false
+      User.transaction do
+        updated = @user.update(user_params)
+        sync_roles_and_modules! if updated
+      end
+
+      if updated
         Administration::AuditLogger.call(actor: current_user, action: "admin.user_updated", resource: @user)
         redirect_to admin_user_path(@user), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.user"))
       else
         redirect_to admin_user_path(@user), alert: @user.errors.full_messages.to_sentence
       end
+    rescue ActiveRecord::RecordInvalid => e
+      redirect_to admin_user_path(@user), alert: e.record.errors.full_messages.to_sentence
     end
 
     def destroy
@@ -326,16 +341,31 @@ module Admin
         @user.role_ids = Array(params[:user][:role_ids]).reject(&:blank?).map(&:to_i)
       end
 
-      if current_user.account_owner? && params[:user][:admin_modules] && @user.account_staff?
-        modules = Array(params[:user][:admin_modules]).reject(&:blank?)
-        @user.admin_module_grants.where.not(module_key: modules).delete_all
-        modules.each do |module_key|
-          @user.admin_module_grants.find_or_create_by!(module_key: module_key) do |grant|
-            grant.granted_by = current_user
-            grant.granted_at = Time.current
+      if current_user.account_owner?
+        if @user.account_staff? && params[:user].key?(:admin_modules)
+          modules = requested_admin_modules
+          @user.admin_module_grants.where.not(module_key: modules).delete_all
+          modules.each do |module_key|
+            @user.admin_module_grants.find_or_create_by!(module_key: module_key) do |grant|
+              grant.granted_by = current_user
+              grant.granted_at = Time.current
+            end
           end
+        elsif !@user.account_staff? || @user.saved_change_to_account_type?
+          @user.admin_module_grants.delete_all
         end
       end
+    end
+
+    def requested_admin_modules
+      Array(params.dig(:user, :admin_modules)).reject(&:blank?).map(&:to_s).uniq
+    end
+
+    def unknown_requested_admin_modules
+      return [] unless current_user.account_owner?
+      return [] unless params[:user]&.key?(:admin_modules)
+
+      requested_admin_modules - AdminModuleGrant::MODULE_KEYS
     end
 
     def set_user
@@ -357,7 +387,7 @@ module Admin
 
       if current_user.account_owner?
         props.merge!(
-          admin_modules: @user.admin_module_grants.pluck(:module_key),
+          admin_modules: @user.admin_module_grants.pluck(:module_key) & AdminModuleGrant::MODULE_KEYS,
           module_options: AdminModuleGrant::MODULE_KEYS,
           account_type: @user.account_type,
           account_types: User.account_types.keys.map { |key| { value: key, label: account_type_label(key) } },

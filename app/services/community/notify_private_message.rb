@@ -24,6 +24,7 @@ module Community
           excerpt: @message.body.truncate(120),
           metadata: {
             conversation_id: @conversation.id,
+            message_id: @message.id,
             url: "/app/forum/conversations/#{@conversation.id}",
             path: "/app/forum/conversations/#{@conversation.id}"
           }

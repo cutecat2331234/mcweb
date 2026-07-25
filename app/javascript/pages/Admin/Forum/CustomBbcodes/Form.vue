@@ -2,13 +2,7 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -46,33 +40,44 @@ async function destroy() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-
-  <form class="max-w-2xl space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="tag">{{ t('admin.customBbcodes.tag') }}</Label>
-      <Input id="tag" v-model="form.custom_bbcode.tag" required maxlength="20" placeholder="note" />
-      <p class="text-xs text-muted-foreground">{{ t('admin.customBbcodes.tagHint') }}</p>
-    </div>
-    <div class="space-y-2">
-      <Label for="replacement">{{ t('admin.customBbcodes.replacement') }}</Label>
-      <Textarea id="replacement" v-model="form.custom_bbcode.replacement" rows="4" required :placeholder="'> 📌 {content}'" />
-      <p class="text-xs text-muted-foreground">{{ t('admin.customBbcodes.replacementHint') }}</p>
-    </div>
-    <div class="space-y-2">
-      <Label for="sample">{{ t('admin.customBbcodes.sample') }}</Label>
-      <Input id="sample" v-model="form.custom_bbcode.sample" />
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.custom_bbcode.active" />
-      {{ t('admin.customBbcodes.active') }}
-    </label>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button v-if="deleteUrl" type="button" variant="destructive" @click="destroy">{{ t('admin.ui.delete') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-3xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <label class="admin-forum-field">
+        <span>{{ t('admin.customBbcodes.tag') }}</span>
+        <a-input
+          v-model="form.custom_bbcode.tag"
+          placeholder="note"
+          :input-attrs="{ required: true, maxlength: 20 }"
+          allow-clear
+        />
+        <small>{{ t('admin.customBbcodes.tagHint') }}</small>
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.customBbcodes.replacement') }}</span>
+        <a-textarea
+          v-model="form.custom_bbcode.replacement"
+          :auto-size="{ minRows: 4, maxRows: 10 }"
+          :placeholder="'> 📌 {content}'"
+          :textarea-attrs="{ required: true }"
+        />
+        <small>{{ t('admin.customBbcodes.replacementHint') }}</small>
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.customBbcodes.sample') }}</span>
+        <a-input v-model="form.custom_bbcode.sample" allow-clear />
+      </label>
+      <a-checkbox v-model="form.custom_bbcode.active">{{ t('admin.customBbcodes.active') }}</a-checkbox>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <a-button v-if="deleteUrl" type="primary" status="danger" @click="destroy">{{ t('admin.ui.delete') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+.admin-forum-field small { color: var(--color-text-3); }
+</style>

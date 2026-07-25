@@ -12,6 +12,10 @@ import Alert from '@/components/ui/Alert.vue'
 import PostEditor from '@/components/portal/PostEditor.vue'
 import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
 import TagGroupPicker from '@/components/portal/TagGroupPicker.vue'
+import TopicCustomFieldsForm, {
+  type TopicCustomField,
+  type TopicCustomFieldValue,
+} from '@/components/portal/TopicCustomFieldsForm.vue'
 import Textarea from '@/components/ui/Textarea.vue'
 import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
@@ -25,6 +29,7 @@ const { t } = useI18n()
 const props = defineProps<{
   section: { name: string; slug: string; url: string; prefixes?: string[]; prefix_required?: boolean; topic_template?: string | null; required_tags?: Array<{ name: string; slug: string; url: string }>; required_tag_groups?: Array<{ name: string; slug: string }>; tag_groups?: Array<{ name: string; slug: string; color_hex?: string | null; one_per_topic: boolean; required?: boolean; tags: Array<{ name: string; slug: string; color_hex?: string | null }> }>; allowed_tags?: Array<{ name: string; slug: string; url: string }>; default_tags?: string[] }
   similarTitlesUrl?: string
+  topicFields?: TopicCustomField[]
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
   form_errors?: Record<string, string>
 }>()
@@ -61,6 +66,20 @@ function missingRequiredGroups(tags: string) {
   })
 }
 
+function initialCustomFieldValues(fields: TopicCustomField[]) {
+  return Object.fromEntries(
+    fields
+      .filter((field) => field.editable !== false)
+      .map((field) => {
+        const value = field.raw_value ?? field.value ?? ''
+        if (field.field_type === 'checkbox') {
+          return [field.key, value === true || value === 1 || value === '1' || value === 'true']
+        }
+        return [field.key, Array.isArray(value) ? value : String(value)]
+      }),
+  ) as Record<string, TopicCustomFieldValue>
+}
+
 const form = useForm({
   topic: {
     title: '',
@@ -75,6 +94,7 @@ const form = useForm({
     poll_hide_results_until_vote: false,
     scheduled_at: '',
     attachment_ids: [] as number[],
+    custom_fields: initialCustomFieldValues(props.topicFields || []),
   },
 })
 const pendingAttachments = ref<PendingAttachment[]>([])
@@ -179,6 +199,7 @@ function saveDraft() {
       poll_max_choices: form.topic.poll_max_choices,
       poll_hide_results_until_vote: showPoll.value ? form.topic.poll_hide_results_until_vote : false,
       attachment_ids: form.topic.attachment_ids,
+      custom_fields: form.topic.custom_fields,
     },
   })
 }
@@ -253,6 +274,16 @@ function saveDraft() {
         {{ t('forum.topics.defaultTagsLabel') }}{{ section.default_tags.join(t('common.listSeparator')) }}
       </p>
     </div>
+
+    <section v-if="topicFields?.length" class="space-y-3 rounded-lg border p-4">
+      <h2 class="text-sm font-semibold">{{ t('forum.topics.customFields') }}</h2>
+      <TopicCustomFieldsForm
+        v-model="form.topic.custom_fields"
+        :fields="topicFields"
+        :errors="form.errors"
+        id-prefix="new-topic-field"
+      />
+    </section>
 
     <div class="space-y-2">
       <Button type="button" variant="outline" size="sm" @click="showPoll = !showPoll">

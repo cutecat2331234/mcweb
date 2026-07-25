@@ -1,13 +1,7 @@
 <script setup lang="ts">
-import { useForm } from '@inertiajs/vue3'
+import { router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -36,37 +30,51 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-  <form class="max-w-2xl space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('adminMinecraft.colName') }}</Label>
-      <Input id="name" v-model="form.integration_action.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="event_key">{{ t('adminMinecraft.colEvent') }}</Label>
-      <Input id="event_key" v-model="form.integration_action.event_key" placeholder="player.join" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="conditions_json">{{ t('adminMinecraft.conditionsJson') }}</Label>
-      <Textarea id="conditions_json" v-model="form.integration_action.conditions_json" rows="4" class="font-mono text-sm" />
-    </div>
-    <div class="space-y-2">
-      <Label for="actions_json">{{ t('adminMinecraft.actionsJson') }}</Label>
-      <Textarea id="actions_json" v-model="form.integration_action.actions_json" rows="8" class="font-mono text-sm" />
-    </div>
-    <div class="space-y-2">
-      <Label for="priority">{{ t('adminMinecraft.colPriority') }}</Label>
-      <Input id="priority" v-model.number="form.integration_action.priority" type="number" />
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.integration_action.enabled" />
-      {{ t('adminMinecraft.colEnabled') }}
-    </label>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('common.save') }}</Button>
-      <Button type="button" variant="outline" as-child>
-        <a :href="backUrl">{{ t('common.cancel') }}</a>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" />
+  <a-card class="admin-form-card" :bordered="true">
+    <a-form :model="form.integration_action" layout="vertical" @submit="submit">
+      <a-form-item field="name" :label="t('adminMinecraft.colName')" required>
+        <a-input v-model="form.integration_action.name" allow-clear />
+      </a-form-item>
+      <a-form-item field="event_key" :label="t('adminMinecraft.colEvent')" required>
+        <a-input
+          v-model="form.integration_action.event_key"
+          placeholder="player.join"
+          allow-clear
+        />
+      </a-form-item>
+      <a-form-item field="conditions_json" :label="t('adminMinecraft.conditionsJson')">
+        <a-textarea
+          v-model="form.integration_action.conditions_json"
+          class="font-mono"
+          :auto-size="{ minRows: 4, maxRows: 16 }"
+        />
+      </a-form-item>
+      <a-form-item field="actions_json" :label="t('adminMinecraft.actionsJson')">
+        <a-textarea
+          v-model="form.integration_action.actions_json"
+          class="font-mono"
+          :auto-size="{ minRows: 8, maxRows: 24 }"
+        />
+      </a-form-item>
+      <a-form-item field="priority" :label="t('adminMinecraft.colPriority')">
+        <a-input-number v-model="form.integration_action.priority" :precision="0" />
+      </a-form-item>
+      <a-form-item field="enabled" :label="t('adminMinecraft.colEnabled')">
+        <a-switch v-model="form.integration_action.enabled" />
+      </a-form-item>
+      <a-space>
+        <a-button html-type="submit" type="primary" :loading="form.processing">
+          {{ t('common.save') }}
+        </a-button>
+        <a-button @click="router.visit(backUrl)">{{ t('common.cancel') }}</a-button>
+      </a-space>
+    </a-form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-form-card {
+  max-width: 760px;
+}
+</style>

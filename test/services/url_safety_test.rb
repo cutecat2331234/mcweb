@@ -31,6 +31,27 @@ class UrlSafetyTest < ActiveSupport::TestCase
     assert_not UrlSafety.public_http_url?("http://100.64.0.1/status")
   end
 
+  test "blocks multicast and address-transition SSRF targets" do
+    assert_not UrlSafety.public_http_url?("http://224.0.0.1/status")
+    assert_not UrlSafety.public_http_url?("http://[ff02::1]/status")
+    assert_not UrlSafety.public_http_url?("http://[64:ff9b::7f00:1]/status")
+    assert_not UrlSafety.public_http_url?("http://[2002:7f00:1::]/status")
+    assert_not UrlSafety.public_http_url?("http://[::ffff:127.0.0.1]/status")
+    assert_not UrlSafety.public_http_url?("http://[::127.0.0.1]/status")
+  end
+
+  test "blocks non-global documentation and benchmark ranges" do
+    assert_not UrlSafety.public_http_url?("http://192.0.2.1/status")
+    assert_not UrlSafety.public_http_url?("http://198.51.100.1/status")
+    assert_not UrlSafety.public_http_url?("http://203.0.113.1/status")
+    assert_not UrlSafety.public_http_url?("http://[2001:db8::1]/status")
+  end
+
+  test "blocks local suffixes with a trailing dns root label" do
+    assert_not UrlSafety.public_http_url?("http://localhost./admin")
+    assert_not UrlSafety.public_http_url?("http://service.internal./admin")
+  end
+
   test "http_https_url allows public http and https urls" do
     assert UrlSafety.http_https_url?("https://cdn.example.com/image.png")
     assert UrlSafety.http_https_url?("http://cdn.example.com/image.png")
@@ -52,6 +73,12 @@ class UrlSafetyTest < ActiveSupport::TestCase
   test "safe_http_get returns nil for blocked hosts" do
     uri = URI.parse("http://127.0.0.1/secret")
     assert_nil UrlSafety.safe_http_get(uri)
+  end
+
+  test "safe http helpers independently reject embedded credentials" do
+    uri = URI.parse("https://user:pass@example.com/hook")
+    assert_nil UrlSafety.safe_http_get(uri)
+    assert_nil UrlSafety.safe_http_post(uri, body: "{}")
   end
 end
 

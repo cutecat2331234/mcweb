@@ -88,6 +88,12 @@ class User < ApplicationRecord
     ban_expires_at.nil? || ban_expires_at.future?
   end
 
+  # Shared eligibility predicate for HTTP sessions and long-lived realtime
+  # connections. Expired temporary bans follow the existing #banned? behavior.
+  def session_eligible?
+    !deleted? && !banned?
+  end
+
   def ban_active?
     return false unless banned?
 

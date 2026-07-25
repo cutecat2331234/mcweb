@@ -2,12 +2,7 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -45,38 +40,41 @@ async function destroy() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.forumThemesForm.name') }}</Label>
-      <Input id="name" v-model="form.forum_theme.name" required maxlength="100" />
-    </div>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="primary_color">{{ t('admin.forumThemesForm.primaryColor') }}</Label>
-        <Input id="primary_color" v-model="form.forum_theme.primary_color" placeholder="#6366f1" />
-      </div>
-      <div class="space-y-2">
-        <Label for="accent_color">{{ t('admin.forumThemesForm.accentColor') }}</Label>
-        <Input id="accent_color" v-model="form.forum_theme.accent_color" placeholder="#a5b4fc" />
-      </div>
-    </div>
-    <p class="text-xs text-muted-foreground">{{ t('admin.forumThemesForm.colorHint') }}</p>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.forum_theme.is_default" />
-      {{ t('admin.forumThemesForm.isDefault') }}
-    </label>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.forum_theme.active" />
-      {{ t('admin.forumThemesForm.active') }}
-    </label>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button v-if="deleteUrl" type="button" variant="destructive" @click="destroy">{{ t('admin.ui.delete') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forumThemesForm.name') }}</span>
+        <a-input v-model="form.forum_theme.name" :input-attrs="{ required: true, maxlength: 100 }" allow-clear />
+      </label>
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forumThemesForm.primaryColor') }}</span>
+            <a-input v-model="form.forum_theme.primary_color" placeholder="#6366f1" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forumThemesForm.accentColor') }}</span>
+            <a-input v-model="form.forum_theme.accent_color" placeholder="#a5b4fc" allow-clear />
+          </label>
+        </a-col>
+      </a-row>
+      <a-alert type="info">{{ t('admin.forumThemesForm.colorHint') }}</a-alert>
+      <a-space direction="vertical" align="start">
+        <a-checkbox v-model="form.forum_theme.is_default">{{ t('admin.forumThemesForm.isDefault') }}</a-checkbox>
+        <a-checkbox v-model="form.forum_theme.active">{{ t('admin.forumThemesForm.active') }}</a-checkbox>
+      </a-space>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <a-button v-if="deleteUrl" type="primary" status="danger" @click="destroy">{{ t('admin.ui.delete') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+</style>

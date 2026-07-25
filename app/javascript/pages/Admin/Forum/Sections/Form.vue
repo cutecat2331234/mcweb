@@ -3,13 +3,6 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import Select from '@/components/ui/Select.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -91,46 +84,6 @@ function updateParentId(value: string) {
   form.section.parent_id = value ? Number(value) : null
 }
 
-function toggleRequiredTag(tagId: number, checked: boolean) {
-  const ids = form.section.required_tag_ids
-  if (checked) {
-    if (!ids.includes(tagId)) ids.push(tagId)
-  } else {
-    const index = ids.indexOf(tagId)
-    if (index >= 0) ids.splice(index, 1)
-  }
-}
-
-function toggleAllowedTag(tagId: number, checked: boolean) {
-  const ids = form.section.allowed_tag_ids
-  if (checked) {
-    if (!ids.includes(tagId)) ids.push(tagId)
-  } else {
-    const index = ids.indexOf(tagId)
-    if (index >= 0) ids.splice(index, 1)
-  }
-}
-
-function toggleDefaultTag(tagId: number, checked: boolean) {
-  const ids = form.section.default_tag_ids
-  if (checked) {
-    if (!ids.includes(tagId)) ids.push(tagId)
-  } else {
-    const index = ids.indexOf(tagId)
-    if (index >= 0) ids.splice(index, 1)
-  }
-}
-
-function toggleRequiredTagGroup(groupId: number, checked: boolean) {
-  const ids = form.section.required_tag_group_ids
-  if (checked) {
-    if (!ids.includes(groupId)) ids.push(groupId)
-  } else {
-    const index = ids.indexOf(groupId)
-    if (index >= 0) ids.splice(index, 1)
-  }
-}
-
 function submit() {
   if (props.method === 'patch') {
     form.patch(props.submitUrl)
@@ -141,178 +94,255 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
 
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.common.name') }}</Label>
-      <Input id="name" v-model="form.section.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="slug">{{ t('admin.common.slugFull') }}</Label>
-      <Input id="slug" v-model="form.section.slug" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="description">{{ t('admin.common.description') }}</Label>
-      <Textarea id="description" v-model="form.section.description" rows="3" />
-    </div>
-    <div class="space-y-2">
-      <Label for="position">{{ t('admin.common.position') }}</Label>
-      <Input id="position" v-model.number="form.section.position" type="number" min="0" />
-    </div>
-    <div class="space-y-2">
-      <Label for="category">{{ t('admin.forms.section.category') }}</Label>
-      <Select
-        id="category"
-        :model-value="form.section.forum_category_id == null ? '' : String(form.section.forum_category_id)"
-        :options="categoryOptions"
-        block
-        @update:model-value="updateForumCategoryId"
-      />
-    </div>
-    <div class="space-y-2">
-      <Label for="parent">{{ t('admin.forms.section.parent') }}</Label>
-      <Select
-        id="parent"
-        :model-value="form.section.parent_id == null ? '' : String(form.section.parent_id)"
-        :options="parentSectionOptions"
-        block
-        @update:model-value="updateParentId"
-      />
-    </div>
-    <div class="space-y-2">
-      <Label for="create_topic_roles">{{ t('admin.forms.section.createRoles') }}</Label>
-      <Input id="create_topic_roles" v-model="form.section.create_topic_roles" placeholder="forum.topics.lock" />
-    </div>
-    <div class="space-y-2">
-      <Label for="reply_roles">{{ t('admin.forms.section.replyRoles') }}</Label>
-      <Input id="reply_roles" v-model="form.section.reply_roles" placeholder="forum.topics.lock" />
-    </div>
-    <div class="space-y-2">
-      <Label for="prefixes">{{ t('admin.forms.section.prefixes') }}</Label>
-      <Textarea id="prefixes" v-model="form.section.prefixes" rows="3" :placeholder="t('admin.forms.section.prefixColorHint')" />
-      <label class="flex items-center gap-2 text-sm">
-        <Checkbox v-model="form.section.prefix_required" />
-        {{ t('admin.forms.section.prefixRequired') }}
+  <a-card class="max-w-5xl" :bordered="true">
+    <form class="space-y-5" @submit.prevent="submit">
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :md="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.common.name') }}</span>
+            <a-input v-model="form.section.name" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :md="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.common.slugFull') }}</span>
+            <a-input v-model="form.section.slug" :input-attrs="{ required: true }" allow-clear />
+          </label>
+        </a-col>
+      </a-row>
+
+      <label class="admin-forum-field">
+        <span>{{ t('admin.common.description') }}</span>
+        <a-textarea v-model="form.section.description" :auto-size="{ minRows: 3, maxRows: 7 }" />
       </label>
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.section.read_only" />
-      {{ t('admin.forms.section.readOnly') }}
-    </label>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.section.login_required" />
-      {{ t('admin.forms.section.loginRequired') }}
-    </label>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="color_hex">{{ t('admin.forms.section.colorHexHint') }}</Label>
-        <Input id="color_hex" v-model="form.section.color_hex" placeholder="#3b82f6" />
-      </div>
-      <div class="space-y-2">
-        <Label for="icon">{{ t('admin.forms.section.icon') }}</Label>
-        <Input id="icon" v-model="form.section.icon" placeholder="💬" />
-      </div>
-      <div class="space-y-2">
-        <Label for="banner_text">{{ t('admin.forms.section.banner') }}</Label>
-        <Textarea id="banner_text" v-model="form.section.banner_text" rows="2" :placeholder="t('admin.forms.section.bannerPlaceholder')" />
-      </div>
-      <div class="space-y-2">
-        <Label for="link_url">{{ t('admin.forms.section.linkUrl') }}</Label>
-        <Input id="link_url" v-model="form.section.link_url" placeholder="https://example.com/rules" />
-      </div>
-      <div class="space-y-2">
-        <Label for="link_label">{{ t('admin.forms.section.linkLabel') }}</Label>
-        <Input id="link_label" v-model="form.section.link_label" :placeholder="t('admin.forms.section.linkLabelPlaceholder')" />
-      </div>
-      <div class="space-y-2">
-        <Label for="seo_title">{{ t('admin.forms.section.seoTitle') }}</Label>
-        <Input id="seo_title" v-model="form.section.seo_title" />
-      </div>
-      <div class="space-y-2">
-        <Label for="seo_description">{{ t('admin.forms.section.seoDescription') }}</Label>
-        <Textarea id="seo_description" v-model="form.section.seo_description" rows="2" />
-      </div>
-    </div>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="min_trust_level_create">{{ t('admin.forms.section.minTrustCreate') }}</Label>
-        <Input id="min_trust_level_create" v-model.number="form.section.min_trust_level_create" type="number" min="0" max="4" />
-      </div>
-      <div class="space-y-2">
-        <Label for="min_trust_level_reply">{{ t('admin.forms.section.minTrustReply') }}</Label>
-        <Input id="min_trust_level_reply" v-model.number="form.section.min_trust_level_reply" type="number" min="0" max="4" />
-      </div>
-    </div>
-    <div class="space-y-2">
-      <Label for="default_notification_level">{{ t('admin.forms.section.defaultNotification') }}</Label>
-      <Select id="default_notification_level" v-model="form.section.default_notification_level" :options="notificationLevelOptions" block />
-    </div>
-    <div class="space-y-2">
-      <Label for="topic_template">{{ t('admin.forms.section.topicTemplate') }}</Label>
-      <Textarea id="topic_template" v-model="form.section.topic_template" rows="5" :placeholder="t('admin.forms.section.topicTemplatePlaceholder')" />
-    </div>
-    <div class="space-y-2">
-      <Label for="moderator_usernames">{{ t('admin.forms.section.moderators') }}</Label>
-      <Textarea id="moderator_usernames" v-model="form.section.moderator_usernames" rows="3" :placeholder="t('admin.forms.section.moderatorsPlaceholder')" />
-      <p class="text-xs text-muted-foreground">{{ t('admin.forms.section.moderatorsHint') }}</p>
-    </div>
-    <div v-if="tags.length" class="space-y-2">
-      <Label>{{ t('admin.forms.section.requiredTags') }}</Label>
-      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
-        <label v-for="tag in tags" :key="tag.id" class="flex items-center gap-2 text-sm">
-          <Checkbox
-            :model-value="form.section.required_tag_ids.includes(tag.id)"
-            @update:model-value="(checked) => toggleRequiredTag(tag.id, checked)"
-          />
-          {{ tag.name }}
+
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="8">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.common.position') }}</span>
+            <a-input-number v-model="form.section.position" :min="0" class="w-full" />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="8">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.section.category') }}</span>
+            <a-select
+              :model-value="form.section.forum_category_id == null ? '' : String(form.section.forum_category_id)"
+              :options="categoryOptions"
+              @change="updateForumCategoryId"
+            />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="8">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.section.parent') }}</span>
+            <a-select
+              :model-value="form.section.parent_id == null ? '' : String(form.section.parent_id)"
+              :options="parentSectionOptions"
+              @change="updateParentId"
+            />
+          </label>
+        </a-col>
+      </a-row>
+
+      <a-card size="small" :bordered="true">
+        <template #title>{{ t('admin.forms.section.createRoles') }} / {{ t('admin.forms.section.replyRoles') }}</template>
+        <a-row :gutter="[16, 0]">
+          <a-col :xs="24" :md="12">
+            <label class="admin-forum-field">
+              <span>{{ t('admin.forms.section.createRoles') }}</span>
+              <a-input v-model="form.section.create_topic_roles" placeholder="forum.topics.lock" allow-clear />
+            </label>
+          </a-col>
+          <a-col :xs="24" :md="12">
+            <label class="admin-forum-field">
+              <span>{{ t('admin.forms.section.replyRoles') }}</span>
+              <a-input v-model="form.section.reply_roles" placeholder="forum.topics.lock" allow-clear />
+            </label>
+          </a-col>
+        </a-row>
+        <a-space wrap :size="[20, 8]">
+          <a-checkbox v-model="form.section.read_only">{{ t('admin.forms.section.readOnly') }}</a-checkbox>
+          <a-checkbox v-model="form.section.login_required">{{ t('admin.forms.section.loginRequired') }}</a-checkbox>
+        </a-space>
+      </a-card>
+
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forms.section.prefixes') }}</span>
+        <a-textarea
+          v-model="form.section.prefixes"
+          :auto-size="{ minRows: 3, maxRows: 7 }"
+          :placeholder="t('admin.forms.section.prefixColorHint')"
+        />
+      </label>
+      <a-checkbox v-model="form.section.prefix_required">
+        {{ t('admin.forms.section.prefixRequired') }}
+      </a-checkbox>
+
+      <a-card size="small" :bordered="true">
+        <a-row :gutter="[16, 0]">
+          <a-col :xs="24" :md="12">
+            <label class="admin-forum-field">
+              <span>{{ t('admin.forms.section.colorHexHint') }}</span>
+              <a-input v-model="form.section.color_hex" placeholder="#3b82f6" allow-clear />
+            </label>
+          </a-col>
+          <a-col :xs="24" :md="12">
+            <label class="admin-forum-field">
+              <span>{{ t('admin.forms.section.icon') }}</span>
+              <a-input v-model="form.section.icon" placeholder="💬" allow-clear />
+            </label>
+          </a-col>
+          <a-col :xs="24" :md="12">
+            <label class="admin-forum-field">
+              <span>{{ t('admin.forms.section.banner') }}</span>
+              <a-textarea
+                v-model="form.section.banner_text"
+                :auto-size="{ minRows: 2, maxRows: 5 }"
+                :placeholder="t('admin.forms.section.bannerPlaceholder')"
+              />
+            </label>
+          </a-col>
+          <a-col :xs="24" :md="12">
+            <label class="admin-forum-field">
+              <span>{{ t('admin.forms.section.linkUrl') }}</span>
+              <a-input v-model="form.section.link_url" placeholder="https://example.com/rules" allow-clear />
+            </label>
+          </a-col>
+          <a-col :xs="24" :md="12">
+            <label class="admin-forum-field">
+              <span>{{ t('admin.forms.section.linkLabel') }}</span>
+              <a-input
+                v-model="form.section.link_label"
+                :placeholder="t('admin.forms.section.linkLabelPlaceholder')"
+                allow-clear
+              />
+            </label>
+          </a-col>
+          <a-col :xs="24" :md="12">
+            <label class="admin-forum-field">
+              <span>{{ t('admin.forms.section.seoTitle') }}</span>
+              <a-input v-model="form.section.seo_title" allow-clear />
+            </label>
+          </a-col>
+        </a-row>
+        <label class="admin-forum-field">
+          <span>{{ t('admin.forms.section.seoDescription') }}</span>
+          <a-textarea v-model="form.section.seo_description" :auto-size="{ minRows: 2, maxRows: 5 }" />
         </label>
-      </div>
-      <p class="text-xs text-muted-foreground">{{ t('admin.forms.section.requiredTagsHint') }}</p>
-    </div>
-    <div v-if="tagGroups?.length" class="space-y-2">
-      <Label>{{ t('admin.forms.section.requiredTagGroups') }}</Label>
-      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
-        <label v-for="group in tagGroups" :key="`group-${group.id}`" class="flex items-center gap-2 text-sm">
-          <Checkbox
-            :model-value="form.section.required_tag_group_ids.includes(group.id)"
-            @update:model-value="(checked) => toggleRequiredTagGroup(group.id, checked)"
-          />
-          {{ group.name }}
-        </label>
-      </div>
-    </div>
-    <div v-if="tags.length" class="space-y-2">
-      <Label>{{ t('admin.forms.section.allowedTags') }}</Label>
-      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
-        <label v-for="tag in tags" :key="`allowed-${tag.id}`" class="flex items-center gap-2 text-sm">
-          <Checkbox
-            :model-value="form.section.allowed_tag_ids.includes(tag.id)"
-            @update:model-value="(checked) => toggleAllowedTag(tag.id, checked)"
-          />
-          {{ tag.name }}
-        </label>
-      </div>
-      <p class="text-xs text-muted-foreground">{{ t('admin.forms.section.allowedTagsHint') }}</p>
-    </div>
-    <div v-if="tags.length" class="space-y-2">
-      <Label>{{ t('admin.forms.section.defaultTags') }}</Label>
-      <div class="max-h-40 space-y-2 overflow-y-auto rounded-md border p-3">
-        <label v-for="tag in tags" :key="`default-${tag.id}`" class="flex items-center gap-2 text-sm">
-          <Checkbox
-            :model-value="form.section.default_tag_ids.includes(tag.id)"
-            @update:model-value="(checked) => toggleDefaultTag(tag.id, checked)"
-          />
-          {{ tag.name }}
-        </label>
-      </div>
-      <p class="text-xs text-muted-foreground">{{ t('admin.forms.section.defaultTagsHint') }}</p>
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link>
-      </Button>
-    </div>
-  </form>
+      </a-card>
+
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="8">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.section.minTrustCreate') }}</span>
+            <a-input-number v-model="form.section.min_trust_level_create" :min="0" :max="4" class="w-full" />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="8">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.section.minTrustReply') }}</span>
+            <a-input-number v-model="form.section.min_trust_level_reply" :min="0" :max="4" class="w-full" />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="8">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.forms.section.defaultNotification') }}</span>
+            <a-select v-model="form.section.default_notification_level" :options="notificationLevelOptions" />
+          </label>
+        </a-col>
+      </a-row>
+
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forms.section.topicTemplate') }}</span>
+        <a-textarea
+          v-model="form.section.topic_template"
+          :auto-size="{ minRows: 5, maxRows: 12 }"
+          :placeholder="t('admin.forms.section.topicTemplatePlaceholder')"
+        />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.forms.section.moderators') }}</span>
+        <a-textarea
+          v-model="form.section.moderator_usernames"
+          :auto-size="{ minRows: 3, maxRows: 8 }"
+          :placeholder="t('admin.forms.section.moderatorsPlaceholder')"
+        />
+        <small>{{ t('admin.forms.section.moderatorsHint') }}</small>
+      </label>
+
+      <a-row v-if="tags.length || tagGroups?.length" :gutter="[16, 16]">
+        <a-col v-if="tags.length" :xs="24" :lg="12">
+          <a-card :title="t('admin.forms.section.requiredTags')" size="small" :bordered="true" class="h-full">
+            <a-checkbox-group v-model="form.section.required_tag_ids" class="admin-forum-choice-grid">
+              <a-checkbox v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</a-checkbox>
+            </a-checkbox-group>
+            <p class="mt-2 text-xs text-[var(--color-text-3)]">{{ t('admin.forms.section.requiredTagsHint') }}</p>
+          </a-card>
+        </a-col>
+        <a-col v-if="tagGroups?.length" :xs="24" :lg="12">
+          <a-card :title="t('admin.forms.section.requiredTagGroups')" size="small" :bordered="true" class="h-full">
+            <a-checkbox-group v-model="form.section.required_tag_group_ids" class="admin-forum-choice-grid">
+              <a-checkbox v-for="group in tagGroups" :key="group.id" :value="group.id">{{ group.name }}</a-checkbox>
+            </a-checkbox-group>
+          </a-card>
+        </a-col>
+        <a-col v-if="tags.length" :xs="24" :lg="12">
+          <a-card :title="t('admin.forms.section.allowedTags')" size="small" :bordered="true" class="h-full">
+            <a-checkbox-group v-model="form.section.allowed_tag_ids" class="admin-forum-choice-grid">
+              <a-checkbox v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</a-checkbox>
+            </a-checkbox-group>
+            <p class="mt-2 text-xs text-[var(--color-text-3)]">{{ t('admin.forms.section.allowedTagsHint') }}</p>
+          </a-card>
+        </a-col>
+        <a-col v-if="tags.length" :xs="24" :lg="12">
+          <a-card :title="t('admin.forms.section.defaultTags')" size="small" :bordered="true" class="h-full">
+            <a-checkbox-group v-model="form.section.default_tag_ids" class="admin-forum-choice-grid">
+              <a-checkbox v-for="tag in tags" :key="tag.id" :value="tag.id">{{ tag.name }}</a-checkbox>
+            </a-checkbox-group>
+            <p class="mt-2 text-xs text-[var(--color-text-3)]">{{ t('admin.forms.section.defaultTagsHint') }}</p>
+          </a-card>
+        </a-col>
+      </a-row>
+
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">
+          {{ t('admin.ui.save') }}
+        </a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">
+          {{ t('admin.ui.cancel') }}
+        </Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 16px;
+  color: var(--color-text-2);
+  font-size: 14px;
+}
+
+.admin-forum-field small {
+  color: var(--color-text-3);
+}
+
+.admin-forum-choice-grid {
+  display: grid;
+  max-height: 12rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px 12px;
+  overflow-y: auto;
+}
+
+@media (max-width: 639px) {
+  .admin-forum-choice-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+</style>

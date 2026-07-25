@@ -35,6 +35,8 @@ module Community
     private
 
     def can_manage_attachments?
+      return false unless Community::PostAccess.editable?(post: @post, user: @user)
+      return false unless Community::EditPost.editable_by?(@user, @post)
       return true if @user.id == @post.user_id
       return true if @user.permission?("forum.topics.lock")
       return true if Community::SectionModeration.can_moderate_topic?(user: @user, topic: @post.topic)

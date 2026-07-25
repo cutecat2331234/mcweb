@@ -12,8 +12,9 @@ McWeb 是 Rails 8.1.3 模块化单体(modular monolith),命名空间模块:`Iden
 论坛功能已对齐 XenForo/Discourse(50 个对齐 Wave,全套测试全绿)。下一步是**架构层面的横向扩展**
 与 4 个需要独立周期的大型功能。
 
-> 状态更新:下列工作项 ②(TipTap 富文本)与 ⑤(实时通知 ActionCable / Web Push)**已实现**
-> (见 `docs/xenforo-roadmap.md`);本文其余项(①多实例化、③反应类型管理、④邮件回帖)仍为计划中。
+> 状态更新:工作项 ②(TipTap 富文本)以及 CE 的持久通知、Web Push / 邮件交付已实现
+> (见 `docs/xenforo-roadmap.md`)。⑤中的 ActionCable / WebSocket 实时通知与打字状态属于 EE 付费版专属,
+> CE 不挂载 `/cable`;本文其余项(①多实例化、③反应类型管理、④邮件回帖)仍为计划中。
 
 ## 工作项(共 5 项,各一个子代理)
 
@@ -44,9 +45,10 @@ McWeb 是 Rails 8.1.3 模块化单体(modular monolith),命名空间模块:`Iden
 用户回复通知邮件即可发帖/回私信。入站邮件解析管道(Action Mailbox 或等价方案)+ 回帖地址 token 映射
 (主题/私信 → 用户)+ 安全校验 + 复用 `CreatePost`/`SendMessage`。
 
-### ⑤ 实时通知(ActionCable / WebSocket)
-站内通知实时推送(无需刷新)。ActionCable 连接(按 `current_user` 鉴权)+ 通知频道,在
-`Notification.notify!` 时广播;前端订阅并实时更新通知红点/列表。
+### ⑤ 通知交付与 EE 实时能力
+CE 将站内通知持久化,由普通页面/API 轮询或刷新读取,并保留 Web Push 与邮件交付。CE 不提供
+WebSocket / ActionCable 端点、实时广播或打字指示器。无需刷新即可同步的论坛、通知和频道体验
+由 EE 付费版的专属 ActionCable 频道与客户端提供。
 
 ## 全体子代理须遵守的约定
 

@@ -27,7 +27,10 @@ module Community
       scope = apply_query(scope, query) if query.present?
       scope = apply_exclusions(scope, filters[:exclude_terms])
       scope = apply_sort(scope, filters[:topic_sort])
-      scope = scope.merge(Community::Topic.accessible_by(nil)) if @public_rss
+      scope = Community::ForumAccess.topic_scope(
+        relation: scope,
+        user: @public_rss ? nil : @user
+      )
 
       ServiceResult.success(scope)
     end
@@ -112,10 +115,13 @@ module Community
     end
 
     def resolved_tag_ids(tag_slug)
-      canonical = Community::Tag.find_by(slug: tag_slug)
+      viewer = @public_rss ? nil : @user
+      canonical = Community::Tag.resolve_by_slug_for(tag_slug, user: viewer)
       return [] unless canonical
 
-      [ canonical.id ] + Community::Tag.where(canonical_tag_id: canonical.id).pluck(:id)
+      [ canonical.id ] + Community::Tag.usable_by(viewer)
+        .where(canonical_tag_id: canonical.id)
+        .pluck(:id)
     end
 
     def apply_topic_filters(scope, filters)

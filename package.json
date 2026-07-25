@@ -12,7 +12,6 @@
   },
   "dependencies": {
     "@arco-design/web-vue": "^2.58.0",
-    "@element-plus/icons-vue": "^2.3.2",
     "@inertiajs/vue3": "^3.6.1",
     "@lucide/vue": "^1.26.0",
     "@tailwindcss/vite": "^4.3.3",
@@ -24,10 +23,8 @@
     "@vitejs/plugin-vue": "^6.0.8",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "element-plus": "^2.14.3",
     "gsap": "^3.15.0",
     "highlight.js": "^11.11.1",
-    "plus-pro-components": "^0.1.31",
     "reka-ui": "^2.10.1",
     "skinview3d": "^3.4.2",
     "tailwind-merge": "^3.6.0",

@@ -12,6 +12,7 @@ module Commerce
       return ServiceResult.success(revoked: 0) if cards.empty?
 
       revoked = 0
+      ledger_error = nil
       Commerce::GiftCard.transaction do
         cards.lock.find_each do |card|
           next unless card.active?
@@ -19,15 +20,21 @@ module Commerce
           balance = card.balance_cents
           revoke_note = I18n.t("mcweb.commerce.notes.gift_card_order_revoke", number: @order.order_number)
           card.update!(active: false, balance_cents: 0, note: [ card.note, revoke_note ].compact.join(" · "))
-          Commerce::RecordGiftCardTransaction.call(
+          transaction_result = Commerce::RecordGiftCardTransaction.call(
             gift_card: card,
             amount_cents: -balance,
             transaction_type: "revoke",
             order: @order
           )
+          unless transaction_result.success?
+            ledger_error = transaction_result.error.presence || "gift_card_transaction_invalid"
+            raise ActiveRecord::Rollback
+          end
           revoked += 1
         end
       end
+
+      return ServiceResult.failure(error: ledger_error) if ledger_error.present?
 
       ServiceResult.success(revoked: revoked)
     end

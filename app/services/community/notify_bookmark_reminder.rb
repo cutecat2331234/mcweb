@@ -37,7 +37,12 @@ module Community
           key: "bookmark_reminder",
           title: title,
           note: note.truncate(200),
-          metadata: { path: path, bookmark_id: @bookmark.id }
+          metadata: {
+            path: path,
+            bookmark_id: @bookmark.id,
+            topic_id: topic.public_id,
+            post_id: @bookmark.forum_post_id
+          }.compact
         )
       end
 

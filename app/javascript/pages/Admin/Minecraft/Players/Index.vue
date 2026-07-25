@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { computed } from 'vue'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Modal } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { formatRelativeTime } from '@/lib/relativeTime'
 
@@ -27,6 +27,15 @@ const props = defineProps<{
 }>()
 
 const { t, locale } = useI18n()
+const columns = computed(() => [
+  { title: t('adminMinecraft.colName'), dataIndex: 'username', fixed: 'left', width: 160 },
+  { title: t('adminMinecraft.ingameServer'), dataIndex: 'ingame_server', width: 160 },
+  { title: t('adminMinecraft.ingameOnline'), slotName: 'ingameOnline', width: 130 },
+  { title: t('adminMinecraft.websiteOnline'), slotName: 'websiteOnline', width: 130 },
+  { title: t('adminMinecraft.joinedAt'), slotName: 'joinedAt', width: 180 },
+  { title: t('adminMinecraft.linkedAccount'), slotName: 'linkedAccount', width: 180 },
+  { title: t('adminMinecraft.actions'), slotName: 'actions', width: 120 },
+])
 
 function joinedLabel(joinedAt?: string) {
   if (!joinedAt) return '—'
@@ -34,60 +43,74 @@ function joinedLabel(joinedAt?: string) {
 }
 
 function kickPlayer(player: (typeof props.players)[number]) {
-  if (!window.confirm(t('adminMinecraft.confirmKick', { name: player.username }))) return
-  router.post(props.kickUrl, {
-    username: player.username,
-    uuid: player.player_uuid,
-    server_id: player.ingame_server_id,
+  Modal.warning({
+    title: t('adminMinecraft.kickPlayer'),
+    content: t('adminMinecraft.confirmKick', { name: player.username }),
+    okText: t('adminMinecraft.kickPlayer'),
+    cancelText: t('common.cancel'),
+    hideCancel: false,
+    okButtonProps: { status: 'danger' },
+    onOk: () => {
+      router.post(props.kickUrl, {
+        username: player.username,
+        uuid: player.player_uuid,
+        server_id: player.ingame_server_id,
+      })
+    },
   })
 }
 </script>
 
 <template>
-  <PageHeader :title="title" />
-  <div class="overflow-x-auto">
-    <table class="w-full text-sm">
-      <thead>
-        <tr class="border-b text-left">
-          <th class="p-2">{{ t('adminMinecraft.colName') }}</th>
-          <th class="p-2">{{ t('adminMinecraft.ingameServer') }}</th>
-          <th class="p-2">{{ t('adminMinecraft.ingameOnline') }}</th>
-          <th class="p-2">{{ t('adminMinecraft.websiteOnline') }}</th>
-          <th class="p-2">{{ t('adminMinecraft.joinedAt') }}</th>
-          <th class="p-2">{{ t('adminMinecraft.linkedAccount') }}</th>
-          <th class="p-2">{{ t('adminMinecraft.actions') }}</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="p in players" :key="p.player_id" class="border-b">
-          <td class="p-2">{{ p.username }}</td>
-          <td class="p-2">{{ p.ingame_server }}</td>
-          <td class="p-2">{{ p.ingame_online ? '✓' : '—' }}</td>
-          <td class="p-2">{{ p.website_online ? '✓' : '—' }}</td>
-          <td class="p-2 text-muted-foreground" :title="p.joined_at">{{ joinedLabel(p.joined_at) }}</td>
-          <td class="p-2">
-            <Link
-              v-if="p.linked_user"
-              :href="adminRoutes.user(p.linked_user.id)"
-              class="text-primary hover:underline"
-            >
-              {{ p.linked_user.username }}
-            </Link>
-            <span v-else>—</span>
-          </td>
-          <td class="p-2">
-            <Button v-if="p.ingame_online" type="button" size="sm" variant="outline" @click="kickPlayer(p)">
-              {{ t('adminMinecraft.kickPlayer') }}
-            </Button>
-          </td>
-        </tr>
-        <tr v-if="!players.length">
-          <td colspan="7" class="p-4 text-muted-foreground">{{ t('adminMinecraft.noPlayersOnline') }}</td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-  <Button variant="ghost" class="mt-4" as-child>
-    <a :href="backUrl">{{ t('adminMinecraft.backToServers') }}</a>
-  </Button>
+  <a-page-header :title="title" :show-back="false">
+    <template #extra>
+      <a-button @click="router.visit(backUrl)">{{ t('adminMinecraft.backToServers') }}</a-button>
+    </template>
+  </a-page-header>
+  <a-card :bordered="true">
+    <a-table
+      :columns="columns"
+      :data="players"
+      row-key="player_id"
+      :pagination="false"
+      :scroll="{ x: 1040 }"
+    >
+      <template #ingameOnline="{ record }">
+        <a-tag :color="record.ingame_online ? 'green' : 'gray'">
+          {{ record.ingame_online ? t('adminMinecraft.yes') : t('adminMinecraft.no') }}
+        </a-tag>
+      </template>
+      <template #websiteOnline="{ record }">
+        <a-tag :color="record.website_online ? 'green' : 'gray'">
+          {{ record.website_online ? t('adminMinecraft.yes') : t('adminMinecraft.no') }}
+        </a-tag>
+      </template>
+      <template #joinedAt="{ record }">
+        <span :title="record.joined_at">{{ joinedLabel(record.joined_at) }}</span>
+      </template>
+      <template #linkedAccount="{ record }">
+        <a-link
+          v-if="record.linked_user"
+          @click="router.visit(adminRoutes.user(record.linked_user.id))"
+        >
+          {{ record.linked_user.username }}
+        </a-link>
+        <span v-else>—</span>
+      </template>
+      <template #actions="{ record }">
+        <a-button
+          v-if="record.ingame_online"
+          type="text"
+          status="danger"
+          size="small"
+          @click="kickPlayer(record)"
+        >
+          {{ t('adminMinecraft.kickPlayer') }}
+        </a-button>
+      </template>
+      <template #empty>
+        <a-empty :description="t('adminMinecraft.noPlayersOnline')" />
+      </template>
+    </a-table>
+  </a-card>
 </template>

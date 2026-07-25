@@ -116,7 +116,12 @@ module Community
         posts = if title_only
           Community::Post.none
         else
-          Community::Post.where(status: :published).joins(:topic).where(forum_topics: { status: :published, unlisted: false })
+          Community::Post.where(status: :published)
+            .joins(:topic)
+            .merge(search_topic_base_scope(
+              unlisted_filter: unlisted_filter,
+              archived_filter: archived_filter
+            ))
         end
         unless title_only
         posts = posts.where.not(post_type: "whisper") unless forum_staff?
@@ -168,7 +173,10 @@ module Community
       @pagy_topics, topics = pagy(:offset, topics, limit: 15, page_key: "topic_page")
       @pagy_posts, posts = pagy(:offset, posts, limit: 15, page_key: "post_page")
 
-      sections = Community::Section.ordered.includes(:category).map do |section|
+      sections = Community::SectionAccess.scope(
+        relation: Community::Section.ordered.includes(:category),
+        user: current_user
+      ).map do |section|
         { slug: section.slug, name: section.name, category: section.category&.name }
       end
 
@@ -272,10 +280,10 @@ module Community
 
       needle = "%#{ActiveRecord::Base.sanitize_sql_like(q)}%"
       topics = Community::Topic.published_listed
-        .accessible_by(current_user)
         .where("title ILIKE ?", needle)
         .order(last_posted_at: :desc)
         .limit(5)
+      topics = Community::ForumAccess.topic_scope(relation: topics, user: current_user)
         .map { |topic| { title: topic.title, url: forum_topic_path(topic) } }
 
       tags = Community::Tag.usable_by(current_user)
@@ -297,6 +305,8 @@ module Community
         .where("forum_sections.name ILIKE ? OR forum_sections.slug ILIKE ?", needle, needle)
         .order("forum_sections.name")
         .limit(5)
+      sections = Community::SectionAccess.scope(relation: sections, user: current_user)
+      sections = sections
         .map do |section|
           {
             name: section.name,
@@ -460,11 +470,13 @@ module Community
     end
 
     def resolved_tag_ids(tag_slug)
-      tag = Community::Tag.resolve_by_slug(tag_slug) || Community::Tag.find_by(slug: tag_slug)
+      tag = Community::Tag.resolve_by_slug_for(tag_slug, user: current_user)
       return [] unless tag
 
       canonical = tag.canonical_tag || tag
-      [ canonical.id ] + Community::Tag.where(canonical_tag_id: canonical.id).pluck(:id)
+      [ canonical.id ] + Community::Tag.usable_by(current_user)
+        .where(canonical_tag_id: canonical.id)
+        .pluck(:id)
     end
 
     def apply_images_filter(scope)
@@ -472,7 +484,7 @@ module Community
     end
 
     def serialize_search_active_filters(**filters)
-      Community::SearchActiveFilters.call(filters)
+      Community::SearchActiveFilters.call(filters, user: current_user)
     end
 
     def serialize_search_histories

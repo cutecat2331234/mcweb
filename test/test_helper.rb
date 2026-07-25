@@ -88,6 +88,39 @@ module ActiveSupport
       }.merge(attrs))
     end
 
+    def create_visible_forum_notification_resource(user:, public_id: nil, title: "Notification topic")
+      suffix = SecureRandom.hex(6)
+      category = Community::Category.create!(
+        name: "Notification fixture #{suffix}",
+        slug: "notification-fixture-#{suffix}"
+      )
+      section = Community::Section.create!(
+        category: category,
+        name: "Notification fixture",
+        slug: "notification-section-#{suffix}",
+        position: 0
+      )
+      topic = Community::Topic.create!(
+        public_id: public_id,
+        section: section,
+        user: user,
+        title: title,
+        status: "published",
+        last_posted_at: Time.current,
+        last_post_user: user,
+        replies_count: 0
+      )
+      post = Community::Post.create!(
+        topic: topic,
+        user: user,
+        floor_number: 1,
+        body: "Visible notification fixture",
+        status: "published"
+      )
+
+      [ topic, post ]
+    end
+
     def grant_permission(user, permission_key)
       permission = Permission.find_or_create_by!(key: permission_key) do |p|
         p.name = permission_key

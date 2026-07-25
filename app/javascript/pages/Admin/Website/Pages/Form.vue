@@ -1,13 +1,9 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Link, router, useForm } from '@inertiajs/vue3'
+import { router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Modal } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
 import BlockEditor, { type BlockItem } from '@/components/admin/website/BlockEditor.vue'
 import SeoFields from '@/components/admin/website/SeoFields.vue'
 import TranslationsPanel from '@/components/admin/website/TranslationsPanel.vue'
@@ -46,26 +42,32 @@ const props = defineProps<{
 
 const tab = ref<'basic' | 'blocks' | 'seo' | 'i18n'>('basic')
 const scheduleAt = ref(props.page.scheduled_at || '')
-
-const form = useForm({
-  page: { ...props.page },
-})
+const form = useForm({ page: { ...props.page } })
+const themeOptionsWithDefault = [
+  { value: null, label: '—' },
+  ...props.themeOptions,
+]
 
 function fieldError(key: string) {
-  return props.form_errors?.[key]?.join(' ') || form.errors[`page.${key}` as keyof typeof form.errors] || ''
+  const inertiaError = form.errors[`page.${key}` as keyof typeof form.errors]
+  return props.form_errors?.[key]?.join(' ') || (inertiaError ? String(inertiaError) : '')
 }
 
 function submit() {
-  if (props.method === 'patch') {
-    form.patch(props.submitUrl)
-  } else {
-    form.post(props.submitUrl)
-  }
+  if (props.method === 'patch') form.patch(props.submitUrl)
+  else form.post(props.submitUrl)
 }
 
 function publishNow() {
   if (!props.publishUrl) return
-  router.post(props.publishUrl)
+  Modal.warning({
+    title: t('admin.website.publish', 'Publish now'),
+    content: t('admin.website.publishPageConfirm', 'Publish this page now?'),
+    okText: t('admin.website.publish', 'Publish now'),
+    cancelText: t('admin.ui.cancel'),
+    hideCancel: false,
+    onOk: () => router.post(props.publishUrl!),
+  })
 }
 
 function schedulePublish() {
@@ -75,68 +77,120 @@ function schedulePublish() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <a-page-header :title="title" :show-back="false">
+    <template #extra>
+      <a-space wrap>
+        <a-button v-if="revisionsUrl" @click="router.visit(revisionsUrl)">
+          {{ t('admin.website.revisions.title', 'Revisions') }}
+        </a-button>
+        <a-button @click="router.visit(backUrl)">{{ t('admin.ui.cancel') }}</a-button>
+      </a-space>
+    </template>
+  </a-page-header>
 
-  <div class="mb-4 flex flex-wrap gap-2">
-    <Button type="button" size="sm" :variant="tab === 'basic' ? 'default' : 'outline'" @click="tab = 'basic'">{{ t('admin.website.tabs.basic', 'Basic') }}</Button>
-    <Button v-if="blocksBaseUrl" type="button" size="sm" :variant="tab === 'blocks' ? 'default' : 'outline'" @click="tab = 'blocks'">{{ t('admin.website.tabs.blocks', 'Blocks') }}</Button>
-    <Button type="button" size="sm" :variant="tab === 'seo' ? 'default' : 'outline'" @click="tab = 'seo'">SEO</Button>
-    <Button type="button" size="sm" :variant="tab === 'i18n' ? 'default' : 'outline'" @click="tab = 'i18n'">{{ t('admin.website.tabs.translations', 'Translations') }}</Button>
-    <Button v-if="revisionsUrl" as-child size="sm" variant="outline">
-      <Link :href="revisionsUrl">{{ t('admin.website.revisions.title', 'Revisions') }}</Link>
-    </Button>
-  </div>
+  <a-tabs v-model:active-key="tab" type="card-gutter">
+    <a-tab-pane key="basic" :title="t('admin.website.tabs.basic', 'Basic')">
+      <a-card :bordered="true" class="admin-form-card">
+        <a-form :model="form.page" layout="vertical" @submit="submit">
+          <a-form-item
+            field="title"
+            :label="t('admin.common.title')"
+            required
+            :validate-status="fieldError('title') ? 'error' : undefined"
+            :help="fieldError('title')"
+          >
+            <a-input v-model="form.page.title" allow-clear />
+          </a-form-item>
+          <a-form-item
+            field="slug"
+            :label="t('admin.forms.category.slug')"
+            required
+            :validate-status="fieldError('slug') ? 'error' : undefined"
+            :help="fieldError('slug')"
+          >
+            <a-input v-model="form.page.slug" allow-clear />
+          </a-form-item>
+          <a-form-item field="page_type" :label="t('admin.website.pageType')">
+            <a-select v-model="form.page.page_type" :options="pageTypeOptions" />
+          </a-form-item>
+          <a-form-item :label="t('admin.common.status')">
+            <a-tag>{{ form.page.status }}</a-tag>
+          </a-form-item>
+          <a-form-item
+            v-if="themeOptions.length"
+            field="website_theme_id"
+            :label="t('admin.website.theme', 'Theme')"
+          >
+            <a-select
+              v-model="form.page.website_theme_id"
+              :options="themeOptionsWithDefault"
+              allow-clear
+            />
+          </a-form-item>
 
-  <form v-show="tab === 'basic'" class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="title">{{ t('admin.common.title') }}</Label>
-      <Input id="title" v-model="form.page.title" required />
-      <p v-if="fieldError('title')" class="text-sm text-destructive">{{ fieldError('title') }}</p>
-    </div>
-    <div class="space-y-2">
-      <Label for="slug">{{ t('admin.forms.category.slug') }}</Label>
-      <Input id="slug" v-model="form.page.slug" required />
-      <p v-if="fieldError('slug')" class="text-sm text-destructive">{{ fieldError('slug') }}</p>
-    </div>
-    <div class="space-y-2">
-      <Label for="page_type">{{ t('admin.website.pageType') }}</Label>
-      <Select id="page_type" v-model="form.page.page_type">
-        <option v-for="option in pageTypeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-      </Select>
-    </div>
-    <div class="space-y-2">
-      <Label>{{ t('admin.common.status') }}</Label>
-      <p class="text-sm text-muted-foreground">{{ form.page.status }}</p>
-    </div>
-    <div v-if="themeOptions.length" class="space-y-2">
-      <Label for="theme">{{ t('admin.website.theme', 'Theme') }}</Label>
-      <Select id="theme" v-model="form.page.website_theme_id">
-        <option :value="null">—</option>
-        <option v-for="option in themeOptions" :key="option.value" :value="option.value">{{ option.label }}</option>
-      </Select>
-    </div>
-    <div v-if="canPublish && publishUrl" class="flex flex-wrap gap-2 border-t pt-4">
-      <Button type="button" @click="publishNow">{{ t('admin.website.publish', 'Publish now') }}</Button>
-      <Input v-model="scheduleAt" type="datetime-local" class="w-auto" />
-      <Button type="button" variant="outline" @click="schedulePublish">{{ t('admin.website.schedule', 'Schedule') }}</Button>
-    </div>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline"><Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link></Button>
-    </div>
-  </form>
+          <a-card
+            v-if="canPublish && publishUrl"
+            :title="t('admin.website.publish', 'Publish')"
+            :bordered="true"
+            class="mb-4"
+          >
+            <a-space wrap>
+              <a-button type="primary" status="success" @click="publishNow">
+                {{ t('admin.website.publish', 'Publish now') }}
+              </a-button>
+              <a-date-picker
+                v-model="scheduleAt"
+                show-time
+                value-format="YYYY-MM-DDTHH:mm"
+                style="width: 230px"
+              />
+              <a-button :disabled="!scheduleAt" @click="schedulePublish">
+                {{ t('admin.website.schedule', 'Schedule') }}
+              </a-button>
+            </a-space>
+          </a-card>
 
-  <div v-if="tab === 'blocks' && blocksBaseUrl" class="max-w-3xl">
-    <BlockEditor :blocks="blocks" :base-url="blocksBaseUrl" />
-  </div>
+          <a-button html-type="submit" type="primary" :loading="form.processing">
+            {{ t('admin.ui.save') }}
+          </a-button>
+        </a-form>
+      </a-card>
+    </a-tab-pane>
 
-  <form v-show="tab === 'seo'" class="max-w-lg space-y-4" @submit.prevent="submit">
-    <SeoFields v-model:seo="form.page.seo" />
-    <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-  </form>
+    <a-tab-pane
+      v-if="blocksBaseUrl"
+      key="blocks"
+      :title="t('admin.website.tabs.blocks', 'Blocks')"
+    >
+      <BlockEditor :blocks="blocks" :base-url="blocksBaseUrl" />
+    </a-tab-pane>
 
-  <form v-show="tab === 'i18n'" class="max-w-lg space-y-4" @submit.prevent="submit">
-    <TranslationsPanel v-model:translations="form.page.translations" :locales="locales" :fields="['title']" />
-    <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-  </form>
+    <a-tab-pane key="seo" title="SEO">
+      <a-card :bordered="true" class="admin-form-card">
+        <SeoFields v-model:seo="form.page.seo" />
+        <a-button type="primary" :loading="form.processing" @click="submit">
+          {{ t('admin.ui.save') }}
+        </a-button>
+      </a-card>
+    </a-tab-pane>
+
+    <a-tab-pane key="i18n" :title="t('admin.website.tabs.translations', 'Translations')">
+      <div class="admin-form-card">
+        <TranslationsPanel
+          v-model:translations="form.page.translations"
+          :locales="locales"
+          :fields="['title']"
+        />
+        <a-button type="primary" class="mt-4" :loading="form.processing" @click="submit">
+          {{ t('admin.ui.save') }}
+        </a-button>
+      </div>
+    </a-tab-pane>
+  </a-tabs>
 </template>
+
+<style scoped>
+.admin-form-card {
+  max-width: 880px;
+}
+</style>

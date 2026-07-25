@@ -6,17 +6,68 @@ module Community
 
     MAX_ATTEMPTS = 3
 
-    def perform(url, payload, secret = nil, delivery_id: nil, attempt: 1)
-      delivery = find_or_create_delivery(url, payload, delivery_id, attempt)
-      execute_request(delivery, url, payload, secret, attempt)
+    # The third positional argument is retained only so jobs queued by older
+    # releases can still deserialize. New jobs load the secret at execution time
+    # instead of persisting it in the queue.
+    def perform(url, payload, _legacy_secret = nil, delivery_id: nil, attempt: 1)
+      existing_delivery = Community::EventWebhookDelivery.find_by(id: delivery_id) if delivery_id.present?
+      safe_payload = sanitize_payload(payload, existing_delivery)
+      return reject_invalid_payload(existing_delivery, attempt) if safe_payload.empty?
+      unless Community::ForumEventWebhookPolicy.exportable_payload?(
+        payload: safe_payload,
+        delivery: existing_delivery
+      )
+        return reject_private_payload(existing_delivery, safe_payload, attempt)
+      end
+
+      effective_url = existing_delivery&.url.presence || url.to_s.strip
+      return if effective_url.blank?
+
+      delivery = find_or_create_delivery(effective_url, safe_payload, existing_delivery, attempt)
+      execute_request(delivery, effective_url, safe_payload, attempt)
     end
 
   private
 
-    def find_or_create_delivery(url, payload, delivery_id, attempt)
-      if delivery_id.present?
-        delivery = Community::EventWebhookDelivery.find(delivery_id)
-        delivery.update!(status: "pending", attempt_count: attempt) if delivery.status != "pending"
+    def sanitize_payload(payload, delivery)
+      Community::BuildForumEventWebhookPayload.sanitize(
+        payload,
+        event_type: delivery&.event_type,
+        topic_id: delivery&.topic&.public_id,
+        post_id: delivery&.forum_post_id,
+        occurred_at: payload.to_h.with_indifferent_access[:occurred_at]
+      )
+    rescue NoMethodError
+      {}
+    end
+
+    def reject_invalid_payload(delivery, attempt)
+      delivery&.update!(
+        status: "failed",
+        request_payload: {},
+        response_body: "blocked: invalid forum event payload",
+        attempt_count: attempt
+      )
+      nil
+    end
+
+    def reject_private_payload(delivery, payload, attempt)
+      delivery&.update!(
+        status: "failed",
+        request_payload: payload,
+        response_body: "blocked: private forum resource",
+        attempt_count: attempt
+      )
+      nil
+    end
+
+    def find_or_create_delivery(url, payload, delivery, attempt)
+      if delivery
+        delivery.update!(
+          status: "pending",
+          request_payload: payload,
+          attempt_count: attempt
+        )
         delivery
       else
         Community::EventWebhookDelivery.create!(
@@ -45,7 +96,7 @@ module Community
       Community::Post.exists?(id) ? id : nil
     end
 
-    def execute_request(delivery, url, payload, secret, attempt)
+    def execute_request(delivery, url, payload, attempt)
       unless UrlSafety.public_http_url?(url)
         delivery.update!(
           status: "failed",
@@ -58,7 +109,7 @@ module Community
       uri = URI.parse(url)
       body = payload.to_json
       headers = { "Content-Type" => "application/json" }
-      signature = WebhookSignature.header_for(secret, body)
+      signature = WebhookSignature.header_for(webhook_secret, body)
       headers["X-McWeb-Signature"] = signature if signature.present?
 
       response = UrlSafety.safe_http_post(uri, body: body, headers: headers, open_timeout: 5, read_timeout: 10)
@@ -71,29 +122,32 @@ module Community
         status: success ? "success" : "failed",
         attempt_count: attempt
       )
-      schedule_retry(url, payload, secret, delivery, attempt) unless success
+      schedule_retry(delivery, attempt) unless success
     rescue StandardError => e
       delivery&.update!(
         status: "failed",
         response_body: "#{e.class}: #{e.message}".truncate(4000),
         attempt_count: attempt
       )
-      schedule_retry(url, payload, secret, delivery, attempt) if delivery
+      schedule_retry(delivery, attempt) if delivery
       Rails.logger.warn("[DispatchForumEventWebhookJob] #{e.class}: #{e.message}")
     end
 
-    def schedule_retry(url, payload, secret, delivery, attempt)
+    def schedule_retry(delivery, attempt)
       return if attempt >= MAX_ATTEMPTS
 
       next_attempt = attempt + 1
       wait = (2**attempt).minutes
       self.class.set(wait: wait).perform_later(
-        url,
-        payload,
-        secret,
+        delivery.url,
+        delivery.request_payload,
         delivery_id: delivery.id,
         attempt: next_attempt
       )
+    end
+
+    def webhook_secret
+      SiteSetting.get("forum.event_webhook_secret", "").to_s.strip.presence
     end
   end
 end

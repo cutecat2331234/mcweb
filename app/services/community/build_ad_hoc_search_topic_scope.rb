@@ -29,6 +29,7 @@ module Community
       )
       scope = apply_exclusions(scope, filters[:exclude_terms])
       scope = apply_sort(scope, filters[:topic_sort])
+      scope = Community::ForumAccess.topic_scope(relation: scope, user: @user)
       ServiceResult.success(scope: scope)
     end
 
@@ -111,7 +112,7 @@ module Community
     end
 
     def apply_tag(scope, tag_slug)
-      tag = Community::Tag.find_by(slug: tag_slug) || Community::Tag.find_by(name: tag_slug)
+      tag = Community::Tag.resolve_by_slug_or_name_for(tag_slug, user: @user)
       return scope.none unless tag
 
       scope.joins(:tags).where(forum_tags: { id: tag.id })

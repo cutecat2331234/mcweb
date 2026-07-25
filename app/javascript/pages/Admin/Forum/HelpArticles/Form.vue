@@ -2,13 +2,7 @@
 import { Link, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 
 defineOptions({ layout: AdminLayout })
 
@@ -46,41 +40,45 @@ async function destroy() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
-
-  <form class="max-w-2xl space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="title">{{ t('admin.helpArticles.titleLabel') }}</Label>
-      <Input id="title" v-model="form.help_article.title" required maxlength="200" />
-    </div>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="category">{{ t('admin.helpArticles.category') }}</Label>
-        <Input id="category" v-model="form.help_article.category" />
-      </div>
-      <div class="space-y-2">
-        <Label for="slug">{{ t('admin.helpArticles.slug') }}</Label>
-        <Input id="slug" v-model="form.help_article.slug" :placeholder="t('admin.helpArticles.slugHint')" />
-      </div>
-    </div>
-    <div class="space-y-2">
-      <Label for="body">{{ t('admin.helpArticles.body') }}</Label>
-      <Textarea id="body" v-model="form.help_article.body" rows="10" />
-    </div>
-    <div class="space-y-2">
-      <Label for="position">{{ t('admin.helpArticles.position') }}</Label>
-      <Input id="position" v-model="form.help_article.position" type="number" min="0" />
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.help_article.published" />
-      {{ t('admin.helpArticles.published') }}
-    </label>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button v-if="deleteUrl" type="button" variant="destructive" @click="destroy">{{ t('admin.ui.delete') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.back') }}</Link>
-      </Button>
-    </div>
-  </form>
+  <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-card class="max-w-3xl" :bordered="true">
+    <form class="grid gap-4" @submit.prevent="submit">
+      <label class="admin-forum-field">
+        <span>{{ t('admin.helpArticles.titleLabel') }}</span>
+        <a-input v-model="form.help_article.title" :input-attrs="{ required: true, maxlength: 200 }" allow-clear />
+      </label>
+      <a-row :gutter="[16, 0]">
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.helpArticles.category') }}</span>
+            <a-input v-model="form.help_article.category" allow-clear />
+          </label>
+        </a-col>
+        <a-col :xs="24" :sm="12">
+          <label class="admin-forum-field">
+            <span>{{ t('admin.helpArticles.slug') }}</span>
+            <a-input v-model="form.help_article.slug" :placeholder="t('admin.helpArticles.slugHint')" allow-clear />
+          </label>
+        </a-col>
+      </a-row>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.helpArticles.body') }}</span>
+        <a-textarea v-model="form.help_article.body" :auto-size="{ minRows: 10, maxRows: 24 }" />
+      </label>
+      <label class="admin-forum-field">
+        <span>{{ t('admin.helpArticles.position') }}</span>
+        <a-input-number v-model="form.help_article.position" :min="0" class="w-full sm:w-48" />
+      </label>
+      <a-checkbox v-model="form.help_article.published">{{ t('admin.helpArticles.published') }}</a-checkbox>
+      <a-space wrap>
+        <a-button html-type="submit" type="primary" :loading="form.processing">{{ t('admin.ui.save') }}</a-button>
+        <a-button v-if="deleteUrl" type="primary" status="danger" @click="destroy">{{ t('admin.ui.delete') }}</a-button>
+        <Link :href="backUrl" class="arco-btn arco-btn-outline arco-btn-size-medium no-underline">{{ t('admin.ui.back') }}</Link>
+      </a-space>
+    </form>
+  </a-card>
 </template>
+
+<style scoped>
+.admin-forum-field { display: grid; gap: 6px; color: var(--color-text-2); font-size: 14px; }
+</style>

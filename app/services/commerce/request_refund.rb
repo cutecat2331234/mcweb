@@ -27,7 +27,7 @@ module Commerce
           raise ActiveRecord::Rollback
         end
 
-        if Commerce::Refund.where(order: @order, status: "pending").exists?
+        if Commerce::Refund.where(order: @order).in_flight.exists?
           failure_error = "Refund already pending."
           raise ActiveRecord::Rollback
         end
@@ -86,7 +86,7 @@ module Commerce
     private
 
     def refundable_cents(payment)
-      refunded = Commerce::Refund.where(order: @order, status: %w[pending completed]).sum(:amount_cents)
+      refunded = Commerce::Refund.where(order: @order).reserved.sum(:amount_cents)
       [ payment.amount_cents - refunded, 0 ].max
     end
 

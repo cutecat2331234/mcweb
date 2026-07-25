@@ -25,7 +25,7 @@ module Community
 
     private
 
-    def notify_recipients!(_comment)
+    def notify_recipients!(comment)
       [ @profile_post.author, @profile_post.profile_user ].compact.uniq.each do |user|
         next if user.id == @author.id
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.profile_post_comment")
@@ -39,6 +39,7 @@ module Community
           metadata: {
             path: "/app/forum/users/#{@profile_post.profile_user.username}",
             profile_post_id: @profile_post.id,
+            profile_post_comment_id: comment.id,
             actor: @author.username
           }
         )

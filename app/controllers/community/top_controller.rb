@@ -11,7 +11,10 @@ module Community
       filter = params[:filter].to_s.presence
       since = Community::Topic.top_period_start(period)
 
-      scope = Community::Topic.published_listed.accessible_by(current_user)
+      scope = Community::ForumAccess.topic_scope(
+        relation: Community::Topic.published_listed,
+        user: current_user
+      )
       scope = preload_topics(scope)
       scope = filter_blocked_topics(scope)
       scope = apply_topic_filter(scope, filter: filter, user: current_user)

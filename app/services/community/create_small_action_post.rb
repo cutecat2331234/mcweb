@@ -22,9 +22,8 @@ module Community
           post_type: "small_action",
           status: "published"
         )
+        @topic.update!(last_posted_at: post.created_at, last_post_user: @actor)
       end
-
-      @topic.update!(last_posted_at: post.created_at, last_post_user: @actor)
 
       ServiceResult.success(post)
     rescue ActiveRecord::RecordInvalid => e

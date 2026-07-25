@@ -1,17 +1,8 @@
 <script setup lang="ts">
-import { Link, useForm } from '@inertiajs/vue3'
+import { Link, useForm, usePage } from '@inertiajs/vue3'
 import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { usePage } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import Select from '@/components/ui/Select.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import FileInput from '@/components/ui/FileInput.vue'
 import { resolveStoreFeatures } from '@/lib/storeFeatures'
 
 defineOptions({ layout: AdminLayout })
@@ -134,6 +125,20 @@ const imagePackOptions = computed(() => [
 const imagePackId = ref('')
 const imageTexture = ref('')
 
+const availableAt = computed<string | undefined>({
+  get: () => form.product.available_at || undefined,
+  set: (value) => {
+    form.product.available_at = value || ''
+  },
+})
+
+const unavailableAt = computed<string | undefined>({
+  get: () => form.product.unavailable_at || undefined,
+  set: (value) => {
+    form.product.unavailable_at = value || ''
+  },
+})
+
 const imagePackPreviewUrl = computed(() => {
   if (!imagePackId.value || !imageTexture.value.trim()) return null
   const segments = imageTexture.value.trim().split('/').filter(Boolean)
@@ -209,7 +214,19 @@ function removeVariant(variant: (typeof form.product.variants)[number]) {
   }
 }
 
-function submit() {
+function fieldError(field: string) {
+  return form.errors[field] || form.errors[`product.${field}`]
+}
+
+function normalizeEmptyNumbers(record: object, fields: string[]) {
+  const values = record as Record<string, unknown>
+  fields.forEach((field) => {
+    if (values[field] === undefined) values[field] = null
+  })
+}
+
+function submit(event?: { errors?: unknown }) {
+  if (event?.errors) return
   if (!storeFeatures.value.physical_products && form.product.product_type === 'physical') {
     form.product.product_type = 'virtual'
   }
@@ -220,6 +237,17 @@ function submit() {
   form.product.prerequisites = form.product.prerequisites.filter(
     (p) => p._destroy || p.required_product_id,
   )
+  normalizeEmptyNumbers(form.product, [
+    'price_cents',
+    'compare_at_price_cents',
+    'stock',
+    'purchase_limit',
+    'minimum_quantity',
+    'maximum_quantity',
+  ])
+  form.product.variants.forEach((variant) => {
+    normalizeEmptyNumbers(variant, ['price_cents', 'stock'])
+  })
   if (props.method === 'patch') {
     form.patch(props.submitUrl)
   } else {
@@ -242,6 +270,11 @@ async function uploadCover(file: File) {
   if (res.ok && data.url) form.product.image_url = data.url
 }
 
+function beforeCoverUpload(file: File) {
+  void uploadCover(file)
+  return false
+}
+
 onMounted(() => {
   if (!storeFeatures.value.physical_products && form.product.product_type === 'physical') {
     form.product.product_type = 'virtual'
@@ -254,214 +287,561 @@ onMounted(() => {
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <section class="admin-store-product-form">
+    <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
 
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="space-y-2">
-      <Label for="name">{{ t('admin.common.name') }}</Label>
-      <Input id="name" v-model="form.product.name" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="slug">{{ t('admin.common.slugFull') }}</Label>
-      <Input id="slug" v-model="form.product.slug" required />
-    </div>
-    <div class="space-y-2">
-      <Label for="summary">{{ t('admin.forms.product.summary') }}</Label>
-      <Textarea id="summary" v-model="form.product.summary" rows="2" :placeholder="t('admin.forms.product.summaryPlaceholder')" />
-    </div>
-    <div class="space-y-2">
-      <Label for="description">{{ t('admin.common.description') }}</Label>
-      <Textarea id="description" v-model="form.product.description" rows="4" />
-    </div>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="product_type">{{ t('admin.forms.product.type') }}</Label>
-        <Select id="product_type" v-model="form.product.product_type" :options="productTypeOptions" block />
-      </div>
-      <div class="space-y-2">
-        <Label for="status">{{ t('admin.common.status') }}</Label>
-        <Select id="status" v-model="form.product.status" :options="statusOptions" block />
-      </div>
-    </div>
-    <div v-if="form.product.product_type === 'membership'" class="space-y-2">
-      <Label for="membership_type">{{ t('admin.forms.product.membershipType') }}</Label>
-      <Select
-        id="membership_type"
-        :model-value="form.product.store_membership_type_id == null ? '' : String(form.product.store_membership_type_id)"
-        :options="membershipTypeOptions"
-        block
-        @update:model-value="updateMembershipTypeId"
-      />
-    </div>
-    <div class="space-y-3 rounded-lg border p-3">
-      <div class="flex items-center justify-between">
-        <Label>{{ t('admin.forms.product.prerequisites') }}</Label>
-        <Button type="button" variant="outline" size="sm" @click="addPrerequisite">{{ t('admin.forms.product.addPrerequisite') }}</Button>
-      </div>
-      <div class="space-y-2">
-        <Label for="prerequisite_match_mode">{{ t('admin.forms.product.prerequisiteMatchMode') }}</Label>
-        <Select id="prerequisite_match_mode" v-model="form.product.prerequisite_match_mode" :options="prerequisiteMatchOptions" block />
-      </div>
-      <div
-        v-for="(prerequisite, index) in form.product.prerequisites.filter((p) => !p._destroy)"
-        :key="prerequisite.id || `new-${index}`"
-        class="grid grid-cols-[1fr_1fr_auto] items-end gap-2"
-      >
-        <div class="space-y-1">
-          <Label>{{ t('admin.forms.product.prerequisiteProduct') }}</Label>
-          <Select
-            :model-value="prerequisite.required_product_id == null ? '' : String(prerequisite.required_product_id)"
-            :options="prerequisiteProductOptions"
-            block
-            @update:model-value="(v) => prerequisite.required_product_id = v ? Number(v) : null"
-          />
-        </div>
-        <div class="space-y-1">
-          <Label>{{ t('admin.forms.product.prerequisiteMode') }}</Label>
-          <Select v-model="prerequisite.requirement_mode" :options="requirementModeOptions" block />
-        </div>
-        <Button type="button" variant="outline" size="sm" @click="removePrerequisite(prerequisite)">{{ t('admin.ui.remove') }}</Button>
-      </div>
-    </div>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="price_cents">{{ t('admin.forms.product.priceCents') }}</Label>
-        <Input id="price_cents" v-model.number="form.product.price_cents" type="number" min="0" required />
-      </div>
-      <div class="space-y-2">
-        <Label for="compare_at_price_cents">{{ t('admin.forms.product.comparePrice') }}</Label>
-        <Input id="compare_at_price_cents" v-model.number="form.product.compare_at_price_cents" type="number" min="0" :placeholder="t('admin.forms.product.comparePlaceholder')" />
-      </div>
-      <div class="space-y-2">
-        <Label for="stock">{{ t('admin.forms.product.stock') }}</Label>
-        <Input id="stock" v-model.number="form.product.stock" type="number" min="0" />
-      </div>
-    </div>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="available_at">{{ t('admin.forms.product.availableAt') }}</Label>
-        <Input id="available_at" v-model="form.product.available_at" type="datetime-local" />
-      </div>
-      <div class="space-y-2">
-        <Label for="unavailable_at">{{ t('admin.forms.product.unavailableAt') }}</Label>
-        <Input id="unavailable_at" v-model="form.product.unavailable_at" type="datetime-local" />
-      </div>
-    </div>
-    <div class="space-y-2">
-      <Label for="category">{{ t('admin.forms.product.category') }}</Label>
-      <Select
-        id="category"
-        :model-value="form.product.store_category_id == null ? '' : String(form.product.store_category_id)"
-        :options="categoryOptions"
-        block
-        @update:model-value="updateCategoryId"
-      />
-    </div>
-    <div class="space-y-2">
-      <Label for="purchase_limit">{{ t('admin.forms.product.purchaseLimit') }}</Label>
-      <Input id="purchase_limit" v-model.number="form.product.purchase_limit" type="number" min="1" />
-    </div>
-    <div class="space-y-2">
-      <Label for="minimum_quantity">{{ t('admin.forms.product.minQty') }}</Label>
-      <Input id="minimum_quantity" v-model.number="form.product.minimum_quantity" type="number" min="1" />
-    </div>
-    <div class="space-y-2">
-      <Label for="maximum_quantity">{{ t('admin.forms.product.maxQty') }}</Label>
-      <Input id="maximum_quantity" v-model.number="form.product.maximum_quantity" type="number" min="1" />
-    </div>
-    <label v-if="storeFeatures.shipping" class="flex items-center gap-2">
-      <Checkbox id="requires_shipping" v-model="form.product.requires_shipping" />
-      <Label for="requires_shipping">{{ t('admin.forms.product.requiresShipping') }}</Label>
-    </label>
-    <div class="space-y-2">
-      <Label for="image_url">{{ t('admin.forms.product.imageUrl') }}</Label>
-      <Input id="image_url" v-model="form.product.image_url" placeholder="https://example.com/image.png" />
-      <div v-if="uploadUrl" class="mt-2">
-        <Label for="cover_upload">{{ t('admin.forms.product.uploadCover') }}</Label>
-        <FileInput id="cover_upload" accept="image/*" :button-label="t('admin.forms.product.selectCover')" @change="uploadCover" />
-      </div>
-    </div>
-    <div class="space-y-2">
-      <Label for="gallery_urls">{{ t('admin.forms.product.galleryUrls') }}</Label>
-      <Textarea id="gallery_urls" v-model="form.product.gallery_urls" rows="3" placeholder="https://example.com/1.png&#10;https://example.com/2.png" />
-    </div>
-    <div v-if="imagePackOptions.length > 1" class="space-y-3 rounded-lg border p-3">
-      <Label>{{ t('admin.forms.product.imagePack') }}</Label>
-      <div class="space-y-2">
-        <Label for="image_pack">{{ t('admin.forms.product.imagePackSelect') }}</Label>
-        <Select id="image_pack" v-model="imagePackId" :options="imagePackOptions" block />
-      </div>
-      <div v-if="imagePackId" class="space-y-2">
-        <Label for="image_texture">{{ t('admin.forms.product.imagePackTexture') }}</Label>
-        <Input
-          id="image_texture"
-          v-model="imageTexture"
-          :placeholder="t('admin.forms.product.imagePackTexturePlaceholder')"
-        />
-        <p v-if="imagePackPreviewUrl" class="text-xs text-muted-foreground">{{ t('admin.forms.product.imagePackPreview') }}</p>
-        <img
-          v-if="imagePackPreviewUrl"
-          :src="imagePackPreviewUrl"
-          alt=""
-          class="h-16 w-16 rounded border bg-muted object-contain"
-          @error="($event.target as HTMLImageElement).style.display = 'none'"
-        />
-      </div>
-    </div>
-    <div class="space-y-2">
-      <Label for="fulfillment_config">{{ t('admin.forms.product.fulfillmentConfig') }}</Label>
-      <Textarea id="fulfillment_config" v-model="form.product.fulfillment_config" rows="6" placeholder='{"download_url":"https://example.com/file.zip","commands":["give {player} diamond 1"]}' />
-    </div>
-    <label class="flex items-center gap-2">
-      <Checkbox id="featured" v-model="form.product.featured" />
-      <Label for="featured">{{ t('admin.forms.product.featured') }}</Label>
-    </label>
-    <label class="flex items-center gap-2">
-      <Checkbox id="allow_backorder" v-model="form.product.allow_backorder" />
-      <Label for="allow_backorder">{{ t('admin.forms.product.allowBackorder') }}</Label>
-    </label>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="version">{{ t('admin.forms.product.version') }}</Label>
-        <Input id="version" v-model="form.product.version" placeholder="1.0.0" />
-      </div>
-      <div class="space-y-2">
-        <Label for="changelog">{{ t('admin.forms.product.changelog') }}</Label>
-        <Textarea id="changelog" v-model="form.product.changelog" rows="3" :placeholder="t('admin.forms.product.changelogPlaceholder')" />
-      </div>
-    </div>
-    <div class="space-y-2">
-      <Label for="seo_title">{{ t('admin.forms.product.seoTitle') }}</Label>
-      <Input id="seo_title" v-model="form.product.seo_title" />
-    </div>
-    <div class="space-y-2">
-      <Label for="seo_description">{{ t('admin.forms.product.seoDescription') }}</Label>
-      <Textarea id="seo_description" v-model="form.product.seo_description" rows="2" />
-    </div>
+    <a-form
+      :model="form.product"
+      layout="vertical"
+      class="max-w-5xl"
+      @submit="submit"
+    >
+      <a-space direction="vertical" fill :size="16">
+        <a-card :bordered="true">
+          <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="name"
+                :label="t('admin.common.name')"
+                :rules="[{ required: true, message: t('admin.common.name') }]"
+                :validate-status="fieldError('name') ? 'error' : undefined"
+                :help="fieldError('name')"
+              >
+                <a-input v-model="form.product.name" allow-clear />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="slug"
+                :label="t('admin.common.slugFull')"
+                :rules="[{ required: true, message: t('admin.common.slugFull') }]"
+                :validate-status="fieldError('slug') ? 'error' : undefined"
+                :help="fieldError('slug')"
+              >
+                <a-input v-model="form.product.slug" allow-clear />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
 
-    <div class="space-y-3">
-      <div class="flex items-center justify-between">
-        <Label>{{ t('admin.forms.product.variants') }}</Label>
-        <Button type="button" variant="outline" size="sm" @click="addVariant">{{ t('admin.forms.product.addVariant') }}</Button>
-      </div>
-      <div
-        v-for="(variant, index) in form.product.variants.filter((v: { _destroy?: boolean }) => !v._destroy)"
-        :key="index"
-        class="grid grid-cols-2 gap-2 rounded-lg border p-3"
-      >
-        <Input v-model="variant.name" :placeholder="t('admin.common.name')" />
-        <Input v-model="variant.sku" :placeholder="t('admin.forms.product.sku')" />
-        <Input v-model.number="variant.price_cents" type="number" :placeholder="t('admin.forms.product.priceCents')" />
-        <Input v-model.number="variant.stock" type="number" :placeholder="t('admin.forms.product.stock')" />
-        <Button type="button" variant="outline" size="sm" class="col-span-2" @click="removeVariant(variant)">{{ t('admin.ui.delete') }}</Button>
-      </div>
-    </div>
+          <a-form-item
+            field="summary"
+            :label="t('admin.forms.product.summary')"
+            :validate-status="fieldError('summary') ? 'error' : undefined"
+            :help="fieldError('summary')"
+          >
+            <a-textarea
+              v-model="form.product.summary"
+              :auto-size="{ minRows: 2, maxRows: 5 }"
+              :placeholder="t('admin.forms.product.summaryPlaceholder')"
+              allow-clear
+            />
+          </a-form-item>
 
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link>
-      </Button>
-    </div>
-  </form>
+          <a-form-item
+            field="description"
+            :label="t('admin.common.description')"
+            :validate-status="fieldError('description') ? 'error' : undefined"
+            :help="fieldError('description')"
+          >
+            <a-textarea
+              v-model="form.product.description"
+              :auto-size="{ minRows: 4, maxRows: 12 }"
+              allow-clear
+            />
+          </a-form-item>
+
+          <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="product_type"
+                :label="t('admin.forms.product.type')"
+                :validate-status="fieldError('product_type') ? 'error' : undefined"
+                :help="fieldError('product_type')"
+              >
+                <a-select
+                  v-model="form.product.product_type"
+                  :options="productTypeOptions"
+                />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="status"
+                :label="t('admin.common.status')"
+                :validate-status="fieldError('status') ? 'error' : undefined"
+                :help="fieldError('status')"
+              >
+                <a-select v-model="form.product.status" :options="statusOptions" />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
+
+          <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="store_category_id"
+                :label="t('admin.forms.product.category')"
+                :validate-status="fieldError('store_category_id') ? 'error' : undefined"
+                :help="fieldError('store_category_id')"
+              >
+                <a-select
+                  :model-value="form.product.store_category_id == null ? '' : String(form.product.store_category_id)"
+                  :options="categoryOptions"
+                  allow-search
+                  @update:model-value="updateCategoryId"
+                />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item v-if="form.product.product_type === 'membership'">
+              <a-form-item
+                field="store_membership_type_id"
+                :label="t('admin.forms.product.membershipType')"
+                :validate-status="fieldError('store_membership_type_id') ? 'error' : undefined"
+                :help="fieldError('store_membership_type_id')"
+              >
+                <a-select
+                  :model-value="form.product.store_membership_type_id == null ? '' : String(form.product.store_membership_type_id)"
+                  :options="membershipTypeOptions"
+                  allow-search
+                  @update:model-value="updateMembershipTypeId"
+                />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
+        </a-card>
+
+        <a-card :bordered="true">
+          <a-grid :cols="{ xs: 1, sm: 2, lg: 3 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="price_cents"
+                :label="t('admin.forms.product.priceCents')"
+                :rules="[{ required: true, message: t('admin.forms.product.priceCents') }]"
+                :validate-status="fieldError('price_cents') ? 'error' : undefined"
+                :help="fieldError('price_cents')"
+              >
+                <a-input-number
+                  v-model="form.product.price_cents"
+                  :min="0"
+                  class="w-full"
+                />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="compare_at_price_cents"
+                :label="t('admin.forms.product.comparePrice')"
+                :validate-status="fieldError('compare_at_price_cents') ? 'error' : undefined"
+                :help="fieldError('compare_at_price_cents')"
+              >
+                <a-input-number
+                  v-model="form.product.compare_at_price_cents"
+                  :min="0"
+                  :placeholder="t('admin.forms.product.comparePlaceholder')"
+                  class="w-full"
+                />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="stock"
+                :label="t('admin.forms.product.stock')"
+                :validate-status="fieldError('stock') ? 'error' : undefined"
+                :help="fieldError('stock')"
+              >
+                <a-input-number v-model="form.product.stock" :min="0" class="w-full" />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
+
+          <a-grid :cols="{ xs: 1, sm: 3 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="purchase_limit"
+                :label="t('admin.forms.product.purchaseLimit')"
+                :validate-status="fieldError('purchase_limit') ? 'error' : undefined"
+                :help="fieldError('purchase_limit')"
+              >
+                <a-input-number
+                  v-model="form.product.purchase_limit"
+                  :min="1"
+                  class="w-full"
+                />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="minimum_quantity"
+                :label="t('admin.forms.product.minQty')"
+                :validate-status="fieldError('minimum_quantity') ? 'error' : undefined"
+                :help="fieldError('minimum_quantity')"
+              >
+                <a-input-number
+                  v-model="form.product.minimum_quantity"
+                  :min="1"
+                  class="w-full"
+                />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="maximum_quantity"
+                :label="t('admin.forms.product.maxQty')"
+                :validate-status="fieldError('maximum_quantity') ? 'error' : undefined"
+                :help="fieldError('maximum_quantity')"
+              >
+                <a-input-number
+                  v-model="form.product.maximum_quantity"
+                  :min="1"
+                  class="w-full"
+                />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
+
+          <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="available_at"
+                :label="t('admin.forms.product.availableAt')"
+                :validate-status="fieldError('available_at') ? 'error' : undefined"
+                :help="fieldError('available_at')"
+              >
+                <a-date-picker
+                  v-model="availableAt"
+                  class="w-full"
+                  show-time
+                  format="YYYY-MM-DD HH:mm"
+                  value-format="YYYY-MM-DDTHH:mm"
+                  allow-clear
+                />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="unavailable_at"
+                :label="t('admin.forms.product.unavailableAt')"
+                :validate-status="fieldError('unavailable_at') ? 'error' : undefined"
+                :help="fieldError('unavailable_at')"
+              >
+                <a-date-picker
+                  v-model="unavailableAt"
+                  class="w-full"
+                  show-time
+                  format="YYYY-MM-DD HH:mm"
+                  value-format="YYYY-MM-DDTHH:mm"
+                  allow-clear
+                />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
+
+          <a-space direction="vertical" :size="12">
+            <a-space v-if="storeFeatures.shipping">
+              <a-switch v-model="form.product.requires_shipping" />
+              <a-typography-text>
+                {{ t('admin.forms.product.requiresShipping') }}
+              </a-typography-text>
+            </a-space>
+            <a-space>
+              <a-switch v-model="form.product.featured" />
+              <a-typography-text>{{ t('admin.forms.product.featured') }}</a-typography-text>
+            </a-space>
+            <a-space>
+              <a-switch v-model="form.product.allow_backorder" />
+              <a-typography-text>
+                {{ t('admin.forms.product.allowBackorder') }}
+              </a-typography-text>
+            </a-space>
+          </a-space>
+        </a-card>
+
+        <a-card
+          :title="t('admin.forms.product.prerequisites')"
+          :bordered="true"
+        >
+          <template #extra>
+            <a-button html-type="button" size="small" @click="addPrerequisite">
+              {{ t('admin.forms.product.addPrerequisite') }}
+            </a-button>
+          </template>
+
+          <a-form-item
+            field="prerequisite_match_mode"
+            :label="t('admin.forms.product.prerequisiteMatchMode')"
+            :validate-status="fieldError('prerequisite_match_mode') ? 'error' : undefined"
+            :help="fieldError('prerequisite_match_mode')"
+          >
+            <a-select
+              v-model="form.product.prerequisite_match_mode"
+              :options="prerequisiteMatchOptions"
+            />
+          </a-form-item>
+
+          <a-space direction="vertical" fill :size="12">
+            <a-card
+              v-for="(prerequisite, index) in form.product.prerequisites.filter((item) => !item._destroy)"
+              :key="prerequisite.id || `new-${index}`"
+              :bordered="true"
+              size="small"
+            >
+              <a-grid
+                :cols="{ xs: 1, sm: 2 }"
+                :col-gap="12"
+                :row-gap="4"
+                align="end"
+              >
+                <a-grid-item>
+                  <a-form-item
+                    :label="t('admin.forms.product.prerequisiteProduct')"
+                    hide-asterisk
+                  >
+                    <a-select
+                      :model-value="prerequisite.required_product_id == null ? '' : String(prerequisite.required_product_id)"
+                      :options="prerequisiteProductOptions"
+                      allow-search
+                      @update:model-value="(value: string) => prerequisite.required_product_id = value ? Number(value) : null"
+                    />
+                  </a-form-item>
+                </a-grid-item>
+                <a-grid-item>
+                  <a-form-item
+                    :label="t('admin.forms.product.prerequisiteMode')"
+                    hide-asterisk
+                  >
+                    <a-space>
+                      <a-select
+                        v-model="prerequisite.requirement_mode"
+                        :options="requirementModeOptions"
+                        class="min-w-48"
+                      />
+                      <a-button
+                        html-type="button"
+                        status="danger"
+                        @click="removePrerequisite(prerequisite)"
+                      >
+                        {{ t('admin.ui.remove') }}
+                      </a-button>
+                    </a-space>
+                  </a-form-item>
+                </a-grid-item>
+              </a-grid>
+            </a-card>
+          </a-space>
+        </a-card>
+
+        <a-card :bordered="true">
+          <a-form-item
+            field="image_url"
+            :label="t('admin.forms.product.imageUrl')"
+            :validate-status="fieldError('image_url') ? 'error' : undefined"
+            :help="fieldError('image_url')"
+          >
+            <a-input
+              v-model="form.product.image_url"
+              placeholder="https://example.com/image.png"
+              allow-clear
+            />
+          </a-form-item>
+
+          <a-form-item
+            v-if="uploadUrl"
+            :label="t('admin.forms.product.uploadCover')"
+          >
+            <a-upload
+              accept="image/*"
+              :auto-upload="false"
+              :show-file-list="false"
+              :before-upload="beforeCoverUpload"
+            >
+              <template #upload-button>
+                <a-button html-type="button">
+                  {{ t('admin.forms.product.selectCover') }}
+                </a-button>
+              </template>
+            </a-upload>
+          </a-form-item>
+
+          <a-form-item
+            field="gallery_urls"
+            :label="t('admin.forms.product.galleryUrls')"
+            :validate-status="fieldError('gallery_urls') ? 'error' : undefined"
+            :help="fieldError('gallery_urls')"
+          >
+            <a-textarea
+              v-model="form.product.gallery_urls"
+              :auto-size="{ minRows: 3, maxRows: 8 }"
+              placeholder="https://example.com/1.png&#10;https://example.com/2.png"
+            />
+          </a-form-item>
+
+          <template v-if="imagePackOptions.length > 1">
+            <a-divider />
+            <a-form-item :label="t('admin.forms.product.imagePackSelect')">
+              <a-select
+                v-model="imagePackId"
+                :options="imagePackOptions"
+                allow-search
+              />
+            </a-form-item>
+            <a-form-item
+              v-if="imagePackId"
+              :label="t('admin.forms.product.imagePackTexture')"
+              :help="imagePackPreviewUrl ? t('admin.forms.product.imagePackPreview') : undefined"
+            >
+              <a-space direction="vertical" fill>
+                <a-input
+                  v-model="imageTexture"
+                  :placeholder="t('admin.forms.product.imagePackTexturePlaceholder')"
+                  allow-clear
+                />
+                <a-image
+                  v-if="imagePackPreviewUrl"
+                  :src="imagePackPreviewUrl"
+                  :width="64"
+                  :height="64"
+                  fit="contain"
+                />
+              </a-space>
+            </a-form-item>
+          </template>
+        </a-card>
+
+        <a-card :bordered="true">
+          <a-form-item
+            field="fulfillment_config"
+            :label="t('admin.forms.product.fulfillmentConfig')"
+            :validate-status="fieldError('fulfillment_config') ? 'error' : undefined"
+            :help="fieldError('fulfillment_config')"
+          >
+            <a-textarea
+              v-model="form.product.fulfillment_config"
+              :auto-size="{ minRows: 6, maxRows: 16 }"
+              class="font-mono text-xs"
+              placeholder='{"download_url":"https://example.com/file.zip","commands":["give {player} diamond 1"]}'
+            />
+          </a-form-item>
+        </a-card>
+
+        <a-card :bordered="true">
+          <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="version"
+                :label="t('admin.forms.product.version')"
+                :validate-status="fieldError('version') ? 'error' : undefined"
+                :help="fieldError('version')"
+              >
+                <a-input v-model="form.product.version" placeholder="1.0.0" allow-clear />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="changelog"
+                :label="t('admin.forms.product.changelog')"
+                :validate-status="fieldError('changelog') ? 'error' : undefined"
+                :help="fieldError('changelog')"
+              >
+                <a-textarea
+                  v-model="form.product.changelog"
+                  :auto-size="{ minRows: 3, maxRows: 8 }"
+                  :placeholder="t('admin.forms.product.changelogPlaceholder')"
+                />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
+
+          <a-form-item
+            field="seo_title"
+            :label="t('admin.forms.product.seoTitle')"
+            :validate-status="fieldError('seo_title') ? 'error' : undefined"
+            :help="fieldError('seo_title')"
+          >
+            <a-input v-model="form.product.seo_title" allow-clear />
+          </a-form-item>
+          <a-form-item
+            field="seo_description"
+            :label="t('admin.forms.product.seoDescription')"
+            :validate-status="fieldError('seo_description') ? 'error' : undefined"
+            :help="fieldError('seo_description')"
+          >
+            <a-textarea
+              v-model="form.product.seo_description"
+              :auto-size="{ minRows: 2, maxRows: 6 }"
+              allow-clear
+            />
+          </a-form-item>
+        </a-card>
+
+        <a-card
+          :title="t('admin.forms.product.variants')"
+          :bordered="true"
+        >
+          <template #extra>
+            <a-button html-type="button" size="small" @click="addVariant">
+              {{ t('admin.forms.product.addVariant') }}
+            </a-button>
+          </template>
+
+          <a-space direction="vertical" fill :size="12">
+            <a-card
+              v-for="(variant, index) in form.product.variants.filter((item: { _destroy?: boolean }) => !item._destroy)"
+              :key="variant.id || index"
+              :bordered="true"
+              size="small"
+            >
+              <a-grid
+                :cols="{ xs: 1, sm: 2, lg: 4 }"
+                :col-gap="12"
+                :row-gap="12"
+                align="center"
+              >
+                <a-grid-item>
+                  <a-input v-model="variant.name" :placeholder="t('admin.common.name')" />
+                </a-grid-item>
+                <a-grid-item>
+                  <a-input v-model="variant.sku" :placeholder="t('admin.forms.product.sku')" />
+                </a-grid-item>
+                <a-grid-item>
+                  <a-input-number
+                    v-model="variant.price_cents"
+                    :placeholder="t('admin.forms.product.priceCents')"
+                    class="w-full"
+                  />
+                </a-grid-item>
+                <a-grid-item>
+                  <a-space>
+                    <a-input-number
+                      v-model="variant.stock"
+                      :placeholder="t('admin.forms.product.stock')"
+                      class="w-full"
+                    />
+                    <a-button
+                      html-type="button"
+                      status="danger"
+                      @click="removeVariant(variant)"
+                    >
+                      {{ t('admin.ui.delete') }}
+                    </a-button>
+                  </a-space>
+                </a-grid-item>
+              </a-grid>
+            </a-card>
+          </a-space>
+        </a-card>
+
+        <a-space wrap>
+          <a-button type="primary" html-type="submit" :loading="form.processing">
+            {{ t('admin.ui.save') }}
+          </a-button>
+          <Link
+            :href="backUrl"
+            class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
+          >
+            {{ t('admin.ui.cancel') }}
+          </Link>
+        </a-space>
+      </a-space>
+    </a-form>
+  </section>
 </template>

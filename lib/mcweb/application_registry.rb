@@ -5,9 +5,10 @@ module Mcweb
   #
   # - 平台内核：随 McWeb 发行版自带，不可卸载；提供身份、官网、支付适配、运维等基础能力。
   # - 大应用：一等公民业务模块，拥有独立模型/迁移/路由/后台；可整体开关，但代码在 monolith 内。
-  # - 插件扩展：在不改 McWeb 核心业务代码的前提下扩展「原版」能力；权限与数据面受限。
+  # - 插件扩展：包括外部集成、展示模板，以及部署时安装的可信 Ruby 插件。
+  #   Ruby 插件与 Rails 进程同权；manifest capabilities 仅用于兼容性与审计，不是权限沙箱。
   #
-  # 注意：本注册表描述架构边界，不是第三方可热插拔的 Ruby 插件加载器。
+  # 注意：本注册表只描述架构边界；Ruby 插件的加载与运行状态由 Mcweb::Plugins 提供。
   class ApplicationRegistry
     PlatformModule = Data.define(
       :id, :label, :description, :ruby_namespaces, :always_on
@@ -112,6 +113,21 @@ module Mcweb
 
     EXTENSIONS = [
       Extension.new(
+        id: :trusted_ruby_plugins,
+        label: "可信 Ruby 插件 SDK",
+        description: "从部署目录加载 manifest 与 Ruby 入口，在 Rails 进程内扩展事件和业务集成",
+        kind: :trusted_ruby_plugin_sdk,
+        host: "plugins/**/mcweb_plugin.yml",
+        capabilities: %w[
+          manifests dependency_order event_listeners diagnostics emergency_disable
+        ],
+        limitations: [
+          "仅通过部署流程安装、升级和移除，后台不提供 ZIP 上传或远程安装",
+          "插件拥有与 McWeb 进程相同的代码、数据和环境权限，只能安装完全可信且经过审查的源码",
+          "manifest capabilities 是兼容性与审计声明，不是权限控制或安全沙箱"
+        ]
+      ),
+      Extension.new(
         id: :mcweb_connector,
         label: "McWeb Connector",
         description: "部署在 Bukkit/Velocity/Bungee 上的 JVM 插件，通过 HTTP 与 Rails 通信",
@@ -192,6 +208,24 @@ module Mcweb
       )
     ].freeze
 
+    deep_freeze = lambda do |value|
+      case value
+      when Array
+        value.each { |item| deep_freeze.call(item) }
+      when Hash
+        value.each do |key, item|
+          deep_freeze.call(key)
+          deep_freeze.call(item)
+        end
+      when PlatformModule, Application, Extension
+        value.to_h.each_value { |item| deep_freeze.call(item) }
+      end
+
+      value.freeze
+    end
+
+    [ PLATFORM_MODULES, APPLICATIONS, EXTENSIONS ].each { |records| deep_freeze.call(records) }
+
     class << self
       def platform_modules
         PLATFORM_MODULES
@@ -206,11 +240,11 @@ module Mcweb
       end
 
       def find_application(id)
-        applications.find { |app| app.id == id.to_sym }
+        applications.find { |app| app.id.to_s == id.to_s }
       end
 
       def find_extension(id)
-        extensions.find { |ext| ext.id == id.to_sym }
+        extensions.find { |ext| ext.id.to_s == id.to_s }
       end
 
       def application_enabled?(id)
@@ -225,9 +259,13 @@ module Mcweb
       end
 
       def application_for_path(path)
-        applications.find do |app|
-          app.path_prefixes.any? { |prefix| path.start_with?(prefix) }
+        request_path = path.to_s.split(/[?#]/, 2).first
+        matches = applications.filter_map do |app|
+          prefix = app.path_prefixes.select { |candidate| path_matches?(request_path, candidate) }.max_by(&:length)
+          [ prefix.length, app ] if prefix
         end
+
+        matches.max_by(&:first)&.last
       end
 
       def tier_for_path(path)
@@ -237,18 +275,49 @@ module Mcweb
       end
 
       def admin_catalog
-        {
-          platform: platform_modules.map { |mod| serialize_platform(mod) },
-          applications: applications.map { |app| serialize_application(app) },
-          extensions: extensions.map { |ext| serialize_extension(ext) }
-        }
+        immutable_value(
+          {
+            platform: platform_modules.map { |mod| serialize_platform(mod) },
+            applications: applications.map { |app| serialize_application(app) },
+            extensions: extensions.map { |ext| serialize_extension(ext) }
+          }
+        )
       end
 
       def freely_extensible?
-        false
+        # "Extensible" here means reviewed, deployment-installed Ruby code can
+        # extend the process. It never means untrusted upload or sandboxed code.
+        true
+      end
+
+      def plugin_installation_mode
+        :deployment
       end
 
       private
+
+      def path_matches?(path, prefix)
+        prefix == "/" || path == prefix || path.start_with?("#{prefix}/")
+      end
+
+      def immutable_string(value)
+        value.dup.freeze
+      end
+
+      def immutable_value(value)
+        case value
+        when Array
+          value.map { |item| immutable_value(item) }.freeze
+        when Hash
+          value.each_with_object({}) do |(key, item), result|
+            result[immutable_value(key)] = immutable_value(item)
+          end.freeze
+        when String
+          immutable_string(value)
+        else
+          value.freeze
+        end
+      end
 
       def serialize_platform(mod)
         {

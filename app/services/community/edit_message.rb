@@ -13,7 +13,8 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "message_edit_unauthorized") unless @message.user_id == @user.id
+      return ServiceResult.failure(error: "message_edit_unauthorized") unless authorized?
+      return ServiceResult.failure(error: "message_deleted") if @message.deleted?
       return ServiceResult.failure(error: "message_body_required") if @body.blank?
       return ServiceResult.failure(error: "message_too_long") if @body.length > MAX_LENGTH
 
@@ -21,6 +22,15 @@ module Community
       ServiceResult.success(@message)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    def authorized?
+      @user&.persisted? &&
+        @message.is_a?(Community::Message) &&
+        @message.persisted? &&
+        @message.user_id == @user.id
     end
   end
 end

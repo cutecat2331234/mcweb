@@ -15,6 +15,10 @@ module Community
     def call
       return ServiceResult.failure(error: "Post not available.") unless PostAccess.readable?(post: @post, user: @user)
 
+      unless Community::SectionAccess.view?(section: @section, user: @user)
+        return ServiceResult.failure(error: "Section not available.")
+      end
+
       unless @section.allowed?(@user, :create_topic)
         return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
       end
@@ -68,7 +72,6 @@ module Community
       Community::ProcessMentions.call(body: opening_body, author: @user, post: opening_post, topic: topic) if opening_post
       Community::NotifySectionTopic.call(topic: topic)
       Community::NotifyPostQuoted.call(post: opening_post, quoter: @user, quoted_post: @post) if opening_post
-
       ServiceResult.success(topic)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

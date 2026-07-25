@@ -11,7 +11,7 @@ module Api
 
       # GET /api/v1/topics?section_id=<slug>&page=&limit=
       def index
-        scope = visible_topics_scope.includes(:user, :section, :tags)
+        scope = visible_topics_scope.includes(:user, :section, :tags, :topic_field_values)
 
         if params[:section_id].present?
           section = Community::Section.find_by(slug: params[:section_id])
@@ -52,15 +52,17 @@ module Api
       # POST /api/v1/topics  (write scope; acts as the key's user)
       # params: section_id (slug), title, body, tag_names[], prefix
       def create
-        section = Community::Section.find_by!(slug: params[:section_id])
+        permitted = topic_create_params
+        section = Community::Section.find_by!(slug: permitted[:section_id])
 
         result = Community::CreateTopic.call(
           user: api_user,
           section: section,
-          title: params[:title].to_s,
-          body: params[:body].to_s,
-          tag_names: params[:tag_names],
-          prefix: params[:prefix],
+          title: permitted[:title].to_s,
+          body: permitted[:body].to_s,
+          tag_names: permitted[:tag_names],
+          prefix: permitted[:prefix],
+          custom_fields: permitted[:custom_fields],
           ip_address: request.remote_ip
         )
         return render_service_error(result) if result.failure?
@@ -102,6 +104,12 @@ module Api
         return render_service_error(result) if result.failure?
 
         render json: { data: { topic_id: topic.public_id, solved: false } }
+      end
+
+      private
+
+      def topic_create_params
+        params.permit(:section_id, :title, :body, :prefix, tag_names: [], custom_fields: {})
       end
     end
   end

@@ -5,8 +5,9 @@ require "test_helper"
 class Round107NotificationLastYearFilterTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
-    Notification.create!(user: @user, notification_type: "forum.mention", title: "LastYearNotify", body: "b", created_at: Time.zone.local(2025, 8, 20, 12, 0, 0))
-    Notification.create!(user: @user, notification_type: "forum.reaction", title: "AncientNotify", body: "b", created_at: 2.years.ago)
+    # This test covers the date boundary, not forum-resource authorization.
+    Notification.create!(user: @user, notification_type: "commerce.order_fulfilled", title: "LastYearNotify", body: "b", created_at: Time.zone.local(2025, 8, 20, 12, 0, 0))
+    Notification.create!(user: @user, notification_type: "commerce.payment_confirmed", title: "AncientNotify", body: "b", created_at: 2.years.ago)
     sign_in_as(@user)
   end
 

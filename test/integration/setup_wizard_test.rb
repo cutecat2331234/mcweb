@@ -11,6 +11,7 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     @local_config_path = Rails.root.join("tmp", "test-local-#{Process.pid}-#{SecureRandom.hex(4)}.yml")
     ENV["MCWEB_LOCAL_CONFIG_PATH"] = @local_config_path.to_s
     Mcweb::LocalConfig.reload!
+    @test_database_name = ActiveRecord::Base.connection_db_config.database
 
     InstallationLock.unlock!
     User.where(account_type: "owner").update_all(account_type: "member")
@@ -47,7 +48,8 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
         port: db_port,
         username: db_username,
         password: db_password,
-        development_database: "mcweb_test"
+        development_database: @test_database_name,
+        test_database: @test_database_name
       }
     }
     assert_redirected_to setup_step_path("site"), flash[:notice]
@@ -86,7 +88,8 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
         port: db_port,
         username: db_username,
         password: db_password,
-        development_database: "mcweb_test"
+        development_database: @test_database_name,
+        test_database: @test_database_name
       }
     }
     patch setup_step_path("site"), params: { setup: { name: "My Server", url: "https://mc.example.com" } }
@@ -103,18 +106,25 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     assert_redirected_to identity_sign_in_path
 
     reset!
-    patch setup_step_path("admin"), params: {
-      setup: {
-        email: "attacker@example.com",
-        username: "attacker",
-        display_name: "Attacker",
-        password: "secret12",
-        password_confirmation: "secret12"
+    # Model a stale/reopened setup window: the owner existence check must still
+    # be authoritative even when the installation lock is unexpectedly clear.
+    InstallationLock.unlock!
+    attacker_email = "attacker@example.com"
+    assert_no_difference -> { User.where(account_type: "owner").count } do
+      patch setup_step_path("admin"), params: {
+        setup: {
+          email: attacker_email,
+          username: "attacker",
+          display_name: "Attacker",
+          password: "secret12",
+          password_confirmation: "secret12"
+        }
       }
-    }
+    end
 
-    assert_redirected_to root_path
-    assert_equal I18n.t("mcweb.flash.installation_locked"), flash[:alert]
+    assert_redirected_to identity_sign_in_path
+    assert_equal I18n.t("mcweb.setup.already_complete"), flash[:alert]
+    assert_not User.exists?(email: attacker_email)
   end
 
   test "rejects admin step without password" do
@@ -125,7 +135,8 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
         port: db_port,
         username: db_username,
         password: db_password,
-        development_database: "mcweb_test"
+        development_database: @test_database_name,
+        test_database: @test_database_name
       }
     }
     patch setup_step_path("site"), params: { setup: { name: "My Server", url: "https://mc.example.com" } }

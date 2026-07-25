@@ -44,11 +44,9 @@ module Payments
       idempotent = false
 
       event = Payments::WebhookEvent.transaction do
-        record = Payments::WebhookEvent.lock.find_or_create_by!(provider: @provider, event_id: @event_id) do |created|
-          created.event_type = @event_type
-          created.payload = normalize_payload
-          created.status = "received"
-        end
+        scope = Payments::WebhookEvent.lock
+        record = scope.find_by(provider: @provider, event_id: @event_id)
+        record ||= create_event_or_find_concurrent!(scope)
 
         if record.status == "processed"
           idempotent = true
@@ -71,6 +69,18 @@ module Payments
       return ServiceResult.success(event: event, idempotent: true) if idempotent
 
       event
+    end
+
+    def create_event_or_find_concurrent!(scope)
+      scope.create_or_find_by!(provider: @provider, event_id: @event_id) do |created|
+        created.event_type = @event_type
+        created.payload = normalize_payload
+        created.status = "received"
+      end
+    rescue ActiveRecord::RecordInvalid => error
+      # The model-level uniqueness validation can observe a concurrently committed
+      # row before INSERT, so create_or_find_by! has no constraint error to rescue.
+      scope.find_by(provider: @provider, event_id: @event_id) || raise(error)
     end
 
     def normalize_payload

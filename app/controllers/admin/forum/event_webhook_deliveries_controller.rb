@@ -43,7 +43,7 @@ module Admin
           subtitle: @delivery.event_type,
           fields: [
             { label: t("mcweb.admin.forum.event_webhook_deliveries.field_event"), value: @delivery.event_type },
-            { label: t("mcweb.admin.forum.event_webhook_deliveries.field_topic"), value: @delivery.topic&.title || @delivery.request_payload&.dig("topic", "title") || t("mcweb.labels.not_available") },
+            { label: t("mcweb.admin.forum.event_webhook_deliveries.field_topic"), value: @delivery.topic&.title || t("mcweb.labels.not_available") },
             { label: t("mcweb.admin.forum.event_webhook_deliveries.field_status"), value: webhook_delivery_status_label(@delivery.status) },
             { label: t("mcweb.admin.forum.event_webhook_deliveries.field_response_code"), value: @delivery.response_code&.to_s || t("mcweb.labels.not_available") },
             { label: t("mcweb.admin.forum.event_webhook_deliveries.field_attempt_count"), value: @delivery.attempt_count.to_s },
@@ -123,7 +123,7 @@ module Admin
       def serialize_index_row(delivery)
         admin_row(
           event: delivery.event_type,
-          topic: delivery.topic&.title || delivery.request_payload&.dig("topic", "title") || t("mcweb.labels.not_available"),
+          topic: delivery.topic&.title || t("mcweb.labels.not_available"),
           status: webhook_delivery_status_label(delivery.status),
           code: delivery.response_code&.to_s || t("mcweb.labels.not_available"),
           attempts: delivery.attempt_count.to_s,
@@ -134,10 +134,11 @@ module Admin
 
       def preformatted_sections
         sections = []
-        if @delivery.request_payload.present?
+        request_payload = safe_request_payload(@delivery)
+        if request_payload.present?
           sections << {
             title: t("mcweb.admin.forum.webhook_deliveries.section_request_body"),
-            content: JSON.pretty_generate(@delivery.request_payload)
+            content: JSON.pretty_generate(request_payload)
           }
         end
         if @delivery.response_body.present?
@@ -150,7 +151,7 @@ module Admin
       end
 
       def show_actions
-        return [] unless @delivery.status == "failed" && @delivery.request_payload.present?
+        return [] unless @delivery.status == "failed" && safe_request_payload(@delivery).present?
 
         [
           {
@@ -162,7 +163,9 @@ module Admin
       end
 
       def bulk_retry_props(deliveries)
-        failed_ids = deliveries.select { |d| d.status == "failed" && d.request_payload.present? }.map(&:id)
+        failed_ids = deliveries.select do |delivery|
+          delivery.status == "failed" && safe_request_payload(delivery).present?
+        end.map(&:id)
         return nil if failed_ids.empty?
 
         {
@@ -170,6 +173,15 @@ module Admin
           href: bulk_retry_admin_forum_event_webhook_deliveries_path(webhook_filter_params),
           ids: failed_ids
         }
+      end
+
+      def safe_request_payload(delivery)
+        Community::BuildForumEventWebhookPayload.sanitize(
+          delivery.request_payload,
+          event_type: delivery.event_type,
+          topic_id: delivery.topic&.public_id,
+          post_id: delivery.forum_post_id
+        )
       end
     end
   end

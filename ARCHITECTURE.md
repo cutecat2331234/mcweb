@@ -668,7 +668,7 @@ app/
 | Wiki 编辑历史公开 | guests 可访问 `posts#edits` |
 | 类似主题扩展 | `similar_topics` 同分区回退 |
 | 问答回答排序 | `question_sort=helpful` |
-| 员工新提问通知 | `NotifyNewProductQuestion` |
+| 商家团队新提问通知 | `NotifyNewProductQuestion` |
 | 资料页订单历史 | 本人 store tab 显示订单 |
 | SiteSetting 种子 | bump 冷却 + 商品讨论分区 |
 
@@ -711,7 +711,7 @@ app/
 | 订单礼品卡展示 | `serialize_order_detail` + `Orders/Show.vue` |
 | 管理端礼品卡 | `Admin::Store::GiftCardsController` + `GiftCards/Form.vue` |
 | 书签主题列表统一 | `Bookmarks/Index.vue` 接入 `TopicListTable` |
-| 员工新提问邮件 | `NotifyNewProductQuestion` + `OrderMailer#new_product_question` |
+| 商家团队新提问邮件 | `NotifyNewProductQuestion` + `OrderMailer#new_product_question` |
 | 弃购邮件 HTML | `CartMailer#abandoned_cart.html.erb` |
 
 ### 第三十七轮（审核恢复、礼品卡完善与论坛细节）
@@ -724,7 +724,7 @@ app/
 | 反应用户弹层 | `ReactionUsersPopover` 点击查看 |
 | 分区主题模板（XenForo） | `topic_template` + 发帖预填 |
 | 搜索日期范围 | `created_after` / `created_before` |
-| 员工备注 | `forum_staff_notes` + 管理端私有备注 |
+| 管理备注 | `forum_staff_notes` + 管理端私有备注 |
 | 警告积分阈值自动禁言 | `EnforceWarningThreshold` + SiteSetting |
 | 礼品卡退款恢复余额 | `RestoreGiftCardBalance` |
 | 零元订单直接确认 | 礼品卡全额抵扣免支付流程 |
@@ -743,7 +743,7 @@ app/
 | 订阅级别 Watching/Tracking | `forum_subscriptions.notification_level` + `ToggleSubscription` 三级循环 |
 | 跟踪仅站内通知 | `NotifyTopicReply` 邮件仅 `watching` 级别 |
 | 主题回复禁言（XenForo） | `forum_topic_reply_bans` + `BanTopicReply` / `UnbanTopicReply` |
-| 主题员工备注 | `forum_topic_staff_notes` + `CreateTopicStaffNote` |
+| 主题管理备注 | `forum_topic_staff_notes` + `CreateTopicStaffNote` |
 | 分区最低信任等级 | `min_trust_level_create/reply` + Section 校验 |
 | PM 会话归档 | `conversation_participants.archived_at` + 归档/恢复 |
 | 全站公告横幅 | `global_announcement` + `PortalLayout` 顶栏 |
@@ -754,7 +754,7 @@ app/
 | 变体促销原价 | `store_product_variants.compare_at_price_cents` |
 | 商城分类公开页 | `Commerce::CategoriesController` |
 | 管理端复制商品 | `DuplicateProduct` |
-| 低库存员工通知 | `NotifyLowStockStaffJob` |
+| 低库存管理团队通知 | `NotifyLowStockStaffJob` |
 
 ### 第三十九轮（只读分区、沉默用户与商城流水）
 
@@ -796,7 +796,7 @@ app/
 | 未列出主题（Discourse unlisted） | `forum_topics.unlisted` + `published_listed` 作用域 + 版控切换 |
 | 标签颜色（XenForo） | `forum_tags.color_hex` + 管理端 + 标签页展示 |
 | 搜索 tag: 语法 | `ParseSearchQuery` 解析 `tag:标识` |
-| 帖子员工提示（XenForo notice） | `forum_posts.staff_notice` + 版控设置/清除 |
+| 帖子管理提示（XenForo notice） | `forum_posts.staff_notice` + 版控设置/清除 |
 | 定时关闭/置顶小操作帖 | `CloseScheduledTopic` / `UnpinExpiredTopicsJob` + `SystemActor` |
 | 退款撤销已发礼品卡 | `RevokeIssuedGiftCards` + `ProcessRefund` 联动 |
 | 商城分类图标与颜色 | `store_categories.icon` / `color_hex` |
@@ -898,12 +898,12 @@ app/
 | 弃购恢复提示横幅 | `cartRecovered` + `Carts/Show.vue` |
 | 多选引用移除同步 | 移除引用时同步清理回复正文 |
 
-### 第四十九轮（员工私语、主题分享、配送方式与物流追踪）
+### 第四十九轮（版主私语、主题分享、配送方式与物流追踪）
 
 | 功能 | 实现 |
 |------|------|
 | 论坛分类/分区 SEO（Discourse/XenForo） | `forum_categories.seo` / `forum_sections.seo` + 管理端表单 + 分区页 Head |
-| 员工私语帖（Discourse whisper） | `forum_posts.whisper` + `CreatePost` 权限校验 + 主题页仅员工可见 |
+| 版主私语帖（Discourse whisper） | `forum_posts.whisper` + `CreatePost` 权限校验 + 主题页仅管理团队可见 |
 | 投票编辑（延长关闭时间等） | `EditTopicPoll` + `EditTopic` 联动 + 主题编辑 UI |
 | 主题私信分享（Discourse share） | `ShareTopicAsConversation` + `topics#share_as_pm` |
 | 论坛键盘快捷键（Discourse） | `ForumShortcuts.vue` + `PortalLayout` 全局监听 |
@@ -922,7 +922,7 @@ app/
 | 主题定时自动提升（Discourse bump） | `forum_topics.auto_bump_at` + `BumpScheduledTopicsJob` |
 | 用户头衔颜色（XenForo flair） | `users.forum_flair_color_hex` + 帖子作者彩色头衔 |
 | 投票结果 CSV 导出 | `ExportPollResults` + `polls#export` |
-| 订单员工备注（Shop） | `store_order_staff_notes` + 管理端 `staff_note` |
+| 订单管理备注（Shop） | `store_order_staff_notes` + 管理端 `staff_note` |
 | 管理端买家备注展示 | 订单详情显示 `store_orders.notes` |
 | 商品对比分享链接 | `compare_share_token` + `Compare/Public.vue` |
 | 结账礼品包装 | `store.gift_wrap_cents` + `CalculateGiftWrap` + 结账勾选 |
@@ -1019,7 +1019,7 @@ app/
 | 搜索 `in:watching` / `in:unread` | `SearchController` 用户范围扩展 |
 | 分区列表指派筛选 | `TopicFilterable` assigned/unassigned/assigned_mine |
 | 用户资料指派主题 Tab | `users#show` tab=assigned |
-| 指派员工选择器 | `mentions#search?staff=1` + `Topics/Show.vue` |
+| 指派管理人员选择器 | `mentions#search?staff=1` + `Topics/Show.vue` |
 | 成员 TL 筛选尊重覆盖 | `MembersController#apply_trust_level_filter` |
 | 商城最新商品 RSS | `store/latest.rss` |
 | 收货地址编辑 | `shipping_addresses#update` + `UpsertShippingAddress` |
@@ -1078,15 +1078,15 @@ app/
 | 标签云按组展示 | `Tags/Index` 分组 + 标签/组颜色 |
 | 主题详情标签颜色 | `Topics/Show` color_hex 样式 |
 
-### 第六十一轮（标签组编辑扩展、优惠券恢复、员工搜索与心愿单）
+### 第六十一轮（标签组编辑扩展、优惠券恢复、管理人员搜索与心愿单）
 
 | 功能 | 实现 |
 |------|------|
 | 草稿编辑标签组选择器 | `Drafts/Edit` + `SectionTagGroupsSerializable` |
 | 主题编辑标签组选择器 | `Topics/Show` 编辑区 `TagGroupPicker` |
 | 累计全额退款恢复优惠券 | `RestoreCouponPartial` + `coupon_usage_restored` |
-| 搜索精选/公告/归档筛选 | `Search/Index` featured/announcement + 员工 unlisted/archived |
-| 员工低库存通知偏好 | `commerce.low_stock` 商城通知设置 |
+| 搜索精选/公告/归档筛选 | `Search/Index` featured/announcement + 管理团队 unlisted/archived |
+| 管理团队低库存通知偏好 | `commerce.low_stock` 商城通知设置 |
 | 即将上架商品心愿单 | `Wishlist#toggle` 支持 `coming_soon` + 预览页按钮 |
 
 ### 第六十二轮（礼品卡部分退款、必填标签组提示、心愿单即将上架）
@@ -1119,7 +1119,7 @@ app/
 | 警告积分发帖/链接/私信提示 | `WarningRestrictionsSerializable` + 发帖/回复/私信页横幅 |
 | 必填标签组前端提交拦截 | `TagGroupPicker` expose + New/Drafts/Show 发布校验 |
 | 心愿单商品对比 | `compare_url` / `compared` + 对比列表入口 |
-| 管理端退款恢复明细 | 员工订单页「退款恢复明细」区块 |
+| 管理端退款恢复明细 | 管理端订单页「退款恢复明细」区块 |
 | 管理端商店余额字段 | 订单详情展示余额抵扣 |
 
 ### 第六十五轮（心愿单导入对比、标签组实时禁用、草稿必填校验）

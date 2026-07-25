@@ -16,7 +16,12 @@ module Community
 
       existing = @topic.tags.pluck(:name)
       merged = (existing + names).uniq.first(Community::SyncTopicTags::MAX_TAGS)
-      result = Community::SyncTopicTags.call(topic: @topic, tag_names: merged, user: @user)
+      result = Community::SyncTopicTags.call(
+        topic: @topic,
+        tag_names: merged,
+        user: @user,
+        allow_reply_update: true
+      )
       return result if result.failure?
 
       ServiceResult.success(tags: result.value[:tags], added: names)

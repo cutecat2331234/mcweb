@@ -1,13 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Modal } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -20,13 +16,24 @@ const props = defineProps<{
 }>()
 
 const { t } = useI18n()
-
 const gameGroup = ref('')
 const roleKey = ref('')
 const badgeSlug = ref('')
 
-const roleOptions = [{ value: '', label: '—' }, ...props.roles.map((r) => ({ value: r.key, label: r.name }))]
-const badgeOptions = [{ value: '', label: '—' }, ...props.badges.map((b) => ({ value: b.slug, label: b.name }))]
+const roleOptions = computed(() => [
+  { value: '', label: '—' },
+  ...props.roles.map((role) => ({ value: role.key, label: role.name })),
+])
+const badgeOptions = computed(() => [
+  { value: '', label: '—' },
+  ...props.badges.map((badge) => ({ value: badge.slug, label: badge.name })),
+])
+const columns = computed(() => [
+  { title: t('adminMinecraft.gameGroup'), dataIndex: 'game_group' },
+  { title: t('adminMinecraft.websiteRole'), dataIndex: 'role_key', slotName: 'role' },
+  { title: t('adminMinecraft.badge'), dataIndex: 'badge_slug', slotName: 'badge' },
+  { title: '', slotName: 'actions', width: 120 },
+])
 
 function addMapping() {
   if (!gameGroup.value.trim()) return
@@ -37,52 +44,74 @@ function addMapping() {
   })
 }
 
-function deleteMapping(index: number) {
-  router.delete(`${props.createUrl}/${index}`)
+function deleteMapping(index: number, gameGroupName: string) {
+  Modal.warning({
+    title: t('preferences.delete'),
+    content: t('adminMinecraft.deleteMappingConfirm', `Delete mapping for ${gameGroupName}?`),
+    okText: t('preferences.delete'),
+    cancelText: t('common.cancel'),
+    hideCancel: false,
+    okButtonProps: { status: 'danger' },
+    onOk: () => router.delete(`${props.createUrl}/${index}`),
+  })
 }
 </script>
 
 <template>
-  <PageHeader :title="t('adminMinecraft.permissionMappings')" />
+  <a-page-header :title="t('adminMinecraft.permissionMappings')" :show-back="false">
+    <template #extra>
+      <a-button @click="router.visit(backUrl)">{{ t('adminMinecraft.backToServers') }}</a-button>
+    </template>
+  </a-page-header>
 
-  <form class="mb-8 max-w-2xl space-y-4 rounded-lg border p-4" @submit.prevent="addMapping">
-    <h2 class="text-sm font-medium">{{ t('adminMinecraft.addMapping') }}</h2>
-    <div class="grid gap-4 sm:grid-cols-3">
-      <div class="space-y-2">
-        <Label for="game_group">{{ t('adminMinecraft.gameGroup') }}</Label>
-        <Input id="game_group" v-model="gameGroup" placeholder="vip" required />
-      </div>
-      <div class="space-y-2">
-        <Label for="role_key">{{ t('adminMinecraft.websiteRole') }}</Label>
-        <Select id="role_key" v-model="roleKey" :options="roleOptions" />
-      </div>
-      <div class="space-y-2">
-        <Label for="badge_slug">{{ t('adminMinecraft.badge') }}</Label>
-        <Select id="badge_slug" v-model="badgeSlug" :options="badgeOptions" />
-      </div>
-    </div>
-    <Button type="submit">{{ t('adminMinecraft.addMapping') }}</Button>
-  </form>
+  <a-card :title="t('adminMinecraft.addMapping')" :bordered="true" class="mb-4">
+    <a-form layout="vertical" @submit="addMapping">
+      <a-grid :cols="{ xs: 1, sm: 3 }" :col-gap="16">
+        <a-grid-item>
+          <a-form-item field="game_group" :label="t('adminMinecraft.gameGroup')" required>
+            <a-input v-model="gameGroup" placeholder="vip" allow-clear />
+          </a-form-item>
+        </a-grid-item>
+        <a-grid-item>
+          <a-form-item field="role_key" :label="t('adminMinecraft.websiteRole')">
+            <a-select v-model="roleKey" :options="roleOptions" allow-search />
+          </a-form-item>
+        </a-grid-item>
+        <a-grid-item>
+          <a-form-item field="badge_slug" :label="t('adminMinecraft.badge')">
+            <a-select v-model="badgeSlug" :options="badgeOptions" allow-search />
+          </a-form-item>
+        </a-grid-item>
+      </a-grid>
+      <a-button html-type="submit" type="primary" :disabled="!gameGroup.trim()">
+        {{ t('adminMinecraft.addMapping') }}
+      </a-button>
+    </a-form>
+  </a-card>
 
-  <ul v-if="mappings.length" class="max-w-2xl space-y-2">
-    <li
-      v-for="(mapping, index) in mappings"
-      :key="index"
-      class="flex flex-wrap items-center justify-between gap-2 rounded-lg border px-3 py-2 text-sm"
+  <a-card :bordered="true">
+    <a-table
+      :columns="columns"
+      :data="mappings.map((mapping, index) => ({ ...mapping, index }))"
+      row-key="index"
+      :pagination="false"
+      :scroll="{ x: 620 }"
     >
-      <span>
-        <strong>{{ mapping.game_group }}</strong>
-        <span v-if="mapping.role_key" class="ml-2 text-muted-foreground">→ {{ mapping.role_key }}</span>
-        <span v-if="mapping.badge_slug" class="ml-2 text-muted-foreground">+ {{ mapping.badge_slug }}</span>
-      </span>
-      <Button type="button" size="sm" variant="destructive" @click="deleteMapping(index)">{{ t('preferences.delete') }}</Button>
-    </li>
-  </ul>
-  <p v-else class="text-sm text-muted-foreground">{{ t('adminMinecraft.noMappings') }}</p>
-
-  <div class="mt-6">
-    <Button variant="outline" as-child>
-      <a :href="backUrl">{{ t('adminMinecraft.backToServers') }}</a>
-    </Button>
-  </div>
+      <template #role="{ record }">{{ record.role_key || '—' }}</template>
+      <template #badge="{ record }">{{ record.badge_slug || '—' }}</template>
+      <template #actions="{ record }">
+        <a-button
+          type="text"
+          status="danger"
+          size="small"
+          @click="deleteMapping(record.index, record.game_group)"
+        >
+          {{ t('preferences.delete') }}
+        </a-button>
+      </template>
+      <template #empty>
+        <a-empty :description="t('adminMinecraft.noMappings')" />
+      </template>
+    </a-table>
+  </a-card>
 </template>

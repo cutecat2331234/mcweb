@@ -43,7 +43,11 @@ module Community
     # New topics narrowed by the active list filter and blocked-author hiding,
     # shared by both the rendered list and "dismiss" so they stay in sync.
     def filtered_new_topics(filter)
-      scope = filter_blocked_topics(Community::Topic.unseen_for(current_user))
+      scope = Community::ForumAccess.topic_scope(
+        relation: Community::Topic.unseen_for(current_user),
+        user: current_user
+      )
+      scope = filter_blocked_topics(scope)
       apply_topic_filter(scope, filter: filter, user: current_user)
     end
   end

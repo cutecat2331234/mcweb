@@ -2,12 +2,16 @@
 
 module Community
   class SearchActiveFilters
-    def self.call(filters)
-      new(filters).chips
+    def self.call(filters = nil, user: nil, **filter_keywords)
+      normalized_filters = filters&.to_h || {}
+      normalized_filters = normalized_filters.merge(filter_keywords) if filter_keywords.any?
+
+      new(normalized_filters, user: user).chips
     end
 
-    def initialize(filters)
+    def initialize(filters, user: nil)
       @filters = filters.symbolize_keys
+      @user = user
     end
 
     def chips
@@ -18,9 +22,11 @@ module Community
 
       items << chip(param: "q", label: I18n.t("mcweb.forum.search.keywords", value: display_query), value: display_query) if display_query.present?
 
-      append_lookup_chip(items, :section, "section") { Community::Section.find_by(slug: @filters[:section])&.name }
-      append_lookup_chip(items, :category, "category") { Community::Category.find_by(slug: @filters[:category])&.name }
-      append_lookup_chip(items, :tag, "tag") { Community::Tag.find_by(slug: @filters[:tag])&.name }
+      append_lookup_chip(items, :section, "section") { visible_section_name(@filters[:section]) }
+      append_lookup_chip(items, :category, "category") { visible_category_name(@filters[:category]) }
+      append_lookup_chip(items, :tag, "tag") do
+        Community::Tag.resolve_by_slug_for(@filters[:tag], user: @user)&.name
+      end
 
       append_value_chip(items, :author, "author")
       append_value_chip(items, :assignee, "assignee")
@@ -41,6 +47,20 @@ module Community
     end
 
   private
+
+    def visible_section_name(slug)
+      section = Community::Section.find_by(slug: slug)
+      section&.name if Community::SectionAccess.view?(section: section, user: @user)
+    end
+
+    def visible_category_name(slug)
+      category = Community::Category.find_by(slug: slug)
+      return unless category
+      return category.name unless category.sections.exists?
+
+      visible = Community::SectionAccess.scope(relation: category.sections, user: @user).exists?
+      category.name if visible
+    end
 
     def chip(param:, label:, value: nil)
       { param: param.to_s, label: label, value: value }

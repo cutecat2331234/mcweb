@@ -117,7 +117,12 @@ class Round113RetryForumEventWebhooksJobTest < ActiveSupport::TestCase
       event_type: "post.created",
       url: "https://example.com/hook",
       status: "pending",
-      request_payload: { event: "post.created", test: true },
+      request_payload: {
+        event: "post.created",
+        test: true,
+        topic: { id: "test_topic" },
+        post: { id: "test_post" }
+      },
       attempt_count: 1,
       created_at: 10.minutes.ago
     )

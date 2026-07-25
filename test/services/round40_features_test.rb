@@ -167,6 +167,9 @@ class Commerce::FulfillGiftCardItemTest < ActiveSupport::TestCase
     card = Commerce::GiftCard.find_by(source_order_item_id: @item.id)
     assert_equal 10_000, card.balance_cents
     assert_equal @user.id, card.owner_user_id
+    issue = card.transactions.find_by!(order: @order, transaction_type: "issue")
+    assert_equal 10_000, issue.amount_cents
+    assert_equal 10_000, issue.balance_after_cents
   end
 
   test "completes fulfillment when gift cards already exist" do

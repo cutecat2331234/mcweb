@@ -3,13 +3,6 @@ import { Link, useForm } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Textarea from '@/components/ui/Textarea.vue'
-import Select from '@/components/ui/Select.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -54,18 +47,43 @@ const gamePermissionModeOptions = computed(() => [
 function fillDefaultGrant() {
   const group = form.membership_type.luckperms_group || form.membership_type.slug || 'vip'
   if (form.membership_type.game_permission_mode === 'lp_timed') {
-    form.membership_type.grant_commands = JSON.stringify([`lp user {player} parent addtemp ${group} {duration}`], null, 2)
+    form.membership_type.grant_commands = JSON.stringify(
+      [`lp user {player} parent addtemp ${group} {duration}`],
+      null,
+      2,
+    )
   } else {
-    form.membership_type.grant_commands = JSON.stringify([`lp user {player} parent add ${group}`], null, 2)
+    form.membership_type.grant_commands = JSON.stringify(
+      [`lp user {player} parent add ${group}`],
+      null,
+      2,
+    )
   }
 }
 
 function fillDefaultRevoke() {
   const group = form.membership_type.luckperms_group || form.membership_type.slug || 'vip'
-  form.membership_type.revoke_commands = JSON.stringify([`lp user {player} parent remove ${group}`], null, 2)
+  form.membership_type.revoke_commands = JSON.stringify(
+    [`lp user {player} parent remove ${group}`],
+    null,
+    2,
+  )
 }
 
-function submit() {
+function fieldError(field: string) {
+  return form.errors[field] || form.errors[`membership_type.${field}`]
+}
+
+function normalizeEmptyNumbers(record: object, fields: string[]) {
+  const values = record as Record<string, unknown>
+  fields.forEach((field) => {
+    if (values[field] === undefined) values[field] = null
+  })
+}
+
+function submit(event?: { errors?: unknown }) {
+  if (event?.errors) return
+  normalizeEmptyNumbers(form.membership_type, ['duration_days', 'display_priority'])
   if (props.method === 'patch') {
     form.patch(props.submitUrl)
   } else {
@@ -75,86 +93,214 @@ function submit() {
 </script>
 
 <template>
-  <PageHeader :title="title" />
+  <section class="admin-store-membership-type-form">
+    <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
 
-  <form class="max-w-lg space-y-4" @submit.prevent="submit">
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="name">{{ t('admin.common.name') }}</Label>
-        <Input id="name" v-model="form.membership_type.name" required />
-      </div>
-      <div class="space-y-2">
-        <Label for="slug">{{ t('admin.common.slugFull') }}</Label>
-        <Input id="slug" v-model="form.membership_type.slug" required />
-      </div>
-    </div>
-    <div class="space-y-2">
-      <Label for="description">{{ t('admin.common.description') }}</Label>
-      <Textarea id="description" v-model="form.membership_type.description" rows="2" />
-    </div>
-    <div class="grid grid-cols-3 gap-4">
-      <div class="space-y-2">
-        <Label for="color">{{ t('admin.forms.membershipType.color') }}</Label>
-        <Input id="color" v-model="form.membership_type.color" type="color" />
-      </div>
-      <div class="space-y-2">
-        <Label for="icon">{{ t('admin.forms.membershipType.icon') }}</Label>
-        <Input id="icon" v-model="form.membership_type.icon" maxlength="8" :placeholder="t('admin.forms.membershipType.icon')" />
-      </div>
-      <div class="space-y-2">
-        <Label for="display_priority">{{ t('admin.forms.membershipType.displayPriority') }}</Label>
-        <Input id="display_priority" v-model.number="form.membership_type.display_priority" type="number" />
-      </div>
-    </div>
-    <div class="grid grid-cols-2 gap-4">
-      <div class="space-y-2">
-        <Label for="duration_mode">{{ t('admin.forms.membershipType.durationMode') }}</Label>
-        <Select id="duration_mode" v-model="form.membership_type.duration_mode" :options="durationModeOptions" block />
-      </div>
-      <div v-if="form.membership_type.duration_mode === 'fixed_days'" class="space-y-2">
-        <Label for="duration_days">{{ t('admin.forms.membershipType.durationDays') }}</Label>
-        <Input id="duration_days" v-model.number="form.membership_type.duration_days" type="number" min="1" />
-      </div>
-    </div>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.membership_type.game_permission_enabled" />
-      {{ t('admin.forms.membershipType.gamePermissionEnabled') }}
-    </label>
-    <template v-if="form.membership_type.game_permission_enabled">
-      <div class="space-y-2">
-        <Label for="game_permission_mode">{{ t('admin.forms.membershipType.gamePermissionMode') }}</Label>
-        <Select id="game_permission_mode" v-model="form.membership_type.game_permission_mode" :options="gamePermissionModeOptions" block />
-      </div>
-      <div class="space-y-2">
-        <Label for="luckperms_group">{{ t('admin.forms.membershipType.luckpermsGroup') }}</Label>
-        <Input id="luckperms_group" v-model="form.membership_type.luckperms_group" />
-      </div>
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <Label for="grant_commands">{{ t('admin.forms.membershipType.grantCommands') }}</Label>
-          <Button type="button" variant="outline" size="sm" @click="fillDefaultGrant">{{ t('admin.forms.membershipType.fillDefault') }}</Button>
-        </div>
-        <Textarea id="grant_commands" v-model="form.membership_type.grant_commands" rows="4" class="font-mono text-xs" />
-        <p class="text-xs text-muted-foreground">{{ t('admin.forms.membershipType.commandsHint') }}</p>
-      </div>
-      <div class="space-y-2">
-        <div class="flex items-center justify-between">
-          <Label for="revoke_commands">{{ t('admin.forms.membershipType.revokeCommands') }}</Label>
-          <Button type="button" variant="outline" size="sm" @click="fillDefaultRevoke">{{ t('admin.forms.membershipType.fillDefault') }}</Button>
-        </div>
-        <Textarea id="revoke_commands" v-model="form.membership_type.revoke_commands" rows="3" class="font-mono text-xs" />
-        <p class="text-xs text-muted-foreground">{{ t('admin.forms.membershipType.commandsHint') }}</p>
-      </div>
-    </template>
-    <label class="flex items-center gap-2 text-sm">
-      <Checkbox v-model="form.membership_type.active" />
-      {{ t('admin.common.enable') }}
-    </label>
-    <div class="flex gap-2">
-      <Button type="submit" :disabled="form.processing">{{ t('admin.ui.save') }}</Button>
-      <Button as-child variant="outline">
-        <Link :href="backUrl">{{ t('admin.ui.cancel') }}</Link>
-      </Button>
-    </div>
-  </form>
+    <a-form
+      :model="form.membership_type"
+      layout="vertical"
+      class="max-w-4xl"
+      @submit="submit"
+    >
+      <a-space direction="vertical" fill :size="16">
+        <a-card :bordered="true">
+          <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="name"
+                :label="t('admin.common.name')"
+                :rules="[{ required: true, message: t('admin.common.name') }]"
+                :validate-status="fieldError('name') ? 'error' : undefined"
+                :help="fieldError('name')"
+              >
+                <a-input v-model="form.membership_type.name" allow-clear />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="slug"
+                :label="t('admin.common.slugFull')"
+                :rules="[{ required: true, message: t('admin.common.slugFull') }]"
+                :validate-status="fieldError('slug') ? 'error' : undefined"
+                :help="fieldError('slug')"
+              >
+                <a-input v-model="form.membership_type.slug" allow-clear />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
+
+          <a-form-item
+            field="description"
+            :label="t('admin.common.description')"
+            :validate-status="fieldError('description') ? 'error' : undefined"
+            :help="fieldError('description')"
+          >
+            <a-textarea
+              v-model="form.membership_type.description"
+              :auto-size="{ minRows: 2, maxRows: 6 }"
+              allow-clear
+            />
+          </a-form-item>
+
+          <a-grid :cols="{ xs: 1, sm: 3 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="color"
+                :label="t('admin.forms.membershipType.color')"
+                :validate-status="fieldError('color') ? 'error' : undefined"
+                :help="fieldError('color')"
+              >
+                <a-color-picker v-model="form.membership_type.color" show-text />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="icon"
+                :label="t('admin.forms.membershipType.icon')"
+                :validate-status="fieldError('icon') ? 'error' : undefined"
+                :help="fieldError('icon')"
+              >
+                <a-input
+                  v-model="form.membership_type.icon"
+                  :max-length="8"
+                  :placeholder="t('admin.forms.membershipType.icon')"
+                  show-word-limit
+                />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item>
+              <a-form-item
+                field="display_priority"
+                :label="t('admin.forms.membershipType.displayPriority')"
+                :validate-status="fieldError('display_priority') ? 'error' : undefined"
+                :help="fieldError('display_priority')"
+              >
+                <a-input-number
+                  v-model="form.membership_type.display_priority"
+                  class="w-full"
+                />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
+
+          <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="4">
+            <a-grid-item>
+              <a-form-item
+                field="duration_mode"
+                :label="t('admin.forms.membershipType.durationMode')"
+                :validate-status="fieldError('duration_mode') ? 'error' : undefined"
+                :help="fieldError('duration_mode')"
+              >
+                <a-select
+                  v-model="form.membership_type.duration_mode"
+                  :options="durationModeOptions"
+                />
+              </a-form-item>
+            </a-grid-item>
+            <a-grid-item v-if="form.membership_type.duration_mode === 'fixed_days'">
+              <a-form-item
+                field="duration_days"
+                :label="t('admin.forms.membershipType.durationDays')"
+                :validate-status="fieldError('duration_days') ? 'error' : undefined"
+                :help="fieldError('duration_days')"
+              >
+                <a-input-number
+                  v-model="form.membership_type.duration_days"
+                  :min="1"
+                  class="w-full"
+                />
+              </a-form-item>
+            </a-grid-item>
+          </a-grid>
+
+          <a-space>
+            <a-switch v-model="form.membership_type.active" />
+            <a-typography-text>{{ t('admin.common.enable') }}</a-typography-text>
+          </a-space>
+        </a-card>
+
+        <a-card :bordered="true">
+          <a-space direction="vertical" fill :size="16">
+            <a-space>
+              <a-switch v-model="form.membership_type.game_permission_enabled" />
+              <a-typography-text>
+                {{ t('admin.forms.membershipType.gamePermissionEnabled') }}
+              </a-typography-text>
+            </a-space>
+
+            <template v-if="form.membership_type.game_permission_enabled">
+              <a-form-item
+                field="game_permission_mode"
+                :label="t('admin.forms.membershipType.gamePermissionMode')"
+                :validate-status="fieldError('game_permission_mode') ? 'error' : undefined"
+                :help="fieldError('game_permission_mode')"
+              >
+                <a-select
+                  v-model="form.membership_type.game_permission_mode"
+                  :options="gamePermissionModeOptions"
+                />
+              </a-form-item>
+
+              <a-form-item
+                field="luckperms_group"
+                :label="t('admin.forms.membershipType.luckpermsGroup')"
+                :validate-status="fieldError('luckperms_group') ? 'error' : undefined"
+                :help="fieldError('luckperms_group')"
+              >
+                <a-input v-model="form.membership_type.luckperms_group" allow-clear />
+              </a-form-item>
+
+              <a-form-item
+                field="grant_commands"
+                :label="t('admin.forms.membershipType.grantCommands')"
+                :validate-status="fieldError('grant_commands') ? 'error' : undefined"
+                :help="fieldError('grant_commands') || t('admin.forms.membershipType.commandsHint')"
+              >
+                <template #extra>
+                  <a-button size="small" @click="fillDefaultGrant">
+                    {{ t('admin.forms.membershipType.fillDefault') }}
+                  </a-button>
+                </template>
+                <a-textarea
+                  v-model="form.membership_type.grant_commands"
+                  :auto-size="{ minRows: 4, maxRows: 10 }"
+                  class="font-mono text-xs"
+                />
+              </a-form-item>
+
+              <a-form-item
+                field="revoke_commands"
+                :label="t('admin.forms.membershipType.revokeCommands')"
+                :validate-status="fieldError('revoke_commands') ? 'error' : undefined"
+                :help="fieldError('revoke_commands') || t('admin.forms.membershipType.commandsHint')"
+              >
+                <template #extra>
+                  <a-button size="small" @click="fillDefaultRevoke">
+                    {{ t('admin.forms.membershipType.fillDefault') }}
+                  </a-button>
+                </template>
+                <a-textarea
+                  v-model="form.membership_type.revoke_commands"
+                  :auto-size="{ minRows: 3, maxRows: 10 }"
+                  class="font-mono text-xs"
+                />
+              </a-form-item>
+            </template>
+          </a-space>
+        </a-card>
+
+        <a-space wrap>
+          <a-button type="primary" html-type="submit" :loading="form.processing">
+            {{ t('admin.ui.save') }}
+          </a-button>
+          <Link
+            :href="backUrl"
+            class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
+          >
+            {{ t('admin.ui.cancel') }}
+          </Link>
+        </a-space>
+      </a-space>
+    </a-form>
+  </section>
 </template>

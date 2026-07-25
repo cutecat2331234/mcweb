@@ -86,7 +86,7 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 
 - 注册、登录、邮箱验证、密码重置、会话管理与撤销
 - TOTP 二步验证（可按角色强制）
-- RBAC 细粒度权限键 + 员工按模块授权（`admin_module_grants`）
+- RBAC 细粒度权限键 + 站点团队按模块授权（`admin_module_grants`）
 - 审计日志、登录限流、IP 封禁
 - 多语言 UI（`en` / `zh-CN` 等）
 
@@ -106,7 +106,7 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 社区能力包括：
 
 - **内容与互动**：分区、子分区、主题、楼层、引用、嵌套回复、Wiki、慢速模式、主题前缀/标签/标签组
-- **审核与版控**：待审队列、软删除与恢复、举报闭环、用户警告/禁言/沉默、分区版主、员工私语帖
+- **审核与版控**：待审队列、软删除与恢复、举报闭环、用户警告/禁言/沉默、分区版主、版主私语帖
 - **社交**：@提及、关注用户/分区/标签、私信（含群组）、用户拉黑/忽略、信任等级（0–4）
 - **搜索**：PostgreSQL 全文检索、高级语法（`in:`、`author:`、`tag:`、`is:solved` 等）、保存搜索、RSS/OPML/Webhook
 - **通知**：四级订阅级别（Watching / Tracking / Normal / 取消）、站内通知 + 可配置邮件渠道、摘要与退订
@@ -262,7 +262,7 @@ McWeb 通过配置、协议与模板与外部系统衔接，主要方式如下�
 ## 权限模型
 
 - **站点用户**：普通注册玩家；论坛信任等级控制链接、图片、私信等能力
-- **员工（Staff）**：绑定 RBAC 角色；可按模块授予 `forum` / `store` / `minecraft` / `website` / `system` 后台访问
+- **站点团队（Staff）**：绑定 RBAC 角色；可按模块授予 `forum` / `store` / `minecraft` / `website` / `system` 后台访问
 - **分区版主**：辖区内的审核、删帖、移动主题等
 - **权限键**：细粒度如 `website.pages.publish`、`forum.topics.move`、`store.orders.refund` 等
 
@@ -306,6 +306,13 @@ sudo systemctl enable --now mcweb-web mcweb-worker nginx
 完整步骤、目录布局与配置说明：[INSTALL.md](INSTALL.md)。
 
 ---
+
+### 配置论坛邮件回帖
+
+通知邮件会为可回复的主题生成限时 `Reply-To` 地址。生产环境需设置
+`MCWEB_INBOUND_EMAIL_DOMAIN`、`MCWEB_ACTION_MAILBOX_INGRESS=relay` 和随机生成的
+`RAILS_INBOUND_EMAIL_PASSWORD`，再让邮件供应商或 MTA 把该域名收到的邮件转发到
+Rails Action Mailbox relay ingress。不要把 ingress 密码提交到 Git。
 
 ## 开发环境
 

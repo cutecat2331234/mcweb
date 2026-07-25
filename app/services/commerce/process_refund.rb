@@ -5,7 +5,7 @@ module Commerce
     def initialize(order:, payment_record:, amount_cents:, reason: nil, requested_by: nil, approved_by: nil, existing_refund: nil)
       @order = order
       @payment_record = payment_record
-      @amount_cents = amount_cents
+      @amount_cents = amount_cents.to_i
       @reason = reason
       @requested_by = requested_by
       @approved_by = approved_by
@@ -13,30 +13,68 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Payment is not refundable.") unless @payment_record.status == "succeeded"
-
       refund = nil
       amount_error = nil
+      idempotent_refund = nil
 
       Commerce::Refund.transaction do
         @order.lock!
         @payment_record.lock!
         @payment_record.reload
 
+        unless @payment_record.store_order_id == @order.id
+          amount_error = "Payment does not belong to this order."
+          raise ActiveRecord::Rollback
+        end
+
         unless @payment_record.status == "succeeded"
           amount_error = "Payment is not refundable."
           raise ActiveRecord::Rollback
         end
 
-        refunded_cents = @order.refunds.where(status: %w[pending completed]).where.not(id: @existing_refund&.id).sum(:amount_cents)
+        if @amount_cents <= 0
+          amount_error = "Refund amount must be greater than zero."
+          raise ActiveRecord::Rollback
+        end
+
+        refund = find_or_build_refund
+        refund.lock! if refund.persisted?
+
+        if refund.persisted? &&
+            (refund.store_order_id != @order.id || refund.payment_record_id != @payment_record.id)
+          amount_error = "Refund does not belong to this order and payment."
+          raise ActiveRecord::Rollback
+        end
+
+        if refund.completed?
+          if refund.amount_cents == @amount_cents
+            idempotent_refund = refund
+            next
+          end
+
+          amount_error = "Completed refund amount cannot be changed."
+          raise ActiveRecord::Rollback
+        end
+
+        if refund.approved?
+          amount_error = "Refund is already being processed."
+          raise ActiveRecord::Rollback
+        end
+
+        unless refund.new_record? || refund.pending?
+          amount_error = "Refund is no longer valid."
+          raise ActiveRecord::Rollback
+        end
+
+        refunded_cents = @order.refunds.reserved.where.not(id: refund.id).sum(:amount_cents)
         remaining = @payment_record.amount_cents - refunded_cents
         if @amount_cents > remaining
           amount_error = "Refund amount exceeds remaining balance."
           raise ActiveRecord::Rollback
         end
 
-        refund = find_or_build_refund
         refund.assign_attributes(
+          status: "approved",
           amount_cents: @amount_cents,
           reason: @reason.presence || refund.reason,
           approved_by: @approved_by || refund.approved_by
@@ -45,6 +83,7 @@ module Commerce
       end
 
       return ServiceResult.failure(error: amount_error) if amount_error.present?
+      return ServiceResult.success(idempotent_refund) if idempotent_refund
       return ServiceResult.failure(error: "Unable to prepare refund.") unless refund&.persisted?
 
       provider = Payments::Provider.for(@payment_record.provider)
@@ -62,7 +101,7 @@ module Commerce
         refund.reload
 
         previous_status = @order.status
-        refunded_cents = @order.refunds.where(status: %w[pending completed]).where.not(id: refund.id).sum(:amount_cents)
+        refunded_cents = @order.refunds.completed.where.not(id: refund.id).sum(:amount_cents)
 
         if provider_result.success?
           apply_refund_success!(refund, previous_status, refunded_cents, restore_error)
@@ -110,7 +149,8 @@ module Commerce
         Commerce::RestoreStoreCreditPartial.call(
           order: @order,
           refund_amount_cents: @amount_cents,
-          payment_amount_cents: @payment_record.amount_cents
+          payment_amount_cents: @payment_record.amount_cents,
+          already_refunded_cents: refunded_cents
         ),
         restore_error,
         I18n.t("mcweb.services.errors.store_credit_restore_failed")
@@ -119,7 +159,8 @@ module Commerce
         Commerce::RestoreStockPartial.call(
           order: @order,
           refund_amount_cents: @amount_cents,
-          payment_amount_cents: @payment_record.amount_cents
+          payment_amount_cents: @payment_record.amount_cents,
+          already_refunded_cents: refunded_cents
         ),
         restore_error,
         I18n.t("mcweb.services.errors.stock_restore_failed")
@@ -138,7 +179,8 @@ module Commerce
         Commerce::RestoreGiftCardPartial.call(
           order: @order,
           refund_amount_cents: @amount_cents,
-          payment_amount_cents: @payment_record.amount_cents
+          payment_amount_cents: @payment_record.amount_cents,
+          already_refunded_cents: refunded_cents
         ),
         restore_error,
         I18n.t("mcweb.services.errors.gift_card_balance_restore_failed")

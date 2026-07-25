@@ -21,6 +21,11 @@ module Community
     end
 
     def call
+      unless @user && Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
+        return ServiceResult.failure(error: "Topic not available.")
+      end
+
+      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
       return ServiceResult.failure(error: "You cannot edit this poll.") unless can_edit?
 
       poll = @topic.poll
@@ -81,5 +86,6 @@ module Community
       days = ((poll.closes_at - poll.created_at) / 1.day).round
       days.positive? ? days : 0
     end
+
   end
 end

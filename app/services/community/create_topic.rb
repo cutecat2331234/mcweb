@@ -5,12 +5,11 @@ module Community
     MIN_INTERVAL = 30.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil, poll_anonymous: nil, prefix: nil, attachment_ids: nil)
+    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil, poll_anonymous: nil, prefix: nil, attachment_ids: nil, custom_fields: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
       @body = body.to_s.strip
-      filter_censored_body!
       @tag_names = tag_names
       @ip_address = ip_address
       @poll_question = poll_question.to_s.strip.presence
@@ -22,9 +21,16 @@ module Community
       @poll_anonymous = ActiveModel::Type::Boolean.new.cast(poll_anonymous) || false
       @prefix = prefix.to_s.strip.presence
       @attachment_ids = attachment_ids
+      @custom_fields = normalize_custom_fields(custom_fields)
+      apply_plugin_filters!
+      filter_censored_body!
     end
 
     def call
+      unless Community::SectionAccess.view?(section: @section, user: @user)
+        return ServiceResult.failure(error: "Section not available.")
+      end
+
       spam_result = check_spam
       return spam_result if spam_result.failure?
 
@@ -42,6 +48,7 @@ module Community
 
       topic = nil
       tag_result = nil
+      field_result = nil
       needs_approval = Community::RequiresPostApproval.required_for?(user: @user)
       topic_status = needs_approval ? "hidden" : "published"
       post_status = needs_approval ? "pending_approval" : "published"
@@ -73,9 +80,17 @@ module Community
           raise ActiveRecord::Rollback unless tag_result.success?
         end
         create_poll!(topic) if @poll_question && @poll_options.size >= 2
+        field_result = Community::SyncTopicFieldValues.call(
+          topic: topic,
+          user: @user,
+          values: @custom_fields,
+          require_required: true
+        )
+        raise ActiveRecord::Rollback unless field_result.success?
       end
 
       return tag_result if tag_result&.failure?
+      return field_result if field_result&.failure?
 
       Administration::AuditLogger.call(
         actor: @user,
@@ -93,8 +108,6 @@ module Community
       if needs_approval
         Community::NotifyPendingPost.call(post: opening_post)
       else
-        Community::ProcessMentions.call(body: @body, author: @user, post: opening_post, topic: topic) if opening_post
-        Community::ProcessHashtags.call(topic: topic, body: @body, user: @user) if opening_post
         Community::PublishPostSideEffects.call(post: opening_post) if opening_post
       end
       Community::CheckAutoBadges.call(user: @user)
@@ -208,6 +221,36 @@ module Community
     def filter_censored_body!
       result = Community::FilterCensoredWords.call(text: @body)
       @body = result.value if result.success?
+    end
+
+    def apply_plugin_filters!
+      return unless defined?(Mcweb::Plugins) && Mcweb::Plugins.respond_to?(:apply_filter)
+
+      filtered = Mcweb::Plugins.apply_filter(
+        "forum.topic.create.attributes",
+        {
+          title: @title,
+          body: @body,
+          tag_names: @tag_names,
+          prefix: @prefix,
+          custom_fields: @custom_fields
+        },
+        context: { user: @user, section: @section }
+      )
+      return unless filtered.is_a?(Hash)
+
+      @title = filtered.fetch("title", @title).to_s.strip
+      @body = filtered.fetch("body", @body).to_s.strip
+      @tag_names = filtered["tag_names"] if filtered.key?("tag_names")
+      @prefix = filtered.fetch("prefix", @prefix).to_s.strip.presence
+      @custom_fields = filtered["custom_fields"] if filtered.key?("custom_fields")
+    rescue StandardError => e
+      Rails.logger.error("[mcweb.plugins] forum.topic.create.attributes host integration failed: #{e.class}: #{e.message}")
+    end
+
+    def normalize_custom_fields(values)
+      raw = values.respond_to?(:to_unsafe_h) ? values.to_unsafe_h : values
+      raw.is_a?(Hash) ? raw.stringify_keys : {}
     end
   end
 end

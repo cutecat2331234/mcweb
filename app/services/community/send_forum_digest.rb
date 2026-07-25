@@ -16,6 +16,8 @@ module Community
     end
 
     def call
+      return ServiceResult.success(skipped: true) unless @user&.session_eligible?
+
       frequency = @user.forum_digest_frequency
       return ServiceResult.success(skipped: true) unless FREQUENCIES.include?(frequency)
       return ServiceResult.success(skipped: true) unless due_for_digest?(frequency)
@@ -26,8 +28,10 @@ module Community
         .where(notification_type: NOTIFICATION_TYPES)
         .order(created_at: :desc)
         .limit(50)
+        .to_a
 
-      notifications = filter_watched_notifications(notifications.to_a) if @user.forum_digest_watched_only?
+      notifications = filter_visible_notifications(notifications)
+      notifications = filter_watched_notifications(notifications) if @user.forum_digest_watched_only?
 
       return ServiceResult.success(skipped: true) if notifications.none?
 
@@ -59,6 +63,13 @@ module Community
       frequency == "weekly" ? 1.week : 1.day
     end
 
+    def filter_visible_notifications(notifications)
+      Community::NotificationAccess.filter(
+        notifications: notifications,
+        user: @user
+      )
+    end
+
     def filter_watched_notifications(notifications)
       topic_notifications, other_notifications = notifications.partition { |notification| topic_notification?(notification) }
 
@@ -68,13 +79,15 @@ module Community
         .pluck(:subscribable_id)
       watched_tag_ids = Community::Subscription.where(user: @user, subscribable_type: "Community::Tag")
         .pluck(:subscribable_id)
+      watched_tag_ids = Community::Tag.usable_by(@user)
+        .where(id: watched_tag_ids)
+        .pluck(:id)
 
       return other_notifications if watched_topic_ids.empty? && watched_section_ids.empty? && watched_tag_ids.empty?
 
       filtered = topic_notifications.select do |notification|
-        metadata = notification.metadata || {}
-        topic_public_id = metadata["topic_id"] || metadata[:topic_id]
-        next false if topic_public_id.blank?
+        topic_public_id = notification_topic_id(notification)
+        next false unless topic_public_id
 
         topic = Community::Topic.find_by(public_id: topic_public_id)
         next false unless topic
@@ -88,8 +101,14 @@ module Community
     end
 
     def topic_notification?(notification)
+      notification_topic_id(notification).present?
+    end
+
+    def notification_topic_id(notification)
       metadata = notification.metadata || {}
-      (metadata["topic_id"] || metadata[:topic_id]).present?
+      value = metadata["topic_id"] || metadata[:topic_id] ||
+        metadata.dig("topic", "id") || metadata.dig(:topic, :id)
+      value.to_s.presence
     end
   end
 end

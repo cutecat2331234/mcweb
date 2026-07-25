@@ -38,7 +38,6 @@ module Community
         resource: @user,
         metadata: { topics: topics_count, posts: posts_count, banned: @ban }
       )
-
       ServiceResult.success(topics: topics_count, posts: posts_count)
     end
   end

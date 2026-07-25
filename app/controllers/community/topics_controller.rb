@@ -66,6 +66,10 @@ module Community
         .where(user_id: posts.map(&:user_id).uniq, currency: "points")
         .pluck(:user_id, :balance)
         .to_h
+      author_post_counts = Community::ForumAccess.listed_post_scope(
+        relation: Community::Post.where(user_id: posts.map(&:user_id).uniq),
+        user: current_user
+      ).group(:user_id).count
 
       render inertia: "Community/Topics/Show", props: {
         topic: serialize_topic_detail(
@@ -93,7 +97,8 @@ module Community
           invite_url: can_invite_topic? ? invite_forum_topic_path(@topic) : nil,
           share_as_pm_url: logged_in? ? share_as_pm_forum_topic_path(@topic) : nil,
           export_url: can_moderate_topic? ? export_forum_topic_path(@topic, format: :csv) : nil,
-          can_edit_poll: can_edit_topic?
+          can_edit_poll: can_edit_topic?,
+          custom_fields: Community::SerializeTopicFields.for_topic(topic: @topic, user: current_user)
         ),
         posts: posts.map do |post|
           serialize_post(
@@ -103,7 +108,8 @@ module Community
             solved_post_id: @topic.solved_post_id,
             post_bookmark: post_bookmarks[post.id],
             verified_purchaser: verified_purchaser_ids.include?(post.user_id),
-            author_forum_points: point_balances[post.user_id].to_i
+            author_forum_points: point_balances[post.user_id].to_i,
+            author_posts_count: author_post_counts[post.user_id].to_i
           )
         end,
         pagination: pagy_props(@pagy),
@@ -117,7 +123,7 @@ module Community
         canMarkSolved: logged_in? && (can_moderate_topic? || current_user.id == @topic.user_id),
         reactionEmojis: Community::ToggleReaction.allowed_emoji,
         sections: can_move_topic? ? movable_sections : [],
-        relatedTopics: serialize_topics(@topic.similar_topics),
+        relatedTopics: serialize_topics(visible_related_topics(@topic.similar_topics)),
         reportTopicUrl: logged_in? ? new_forum_report_path(reportable_type: "Community::Topic", reportable_id: @topic.id) : nil,
         poll: @topic.poll ? serialize_poll(@topic.poll) : nil,
         topicSearchQuery: params[:q].to_s,
@@ -146,6 +152,7 @@ module Community
 
       render inertia: "Community/Topics/New", props: {
         section: section_props,
+        topicFields: Community::SerializeTopicFields.for_form(section: @section, user: current_user),
         similarTitlesUrl: similar_titles_forum_topics_path(section_id: @section.slug),
         warningRestrictions: warning_restrictions_props
       }
@@ -176,7 +183,8 @@ module Community
             poll_max_choices: topic_params[:poll_max_choices],
             poll_hide_results_until_vote: topic_params[:poll_hide_results_until_vote],
             ip_address: request.remote_ip,
-            attachment_ids: topic_params[:attachment_ids]
+            attachment_ids: topic_params[:attachment_ids],
+            custom_fields: topic_params[:custom_fields]
           )
           if result.success?
             return redirect_to forum_drafts_path, notice: t("mcweb.flash.topic_scheduled", time: l(scheduled_at, format: :short))
@@ -184,6 +192,7 @@ module Community
           return render inertia: "Community/Topics/New",
                         props: {
                           section: section_props,
+                          topicFields: Community::SerializeTopicFields.for_form(section: @section, user: current_user),
                           warningRestrictions: warning_restrictions_props,
                           form_errors: topic_form_errors(result)
                         },
@@ -206,7 +215,8 @@ module Community
         poll_anonymous: topic_params[:poll_anonymous],
         prefix: topic_params[:prefix],
         ip_address: request.remote_ip,
-        attachment_ids: topic_params[:attachment_ids]
+        attachment_ids: topic_params[:attachment_ids],
+        custom_fields: topic_params[:custom_fields]
       )
 
       if result.success?
@@ -216,7 +226,8 @@ module Community
         render inertia: "Community/Topics/New",
                props: {
                  section: section_props,
-                 warningRestrictions: warning_restrictions_props,
+                  topicFields: Community::SerializeTopicFields.for_form(section: @section, user: current_user),
+                  warningRestrictions: warning_restrictions_props,
                  form_errors: topic_form_errors(result)
                },
                status: :unprocessable_entity
@@ -230,7 +241,8 @@ module Community
         title: topic_params[:title],
         tag_names: topic_params[:tags],
         prefix: topic_params[:prefix],
-        poll_params: poll_edit_params
+        poll_params: poll_edit_params,
+        custom_fields: submitted_topic_custom_fields
       )
 
       if result.success?
@@ -572,6 +584,15 @@ module Community
 
     private
 
+    def visible_related_topics(topics)
+      records = topics.to_a
+      visible_ids = Community::ForumAccess.listed_topic_scope(
+        relation: Community::Topic.where(id: records.map(&:id)),
+        user: current_user
+      ).pluck(:id).to_set
+      records.select { |topic| visible_ids.include?(topic.id) }
+    end
+
     def set_section
       @section = Community::Section.find_by!(slug: params[:section_id])
       ensure_section_visible!(@section)
@@ -579,16 +600,24 @@ module Community
 
     def set_topic
       @topic = Community::Topic.includes(:section, :user, :tags, :poll, :solved_post, :linked_product).find_by!(public_id: params[:id])
-      ensure_topic_visible!(@topic)
       ensure_section_visible!(@topic.section)
+      return if performed?
+
+      ensure_topic_visible!(@topic)
     end
 
     def topic_params
       params.require(:topic).permit(
         :title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days,
         :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :poll_anonymous,
-        :scheduled_at, :remove_poll, attachment_ids: []
+        :scheduled_at, :remove_poll, attachment_ids: [], custom_fields: {}
       )
+    end
+
+    def submitted_topic_custom_fields
+      return Community::EditTopic::NOT_PROVIDED unless params[:topic]&.key?(:custom_fields)
+
+      topic_params[:custom_fields]
     end
 
     def poll_edit_params

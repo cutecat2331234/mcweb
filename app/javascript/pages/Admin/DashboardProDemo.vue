@@ -1,30 +1,23 @@
 <script setup lang="ts">
-/**
- * POC facade — "Overview" rebuilt on Element Plus, mounted at
- * /admin/dashboard_pro_demo and carried by ProLayout so a single screenshot
- * shows the whole unified EP language: EP sidebar + EP top bar + EP card row +
- * EP mini table. Rendered by Admin::DashboardProDemoController with static demo
- * numbers (no DB reads); safe to delete once the redesign is signed off.
- */
-import type { Component } from 'vue'
-import ProLayout from '@/components/admin-pro/ProLayout.vue'
+import { computed, type Component } from 'vue'
 import {
-  AlarmClock,
-  ShoppingCartFull,
-  UserFilled,
-  Wallet,
-} from '@element-plus/icons-vue'
+  IconClockCircle,
+  IconGift,
+  IconSafe,
+  IconUser,
+} from '@arco-design/web-vue/es/icon'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
-defineOptions({ layout: ProLayout })
+defineOptions({ layout: AdminLayout })
 
-withDefaults(
+const props = withDefaults(
   defineProps<{
     title?: string
     subtitle?: string
   }>(),
   {
-    title: '概览',
-    subtitle: 'Element Plus 布局 + 卡片 + 表格一套语言的门面（演示数据）',
+    title: 'Overview',
+    subtitle: 'Arco Design layout, cards, and table (demo data)',
   },
 )
 
@@ -37,16 +30,52 @@ interface StatCard {
   icon: Component
   accent: Accent
   hint: string
-  hintType: 'success' | 'info' | 'warning'
+  hintColor: string
 }
 
-/* Card-style stat row — 4 KPIs, each with an accent-tinted icon chip and a
- * colored trend tag so the row reads at a glance. */
+const subtitle = computed(() =>
+  props.subtitle
+    .replaceAll('Element Plus', 'Arco Design')
+    .replaceAll('EP ', 'Arco '),
+)
+
 const stats: StatCard[] = [
-  { key: 'orders', label: '总订单', value: '1,284', icon: ShoppingCartFull, accent: 'primary', hint: '+12.5%', hintType: 'success' },
-  { key: 'pending', label: '待处理', value: '23', icon: AlarmClock, accent: 'warning', hint: '需跟进', hintType: 'warning' },
-  { key: 'users', label: '注册用户', value: '5,672', icon: UserFilled, accent: 'info', hint: '+3.2%', hintType: 'info' },
-  { key: 'revenue', label: '本月收入', value: '¥ 48,690', icon: Wallet, accent: 'success', hint: '+8.1%', hintType: 'success' },
+  {
+    key: 'orders',
+    label: 'Total orders',
+    value: '1,284',
+    icon: IconGift,
+    accent: 'primary',
+    hint: '+12.5%',
+    hintColor: 'green',
+  },
+  {
+    key: 'pending',
+    label: 'Pending',
+    value: '23',
+    icon: IconClockCircle,
+    accent: 'warning',
+    hint: 'Needs attention',
+    hintColor: 'orangered',
+  },
+  {
+    key: 'users',
+    label: 'Registered users',
+    value: '5,672',
+    icon: IconUser,
+    accent: 'info',
+    hint: '+3.2%',
+    hintColor: 'arcoblue',
+  },
+  {
+    key: 'revenue',
+    label: 'Monthly revenue',
+    value: '¥48,690',
+    icon: IconSafe,
+    accent: 'success',
+    hint: '+8.1%',
+    hintColor: 'green',
+  },
 ]
 
 interface RecentOrder {
@@ -58,160 +87,75 @@ interface RecentOrder {
 }
 
 const recentOrders: RecentOrder[] = [
-  { order_number: 'MC-20260717-0021', customer: 'SteveCrafter', status: 'completed', status_label: '已完成', total: '¥ 128.00' },
-  { order_number: 'MC-20260717-0020', customer: 'EnderQueen', status: 'processing', status_label: '处理中', total: '¥ 32.00' },
-  { order_number: 'MC-20260717-0018', customer: 'RedstoneGuru', status: 'pending', status_label: '待支付', total: '¥ 512.00' },
-  { order_number: 'MC-20260716-0099', customer: 'PixelKnight', status: 'paid', status_label: '已支付', total: '¥ 99.00' },
-  { order_number: 'MC-20260716-0095', customer: 'CreeperSlayer', status: 'cancelled', status_label: '已取消', total: '¥ 156.00' },
-  { order_number: 'MC-20260716-0090', customer: 'MobHunter', status: 'refunded', status_label: '已退款', total: '¥ 74.00' },
+  { order_number: 'MC-20260717-0021', customer: 'SteveCrafter', status: 'completed', status_label: 'Completed', total: '¥128.00' },
+  { order_number: 'MC-20260717-0020', customer: 'EnderQueen', status: 'processing', status_label: 'Processing', total: '¥32.00' },
+  { order_number: 'MC-20260717-0018', customer: 'RedstoneGuru', status: 'pending', status_label: 'Pending', total: '¥512.00' },
+  { order_number: 'MC-20260716-0099', customer: 'PixelKnight', status: 'paid', status_label: 'Paid', total: '¥99.00' },
+  { order_number: 'MC-20260716-0095', customer: 'CreeperSlayer', status: 'cancelled', status_label: 'Cancelled', total: '¥156.00' },
+  { order_number: 'MC-20260716-0090', customer: 'MobHunter', status: 'refunded', status_label: 'Refunded', total: '¥74.00' },
 ]
 
-function statusTagType(raw: string): 'success' | 'warning' | 'danger' | 'info' | 'primary' {
-  switch (raw) {
-    case 'paid':
-    case 'completed':
-      return 'success'
-    case 'pending':
-    case 'processing':
-      return 'warning'
-    case 'cancelled':
-      return 'danger'
-    case 'refunded':
-      return 'info'
-    default:
-      return 'primary'
-  }
+const columns = [
+  { title: 'Order', dataIndex: 'order_number', width: 190 },
+  { title: 'Customer', dataIndex: 'customer', width: 160 },
+  { title: 'Status', dataIndex: 'status', slotName: 'status', width: 130 },
+  { title: 'Total', dataIndex: 'total', slotName: 'total', width: 130 },
+]
+
+function statusColor(status: string) {
+  if (status === 'paid' || status === 'completed') return 'green'
+  if (status === 'pending' || status === 'processing') return 'orangered'
+  if (status === 'cancelled') return 'red'
+  if (status === 'refunded') return 'arcoblue'
+  return 'gray'
 }
 </script>
 
 <template>
-  <div class="mb-6">
-    <h1 class="text-xl font-semibold text-foreground">{{ title }}</h1>
-    <p v-if="subtitle" class="mt-1 text-sm text-muted-foreground">{{ subtitle }}</p>
-  </div>
+  <a-page-header :title="title" :subtitle="subtitle" :show-back="false" />
 
-  <el-alert
-    class="mb-5"
-    type="info"
-    :closable="false"
-    show-icon
-    title="Element Plus 后台重做 · POC 概览门面页"
-    description="本页用 ProLayout（EP 侧栏 + 顶栏 + 面包屑）承载 EP 卡片统计行与近期订单 mini 表格，展示统一的 Element Plus 设计语言。演示数据，不读数据库，可随时删除。"
-  />
+  <a-alert type="info" show-icon class="mb-4">
+    This compatibility demo now uses the same Arco Design shell and components as every admin page.
+    It contains static data and does not read or write the database.
+  </a-alert>
 
-  <!-- Stat cards -->
-  <el-row :gutter="16" class="stat-row">
-    <el-col v-for="s in stats" :key="s.key" :xs="12" :sm="12" :md="6">
-      <el-card class="stat-card" shadow="hover" :body-style="{ padding: '18px 20px' }">
-        <div class="stat-card__body">
-          <div class="stat-card__icon" :class="`stat-card__icon--${s.accent}`">
-            <el-icon :size="22"><component :is="s.icon" /></el-icon>
+  <a-grid :cols="{ xs: 1, sm: 2, lg: 4 }" :col-gap="16" :row-gap="16" class="mb-4">
+    <a-grid-item v-for="stat in stats" :key="stat.key">
+      <a-card class="arco-stat-card" :bordered="false">
+        <div class="stat-card-body">
+          <div class="arco-stat-card__icon" :class="`arco-stat-card__icon--${stat.accent}`">
+            <component :is="stat.icon" />
           </div>
-          <div class="stat-card__meta">
-            <div class="stat-card__label">{{ s.label }}</div>
-            <div class="stat-card__value">{{ s.value }}</div>
-          </div>
+          <a-statistic :title="stat.label" :value="stat.value" />
         </div>
-        <el-tag :type="s.hintType" effect="light" size="small" round class="stat-card__hint">
-          {{ s.hint }}
-        </el-tag>
-      </el-card>
-    </el-col>
-  </el-row>
+        <a-tag :color="stat.hintColor" class="mt-3">{{ stat.hint }}</a-tag>
+      </a-card>
+    </a-grid-item>
+  </a-grid>
 
-  <!-- Recent orders mini table -->
-  <el-card class="recent-card" shadow="never" :body-style="{ padding: '0' }">
-    <template #header>
-      <div class="recent-card__header">
-        <span class="recent-card__title">近期订单</span>
-        <el-tag type="info" effect="plain" size="small" round>演示数据</el-tag>
-      </div>
-    </template>
-    <el-table :data="recentOrders" style="width: 100%">
-      <el-table-column prop="order_number" label="订单号" min-width="170" />
-      <el-table-column prop="customer" label="客户" min-width="130" />
-      <el-table-column label="状态" width="110" align="center">
-        <template #default="{ row }">
-          <el-tag :type="statusTagType((row as RecentOrder).status)" effect="light" round>
-            {{ (row as RecentOrder).status_label }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column label="金额" width="130" align="right">
-        <template #default="{ row }">
-          <span class="font-medium tabular-nums">{{ (row as RecentOrder).total }}</span>
-        </template>
-      </el-table-column>
-    </el-table>
-  </el-card>
+  <a-card title="Recent orders" :bordered="true">
+    <template #extra><a-tag color="arcoblue">Demo data</a-tag></template>
+    <a-table
+      :columns="columns"
+      :data="recentOrders"
+      row-key="order_number"
+      :pagination="false"
+      :scroll="{ x: 620 }"
+    >
+      <template #status="{ record }">
+        <a-tag :color="statusColor(record.status)">{{ record.status_label }}</a-tag>
+      </template>
+      <template #total="{ record }">
+        <a-typography-text strong>{{ record.total }}</a-typography-text>
+      </template>
+    </a-table>
+  </a-card>
 </template>
 
 <style scoped>
-.stat-row {
-  margin-bottom: 20px;
-  row-gap: 16px;
-}
-
-.stat-card {
-  border-radius: 12px;
-}
-.stat-card__body {
+.stat-card-body {
   display: flex;
   align-items: center;
   gap: 14px;
-}
-.stat-card__icon {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 46px;
-  height: 46px;
-  border-radius: 12px;
-  flex-shrink: 0;
-}
-.stat-card__icon--primary {
-  color: var(--el-color-primary);
-  background: var(--el-color-primary-light-9);
-}
-.stat-card__icon--warning {
-  color: var(--el-color-warning);
-  background: var(--el-color-warning-light-9);
-}
-.stat-card__icon--info {
-  color: var(--el-color-info);
-  background: var(--el-color-info-light-9);
-}
-.stat-card__icon--success {
-  color: var(--el-color-success);
-  background: var(--el-color-success-light-9);
-}
-.stat-card__label {
-  font-size: 13px;
-  color: var(--el-text-color-secondary);
-}
-.stat-card__value {
-  font-size: 24px;
-  font-weight: 600;
-  line-height: 1.2;
-  color: var(--el-text-color-primary);
-  font-variant-numeric: tabular-nums;
-}
-.stat-card__hint {
-  margin-top: 12px;
-}
-
-.recent-card {
-  border-radius: 12px;
-  overflow: hidden;
-}
-.recent-card__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-.recent-card__title {
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--el-text-color-primary);
 }
 </style>

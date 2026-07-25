@@ -3,13 +3,7 @@ import { useForm, router } from '@inertiajs/vue3'
 import { ref, onBeforeUnmount, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
-import PageHeader from '@/components/portal/PageHeader.vue'
-import Button from '@/components/ui/Button.vue'
-import Input from '@/components/ui/Input.vue'
-import Label from '@/components/ui/Label.vue'
-import Select from '@/components/ui/Select.vue'
-import Checkbox from '@/components/ui/Checkbox.vue'
-import { confirm } from '@/lib/useConfirm'
+import { confirm } from '@/lib/arcoConfirm'
 import { adminRoutes } from '@/lib/adminRoutes'
 
 defineOptions({ layout: AdminLayout })
@@ -146,76 +140,115 @@ async function sendTestAllEventWebhooks() {
 </script>
 
 <template>
-  <PageHeader :title="t('admin.forumSettings.title')" :subtitle="t('admin.forumSettings.subtitle')" />
+  <a-page-header
+    :title="t('admin.forumSettings.title')"
+    :subtitle="t('admin.forumSettings.subtitle')"
+    :show-back="false"
+    class="mb-4 !px-0"
+  />
 
-  <form class="max-w-xl space-y-4" @submit.prevent="submit">
-    <div v-for="setting in settings" :key="setting.key" class="rounded-lg border p-4 space-y-2">
-      <Label :for="setting.key" class="text-sm font-medium">{{ setting.label }}</Label>
-      <p v-if="setting.hint" class="text-xs text-muted-foreground">{{ setting.hint }}</p>
-      <label v-if="setting.input_type === 'boolean'" class="flex items-center gap-2 text-sm">
-        <Checkbox
-          :id="setting.key"
-          :model-value="form.settings[setting.key] === 'true'"
-          @update:model-value="(v) => { form.settings[setting.key] = v ? 'true' : 'false' }"
-        />
-        {{ t('admin.common.enable') }}
-      </label>
-      <Input v-else :id="setting.key" v-model="form.settings[setting.key]" />
-    </div>
-    <Button type="submit" :disabled="form.processing">{{ t('admin.forumSettings.save') }}</Button>
-    <div v-if="testWebhookUrl" class="rounded-lg border p-4 space-y-2">
-      <p class="text-sm font-medium">{{ t('admin.forumSettings.savedSearchWebhookTests') }}</p>
-      <div class="flex flex-wrap items-center gap-2">
-        <Select
+  <form class="max-w-3xl space-y-4" @submit.prevent="submit">
+    <a-card :bordered="true">
+      <a-space direction="vertical" fill :size="16">
+        <a-card
+          v-for="setting in settings"
+          :key="setting.key"
+          size="small"
+          :bordered="true"
+        >
+          <p class="mb-1 text-sm font-medium">{{ setting.label }}</p>
+          <p v-if="setting.hint" class="mb-3 text-xs text-[var(--color-text-3)]">
+            {{ setting.hint }}
+          </p>
+          <a-checkbox
+            v-if="setting.input_type === 'boolean'"
+            :model-value="form.settings[setting.key] === 'true'"
+            @change="(value: boolean) => { form.settings[setting.key] = value ? 'true' : 'false' }"
+          >
+            {{ t('admin.common.enable') }}
+          </a-checkbox>
+          <a-input v-else v-model="form.settings[setting.key]" allow-clear />
+        </a-card>
+
+        <div>
+          <a-button html-type="submit" type="primary" :loading="form.processing">
+            {{ t('admin.forumSettings.save') }}
+          </a-button>
+        </div>
+      </a-space>
+    </a-card>
+
+    <a-card
+      v-if="testWebhookUrl"
+      :title="t('admin.forumSettings.savedSearchWebhookTests')"
+      :bordered="true"
+    >
+      <a-space wrap :size="[8, 8]">
+        <a-select
           v-if="savedSearchesForTest?.length"
           v-model="selectedSavedSearchId"
           :options="savedSearchOptions"
-          size="sm"
+          size="small"
+          class="min-w-48"
         />
-        <Button type="button" variant="outline" size="sm" @click="sendTestWebhook">
+        <a-button type="outline" size="small" @click="sendTestWebhook">
           {{ t('admin.forumSettings.sendWebhookTest') }}
-        </Button>
-        <Button
+        </a-button>
+        <a-button
           v-if="testAllWebhooksUrl && savedSearchesForTest?.length"
-          type="button"
-          variant="outline"
-          size="sm"
+          type="outline"
+          size="small"
           @click="sendTestAllWebhooks"
         >
           {{ t('admin.forumSettings.batchWebhookTest') }}
-        </Button>
-      </div>
-      <p v-if="lastTestWebhookDisplay" class="text-xs text-muted-foreground">
+        </a-button>
+      </a-space>
+      <a-alert v-if="lastTestWebhookDisplay" class="mt-3" type="info">
         {{ t('admin.forumSettings.lastTest', { event: lastTestWebhookDisplay.event_type, status: lastTestWebhookDisplay.status }) }}
-        <span v-if="lastTestWebhookDisplay.response_code != null">{{ t('admin.forumSettings.lastTestHttp', { code: lastTestWebhookDisplay.response_code }) }}</span>
+        <span v-if="lastTestWebhookDisplay.response_code != null">
+          {{ t('admin.forumSettings.lastTestHttp', { code: lastTestWebhookDisplay.response_code }) }}
+        </span>
         · {{ lastTestWebhookDisplay.created_at }}
-      </p>
-    </div>
-    <div v-if="testEventWebhookUrl" class="rounded-lg border p-4 space-y-2">
-      <p class="text-sm font-medium">{{ t('admin.forumSettings.eventWebhookTests') }}</p>
-      <div class="flex flex-wrap items-center gap-2">
-        <Select v-model="selectedEventType" :options="eventWebhookOptions" size="sm" />
-        <Button type="button" variant="outline" size="sm" @click="sendTestEventWebhook">
+      </a-alert>
+    </a-card>
+
+    <a-card
+      v-if="testEventWebhookUrl"
+      :title="t('admin.forumSettings.eventWebhookTests')"
+      :bordered="true"
+    >
+      <a-space wrap :size="[8, 8]">
+        <a-select
+          v-model="selectedEventType"
+          :options="eventWebhookOptions"
+          size="small"
+          class="min-w-48"
+        />
+        <a-button type="outline" size="small" @click="sendTestEventWebhook">
           {{ t('admin.forumSettings.sendEventWebhookTest') }}
-        </Button>
-        <Button
+        </a-button>
+        <a-button
           v-if="testAllEventWebhooksUrl"
-          type="button"
-          variant="outline"
-          size="sm"
+          type="outline"
+          size="small"
           @click="sendTestAllEventWebhooks"
         >
           {{ t('admin.forumSettings.batchEventWebhookTest') }}
-        </Button>
-      </div>
-      <p v-if="lastTestEventWebhookDisplay" class="text-xs text-muted-foreground">
+        </a-button>
+      </a-space>
+      <a-alert v-if="lastTestEventWebhookDisplay" class="mt-3" type="info">
         {{ t('admin.forumSettings.lastTest', { event: lastTestEventWebhookDisplay.event_type, status: lastTestEventWebhookDisplay.status }) }}
-        <span v-if="lastTestEventWebhookDisplay.response_code != null">{{ t('admin.forumSettings.lastTestHttp', { code: lastTestEventWebhookDisplay.response_code }) }}</span>
+        <span v-if="lastTestEventWebhookDisplay.response_code != null">
+          {{ t('admin.forumSettings.lastTestHttp', { code: lastTestEventWebhookDisplay.response_code }) }}
+        </span>
         · {{ lastTestEventWebhookDisplay.created_at }}
-      </p>
-      <a :href="adminRoutes.forumEventWebhookDeliveries" class="text-xs text-muted-foreground hover:underline">
+      </a-alert>
+      <a
+        :href="adminRoutes.forumEventWebhookDeliveries"
+        class="mt-3 inline-block text-xs text-[rgb(var(--primary-6))] no-underline hover:underline"
+      >
         {{ t('admin.forumSettings.viewEventDeliveries') }}
       </a>
-    </div>
+    </a-card>
   </form>
 </template>

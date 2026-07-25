@@ -1,16 +1,17 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
 import { IconApps, IconSettings } from '@arco-design/web-vue/es/icon'
 
 export interface ProColumn {
   key: string
   label: string
   link?: boolean
-  width?: string | number
-  minWidth?: string | number
+  width?: number
+  minWidth?: number
   align?: 'left' | 'center' | 'right'
-  fixed?: boolean | 'left' | 'right'
+  fixed?: 'left' | 'right'
   sortable?: boolean
 }
 
@@ -62,12 +63,13 @@ const emit = defineEmits<{
   (event: 'bulk', action: string, ids: Array<string | number>): void
 }>()
 
+const { t } = useI18n()
 const density = ref<Density>('medium')
-const densityOptions: Array<{ label: string; value: Density }> = [
-  { label: 'Comfortable', value: 'large' },
-  { label: 'Default', value: 'medium' },
-  { label: 'Compact', value: 'small' },
-]
+const densityOptions = computed<Array<{ label: string; value: Density }>>(() => [
+  { label: t('admin.ui.comfortable'), value: 'large' },
+  { label: t('admin.ui.standard'), value: 'medium' },
+  { label: t('admin.ui.compact'), value: 'small' },
+])
 const visibleKeys = ref(props.columns.map((column) => column.key))
 const selectedIds = ref<Array<string | number>>([])
 const visibleColumns = computed(() =>
@@ -105,7 +107,7 @@ function runBulk(action: string) {
   emit('bulk', action, [...selectedIds.value])
   if (!props.bulkActionUrl) return
 
-  const payload: Record<string, unknown> = {
+  const payload: Record<string, string | Array<string | number>> = {
     [props.bulkParamKey]: selectedIds.value,
     [props.bulkActionKey]: action,
     return_to: window.location.pathname + window.location.search,
@@ -134,12 +136,16 @@ function columnSorter(column: ProColumn) {
 </script>
 
 <template>
-  <div>
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <a-space wrap>
-        <slot name="toolbar-left" />
-      </a-space>
-      <a-space wrap>
+  <a-space direction="vertical" :size="16" fill>
+    <a-grid :cols="24" :col-gap="{ xs: 0, sm: 12 }" :row-gap="12">
+      <a-grid-item :span="{ xs: 24, lg: 12 }">
+        <a-space wrap>
+          <slot name="toolbar-left" />
+        </a-space>
+      </a-grid-item>
+      <a-grid-item :span="{ xs: 24, lg: 12 }">
+        <a-row justify="end">
+          <a-space wrap>
         <a-button
           v-for="action in selectable && selectedIds.length ? bulkActions : []"
           :key="action.action"
@@ -153,8 +159,8 @@ function columnSorter(column: ProColumn) {
         <slot name="toolbar-right" />
 
         <a-dropdown trigger="click" @select="density = $event as Density">
-          <a-tooltip content="Density">
-            <a-button shape="circle" :aria-label="'Density'">
+          <a-tooltip :content="t('admin.ui.density')">
+            <a-button shape="circle" :aria-label="t('admin.ui.density')">
               <template #icon><icon-apps /></template>
             </a-button>
           </a-tooltip>
@@ -171,14 +177,13 @@ function columnSorter(column: ProColumn) {
         </a-dropdown>
 
         <a-popover trigger="click" position="br">
-          <a-tooltip content="Columns">
-            <a-button shape="circle" :aria-label="'Columns'">
+          <a-tooltip :content="t('admin.ui.columns')">
+            <a-button shape="circle" :aria-label="t('admin.ui.columns')">
               <template #icon><icon-settings /></template>
             </a-button>
           </a-tooltip>
           <template #content>
-            <a-checkbox-group v-model="visibleKeys">
-              <a-space direction="vertical">
+            <a-checkbox-group v-model="visibleKeys" direction="vertical">
                 <a-checkbox
                   v-for="column in columns"
                   :key="column.key"
@@ -186,12 +191,13 @@ function columnSorter(column: ProColumn) {
                 >
                   {{ column.label }}
                 </a-checkbox>
-              </a-space>
             </a-checkbox-group>
           </template>
         </a-popover>
-      </a-space>
-    </div>
+          </a-space>
+        </a-row>
+      </a-grid-item>
+    </a-grid>
 
     <a-table
       v-model:selected-keys="selectedIds"
@@ -227,11 +233,10 @@ function columnSorter(column: ProColumn) {
               <Link
                 v-if="column.link && record.url"
                 :href="String(record.url)"
-                class="arco-link font-medium no-underline"
               >
                 {{ record[column.key] }}
               </Link>
-              <span v-else>{{ record[column.key] }}</span>
+              <a-typography-text v-else>{{ record[column.key] }}</a-typography-text>
             </slot>
           </template>
         </a-table-column>
@@ -241,21 +246,35 @@ function columnSorter(column: ProColumn) {
       </template>
     </a-table>
 
-    <div
+    <a-row
       v-if="pagination"
-      class="mt-4 flex flex-wrap items-center justify-between gap-3"
+      align="center"
+      justify="space-between"
+      :gutter="[12, 12]"
     >
-      <a-typography-text type="secondary">
-        {{ pagination.count }} total · {{ pagination.from }}–{{ pagination.to }}
-      </a-typography-text>
-      <a-pagination
-        v-if="pagination.pages > 1"
-        :current="pagination.page"
-        :total="pagination.count"
-        :page-size="pageSize"
-        :show-total="true"
-        @change="goToPage"
-      />
-    </div>
-  </div>
+      <a-col :xs="24" :sm="10">
+        <a-typography-text type="secondary">
+          {{
+            t('admin.ui.paginationSummary', {
+              count: pagination.count,
+              from: pagination.from,
+              to: pagination.to,
+            })
+          }}
+        </a-typography-text>
+      </a-col>
+      <a-col :xs="24" :sm="14">
+        <a-row justify="end">
+          <a-pagination
+            v-if="pagination.pages > 1"
+            :current="pagination.page"
+            :total="pagination.count"
+            :page-size="pageSize"
+            :show-total="true"
+            @change="goToPage"
+          />
+        </a-row>
+      </a-col>
+    </a-row>
+  </a-space>
 </template>

@@ -218,9 +218,18 @@ watch(isDark, syncArcoTheme, { immediate: true })
     {{ t('common.skipToContent', 'Skip to content') }}
   </a>
 
-  <a-layout class="arco-admin-layout min-h-dvh">
+  <a-layout
+    class="arco-admin-layout"
+    :style="{
+      height: '100dvh',
+      minHeight: '100dvh',
+      overflow: 'hidden',
+      background: 'var(--color-fill-2)',
+      '--color-border-2': 'var(--color-border-3)',
+    }"
+  >
     <a-layout-sider
-      class="arco-admin-sider hidden md:block"
+      class="arco-admin-sider"
       :collapsed="collapsed"
       :width="220"
       :collapsed-width="48"
@@ -233,11 +242,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
           <span v-show="!collapsed" class="arco-admin-brand__text">McWeb Admin</span>
         </Link>
       </div>
-      <div class="arco-admin-sider__menu">
+      <div class="arco-admin-sider__menu-scroll">
         <a-menu
           :selected-keys="activeItemHref ? [activeItemHref] : []"
           v-model:open-keys="openKeys"
           :collapsed="collapsed"
+          :style="{ minHeight: '100%' }"
           @menu-item-click="onMenuClick"
         >
           <a-sub-menu v-for="group in nav" :key="group.key">
@@ -256,11 +266,11 @@ watch(isDark, syncArcoTheme, { immediate: true })
       </div>
     </a-layout-sider>
 
-    <a-layout>
+    <a-layout :style="{ minWidth: 0, height: '100dvh', overflow: 'hidden' }">
       <a-layout-header class="arco-admin-header">
         <div class="arco-admin-header__left">
           <a-button
-            class="md:hidden"
+            class="arco-admin-nav-trigger arco-admin-nav-trigger--mobile"
             type="text"
             :aria-label="t('common.openMenu')"
             @click="mobileNavOpen = true"
@@ -268,7 +278,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
             <template #icon><icon-menu-unfold /></template>
           </a-button>
           <a-button
-            class="hidden md:inline-flex"
+            class="arco-admin-nav-trigger arco-admin-nav-trigger--desktop"
             type="text"
             :aria-label="collapsed ? t('common.openMenu') : t('common.close')"
             @click="collapsed = !collapsed"
@@ -298,12 +308,17 @@ watch(isDark, syncArcoTheme, { immediate: true })
         </div>
       </a-layout-header>
 
-      <a-layout-content id="admin-content" class="arco-admin-main" tabindex="-1">
-        <div class="arco-admin-main__inner">
-          <AdminFlashMessages />
-          <slot />
-        </div>
-      </a-layout-content>
+      <a-scrollbar
+        type="embed"
+        :outer-style="{ width: '100%', height: 'calc(100dvh - 60px)' }"
+      >
+        <a-layout-content id="admin-content" class="arco-admin-main" tabindex="-1">
+          <div class="arco-admin-main__inner">
+            <AdminFlashMessages />
+            <slot />
+          </div>
+        </a-layout-content>
+      </a-scrollbar>
     </a-layout>
   </a-layout>
 
@@ -373,6 +388,26 @@ watch(isDark, syncArcoTheme, { immediate: true })
   border-right: 1px solid var(--color-border-2);
   background: var(--color-bg-2);
 }
+.arco-admin-sider :deep(.arco-layout-sider-children) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.arco-admin-sider__menu-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: none;
+}
+.arco-admin-sider__menu-scroll::-webkit-scrollbar {
+  display: none;
+}
+.arco-admin-sider__menu-scroll :deep(.arco-menu-inner) {
+  overflow: visible;
+}
 
 .arco-admin-brand {
   display: flex;
@@ -396,12 +431,6 @@ watch(isDark, syncArcoTheme, { immediate: true })
 .arco-admin-brand__icon {
   font-size: 22px;
   color: rgb(var(--primary-6));
-}
-
-.arco-admin-sider__menu {
-  flex: 1;
-  min-height: 0;
-  overflow: auto;
 }
 
 .arco-admin-sider__footer {
@@ -433,20 +462,64 @@ watch(isDark, syncArcoTheme, { immediate: true })
   align-items: center;
   gap: 8px;
 }
+.arco-admin-nav-trigger--mobile {
+  display: inline-flex !important;
+}
+.arco-admin-nav-trigger--desktop {
+  display: none !important;
+}
 
 .arco-admin-main {
   min-width: 0;
-  padding: 24px;
-  overflow: auto;
+  min-height: 100%;
+  padding: 28px 32px 48px;
 }
 .arco-admin-main__inner {
-  max-width: 1200px;
+  width: 100%;
+  max-width: 1440px;
   margin: 0 auto;
+}
+.arco-admin-main :deep(.arco-page-header) {
+  padding: 8px 0;
 }
 
 @media (max-width: 767px) {
+  .arco-admin-sider {
+    display: none !important;
+  }
   .arco-admin-main {
     padding: 16px;
+  }
+  .arco-admin-main :deep(.arco-page-header-header),
+  .arco-admin-main :deep(.arco-page-header-main) {
+    width: 100%;
+    min-width: 0;
+  }
+  .arco-admin-main :deep(.arco-page-header-main) {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .arco-admin-main :deep(.arco-page-header-divider) {
+    display: none;
+  }
+  .arco-admin-main :deep(.arco-page-header-subtitle) {
+    width: 100%;
+    margin-top: 4px;
+    overflow: visible;
+    line-height: 20px;
+    white-space: normal;
+  }
+}
+
+@media (min-width: 768px) {
+  .arco-admin-sider {
+    display: flex !important;
+  }
+  .arco-admin-nav-trigger--mobile {
+    display: none !important;
+  }
+  .arco-admin-nav-trigger--desktop {
+    display: inline-flex !important;
   }
 }
 </style>

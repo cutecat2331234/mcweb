@@ -38,78 +38,93 @@ function submit() {
 </script>
 
 <template>
-  <section class="admin-system-feature-toggles">
+  <a-space direction="vertical" :size="20" fill>
     <a-page-header
       :title="t('admin.featureToggles.title')"
       :subtitle="t('admin.featureToggles.subtitle')"
       :show-back="false"
-      class="mb-4 !px-0"
     />
 
-    <a-alert
-      v-if="localError"
-      type="error"
-      :title="localError"
-      show-icon
-      closable
-      class="mb-4 max-w-3xl"
-      @close="localError = ''"
-    />
+    <a-row justify="center">
+      <a-col :xs="24" :xl="22">
+        <a-card :bordered="true">
+          <a-form
+            :model="form.features"
+            layout="vertical"
+            @submit="submit"
+          >
+            <a-space direction="vertical" :size="20" fill>
+              <a-alert
+                v-if="localError"
+                type="error"
+                :title="localError"
+                show-icon
+                closable
+                @close="localError = ''"
+              />
 
-    <a-form
-      :model="form.features"
-      layout="vertical"
-      class="max-w-3xl"
-      @submit="submit"
-    >
-      <a-space direction="vertical" fill :size="12">
-        <a-card
-          v-for="feature in features"
-          :key="feature.id"
-          :bordered="true"
-          hoverable
-        >
-          <div class="flex items-start justify-between gap-6">
-            <a-space direction="vertical" :size="4">
-              <a-typography-title :heading="6" class="!m-0">
-                {{ feature.label }}
-              </a-typography-title>
-              <a-typography-text type="secondary">
-                {{ feature.description }}
-              </a-typography-text>
-            </a-space>
+              <a-grid
+                v-if="features.length"
+                :cols="{ xs: 1, lg: 2 }"
+                :col-gap="16"
+                :row-gap="16"
+              >
+                <a-grid-item v-for="feature in features" :key="feature.id">
+                  <a-card size="small" :bordered="true" hoverable>
+                    <a-row align="center" justify="space-between" :gutter="[16, 12]">
+                      <a-col flex="1" :style="{ minWidth: 0 }">
+                        <a-space direction="vertical" :size="6" fill>
+                          <a-typography-text bold>
+                            {{ feature.label }}
+                          </a-typography-text>
+                          <a-typography-paragraph
+                            type="secondary"
+                            :style="{ marginBottom: 0 }"
+                          >
+                            {{ feature.description }}
+                          </a-typography-paragraph>
+                        </a-space>
+                      </a-col>
+                      <a-col flex="none">
+                        <a-switch
+                          v-model="form.features[feature.id]"
+                          :aria-label="feature.label"
+                          :checked-text="t('admin.ui.enabled')"
+                          :unchecked-text="t('admin.ui.disabled')"
+                        />
+                      </a-col>
+                    </a-row>
+                  </a-card>
+                </a-grid-item>
+              </a-grid>
+              <a-empty v-else :description="t('admin.featureToggles.empty')" />
 
-            <a-space class="shrink-0">
-              <a-tag :color="form.features[feature.id] ? 'green' : 'gray'">
-                {{ form.features[feature.id] ? t('admin.ui.enabled') : t('admin.ui.disabled') }}
-              </a-tag>
-              <a-switch v-model="form.features[feature.id]" />
+              <a-alert
+                v-if="portalBothDisabled"
+                type="warning"
+                :title="t('admin.featureToggles.portalBothDisabled')"
+                show-icon
+              />
+
+              <a-divider />
+
+              <a-space wrap size="medium">
+                <a-button
+                  type="primary"
+                  html-type="submit"
+                  :loading="form.processing"
+                  :disabled="portalBothDisabled"
+                >
+                  {{ t('admin.featureToggles.saveToggles') }}
+                </a-button>
+                <a-tag v-if="form.recentlySuccessful" color="green">
+                  {{ t('admin.common.saved') }}
+                </a-tag>
+              </a-space>
             </a-space>
-          </div>
+          </a-form>
         </a-card>
-      </a-space>
-
-      <a-alert
-        v-if="portalBothDisabled"
-        type="warning"
-        :title="t('admin.featureToggles.portalBothDisabled')"
-        show-icon
-        class="mt-4"
-      />
-
-      <a-space class="mt-4" wrap>
-        <a-button
-          type="primary"
-          html-type="submit"
-          :loading="form.processing"
-          :disabled="portalBothDisabled"
-        >
-          {{ t('admin.featureToggles.saveToggles') }}
-        </a-button>
-        <a-tag v-if="form.recentlySuccessful" color="green">
-          {{ t('admin.common.saved') }}
-        </a-tag>
-      </a-space>
-    </a-form>
-  </section>
+      </a-col>
+    </a-row>
+  </a-space>
 </template>

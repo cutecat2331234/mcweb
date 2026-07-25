@@ -7,7 +7,7 @@ module Admin
     before_action :set_role, only: %i[show edit update destroy]
 
     def index
-      roles = Role.includes(:permissions).order(:name)
+      @pagy, roles = pagy(:offset, Role.includes(:permissions).order(:name), limit: 25)
 
       render inertia: "Admin/Generic/Index", props: {
         title: "角色",
@@ -23,7 +23,8 @@ module Admin
             permissions: role.permissions.size,
             url: admin_role_path(role)
           )
-        end
+        end,
+        pagination: pagy_props(@pagy)
       }
     end
 

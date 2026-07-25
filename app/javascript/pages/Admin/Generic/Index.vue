@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Link, router } from '@inertiajs/vue3'
-import { computed, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { confirm } from '@/lib/arcoConfirm'
@@ -54,9 +54,13 @@ export interface DateFilterProps {
   action: string
 }
 
-export interface AdminRow extends Record<string, string> {
+export interface AdminRow extends Record<string, string | undefined> {
   url?: string
   publicId?: string
+}
+
+interface AdminTableRow extends AdminRow {
+  __rowKey: string
 }
 
 const props = defineProps<{
@@ -80,6 +84,8 @@ const props = defineProps<{
 }>()
 
 const selectedPublicIds = ref<string[]>([])
+const isMobile = ref(false)
+let viewportQuery: MediaQueryList | null = null
 
 const dateFrom = ref('')
 const dateTo = ref('')
@@ -94,12 +100,22 @@ const allRowsSelected = computed(
 const someRowsSelected = computed(
   () => selectedPublicIds.value.length > 0 && !allRowsSelected.value,
 )
-const tableRows = computed(() =>
+const tableRows = computed<AdminTableRow[]>(() =>
   props.rows.map((row, index) => ({
     ...row,
     __rowKey: row.publicId || `admin-row-${index}`,
   })),
 )
+const paginationPageSize = computed(() => {
+  if (!props.pagination) return 20
+  if (props.pagination.page > 1) {
+    return Math.max(
+      Math.round((props.pagination.from - 1) / (props.pagination.page - 1)),
+      1,
+    )
+  }
+  return Math.max(props.pagination.to - props.pagination.from + 1, 1)
+})
 
 watch(
   () => props.dateFilter,
@@ -141,8 +157,12 @@ function applyDateFilter() {
   })
 }
 
-function toggleRowSelection(publicId: string, checked: boolean) {
+function toggleRowSelection(
+  publicId: string | undefined,
+  value: boolean | Array<string | number | boolean>,
+) {
   if (!publicId) return
+  const checked = value === true
   if (checked) {
     if (!selectedPublicIds.value.includes(publicId)) {
       selectedPublicIds.value = [ ...selectedPublicIds.value, publicId ]
@@ -152,7 +172,8 @@ function toggleRowSelection(publicId: string, checked: boolean) {
   }
 }
 
-function toggleSelectAll(checked: boolean) {
+function toggleSelectAll(value: boolean | Array<string | number | boolean>) {
+  const checked = value === true
   if (!checked) {
     selectedPublicIds.value = []
     return
@@ -200,15 +221,28 @@ async function bulkOrder(action: string) {
     onSuccess: () => { selectedPublicIds.value = [] },
   })
 }
+
+function syncViewport(event?: MediaQueryListEvent) {
+  isMobile.value = event?.matches ?? viewportQuery?.matches ?? false
+}
+
+onMounted(() => {
+  viewportQuery = window.matchMedia('(max-width: 767px)')
+  syncViewport()
+  viewportQuery.addEventListener('change', syncViewport)
+})
+
+onBeforeUnmount(() => {
+  viewportQuery?.removeEventListener('change', syncViewport)
+})
 </script>
 
 <template>
-  <div class="admin-generic-index">
+  <a-space direction="vertical" :size="16" fill>
     <a-page-header
       :title="title"
       :subtitle="subtitle"
       :show-back="false"
-      class="mb-4 !px-0"
     >
       <template
         v-if="exportUrl || actions?.length || bulkRetry || selectedPublicIds.length"
@@ -267,7 +301,7 @@ async function bulkOrder(action: string) {
       </template>
     </a-page-header>
 
-    <a-space v-if="alerts?.length" class="mb-4" direction="vertical" fill>
+    <a-space v-if="alerts?.length" direction="vertical" :size="8" fill>
       <a-alert
         v-for="(alert, index) in alerts"
         :key="`${alert.level}-${index}`"
@@ -280,9 +314,9 @@ async function bulkOrder(action: string) {
 
     <a-card
       v-if="statusTabs?.length || eventTabs?.length || kindTabs?.length || dateFilter"
-      class="mb-4"
       :bordered="true"
     >
+      <a-space direction="vertical" :size="16" fill>
       <a-tabs
         v-if="statusTabs?.length"
         :active-key="activeTab(statusTabs)"
@@ -325,46 +359,54 @@ async function bulkOrder(action: string) {
         />
       </a-tabs>
 
-      <form
+      <a-form
         v-if="dateFilter"
-        class="flex flex-wrap items-end gap-3"
-        @submit.prevent="applyDateFilter"
+        :model="{}"
+        layout="vertical"
+        @submit="applyDateFilter"
       >
-        <label class="grid gap-1 text-sm">
-          <span class="text-[var(--color-text-2)]">{{ t('admin.common.dateFrom') }}</span>
-          <a-date-picker
-            v-model="dateFrom"
-            value-format="YYYY-MM-DD"
-            format="YYYY-MM-DD"
-            allow-clear
-            style="width: 180px"
-          />
-        </label>
-        <label class="grid gap-1 text-sm">
-          <span class="text-[var(--color-text-2)]">{{ t('admin.common.dateTo') }}</span>
-          <a-date-picker
-            v-model="dateTo"
-            value-format="YYYY-MM-DD"
-            format="YYYY-MM-DD"
-            allow-clear
-            style="width: 180px"
-          />
-        </label>
+        <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="16">
+          <a-grid-item>
+            <a-form-item :label="t('admin.common.dateFrom')">
+              <a-date-picker
+                v-model="dateFrom"
+                value-format="YYYY-MM-DD"
+                format="YYYY-MM-DD"
+                allow-clear
+                long
+              />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item :label="t('admin.common.dateTo')">
+              <a-date-picker
+                v-model="dateTo"
+                value-format="YYYY-MM-DD"
+                format="YYYY-MM-DD"
+                allow-clear
+                long
+              />
+            </a-form-item>
+          </a-grid-item>
+        </a-grid>
         <a-button html-type="submit" type="primary">
           {{ t('admin.common.filter') }}
         </a-button>
-      </form>
+      </a-form>
+      </a-space>
     </a-card>
 
-    <a-card class="admin-generic-index__table-card" :bordered="true">
-      <div class="overflow-x-auto">
-        <a-table
-          :data="tableRows"
-          :pagination="false"
-          row-key="__rowKey"
-          :bordered="{ cell: true }"
-          stripe
-        >
+    <a-card :bordered="true">
+      <a-table
+        v-if="!isMobile"
+        :data="tableRows"
+        :pagination="false"
+        row-key="__rowKey"
+        :bordered="{ cell: true }"
+        :scroll="{ x: Math.max(720, columns.length * 180 + (selectable ? 52 : 0)) }"
+        size="medium"
+        stripe
+      >
           <template #columns>
             <a-table-column v-if="selectable" :width="52">
               <template #title>
@@ -378,60 +420,99 @@ async function bulkOrder(action: string) {
                 <a-checkbox
                   v-if="record.publicId"
                   :model-value="selectedPublicIds.includes(record.publicId)"
-                  @change="(checked: boolean) => toggleRowSelection(record.publicId, checked)"
+                  @change="(value) => toggleRowSelection(record.publicId, value)"
                 />
               </template>
             </a-table-column>
             <a-table-column
-              v-for="column in columns"
+              v-for="(column, columnIndex) in columns"
               :key="column.key"
               :title="column.label"
               :data-index="column.key"
+              :width="columnIndex === 0 ? 220 : 180"
+              ellipsis
+              tooltip
             >
               <template #cell="{ record }">
                 <Link
                   v-if="column.link && record.url"
                   :href="record.url"
-                  class="font-medium text-[rgb(var(--primary-6))] no-underline hover:underline"
                 >
                   {{ record[column.key] }}
                 </Link>
-                <span v-else>{{ record[column.key] }}</span>
+                <a-typography-text v-else>{{ record[column.key] }}</a-typography-text>
               </template>
             </a-table-column>
           </template>
           <template #empty>
             <a-empty :description="t('admin.ui.noResults')" />
           </template>
-        </a-table>
-      </div>
+      </a-table>
+
+      <a-list v-else :bordered="false">
+        <a-list-item
+          v-for="record in tableRows"
+          :key="record.__rowKey"
+        >
+          <a-space direction="vertical" :size="12" fill>
+            <a-checkbox
+              v-if="selectable && record.publicId"
+              :model-value="selectedPublicIds.includes(record.publicId)"
+              :aria-label="String(record[columns[0]?.key] || record.publicId)"
+              @change="(value) => toggleRowSelection(record.publicId, value)"
+            />
+            <a-descriptions :column="1" size="small" bordered>
+              <a-descriptions-item
+                v-for="column in columns"
+                :key="column.key"
+                :label="column.label"
+              >
+                <Link
+                  v-if="column.link && record.url"
+                  :href="record.url"
+                >
+                  {{ record[column.key] }}
+                </Link>
+                <a-typography-text v-else>{{ record[column.key] }}</a-typography-text>
+              </a-descriptions-item>
+            </a-descriptions>
+          </a-space>
+        </a-list-item>
+        <template #empty>
+          <a-empty :description="t('admin.ui.noResults')" />
+        </template>
+      </a-list>
     </a-card>
 
-    <div
-      v-if="pagination && pagination.pages > 1"
-      class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+    <a-row
+      v-if="pagination"
+      align="center"
+      justify="space-between"
+      :gutter="[12, 12]"
     >
-      <span class="text-sm text-[var(--color-text-3)]">
-        {{ pagination.from }}–{{ pagination.to }} / {{ pagination.count }}
-      </span>
-      <a-pagination
-        :current="pagination.page"
-        :total="pagination.pages"
-        :page-size="1"
-        :show-page-size="false"
-        @change="visitPage"
-      />
-    </div>
-  </div>
+      <a-col :xs="24" :sm="10">
+        <a-typography-text type="secondary">
+          {{
+            t('admin.ui.paginationSummary', {
+              count: pagination.count,
+              from: pagination.from,
+              to: pagination.to,
+            })
+          }}
+        </a-typography-text>
+      </a-col>
+      <a-col :xs="24" :sm="14">
+        <a-row justify="end">
+          <a-pagination
+            v-if="pagination.pages > 1"
+            :current="pagination.page"
+            :total="pagination.count"
+            :page-size="paginationPageSize"
+            :show-page-size="false"
+            @change="visitPage"
+          />
+        </a-row>
+      </a-col>
+    </a-row>
+  </a-space>
 </template>
-
-<style scoped>
-.admin-generic-index :deep(.arco-tabs + .arco-tabs),
-.admin-generic-index :deep(.arco-tabs + form) {
-  margin-top: 12px;
-}
-
-.admin-generic-index__table-card :deep(.arco-card-body) {
-  padding: 0;
-}
-</style>

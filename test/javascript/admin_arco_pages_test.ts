@@ -170,7 +170,7 @@ test('system settings use an Arco form while retaining the nested settings mutat
   assert.match(source, /<a-input/)
   assert.match(source, /<a-button/)
   assert.match(source, /settings\.\$\{key\}/)
-  assert.match(source, /form\.patch\(adminRoutes\.settings\)/)
+  assert.match(source, /form\.patch\(adminRoutes\.settings(?:,|\))/)
 })
 
 test('system webhook pages use Arco controls while retaining nested mutations and edit links', () => {

@@ -359,7 +359,10 @@ export default {
     },
     systemSettings: {
       title: 'System settings',
+      subtitle: 'Manage runtime configuration and operational entry points.',
+      configuration: 'Configuration values',
       save: 'Save settings',
+      empty: 'No system settings are available.',
     },
     censoredWords: {
       title: 'Censored words',

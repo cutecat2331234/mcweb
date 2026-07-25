@@ -359,7 +359,10 @@ export default {
     },
     systemSettings: {
       title: '系统设置',
+      subtitle: '管理运行时配置和运维入口。',
+      configuration: '配置值',
       save: '保存设置',
+      empty: '暂无系统设置。',
     },
     censoredWords: {
       title: '敏感词过滤',

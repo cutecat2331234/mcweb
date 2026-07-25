@@ -86,6 +86,5 @@ module Community
       days = ((poll.closes_at - poll.created_at) / 1.day).round
       days.positive? ? days : 0
     end
-
   end
 end

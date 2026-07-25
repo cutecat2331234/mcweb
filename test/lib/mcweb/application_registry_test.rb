@@ -91,7 +91,7 @@ class AdminSystemApplicationsTest < ActionDispatch::IntegrationTest
     assert_equal "active", plugin[:status]
     assert_equal 1, plugin[:listener_count]
     assert_equal [ "forum.events.read" ], plugin[:capabilities]
-    assert_equal({ :"acme/base" => ">= 1.0.0" }, plugin[:requires])
+    assert_equal({ "acme/base": ">= 1.0.0" }, plugin[:requires])
     assert(props[:pluginDiagnostics].any? do |entry|
       entry[:code] == "catalog_test" && entry[:plugin_id] == "acme/catalog"
     end)

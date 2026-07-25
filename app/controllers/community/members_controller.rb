@@ -40,9 +40,9 @@ module Community
       when "joined"
         scope.order(created_at: :desc)
       when "posts"
-        scope.order(Arel.sql("(#{member_post_count_sql}) DESC"))
+        scope.order(Arel::Nodes::Descending.new(member_post_count_subquery))
       when "likes"
-        scope.order(Arel.sql("(#{member_reaction_count_sql}) DESC"))
+        scope.order(Arel::Nodes::Descending.new(member_reaction_count_subquery))
       when "reviews"
         scope.order(Arel.sql("(SELECT COUNT(*) FROM store_reviews WHERE store_reviews.user_id = users.id AND store_reviews.status = 'published') DESC"))
       when "purchases"
@@ -94,24 +94,22 @@ module Community
       )
     end
 
-    def member_post_count_sql
-      listed_posts
-        .where("forum_posts.user_id = users.id")
-        .reorder(nil)
-        .select("COUNT(*)")
-        .to_sql
+    def member_post_count_subquery
+      posts = Community::Post.arel_table
+      users = User.arel_table
+      count_subquery(listed_posts.where(posts[:user_id].eq(users[:id])))
     end
 
-    def member_reaction_count_sql
-      Community::Reaction
-        .where(
-          forum_post_id: listed_posts
-            .where("forum_posts.user_id = users.id")
-            .select(:id)
-        )
-        .reorder(nil)
-        .select("COUNT(*)")
-        .to_sql
+    def member_reaction_count_subquery
+      posts = Community::Post.arel_table
+      users = User.arel_table
+      post_ids = listed_posts.where(posts[:user_id].eq(users[:id])).select(:id)
+      count_subquery(Community::Reaction.where(forum_post_id: post_ids))
+    end
+
+    def count_subquery(relation)
+      count = Arel::Nodes::Count.new([ Arel.star ])
+      Arel::Nodes::Grouping.new(relation.reorder(nil).select(count).arel.ast)
     end
 
     def serialize_member(user, stats:)

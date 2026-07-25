@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
@@ -123,13 +123,16 @@ async function prune() {
           <a-table-column :title="t('admin.attachments.colDownloads')" data-index="downloads" />
           <a-table-column :title="t('admin.attachments.colLinked')">
             <template #cell="{ record }">
-              <Link
+              <a
                 v-if="record.linked && record.post_url"
                 :href="record.post_url"
+                target="_blank"
+                rel="noopener"
+                data-admin-hard-navigation
                 class="text-[rgb(var(--primary-6))] no-underline hover:underline"
               >
                 {{ t('admin.attachments.linked') }}
-              </Link>
+              </a>
               <a-tag v-else color="orange">{{ t('admin.attachments.orphan') }}</a-tag>
             </template>
           </a-table-column>

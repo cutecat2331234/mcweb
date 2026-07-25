@@ -72,11 +72,14 @@ function submit() {
       :bordered="true"
     >
       <a-space wrap>
-        <a-link :href="adminRoutes.jobs">
+        <a-link
+          :href="adminRoutes.jobs"
+          data-admin-hard-navigation
+        >
           {{ t('admin.common.backgroundJobs') }}
         </a-link>
         <a-divider direction="vertical" />
-        <a-link href="/health/ready">
+        <a-link href="/health/ready" data-admin-hard-navigation>
           {{ t('admin.common.healthCheck') }}
         </a-link>
       </a-space>

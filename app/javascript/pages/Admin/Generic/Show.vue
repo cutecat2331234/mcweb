@@ -4,6 +4,7 @@ import { Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { confirm } from '@/lib/arcoConfirm'
+import { isAdminSpaNavigationHref } from '@/lib/adminNavigation'
 
 defineOptions({ layout: AdminLayout })
 
@@ -26,6 +27,7 @@ export interface DetailAction {
   confirm?: string
   variant?: 'default' | 'outline'
   data?: Record<string, unknown>
+  external?: boolean
 }
 
 export interface MuteForm {
@@ -722,13 +724,24 @@ function submitTrustLevel() {
           {{ action.label }}
         </a-button>
         <Link
-          v-else
+          v-else-if="!action.external && isAdminSpaNavigationHref(action.href)"
           :href="action.href"
           class="arco-btn arco-btn-size-medium no-underline"
           :class="action.variant === 'default' ? 'arco-btn-primary' : 'arco-btn-outline'"
         >
           {{ action.label }}
         </Link>
+        <a
+          v-else
+          :href="action.href"
+          target="_blank"
+          rel="noopener"
+          data-admin-hard-navigation
+          class="arco-btn arco-btn-size-medium no-underline"
+          :class="action.variant === 'default' ? 'arco-btn-primary' : 'arco-btn-outline'"
+        >
+          {{ action.label }}
+        </a>
       </template>
       <Link
         :href="backUrl"

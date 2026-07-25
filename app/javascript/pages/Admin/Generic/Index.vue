@@ -4,6 +4,7 @@ import { computed, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { confirm } from '@/lib/arcoConfirm'
+import { isAdminSpaNavigationHref } from '@/lib/adminNavigation'
 
 defineOptions({ layout: AdminLayout })
 
@@ -18,6 +19,7 @@ export interface AdminColumn {
 export interface AdminAction {
   label: string
   href: string
+  external?: boolean
 }
 
 export interface AdminAlert {
@@ -218,18 +220,30 @@ async function bulkOrder(action: string) {
           <a
             v-if="exportUrl"
             :href="exportUrl"
+            data-admin-hard-navigation
             class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
           >
             {{ t('admin.common.exportCsv') }}
           </a>
-          <Link
-            v-for="action in actions || []"
-            :key="action.href"
-            :href="action.href"
-            class="arco-btn arco-btn-primary arco-btn-size-medium no-underline"
-          >
-            {{ action.label }}
-          </Link>
+          <template v-for="action in actions || []" :key="action.href">
+            <Link
+              v-if="!action.external && isAdminSpaNavigationHref(action.href)"
+              :href="action.href"
+              class="arco-btn arco-btn-primary arco-btn-size-medium no-underline"
+            >
+              {{ action.label }}
+            </Link>
+            <a
+              v-else
+              :href="action.href"
+              target="_blank"
+              rel="noopener"
+              data-admin-hard-navigation
+              class="arco-btn arco-btn-primary arco-btn-size-medium no-underline"
+            >
+              {{ action.label }}
+            </a>
+          </template>
           <a-button
             v-if="bulkRetry"
             type="outline"
@@ -390,12 +404,22 @@ async function bulkOrder(action: string) {
             >
               <template #cell="{ record }">
                 <Link
-                  v-if="column.link && record.url"
+                  v-if="column.link && record.url && isAdminSpaNavigationHref(record.url)"
                   :href="record.url"
                   class="font-medium text-[rgb(var(--primary-6))] no-underline hover:underline"
                 >
                   {{ record[column.key] }}
                 </Link>
+                <a
+                  v-else-if="column.link && record.url"
+                  :href="record.url"
+                  target="_blank"
+                  rel="noopener"
+                  data-admin-hard-navigation
+                  class="font-medium text-[rgb(var(--primary-6))] no-underline hover:underline"
+                >
+                  {{ record[column.key] }}
+                </a>
                 <span v-else>{{ record[column.key] }}</span>
               </template>
             </a-table-column>

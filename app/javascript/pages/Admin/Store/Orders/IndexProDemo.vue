@@ -223,7 +223,7 @@ function bulkButtonStatus(type: OrderBulkAction['type']) {
             {{ action.label }}（{{ selectedRowKeys.length }}）
           </a-button>
 
-          <a-link v-if="exportUrl" :href="exportUrl">
+          <a-link v-if="exportUrl" :href="exportUrl" data-admin-hard-navigation>
             导出 CSV
           </a-link>
 

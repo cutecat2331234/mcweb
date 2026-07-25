@@ -1,7 +1,7 @@
 <script setup lang="ts">
 /**
  * Arco Design Vue admin showcase — /admin/arco-demo
- * Uses ArcoAdminLayout + components from @mcweb/ui.
+ * Uses the persistent AdminLayout + components from @mcweb/ui.
  */
 import { computed, reactive, ref, type Component } from 'vue'
 import { Message } from '@mcweb/ui'
@@ -16,9 +16,9 @@ import {
   IconSchedule,
   IconUser,
 } from '@arco-design/web-vue/es/icon'
-import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
-defineOptions({ layout: ArcoAdminLayout })
+defineOptions({ layout: AdminLayout })
 
 interface DemoStat {
   key: string

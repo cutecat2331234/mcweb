@@ -23,6 +23,7 @@ import { useTheme } from '@/lib/useTheme'
 interface NavItem {
   label: string
   href: string
+  hardNavigation?: boolean
 }
 interface NavGroup {
   key: string
@@ -133,7 +134,7 @@ const nav = computed<NavGroup[]>(() => [
       { label: t('admin.featureToggles.title'), href: adminRoutes.featureToggles },
       { label: t('admin.applications.nav'), href: adminRoutes.applications },
       { label: t('admin.settings'), href: adminRoutes.settings },
-      { label: t('admin.jobs'), href: adminRoutes.jobs },
+      { label: t('admin.jobs'), href: adminRoutes.jobs, hardNavigation: true },
     ],
   },
 ])
@@ -197,7 +198,15 @@ watch(openKeys, (keys) => {
 
 function onMenuClick(key: string) {
   mobileNavOpen.value = false
-  if (key && key !== currentPath.value) router.visit(key)
+  if (!key || key === currentPath.value) return
+
+  const item = nav.value.flatMap((group) => group.items).find((candidate) => candidate.href === key)
+  if (item?.hardNavigation) {
+    window.location.assign(key)
+    return
+  }
+
+  router.visit(key)
 }
 
 function onToggleTheme() {
@@ -252,7 +261,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <div v-show="!collapsed" class="arco-admin-sider__footer">
         <span v-if="auth.user">{{ auth.user.username }}</span>
         <span v-if="auth.user"> · </span>
-        <Link :href="adminRoutes.site">{{ t('common.backToSite') }}</Link>
+        <a :href="adminRoutes.site" data-admin-hard-navigation>{{ t('common.backToSite') }}</a>
       </div>
     </a-layout-sider>
 
@@ -338,7 +347,13 @@ watch(isDark, syncArcoTheme, { immediate: true })
     <div class="arco-admin-sider__footer">
       <span v-if="auth.user">{{ auth.user.username }}</span>
       <span v-if="auth.user"> · </span>
-      <Link :href="adminRoutes.site" @click="mobileNavOpen = false">{{ t('common.backToSite') }}</Link>
+      <a
+        :href="adminRoutes.site"
+        data-admin-hard-navigation
+        @click="mobileNavOpen = false"
+      >
+        {{ t('common.backToSite') }}
+      </a>
     </div>
   </a-drawer>
 </template>

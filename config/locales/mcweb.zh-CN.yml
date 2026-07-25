@@ -175,7 +175,7 @@
           topic: 已切换为普通（仅参与或被 @提及时通知）。
           section: 已切换为普通（不接收分区新主题通知）。
           tag: 已切换为普通（不接收标签新主题通知）。
-        off:
+        "off":
           topic: 已关闭此主题通知。
           section: 已取消关注此分区。
           tag: 已取消关注此标签。
@@ -1892,8 +1892,8 @@
             webhook_url_private: Webhook URL 不能指向内网或本地地址
     labels:
       not_available: "—"
-      yes: 是
-      no: 否
+      "yes": 是
+      "no": 否
       enabled: 启用
       disabled: 禁用
       unlimited: "∞"

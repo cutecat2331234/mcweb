@@ -175,7 +175,7 @@ en:
           topic: Normal (notify on participation or @mention only).
           section: Normal (no new topic notifications for this section).
           tag: Normal (no new topic notifications for this tag).
-        off:
+        "off":
           topic: Notifications off for this topic.
           section: Unwatched this section.
           tag: Unwatched this tag.
@@ -1892,8 +1892,8 @@ en:
             webhook_url_private: Webhook URL cannot point to a private or local address.
     labels:
       not_available: "—"
-      yes: "Yes"
-      no: "No"
+      "yes": "Yes"
+      "no": "No"
       enabled: Enabled
       disabled: Disabled
       unlimited: "∞"

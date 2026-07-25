@@ -52,6 +52,23 @@ class I18nZhCNTest < ActiveSupport::TestCase
     end
   end
 
+  test "boolean-like YAML keys remain addressable in every locale" do
+    keys = %w[
+      mcweb.flash.subscription.off.topic
+      mcweb.labels.yes
+      mcweb.labels.no
+    ]
+
+    I18n.available_locales.each do |locale|
+      I18n.with_locale(locale) do
+        keys.each do |key|
+          assert I18n.exists?(key), "#{locale} is missing #{key}"
+          refute_match(/\ATranslation missing:/, I18n.t(key))
+        end
+      end
+    end
+  end
+
   test "notification type labels respect locale" do
     I18n.with_locale("zh-CN") do
       assert_equal "主题回复", Community::NotificationTypeLabels.label_for("forum.topic_reply")

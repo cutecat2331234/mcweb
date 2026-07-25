@@ -224,7 +224,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       height: '100dvh',
       minHeight: '100dvh',
       overflow: 'hidden',
-      background: 'var(--color-fill-2)',
+      background: 'var(--color-bg-1)',
       '--color-border-2': 'var(--color-border-3)',
     }"
   >
@@ -266,7 +266,14 @@ watch(isDark, syncArcoTheme, { immediate: true })
       </div>
     </a-layout-sider>
 
-    <a-layout :style="{ minWidth: 0, height: '100dvh', overflow: 'hidden' }">
+    <a-layout
+      :style="{
+        minWidth: 0,
+        height: '100dvh',
+        overflow: 'hidden',
+        background: 'var(--color-fill-1)',
+      }"
+    >
       <a-layout-header class="arco-admin-header">
         <div class="arco-admin-header__left">
           <a-button

@@ -9,16 +9,30 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Refund is not pending.") unless @refund.pending?
+      rejection_error = nil
 
-      @refund.update!(status: "rejected", approved_by: @actor, reason: @reason.presence || @refund.reason)
+      Commerce::Refund.transaction do
+        refund = Commerce::Refund.lock.find(@refund.id)
+        unless refund.pending?
+          rejection_error = "Refund is not pending."
+          raise ActiveRecord::Rollback
+        end
 
-      Commerce::OrderEvent.create!(
-        order: @refund.order,
-        actor: @actor,
-        event_type: "refund_rejected",
-        metadata: { refund_id: @refund.id, reason: @reason }
-      )
+        refund.update!(
+          status: "rejected",
+          approved_by: @actor,
+          reason: @reason.presence || refund.reason
+        )
+        Commerce::OrderEvent.create!(
+          order: refund.order,
+          actor: @actor,
+          event_type: "refund_rejected",
+          metadata: { refund_id: refund.id, reason: @reason }
+        )
+        @refund = refund
+      end
+
+      return ServiceResult.failure(error: rejection_error) if rejection_error.present?
 
       MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_rejected", "deliver_now", args: [ @refund.id ])
 

@@ -511,7 +511,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   }
 }
 
-@media (min-width: 768px) {
+@media (min-width: 1024px) {
   .arco-admin-sider {
     display: flex !important;
   }

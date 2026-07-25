@@ -483,7 +483,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   padding: 8px 0;
 }
 
-@media (max-width: 767px) {
+@media (max-width: 1023px) {
   .arco-admin-sider {
     display: none !important;
   }

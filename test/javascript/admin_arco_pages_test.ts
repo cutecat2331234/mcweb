@@ -510,6 +510,7 @@ test('Arco admin shell selects parent items on detail routes and keeps mobile gr
   assert.match(source, /arco-admin-nav-trigger--desktop/)
   assert.match(source, /arco-page-header-subtitle/)
   assert.match(source, /white-space:\s*normal/)
+  assert.match(source, /@media \(max-width:\s*1023px\)/)
   assert.doesNotMatch(source, /overflow:\s*auto/)
   assert.doesNotMatch(source, /@\/components\/portal\//)
 })

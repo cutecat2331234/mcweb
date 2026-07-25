@@ -162,7 +162,7 @@ test('system feature toggles use Arco cards, alerts, and switches while retainin
   assert.match(source, /<a-alert/)
   assert.match(source, /<a-card/)
   assert.match(source, /<a-grid/)
-  assert.match(source, /:cols="\{ xs: 1, lg: 2 \}"/)
+  assert.match(source, /:cols="\{ xs: 1, sm: 1, lg: 2 \}"/)
   assert.match(source, /<a-switch/)
   assert.match(source, /!form\.features\.forum && !form\.features\.store/)
   assert.match(source, /form\.patch\(adminRoutes\.featureToggles\)/)
@@ -533,6 +533,11 @@ test('every reachable admin page is free of legacy controls and uses the Arco co
     assert.doesNotMatch(source, /@\/components\/portal\//)
     assert.doesNotMatch(source, /@\/lib\/useConfirm/)
     assert.doesNotMatch(source, /<a-form\b[^>]*@submit\.prevent/)
+    assert.doesNotMatch(
+      source,
+      /\{ xs: [^,}]+, (?:lg|xl):/,
+      'responsive objects must cover the intermediate sm breakpoint',
+    )
   }
 
   const confirmSource = javascriptSource('lib/arcoConfirm.ts')

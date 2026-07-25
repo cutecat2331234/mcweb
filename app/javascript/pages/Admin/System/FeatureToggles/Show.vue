@@ -65,7 +65,7 @@ function submit() {
 
               <a-grid
                 v-if="features.length"
-                :cols="{ xs: 1, lg: 2 }"
+                :cols="{ xs: 1, sm: 1, lg: 2 }"
                 :col-gap="16"
                 :row-gap="16"
               >

@@ -318,6 +318,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <a-scrollbar
         type="embed"
         :outer-style="{ width: '100%', height: 'calc(100dvh - 60px)' }"
+        :style="{ height: '100%', overflowY: 'auto', overflowX: 'hidden' }"
       >
         <a-layout-content id="admin-content" class="arco-admin-main" tabindex="-1">
           <div class="arco-admin-main__inner">

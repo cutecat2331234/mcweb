@@ -15,6 +15,9 @@ module Admin
       SiteSetting.set("features.test.enabled", "true")
       SiteSetting.set("forum.auto_close_on_solved", "0")
       SiteSetting.set("forum.bump_cooldown_hours", "24")
+      SiteSetting.set("forum.event_webhook_events", "topic.created,post.created")
+      SiteSetting.set("forum.event_webhook_secret", "test-secret")
+      SiteSetting.set("forum.online_peak_count", "10")
     end
 
     test "system settings expose boolean controls without changing stored encodings" do
@@ -31,7 +34,12 @@ module Admin
       assert_equal "1", settings.dig("forum.auto_close_on_solved", :enabled_value)
       assert_equal "0", settings.dig("forum.auto_close_on_solved", :disabled_value)
 
-      assert_equal "text", settings.dig("forum.bump_cooldown_hours", :control)
+      assert_equal "number", settings.dig("forum.bump_cooldown_hours", :control)
+      assert_equal "forum", settings.dig("forum.bump_cooldown_hours", :category)
+      assert_equal "textarea", settings.dig("forum.event_webhook_events", :control)
+      assert settings.dig("forum.event_webhook_events", :wide)
+      assert_equal "password", settings.dig("forum.event_webhook_secret", :control)
+      assert_equal "readonly", settings.dig("forum.online_peak_count", :control)
     end
   end
 end

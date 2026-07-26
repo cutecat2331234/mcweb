@@ -6,6 +6,7 @@ import '@/styles/portal.css'
 // Arco Design Vue — unified admin UI library (see docs/UI_COMPONENT_LIBRARY.md)
 import '@arco-design/web-vue/dist/arco.css'
 import '@/styles/arco-admin.css'
+import { installAdminSpaNavigation } from '@/lib/adminNavigation'
 import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'
 import { applyPhraseOverrides, createAppI18n, normalizeAppLocale, syncI18nLocale } from '@/lib/i18n'
 
@@ -16,6 +17,11 @@ const i18n = createAppI18n()
 function inertiaTitle(title: string): string {
   const prefix = document.documentElement.dataset.developerMode === 'true' ? '[DEV] ' : ''
   return `${prefix}${title || 'Mcweb Admin'}`
+}
+
+const removeAdminSpaNavigation = installAdminSpaNavigation((href) => router.visit(href))
+if (import.meta.hot) {
+  import.meta.hot.dispose(removeAdminSpaNavigation)
 }
 
 router.on('before', (event) => {

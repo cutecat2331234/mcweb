@@ -19,7 +19,7 @@ module Admin
         sign_in_as(@admin)
       end
 
-      test "renders only dedicated setting destinations without SiteSetting data" do
+      test "renders dedicated destinations and redacts sensitive setting values" do
         secret = "must-never-reach-system-settings-#{SecureRandom.hex(8)}"
         SiteSetting.set("test.system.webhook_secret", secret)
 
@@ -53,14 +53,24 @@ module Admin
         ], entries.map { |entry| entry.fetch(:id) }.sort
         assert entries.all? { |entry| entry.keys.sort == %i[id kind url] }
 
+        settings = props.fetch(:settings)
+        secret_setting = settings.find do |setting|
+          setting.fetch(:key) == "test.system.webhook_secret"
+        end
+        assert_equal "", secret_setting.fetch(:value)
+        assert secret_setting.fetch(:sensitive)
+        assert secret_setting.fetch(:configured)
+        refute settings.any? { |setting| %w[
+          general.site_name
+          site.name
+          site.url
+        ].include?(setting.fetch(:key)) }
+
         serialized = response.body
         refute_includes serialized, secret
-        refute_includes serialized, "test.system.webhook_secret"
         refute_includes serialized, "general.site_name"
         refute_includes serialized, "site.name"
         refute_includes serialized, "site.url"
-        refute_includes serialized, '"key":'
-        refute_includes serialized, '"value":'
       end
 
       test "updates only the typed basic settings whitelist and writes an exact audit" do

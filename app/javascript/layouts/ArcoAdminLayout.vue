@@ -229,7 +229,9 @@ watch(openKeys, (keys) => {
 
 function onMenuClick(key: string) {
   mobileNavOpen.value = false
-  if (key && key !== currentPath.value) router.visit(key)
+  if (!key || key === currentPath.value) return
+
+  router.visit(key)
 }
 
 function onToggleTheme() {
@@ -284,7 +286,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <div v-show="!collapsed" class="arco-admin-sider__footer">
         <span v-if="auth.user">{{ auth.user.username }}</span>
         <span v-if="auth.user"> · </span>
-        <a :href="adminRoutes.site">{{ t('common.backToSite') }}</a>
+        <a :href="adminRoutes.site" data-admin-hard-navigation>{{ t('common.backToSite') }}</a>
       </div>
     </a-layout-sider>
 
@@ -386,7 +388,13 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <div class="arco-admin-sider__footer">
         <span v-if="auth.user">{{ auth.user.username }}</span>
         <span v-if="auth.user"> · </span>
-        <a :href="adminRoutes.site" @click="mobileNavOpen = false">{{ t('common.backToSite') }}</a>
+        <a
+          :href="adminRoutes.site"
+          data-admin-hard-navigation
+          @click="mobileNavOpen = false"
+        >
+          {{ t('common.backToSite') }}
+        </a>
       </div>
     </div>
   </a-drawer>

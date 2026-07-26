@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, type Component } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
+import { computed, ref, watch, type Component } from 'vue'
 import { useI18n } from 'vue-i18n'
 import {
   IconApps,
@@ -10,6 +10,7 @@ import {
   IconDashboard,
   IconExperiment,
   IconHome,
+  IconInfoCircle,
   IconLink,
   IconLock,
   IconSafe,
@@ -18,6 +19,16 @@ import {
   IconThunderbolt,
 } from '@arco-design/web-vue/es/icon'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import {
+  SYSTEM_SETTING_GROUP_ORDER,
+  systemSettingBooleanStorage,
+  systemSettingBooleanValue,
+  systemSettingGroup,
+  systemSettingInputType,
+  systemSettingReadOnly,
+  type SystemSettingGroup,
+  type SystemSettingInputType,
+} from '@/lib/systemSettings'
 
 defineOptions({ layout: AdminLayout })
 
@@ -34,6 +45,21 @@ export interface SettingsSection {
   entries: SettingsEntry[]
 }
 
+export interface SettingItem {
+  key: string
+  value: string
+  label: string
+  hint?: string | null
+  sensitive?: boolean
+  configured?: boolean
+}
+
+interface DisplaySetting extends SettingItem {
+  group: SystemSettingGroup
+  inputType: SystemSettingInputType
+  readOnly: boolean
+}
+
 const props = defineProps<{
   sections: SettingsSection[]
   basicSettings: {
@@ -42,15 +68,28 @@ const props = defineProps<{
   }
   formErrors?: Record<string, string>
   updateUrl: string
+  settings: SettingItem[]
 }>()
 
 const { t } = useI18n()
-const form = useForm({
+
+const basicForm = useForm({
   basic_settings: {
     site_name: props.basicSettings.site_name,
     site_url: props.basicSettings.site_url,
   },
 })
+
+const settingsForm = useForm({
+  settings: Object.fromEntries(
+    props.settings.map((setting) => [setting.key, setting.value]),
+  ) as Record<string, string>,
+})
+const form = settingsForm
+const baselineSettings = ref<Record<string, string>>({ ...settingsForm.settings })
+
+const query = ref('')
+const activeGroup = ref<SystemSettingGroup>('general')
 
 const entryIcons: Record<string, Component> = {
   feature_toggles: IconThunderbolt,
@@ -84,6 +123,53 @@ const quickEntries = computed(() => {
     .filter((entry): entry is SettingsEntry => Boolean(entry))
 })
 
+const displaySettings = computed<DisplaySetting[]>(() =>
+  props.settings.map((setting) => ({
+    ...setting,
+    group: systemSettingGroup(setting.key),
+    inputType: setting.sensitive ? 'password' : systemSettingInputType(setting.key),
+    readOnly: systemSettingReadOnly(setting.key),
+  })),
+)
+
+const groups = computed(() => {
+  const normalizedQuery = query.value.trim().toLocaleLowerCase()
+
+  return SYSTEM_SETTING_GROUP_ORDER.map((key) => {
+    const settings = displaySettings.value.filter((setting) => {
+      if (setting.group !== key) return false
+      if (!normalizedQuery) return true
+
+      return [setting.label, setting.hint, setting.key]
+        .filter(Boolean)
+        .some((value) =>
+          String(value).toLocaleLowerCase().includes(normalizedQuery),
+        )
+    })
+
+    return { key, settings }
+  }).filter((group) => group.settings.length > 0)
+})
+
+const changedSettings = computed(() =>
+  Object.fromEntries(
+    Object.entries(settingsForm.settings).filter(
+      ([key, value]) => value !== baselineSettings.value[key],
+    ),
+  ),
+)
+const changedCount = computed(() => Object.keys(changedSettings.value).length)
+
+watch(
+  groups,
+  (nextGroups) => {
+    if (!nextGroups.some((group) => group.key === activeGroup.value)) {
+      activeGroup.value = nextGroups[0]?.key || 'general'
+    }
+  },
+  { immediate: true },
+)
+
 function entryTitle(id: string) {
   return t(`admin.systemSettings.entries.${id}.title`)
 }
@@ -98,30 +184,66 @@ function visitEntry(url: string) {
   router.visit(url)
 }
 
-function fieldError(field: 'site_name' | 'site_url') {
+function basicFieldError(field: 'site_name' | 'site_url') {
   const code = props.formErrors?.[field]
   if (code) return t(`admin.systemSettings.errors.${code}`)
 
-  return form.errors[`basic_settings.${field}`]
+  return basicForm.errors[`basic_settings.${field}`]
+}
+
+function settingFieldError(key: string) {
+  return settingsForm.errors[key] || settingsForm.errors[`settings.${key}`]
+}
+
+function numberValue(key: string) {
+  const value = Number(settingsForm.settings[key])
+  return Number.isFinite(value) ? value : undefined
+}
+
+function updateNumber(key: string, value: number | undefined) {
+  settingsForm.settings[key] = value == null ? '' : String(value)
+}
+
+function updateBoolean(key: string, enabled: boolean) {
+  settingsForm.settings[key] = systemSettingBooleanStorage(key, enabled)
 }
 
 function submitBasicSettings() {
-  form.patch(props.updateUrl, {
+  basicForm.patch(props.updateUrl, {
     preserveScroll: true,
   })
+}
+
+function submitSettings() {
+  settingsForm.transform(() => ({ settings: changedSettings.value }))
+  settingsForm.patch(props.updateUrl, {
+    preserveScroll: true,
+    onSuccess: () => {
+      for (const setting of props.settings) {
+        if (setting.sensitive) form.settings[setting.key] = ''
+      }
+      baselineSettings.value = { ...settingsForm.settings }
+      settingsForm.defaults()
+    },
+  })
+}
+
+function resetChanges() {
+  settingsForm.settings = { ...baselineSettings.value }
+  settingsForm.clearErrors()
 }
 </script>
 
 <template>
-  <section class="admin-system-settings">
+  <a-space direction="vertical" :size="20" fill>
     <a-page-header
       :title="t('admin.systemSettings.title')"
       :subtitle="t('admin.systemSettings.subtitle')"
       :show-back="false"
-      class="mb-5 !px-0"
+      class="!px-0"
     >
       <template #extra>
-        <a-space wrap>
+        <a-space wrap size="small">
           <a-button
             v-for="entry in quickEntries"
             :key="entry.id"
@@ -142,13 +264,11 @@ function submitBasicSettings() {
       :title="t('admin.systemSettings.safetyTitle')"
       :description="t('admin.systemSettings.safetyDescription')"
       show-icon
-      class="mb-5"
     />
 
     <a-card
       :title="t('admin.systemSettings.basicTitle')"
       :bordered="true"
-      class="mb-5"
     >
       <template #extra>
         <a-tag color="green">
@@ -161,7 +281,7 @@ function submitBasicSettings() {
       </a-typography-paragraph>
 
       <a-form
-        :model="form.basic_settings"
+        :model="basicForm.basic_settings"
         layout="vertical"
         @submit="submitBasicSettings"
       >
@@ -174,11 +294,11 @@ function submitBasicSettings() {
             <a-form-item
               field="basic_settings.site_name"
               :label="t('admin.systemSettings.siteNameLabel')"
-              :help="fieldError('site_name') || t('admin.systemSettings.siteNameHint')"
-              :validate-status="fieldError('site_name') ? 'error' : undefined"
+              :help="basicFieldError('site_name') || t('admin.systemSettings.siteNameHint')"
+              :validate-status="basicFieldError('site_name') ? 'error' : undefined"
             >
               <a-input
-                v-model="form.basic_settings.site_name"
+                v-model="basicForm.basic_settings.site_name"
                 :max-length="80"
                 :input-attrs="{ autocomplete: 'organization' }"
                 show-word-limit
@@ -192,11 +312,11 @@ function submitBasicSettings() {
             <a-form-item
               field="basic_settings.site_url"
               :label="t('admin.systemSettings.siteUrlLabel')"
-              :help="fieldError('site_url') || t('admin.systemSettings.siteUrlHint')"
-              :validate-status="fieldError('site_url') ? 'error' : undefined"
+              :help="basicFieldError('site_url') || t('admin.systemSettings.siteUrlHint')"
+              :validate-status="basicFieldError('site_url') ? 'error' : undefined"
             >
               <a-input
-                v-model="form.basic_settings.site_url"
+                v-model="basicForm.basic_settings.site_url"
                 :placeholder="t('admin.systemSettings.siteUrlPlaceholder')"
                 :input-attrs="{
                   type: 'url',
@@ -215,11 +335,11 @@ function submitBasicSettings() {
           <a-button
             type="primary"
             html-type="submit"
-            :loading="form.processing"
+            :loading="basicForm.processing"
           >
             {{ t('admin.systemSettings.saveBasic') }}
           </a-button>
-          <a-tag v-if="form.recentlySuccessful" color="green">
+          <a-tag v-if="basicForm.recentlySuccessful" color="green">
             {{ t('admin.common.saved') }}
           </a-tag>
         </a-space>
@@ -286,7 +406,7 @@ function submitBasicSettings() {
       </a-grid-item>
     </a-grid>
 
-    <a-card :bordered="false" class="mt-5">
+    <a-card :bordered="false">
       <a-space wrap>
         <a-tag color="green">
           {{ t('admin.systemSettings.visibleEntryCount', { count: entryCount }) }}
@@ -296,5 +416,155 @@ function submitBasicSettings() {
         </a-typography-text>
       </a-space>
     </a-card>
-  </section>
+
+    <a-card
+      :title="t('admin.systemSettings.configuration')"
+      :bordered="true"
+    >
+      <a-form
+        v-if="settings.length"
+        :model="settingsForm.settings"
+        layout="vertical"
+        @submit="submitSettings"
+      >
+        <a-space direction="vertical" :size="16" fill>
+          <a-alert
+            type="info"
+            show-icon
+            :title="t('admin.systemSettings.localizedNoticeTitle')"
+            :content="t('admin.systemSettings.localizedNotice')"
+          />
+
+          <a-input-search
+            v-model="query"
+            allow-clear
+            :placeholder="t('admin.systemSettings.searchPlaceholder')"
+          />
+
+          <a-tabs v-model:active-key="activeGroup" type="rounded" lazy-load>
+            <a-tab-pane
+              v-for="group in groups"
+              :key="group.key"
+              :title="t(`admin.systemSettings.groups.${group.key}`)"
+            >
+              <a-grid
+                :cols="{ xs: 1, md: 2 }"
+                :col-gap="16"
+                :row-gap="12"
+              >
+                <a-grid-item
+                  v-for="setting in group.settings"
+                  :key="setting.key"
+                >
+                  <a-card size="small" :bordered="true">
+                    <a-form-item
+                      :field="`settings.${setting.key}`"
+                      :label="setting.label"
+                      :validate-status="settingFieldError(setting.key) ? 'error' : undefined"
+                      :help="settingFieldError(setting.key) || setting.hint || undefined"
+                    >
+                      <template #label>
+                        <a-space :size="6" wrap>
+                          <span>{{ setting.label }}</span>
+                          <a-tooltip
+                            :content="t('admin.systemSettings.technicalKey', { key: setting.key })"
+                          >
+                            <IconInfoCircle />
+                          </a-tooltip>
+                          <a-tag v-if="setting.readOnly" size="small">
+                            {{ t('admin.systemSettings.automaticValue') }}
+                          </a-tag>
+                        </a-space>
+                      </template>
+
+                      <a-space
+                        v-if="setting.inputType === 'boolean'"
+                        :size="8"
+                      >
+                        <a-switch
+                          :model-value="systemSettingBooleanValue(settingsForm.settings[setting.key])"
+                          :disabled="setting.readOnly"
+                          @change="(value: boolean) => updateBoolean(setting.key, value)"
+                        />
+                        <a-typography-text type="secondary">
+                          {{
+                            systemSettingBooleanValue(settingsForm.settings[setting.key])
+                              ? t('admin.systemSettings.enabled')
+                              : t('admin.systemSettings.disabled')
+                          }}
+                        </a-typography-text>
+                      </a-space>
+
+                      <a-input-number
+                        v-else-if="setting.inputType === 'number'"
+                        :model-value="numberValue(setting.key)"
+                        :readonly="setting.readOnly"
+                        class="w-full"
+                        @change="(value: number | undefined) => updateNumber(setting.key, value)"
+                      />
+
+                      <a-input-password
+                        v-else-if="setting.inputType === 'password'"
+                        v-model="settingsForm.settings[setting.key]"
+                        allow-clear
+                        :placeholder="
+                          setting.configured
+                            ? t('admin.systemSettings.secretConfigured')
+                            : t('admin.systemSettings.secretNotConfigured')
+                        "
+                      />
+
+                      <a-textarea
+                        v-else-if="setting.inputType === 'textarea'"
+                        v-model="settingsForm.settings[setting.key]"
+                        :auto-size="{ minRows: 2, maxRows: 6 }"
+                        :readonly="setting.readOnly"
+                        allow-clear
+                      />
+
+                      <a-input
+                        v-else
+                        v-model="settingsForm.settings[setting.key]"
+                        :readonly="setting.readOnly"
+                        allow-clear
+                      />
+                    </a-form-item>
+                  </a-card>
+                </a-grid-item>
+              </a-grid>
+            </a-tab-pane>
+          </a-tabs>
+
+          <a-empty
+            v-if="groups.length === 0"
+            :description="t('admin.systemSettings.noResults')"
+          />
+
+          <a-divider />
+
+          <a-space wrap size="medium">
+            <a-button
+              type="primary"
+              html-type="submit"
+              :loading="settingsForm.processing"
+              :disabled="changedCount === 0"
+            >
+              {{ t('admin.systemSettings.saveChanges', { count: changedCount }) }}
+            </a-button>
+            <a-button
+              :disabled="changedCount === 0 || settingsForm.processing"
+              @click="resetChanges"
+            >
+              {{ t('admin.systemSettings.reset') }}
+            </a-button>
+            <a-tag v-if="settingsForm.recentlySuccessful" color="green">
+              {{ t('admin.common.saved') }}
+            </a-tag>
+          </a-space>
+        </a-space>
+      </a-form>
+
+      <a-empty v-else :description="t('admin.systemSettings.empty')" />
+    </a-card>
+  </a-space>
 </template>

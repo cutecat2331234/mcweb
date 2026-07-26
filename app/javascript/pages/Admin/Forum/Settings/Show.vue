@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useForm, router } from '@inertiajs/vue3'
+import { Link, useForm, router } from '@inertiajs/vue3'
 import { ref, onBeforeUnmount, computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -243,12 +243,12 @@ async function sendTestAllEventWebhooks() {
         </span>
         · {{ lastTestEventWebhookDisplay.created_at }}
       </a-alert>
-      <a
+      <Link
         :href="adminRoutes.forumEventWebhookDeliveries"
         class="mt-3 inline-block text-xs text-[rgb(var(--primary-6))] no-underline hover:underline"
       >
         {{ t('admin.forumSettings.viewEventDeliveries') }}
-      </a>
+      </Link>
     </a-card>
   </form>
 </template>

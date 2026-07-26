@@ -1189,6 +1189,101 @@
           col_published: 发布时间
           field_summary: 摘要
       system:
+        settings:
+          custom_label: 自定义配置项
+          portal_required: 论坛和商城至少需要保留一个开启。
+          labels:
+            features.forum.enabled: 社区功能
+            features.minecraft.enabled: Minecraft 功能
+            features.store.enabled: 商城功能
+            features.website_blog.enabled: 官网文章功能
+            general.site_name: 兼容站点名称
+            forum.edit_grace_period_minutes: 帖子免留痕编辑时限
+            forum.extra_report_reasons: 自定义举报原因
+            forum.flag_abuse_threshold: 滥用标记阈值
+            forum.group_pm_max_participants: 群组私信人数上限
+            forum.max_daily_reactions: 每日反应次数上限
+            forum.max_reactions_per_minute: 每分钟反应次数上限
+            forum.max_reports_per_hour: 每小时举报次数上限
+            forum.max_upload_size_mb: 社区上传大小上限
+            forum.min_trust_level_pm: 使用私信的最低信任等级
+            forum.min_trust_level_profile_post: 发布个人动态的最低信任等级
+            forum.online_peak_at: 历史最高在线时间
+            forum.online_peak_count: 历史最高在线人数
+            forum.points.daily_check_in: 每日签到积分
+            forum.profile_posts_enabled: 启用个人动态
+            forum.reaction_scores: 反应积分规则
+            forum.vapid_private_key: Web Push VAPID 私钥
+            forum.vapid_public_key: Web Push VAPID 公钥
+            forum.warning_suspend_days: 警告自动封禁天数
+            forum.warning_suspend_threshold: 警告自动封禁阈值
+            frontend.active_portal_template: 当前社区前台模板
+            frontend.active_website_template: 当前官网模板
+            minecraft.backup.enabled: 启用世界定时备份
+            minecraft.backup.schedule: 世界备份计划
+            minecraft.bridges.enabled: 已启用的 Minecraft 桥接
+            minecraft.bridges.placeholders: 允许同步的占位符
+            minecraft.commerce.pause_fulfill_during_maintenance: 维护期间暂停商城发货
+            minecraft.exec_command.allowed_prefixes: 允许执行的命令前缀
+            minecraft.graceful_stop.commands: 优雅停服命令
+            minecraft.graceful_stop.countdown_seconds: 优雅停服倒计时
+            minecraft.graceful_stop.enabled: 启用优雅停服
+            minecraft.graceful_stop.message: 优雅停服提示消息
+            minecraft.link_command: 游戏内绑定命令
+            minecraft.profile.sections: 玩家资料展示区块
+            minecraft.profile.skin_mode: 玩家皮肤显示模式
+            site.name: 站点名称
+            site.url: 站点公开地址
+            store.product_discussion_section_slug: 商品讨论板块标识
+            store.shipping_methods: 配送方式
+            webhook.failure_alert_last_sent_at: 最近一次 Webhook 告警时间
+            api.rate_limit_per_minute: API 每分钟请求上限
+          hints:
+            features.forum.enabled: 控制社区论坛入口和相关功能是否可用。
+            features.minecraft.enabled: 控制 Minecraft 服务器、玩家与绑定功能是否可用。
+            features.store.enabled: 控制商城入口、商品和订单功能是否可用。
+            features.website_blog.enabled: 控制官网文章列表和文章内容是否展示。
+            general.site_name: 为旧版模板和罐头回复保留的站点名称，通常应与“站点名称”一致。
+            forum.edit_grace_period_minutes: 发帖后在此分钟数内编辑不会显示编辑记录。
+            forum.extra_report_reasons: 额外举报原因，使用“标识:名称”格式并以逗号分隔。
+            forum.flag_abuse_threshold: 达到该次数后将标记可能存在的举报滥用。
+            forum.group_pm_max_participants: 一个群组私信会话允许的最大参与人数。
+            forum.max_daily_reactions: 单个用户每天可以添加的反应数量，0 表示不限制。
+            forum.max_reactions_per_minute: 单个用户每分钟可以添加的反应数量，0 表示不限制。
+            forum.max_reports_per_hour: 单个用户每小时可以提交的举报数量。
+            forum.max_upload_size_mb: 社区附件允许的最大文件大小，单位为 MB。
+            forum.min_trust_level_pm: 低于该信任等级的用户不能发起私信。
+            forum.min_trust_level_profile_post: 低于该信任等级的用户不能发布个人动态。
+            forum.online_peak_at: 系统记录历史最高在线人数时的时间，不需要手动修改。
+            forum.online_peak_count: 系统自动统计的历史最高在线人数。
+            forum.points.daily_check_in: 用户每天完成签到后获得的积分。
+            forum.profile_posts_enabled: 控制用户个人主页上的动态发布功能。
+            forum.reaction_scores: 不同反应对应的积分，使用“表情:分值”格式并以逗号分隔。
+            forum.vapid_private_key: Web Push 签名私钥；现有值不会发送到浏览器，留空会保持不变。
+            forum.vapid_public_key: 浏览器订阅 Web Push 时使用的公开密钥。
+            forum.warning_suspend_days: 触发自动封禁后账号暂停使用的天数。
+            forum.warning_suspend_threshold: 警告积分达到该值后自动封禁账号，0 表示关闭。
+            frontend.active_portal_template: 社区与商城前台当前使用的模板标识。
+            frontend.active_website_template: 官网当前使用的模板标识。
+            minecraft.backup.enabled: 按备份计划自动备份 Minecraft 世界。
+            minecraft.backup.schedule: 世界备份任务使用的 Cron 表达式。
+            minecraft.bridges.enabled: 以逗号分隔需要启用的桥接模块。
+            minecraft.bridges.placeholders: 允许通过桥接同步的 PlaceholderAPI 占位符，以逗号分隔。
+            minecraft.commerce.pause_fulfill_during_maintenance: 服务器维护时暂缓执行需要进服的订单发货。
+            minecraft.exec_command.allowed_prefixes: 节点允许执行的命令前缀白名单，以逗号分隔。
+            minecraft.graceful_stop.commands: 停服倒计时结束后按顺序执行的命令，以逗号分隔。
+            minecraft.graceful_stop.countdown_seconds: 执行停服命令前的倒计时秒数。
+            minecraft.graceful_stop.enabled: 停止服务器时先广播倒计时并安全保存世界。
+            minecraft.graceful_stop.message: 倒计时广播文本，可使用 {seconds} 占位符。
+            minecraft.link_command: 玩家在游戏内输入该命令开始网站账号绑定。
+            minecraft.profile.sections: 玩家资料页展示的区块标识，以逗号分隔。
+            minecraft.profile.skin_mode: 玩家资料页使用的皮肤渲染模式。
+            site.name: 显示在页面标题、导航和系统邮件中的站点名称。
+            site.url: 用户能够访问的完整站点地址，包含 http:// 或 https://。
+            store.product_discussion_section_slug: 自动创建商品讨论主题时使用的社区板块标识。
+            store.shipping_methods: 配送方式的结构化 JSON；建议在商城设置页中维护。
+            webhook.failure_alert_last_sent_at: 系统记录的最近一次失败告警发送时间，不需要手动修改。
+            api.rate_limit_per_minute: 单个 API 身份每分钟允许的最大请求数。
         applications:
           title: 应用与扩展
           marketplace:

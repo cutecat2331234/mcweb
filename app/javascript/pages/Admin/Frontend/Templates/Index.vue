@@ -99,7 +99,9 @@ function statusColor(status: string) {
         {{ t('admin.templates.manifestSpec') }}
       </a-link>
       {{ t('admin.templates.orDownload') }}
-      <a-link :href="starterDownloadUrl">{{ t('admin.templates.samplePack') }}</a-link>
+      <a-link :href="starterDownloadUrl" data-admin-hard-navigation>
+        {{ t('admin.templates.samplePack') }}
+      </a-link>
     </a-typography-paragraph>
     <a-upload
       accept=".zip,application/zip"

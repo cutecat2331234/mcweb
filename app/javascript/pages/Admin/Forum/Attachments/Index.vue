@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
   Alert,
@@ -458,13 +458,16 @@ async function prune() {
               <template #cell="{ record }">
                 <div class="space-y-1.5">
                   <p>{{ record.uploader ? `@${record.uploader}` : '—' }}</p>
-                  <Link
+                  <a
                     v-if="record.linked && record.post_url"
                     :href="record.post_url"
-                    class="arco-link inline-block no-underline"
+                    target="_blank"
+                    rel="noopener"
+                    data-admin-hard-navigation
+                    class="arco-link inline-block no-underline hover:underline"
                   >
                     {{ t('admin.attachments.linked') }}
-                  </Link>
+                  </a>
                   <Tag v-else color="orange">{{ t('admin.attachments.orphan') }}</Tag>
                 </div>
               </template>
@@ -596,13 +599,16 @@ async function prune() {
             </div>
 
             <div class="flex flex-wrap items-center justify-between gap-2">
-              <Link
+              <a
                 v-if="upload.linked && upload.post_url"
                 :href="upload.post_url"
-                class="arco-link font-medium no-underline"
+                target="_blank"
+                rel="noopener"
+                data-admin-hard-navigation
+                class="arco-link font-medium no-underline hover:underline"
               >
                 {{ t('admin.attachments.openPost') }}
-              </Link>
+              </a>
               <span v-else />
               <div class="flex flex-wrap justify-end gap-1">
                 <Button

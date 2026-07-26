@@ -162,7 +162,7 @@ test('system feature toggles use Arco cards, alerts, and switches while retainin
   assert.match(source, /form\.patch\(adminRoutes\.featureToggles\)/)
 })
 
-test('system settings is a safe Arco hub with only a typed basic-settings whitelist', () => {
+test('system settings combines the safe Arco hub with localized typed controls', () => {
   const source = pageSource('System/Settings/Show.vue')
 
   assertNoLegacyPagePrimitives(source)
@@ -181,10 +181,18 @@ test('system settings is a safe Arco hub with only a typed basic-settings whitel
   assert.match(source, /if \(url === window\.location\.pathname\) return/)
   assert.match(source, /router\.visit\(url\)/)
   assert.match(source, /@click="visitEntry\(entry\.url\)"/)
-  assert.match(source, /form\.patch\(props\.updateUrl/)
+  assert.match(source, /basicForm\.patch\(props\.updateUrl/)
   assert.match(source, /basic_settings\.site_name/)
   assert.match(source, /basic_settings\.site_url/)
-  assert.doesNotMatch(source, /setting\.key|settings\.\$\{key\}|Object\.fromEntries|\/health\/ready/)
+  assert.match(source, /<a-input-search/)
+  assert.match(source, /<a-tabs/)
+  assert.match(source, /<a-switch/)
+  assert.match(source, /<a-input-number/)
+  assert.match(source, /<a-input-password/)
+  assert.match(source, /<a-textarea/)
+  assert.match(source, /settings\.\$\{setting\.key\}/)
+  assert.match(source, /settingsForm\.patch\(props\.updateUrl/)
+  assert.doesNotMatch(source, /\/health\/ready/)
 })
 
 test('system webhook pages use Arco controls while retaining nested mutations and edit links', () => {

@@ -110,7 +110,7 @@ module Admin
         body_result = ::Website::RenderArticleBody.call(body: @article.body)
         seo_result = ::Website::ResolveSeo.call(record: @article)
 
-        render inertia: "Website/Articles/Show", props: {
+        render inertia: "Website/Articles/Show", layout: "inertia", props: {
           article: serialize_article_detail(@article).merge(
             body_html: body_result.success? ? body_result.value.to_s : "",
             slug: @article.slug

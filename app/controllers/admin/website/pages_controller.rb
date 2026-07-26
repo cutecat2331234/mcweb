@@ -113,7 +113,7 @@ module Admin
         blocks_result = ::Website::SerializePageBlocks.call(page: @page)
         seo_result = ::Website::ResolveSeo.call(record: @page)
 
-        render inertia: "Website/Pages/Show", props: {
+        render inertia: "Website/Pages/Show", layout: "inertia", props: {
           page: { title: @page.title, slug: @page.slug },
           blocks: blocks_result.value,
           seo: seo_result.value

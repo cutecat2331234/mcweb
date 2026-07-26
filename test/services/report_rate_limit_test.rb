@@ -33,5 +33,7 @@ class ReportRateLimitTest < ActionDispatch::IntegrationTest
 
     submit_report(@posts[2]) # exceeds the limit of 2/hour
     assert_equal 2, Community::Report.where(reporter: @reporter).count
+    assert_operator response.headers["Retry-After"].to_i, :>, 0
+    assert_operator response.headers["Retry-After"].to_i, :<=, 1.hour.to_i
   end
 end

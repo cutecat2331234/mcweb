@@ -17,6 +17,11 @@ function syncCsrfFromInertiaPage(page?: { props?: Record<string, unknown> }) {
 
 const i18n = createAppI18n()
 
+function inertiaTitle(title: string): string {
+  const prefix = document.documentElement.dataset.developerMode === 'true' ? '[DEV] ' : ''
+  return `${prefix}${title || 'Mcweb'}`
+}
+
 function syncLocaleFromInertiaPage(page?: { props?: Record<string, unknown> }) {
   syncI18nLocale(i18n, page?.props?.locale)
 }
@@ -45,6 +50,7 @@ if (typeof window !== 'undefined') {
 }
 
 createInertiaApp({
+  title: inertiaTitle,
   setup({ el, App, props, plugin }) {
     const initialPage = (props as { initialPage?: { props?: Record<string, unknown> } }).initialPage
     syncCsrfFromInertiaPage(initialPage)

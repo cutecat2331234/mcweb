@@ -69,6 +69,7 @@ class Round116EditPostAttachmentsTest < ActiveSupport::TestCase
       byte_size: 4
     )
     @attachment.file.attach(io: StringIO.new("data"), filename: "edit.txt", content_type: "text/plain")
+    mark_attachment_scan_clean!(@attachment)
     SiteSetting.set("forum.event_webhook_url", "https://example.com/forum-events")
     SiteSetting.set("forum.event_webhook_events", "post.edited")
   end

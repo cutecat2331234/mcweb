@@ -1,8 +1,15 @@
-FROM ruby:4.0.6-slim-bookworm AS base
+FROM node:26-bookworm-slim AS node
+
+FROM ruby:4.0.6-slim-bookworm AS build
 
 RUN apt-get update -qq && \
-    apt-get install -y --no-install-recommends curl libpq-dev nodejs npm && \
+    apt-get install -y --no-install-recommends build-essential libpq-dev libvips42 && \
     rm -rf /var/lib/apt/lists/*
+
+COPY --from=node /usr/local/bin/node /usr/local/bin/node
+COPY --from=node /usr/local/bin/npm /usr/local/bin/npm
+COPY --from=node /usr/local/bin/npx /usr/local/bin/npx
+COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules
 
 WORKDIR /app
 ENV RAILS_ENV=production \
@@ -10,15 +17,44 @@ ENV RAILS_ENV=production \
     BUNDLE_WITHOUT="development:test" \
     BUNDLE_PATH=/app/vendor/bundle
 
-COPY Gemfile Gemfile.lock ./
-RUN bundle install
+COPY Gemfile Gemfile.lock package.json package-lock.json ./
+RUN bundle install && npm ci
 
 COPY . .
-RUN npm ci && \
+RUN SECRET_KEY_BASE=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \
+    LOCKBOX_MASTER_KEY=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
+    RAILS_INBOUND_EMAIL_PASSWORD=build-only-inbound-password-00000000000000000000000000000000 \
+    MCWEB_PUBLIC_URL=https://build.mcweb.invalid-domain \
+    MCWEB_ALLOWED_HOSTS=build.mcweb.invalid-domain \
+    MCWEB_SMTP_ADDRESS=127.0.0.1 \
+    MCWEB_SMTP_AUTHENTICATION=none \
+    MCWEB_MAIL_FROM=build@mcweb.invalid-domain \
+    MCWEB_S3_BUCKET=mcweb-build-private \
+    MCWEB_S3_REGION=us-east-1 \
     bundle exec rails assets:precompile && \
-    npm ci --omit=dev
+    rm -rf node_modules tmp/cache
 
-COPY bin/docker-entrypoint /usr/bin/
+FROM ruby:4.0.6-slim-bookworm AS runtime
+
+RUN apt-get update -qq && \
+    apt-get install -y --no-install-recommends curl libpq5 libvips42 && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd --system --gid 1000 mcweb && \
+    useradd --system --uid 1000 --gid mcweb --create-home --home-dir /home/mcweb mcweb
+
+WORKDIR /app
+ENV RAILS_ENV=production \
+    BUNDLE_DEPLOYMENT=1 \
+    BUNDLE_WITHOUT="development:test" \
+    BUNDLE_PATH=/app/vendor/bundle
+
+COPY --from=build --chown=mcweb:mcweb /app /app
+COPY --from=build /app/bin/docker-entrypoint /usr/bin/docker-entrypoint
+RUN chmod 0755 /usr/bin/docker-entrypoint && \
+    mkdir -p /var/lib/mcweb /app/log /app/storage /app/tmp/pids && \
+    chown -R mcweb:mcweb /var/lib/mcweb /app/log /app/storage /app/tmp
+
+USER mcweb
 ENTRYPOINT ["docker-entrypoint"]
 EXPOSE 3000
 CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]

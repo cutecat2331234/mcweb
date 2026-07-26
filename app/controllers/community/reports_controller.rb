@@ -16,7 +16,9 @@ module Community
       reportable = find_reportable
       return redirect_back fallback_location: root_path, alert: t("mcweb.flash.content_not_found") unless reportable
 
-      unless within_report_rate_limit?
+      rate_limit_result = report_rate_limit
+      if rate_limit_result.failure?
+        apply_retry_after_header(rate_limit_result)
         return redirect_back fallback_location: root_path, alert: t("mcweb.flash.report_rate_limited")
       end
 
@@ -65,13 +67,12 @@ module Community
       params.require(:report).permit(:reportable_type, :reportable_id, :reason, :reason_code, :reason_detail)
     end
 
-    # Throttle flag submissions to curb report abuse (forum.max_reports_per_hour,
-    # 0 = unlimited). Mirrors the rate limiting already used for posts/topics.
-    def within_report_rate_limit?
-      limit = SiteSetting.get("forum.max_reports_per_hour", "10").to_i
-      return true if limit <= 0
-
-      Administration::RateLimiter.call(key: "forum_report:#{current_user.id}", limit: limit, window: 1.hour).success?
+    def report_rate_limit
+      Administration::AbuseRateLimit.call(
+        action: :report,
+        account: current_user,
+        ip_address: request.remote_ip
+      )
     end
 
     def find_reportable

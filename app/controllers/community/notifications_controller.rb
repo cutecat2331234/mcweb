@@ -24,6 +24,12 @@ module Community
       )
 
       unread_count = current_user.notifications.unread.count
+      type_counts, type_unread_counts = notification_type_counts(
+        base_scope,
+        category: category,
+        read: read_filter,
+        period: period_filter
+      )
 
       grouped = group_notifications(notifications, notification_access: notification_access)
 
@@ -39,8 +45,21 @@ module Community
         activeRead: read_filter.presence || "all",
         activeType: type_filter.to_s,
         activePeriod: period_filter.to_s,
-        typeTabs: notification_type_tabs(base_scope, category: category, read: read_filter, period: period_filter),
-        quickFilters: notification_quick_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
+        typeTabs: notification_type_tabs(
+          category: category,
+          read: read_filter,
+          period: period_filter,
+          counts: type_counts,
+          unread_counts: type_unread_counts
+        ),
+        quickFilters: notification_quick_filters(
+          category: category,
+          read: read_filter,
+          type: type_filter,
+          period: period_filter,
+          counts: type_counts,
+          unread_counts: type_unread_counts
+        ),
         periodFilters: notification_period_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
         activeFilters: notification_active_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
         unreadCount: unread_count
@@ -155,10 +174,14 @@ module Community
       end
     end
 
-    def notification_type_tabs(base_scope, category:, read:, period: nil)
+    def notification_type_counts(base_scope, category:, read:, period: nil)
       scope = apply_notification_filters(base_scope.unscope(:order), category: category, read: read, type: nil, period: period)
       counts = scope.group(:notification_type).count
-      unread_counts = scope.unread.group(:notification_type).count
+      unread_counts = read == "unread" ? counts : scope.unread.group(:notification_type).count
+      [ counts, unread_counts ]
+    end
+
+    def notification_type_tabs(category:, read:, counts:, unread_counts:, period: nil)
       current = params[:type].to_s
 
       tabs = counts.map do |type, count|
@@ -179,21 +202,23 @@ module Community
           label: NotificationTypeLabels.label_for(current),
           href: forum_notifications_path(notification_tab_params(category: category, read: read, type: current, period: period)),
           active: true,
-          count: scope.where(notification_type: current).count,
-          unread_count: scope.unread.where(notification_type: current).count
+          count: 0,
+          unread_count: 0
         })
       end
 
       tabs.first(12)
     end
 
-    def notification_quick_filters(category:, read:, type:, period: nil)
+    def notification_quick_filters(category:, read:, type:, period: nil, counts: nil, unread_counts: nil)
       Community::NotificationQuickFilters.call(
         user: current_user,
         category: category,
         read: read,
         active_type: type,
-        period: period
+        period: period,
+        counts: counts,
+        unread_counts: unread_counts
       )
     end
 

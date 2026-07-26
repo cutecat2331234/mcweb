@@ -285,13 +285,13 @@ module Mcweb
       end
 
       def freely_extensible?
-        # "Extensible" here means reviewed, deployment-installed Ruby code can
-        # extend the process. It never means untrusted upload or sandboxed code.
+        # "Extensible" here means reviewed, fully trusted Ruby code can extend
+        # the process. It never means untrusted upload or sandboxed code.
         true
       end
 
       def plugin_installation_mode
-        :deployment
+        :deployment_or_reviewed_local_package
       end
 
       private

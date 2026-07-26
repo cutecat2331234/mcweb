@@ -22,7 +22,9 @@ module Mcweb
     config.load_defaults 8.1
     config.autoload_lib(ignore: %w[assets tasks])
 
-    if (secret_key_base = Mcweb::LocalConfig.load["secret_key_base"]).present?
+    secret_key_base = ENV["SECRET_KEY_BASE"].presence ||
+      Mcweb::LocalConfig.load["secret_key_base"].presence
+    if secret_key_base
       config.secret_key_base = secret_key_base
     end
 

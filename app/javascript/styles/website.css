@@ -42,6 +42,41 @@
   background: rgba(3, 10, 3, 0.82);
 }
 
+.website-developer-mode {
+  position: relative;
+  z-index: 60;
+  border-bottom: 1px solid rgba(251, 191, 36, 0.45);
+  background:
+    linear-gradient(90deg, rgba(245, 158, 11, 0.2), rgba(168, 85, 247, 0.12)),
+    rgba(20, 12, 3, 0.94);
+  color: #fde68a;
+}
+
+.website-developer-mode__inner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+  width: min(72rem, 100%);
+  margin-inline: auto;
+  padding: 0.65rem 1rem;
+  font-size: 0.8rem;
+}
+
+.website-developer-mode__label {
+  border: 1px solid rgba(251, 191, 36, 0.45);
+  border-radius: 999px;
+  padding: 0.15rem 0.55rem;
+  color: #fef3c7;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.website-developer-mode strong {
+  color: #fca5a5;
+}
+
 .website-nav-link {
   color: #94a3b8;
   text-decoration: none;

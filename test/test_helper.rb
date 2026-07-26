@@ -1,4 +1,7 @@
 ENV["RAILS_ENV"] ||= "test"
+# The normal suite verifies production behavior. Developer Mode scenarios opt in
+# with an immutable settings snapshot inside their own tests.
+ENV["MCWEB_DEVELOPER_MODE"] = "0"
 require_relative "../config/environment"
 Commerce::InAppNotification # preload before parallel test workers fork
 Commerce::MembershipSummary
@@ -8,6 +11,7 @@ require "rails/test_help"
 require "minitest/reporters"
 require "active_job/test_helper"
 require "ostruct"
+require_relative "support/stripe_test_helpers"
 
 unless ENV["LOCKBOX_MASTER_KEY"].to_s.match?(/\A\h{64}\z/i)
   ENV["LOCKBOX_MASTER_KEY"] = "a" * 64
@@ -18,6 +22,7 @@ Minitest::Reporters.use! Minitest::Reporters::ProgressReporter.new
 module ActiveSupport
   class TestCase
     include ActiveJob::TestHelper
+    include StripeTestHelpers
     parallelize(workers: :number_of_processors)
 
     parallelize_setup do
@@ -119,6 +124,36 @@ module ActiveSupport
       )
 
       [ topic, post ]
+    end
+
+    # Direct attachment fixtures bypass the public upload service. Mark them as
+    # having completed the scanner lifecycle explicitly when a test needs to
+    # exercise binding rather than scan quarantine behavior.
+    def mark_attachment_scan_clean!(attachment)
+      raise ArgumentError, "fixture attachment must have a blob" unless attachment.file.attached?
+
+      blob = attachment.file.blob
+      upload = attachment.upload_record || Community::Upload.new(
+        user: attachment.user,
+        post_attachment: attachment,
+        public_id: Community::Upload.generate_public_id,
+        kind: "post_attachment",
+        byte_size: blob.byte_size
+      )
+      upload.update!(
+        blob: blob,
+        post: attachment.post,
+        status: attachment.linked? ? "linked" : "stored",
+        expires_at: attachment.linked? ? nil : 24.hours.from_now,
+        scan_status: "clean",
+        scanner: "test_scanner",
+        scan_result_code: "clean",
+        scanned_at: Time.current,
+        scan_started_at: nil,
+        next_scan_at: nil,
+        quarantined_at: nil
+      )
+      attachment.reload
     end
 
     def grant_permission(user, permission_key)

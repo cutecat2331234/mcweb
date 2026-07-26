@@ -171,18 +171,16 @@ mkdir -p '{p["remote_dir"]}'
 tar -xzf '{p["remote_tarball"]}' -C '{p["remote_dir"]}' --strip-components=1
 cd '{p["remote_dir"]}'
 chmod +x quick-install.sh
-if ! ./quick-install.sh; then
-  echo "quick-install failed, finishing migrate + restart..."
-  sudo -u mcweb bash -c "
-    set -a
-    source /etc/mcweb/mcweb.env
-    set +a
-    export RAILS_ENV=production
-    cd /opt/mcweb/current
-    {bundle} exec rails db:migrate
-  " || true
-  systemctl restart mcweb-web mcweb-worker
-fi
+sudo -u mcweb bash -c "
+  set -euo pipefail
+  set -a
+  source /etc/mcweb/mcweb.env
+  set +a
+  export RAILS_ENV=production
+  cd '{p["remote_dir"]}'
+  '{bundle}' exec ruby scripts/check-stripe-account-binding.rb
+"
+./quick-install.sh
 for i in 1 2 3 4 5 6 7 8 9 10; do
   if systemctl is-active --quiet mcweb-web mcweb-worker && curl -fsS http://127.0.0.1:3000/health/live >/dev/null 2>&1; then
     break

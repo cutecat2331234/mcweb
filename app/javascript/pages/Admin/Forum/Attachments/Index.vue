@@ -1,25 +1,65 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import AdminLayout from '@/layouts/AdminLayout.vue'
+import {
+  Alert,
+  Button,
+  Card,
+  Descriptions,
+  DescriptionsItem,
+  Empty,
+  Grid,
+  GridItem,
+  Option,
+  PageHeader,
+  Pagination,
+  Select,
+  Statistic,
+  Table,
+  TableColumn,
+  Tag,
+  TypographyText,
+} from '@mcweb/ui'
+import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { confirm } from '@/lib/arcoConfirm'
 
-defineOptions({ layout: AdminLayout })
+defineOptions({ layout: ArcoAdminLayout })
 
-const { t } = useI18n()
-
-type Attachment = {
+type UploadRow = {
   id: number
+  public_id: string
   filename: string
   size: string
   content_type: string | null
   downloads: number
   uploader: string | null
+  kind: 'inline_image' | 'post_attachment'
+  status:
+    | 'reserved'
+    | 'stored'
+    | 'linked'
+    | 'cleanup_pending'
+    | 'cleanup_failed'
+    | 'cleaned'
+  scan_status: 'pending' | 'clean' | 'infected' | 'error'
+  scan_result_code: string | null
+  scanner: string | null
+  scan_attempts: number
+  cleanup_attempts: number
+  quarantined: boolean
   linked: boolean
   post_url: string | null
-  created_at: string
-  delete_url: string
+  created_at: string | null
+  scanned_at: string | null
+  cleaned_at: string | null
+  expires_at: string | null
+  delete_url: string | null
+  actions: {
+    retry_scan_url?: string
+    retry_cleanup_url?: string
+  }
 }
 
 type PaginationMeta = {
@@ -28,39 +68,204 @@ type PaginationMeta = {
   count: number
   from: number | null
   to: number | null
-  prev: number | null
-  next: number | null
 }
 
+type QuotaMetric = {
+  used: number
+  limit: number
+}
+
+type FilterName =
+  | ''
+  | 'scan_pending'
+  | 'quarantined'
+  | 'cleanup_failed'
+  | 'cleaned'
+  | 'orphans'
+
+const filterValues: FilterName[] = [
+  '',
+  'scan_pending',
+  'quarantined',
+  'cleanup_failed',
+  'cleaned',
+  'orphans',
+]
+
 const props = defineProps<{
-  attachments: Attachment[]
+  uploads: UploadRow[]
   pagination: PaginationMeta
-  filter: string
+  filter: FilterName
+  filterCounts: {
+    all: number
+    scan_pending: number
+    quarantined: number
+    cleanup_failed: number
+    cleaned: number
+    orphans: number
+  }
+  summary: {
+    active: number
+    scan_pending: number
+    quarantined: number
+    cleanup_failed: number
+    cleaned: number
+  }
+  quotaUsage: {
+    bytes: {
+      usedLabel: string
+      limitLabel: string | null
+    }
+    count: QuotaMetric
+    hourlyCount: QuotaMetric
+  }
+  canManageSecurity: boolean
   orphanCount: number
   pruneUrl: string
 }>()
 
-function setFilter(value: string) {
-  router.get(adminRoutes.forumAttachments, value ? { filter: value } : {}, { preserveState: true })
+const { locale, t, te } = useI18n()
+const selectedFilter = ref<FilterName>(props.filter)
+
+watch(
+  () => props.filter,
+  (value) => {
+    selectedFilter.value = value
+  },
+)
+
+function translation(path: string, fallback: string) {
+  return te(path) ? t(path) : fallback
+}
+
+function formatCount(value: number) {
+  return new Intl.NumberFormat(locale.value).format(value)
+}
+
+function formatTime(value: string | null) {
+  if (!value) return '—'
+  return new Intl.DateTimeFormat(locale.value, {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+  }).format(new Date(value))
+}
+
+function filterCount(value: FilterName) {
+  return value ? props.filterCounts[value] : props.filterCounts.all
+}
+
+function filterLabel(value: FilterName) {
+  return t(`admin.attachments.filters.${value || 'all'}`)
+}
+
+function kindLabel(value: string) {
+  return translation(`admin.attachments.kinds.${value}`, value)
+}
+
+function lifecycleLabel(value: string) {
+  return translation(`admin.attachments.statuses.${value}`, value)
+}
+
+function scanLabel(value: string) {
+  return translation(`admin.attachments.scanStatuses.${value}`, value)
+}
+
+function lifecycleColor(value: UploadRow['status']) {
+  if (value === 'linked' || value === 'cleaned') return 'green'
+  if (value === 'cleanup_failed') return 'red'
+  if (value === 'cleanup_pending') return 'orange'
+  if (value === 'stored') return 'arcoblue'
+  return 'gray'
+}
+
+function scanColor(value: UploadRow['scan_status']) {
+  if (value === 'clean') return 'green'
+  if (value === 'infected') return 'red'
+  if (value === 'error') return 'orange'
+  return 'arcoblue'
+}
+
+function quotaCountLabel(metric: QuotaMetric) {
+  const used = formatCount(metric.used)
+  if (metric.limit === 0) {
+    return t('admin.attachments.quotaUnlimitedValue', { used })
+  }
+
+  return t('admin.attachments.quotaUsedOfLimit', {
+    used,
+    limit: formatCount(metric.limit),
+  })
+}
+
+function quotaBytesLabel() {
+  if (!props.quotaUsage.bytes.limitLabel) {
+    return t('admin.attachments.quotaUnlimitedValue', {
+      used: props.quotaUsage.bytes.usedLabel,
+    })
+  }
+
+  return t('admin.attachments.quotaUsedOfLimit', {
+    used: props.quotaUsage.bytes.usedLabel,
+    limit: props.quotaUsage.bytes.limitLabel,
+  })
+}
+
+function setFilter(value: unknown) {
+  const normalized = filterValues.includes(value as FilterName) ? (value as FilterName) : ''
+  selectedFilter.value = normalized
+  router.get(
+    adminRoutes.forumAttachments,
+    normalized ? { filter: normalized } : {},
+    { preserveState: true, preserveScroll: true, replace: true },
+  )
 }
 
 function visitPage(page: number) {
   router.get(
     adminRoutes.forumAttachments,
     { ...(props.filter ? { filter: props.filter } : {}), page },
-    { preserveState: true, preserveScroll: true },
+    { preserveState: true, preserveScroll: true, replace: true },
   )
 }
 
-async function removeAttachment(a: Attachment) {
+async function removeAttachment(upload: UploadRow) {
+  if (!upload.delete_url) return
+
   const ok = await confirm({
     title: t('admin.attachments.deleteTitle'),
-    message: t('admin.attachments.deleteConfirm', { name: a.filename }),
+    message: t('admin.attachments.deleteConfirm', { name: upload.filename }),
     confirmLabel: t('admin.ui.delete'),
     variant: 'destructive',
   })
   if (!ok) return
-  router.delete(a.delete_url, { preserveScroll: true })
+
+  router.delete(upload.delete_url, { preserveScroll: true })
+}
+
+async function retryScan(upload: UploadRow) {
+  if (!upload.actions.retry_scan_url) return
+
+  const ok = await confirm({
+    title: t('admin.attachments.retryScanTitle'),
+    message: t('admin.attachments.retryScanConfirm', { name: upload.filename }),
+    confirmLabel: t('admin.attachments.retryScan'),
+  })
+  if (!ok) return
+
+  router.post(upload.actions.retry_scan_url, {}, { preserveScroll: true })
+}
+
+async function retryCleanup(upload: UploadRow) {
+  if (!upload.actions.retry_cleanup_url) return
+
+  const ok = await confirm({
+    title: t('admin.attachments.retryCleanupTitle'),
+    message: t('admin.attachments.retryCleanupConfirm', { name: upload.filename }),
+    confirmLabel: t('admin.attachments.retryCleanup'),
+  })
+  if (!ok) return
+
+  router.post(upload.actions.retry_cleanup_url, {}, { preserveScroll: true })
 }
 
 async function prune() {
@@ -71,100 +276,385 @@ async function prune() {
     variant: 'destructive',
   })
   if (!ok) return
+
   router.delete(props.pruneUrl)
 }
 </script>
 
 <template>
-  <a-page-header
-    :title="t('admin.attachments.title')"
-    :subtitle="t('admin.attachments.subtitle')"
-    :show-back="false"
-    class="mb-4 !px-0"
-  >
-    <template v-if="orphanCount > 0" #extra>
-      <a-button type="primary" status="danger" size="small" @click="prune">
-        {{ t('admin.attachments.prune', { count: orphanCount }) }}
-      </a-button>
-    </template>
-  </a-page-header>
+  <section>
+    <PageHeader
+      :title="t('admin.attachments.title')"
+      :subtitle="t('admin.attachments.subtitle')"
+      :show-back="false"
+      class="mb-5 !px-0"
+    >
+      <template v-if="canManageSecurity && orphanCount > 0" #extra>
+        <Button type="outline" status="danger" @click="prune">
+          {{ t('admin.attachments.prune', { count: orphanCount }) }}
+        </Button>
+      </template>
+    </PageHeader>
 
-  <a-card class="mb-4" :bordered="true">
-    <a-space wrap>
-      <a-button :type="!filter ? 'primary' : 'outline'" @click="setFilter('')">
-        {{ t('admin.attachments.tabAll') }}
-      </a-button>
-      <a-button
-        :type="filter === 'orphans' ? 'primary' : 'outline'"
-        @click="setFilter('orphans')"
-      >
-        {{ t('admin.attachments.tabOrphans') }} ({{ orphanCount }})
-      </a-button>
-    </a-space>
-  </a-card>
-
-  <a-card class="attachments-index__table-card" :bordered="true">
-    <div class="overflow-x-auto">
-      <a-table
-        :data="attachments"
-        :pagination="false"
-        row-key="id"
-        :bordered="{ cell: true }"
-        stripe
-      >
-        <template #columns>
-          <a-table-column :title="t('admin.attachments.colFile')" data-index="filename">
-            <template #cell="{ record }"><strong>{{ record.filename }}</strong></template>
-          </a-table-column>
-          <a-table-column :title="t('admin.attachments.colSize')" data-index="size" />
-          <a-table-column :title="t('admin.attachments.colUploader')" data-index="uploader">
-            <template #cell="{ record }">{{ record.uploader ? `@${record.uploader}` : '—' }}</template>
-          </a-table-column>
-          <a-table-column :title="t('admin.attachments.colDownloads')" data-index="downloads" />
-          <a-table-column :title="t('admin.attachments.colLinked')">
-            <template #cell="{ record }">
-              <Link
-                v-if="record.linked && record.post_url"
-                :href="record.post_url"
-                class="text-[rgb(var(--primary-6))] no-underline hover:underline"
-              >
-                {{ t('admin.attachments.linked') }}
-              </Link>
-              <a-tag v-else color="orange">{{ t('admin.attachments.orphan') }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column :width="100">
-            <template #cell="{ record }">
-              <a-button type="text" status="danger" size="small" @click="removeAttachment(record)">
-                {{ t('admin.ui.delete') }}
-              </a-button>
-            </template>
-          </a-table-column>
-        </template>
-        <template #empty><a-empty :description="t('admin.attachments.empty')" /></template>
-      </a-table>
-    </div>
-  </a-card>
-
-  <div
-    v-if="pagination.pages > 1"
-    class="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-  >
-    <span class="text-sm text-[var(--color-text-3)]">
-      {{ pagination.from }}–{{ pagination.to }} / {{ pagination.count }}
-    </span>
-    <a-pagination
-      :current="pagination.page"
-      :total="pagination.pages"
-      :page-size="1"
-      :show-page-size="false"
-      @change="visitPage"
+    <Alert
+      type="warning"
+      show-icon
+      :closable="false"
+      :title="t('admin.attachments.securityNotice')"
+      class="mb-5"
     />
-  </div>
-</template>
 
-<style scoped>
-.attachments-index__table-card :deep(.arco-card-body) {
-  padding: 0;
-}
-</style>
+    <Grid :cols="{ xs: 1, sm: 2, xl: 5 }" :col-gap="16" :row-gap="16" class="mb-5">
+      <GridItem>
+        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
+          <Statistic :title="t('admin.attachments.active')" :value="summary.active" />
+        </Card>
+      </GridItem>
+      <GridItem>
+        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
+          <Statistic :title="t('admin.attachments.scanPending')" :value="summary.scan_pending" />
+        </Card>
+      </GridItem>
+      <GridItem>
+        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
+          <Statistic :title="t('admin.attachments.quarantined')" :value="summary.quarantined" />
+        </Card>
+      </GridItem>
+      <GridItem>
+        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
+          <Statistic
+            :title="t('admin.attachments.cleanupFailed')"
+            :value="summary.cleanup_failed"
+          />
+        </Card>
+      </GridItem>
+      <GridItem>
+        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
+          <Statistic :title="t('admin.attachments.cleaned')" :value="summary.cleaned" />
+        </Card>
+      </GridItem>
+    </Grid>
+
+    <Card :bordered="false" class="mb-5">
+      <div class="mb-4">
+        <h2 class="text-lg font-semibold">{{ t('admin.attachments.quotaTitle') }}</h2>
+        <TypographyText type="secondary">
+          {{ t('admin.attachments.quotaHint') }}
+        </TypographyText>
+      </div>
+
+      <Descriptions
+        :column="{ xs: 1, sm: 3 }"
+        layout="vertical"
+        :bordered="false"
+      >
+        <DescriptionsItem :label="t('admin.attachments.retainedBytes')">
+          <span class="font-medium">{{ quotaBytesLabel() }}</span>
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('admin.attachments.activeUploads')">
+          <span class="font-medium">{{ quotaCountLabel(quotaUsage.count) }}</span>
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('admin.attachments.hourlyAccepted')">
+          <span class="font-medium">{{ quotaCountLabel(quotaUsage.hourlyCount) }}</span>
+        </DescriptionsItem>
+      </Descriptions>
+    </Card>
+
+    <Card :bordered="false">
+      <div class="mb-5 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div class="min-w-0">
+          <h2 class="text-lg font-semibold">{{ t('admin.attachments.lifecycleTitle') }}</h2>
+          <TypographyText type="secondary">
+            {{ t('admin.attachments.lifecycleHint') }}
+          </TypographyText>
+        </div>
+
+        <Select
+          v-model="selectedFilter"
+          class="w-full md:w-72"
+          :aria-label="t('admin.attachments.filterLabel')"
+          @change="setFilter"
+        >
+          <Option v-for="value in filterValues" :key="value || 'all'" :value="value">
+            {{ filterLabel(value) }} ({{ formatCount(filterCount(value)) }})
+          </Option>
+        </Select>
+      </div>
+
+      <TypographyText type="secondary" class="mb-3 hidden lg:block">
+        {{ t('admin.attachments.scrollHint') }}
+      </TypographyText>
+
+      <div class="hidden overflow-x-auto lg:block">
+        <Table
+          :data="uploads"
+          :pagination="false"
+          :bordered="false"
+          :scroll="{ minWidth: 1340 }"
+          row-key="id"
+          stripe
+        >
+          <template #columns>
+            <TableColumn :title="t('admin.attachments.colFile')" :width="300">
+              <template #cell="{ record }">
+                <div class="min-w-0 space-y-1.5">
+                  <p class="truncate font-medium" :title="record.filename">
+                    {{ record.filename }}
+                  </p>
+                  <p class="truncate font-mono text-xs text-[var(--color-text-3)]">
+                    {{ record.public_id }}
+                  </p>
+                  <div class="flex flex-wrap gap-1.5">
+                    <Tag color="arcoblue">{{ kindLabel(record.kind) }}</Tag>
+                    <Tag v-if="record.content_type" color="gray">{{ record.content_type }}</Tag>
+                  </div>
+                </div>
+              </template>
+            </TableColumn>
+
+            <TableColumn :title="t('admin.attachments.colScan')" :width="240">
+              <template #cell="{ record }">
+                <div class="space-y-1.5">
+                  <div class="flex flex-wrap gap-1.5">
+                    <Tag :color="scanColor(record.scan_status)">
+                      {{ scanLabel(record.scan_status) }}
+                    </Tag>
+                    <Tag v-if="record.quarantined" color="red">
+                      {{ t('admin.attachments.quarantined') }}
+                    </Tag>
+                  </div>
+                  <p v-if="record.scan_result_code" class="break-all font-mono text-xs">
+                    {{ record.scan_result_code }}
+                  </p>
+                  <p class="text-xs text-[var(--color-text-3)]">
+                    {{ record.scanner || '—' }}
+                  </p>
+                </div>
+              </template>
+            </TableColumn>
+
+            <TableColumn :title="t('admin.attachments.colLifecycle')" :width="220">
+              <template #cell="{ record }">
+                <div class="space-y-1.5">
+                  <Tag :color="lifecycleColor(record.status)">
+                    {{ lifecycleLabel(record.status) }}
+                  </Tag>
+                  <p class="text-xs text-[var(--color-text-3)]">
+                    {{
+                      t('admin.attachments.attempts', {
+                        scans: record.scan_attempts,
+                        cleanups: record.cleanup_attempts,
+                      })
+                    }}
+                  </p>
+                  <p v-if="record.expires_at" class="text-xs text-[var(--color-text-3)]">
+                    {{ t('admin.attachments.expiresAt', { time: formatTime(record.expires_at) }) }}
+                  </p>
+                </div>
+              </template>
+            </TableColumn>
+
+            <TableColumn :title="t('admin.attachments.colOwner')" :width="180">
+              <template #cell="{ record }">
+                <div class="space-y-1.5">
+                  <p>{{ record.uploader ? `@${record.uploader}` : '—' }}</p>
+                  <Link
+                    v-if="record.linked && record.post_url"
+                    :href="record.post_url"
+                    class="arco-link inline-block no-underline"
+                  >
+                    {{ t('admin.attachments.linked') }}
+                  </Link>
+                  <Tag v-else color="orange">{{ t('admin.attachments.orphan') }}</Tag>
+                </div>
+              </template>
+            </TableColumn>
+
+            <TableColumn :title="t('admin.attachments.colUsage')" :width="150">
+              <template #cell="{ record }">
+                <div class="space-y-1">
+                  <p class="font-medium">{{ record.size }}</p>
+                  <p class="text-xs text-[var(--color-text-3)]">
+                    {{ t('admin.attachments.downloads', { count: record.downloads }) }}
+                  </p>
+                </div>
+              </template>
+            </TableColumn>
+
+            <TableColumn :title="t('admin.attachments.colTime')" :width="190">
+              <template #cell="{ record }">
+                <div class="space-y-1 text-xs">
+                  <p>{{ formatTime(record.created_at) }}</p>
+                  <p v-if="record.scanned_at" class="text-[var(--color-text-3)]">
+                    {{ t('admin.attachments.scannedAt', { time: formatTime(record.scanned_at) }) }}
+                  </p>
+                  <p v-if="record.cleaned_at" class="text-[var(--color-text-3)]">
+                    {{ t('admin.attachments.cleanedAt', { time: formatTime(record.cleaned_at) }) }}
+                  </p>
+                </div>
+              </template>
+            </TableColumn>
+
+            <TableColumn :title="t('admin.attachments.colActions')" :width="230" fixed="right">
+              <template #cell="{ record }">
+                <div class="flex flex-wrap gap-1">
+                  <Button
+                    v-if="record.actions.retry_scan_url"
+                    type="outline"
+                    status="warning"
+                    size="small"
+                    @click="retryScan(record)"
+                  >
+                    {{ t('admin.attachments.retryScan') }}
+                  </Button>
+                  <Button
+                    v-if="record.actions.retry_cleanup_url"
+                    type="outline"
+                    status="warning"
+                    size="small"
+                    @click="retryCleanup(record)"
+                  >
+                    {{ t('admin.attachments.retryCleanup') }}
+                  </Button>
+                  <Button
+                    v-if="record.delete_url"
+                    type="text"
+                    status="danger"
+                    size="small"
+                    @click="removeAttachment(record)"
+                  >
+                    {{ t('admin.ui.delete') }}
+                  </Button>
+                </div>
+              </template>
+            </TableColumn>
+          </template>
+          <template #empty>
+            <Empty :description="t('admin.attachments.empty')" />
+          </template>
+        </Table>
+      </div>
+
+      <div class="space-y-3 lg:hidden">
+        <Card
+          v-for="upload in uploads"
+          :key="upload.id"
+          :bordered="false"
+          class="bg-[var(--color-fill-1)]"
+        >
+          <div class="space-y-4">
+            <div class="flex items-start justify-between gap-3">
+              <div class="min-w-0 flex-1">
+                <p class="break-words font-semibold">{{ upload.filename }}</p>
+                <p class="mt-1 break-all font-mono text-xs text-[var(--color-text-3)]">
+                  {{ upload.public_id }}
+                </p>
+              </div>
+              <Tag :color="scanColor(upload.scan_status)">
+                {{ scanLabel(upload.scan_status) }}
+              </Tag>
+            </div>
+
+            <div class="flex flex-wrap gap-1.5">
+              <Tag color="arcoblue">{{ kindLabel(upload.kind) }}</Tag>
+              <Tag :color="lifecycleColor(upload.status)">
+                {{ lifecycleLabel(upload.status) }}
+              </Tag>
+              <Tag v-if="upload.quarantined" color="red">
+                {{ t('admin.attachments.quarantined') }}
+              </Tag>
+              <Tag v-if="!upload.linked" color="orange">{{ t('admin.attachments.orphan') }}</Tag>
+            </div>
+
+            <div class="grid gap-3 text-sm sm:grid-cols-2">
+              <div>
+                <p class="text-xs text-[var(--color-text-3)]">
+                  {{ t('admin.attachments.colOwner') }}
+                </p>
+                <p class="mt-1">{{ upload.uploader ? `@${upload.uploader}` : '—' }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-[var(--color-text-3)]">
+                  {{ t('admin.attachments.colUsage') }}
+                </p>
+                <p class="mt-1">{{ upload.size }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-[var(--color-text-3)]">
+                  {{ t('admin.attachments.scanResult') }}
+                </p>
+                <p class="mt-1 break-all font-mono text-xs">
+                  {{ upload.scan_result_code || '—' }}
+                </p>
+              </div>
+              <div>
+                <p class="text-xs text-[var(--color-text-3)]">
+                  {{ t('admin.attachments.colTime') }}
+                </p>
+                <p class="mt-1">{{ formatTime(upload.created_at) }}</p>
+              </div>
+            </div>
+
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <Link
+                v-if="upload.linked && upload.post_url"
+                :href="upload.post_url"
+                class="arco-link font-medium no-underline"
+              >
+                {{ t('admin.attachments.openPost') }}
+              </Link>
+              <span v-else />
+              <div class="flex flex-wrap justify-end gap-1">
+                <Button
+                  v-if="upload.actions.retry_scan_url"
+                  type="outline"
+                  status="warning"
+                  size="small"
+                  @click="retryScan(upload)"
+                >
+                  {{ t('admin.attachments.retryScan') }}
+                </Button>
+                <Button
+                  v-if="upload.actions.retry_cleanup_url"
+                  type="outline"
+                  status="warning"
+                  size="small"
+                  @click="retryCleanup(upload)"
+                >
+                  {{ t('admin.attachments.retryCleanup') }}
+                </Button>
+                <Button
+                  v-if="upload.delete_url"
+                  type="text"
+                  status="danger"
+                  size="small"
+                  @click="removeAttachment(upload)"
+                >
+                  {{ t('admin.ui.delete') }}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+
+        <Empty v-if="uploads.length === 0" :description="t('admin.attachments.empty')" />
+      </div>
+
+      <div
+        v-if="pagination.pages > 1"
+        class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <TypographyText type="secondary">
+          {{ pagination.from }}–{{ pagination.to }} / {{ pagination.count }}
+        </TypographyText>
+        <Pagination
+          :current="pagination.page"
+          :total="pagination.pages"
+          :page-size="1"
+          :show-page-size="false"
+          @change="visitPage"
+        />
+      </div>
+    </Card>
+  </section>
+</template>

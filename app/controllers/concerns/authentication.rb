@@ -7,10 +7,56 @@ module Authentication
   SESSION_COOKIE = :session_token
 
   included do
+    prepend_before_action :apply_developer_mode_auto_login
     helper_method :current_user, :current_session, :logged_in?, :user_signed_in?
   end
 
   private
+
+  def apply_developer_mode_auto_login
+    identifier = Mcweb::DeveloperMode.auto_login_user
+    return if identifier.blank?
+    return unless request.get? && request.format.html?
+    return if developer_mode_auto_login_excluded_request?
+    return if current_session
+
+    user = developer_mode_auto_login_user(identifier)
+    return unless user&.session_eligible?
+
+    result = Identity::SessionManager.call(
+      user: user,
+      ip_address: request.remote_ip,
+      user_agent: request.user_agent,
+      remember_me: false
+    )
+    return unless result.success?
+
+    reset_session
+    @session_record = result.value.fetch(:session)
+    @current_user = user
+    sign_in(
+      session_record: @session_record,
+      token: result.value.fetch(:token)
+    )
+  end
+
+  def developer_mode_auto_login_excluded_request?
+    request.path == "/up" ||
+      request.path.start_with?("/health/", "/api/")
+  end
+
+  def developer_mode_auto_login_user(identifier)
+    value = identifier.to_s.strip
+    user = User.find_by(id: value.to_i) if value.match?(/\A[1-9]\d*\z/)
+    return user if user
+
+    normalized = value.downcase
+    User.where(
+      "LOWER(email) = :normalized OR LOWER(username) = :normalized OR public_id = :public_id",
+      normalized: normalized,
+      public_id: value
+    ).first
+  end
 
   def current_user
     return @current_user if defined?(@current_user)
@@ -25,6 +71,13 @@ module Authentication
     return @session_record = nil if token.blank?
 
     record = Session.find_by(token_digest: Session.digest_token(token))
+    if record&.developer_mode? && !Mcweb::DeveloperMode.enabled?
+      record.revoke! unless record.revoked?
+      clear_invalid_session_token
+      @session_record = nil
+      return
+    end
+
     unless record&.active?
       @session_record = nil
       return
@@ -38,6 +91,11 @@ module Authentication
     end
 
     @session_record = record.tap(&:touch_activity!)
+  end
+
+  def clear_invalid_session_token
+    request.session.delete(SESSION_COOKIE)
+    cookies.delete(SESSION_COOKIE)
   end
 
   def logged_in?
@@ -55,6 +113,7 @@ module Authentication
 
   def require_totp_setup
     return unless logged_in?
+    return if Mcweb::DeveloperMode.allow?(:skip_two_factor)
     return if current_user.totp_enabled?
     return unless current_user.require_totp?
 
@@ -111,6 +170,7 @@ module Authentication
   end
 
   def secure_session_cookies?
+    return false if Mcweb::DeveloperMode.allow?(:allow_insecure_cookies)
     return false unless Rails.env.production?
 
     request.get_header("HTTP_X_FORWARDED_PROTO") == "https" || request.ssl?
@@ -119,6 +179,17 @@ module Authentication
   def redirect_after_login(default: root_path, notice: nil)
     stored = session.delete(:return_to)
     destination = safe_local_redirect_path(stored, fallback: default)
+
+    # The public portal and admin are separate Inertia applications with
+    # different component resolvers and style bundles. An Inertia redirect
+    # from the portal login form to an admin page would otherwise ask the
+    # portal resolver to load an Admin/* component.
+    if request.inertia? && destination.start_with?("/admin")
+      flash[:notice] = notice if notice.present?
+      inertia_location(destination)
+      return
+    end
+
     redirect_to destination, notice: notice
   end
 end

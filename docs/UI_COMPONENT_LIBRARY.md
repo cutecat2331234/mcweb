@@ -1,5 +1,8 @@
 # McWeb UI component library
 
+> 版本边界（2026-07-26）：CE 与 EE 的管理后台使用相同的 UI 样式和视觉规范。
+> CE 面向普通用户的 `/app` 保留原有组件栈；EE 用户前台的重写方案不适用于 CE。
+
 McWeb standardizes on **Arco Design Vue** for admin (and future plugin) interfaces.
 
 ## Vendored source

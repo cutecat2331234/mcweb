@@ -10,9 +10,10 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_26_125901) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
+  enable_extension "pg_trgm"
 
   create_table "action_mailbox_inbound_emails", force: :cascade do |t|
     t.datetime "created_at", null: false
@@ -284,6 +285,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.index ["user_id", "checked_on"], name: "idx_forum_check_ins_user_date", unique: true
   end
 
+  create_table "forum_content_requests", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "forum_post_id"
+    t.bigint "forum_topic_id"
+    t.string "key_digest", limit: 64, null: false
+    t.string "operation", limit: 32, null: false
+    t.string "request_fingerprint", limit: 64, null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["forum_post_id"], name: "index_forum_content_requests_on_forum_post_id"
+    t.index ["forum_topic_id"], name: "index_forum_content_requests_on_forum_topic_id"
+    t.index ["user_id", "operation", "key_digest"], name: "idx_forum_content_requests_idempotency", unique: true
+    t.index ["user_id"], name: "index_forum_content_requests_on_user_id"
+    t.check_constraint "operation::text = ANY (ARRAY['topic.create'::character varying, 'post.create'::character varying]::text[])", name: "chk_forum_content_requests_operation"
+  end
+
   create_table "forum_conversation_participants", force: :cascade do |t|
     t.datetime "archived_at"
     t.datetime "created_at", null: false
@@ -511,7 +528,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.bigint "user_id", null: false
     t.boolean "wiki", default: false, null: false
     t.index "to_tsvector('simple'::regconfig, COALESCE(body, ''::text))", name: "index_forum_posts_on_body_tsvector", using: :gin
+    t.index ["created_at", "forum_topic_id"], name: "idx_forum_posts_top_window", where: "((deleted_at IS NULL) AND ((status)::text = 'published'::text) AND ((post_type)::text = 'regular'::text))"
     t.index ["deleted_at"], name: "index_forum_posts_on_deleted_at"
+    t.index ["forum_topic_id", "floor_number"], name: "idx_forum_posts_unread_floor", where: "((deleted_at IS NULL) AND ((status)::text = 'published'::text) AND ((post_type)::text = 'regular'::text))"
     t.index ["forum_topic_id", "floor_number"], name: "index_forum_posts_on_forum_topic_id_and_floor_number", unique: true
     t.index ["forum_topic_id"], name: "index_forum_posts_on_forum_topic_id"
     t.index ["parent_post_id"], name: "index_forum_posts_on_parent_post_id"
@@ -699,6 +718,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.datetime "updated_at", null: false
     t.index ["forum_category_id", "slug"], name: "index_forum_sections_on_forum_category_id_and_slug", unique: true
     t.index ["forum_category_id"], name: "index_forum_sections_on_forum_category_id"
+    t.index ["name", "slug"], name: "idx_forum_sections_suggest_names_trgm", opclass: :gin_trgm_ops, using: :gin
     t.index ["parent_id"], name: "index_forum_sections_on_parent_id"
   end
 
@@ -754,6 +774,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.boolean "staff_only", default: false, null: false
     t.datetime "updated_at", null: false
     t.index ["canonical_tag_id"], name: "index_forum_tags_on_canonical_tag_id"
+    t.index ["name", "slug"], name: "idx_forum_tags_suggest_names_trgm", opclass: :gin_trgm_ops, using: :gin
     t.index ["slug"], name: "index_forum_tags_on_slug", unique: true
   end
 
@@ -897,6 +918,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.index ["scheduled_at"], name: "index_forum_topics_on_scheduled_at"
     t.index ["solved_post_id"], name: "index_forum_topics_on_solved_post_id"
     t.index ["source_post_id"], name: "index_forum_topics_on_source_post_id"
+    t.index ["title"], name: "idx_forum_topics_suggest_title_trgm", opclass: :gin_trgm_ops, where: "((deleted_at IS NULL) AND ((status)::text = 'published'::text) AND (unlisted = false) AND (archived_at IS NULL))", using: :gin
     t.index ["user_id"], name: "index_forum_topics_on_user_id"
   end
 
@@ -908,6 +930,49 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.bigint "user_id", null: false
     t.index ["user_id", "created_at"], name: "index_forum_unread_filter_presets_on_user_id_and_created_at"
     t.index ["user_id"], name: "index_forum_unread_filter_presets_on_user_id"
+  end
+
+  create_table "forum_uploads", force: :cascade do |t|
+    t.bigint "active_storage_blob_id"
+    t.bigint "byte_size", null: false
+    t.datetime "cleaned_at"
+    t.integer "cleanup_attempts", default: 0, null: false
+    t.string "cleanup_error_code"
+    t.text "cleanup_error_message"
+    t.datetime "cleanup_started_at"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at"
+    t.bigint "forum_post_attachment_id"
+    t.bigint "forum_post_id"
+    t.string "kind", null: false
+    t.datetime "next_scan_at"
+    t.string "public_id", null: false
+    t.datetime "quarantined_at"
+    t.integer "scan_attempts", default: 0, null: false
+    t.text "scan_error_message"
+    t.string "scan_result_code"
+    t.datetime "scan_started_at"
+    t.string "scan_status", default: "pending", null: false
+    t.datetime "scanned_at"
+    t.string "scanner"
+    t.string "status", default: "reserved", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["active_storage_blob_id"], name: "index_forum_uploads_on_active_storage_blob_id", unique: true
+    t.index ["forum_post_attachment_id"], name: "index_forum_uploads_on_forum_post_attachment_id", unique: true
+    t.index ["forum_post_id"], name: "index_forum_uploads_on_forum_post_id"
+    t.index ["kind", "status"], name: "index_forum_uploads_on_kind_and_status"
+    t.index ["public_id"], name: "index_forum_uploads_on_public_id", unique: true
+    t.index ["quarantined_at"], name: "index_forum_uploads_on_quarantined_at"
+    t.index ["scan_status", "next_scan_at"], name: "idx_forum_uploads_scan_due"
+    t.index ["status", "expires_at"], name: "index_forum_uploads_on_status_and_expires_at"
+    t.index ["user_id", "status"], name: "index_forum_uploads_on_user_id_and_status"
+    t.index ["user_id"], name: "index_forum_uploads_on_user_id"
+    t.check_constraint "byte_size > 0", name: "forum_uploads_positive_byte_size"
+    t.check_constraint "kind::text = ANY (ARRAY['inline_image'::character varying, 'post_attachment'::character varying]::text[])", name: "forum_uploads_valid_kind"
+    t.check_constraint "scan_attempts >= 0", name: "forum_uploads_nonnegative_scan_attempts"
+    t.check_constraint "scan_status::text = ANY (ARRAY['pending'::character varying, 'clean'::character varying, 'infected'::character varying, 'error'::character varying]::text[])", name: "forum_uploads_valid_scan_status"
+    t.check_constraint "status::text = ANY (ARRAY['reserved'::character varying, 'stored'::character varying, 'linked'::character varying, 'cleanup_pending'::character varying, 'cleanup_failed'::character varying, 'cleaned'::character varying]::text[])", name: "forum_uploads_valid_status"
   end
 
   create_table "forum_user_badges", force: :cascade do |t|
@@ -1369,6 +1434,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.string "title", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["user_id", "created_at", "notification_type"], name: "idx_notifications_unread_user_created", order: { created_at: :desc }, where: "(read_at IS NULL)"
+    t.index ["user_id", "created_at"], name: "idx_notifications_user_created", order: { created_at: :desc }
+    t.index ["user_id", "notification_type", "created_at"], name: "idx_notifications_user_type_created", order: { created_at: :desc }
     t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
@@ -1383,14 +1451,143 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.index ["payment_record_id"], name: "index_payment_attempts_on_payment_record_id"
   end
 
+  create_table "payment_late_payment_cases", force: :cascade do |t|
+    t.datetime "acknowledged_at"
+    t.bigint "acknowledged_by_id"
+    t.integer "amount_cents", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.string "disposition"
+    t.integer "lock_version", default: 0, null: false
+    t.bigint "payment_record_id", null: false
+    t.bigint "payment_webhook_event_id", null: false
+    t.string "provider", null: false
+    t.string "reason", null: false
+    t.text "review_note"
+    t.string "status", default: "open", null: false
+    t.bigint "store_order_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["acknowledged_by_id"], name: "index_payment_late_payment_cases_on_acknowledged_by_id"
+    t.index ["payment_record_id"], name: "index_payment_late_payment_cases_on_payment_record_id", unique: true
+    t.index ["payment_webhook_event_id"], name: "index_payment_late_payment_cases_on_payment_webhook_event_id", unique: true
+    t.index ["provider", "status"], name: "idx_late_payment_cases_provider_status"
+    t.index ["reason", "status"], name: "idx_late_payment_cases_reason_status"
+    t.index ["status", "created_at"], name: "idx_late_payment_cases_status_created"
+    t.index ["store_order_id"], name: "index_payment_late_payment_cases_on_store_order_id"
+  end
+
   create_table "payment_provider_configs", force: :cascade do |t|
+    t.string "account_fingerprint", limit: 64
     t.datetime "created_at", null: false
     t.boolean "enabled", default: false, null: false
     t.text "encrypted_credentials"
+    t.string "last_connection_test_credential_revision", limit: 64
+    t.string "last_connection_test_error_code"
+    t.string "last_connection_test_mode"
+    t.string "last_connection_test_status"
+    t.datetime "last_connection_tested_at"
+    t.bigint "last_connection_tested_by_id"
+    t.string "mode"
     t.string "provider", null: false
     t.jsonb "settings", default: {}, null: false
     t.datetime "updated_at", null: false
+    t.index ["last_connection_tested_by_id"], name: "index_payment_provider_configs_on_last_connection_tested_by_id"
     t.index ["provider"], name: "index_payment_provider_configs_on_provider", unique: true
+    t.check_constraint "account_fingerprint IS NULL OR account_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "payment_provider_configs_account_fingerprint"
+    t.check_constraint "last_connection_test_credential_revision IS NULL OR last_connection_test_credential_revision::text ~ '^[0-9a-f]{64}$'::text", name: "payment_provider_configs_test_credential_revision"
+    t.check_constraint "last_connection_test_mode IS NULL OR (last_connection_test_mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[]))", name: "payment_provider_configs_connection_test_mode"
+    t.check_constraint "last_connection_test_status IS NULL OR (last_connection_test_status::text = ANY (ARRAY['success'::character varying, 'failed'::character varying]::text[]))", name: "payment_provider_configs_connection_test_status"
+    t.check_constraint "last_connection_test_status::text IS DISTINCT FROM 'success'::text OR account_fingerprint IS NOT NULL AND last_connection_test_credential_revision IS NOT NULL", name: "payment_provider_configs_success_identity"
+    t.check_constraint "mode IS NULL OR (mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[]))", name: "payment_provider_configs_mode"
+  end
+
+  create_table "payment_reconciliation_discrepancies", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "fingerprint", null: false
+    t.datetime "first_seen_at", null: false
+    t.string "kind", null: false
+    t.datetime "last_seen_at", null: false
+    t.integer "local_amount_cents"
+    t.string "local_currency"
+    t.string "local_status"
+    t.integer "lock_version", default: 0, null: false
+    t.string "mode", null: false
+    t.bigint "payment_record_id"
+    t.string "provider", null: false
+    t.integer "provider_amount_cents"
+    t.string "provider_currency"
+    t.string "provider_status"
+    t.string "public_id", null: false
+    t.string "reference_digest", null: false
+    t.string "reference_masked"
+    t.bigint "refund_id"
+    t.datetime "resolved_at"
+    t.text "review_note"
+    t.datetime "reviewed_at"
+    t.bigint "reviewed_by_id"
+    t.bigint "run_id", null: false
+    t.string "status", default: "open", null: false
+    t.bigint "store_order_id"
+    t.string "subject_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["fingerprint"], name: "idx_payment_recon_discrepancies_fingerprint", unique: true
+    t.index ["payment_record_id"], name: "idx_on_payment_record_id_b7f90c939d"
+    t.index ["provider", "subject_type", "kind"], name: "idx_payment_recon_discrepancies_filters"
+    t.index ["public_id"], name: "idx_payment_recon_discrepancies_public_id", unique: true
+    t.index ["refund_id"], name: "index_payment_reconciliation_discrepancies_on_refund_id"
+    t.index ["reviewed_by_id"], name: "index_payment_reconciliation_discrepancies_on_reviewed_by_id"
+    t.index ["run_id", "status"], name: "idx_payment_recon_discrepancies_run"
+    t.index ["status", "created_at"], name: "idx_payment_recon_discrepancies_status"
+    t.index ["store_order_id"], name: "index_payment_reconciliation_discrepancies_on_store_order_id"
+    t.check_constraint "(local_amount_cents IS NULL OR local_amount_cents >= 0) AND (provider_amount_cents IS NULL OR provider_amount_cents >= 0)", name: "payment_recon_discrepancies_amounts"
+    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[])", name: "payment_recon_discrepancies_mode"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'acknowledged'::character varying, 'ignored'::character varying, 'resolved'::character varying]::text[])", name: "payment_recon_discrepancies_status"
+    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying, 'refund'::character varying]::text[])", name: "payment_recon_discrepancies_subject"
+  end
+
+  create_table "payment_reconciliation_observations", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.string "reference_digest", null: false
+    t.bigint "run_id", null: false
+    t.string "subject_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["run_id", "subject_type", "reference_digest"], name: "idx_payment_recon_observations_unique", unique: true
+    t.index ["subject_type", "reference_digest", "run_id"], name: "idx_payment_recon_observations_lookup"
+    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying, 'refund'::character varying]::text[])", name: "payment_recon_observations_subject"
+  end
+
+  create_table "payment_reconciliation_runs", force: :cascade do |t|
+    t.integer "attempt_count", default: 0, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.integer "discrepancies_count", default: 0, null: false
+    t.datetime "failed_at"
+    t.string "failure_code"
+    t.datetime "last_heartbeat_at"
+    t.integer "lock_version", default: 0, null: false
+    t.string "mode", null: false
+    t.string "payment_cursor"
+    t.integer "payments_checked", default: 0, null: false
+    t.string "phase", default: "payments", null: false
+    t.string "processing_token"
+    t.string "provider", null: false
+    t.integer "refresh_count", default: 0, null: false
+    t.datetime "refresh_started_at"
+    t.string "refund_cursor"
+    t.integer "refunds_checked", default: 0, null: false
+    t.datetime "started_at"
+    t.string "status", default: "pending", null: false
+    t.datetime "updated_at", null: false
+    t.datetime "window_end", null: false
+    t.datetime "window_start", null: false
+    t.index ["provider", "mode", "window_start", "window_end"], name: "idx_payment_recon_runs_window", unique: true
+    t.index ["status", "last_heartbeat_at"], name: "idx_payment_recon_runs_recovery"
+    t.check_constraint "attempt_count >= 0 AND payments_checked >= 0 AND refunds_checked >= 0 AND discrepancies_count >= 0", name: "payment_recon_runs_counters"
+    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[])", name: "payment_recon_runs_mode"
+    t.check_constraint "phase::text = ANY (ARRAY['payments'::character varying, 'refunds'::character varying, 'local_checks'::character varying, 'completed'::character varying]::text[])", name: "payment_recon_runs_phase"
+    t.check_constraint "refresh_count >= 0", name: "payment_recon_runs_refresh_count"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying, 'skipped'::character varying]::text[])", name: "payment_recon_runs_status"
+    t.check_constraint "window_end > window_start", name: "payment_recon_runs_window"
   end
 
   create_table "payment_records", force: :cascade do |t|
@@ -1399,25 +1596,48 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.string "currency", default: "CNY", null: false
     t.jsonb "metadata", default: {}, null: false
     t.string "provider", null: false
+    t.string "provider_mode"
     t.string "provider_payment_id"
     t.string "status", default: "pending", null: false
     t.bigint "store_order_id", null: false
     t.datetime "updated_at", null: false
+    t.index "provider, ((metadata ->> 'stripe_payment_intent_id'::text))", name: "idx_payment_records_on_provider_stripe_pi", where: "((metadata ->> 'stripe_payment_intent_id'::text) IS NOT NULL)"
+    t.index "provider, provider_mode, ((metadata ->> 'stripe_payment_intent_id'::text))", name: "idx_payment_records_on_mode_stripe_pi", where: "((metadata ->> 'stripe_payment_intent_id'::text) IS NOT NULL)"
+    t.index ["provider", "provider_mode", "status", "created_at", "id"], name: "idx_payment_records_reconciliation_mode"
     t.index ["provider", "provider_payment_id"], name: "index_payment_records_on_provider_and_provider_payment_id", unique: true
+    t.index ["provider", "status", "created_at", "id"], name: "idx_payment_records_reconciliation_local"
     t.index ["store_order_id"], name: "index_payment_records_on_store_order_id"
+    t.check_constraint "provider_mode IS NULL OR (provider_mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[]))", name: "payment_records_provider_mode"
   end
 
   create_table "payment_webhook_events", force: :cascade do |t|
+    t.integer "attempt_count", default: 0, null: false
     t.datetime "created_at", null: false
+    t.datetime "dead_lettered_at"
     t.text "error_message"
     t.string "event_id", null: false
     t.string "event_type", null: false
+    t.datetime "last_attempted_at"
+    t.string "last_error_code"
+    t.datetime "last_replayed_at"
+    t.bigint "last_replayed_by_id"
+    t.integer "manual_replay_count", default: 0, null: false
+    t.datetime "next_retry_at"
     t.jsonb "payload", default: {}, null: false
+    t.string "payload_digest"
     t.datetime "processed_at"
+    t.datetime "processing_started_at"
+    t.string "processing_token"
     t.string "provider", null: false
+    t.integer "retry_count", default: 0, null: false
     t.string "status", default: "received", null: false
     t.datetime "updated_at", null: false
+    t.datetime "verified_at"
+    t.index ["dead_lettered_at"], name: "index_payment_webhook_events_on_dead_lettered_at"
+    t.index ["last_replayed_by_id"], name: "index_payment_webhook_events_on_last_replayed_by_id"
     t.index ["provider", "event_id"], name: "index_payment_webhook_events_on_provider_and_event_id", unique: true
+    t.index ["status", "next_retry_at"], name: "idx_payment_webhooks_status_retry"
+    t.index ["status", "processing_started_at"], name: "idx_payment_webhooks_status_processing"
   end
 
   create_table "permissions", force: :cascade do |t|
@@ -1430,13 +1650,85 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.index ["key"], name: "index_permissions_on_key", unique: true
   end
 
+  create_table "plugin_job_runs", force: :cascade do |t|
+    t.string "active_job_id", limit: 191
+    t.integer "attempts", default: 0, null: false
+    t.string "contribution_schema_version", limit: 32, null: false
+    t.datetime "created_at", null: false
+    t.string "declaration_digest", limit: 64, null: false
+    t.text "encrypted_arguments", null: false
+    t.datetime "enqueued_at"
+    t.datetime "finished_at"
+    t.string "idempotency_key", limit: 191, null: false
+    t.string "job_key", limit: 191, null: false
+    t.string "last_enqueue_error_code", limit: 64
+    t.string "last_error_code", limit: 64
+    t.datetime "lease_expires_at"
+    t.integer "lease_seconds", null: false
+    t.integer "max_attempts", null: false
+    t.string "owner_plugin_id", limit: 191, null: false
+    t.string "payload_digest", limit: 64, null: false
+    t.integer "payload_digest_version", default: 2, null: false
+    t.string "plugin_version", limit: 128, null: false
+    t.string "public_id", limit: 36, null: false
+    t.datetime "recovery_claimed_at"
+    t.integer "requested_wait_seconds", null: false
+    t.integer "retry_wait_seconds", null: false
+    t.datetime "scheduled_at", null: false
+    t.datetime "started_at"
+    t.string "status", limit: 32, default: "queued", null: false
+    t.datetime "updated_at", null: false
+    t.index ["owner_plugin_id", "job_key", "idempotency_key"], name: "idx_plugin_job_runs_owner_job_idempotency", unique: true
+    t.index ["owner_plugin_id", "status", "scheduled_at"], name: "idx_plugin_job_runs_owner_status_schedule"
+    t.index ["public_id"], name: "index_plugin_job_runs_on_public_id", unique: true
+    t.index ["status", "recovery_claimed_at"], name: "idx_plugin_job_runs_status_recovery_claim"
+    t.index ["status", "scheduled_at"], name: "idx_plugin_job_runs_status_schedule"
+    t.check_constraint "attempts >= 0 AND max_attempts >= 1 AND max_attempts <= 10", name: "plugin_job_runs_attempt_bounds"
+    t.check_constraint "declaration_digest::text ~ '^[0-9a-f]{64}$'::text AND payload_digest::text ~ '^[0-9a-f]{64}$'::text", name: "plugin_job_runs_digests"
+    t.check_constraint "lease_seconds >= 30 AND lease_seconds <= 3600", name: "plugin_job_runs_lease_bounds"
+    t.check_constraint "payload_digest_version = 2", name: "plugin_job_runs_payload_digest_version"
+    t.check_constraint "requested_wait_seconds >= 0 AND requested_wait_seconds <= 31536000", name: "plugin_job_runs_requested_wait_bounds"
+    t.check_constraint "retry_wait_seconds >= 0 AND retry_wait_seconds <= 86400", name: "plugin_job_runs_retry_wait_bounds"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'retrying'::character varying, 'succeeded'::character varying, 'failed'::character varying, 'paused'::character varying, 'cancelled'::character varying]::text[])", name: "plugin_job_runs_status"
+  end
+
+  create_table "plugin_setting_versions", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.string "change_kind", limit: 32, null: false
+    t.datetime "created_at", null: false
+    t.text "encrypted_values", null: false
+    t.bigint "migration_source_id"
+    t.string "plugin_id", limit: 191, null: false
+    t.bigint "revision", null: false
+    t.bigint "rollback_source_id"
+    t.string "schema_digest", limit: 64, null: false
+    t.string "schema_version", limit: 32, null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_id"], name: "index_plugin_setting_versions_on_actor_id"
+    t.index ["migration_source_id"], name: "index_plugin_setting_versions_on_migration_source_id"
+    t.index ["plugin_id", "schema_version", "created_at"], name: "idx_plugin_settings_namespace_version_created"
+    t.index ["plugin_id", "schema_version", "revision"], name: "idx_plugin_settings_namespace_version_revision", unique: true
+    t.index ["rollback_source_id"], name: "index_plugin_setting_versions_on_rollback_source_id"
+    t.check_constraint "change_kind::text = ANY (ARRAY['update'::character varying, 'migration'::character varying, 'rollback'::character varying]::text[])", name: "plugin_setting_versions_change_kind"
+    t.check_constraint "revision > 0", name: "plugin_setting_versions_positive_revision"
+    t.check_constraint "schema_digest::text ~ '^[0-9a-f]{64}$'::text", name: "plugin_setting_versions_schema_digest"
+  end
+
   create_table "rate_limit_counters", force: :cascade do |t|
+    t.bigint "blocked_count", default: 0, null: false
     t.integer "count", default: 0, null: false
     t.datetime "created_at", null: false
+    t.datetime "expires_at"
     t.string "key", null: false
+    t.datetime "last_blocked_at"
     t.datetime "updated_at", null: false
     t.datetime "window_start", null: false
+    t.index ["expires_at"], name: "index_rate_limit_counters_on_expires_at"
     t.index ["key"], name: "index_rate_limit_counters_on_key", unique: true
+    t.index ["key"], name: "index_rate_limit_counters_on_key_pattern", opclass: :varchar_pattern_ops
+    t.index ["last_blocked_at"], name: "index_rate_limit_counters_on_last_blocked_at"
+    t.index ["window_start"], name: "index_rate_limit_counters_on_window_start"
+    t.check_constraint "blocked_count >= 0", name: "rate_limit_counters_blocked_count_nonnegative"
   end
 
   create_table "role_permissions", force: :cascade do |t|
@@ -1461,6 +1753,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
 
   create_table "sessions", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.boolean "developer_mode", default: false, null: false
     t.datetime "expires_at", null: false
     t.string "ip_address"
     t.datetime "last_active_at"
@@ -1470,6 +1763,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.datetime "updated_at", null: false
     t.text "user_agent"
     t.bigint "user_id", null: false
+    t.index ["developer_mode"], name: "index_sessions_on_developer_mode"
     t.index ["expires_at"], name: "index_sessions_on_expires_at"
     t.index ["token_digest"], name: "index_sessions_on_token_digest", unique: true
     t.index ["user_id"], name: "index_sessions_on_user_id"
@@ -1875,16 +2169,32 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.bigint "approved_by_id"
     t.datetime "created_at", null: false
     t.bigint "payment_record_id", null: false
+    t.datetime "processing_started_at"
+    t.datetime "provider_confirmed_at"
+    t.string "provider_error_code"
+    t.jsonb "provider_metadata", default: {}, null: false
+    t.string "provider_refund_id"
+    t.string "provider_status"
     t.string "reason"
     t.boolean "requested_by_customer", default: false, null: false
     t.bigint "requested_by_id"
+    t.integer "restoration_attempts", default: 0, null: false
+    t.datetime "restoration_completed_at"
+    t.text "restoration_error"
+    t.string "restoration_status", default: "pending", null: false
     t.string "status", default: "pending", null: false
     t.bigint "store_order_id", null: false
     t.datetime "updated_at", null: false
     t.index ["approved_by_id"], name: "index_store_refunds_on_approved_by_id"
     t.index ["payment_record_id"], name: "index_store_refunds_on_payment_record_id"
+    t.index ["provider_refund_id"], name: "index_store_refunds_on_provider_refund_id", unique: true, where: "(provider_refund_id IS NOT NULL)"
     t.index ["requested_by_id"], name: "index_store_refunds_on_requested_by_id"
+    t.index ["restoration_status", "processing_started_at"], name: "index_store_refunds_on_restoration_recovery"
+    t.index ["status", "created_at", "payment_record_id", "id"], name: "idx_store_refunds_reconciliation_local"
+    t.index ["status", "processing_started_at"], name: "index_store_refunds_on_status_and_processing_started_at"
     t.index ["store_order_id"], name: "index_store_refunds_on_store_order_id"
+    t.check_constraint "amount_cents > 0", name: "store_refunds_amount_cents_positive"
+    t.check_constraint "restoration_status::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'failed'::character varying, 'completed'::character varying]::text[])", name: "store_refunds_restoration_status_valid"
   end
 
   create_table "store_review_helpful_votes", force: :cascade do |t|
@@ -1946,12 +2256,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
   create_table "store_user_entitlements", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expires_at"
+    t.datetime "revoked_at"
     t.bigint "source_order_item_id"
     t.datetime "starts_at", null: false
     t.bigint "store_product_id", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["expires_at"], name: "index_store_user_entitlements_on_expires_at"
+    t.index ["revoked_at"], name: "index_store_user_entitlements_on_revoked_at"
     t.index ["source_order_item_id"], name: "idx_user_entitlements_source_order_item_unique", unique: true, where: "(source_order_item_id IS NOT NULL)"
     t.index ["store_product_id"], name: "index_store_user_entitlements_on_store_product_id"
     t.index ["user_id", "store_product_id"], name: "index_store_user_entitlements_on_user_id_and_store_product_id"
@@ -2018,6 +2330,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.string "compare_share_token"
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
+    t.boolean "developer_mode_email_verified", default: false, null: false
+    t.boolean "developer_mode_relaxed_password", default: false, null: false
     t.jsonb "dismissed_forum_notice_ids", default: [], null: false
     t.jsonb "dismissed_global_announcement_ids", default: [], null: false
     t.string "display_name"
@@ -2062,10 +2376,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
     t.index ["account_type"], name: "index_users_on_account_type"
     t.index ["compare_share_token"], name: "index_users_on_compare_share_token", unique: true
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
+    t.index ["developer_mode_email_verified", "developer_mode_relaxed_password"], name: "index_users_on_developer_mode_credentials"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
     t.index ["public_id"], name: "index_users_on_public_id", unique: true
     t.index ["status"], name: "index_users_on_status"
+    t.index ["username", "display_name"], name: "idx_users_suggest_names_trgm", opclass: :gin_trgm_ops, where: "((status)::text = 'active'::text)", using: :gin
     t.index ["username"], name: "index_users_on_username", unique: true
     t.index ["wishlist_share_token"], name: "index_users_on_wishlist_share_token", unique: true
   end
@@ -2189,6 +2505,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
   add_foreign_key "forum_bookmarks", "users"
   add_foreign_key "forum_canned_responses", "users", column: "author_id"
   add_foreign_key "forum_check_ins", "users"
+  add_foreign_key "forum_content_requests", "forum_posts"
+  add_foreign_key "forum_content_requests", "forum_topics"
+  add_foreign_key "forum_content_requests", "users"
   add_foreign_key "forum_conversation_participants", "forum_conversations"
   add_foreign_key "forum_conversation_participants", "users"
   add_foreign_key "forum_conversations", "users", column: "creator_id"
@@ -2266,6 +2585,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
   add_foreign_key "forum_topics", "users", column: "assigned_to_id"
   add_foreign_key "forum_topics", "users", column: "last_post_user_id"
   add_foreign_key "forum_unread_filter_presets", "users"
+  add_foreign_key "forum_uploads", "active_storage_blobs", on_delete: :nullify
+  add_foreign_key "forum_uploads", "forum_post_attachments", on_delete: :nullify
+  add_foreign_key "forum_uploads", "forum_posts", on_delete: :nullify
+  add_foreign_key "forum_uploads", "users"
   add_foreign_key "forum_user_badges", "forum_badges"
   add_foreign_key "forum_user_badges", "users"
   add_foreign_key "forum_user_blocks", "users", column: "blocked_id"
@@ -2308,7 +2631,22 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_25_224400) do
   add_foreign_key "notification_preferences", "users"
   add_foreign_key "notifications", "users"
   add_foreign_key "payment_attempts", "payment_records"
+  add_foreign_key "payment_late_payment_cases", "payment_records"
+  add_foreign_key "payment_late_payment_cases", "payment_webhook_events"
+  add_foreign_key "payment_late_payment_cases", "store_orders"
+  add_foreign_key "payment_late_payment_cases", "users", column: "acknowledged_by_id"
+  add_foreign_key "payment_provider_configs", "users", column: "last_connection_tested_by_id"
+  add_foreign_key "payment_reconciliation_discrepancies", "payment_reconciliation_runs", column: "run_id"
+  add_foreign_key "payment_reconciliation_discrepancies", "payment_records"
+  add_foreign_key "payment_reconciliation_discrepancies", "store_orders"
+  add_foreign_key "payment_reconciliation_discrepancies", "store_refunds", column: "refund_id"
+  add_foreign_key "payment_reconciliation_discrepancies", "users", column: "reviewed_by_id"
+  add_foreign_key "payment_reconciliation_observations", "payment_reconciliation_runs", column: "run_id"
   add_foreign_key "payment_records", "store_orders"
+  add_foreign_key "payment_webhook_events", "users", column: "last_replayed_by_id"
+  add_foreign_key "plugin_setting_versions", "plugin_setting_versions", column: "migration_source_id"
+  add_foreign_key "plugin_setting_versions", "plugin_setting_versions", column: "rollback_source_id"
+  add_foreign_key "plugin_setting_versions", "users", column: "actor_id"
   add_foreign_key "role_permissions", "permissions"
   add_foreign_key "role_permissions", "roles"
   add_foreign_key "sessions", "users"

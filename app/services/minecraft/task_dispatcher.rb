@@ -23,6 +23,8 @@ module Minecraft
     private
 
     def claim_tasks
+      return simulate_claimable_tasks if developer_mode_simulation?
+
       tasks = []
       Minecraft::ConnectorTask.transaction do
         reclaim_stale_claimed_tasks!
@@ -40,6 +42,30 @@ module Minecraft
       end
 
       ServiceResult.success(tasks: tasks)
+    end
+
+    def simulate_claimable_tasks
+      simulated = 0
+      Minecraft::ConnectorTask
+        .where(server: @server, status: "pending")
+        .order(:created_at)
+        .limit(10)
+        .find_each do |task|
+          result = self.class.call(
+            server: @server,
+            task: task,
+            result: {
+              success: true,
+              status: "completed",
+              simulated: true,
+              developer_mode: true
+            },
+            action: :complete
+          )
+          simulated += 1 if result.success?
+        end
+
+      ServiceResult.success(tasks: [], simulated: simulated)
     end
 
     def reclaim_stale_claimed_tasks!
@@ -116,6 +142,11 @@ module Minecraft
       value = @result
       value = value.with_indifferent_access if value.respond_to?(:with_indifferent_access)
       value[:error] || value["error"] || value[:message] || value["message"] || "Delivery failed"
+    end
+
+    def developer_mode_simulation?
+      Mcweb::DeveloperMode.enabled? &&
+        Mcweb::DeveloperMode.integration(:minecraft_nodes) == :simulate
     end
   end
 end

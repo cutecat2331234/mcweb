@@ -1,6 +1,13 @@
 "zh-CN":
   mcweb:
+    developer_mode:
+      title: "开发模式"
+      warning: "安全检查和生产优化已被部分关闭。"
+      production_warning: "当前 production 环境正在运行开发模式。"
     flash:
+      payment_provider_configuration_updated: 支付渠道配置已更新。
+      payment_provider_connection_test_succeeded: Stripe 连接测试成功。
+      payment_provider_connection_test_blocked_by_developer_mode: 开发模式当前强制使用虚拟支付渠道，已阻止读取 Stripe 密钥和发起连接测试。若确实需要连接 Stripe 测试环境，请将 developer_mode.integrations.payments 显式改为 inherit 并重启全部进程。
       invalid_locale: 不支持的语言。
       locale_updated: 语言已切换。
       preferences_saved: 通知偏好已保存。
@@ -23,6 +30,10 @@
       password_incorrect: 密码不正确。
       sign_in_required_short: 请先登录。
       operation_failed: 操作失败。
+      late_payment_acknowledged: 晚到支付复核已记录。
+      payment_reconciliation_reviewed: 对账差异复核已记录。
+      payment_reconciliation_requested: 支付对账任务已加入队列。
+      payment_reconciliation_already_active: 该日期的对账任务已在队列中或正在运行。
       rate_limited: 操作过于频繁，请稍后再试。
       bookmark_updated: 书签已更新。
       marked_read: 已标记为已读。
@@ -213,6 +224,7 @@
       reports_bulk_resolved: "已处理该目标的 %{count} 条举报。"
       minecraft_settings_saved: Minecraft 设置已保存。
       system_settings_saved: 系统设置已保存。
+      rate_limit_settings_saved: 限流设置已保存。
       mapping_added: 映射已添加。
       mapping_updated: 映射已更新。
       mapping_deleted: 映射已删除。
@@ -346,6 +358,10 @@
       help_article_missing: 该帮助文章不可用。
       attachment_deleted: 附件已删除。
       attachments_pruned: "已清理 %{count} 个孤儿附件。"
+      attachment_scan_retry_requested: 已请求重新执行附件安全扫描。
+      attachment_cleanup_retry_requested: 已请求重试附件清理。
+      attachment_scan_retry_not_allowed: 当前上传不符合重新扫描条件。
+      attachment_cleanup_retry_not_allowed: 当前上传不符合清理重试条件。
       notice_created: 公告已创建。
       notice_updated: 公告已更新。
       notice_deleted: 公告已删除。
@@ -535,11 +551,17 @@
         wishlist_item_not_in_list: 商品不在心愿单中。
         section_topic_prefix_required: 此分区要求选择主题前缀。
         attachment_invalid_or_unauthorized: 附件无效或无权使用。
+        idempotency_key_invalid: 请求标识无效，请刷新页面后重试。
+        idempotency_key_reused: 该请求标识已用于其他内容，请刷新页面后重试。
         new_members_cannot_upload_attachments: 新成员暂不能上传附件，多发帖后即可解锁。
         upload_file_required: 请选择要上传的文件。
         invalid_filename: 文件名无效。
         unsupported_attachment_type: 不支持的附件类型。
         attachment_too_large: "附件过大（最大 %{max}）。"
+        upload_quota_invalid: 无法核算本次上传。
+        upload_quota_exceeded: 已达到上传存储容量或已接受上传次数配额。
+        upload_cleanup_failed: 上传文件清理失败，系统将自动重试。
+        inline_upload_expired: 内联图片在内容保存前已过期，请重新上传。
         post_moderation_unauthorized: 无权审核帖子。
         post_not_pending_approval: 帖子不在待审核状态。
         warn_user_unauthorized: 无权发出警告。
@@ -709,6 +731,13 @@
         cancel_reason: 测试取消
       product_duplicate_suffix: " (副本)"
     forum:
+      stats:
+        topics: 主题
+        posts: 帖子
+        members: 会员
+        topics_today: 新主题(24 小时)
+        posts_week: 帖子(7 天)
+        reactions: 反应
       topic_sort:
         latest: 最新回复
         hot: 热门
@@ -1106,6 +1135,11 @@
       notifications:
         default_title: Minecraft 事件
     admin:
+      rate_limits:
+        errors:
+          invalid: 一个或多个限流参数不合法。
+          limit: "必须是 %{min} 到 %{max} 之间的整数。"
+          window_seconds: "必须是 %{min} 到 %{max} 秒之间的整数。"
       email_bans:
         title: 邮箱封禁
         subtitle: 阻止匹配的邮箱地址或域名注册
@@ -1166,6 +1200,28 @@
             unavailable: 暂时无法读取插件包状态。
             operation_succeeded: "%{plugin} 的 %{action} 操作已完成。"
             operation_failed: 无法完成插件包操作。
+            uninstall_confirmation_mismatch: 请输入准确的插件 ID，才能执行 teardown 并卸载。
+        plugin_settings:
+          title: 插件设置
+          updated: 插件设置已保存为一个新版本。
+          migrated: 插件设置已迁移到当前 schema 版本。
+          rolled_back: 已通过追加新版本完成插件设置回滚。
+          errors:
+            generic: 无法完成插件设置操作。
+            validation_failed: 一个或多个设置值不符合插件 schema。
+            payload_too_large: 设置载荷超过允许大小。
+            migration_required: 请先迁移旧版设置，再进行修改。
+            migration_source_missing: 没有可兼容迁移的旧版设置。
+            migration_path_missing: 插件未声明完整的设置迁移路径。
+            migration_conflict: 迁移会覆盖已经存在的设置。
+            schema_digest_mismatch: 插件修改了 schema，却没有提升 schema_version。
+            revision_conflict: 页面加载后设置已发生变化，请检查最新版本后重试。
+            not_configured: 当前没有可用的持久化设置版本。
+            rollback_target_missing: 请求回滚的设置修订不存在。
+            invalid_argument: 设置请求不完整或无效。
+            plugin_not_found: 无法使用所选插件的设置 schema。
+            settings_unreadable: 无法读取加密设置。
+            write_failed: 无法保存设置版本。
       dashboard:
         metrics:
           users: 用户
@@ -1999,6 +2055,14 @@
         commerce.new_product_question: 新商品提问（员工）
         commerce.merchant_review_reply: 商家评价回复
         commerce.review_request: 购后评价邀请
+        forum:
+          post_pending: 待审核帖子
+          post_rejected: 审核未通过
+          post_approved: 审核通过
+        commerce:
+          refund_requested: 退款申请提交
+          refund_processed: 退款通知
+          refund_rejected: 退款拒绝通知
         commerce.product_available: 商品上架通知
         commerce.low_stock_staff: 低库存提醒（员工）
         minecraft.custom: Minecraft 事件

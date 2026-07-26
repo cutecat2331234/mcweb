@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { router } from '@inertiajs/vue3'
+import { Link, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
@@ -112,7 +112,7 @@ function toggleCompare() {
         <Button v-else-if="hasAvailabilityAlert && availabilityAlertUnsubscribeUrl" type="button" variant="outline" @click="unsubscribe">{{ t('commerce.productPreview.subscribedCancel') }}</Button>
       </div>
       <p v-else-if="!loggedIn" class="text-sm text-muted-foreground">
-        <a :href="routes.signIn" class="text-primary hover:underline">{{ t('commerce.productPreview.signInToSubscribe') }}</a>{{ t('commerce.productPreview.signInHint') }}
+        <Link :href="routes.signIn" class="text-primary hover:underline">{{ t('commerce.productPreview.signInToSubscribe') }}</Link>{{ t('commerce.productPreview.signInHint') }}
       </p>
     </div>
   </div>

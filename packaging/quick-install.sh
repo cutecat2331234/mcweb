@@ -5,13 +5,15 @@ set -euo pipefail
 APP_USER="mcweb"
 APP_ROOT="/opt/mcweb"
 SOURCE_DIR="$(cd "$(dirname "$0")" && pwd)"
+RELEASE_VERSION=""
+RELEASE_DIR=""
 
 usage() {
   cat <<EOF
 McWeb 快速安装 / 升级
 
 用法:
-  sudo ./quick-install.sh              将当前目录部署到 /opt/mcweb 并迁移数据库
+  sudo ./quick-install.sh              放置候选 release，并通过 bin/update 安全升级
   sudo ./quick-install.sh --fresh      先执行 bin/install 完整安装系统依赖与环境
 
 示例:
@@ -36,93 +38,91 @@ release_version() {
   fi
 }
 
-deploy_release() {
-  local version release_dir
-  version="$(release_version)"
-  release_dir="${APP_ROOT}/releases/${version}"
+stage_candidate_release() {
+  RELEASE_VERSION="$(release_version)"
+  [[ "${RELEASE_VERSION}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] || {
+    echo "无效的 release 版本: ${RELEASE_VERSION}" >&2
+    exit 1
+  }
+  [[ "${RELEASE_VERSION}" != "." && "${RELEASE_VERSION}" != ".." ]] || {
+    echo "无效的 release 版本: ${RELEASE_VERSION}" >&2
+    exit 1
+  }
+  RELEASE_DIR="${APP_ROOT}/releases/${RELEASE_VERSION}"
 
   mkdir -p "${APP_ROOT}/releases"
-  if [[ -d "${release_dir}" ]]; then
-    echo "Release ${version} 已存在，更新文件…"
-    rsync -a --delete --exclude='quick-install.sh' "${SOURCE_DIR}/" "${release_dir}/"
-  else
-    mkdir -p "${release_dir}"
-    rsync -a --exclude='quick-install.sh' "${SOURCE_DIR}/" "${release_dir}/"
+  if [[ -e "${RELEASE_DIR}" || -L "${RELEASE_DIR}" ]]; then
+    echo "候选 release 已存在，拒绝覆盖: ${RELEASE_DIR}" >&2
+    echo "请直接运行该候选版本的 bin/update，或使用新的 release 版本。" >&2
+    exit 1
   fi
 
-  ln -sfn "${release_dir}" "${APP_ROOT}/current"
-  chown -R "${APP_USER}:${APP_USER}" "${APP_ROOT}"
-  echo "已部署到 ${release_dir}"
+  mkdir "${RELEASE_DIR}"
+  rsync -a --exclude='quick-install.sh' "${SOURCE_DIR}/" "${RELEASE_DIR}/"
+  chown -R "${APP_USER}:${APP_USER}" "${RELEASE_DIR}"
+  echo "候选 release 已放置到 ${RELEASE_DIR}"
 }
 
-ensure_bundle_env() {
-  local env_file="/etc/mcweb/mcweb.env"
-  [[ -f "${env_file}" ]] || return 0
-  grep -q '^BUNDLE_DEPLOYMENT=' "${env_file}" || echo 'BUNDLE_DEPLOYMENT=true' >> "${env_file}"
-  grep -q '^BUNDLE_WITHOUT=' "${env_file}" || echo 'BUNDLE_WITHOUT=development:test' >> "${env_file}"
-}
+run_safe_update() {
+  [[ -x "${RELEASE_DIR}/bin/update" ]] || {
+    echo "候选 release 缺少可执行的 bin/update: ${RELEASE_DIR}" >&2
+    exit 1
+  }
 
-run_migrate() {
-  local env_file="/etc/mcweb/mcweb.env"
-  local bundle_bin="/home/${APP_USER}/.rbenv/shims/bundle"
-  if [[ ! -f "${env_file}" ]]; then
-    echo "未找到 ${env_file}，跳过数据库迁移。"
-    return 0
-  fi
-
-  sudo -u "${APP_USER}" bash -c "
-    set -a
-    source '${env_file}'
-    set +a
-    export RAILS_ENV=production
-    export BUNDLE_DEPLOYMENT=true
-    export BUNDLE_WITHOUT=\${BUNDLE_WITHOUT:-development:test}
-    cd '${APP_ROOT}/current'
-    '${bundle_bin}' exec rails db:migrate
-  "
-}
-
-restart_services() {
-  if systemctl list-unit-files mcweb-web.service >/dev/null 2>&1; then
-    systemctl daemon-reload
-    if ! systemctl restart mcweb-worker mcweb-web; then
-      echo "重启 mcweb-web / mcweb-worker 失败" >&2
-      exit 1
-    fi
-    echo "已重启 mcweb-web / mcweb-worker"
-  else
-    echo "提示: systemctl enable --now mcweb-web mcweb-worker nginx"
-  fi
+  MCWEB_APP_BASE="${APP_ROOT}" \
+    MCWEB_APP_USER="${APP_USER}" \
+    "${RELEASE_DIR}/bin/update" \
+      --release "${RELEASE_DIR}" \
+      --confirm "UPDATE:${RELEASE_VERSION}"
 }
 
 main() {
   require_root
 
-  if [[ "${1:-}" == "--help" || "${1:-}" == "-h" ]]; then
-    usage
-    exit 0
-  fi
+  case "${1:-}" in
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    --fresh)
+      [[ $# -eq 1 ]] || {
+        echo "--fresh 不接受其他参数" >&2
+        exit 1
+      }
+      if [[ -e "${APP_ROOT}/current" || -L "${APP_ROOT}/current" ]]; then
+        echo "--fresh 仅用于没有 current release 的首次安装；现有实例必须走安全更新。" >&2
+        exit 1
+      fi
+      echo "执行完整安装 (bin/install)…"
+      (
+        cd "${SOURCE_DIR}"
+        bash bin/install
+      )
+      exit 0
+      ;;
+    "")
+      ;;
+    *)
+      echo "未知参数: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
 
-  if [[ "${1:-}" == "--fresh" ]]; then
-    echo "执行完整安装 (bin/install)…"
-    bash "${SOURCE_DIR}/bin/install"
-  elif ! id -u "${APP_USER}" >/dev/null 2>&1; then
-    echo "用户 ${APP_USER} 不存在，使用 --fresh 进行首次安装，或先运行 bin/install" >&2
+  [[ -L "${APP_ROOT}/current" ]] || {
+    echo "未找到现有 current release；首次安装请使用 --fresh。" >&2
     exit 1
-  fi
+  }
+  id -u "${APP_USER}" >/dev/null 2>&1 || {
+    echo "用户 ${APP_USER} 不存在；首次安装请使用 --fresh。" >&2
+    exit 1
+  }
 
-  deploy_release
-  ensure_bundle_env
-  run_migrate
-  restart_services
-
-  if [[ -x "${APP_ROOT}/current/bin/doctor" ]]; then
-    "${APP_ROOT}/current/bin/doctor" || true
-  fi
+  stage_candidate_release
+  run_safe_update
 
   echo ""
-  echo "McWeb $(release_version) 就绪 → ${APP_ROOT}/current"
-  echo "首次部署请运行: sudo -u ${APP_USER} ${APP_ROOT}/current/bin/setup"
+  echo "McWeb ${RELEASE_VERSION} 已通过安全更新流程就绪 → ${APP_ROOT}/current"
 }
 
 main "$@"

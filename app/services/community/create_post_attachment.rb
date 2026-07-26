@@ -17,32 +17,47 @@ module Community
       filename = safe_filename(@file.original_filename)
       return ServiceResult.failure(error: "invalid_filename") if filename.blank?
 
-      unless Community::AllowedAttachmentTypes.allowed?(filename: filename, content_type: @file.content_type)
-        return ServiceResult.failure(error: "unsupported_attachment_type")
-      end
-
-      if @file.size > Community::AllowedAttachmentTypes.max_size
+      inspection = Community::AllowedAttachmentTypes.inspect_file(filename: filename, io: @file)
+      if inspection.too_large?
         max = ActiveSupport::NumberHelper.number_to_human_size(Community::AllowedAttachmentTypes.max_size)
         return ServiceResult.failure(error: I18n.t("mcweb.services.errors.attachment_too_large", max: max))
       end
 
-      attachment = Community::PostAttachment.new(
-        user: @user,
-        filename: filename,
-        content_type: @file.content_type,
-        byte_size: @file.size
-      )
+      unless inspection.success?
+        return ServiceResult.failure(error: "unsupported_attachment_type")
+      end
 
-      attachment.file.attach(
-        io: @file,
+      stored = Community::StoreUpload.call(
+        user: @user,
+        kind: :post_attachment,
+        payload: inspection.payload,
         filename: filename,
-        content_type: @file.content_type
+        content_type: inspection.content_type
       )
-      attachment.save!
+      return stored if stored.failure?
+
+      upload = stored.value.fetch(:upload)
+      blob = stored.value.fetch(:blob)
+      attachment = nil
+      Community::PostAttachment.transaction do
+        attachment = Community::PostAttachment.create!(
+          user: @user,
+          filename: filename,
+          content_type: inspection.content_type,
+          byte_size: inspection.byte_size
+        )
+        attachment.file.attach(blob)
+        upload.update!(post_attachment: attachment)
+      end
+      enqueue_scan(upload)
 
       ServiceResult.success(attachment)
     rescue ActiveRecord::RecordInvalid => e
+      request_cleanup(upload, e)
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    rescue StandardError => e
+      request_cleanup(upload, e)
+      raise
     end
 
     private
@@ -50,6 +65,27 @@ module Community
     def safe_filename(name)
       base = File.basename(name.to_s)
       base.gsub(/[^\w.\-()\[\] ]+/u, "_").strip.first(180)
+    end
+
+    def request_cleanup(upload, error)
+      return unless upload&.persisted?
+
+      upload.request_cleanup!(error: error)
+      Maintenance::CleanupForumUploadsJob.perform_later(upload_id: upload.id)
+    rescue StandardError => cleanup_error
+      Rails.logger.error(
+        "[Community::CreatePostAttachment] cleanup scheduling failed " \
+        "upload_id=#{upload.id} error=#{cleanup_error.class}"
+      )
+    end
+
+    def enqueue_scan(upload)
+      Community::ScanPostAttachmentJob.perform_later(upload_id: upload.id)
+    rescue StandardError => error
+      Rails.logger.error(
+        "[Community::CreatePostAttachment] scan scheduling failed " \
+        "upload_id=#{upload.id} error=#{error.class}"
+      )
     end
   end
 end

@@ -142,10 +142,10 @@ watch(
 
     <div v-if="portalSidebarExtraSlot" class="px-3 pt-3 text-sm text-sidebar-foreground/80" v-html="portalSidebarExtraSlot" />
 
-    <div v-if="showPortalSectionTabs" class="p-3">
+    <div v-if="showPortalSectionTabs" class="px-3 pb-4 pt-3">
       <div
         :class="cn(
-          'grid gap-1 rounded-lg border border-sidebar-border/40 bg-sidebar-accent/30 p-1',
+          'grid gap-1 rounded-lg bg-sidebar-accent/35 p-1',
           portalSectionGridClass,
         )"
       >
@@ -180,7 +180,7 @@ watch(
       </div>
     </div>
 
-    <div v-if="features.minecraft && minecraftServers?.length" class="px-3 pb-3">
+    <div v-if="features.minecraft && minecraftServers?.length" class="px-3 pb-4">
       <p class="mb-2 flex items-center gap-2 px-1 text-xs font-medium uppercase tracking-wide text-sidebar-foreground/50">
         {{ t('portal.serverStatus') }}
         <span
@@ -193,23 +193,27 @@ watch(
         <div
           v-for="server in minecraftServers"
           :key="server.name"
-          class="rounded-lg border border-sidebar-border/40 bg-sidebar-accent/20 px-3 py-2 text-xs"
-          :class="server.anomaly || server.status === 'maintenance' ? 'border-amber-500/40' : ''"
+          class="rounded-lg bg-sidebar-accent/25 px-3 py-2.5 text-xs"
+          :class="server.anomaly || server.status === 'maintenance'
+            ? 'bg-amber-500/10 ring-1 ring-inset ring-amber-500/35'
+            : ''"
         >
-          <div class="flex items-center gap-1 font-medium text-sidebar-foreground">
-            {{ server.name }}
+          <div class="flex items-start justify-between gap-2 font-medium text-sidebar-foreground">
+            <span class="min-w-0 break-words">{{ server.name }}</span>
             <span v-if="server.anomaly || server.status === 'maintenance'" class="text-amber-600">⚠</span>
           </div>
-          <div class="text-sidebar-foreground/70">{{ server.online }}/{{ server.max }} {{ t('portal.online') }}{{ t('common.colon') }} {{ serverStatusLabel(server.status) }}</div>
+          <div class="mt-1 leading-relaxed text-sidebar-foreground/70">
+            {{ server.online }}/{{ server.max }} {{ t('portal.online') }}{{ t('common.colon') }} {{ serverStatusLabel(server.status) }}
+          </div>
         </div>
       </div>
     </div>
 
-    <div class="px-3 pb-3">
+    <div class="px-3 pb-4">
       <CheckInWidget />
     </div>
 
-    <nav class="flex-1 space-y-3 overflow-y-auto px-3 pb-4">
+    <nav class="flex-1 space-y-4 overflow-y-auto px-3 pb-5">
       <PortalNavGroupSection
         v-for="group in navGroups"
         :key="group.key"
@@ -224,7 +228,7 @@ watch(
     <div class="mt-auto border-t border-sidebar-border/50 p-3">
       <Link
         :href="routes.home"
-        class="group flex items-center gap-2.5 rounded-lg border border-sidebar-border/30 px-3 py-2.5 text-sm text-sidebar-foreground/70 transition-all duration-150 hover:border-sidebar-border/60 hover:bg-sidebar-accent/30 hover:text-sidebar-foreground active:scale-[0.99]"
+        class="group flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70 transition-all duration-150 hover:bg-sidebar-accent/35 hover:text-sidebar-foreground active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         @click="onNavigate?.()"
       >
         <Home class="h-4 w-4 shrink-0 opacity-70 transition-colors group-hover:opacity-100" />

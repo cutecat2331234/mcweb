@@ -36,10 +36,10 @@ module Community
       topic.posts.where(status: :published).where.not(post_type: EXCLUDED_UNREAD_POST_TYPES).where("floor_number > ?", last_read_floor).count
     end
 
-    scope :with_unread_for, ->(user) {
+    scope :with_unread_for_user_id, ->(user_id) {
       joins(:topic)
         .where(
-          user: user,
+          user_id: user_id,
           forum_topics: {
             status: :published,
             unlisted: false,
@@ -51,11 +51,16 @@ module Community
             SELECT 1 FROM forum_posts
             WHERE forum_posts.forum_topic_id = forum_read_states.forum_topic_id
               AND forum_posts.status = 'published'
-              AND forum_posts.post_type NOT IN ('whisper', 'small_action')
+              AND forum_posts.post_type = 'regular'
+              AND forum_posts.deleted_at IS NULL
               AND forum_posts.floor_number > forum_read_states.last_read_floor
           )
         SQL
         .order("forum_topics.last_posted_at DESC")
+    }
+
+    scope :with_unread_for, ->(user) {
+      with_unread_for_user_id(user&.id)
     }
 
     scope :unread_topics_count_for, ->(user) {

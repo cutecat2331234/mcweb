@@ -48,9 +48,26 @@ module Minecraft
         payload: merged_payload
       )
 
-      @node.wake_for_tasks! if urgent_task?
+      if developer_mode_simulation?
+        completion = Minecraft::NodeTaskDispatcher.call(
+          node: @node,
+          task: task,
+          result: {
+            success: true,
+            status: "completed",
+            simulated: true,
+            developer_mode: true
+          },
+          action: :complete
+        )
+        return completion unless completion.success?
 
-      ServiceResult.success(task: task)
+        task.reload
+      elsif urgent_task?
+        @node.wake_for_tasks!
+      end
+
+      ServiceResult.success(task: task, simulated: developer_mode_simulation?)
     rescue ActiveRecord::RecordNotUnique
       # Same delivery_id already enqueued (scheduled re-dispatch of one occurrence, or a
       # job retry): treat as an idempotent success instead of surfacing a 500.
@@ -63,6 +80,11 @@ module Minecraft
     end
 
     private
+
+    def developer_mode_simulation?
+      Mcweb::DeveloperMode.enabled? &&
+        Mcweb::DeveloperMode.integration(:minecraft_nodes) == :simulate
+    end
 
     def urgent_task?
       Minecraft::NodeTask.urgent_task_type?(@task_type)

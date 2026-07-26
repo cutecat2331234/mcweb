@@ -1,6 +1,13 @@
 # frozen_string_literal: true
 
 PERMISSIONS = [
+  { key: "store.payments.configure", name: "Configure payment providers", category: "store" },
+  { key: "store.payments.connection_test", name: "Test payment-provider connections", category: "store" },
+  { key: "store.payments.replay", name: "Payment webhook replay", category: "store" },
+  { key: "store.payments.late_review", name: "Late payment review", category: "store" },
+  { key: "store.payments.reconciliation.read", name: "View payment reconciliation", category: "store" },
+  { key: "store.payments.reconciliation.review", name: "Review payment reconciliation discrepancies", category: "store" },
+  { key: "store.payments.reconciliation.run", name: "Run payment reconciliation", category: "store" },
   { key: "website.pages.read", name: "查看官网页面", category: "website" },
   { key: "website.pages.edit", name: "编辑官网页面", category: "website" },
   { key: "website.pages.publish", name: "发布官网页面", category: "website" },
@@ -9,6 +16,7 @@ PERMISSIONS = [
   { key: "website.articles.publish", name: "发布官网文章", category: "website" },
   { key: "website.templates.manage", name: "管理前台模板", category: "website" },
   { key: "forum.sections.manage", name: "管理论坛分区", category: "forum" },
+  { key: "forum.attachments.security.manage", name: "管理附件安全处置", category: "forum" },
   { key: "forum.topics.lock", name: "锁定主题", category: "forum" },
   { key: "forum.posts.edit_others", name: "编辑他人帖子", category: "forum" },
   { key: "forum.topics.edit_others", name: "编辑他人主题", category: "forum" },
@@ -30,6 +38,7 @@ PERMISSIONS = [
   { key: "minecraft.fulfillments.retry", name: "重试发货", category: "minecraft" },
   { key: "system.settings.manage", name: "管理系统设置", category: "system" },
   { key: "system.plugins.manage", name: "管理插件包", category: "system" },
+  { key: "system.plugins.settings.manage", name: "管理插件设置", category: "system" },
   { key: "system.jobs.read", name: "查看后台任务", category: "system" },
   { key: "system.jobs.retry", name: "重试后台任务", category: "system" },
   { key: "system.audit.read", name: "查看审计日志", category: "system" },
@@ -59,7 +68,7 @@ ROLES = {
   "forum_admin" => {
     name: "论坛管理员",
     description: "管理论坛",
-    permissions: %w[forum.sections.manage forum.topics.lock forum.topics.move forum.posts.edit_others forum.topics.edit_others forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage forum.points.manage admin.access]
+    permissions: %w[forum.sections.manage forum.attachments.security.manage forum.topics.lock forum.topics.move forum.posts.edit_others forum.topics.edit_others forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage forum.points.manage admin.access]
   },
   "moderator" => {
     name: "版主",

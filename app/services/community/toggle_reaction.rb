@@ -15,10 +15,11 @@ module Community
       list.first(12)
     end
 
-    def initialize(user:, post:, emoji:)
+    def initialize(user:, post:, emoji:, ip_address: nil)
       @user = user
       @post = post
       @emoji = emoji.to_s
+      @ip_address = ip_address
     end
 
     def call
@@ -29,7 +30,10 @@ module Community
       return ServiceResult.failure(error: "trust_level_cannot_react") unless Community::TrustLevel.can_react?(@user)
       adding = adding?
       return ServiceResult.failure(error: "reaction_daily_limit_reached") if adding && daily_limit_reached?
-      return ServiceResult.failure(error: "reaction_too_fast") if adding && cooldown_exceeded?
+      if adding
+        rate_limit_result = reaction_rate_limit
+        return rate_limit_result if rate_limit_result.failure?
+      end
 
       added = Community::Reaction.toggle!(@user, @post, @emoji)
       counts = @post.reactions.group(:emoji).count
@@ -78,15 +82,19 @@ module Community
       Community::Reaction.where(user: @user).where("created_at >= ?", Time.current.beginning_of_day).count >= limit
     end
 
-    # Optional per-minute burst limit, mirroring the post/topic rate limiting.
-    # Off by default (forum.max_reactions_per_minute = 0); staff are exempt.
-    def cooldown_exceeded?
-      return false if @user.permission?("forum.topics.lock") || @user.permission?("admin.access")
+    # The account burst limit remains compatible with the optional forum
+    # setting, while AbuseRateLimit also applies a conservative IP ceiling.
+    # Staff are exempt from both dimensions.
+    def reaction_rate_limit
+      if @user.permission?("forum.topics.lock") || @user.permission?("admin.access")
+        return ServiceResult.success
+      end
 
-      per_minute = SiteSetting.get("forum.max_reactions_per_minute", "0").to_i
-      return false if per_minute <= 0
-
-      Administration::RateLimiter.call(key: "forum_reaction:#{@user.id}", limit: per_minute, window: 1.minute).failure?
+      Administration::AbuseRateLimit.call(
+        action: :reaction,
+        account: @user,
+        ip_address: @ip_address
+      )
     end
   end
 end

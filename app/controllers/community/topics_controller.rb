@@ -216,13 +216,15 @@ module Community
         prefix: topic_params[:prefix],
         ip_address: request.remote_ip,
         attachment_ids: topic_params[:attachment_ids],
-        custom_fields: topic_params[:custom_fields]
+        custom_fields: topic_params[:custom_fields],
+        idempotency_key: topic_params[:idempotency_key]
       )
 
       if result.success?
         notice = result.value.status == "hidden" ? t("mcweb.flash.post_pending_submitted") : t("mcweb.flash.topic_created")
         redirect_to forum_topic_path(result.value), notice: notice
       else
+        apply_retry_after_header(result)
         render inertia: "Community/Topics/New",
                props: {
                  section: section_props,
@@ -230,7 +232,7 @@ module Community
                   warningRestrictions: warning_restrictions_props,
                  form_errors: topic_form_errors(result)
                },
-               status: :unprocessable_entity
+               status: service_error_status(result)
       end
     end
 
@@ -349,13 +351,15 @@ module Community
         sender: current_user,
         topic: @topic,
         recipient_username: params[:recipient_username],
-        message: params[:message]
+        message: params[:message],
+        ip_address: request.remote_ip
       )
 
       if result.success?
         conversation = result.value[:conversation]
         redirect_to forum_conversation_path(conversation), notice: t("mcweb.flash.topic_shared_pm")
       else
+        apply_retry_after_header(result)
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
     end
@@ -610,7 +614,7 @@ module Community
       params.require(:topic).permit(
         :title, :body, :tags, :prefix, :poll_question, :poll_options, :poll_closes_days,
         :poll_multiple_choice, :poll_max_choices, :poll_hide_results_until_vote, :poll_anonymous,
-        :scheduled_at, :remove_poll, attachment_ids: [], custom_fields: {}
+        :scheduled_at, :remove_poll, :idempotency_key, attachment_ids: [], custom_fields: {}
       )
     end
 

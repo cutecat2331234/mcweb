@@ -240,12 +240,12 @@ function metricPrecision(value: Metric['value']) {
         >
           {{ t('admin.dashboard.linkStoreProducts') }}
         </Link>
-        <Link
+        <a
           :href="adminRoutes.site"
           class="text-sm text-[rgb(var(--primary-6))] no-underline hover:underline"
         >
           {{ t('admin.dashboard.linkViewSite') }}
-        </Link>
+        </a>
       </a-space>
     </a-card>
   </div>

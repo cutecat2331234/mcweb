@@ -1,0 +1,87 @@
+# frozen_string_literal: true
+
+require "test_helper"
+require "yaml"
+
+class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
+  ROOT = Rails.root
+
+  test "production image is multi-stage and runs as an unprivileged user" do
+    dockerfile = ROOT.join("deploy/docker/Dockerfile").read
+
+    assert_match(/^FROM node:26-bookworm-slim AS node$/, dockerfile)
+    assert_match(/^FROM ruby:4\.0\.6-slim-bookworm AS build$/, dockerfile)
+    assert_match(/^FROM ruby:4\.0\.6-slim-bookworm AS runtime$/, dockerfile)
+    assert_match(/^COPY --from=build --chown=mcweb:mcweb \/app \/app$/, dockerfile)
+    assert_match(/^USER mcweb$/, dockerfile)
+    assert_operator dockerfile.index("USER mcweb"), :<, dockerfile.index("ENTRYPOINT")
+    assert_equal 2, dockerfile.scan(/\blibvips42\b/).length
+  end
+
+  test "CI and release jobs install and exercise libvips JPEG support" do
+    [
+      ROOT.join(".github/workflows/ci.yml"),
+      ROOT.join(".github/workflows/release.yml")
+    ].each do |workflow|
+      source = workflow.read
+
+      assert_includes source, "libvips-dev", workflow.to_s
+      assert_includes(
+        source,
+        "bundle exec ruby scripts/check-libvips-jpeg.rb",
+        workflow.to_s
+      )
+    end
+  end
+
+  test "compose gates web and worker on migration and dependency health" do
+    compose = YAML.safe_load_file(
+      ROOT.join("deploy/docker/docker-compose.yml"),
+      aliases: true
+    )
+    services = compose.fetch("services")
+
+    assert_equal(
+      "service_completed_successfully",
+      services.dig("mcweb-web", "depends_on", "mcweb-migrate", "condition")
+    )
+    assert_equal(
+      "service_completed_successfully",
+      services.dig("mcweb-worker", "depends_on", "mcweb-migrate", "condition")
+    )
+    assert_includes(
+      services.dig("mcweb-web", "healthcheck", "test"),
+      "http://127.0.0.1:3000/health/ready"
+    )
+    assert_includes(
+      services.dig("mcweb-worker", "healthcheck", "test").join(" "),
+      'connection.call("PING")'
+    )
+    assert_equal(
+      "service_healthy",
+      services.dig("nginx", "depends_on", "mcweb-web", "condition")
+    )
+  end
+
+  test "docker context excludes local secrets and mutable runtime data" do
+    ignored = ROOT.join(".dockerignore").read.lines.map(&:strip)
+
+    %w[
+      .bundle
+      .npmrc
+      .env
+      .env.*
+      config/master.key
+      config/credentials/*.key
+      config/local*.yml
+      *.pem
+      *.key
+      log/*
+      storage/*
+      tmp/*
+      vendor/bundle
+    ].each do |entry|
+      assert_includes ignored, entry
+    end
+  end
+end

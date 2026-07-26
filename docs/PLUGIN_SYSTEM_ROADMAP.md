@@ -46,8 +46,10 @@ McWeb 的插件采用“安装即信任”模型：
 但该实现尚未达到正式稳定版标准：
 
 - 当前插件代码仍主要位于功能分支，尚未成为已发布的稳定主线能力。
-- 宿主 API 集中于论坛，身份、商业、任务、通知、邮件、存储和后台扩展仍不完整。
-- 页面、导航、权限、设置、定时任务、翻译和 UI 插槽缺少统一贡献协议。
+- 论坛 API 较完整，Identity 只读查询/权限、Commerce、Jobs 和 Settings 已有版本化
+  合同；Identity 受控写入、通知、邮件、存储和后台扩展仍不完整。
+- permissions/settings/jobs 已有各自的严格贡献协议；统一 contribution registry、
+  页面、导航、事件、翻译和 UI 插槽仍未完成。
 - 多 Puma/Sidekiq 进程之间没有完整的激活、重载、确认和回滚协调。
 - 缺少插件生成器、构建/验证命令、真实示例插件和正式兼容性矩阵。
 - 安装后文件健康检查、组合冲突测试和文档一致性仍需完善。
@@ -106,18 +108,18 @@ McWeb 的插件采用“安装即信任”模型：
 
 #### 4.6 Jobs、通知、邮件、Webhook 与存储
 
-- 版本化后台任务注册与调度入口。
+- [x] 版本化后台任务注册与调度入口。
 - 统一通知和邮件发送 API，复用模板、语言和退订策略。
 - Webhook 发送器提供重试、签名、超时和诊断，但不把插件本身视为不可信。
 - 插件命名空间存储、文件附件和临时文件 API。
-- 插件停用或卸载后，任务必须可识别、可取消，不产生孤儿任务。
+- [x] 插件停用或卸载后，任务必须可识别、可取消，不产生孤儿任务。
 
 #### 4.7 插件设置
 
-- 插件通过 schema 声明设置项、默认值、校验、敏感显示方式和分组。
-- 管理后台根据 schema 生成 Arco Design 表单。
-- 配置变更产生版本化事件，并支持回滚到上一个有效版本。
-- 插件只能写入自身命名空间，宿主配置通过专门 API 修改。
+- [x] 插件通过 schema 声明设置项、默认值、校验、敏感显示方式和分组。
+- [x] 管理后台根据 schema 生成 Arco Design 表单。
+- [x] 配置变更产生版本化事件，并支持回滚到上一个有效版本。
+- [x] 插件只能写入自身命名空间，宿主配置通过专门 API 修改。
 
 验收标准：
 
@@ -517,6 +519,11 @@ Controller / Job / Domain Command
 
 ### 11.1 建议字段
 
+以下是**未来目标 schema**，不是当前 manifest v1。当前 v1 只接受
+`id/name/version/api_version/requires/capabilities/entrypoint/setup`，以及
+`permissions/settings/jobs` 三类 contributions；`edition`、导航、事件、I18N、资源和
+UI slots 尚未进入现行 schema。
+
 ```yaml
 schema_version: 1
 id: example.fulfillment
@@ -779,7 +786,9 @@ permissions:
 - **卸载并保留数据**：移除代码和运行时贡献，保留插件数据与恢复元数据。
 - **卸载并清除数据**：执行受 journal 管理的 purge，管理员确认影响摘要。
 
-默认模式在正式发布前确定；在未确定前，产品界面不得使用含糊的单一“卸载”按钮。
+当前基线只有“执行受信 teardown，再把包文件移入可恢复隔离区”的单一模式；teardown
+可能永久删除插件自有数据，文件可恢复不代表数据库数据可恢复。现行界面必须明确显示
+该风险并要求输入准确插件 ID；`PLUG-308` 在真正区分“保留数据/清除数据”前不得勾选。
 
 ## 16. 前端与 Arco Design 扩展规范
 
@@ -964,7 +973,9 @@ permissions:
 边界门禁：
 
 - CE 代码搜索和依赖图中不得出现 EE realtime adapter。
-- CE manifest schema 可以识别 `edition: ee`，但不得包含其运行实现。
+- 当前 CE manifest v1 不接受 `edition` 字段；在 edition 合同落地前，不能宣称 CE
+  能静态识别或拒绝 EE-only 插件。该能力只能在后续 schema 版本实现，CE 仍不得包含
+  EE realtime adapter。
 - EE 合并 CE 后，通过下游注册机制追加 realtime Host API。
 - 通用 DTO 若被 EE 使用，仍在 CE 保持与实时无关的领域含义。
 
@@ -992,19 +1003,19 @@ permissions:
 ### 稳定化
 
 - `PLUG-001`：盘点当前插件分支、未提交 WIP 和公共接口。
-- `PLUG-002`：冻结 manifest schema v1 与 canonical digest。
-- `PLUG-003`：冻结并审计现有 service decorator chain 合同。
+- [x] `PLUG-002`：冻结 manifest schema v1 与 canonical digest。
+- [x] `PLUG-003`：冻结并审计现有 service decorator chain 合同。
 - `PLUG-004`：在已接入论坛发帖服务的基础上继续接入首批具名核心服务。
-- `PLUG-005`：建立现有 SDK 合同测试。
+- [x] `PLUG-005`：建立现有 SDK 合同测试。
 - `PLUG-006`：修复三份插件文档漂移。
 - `PLUG-007`：生成 CE/EE/API 稳定性合同矩阵。
 
 ### Host API
 
-- `PLUG-101`：Identity DTO、查询与权限判定。
-- `PLUG-102`：全局身份组与插件权限贡献。
-- `PLUG-103`：插件设置 schema 与版本化存储。
-- `PLUG-104`：Jobs API 与任务归属。
+- [x] `PLUG-101`：Identity DTO、查询与权限判定。
+- [x] `PLUG-102`：全局身份组与插件权限贡献。
+- [x] `PLUG-103`：插件设置 schema 与版本化存储。
+- [x] `PLUG-104`：Jobs API 与任务归属。
 - `PLUG-105`：通知与邮件 API。
 - `PLUG-106`：Webhook 与可靠重试。
 - `PLUG-107`：插件文件和命名空间存储。
@@ -1018,7 +1029,7 @@ permissions:
 ### Contributions 与 UI
 
 - `PLUG-201`：统一 contribution descriptor 与排序。
-- `PLUG-202`：权限和设置 contributions。
+- [x] `PLUG-202`：权限和设置 contributions。
 - `PLUG-203`：导航、页面和操作 contributions。
 - `PLUG-204`：任务与事件 contributions。
 - `PLUG-205`：I18N phrase contribution 和覆盖率。

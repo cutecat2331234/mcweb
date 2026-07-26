@@ -15,12 +15,12 @@ module Identity
     end
 
     def call
-      rate_limit_result = Administration::RateLimiter.call(
-        key: "login:#{@email}:#{@ip_address}",
-        limit: 10,
-        window: 15.minutes
+      rate_limit_result = Administration::AbuseRateLimit.call(
+        action: :login,
+        account: @email,
+        ip_address: @ip_address
       )
-      return ServiceResult.failure(error: "登录尝试过于频繁，请稍后再试。") if rate_limit_result.failure?
+      return rate_limit_result if rate_limit_result.failure?
 
       user = User.find_by(email: @email)
       return generic_failure unless user
@@ -28,28 +28,37 @@ module Identity
       clear_expired_ban!(user)
       return generic_failure if user.banned?
       return generic_failure if user.deleted?
-      return generic_failure if locked?(user)
+      if !Mcweb::DeveloperMode.allow?(:skip_account_lockout) && locked?(user)
+        return generic_failure
+      end
 
       unless user.authenticate(@password)
-        record_failed_login(user)
+        record_failed_login(user) unless Mcweb::DeveloperMode.allow?(:skip_account_lockout)
         return generic_failure
       end
 
-      unless user.email_verified?
+      if user.developer_mode_relaxed_password? && !Mcweb::DeveloperMode.allow?(:relax_password_policy)
         return generic_failure
       end
 
-      if user.totp_enabled?
+      unless production_email_verified?(user) || Mcweb::DeveloperMode.allow?(:skip_email_verification)
+        return generic_failure
+      end
+
+      if user.totp_enabled? && !Mcweb::DeveloperMode.allow?(:skip_two_factor)
         return ServiceResult.failure(error: "请输入两步验证码。") if @totp_code.blank?
         return ServiceResult.failure(error: "两步验证码无效。") unless verify_second_factor(user)
       end
 
-      user.update!(
-        failed_login_count: 0,
-        locked_until: nil,
+      sign_in_attributes = {
         last_sign_in_at: Time.current,
         last_sign_in_ip: @ip_address
-      )
+      }
+      unless Mcweb::DeveloperMode.allow?(:skip_account_lockout)
+        sign_in_attributes[:failed_login_count] = 0
+        sign_in_attributes[:locked_until] = nil
+      end
+      user.update!(sign_in_attributes)
 
       session_result = SessionManager.call(
         user: user,
@@ -81,6 +90,10 @@ module Identity
 
     def locked?(user)
       user.locked_until&.future?
+    end
+
+    def production_email_verified?(user)
+      user.email_verified? && !user.developer_mode_email_verified?
     end
 
     def verify_second_factor(user)

@@ -87,6 +87,12 @@ API 严格复用站点的分区可见性规则：需要登录的分区（`login_
 缺少 `write` scope 返回 `403 insufficient_scope`；有 scope 但未绑定用户返回 `403 write_requires_user`；
 领域服务校验失败（如标题为空、发帖过快）返回 `422 unprocessable` 并在 `message` 给出原因。
 
+- 创建主题或回复时应发送 `Idempotency-Key` 请求头。键必须为 1–128 个字母、数字、点、下划线、
+  冒号或连字符；网络重试必须复用同一个键。
+- 同一用户以相同键重试相同请求时，API 返回第一次创建的资源，不会重复创建内容、附件关联、
+  通知、积分或 Webhook。把同一个键用于不同内容会返回 `422`。
+- 响应会回显有效的 `Idempotency-Key` 请求头。
+
 - `POST /api/v1/topics`：`section_id`（分区 slug）、`title`、`body`、`tag_names[]`（可选）、`prefix`（可选）
 - `POST /api/v1/posts`：`topic_id`（主题 public_id）、`body`、`quoted_post_id`（可选）、`parent_post_id`（可选）
 
@@ -129,3 +135,34 @@ curl -H "Authorization: Bearer $MCWEB_API_KEY" \
 | 403 | `insufficient_scope` | 密钥缺少所需 scope |
 | 404 | `not_found` | 资源不存在或对该密钥不可见 |
 | 429 | `rate_limited` | 超出限流 |
+
+## 支付 Webhook 与晚到支付运维契约
+
+以下端点不属于公开 `/api/v1`，不能使用 API 密钥访问：
+
+| 方法 | 路径 | 说明 |
+|------|------|------|
+| POST | `/app/store/webhooks/:provider` | 支付渠道 Webhook；Stripe 的事件 ID 和类型只从已签名原始请求体读取 |
+| GET | `/admin/store/late-payment-cases` | 晚到支付人工队列；要求后台会话、商城模块和 `store.payments.late_review` 权限 |
+| PATCH | `/admin/store/late-payment-cases/:id/acknowledge` | 记录人工复核结果；要求同一专属权限 |
+
+Stripe 的成功事件通过官方签名验证，并完成支付对象、订单、金额、币种和 test/live
+环境校验后，如果本地订单已取消或支付窗口已过期，系统会在同一数据库事务内：
+
+1. 保存已成功付款的支付记录；
+2. 以 payment record 唯一约束写入 `payment_late_payment_cases`；
+3. 保存触发入队的已验证 Webhook 事件关联。
+
+因此事件重试不会重复入队，队列写入失败也不会只留下孤儿 metadata。此类已可靠入队的
+Webhook 会正常完成，不会作为未知处理失败进入死信。
+
+人工确认请求必须提交：
+
+- `token`：服务端签发、十分钟内有效并绑定队列、支付、订单和 Webhook 的确认令牌；
+- `confirmation`：必须与完整订单号一致；
+- `disposition`：服务端允许列表中的后续处置类别；
+- `note`：10–1000 字符的复核依据。
+
+确认只把队列状态改为 `acknowledged` 并写入不可变 `AuditLog`，不会自动修改订单、
+支付、退款、站内余额或渠道资金。支付引用与事件引用在后台页面中仅以掩码形式显示，
+原始 Webhook 载荷、metadata、渠道凭证和客户资料不会返回到页面。

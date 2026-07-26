@@ -47,6 +47,7 @@ module Community
       tag_result = nil
       poll_result = nil
       field_result = nil
+      inline_upload_result = nil
       Community::Topic.transaction do
         topic = Community::Topic.create!(
           public_id: "topic_#{SecureRandom.alphanumeric(16)}",
@@ -61,13 +62,19 @@ module Community
           replies_count: 0
         )
 
-        Community::Post.create!(
+        opening_post = Community::Post.create!(
           topic: topic,
           user: @user,
           floor_number: 1,
           body: @body,
           status: "published"
         )
+        inline_upload_result = Community::BindInlineUploads.call(
+          user: @user,
+          post: opening_post,
+          body: @body
+        )
+        raise ActiveRecord::Rollback if inline_upload_result.failure?
 
         if @tag_names.present?
           tag_result = Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user)
@@ -97,6 +104,7 @@ module Community
       return tag_result if tag_result&.failure?
       return poll_result if poll_result&.failure?
       return field_result if field_result&.failure?
+      return inline_upload_result if inline_upload_result&.failure?
 
       opening_post = topic.posts.first
       if opening_post

@@ -129,6 +129,33 @@ module Api
         assert JSON.parse(response.body)["data"]["id"].present?
       end
 
+      test "topic creation honors the Idempotency-Key header" do
+        writer = create_user(username: "apiidempotentwriter")
+        _record, token = Administration::ApiKey.generate!(
+          name: "idempotent-writer",
+          scopes: %w[read write],
+          user: writer
+        )
+        key = "api-topic-#{SecureRandom.uuid}"
+        headers = auth_headers(token).merge("Idempotency-Key" => key)
+        params = {
+          section_id: "api-sec",
+          title: "API idempotent topic",
+          body: "Created once through the API"
+        }
+
+        post "/api/v1/topics", params: params, headers: headers
+        assert_response :created
+        first_id = JSON.parse(response.body).dig("data", "id")
+        assert_equal key, response.headers["Idempotency-Key"]
+
+        assert_no_difference -> { Community::Topic.count } do
+          post "/api/v1/topics", params: params, headers: headers
+        end
+        assert_response :created
+        assert_equal first_id, JSON.parse(response.body).dig("data", "id")
+      end
+
       test "API topic creation validates and serializes custom fields" do
         writer = create_user(username: "apifieldwriter")
         _record, token = Administration::ApiKey.generate!(
@@ -176,6 +203,32 @@ module Api
         end
         assert_response :created
         assert_equal "A reply created via API", JSON.parse(response.body)["data"]["body"]
+      end
+
+      test "reply creation honors the Idempotency-Key header" do
+        replier = create_user(username: "apiidempotentreplier")
+        _record, token = Administration::ApiKey.generate!(
+          name: "idempotent-replier",
+          scopes: %w[read write],
+          user: replier
+        )
+        key = "api-post-#{SecureRandom.uuid}"
+        headers = auth_headers(token).merge("Idempotency-Key" => key)
+        params = {
+          topic_id: @topic.public_id,
+          body: "An idempotent API reply"
+        }
+
+        post "/api/v1/posts", params: params, headers: headers
+        assert_response :created
+        first_id = JSON.parse(response.body).dig("data", "id")
+        assert_equal key, response.headers["Idempotency-Key"]
+
+        assert_no_difference -> { Community::Post.count } do
+          post "/api/v1/posts", params: params, headers: headers
+        end
+        assert_response :created
+        assert_equal first_id, JSON.parse(response.body).dig("data", "id")
       end
 
       test "read-only key cannot create a topic" do

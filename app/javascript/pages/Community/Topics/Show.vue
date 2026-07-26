@@ -2,6 +2,15 @@
 import { ref, watch, onMounted, onUnmounted, computed } from 'vue'
 import { Head, Link, router, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRoot,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from 'reka-ui'
+import { MoreHorizontal } from '@lucide/vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -24,6 +33,7 @@ import TopicCustomFieldsForm, {
   type TopicCustomFieldValue,
 } from '@/components/portal/TopicCustomFieldsForm.vue'
 import { routes } from '@/lib/routes'
+import { createIdempotencyKey } from '@/lib/idempotency'
 import { readCsrfToken } from '@/lib/csrf'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
 import { confirm } from '@/lib/useConfirm'
@@ -34,6 +44,12 @@ import Checkbox from '@/components/ui/Checkbox.vue'
 defineOptions({ layout: PortalLayout })
 
 const { t } = useI18n()
+
+const menuItemClass = [
+  'relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
+  'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
+].join(' ')
+const destructiveMenuItemClass = `${menuItemClass} text-destructive data-[highlighted]:bg-destructive/10 data-[highlighted]:text-destructive`
 
 export interface QuotedPost {
   id: number
@@ -337,6 +353,34 @@ const postSortOptions = computed(() => [
   { value: 'recent', label: t('forum.topics.sortRecent') },
 ])
 
+const hasTopicOverflowActions = computed(() => Boolean(
+  props.topic.rss_url
+    || props.topic.can_edit
+    || loggedIn
+    || props.markUnreadUrl
+    || props.canCloseOwn
+    || props.topic.share_as_pm_url
+    || props.reportTopicUrl
+    || props.topic.can_moderate,
+))
+
+const hasModeratorStatusSummary = computed(() => Boolean(
+  props.topic.pinned_until
+    || props.topic.bumped_at
+    || props.topic.hidden
+    || props.topic.wiki
+    || props.topic.solved_post_id
+    || props.topic.slow_mode_seconds
+    || props.topic.archived_at
+    || props.topic.unlisted
+    || props.topic.auto_close_at
+    || props.topic.auto_open_at
+    || props.topic.auto_bump_at
+    || props.topic.auto_archive_at
+    || props.topic.locked
+    || props.topic.global_announcement,
+))
+
 function containsLink(text: string) {
   return /https?:\/\/|www\./i.test(text)
 }
@@ -350,6 +394,7 @@ const replyForm = useForm({
     quoted_post_id: null as number | null,
     parent_post_id: null as number | null,
     whisper: false,
+    idempotency_key: createIdempotencyKey(),
     attachment_ids: [] as number[],
   },
 })
@@ -538,6 +583,7 @@ function submitReply() {
       replyForm.post.body = ''
       replyForm.post.quoted_post_id = null
       replyForm.post.parent_post_id = null
+      replyForm.post.idempotency_key = createIdempotencyKey()
       replyForm.post.attachment_ids = []
       pendingAttachments.value = []
       quotePreviews.value = []
@@ -1225,18 +1271,12 @@ async function copyPollShareLink() {
         :subtitle="`${topic.author ? `${t('forum.topics.author')} ${topic.author}` : ''}${topic.author ? ' · ' : ''}${t('forum.topics.views', { count: topic.views_count })}${topic.reading_time_minutes ? ` · ${t('forum.topics.readingTime', { minutes: topic.reading_time_minutes })}` : ''}`"
       />
     </div>
-    <div class="flex flex-wrap gap-2">
-      <Button v-if="topic.rss_url" as-child variant="outline" size="sm">
-        <a :href="topic.rss_url" target="_blank" rel="noopener">RSS</a>
-      </Button>
-      <Button v-if="topic.can_edit" type="button" variant="outline" size="sm" @click="togglePanel('edit-topic')">
-        {{ activePanel === 'edit-topic' ? t('forum.topics.collapseEdit') : t('forum.topics.editTopic') }}
+    <div class="flex w-full flex-wrap items-center gap-2 sm:w-auto sm:justify-end">
+      <Button v-if="jumpToUnreadUrl" as-child size="sm">
+        <Link :href="jumpToUnreadUrl">{{ t('forum.topics.jumpUnread') }}</Link>
       </Button>
       <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleBookmark">
         {{ topic.bookmarked ? t('forum.topics.editBookmark') : t('forum.topics.addBookmark') }}
-      </Button>
-      <Button v-if="loggedIn && topic.bookmarked" type="button" variant="outline" size="sm" @click="removeBookmark">
-        {{ t('forum.topics.removeBookmark') }}
       </Button>
       <SubscriptionLevelSelect
         v-if="loggedIn && subscriptionLevels?.length && subscriptionUrl"
@@ -1245,69 +1285,135 @@ async function copyPollShareLink() {
         :watching="topic.watching"
         :notification-level="topic.notification_level"
       />
-      <Button v-if="loggedIn" type="button" variant="outline" size="sm" @click="toggleMute">
-        {{ topic.muted ? t('forum.topics.unmute') : t('forum.topics.mute') }}
-      </Button>
-      <Button v-if="markUnreadUrl" type="button" variant="outline" size="sm" @click="markUnread">{{ t('forum.topics.markUnread') }}</Button>
-      <Button v-if="canCloseOwn && !topic.locked" type="button" variant="outline" size="sm" @click="closeOwnTopic">{{ t('forum.topics.closeTopic') }}</Button>
-      <Button v-if="canCloseOwn && topic.locked" type="button" variant="outline" size="sm" @click="reopenOwnTopic">{{ t('forum.topics.reopenTopic') }}</Button>
-      <Button v-if="jumpToUnreadUrl" as-child variant="outline" size="sm">
-        <Link :href="jumpToUnreadUrl">{{ t('forum.topics.jumpUnread') }}</Link>
-      </Button>
-      <Button v-if="topic.share_as_pm_url" type="button" variant="outline" size="sm" @click="togglePanel('share-pm')">
-        {{ activePanel === 'share-pm' ? t('forum.topics.collapseShare') : t('forum.topics.sharePm') }}
-      </Button>
-      <Button v-if="reportTopicUrl" as-child variant="outline" size="sm">
-        <Link :href="reportTopicUrl">{{ t('forum.topics.reportTopic') }}</Link>
-      </Button>
-      <template v-if="topic.can_moderate">
-        <Button type="button" variant="outline" size="sm" @click="moderate(topic.locked ? 'unlock' : 'lock')">
-          {{ topic.locked ? t('forum.topics.unlock') : t('forum.topics.lock') }}
-        </Button>
-        <Button type="button" variant="outline" size="sm" @click="moderate(topic.pinned ? 'unpin' : 'pin')">
-          {{ topic.pinned ? t('forum.topics.unpin') : t('forum.topics.pin') }}
-        </Button>
-        <Button v-if="topic.can_moderate && !topic.pinned" type="button" variant="outline" size="sm" @click="moderate('pin_7')">
-          {{ t('forum.topics.pin7Days') }}
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          :disabled="!!topic.bump_cooldown_remaining_seconds"
-          :title="topic.bump_cooldown_remaining_seconds ? t('forum.topics.bumpCooldown', { seconds: topic.bump_cooldown_remaining_seconds }) : undefined"
-          @click="moderate('bump')"
+      <DropdownMenuRoot v-if="hasTopicOverflowActions" :modal="false">
+        <DropdownMenuTrigger as-child>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            :aria-label="t('forum.topics.moreActions')"
+          >
+            <MoreHorizontal class="h-4 w-4" aria-hidden="true" />
+            <span>{{ t('forum.topics.moreActions') }}</span>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          class="z-50 max-h-[70vh] min-w-[13rem] overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+          :side-offset="6"
+          align="end"
         >
-          {{ t('forum.topics.bump') }}
-        </Button>
-        <Button type="button" variant="outline" size="sm" @click="moderate(topic.featured ? 'unfeature' : 'feature')">
-          {{ topic.featured ? t('forum.topics.unfeature') : t('forum.topics.feature') }}
-        </Button>
-        <Button type="button" variant="outline" size="sm" @click="moderate(topic.hidden ? 'unhide' : 'hide')">
-          {{ topic.hidden ? t('forum.topics.unhide') : t('forum.topics.hide') }}
-        </Button>
-        <Button type="button" variant="outline" size="sm" @click="moderate(topic.wiki ? 'disable_wiki' : 'enable_wiki')">
-          {{ topic.wiki ? t('forum.topics.disableWiki') : t('forum.topics.enableWiki') }}
-        </Button>
-        <Button type="button" variant="outline" size="sm" @click="moderate(topic.global_announcement ? 'remove_global_announcement' : 'global_announcement')">
-          {{ topic.global_announcement ? t('forum.topics.removeAnnouncement') : t('forum.topics.setAnnouncement') }}
-        </Button>
-        <Button type="button" variant="outline" size="sm" @click="moderate(topic.unlisted ? 'list' : 'unlist')">
-          {{ topic.unlisted ? t('forum.topics.relist') : t('forum.topics.unlist') }}
-        </Button>
-        <Button type="button" variant="outline" size="sm" @click="moderate(topic.archived_at ? 'unarchive' : 'archive')">
-          {{ topic.archived_at ? t('forum.topics.unarchive') : t('forum.topics.archive') }}
-        </Button>
-        <Button v-if="topic.assigned_username" type="button" variant="outline" size="sm" @click="moderate('unassign')">
-          {{ t('forum.topics.unassign') }}
-        </Button>
-        <Button v-else type="button" variant="outline" size="sm" @click="moderate('assign')">
-          {{ t('forum.topics.assignStaff') }}
-        </Button>
-        <Button v-if="topic.export_url" as-child variant="outline" size="sm">
-          <a :href="topic.export_url" download>{{ t('forum.topics.exportCsv') }}</a>
-        </Button>
-      </template>
+          <DropdownMenuLabel class="px-2 py-1.5 text-xs text-muted-foreground">
+            {{ t('forum.topics.topicActions') }}
+          </DropdownMenuLabel>
+          <DropdownMenuItem
+            v-if="topic.can_edit"
+            :class="menuItemClass"
+            @select="togglePanel('edit-topic')"
+          >
+            {{ activePanel === 'edit-topic' ? t('forum.topics.collapseEdit') : t('forum.topics.editTopic') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            v-if="loggedIn && topic.bookmarked"
+            :class="destructiveMenuItemClass"
+            @select="removeBookmark"
+          >
+            {{ t('forum.topics.removeBookmark') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            v-if="loggedIn"
+            :class="menuItemClass"
+            @select="toggleMute"
+          >
+            {{ topic.muted ? t('forum.topics.unmute') : t('forum.topics.mute') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            v-if="markUnreadUrl"
+            :class="menuItemClass"
+            @select="markUnread"
+          >
+            {{ t('forum.topics.markUnread') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            v-if="canCloseOwn && !topic.locked"
+            :class="menuItemClass"
+            @select="closeOwnTopic"
+          >
+            {{ t('forum.topics.closeTopic') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            v-if="canCloseOwn && topic.locked"
+            :class="menuItemClass"
+            @select="reopenOwnTopic"
+          >
+            {{ t('forum.topics.reopenTopic') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            v-if="topic.share_as_pm_url"
+            :class="menuItemClass"
+            @select="togglePanel('share-pm')"
+          >
+            {{ activePanel === 'share-pm' ? t('forum.topics.collapseShare') : t('forum.topics.sharePm') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem v-if="reportTopicUrl" as-child>
+            <Link :href="reportTopicUrl" :class="menuItemClass">
+              {{ t('forum.topics.reportTopic') }}
+            </Link>
+          </DropdownMenuItem>
+          <DropdownMenuItem v-if="topic.rss_url" as-child>
+            <a :href="topic.rss_url" target="_blank" rel="noopener" :class="menuItemClass">RSS</a>
+          </DropdownMenuItem>
+
+          <template v-if="topic.can_moderate">
+            <DropdownMenuSeparator class="my-1 h-px bg-border" />
+            <DropdownMenuLabel class="px-2 py-1.5 text-xs text-muted-foreground">
+              {{ t('forum.topics.moderatorTools') }}
+            </DropdownMenuLabel>
+            <DropdownMenuItem :class="menuItemClass" @select="moderate(topic.locked ? 'unlock' : 'lock')">
+              {{ topic.locked ? t('forum.topics.unlock') : t('forum.topics.lock') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem :class="menuItemClass" @select="moderate(topic.pinned ? 'unpin' : 'pin')">
+              {{ topic.pinned ? t('forum.topics.unpin') : t('forum.topics.pin') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem v-if="!topic.pinned" :class="menuItemClass" @select="moderate('pin_7')">
+              {{ t('forum.topics.pin7Days') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              :class="[menuItemClass, topic.bump_cooldown_remaining_seconds ? 'pointer-events-none opacity-50' : '']"
+              :disabled="!!topic.bump_cooldown_remaining_seconds"
+              :title="topic.bump_cooldown_remaining_seconds ? t('forum.topics.bumpCooldown', { seconds: topic.bump_cooldown_remaining_seconds }) : undefined"
+              @select="moderate('bump')"
+            >
+              {{ t('forum.topics.bump') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem :class="menuItemClass" @select="moderate(topic.featured ? 'unfeature' : 'feature')">
+              {{ topic.featured ? t('forum.topics.unfeature') : t('forum.topics.feature') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem :class="menuItemClass" @select="moderate(topic.hidden ? 'unhide' : 'hide')">
+              {{ topic.hidden ? t('forum.topics.unhide') : t('forum.topics.hide') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem :class="menuItemClass" @select="moderate(topic.wiki ? 'disable_wiki' : 'enable_wiki')">
+              {{ topic.wiki ? t('forum.topics.disableWiki') : t('forum.topics.enableWiki') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem :class="menuItemClass" @select="moderate(topic.global_announcement ? 'remove_global_announcement' : 'global_announcement')">
+              {{ topic.global_announcement ? t('forum.topics.removeAnnouncement') : t('forum.topics.setAnnouncement') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem :class="menuItemClass" @select="moderate(topic.unlisted ? 'list' : 'unlist')">
+              {{ topic.unlisted ? t('forum.topics.relist') : t('forum.topics.unlist') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem :class="menuItemClass" @select="moderate(topic.archived_at ? 'unarchive' : 'archive')">
+              {{ topic.archived_at ? t('forum.topics.unarchive') : t('forum.topics.archive') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem :class="menuItemClass" @select="moderate(topic.assigned_username ? 'unassign' : 'assign')">
+              {{ topic.assigned_username ? t('forum.topics.unassign') : t('forum.topics.assignStaff') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem v-if="topic.export_url" as-child>
+              <a :href="topic.export_url" download :class="menuItemClass">
+                {{ t('forum.topics.exportCsv') }}
+              </a>
+            </DropdownMenuItem>
+          </template>
+        </DropdownMenuContent>
+      </DropdownMenuRoot>
     </div>
   </div>
 
@@ -1322,17 +1428,20 @@ async function copyPollShareLink() {
   </dl>
 
   <div v-if="activePanel === 'assign'" class="mb-4 max-w-md space-y-2 rounded-lg border p-4">
-    <p class="text-sm font-medium">{{ t('forum.topics.assignTitle') }}</p>
+    <label for="topic-assignee" class="text-sm font-medium">{{ t('forum.topics.assignTitle') }}</label>
     <Input
+      id="topic-assignee"
       v-model="assignQuery"
       :placeholder="t('forum.topics.searchStaff')"
+      aria-controls="topic-assignee-options"
+      :aria-expanded="assignSuggestions.length > 0"
       @input="searchAssignees(assignQuery)"
     />
-    <ul v-if="assignSuggestions.length" class="max-h-40 overflow-auto rounded border text-sm">
+    <ul v-if="assignSuggestions.length" id="topic-assignee-options" class="max-h-40 overflow-auto rounded border text-sm">
       <li v-for="user in assignSuggestions" :key="user.username">
         <button
           type="button"
-          class="flex w-full items-center gap-2 px-3 py-2 hover:bg-muted"
+          class="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
           @click="confirmAssign(user.username)"
         >
           <img v-if="user.avatar_url" :src="user.avatar_url" alt="" class="h-6 w-6 rounded-full">
@@ -1442,7 +1551,14 @@ async function copyPollShareLink() {
           <span>{{ option.label }}</span>
           <span class="text-muted-foreground">{{ t('forum.topics.pollVotes', { votes: option.votes, percent: pollPercent(option.votes) }) }}</span>
         </div>
-        <div class="h-2 overflow-hidden rounded-full bg-muted">
+        <div
+          class="h-2 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          :aria-label="option.label"
+          :aria-valuenow="pollPercent(option.votes)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+        >
           <div class="h-full bg-primary transition-all" :style="{ width: `${pollPercent(option.votes)}%` }" />
         </div>
         <Button
@@ -1519,62 +1635,126 @@ async function copyPollShareLink() {
     </ul>
   </section>
 
-  <section v-if="topic.can_move || topic.can_moderate" class="mb-4 rounded-lg border">
+  <section v-if="topic.can_move || topic.can_moderate" class="mb-6 overflow-hidden rounded-xl border bg-card">
     <button
       type="button"
-      class="flex w-full items-center justify-between px-4 py-2.5 text-sm font-medium hover:bg-muted/40"
+      class="flex w-full items-center justify-between gap-4 px-4 py-3 text-left text-sm font-semibold transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring"
+      :aria-expanded="moderateToolsOpen"
+      aria-controls="topic-moderator-tools"
       @click="moderateToolsOpen = !moderateToolsOpen"
     >
       <span>{{ t('forum.topics.moderatorTools') }}</span>
       <span class="text-xs text-muted-foreground">{{ moderateToolsOpen ? t('forum.topics.collapse') : t('forum.topics.expand') }}</span>
     </button>
-    <div v-show="moderateToolsOpen" class="space-y-4 border-t p-4">
-  <div v-if="topic.can_move && sections.length" class="flex flex-wrap items-center gap-2">
-    <label class="text-sm text-muted-foreground">{{ t('forum.topics.moveToSection') }}</label>
-    <Select v-model="moveSectionSlug" :options="sectionMoveOptions" size="sm" class="min-w-[12rem]" />
-    <label class="flex items-center gap-1.5 text-sm text-muted-foreground">
-      <Checkbox v-model="leaveRedirect" />
-      {{ t('forum.topics.leaveRedirect') }}
-    </label>
-    <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">{{ t('forum.topics.move') }}</Button>
-    <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="copyTopic">{{ t('forum.topics.copy') }}</Button>
-    <template v-if="topic.can_move">
-      <label class="text-sm text-muted-foreground">{{ t('forum.topics.splitToSection') }}</label>
-      <Select v-model="splitSectionSlug" :options="sectionSplitOptions" size="sm" class="min-w-[12rem]" />
-      <Input v-model="mergeTargetId" :placeholder="t('forum.topics.mergeToTopicId')" class="h-8 w-40" />
-      <Button type="button" size="sm" variant="outline" :disabled="!mergeTargetId" @click="mergeTopic">{{ t('forum.topics.merge') }}</Button>
-    </template>
-    <template v-if="topic.can_moderate">
-      <Input v-model.number="slowModeSeconds" type="number" min="0" class="h-8 w-24" :placeholder="t('forum.topics.slowModeSeconds')" />
-      <Button type="button" size="sm" variant="outline" @click="updateSlowMode">{{ t('forum.topics.setSlowMode') }}</Button>
-      <Input v-model="autoCloseAt" type="datetime-local" class="h-8 w-48" />
-      <Button type="button" size="sm" variant="outline" @click="updateAutoClose">{{ t('forum.topics.scheduleClose') }}</Button>
-      <Input v-model="autoOpenAt" type="datetime-local" class="h-8 w-48" />
-      <Button type="button" size="sm" variant="outline" @click="updateAutoOpen">{{ t('forum.topics.scheduleOpen') }}</Button>
-      <Input v-model="autoBumpAt" type="datetime-local" class="h-8 w-48" />
-      <Button type="button" size="sm" variant="outline" @click="updateAutoBump">{{ t('forum.topics.scheduleBump') }}</Button>
-      <Input v-model="autoArchiveAt" type="datetime-local" class="h-8 w-48" />
-      <Button type="button" size="sm" variant="outline" @click="updateAutoArchive">{{ t('forum.topics.scheduleArchive') }}</Button>
-    </template>
-  </div>
+    <div id="topic-moderator-tools" v-show="moderateToolsOpen" class="space-y-5 border-t p-4">
+      <div v-if="topic.can_move && sections.length" class="grid gap-4 lg:grid-cols-2">
+        <div class="space-y-3 rounded-lg bg-muted/30 p-3">
+          <label for="topic-move-section" class="block text-sm font-medium">
+            {{ t('forum.topics.moveToSection') }}
+          </label>
+          <Select
+            id="topic-move-section"
+            v-model="moveSectionSlug"
+            :options="sectionMoveOptions"
+            size="sm"
+            block
+          />
+          <label class="flex items-center gap-2 text-sm text-muted-foreground">
+            <Checkbox v-model="leaveRedirect" />
+            {{ t('forum.topics.leaveRedirect') }}
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="moveTopic">{{ t('forum.topics.move') }}</Button>
+            <Button type="button" size="sm" variant="outline" :disabled="!moveSectionSlug" @click="copyTopic">{{ t('forum.topics.copy') }}</Button>
+          </div>
+        </div>
+        <div class="space-y-3 rounded-lg bg-muted/30 p-3">
+          <label for="topic-split-section" class="block text-sm font-medium">
+            {{ t('forum.topics.splitToSection') }}
+          </label>
+          <Select
+            id="topic-split-section"
+            v-model="splitSectionSlug"
+            :options="sectionSplitOptions"
+            size="sm"
+            block
+          />
+          <label for="topic-merge-target" class="block text-sm font-medium">
+            {{ t('forum.topics.mergeToTopicId') }}
+          </label>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <Input
+              id="topic-merge-target"
+              v-model="mergeTargetId"
+              :placeholder="t('forum.topics.mergeToTopicId')"
+              class="h-8 min-w-0 flex-1"
+            />
+            <Button type="button" size="sm" variant="outline" :disabled="!mergeTargetId" @click="mergeTopic">{{ t('forum.topics.merge') }}</Button>
+          </div>
+        </div>
+      </div>
 
-  <p v-if="topic.pinned_until" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+      <div v-if="topic.can_moderate" class="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <div class="space-y-2 rounded-lg bg-muted/30 p-3">
+          <label for="topic-slow-mode" class="block text-sm font-medium">{{ t('forum.topics.slowModeSeconds') }}</label>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <Input id="topic-slow-mode" v-model.number="slowModeSeconds" type="number" min="0" class="h-8 min-w-0 flex-1" />
+            <Button type="button" size="sm" variant="outline" @click="updateSlowMode">{{ t('forum.topics.setSlowMode') }}</Button>
+          </div>
+        </div>
+        <div class="space-y-2 rounded-lg bg-muted/30 p-3">
+          <label for="topic-auto-close" class="block text-sm font-medium">{{ t('forum.topics.scheduleClose') }}</label>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <Input id="topic-auto-close" v-model="autoCloseAt" type="datetime-local" class="h-8 min-w-0 flex-1" />
+            <Button type="button" size="sm" variant="outline" @click="updateAutoClose">{{ t('forum.topics.scheduleClose') }}</Button>
+          </div>
+        </div>
+        <div class="space-y-2 rounded-lg bg-muted/30 p-3">
+          <label for="topic-auto-open" class="block text-sm font-medium">{{ t('forum.topics.scheduleOpen') }}</label>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <Input id="topic-auto-open" v-model="autoOpenAt" type="datetime-local" class="h-8 min-w-0 flex-1" />
+            <Button type="button" size="sm" variant="outline" @click="updateAutoOpen">{{ t('forum.topics.scheduleOpen') }}</Button>
+          </div>
+        </div>
+        <div class="space-y-2 rounded-lg bg-muted/30 p-3">
+          <label for="topic-auto-bump" class="block text-sm font-medium">{{ t('forum.topics.scheduleBump') }}</label>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <Input id="topic-auto-bump" v-model="autoBumpAt" type="datetime-local" class="h-8 min-w-0 flex-1" />
+            <Button type="button" size="sm" variant="outline" @click="updateAutoBump">{{ t('forum.topics.scheduleBump') }}</Button>
+          </div>
+        </div>
+        <div class="space-y-2 rounded-lg bg-muted/30 p-3">
+          <label for="topic-auto-archive" class="block text-sm font-medium">{{ t('forum.topics.scheduleArchive') }}</label>
+          <div class="flex flex-col gap-2 sm:flex-row">
+            <Input id="topic-auto-archive" v-model="autoArchiveAt" type="datetime-local" class="h-8 min-w-0 flex-1" />
+            <Button type="button" size="sm" variant="outline" @click="updateAutoArchive">{{ t('forum.topics.scheduleArchive') }}</Button>
+          </div>
+        </div>
+      </div>
+
+  <div
+    v-if="hasModeratorStatusSummary"
+    class="grid gap-2 sm:grid-cols-2"
+    role="status"
+    aria-live="polite"
+  >
+  <p v-if="topic.pinned_until" class="rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
     {{ t('forum.topics.pinUntil', { at: topic.pinned_until }) }}
   </p>
-  <p v-if="topic.bumped_at" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+  <p v-if="topic.bumped_at" class="rounded-md bg-indigo-50 px-3 py-2 text-sm text-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-100">
     {{ t('forum.topics.lastBump', { at: topic.bumped_at }) }}
   </p>
-  <p v-if="topic.hidden" class="mb-4 rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-100">
+  <p v-if="topic.hidden" class="rounded-md bg-red-50 px-3 py-2 text-sm text-red-900 dark:bg-red-950/30 dark:text-red-100">
     {{ t('forum.topics.topicHidden') }}
   </p>
-  <p v-if="topic.wiki" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+  <p v-if="topic.wiki" class="rounded-md bg-blue-50 px-3 py-2 text-sm text-blue-900 dark:bg-blue-950/30 dark:text-blue-100">
     {{ t('forum.topics.wikiCollaborative') }}
   </p>
-  <p v-if="topic.solved_post_id" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+  <p v-if="topic.solved_post_id" class="rounded-md bg-green-50 px-3 py-2 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-100">
     {{ t('forum.topics.topicSolved') }}
-    <button v-if="canMarkSolved" type="button" class="ml-2 underline" @click="unsolveTopic">{{ t('forum.topics.unsolveTopic') }}</button>
+    <button v-if="canMarkSolved" type="button" class="ml-2 rounded-sm underline underline-offset-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="unsolveTopic">{{ t('forum.topics.unsolveTopic') }}</button>
   </p>
-  <p v-if="topic.slow_mode_seconds" class="mb-4 rounded-md border border-purple-200 bg-purple-50 px-4 py-3 text-sm text-purple-900">
+  <p v-if="topic.slow_mode_seconds" class="rounded-md bg-purple-50 px-3 py-2 text-sm text-purple-900 dark:bg-purple-950/30 dark:text-purple-100">
   <template v-if="slowModeRemaining > 0">
     {{ t('forum.topics.slowModeWait', { seconds: slowModeRemaining }) }}
   </template>
@@ -1582,33 +1762,34 @@ async function copyPollShareLink() {
     {{ t('forum.topics.slowModeInterval', { seconds: topic.slow_mode_seconds }) }}
   </template>
   </p>
-  <p v-if="topic.archived_at" class="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+  <p v-if="topic.archived_at" class="rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-100">
     {{ t('forum.topics.archivedAt', { at: topic.archived_at }) }}
   </p>
-  <p v-if="topic.unlisted" class="mb-4 rounded-md border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+  <p v-if="topic.unlisted" class="rounded-md bg-violet-50 px-3 py-2 text-sm text-violet-900 dark:bg-violet-950/30 dark:text-violet-100">
     {{ t('forum.topics.unlisted') }}
   </p>
 
-  <p v-if="topic.auto_close_at" class="mb-4 rounded-md border border-orange-200 bg-orange-50 px-4 py-3 text-sm text-orange-900">
+  <p v-if="topic.auto_close_at" class="rounded-md bg-orange-50 px-3 py-2 text-sm text-orange-900 dark:bg-orange-950/30 dark:text-orange-100">
     {{ t('forum.topics.autoCloseAt', { at: topic.auto_close_at }) }}
   </p>
-  <p v-if="topic.auto_open_at" class="mb-4 rounded-md border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+  <p v-if="topic.auto_open_at" class="rounded-md bg-green-50 px-3 py-2 text-sm text-green-900 dark:bg-green-950/30 dark:text-green-100">
     {{ t('forum.topics.autoOpenAt', { at: topic.auto_open_at }) }}
   </p>
-  <p v-if="topic.auto_bump_at" class="mb-4 rounded-md border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+  <p v-if="topic.auto_bump_at" class="rounded-md bg-indigo-50 px-3 py-2 text-sm text-indigo-900 dark:bg-indigo-950/30 dark:text-indigo-100">
     {{ t('forum.topics.autoBumpAt', { at: topic.auto_bump_at }) }}
   </p>
-  <p v-if="topic.auto_archive_at" class="mb-4 rounded-md border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800">
+  <p v-if="topic.auto_archive_at" class="rounded-md bg-slate-100 px-3 py-2 text-sm text-slate-800 dark:bg-slate-900 dark:text-slate-100">
     {{ t('forum.topics.autoArchiveAt', { at: topic.auto_archive_at }) }}
   </p>
-  <p v-if="topic.locked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+  <p v-if="topic.locked" class="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
     {{ t('forum.topics.topicLocked') }}
     <span v-if="topic.lock_reason" class="mt-1 block font-medium">{{ t('forum.topics.lockReasonDisplay', { reason: topic.lock_reason }) }}</span>
   </p>
 
-  <p v-if="topic.global_announcement" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">
+  <p v-if="topic.global_announcement" class="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
     {{ t('forum.topics.siteAnnouncement') }}
   </p>
+  </div>
 
   <section v-if="topic.can_moderate && topic.staff_notes?.length" class="rounded-lg border border-dashed border-amber-300 bg-amber-50/50 p-4 dark:border-amber-800 dark:bg-amber-950/20">
     <h2 class="mb-2 text-sm font-semibold text-amber-900 dark:text-amber-100">{{ t('forum.topics.staffNotes') }}</h2>
@@ -1631,7 +1812,7 @@ async function copyPollShareLink() {
     <div v-if="topic.reply_bans?.length" class="space-y-1 text-sm">
       <div v-for="ban in topic.reply_bans" :key="ban.username" class="flex items-center justify-between gap-2">
         <span>{{ ban.username }}<span v-if="ban.expires_at" class="text-muted-foreground"> · {{ t('forum.topics.banUntil', { at: ban.expires_at }) }}</span></span>
-        <button type="button" class="text-xs text-primary hover:underline" @click="unbanReply(ban.username)">{{ t('forum.topics.unban') }}</button>
+        <button type="button" class="shrink-0 rounded-sm text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="unbanReply(ban.username)">{{ t('forum.topics.unban') }}</button>
       </div>
     </div>
     <div class="flex flex-wrap gap-2">
@@ -1652,10 +1833,28 @@ async function copyPollShareLink() {
     </div>
   </section>
 
-  <form v-if="!topic.redirect_url" class="mb-4 flex max-w-md flex-wrap items-center gap-2" @submit.prevent="searchInTopic">
-    <Input v-model="topicSearch" :placeholder="t('forum.topics.searchInTopic')" class="min-w-[12rem] flex-1" />
-    <Select v-model="postSort" :options="postSortOptions" class="min-w-[8rem]" @update:model-value="changePostSort" />
-    <Button type="submit" variant="outline">{{ t('forum.topics.search') }}</Button>
+  <form
+    v-if="!topic.redirect_url"
+    role="search"
+    class="mb-6 grid w-full gap-2 sm:max-w-2xl sm:grid-cols-[minmax(0,1fr)_minmax(8rem,auto)_auto]"
+    @submit.prevent="searchInTopic"
+  >
+    <label for="topic-post-search" class="sr-only">{{ t('forum.topics.searchInTopic') }}</label>
+    <Input
+      id="topic-post-search"
+      v-model="topicSearch"
+      :placeholder="t('forum.topics.searchInTopic')"
+      class="min-w-0"
+    />
+    <label for="topic-post-sort" class="sr-only">{{ t('forum.topics.postSort') }}</label>
+    <Select
+      id="topic-post-sort"
+      v-model="postSort"
+      :options="postSortOptions"
+      block
+      @update:model-value="changePostSort"
+    />
+    <Button type="submit" variant="outline" class="w-full sm:w-auto">{{ t('forum.topics.search') }}</Button>
   </form>
 
   <div v-if="!topic.redirect_url" class="space-y-4">
@@ -1671,7 +1870,7 @@ async function copyPollShareLink() {
       <article
         :id="`post-${post.id}`"
         :data-floor="post.floor_number"
-        class="rounded-lg border p-4"
+        class="topic-post rounded-xl border p-3 sm:p-4"
         :class="[
           post.small_action ? 'border-dashed bg-muted/20 text-sm italic' : '',
           post.whisper ? 'border-amber-400 bg-amber-50/40 dark:bg-amber-950/20' : '',
@@ -1679,7 +1878,7 @@ async function copyPollShareLink() {
           post.deleted ? 'opacity-50 border-dashed bg-muted/30' : '',
           post.is_solved ? 'border-green-400 bg-green-50/50 dark:bg-green-950/20' : '',
         ]"
-        :style="{ marginLeft: `${post.depth * 1.5}rem` }"
+        :style="{ '--post-depth': `${Math.min(post.depth, 6) * 1.5}rem` }"
       >
       <div v-if="post.whisper" class="mb-2 text-xs font-medium text-amber-700 dark:text-amber-300">{{ t('forum.topics.staffWhisper') }}</div>
       <div v-if="post.small_action" class="mb-2 text-xs font-medium text-muted-foreground">{{ t('forum.topics.systemAction') }}</div>
@@ -1687,14 +1886,18 @@ async function copyPollShareLink() {
         {{ post.body }}
         <span class="ml-2 text-xs not-italic">— {{ post.author }}, {{ post.created_at }}</span>
       </div>
-      <div v-else class="mb-3 flex items-start gap-3">
-        <img :src="post.avatar_url" :alt="post.author" class="h-9 w-9 shrink-0 rounded-full" />
+      <div v-else class="mb-3 flex items-start gap-3 sm:gap-4">
+        <img :src="post.avatar_url" :alt="post.author" class="h-10 w-10 shrink-0 rounded-full" />
         <div class="min-w-0 flex-1">
-          <div class="flex items-center justify-between gap-2 text-sm text-muted-foreground">
-            <div>
-              <span class="font-medium text-foreground">#{{ post.floor_number }}</span>
-              <span v-if="post.is_solved" class="ml-2 text-xs text-green-600">{{ t('forum.topics.solvedBadge') }}</span>
-              <span class="mx-2">·</span>
+          <header class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <div class="min-w-0 space-y-1.5">
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <a
+                  :href="`#post-${post.id}`"
+                  class="rounded-sm font-semibold text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  #{{ post.floor_number }}
+                </a>
               <UserLink
                 variant="name"
                 :username="post.author_username"
@@ -1703,79 +1906,160 @@ async function copyPollShareLink() {
                 :card-url="post.author_card_url"
                 link-class="font-medium text-foreground hover:underline"
               />
-              <span v-if="post.author_is_op" class="ml-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary" :title="t('forum.topics.threadStarterHint')">{{ t('forum.topics.threadStarter') }}</span>
+                <span v-if="post.author_is_op" class="rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary" :title="t('forum.topics.threadStarterHint')">{{ t('forum.topics.threadStarter') }}</span>
+                <span v-if="post.is_solved" class="text-xs font-medium text-green-700 dark:text-green-300">{{ t('forum.topics.solvedBadge') }}</span>
+                <span v-if="post.wiki" class="text-xs text-blue-700 dark:text-blue-300">{{ t('forum.topics.wikiPost') }}</span>
+                <span v-if="post.pending_approval" class="text-xs text-amber-700 dark:text-amber-300">{{ t('forum.topics.pendingApproval') }}</span>
+                <span v-if="post.hidden" class="text-xs text-amber-700 dark:text-amber-300">{{ t('forum.topics.hiddenPost') }}</span>
+                <span v-if="post.deleted" class="text-xs text-destructive">{{ t('forum.topics.deletedPost') }}</span>
+              </div>
+              <div class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+                <span>{{ post.created_at }}</span>
+                <span v-if="post.author_posts_count != null" :title="post.author_member_since ? t('forum.topics.memberSince', { date: post.author_member_since }) : undefined">
+                  {{ t('forum.topics.authorPosts', { count: post.author_posts_count }) }}
+                </span>
+                <span v-if="post.author_forum_points != null">
+                  {{ t('forum.topics.authorPoints', { count: post.author_forum_points }) }}
+                </span>
+                <span v-if="post.edited_at">
+                  {{ t('forum.topics.editedAt', { at: post.edited_at }) }}<span v-if="post.last_edit_reason">{{ t('forum.topics.editReasonSuffix', { reason: post.last_edit_reason }) }}</span>
+                  <button
+                    v-if="post.edit_diff_lines?.length"
+                    type="button"
+                    class="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    :aria-expanded="!!expandedDiffs[post.id]"
+                    @click="expandedDiffs[post.id] = !expandedDiffs[post.id]"
+                  >
+                    {{ expandedDiffs[post.id] ? t('forum.topics.hideDiff') : t('forum.topics.showDiff') }}
+                  </button>
+                  <Link v-if="post.edits_url" :href="post.edits_url" class="rounded-sm hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">{{ t('forum.topics.editHistory') }}</Link>）
+                </span>
+              </div>
+              <div
+                v-if="post.author_forum_title || post.author_badges?.length || post.author_memberships?.length || post.verified_purchaser"
+                class="flex flex-wrap items-center gap-1.5"
+              >
               <span
                 v-if="post.author_forum_title && post.author_flair_color"
-                class="ml-1 rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
+                  class="rounded px-1.5 py-0.5 text-[10px] font-medium text-white"
                 :style="{ backgroundColor: post.author_flair_color }"
               >{{ post.author_forum_title }}</span>
               <span
                 v-for="badge in post.author_badges || []"
                 :key="badge.name"
-                class="ml-1 rounded border px-1 text-[10px]"
+                  class="rounded border px-1.5 py-0.5 text-[10px]"
                 :style="badge.color ? { borderColor: badge.color, color: badge.color } : undefined"
                 :title="badge.granted_at ? `${badge.name} · ${badge.granted_at}` : badge.name"
-              >{{ badge.icon || badge.name }}<span v-if="badge.granted_at" class="opacity-70">·{{ badge.granted_at }}</span></span>
+                >{{ badge.icon || badge.name }}<span v-if="badge.granted_at" class="ml-1 opacity-70">{{ badge.granted_at }}</span></span>
               <span
                 v-for="membership in post.author_memberships || []"
                 :key="membership.slug"
-                class="ml-1 rounded border px-1 text-[10px] font-medium"
+                  class="rounded border px-1.5 py-0.5 text-[10px] font-medium"
                 :style="membership.color ? { borderColor: membership.color, color: membership.color } : undefined"
-              >{{ membership.icon || '' }}{{ membership.name }}</span>
-              <span v-if="post.verified_purchaser" class="ml-1 rounded border border-green-300 bg-green-50 px-1 text-[10px] text-green-700">{{ t('forum.topics.verifiedPurchaser') }}</span>
-              <span class="mx-2">·</span>
-              <span>{{ post.created_at }}</span>
-              <span v-if="post.author_posts_count != null" class="ml-2 text-xs text-muted-foreground" :title="post.author_member_since ? t('forum.topics.memberSince', { date: post.author_member_since }) : undefined">
-                {{ t('forum.topics.authorPosts', { count: post.author_posts_count }) }}
-              </span>
-              <span v-if="post.author_forum_points != null" class="ml-2 text-xs text-muted-foreground">
-                {{ t('forum.topics.authorPoints', { count: post.author_forum_points }) }}
-              </span>
-              <span v-if="post.edited_at" class="ml-2">
-                {{ t('forum.topics.editedAt', { at: post.edited_at }) }}<span v-if="post.last_edit_reason">{{ t('forum.topics.editReasonSuffix', { reason: post.last_edit_reason }) }}</span>
-                <button v-if="post.edit_diff_lines?.length" type="button" class="hover:underline" @click="expandedDiffs[post.id] = !expandedDiffs[post.id]">
-                  {{ expandedDiffs[post.id] ? t('forum.topics.hideDiff') : t('forum.topics.showDiff') }}
-                </button>
-                <Link v-if="post.edits_url" :href="post.edits_url" class="hover:underline">{{ t('forum.topics.editHistory') }}</Link>）
-              </span>
-              <span v-if="post.wiki" class="ml-2 text-xs text-blue-600">{{ t('forum.topics.wikiPost') }}</span>
-              <span v-if="post.pending_approval" class="ml-2 text-amber-600">{{ t('forum.topics.pendingApproval') }}</span>
-              <span v-if="post.hidden" class="ml-2 text-amber-600">{{ t('forum.topics.hiddenPost') }}</span>
-              <span v-if="post.deleted" class="ml-2 text-destructive">{{ t('forum.topics.deletedPost') }}</span>
+                >{{ membership.icon || '' }}{{ membership.name }}</span>
+                <span v-if="post.verified_purchaser" class="rounded bg-green-50 px-1.5 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-950/30 dark:text-green-300">{{ t('forum.topics.verifiedPurchaser') }}</span>
+              </div>
             </div>
-            <div class="flex gap-2">
-              <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="quotePost(post)">{{ t('forum.topics.quote') }}</button>
-              <button v-if="post.fork_topic_url" type="button" class="text-xs hover:underline" @click="forkTopic(post)">{{ t('forum.topics.forkTopic') }}</button>
-              <button type="button" class="text-xs hover:underline" @click="copyPermalink(post)">
-                {{ copiedPostId === post.id ? t('forum.topics.linkCopied') : t('forum.topics.copyLink') }}
-              </button>
-              <button v-if="effectiveCanReply" type="button" class="text-xs hover:underline" @click="replyToPost(post)">{{ t('forum.topics.reply') }}</button>
-              <a v-if="post.raw_url" :href="post.raw_url" target="_blank" rel="noopener" class="text-xs hover:underline">{{ t('forum.topics.rawPost') }}</a>
-              <button v-if="post.bookmark_url" type="button" class="text-xs hover:underline" @click="togglePostBookmark(post)">
-                {{ post.bookmarked ? t('forum.topics.editBookmark') : t('forum.topics.addPostBookmark') }}
-              </button>
-              <button v-if="post.bookmarked && post.bookmark_url" type="button" class="text-xs hover:underline" @click="removePostBookmark(post)">{{ t('forum.topics.removePostBookmark') }}</button>
-              <button v-if="canMarkSolved && !post.is_solved" type="button" class="text-xs text-green-600 hover:underline" @click="markSolved(post)">{{ t('forum.topics.markSolved') }}</button>
-              <button v-if="topic.can_move && post.floor_number > 1" type="button" class="text-xs hover:underline" @click="splitPost(post)">{{ t('forum.topics.splitTopic') }}</button>
-              <Link v-if="post.report_url" :href="post.report_url" class="text-xs hover:underline">{{ t('forum.topics.report') }}</Link>
-              <button v-if="post.approve_url" type="button" class="text-xs text-green-600 hover:underline" @click="approvePost(post)">{{ t('forum.topics.approvePost') }}</button>
-              <button v-if="post.reject_url" type="button" class="text-xs text-destructive hover:underline" @click="rejectPost(post)">{{ t('forum.topics.rejectPost') }}</button>
-              <button v-if="post.can_moderate" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
-                {{ post.hidden ? t('forum.topics.showPost') : t('forum.topics.hidePost') }}
-              </button>
-              <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="staffNoticePostId = post.id; staffNoticeText = post.staff_notice || ''">
-                {{ t('forum.topics.staffNotice') }}
-              </button>
-              <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="moderatePost(post, post.wiki ? 'disable_wiki' : 'enable_wiki')">
-                {{ post.wiki ? t('forum.topics.disableWiki') : t('forum.topics.wikiPostToggle') }}
-              </button>
-              <button v-if="post.can_moderate && !post.small_action" type="button" class="text-xs hover:underline" @click="changePostAuthor(post)">{{ t('forum.topics.changeAuthor') }}</button>
-              <button v-if="post.can_moderate && post.staff_notice" type="button" class="text-xs hover:underline" @click="moderatePost(post, 'clear_staff_notice')">{{ t('forum.topics.clearNotice') }}</button>
-              <button v-if="post.can_edit && editingPostId !== post.id" type="button" class="text-xs hover:underline" @click="startEdit(post)">{{ t('forum.topics.edit') }}</button>
-              <button v-if="post.can_delete && !post.deleted" type="button" class="text-xs text-destructive hover:underline" @click="deletePost(post)">{{ t('forum.topics.delete') }}</button>
-              <button v-if="post.restore_url" type="button" class="text-xs text-green-600 hover:underline" @click="restorePost(post)">{{ t('forum.topics.restore') }}</button>
+
+            <div class="flex shrink-0 flex-wrap items-center gap-1">
+              <Button v-if="effectiveCanReply" type="button" variant="ghost" size="sm" @click="quotePost(post)">
+                {{ t('forum.topics.quote') }}
+              </Button>
+              <Button v-if="effectiveCanReply" type="button" variant="ghost" size="sm" @click="replyToPost(post)">
+                {{ t('forum.topics.reply') }}
+              </Button>
+              <DropdownMenuRoot :modal="false">
+                <DropdownMenuTrigger as-child>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    class="h-8 w-8 px-0"
+                    :aria-label="t('forum.topics.postActions', { floor: post.floor_number })"
+                    :title="t('forum.topics.postActions', { floor: post.floor_number })"
+                  >
+                    <MoreHorizontal class="h-4 w-4" aria-hidden="true" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  class="z-50 max-h-[70vh] min-w-[13rem] overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                  :side-offset="6"
+                  align="end"
+                >
+                  <DropdownMenuLabel class="px-2 py-1.5 text-xs text-muted-foreground">
+                    {{ t('forum.topics.postActions', { floor: post.floor_number }) }}
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem :class="menuItemClass" @select="copyPermalink(post)">
+                    {{ copiedPostId === post.id ? t('forum.topics.linkCopied') : t('forum.topics.copyLink') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="post.fork_topic_url" :class="menuItemClass" @select="forkTopic(post)">
+                    {{ t('forum.topics.forkTopic') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="post.raw_url" as-child>
+                    <a :href="post.raw_url" target="_blank" rel="noopener" :class="menuItemClass">{{ t('forum.topics.rawPost') }}</a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="post.bookmark_url" :class="menuItemClass" @select="togglePostBookmark(post)">
+                    {{ post.bookmarked ? t('forum.topics.editBookmark') : t('forum.topics.addPostBookmark') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="post.bookmarked && post.bookmark_url" :class="destructiveMenuItemClass" @select="removePostBookmark(post)">
+                    {{ t('forum.topics.removePostBookmark') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="post.can_edit && editingPostId !== post.id" :class="menuItemClass" @select="startEdit(post)">
+                    {{ t('forum.topics.edit') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="canMarkSolved && !post.is_solved" :class="menuItemClass" @select="markSolved(post)">
+                    {{ t('forum.topics.markSolved') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="topic.can_move && post.floor_number > 1" :class="menuItemClass" @select="splitPost(post)">
+                    {{ t('forum.topics.splitTopic') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="post.report_url" as-child>
+                    <Link :href="post.report_url" :class="menuItemClass">{{ t('forum.topics.report') }}</Link>
+                  </DropdownMenuItem>
+
+                  <template v-if="post.approve_url || post.reject_url || post.can_moderate">
+                    <DropdownMenuSeparator class="my-1 h-px bg-border" />
+                    <DropdownMenuLabel class="px-2 py-1.5 text-xs text-muted-foreground">
+                      {{ t('forum.topics.moderatorTools') }}
+                    </DropdownMenuLabel>
+                    <DropdownMenuItem v-if="post.approve_url" :class="menuItemClass" @select="approvePost(post)">
+                      {{ t('forum.topics.approvePost') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem v-if="post.reject_url" :class="destructiveMenuItemClass" @select="rejectPost(post)">
+                      {{ t('forum.topics.rejectPost') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem v-if="post.can_moderate" :class="menuItemClass" @select="moderatePost(post, post.hidden ? 'unhide' : 'hide')">
+                      {{ post.hidden ? t('forum.topics.showPost') : t('forum.topics.hidePost') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      v-if="post.can_moderate && !post.small_action"
+                      :class="menuItemClass"
+                      @select="staffNoticePostId = post.id; staffNoticeText = post.staff_notice || ''"
+                    >
+                      {{ t('forum.topics.staffNotice') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem v-if="post.can_moderate && !post.small_action" :class="menuItemClass" @select="moderatePost(post, post.wiki ? 'disable_wiki' : 'enable_wiki')">
+                      {{ post.wiki ? t('forum.topics.disableWiki') : t('forum.topics.wikiPostToggle') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem v-if="post.can_moderate && !post.small_action" :class="menuItemClass" @select="changePostAuthor(post)">
+                      {{ t('forum.topics.changeAuthor') }}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem v-if="post.can_moderate && post.staff_notice" :class="menuItemClass" @select="moderatePost(post, 'clear_staff_notice')">
+                      {{ t('forum.topics.clearNotice') }}
+                    </DropdownMenuItem>
+                  </template>
+
+                  <DropdownMenuSeparator v-if="post.restore_url || (post.can_delete && !post.deleted)" class="my-1 h-px bg-border" />
+                  <DropdownMenuItem v-if="post.restore_url" :class="menuItemClass" @select="restorePost(post)">
+                    {{ t('forum.topics.restore') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="post.can_delete && !post.deleted" :class="destructiveMenuItemClass" @select="deletePost(post)">
+                    {{ t('forum.topics.delete') }}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuRoot>
             </div>
-          </div>
+          </header>
 
           <div v-if="staffNoticePostId === post.id" class="mb-3 space-y-2 rounded border bg-muted/30 p-3">
             <textarea v-model="staffNoticeText" rows="2" class="w-full rounded-md border px-2 py-1 text-sm" :placeholder="t('forum.topics.staffNoticePlaceholder')" />
@@ -1828,9 +2112,9 @@ async function copyPollShareLink() {
               <AttachmentUploadButton @uploaded="onEditAttachmentUploaded" />
               <ul v-if="editPendingAttachments.length" class="space-y-1 text-sm">
                 <li class="text-xs font-medium text-muted-foreground">{{ t('components.attachmentUpload.pending') }}</li>
-                <li v-for="attachment in editPendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-2 rounded border px-2 py-1">
-                  <span>{{ attachment.filename }} <span class="text-muted-foreground">({{ attachment.human_size }})</span></span>
-                  <button type="button" class="text-xs text-destructive hover:underline" @click="removeEditPendingAttachment(attachment.id)">
+                <li v-for="attachment in editPendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2">
+                  <span class="min-w-0 break-all">{{ attachment.filename }} <span class="whitespace-nowrap text-muted-foreground">({{ attachment.human_size }})</span></span>
+                  <button type="button" class="shrink-0 rounded-sm text-xs text-destructive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="removeEditPendingAttachment(attachment.id)">
                     {{ t('components.attachmentUpload.remove') }}
                   </button>
                 </li>
@@ -1865,7 +2149,8 @@ async function copyPollShareLink() {
             <button
               v-if="post.body_long"
               type="button"
-              class="mt-2 text-xs text-primary hover:underline"
+              class="mt-2 rounded-sm text-xs text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              :aria-expanded="isPostExpanded(post)"
               @click="togglePostExpand(post.id)"
             >
               {{ isPostExpanded(post) ? t('forum.topics.collapseFull') : t('forum.topics.expandFull') }}
@@ -1901,8 +2186,10 @@ async function copyPollShareLink() {
                 v-for="emoji in reactionEmojis"
                 :key="`btn-${emoji}`"
                 type="button"
-                class="rounded-full border px-2 py-0.5 text-xs transition-colors"
+                class="rounded-full border px-2 py-0.5 text-xs transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                 :class="hasReacted(post, emoji) ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
+                :aria-pressed="hasReacted(post, emoji)"
+                :aria-label="`${emoji} ${post.reaction_counts[emoji] || 0}`"
                 @click="toggleReaction(post, emoji)"
               >
                 {{ emoji }}
@@ -1936,8 +2223,8 @@ async function copyPollShareLink() {
     {{ warningRestrictions.post }}
   </p>
 
-  <section v-if="effectiveCanReply" id="reply-form" class="mt-8 max-w-2xl">
-    <h2 class="mb-3 text-sm font-semibold">{{ t('forum.topics.reply') }}</h2>
+  <section v-if="effectiveCanReply" id="reply-form" class="mt-10 max-w-2xl scroll-mt-20">
+    <h2 class="mb-4 text-lg font-semibold tracking-tight">{{ t('forum.topics.reply') }}</h2>
     <div v-if="cannedResponses?.length" class="mb-3 flex flex-wrap gap-2">
       <span class="self-center text-xs text-muted-foreground">{{ t('forum.topics.cannedReplies') }}</span>
       <Button
@@ -1954,7 +2241,7 @@ async function copyPollShareLink() {
     <div v-if="replyPreview" class="mb-3 rounded-md border bg-muted/40 p-3 text-sm">
       <div class="flex items-start justify-between gap-2">
         <p>{{ t('forum.topics.replyToPreview', { floor: replyPreview.floor_number, author: replyPreview.author }) }}</p>
-        <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearReplyTarget">{{ t('forum.topics.clearTarget') }}</button>
+        <button type="button" class="shrink-0 rounded-sm text-xs text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="clearReplyTarget">{{ t('forum.topics.clearTarget') }}</button>
       </div>
     </div>
     <div v-if="quotePreviews.length" class="mb-3 space-y-2">
@@ -1968,15 +2255,15 @@ async function copyPollShareLink() {
             {{ t('forum.topics.quotePreview', { floor: quote.floor_number, author: quote.author }) }}
             {{ quote.excerpt }}
           </p>
-          <button type="button" class="text-xs text-muted-foreground hover:underline" @click="removeQuote(quote.id)">{{ t('forum.topics.remove') }}</button>
+          <button type="button" class="shrink-0 rounded-sm text-xs text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="removeQuote(quote.id)">{{ t('forum.topics.remove') }}</button>
         </div>
       </div>
-      <button type="button" class="text-xs text-muted-foreground hover:underline" @click="clearQuotes">{{ t('forum.topics.clearAllQuotes') }}</button>
+      <button type="button" class="rounded-sm text-xs text-muted-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="clearQuotes">{{ t('forum.topics.clearAllQuotes') }}</button>
     </div>
-    <form class="space-y-3" @submit.prevent="submitReply">
+    <form class="space-y-4" :aria-busy="replyForm.processing" @submit.prevent="submitReply">
       <MarkdownEditor v-model="replyForm.post.body" :rows="6" :placeholder="t('forum.topics.replyPlaceholder')" required />
-      <p v-if="replyLinkError" class="text-sm text-destructive">{{ replyLinkError }}</p>
-      <p v-else-if="replyBodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>
+      <p v-if="replyLinkError" class="text-sm text-destructive" role="alert">{{ replyLinkError }}</p>
+      <p v-else-if="replyBodyHasBlockedLink" class="text-sm text-destructive" role="alert">{{ warningRestrictions?.link }}</p>
       <p v-else-if="warningRestrictions?.link" class="text-xs text-muted-foreground">{{ warningRestrictions.link }}</p>
       <label v-if="topic.can_moderate" class="flex items-center gap-2 text-sm">
         <Checkbox v-model="replyForm.post.whisper" />
@@ -1986,9 +2273,9 @@ async function copyPollShareLink() {
         <AttachmentUploadButton @uploaded="onAttachmentUploaded" />
         <ul v-if="pendingAttachments.length" class="space-y-1 text-sm">
           <li class="text-xs font-medium text-muted-foreground">{{ t('components.attachmentUpload.pending') }}</li>
-          <li v-for="attachment in pendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-2 rounded border px-2 py-1">
-            <span>{{ attachment.filename }} <span class="text-muted-foreground">({{ attachment.human_size }})</span></span>
-            <button type="button" class="text-xs text-destructive hover:underline" @click="removePendingAttachment(attachment.id)">
+          <li v-for="attachment in pendingAttachments" :key="attachment.id" class="flex items-center justify-between gap-3 rounded-md bg-muted/40 px-3 py-2">
+            <span class="min-w-0 break-all">{{ attachment.filename }} <span class="whitespace-nowrap text-muted-foreground">({{ attachment.human_size }})</span></span>
+            <button type="button" class="shrink-0 rounded-sm text-xs text-destructive hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring" @click="removePendingAttachment(attachment.id)">
               {{ t('components.attachmentUpload.remove') }}
             </button>
           </li>
@@ -2001,7 +2288,7 @@ async function copyPollShareLink() {
   <button
     v-if="selectionQuote && effectiveCanReply"
     type="button"
-    class="fixed z-40 rounded-md border bg-popover px-2 py-1 text-xs shadow-md"
+    class="fixed z-40 rounded-md border bg-popover px-2 py-1 text-xs shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
     :style="{ top: `${selectionQuote.top}px`, left: `${selectionQuote.left}px` }"
     @mousedown.prevent
     @click="quoteSelection"
@@ -2009,3 +2296,15 @@ async function copyPollShareLink() {
     {{ t('forum.topics.quoteSelection') }}
   </button>
 </template>
+
+<style scoped>
+.topic-post {
+  margin-inline-start: min(var(--post-depth, 0rem), 4rem);
+}
+
+@media (max-width: 639px) {
+  .topic-post {
+    margin-inline-start: min(var(--post-depth, 0rem), 1rem);
+  }
+}
+</style>

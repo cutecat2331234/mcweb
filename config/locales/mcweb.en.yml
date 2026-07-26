@@ -1,6 +1,13 @@
 en:
   mcweb:
+    developer_mode:
+      title: "Developer Mode"
+      warning: "Some security checks and production optimizations are disabled."
+      production_warning: "Developer Mode is running in the production environment."
     flash:
+      payment_provider_configuration_updated: Payment-provider configuration updated.
+      payment_provider_connection_test_succeeded: Stripe connection test succeeded.
+      payment_provider_connection_test_blocked_by_developer_mode: Developer Mode currently enforces the fake payment provider, so McWeb did not read Stripe credentials or start a connection test. Set developer_mode.integrations.payments to inherit and restart every process before explicitly testing Stripe.
       invalid_locale: Unsupported language.
       locale_updated: Language updated.
       preferences_saved: Notification preferences saved.
@@ -23,6 +30,10 @@ en:
       password_incorrect: Incorrect password.
       sign_in_required_short: Please sign in first.
       operation_failed: Operation failed.
+      late_payment_acknowledged: Late payment review recorded.
+      payment_reconciliation_reviewed: Reconciliation review recorded.
+      payment_reconciliation_requested: Payment reconciliation was queued.
+      payment_reconciliation_already_active: Reconciliation for that date is already queued or running.
       rate_limited: Too many requests. Please try again later.
       bookmark_updated: Bookmark updated.
       marked_read: Marked as read.
@@ -213,6 +224,7 @@ en:
       reports_bulk_resolved: "Resolved %{count} reports for this target."
       minecraft_settings_saved: Minecraft settings saved.
       system_settings_saved: System settings saved.
+      rate_limit_settings_saved: Rate-limit settings saved.
       mapping_added: Mapping added.
       mapping_updated: Mapping updated.
       mapping_deleted: Mapping deleted.
@@ -346,6 +358,10 @@ en:
       help_article_missing: That help article is not available.
       attachment_deleted: Attachment deleted.
       attachments_pruned: "Pruned %{count} orphaned attachments."
+      attachment_scan_retry_requested: Attachment security scan retry requested.
+      attachment_cleanup_retry_requested: Attachment cleanup retry requested.
+      attachment_scan_retry_not_allowed: This upload is not eligible for a scan retry.
+      attachment_cleanup_retry_not_allowed: This upload is not eligible for a cleanup retry.
       notice_created: Notice created.
       notice_updated: Notice updated.
       notice_deleted: Notice deleted.
@@ -535,11 +551,17 @@ en:
         wishlist_item_not_in_list: Item is not on your wishlist.
         section_topic_prefix_required: This section requires a topic prefix.
         attachment_invalid_or_unauthorized: Attachment is invalid or you are not allowed to use it.
+        idempotency_key_invalid: The request identifier is invalid. Refresh the page and try again.
+        idempotency_key_reused: This request identifier was already used for different content. Refresh the page and try again.
         new_members_cannot_upload_attachments: New members cannot upload attachments yet. Post more to unlock this.
         upload_file_required: Select a file to upload.
         invalid_filename: Invalid filename.
         unsupported_attachment_type: Unsupported attachment type.
         attachment_too_large: "Attachment is too large (max %{max})."
+        upload_quota_invalid: The upload could not be accounted for.
+        upload_quota_exceeded: Your upload storage or accepted-upload quota has been reached.
+        upload_cleanup_failed: The upload could not be cleaned up and will be retried.
+        inline_upload_expired: An inline image expired before the content was saved. Upload it again.
         post_moderation_unauthorized: You are not allowed to moderate posts.
         post_not_pending_approval: Post is not pending approval.
         warn_user_unauthorized: You are not allowed to issue warnings.
@@ -709,6 +731,13 @@ en:
         cancel_reason: Test cancellation
       product_duplicate_suffix: " (copy)"
     forum:
+      stats:
+        topics: Topics
+        posts: Posts
+        members: Members
+        topics_today: New topics (24h)
+        posts_week: Posts (7 days)
+        reactions: Reactions
       topic_sort:
         latest: Latest reply
         hot: Hot
@@ -883,7 +912,7 @@ en:
         watching: Watching
         tracking: Tracking
         normal: Normal
-        "off": Off
+        "off": "Off"
         topic:
           watching_desc: Notify on every reply; email when watching
           tracking_desc: In-app notification on every reply; no email
@@ -1106,6 +1135,11 @@ en:
       notifications:
         default_title: Minecraft event
     admin:
+      rate_limits:
+        errors:
+          invalid: One or more rate-limit values are invalid.
+          limit: "Must be an integer between %{min} and %{max}."
+          window_seconds: "Must be an integer between %{min} and %{max} seconds."
       email_bans:
         title: Email bans
         subtitle: Block registration from matching email addresses or domains
@@ -1166,6 +1200,28 @@ en:
             unavailable: Plugin package state is temporarily unavailable.
             operation_succeeded: "%{action} completed for %{plugin}."
             operation_failed: The plugin package operation could not be completed.
+            uninstall_confirmation_mismatch: Type the exact plugin ID before running teardown and uninstalling.
+        plugin_settings:
+          title: Plugin settings
+          updated: Plugin settings were saved as a new version.
+          migrated: Plugin settings were migrated into the current schema version.
+          rolled_back: Plugin settings were rolled back by appending a new version.
+          errors:
+            generic: The plugin settings operation could not be completed.
+            validation_failed: One or more setting values do not satisfy the plugin schema.
+            payload_too_large: The settings payload exceeds the allowed size.
+            migration_required: Migrate the previous settings before making changes.
+            migration_source_missing: No compatible earlier settings version is available.
+            migration_path_missing: The plugin does not declare a complete migration path.
+            migration_conflict: The migration would overwrite an existing setting.
+            schema_digest_mismatch: The plugin changed its schema without increasing schema_version.
+            revision_conflict: Settings changed after this page was loaded. Review the latest version and retry.
+            not_configured: No persisted settings version is available.
+            rollback_target_missing: The requested settings revision no longer exists.
+            invalid_argument: The settings request is incomplete or invalid.
+            plugin_not_found: The selected plugin settings schema is not available.
+            settings_unreadable: The encrypted settings could not be read.
+            write_failed: The settings version could not be saved.
       dashboard:
         metrics:
           users: Users
@@ -1999,6 +2055,14 @@ en:
         commerce.new_product_question: New product question (staff)
         commerce.merchant_review_reply: Merchant review reply
         commerce.review_request: Review request
+        forum:
+          post_pending: Pending post
+          post_rejected: Post rejected
+          post_approved: Post approved
+        commerce:
+          refund_requested: Refund requested
+          refund_processed: Refund processed
+          refund_rejected: Refund rejected
         commerce.product_available: Product available
         commerce.low_stock_staff: Low stock alert (staff)
         minecraft.custom: Minecraft event

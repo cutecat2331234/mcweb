@@ -103,6 +103,7 @@ class Round111CreateTopicAttachmentsTest < ActiveSupport::TestCase
     upload_file = ActionDispatch::Http::UploadedFile.new(tempfile: file, filename: "notes.txt", type: "text/plain")
     upload = Community::CreatePostAttachment.call(user: @user, file: upload_file)
     assert upload.success?
+    mark_attachment_scan_clean!(upload.value)
 
     result = Community::CreateTopic.call(
       user: @user,

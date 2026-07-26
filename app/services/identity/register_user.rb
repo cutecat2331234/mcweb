@@ -14,26 +14,18 @@ module Identity
     end
 
     def call
+      rate_limit_result = Administration::AbuseRateLimit.call(
+        action: :registration,
+        account: @email,
+        ip_address: @ip_address
+      )
+      return rate_limit_result if rate_limit_result.failure?
+
       email_ban_result = Administration::CheckEmailBan.call(email: @email)
       return ServiceResult.failure(error: email_ban_result.error) if email_ban_result.failure?
 
-      if @ip_address.present?
-        rate_limit_result = Administration::RateLimiter.call(
-          key: "register:ip:#{@ip_address}",
-          limit: 5,
-          window: 1.hour
-        )
-        return ServiceResult.failure(error: "注册过于频繁，请稍后再试。") if rate_limit_result.failure?
-      end
-
-      email_rate_result = Administration::RateLimiter.call(
-        key: "register:email:#{@email}",
-        limit: 3,
-        window: 24.hours
-      )
-      return ServiceResult.failure(error: "该邮箱注册过于频繁，请稍后再试。") if email_rate_result.failure?
-
-      verification_token = generate_token
+      auto_verify_email = Mcweb::DeveloperMode.allow?(:skip_email_verification)
+      verification_token = generate_token unless auto_verify_email
 
       user = User.create!(
         public_id: generate_public_id,
@@ -43,9 +35,11 @@ module Identity
         display_name: @display_name,
         locale: @locale,
         time_zone: @time_zone,
-        email_verified: false,
-        email_verification_token_digest: digest_token(verification_token),
-        email_verification_sent_at: Time.current
+        email_verified: auto_verify_email,
+        email_verified_at: auto_verify_email ? Time.current : nil,
+        developer_mode_email_verified: auto_verify_email,
+        email_verification_token_digest: verification_token ? digest_token(verification_token) : nil,
+        email_verification_sent_at: verification_token ? Time.current : nil
       )
 
       if Community::UserFieldDefinition.for_registration.exists?
@@ -65,12 +59,14 @@ module Identity
         metadata: { email: @email, username: @username }
       )
 
-      MailDeliveryJob.perform_later(
-        "Identity::Mailer",
-        "verification_email",
-        "deliver_now",
-        args: [ user.id, verification_token ]
-      )
+      if verification_token
+        MailDeliveryJob.perform_later(
+          "Identity::Mailer",
+          "verification_email",
+          "deliver_now",
+          args: [ user.id, verification_token ]
+        )
+      end
 
       Mcweb::Events.publish("identity.user.registered", user: user, ip_address: @ip_address)
 

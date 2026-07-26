@@ -32,4 +32,15 @@ module ServiceResponder
   def flash_service_errors(result)
     flash.now[:alert] = service_error_message(result)
   end
+
+  def service_error_status(result, default: :unprocessable_entity)
+    result.respond_to?(:rate_limited?) && result.rate_limited? ? :too_many_requests : default
+  end
+
+  def apply_retry_after_header(result)
+    return unless result.respond_to?(:retry_after)
+
+    retry_after = result.retry_after.to_i
+    response.set_header("Retry-After", retry_after.to_s) if retry_after.positive?
+  end
 end

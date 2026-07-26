@@ -44,6 +44,7 @@ module Mcweb
       forum.warning.issued
       identity.user.registered
       identity.user.banned
+      plugin.settings.changed
     ].freeze
 
     class << self

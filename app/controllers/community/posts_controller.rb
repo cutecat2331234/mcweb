@@ -17,13 +17,15 @@ module Community
         parent_post: find_parent_post,
         ip_address: request.remote_ip,
         whisper: post_params[:whisper] == "1" || post_params[:whisper] == true,
-        attachment_ids: post_params[:attachment_ids]
+        attachment_ids: post_params[:attachment_ids],
+        idempotency_key: post_params[:idempotency_key]
       )
 
       if result.success?
         notice = result.value.status == "pending_approval" ? t("mcweb.flash.post_pending_submitted") : nil
         redirect_to forum_topic_path(@topic, anchor: "post-#{result.value.id}"), notice: notice
       else
+        apply_retry_after_header(result)
         redirect_to forum_topic_path(@topic), alert: service_error_message(result)
       end
     end
@@ -69,12 +71,14 @@ module Community
       result = Community::ToggleReaction.call(
         user: current_user,
         post: @post,
-        emoji: params[:emoji]
+        emoji: params[:emoji],
+        ip_address: request.remote_ip
       )
 
       if result.success?
         redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}")
       else
+        apply_retry_after_header(result)
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
       end
     end
@@ -214,7 +218,15 @@ module Community
     end
 
     def post_params
-      permitted = params.require(:post).permit(:body, :quoted_post_id, :parent_post_id, :reason, :whisper, attachment_ids: [])
+      permitted = params.require(:post).permit(
+        :body,
+        :quoted_post_id,
+        :parent_post_id,
+        :reason,
+        :whisper,
+        :idempotency_key,
+        attachment_ids: []
+      )
       permitted[:attachment_ids] ||= params[:attachment_ids]
       permitted
     end

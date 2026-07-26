@@ -2,7 +2,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "demo:arco": "vite --config vite.arco-demo.config.ts"
+    "check:i18n": "node scripts/check-frontend-i18n.mjs",
+    "demo:arco": "vite --config vite.arco-demo.config.ts",
+    "test:javascript": "node --test \"test/javascript/*.ts\"",
+    "typecheck": "tsc --noEmit --pretty false"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",

@@ -13,15 +13,27 @@ module Commerce
       return ServiceResult.success(restored_units: 0) unless @payment_amount_cents.positive?
 
       restored_units = 0
+      restore_error = nil
 
       Commerce::Order.transaction do
         @order.lock!
         @order.reload
 
-        @order.items.includes(:product, :variant).find_each do |item|
+        entries = @order.items.includes(:product, :variant).order(:id).filter_map do |item|
           target = item.variant || item.product
           next if target.stock.nil?
 
+          [ item, target ]
+        end
+
+        entries
+          .map(&:last)
+          .uniq { |target| [ target.class.table_name, target.id ] }
+          .sort_by { |target| [ target.class.table_name, target.id ] }
+          .each(&:lock!)
+
+        entries.each do |item, target|
+          item.lock!
           already_restored = item.stock_restored_quantity.to_i
           remaining = item.quantity - already_restored
           next unless remaining.positive?
@@ -30,20 +42,33 @@ module Commerce
           restore_qty = [ target_restored - already_restored, remaining ].min
           next unless restore_qty.positive?
 
-          Commerce::IncrementStock.call(target: target, quantity: restore_qty)
+          target.reload
+          unless target.stock
+            restore_error = "stock_target_invalid"
+            raise ActiveRecord::Rollback
+          end
+
+          target.update!(stock: target.stock + restore_qty)
           item.update!(stock_restored_quantity: already_restored + restore_qty)
           restored_units += restore_qty
         end
       end
 
+      return ServiceResult.failure(error: restore_error) if restore_error
+
       ServiceResult.success(restored_units: restored_units)
+    rescue ActiveRecord::RecordInvalid => e
+      ServiceResult.failure(errors: e.record.errors.to_hash)
     end
 
     private
 
     def cumulative_target(quantity)
-      total_refunded = [ @already_refunded_cents + @refund_amount_cents, @payment_amount_cents ].min
-      (quantity * total_refunded.to_f / @payment_amount_cents).round
+      Commerce::CumulativeRefundAllocation.target(
+        total_units: quantity,
+        refunded_cents: @already_refunded_cents + @refund_amount_cents,
+        payment_cents: @payment_amount_cents
+      )
     end
   end
 end

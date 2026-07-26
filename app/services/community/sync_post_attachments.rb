@@ -57,6 +57,16 @@ module Community
       return ServiceResult.failure(error: "attachment_invalid") if scope.count != to_unlink_ids.size
 
       scope.update_all(forum_post_id: nil, updated_at: Time.current)
+      Community::Upload
+        .where(forum_post_attachment_id: to_unlink_ids)
+        .where.not(status: "cleaned")
+        .update_all(
+          status: "stored",
+          forum_post_id: nil,
+          expires_at: Community::StoreUpload::PENDING_TTL.from_now,
+          cleanup_started_at: nil,
+          updated_at: Time.current
+        )
       ServiceResult.success(unlinked: to_unlink_ids.size)
     end
   end

@@ -27,6 +27,8 @@ module Community
         tag: "mcweb-notification-#{@notification.id}"
       }.to_json
 
+      return capture(subscriptions, payload) if developer_mode_capture?
+
       subscriptions.find_each { |subscription| send_one(subscription, payload) }
       ServiceResult.success
     end
@@ -45,6 +47,38 @@ module Community
       return false if @user.forum_dnd_until.present? && @user.forum_dnd_until > Time.current
 
       NotificationPreference.enabled?(@user, channel: "web_push", notification_type: @notification.notification_type)
+    end
+
+    def developer_mode_capture?
+      defined?(Mcweb::DeveloperMode) &&
+        Mcweb::DeveloperMode.enabled? &&
+        Mcweb::DeveloperMode.integration(:web_push) == :capture
+    end
+
+    def capture(subscriptions, payload)
+      subscription_count = 0
+      captures = subscriptions.filter_map do |subscription|
+        subscription_count += 1
+        Mcweb::DeveloperModeCapture.capture_web_push!(
+          notification_id: @notification.id,
+          notification_type: @notification.notification_type,
+          user_id: @user.id,
+          subscription_id: subscription.id,
+          endpoint: subscription.endpoint,
+          payload: payload
+        )
+      end
+
+      value = {
+        captured: captures.length == subscription_count,
+        capture_count: captures.length,
+        subscription_count: subscription_count,
+        capture_ids: captures.map(&:capture_id),
+        capture_paths: captures.map { |entry| entry.path.to_s }.uniq
+      }
+      return ServiceResult.success(value) if value[:captured]
+
+      ServiceResult.failure(code: "web_push_capture_failed", value: value)
     end
 
     def send_one(subscription, payload)

@@ -7,6 +7,7 @@ module Administration
     end
 
     def call
+      return ServiceResult.success if Mcweb::DeveloperMode.allow?(:skip_anti_spam)
       return ServiceResult.success if @email.blank?
       return ServiceResult.success unless Administration::EmailBan.match?(@email)
 

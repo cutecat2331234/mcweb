@@ -18,9 +18,10 @@ module Community
 
     def filters
       scope = base_scope
+      counts = Community::NotificationPeriodCounts.call(scope)
 
       PERIODS.filter_map do |period|
-        count = count_for(scope, period)
+        count = counts.fetch(period, 0)
         next if count.zero?
 
         {
@@ -42,10 +43,6 @@ module Community
       scope = scope.unread if @read == "unread"
       scope = scope.where(notification_type: @type) if @type.present?
       scope
-    end
-
-    def count_for(scope, period)
-      NotificationPeriodScope.call(scope, period).count
     end
 
     def apply_category(scope)

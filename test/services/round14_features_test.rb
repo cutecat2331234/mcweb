@@ -136,6 +136,16 @@ end
 
 class Payments::StripeProviderTest < ActiveSupport::TestCase
   setup do
+    Payments::ProviderConfig.find_or_initialize_by(provider: "stripe").tap do |config|
+      config.enabled = true
+      config.credentials = {
+        "secret_key" => "sk_test_round14",
+        "webhook_secret" => "whsec_round14"
+      }
+      config.save!
+      mark_stripe_provider_connection_tested!(config)
+    end
+
     @order = Commerce::Order.create!(
       user: create_user,
       order_number: "ORD-STRIPE-#{SecureRandom.hex(4)}",
@@ -154,10 +164,20 @@ class Payments::StripeProviderTest < ActiveSupport::TestCase
     )
   end
 
-  test "creates test checkout in test mode" do
-    result = Payments::StripeProvider.new.create_payment(@payment)
-    assert result.success?
-    assert_match %r{\A/app/payments/fake/}, result.value[:checkout_url]
+  test "creates checkout only when stripe is fully configured" do
+    client, sessions, = build_stripe_test_client
+    result = Payments::StripeProvider.new(client: client).create_payment(
+      @payment,
+      return_url_base: "https://shop.example.test"
+    )
+
+    assert result.success?, result.error
+    assert_match %r{\Ahttps://checkout\.stripe\.com/c/pay/}, result.value[:checkout_url]
+    assert_equal "stripe", @payment.reload.provider
+    assert_match(/\Acs_test_/, @payment.provider_payment_id)
+    assert_equal @payment.amount_cents, sessions.requests.sole.dig(:params, :line_items, 0, :price_data, :unit_amount)
+    assert_equal @payment.currency.downcase, sessions.requests.sole.dig(:params, :line_items, 0, :price_data, :currency)
+    assert_equal "mcweb:checkout:payment:#{@payment.id}:v1", sessions.requests.sole.dig(:options, :idempotency_key)
   end
 end
 

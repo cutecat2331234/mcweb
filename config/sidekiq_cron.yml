@@ -106,6 +106,24 @@ retry_failed_order_webhooks:
   queue: maintenance
   active_job: true
 
+recover_payment_webhooks:
+  cron: "* * * * *"
+  class: "Payments::RecoverWebhookEventsJob"
+  queue: maintenance
+  active_job: true
+
+reconcile_daily_payments:
+  cron: "20 4 * * *"
+  class: "Payments::DailyReconciliationJob"
+  queue: maintenance
+  active_job: true
+
+recover_plugin_job_runs:
+  cron: "* * * * *"
+  class: "Maintenance::RecoverPluginJobRunsJob"
+  queue: maintenance
+  active_job: true
+
 retry_failed_forum_event_webhooks:
   cron: "*/15 * * * *"
   class: "Community::RetryFailedForumEventWebhooksJob"
@@ -124,9 +142,27 @@ cleanup_expired_sessions:
   queue: maintenance
   active_job: true
 
+cleanup_rate_limit_counters:
+  cron: "15 3 * * *"
+  class: "Maintenance::CleanupRateLimitCountersJob"
+  queue: maintenance
+  active_job: true
+
 cleanup_expired_link_codes:
   cron: "*/30 * * * *"
   class: "Maintenance::CleanupExpiredLinkCodesJob"
+  queue: maintenance
+  active_job: true
+
+cleanup_forum_uploads:
+  cron: "*/15 * * * *"
+  class: "Maintenance::CleanupForumUploadsJob"
+  queue: maintenance
+  active_job: true
+
+scan_forum_attachments:
+  cron: "* * * * *"
+  class: "Maintenance::ScanForumAttachmentsJob"
   queue: maintenance
   active_job: true
 

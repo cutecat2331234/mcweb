@@ -26,6 +26,8 @@ gem "aasm", "~> 6.0"
 gem "csv"
 gem "ostruct"
 gem "rubyzip", "~> 3.4"
+gem "stripe", "~> 19.3"
+gem "aws-sdk-s3", "~> 1.228", require: false
 
 gem "tzinfo-data", platforms: %i[ windows jruby ]
 
@@ -34,6 +36,7 @@ gem "solid_cache"
 gem "bootsnap", require: false
 gem "thruster", require: false
 gem "image_processing", "~> 2.0"
+gem "ruby-vips", "~> 2.3", require: "vips"
 gem "prawn", "~> 2.5"
 gem "web-push", "~> 3.0"
 
@@ -52,6 +55,7 @@ end
 
 group :test do
   gem "minitest", "~> 6.0"
+  gem "minitest-mock", "~> 5.27"
   gem "minitest-reporters"
   gem "rails-dom-testing"
 end

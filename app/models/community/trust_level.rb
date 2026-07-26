@@ -31,18 +31,21 @@ module Community
     end
 
     def self.can_send_pm?(user)
+      return true if user && developer_mode_bypasses_gates?
       return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
 
       level_for(user) >= SiteSetting.get("forum.min_trust_level_pm", "1").to_i
     end
 
     def self.can_post_links?(user)
+      return true if user && developer_mode_bypasses_gates?
       return true if user&.permission?("forum.topics.lock")
 
       level_for(user) >= 1
     end
 
     def self.can_upload_images?(user)
+      return true if user && developer_mode_bypasses_gates?
       return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
 
       level_for(user) >= 1
@@ -53,6 +56,7 @@ module Community
     end
 
     def self.can_react?(user)
+      return true if user && developer_mode_bypasses_gates?
       return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")
 
       min_level = SiteSetting.get("forum.min_trust_level_reaction", "0").to_i
@@ -73,6 +77,11 @@ module Community
     def self.contains_link?(text)
       text.to_s.match?(/https?:\/\//i)
     end
+
+    def self.developer_mode_bypasses_gates?
+      Mcweb::DeveloperMode.allow?(:skip_anti_spam)
+    end
+    private_class_method :developer_mode_bypasses_gates?
 
     def self.progress_for(user)
       return nil unless user

@@ -7,6 +7,7 @@ module Administration
     end
 
     def call
+      return ServiceResult.success if Mcweb::DeveloperMode.allow?(:skip_anti_spam)
       return ServiceResult.success if @ip_address.blank?
 
       ban = Administration::IpBan.active.find_by(ip_address: @ip_address)

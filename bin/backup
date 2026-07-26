@@ -1,13 +1,428 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
-BACKUP_DIR="${MCWEB_BACKUP_DIR:-/var/backups/mcweb}"
-STAMP="$(date +%Y%m%d%H%M%S)"
-TARGET="${BACKUP_DIR}/${STAMP}"
-mkdir -p "${TARGET}"
+umask 077
 
-pg_dump "${DATABASE_URL:-mcweb_production}" > "${TARGET}/database.sql"
-tar -czf "${TARGET}/uploads.tar.gz" -C /var/lib/mcweb uploads 2>/dev/null || true
-cp /etc/mcweb/mcweb.env "${TARGET}/mcweb.env" 2>/dev/null || true
-echo "${TARGET}" > "${BACKUP_DIR}/latest"
-echo "Backup saved to ${TARGET}"
+CONFIG_FILE="${MCWEB_CONFIG_FILE:-/etc/mcweb/mcweb.env}"
+APP_ROOT="${MCWEB_APPLICATION_ROOT:-$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)}"
+STAGING_PATH=""
+
+die() {
+  echo "Backup failed: $*" >&2
+  exit 1
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || die "required command is not available: $1"
+}
+
+report_failed_backup() {
+  if [[ -n "${STAGING_PATH}" ]]; then
+    echo "Backup staging directory retained for inspection: ${STAGING_PATH}" >&2
+  fi
+}
+
+load_runtime_environment() {
+  if [[ -r "${CONFIG_FILE}" ]]; then
+    # The production environment file is root-controlled shell input. Loading it
+    # supplies runtime credentials without copying or printing them.
+    set -a
+    # shellcheck disable=SC1090
+    source "${CONFIG_FILE}"
+    set +a
+  fi
+}
+
+write_safe_configuration() {
+  local output="$1"
+  local key value line
+  local -a safe_keys=(
+    RAILS_ENV
+    RAILS_SERVE_STATIC_FILES
+    BUNDLE_DEPLOYMENT
+    BUNDLE_WITHOUT
+    MCWEB_DATABASE_NAME
+    MCWEB_DATABASE_HOST
+    MCWEB_DATABASE_PORT
+    MCWEB_PUBLIC_URL
+    MCWEB_ALLOWED_HOSTS
+    MCWEB_TRUSTED_PROXIES
+    MCWEB_BIND
+    MCWEB_HOST
+    MCWEB_SMTP_ADDRESS
+    MCWEB_SMTP_PORT
+    MCWEB_SMTP_AUTHENTICATION
+    MCWEB_SMTP_TLS
+    MCWEB_SMTP_OPEN_TIMEOUT
+    MCWEB_SMTP_READ_TIMEOUT
+    MCWEB_MAIL_FROM
+    MCWEB_ACTIVE_STORAGE_SERVICE
+    MCWEB_S3_BUCKET
+    MCWEB_S3_REGION
+    MCWEB_S3_ENDPOINT
+    MCWEB_S3_FORCE_PATH_STYLE
+    MCWEB_ATTACHMENT_SCANNER
+    MCWEB_CLAMAV_COMMAND
+    MCWEB_CLAMD_HOST
+    MCWEB_CLAMD_PORT
+    MCWEB_TEMPLATE_DIR
+    MCWEB_BACKUP_DIR
+    JOB_CONCURRENCY
+  )
+
+  : > "${output}"
+  for key in "${safe_keys[@]}"; do
+    if [[ -v "${key}" ]]; then
+      value="${!key}"
+      [[ "${value}" != *$'\n'* && "${value}" != *$'\r'* ]] ||
+        die "refusing multiline value in non-secret configuration: ${key}"
+      if [[ "${key}" == "MCWEB_S3_ENDPOINT" &&
+            -n "${value}" &&
+            ! "${value}" =~ ^https://[A-Za-z0-9._:\[\]-]+/?$ ]]; then
+        die "refusing a credential-bearing or invalid S3 endpoint in non-secret configuration"
+      fi
+      printf '%s=%s\n' "${key}" "${value}" >> "${output}"
+      continue
+    fi
+
+    [[ -r "${CONFIG_FILE}" ]] || continue
+    if line="$(grep -m 1 -E "^${key}=" "${CONFIG_FILE}")"; then
+      printf '%s\n' "${line}" >> "${output}"
+    fi
+  done
+}
+
+write_secret_configuration_artifact() {
+  local target="$1"
+  local recipient="${MCWEB_BACKUP_GPG_RECIPIENT:-}"
+  local secret_reference="${MCWEB_SECRET_BACKUP_REFERENCE:-}"
+
+  if [[ -r "${CONFIG_FILE}" && -n "${recipient}" ]]; then
+    require_command gpg
+    gpg --batch --yes --trust-model always \
+      --output "${target}/mcweb.env.gpg" \
+      --encrypt --recipient "${recipient}" "${CONFIG_FILE}"
+    gpg --batch --list-packets "${target}/mcweb.env.gpg" >/dev/null
+    SECRET_ARTIFACT="mcweb.env.gpg"
+    SECRET_ARTIFACT_KIND="openpgp"
+    return
+  fi
+
+  if [[ -n "${secret_reference}" ]]; then
+    [[ "${secret_reference}" =~ ^[a-z][a-z0-9+.-]*://[A-Za-z0-9._/-]+/versions/[A-Za-z0-9._-]+$ &&
+       ! "${secret_reference}" =~ /versions/(latest|current|active)$ ]] ||
+      die "MCWEB_SECRET_BACKUP_REFERENCE must be a non-secret URI ending in /versions/IMMUTABLE_ID"
+    printf '%s\n' "${secret_reference}" > "${target}/secret-config.reference"
+    SECRET_ARTIFACT="secret-config.reference"
+    SECRET_ARTIFACT_KIND="external_reference"
+    return
+  fi
+
+  if [[ -r "${CONFIG_FILE}" ]]; then
+    die "set MCWEB_BACKUP_GPG_RECIPIENT or MCWEB_SECRET_BACKUP_REFERENCE; plaintext mcweb.env is never backed up"
+  fi
+
+  die "no encrypted configuration source or immutable secret-manager reference was supplied"
+}
+
+write_object_storage_inventory() {
+  local output="$1"
+
+  MCWEB_BACKUP_OBJECT_INVENTORY="${output}" \
+    MCWEB_BACKUP_EXPECTED_STORAGE_SERVICE="private_s3" \
+    RAILS_ENV="${RAILS_ENV:-production}" \
+    bundle exec rails runner - <<'RUBY'
+require "json"
+
+output = ENV.fetch("MCWEB_BACKUP_OBJECT_INVENTORY")
+expected_service = ENV.fetch("MCWEB_BACKUP_EXPECTED_STORAGE_SERVICE")
+missing = 0
+wrong_service = 0
+
+File.open(output, "wb", 0o600) do |file|
+  ActiveStorage::Blob.order(:id).find_each do |blob|
+    wrong_service += 1 unless blob.service_name == expected_service
+    service = blob.service
+    present = service.exist?(blob.key)
+    missing += 1 unless present
+    file.puts(
+      JSON.generate(
+        id: blob.id,
+        key: blob.key,
+        service_name: blob.service_name,
+        filename: blob.filename.to_s,
+        byte_size: blob.byte_size,
+        checksum: blob.checksum,
+        content_type: blob.content_type,
+        created_at: blob.created_at&.iso8601(6),
+        object_present: present
+      )
+    )
+  end
+end
+
+abort("Active Storage inventory contains #{missing} missing object(s)") if missing.positive?
+abort("Active Storage inventory contains #{wrong_service} object(s) on an unexpected service") if wrong_service.positive?
+RUBY
+}
+
+write_local_storage_inventory() {
+  local storage_root="$1"
+  local target="$2"
+  local snapshot unsafe_entry file_list
+
+  [[ "${storage_root}" = /* ]] || die "MCWEB_LOCAL_STORAGE_ROOT must be an absolute path"
+  [[ -d "${storage_root}" ]] || die "local Active Storage root does not exist: ${storage_root}"
+  unsafe_entry="$(
+    find "${storage_root}" \
+      \( -type l -o \( ! -type d ! -type f \) \) \
+      -print -quit
+  )"
+  [[ -z "${unsafe_entry}" ]] ||
+    die "local Active Storage contains a symbolic link or special file"
+
+  tar --create --gzip --hard-dereference \
+    --owner=0 --group=0 \
+    --file "${target}/active_storage.tar.gz" \
+    --directory "${storage_root}" .
+  tar --list --gzip --file "${target}/active_storage.tar.gz" >/dev/null
+  if ! tar --list --verbose --gzip --file "${target}/active_storage.tar.gz" |
+      awk '
+        substr($0, 1, 1) != "-" && substr($0, 1, 1) != "d" { unsafe = 1 }
+        END { exit unsafe ? 1 : 0 }
+      '
+  then
+    die "local Active Storage archive contains a link or special file"
+  fi
+  if ! tar --list --gzip --file "${target}/active_storage.tar.gz" |
+      awk '
+        /^\/|(^|\/)\.\.(\/|$)/ || $0 !~ /^[A-Za-z0-9._\/-]+$/ { unsafe = 1 }
+        END { exit unsafe ? 1 : 0 }
+      '
+  then
+    die "local Active Storage archive contains an unsupported path"
+  fi
+
+  snapshot="$(mktemp -d "${target}/.active-storage-snapshot.XXXXXX")"
+  tar --extract --gzip --no-same-owner --no-same-permissions \
+    --file "${target}/active_storage.tar.gz" \
+    --directory "${snapshot}"
+  unsafe_entry="$(
+    find "${snapshot}" \
+      \( -type l -o \( ! -type d ! -type f \) \) \
+      -print -quit
+  )"
+  [[ -z "${unsafe_entry}" ]] ||
+    die "local Active Storage snapshot contains a symbolic link or special file"
+
+  file_list="${target}/.active-storage-files"
+  [[ ! -e "${file_list}" ]] || die "local Active Storage helper path already exists"
+  (
+    cd "${snapshot}"
+    find . -type f -print0 | sort -z
+  ) > "${file_list}" ||
+    die "could not enumerate the local Active Storage snapshot"
+
+  (
+    cd "${snapshot}"
+    while IFS= read -r -d '' file; do
+      [[ "${file#./}" =~ ^[A-Za-z0-9._/-]+$ &&
+         "${file#./}" != ".." &&
+         "${file#./}" != ../* &&
+         "${file#./}" != */../* &&
+         "${file#./}" != */.. ]] ||
+        die "local Active Storage contains an unsupported path"
+      sha256sum "${file#./}"
+    done < "${file_list}"
+  ) > "${target}/active_storage_files.sha256"
+  rm --force -- "${file_list}"
+  rm --recursive --force --one-file-system -- "${snapshot}"
+}
+
+write_backup_manifest() {
+  local target="$1"
+  local backup_id="$2"
+  local created_at="$3"
+  local storage_mode="$4"
+  local storage_inventory="$5"
+  local storage_archive="$6"
+
+  cat > "${target}/backup-manifest.json" <<JSON
+{
+  "format": "mcweb-backup-v1",
+  "backup_id": "${backup_id}",
+  "created_at": "${created_at}",
+  "database": {
+    "path": "database.dump",
+    "format": "postgresql-custom"
+  },
+  "active_storage": {
+    "mode": "${storage_mode}",
+    "inventory": "${storage_inventory}",
+    "archive": ${storage_archive}
+  },
+  "configuration": {
+    "non_secret": "configuration.env",
+    "secret_artifact": "${SECRET_ARTIFACT}",
+    "secret_artifact_kind": "${SECRET_ARTIFACT_KIND}"
+  }
+}
+JSON
+}
+
+write_checksums() {
+  local target="$1"
+  local file_list="${target}/.checksum-files"
+
+  [[ ! -e "${file_list}" ]] || die "backup checksum helper path already exists"
+  (
+    cd "${target}"
+    find . -type f ! -name SHA256SUMS ! -name .checksum-files -print0 |
+      sort -z
+  ) > "${file_list}" || die "could not enumerate backup artifacts"
+
+  (
+    cd "${target}"
+    while IFS= read -r -d '' file; do
+      sha256sum "${file#./}"
+    done < "${file_list}"
+  ) > "${target}/SHA256SUMS"
+  rm --force -- "${file_list}"
+
+  (
+    cd "${target}"
+    sha256sum --check --strict SHA256SUMS >/dev/null
+  )
+}
+
+main() {
+  require_command pg_dump
+  require_command pg_restore
+  require_command sha256sum
+  require_command find
+  require_command sort
+  require_command tar
+  require_command awk
+  require_command mktemp
+  require_command rm
+  require_command mv
+  require_command ruby
+  require_command bundle
+  require_command realpath
+  require_command grep
+
+  load_runtime_environment
+  cd "${APP_ROOT}"
+
+  local backup_dir="${MCWEB_BACKUP_DIR:-/var/backups/mcweb}"
+  local backup_id="${MCWEB_BACKUP_ID:-$(date -u +%Y%m%dT%H%M%SZ)}"
+  local created_at
+  local target staging database_target storage_mode storage_root
+  local storage_inventory storage_archive latest_tmp canonical_backup_dir
+  local canonical_storage_root
+
+  [[ "${backup_id}" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*$ ]] ||
+    die "MCWEB_BACKUP_ID contains unsupported characters"
+  [[ "${backup_dir}" = /* ]] || die "MCWEB_BACKUP_DIR must be an absolute path"
+  canonical_backup_dir="$(realpath --canonicalize-missing -- "${backup_dir}")"
+  [[ "${backup_dir}" == "${canonical_backup_dir}" ]] ||
+    die "MCWEB_BACKUP_DIR must be a canonical path"
+  case "${canonical_backup_dir}" in
+    /|/etc|/opt|/usr|/var|/var/backups)
+      die "MCWEB_BACKUP_DIR is too broad"
+      ;;
+  esac
+  [[ ! -L "${backup_dir}" ]] || die "MCWEB_BACKUP_DIR must not be a symbolic link"
+
+  storage_mode="${MCWEB_ACTIVE_STORAGE_SERVICE:-private_s3}"
+  case "${storage_mode}" in
+    private_s3)
+      ;;
+    local)
+      storage_root="${MCWEB_LOCAL_STORAGE_ROOT:-}"
+      [[ -n "${storage_root}" ]] ||
+        die "MCWEB_LOCAL_STORAGE_ROOT is required when Active Storage uses local disk"
+      [[ "${storage_root}" = /* ]] ||
+        die "MCWEB_LOCAL_STORAGE_ROOT must be an absolute path"
+      [[ -d "${storage_root}" && ! -L "${storage_root}" ]] ||
+        die "MCWEB_LOCAL_STORAGE_ROOT must be a real directory"
+      canonical_storage_root="$(realpath --canonicalize-existing -- "${storage_root}")"
+      [[ "${storage_root}" == "${canonical_storage_root}" ]] ||
+        die "MCWEB_LOCAL_STORAGE_ROOT must be a canonical path"
+      case "${canonical_backup_dir}/" in
+        "${canonical_storage_root}/"*)
+          die "MCWEB_BACKUP_DIR must not be inside MCWEB_LOCAL_STORAGE_ROOT"
+          ;;
+      esac
+      case "${canonical_storage_root}/" in
+        "${canonical_backup_dir}/"*)
+          die "MCWEB_LOCAL_STORAGE_ROOT must not be inside MCWEB_BACKUP_DIR"
+          ;;
+      esac
+      storage_root="${canonical_storage_root}"
+      ;;
+    *)
+      die "unsupported MCWEB_ACTIVE_STORAGE_SERVICE: ${storage_mode}"
+      ;;
+  esac
+
+  created_at="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  target="${backup_dir}/${backup_id}"
+  staging="${backup_dir}/.${backup_id}.partial.$$"
+  [[ ! -e "${target}" && ! -e "${staging}" ]] ||
+    die "backup target already exists: ${target}"
+
+  mkdir -p "${backup_dir}"
+  chmod 700 "${backup_dir}"
+  mkdir "${staging}"
+  STAGING_PATH="${staging}"
+  trap report_failed_backup EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
+
+  database_target="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}"
+  pg_dump --format=custom --no-owner --no-privileges \
+    --file="${staging}/database.dump" --dbname="${database_target}"
+  pg_restore --list "${staging}/database.dump" >/dev/null
+
+  write_safe_configuration "${staging}/configuration.env"
+  SECRET_ARTIFACT=""
+  SECRET_ARTIFACT_KIND=""
+  write_secret_configuration_artifact "${staging}"
+
+  case "${storage_mode}" in
+    private_s3)
+      write_object_storage_inventory "${staging}/active_storage_objects.ndjson"
+      storage_inventory="active_storage_objects.ndjson"
+      storage_archive="null"
+      ;;
+    local)
+      write_local_storage_inventory "${storage_root}" "${staging}"
+      storage_inventory="active_storage_files.sha256"
+      storage_archive='"active_storage.tar.gz"'
+      ;;
+  esac
+
+  write_backup_manifest \
+    "${staging}" "${backup_id}" "${created_at}" \
+    "${storage_mode}" "${storage_inventory}" "${storage_archive}"
+  write_checksums "${staging}"
+
+  chmod 700 "${staging}"
+  find "${staging}" -type f -exec chmod 600 {} +
+  mv --no-clobber --no-target-directory "${staging}" "${target}"
+  [[ ! -e "${staging}" ]] ||
+    die "backup target appeared during publication: ${target}"
+
+  latest_tmp="${backup_dir}/.latest.$$"
+  printf '%s\n' "${target}" > "${latest_tmp}"
+  chmod 600 "${latest_tmp}"
+  mv --no-target-directory "${latest_tmp}" "${backup_dir}/latest"
+  trap - EXIT INT TERM HUP
+  STAGING_PATH=""
+
+  echo "Backup completed and verified: ${target}"
+}
+
+main "$@"

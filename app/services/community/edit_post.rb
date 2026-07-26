@@ -56,6 +56,12 @@ module Community
       else
         @post.edit_body!(@body, editor: @user, reason: @reason)
       end
+      inline_upload_result = Community::BindInlineUploads.call(
+        user: @user,
+        post: @post,
+        body: @body
+      )
+      return inline_upload_result if inline_upload_result.failure?
 
       attachments_changed = false
       if @attachment_ids != NOT_PROVIDED

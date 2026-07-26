@@ -12,8 +12,10 @@ class ApplicationController < ActionController::Base
   include LocaleSettable
 
   before_action :require_totp_setup
+  after_action :mark_developer_mode_response
 
-  allow_browser versions: :modern
+  allow_browser versions: :modern,
+    unless: -> { Mcweb::DeveloperMode.allow?(:skip_browser_policy) }
 
   stale_when_importmap_changes
 
@@ -30,6 +32,8 @@ class ApplicationController < ActionController::Base
         notice: flash[:notice],
         alert: flash[:alert]
       },
+      developer_mode: developer_mode_frontend_payload,
+      admin_demo_enabled: !Rails.env.production? || Mcweb::DeveloperMode.enabled?,
       features: FeatureFlags.frontend_hash
     }
 
@@ -211,6 +215,29 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  def developer_mode_frontend_payload
+    return { enabled: false } unless Mcweb::DeveloperMode.enabled?
+
+    {
+      enabled: true,
+      profile: Mcweb::DeveloperMode.profile,
+      production_environment: Rails.env.production?,
+      workbench_access:
+        current_user.present? &&
+          current_user.can_access_admin? &&
+          current_user.permission?("admin.access") &&
+          current_user.permission?("system.settings.manage")
+    }
+  end
+
+  def mark_developer_mode_response
+    return unless Mcweb::DeveloperMode.enabled?
+
+    response.set_header("X-McWeb-Developer-Mode", "unrestricted")
+    response.set_header("X-Robots-Tag", "noindex, nofollow")
+    response.set_header("Cache-Control", "no-store")
+  end
 
   # Turns a flat map of dotted i18n keys into a nested hash so vue-i18n can
   # merge it as locale messages. { "forum.top.title" => "x" } becomes

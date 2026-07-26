@@ -4,10 +4,11 @@ module Commerce
   class ConfirmPayment < ApplicationService
     ORPHAN_REASONS = %w[order_cancelled order_expired].freeze
 
-    def initialize(payment_record:, provider_payment_id: nil, metadata: {})
+    def initialize(payment_record:, provider_payment_id: nil, metadata: {}, webhook_event: nil)
       @payment_record = payment_record
       @provider_payment_id = provider_payment_id
       @metadata = metadata
+      @webhook_event = webhook_event
     end
 
     def call
@@ -15,6 +16,7 @@ module Commerce
       order_id = nil
       payment_error = nil
       orphan_reason = nil
+      late_payment_case = nil
       from_status = nil
       idempotent_succeeded = false
 
@@ -22,7 +24,14 @@ module Commerce
         record = Payments::Record.lock.find(@payment_record.id)
 
         if record.status == "succeeded"
-          idempotent_succeeded = true
+          existing_orphan_reason = record.metadata["orphan_reason"].to_s
+          if record.metadata["orphaned"] == true && existing_orphan_reason.in?(ORPHAN_REASONS)
+            orphan_reason = existing_orphan_reason
+            payment_error = orphan_error(orphan_reason)
+            late_payment_case = enqueue_late_payment_case!(record, orphan_reason)
+          else
+            idempotent_succeeded = true
+          end
         else
           unless %w[pending processing].include?(record.status)
             payment_error = "Payment is no longer valid."
@@ -86,8 +95,14 @@ module Commerce
       end
 
       if payment_error.present?
-        record_orphaned_payment!(orphan_reason) if orphan_reason.present?
-        return ServiceResult.failure(error: payment_error, value: { orphaned: orphan_reason.present? })
+        late_payment_case ||= record_orphaned_payment!(orphan_reason) if orphan_reason.present?
+        return ServiceResult.failure(
+          error: payment_error,
+          value: {
+            orphaned: orphan_reason.present?,
+            late_payment_case: late_payment_case
+          }
+        )
       end
 
       if idempotent_succeeded
@@ -115,28 +130,46 @@ module Commerce
       nil
     end
 
+    def orphan_error(reason)
+      reason == "order_expired" ? "order_payment_expired" : "order_not_payable"
+    end
+
     def record_orphaned_payment!(reason)
       return unless ORPHAN_REASONS.include?(reason)
 
+      late_payment_case = nil
       Payments::Record.transaction do
         record = Payments::Record.lock.find(@payment_record.id)
-        next unless record.pending? || record.processing?
-
-        record.update!(
-          status: "succeeded",
-          provider_payment_id: @provider_payment_id || record.provider_payment_id,
-          metadata: record.metadata.merge(
-            @metadata.stringify_keys
-          ).merge(
-            "orphaned" => true,
-            "orphan_reason" => reason,
-            "requires_manual_review" => true
+        if record.pending? || record.processing?
+          record.update!(
+            status: "succeeded",
+            provider_payment_id: @provider_payment_id || record.provider_payment_id,
+            metadata: record.metadata.merge(
+              @metadata.stringify_keys
+            ).merge(
+              "orphaned" => true,
+              "orphan_reason" => reason,
+              "requires_manual_review" => true
+            )
           )
-        )
+        end
+
+        late_payment_case = enqueue_late_payment_case!(record, reason) if record.succeeded?
       end
 
       Rails.logger.warn(
         "[ConfirmPayment] Orphaned payment recorded: payment_record=#{@payment_record.id} reason=#{reason}"
+      )
+      late_payment_case
+    end
+
+    def enqueue_late_payment_case!(record, reason)
+      return unless @webhook_event
+
+      Payments::LatePaymentCase.enqueue_from_verified_webhook!(
+        payment_record: record,
+        webhook_event: @webhook_event,
+        reason: reason
       )
     end
 

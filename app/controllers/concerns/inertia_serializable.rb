@@ -271,6 +271,8 @@ module InertiaSerializable
   end
 
   def slow_mode_props(topic, user:)
+    return {} if Mcweb::DeveloperMode.allow?(:skip_anti_spam)
+
     seconds = topic.slow_mode_seconds.to_i
     return {} unless user && seconds.positive?
 
@@ -283,6 +285,7 @@ module InertiaSerializable
 
   def bump_props(topic, can_moderate:)
     return {} unless can_moderate
+    return { bump_cooldown_remaining_seconds: nil } if Mcweb::DeveloperMode.allow?(:skip_anti_spam)
 
     cooldown_hours = SiteSetting.get("forum.bump_cooldown_hours", "24").to_i
     remaining = if cooldown_hours.positive? && topic.bumped_at && topic.bumped_at > cooldown_hours.hours.ago
@@ -818,7 +821,7 @@ module InertiaSerializable
   end
 
   def serialize_order_detail(order)
-    providers = Payments::ProviderConfig.enabled_providers.map { |config| serialize_checkout_provider(config) }
+    providers = Payments::ProviderConfig.checkout_ready_providers.map { |config| serialize_checkout_provider(config) }
     shipping_enabled = Commerce::StoreFeatures.enabled?(:shipping)
     shipping_mgmt_enabled = Commerce::StoreFeatures.enabled?(:order_shipping_management)
     gift_wrap_enabled = Commerce::StoreFeatures.enabled?(:gift_wrap)

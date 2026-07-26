@@ -14,7 +14,8 @@ module CsrfCookie
 
     cookies["XSRF-TOKEN"] = {
       value: form_authenticity_token,
-      secure: Rails.env.production?,
+      secure: Rails.env.production? &&
+        !Mcweb::DeveloperMode.allow?(:allow_insecure_cookies),
       same_site: :lax
     }
   end

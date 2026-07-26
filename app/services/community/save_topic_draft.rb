@@ -43,6 +43,7 @@ module Community
       tag_result = nil
       poll_result = nil
       field_result = nil
+      inline_upload_result = nil
 
       Community::Topic.transaction do
         draft.assign_attributes(
@@ -60,6 +61,12 @@ module Community
           post = draft.posts.first_or_initialize(floor_number: 1, user: @user)
           post.assign_attributes(body: @body, status: "published")
           post.save!
+          inline_upload_result = Community::BindInlineUploads.call(
+            user: @user,
+            post: post,
+            body: @body
+          )
+          raise ActiveRecord::Rollback if inline_upload_result.failure?
         end
 
         if @tag_names.present?
@@ -92,6 +99,7 @@ module Community
       return tag_result if tag_result&.failure?
       return poll_result if poll_result&.failure?
       return field_result if field_result&.failure?
+      return inline_upload_result if inline_upload_result&.failure?
 
       opening_post = draft.posts.first
       if opening_post

@@ -11,6 +11,11 @@ module Community
     has_many :reactions, class_name: "Community::Reaction", foreign_key: :forum_post_id, dependent: :destroy
     has_many :forked_topics, class_name: "Community::Topic", foreign_key: :source_post_id, dependent: :nullify
     has_many :attachments, class_name: "Community::PostAttachment", foreign_key: :forum_post_id, dependent: :destroy, inverse_of: :post
+    has_many :inline_uploads,
+      class_name: "Community::Upload",
+      foreign_key: :forum_post_id,
+      dependent: :nullify,
+      inverse_of: :post
 
     enum :status, { published: "published", hidden: "hidden", deleted: "deleted", pending_approval: "pending_approval" }, validate: true
     enum :post_type, { regular: "regular", small_action: "small_action", whisper: "whisper" }, validate: true, prefix: true

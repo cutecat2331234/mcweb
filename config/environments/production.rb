@@ -1,6 +1,20 @@
 require "active_support/core_ext/integer/time"
+require_relative "../developer_mode_runtime"
+require_relative "../../lib/mcweb/production_environment"
 
 Rails.application.configure do
+  developer_mode_settings = Mcweb::DeveloperMode.settings
+  Mcweb::DeveloperMode.require_production_confirmation!(
+    settings: developer_mode_settings,
+    environment: ENV
+  )
+  production_requirements =
+    Mcweb::DeveloperModeRuntime.production_requirements(developer_mode_settings)
+  production_environment = Mcweb::ProductionEnvironment.load_selected!(
+    ENV,
+    **production_requirements
+  )
+
   # Settings specified here will take precedence over those in config/application.rb.
 
   # Code is not reloaded between requests.
@@ -24,17 +38,26 @@ Rails.application.configure do
   # Enable serving of images, stylesheets, and JavaScripts from an asset server.
   # config.asset_host = "http://assets.example.com"
 
-  # Store uploaded files on the local file system (see config/storage.yml for options).
-  config.active_storage.service = :local
+  # Production uploads must use the private S3-compatible service declared in
+  # config/storage.yml. Local container or release disks are not durable.
+  config.active_storage.service = production_environment.storage_service || :local
 
-  # Assume all access to the app is happening through a SSL-terminating reverse proxy.
-  config.assume_ssl = ActiveModel::Type::Boolean.new.cast(ENV.fetch("MCWEB_ASSUME_SSL", "0"))
+  # McWeb's supported production topology terminates TLS at a trusted reverse
+  # proxy. The app still redirects accidental HTTP requests and emits HSTS.
+  if production_requirements.fetch(:trusted_proxy_policy)
+    config.assume_ssl = true
+    config.force_ssl = true
+    config.ssl_options = {
+      hsts: {
+        expires: 1.year,
+        subdomains: true,
+        preload: false
+      },
+      redirect: { status: 308 }
+    }
+    config.action_dispatch.trusted_proxies = production_environment.trusted_proxies
+  end
 
-  # Force all access to the app over SSL, use Strict-Transport-Security, and use secure cookies.
-  # config.force_ssl = true
-
-  # Skip http-to-https redirect for the default health check endpoint.
-  # config.ssl_options = { redirect: { exclude: ->(request) { request.path == "/up" } } }
 
   # Log to STDOUT with the current request id as a default log tag.
   config.log_tags = [ :request_id ]
@@ -55,21 +78,16 @@ Rails.application.configure do
   # Replace the default in-process and non-durable queuing backend for Active Job.
   config.active_job.queue_adapter = :sidekiq
 
-  # Ignore bad email addresses and do not raise email delivery errors.
-  # Set this to true and configure the email server for immediate delivery to raise delivery errors.
-  # config.action_mailer.raise_delivery_errors = false
-
-  # Set host to be used by links generated in mailer templates.
-  config.action_mailer.default_url_options = { host: "example.com" }
-
-  # Specify outgoing SMTP server. Remember to add smtp/* credentials via bin/rails credentials:edit.
-  # config.action_mailer.smtp_settings = {
-  #   user_name: Rails.application.credentials.dig(:smtp, :user_name),
-  #   password: Rails.application.credentials.dig(:smtp, :password),
-  #   address: "smtp.example.com",
-  #   port: 587,
-  #   authentication: :plain
-  # }
+  if production_requirements.fetch(:mail)
+    public_url_options = production_environment.default_url_options
+    config.action_mailer.delivery_method = :smtp
+    config.action_mailer.perform_deliveries = true
+    config.action_mailer.raise_delivery_errors = true
+    config.action_mailer.default_options = { from: production_environment.mail_from }
+    config.action_mailer.default_url_options = public_url_options
+    config.action_mailer.smtp_settings = production_environment.smtp_settings
+    Rails.application.routes.default_url_options = public_url_options
+  end
 
   # Enable locale fallbacks for I18n (makes lookups for any locale fall back to
   # the I18n.default_locale when a translation cannot be found).
@@ -81,12 +99,24 @@ Rails.application.configure do
   # Only use :id for inspections in production.
   config.active_record.attributes_for_inspect = [ :id ]
 
-  # Enable DNS rebinding protection and other `Host` header attacks.
-  # config.hosts = [
-  #   "example.com",     # Allow requests from example.com
-  #   /.*\.example\.com/ # Allow requests from subdomains like `www.example.com`
-  # ]
-  #
-  # Skip DNS rebinding protection for the default health check endpoint.
-  # config.host_authorization = { exclude: ->(request) { request.path == "/up" } }
+  # Exact public hosts only. Health checks use the same Host policy.
+  if production_requirements.fetch(:host_authorization)
+    config.hosts = production_environment.allowed_hosts
+  end
+
+  Mcweb::DeveloperModeRuntime.apply!(
+    config,
+    settings: developer_mode_settings
+  )
+
+  if developer_mode_settings.enabled?
+    profile = developer_mode_settings.profile
+    config.after_initialize do
+      Rails.logger.fatal(
+        "[mcweb] CRITICAL: RAILS_ENV=production is running with " \
+        "Developer Mode profile=#{profile}. Security checks and production " \
+        "optimizations may be disabled according to config/local.yml."
+      )
+    end
+  end
 end

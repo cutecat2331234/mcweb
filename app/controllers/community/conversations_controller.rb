@@ -97,21 +97,24 @@ module Community
           sender: current_user,
           title: conversation_params[:title],
           recipient_usernames: conversation_params[:recipients],
-          body: conversation_params[:body]
+          body: conversation_params[:body],
+          ip_address: request.remote_ip
         )
       else
         result = Community::CreateConversation.call(
           sender: current_user,
           recipient_username: conversation_params[:recipient],
-          body: conversation_params[:body]
+          body: conversation_params[:body],
+          ip_address: request.remote_ip
         )
       end
 
       if result.success?
         redirect_to forum_conversation_path(result.value[:conversation])
       else
+        apply_retry_after_header(result)
         render inertia: "Community/Messages/New",
-               status: :unprocessable_entity,
+               status: service_error_status(result),
                props: new_message_form_props(form_errors: inertia_form_errors(result, prefix: "conversation"))
       end
     end

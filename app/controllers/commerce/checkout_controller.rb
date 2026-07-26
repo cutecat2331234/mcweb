@@ -9,7 +9,7 @@ module Commerce
     def show
       cart = Commerce::Cart.find_by(user: current_user)
       items = cart&.items&.includes(:product, :variant) || []
-      providers = Payments::ProviderConfig.enabled_providers.map { |config| serialize_checkout_provider(config) }
+      providers = Payments::ProviderConfig.checkout_ready_providers.map { |config| serialize_checkout_provider(config) }
       currency = items.first&.product&.currency || "CNY"
       subtotal_cents = cart&.subtotal_cents.to_i
       pending_coupon = apply_coupon_from_url!(items) if params[:coupon].present?
@@ -118,6 +118,11 @@ module Commerce
 
       provider_name = checkout_params[:provider].presence || default_provider
 
+      provider_config = Payments::ProviderConfig.checkout_config_for(provider_name)
+      unless provider_config
+        return redirect_to store_order_path(order), alert: t("mcweb.flash.payment_method_unavailable")
+      end
+
       begin_result = Commerce::BeginOrderPayment.call(order: order)
       unless begin_result.success?
         return redirect_to store_order_path(order), alert: service_error_message(begin_result)
@@ -127,10 +132,14 @@ module Commerce
       payment_record = resolve_pending_payment(
         order: order,
         provider: provider_name,
-        amount_cents: order.total_cents
+        amount_cents: order.total_cents,
+        provider_mode: provider_name == "stripe" ? provider_config.effective_mode : nil
       )
 
-      result = Payments::Provider.for(provider_name).create_payment(payment_record)
+      result = Payments::Provider.for(provider_name).create_payment(
+        payment_record,
+        return_url_base: request.base_url
+      )
 
       if result.success?
         redirect_to result.value[:checkout_url], allow_other_host: true
@@ -344,7 +353,7 @@ module Commerce
     end
 
     def default_provider
-      Payments::ProviderConfig.enabled_providers.pick(:provider) || "fake"
+      Payments::ProviderConfig.checkout_ready_providers.first&.provider
     end
 
     def gift_wrap_cents_for_preview
@@ -386,15 +395,21 @@ module Commerce
       end
     end
 
-    def resolve_pending_payment(order:, provider:, amount_cents:)
-      order.payment_records.pending
-        .where("amount_cents != ? OR provider != ?", amount_cents, provider)
-        .update_all(status: "failed", updated_at: Time.current)
+    def resolve_pending_payment(order:, provider:, amount_cents:, provider_mode: nil)
+      matching = order.payment_records.pending.find_by(
+        amount_cents: amount_cents,
+        provider: provider,
+        provider_mode: provider_mode
+      )
+      stale = order.payment_records.pending
+      stale = stale.where.not(id: matching.id) if matching
+      stale.update_all(status: "failed", updated_at: Time.current)
 
-      order.payment_records.pending.find_by(amount_cents: amount_cents, provider: provider) ||
+      matching ||
         Payments::Record.create!(
           order: order,
           provider: provider,
+          provider_mode: provider_mode,
           amount_cents: amount_cents,
           currency: order.currency,
           status: :pending

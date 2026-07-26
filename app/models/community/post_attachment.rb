@@ -8,6 +8,11 @@ module Community
     belongs_to :user
 
     has_one_attached :file
+    has_one :upload_record,
+      class_name: "Community::Upload",
+      foreign_key: :forum_post_attachment_id,
+      dependent: :nullify,
+      inverse_of: :post_attachment
 
     validates :filename, presence: true
     validates :byte_size, numericality: { greater_than: 0 }, allow_nil: true
@@ -17,6 +22,14 @@ module Community
 
     def linked?
       forum_post_id.present?
+    end
+
+    def scan_clean?
+      upload_record&.scan_clean? == true
+    end
+
+    def scan_bindable?
+      scan_clean? && upload_record.status_stored?
     end
 
     def human_size

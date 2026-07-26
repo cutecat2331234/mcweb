@@ -2,6 +2,15 @@
 import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import {
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuRoot,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from 'reka-ui'
+import { MoreHorizontal } from '@lucide/vue'
 import PortalLayout from '@/layouts/PortalLayout.vue'
 import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
@@ -21,6 +30,11 @@ import { confirm } from '@/lib/useConfirm'
 defineOptions({ layout: PortalLayout })
 
 const { t } = useI18n()
+
+const menuItemClass = [
+  'relative flex cursor-pointer select-none items-center rounded-sm px-2 py-1.5 text-sm outline-none',
+  'data-[highlighted]:bg-accent data-[highlighted]:text-accent-foreground',
+].join(' ')
 
 export interface ProductVariant {
   id: number
@@ -458,7 +472,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <meta head-key="og:type" property="og:type" content="product" />
   </Head>
 
-  <div :class="{ 'pb-24': showStickyActions }">
+  <div :class="{ 'pb-28 sm:pb-24': showStickyActions }">
 
   <Breadcrumb :items="[
     { label: t('breadcrumb.home'), href: routes.home },
@@ -467,14 +481,14 @@ function submitAnswer(questionId: number, answerUrl: string) {
   ]" />
 
   <PageHeader :title="product.name" :subtitle="product.description || undefined" />
-  <div v-if="product.membership_type_label" class="mb-2 flex flex-wrap items-center gap-2">
+  <div v-if="product.membership_type_label" class="mb-4 flex flex-wrap items-center gap-2">
     <Badge variant="outline">{{ t('commerce.product.membershipProduct') }}</Badge>
     <Badge variant="secondary">{{ product.membership_type_label }}</Badge>
   </div>
-  <p v-if="product.prerequisite_message" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+  <p v-if="product.prerequisite_message" class="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:bg-amber-950/40 dark:text-amber-100" role="status">
     {{ product.prerequisite_message }}
   </p>
-  <p v-else-if="product.purchase_blocked" class="mb-4 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950/40 dark:text-amber-100">
+  <p v-else-if="product.purchase_blocked" class="mb-4 rounded-lg bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900 dark:bg-amber-950/40 dark:text-amber-100" role="status">
     {{ t('commerce.product.prerequisiteRequired') }}
   </p>
   <div v-if="product.purchased" class="mb-4 flex flex-wrap items-center gap-2">
@@ -482,41 +496,43 @@ function submitAnswer(questionId: number, answerUrl: string) {
     <Button v-if="reorderUrl" type="button" size="sm" variant="outline" @click="router.post(reorderUrl)">{{ t('commerce.product.buyAgain') }}</Button>
   </div>
 
-  <p v-if="askFromOrder" class="mb-4 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900 dark:border-blue-900 dark:bg-blue-950/40 dark:text-blue-100">
+  <p v-if="askFromOrder" class="mb-4 rounded-lg bg-blue-50 px-4 py-3 text-sm leading-relaxed text-blue-900 dark:bg-blue-950/40 dark:text-blue-100" role="status">
     {{ t('commerce.product.askFromOrder', { order: askFromOrder.order_number, item: askFromOrder.item_name }) }}
   </p>
 
-  <div class="mt-6 grid gap-8 lg:grid-cols-2 xl:grid-cols-5 lg:items-start">
+  <div class="mt-8 grid gap-8 lg:grid-cols-2 lg:items-start xl:grid-cols-5">
     <div class="space-y-6 xl:col-span-3">
-  <div v-if="allImages.length">
+  <section v-if="allImages.length" :aria-label="t('commerce.product.gallery')">
     <img
       v-if="activeGalleryImage"
       :src="activeGalleryImage"
       :alt="product.name"
-      class="mb-3 max-h-[28rem] w-full rounded-lg border object-cover"
+      class="mb-3 max-h-[32rem] w-full rounded-xl bg-muted/30 object-contain"
     />
-    <div v-if="allImages.length > 1" class="flex flex-wrap gap-2">
+    <div v-if="allImages.length > 1" class="flex gap-2 overflow-x-auto pb-2">
       <button
         v-for="(url, index) in allImages"
         :key="index"
         type="button"
-        class="overflow-hidden rounded border transition-opacity"
-        :class="galleryIndex === index ? 'ring-2 ring-primary' : 'opacity-70 hover:opacity-100'"
+        class="shrink-0 overflow-hidden rounded-md border transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        :class="galleryIndex === index ? 'border-primary ring-2 ring-primary' : 'opacity-70 hover:opacity-100'"
+        :aria-label="t('commerce.product.galleryImage', { n: index + 1 })"
+        :aria-pressed="galleryIndex === index"
         @click="selectGalleryImage(index)"
       >
         <img :src="url" :alt="`${product.name} ${index + 1}`" class="h-16 w-16 object-cover" />
       </button>
     </div>
-  </div>
+  </section>
 
-  <section v-if="product.version || product.changelog" class="rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">{{ t('commerce.product.versionInfo') }}</h2>
+  <section v-if="product.version || product.changelog" class="rounded-xl bg-muted/25 p-4 sm:p-5">
+    <h2 class="mb-2 text-base font-semibold">{{ t('commerce.product.versionInfo') }}</h2>
     <p v-if="product.version" class="text-sm">{{ t('commerce.product.currentVersion', { version: product.version }) }}</p>
     <p v-if="product.changelog" class="mt-2 whitespace-pre-wrap text-sm text-muted-foreground">{{ product.changelog }}</p>
   </section>
 
-  <section v-if="product.discussion_url || createDiscussionUrl" class="rounded-lg border p-4">
-    <h2 class="mb-2 text-sm font-semibold">{{ t('commerce.product.discussion') }}</h2>
+  <section v-if="product.discussion_url || createDiscussionUrl" class="rounded-xl bg-muted/25 p-4 sm:p-5">
+    <h2 class="mb-2 text-base font-semibold">{{ t('commerce.product.discussion') }}</h2>
     <p v-if="product.discussion_replies_count !== null && product.discussion_replies_count !== undefined" class="text-sm text-muted-foreground">
       {{ t('commerce.product.discussionReplies', { count: product.discussion_replies_count }) }}
     </p>
@@ -531,162 +547,203 @@ function submitAnswer(questionId: number, answerUrl: string) {
   </section>
     </div>
 
-    <div class="space-y-6 xl:col-span-2 lg:sticky lg:top-20">
-  <div ref="purchaseSectionRef">
-  <Card>
-    <CardContent class="space-y-3 pt-6">
-      <div v-if="product.average_rating" class="text-sm">
-        <span class="text-amber-500">★</span> {{ t('commerce.product.reviewsSummary', { rating: product.average_rating, count: reviewsCount ?? product.reviews.length }) }}
-      </div>
-      <div v-if="product.view_count" class="text-sm text-muted-foreground">
-        {{ t('commerce.product.views', { count: product.view_count }) }}
-      </div>
+    <div class="space-y-6 lg:sticky lg:top-20 xl:col-span-2">
+      <div ref="purchaseSectionRef">
+        <Card>
+          <CardContent class="space-y-5 pt-6">
+            <div aria-live="polite">
+              <div class="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                <p class="text-2xl font-semibold tracking-tight text-primary sm:text-3xl">
+                  <span class="sr-only">{{ t('commerce.product.price') }}{{ t('common.colon') }}</span>
+                  {{ displayPrice }}
+                </p>
+                <span v-if="product.on_sale && product.compare_at_label" class="text-sm text-muted-foreground line-through">{{ product.compare_at_label }}</span>
+                <Badge v-if="product.on_sale" variant="default">{{ t('commerce.product.onSale') }}</Badge>
+                <Badge v-if="product.discount_label" variant="outline">{{ product.discount_label }}</Badge>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                <span v-if="product.average_rating">
+                  <span class="text-amber-500" aria-hidden="true">★</span>
+                  {{ t('commerce.product.reviewsSummary', { rating: product.average_rating, count: reviewsCount ?? product.reviews.length }) }}
+                </span>
+                <span v-if="product.view_count">{{ t('commerce.product.views', { count: product.view_count }) }}</span>
+              </div>
+            </div>
 
-      <div v-if="product.variants.length" class="space-y-2">
-        <Label>{{ t('commerce.product.variant') }}</Label>
-        <div class="flex flex-wrap gap-2">
-          <button
-            v-for="variant in product.variants"
-            :key="variant.id"
-            type="button"
-            class="rounded-md border px-3 py-1.5 text-sm transition-colors"
-            :class="selectedVariantId === variant.id ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
-            @click="selectedVariantId = variant.id"
-          >
-            {{ variant.name }} · {{ variant.price_label }}
-            <span class="ml-1 text-xs text-muted-foreground">
-              {{ !variant.in_stock ? t('commerce.product.outOfStock') : variant.low_stock ? t('commerce.product.lowStock') : t('commerce.product.inStock') }}
-            </span>
-          </button>
-        </div>
-      </div>
+            <fieldset v-if="product.variants.length" class="space-y-2">
+              <legend class="text-sm font-medium">{{ t('commerce.product.variant') }}</legend>
+              <div class="grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                <button
+                  v-for="variant in product.variants"
+                  :key="variant.id"
+                  type="button"
+                  class="min-h-11 rounded-lg border px-3 py-2 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                  :class="selectedVariantId === variant.id ? 'border-primary bg-primary/10' : 'hover:bg-muted'"
+                  :aria-pressed="selectedVariantId === variant.id"
+                  @click="selectedVariantId = variant.id"
+                >
+                  <span class="block font-medium">{{ variant.name }} · {{ variant.price_label }}</span>
+                  <span class="mt-0.5 block text-xs text-muted-foreground">
+                    {{ !variant.in_stock ? t('commerce.product.outOfStock') : variant.low_stock ? t('commerce.product.lowStock') : t('commerce.product.inStock') }}
+                  </span>
+                </button>
+              </div>
+            </fieldset>
 
-      <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">{{ t('commerce.product.price') }}</span>
-        <span class="font-medium">
-          {{ displayPrice }}
-          <span v-if="product.on_sale && product.compare_at_label" class="ml-2 text-xs font-normal text-muted-foreground line-through">{{ product.compare_at_label }}</span>
-          <Badge v-if="product.on_sale" variant="default" class="ml-2 text-[10px]">{{ t('commerce.product.onSale') }}</Badge>
-          <Badge v-if="product.discount_label" variant="outline" class="ml-1 text-[10px]">{{ product.discount_label }}</Badge>
-        </span>
-      </div>
-      <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">{{ t('commerce.product.type') }}</span>
-        <span>{{ productTypeLabel }}</span>
-      </div>
-      <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">{{ t('commerce.product.category') }}</span>
-        <span>{{ product.category_name || '—' }}</span>
-      </div>
-      <div class="flex justify-between text-sm">
-        <span class="text-muted-foreground">{{ t('commerce.product.stock') }}</span>
-        <span :class="showLowStock && !product.purchase_blocked ? 'text-amber-600' : ''">
-          {{ stockStatusLabel }}
-        </span>
-      </div>
-      <div v-if="selectedVariant?.sku" class="flex justify-between text-sm">
-        <span class="text-muted-foreground">SKU</span>
-        <code class="text-xs">{{ selectedVariant.sku }}</code>
-      </div>
-      <div v-if="product.minimum_quantity && product.minimum_quantity > 1" class="flex justify-between text-sm">
-        <span class="text-muted-foreground">{{ t('commerce.product.minQty') }}</span>
-        <span>{{ t('commerce.product.minQtyValue', { n: product.minimum_quantity }) }}</span>
-      </div>
-      <div v-if="product.maximum_quantity" class="flex justify-between text-sm">
-        <span class="text-muted-foreground">{{ t('commerce.product.maxQty') }}</span>
-        <span>{{ t('commerce.product.maxQtyValue', { n: product.maximum_quantity }) }}</span>
-      </div>
-      <div v-if="product.purchase_limit" class="flex justify-between text-sm">
-        <span class="text-muted-foreground">{{ t('commerce.product.purchaseLimit') }}</span>
-        <span>{{ t('commerce.product.purchaseLimitValue', { n: product.purchase_limit }) }}</span>
-      </div>
-      <div v-if="canPurchase" class="space-y-2">
-        <Label for="quantity">{{ t('commerce.product.quantity') }}</Label>
-        <Input
-          id="quantity"
-          v-model.number="quantity"
-          type="number"
-          :min="product.minimum_quantity && product.minimum_quantity > 1 ? product.minimum_quantity : 1"
-          :max="product.maximum_quantity || product.purchase_limit || 99"
-          class="w-24"
-        />
-      </div>
-    </CardContent>
-  </Card>
+            <dl class="grid gap-2 rounded-lg bg-muted/30 p-3">
+              <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3 text-sm">
+                <dt class="text-muted-foreground">{{ t('commerce.product.type') }}</dt>
+                <dd class="break-words text-right font-medium">{{ productTypeLabel }}</dd>
+              </div>
+              <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3 text-sm">
+                <dt class="text-muted-foreground">{{ t('commerce.product.category') }}</dt>
+                <dd class="break-words text-right">{{ product.category_name || '—' }}</dd>
+              </div>
+              <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3 text-sm">
+                <dt class="text-muted-foreground">{{ t('commerce.product.stock') }}</dt>
+                <dd class="text-right font-medium" :class="showLowStock && !product.purchase_blocked ? 'text-amber-700 dark:text-amber-300' : ''">
+                  {{ stockStatusLabel }}
+                </dd>
+              </div>
+              <div v-if="selectedVariant?.sku" class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3 text-sm">
+                <dt class="text-muted-foreground">SKU</dt>
+                <dd class="min-w-0 break-all text-right"><code class="text-xs">{{ selectedVariant.sku }}</code></dd>
+              </div>
+              <div v-if="product.minimum_quantity && product.minimum_quantity > 1" class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3 text-sm">
+                <dt class="text-muted-foreground">{{ t('commerce.product.minQty') }}</dt>
+                <dd class="text-right">{{ t('commerce.product.minQtyValue', { n: product.minimum_quantity }) }}</dd>
+              </div>
+              <div v-if="product.maximum_quantity" class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3 text-sm">
+                <dt class="text-muted-foreground">{{ t('commerce.product.maxQty') }}</dt>
+                <dd class="text-right">{{ t('commerce.product.maxQtyValue', { n: product.maximum_quantity }) }}</dd>
+              </div>
+              <div v-if="product.purchase_limit" class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.5fr)] gap-3 text-sm">
+                <dt class="text-muted-foreground">{{ t('commerce.product.purchaseLimit') }}</dt>
+                <dd class="text-right">{{ t('commerce.product.purchaseLimitValue', { n: product.purchase_limit }) }}</dd>
+              </div>
+            </dl>
 
-  <div class="flex flex-wrap gap-3">
-    <Button
-      v-if="canPurchase"
-      type="button"
-      :disabled="product.variants.length > 0 && !selectedVariantId"
-      @click="addToCart"
-    >
-      {{ t('commerce.product.addToCart') }}
-    </Button>
-    <Button v-if="loggedIn" type="button" variant="outline" @click="toggleWishlist">
-      {{ wishlistedForSelection ? t('commerce.product.removeWishlist') : t('commerce.product.addWishlist') }}
-    </Button>
-    <Button
-      v-if="loggedIn && priceAlertUrl"
-      type="button"
-      variant="outline"
-      @click="togglePriceAlert"
-    >
-      {{ hasPriceAlert ? t('commerce.product.priceAlertOn') : t('commerce.product.priceAlert') }}
-    </Button>
-    <Button v-if="compareUrl" type="button" variant="outline" @click="toggleCompare">
-      {{ compared ? t('commerce.product.removeCompare') : t('commerce.product.addCompare') }}{{ compareCount ? ` (${compareCount})` : '' }}
-    </Button>
-    <Button
-      v-if="loggedIn && !canPurchase && !stockAlertSubscribed"
-      type="button"
-      variant="outline"
-      :disabled="product.variants.length > 0 && !selectedVariantId"
-      @click="subscribeStockAlert"
-    >
-      {{ t('commerce.product.stockAlert') }}
-    </Button>
-    <p v-else-if="loggedIn && !canPurchase && stockAlertSubscribed" class="flex items-center gap-2 self-center text-sm text-muted-foreground">
-      {{ t('commerce.product.stockAlertOn') }}
-      <Button v-if="stockAlertUnsubscribeUrl" type="button" variant="outline" size="sm" @click="unsubscribeStockAlert">{{ t('commerce.product.unsubscribe') }}</Button>
-    </p>
-    <Button as-child variant="outline">
-      <Link :href="routes.store">{{ t('commerce.product.backToStore') }}</Link>
-    </Button>
-  </div>
-  </div>
+            <div v-if="canPurchase" class="space-y-2">
+              <Label for="quantity">{{ t('commerce.product.quantity') }}</Label>
+              <Input
+                id="quantity"
+                v-model.number="quantity"
+                type="number"
+                :min="product.minimum_quantity && product.minimum_quantity > 1 ? product.minimum_quantity : 1"
+                :max="product.maximum_quantity || product.purchase_limit || 99"
+                class="w-full sm:max-w-32"
+              />
+            </div>
+
+            <Button
+              v-if="canPurchase"
+              type="button"
+              class="w-full"
+              :disabled="product.variants.length > 0 && !selectedVariantId"
+              @click="addToCart"
+            >
+              {{ t('commerce.product.addToCart') }}
+            </Button>
+            <Button
+              v-if="loggedIn && !canPurchase && !stockAlertSubscribed"
+              type="button"
+              variant="outline"
+              class="w-full"
+              :disabled="product.variants.length > 0 && !selectedVariantId"
+              @click="subscribeStockAlert"
+            >
+              {{ t('commerce.product.stockAlert') }}
+            </Button>
+            <div
+              v-else-if="loggedIn && !canPurchase && stockAlertSubscribed"
+              class="flex flex-wrap items-center justify-between gap-2 rounded-lg bg-muted/30 px-3 py-2 text-sm text-muted-foreground"
+              role="status"
+            >
+              <span>{{ t('commerce.product.stockAlertOn') }}</span>
+              <Button v-if="stockAlertUnsubscribeUrl" type="button" variant="ghost" size="sm" @click="unsubscribeStockAlert">{{ t('commerce.product.unsubscribe') }}</Button>
+            </div>
+
+            <div class="grid gap-2" :class="loggedIn ? 'grid-cols-2' : 'grid-cols-1'">
+              <Button v-if="loggedIn" type="button" variant="outline" class="min-w-0" @click="toggleWishlist">
+                <span class="truncate">{{ wishlistedForSelection ? t('commerce.product.removeWishlist') : t('commerce.product.addWishlist') }}</span>
+              </Button>
+              <DropdownMenuRoot :modal="false">
+                <DropdownMenuTrigger as-child>
+                  <Button type="button" variant="outline" class="w-full min-w-0">
+                    <MoreHorizontal class="h-4 w-4 shrink-0" aria-hidden="true" />
+                    <span class="truncate">{{ t('commerce.product.moreActions') }}</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent
+                  class="z-50 max-h-[70vh] min-w-[13rem] overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+                  :side-offset="6"
+                  align="end"
+                >
+                  <DropdownMenuLabel class="px-2 py-1.5 text-xs text-muted-foreground">
+                    {{ t('commerce.product.purchaseActions') }}
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    v-if="loggedIn && priceAlertUrl"
+                    :class="menuItemClass"
+                    @select="togglePriceAlert"
+                  >
+                    {{ hasPriceAlert ? t('commerce.product.priceAlertOn') : t('commerce.product.priceAlert') }}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem v-if="compareUrl" :class="menuItemClass" @select="toggleCompare">
+                    {{ compared ? t('commerce.product.removeCompare') : t('commerce.product.addCompare') }}{{ compareCount ? ` (${compareCount})` : '' }}
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator v-if="(loggedIn && priceAlertUrl) || compareUrl" class="my-1 h-px bg-border" />
+                  <DropdownMenuItem as-child>
+                    <Link :href="routes.store" :class="menuItemClass">{{ t('commerce.product.backToStore') }}</Link>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenuRoot>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   </div>
 
-  <section class="mt-10">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-sm font-semibold">{{ t('commerce.product.qa') }}</h2>
-      <div class="flex flex-wrap items-center gap-2">
+  <section class="mt-12">
+    <div class="mb-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h2 class="text-lg font-semibold tracking-tight">{{ t('commerce.product.qa') }}</h2>
+      <div
+        class="grid w-full gap-2 sm:w-auto"
+        :class="questions.length ? 'sm:grid-cols-[minmax(8rem,auto)_minmax(14rem,1fr)]' : 'sm:min-w-80'"
+      >
+        <label v-if="questions.length" for="question-sort" class="sr-only">{{ t('commerce.product.sortQuestions') }}</label>
         <Select
           v-if="questions.length"
+          id="question-sort"
           :model-value="questionSort || 'newest'"
           :options="questionSortOptions"
           size="sm"
+          block
           @update:model-value="changeQuestionSort"
         />
-        <form class="flex gap-2" @submit.prevent="searchQuestions">
-          <Input v-model="questionSearch" :placeholder="t('commerce.product.searchQa')" class="h-8 max-w-xs text-sm" />
+        <form role="search" class="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] gap-2" @submit.prevent="searchQuestions">
+          <label for="question-search" class="sr-only">{{ t('commerce.product.searchQa') }}</label>
+          <Input id="question-search" v-model="questionSearch" :placeholder="t('commerce.product.searchQa')" class="h-8 min-w-0 text-sm" />
           <Button type="submit" size="sm" variant="outline">{{ t('commerce.product.search') }}</Button>
         </form>
       </div>
     </div>
     <div v-if="questions.length" class="mb-6 space-y-4">
-      <article v-for="q in questions" :key="q.id" class="rounded-lg border p-4">
-        <p class="text-sm font-medium">
+      <article v-for="q in questions" :key="q.id" class="rounded-xl bg-muted/25 p-4 sm:p-5">
+        <p class="break-words text-sm font-medium leading-relaxed">
           {{ t('commerce.product.questionPrefix') }}{{ q.body }}
           <Badge v-if="q.from_order" class="ml-2 text-[10px]">{{ t('commerce.product.purchasedQuestion') }}</Badge>
         </p>
         <p class="mt-1 text-xs text-muted-foreground">{{ q.author }} · {{ q.created_at }}</p>
-        <div v-if="q.answers.length" class="mt-3 space-y-2 border-l-2 pl-3">
+        <div v-if="q.answers.length" class="mt-4 space-y-3 border-l-2 border-primary/20 pl-3 sm:pl-4">
           <div v-for="answer in q.answers" :key="answer.id" class="text-sm">
-            <span v-if="answer.official" class="mr-1 rounded bg-primary/10 px-1 text-xs text-primary">{{ t('commerce.product.official') }}</span>
-            <span class="font-medium">{{ answer.author }}{{ t('common.colon') }}</span>{{ answer.body }}
-            <p class="text-xs text-muted-foreground">{{ answer.created_at }}</p>
+            <p class="break-words leading-relaxed">
+              <span v-if="answer.official" class="mr-1 rounded bg-primary/10 px-1.5 py-0.5 text-xs text-primary">{{ t('commerce.product.official') }}</span>
+              <span class="font-medium">{{ answer.author }}{{ t('common.colon') }}</span>
+              {{ answer.body }}
+            </p>
+            <p class="mt-1 text-xs text-muted-foreground">{{ answer.created_at }}</p>
             <div v-if="answer.helpful_url" class="mt-1">
               <Button
                 type="button"
@@ -701,15 +758,16 @@ function submitAnswer(questionId: number, answerUrl: string) {
           </div>
         </div>
         <form v-if="loggedIn" class="mt-3 space-y-2" @submit.prevent="submitAnswer(q.id, q.answerUrl)">
-          <Textarea v-model="answerForms[q.id]" rows="2" :placeholder="t('commerce.product.answerPlaceholder')" />
+          <label :for="`answer-${q.id}`" class="sr-only">{{ t('commerce.product.answerPlaceholder') }}</label>
+          <Textarea :id="`answer-${q.id}`" v-model="answerForms[q.id]" rows="2" :placeholder="t('commerce.product.answerPlaceholder')" />
           <Button type="submit" size="sm" variant="outline">{{ t('commerce.product.answer') }}</Button>
         </form>
       </article>
     </div>
     <p v-else class="mb-4 text-sm text-muted-foreground">{{ t('commerce.product.noQa') }}</p>
-    <form v-if="loggedIn" class="space-y-3" @submit.prevent="submitQuestion">
-      <Label>{{ t('commerce.product.ask') }}</Label>
-      <Textarea v-model="questionForm.question.body" rows="3" :placeholder="t('commerce.product.askPlaceholder')" />
+    <form v-if="loggedIn" class="max-w-2xl space-y-3 rounded-xl bg-muted/20 p-4 sm:p-5" :aria-busy="questionForm.processing" @submit.prevent="submitQuestion">
+      <Label for="product-question">{{ t('commerce.product.ask') }}</Label>
+      <Textarea id="product-question" v-model="questionForm.question.body" rows="3" :placeholder="t('commerce.product.askPlaceholder')" />
       <Button type="submit" size="sm" :disabled="questionForm.processing">{{ t('commerce.product.submitQuestion') }}</Button>
     </form>
     <Pagination
@@ -721,58 +779,77 @@ function submitAnswer(questionId: number, answerUrl: string) {
     />
   </section>
 
-  <section v-if="related_products.length" class="mt-10">
-    <h2 class="mb-4 text-sm font-semibold">{{ t('commerce.product.relatedProducts') }}</h2>
+  <section v-if="related_products.length" class="mt-12">
+    <h2 class="mb-5 text-lg font-semibold tracking-tight">{{ t('commerce.product.relatedProducts') }}</h2>
     <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Link
         v-for="item in related_products"
         :key="item.id"
         :href="item.url"
-        class="rounded-lg border p-3 hover:bg-muted/50"
+        class="rounded-xl bg-muted/25 p-3 transition-colors hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
       >
-        <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="mb-2 h-24 w-full rounded object-cover" />
-        <p class="text-sm font-medium">{{ item.name }}</p>
-        <p class="text-sm text-muted-foreground">{{ item.price_label }}</p>
+        <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="mb-3 aspect-[4/3] w-full rounded-lg object-cover" />
+        <p class="break-words text-sm font-medium">{{ item.name }}</p>
+        <p class="mt-1 text-sm font-medium text-primary">{{ item.price_label }}</p>
       </Link>
     </div>
   </section>
 
-  <section v-if="product.reviews.length || userReview || ratingBreakdown?.length" class="mt-10">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-2">
-      <h2 class="text-sm font-semibold">{{ t('commerce.product.userReviews') }}</h2>
-      <Select
-        v-if="product.reviews.length || reviewsCount"
-        :model-value="reviewSort"
-        :options="reviewSortOptions"
-        size="sm"
-        @update:model-value="changeReviewSort"
-      />
-      <Select
-        :model-value="reviewRating === '' ? '' : String(reviewRating)"
-        :options="reviewRatingFilterOptions"
-        size="sm"
-        @update:model-value="changeReviewRating"
-      />
+  <section v-if="product.reviews.length || userReview || ratingBreakdown?.length" class="mt-12">
+    <div class="mb-5 flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <h2 class="text-lg font-semibold tracking-tight">{{ t('commerce.product.userReviews') }}</h2>
+      <div
+        class="grid w-full gap-2 sm:w-auto"
+        :class="product.reviews.length || reviewsCount ? 'grid-cols-2' : 'grid-cols-1'"
+      >
+        <label v-if="product.reviews.length || reviewsCount" for="review-sort" class="sr-only">{{ t('commerce.product.sortReviews') }}</label>
+        <Select
+          v-if="product.reviews.length || reviewsCount"
+          id="review-sort"
+          :model-value="reviewSort"
+          :options="reviewSortOptions"
+          size="sm"
+          block
+          @update:model-value="changeReviewSort"
+        />
+        <label for="review-rating-filter" class="sr-only">{{ t('commerce.product.filterReviews') }}</label>
+        <Select
+          id="review-rating-filter"
+          :model-value="reviewRating === '' ? '' : String(reviewRating)"
+          :options="reviewRatingFilterOptions"
+          size="sm"
+          block
+          @update:model-value="changeReviewRating"
+        />
+      </div>
     </div>
-    <div v-if="ratingBreakdown?.length" class="mb-4 space-y-1">
+    <div v-if="ratingBreakdown?.length" class="mb-5 max-w-2xl space-y-1">
       <button
         v-for="entry in [...ratingBreakdown].sort((a, b) => b.rating - a.rating)"
         :key="entry.rating"
         type="button"
-        class="flex w-full items-center gap-2 text-xs hover:opacity-80"
+        class="flex w-full items-center gap-2 rounded-md px-2 py-1 text-xs hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        :aria-pressed="reviewRating === entry.rating"
         @click="filterByRating(entry.rating)"
       >
         <span class="w-8">{{ t('commerce.product.starLabel', { n: entry.rating }) }}</span>
-        <div class="h-2 flex-1 overflow-hidden rounded bg-muted">
+        <div
+          class="h-2 flex-1 overflow-hidden rounded bg-muted"
+          role="progressbar"
+          :aria-label="t('commerce.product.ratingCount', { rating: entry.rating, count: entry.count })"
+          :aria-valuenow="entry.count"
+          aria-valuemin="0"
+          :aria-valuemax="ratingBreakdownMax"
+        >
           <div class="h-full bg-amber-400" :style="{ width: `${(entry.count / ratingBreakdownMax) * 100}%` }" />
         </div>
         <span class="w-8 text-muted-foreground">{{ entry.count }}</span>
       </button>
     </div>
-    <div v-if="userReview && !editingReview" class="mb-4 rounded-lg border border-primary/30 bg-primary/5 p-4">
-      <div class="mb-2 flex items-center justify-between">
+    <div v-if="userReview && !editingReview" class="mb-5 rounded-xl bg-primary/5 p-4 sm:p-5">
+      <div class="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-sm font-medium">{{ t('commerce.product.yourReview') }}</p>
-        <div class="flex gap-2">
+        <div class="flex flex-wrap gap-2">
           <Button v-if="userReview.can_share_to_forum && userReview.share_to_forum_url" type="button" size="sm" variant="outline" @click="shareReviewToForum(userReview.share_to_forum_url!)">{{ t('commerce.product.shareToForum') }}</Button>
           <Button v-if="userReview.forum_post_url" as-child size="sm" variant="outline">
             <Link :href="userReview.forum_post_url">{{ t('commerce.product.viewForumPost') }}</Link>
@@ -781,37 +858,40 @@ function submitAnswer(questionId: number, answerUrl: string) {
           <Button v-if="canDeleteReview" type="button" size="sm" variant="destructive" @click="deleteReview">{{ t('commerce.product.deleteReview') }}</Button>
         </div>
       </div>
-      <div class="mb-1 flex items-center justify-between text-sm">
+      <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
         <span class="text-amber-500">{{ '★'.repeat(userReview.rating) }}</span>
         <span class="text-xs text-muted-foreground">{{ userReview.created_at }}</span>
       </div>
-      <p v-if="userReview.body" class="text-sm">{{ userReview.body }}</p>
+      <p v-if="userReview.body" class="break-words text-sm leading-relaxed">{{ userReview.body }}</p>
       <div v-if="userReview.photo_urls?.length" class="mt-2 flex flex-wrap gap-2">
-        <img v-for="(url, i) in userReview.photo_urls" :key="i" :src="url" alt="" class="h-20 w-20 rounded object-cover" />
+        <img v-for="(url, i) in userReview.photo_urls" :key="i" :src="url" :alt="t('commerce.product.reviewPhoto', { n: i + 1 })" class="h-20 w-20 rounded object-cover" />
       </div>
     </div>
     <div class="space-y-3">
-      <article v-for="review in product.reviews" :key="review.id" class="rounded-lg border p-4">
-        <div class="mb-1 flex items-center justify-between text-sm">
-          <span class="font-medium">
+      <article v-for="review in product.reviews" :key="review.id" class="rounded-xl bg-muted/25 p-4 sm:p-5">
+        <div class="mb-2 flex flex-wrap items-center justify-between gap-2 text-sm">
+          <span class="break-words font-medium">
             {{ review.author }}
             <Badge v-if="review.verified_purchaser" variant="default" class="ml-2 text-[10px]">{{ t('commerce.product.verifiedPurchaser') }}</Badge>
           </span>
           <span class="text-amber-500">{{ '★'.repeat(review.rating) }}</span>
         </div>
-        <p v-if="review.body" class="text-sm">{{ review.body }}</p>
-        <div v-if="review.merchant_reply" class="mt-3 rounded-md border border-emerald-200 bg-emerald-50/50 p-3 text-sm">
-          <p class="text-xs font-medium text-emerald-800">{{ t('commerce.product.merchantReply') }}<span v-if="review.merchant_replied_at" class="ml-2 font-normal text-muted-foreground">{{ review.merchant_replied_at }}</span></p>
-          <p class="mt-1">{{ review.merchant_reply }}</p>
+        <p v-if="review.body" class="break-words text-sm leading-relaxed">{{ review.body }}</p>
+        <div v-if="review.merchant_reply" class="mt-3 rounded-lg bg-emerald-50/70 p-3 text-sm dark:bg-emerald-950/20">
+          <p class="flex flex-wrap gap-x-2 text-xs font-medium text-emerald-800 dark:text-emerald-200">
+            <span>{{ t('commerce.product.merchantReply') }}</span>
+            <span v-if="review.merchant_replied_at" class="font-normal text-muted-foreground">{{ review.merchant_replied_at }}</span>
+          </p>
+          <p class="mt-1 break-words leading-relaxed">{{ review.merchant_reply }}</p>
         </div>
         <div v-if="review.photo_urls?.length" class="mt-2 flex flex-wrap gap-2">
-          <a v-for="(url, i) in review.photo_urls" :key="i" :href="url" target="_blank" rel="noopener">
-            <img :src="url" alt="" class="h-20 w-20 rounded object-cover ring-1 ring-border hover:opacity-90" />
+          <a v-for="(url, i) in review.photo_urls" :key="i" :href="url" target="_blank" rel="noopener" class="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <img :src="url" :alt="t('commerce.product.reviewPhotoBy', { author: review.author, n: i + 1 })" class="h-20 w-20 rounded object-cover ring-1 ring-border hover:opacity-90" />
           </a>
         </div>
-        <div class="mt-2 flex items-center justify-between gap-2">
+        <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
           <p class="text-xs text-muted-foreground">{{ review.created_at }}</p>
-          <div class="flex gap-2">
+          <div class="flex flex-wrap gap-2">
             <Button
               v-if="loggedIn && review.helpful_url"
               type="button"
@@ -841,29 +921,33 @@ function submitAnswer(questionId: number, answerUrl: string) {
     </Button>
   </section>
 
-  <section v-if="loggedIn && (canReview || (canEditReview && editingReview))" class="mt-8">
-    <h2 class="mb-3 text-sm font-semibold">{{ canEditReview ? t('commerce.product.editReview') : t('commerce.product.writeReview') }}</h2>
-    <form class="space-y-3" @submit.prevent="submitReview">
+  <section v-if="loggedIn && (canReview || (canEditReview && editingReview))" class="mt-10 max-w-2xl">
+    <h2 class="mb-4 text-lg font-semibold tracking-tight">{{ canEditReview ? t('commerce.product.editReview') : t('commerce.product.writeReview') }}</h2>
+    <form class="space-y-4 rounded-xl bg-muted/20 p-4 sm:p-5" :aria-busy="reviewForm.processing" @submit.prevent="submitReview">
       <div class="space-y-2">
-        <Label>{{ t('commerce.product.rating') }}</Label>
+        <Label for="review-rating">{{ t('commerce.product.rating') }}</Label>
         <Select
+          id="review-rating"
           :model-value="String(reviewForm.review.rating)"
           :options="reviewRatingFormOptions"
           size="sm"
           @update:model-value="(v) => { reviewForm.review.rating = Number(v) }"
         />
       </div>
-      <Textarea v-model="reviewForm.review.body" rows="4" :placeholder="t('commerce.product.reviewBodyPlaceholder')" />
+      <div class="space-y-2">
+        <Label for="review-body">{{ t('commerce.product.reviewBody') }}</Label>
+        <Textarea id="review-body" v-model="reviewForm.review.body" rows="4" :placeholder="t('commerce.product.reviewBodyPlaceholder')" />
+      </div>
       <div v-if="existingReviewPhotos.length" class="space-y-2">
         <Label>{{ t('commerce.product.currentPhotos') }}</Label>
         <div class="flex flex-wrap gap-2">
-          <a v-for="(url, i) in existingReviewPhotos" :key="i" :href="url" target="_blank" rel="noopener">
-            <img :src="url" alt="" class="h-20 w-20 rounded object-cover ring-1 ring-border" />
+          <a v-for="(url, i) in existingReviewPhotos" :key="i" :href="url" target="_blank" rel="noopener" class="rounded focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+            <img :src="url" :alt="t('commerce.product.reviewPhoto', { n: i + 1 })" class="h-20 w-20 rounded object-cover ring-1 ring-border" />
           </a>
         </div>
       </div>
       <div class="space-y-2">
-        <Label for="review_photos">{{ t('commerce.product.reviewPhotos') }}</Label>
+        <p class="text-sm font-medium">{{ t('commerce.product.reviewPhotos') }}</p>
         <FileInput
           accept="image/*"
           multiple
@@ -874,7 +958,7 @@ function submitAnswer(questionId: number, answerUrl: string) {
           {{ t('commerce.product.photosSelected', { n: reviewForm.review.photos.length }) }}
         </p>
       </div>
-      <Button type="submit" :disabled="reviewForm.processing">{{ t('commerce.product.submitReview') }}</Button>
+      <Button type="submit" class="w-full sm:w-auto" :disabled="reviewForm.processing">{{ t('commerce.product.submitReview') }}</Button>
     </form>
   </section>
 
@@ -882,14 +966,17 @@ function submitAnswer(questionId: number, answerUrl: string) {
 
   <div
     v-if="showStickyActions"
-    class="fixed bottom-0 inset-x-0 z-30 border-t bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80"
+    class="fixed inset-x-0 bottom-0 z-30 border-t bg-background/95 shadow-[0_-4px_18px_rgba(0,0,0,0.06)] backdrop-blur supports-[backdrop-filter]:bg-background/80"
   >
-    <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3">
+    <div
+      class="mx-auto flex max-w-5xl items-center justify-between gap-2 px-3 pt-3 sm:gap-3 sm:px-4"
+      style="padding-bottom: max(0.75rem, env(safe-area-inset-bottom))"
+    >
       <div class="min-w-0">
         <p class="truncate text-sm font-medium">{{ product.name }}</p>
-        <p class="text-sm text-primary">{{ displayPrice }}</p>
+        <p class="text-sm font-medium text-primary" aria-live="polite">{{ displayPrice }}</p>
       </div>
-      <div class="flex shrink-0 flex-wrap gap-2">
+      <div class="flex shrink-0 items-center gap-2">
         <Button
           v-if="canPurchase"
           type="button"
@@ -899,12 +986,48 @@ function submitAnswer(questionId: number, answerUrl: string) {
         >
           {{ t('commerce.product.addToCart') }}
         </Button>
-        <Button v-if="loggedIn" type="button" size="sm" variant="outline" @click="toggleWishlist">
-          {{ wishlistedForSelection ? t('commerce.product.wishlistShort') : t('commerce.product.favorite') }}
+        <Button
+          v-else-if="loggedIn && !stockAlertSubscribed"
+          type="button"
+          size="sm"
+          variant="outline"
+          :disabled="product.variants.length > 0 && !selectedVariantId"
+          @click="subscribeStockAlert"
+        >
+          {{ t('commerce.product.stockAlert') }}
         </Button>
-        <Button v-if="compareUrl" type="button" size="sm" variant="outline" @click="toggleCompare">
-          {{ compared ? t('commerce.product.comparing') : t('commerce.product.compareShort') }}
-        </Button>
+        <DropdownMenuRoot v-if="loggedIn || compareUrl" :modal="false">
+          <DropdownMenuTrigger as-child>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              class="h-8 w-8 px-0"
+              :aria-label="t('commerce.product.moreActions')"
+              :title="t('commerce.product.moreActions')"
+            >
+              <MoreHorizontal class="h-4 w-4" aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent
+            class="z-50 max-h-[70vh] min-w-[13rem] overflow-y-auto rounded-md border bg-popover p-1 text-popover-foreground shadow-md"
+            :side-offset="6"
+            align="end"
+          >
+            <DropdownMenuLabel class="px-2 py-1.5 text-xs text-muted-foreground">
+              {{ t('commerce.product.purchaseActions') }}
+            </DropdownMenuLabel>
+            <DropdownMenuItem v-if="loggedIn" :class="menuItemClass" @select="toggleWishlist">
+              {{ wishlistedForSelection ? t('commerce.product.removeWishlist') : t('commerce.product.addWishlist') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem v-if="loggedIn && priceAlertUrl" :class="menuItemClass" @select="togglePriceAlert">
+              {{ hasPriceAlert ? t('commerce.product.priceAlertOn') : t('commerce.product.priceAlert') }}
+            </DropdownMenuItem>
+            <DropdownMenuItem v-if="compareUrl" :class="menuItemClass" @select="toggleCompare">
+              {{ compared ? t('commerce.product.removeCompare') : t('commerce.product.addCompare') }}{{ compareCount ? ` (${compareCount})` : '' }}
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenuRoot>
       </div>
     </div>
   </div>

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
-local_key = Mcweb::LocalConfig.load["lockbox_master_key"]
+local_key = ENV["LOCKBOX_MASTER_KEY"].presence ||
+  Mcweb::LocalConfig.load["lockbox_master_key"].presence
 Lockbox.master_key = local_key if local_key.present?
 
 Lockbox.master_key ||= Rails.application.credentials.dig(:lockbox, :master_key)

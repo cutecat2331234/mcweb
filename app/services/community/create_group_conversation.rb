@@ -4,15 +4,23 @@ module Community
   class CreateGroupConversation < ApplicationService
     MAX_PARTICIPANTS = 10
 
-    def initialize(sender:, title:, recipient_usernames:, body:)
+    def initialize(sender:, title:, recipient_usernames:, body:, ip_address: nil)
       @sender = sender
       @title = title.to_s.strip
       @usernames = Array(recipient_usernames).flat_map { |n| n.to_s.split(",") }.map(&:strip).reject(&:blank?).uniq
       @usernames -= [ @sender.username ]
       @body = body.to_s.strip
+      @ip_address = ip_address
     end
 
     def call
+      rate_limit_result = Administration::AbuseRateLimit.call(
+        action: :private_message,
+        account: @sender,
+        ip_address: @ip_address
+      )
+      return rate_limit_result if rate_limit_result.failure?
+
       return ServiceResult.failure(error: "Group title is required.") if @title.blank?
       return ServiceResult.failure(error: "Add at least one other participant.") if @usernames.empty?
       return ServiceResult.failure(error: "Too many participants.") if @usernames.size > MAX_PARTICIPANTS

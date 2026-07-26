@@ -5,25 +5,24 @@ module Community
     module_function
 
     def call(scope, period)
-      return scope if period.blank?
+      range = range_for(period)
+      range ? scope.where(created_at: range) : scope
+    end
 
+    def range_for(period, now: Time.zone.now)
       case period.to_s
       when "today"
-        scope.where("created_at >= ?", Time.zone.now.beginning_of_day)
+        now.beginning_of_day..
       when "this_week"
-        scope.where("created_at >= ?", Time.zone.now.beginning_of_week)
+        now.beginning_of_week..
       when "this_month"
-        scope.where("created_at >= ?", Time.zone.now.beginning_of_month)
+        now.beginning_of_month..
       when "last_month"
-        start = Time.zone.now.beginning_of_month.prev_month
-        finish = Time.zone.now.beginning_of_month
-        scope.where(created_at: start...finish)
+        start = now.beginning_of_month.prev_month
+        start...now.beginning_of_month
       when "last_year"
-        start = Time.zone.now.beginning_of_year.prev_year
-        finish = Time.zone.now.beginning_of_year
-        scope.where(created_at: start...finish)
-      else
-        scope
+        start = now.beginning_of_year.prev_year
+        start...now.beginning_of_year
       end
     end
   end

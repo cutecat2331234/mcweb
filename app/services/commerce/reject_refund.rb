@@ -40,7 +40,7 @@ module Commerce
         user: @refund.order.user,
         notification_type: "commerce.refund_rejected",
         title: I18n.t("mcweb.labels.notification_types.commerce.refund_rejected"),
-        body: I18n.t("mcweb.mail.order.refund_rejected.body", number: @refund.order.order_number),
+        body: I18n.t("mcweb.mail.commerce.refund_rejected.body", number: @refund.order.order_number),
         path: "/app/store/orders/#{@refund.order.public_id}"
       )
 

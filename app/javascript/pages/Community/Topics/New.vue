@@ -21,6 +21,7 @@ import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import { routes } from '@/lib/routes'
 import { useDebouncedCallback } from '@/lib/useDebounce'
+import { createIdempotencyKey } from '@/lib/idempotency'
 
 defineOptions({ layout: PortalLayout })
 
@@ -93,6 +94,7 @@ const form = useForm({
     poll_max_choices: 2,
     poll_hide_results_until_vote: false,
     scheduled_at: '',
+    idempotency_key: createIdempotencyKey(),
     attachment_ids: [] as number[],
     custom_fields: initialCustomFieldValues(props.topicFields || []),
   },

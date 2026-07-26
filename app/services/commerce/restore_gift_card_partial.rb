@@ -17,7 +17,10 @@ module Commerce
         @order.lock!
         @order.reload
 
-        original = @order.gift_card_amount_cents.to_i
+        original = [
+          @order.gift_card_amount_cents.to_i,
+          @order.gift_card_restored_cents.to_i
+        ].max
         next unless original.positive?
 
         card = @order.gift_card
@@ -53,8 +56,11 @@ module Commerce
     private
 
     def cumulative_target(original_cents)
-      total_refunded = [ @already_refunded_cents + @refund_amount_cents, @payment_amount_cents ].min
-      (original_cents * total_refunded.to_f / @payment_amount_cents).round
+      Commerce::CumulativeRefundAllocation.target(
+        total_units: original_cents,
+        refunded_cents: @already_refunded_cents + @refund_amount_cents,
+        payment_cents: @payment_amount_cents
+      )
     end
   end
 end

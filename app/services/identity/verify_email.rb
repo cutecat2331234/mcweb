@@ -24,11 +24,12 @@ module Identity
       user = User.find_by(email_verification_token_digest: digest_token(@token))
       return ServiceResult.failure(error: "验证链接无效或已过期。") unless user
       return ServiceResult.failure(error: "验证链接无效或已过期。") if token_expired?(user)
-      return ServiceResult.success(user) if user.email_verified?
+      return ServiceResult.success(user) if user.email_verified? && !user.developer_mode_email_verified?
 
       user.update!(
         email_verified: true,
         email_verified_at: Time.current,
+        developer_mode_email_verified: false,
         email_verification_token_digest: nil,
         email_verification_sent_at: nil
       )

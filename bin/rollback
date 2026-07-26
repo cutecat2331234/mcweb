@@ -1,7 +1,258 @@
 #!/usr/bin/env bash
-set -euo pipefail
-PREV="$(ls -1dt /opt/mcweb/releases/* 2>/dev/null | sed -n '2p')"
-[[ -n "${PREV}" ]] || { echo "No previous release"; exit 1; }
-ln -sfn "${PREV}" /opt/mcweb/current
-systemctl restart mcweb-worker mcweb-web
-echo "Rolled back to ${PREV}"
+set -Eeuo pipefail
+
+umask 077
+
+APP_BASE="${MCWEB_APP_BASE:-/opt/mcweb}"
+RELEASES_DIR="${MCWEB_RELEASES_DIR:-${APP_BASE}/releases}"
+CURRENT_LINK="${MCWEB_CURRENT_LINK:-${APP_BASE}/current}"
+PREVIOUS_LINK="${MCWEB_PREVIOUS_LINK:-${APP_BASE}/previous}"
+CONFIG_FILE="${MCWEB_CONFIG_FILE:-/etc/mcweb/mcweb.env}"
+APP_USER="${MCWEB_APP_USER:-mcweb}"
+READY_URL="${MCWEB_READY_URL:-http://127.0.0.1:3000/health/ready}"
+OPERATION_LOCK="${MCWEB_RELEASE_LOCK_FILE:-/run/lock/mcweb-release.lock}"
+
+MODE="check"
+TARGET_INPUT=""
+CONFIRMATION=""
+CURRENT_RELEASE=""
+TARGET=""
+SWITCHED=0
+ROLLBACK_COMPLETE=0
+
+die() {
+  echo "Rollback failed: $*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  bin/rollback [--target /opt/mcweb/releases/VERSION] --check
+  bin/rollback [--target /opt/mcweb/releases/VERSION] --apply \
+    --confirm ROLLBACK:VERSION
+
+The default mode is check-only. It boots and validates the target against the
+current database without changing symlinks or services. Schema migrations are
+never run down automatically.
+USAGE
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || die "required command is not available: $1"
+}
+
+acquire_operation_lock() {
+  if [[ "${MCWEB_RELEASE_LOCK_HELD:-}" == "1" ]]; then
+    flock --nonblock 9 ||
+      die "inherited release lock descriptor is unavailable"
+    return
+  fi
+
+  [[ "${OPERATION_LOCK}" = /* ]] || die "release lock path must be absolute"
+  exec 9>"${OPERATION_LOCK}"
+  flock --nonblock 9 || die "another update or rollback operation is running"
+  export MCWEB_RELEASE_LOCK_HELD=1
+}
+
+load_runtime_environment() {
+  [[ -r "${CONFIG_FILE}" ]] ||
+    die "production environment file is not readable: ${CONFIG_FILE}"
+  set -a
+  # shellcheck disable=SC1090
+  source "${CONFIG_FILE}"
+  set +a
+  export RAILS_ENV="${RAILS_ENV:-production}"
+}
+
+canonical_directory() {
+  local path="$1"
+  [[ -d "${path}" ]] || die "release directory does not exist: ${path}"
+  readlink --canonicalize "${path}"
+}
+
+validate_release_path() {
+  local release="$1"
+  local releases_root
+
+  releases_root="$(canonical_directory "${RELEASES_DIR}")"
+  case "${release}/" in
+    "${releases_root}/"*) ;;
+    *) die "release must be a direct child of ${releases_root}" ;;
+  esac
+  [[ "$(dirname "${release}")" == "${releases_root}" ]] ||
+    die "nested release paths are not allowed"
+  [[ -f "${release}/Gemfile.lock" ]] || die "target Gemfile.lock is missing"
+  [[ -x "${release}/bin/rails" ]] || die "target bin/rails is not executable"
+  [[ -d "${release}/public/assets" ]] || die "target precompiled assets are missing"
+}
+
+run_as_app() {
+  if [[ "${EUID}" -eq 0 && "$(id -u "${APP_USER}")" != "0" ]]; then
+    if command -v runuser >/dev/null 2>&1; then
+      runuser --user "${APP_USER}" -- "$@"
+    else
+      sudo --user "${APP_USER}" -- "$@"
+    fi
+  else
+    "$@"
+  fi
+}
+
+run_in_release() {
+  local release="$1"
+  shift
+  (
+    cd "${release}"
+    run_as_app "$@"
+  )
+}
+
+preflight_target() {
+  local release="$1"
+
+  validate_release_path "${release}"
+  run_in_release "${release}" bundle check
+  run_in_release "${release}" bundle exec rails zeitwerk:check
+  run_in_release "${release}" bundle exec rails runner '
+    abort "database is not active" unless ActiveRecord::Base.connection.active?
+    ActiveRecord::Base.connection.select_value("SELECT 1")
+    ActiveStorage::Blob.limit(1).load
+    Rails.application.eager_load!
+    ApplicationRecord.descendants
+      .reject(&:abstract_class?)
+      .select(&:table_exists?)
+      .each do |model|
+        model.reset_column_information
+        model.limit(0).load
+      end
+    ActiveRecord::Migration.check_all_pending!
+  '
+}
+
+atomic_link() {
+  local target="$1"
+  local link="$2"
+  local temporary="${link}.next.$$"
+
+  [[ ! -e "${temporary}" && ! -L "${temporary}" ]] ||
+    die "temporary symlink path already exists: ${temporary}"
+  ln --symbolic "${target}" "${temporary}"
+  mv --no-target-directory "${temporary}" "${link}"
+}
+
+restart_and_verify() {
+  local attempt
+
+  systemctl restart mcweb-worker mcweb-web
+  systemctl is-active --quiet mcweb-worker
+  systemctl is-active --quiet mcweb-web
+  for attempt in {1..12}; do
+    if curl --fail --silent --show-error --max-time 10 "${READY_URL}" >/dev/null; then
+      return 0
+    fi
+    [[ "${attempt}" == "12" ]] || sleep 5
+  done
+  return 1
+}
+
+recover_failed_rollback() {
+  local status="${1:-$?}"
+
+  trap - EXIT ERR INT TERM HUP
+  [[ "${ROLLBACK_COMPLETE}" == "0" ]] || return
+  [[ "${status}" != "0" ]] || status=1
+  [[ "${SWITCHED}" == "1" ]] || exit "${status}"
+  echo "Rollback target failed after cutover; returning to the original release." >&2
+  if atomic_link "${CURRENT_RELEASE}" "${CURRENT_LINK}" && restart_and_verify; then
+    echo "Original release restored." >&2
+  else
+    echo "Automatic recovery failed; immediate operator intervention is required." >&2
+  fi
+  exit "${status}"
+}
+
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --target)
+        [[ $# -ge 2 ]] || die "--target requires a path"
+        TARGET_INPUT="$2"
+        shift 2
+        ;;
+      --check)
+        MODE="check"
+        shift
+        ;;
+      --apply)
+        MODE="apply"
+        shift
+        ;;
+      --confirm)
+        [[ $# -ge 2 ]] || die "--confirm requires a value"
+        CONFIRMATION="$2"
+        shift 2
+        ;;
+      --help|-h)
+        usage
+        exit 0
+        ;;
+      *)
+        die "unknown argument: $1"
+        ;;
+    esac
+  done
+}
+
+main() {
+  parse_arguments "$@"
+  require_command readlink
+  require_command bundle
+  require_command flock
+
+  load_runtime_environment
+  OPERATION_LOCK="${MCWEB_RELEASE_LOCK_FILE:-${OPERATION_LOCK}}"
+  acquire_operation_lock
+  [[ -L "${CURRENT_LINK}" ]] || die "current release pointer is not a symbolic link"
+  [[ ! -e "${PREVIOUS_LINK}" || -L "${PREVIOUS_LINK}" ]] ||
+    die "previous release pointer exists but is not a symbolic link"
+  if [[ -z "${TARGET_INPUT}" ]]; then
+    [[ -L "${PREVIOUS_LINK}" ]] || die "no previous release pointer; pass --target"
+    TARGET_INPUT="${PREVIOUS_LINK}"
+  fi
+
+  CURRENT_RELEASE="$(canonical_directory "${CURRENT_LINK}")"
+  TARGET="$(canonical_directory "${TARGET_INPUT}")"
+  validate_release_path "${CURRENT_RELEASE}"
+  validate_release_path "${TARGET}"
+  [[ "${TARGET}" != "${CURRENT_RELEASE}" ]] || die "target is already current"
+
+  preflight_target "${TARGET}"
+  echo "Rollback preflight passed: ${TARGET}"
+  [[ "${MODE}" == "apply" ]] || exit 0
+
+  local release_id
+  release_id="$(basename "${TARGET}")"
+  [[ "${CONFIRMATION}" == "ROLLBACK:${release_id}" ]] ||
+    die "confirmation must exactly match ROLLBACK:${release_id}"
+
+  require_command curl
+  require_command systemctl
+
+  trap recover_failed_rollback EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
+  SWITCHED=1
+  atomic_link "${TARGET}" "${CURRENT_LINK}"
+  restart_and_verify
+  atomic_link "${CURRENT_RELEASE}" "${PREVIOUS_LINK}"
+  SWITCHED=0
+  ROLLBACK_COMPLETE=1
+  trap - EXIT ERR INT TERM HUP
+
+  echo "Rollback complete and ready: ${TARGET}"
+  echo "Database schema was not migrated down."
+}
+
+main "$@"

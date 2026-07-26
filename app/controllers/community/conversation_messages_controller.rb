@@ -12,14 +12,16 @@ module Community
       result = Community::SendMessage.call(
         user: current_user,
         conversation: @conversation,
-        body: message_params[:body]
+        body: message_params[:body],
+        ip_address: request.remote_ip
       )
 
       if result.success?
         redirect_to forum_conversation_path(@conversation)
       else
+        apply_retry_after_header(result)
         render inertia: "Community/Messages/Show",
-               status: :unprocessable_entity,
+               status: service_error_status(result),
                props: conversation_show_props(
                  @conversation,
                  form_errors: inertia_form_errors(result, prefix: "message"),

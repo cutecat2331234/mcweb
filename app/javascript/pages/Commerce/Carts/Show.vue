@@ -7,12 +7,6 @@ import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
 import { confirm } from '@/lib/useConfirm'
 import { routes } from '@/lib/routes'
 import { csrfHeaders } from '@/lib/csrf'
@@ -195,175 +189,348 @@ function updateGiftNote(itemId: number, giftNote: string) {
 <template>
   <PageHeader :title="t('commerce.cart.title')" />
 
-  <p v-if="cartRecovered" class="mb-4 rounded-lg border border-green-200 bg-green-50 px-4 py-3 text-sm text-green-900">
+  <p
+    v-if="cartRecovered"
+    role="status"
+    class="
+      mb-4 rounded-xl border border-green-500/30 bg-green-500/10 px-4 py-3
+      text-sm leading-6 text-green-900 dark:text-green-100
+    "
+  >
     {{ t('commerce.cart.recovered') }}
   </p>
 
   <p
     v-if="blockedItemCount && blockedItemCount > 0"
-    class="mb-4 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900"
+    role="alert"
+    class="
+      mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3
+      text-sm leading-6 text-amber-900 dark:text-amber-100
+    "
   >
     {{ t('commerce.cart.blockedItemsHint', { count: blockedItemCount }) }}
   </p>
 
-  <div v-if="items.length" class="space-y-6">
-    <div class="rounded-lg border">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{{ t('commerce.cart.product') }}</TableHead>
-            <TableHead>{{ t('commerce.cart.quantity') }}</TableHead>
-            <TableHead>{{ t('commerce.cart.unitPrice') }}</TableHead>
-            <TableHead>{{ t('commerce.cart.lineTotal') }}</TableHead>
-            <TableHead />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          <TableRow v-for="item in items" :key="item.id">
-            <TableCell>
-              <Link v-if="item.product_url" :href="item.product_url" class="hover:underline">{{ item.product_name }}</Link>
-              <template v-else>{{ item.product_name }}</template>
-              <span v-if="item.variant_name" class="text-muted-foreground"> — {{ item.variant_name }}</span>
-              <p v-if="item.minimum_quantity && item.minimum_quantity > 1" class="text-xs text-muted-foreground">{{ t('commerce.cart.minQty', { n: item.minimum_quantity }) }}</p>
-              <p v-if="item.maximum_quantity" class="text-xs text-muted-foreground">{{ t('commerce.cart.maxQty', { n: item.maximum_quantity }) }}</p>
-              <p v-if="item.purchase_limit_remaining != null" class="text-xs text-muted-foreground">{{ t('commerce.cart.limitRemaining', { n: item.purchase_limit_remaining }) }}</p>
-              <div class="mt-2 max-w-xs space-y-1">
-                <Label :for="`gift-note-${item.id}`" class="text-xs">{{ t('commerce.cart.giftNote') }}</Label>
-                <Input
-                  :id="`gift-note-${item.id}`"
-                  :model-value="item.gift_note || ''"
-                  :placeholder="t('commerce.cart.giftNotePlaceholder')"
-                  class="h-8 text-xs"
-                  @change="updateGiftNote(item.id, ($event.target as HTMLInputElement).value)"
-                />
+  <div v-if="items.length" class="space-y-10">
+    <div class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
+      <section class="min-w-0" :aria-label="t('commerce.cart.title')">
+        <ul class="divide-y overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <li v-for="item in items" :key="item.id" class="p-4 sm:p-5">
+            <div class="space-y-5">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+                <div class="min-w-0">
+                  <Link
+                    v-if="item.product_url"
+                    :href="item.product_url"
+                    class="
+                      rounded-sm font-semibold text-foreground underline-offset-4
+                      hover:text-primary hover:underline focus-visible:outline-none
+                      focus-visible:ring-2 focus-visible:ring-ring
+                    "
+                  >
+                    {{ item.product_name }}
+                  </Link>
+                  <p v-else class="font-semibold text-foreground">{{ item.product_name }}</p>
+                  <p v-if="item.variant_name" class="mt-1 text-sm text-muted-foreground">
+                    {{ item.variant_name }}
+                  </p>
+                  <div
+                    v-if="
+                      (item.minimum_quantity && item.minimum_quantity > 1)
+                        || item.maximum_quantity
+                        || item.purchase_limit_remaining != null
+                    "
+                    :id="`quantity-help-${item.id}`"
+                    class="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs leading-5 text-muted-foreground"
+                  >
+                    <span v-if="item.minimum_quantity && item.minimum_quantity > 1">
+                      {{ t('commerce.cart.minQty', { n: item.minimum_quantity }) }}
+                    </span>
+                    <span v-if="item.maximum_quantity">
+                      {{ t('commerce.cart.maxQty', { n: item.maximum_quantity }) }}
+                    </span>
+                    <span v-if="item.purchase_limit_remaining != null">
+                      {{ t('commerce.cart.limitRemaining', { n: item.purchase_limit_remaining }) }}
+                    </span>
+                  </div>
+                </div>
+
+                <div class="shrink-0 sm:text-right">
+                  <p class="text-xs text-muted-foreground">{{ t('commerce.cart.lineTotal') }}</p>
+                  <p class="mt-1 font-semibold tabular-nums">{{ item.total_label }}</p>
+                  <p class="mt-1 text-xs text-muted-foreground">
+                    {{ t('commerce.cart.unitPrice') }} · {{ item.unit_price_label }}
+                  </p>
+                </div>
               </div>
-            </TableCell>
-            <TableCell>
-              <Input
-                type="number"
-                :model-value="item.quantity"
-                min="1"
-                class="w-20"
-                @update:model-value="(value) => updateQuantity(item.id, Number(value))"
-              />
-            </TableCell>
-            <TableCell>{{ item.unit_price_label }}</TableCell>
-            <TableCell>{{ item.total_label }}</TableCell>
-            <TableCell>
-              <div class="flex gap-1">
-                <Button variant="ghost" size="sm" type="button" @click="removeItem(item.id)">{{ t('commerce.cart.remove') }}</Button>
+
+              <div class="grid gap-4 sm:grid-cols-[7rem_minmax(0,1fr)] sm:items-end">
+                <div class="space-y-2">
+                  <Label :for="`quantity-${item.id}`">{{ t('commerce.cart.quantity') }}</Label>
+                  <Input
+                    :id="`quantity-${item.id}`"
+                    type="number"
+                    :model-value="item.quantity"
+                    min="1"
+                    class="w-full"
+                    :aria-label="`${t('commerce.cart.quantity')}: ${item.product_name}`"
+                    :aria-describedby="
+                      (item.minimum_quantity && item.minimum_quantity > 1)
+                        || item.maximum_quantity
+                        || item.purchase_limit_remaining != null
+                        ? `quantity-help-${item.id}`
+                        : undefined
+                    "
+                    @update:model-value="(value) => updateQuantity(item.id, Number(value))"
+                  />
+                </div>
+
+                <div class="space-y-2">
+                  <Label :for="`gift-note-${item.id}`">{{ t('commerce.cart.giftNote') }}</Label>
+                  <Input
+                    :id="`gift-note-${item.id}`"
+                    :model-value="item.gift_note || ''"
+                    :placeholder="t('commerce.cart.giftNotePlaceholder')"
+                    @change="updateGiftNote(item.id, ($event.target as HTMLInputElement).value)"
+                  />
+                </div>
+              </div>
+
+              <div class="flex flex-wrap justify-end gap-1">
                 <Button
                   v-if="loggedIn && moveToWishlistUrl"
                   variant="ghost"
                   size="sm"
                   type="button"
+                  :aria-label="`${t('commerce.cart.moveToWishlist')}: ${item.product_name}`"
                   @click="moveToWishlist(item.id)"
                 >
                   {{ t('commerce.cart.moveToWishlist') }}
                 </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  type="button"
+                  class="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  :aria-label="`${t('commerce.cart.remove')}: ${item.product_name}`"
+                  @click="removeItem(item.id)"
+                >
+                  {{ t('commerce.cart.remove') }}
+                </Button>
               </div>
-            </TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
+            </div>
+          </li>
+        </ul>
+      </section>
+
+      <aside class="space-y-4 lg:sticky lg:top-20">
+        <section class="rounded-xl border border-border bg-card p-5 shadow-sm">
+          <h2 class="text-base font-semibold">{{ t('commerce.cart.orderSummary') }}</h2>
+          <div class="mt-4 space-y-2 text-sm leading-6">
+            <p class="font-medium text-foreground">
+              {{ t('commerce.cart.subtotal', { amount: subtotalLabel }) }}
+            </p>
+            <p v-if="shippingLabel" class="text-muted-foreground">
+              {{
+                t('commerce.cart.shipping', {
+                  amount: freeShipping
+                    ? (
+                      couponFreeShipping
+                        ? t('commerce.cart.freeShippingCoupon')
+                        : noShippableItems
+                          ? t('commerce.cart.noShippingNeeded')
+                          : t('commerce.cart.freeShipping')
+                    )
+                    : shippingLabel,
+                })
+              }}
+            </p>
+            <p
+              v-if="couponAutoApplied && pendingCouponCode"
+              role="status"
+              class="text-green-700 dark:text-green-400"
+            >
+              {{ t('commerce.cart.couponAutoApplied', { code: pendingCouponCode }) }}
+            </p>
+            <p v-if="freeShippingRemainingLabel && !freeShipping" class="text-xs text-muted-foreground">
+              {{
+                t('commerce.cart.freeShippingRemaining', {
+                  remaining: freeShippingRemainingLabel,
+                  min: freeShippingMinLabel,
+                })
+              }}
+            </p>
+          </div>
+
+          <div v-if="loggedIn" class="mt-5 space-y-2">
+            <Button as-child class="w-full">
+              <Link :href="routes.storeCheckout">{{ t('commerce.cart.checkout') }}</Link>
+            </Button>
+            <Button
+              v-if="clearCartUrl"
+              type="button"
+              variant="ghost"
+              class="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+              @click="clearCart"
+            >
+              {{ t('commerce.cart.clearCart') }}
+            </Button>
+          </div>
+          <div v-else class="mt-5 space-y-3">
+            <p class="text-sm leading-6 text-muted-foreground">{{ t('commerce.cart.loginToCheckout') }}</p>
+            <Button as-child variant="outline" class="w-full">
+              <Link :href="routes.signIn">{{ t('common.signIn') }}</Link>
+            </Button>
+          </div>
+        </section>
+
+        <section class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+          <h2 class="px-5 pt-5 text-base font-semibold">{{ t('commerce.cart.promotionCodes') }}</h2>
+
+          <form class="space-y-3 p-5" @submit.prevent="previewCoupon">
+            <Label for="coupon">{{ t('commerce.cart.coupon') }}</Label>
+            <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto]">
+              <Input
+                id="coupon"
+                v-model="couponCode"
+                autocomplete="off"
+                :placeholder="t('commerce.cart.couponPlaceholder')"
+                aria-describedby="coupon-status coupon-hint"
+                :aria-invalid="!!couponError"
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                :disabled="couponLoading || !couponCode.trim()"
+                :aria-busy="couponLoading"
+              >
+                {{ couponLoading ? t('commerce.cart.validating') : t('commerce.cart.preview') }}
+              </Button>
+            </div>
+            <div id="coupon-status" aria-live="polite" class="space-y-1">
+              <p v-if="couponError" role="alert" class="text-sm text-destructive">{{ couponError }}</p>
+              <p v-if="couponPreview" class="text-sm leading-6 text-muted-foreground">
+                {{
+                  t('commerce.cart.couponApplied', {
+                    code: couponPreview.code,
+                    discount: couponPreview.discount_label,
+                    total: couponPreview.total_label,
+                  })
+                }}
+                <span v-if="couponPreview.min_amount_label" class="block text-xs">
+                  {{ t('commerce.cart.minSpend', { amount: couponPreview.min_amount_label }) }}
+                </span>
+              </p>
+              <p
+                v-if="couponError && couponPreview?.amount_remaining_label"
+                class="text-xs text-amber-600 dark:text-amber-400"
+              >
+                {{ t('commerce.cart.amountRemaining', { amount: couponPreview.amount_remaining_label }) }}
+              </p>
+              <p v-else-if="pendingCouponCode" class="text-sm text-muted-foreground">
+                {{ t('commerce.cart.couponSaved', { code: pendingCouponCode }) }}
+              </p>
+            </div>
+            <div class="flex items-start justify-between gap-3">
+              <p id="coupon-hint" class="text-xs leading-5 text-muted-foreground">
+                {{ t('commerce.cart.couponHint') }}
+              </p>
+              <Button
+                v-if="clearCouponUrl && pendingCouponCode"
+                type="button"
+                variant="ghost"
+                size="sm"
+                class="shrink-0"
+                @click="clearCoupon"
+              >
+                {{ t('commerce.cart.clear') }}
+              </Button>
+            </div>
+          </form>
+
+          <form class="space-y-3 border-t border-border p-5" @submit.prevent="previewGiftCard">
+            <Label for="gift_card">{{ t('commerce.cart.giftCard') }}</Label>
+            <div class="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto] lg:grid-cols-1 xl:grid-cols-[minmax(0,1fr)_auto]">
+              <Input
+                id="gift_card"
+                v-model="giftCardCode"
+                autocomplete="off"
+                :placeholder="t('commerce.cart.giftCardPlaceholder')"
+                aria-describedby="gift-card-status"
+                :aria-invalid="!!giftCardError"
+              />
+              <Button
+                type="submit"
+                variant="outline"
+                :disabled="giftCardLoading || !giftCardCode.trim()"
+                :aria-busy="giftCardLoading"
+              >
+                {{ giftCardLoading ? t('commerce.cart.validating') : t('commerce.cart.preview') }}
+              </Button>
+            </div>
+            <div id="gift-card-status" aria-live="polite" class="space-y-1">
+              <p v-if="giftCardError" role="alert" class="text-sm text-destructive">{{ giftCardError }}</p>
+              <p v-if="giftCardPreview" class="text-sm leading-6 text-muted-foreground">
+                {{
+                  t('commerce.cart.giftCardApplied', {
+                    code: giftCardPreview.code,
+                    amount: giftCardPreview.gift_card_amount_label,
+                    total: giftCardPreview.total_label,
+                  })
+                }}
+              </p>
+              <p v-else-if="pendingGiftCardCode" class="text-sm text-muted-foreground">
+                {{ t('commerce.cart.giftCardSaved', { code: pendingGiftCardCode }) }}
+              </p>
+            </div>
+            <Button
+              v-if="clearGiftCardUrl && pendingGiftCardCode"
+              type="button"
+              variant="ghost"
+              size="sm"
+              @click="clearGiftCard"
+            >
+              {{ t('commerce.cart.clear') }}
+            </Button>
+          </form>
+        </section>
+      </aside>
     </div>
 
-    <p class="font-medium">{{ t('commerce.cart.subtotal', { amount: subtotalLabel }) }}</p>
-    <p v-if="shippingLabel" class="text-sm text-muted-foreground">
-      {{ t('commerce.cart.shipping', {
-        amount: freeShipping
-          ? (couponFreeShipping ? t('commerce.cart.freeShippingCoupon') : noShippableItems ? t('commerce.cart.noShippingNeeded') : t('commerce.cart.freeShipping'))
-          : shippingLabel
-      }) }}
-    </p>
-    <p v-if="couponAutoApplied && pendingCouponCode" class="text-sm text-green-700">
-      {{ t('commerce.cart.couponAutoApplied', { code: pendingCouponCode }) }}
-    </p>
-    <p
-      v-if="freeShippingRemainingLabel && !freeShipping"
-      class="text-xs text-muted-foreground"
-    >
-      {{ t('commerce.cart.freeShippingRemaining', { remaining: freeShippingRemainingLabel, min: freeShippingMinLabel }) }}
-    </p>
-
-    <div class="max-w-md space-y-2 rounded-lg border p-4">
-      <Label for="coupon">{{ t('commerce.cart.coupon') }}</Label>
-      <div class="flex gap-2">
-        <Input id="coupon" v-model="couponCode" :placeholder="t('commerce.cart.couponPlaceholder')" class="flex-1" />
-        <Button type="button" variant="outline" :disabled="couponLoading || !couponCode.trim()" @click="previewCoupon">
-          {{ couponLoading ? t('commerce.cart.validating') : t('commerce.cart.preview') }}
-        </Button>
-        <Button v-if="clearCouponUrl && pendingCouponCode" type="button" variant="ghost" @click="clearCoupon">{{ t('commerce.cart.clear') }}</Button>
-      </div>
-      <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
-      <p v-if="couponPreview" class="text-sm text-muted-foreground">
-        {{ t('commerce.cart.couponApplied', { code: couponPreview.code, discount: couponPreview.discount_label, total: couponPreview.total_label }) }}
-        <span v-if="couponPreview.min_amount_label" class="block text-xs">{{ t('commerce.cart.minSpend', { amount: couponPreview.min_amount_label }) }}</span>
-      </p>
-      <p v-if="couponError && couponPreview?.amount_remaining_label" class="text-xs text-amber-600">
-        {{ t('commerce.cart.amountRemaining', { amount: couponPreview.amount_remaining_label }) }}
-      </p>
-      <p v-else-if="pendingCouponCode" class="text-sm text-muted-foreground">{{ t('commerce.cart.couponSaved', { code: pendingCouponCode }) }}</p>
-      <p class="text-xs text-muted-foreground">{{ t('commerce.cart.couponHint') }}</p>
-    </div>
-
-    <div class="max-w-md space-y-2 rounded-lg border p-4">
-      <Label for="gift_card">{{ t('commerce.cart.giftCard') }}</Label>
-      <div class="flex gap-2">
-        <Input id="gift_card" v-model="giftCardCode" :placeholder="t('commerce.cart.giftCardPlaceholder')" class="flex-1" />
-        <Button type="button" variant="outline" :disabled="giftCardLoading || !giftCardCode.trim()" @click="previewGiftCard">
-          {{ giftCardLoading ? t('commerce.cart.validating') : t('commerce.cart.preview') }}
-        </Button>
-        <Button v-if="clearGiftCardUrl && pendingGiftCardCode" type="button" variant="ghost" @click="clearGiftCard">{{ t('commerce.cart.clear') }}</Button>
-      </div>
-      <p v-if="giftCardError" class="text-sm text-destructive">{{ giftCardError }}</p>
-      <p v-if="giftCardPreview" class="text-sm text-muted-foreground">
-        {{ t('commerce.cart.giftCardApplied', { code: giftCardPreview.code, amount: giftCardPreview.gift_card_amount_label, total: giftCardPreview.total_label }) }}
-      </p>
-      <p v-else-if="pendingGiftCardCode" class="text-sm text-muted-foreground">{{ t('commerce.cart.giftCardSaved', { code: pendingGiftCardCode }) }}</p>
-    </div>
-
-    <div v-if="loggedIn" class="flex flex-wrap gap-3">
-      <Button as-child>
-        <Link :href="routes.storeCheckout">{{ t('commerce.cart.checkout') }}</Link>
-      </Button>
-      <Button v-if="clearCartUrl" type="button" variant="outline" @click="clearCart">{{ t('commerce.cart.clearCart') }}</Button>
-    </div>
-    <div v-else class="space-y-3">
-      <p class="text-sm text-muted-foreground">{{ t('commerce.cart.loginToCheckout') }}</p>
-      <Button as-child variant="outline">
-        <Link :href="routes.signIn">{{ t('common.signIn') }}</Link>
-      </Button>
-    </div>
-
-    <section v-if="crossSellProducts?.length" class="mt-8">
-      <h2 class="mb-3 text-sm font-semibold">{{ t('commerce.cart.crossSell') }}</h2>
-      <div class="grid gap-3 sm:grid-cols-2">
+    <section v-if="crossSellProducts?.length" class="space-y-4">
+      <h2 class="text-lg font-semibold">{{ t('commerce.cart.crossSell') }}</h2>
+      <div class="grid gap-4 sm:grid-cols-2">
         <Link
           v-for="product in crossSellProducts"
           :key="product.id"
           :href="product.url"
-          class="flex gap-3 rounded-lg border p-3 transition-colors hover:bg-muted/50"
+          class="
+            flex gap-4 rounded-xl border border-border bg-card p-4 shadow-sm
+            transition-colors hover:bg-muted/50 focus-visible:outline-none
+            focus-visible:ring-2 focus-visible:ring-ring
+          "
         >
           <img
             v-if="product.image_url"
             :src="product.image_url"
-            :alt="product.name"
-            class="h-14 w-14 shrink-0 rounded object-cover"
+            alt=""
+            class="h-16 w-16 shrink-0 rounded-lg object-cover"
           />
           <div class="min-w-0">
             <p class="font-medium">{{ product.name }}</p>
-            <p v-if="product.summary" class="mt-0.5 line-clamp-2 text-xs text-muted-foreground">{{ product.summary }}</p>
-            <p class="mt-1 text-sm font-medium">{{ product.price_label }}</p>
+            <p v-if="product.summary" class="mt-1 line-clamp-2 text-sm leading-5 text-muted-foreground">
+              {{ product.summary }}
+            </p>
+            <p class="mt-2 text-sm font-semibold">{{ product.price_label }}</p>
           </div>
         </Link>
       </div>
     </section>
   </div>
 
-  <div v-else class="space-y-4">
+  <div v-else class="rounded-xl border border-dashed border-border px-6 py-12 text-center">
     <p class="text-sm text-muted-foreground">{{ t('commerce.cart.empty') }}</p>
-    <Button as-child variant="outline">
+    <Button as-child class="mt-5">
       <Link :href="routes.store">{{ t('commerce.cart.browseProducts') }}</Link>
     </Button>
   </div>

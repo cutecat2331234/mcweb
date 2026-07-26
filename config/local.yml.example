@@ -16,3 +16,14 @@ lockbox_master_key: generate-during-setup
 # Sidekiq（本地开发可选；生产环境建议写入 /etc/mcweb/mcweb.env）
 redis_url: redis://127.0.0.1:6379/0
 job_concurrency: 5
+
+# Developer Mode 默认关闭。unrestricted preset 可按 security、integrations、
+# runtime 分组收窄；production 还要求独立的精确确认环境变量，否则启动失败。
+# 完整开关、确认短语和风险说明见 docs/DEVELOPER_MODE.md。
+developer_mode:
+  enabled: false
+  preset: unrestricted
+  security: {}
+  integrations: {}
+  runtime: {}
+  auto_login_user:

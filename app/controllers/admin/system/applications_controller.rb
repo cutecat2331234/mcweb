@@ -76,7 +76,22 @@ module Admin
       end
 
       def uninstall_plugin
-        perform_marketplace_operation(:uninstall)
+        plugin_id = params[:plugin_id].to_s
+        unless params[:confirmation].to_s == plugin_id
+          redirect_to(
+            admin_system_applications_path,
+            alert: t(
+              "mcweb.admin.system.applications.marketplace.uninstall_confirmation_mismatch"
+            )
+          )
+          return
+        end
+
+        perform_marketplace_operation(
+          :uninstall,
+          expected_version: params[:expected_version].to_s,
+          expected_sha256: params[:expected_sha256].to_s
+        )
       end
 
       private
@@ -162,8 +177,12 @@ module Admin
         filename.presence || "plugin.zip"
       end
 
-      def perform_marketplace_operation(action)
-        result = marketplace_manager.public_send(action, plugin_id: params[:plugin_id].to_s)
+      def perform_marketplace_operation(action, **attributes)
+        result = marketplace_manager.public_send(
+          action,
+          plugin_id: params[:plugin_id].to_s,
+          **attributes
+        )
         redirect_after_marketplace_operation(result)
       rescue Mcweb::Plugins::Marketplace::Error => e
         redirect_marketplace_error(e)

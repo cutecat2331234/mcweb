@@ -17,6 +17,14 @@ interface NavItem {
 const { t } = useI18n()
 const page = usePage()
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
+const developerMode = computed(
+  () =>
+    (page.props.developer_mode ?? { enabled: false }) as {
+      enabled: boolean
+      profile?: string
+      production_environment?: boolean
+    },
+)
 const { activeTemplate, tokenStyle, websiteHeaderSlot, websiteFooterSlot } = useActiveTemplate()
 const { features } = useFeatureFlags()
 
@@ -46,6 +54,21 @@ function isActive(href: string) {
 <template>
   <div class="website-page" :style="tokenStyle">
     <TemplateAssets />
+
+    <div
+      v-if="developerMode.enabled"
+      class="website-developer-mode"
+      data-testid="developer-mode-banner"
+      role="alert"
+    >
+      <div class="website-developer-mode__inner">
+        <span class="website-developer-mode__label">{{ t('common.developerMode') }}</span>
+        <span>{{ t('common.developerModeWarning') }}</span>
+        <strong v-if="developerMode.production_environment">
+          {{ t('common.developerModeProductionWarning') }}
+        </strong>
+      </div>
+    </div>
 
     <div v-if="websiteHeaderSlot" v-html="websiteHeaderSlot" />
     <header v-else class="website-nav sticky top-0 z-50">

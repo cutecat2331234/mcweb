@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 30.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil, poll_anonymous: nil, prefix: nil, attachment_ids: nil, custom_fields: nil)
+    def initialize(user:, section:, title:, body:, tag_names: nil, ip_address: nil, poll_question: nil, poll_options: nil, poll_closes_days: nil, poll_multiple_choice: nil, poll_max_choices: nil, poll_hide_results_until_vote: nil, poll_anonymous: nil, prefix: nil, attachment_ids: nil, custom_fields: nil, idempotency_key: nil)
       @user = user
       @section = section
       @title = title.to_s.strip
@@ -22,6 +22,7 @@ module Community
       @prefix = prefix.to_s.strip.presence
       @attachment_ids = attachment_ids
       @custom_fields = normalize_custom_fields(custom_fields)
+      @idempotency_key = idempotency_key
       apply_plugin_filters!
       filter_censored_body!
     end
@@ -46,9 +47,6 @@ module Community
         return ServiceResult.failure(error: "Section not available.")
       end
 
-      spam_result = check_spam
-      return spam_result if spam_result.failure?
-
       unless @section.allowed?(@user, :create_topic)
         return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
       end
@@ -61,13 +59,45 @@ module Community
         return ServiceResult.failure(error: "This section is read-only.")
       end
 
+      rate_result = enforce_rate_limit
+      return rate_result if rate_result.failure?
+
       topic = nil
+      opening_post = nil
       tag_result = nil
       field_result = nil
+      attachment_result = nil
+      inline_upload_result = nil
+      request_result = nil
+      spam_result = nil
+      replayed = false
       needs_approval = Community::RequiresPostApproval.required_for?(user: @user)
       topic_status = needs_approval ? "hidden" : "published"
       post_status = needs_approval ? "pending_approval" : "published"
       Community::Topic.transaction do
+        request_result = Community::ContentIdempotency.claim(
+          user: @user,
+          operation: "topic.create",
+          key: @idempotency_key,
+          payload: idempotency_payload
+        )
+        raise ActiveRecord::Rollback if request_result.failure?
+
+        if request_result.value[:replay]
+          topic = request_result.value[:resource]
+          replayed = true
+          next
+        end
+
+        spam_result = check_spam
+        raise ActiveRecord::Rollback if spam_result.failure?
+
+        attachment_result = Community::PreparePostAttachments.call(
+          user: @user,
+          attachment_ids: @attachment_ids
+        )
+        raise ActiveRecord::Rollback if attachment_result.failure?
+
         topic = Community::Topic.create!(
           public_id: generate_public_id,
           section: @section,
@@ -80,16 +110,20 @@ module Community
           replies_count: 0
         )
 
-        Community::Post.create!(
+        opening_post = Community::Post.create!(
           topic: topic,
           user: @user,
           floor_number: 1,
           body: @body,
           status: post_status
         )
+        inline_upload_result = Community::BindInlineUploads.call(
+          user: @user,
+          post: opening_post,
+          body: @body
+        )
+        raise ActiveRecord::Rollback if inline_upload_result.failure?
 
-        Community::Subscription.subscribe!(@user, topic)
-        Community::ReadState.mark_read!(@user, topic, floor: 1)
         if @tag_names.present?
           tag_result = Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user)
           raise ActiveRecord::Rollback unless tag_result.success?
@@ -102,10 +136,26 @@ module Community
           require_required: true
         )
         raise ActiveRecord::Rollback unless field_result.success?
+
+        attachment_result = Community::LinkPostAttachments.call(
+          user: @user,
+          post: opening_post,
+          attachment_ids: @attachment_ids
+        )
+        raise ActiveRecord::Rollback if attachment_result.failure?
+
+        Community::Subscription.subscribe!(@user, topic)
+        Community::ReadState.mark_read!(@user, topic, floor: 1)
+        request_result.value[:request]&.complete!(topic)
       end
 
+      return request_result if request_result&.failure?
+      return spam_result if spam_result&.failure?
+      return attachment_result if attachment_result&.failure?
+      return inline_upload_result if inline_upload_result&.failure?
       return tag_result if tag_result&.failure?
       return field_result if field_result&.failure?
+      return ServiceResult.success(topic) if replayed
 
       Administration::AuditLogger.call(
         actor: @user,
@@ -113,12 +163,6 @@ module Community
         resource: topic,
         ip_address: @ip_address
       )
-
-      opening_post = topic.posts.first
-      if opening_post
-        link_result = Community::LinkPostAttachments.call(user: @user, post: opening_post, attachment_ids: @attachment_ids)
-        return link_result if link_result.failure?
-      end
 
       if needs_approval
         Community::NotifyPendingPost.call(post: opening_post)
@@ -146,6 +190,25 @@ module Community
       }
     end
 
+    def idempotency_payload
+      {
+        section_id: @section.id,
+        title: @title,
+        body: @body,
+        tag_names: Array(@tag_names),
+        prefix: @prefix,
+        poll_question: @poll_question,
+        poll_options: @poll_options,
+        poll_closes_days: @poll_closes_days,
+        poll_multiple_choice: @poll_multiple_choice,
+        poll_max_choices: @poll_max_choices,
+        poll_hide_results_until_vote: @poll_hide_results_until_vote,
+        poll_anonymous: @poll_anonymous,
+        attachment_ids: Array(@attachment_ids).map(&:to_s),
+        custom_fields: @custom_fields
+      }
+    end
+
     def check_spam
       if @title.blank?
         return ServiceResult.failure(error: "Title is required.")
@@ -154,13 +217,6 @@ module Community
       if @body.length < MIN_BODY_LENGTH
         return ServiceResult.failure(error: "Post body is too short.")
       end
-
-      rate_result = Administration::RateLimiter.call(
-        key: "forum_topic:#{@user.id}",
-        limit: 5,
-        window: 1.hour
-      )
-      return rate_result if rate_result.failure?
 
       if muted_in_section?
         return ServiceResult.failure(error: "You are muted in this section.")
@@ -186,11 +242,13 @@ module Community
       return ip_result if ip_result.failure?
 
       recent = Community::Topic.where(user: @user).order(created_at: :desc).first
-      if recent&.created_at&.> MIN_INTERVAL.ago
+      if !developer_mode_bypasses_spam_gates? &&
+          recent &&
+          recent.created_at > MIN_INTERVAL.ago
         return ServiceResult.failure(error: "Please wait before creating another topic.")
       end
 
-      if duplicate_title?
+      if !developer_mode_bypasses_spam_gates? && duplicate_title?
         return ServiceResult.failure(error: "A similar topic was recently created.")
       end
 
@@ -205,6 +263,18 @@ module Community
       return post_restriction if post_restriction.failure?
 
       ServiceResult.success
+    end
+
+    def developer_mode_bypasses_spam_gates?
+      Mcweb::DeveloperMode.allow?(:skip_anti_spam)
+    end
+
+    def enforce_rate_limit
+      Administration::AbuseRateLimit.call(
+        action: :topic,
+        account: @user,
+        ip_address: @ip_address
+      )
     end
 
     def muted_in_section?

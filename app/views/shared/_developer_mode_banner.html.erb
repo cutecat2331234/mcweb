@@ -1,0 +1,15 @@
+<% if Mcweb::DeveloperMode.enabled? %>
+  <div
+    role="alert"
+    data-testid="developer-mode-banner"
+    class="border-b border-amber-500/40 bg-amber-100 px-4 py-2 text-sm text-amber-950"
+  >
+    <strong><%= t("mcweb.developer_mode.title") %></strong>
+    <span><%= t("mcweb.developer_mode.warning") %></span>
+    <% if Rails.env.production? %>
+      <strong class="text-red-700">
+        <%= t("mcweb.developer_mode.production_warning") %>
+      </strong>
+    <% end %>
+  </div>
+<% end %>

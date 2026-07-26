@@ -6,13 +6,19 @@ local:
   service: Disk
   root: <%= Rails.root.join("storage") %>
 
-# Use bin/rails credentials:edit to set the AWS secrets (as aws:access_key_id|secret_access_key)
-# amazon:
-#   service: S3
-#   access_key_id: <%= Rails.application.credentials.dig(:aws, :access_key_id) %>
-#   secret_access_key: <%= Rails.application.credentials.dig(:aws, :secret_access_key) %>
-#   region: us-east-1
-#   bucket: your_own_bucket-<%= Rails.env %>
+private_s3:
+  service: S3
+<% if ENV["MCWEB_S3_ACCESS_KEY_ID"].present? && ENV["MCWEB_S3_SECRET_ACCESS_KEY"].present? %>
+  access_key_id: <%= ENV["MCWEB_S3_ACCESS_KEY_ID"].presence %>
+  secret_access_key: <%= ENV["MCWEB_S3_SECRET_ACCESS_KEY"].presence %>
+<% end %>
+  region: <%= ENV["MCWEB_S3_REGION"] %>
+  bucket: <%= ENV["MCWEB_S3_BUCKET"] %>
+  public: false
+  force_path_style: <%= ActiveModel::Type::Boolean.new.cast(ENV.fetch("MCWEB_S3_FORCE_PATH_STYLE", "0")) %>
+<% if ENV["MCWEB_S3_ENDPOINT"].present? %>
+  endpoint: <%= ENV["MCWEB_S3_ENDPOINT"] %>
+<% end %>
 
 # Remember not to checkin your GCS keyfile to a repository
 # google:

@@ -157,7 +157,7 @@ class Mcweb::Plugins::Marketplace::ManagerTest < ActiveSupport::TestCase
     assert @root.join("acme/demo").directory?
     refute @state_root.join("disabled/acme/demo").exist?
 
-    uninstalled = @manager.uninstall(plugin_id: "acme/demo")
+    uninstalled = uninstall
     assert_equal "uninstalled", uninstalled.status
     refute @root.join("acme/demo").exist?
     recovery = @state_root.join(uninstalled.recovery_path)
@@ -173,9 +173,28 @@ class Mcweb::Plugins::Marketplace::ManagerTest < ActiveSupport::TestCase
       @manager.disable(plugin_id: "base/core")
     end
     assert_raises(Mcweb::Plugins::Marketplace::DependencyError) do
-      @manager.uninstall(plugin_id: "base/core")
+      uninstall(plugin_id: "base/core")
     end
     assert @root.join("base/core").directory?
+  end
+
+  test "uninstall rejects a stale confirmed package identity without moving the current version" do
+    install(plugin_package(version: "1.0.0"))
+    confirmed = @manager.status.fetch(:plugins).sole
+    install(plugin_package(version: "2.0.0"))
+
+    error = assert_raises(Mcweb::Plugins::Marketplace::IntegrityError) do
+      uninstall(
+        expected_version: confirmed.fetch(:version),
+        expected_sha256: confirmed.fetch(:sha256)
+      )
+    end
+
+    assert_includes error.message, "refresh the plugin list"
+    manifest = Mcweb::Plugins::Manifest.load_file(@root.join("acme/demo/mcweb_plugin.yml"))
+    assert_equal "2.0.0", manifest.version
+    assert_equal "active", @manager.status.fetch(:plugins).sole.fetch(:status)
+    refute @state_root.glob("quarantine/**/acme/demo").any?
   end
 
   test "install refuses to overwrite unrelated files at the managed target" do
@@ -215,7 +234,11 @@ class Mcweb::Plugins::Marketplace::ManagerTest < ActiveSupport::TestCase
     unmanaged.join("plugin.rb").write("PLUGIN = true\n")
 
     error = assert_raises(Mcweb::Plugins::Marketplace::LifecycleError) do
-      @manager.uninstall(plugin_id: "acme/demo")
+      @manager.uninstall(
+        plugin_id: "acme/demo",
+        expected_version: "1.0.0",
+        expected_sha256: "a" * 64
+      )
     end
 
     assert_includes error.message, "outside its managed"
@@ -289,6 +312,15 @@ class Mcweb::Plugins::Marketplace::ManagerTest < ActiveSupport::TestCase
       source: source || "file:///reviewed/#{package.basename}",
       expected_sha256: Digest::SHA256.file(package).hexdigest,
       allow_downgrade: allow_downgrade
+    )
+  end
+
+  def uninstall(plugin_id: "acme/demo", expected_version: nil, expected_sha256: nil)
+    plugin = @manager.status(plugin_id: plugin_id).fetch(:plugins).sole
+    @manager.uninstall(
+      plugin_id:,
+      expected_version: expected_version || plugin.fetch(:version),
+      expected_sha256: expected_sha256 || plugin.fetch(:sha256)
     )
   end
 

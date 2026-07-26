@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { Link, router, useForm } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { Modal, type FileItem } from '@arco-design/web-vue'
+import type { FileItem } from '@arco-design/web-vue'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
 
 const { t } = useI18n()
+const SHA256_PATTERN = /^[0-9a-f]{64}$/i
 
 interface CatalogItem {
   id: string
@@ -104,6 +105,20 @@ const props = defineProps<{
 }>()
 
 const pluginFiles = ref<FileItem[]>([])
+const uninstallTarget = ref<MarketplacePlugin | null>(null)
+const uninstallConfirmation = ref('')
+const uninstallSubmitting = ref(false)
+const uninstallModalVisible = computed({
+  get: () => uninstallTarget.value !== null,
+  set: (visible: boolean) => {
+    if (!visible) closeUninstall()
+  },
+})
+const canUninstall = computed(
+  () => uninstallTarget.value !== null &&
+    hasVerifiedUninstallIdentity(uninstallTarget.value) &&
+    uninstallConfirmation.value.trim() === uninstallTarget.value.id,
+)
 const installForm = useForm<{
   plugin_package: File | null
   expected_sha256: string
@@ -184,20 +199,47 @@ function changePluginState(action: 'enable' | 'disable', pluginId: string) {
   )
 }
 
-function uninstallPlugin(plugin: MarketplacePlugin) {
-  Modal.warning({
-    title: t('admin.applications.marketplace.uninstallConfirmTitle'),
-    content: t('admin.applications.marketplace.uninstallConfirmMessage', {
-      plugin: plugin.name || plugin.id,
-    }),
-    okText: t('admin.applications.marketplace.uninstall'),
-    cancelText: t('admin.ui.cancel'),
-    hideCancel: false,
-    okButtonProps: { status: 'danger' },
-    onOk: () => router.delete(props.pluginActions.uninstall, {
-      data: { plugin_id: plugin.id },
-      preserveScroll: true,
-    }),
+function openUninstall(plugin: MarketplacePlugin) {
+  if (!hasVerifiedUninstallIdentity(plugin)) return
+
+  uninstallTarget.value = plugin
+  uninstallConfirmation.value = ''
+}
+
+function hasVerifiedUninstallIdentity(plugin: MarketplacePlugin) {
+  return plugin.version.length > 0 &&
+    typeof plugin.sha256 === 'string' &&
+    SHA256_PATTERN.test(plugin.sha256)
+}
+
+function closeUninstall() {
+  if (uninstallSubmitting.value) return
+  uninstallTarget.value = null
+  uninstallConfirmation.value = ''
+}
+
+function submitUninstall() {
+  const target = uninstallTarget.value
+  if (!target || !target.sha256 || !canUninstall.value) return
+
+  router.delete(props.pluginActions.uninstall, {
+    data: {
+      plugin_id: target.id,
+      confirmation: uninstallConfirmation.value.trim(),
+      expected_version: target.version,
+      expected_sha256: target.sha256,
+    },
+    preserveScroll: true,
+    onStart: () => {
+      uninstallSubmitting.value = true
+    },
+    onSuccess: () => {
+      uninstallTarget.value = null
+      uninstallConfirmation.value = ''
+    },
+    onFinish: () => {
+      uninstallSubmitting.value = false
+    },
   })
 }
 </script>
@@ -206,7 +248,7 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
   <a-page-header
     :title="title"
     :subtitle="t('admin.applications.subtitle')"
-    class="mb-4 !px-0"
+    class="mb-5 !px-0"
   />
 
   <a-alert
@@ -247,7 +289,7 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
       <a-card
         v-if="canManagePlugins"
         :title="t('admin.applications.marketplace.installTitle')"
-        :bordered="true"
+        :bordered="false"
       >
         <a-form :model="installForm" layout="vertical" @submit="installPlugin">
           <a-form-item
@@ -299,7 +341,7 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
 
       <a-card
         :title="t('admin.applications.marketplace.managedTitle')"
-        :bordered="true"
+        :bordered="false"
       >
         <a-space
           v-if="pluginMarketplace.plugins.length"
@@ -309,8 +351,8 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
           <a-card
             v-for="plugin in pluginMarketplace.plugins"
             :key="plugin.id"
-            size="small"
-            :bordered="true"
+            :bordered="false"
+            class="bg-[var(--color-fill-1)]"
           >
             <template #title>
               <a-space wrap>
@@ -321,7 +363,11 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
                 <a-tag>v{{ plugin.version }}</a-tag>
               </a-space>
             </template>
-            <a-descriptions :column="1" size="small" bordered>
+            <a-descriptions
+              :column="{ xs: 1, sm: 2 }"
+              layout="vertical"
+              :bordered="false"
+            >
               <a-descriptions-item :label="t('admin.applications.pluginIdLabel')">
                 {{ plugin.id }}
               </a-descriptions-item>
@@ -366,10 +412,11 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
                 {{ t('admin.applications.marketplace.disable') }}
               </a-button>
               <a-button
-                v-if="['installed', 'disabled'].includes(plugin.filesystem_status)"
+                v-if="['installed', 'disabled'].includes(plugin.filesystem_status) &&
+                  hasVerifiedUninstallIdentity(plugin)"
                 size="small"
                 status="danger"
-                @click="uninstallPlugin(plugin)"
+                @click="openUninstall(plugin)"
               >
                 {{ t('admin.applications.marketplace.uninstall') }}
               </a-button>
@@ -386,13 +433,13 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
     <a-card
       class="mt-4"
       :title="t('admin.applications.marketplace.operationsTitle')"
-      :bordered="true"
+      :bordered="false"
     >
       <a-table
         :data="pluginMarketplace.operations"
         :pagination="false"
-        :scroll="{ x: 960 }"
-        size="small"
+        :bordered="false"
+        :scroll="{ minWidth: 960 }"
       >
         <template #columns>
           <a-table-column
@@ -441,7 +488,12 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
     <h2 class="mb-1 text-lg font-semibold">{{ t('admin.applications.platformTitle') }}</h2>
     <p class="mb-4 text-sm text-muted-foreground">{{ t('admin.applications.platformHint') }}</p>
     <div class="grid gap-3 md:grid-cols-2">
-      <a-card v-for="item in platform" :key="item.id" :bordered="true">
+      <a-card
+        v-for="item in platform"
+        :key="item.id"
+        :bordered="false"
+        class="bg-[var(--color-fill-1)]"
+      >
         <template #title>
           <div class="flex flex-wrap items-center gap-2">
             <span>{{ item.label }}</span>
@@ -470,7 +522,12 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
       </Link>
     </div>
     <div class="grid gap-3 md:grid-cols-2">
-      <a-card v-for="item in applications" :key="item.id" :bordered="true">
+      <a-card
+        v-for="item in applications"
+        :key="item.id"
+        :bordered="false"
+        class="bg-[var(--color-fill-1)]"
+      >
         <template #title>
           <div class="flex flex-wrap items-center gap-2">
             <span>{{ item.label }}</span>
@@ -496,7 +553,13 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
     <p class="mb-4 text-sm text-muted-foreground">{{ t('admin.applications.pluginsHint') }}</p>
 
     <div v-if="plugins.length" class="grid gap-3">
-      <a-card v-for="plugin in plugins" :key="plugin.id" :bordered="true" hoverable>
+      <a-card
+        v-for="plugin in plugins"
+        :key="plugin.id"
+        :bordered="false"
+        class="bg-[var(--color-fill-1)]"
+        hoverable
+      >
         <template #title>
           <div class="flex flex-wrap items-center gap-2">
             <span>{{ plugin.name }}</span>
@@ -546,7 +609,12 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
 
         <div v-if="Object.keys(plugin.requires).length" class="mt-3">
           <p class="text-xs font-medium">{{ t('admin.applications.pluginDependencies') }}</p>
-          <a-descriptions class="mt-1" :column="1" size="small" bordered>
+          <a-descriptions
+            class="mt-1"
+            :column="{ xs: 1, sm: 2 }"
+            layout="vertical"
+            :bordered="false"
+          >
             <a-descriptions-item
               v-for="(requirement, dependency) in plugin.requires"
               :key="dependency"
@@ -577,7 +645,12 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
     <h2 class="mb-1 text-lg font-semibold">{{ t('admin.applications.diagnosticsTitle') }}</h2>
     <p class="mb-4 text-sm text-muted-foreground">{{ t('admin.applications.diagnosticsHint') }}</p>
     <div class="overflow-x-auto">
-      <a-table :data="pluginDiagnostics" :pagination="false" :bordered="true" size="small">
+      <a-table
+        :data="pluginDiagnostics"
+        :pagination="false"
+        :bordered="false"
+        :scroll="{ minWidth: 920 }"
+      >
         <template #columns>
           <a-table-column :title="t('admin.applications.diagnosticLevel')" data-index="level" :width="110">
             <template #cell="{ record }">
@@ -616,7 +689,12 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
     <h2 class="mb-1 text-lg font-semibold">{{ t('admin.applications.extensionsTitle') }}</h2>
     <p class="mb-4 text-sm text-muted-foreground">{{ t('admin.applications.extensionsHint') }}</p>
     <div class="grid gap-3">
-      <a-card v-for="item in extensions" :key="item.id" :bordered="true">
+      <a-card
+        v-for="item in extensions"
+        :key="item.id"
+        :bordered="false"
+        class="bg-[var(--color-fill-1)]"
+      >
         <template #title>
           <div class="flex flex-wrap items-center gap-2">
             <span>{{ item.label }}</span>
@@ -637,4 +715,80 @@ function uninstallPlugin(plugin: MarketplacePlugin) {
       </a-card>
     </div>
   </section>
+
+  <a-modal
+    v-model:visible="uninstallModalVisible"
+    :title="t('admin.applications.marketplace.uninstallConfirmTitle')"
+    :footer="false"
+    :mask-closable="!uninstallSubmitting"
+    :esc-to-close="!uninstallSubmitting"
+    :width="'min(620px, calc(100vw - 32px))'"
+  >
+    <a-alert
+      type="error"
+      show-icon
+      :closable="false"
+      :title="t('admin.applications.marketplace.uninstallRiskTitle')"
+      class="mb-5"
+    >
+      {{
+        t('admin.applications.marketplace.uninstallConfirmMessage', {
+          plugin: uninstallTarget?.name || uninstallTarget?.id,
+        })
+      }}
+    </a-alert>
+
+    <a-descriptions
+      v-if="uninstallTarget"
+      class="mb-4"
+      :column="{ xs: 1, sm: 2 }"
+      layout="vertical"
+      :bordered="false"
+      size="small"
+    >
+      <a-descriptions-item :label="t('admin.applications.marketplace.version')">
+        {{ uninstallTarget.version }}
+      </a-descriptions-item>
+      <a-descriptions-item :label="t('admin.applications.marketplace.checksum')">
+        <span class="break-all font-mono text-xs">{{ uninstallTarget.sha256 }}</span>
+      </a-descriptions-item>
+    </a-descriptions>
+
+    <a-form :model="{ confirmation: uninstallConfirmation }" layout="vertical">
+      <a-form-item
+        field="confirmation"
+        :label="t('admin.applications.marketplace.uninstallConfirmationLabel')"
+        required
+      >
+        <a-input
+          v-model="uninstallConfirmation"
+          :placeholder="uninstallTarget?.id"
+          :disabled="uninstallSubmitting"
+          autocomplete="off"
+        />
+        <template #extra>
+          {{
+            t('admin.applications.marketplace.uninstallConfirmationHint', {
+              plugin: uninstallTarget?.id,
+            })
+          }}
+        </template>
+      </a-form-item>
+    </a-form>
+
+    <div class="flex flex-wrap justify-end gap-2 pt-2">
+      <a-button :disabled="uninstallSubmitting" @click="closeUninstall">
+        {{ t('admin.ui.cancel') }}
+      </a-button>
+      <a-button
+        type="primary"
+        status="danger"
+        :loading="uninstallSubmitting"
+        :disabled="!canUninstall"
+        @click="submitUninstall"
+      >
+        {{ t('admin.applications.marketplace.uninstall') }}
+      </a-button>
+    </div>
+  </a-modal>
 </template>

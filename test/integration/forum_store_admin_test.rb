@@ -61,6 +61,10 @@ end
 class StoreIntegrationTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
+    Payments::ProviderConfig.find_or_initialize_by(provider: "fake").tap do |config|
+      config.enabled = true
+      config.save!
+    end
     @product = Commerce::Product.find_or_create_by!(slug: "test-item") do |p|
       p.name = "Test Item"
       p.product_type = "currency"

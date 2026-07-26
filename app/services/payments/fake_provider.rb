@@ -2,7 +2,7 @@
 
 module Payments
   class FakeProvider < Provider
-    def create_payment(payment_record)
+    def create_payment(payment_record, return_url_base: nil)
       provider_payment_id = "fake_#{SecureRandom.alphanumeric(16)}"
       payment_record.update!(provider_payment_id: provider_payment_id)
       ServiceResult.success(payment_record: payment_record, checkout_url: "#{Mcweb::Paths::APP_PREFIX}/payments/fake/#{provider_payment_id}")
@@ -21,7 +21,12 @@ module Payments
         provider: "fake",
         provider_payment_id: event.payload.dig("payment_id")
       )
-      return ServiceResult.failure(error: "Payment record not found.") unless payment_record
+      unless payment_record
+        return ServiceResult.failure(
+          error: "Payment record not found.",
+          code: "payment_not_found"
+        )
+      end
 
       result = Commerce::ConfirmPayment.call(
         payment_record: payment_record,
@@ -33,7 +38,12 @@ module Payments
     end
 
     def process_refund(refund)
-      ServiceResult.success(refund)
+      ServiceResult.success(
+        refund: refund,
+        provider_refund_id: "fake_refund_#{refund.id}",
+        provider_status: "succeeded",
+        provider_metadata: {}
+      )
     end
 
     private

@@ -3,6 +3,7 @@
 require "ipaddr"
 require "net/http"
 require "uri"
+require_relative "mcweb/developer_mode_capture"
 
 module UrlSafety
   BLOCKED_HOSTS = %w[localhost metadata.google.internal 169.254.169.254].freeze
@@ -52,6 +53,7 @@ module UrlSafety
     uri = URI.parse(url.to_s.strip)
     return false unless uri.is_a?(URI::HTTP) && uri.host.present?
     return false unless uri.userinfo.blank?
+    return true if developer_mode_allows_private_targets?
 
     host = normalized_host(uri)
     return false if blocked_host?(host)
@@ -68,11 +70,14 @@ module UrlSafety
     return nil unless uri.is_a?(URI::HTTP) && uri.host.present? && uri.userinfo.blank?
 
     host = normalized_host(uri)
-    return nil if blocked_host?(host)
+    allow_private_targets = developer_mode_allows_private_targets?
+    return nil if !allow_private_targets && blocked_host?(host)
 
     addresses = resolved_addresses(host)
     return nil if addresses.empty?
-    return nil unless addresses.all? { |address| public_ip?(address) }
+    unless allow_private_targets
+      return nil unless addresses.all? { |address| public_ip?(address) }
+    end
 
     http = build_pinned_http(uri, addresses, open_timeout:, read_timeout:)
 
@@ -87,12 +92,23 @@ module UrlSafety
   def safe_http_post(uri, body:, open_timeout: 5, read_timeout: 10, headers: {})
     return nil unless uri.is_a?(URI::HTTP) && uri.host.present? && uri.userinfo.blank?
 
+    if developer_mode_captures_outbound_webhooks?
+      return Mcweb::DeveloperModeCapture.capture_webhook!(
+        uri: uri,
+        body: body,
+        headers: headers
+      )
+    end
+
     host = normalized_host(uri)
-    return nil if blocked_host?(host)
+    allow_private_targets = developer_mode_allows_private_targets?
+    return nil if !allow_private_targets && blocked_host?(host)
 
     addresses = resolved_addresses(host)
     return nil if addresses.empty?
-    return nil unless addresses.all? { |address| public_ip?(address) }
+    unless allow_private_targets
+      return nil unless addresses.all? { |address| public_ip?(address) }
+    end
 
     http = build_pinned_http(uri, addresses, open_timeout:, read_timeout:)
 
@@ -114,6 +130,19 @@ module UrlSafety
     uri.host.to_s.downcase.delete_prefix("[").delete_suffix("]").delete_suffix(".")
   end
   private_class_method :normalized_host
+
+  def developer_mode_allows_private_targets?
+    defined?(Mcweb::DeveloperMode) &&
+      Mcweb::DeveloperMode.allow?(:allow_http_private_networks)
+  end
+  private_class_method :developer_mode_allows_private_targets?
+
+  def developer_mode_captures_outbound_webhooks?
+    defined?(Mcweb::DeveloperMode) &&
+      Mcweb::DeveloperMode.enabled? &&
+      Mcweb::DeveloperMode.integration(:outbound_webhooks) == :capture
+  end
+  private_class_method :developer_mode_captures_outbound_webhooks?
 
   def blocked_host?(host)
     host.blank? ||

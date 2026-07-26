@@ -63,10 +63,12 @@ module Api
           tag_names: permitted[:tag_names],
           prefix: permitted[:prefix],
           custom_fields: permitted[:custom_fields],
+          idempotency_key: request.headers["Idempotency-Key"].presence || permitted[:idempotency_key],
           ip_address: request.remote_ip
         )
         return render_service_error(result) if result.failure?
 
+        response.set_header("Idempotency-Key", request.headers["Idempotency-Key"]) if request.headers["Idempotency-Key"].present?
         render json: { data: serialize_topic(result.value) }, status: :created
       end
 
@@ -109,7 +111,7 @@ module Api
       private
 
       def topic_create_params
-        params.permit(:section_id, :title, :body, :prefix, tag_names: [], custom_fields: {})
+        params.permit(:section_id, :title, :body, :prefix, :idempotency_key, tag_names: [], custom_fields: {})
       end
     end
   end

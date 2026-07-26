@@ -13,6 +13,11 @@ const pages = import.meta.glob<DefineComponent>('../pages/Admin/**/*.vue')
 
 const i18n = createAppI18n()
 
+function inertiaTitle(title: string): string {
+  const prefix = document.documentElement.dataset.developerMode === 'true' ? '[DEV] ' : ''
+  return `${prefix}${title || 'Mcweb Admin'}`
+}
+
 router.on('before', (event) => {
   const headers = csrfHeaders()
   if (Object.keys(headers).length === 0) return
@@ -37,6 +42,7 @@ document.addEventListener('inertia:success', (event) => {
 syncCsrfMetaTag()
 
 createInertiaApp({
+  title: inertiaTitle,
   setup({ el, App, props, plugin }) {
     const initialPage = (props as { initialPage?: { props?: Record<string, unknown> } }).initialPage
     const token = initialPage?.props?.csrf_token

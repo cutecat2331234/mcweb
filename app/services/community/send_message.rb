@@ -2,13 +2,21 @@
 
 module Community
   class SendMessage < ApplicationService
-    def initialize(user:, conversation:, body:)
+    def initialize(user:, conversation:, body:, ip_address: nil)
       @user = user
       @conversation = conversation
       @body = body.to_s.strip
+      @ip_address = ip_address
     end
 
     def call
+      rate_limit_result = Administration::AbuseRateLimit.call(
+        action: :private_message,
+        account: @user,
+        ip_address: @ip_address
+      )
+      return rate_limit_result if rate_limit_result.failure?
+
       return ServiceResult.failure(error: "Not a participant.") unless participant?
       return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
       return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@user)

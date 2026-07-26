@@ -11,6 +11,8 @@ export type PendingAttachment = {
   filename: string
   human_size: string
   download_url: string
+  scan_status?: string
+  scan_status_url?: string
 }
 
 const props = defineProps<{
@@ -25,6 +27,7 @@ const { t } = useI18n()
 const page = usePage()
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
+const scanning = ref(false)
 const error = ref('')
 
 const canUpload = () => {
@@ -58,11 +61,53 @@ async function onFileChange(event: Event) {
       error.value = data.error || t('components.attachmentUpload.uploadFailed')
       return
     }
-    emit('uploaded', data as PendingAttachment)
+    const attachment = data as PendingAttachment
+    if (attachment.scan_status === 'clean') {
+      emit('uploaded', attachment)
+      return
+    }
+
+    const scannedAttachment = await waitForCleanScan(attachment)
+    if (scannedAttachment) emit('uploaded', scannedAttachment)
+  } catch {
+    error.value = t('components.attachmentUpload.uploadFailed')
   } finally {
+    scanning.value = false
     uploading.value = false
     input.value = ''
   }
+}
+
+async function waitForCleanScan(attachment: PendingAttachment) {
+  if (!attachment.scan_status_url) {
+    error.value = t('components.attachmentUpload.scanFailed')
+    return null
+  }
+
+  scanning.value = true
+  for (let attempt = 0; attempt < 90; attempt += 1) {
+    await new Promise((resolve) => window.setTimeout(resolve, 1000))
+    const response = await fetch(attachment.scan_status_url, {
+      headers: { Accept: 'application/json' },
+      credentials: 'same-origin',
+    })
+    if (!response.ok) {
+      error.value = t('components.attachmentUpload.scanFailed')
+      return null
+    }
+
+    const status = await response.json()
+    if (status.scan_status === 'clean' && status.attachment) {
+      return status.attachment as PendingAttachment
+    }
+    if (status.scan_status === 'infected' || (status.scan_status === 'error' && !status.retryable)) {
+      error.value = t('components.attachmentUpload.scanFailed')
+      return null
+    }
+  }
+
+  error.value = t('components.attachmentUpload.scanTimeout')
+  return null
 }
 </script>
 
@@ -76,7 +121,13 @@ async function onFileChange(event: Event) {
       @change="onFileChange"
     >
     <Button type="button" variant="outline" size="sm" :disabled="uploading || disabled" @click="openPicker">
-      {{ uploading ? t('components.attachmentUpload.uploading') : t('components.attachmentUpload.addAttachment') }}
+      {{
+        scanning
+          ? t('components.attachmentUpload.scanning')
+          : uploading
+            ? t('components.attachmentUpload.uploading')
+            : t('components.attachmentUpload.addAttachment')
+      }}
     </Button>
     <p v-if="error" class="text-xs text-destructive">{{ error }}</p>
   </div>

@@ -25,6 +25,8 @@ module Community
     end
 
     def trust_allowed?(user, action)
+      return true if user && Mcweb::DeveloperMode.allow?(:skip_anti_spam)
+
       min_level = case action.to_sym
       when :create_topic then min_trust_level_create.to_i
       when :reply then min_trust_level_reply.to_i

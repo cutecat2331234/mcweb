@@ -104,16 +104,21 @@ class Payments::WebhookProcessorTest < ActiveSupport::TestCase
   end
 
   test "stripe ignores non-payment webhook events" do
-    Payments::ProviderConfig.create!(
-      provider: "stripe",
-      enabled: true,
-      credentials: { "webhook_secret" => "whsec_test" }
-    )
+    Payments::ProviderConfig.find_or_initialize_by(provider: "stripe").tap do |config|
+      config.enabled = true
+      config.mode = "test"
+      config.credentials = {
+        "secret_key" => "sk_test_core_webhook",
+        "webhook_secret" => "whsec_test"
+      }
+      config.save!
+      mark_stripe_provider_connection_tested!(config)
+    end
     payload = {
       type: "charge.refunded",
       data: { object: { id: "ch_123", metadata: { payment_record_id: @payment.id.to_s } } }
     }.to_json
-    signature = OpenSSL::HMAC.hexdigest("SHA256", "whsec_test", payload)
+    signature = stripe_webhook_signature(payload, "whsec_test")
 
     result = Payments::WebhookProcessor.call(
       provider: "stripe",

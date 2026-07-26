@@ -35,6 +35,9 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install libvips
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
@@ -89,16 +92,26 @@ jobs:
       DATABASE_URL: postgres://postgres:postgres@localhost:5432/mcweb_test
     steps:
       - uses: actions/checkout@v6
+      - name: Install libvips
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0.6"
           bundler-cache: true
+      - name: Verify libvips JPEG support
+        run: bundle exec ruby scripts/check-libvips-jpeg.rb
       - uses: actions/setup-node@v6
         with:
           node-version: "26"
           cache: npm
+      - name: Check Rails locale parity
+        run: bundle exec ruby scripts/check-rails-i18n.rb
       - name: Install JavaScript dependencies
         run: npm ci
+      - name: Check frontend locale parity and TypeScript
+        run: npm run check:i18n && npm run typecheck
+      - name: Run JavaScript contract tests
+        run: npm run test:javascript
       - name: Build Tailwind CSS
         run: bundle exec rails tailwindcss:build
       - name: Build Vite test assets
@@ -136,11 +149,17 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v6
 
+      - name: Install libvips
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
+
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0.6"
           bundler-cache: true
+
+      - name: Verify libvips JPEG support
+        run: bundle exec ruby scripts/check-libvips-jpeg.rb
 
       - name: Set up Node
         uses: actions/setup-node@v6
@@ -167,4 +186,3 @@ jobs:
             public/template-starter
           retention-days: 30
           if-no-files-found: error
-

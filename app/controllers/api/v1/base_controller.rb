@@ -50,6 +50,14 @@ module Api
       end
 
       def render_service_error(result)
+        if result.rate_limited?
+          apply_retry_after_header(result)
+          return render(
+            json: { error: "rate_limited", message: service_error_message(result) },
+            status: :too_many_requests
+          )
+        end
+
         render json: { error: "unprocessable", message: service_error_message(result) }, status: :unprocessable_entity
       end
 
@@ -82,7 +90,7 @@ module Api
         )
         return if result.success?
 
-        render_error("rate_limited", status: :too_many_requests)
+        render_service_error(result)
       end
 
       def api_rate_limit

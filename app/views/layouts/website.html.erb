@@ -1,8 +1,11 @@
 <!DOCTYPE html>
-<html lang="<%= I18n.locale %>" data-controller="theme">
+<html lang="<%= I18n.locale %>" data-controller="theme" data-developer-mode="<%= Mcweb::DeveloperMode.enabled? %>">
   <head>
-    <title><%= content_for(:title) || "Mcweb" %></title>
+    <title><%= "[DEV] " if Mcweb::DeveloperMode.enabled? %><%= content_for(:title) || "Mcweb" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
+    <% if Mcweb::DeveloperMode.enabled? %>
+      <meta name="robots" content="noindex, nofollow">
+    <% end %>
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
     <%= render "shared/tech_fingerprint" %>
@@ -17,6 +20,7 @@
   </head>
 
   <body>
+    <%= render "shared/developer_mode_banner" %>
     <header class="border-b" style="border-color: var(--mc-border)">
       <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
         <%= link_to "Mcweb", root_path, class: "text-lg font-semibold no-underline" %>

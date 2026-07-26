@@ -2,13 +2,21 @@
 
 module Community
   class CreateConversation < ApplicationService
-    def initialize(sender:, recipient_username:, body:)
+    def initialize(sender:, recipient_username:, body:, ip_address: nil)
       @sender = sender
       @recipient = User.find_by(username: recipient_username.to_s.strip)
       @body = body.to_s.strip
+      @ip_address = ip_address
     end
 
     def call
+      rate_limit_result = Administration::AbuseRateLimit.call(
+        action: :private_message,
+        account: @sender,
+        ip_address: @ip_address
+      )
+      return rate_limit_result if rate_limit_result.failure?
+
       return ServiceResult.failure(error: "Recipient not found.") unless @recipient
       return ServiceResult.failure(error: "You cannot message yourself.") if @sender.id == @recipient.id
       return ServiceResult.failure(error: "You cannot message this user.") if Community::UserBlock.blocked?(@sender, @recipient)

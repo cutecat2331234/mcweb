@@ -8,12 +8,6 @@ import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Textarea from '@/components/ui/Textarea.vue'
-import Table from '@/components/ui/Table.vue'
-import TableBody from '@/components/ui/TableBody.vue'
-import TableCell from '@/components/ui/TableCell.vue'
-import TableHead from '@/components/ui/TableHead.vue'
-import TableHeader from '@/components/ui/TableHeader.vue'
-import TableRow from '@/components/ui/TableRow.vue'
 import Select from '@/components/ui/Select.vue'
 import Checkbox from '@/components/ui/Checkbox.vue'
 import Radio from '@/components/ui/Radio.vue'
@@ -296,88 +290,159 @@ onMounted(() => {
 <template>
   <PageHeader :title="t('commerce.checkout.title')" />
 
-  <p v-if="belowMinCheckout && minCheckoutLabel" class="mb-4 rounded-md border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+  <p
+    v-if="belowMinCheckout && minCheckoutLabel"
+    role="alert"
+    class="
+      mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3
+      text-sm leading-6 text-amber-900 dark:text-amber-100
+    "
+  >
     {{ t('commerce.checkout.belowMinCheckout', { amount: minCheckoutLabel }) }}
   </p>
 
-  <div v-if="items.length" class="max-w-2xl space-y-6">
-    <div class="rounded-lg border">
-      <Table>
-        <TableHeader><TableRow><TableHead>{{ t('commerce.checkout.product') }}</TableHead><TableHead>{{ t('commerce.checkout.quantity') }}</TableHead><TableHead>{{ t('commerce.checkout.lineTotal') }}</TableHead></TableRow></TableHeader>
-        <TableBody>
-          <TableRow v-for="(item, index) in items" :key="index">
-            <TableCell>
-              {{ item.product_name }}
-              <span v-if="item.variant_name" class="ml-1 text-xs text-muted-foreground">({{ item.variant_name }})</span>
-            </TableCell>
-            <TableCell>{{ item.quantity }}</TableCell>
-            <TableCell>{{ item.total_label }}</TableCell>
-          </TableRow>
-        </TableBody>
-      </Table>
-    </div>
-
-    <div class="space-y-1 text-sm">
-      <p>{{ t('commerce.checkout.subtotal', { amount: subtotalLabel }) }}</p>
-      <p v-if="storeFeatures.shipping && shippingLabel">{{ t('commerce.checkout.shipping', { amount: freeShipping ? t('commerce.checkout.freeShipping') : shippingLabel }) }}</p>
-      <p v-if="storeFeatures.shipping && freeShippingRemainingLabel" class="text-xs text-amber-600">{{ t('commerce.checkout.freeShippingRemaining', { remaining: freeShippingRemainingLabel }) }}</p>
-      <p v-if="discountLabel" class="text-green-600">{{ t('commerce.checkout.discount', { amount: discountLabel }) }}</p>
-      <p v-if="giftCardLabel" class="text-green-600">{{ t('commerce.checkout.giftCard', { amount: giftCardLabel }) }}</p>
-      <p v-if="storeCreditBalanceLabel" class="text-muted-foreground">{{ t('commerce.checkout.storeCreditBalance', { amount: storeCreditBalanceLabel }) }}</p>
-      <p v-if="storeCreditLabel" class="text-green-600">{{ t('commerce.checkout.storeCreditApplied', { amount: storeCreditLabel }) }}</p>
-      <p class="font-medium">{{ t('commerce.checkout.total', { amount: totalLabel }) }}</p>
-    </div>
-
-    <label v-if="storeCreditBalanceCents" class="flex items-center gap-2 text-sm">
-      <Checkbox
-        :model-value="form.checkout.use_store_credit"
-        @update:model-value="updateUseStoreCredit"
-      />
-      {{ t('commerce.checkout.useStoreCredit') }}
-    </label>
-
-    <p v-if="couponAutoApplied && pendingCouponCode" class="text-sm text-green-700">
-      {{ t('commerce.checkout.couponAutoApplied', { code: pendingCouponCode }) }}
-    </p>
-
-    <form class="space-y-4" @submit.prevent="form.post(routes.storeCheckout)">
-      <div class="space-y-2">
-        <Label for="coupon">{{ t('commerce.checkout.coupon') }}</Label>
-        <div class="flex gap-2">
-          <Input id="coupon" v-model="form.checkout.coupon_code" :placeholder="t('commerce.checkout.couponPlaceholder')" class="flex-1" />
-          <Button type="button" variant="outline" :disabled="previewing" @click="previewCoupon">{{ t('commerce.checkout.validate') }}</Button>
+  <div
+    v-if="items.length"
+    class="grid gap-8 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start"
+  >
+    <form
+      id="checkout-form"
+      class="min-w-0 overflow-hidden rounded-xl border border-border bg-card shadow-sm"
+      @submit.prevent="form.post(routes.storeCheckout)"
+    >
+      <section class="space-y-5 p-4 sm:p-6" aria-labelledby="discount-codes-heading">
+        <div class="space-y-1">
+          <h2 id="discount-codes-heading" class="text-lg font-semibold">
+            {{ t('commerce.checkout.discountCodes') }}
+          </h2>
+          <p
+            v-if="couponAutoApplied && pendingCouponCode"
+            role="status"
+            class="text-sm text-green-700 dark:text-green-400"
+          >
+            {{ t('commerce.checkout.couponAutoApplied', { code: pendingCouponCode }) }}
+          </p>
         </div>
-        <p v-if="couponMessage" class="text-sm text-green-600">{{ couponMessage }}</p>
-        <p v-if="couponMinAmountHint" class="text-xs text-muted-foreground">{{ couponMinAmountHint }}</p>
-        <p v-if="couponRemainingHint" class="text-xs text-amber-600">{{ couponRemainingHint }}</p>
-        <p v-if="couponError" class="text-sm text-destructive">{{ couponError }}</p>
-      </div>
 
-      <div class="space-y-2">
-        <Label for="gift_card">{{ t('commerce.checkout.giftCardLabel') }}</Label>
-        <div class="flex gap-2">
-          <Input id="gift_card" v-model="form.checkout.gift_card_code" :placeholder="t('commerce.checkout.giftCardPlaceholder')" class="flex-1" />
-          <Button type="button" variant="outline" :disabled="previewingGiftCard" @click="previewGiftCard">{{ t('commerce.checkout.validate') }}</Button>
+        <div class="grid gap-6 md:grid-cols-2">
+          <div class="space-y-3">
+            <Label for="coupon">{{ t('commerce.checkout.coupon') }}</Label>
+            <Input
+              id="coupon"
+              v-model="form.checkout.coupon_code"
+              autocomplete="off"
+              :placeholder="t('commerce.checkout.couponPlaceholder')"
+              aria-describedby="checkout-coupon-status"
+              :aria-invalid="!!couponError"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              :disabled="previewing || !form.checkout.coupon_code.trim()"
+              :aria-busy="previewing"
+              @click="previewCoupon"
+            >
+              {{ previewing ? t('commerce.checkout.validating') : t('commerce.checkout.validate') }}
+            </Button>
+            <div id="checkout-coupon-status" aria-live="polite" class="space-y-1">
+              <p v-if="couponMessage" class="text-sm text-green-600 dark:text-green-400">
+                {{ couponMessage }}
+              </p>
+              <p v-if="couponMinAmountHint" class="text-xs leading-5 text-muted-foreground">
+                {{ couponMinAmountHint }}
+              </p>
+              <p
+                v-if="couponRemainingHint"
+                class="text-xs leading-5 text-amber-600 dark:text-amber-400"
+              >
+                {{ couponRemainingHint }}
+              </p>
+              <p v-if="couponError" role="alert" class="text-sm text-destructive">{{ couponError }}</p>
+            </div>
+          </div>
+
+          <div class="space-y-3">
+            <Label for="gift_card">{{ t('commerce.checkout.giftCardLabel') }}</Label>
+            <Input
+              id="gift_card"
+              v-model="form.checkout.gift_card_code"
+              autocomplete="off"
+              :placeholder="t('commerce.checkout.giftCardPlaceholder')"
+              aria-describedby="checkout-gift-card-status"
+              :aria-invalid="!!giftCardError"
+            />
+            <Button
+              type="button"
+              variant="outline"
+              :disabled="previewingGiftCard || !form.checkout.gift_card_code.trim()"
+              :aria-busy="previewingGiftCard"
+              @click="previewGiftCard"
+            >
+              {{ previewingGiftCard ? t('commerce.checkout.validating') : t('commerce.checkout.validate') }}
+            </Button>
+            <div id="checkout-gift-card-status" aria-live="polite" class="space-y-1">
+              <p v-if="giftCardMessage" class="text-sm text-green-600 dark:text-green-400">
+                {{ giftCardMessage }}
+              </p>
+              <p v-if="giftCardError" role="alert" class="text-sm text-destructive">{{ giftCardError }}</p>
+            </div>
+          </div>
         </div>
-        <p v-if="giftCardMessage" class="text-sm text-green-600">{{ giftCardMessage }}</p>
-        <p v-if="giftCardError" class="text-sm text-destructive">{{ giftCardError }}</p>
-      </div>
+      </section>
 
-      <div v-if="showShipping && shippingMethods?.length" class="space-y-2 rounded-lg border p-4">
-        <p class="text-sm font-medium">{{ t('commerce.checkout.shippingMethods') }}</p>
-        <label v-for="method in shippingMethods" :key="method.code" class="flex cursor-pointer items-center gap-2 text-sm">
-          <Radio v-model="form.checkout.shipping_method" name="shipping_method" :value="method.code" />
-          {{ method.label_with_price }}
-        </label>
-        <p v-if="selectedShippingEstimate" class="text-xs text-muted-foreground">
+      <fieldset
+        v-if="showShipping && shippingMethods?.length"
+        class="space-y-4 border-t border-border p-4 sm:p-6"
+      >
+        <legend class="sr-only">{{ t('commerce.checkout.shippingMethods') }}</legend>
+        <h2 class="text-lg font-semibold">{{ t('commerce.checkout.shippingMethods') }}</h2>
+        <div class="space-y-1">
+          <label
+            v-for="method in shippingMethods"
+            :key="method.code"
+            class="flex cursor-pointer items-start gap-3 rounded-lg px-3 py-3 text-sm transition-colors"
+            :class="
+              form.checkout.shipping_method === method.code
+                ? 'bg-primary/10 text-foreground'
+                : 'hover:bg-muted/60'
+            "
+          >
+            <Radio
+              v-model="form.checkout.shipping_method"
+              name="shipping_method"
+              :value="method.code"
+              class="mt-0.5"
+            />
+            <span class="min-w-0 flex-1">{{ method.label_with_price }}</span>
+          </label>
+        </div>
+        <p v-if="selectedShippingEstimate" class="text-sm text-muted-foreground">
           {{ t('commerce.checkout.deliveryEstimate', { estimate: selectedShippingEstimate }) }}
         </p>
-      </div>
-      <div v-if="showShipping" class="space-y-3 rounded-lg border p-4">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h2 class="text-sm font-semibold">{{ t('commerce.checkout.shippingAddress') }}</h2>
-          <Link v-if="shippingAddressesUrl" :href="shippingAddressesUrl" class="text-xs text-primary hover:underline">{{ t('commerce.checkout.manageAddresses') }}</Link>
+      </fieldset>
+
+      <section
+        v-if="showShipping"
+        class="space-y-5 border-t border-border p-4 sm:p-6"
+        aria-labelledby="shipping-address-heading"
+      >
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 id="shipping-address-heading" class="text-lg font-semibold">
+            {{ t('commerce.checkout.shippingAddress') }}
+          </h2>
+          <Link
+            v-if="shippingAddressesUrl"
+            :href="shippingAddressesUrl"
+            class="
+              rounded-sm text-sm font-medium text-primary underline-offset-4
+              hover:underline focus-visible:outline-none focus-visible:ring-2
+              focus-visible:ring-ring
+            "
+          >
+            {{ t('commerce.checkout.manageAddresses') }}
+          </Link>
         </div>
+
         <div v-if="savedAddresses?.length" class="space-y-2">
           <Label for="saved_address">{{ t('commerce.checkout.savedAddress') }}</Label>
           <Select
@@ -388,61 +453,205 @@ onMounted(() => {
             @update:model-value="updateSelectedAddressId"
           />
         </div>
-        <div class="grid gap-3 sm:grid-cols-2">
+
+        <div class="grid gap-4 sm:grid-cols-2">
           <div class="space-y-2">
             <Label for="ship_name">{{ t('commerce.checkout.recipient') }}</Label>
-            <Input id="ship_name" v-model="form.checkout.shipping_address.name" required />
+            <Input
+              id="ship_name"
+              v-model="form.checkout.shipping_address.name"
+              autocomplete="name"
+              required
+            />
           </div>
           <div class="space-y-2">
             <Label for="ship_phone">{{ t('commerce.checkout.phone') }}</Label>
-            <Input id="ship_phone" v-model="form.checkout.shipping_address.phone" required />
+            <Input
+              id="ship_phone"
+              v-model="form.checkout.shipping_address.phone"
+              type="tel"
+              autocomplete="tel"
+              required
+            />
           </div>
         </div>
+
         <div class="space-y-2">
           <Label for="ship_line1">{{ t('commerce.checkout.address') }}</Label>
-          <Input id="ship_line1" v-model="form.checkout.shipping_address.line1" required />
+          <Input
+            id="ship_line1"
+            v-model="form.checkout.shipping_address.line1"
+            autocomplete="address-line1"
+            required
+          />
         </div>
+
         <div class="space-y-2">
           <Label for="ship_line2">{{ t('commerce.checkout.addressLine2') }}</Label>
-          <Input id="ship_line2" v-model="form.checkout.shipping_address.line2" />
+          <Input
+            id="ship_line2"
+            v-model="form.checkout.shipping_address.line2"
+            autocomplete="address-line2"
+          />
         </div>
-        <div class="grid gap-3 sm:grid-cols-3">
+
+        <div class="grid gap-4 sm:grid-cols-3">
           <div class="space-y-2">
             <Label for="ship_province">{{ t('commerce.checkout.province') }}</Label>
-            <Input id="ship_province" v-model="form.checkout.shipping_address.province" required />
+            <Input
+              id="ship_province"
+              v-model="form.checkout.shipping_address.province"
+              autocomplete="address-level1"
+              required
+            />
           </div>
           <div class="space-y-2">
             <Label for="ship_city">{{ t('commerce.checkout.city') }}</Label>
-            <Input id="ship_city" v-model="form.checkout.shipping_address.city" required />
+            <Input
+              id="ship_city"
+              v-model="form.checkout.shipping_address.city"
+              autocomplete="address-level2"
+              required
+            />
           </div>
           <div class="space-y-2">
             <Label for="ship_postal">{{ t('commerce.checkout.postalCode') }}</Label>
-            <Input id="ship_postal" v-model="form.checkout.shipping_address.postal_code" />
+            <Input
+              id="ship_postal"
+              v-model="form.checkout.shipping_address.postal_code"
+              autocomplete="postal-code"
+            />
           </div>
         </div>
-      </div>
+      </section>
 
-      <label v-if="showGiftWrap" class="flex items-center gap-2 rounded-lg border p-4 text-sm">
-        <Checkbox v-model="form.checkout.gift_wrap" />
-        {{ t('commerce.checkout.giftWrap', { label: giftWrapLabel }) }}
-      </label>
+      <section
+        class="space-y-5 border-t border-border p-4 sm:p-6"
+        aria-labelledby="order-options-heading"
+      >
+        <h2 id="order-options-heading" class="text-lg font-semibold">
+          {{ t('commerce.checkout.orderOptions') }}
+        </h2>
 
-      <div class="space-y-2">
-        <Label for="notes">{{ t('commerce.checkout.notes') }}</Label>
-        <Textarea id="notes" v-model="form.checkout.notes" rows="2" :placeholder="t('commerce.checkout.notesPlaceholder')" />
-      </div>
+        <div v-if="showGiftWrap" class="flex items-start gap-3 rounded-lg bg-muted/50 p-3">
+          <Checkbox id="gift_wrap" v-model="form.checkout.gift_wrap" class="mt-0.5" />
+          <Label for="gift_wrap" class="cursor-pointer leading-5">
+            {{ t('commerce.checkout.giftWrap', { label: giftWrapLabel }) }}
+          </Label>
+        </div>
 
-      <div class="space-y-2">
-        <Label for="provider">{{ t('commerce.checkout.paymentMethod') }}</Label>
+        <div class="space-y-2">
+          <Label for="notes">{{ t('commerce.checkout.notes') }}</Label>
+          <Textarea
+            id="notes"
+            v-model="form.checkout.notes"
+            :rows="3"
+            :placeholder="t('commerce.checkout.notesPlaceholder')"
+          />
+        </div>
+      </section>
+
+      <section
+        class="space-y-3 border-t border-border p-4 sm:p-6"
+        aria-labelledby="payment-method-heading"
+      >
+        <h2 id="payment-method-heading" class="text-lg font-semibold">
+          {{ t('commerce.checkout.paymentMethod') }}
+        </h2>
+        <Label for="provider" class="sr-only">{{ t('commerce.checkout.paymentMethod') }}</Label>
         <Select id="provider" v-model="form.checkout.provider" :options="providerOptions" block />
-      </div>
-      <Button type="submit" :disabled="form.processing || belowMinCheckout">{{ t('commerce.checkout.payNow') }}</Button>
+      </section>
     </form>
+
+    <aside class="lg:sticky lg:top-20">
+      <section class="rounded-xl border border-border bg-card p-5 shadow-sm">
+        <h2 class="text-base font-semibold">{{ t('commerce.checkout.orderSummary') }}</h2>
+
+        <ul class="mt-4 divide-y border-y border-border">
+          <li
+            v-for="(item, index) in items"
+            :key="index"
+            class="flex items-start justify-between gap-4 py-3 text-sm"
+          >
+            <div class="min-w-0">
+              <p class="font-medium leading-5">{{ item.product_name }}</p>
+              <p v-if="item.variant_name" class="mt-0.5 text-xs leading-5 text-muted-foreground">
+                {{ item.variant_name }}
+              </p>
+              <p class="mt-0.5 text-xs text-muted-foreground">
+                {{ t('commerce.checkout.quantity') }} · {{ item.quantity }}
+              </p>
+            </div>
+            <p class="shrink-0 font-medium tabular-nums">{{ item.total_label }}</p>
+          </li>
+        </ul>
+
+        <div class="mt-4 space-y-2 text-sm leading-6">
+          <p>{{ t('commerce.checkout.subtotal', { amount: subtotalLabel }) }}</p>
+          <p v-if="storeFeatures.shipping && shippingLabel" class="text-muted-foreground">
+            {{
+              t('commerce.checkout.shipping', {
+                amount: freeShipping ? t('commerce.checkout.freeShipping') : shippingLabel,
+              })
+            }}
+          </p>
+          <p
+            v-if="storeFeatures.shipping && freeShippingRemainingLabel"
+            class="text-xs text-amber-600 dark:text-amber-400"
+          >
+            {{ t('commerce.checkout.freeShippingRemaining', { remaining: freeShippingRemainingLabel }) }}
+          </p>
+          <p v-if="discountLabel" class="text-green-600 dark:text-green-400">
+            {{ t('commerce.checkout.discount', { amount: discountLabel }) }}
+          </p>
+          <p v-if="giftCardLabel" class="text-green-600 dark:text-green-400">
+            {{ t('commerce.checkout.giftCard', { amount: giftCardLabel }) }}
+          </p>
+          <p v-if="storeCreditBalanceLabel" class="text-muted-foreground">
+            {{ t('commerce.checkout.storeCreditBalance', { amount: storeCreditBalanceLabel }) }}
+          </p>
+          <p v-if="storeCreditLabel" class="text-green-600 dark:text-green-400">
+            {{ t('commerce.checkout.storeCreditApplied', { amount: storeCreditLabel }) }}
+          </p>
+          <p aria-live="polite" class="border-t border-border pt-3 text-base font-semibold">
+            {{ t('commerce.checkout.total', { amount: totalLabel }) }}
+          </p>
+        </div>
+
+        <div
+          v-if="storeCreditBalanceCents"
+          class="mt-4 flex items-start gap-3 rounded-lg bg-muted/50 p-3 text-sm leading-5"
+        >
+          <Checkbox
+            id="use_store_credit"
+            :model-value="form.checkout.use_store_credit"
+            class="mt-0.5"
+            @update:model-value="updateUseStoreCredit"
+          />
+          <Label for="use_store_credit" class="cursor-pointer leading-5">
+            {{ t('commerce.checkout.useStoreCredit') }}
+          </Label>
+        </div>
+
+        <Button
+          type="submit"
+          form="checkout-form"
+          class="mt-5 w-full"
+          :disabled="form.processing || belowMinCheckout"
+          :aria-busy="form.processing"
+        >
+          {{ t('commerce.checkout.payNow') }}
+        </Button>
+        <Button as-child variant="ghost" class="mt-2 w-full">
+          <Link :href="routes.storeCart">{{ t('commerce.checkout.backToCart') }}</Link>
+        </Button>
+      </section>
+    </aside>
   </div>
 
-  <div v-else class="space-y-4">
+  <div v-else class="rounded-xl border border-dashed border-border px-6 py-12 text-center">
     <p class="text-sm text-muted-foreground">{{ t('commerce.checkout.emptyCart') }}</p>
-    <Button as-child variant="outline">
+    <Button as-child class="mt-5">
       <Link :href="routes.storeCart">{{ t('commerce.checkout.viewCart') }}</Link>
     </Button>
   </div>

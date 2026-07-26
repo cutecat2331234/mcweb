@@ -36,6 +36,24 @@ const auth = computed(
   () => (page.props.auth ?? { user: null }) as { user: { username: string } | null },
 )
 const { isDark, toggleTheme } = useTheme()
+const adminDemoEnabled = computed(() => page.props.admin_demo_enabled === true)
+const developerMode = computed(
+  () =>
+    (page.props.developer_mode ?? { enabled: false }) as {
+      enabled: boolean
+      profile?: string
+      production_environment?: boolean
+      workbench_access?: boolean
+    },
+)
+const developerModeMessage = computed(() =>
+  [
+    t('common.developerModeWarning'),
+    developerMode.value.production_environment
+      ? t('common.developerModeProductionWarning')
+      : null,
+  ].filter(Boolean).join(' '),
+)
 
 const STORAGE_KEY = 'mc-admin-arco-nav-open'
 const collapsed = ref(false)
@@ -49,7 +67,9 @@ const nav = computed<NavGroup[]>(() => [
       { label: t('admin.dashboard.title'), href: adminRoutes.dashboard },
       { label: t('admin.users'), href: adminRoutes.users },
       { label: t('admin.roles'), href: adminRoutes.roles },
-      { label: t('admin.arcoDemo'), href: adminRoutes.arcoDemo },
+      ...(adminDemoEnabled.value
+        ? [{ label: t('admin.arcoDemo'), href: adminRoutes.arcoDemo }]
+        : []),
     ],
   },
   {
@@ -107,6 +127,10 @@ const nav = computed<NavGroup[]>(() => [
       { label: t('admin.storeUserMemberships'), href: adminRoutes.storeUserMemberships },
       { label: t('admin.storeGiftCards'), href: adminRoutes.storeGiftCards },
       { label: t('admin.storeOrders'), href: adminRoutes.storeOrders },
+      { label: t('admin.storePaymentProviders'), href: adminRoutes.storePaymentProviders },
+      { label: t('admin.storePaymentOperations'), href: adminRoutes.storePaymentOperations },
+      { label: t('admin.storeLatePaymentCases'), href: adminRoutes.storeLatePaymentCases },
+      { label: t('admin.storePaymentReconciliations'), href: adminRoutes.storePaymentReconciliations },
       { label: t('admin.storeWebhookDeliveries'), href: adminRoutes.storeWebhookDeliveries },
       { label: t('admin.storeReviews'), href: adminRoutes.storeReviews },
       { label: t('admin.storeProductQuestions'), href: adminRoutes.storeProductQuestions },
@@ -131,8 +155,16 @@ const nav = computed<NavGroup[]>(() => [
       { label: t('admin.systemApiKeys'), href: adminRoutes.systemApiKeys },
       { label: t('admin.systemWebhookSubscriptions'), href: adminRoutes.systemWebhookSubscriptions },
       { label: t('admin.featureToggles.title'), href: adminRoutes.featureToggles },
+      { label: t('admin.rateLimits.title'), href: adminRoutes.rateLimits },
       { label: t('admin.applications.nav'), href: adminRoutes.applications },
+      { label: t('admin.pluginSettings.nav'), href: adminRoutes.pluginSettings },
       { label: t('admin.settings'), href: adminRoutes.settings },
+      ...(developerMode.value.workbench_access
+        ? [{
+            label: t('admin.developerWorkbench.nav'),
+            href: adminRoutes.developerWorkbench,
+          }]
+        : []),
       { label: t('admin.jobs'), href: adminRoutes.jobs },
     ],
   },
@@ -218,9 +250,9 @@ watch(isDark, syncArcoTheme, { immediate: true })
     {{ t('common.skipToContent', 'Skip to content') }}
   </a>
 
-  <a-layout class="arco-admin-layout min-h-dvh">
+  <a-layout class="arco-admin-layout">
     <a-layout-sider
-      class="arco-admin-sider hidden md:block"
+      class="arco-admin-sider"
       :collapsed="collapsed"
       :width="220"
       :collapsed-width="48"
@@ -252,15 +284,15 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <div v-show="!collapsed" class="arco-admin-sider__footer">
         <span v-if="auth.user">{{ auth.user.username }}</span>
         <span v-if="auth.user"> · </span>
-        <Link :href="adminRoutes.site">{{ t('common.backToSite') }}</Link>
+        <a :href="adminRoutes.site">{{ t('common.backToSite') }}</a>
       </div>
     </a-layout-sider>
 
-    <a-layout>
+    <a-layout class="arco-admin-body">
       <a-layout-header class="arco-admin-header">
         <div class="arco-admin-header__left">
           <a-button
-            class="md:hidden"
+            class="arco-admin-mobile-menu-trigger"
             type="text"
             :aria-label="t('common.openMenu')"
             @click="mobileNavOpen = true"
@@ -268,7 +300,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
             <template #icon><icon-menu-unfold /></template>
           </a-button>
           <a-button
-            class="hidden md:inline-flex"
+            class="arco-admin-collapse-trigger"
             type="text"
             :aria-label="collapsed ? t('common.openMenu') : t('common.close')"
             @click="collapsed = !collapsed"
@@ -278,7 +310,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
               <icon-menu-fold v-else />
             </template>
           </a-button>
-          <a-breadcrumb>
+          <a-breadcrumb class="arco-admin-breadcrumb">
             <a-breadcrumb-item>
               <Link :href="adminRoutes.dashboard">{{ t('common.adminPanel') }}</Link>
             </a-breadcrumb-item>
@@ -298,6 +330,19 @@ watch(isDark, syncArcoTheme, { immediate: true })
         </div>
       </a-layout-header>
 
+      <a-alert
+        v-if="developerMode.enabled"
+        class="arco-admin-developer-alert"
+        type="warning"
+        :title="t('common.developerMode')"
+        data-testid="developer-mode-banner"
+        role="alert"
+        show-icon
+        banner
+      >
+        {{ developerModeMessage }}
+      </a-alert>
+
       <a-layout-content id="admin-content" class="arco-admin-main" tabindex="-1">
         <div class="arco-admin-main__inner">
           <AdminFlashMessages />
@@ -316,36 +361,51 @@ watch(isDark, syncArcoTheme, { immediate: true })
     :aria-label="t('common.openMenu')"
     unmount-on-close
   >
-    <div class="arco-admin-brand arco-admin-brand--drawer">
-      <Link :href="adminRoutes.dashboard" class="arco-admin-brand__link" @click="mobileNavOpen = false">
-        <icon-command class="arco-admin-brand__icon" />
-        <span class="arco-admin-brand__text">McWeb Admin</span>
-      </Link>
-    </div>
-    <a-menu
-      :selected-keys="activeItemHref ? [activeItemHref] : []"
-      v-model:open-keys="openKeys"
-      @menu-item-click="onMenuClick"
-    >
-      <a-sub-menu v-for="group in nav" :key="group.key">
-        <template #icon><icon-book /></template>
-        <template #title>{{ group.label }}</template>
-        <a-menu-item v-for="item in group.items" :key="item.href">
-          {{ item.label }}
-        </a-menu-item>
-      </a-sub-menu>
-    </a-menu>
-    <div class="arco-admin-sider__footer">
-      <span v-if="auth.user">{{ auth.user.username }}</span>
-      <span v-if="auth.user"> · </span>
-      <Link :href="adminRoutes.site" @click="mobileNavOpen = false">{{ t('common.backToSite') }}</Link>
+    <div class="arco-admin-drawer">
+      <div class="arco-admin-brand arco-admin-brand--drawer">
+        <Link :href="adminRoutes.dashboard" class="arco-admin-brand__link" @click="mobileNavOpen = false">
+          <icon-command class="arco-admin-brand__icon" />
+          <span class="arco-admin-brand__text">McWeb Admin</span>
+        </Link>
+      </div>
+      <div class="arco-admin-drawer__menu">
+        <a-menu
+          :selected-keys="activeItemHref ? [activeItemHref] : []"
+          v-model:open-keys="openKeys"
+          @menu-item-click="onMenuClick"
+        >
+          <a-sub-menu v-for="group in nav" :key="group.key">
+            <template #icon><icon-book /></template>
+            <template #title>{{ group.label }}</template>
+            <a-menu-item v-for="item in group.items" :key="item.href">
+              {{ item.label }}
+            </a-menu-item>
+          </a-sub-menu>
+        </a-menu>
+      </div>
+      <div class="arco-admin-sider__footer">
+        <span v-if="auth.user">{{ auth.user.username }}</span>
+        <span v-if="auth.user"> · </span>
+        <a :href="adminRoutes.site" @click="mobileNavOpen = false">{{ t('common.backToSite') }}</a>
+      </div>
     </div>
   </a-drawer>
 </template>
 
 <style scoped>
 .arco-admin-layout {
+  height: 100dvh;
+  min-height: 100dvh;
+  overflow: hidden;
   background: var(--color-bg-1);
+}
+
+.arco-admin-body {
+  min-width: 0;
+  min-height: 0;
+  height: 100%;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .arco-admin-skip-link {
@@ -365,26 +425,37 @@ watch(isDark, syncArcoTheme, { immediate: true })
 }
 
 .arco-admin-sider {
-  position: sticky;
-  top: 0;
-  height: 100dvh;
+  height: 100%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  flex: 0 0 auto;
+  overflow: hidden;
   border-right: 1px solid var(--color-border-2);
   background: var(--color-bg-2);
 }
+.arco-admin-sider :deep(.arco-layout-sider-children) {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
 
 .arco-admin-brand {
+  flex: 0 0 60px;
   display: flex;
   align-items: center;
   height: 60px;
+  min-width: 0;
   padding: 0 16px;
   border-bottom: 1px solid var(--color-border-2);
 }
 .arco-admin-brand--drawer {
-  margin-bottom: 8px;
+  flex-basis: 60px;
 }
 .arco-admin-brand__link {
+  min-width: 0;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -394,17 +465,29 @@ watch(isDark, syncArcoTheme, { immediate: true })
   font-size: 15px;
 }
 .arco-admin-brand__icon {
+  flex: 0 0 auto;
   font-size: 22px;
   color: rgb(var(--primary-6));
 }
+.arco-admin-brand__text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 .arco-admin-sider__menu {
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.arco-admin-sider__menu :deep(.arco-menu-inner) {
+  overflow: visible;
 }
 
 .arco-admin-sider__footer {
+  flex: 0 0 auto;
+  min-width: 0;
   padding: 12px 16px;
   font-size: 12px;
   color: var(--color-text-3);
@@ -419,13 +502,25 @@ watch(isDark, syncArcoTheme, { immediate: true })
 }
 
 .arco-admin-header {
+  flex: 0 0 60px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   height: 60px;
+  min-width: 0;
   padding: 0 20px;
+  gap: 12px;
   background: var(--color-bg-2);
   border-bottom: 1px solid var(--color-border-2);
+}
+.arco-admin-header__left {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+}
+.arco-admin-header__right {
+  flex: 0 0 auto;
+  min-width: max-content;
 }
 .arco-admin-header__left,
 .arco-admin-header__right {
@@ -433,20 +528,182 @@ watch(isDark, syncArcoTheme, { immediate: true })
   align-items: center;
   gap: 8px;
 }
+.arco-admin-header :deep(.arco-btn) {
+  flex: 0 0 auto;
+}
+
+.arco-admin-breadcrumb {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.arco-admin-breadcrumb :deep(.arco-breadcrumb-item-label) {
+  display: inline-block;
+  max-width: clamp(72px, 14vw, 220px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  vertical-align: middle;
+  white-space: nowrap;
+}
+
+.arco-admin-developer-alert {
+  flex: 0 0 auto;
+  min-width: 0;
+  max-width: 100%;
+  border-radius: 0;
+}
+.arco-admin-developer-alert :deep(.arco-alert-body),
+.arco-admin-developer-alert :deep(.arco-alert-content) {
+  min-width: 0;
+}
+.arco-admin-developer-alert :deep(.arco-alert-description) {
+  overflow-wrap: anywhere;
+}
+
+.arco-admin-mobile-menu-trigger {
+  display: none;
+}
+
+.arco-admin-collapse-trigger {
+  display: inline-flex;
+}
 
 .arco-admin-main {
+  flex: 1 1 auto;
   min-width: 0;
+  min-height: 0;
   padding: 24px;
   overflow: auto;
+  overscroll-behavior: contain;
 }
 .arco-admin-main__inner {
+  width: 100%;
+  min-width: 0;
   max-width: 1200px;
   margin: 0 auto;
+}
+
+.arco-admin-drawer {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
+}
+.arco-admin-drawer__menu {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.arco-admin-drawer__menu :deep(.arco-menu-inner) {
+  overflow: visible;
+}
+
+@media (max-width: 1279px) {
+  .arco-admin-header {
+    padding-inline: 16px;
+  }
+
+  .arco-admin-main {
+    padding: 20px;
+  }
+}
+
+@media (max-width: 1099px) {
+  .arco-admin-sider {
+    display: none !important;
+  }
+
+  .arco-admin-mobile-menu-trigger {
+    display: inline-flex !important;
+  }
+
+  .arco-admin-collapse-trigger {
+    display: none !important;
+  }
+
+  .arco-admin-main :deep(.arco-page-header),
+  .arco-admin-main :deep(.arco-page-header-wrapper),
+  .arco-admin-main :deep(.arco-page-header-header),
+  .arco-admin-main :deep(.arco-page-header-main),
+  .arco-admin-main :deep(.arco-page-header-extra) {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .arco-admin-main :deep(.arco-page-header) {
+    padding: 8px 0;
+  }
+
+  .arco-admin-main :deep(.arco-page-header-header) {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-inline: 0;
+  }
+
+  .arco-admin-main :deep(.arco-page-header-main) {
+    flex: 1 1 100%;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .arco-admin-main :deep(.arco-page-header-divider) {
+    display: none;
+  }
+
+  .arco-admin-main :deep(.arco-page-header-subtitle) {
+    width: 100%;
+    margin-top: 4px;
+    overflow: visible;
+    line-height: 20px;
+    white-space: normal;
+  }
+
+  .arco-admin-main :deep(.arco-page-header-extra) {
+    flex: 1 1 100%;
+    white-space: normal;
+  }
 }
 
 @media (max-width: 767px) {
   .arco-admin-main {
     padding: 16px;
+  }
+}
+
+@media (max-width: 479px) {
+  .arco-admin-header {
+    padding-inline: 12px;
+    gap: 8px;
+  }
+
+  .arco-admin-header__left,
+  .arco-admin-header__right {
+    gap: 4px;
+  }
+
+  .arco-admin-breadcrumb :deep(.arco-breadcrumb-item-label) {
+    max-width: 88px;
+  }
+
+  .arco-admin-main {
+    padding: 12px;
+  }
+}
+
+@media (min-width: 1100px) {
+  .arco-admin-sider {
+    display: flex !important;
+  }
+
+  .arco-admin-mobile-menu-trigger {
+    display: none !important;
+  }
+
+  .arco-admin-collapse-trigger {
+    display: inline-flex !important;
   }
 }
 </style>

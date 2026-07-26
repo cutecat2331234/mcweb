@@ -10,7 +10,9 @@ module Minecraft
 
     def call
       return ServiceResult.failure(error: "Command is required.") if @command.blank?
-      return ServiceResult.failure(error: "Server connector is offline.") unless connector_online?
+      unless connector_online? || developer_mode_simulation?
+        return ServiceResult.failure(error: "Server connector is offline.")
+      end
 
       task = Minecraft::ConnectorTask.create!(
         server: @server,
@@ -20,7 +22,10 @@ module Minecraft
         payload: { commands: [ @command ] }
       )
 
-      ServiceResult.success(task: task)
+      ServiceResult.success(
+        task: task,
+        simulated: developer_mode_simulation?
+      )
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end
@@ -31,6 +36,11 @@ module Minecraft
       @server.status == "online" &&
         @server.last_heartbeat_at.present? &&
         @server.last_heartbeat_at > 2.minutes.ago
+    end
+
+    def developer_mode_simulation?
+      Mcweb::DeveloperMode.enabled? &&
+        Mcweb::DeveloperMode.integration(:minecraft_nodes) == :simulate
     end
   end
 end

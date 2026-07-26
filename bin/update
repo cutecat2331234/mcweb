@@ -1,13 +1,320 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
-APP_ROOT="/opt/mcweb/current"
-cd "${APP_ROOT:-$(cd "$(dirname "$0")/.." && pwd)}"
+umask 077
 
-"${APP_ROOT}/bin/backup"
-bundle install --jobs 4
-bundle exec rails db:migrate
-bundle exec rails assets:precompile
-systemctl restart mcweb-worker mcweb-web
-"${APP_ROOT}/bin/doctor"
-echo "Update complete."
+APP_BASE="${MCWEB_APP_BASE:-/opt/mcweb}"
+RELEASES_DIR="${MCWEB_RELEASES_DIR:-${APP_BASE}/releases}"
+CURRENT_LINK="${MCWEB_CURRENT_LINK:-${APP_BASE}/current}"
+PREVIOUS_LINK="${MCWEB_PREVIOUS_LINK:-${APP_BASE}/previous}"
+CONFIG_FILE="${MCWEB_CONFIG_FILE:-/etc/mcweb/mcweb.env}"
+APP_USER="${MCWEB_APP_USER:-mcweb}"
+READY_URL="${MCWEB_READY_URL:-http://127.0.0.1:3000/health/ready}"
+OPERATION_LOCK="${MCWEB_RELEASE_LOCK_FILE:-/run/lock/mcweb-release.lock}"
+
+CANDIDATE_INPUT="${MCWEB_RELEASE_PATH:-}"
+CONFIRMATION=""
+CURRENT_RELEASE=""
+CANDIDATE=""
+SWITCHED=0
+QUIESCED=0
+UPDATE_COMPLETE=0
+
+die() {
+  echo "Update failed: $*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  bin/update --release /opt/mcweb/releases/VERSION --confirm UPDATE:VERSION
+
+The candidate release is fully checked, the current deployment is backed up,
+migrations run, and rollback compatibility is rechecked before the current
+symlink changes. A failed restart/readiness check switches traffic back.
+USAGE
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || die "required command is not available: $1"
+}
+
+acquire_operation_lock() {
+  if [[ "${MCWEB_RELEASE_LOCK_HELD:-}" == "1" ]]; then
+    flock --nonblock 9 ||
+      die "inherited release lock descriptor is unavailable"
+    return
+  fi
+
+  [[ "${OPERATION_LOCK}" = /* ]] || die "release lock path must be absolute"
+  exec 9>"${OPERATION_LOCK}"
+  flock --nonblock 9 || die "another update or rollback operation is running"
+  export MCWEB_RELEASE_LOCK_HELD=1
+}
+
+load_runtime_environment() {
+  [[ -r "${CONFIG_FILE}" ]] ||
+    die "production environment file is not readable: ${CONFIG_FILE}"
+  set -a
+  # shellcheck disable=SC1090
+  source "${CONFIG_FILE}"
+  set +a
+  export RAILS_ENV="${RAILS_ENV:-production}"
+}
+
+canonical_directory() {
+  local path="$1"
+  [[ -d "${path}" ]] || die "release directory does not exist: ${path}"
+  readlink --canonicalize "${path}"
+}
+
+validate_release_path() {
+  local release="$1"
+  local releases_root
+
+  releases_root="$(canonical_directory "${RELEASES_DIR}")"
+  case "${release}/" in
+    "${releases_root}/"*) ;;
+    *) die "release must be a direct child of ${releases_root}" ;;
+  esac
+  [[ "$(dirname "${release}")" == "${releases_root}" ]] ||
+    die "nested release paths are not allowed"
+  [[ -f "${release}/Gemfile.lock" ]] || die "candidate Gemfile.lock is missing"
+  [[ -x "${release}/bin/rails" ]] || die "candidate bin/rails is not executable"
+  [[ -x "${release}/bin/rollback" ]] || die "candidate bin/rollback is not executable"
+  [[ -d "${release}/public/assets" ]] || die "candidate precompiled assets are missing"
+}
+
+run_as_app() {
+  if [[ "${EUID}" -eq 0 && "$(id -u "${APP_USER}")" != "0" ]]; then
+    if command -v runuser >/dev/null 2>&1; then
+      runuser --user "${APP_USER}" -- "$@"
+    else
+      sudo --user "${APP_USER}" -- "$@"
+    fi
+  else
+    "$@"
+  fi
+}
+
+run_in_release() {
+  local release="$1"
+  shift
+  (
+    cd "${release}"
+    run_as_app "$@"
+  )
+}
+
+preflight_release() {
+  local release="$1"
+
+  validate_release_path "${release}"
+  run_in_release "${release}" bundle check
+  run_in_release "${release}" bundle exec rails zeitwerk:check
+  run_in_release "${release}" bundle exec rails runner '
+    abort "database is not active" unless ActiveRecord::Base.connection.active?
+    ActiveRecord::Base.connection.select_value("SELECT 1")
+    ActiveStorage::Blob.limit(1).load
+    Rails.application.eager_load!
+    ApplicationRecord.descendants
+      .reject(&:abstract_class?)
+      .select(&:table_exists?)
+      .each do |model|
+        model.reset_column_information
+        model.limit(0).load
+      end
+  '
+  run_in_release "${release}" bundle exec rails db:migrate:status >/dev/null
+  run_in_release "${release}" bundle exec rails assets:precompile
+}
+
+preflight_stripe_account_binding() {
+  run_in_release "${CANDIDATE}" \
+    bundle exec ruby scripts/check-stripe-account-binding.rb
+}
+
+check_rollback_compatibility() {
+  local rollback_script="$1"
+  local target="$2"
+
+  MCWEB_APP_BASE="${APP_BASE}" \
+    MCWEB_RELEASES_DIR="${RELEASES_DIR}" \
+    MCWEB_CURRENT_LINK="${CURRENT_LINK}" \
+    MCWEB_PREVIOUS_LINK="${PREVIOUS_LINK}" \
+    MCWEB_CONFIG_FILE="${CONFIG_FILE}" \
+    MCWEB_APP_USER="${APP_USER}" \
+    "${rollback_script}" --check --target "${target}"
+}
+
+create_backup() {
+  MCWEB_CONFIG_FILE="${CONFIG_FILE}" \
+    MCWEB_APPLICATION_ROOT="${CANDIDATE}" \
+    "${CANDIDATE}/bin/backup"
+}
+
+run_migrations() {
+  run_in_release "${CANDIDATE}" bundle exec rails db:migrate
+}
+
+assert_no_pending_migrations() {
+  run_in_release "${CANDIDATE}" bundle exec rails runner \
+    "ActiveRecord::Migration.check_all_pending!"
+}
+
+atomic_link() {
+  local target="$1"
+  local link="$2"
+  local temporary="${link}.next.$$"
+
+  [[ ! -e "${temporary}" && ! -L "${temporary}" ]] ||
+    die "temporary symlink path already exists: ${temporary}"
+  ln --symbolic "${target}" "${temporary}"
+  mv --no-target-directory "${temporary}" "${link}"
+}
+
+switch_release() {
+  local target="$1"
+
+  atomic_link "${target}" "${CURRENT_LINK}"
+}
+
+restart_and_verify() {
+  local attempt
+
+  systemctl restart mcweb-worker mcweb-web
+  systemctl is-active --quiet mcweb-worker
+  systemctl is-active --quiet mcweb-web
+  for attempt in {1..12}; do
+    if curl --fail --silent --show-error --max-time 10 "${READY_URL}" >/dev/null; then
+      return 0
+    fi
+    [[ "${attempt}" == "12" ]] || sleep 5
+  done
+  return 1
+}
+
+quiesce_current() {
+  QUIESCED=1
+  systemctl stop mcweb-web mcweb-worker
+  ! systemctl is-active --quiet mcweb-web
+  ! systemctl is-active --quiet mcweb-worker
+}
+
+verify_current_health() {
+  systemctl is-active --quiet mcweb-worker
+  systemctl is-active --quiet mcweb-web
+  curl --fail --silent --show-error --max-time 15 "${READY_URL}" >/dev/null
+}
+
+recover_failed_update() {
+  local status="${1:-$?}"
+
+  trap - EXIT ERR INT TERM HUP
+  [[ "${UPDATE_COMPLETE}" == "0" ]] || return
+  [[ "${status}" != "0" ]] || status=1
+  if [[ "${SWITCHED}" == "1" ]]; then
+    echo "Candidate failed after cutover; switching back to the preflighted release." >&2
+    if switch_release "${CURRENT_RELEASE}" && restart_and_verify; then
+      echo "Previous release restored; database migrations were not reversed." >&2
+    else
+      echo "Automatic traffic rollback failed; immediate operator intervention is required." >&2
+    fi
+  elif [[ "${QUIESCED}" == "1" ]]; then
+    echo "Update failed while the current release was quiesced; restarting it." >&2
+    if restart_and_verify; then
+      echo "Current release restarted; database migrations were not reversed." >&2
+    else
+      echo "Automatic service recovery failed; immediate operator intervention is required." >&2
+    fi
+  else
+    echo "Update stopped before services were quiesced." >&2
+  fi
+  exit "${status}"
+}
+
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --release)
+        [[ $# -ge 2 ]] || die "--release requires a path"
+        CANDIDATE_INPUT="$2"
+        shift 2
+        ;;
+      --confirm)
+        [[ $# -ge 2 ]] || die "--confirm requires a value"
+        CONFIRMATION="$2"
+        shift 2
+        ;;
+      --help|-h)
+        usage
+        exit 0
+        ;;
+      *)
+        die "unknown argument: $1"
+        ;;
+    esac
+  done
+}
+
+main() {
+  parse_arguments "$@"
+  require_command readlink
+  require_command bundle
+  require_command curl
+  require_command systemctl
+  require_command flock
+  require_command pg_dump
+  require_command pg_restore
+
+  load_runtime_environment
+  OPERATION_LOCK="${MCWEB_RELEASE_LOCK_FILE:-${OPERATION_LOCK}}"
+  acquire_operation_lock
+  [[ -L "${CURRENT_LINK}" ]] || die "current release pointer is not a symbolic link"
+  [[ ! -e "${PREVIOUS_LINK}" || -L "${PREVIOUS_LINK}" ]] ||
+    die "previous release pointer exists but is not a symbolic link"
+  [[ -n "${CANDIDATE_INPUT}" ]] || die "--release is required"
+
+  CURRENT_RELEASE="$(canonical_directory "${CURRENT_LINK}")"
+  CANDIDATE="$(canonical_directory "${CANDIDATE_INPUT}")"
+  validate_release_path "${CURRENT_RELEASE}"
+  validate_release_path "${CANDIDATE}"
+  [[ "${CANDIDATE}" != "${CURRENT_RELEASE}" ]] || die "candidate is already current"
+
+  local release_id
+  release_id="$(basename "${CANDIDATE}")"
+  [[ "${CONFIRMATION}" == "UPDATE:${release_id}" ]] ||
+    die "confirmation must exactly match UPDATE:${release_id}"
+
+  # PRE-CUTOVER CONTRACT: none of the following steps changes the current link.
+  verify_current_health
+  preflight_release "${CANDIDATE}"
+  preflight_stripe_account_binding
+  check_rollback_compatibility "${CANDIDATE}/bin/rollback" "${CURRENT_RELEASE}"
+  trap recover_failed_update EXIT
+  trap 'exit 130' INT
+  trap 'exit 143' TERM
+  trap 'exit 129' HUP
+  quiesce_current
+  preflight_stripe_account_binding
+  create_backup
+  run_migrations
+  assert_no_pending_migrations
+  preflight_release "${CANDIDATE}"
+  preflight_stripe_account_binding
+  check_rollback_compatibility "${CANDIDATE}/bin/rollback" "${CURRENT_RELEASE}"
+
+  # CUTOVER CONTRACT: traffic changes only after all pre-cutover checks pass.
+  SWITCHED=1
+  switch_release "${CANDIDATE}"
+  restart_and_verify
+  atomic_link "${CURRENT_RELEASE}" "${PREVIOUS_LINK}"
+  QUIESCED=0
+  UPDATE_COMPLETE=1
+  trap - EXIT ERR INT TERM HUP
+
+  echo "Update complete and ready: ${CANDIDATE}"
+}
+
+main "$@"

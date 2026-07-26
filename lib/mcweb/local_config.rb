@@ -22,6 +22,10 @@ module Mcweb
         @load ||= read_file
       end
 
+      def load_strict
+        read_file(strict: true)
+      end
+
       def reload!
         @load = nil
         load
@@ -38,8 +42,20 @@ module Mcweb
           load["lockbox_master_key"].present?
       end
 
-      def database_settings_for(env)
+      def database_settings_for(env, environment: ENV)
         db = load["database"] || {}
+        if env.to_s == "production" && production_database_environment?(environment)
+          return {
+            "host" => environment["MCWEB_DATABASE_HOST"].to_s.strip.presence,
+            "port" => environment["MCWEB_DATABASE_PORT"].to_s.strip.presence,
+            "username" => environment["MCWEB_DATABASE_USERNAME"].to_s.strip.presence,
+            "password" => environment["MCWEB_DATABASE_PASSWORD"].to_s.presence,
+            "database" => environment["MCWEB_DATABASE_NAME"].to_s.strip.presence ||
+              db[env] ||
+              default_database_name(env)
+          }.compact
+        end
+
         settings = {
           "host" => db["host"],
           "port" => db["port"],
@@ -65,11 +81,23 @@ module Mcweb
 
       private
 
-      def read_file
+      def production_database_environment?(environment)
+        %w[
+          MCWEB_DATABASE_HOST
+          MCWEB_DATABASE_PORT
+          MCWEB_DATABASE_USERNAME
+          MCWEB_DATABASE_PASSWORD
+          MCWEB_DATABASE_NAME
+        ].any? { |key| environment.key?(key) }
+      end
+
+      def read_file(strict: false)
         return {} unless exist?
 
         YAML.safe_load_file(path, permitted_classes: [ Symbol ], aliases: true) || {}
       rescue Psych::SyntaxError
+        raise if strict
+
         {}
       end
 

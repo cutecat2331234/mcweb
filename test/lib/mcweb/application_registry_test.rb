@@ -17,10 +17,11 @@ class Mcweb::ApplicationRegistryTest < ActiveSupport::TestCase
     assert_equal :store, Mcweb::ApplicationRegistry.application_for_path("/app/store/products").id
   end
 
-  test "trusted deployment plugins are an extension tier" do
+  test "trusted deployment and reviewed local package plugins are an extension tier" do
     assert Mcweb::ApplicationRegistry.freely_extensible?,
-      "extensible means fully trusted deployment code, not untrusted uploads"
-    assert_equal :deployment, Mcweb::ApplicationRegistry.plugin_installation_mode
+      "extensible means fully trusted code, not untrusted uploads"
+    assert_equal :deployment_or_reviewed_local_package,
+      Mcweb::ApplicationRegistry.plugin_installation_mode
 
     extension = Mcweb::ApplicationRegistry.find_extension(:trusted_ruby_plugins)
     assert_equal :trusted_ruby_plugin_sdk, extension.kind

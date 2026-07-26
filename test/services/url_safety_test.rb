@@ -52,6 +52,55 @@ class UrlSafetyTest < ActiveSupport::TestCase
     assert_not UrlSafety.public_http_url?("http://service.internal./admin")
   end
 
+  test "developer mode allows local and private http integration targets" do
+    with_unrestricted_developer_mode do
+      assert UrlSafety.public_http_url?("http://localhost:4567/webhook")
+      assert UrlSafety.public_http_url?("http://127.0.0.1:4567/webhook")
+      assert UrlSafety.public_http_url?("http://10.0.0.5:4567/webhook")
+      assert UrlSafety.public_http_url?("http://service.internal:4567/webhook")
+    end
+  end
+
+  test "developer mode still rejects malformed and credential-bearing urls" do
+    with_unrestricted_developer_mode do
+      assert_not UrlSafety.public_http_url?("javascript:alert(1)")
+      assert_not UrlSafety.public_http_url?("//localhost/webhook")
+      assert_not UrlSafety.public_http_url?("http://user:password@localhost/webhook")
+    end
+  end
+
+  test "developer mode captures outbound webhook posts without a network call" do
+    captured = nil
+    response = Mcweb::DeveloperModeCapture::Response.new(
+      code: "202",
+      body: '{"captured":true}'
+    )
+    capture = lambda do |**arguments|
+      captured = arguments
+      response
+    end
+
+    with_unrestricted_developer_mode do
+      with_singleton_method(
+        Mcweb::DeveloperModeCapture,
+        :capture_webhook!,
+        capture
+      ) do
+        result = UrlSafety.safe_http_post(
+          URI.parse("http://localhost:4567/webhook"),
+          body: '{"event":"test"}',
+          headers: { "X-Test" => "value" }
+        )
+
+        assert_same response, result
+      end
+    end
+
+    assert_equal "localhost", captured.fetch(:uri).host
+    assert_equal '{"event":"test"}', captured.fetch(:body)
+    assert_equal "value", captured.fetch(:headers).fetch("X-Test")
+  end
+
   test "http_https_url allows public http and https urls" do
     assert UrlSafety.http_https_url?("https://cdn.example.com/image.png")
     assert UrlSafety.http_https_url?("http://cdn.example.com/image.png")
@@ -79,6 +128,29 @@ class UrlSafetyTest < ActiveSupport::TestCase
     uri = URI.parse("https://user:pass@example.com/hook")
     assert_nil UrlSafety.safe_http_get(uri)
     assert_nil UrlSafety.safe_http_post(uri, body: "{}")
+  end
+
+  private
+
+  def with_unrestricted_developer_mode
+    settings = Mcweb::DeveloperMode.parse(
+      config: { developer_mode: { enabled: true } },
+      environment: {}
+    )
+    previous_settings = Mcweb::DeveloperMode.instance_variable_get(:@settings)
+    Mcweb::DeveloperMode.instance_variable_set(:@settings, settings)
+    yield
+  ensure
+    Mcweb::DeveloperMode.instance_variable_set(:@settings, previous_settings)
+  end
+
+  def with_singleton_method(object, method_name, replacement)
+    singleton = object.singleton_class
+    original = object.method(method_name)
+    singleton.send(:define_method, method_name, replacement)
+    yield
+  ensure
+    singleton&.send(:define_method, method_name, original)
   end
 end
 

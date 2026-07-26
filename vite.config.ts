@@ -4,6 +4,18 @@ import tailwindcss from '@tailwindcss/vite'
 import RubyPlugin from 'vite-plugin-ruby'
 import path from 'path'
 
+function developerBuildBoolean(name: string) {
+  if (process.env.MCWEB_DEVELOPER_VITE !== '1') return undefined
+
+  const value = process.env[name]
+  if (value === 'enabled') return true
+  if (value === 'disabled') return false
+  return undefined
+}
+
+const developerMinification = developerBuildBoolean('MCWEB_DEVELOPER_VITE_MINIFICATION')
+const developerSourceMaps = developerBuildBoolean('MCWEB_DEVELOPER_VITE_SOURCE_MAPS')
+
 export default defineConfig({
   plugins: [
     RubyPlugin(),
@@ -23,5 +35,9 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['@arco-design/web-vue'],
+  },
+  build: {
+    ...(developerMinification === undefined ? {} : { minify: developerMinification }),
+    ...(developerSourceMaps === undefined ? {} : { sourcemap: developerSourceMaps }),
   },
 })

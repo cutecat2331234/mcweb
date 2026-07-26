@@ -48,8 +48,17 @@ capabilities:
   - forum.write
   - forum.moderate
   - forum.events.publish
+  - identity.permissions.read
   - site.features.read
   - site.settings.read
+  - plugin.settings.read
+  - plugin.settings.write
+  - plugin.jobs.read
+  - plugin.jobs.enqueue
+contributions:
+  permissions: config/permissions.yml
+  settings: config/settings.yml
+  jobs: config/jobs.yml
 ```
 
 Required fields are `id`, `name`, `version`, and `api_version`.
@@ -62,6 +71,12 @@ Required and optional text fields must be strings; for example,
 - `requires` maps plugin IDs to RubyGems version requirements.
 - `capabilities` contains unique namespaced declarations such as
   `forum.events.read`.
+- `contributions.permissions` optionally names a package-local YAML file that
+  declares the plugin's global permission descriptors.
+- `contributions.settings` optionally names a package-local YAML file that
+  declares the plugin's strict settings schema and forward migrations.
+- `contributions.jobs` optionally names a package-local YAML file that declares
+  the plugin's owned background-job keys and closed argument schemas.
 - `entrypoint` defaults to `plugin.rb`.
 - `setup` is optional and names a package-local Ruby setup plan.
 
@@ -72,6 +87,299 @@ and dependencies activate before dependants. Duplicate discovered IDs,
 dependency cycles, and dependency version mismatches known from the discovered
 manifest set are rejected before the affected entrypoints execute, preventing
 top-level side effects from an extension that cannot activate.
+
+### Permission contributions and global identity groups
+
+A permission contribution file has one strict root key:
+
+```yaml
+permissions:
+  - id: acme.demo.orders.view
+    group: acme.demo.orders
+    title_phrase: permission.order_view.title
+    description_phrase: permission.order_view.description
+    scope: global
+    default: none
+```
+
+The permission namespace is the manifest ID with `/` replaced by `.` and `-`
+replaced by `_`; `acme/demo-tools` therefore owns `acme.demo_tools.*`. This
+keeps contributed keys compatible with the host permission-key contract. Each
+ID must include a resource and action, each group must remain in that namespace,
+and `mcweb.*` is reserved for the host. The supported v1 scope is `global`;
+default recommendations are `none`, `member`, `staff`, or `admin`.
+
+The file is safe-YAML parsed, UTF-8, bounded to 1 MiB and 256 descriptors, and
+must remain inside the plugin directory. Unknown or duplicate fields fail
+loading before the entrypoint runs. A namespace collision disables the
+deterministic losing plugin instead of replacing the existing owner.
+
+`default` is installation guidance only. Activation never creates permissions,
+roles, role assignments, or group memberships. Administrators grant contributed
+keys through the host's existing roles and global identity groups. Plugins have
+only read-only access to their active descriptors and the host-computed result:
+
+```ruby
+plugin.api.identity.permission_contributions
+plugin.api.identity.permission_contribution(
+  key: "acme.demo.orders.view"
+)
+plugin.api.identity.plugin_permission(
+  public_id: user_public_id,
+  key: "acme.demo.orders.view"
+)
+```
+
+`plugin_permission` accepts only an active permission contributed by the calling
+plugin. Its immutable result includes allow/deny, account eligibility, grant
+reason, role or global-group sources, scope, and the contribution descriptor.
+The host remains authoritative: banned or deleted accounts are denied, current
+group changes are observed on the next check, and disabling, unregistering, or
+resetting a plugin immediately removes its active descriptors.
+
+### Settings schema and versioned storage
+
+`contributions.settings` points to safe YAML that contains a strict JSON Schema
+Draft 2020-12 subset. The file is UTF-8, bounded to 1 MiB, duplicate-key
+checked, and resolved inside the plugin package. Unknown root, schema, group,
+property, or migration fields reject plugin registration before its definition
+is activated.
+
+```yaml
+schema_version: "2"
+groups:
+  general:
+    title_phrase: acme.demo.settings.groups.general.title
+    description_phrase: acme.demo.settings.groups.general.description
+    position: 10
+  credentials:
+    title_phrase: acme.demo.settings.groups.credentials.title
+    position: 20
+
+schema:
+  $schema: https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required:
+    - endpoint
+    - api_token
+  properties:
+    endpoint:
+      type: string
+      format: url
+      maxLength: 2048
+      x-mcweb-title-phrase: acme.demo.settings.endpoint.title
+      x-mcweb-description-phrase: acme.demo.settings.endpoint.description
+      x-mcweb-group: general
+      x-mcweb-input: url
+    timeout_seconds:
+      type: integer
+      default: 10
+      minimum: 1
+      maximum: 120
+      x-mcweb-title-phrase: acme.demo.settings.timeout.title
+      x-mcweb-group: general
+    api_token:
+      type: string
+      minLength: 1
+      maxLength: 4096
+      x-mcweb-title-phrase: acme.demo.settings.api_token.title
+      x-mcweb-group: credentials
+      x-mcweb-sensitive: true
+      x-mcweb-input: password
+
+migrations:
+  - from: "1"
+    to: "2"
+    rename:
+      api_url: endpoint
+    remove:
+      - legacy_debug
+    defaults:
+      timeout_seconds: 10
+```
+
+`schema_version` is a positive integer string and evolves independently of the
+plugin SemVer. The object root must explicitly set
+`additionalProperties: false`. Supported scalar types are `string`, `integer`,
+`number`, and `boolean`; supported validation includes `enum`, string length,
+numeric bounds, regular expressions, and `uri`, `url`, `email`, or `hostname`
+formats. Arco inputs are selected from `text`, `password`, `textarea`, `url`,
+`email`, `select`, `number`, and `switch`.
+
+Every group and field uses a phrase in the plugin namespace (`acme/demo`
+becomes `acme.demo.*`). Enum display phrases use
+`x-mcweb-enum-phrases`. Default-language phrase loading and coverage belong to
+the I18N contribution contract; until that contract is installed, an unresolved
+phrase key remains visible as a diagnostic instead of accepting package-provided
+hard-coded UI text.
+
+Sensitive properties must be password strings and cannot declare a default or
+enum. McWeb encrypts the complete settings payload with Lockbox. The admin page
+returns only whether a sensitive field is configured; its plaintext never
+appears in page props, version history, audit metadata, or change events. The
+trusted plugin runtime can read its own decrypted value because plugin code
+already has the full privileges of the Rails process.
+
+Settings are isolated by plugin ID and schema version. Each update appends an
+immutable revision instead of replacing history. An upgrade explicitly migrates
+the newest compatible older namespace through every declared `from`/`to` step;
+the source namespace remains untouched. Rolling the plugin package back therefore
+selects its prior schema namespace. If settings are changed while code is rolled
+back, the newer schema requires another explicit migration after re-upgrade.
+Changing constraints without increasing `schema_version` produces a schema
+digest mismatch and blocks reads/writes instead of interpreting old ciphertext
+under a different contract.
+
+```ruby
+plugin.api.settings.descriptor
+plugin.api.settings.values
+plugin.api.settings.get("api_token")
+
+plugin.api.settings.update(
+  values: {
+    endpoint: "https://api.example.test",
+    api_token: ENV.fetch("ACME_API_TOKEN")
+  },
+  expected_revision: 0
+)
+
+plugin.api.settings.migrate(expected_revision: 0)
+plugin.api.settings.rollback(revision: 1, expected_revision: 3)
+```
+
+Declare `plugin.settings.read` and `plugin.settings.write` for compatibility
+and capability audit. The facade is constructed with the calling manifest, so
+it cannot address another plugin namespace or host `SiteSetting` keys. Results
+are immutable v1 `Result` snapshots. Schema, revision, and migration conflicts
+have stable error codes; submitted values are never included in errors. Every
+write must pass the `expected_revision` from the latest `values` snapshot
+(`0` for the first persisted revision). Omitting it returns `invalid_argument`
+instead of allowing last-write-wins behavior.
+
+Administrators require the separate `system.plugins.settings.manage`
+permission to use **System → Plugin settings**
+(`/admin/system/plugin-settings`). Admin mutations require an expected revision.
+Rollback appends a validated current-schema revision; it never rewrites an old
+row. Every committed mutation creates an immutable `AuditLog` and the
+after-commit `plugin.settings.changed` event. Both contain identifiers, schema
+digest, revision, change kind, and changed key names only—never old or new
+values.
+
+### Owned background jobs
+
+`contributions.jobs` points to a package-local, safe-YAML declaration. The file
+is UTF-8, limited to 1 MiB, duplicate-key checked, and resolved by real path
+inside the plugin package. Unknown fields and path escapes reject activation.
+Jobs are addressed only by a key owned by the declaring plugin; a declaration
+cannot name an Active Job or arbitrary Ruby class.
+
+```yaml
+schema_version: "1"
+jobs:
+  deliver:
+    max_attempts: 3
+    retry_wait_seconds: 60
+    lease_seconds: 900
+    arguments:
+      $schema: https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      required:
+        - recipient_id
+        - message
+      properties:
+        recipient_id:
+          type: string
+          format: uuid
+        message:
+          type: string
+          maxLength: 1024
+```
+
+The argument schema is a closed Draft 2020-12 object. It supports flat
+`string`, `integer`, `number`, and `boolean` properties, plus enum, string
+length, numeric bounds, and supported string formats. A plugin must register
+exactly one handler for every declared key before activation:
+
+```ruby
+Mcweb::Plugins.register do |plugin|
+  plugin.job("deliver") do |arguments, context|
+    DeliveryClient.deliver_once(
+      operation_id: context.run_public_id,
+      recipient_id: arguments.fetch("recipient_id"),
+      message: arguments.fetch("message")
+    )
+  end
+end
+```
+
+The handler receives revalidated, deeply frozen arguments and a frozen
+`JobContext`. The context contains `run_public_id`, owner and job keys, current
+attempt, maximum attempts, and the current attempt schedule. Registering an
+undeclared key, omitting a declared handler, or reaching across another
+plugin's namespace fails registration or the API call.
+
+Declare `plugin.jobs.read` and `plugin.jobs.enqueue` for compatibility audit.
+The calling manifest permanently binds the facade to its own namespace:
+
+```ruby
+run = plugin.api.jobs.enqueue(
+  job_key: "deliver",
+  arguments: {
+    recipient_id: user.public_id,
+    message: "Welcome"
+  },
+  idempotency_key: "welcome:#{user.public_id}",
+  wait_seconds: 0
+)
+
+plugin.api.jobs.find(public_id: run.value.fetch("public_id"))
+plugin.api.jobs.list(status: "retrying", limit: 25)
+plugin.api.jobs.cancel(public_id: run.value.fetch("public_id"))
+plugin.api.jobs.resume(public_id: run.value.fetch("public_id"))
+```
+
+An idempotency key is required and is unique within the owner plugin and job
+key. Repeating the same key and payload returns the original run with
+`idempotent: true`; changing the payload or delay returns
+`idempotency_conflict`. This guarantees one persisted run, not exactly-once
+external effects.
+
+The idempotency key is plaintext operational metadata even though it is omitted
+from DTOs, queue payloads, and logs. Use an opaque business operation ID; never
+put a password, token, message body, or other secret in the key. Sensitive
+values belong only in the encrypted `arguments` object.
+
+Delivery is **at least once**. A worker claims a finite lease and retries
+handler failures up to `max_attempts`. If a process dies after an external
+effect but before recording success, or a handler runs longer than
+`lease_seconds`, another worker can execute the same run concurrently. Set the
+lease above the handler's worst-case time, apply timeouts to external calls,
+and use `context.run_public_id` as the downstream idempotency key. Cancellation
+is supported only before a handler is running and cannot interrupt Ruby code
+already executing.
+
+The host persists owner ID, plugin and contribution versions, declaration
+digest, status, attempts, lease, and timestamps. It never persists a handler
+class name. Arguments are encrypted with Lockbox; Active Job receives only the
+opaque run public ID. Arguments and the enqueue idempotency key are omitted
+from result DTOs, queue payloads, diagnostics, and error logs. The internal
+payload comparison uses a domain-separated HMAC derived from the Lockbox key,
+so low-entropy values are not exposed through an ordinary SHA digest.
+
+Keep `LOCKBOX_MASTER_KEY` stable and backed up. A planned key rotation must be
+able to decrypt every existing job payload with the old key, re-encrypt it,
+and recompute the payload HMAC before the old key is retired. Changing or
+losing the key without that migration makes queued payloads unreadable and
+breaks idempotency comparison.
+
+When a plugin is disabled, uninstalled, missing, or has a different version or
+job declaration, delivery pauses without consuming a handler attempt. A
+recoverable uninstall retains the owned run records. Re-enable the exact
+compatible version and call `resume`; after an incompatible upgrade, cancel
+the old run and enqueue a new run under the new declaration. Do not silently
+reinterpret an old payload or delete the ownership records.
 
 ## Entrypoint and events
 
@@ -254,8 +562,10 @@ Mcweb::Plugins.register do |plugin|
 end
 ```
 
-`api.api_version` is `"1"`. The facade is split into `api.forum`,
-`api.events`, and `api.site`. Every operation returns a frozen
+`api.api_version` is `"1"`. The facade is split into `api.commerce`,
+`api.forum`, `api.events`, `api.identity`, `api.jobs`, `api.site`, and
+`api.settings`.
+Every operation returns a frozen
 `Mcweb::PluginApi::V1::Result`:
 
 ```ruby
@@ -271,10 +581,15 @@ end
 
 Use `success?` and `failure?`; failure codes currently include
 `invalid_argument`, `invalid_user`, `not_found`, `service_failure`, and
-`event_publish_failed`. An unexpected database, feature/settings backend, audit
-hook, or serializer exception becomes `host_error` instead of escaping the
-facade. Values, validation errors, and nested collections are owned and deeply
-frozen by the SDK. No result contains an Active Record model.
+`event_publish_failed`. Settings additionally return explicit codes such as
+`settings_not_declared`, `migration_required`, `schema_digest_mismatch`, and
+`revision_conflict`. Jobs additionally return codes such as
+`jobs_not_declared`, `job_not_declared`, `idempotency_conflict`,
+`incompatible_job`, and `invalid_job_state`. An unexpected database,
+feature/settings backend, queue adapter, audit hook, or serializer exception
+becomes a fixed `host_error` instead of escaping the facade. Values, validation
+errors, and nested collections are owned and deeply frozen by the SDK. No
+result contains an Active Record model.
 
 ### User-bound forum reads
 

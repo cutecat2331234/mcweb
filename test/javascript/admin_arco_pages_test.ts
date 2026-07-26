@@ -35,7 +35,10 @@ function assertNoLegacyPagePrimitives(source: string) {
 }
 
 function assertNoNativeAdminControls(source: string) {
-  assert.doesNotMatch(source, /<(?:input|select|button|table)(?:\s|>)/i)
+  // Native HTML tags are lowercase in our templates. Keep this
+  // case-sensitive so Arco facade components such as <Button> and <Table>
+  // are not mistaken for native controls.
+  assert.doesNotMatch(source, /<(?:input|select|button|table)(?:\s|>)/)
 }
 
 test('generic admin index uses Arco for navigation, table, empty state, and pagination', () => {
@@ -159,18 +162,29 @@ test('system feature toggles use Arco cards, alerts, and switches while retainin
   assert.match(source, /form\.patch\(adminRoutes\.featureToggles\)/)
 })
 
-test('system settings use an Arco form while retaining the nested settings mutation', () => {
+test('system settings is a safe Arco hub with only a typed basic-settings whitelist', () => {
   const source = pageSource('System/Settings/Show.vue')
 
   assertNoLegacyPagePrimitives(source)
   assertNoNativeAdminControls(source)
   assert.match(source, /<a-page-header/)
+  assert.match(source, /<a-alert/)
+  assert.match(source, /<a-grid/)
   assert.match(source, /<a-card/)
+  assert.match(source, /<a-tag/)
+  assert.match(source, /<a-button/)
   assert.match(source, /<a-form/)
   assert.match(source, /<a-input/)
-  assert.match(source, /<a-button/)
-  assert.match(source, /settings\.\$\{key\}/)
-  assert.match(source, /form\.patch\(adminRoutes\.settings\)/)
+  assert.match(source, /<Link/)
+  assert.match(source, /:href="entry\.url"/)
+  assert.match(source, /function visitEntry\(url: string\)/)
+  assert.match(source, /if \(url === window\.location\.pathname\) return/)
+  assert.match(source, /router\.visit\(url\)/)
+  assert.match(source, /@click="visitEntry\(entry\.url\)"/)
+  assert.match(source, /form\.patch\(props\.updateUrl/)
+  assert.match(source, /basic_settings\.site_name/)
+  assert.match(source, /basic_settings\.site_url/)
+  assert.doesNotMatch(source, /setting\.key|settings\.\$\{key\}|Object\.fromEntries|\/health\/ready/)
 })
 
 test('system webhook pages use Arco controls while retaining nested mutations and edit links', () => {
@@ -234,14 +248,19 @@ test('forum specialized pages use Arco without legacy or native admin controls',
     assertNoNativeAdminControls(source)
     assert.doesNotMatch(source, /@\/components\/admin\//)
     assert.doesNotMatch(source, /<textarea(?:\s|>)/i)
-    assert.match(source, /<a-page-header/)
+    if (relativePath === 'Forum/Attachments/Index.vue') {
+      assert.match(source, /from '@mcweb\/ui'/)
+      assert.match(source, /<PageHeader/)
+    } else {
+      assert.match(source, /<a-page-header/)
+    }
   }
 })
 
 test('interactive forum pages retain filters, mutations, confirmation, and nested payloads', () => {
   const attachments = pageSource('Forum/Attachments/Index.vue')
-  assert.match(attachments, /<a-table/)
-  assert.match(attachments, /<a-pagination/)
+  assert.match(attachments, /<Table/)
+  assert.match(attachments, /<Pagination/)
   assert.match(attachments, /router\.get\(/)
   assert.match(attachments, /router\.delete\(/)
   assert.match(attachments, /await confirm\(/)
@@ -502,6 +521,16 @@ test('admin entry bundles Arco without registering legacy Element Plus runtimes'
   assert.doesNotMatch(source, /plus-pro-components/)
   assert.doesNotMatch(source, /styles\/admin\.css/)
   assert.doesNotMatch(source, /AppProvider/)
+})
+
+test('admin links that leave the admin Inertia entry use full document navigation', () => {
+  const layout = javascriptSource('layouts/ArcoAdminLayout.vue')
+  const dashboard = pageSource('Dashboard/Index.vue')
+
+  assert.doesNotMatch(layout, /<Link[^>]+:href="adminRoutes\.site"/)
+  assert.match(layout, /<a :href="adminRoutes\.site"/)
+  assert.doesNotMatch(dashboard, /<Link[^>]+:href="adminRoutes\.site"/)
+  assert.match(dashboard, /<a\s+:href="adminRoutes\.site"/)
 })
 
 test('every reachable admin page is free of legacy controls and uses the Arco confirm facade', () => {

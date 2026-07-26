@@ -71,11 +71,46 @@ class Mcweb::Plugins::Marketplace::SetupLifecycleTest < ActiveSupport::TestCase
     @manager.enable(plugin_id: "acme/demo")
     assert_equal [ "install" ], $mcweb_setup_lifecycle_hits
 
-    @manager.uninstall(plugin_id: "acme/demo")
+    uninstall
     assert_nil SiteSetting.get(key)
     assert_equal %w[install uninstall], $mcweb_setup_lifecycle_hits
     completed = @manager.status.fetch(:plugins).sole.fetch(:setup).fetch("completed_steps")
     assert_equal %w[create_setting remove_setting], completed.pluck("id")
+  end
+
+  test "stale uninstall identity is rejected before the upgraded teardown can run" do
+    install(
+      plugin_package(
+        version: "1.0.0",
+        setup: <<~RUBY
+          Mcweb::Plugins::Marketplace::Setup.define do
+            uninstall_step("remove_v1") { $mcweb_setup_lifecycle_hits << "uninstall-v1" }
+          end
+        RUBY
+      )
+    )
+    confirmed = @manager.status.fetch(:plugins).sole
+    install(
+      plugin_package(
+        version: "2.0.0",
+        setup: <<~RUBY
+          Mcweb::Plugins::Marketplace::Setup.define do
+            uninstall_step("remove_v2") { $mcweb_setup_lifecycle_hits << "uninstall-v2" }
+          end
+        RUBY
+      )
+    )
+
+    assert_raises(Mcweb::Plugins::Marketplace::IntegrityError) do
+      uninstall(
+        expected_version: confirmed.fetch(:version),
+        expected_sha256: confirmed.fetch(:sha256)
+      )
+    end
+
+    assert_empty $mcweb_setup_lifecycle_hits
+    assert_equal "2.0.0",
+                 Mcweb::Plugins::Manifest.load_file(@root.join("acme/demo/mcweb_plugin.yml")).version
   end
 
   test "upgrade steps run by target version then declaration order" do
@@ -229,7 +264,7 @@ class Mcweb::Plugins::Marketplace::SetupLifecycleTest < ActiveSupport::TestCase
     receipt_before = @state_root.join("receipts/acme/demo.json").binread
 
     error = assert_raises(Mcweb::Plugins::Marketplace::LifecycleError) do
-      @manager.uninstall(plugin_id: "acme/demo")
+      uninstall
     end
 
     assert_includes error.message, "plugin setup uninstall step remove_then_fail failed (RuntimeError)"
@@ -296,6 +331,15 @@ class Mcweb::Plugins::Marketplace::SetupLifecycleTest < ActiveSupport::TestCase
       package_path: package,
       source: "file:///reviewed/#{package.basename}",
       expected_sha256: Digest::SHA256.file(package).hexdigest
+    )
+  end
+
+  def uninstall(expected_version: nil, expected_sha256: nil)
+    plugin = @manager.status(plugin_id: "acme/demo").fetch(:plugins).sole
+    @manager.uninstall(
+      plugin_id: "acme/demo",
+      expected_version: expected_version || plugin.fetch(:version),
+      expected_sha256: expected_sha256 || plugin.fetch(:sha256)
     )
   end
 

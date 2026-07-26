@@ -12,7 +12,7 @@ module Commerce
 
     scope :currently_active, -> {
       now = Time.current
-      where("expires_at IS NULL OR expires_at > ?", now)
+      where(revoked_at: nil).where("expires_at IS NULL OR expires_at > ?", now)
     }
 
     def permanent?
@@ -20,7 +20,11 @@ module Commerce
     end
 
     def currently_active?
-      expires_at.nil? || expires_at > Time.current
+      revoked_at.nil? && (expires_at.nil? || expires_at > Time.current)
+    end
+
+    def revoke!
+      update!(revoked_at: Time.current) unless revoked_at?
     end
   end
 end

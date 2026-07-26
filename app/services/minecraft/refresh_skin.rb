@@ -13,6 +13,15 @@ module Minecraft
       identity = find_identity
       return ServiceResult.failure(error: "identity not found") unless identity
 
+      if developer_mode_simulation?
+        return ServiceResult.success(
+          player_id: identity.player_profile.public_id,
+          simulated: true,
+          skin_texture_url: identity.skin_texture_url,
+          skin_model: identity.skin_model
+        )
+      end
+
       profile_data = fetch_mojang_textures(identity.external_uuid)
       return ServiceResult.failure(error: "textures not found") unless profile_data
 
@@ -28,6 +37,11 @@ module Minecraft
     end
 
     private
+
+    def developer_mode_simulation?
+      Mcweb::DeveloperMode.enabled? &&
+        Mcweb::DeveloperMode.integration(:remote_skin_lookup) == :simulate
+    end
 
     def find_identity
       bare = @uuid.delete("-")

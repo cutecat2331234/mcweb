@@ -3,14 +3,26 @@
 module Identity
   class AccountAccess < ApplicationService
     ADMIN_MODULES = {
-      "forum" => %w[forum.sections.manage forum.topics.lock forum.topics.move forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage forum.points.manage forum.posts.edit_others forum.topics.edit_others],
-      "store" => %w[store.products.manage store.orders.read store.orders.refund store.questions.answer store.questions.manage],
+      "forum" => %w[
+        forum.sections.manage forum.attachments.security.manage
+        forum.topics.lock forum.topics.move forum.users.mute forum.users.warn
+        forum.badges.manage forum.tags.manage forum.points.manage
+        forum.posts.edit_others forum.topics.edit_others
+      ],
+      "store" => %w[
+        store.products.manage store.orders.read store.orders.refund
+        store.questions.answer store.questions.manage
+        store.payments.configure store.payments.connection_test
+        store.payments.replay store.payments.late_review
+        store.payments.reconciliation.read store.payments.reconciliation.review
+        store.payments.reconciliation.run
+      ],
       "minecraft" => %w[
         minecraft.nodes.manage minecraft.servers.manage minecraft.servers.control
         minecraft.players.view minecraft.fulfillments.retry
       ],
       "system" => %w[
-        system.settings.manage system.plugins.manage
+        system.settings.manage system.plugins.manage system.plugins.settings.manage
         system.jobs.read system.jobs.retry system.audit.read
       ],
       "website" => %w[

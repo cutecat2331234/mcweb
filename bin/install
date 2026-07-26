@@ -12,6 +12,7 @@ RUBY_VERSION="4.0.6"
 NGINX_SITE="/etc/nginx/sites-available/mcweb"
 NGINX_TEMPLATE="config/templates/mcweb.nginx.conf"
 ACME_WEBROOT="/var/www/certbot"
+ENV_FILE_CREATED=0
 
 usage() {
   cat <<EOF
@@ -109,7 +110,8 @@ configure_app() {
   local env_file="${CONFIG_DIR}/mcweb.env"
   if [[ ! -f "${env_file}" ]]; then
     install -m 600 config/templates/mcweb.env.example "${env_file}"
-    echo "请编辑 ${env_file} 后重新运行 bin/setup"
+    ENV_FILE_CREATED=1
+    echo "已生成 ${env_file}。请替换所有生产配置占位值后重新运行 bin/install。"
   fi
   grep -q '^RAILS_SERVE_STATIC_FILES=' "${env_file}" || echo 'RAILS_SERVE_STATIC_FILES=1' >> "${env_file}"
   grep -q '^BUNDLE_WITHOUT=' "${env_file}" || echo 'BUNDLE_WITHOUT=development:test' >> "${env_file}"
@@ -228,13 +230,24 @@ main() {
   write_systemd_units
   write_nginx_conf
 
-  sudo -u "${APP_USER}" bash -lc "
-    export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\"
-    eval \"\$(rbenv init - bash)\"
-    cd ${APP_ROOT}/current
-    npm ci
-    bin/setup
-  "
+  if [[ "${ENV_FILE_CREATED}" -eq 1 ]]; then
+    echo "安装已暂停：生产启动会严格校验公网 URL、SMTP 与私有对象存储。"
+    echo "编辑 ${CONFIG_DIR}/mcweb.env 后重新运行 bin/install 以完成数据库和资源构建。"
+    exit 2
+  fi
+
+  systemd-run --quiet --wait --collect --pipe \
+    --unit=mcweb-setup \
+    --property="Type=oneshot" \
+    --property="User=${APP_USER}" \
+    --property="WorkingDirectory=${APP_ROOT}/current" \
+    --property="EnvironmentFile=${CONFIG_DIR}/mcweb.env" \
+    /bin/bash -lc "
+      export PATH=\"\$HOME/.rbenv/bin:\$HOME/.rbenv/shims:\$PATH\"
+      eval \"\$(rbenv init - bash)\"
+      npm ci
+      bin/setup
+    "
 
   echo "安装完成。请访问 https://\${MCWEB_DOMAIN:-your-domain}/setup 完成初始化。"
   echo "服务启动: systemctl enable --now mcweb-web mcweb-worker nginx"

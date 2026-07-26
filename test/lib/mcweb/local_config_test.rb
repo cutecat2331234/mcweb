@@ -57,4 +57,45 @@ class Mcweb::LocalConfigTest < ActiveSupport::TestCase
     assert_equal "custom_dev", settings["database"]
     assert_equal "127.0.0.1", settings["host"]
   end
+
+  test "production database environment overrides local secrets without affecting development" do
+    Mcweb::LocalConfig.write!(
+      database: {
+        host: "local-db",
+        username: "local-user",
+        password: "local-secret",
+        development: "custom_dev",
+        production: "local_production"
+      }
+    )
+    environment = {
+      "MCWEB_DATABASE_HOST" => "production-db",
+      "MCWEB_DATABASE_PORT" => "5433",
+      "MCWEB_DATABASE_USERNAME" => "production-user",
+      "MCWEB_DATABASE_PASSWORD" => "production-secret",
+      "MCWEB_DATABASE_NAME" => "production-name"
+    }
+
+    production = Mcweb::LocalConfig.database_settings_for(
+      "production",
+      environment: environment
+    )
+    development = Mcweb::LocalConfig.database_settings_for(
+      "development",
+      environment: environment
+    )
+
+    assert_equal(
+      {
+        "host" => "production-db",
+        "port" => "5433",
+        "username" => "production-user",
+        "password" => "production-secret",
+        "database" => "production-name"
+      },
+      production
+    )
+    assert_equal "local-db", development["host"]
+    assert_equal "custom_dev", development["database"]
+  end
 end

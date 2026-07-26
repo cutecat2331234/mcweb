@@ -9,6 +9,8 @@ module Minecraft
 
     scope :claimable, -> { where(status: :pending).order(:created_at) }
 
+    after_commit :simulate_in_developer_mode, on: %i[create update]
+
     def claim!
       update!(status: :claimed, claimed_at: Time.current)
     end
@@ -19,6 +21,38 @@ module Minecraft
 
     def fail!(result_data = {})
       update!(status: :failed, result: result_data, completed_at: Time.current)
+    end
+
+    private
+
+    def simulate_in_developer_mode
+      return unless pending?
+      return unless previous_changes.key?("id") || previous_changes.key?("status")
+      return unless Mcweb::DeveloperMode.enabled?
+      return unless Mcweb::DeveloperMode.integration(:minecraft_nodes) == :simulate
+
+      result = Minecraft::TaskDispatcher.call(
+        server: server,
+        task: self,
+        result: {
+          success: true,
+          status: "completed",
+          simulated: true,
+          developer_mode: true
+        },
+        action: :complete
+      )
+      return if result.success?
+
+      Rails.logger.error(
+        "[Minecraft::ConnectorTask] Developer Mode simulation failed " \
+        "task_id=#{id} error=#{result.error}"
+      )
+    rescue StandardError => error
+      Rails.logger.error(
+        "[Minecraft::ConnectorTask] Developer Mode simulation failed " \
+        "task_id=#{id} error=#{error.class}"
+      )
     end
   end
 end

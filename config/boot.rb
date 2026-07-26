@@ -1,12 +1,20 @@
 ENV["BUNDLE_GEMFILE"] ||= File.expand_path("../Gemfile", __dir__)
 
 require "bundler/setup" # Set up gems listed in the Gemfile.
-require "bootsnap/setup" # Speed up boot time by caching expensive operations.
 require_relative "../lib/mcweb/local_config"
+require_relative "../lib/mcweb/developer_mode"
+
+# Developer Mode can affect boot-time runtime choices, so validate its strict
+# local configuration before Bootsnap or the Rails environment is initialized.
+Mcweb::DeveloperMode.settings
+
+require "bootsnap/setup" # Speed up boot time by caching expensive operations.
 
 if Mcweb::LocalConfig.exist?
   db = Mcweb::LocalConfig.load["database"]
-  if db.is_a?(Hash) && db.values.any? { |value| !value.nil? && value != "" }
+  if ENV.fetch("RAILS_ENV", "development") != "production" &&
+      db.is_a?(Hash) &&
+      db.values.any? { |value| !value.nil? && value != "" }
     ENV.delete("DATABASE_URL")
   end
 

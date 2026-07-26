@@ -31,7 +31,7 @@ module Community
     private
 
     def metric(key, value)
-      { label: t("forum.stats.#{key}"), value: value }
+      { label: t("mcweb.forum.stats.#{key}"), value: value }
     end
 
     def top_posters

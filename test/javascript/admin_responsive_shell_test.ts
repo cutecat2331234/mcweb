@@ -1,0 +1,112 @@
+import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
+import { resolve } from 'node:path'
+import test from 'node:test'
+
+const source = readFileSync(
+  resolve(process.cwd(), 'app/javascript/layouts/ArcoAdminLayout.vue'),
+  'utf8',
+)
+const css = source.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] ?? ''
+
+function rule(selector: string): string {
+  const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const match = css.match(new RegExp(`${escaped}\\s*\\{([^}]*)\\}`))
+
+  assert.ok(match, `missing responsive shell rule for ${selector}`)
+  return match[1]
+}
+
+test('admin shell switches to its Drawer before the sidebar can squeeze medium viewports', () => {
+  const drawerBreakpoint = css.match(/@media \(max-width: (\d+)px\)\s*\{\s*\.arco-admin-sider\s*\{\s*display: none !important;/)
+  const desktopBreakpoint = css.match(/@media \(min-width: (\d+)px\)\s*\{\s*\.arco-admin-sider\s*\{\s*display: flex !important;/)
+
+  assert.ok(drawerBreakpoint)
+  assert.ok(desktopBreakpoint)
+  assert.equal(Number(drawerBreakpoint[1]), 1099)
+  assert.equal(Number(desktopBreakpoint[1]), 1100)
+
+  for (const [width, expectedMode] of [
+    [1280, 'sidebar'],
+    [1100, 'sidebar'],
+    [1024, 'drawer'],
+    [900, 'drawer'],
+    [768, 'drawer'],
+    [390, 'drawer'],
+  ] as const) {
+    const actualMode = width <= Number(drawerBreakpoint[1]) ? 'drawer' : 'sidebar'
+    assert.equal(actualMode, expectedMode, `${width}px should use the ${expectedMode}`)
+  }
+
+  assert.doesNotMatch(source, /hidden md:block/)
+  assert.match(source, /class="arco-admin-mobile-menu-trigger"/)
+  assert.match(source, /v-model:visible="mobileNavOpen"/)
+  assert.match(source, /class="arco-admin-drawer"/)
+  assert.match(source, /class="arco-admin-drawer__menu"/)
+  assert.match(source, /min\(280px, 100vw\)/)
+})
+
+test('admin shell owns one viewport and gives main content the only page scroll container', () => {
+  assert.match(rule('.arco-admin-layout'), /height:\s*100dvh/)
+  assert.match(rule('.arco-admin-layout'), /min-height:\s*100dvh/)
+  assert.match(rule('.arco-admin-layout'), /overflow:\s*hidden/)
+
+  assert.match(rule('.arco-admin-body'), /min-width:\s*0/)
+  assert.match(rule('.arco-admin-body'), /min-height:\s*0/)
+  assert.match(rule('.arco-admin-body'), /overflow:\s*hidden/)
+
+  assert.match(rule('.arco-admin-main'), /flex:\s*1 1 auto/)
+  assert.match(rule('.arco-admin-main'), /min-width:\s*0/)
+  assert.match(rule('.arco-admin-main'), /min-height:\s*0/)
+  assert.match(rule('.arco-admin-main'), /overflow:\s*auto/)
+  assert.match(rule('.arco-admin-main'), /overscroll-behavior:\s*contain/)
+
+  assert.match(rule('.arco-admin-sider'), /height:\s*100%/)
+  assert.match(rule('.arco-admin-sider'), /overflow:\s*hidden/)
+  assert.match(rule('.arco-admin-sider__menu'), /overflow-y:\s*auto/)
+  assert.match(rule('.arco-admin-drawer__menu'), /overflow-y:\s*auto/)
+})
+
+test('admin header, breadcrumb, and developer warning can shrink without widening the shell', () => {
+  assert.match(rule('.arco-admin-header'), /min-width:\s*0/)
+  assert.match(rule('.arco-admin-header'), /flex:\s*0 0 60px/)
+  assert.match(rule('.arco-admin-header__left'), /flex:\s*1 1 auto/)
+  assert.match(rule('.arco-admin-header__left'), /min-width:\s*0/)
+  assert.match(rule('.arco-admin-header__left'), /overflow:\s*hidden/)
+  assert.match(rule('.arco-admin-header__right'), /flex:\s*0 0 auto/)
+
+  assert.match(rule('.arco-admin-breadcrumb'), /min-width:\s*0/)
+  assert.match(rule('.arco-admin-breadcrumb'), /overflow:\s*hidden/)
+  assert.match(css, /\.arco-admin-breadcrumb :deep\(\.arco-breadcrumb-item-label\)[\s\S]*?text-overflow:\s*ellipsis/)
+
+  assert.match(rule('.arco-admin-developer-alert'), /flex:\s*0 0 auto/)
+  assert.match(rule('.arco-admin-developer-alert'), /min-width:\s*0/)
+  assert.match(rule('.arco-admin-developer-alert'), /max-width:\s*100%/)
+  assert.match(css, /\.arco-admin-developer-alert :deep\(\.arco-alert-description\)[\s\S]*?overflow-wrap:\s*anywhere/)
+})
+
+test('admin shell uses tiered padding without replacing Arco structural components', () => {
+  assert.match(rule('.arco-admin-main'), /padding:\s*24px/)
+  assert.match(css, /@media \(max-width: 1279px\)[\s\S]*?\.arco-admin-main\s*\{\s*padding:\s*20px/)
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.arco-admin-main\s*\{\s*padding:\s*16px/)
+  assert.match(css, /@media \(max-width: 479px\)[\s\S]*?\.arco-admin-main\s*\{\s*padding:\s*12px/)
+
+  assert.match(source, /<a-layout class="arco-admin-layout">/)
+  assert.match(source, /<a-layout-sider/)
+  assert.match(source, /<a-layout-header/)
+  assert.match(source, /<a-layout-content/)
+  assert.match(source, /<a-drawer/)
+  assert.match(source, /<a-menu/)
+  assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header-main\)[\s\S]*?flex-direction:\s*column/)
+  assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header-divider\)[\s\S]*?display:\s*none/)
+  assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header-subtitle\)[\s\S]*?white-space:\s*normal/)
+})
+
+test('responsive shell retains Inertia navigation and current system destinations', () => {
+  assert.match(source, /import \{ Link, router, usePage \} from '@inertiajs\/vue3'/)
+  assert.match(source, /router\.visit\(key\)/)
+  assert.match(source, /adminRoutes\.settings/)
+  assert.match(source, /adminRoutes\.jobs/)
+  assert.match(source, /adminRoutes\.developerWorkbench/)
+  assert.doesNotMatch(source, /window\.location|location\.reload/)
+})

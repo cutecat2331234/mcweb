@@ -19,7 +19,7 @@ module Identity
 
       user = User.find_by(email: @email)
       return generic_success unless user
-      return generic_success if user.email_verified?
+      return generic_success if user.email_verified? && !user.developer_mode_email_verified?
       return generic_success if user.email_verification_sent_at.present? && user.email_verification_sent_at > RESEND_COOLDOWN.ago
 
       token = user.generate_email_verification_token!

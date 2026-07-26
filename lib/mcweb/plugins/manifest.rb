@@ -3,6 +3,7 @@
 require "rubygems"
 require "pathname"
 require "yaml"
+require_relative "manifest_canonicalizer"
 
 module Mcweb
   module Plugins
@@ -18,15 +19,21 @@ module Mcweb
       MAX_DEPENDENCIES = 256
       MAX_CAPABILITIES = 256
       MAX_CAPABILITY_LENGTH = 191
+      MAX_CONTRIBUTION_PATH_LENGTH = 1_024
       SUPPORTED_API_VERSIONS = %w[1].freeze
       REQUIRED_KEYS = %w[id name version api_version].freeze
       OPTIONAL_STRING_KEYS = %w[description author homepage].freeze
+      CONTRIBUTION_KEYS = %w[jobs permissions settings].freeze
       ALLOWED_KEYS = (
-        REQUIRED_KEYS + %w[description author homepage requires capabilities entrypoint setup]
+        REQUIRED_KEYS + %w[
+          description author homepage requires capabilities contributions
+          entrypoint setup
+        ]
       ).freeze
 
       attr_reader :id, :name, :version, :api_version, :description, :author,
-                  :homepage, :requires, :capabilities, :entrypoint, :setup, :source_path
+                  :homepage, :requires, :capabilities, :contributions,
+                  :entrypoint, :setup, :source_path
 
       def self.from_hash(attributes, source_path: nil)
         new(attributes, source_path:)
@@ -41,6 +48,7 @@ module Mcweb
 
         yaml.force_encoding(Encoding::UTF_8)
         raise ManifestError, "manifest must be valid UTF-8" unless yaml.valid_encoding?
+        yaml.delete_prefix!("\uFEFF")
         reject_duplicate_mapping_keys!(yaml)
 
         parsed = YAML.safe_load(
@@ -116,6 +124,7 @@ module Mcweb
         @homepage = immutable_optional_string(data["homepage"])
         @requires = normalize_requires(data.fetch("requires", {}))
         @capabilities = normalize_capabilities(data.fetch("capabilities", []))
+        @contributions = normalize_contributions(data.fetch("contributions", {}))
         @entrypoint = normalize_ruby_path(data["entrypoint"], key: "entrypoint", max_length: MAX_ENTRYPOINT_LENGTH)
         @setup = normalize_ruby_path(data["setup"], key: "setup", max_length: MAX_SETUP_LENGTH)
         @source_path = immutable_optional_string(source_path)
@@ -140,6 +149,18 @@ module Mcweb
         requirement.freeze
       end
 
+      def permission_contributions_path
+        contributions["permissions"]
+      end
+
+      def settings_contribution_path
+        contributions["settings"]
+      end
+
+      def jobs_contribution_path
+        contributions["jobs"]
+      end
+
       def to_h
         {
           id: id,
@@ -151,11 +172,26 @@ module Mcweb
           homepage: homepage,
           requires: requires,
           capabilities: capabilities,
+          contributions: contributions,
           entrypoint: entrypoint,
           setup: setup,
           source_path: source_path
         }.freeze
       end
+
+      def canonical_hash
+        ManifestCanonicalizer.new(self).canonical_hash
+      end
+
+      def canonical_json
+        ManifestCanonicalizer.new(self).canonical_json
+      end
+
+      def canonical_sha256
+        ManifestCanonicalizer.new(self).sha256
+      end
+
+      alias_method :canonical_digest, :canonical_sha256
 
       private
 
@@ -227,6 +263,47 @@ module Mcweb
         raise ManifestError, "capabilities must be unique" unless capabilities.uniq.length == capabilities.length
 
         capabilities.sort.freeze
+      end
+
+      def normalize_contributions(value)
+        raise ManifestError, "contributions must be a mapping" unless value.is_a?(Hash)
+
+        normalized = value.each_with_object({}) do |(raw_key, path), result|
+          unless raw_key.is_a?(String) || raw_key.is_a?(Symbol)
+            raise ManifestError, "contribution keys must be strings"
+          end
+
+          key = immutable_string(raw_key.to_s)
+          raise ManifestError, "duplicate contribution #{key.inspect}" if result.key?(key)
+          unless CONTRIBUTION_KEYS.include?(key)
+            raise ManifestError, "unknown contribution keys: #{key}"
+          end
+
+          result[key] = normalize_contribution_path(path, key:)
+        end
+        normalized.sort.to_h.freeze
+      end
+
+      def normalize_contribution_path(value, key:)
+        unless value.is_a?(String) && value.length.between?(1, MAX_CONTRIBUTION_PATH_LENGTH)
+          raise ManifestError,
+            "contributions.#{key} must be a relative YAML path up to #{MAX_CONTRIBUTION_PATH_LENGTH} characters"
+        end
+        if value.include?("\\")
+          raise ManifestError, "contributions.#{key} must use forward slashes"
+        end
+
+        path = Pathname(value).cleanpath
+        if path.absolute? || path.each_filename.any? { |part| part == ".." }
+          raise ManifestError, "contributions.#{key} must remain inside the plugin directory"
+        end
+        unless %w[.yml .yaml].include?(path.extname.downcase)
+          raise ManifestError, "contributions.#{key} must name a YAML file"
+        end
+
+        immutable_string(path.to_s)
+      rescue ArgumentError => e
+        raise ManifestError, "invalid contributions.#{key}: #{e.message}"
       end
 
       def normalize_ruby_path(value, key:, max_length:)

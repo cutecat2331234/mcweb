@@ -26,6 +26,8 @@ module Commerce
           failure_error = "No payment found."
           raise ActiveRecord::Rollback
         end
+        payment.lock!
+        payment.reload
 
         if Commerce::Refund.where(order: @order).in_flight.exists?
           failure_error = "Refund already pending."
@@ -72,7 +74,7 @@ module Commerce
         user: @order.user,
         notification_type: "commerce.refund_requested",
         title: I18n.t("mcweb.labels.notification_types.commerce.refund_requested"),
-        body: I18n.t("mcweb.mail.order.refund_requested.body", number: @order.order_number),
+        body: I18n.t("mcweb.mail.commerce.refund_requested.body", number: @order.order_number),
         path: "/app/store/orders/#{@order.public_id}"
       )
 
@@ -86,7 +88,7 @@ module Commerce
     private
 
     def refundable_cents(payment)
-      refunded = Commerce::Refund.where(order: @order).reserved.sum(:amount_cents)
+      refunded = payment.refunds.reserved.sum(:amount_cents)
       [ payment.amount_cents - refunded, 0 ].max
     end
 

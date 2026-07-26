@@ -41,6 +41,7 @@ class Round110PostAttachmentTest < ActiveSupport::TestCase
     file = uploaded_file("notes.txt", "text/plain", "hello attachment")
     upload = Community::CreatePostAttachment.call(user: @user, file: file)
     assert upload.success?
+    mark_attachment_scan_clean!(upload.value)
 
     result = Community::CreatePost.call(
       user: @user,

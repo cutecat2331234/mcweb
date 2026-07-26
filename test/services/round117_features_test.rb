@@ -132,6 +132,7 @@ class Round117SaveDraftAttachmentsTest < ActiveSupport::TestCase
       byte_size: 5
     )
     @attachment.file.attach(io: StringIO.new("draft"), filename: "draft.txt", content_type: "text/plain")
+    mark_attachment_scan_clean!(@attachment)
   end
 
   test "save topic draft links attachments to opening post" do

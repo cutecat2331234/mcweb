@@ -25,11 +25,23 @@
 # Any libraries that use a connection pool or another resource pool should
 # be configured to provide at least as many connections as the number of
 # threads. This includes Active Record's `pool` parameter in `database.yml`.
+require_relative "../lib/mcweb/developer_mode"
+
 threads_count = ENV.fetch("RAILS_MAX_THREADS", 3)
 threads threads_count, threads_count
 
-# Specifies the `port` that Puma will listen on to receive requests; default is 3000.
-port ENV.fetch("PORT", 3000)
+developer_mode_settings = Mcweb::DeveloperMode.settings
+if developer_mode_settings.enabled?
+  workers developer_mode_settings.runtime.fetch(:puma_workers)
+end
+
+# Production Puma is private by default because Rails trusts TLS metadata from
+# the reverse proxy. Containers must explicitly opt into 0.0.0.0.
+if ENV["RAILS_ENV"] == "production"
+  bind "tcp://#{ENV.fetch("MCWEB_BIND", "127.0.0.1")}:#{ENV.fetch("PORT", 3000)}"
+else
+  port ENV.fetch("PORT", 3000)
+end
 
 # Allow puma to be restarted by `bin/rails restart` command.
 plugin :tmp_restart

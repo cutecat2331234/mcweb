@@ -43,6 +43,7 @@ class Mcweb::EventsTest < ActiveSupport::TestCase
     assert_includes Mcweb::Events::CATALOG, "forum.post.created"
     assert_includes Mcweb::Events::CATALOG, "forum.reaction.added"
     assert_includes Mcweb::Events::CATALOG, "identity.user.registered"
+    assert_includes Mcweb::Events::CATALOG, "plugin.settings.changed"
   end
 end
 

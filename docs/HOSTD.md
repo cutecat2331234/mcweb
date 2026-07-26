@@ -61,7 +61,7 @@ mcweb-hostd install docker [--pull]
 | Stop | `systemctl stop …` | `compose stop` |
 | Restart | `systemctl restart …` | `compose restart` |
 | Check | `bin/doctor` + `/health/live` + `/health/ready` | same + `compose ps` |
-| Update | release + `bin/update` | `compose pull && up -d` |
+| Update | staged release + explicit `bin/update --release … --confirm …` | `compose pull && up -d` |
 
 ## `bin/hostd-finalize`
 
@@ -114,9 +114,16 @@ Then use hostd **Install** wizard steps 4–7 (database defaults match compose `
 
 ## Phase 4 (optional)
 
-- **Backup / restore**: calls `bin/backup` and `bin/restore` when present
+- **Backup / restore**: `bin/backup` requires an external OpenPGP recipient or
+  immutable secret-manager reference; `bin/restore` is verify-only by default.
+  See [PRODUCTION_BACKUP_AND_RELEASE.md](PRODUCTION_BACKUP_AND_RELEASE.md).
 - **mcweb-node**: documents installing the node agent binary and `mcweb-node.service`
 - **Plugins**: creates `/var/lib/mcweb/plugins`; full boot loader is a separate project
+
+The current native hostd Update action does not yet pass the staged release path
+and exact confirmation required by the hardened update contract. Until hostd is
+adapted, use the controlled CLI procedure from the production runbook; the
+script intentionally rejects an ambiguous no-argument update.
 
 ## Security
 

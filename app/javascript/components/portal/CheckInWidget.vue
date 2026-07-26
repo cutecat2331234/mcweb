@@ -20,12 +20,14 @@ function submit() {
 </script>
 
 <template>
-  <div v-if="checkIn" class="rounded-lg border border-sidebar-border/40 bg-sidebar-accent/20 px-3 py-2 text-xs">
-    <div class="mb-1.5 flex items-center gap-1.5 font-medium text-sidebar-foreground">
+  <div v-if="checkIn" class="rounded-lg bg-sidebar-accent/25 p-3 text-xs">
+    <div class="mb-2 flex items-center gap-2 font-medium text-sidebar-foreground">
       <CalendarCheck class="h-3.5 w-3.5 opacity-70" />
       {{ t('checkIn.title') }}
     </div>
-    <p class="mb-2 text-sidebar-foreground/70">{{ t('checkIn.streak', { count: checkIn.streak }) }}</p>
+    <p class="mb-3 leading-relaxed text-sidebar-foreground/70">
+      {{ t('checkIn.streak', { count: checkIn.streak }) }}
+    </p>
     <Button
       v-if="checkIn.checked_today"
       type="button"

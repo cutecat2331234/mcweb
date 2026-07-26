@@ -63,6 +63,20 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_redirected_to forum_sections_path
   end
 
+  test "inertia sign in performs a full page visit when returning to admin" do
+    get admin_root_path
+    assert_redirected_to identity_sign_in_path
+    assert_equal "/admin", session[:return_to]
+
+    post identity_session_path,
+         params: { session: { email: @user.email, password: "password123" } },
+         headers: { "X-Inertia" => "true" }
+
+    assert_response :conflict
+    assert_equal "/admin", response.headers["X-Inertia-Location"]
+    assert_equal I18n.t("mcweb.flash.sign_in_success"), flash[:notice]
+  end
+
   test "get session redirects to sign in" do
     get identity_session_path
     assert_redirected_to identity_sign_in_path

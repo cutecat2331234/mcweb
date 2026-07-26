@@ -1,9 +1,585 @@
 #!/usr/bin/env bash
-set -euo pipefail
+set -Eeuo pipefail
 
-BACKUP_PATH="${1:-$(cat /var/backups/mcweb/latest)}"
-[[ -d "${BACKUP_PATH}" ]] || { echo "Backup not found: ${BACKUP_PATH}" >&2; exit 1; }
+umask 077
 
-psql "${DATABASE_URL:-mcweb_production}" < "${BACKUP_PATH}/database.sql"
-tar -xzf "${BACKUP_PATH}/uploads.tar.gz" -C /var/lib/mcweb 2>/dev/null || true
-echo "Restore complete from ${BACKUP_PATH}"
+CONFIG_FILE="${MCWEB_CONFIG_FILE:-/etc/mcweb/mcweb.env}"
+MODE="verify"
+BACKUP_PATH=""
+CONFIRMATION=""
+EXPECTED_DATABASE=""
+STORAGE_TARGET=""
+RESTORE_CONFIG=0
+CONFIG_TARGET=""
+CONFIG_STAGE=""
+
+die() {
+  echo "Restore failed: $*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'USAGE'
+Usage:
+  bin/restore [--backup PATH]
+  bin/restore --backup PATH --apply --target-database NAME \
+    --confirm RESTORE:BACKUP_ID [--storage-target ABSOLUTE_PATH]
+  bin/restore ... --restore-config --config-target ABSOLUTE_PATH
+
+The default mode only validates the backup. Applying a restore requires a new,
+empty database, an exact database-name guard, and an explicit confirmation.
+Local storage and configuration targets must not already exist.
+USAGE
+}
+
+require_command() {
+  command -v "$1" >/dev/null 2>&1 || die "required command is not available: $1"
+}
+
+load_runtime_environment() {
+  if [[ -r "${CONFIG_FILE}" ]]; then
+    set -a
+    # shellcheck disable=SC1090
+    source "${CONFIG_FILE}"
+    set +a
+  fi
+}
+
+resolve_default_backup() {
+  local backup_dir="${MCWEB_BACKUP_DIR:-/var/backups/mcweb}"
+  local latest="${backup_dir}/latest"
+
+  [[ -r "${latest}" ]] || die "no --backup path and no readable latest pointer"
+  BACKUP_PATH="$(<"${latest}")"
+}
+
+validate_checksum_manifest() {
+  local line file discovered discovered_list
+  local -A seen=()
+
+  [[ -s "${BACKUP_PATH}/SHA256SUMS" ]] || die "SHA256SUMS is missing or empty"
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ "${line}" =~ ^[0-9a-f]{64}\ [\ \*]([A-Za-z0-9._/-]+)$ ]] ||
+      die "SHA256SUMS contains an unsupported entry"
+    file="${BASH_REMATCH[1]}"
+    [[ "${file}" != /* && "${file}" != ".." && "${file}" != ../* &&
+       "${file}" != */../* && "${file}" != */.. ]] ||
+      die "SHA256SUMS contains an unsafe path"
+    [[ -z "${seen[${file}]:-}" ]] || die "SHA256SUMS contains a duplicate path"
+    [[ -f "${BACKUP_PATH}/${file}" && ! -L "${BACKUP_PATH}/${file}" ]] ||
+      die "SHA256SUMS entry is missing, not regular, or is a symbolic link"
+    seen["${file}"]=1
+  done < "${BACKUP_PATH}/SHA256SUMS"
+
+  discovered_list="$(mktemp)"
+  if ! find "${BACKUP_PATH}" -type f -print0 > "${discovered_list}"; then
+    rm --force -- "${discovered_list}"
+    die "could not enumerate backup artifacts"
+  fi
+  while IFS= read -r -d '' discovered; do
+    discovered="${discovered#"${BACKUP_PATH}/"}"
+    [[ "${discovered}" == "SHA256SUMS" ]] && continue
+    if [[ -z "${seen[${discovered}]:-}" ]]; then
+      rm --force -- "${discovered_list}"
+      die "regular backup artifact is not covered by SHA256SUMS: ${discovered}"
+    fi
+  done < "${discovered_list}"
+  rm --force -- "${discovered_list}"
+
+  (
+    cd "${BACKUP_PATH}"
+    sha256sum --check --strict SHA256SUMS
+  )
+}
+
+read_manifest_value() {
+  local expression="$1"
+
+  ruby -rjson -e \
+    "manifest = JSON.parse(File.read(ARGV.fetch(0))); value = ${expression}; abort('invalid manifest value') unless value.is_a?(String); puts value" \
+    "${BACKUP_PATH}/backup-manifest.json"
+}
+
+validate_backup_manifest() {
+  ruby -rjson -e '
+    manifest = JSON.parse(File.read(ARGV.fetch(0)))
+    abort "unsupported backup format" unless manifest["format"] == "mcweb-backup-v1"
+    abort "invalid backup id" unless manifest["backup_id"].match?(/\A[A-Za-z0-9][A-Za-z0-9._-]*\z/)
+    abort "invalid database artifact" unless manifest.dig("database", "path") == "database.dump"
+    abort "invalid database format" unless manifest.dig("database", "format") == "postgresql-custom"
+    storage = manifest.fetch("active_storage")
+    abort "unsupported storage mode" unless %w[local private_s3].include?(storage["mode"])
+    if storage["mode"] == "local"
+      abort "invalid local inventory" unless storage["inventory"] == "active_storage_files.sha256"
+      abort "invalid local archive" unless storage["archive"] == "active_storage.tar.gz"
+    else
+      abort "invalid object inventory" unless storage["inventory"] == "active_storage_objects.ndjson"
+      abort "object backup must not claim a local archive" unless storage["archive"].nil?
+    end
+    config = manifest.fetch("configuration")
+    abort "invalid non-secret config artifact" unless config["non_secret"] == "configuration.env"
+    abort "unsupported secret artifact" unless %w[openpgp external_reference].include?(config["secret_artifact_kind"])
+    expected_secret = config["secret_artifact_kind"] == "openpgp" ? "mcweb.env.gpg" : "secret-config.reference"
+    abort "invalid secret artifact path" unless config["secret_artifact"] == expected_secret
+  ' "${BACKUP_PATH}/backup-manifest.json"
+}
+
+validate_tar_paths() {
+  local archive="$1"
+
+  tar --list --gzip --file "${archive}" >/dev/null ||
+    die "local storage archive cannot be read"
+  if ! tar --list --verbose --gzip --file "${archive}" |
+      awk '
+        substr($0, 1, 1) != "-" && substr($0, 1, 1) != "d" { unsafe = 1 }
+        END { exit unsafe ? 1 : 0 }
+      '
+  then
+    die "local storage archive contains a link or special file"
+  fi
+  if ! tar --list --gzip --file "${archive}" |
+      awk '
+        /^\/|(^|\/)\.\.(\/|$)/ { unsafe = 1 }
+        END { exit unsafe ? 1 : 0 }
+      '
+  then
+    die "local storage archive contains an unsafe path"
+  fi
+}
+
+validate_local_storage_checksums() {
+  local checksum_file="$1"
+  local line file
+  local -A seen=()
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ "${line}" =~ ^[0-9a-f]{64}\ [\ \*]([A-Za-z0-9._/-]+)$ ]] ||
+      die "local storage checksum manifest contains an unsupported entry"
+    file="${BASH_REMATCH[1]}"
+    [[ "${file}" != /* && "${file}" != ".." && "${file}" != ../* &&
+       "${file}" != */../* && "${file}" != */.. ]] ||
+      die "local storage checksum manifest contains an unsafe path"
+    [[ -z "${seen[${file}]:-}" ]] ||
+      die "local storage checksum manifest contains a duplicate path"
+    seen["${file}"]=1
+  done < "${checksum_file}"
+}
+
+validate_object_inventory() {
+  local inventory="$1"
+
+  ruby -rjson -e '
+    File.foreach(ARGV.fetch(0)) do |line|
+      next if line.strip.empty?
+      record = JSON.parse(line)
+      abort "invalid object inventory" unless record["key"].is_a?(String) &&
+        record["byte_size"].is_a?(Integer) &&
+        record["object_present"] == true
+    end
+  ' "${inventory}"
+}
+
+validate_secret_reference() {
+  local artifact="$1"
+  local reference
+
+  [[ -s "${artifact}" ]] || die "external secret-manager reference is empty"
+  reference="$(<"${artifact}")"
+  [[ "${reference}" =~ ^[a-z][a-z0-9+.-]*://[A-Za-z0-9._/-]+/versions/[A-Za-z0-9._-]+$ &&
+     ! "${reference}" =~ /versions/(latest|current|active)$ ]] ||
+    die "external secret-manager reference is not an immutable version URI"
+}
+
+verify_backup() {
+  local storage_mode inventory secret_kind secret_artifact canonical_backup
+
+  [[ "${BACKUP_PATH}" = /* ]] || die "backup path must be absolute"
+  [[ -d "${BACKUP_PATH}" ]] || die "backup directory not found: ${BACKUP_PATH}"
+  [[ ! -L "${BACKUP_PATH}" ]] || die "backup path must not be a symbolic link"
+  canonical_backup="$(realpath --canonicalize-existing -- "${BACKUP_PATH}")"
+  [[ "${BACKUP_PATH}" == "${canonical_backup}" ]] ||
+    die "backup path must be canonical"
+  [[ -f "${BACKUP_PATH}/backup-manifest.json" ]] || die "backup-manifest.json is missing"
+  [[ -f "${BACKUP_PATH}/database.dump" ]] || die "database.dump is missing"
+  [[ -f "${BACKUP_PATH}/configuration.env" ]] || die "configuration.env is missing"
+  [[ ! -e "${BACKUP_PATH}/mcweb.env" ]] ||
+    die "plaintext mcweb.env is forbidden in a backup"
+  [[ -z "$(find "${BACKUP_PATH}" -type l -print -quit)" ]] ||
+    die "symbolic links are forbidden in a backup"
+
+  validate_checksum_manifest
+  validate_backup_manifest
+  pg_restore --list "${BACKUP_PATH}/database.dump" >/dev/null
+
+  storage_mode="$(read_manifest_value 'manifest.fetch("active_storage").fetch("mode")')"
+  inventory="$(read_manifest_value 'manifest.fetch("active_storage").fetch("inventory")')"
+  [[ -f "${BACKUP_PATH}/${inventory}" ]] || die "Active Storage inventory is missing"
+
+  case "${storage_mode}" in
+    local)
+      [[ -f "${BACKUP_PATH}/active_storage.tar.gz" ]] ||
+        die "local storage archive is missing"
+      validate_local_storage_checksums "${BACKUP_PATH}/${inventory}"
+      validate_tar_paths "${BACKUP_PATH}/active_storage.tar.gz"
+      ;;
+    private_s3)
+      validate_object_inventory "${BACKUP_PATH}/${inventory}"
+      ;;
+  esac
+
+  secret_kind="$(read_manifest_value 'manifest.fetch("configuration").fetch("secret_artifact_kind")')"
+  secret_artifact="$(read_manifest_value 'manifest.fetch("configuration").fetch("secret_artifact")')"
+  [[ -f "${BACKUP_PATH}/${secret_artifact}" ]] || die "secret configuration artifact is missing"
+  case "${secret_kind}" in
+    openpgp)
+      require_command gpg
+      gpg --batch --list-packets "${BACKUP_PATH}/${secret_artifact}" >/dev/null
+      ;;
+    external_reference)
+      validate_secret_reference "${BACKUP_PATH}/${secret_artifact}"
+      ;;
+  esac
+
+  echo "Backup verification passed: ${BACKUP_PATH}"
+}
+
+database_name() {
+  psql --dbname="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}" \
+    --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+    --command "SELECT current_database();"
+}
+
+database_user_object_count() {
+  psql --dbname="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}" \
+    --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+    --command "
+      SELECT COALESCE(SUM(object_count), 0)
+      FROM (
+        SELECT count(*) AS object_count
+        FROM pg_namespace
+        WHERE nspname NOT IN ('pg_catalog', 'information_schema')
+          AND nspname !~ '^pg_toast'
+          AND nspname <> 'public'
+        UNION ALL
+        SELECT count(*)
+        FROM pg_class object
+        JOIN pg_namespace namespace ON namespace.oid = object.relnamespace
+        WHERE namespace.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND namespace.nspname !~ '^pg_toast'
+        UNION ALL
+        SELECT count(*)
+        FROM pg_proc object
+        JOIN pg_namespace namespace ON namespace.oid = object.pronamespace
+        WHERE namespace.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND namespace.nspname !~ '^pg_toast'
+        UNION ALL
+        SELECT count(*)
+        FROM pg_type object
+        JOIN pg_namespace namespace ON namespace.oid = object.typnamespace
+        WHERE namespace.nspname NOT IN ('pg_catalog', 'information_schema')
+          AND namespace.nspname !~ '^pg_toast'
+          AND object.typtype IN ('c', 'd', 'e', 'm', 'r')
+        UNION ALL
+        SELECT count(*) FROM pg_event_trigger
+        UNION ALL
+        SELECT count(*) FROM pg_extension WHERE extname <> 'plpgsql'
+      ) AS user_objects;"
+}
+
+database_required_table_count() {
+  psql --dbname="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}" \
+    --no-psqlrc --set=ON_ERROR_STOP=1 --tuples-only --no-align \
+    --command "
+      SELECT count(*)
+      FROM information_schema.tables
+      WHERE table_schema = 'public'
+        AND table_type = 'BASE TABLE'
+        AND table_name IN ('schema_migrations', 'users', 'active_storage_blobs');"
+}
+
+validate_apply_guards() {
+  local backup_id actual_database object_count
+
+  backup_id="$(read_manifest_value 'manifest.fetch("backup_id")')"
+  [[ "${CONFIRMATION}" == "RESTORE:${backup_id}" ]] ||
+    die "confirmation must exactly match RESTORE:${backup_id}"
+  [[ -n "${EXPECTED_DATABASE}" ]] || die "--target-database is required"
+
+  actual_database="$(database_name)"
+  [[ "${actual_database}" == "${EXPECTED_DATABASE}" ]] ||
+    die "connected database does not match --target-database"
+
+  object_count="$(database_user_object_count)"
+  [[ "${object_count}" =~ ^[0-9]+$ ]] || die "could not determine target database state"
+  [[ "${object_count}" == "0" ]] ||
+    die "target database is not empty; restore into a newly created empty database"
+}
+
+validate_absent_target() {
+  local target="$1"
+  local label="$2"
+  local canonical
+
+  [[ "${target}" = /* ]] || die "${label} must be an absolute path"
+  canonical="$(realpath --canonicalize-missing -- "${target}")"
+  [[ "${target}" == "${canonical}" ]] || die "${label} must be a canonical path"
+  case "${canonical}" in
+    /|/etc|/opt|/usr|/var|/var/lib|/var/lib/mcweb)
+      die "${label} is too broad"
+      ;;
+  esac
+  case "${canonical}/" in
+    "${BACKUP_PATH}/"*)
+      die "${label} must not be inside the backup directory"
+      ;;
+  esac
+  [[ ! -L "${target}" ]] || die "${label} must not be a symbolic link"
+  [[ ! -e "${target}" ]] || die "${label} already exists"
+}
+
+validate_restore_target_relationships() {
+  local storage_mode="$1"
+  local canonical_storage canonical_config
+
+  [[ "${storage_mode}" == "local" && "${RESTORE_CONFIG}" == "1" ]] || return 0
+  [[ -n "${STORAGE_TARGET}" && -n "${CONFIG_TARGET}" ]] ||
+    die "local storage and configuration restore targets are required"
+
+  canonical_storage="$(realpath --canonicalize-missing -- "${STORAGE_TARGET}")"
+  canonical_config="$(realpath --canonicalize-missing -- "${CONFIG_TARGET}")"
+  case "${canonical_storage}/" in
+    "${canonical_config}/"*)
+      die "storage and configuration restore targets must not overlap"
+      ;;
+  esac
+  case "${canonical_config}/" in
+    "${canonical_storage}/"*)
+      die "storage and configuration restore targets must not overlap"
+      ;;
+  esac
+}
+
+publish_staged_target() {
+  local stage="$1"
+  local target="$2"
+  local label="$3"
+
+  validate_absent_target "${target}" "${label}"
+  mv --no-clobber --no-target-directory "${stage}" "${target}"
+  [[ ! -e "${stage}" && -e "${target}" ]] ||
+    die "${label} appeared during publication"
+}
+
+stage_local_storage() {
+  local archive="$1"
+  local checksum_file="$2"
+  local parent line file discovered discovered_list
+  local -A listed=()
+
+  [[ -n "${STORAGE_TARGET}" ]] || die "--storage-target is required for a local-storage restore"
+  validate_absent_target "${STORAGE_TARGET}" "storage target"
+  parent="$(dirname "${STORAGE_TARGET}")"
+  [[ -d "${parent}" ]] || die "storage target parent does not exist"
+
+  STORAGE_STAGE="${STORAGE_TARGET}.restore.$$"
+  [[ ! -e "${STORAGE_STAGE}" ]] || die "storage staging path already exists"
+  mkdir "${STORAGE_STAGE}"
+  tar --extract --gzip --no-same-owner --no-same-permissions \
+    --file "${archive}" --directory "${STORAGE_STAGE}"
+  [[ -z "$(find "${STORAGE_STAGE}" -type l -print -quit)" ]] ||
+    die "restored local storage contains a symbolic link"
+  [[ -z "$(
+    find "${STORAGE_STAGE}" \
+      \( -type l -o \( ! -type d ! -type f \) \) \
+      -print -quit
+  )" ]] || die "restored local storage contains a special file"
+
+  while IFS= read -r line || [[ -n "${line}" ]]; do
+    [[ "${line}" =~ ^[0-9a-f]{64}\ [\ \*]([A-Za-z0-9._/-]+)$ ]] ||
+      die "local storage checksum manifest contains an unsupported entry"
+    file="${BASH_REMATCH[1]}"
+    [[ -z "${listed[${file}]:-}" ]] ||
+      die "local storage checksum manifest contains a duplicate path"
+    listed["${file}"]=1
+  done < "${checksum_file}"
+
+  discovered_list="$(mktemp)"
+  if ! (
+    cd "${STORAGE_STAGE}"
+    find . -type f -print0
+  ) > "${discovered_list}"; then
+    rm --force -- "${discovered_list}"
+    die "could not enumerate the restored local storage"
+  fi
+  while IFS= read -r -d '' discovered; do
+    discovered="${discovered#./}"
+    if [[ -z "${listed[${discovered}]:-}" ]]; then
+      rm --force -- "${discovered_list}"
+      die "local storage archive contains an unlisted file: ${discovered}"
+    fi
+  done < "${discovered_list}"
+  rm --force -- "${discovered_list}"
+
+  if [[ -s "${checksum_file}" ]]; then
+    (
+      cd "${STORAGE_STAGE}"
+      sha256sum --check --strict "${checksum_file}"
+    )
+  fi
+}
+
+stage_secret_configuration() {
+  local secret_kind secret_artifact parent
+
+  if [[ "${RESTORE_CONFIG}" != "1" ]]; then
+    return 0
+  fi
+  [[ -n "${CONFIG_TARGET}" ]] || die "--config-target is required with --restore-config"
+  validate_absent_target "${CONFIG_TARGET}" "configuration target"
+
+  secret_kind="$(read_manifest_value 'manifest.fetch("configuration").fetch("secret_artifact_kind")')"
+  secret_artifact="$(read_manifest_value 'manifest.fetch("configuration").fetch("secret_artifact")')"
+  [[ "${secret_kind}" == "openpgp" ]] ||
+    die "this backup stores an external reference; retrieve that immutable secret version through its manager"
+
+  parent="$(dirname "${CONFIG_TARGET}")"
+  [[ -d "${parent}" ]] || die "configuration target parent does not exist"
+  require_command gpg
+  CONFIG_STAGE="$(mktemp "${parent}/.mcweb.env.restore.XXXXXX")"
+  chmod 600 "${CONFIG_STAGE}"
+  gpg --batch --quiet --decrypt "${BACKUP_PATH}/${secret_artifact}" > "${CONFIG_STAGE}"
+  [[ -s "${CONFIG_STAGE}" ]] || die "decrypted configuration is empty"
+}
+
+cleanup_sensitive_stage() {
+  if [[ -n "${CONFIG_STAGE}" && -f "${CONFIG_STAGE}" ]]; then
+    rm --force -- "${CONFIG_STAGE}"
+  fi
+  if [[ -n "${STORAGE_STAGE:-}" && -d "${STORAGE_STAGE}" ]]; then
+    echo "Local storage staging directory retained for inspection: ${STORAGE_STAGE}" >&2
+  fi
+}
+
+apply_restore() {
+  local storage_mode restored_required_table_count
+
+  validate_apply_guards
+  storage_mode="$(read_manifest_value 'manifest.fetch("active_storage").fetch("mode")')"
+  validate_restore_target_relationships "${storage_mode}"
+
+  STORAGE_STAGE=""
+  trap cleanup_sensitive_stage EXIT
+  if [[ "${storage_mode}" == "local" ]]; then
+    stage_local_storage \
+      "${BACKUP_PATH}/active_storage.tar.gz" \
+      "${BACKUP_PATH}/active_storage_files.sha256"
+  elif [[ -n "${STORAGE_TARGET}" ]]; then
+    die "--storage-target is only valid for a local-storage backup"
+  fi
+  stage_secret_configuration
+
+  pg_restore --exit-on-error --single-transaction --no-owner --no-privileges \
+    --dbname="${DATABASE_URL:-${MCWEB_DATABASE_NAME:-mcweb_production}}" \
+    "${BACKUP_PATH}/database.dump"
+  restored_required_table_count="$(database_required_table_count)"
+  [[ "${restored_required_table_count}" == "3" ]] ||
+    die "database restore completed without all required application tables"
+
+  if [[ -n "${STORAGE_STAGE:-}" ]]; then
+    publish_staged_target \
+      "${STORAGE_STAGE}" "${STORAGE_TARGET}" "storage target"
+    STORAGE_STAGE=""
+  fi
+  if [[ -n "${CONFIG_STAGE}" ]]; then
+    publish_staged_target \
+      "${CONFIG_STAGE}" "${CONFIG_TARGET}" "configuration target"
+    CONFIG_STAGE=""
+  fi
+
+  trap - EXIT
+  echo "Restore applied to protected targets from: ${BACKUP_PATH}"
+}
+
+parse_arguments() {
+  while [[ $# -gt 0 ]]; do
+    case "$1" in
+      --backup)
+        [[ $# -ge 2 ]] || die "--backup requires a path"
+        BACKUP_PATH="$2"
+        shift 2
+        ;;
+      --verify)
+        MODE="verify"
+        shift
+        ;;
+      --apply)
+        MODE="apply"
+        shift
+        ;;
+      --confirm)
+        [[ $# -ge 2 ]] || die "--confirm requires a value"
+        CONFIRMATION="$2"
+        shift 2
+        ;;
+      --target-database)
+        [[ $# -ge 2 ]] || die "--target-database requires a name"
+        EXPECTED_DATABASE="$2"
+        shift 2
+        ;;
+      --storage-target)
+        [[ $# -ge 2 ]] || die "--storage-target requires a path"
+        STORAGE_TARGET="$2"
+        shift 2
+        ;;
+      --restore-config)
+        RESTORE_CONFIG=1
+        shift
+        ;;
+      --config-target)
+        [[ $# -ge 2 ]] || die "--config-target requires a path"
+        CONFIG_TARGET="$2"
+        shift 2
+        ;;
+      --help|-h)
+        usage
+        exit 0
+        ;;
+      *)
+        if [[ -z "${BACKUP_PATH}" && "$1" != -* ]]; then
+          BACKUP_PATH="$1"
+          shift
+        else
+          die "unknown argument: $1"
+        fi
+        ;;
+    esac
+  done
+}
+
+main() {
+  parse_arguments "$@"
+  load_runtime_environment
+  [[ -n "${BACKUP_PATH}" ]] || resolve_default_backup
+
+  require_command sha256sum
+  require_command pg_restore
+  require_command ruby
+  require_command tar
+  require_command awk
+  require_command find
+  require_command mktemp
+  require_command rm
+  require_command mv
+  require_command realpath
+
+  verify_backup
+  if [[ "${MODE}" == "verify" ]]; then
+    echo "Dry run only: no database, storage, or configuration was changed."
+    exit 0
+  fi
+
+  require_command psql
+  apply_restore
+}
+
+main "$@"

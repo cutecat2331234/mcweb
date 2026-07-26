@@ -39,10 +39,16 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: Install libvips
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0.6"
           bundler-cache: true
+
+      - name: Verify libvips JPEG support
+        run: bundle exec ruby scripts/check-libvips-jpeg.rb
 
       - uses: actions/setup-node@v6
         with:
@@ -100,10 +106,16 @@ jobs:
         with:
           ref: ${{ github.event.workflow_run.head_sha || github.sha }}
 
+      - name: Install libvips
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
+
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0.6"
           bundler-cache: true
+
+      - name: Verify libvips JPEG support
+        run: bundle exec ruby scripts/check-libvips-jpeg.rb
 
       - uses: actions/setup-node@v6
         with:

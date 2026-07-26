@@ -33,7 +33,12 @@ module Api
 
       # POST /api/v1/conversations/:id/reply  (write scope)
       def reply
-        result = Community::SendMessage.call(user: api_user, conversation: @conversation, body: params[:body].to_s)
+        result = Community::SendMessage.call(
+          user: api_user,
+          conversation: @conversation,
+          body: params[:body].to_s,
+          ip_address: request.remote_ip
+        )
         return render_service_error(result) if result.failure?
 
         render json: { data: serialize_message(result.value) }, status: :created

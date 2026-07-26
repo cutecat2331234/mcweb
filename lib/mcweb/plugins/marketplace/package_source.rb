@@ -2,6 +2,7 @@
 
 require "uri"
 require_relative "error"
+require_relative "../../developer_mode"
 
 module Mcweb
   module Plugins
@@ -21,6 +22,9 @@ module Mcweb
           uri = URI.parse(source)
           @scheme = uri.scheme.to_s.downcase.freeze
           raise SourceError, "package source must use file or HTTPS" unless ALLOWED_SCHEMES.include?(scheme)
+          if developer_mode_local_only? && scheme != "file"
+            raise SourceError, "Developer Mode only permits local plugin packages"
+          end
           raise SourceError, "package source must not contain credentials" if uri.userinfo
 
           validate_uri!(uri)
@@ -44,6 +48,11 @@ module Mcweb
         end
 
         private
+
+        def developer_mode_local_only?
+          Mcweb::DeveloperMode.enabled? &&
+            Mcweb::DeveloperMode.integration(:plugin_marketplace) == :local_only
+        end
 
         def validate_uri!(uri)
           if scheme == "https"

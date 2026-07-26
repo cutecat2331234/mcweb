@@ -18,6 +18,8 @@ module Mcweb
     module Marketplace
       class Manager
         ACTIVE_RUNTIME_STATUSES = %w[active degraded].freeze
+        UNINSTALL_IDENTITY_ERROR =
+          "plugin identity changed or cannot be verified; refresh the plugin list and confirm uninstall again"
         Result = Data.define(
           :operation_id, :action, :plugin_id, :version, :status,
           :source, :sha256, :recovery_path
@@ -171,8 +173,13 @@ module Mcweb
           end
         end
 
-        def uninstall(plugin_id:)
-          transition_to_inactive(plugin_id:, action: :uninstall)
+        def uninstall(plugin_id:, expected_version:, expected_sha256:)
+          transition_to_inactive(
+            plugin_id:,
+            action: :uninstall,
+            expected_version:,
+            expected_sha256:
+          )
         end
 
         def status(plugin_id: nil, recent_operations: 100)
@@ -227,7 +234,7 @@ module Mcweb
 
         private
 
-        def transition_to_inactive(plugin_id:, action:)
+        def transition_to_inactive(plugin_id:, action:, expected_version: nil, expected_sha256: nil)
           with_operation(action, plugin_id:) do |operation_id, context|
             plugin_id = validate_plugin_id!(plugin_id)
             active = active_inventory!
@@ -238,6 +245,24 @@ module Mcweb
 
             expected_directory = active.key?(plugin_id) ? managed_path(plugin_id) : disabled_path(plugin_id)
             ensure_managed_entry!(entry, expected_directory)
+            receipt = read_receipt(
+              plugin_id,
+              strict: action == :uninstall || entry.manifest.setup.present?
+            )
+            context.merge!(
+              plugin_id: plugin_id,
+              version: entry.manifest.version,
+              sha256: receipt["sha256"]
+            )
+            if action == :uninstall
+              validate_uninstall_identity!(
+                plugin_id:,
+                manifest: entry.manifest,
+                receipt:,
+                expected_version:,
+                expected_sha256:
+              )
+            end
             validate_no_dependants!(plugin_id, active.merge(disabled))
             destination = if action == :disable
               disabled_path(plugin_id)
@@ -246,7 +271,6 @@ module Mcweb
             end
             raise LifecycleError, "plugin lifecycle destination already exists" if destination.exist?
 
-            receipt = read_receipt(plugin_id, strict: entry.manifest.setup.present?)
             result_status = action == :disable ? "disabled" : "uninstalled"
             setup_plan = load_setup_plan(entry.directory, entry.manifest) if action == :uninstall
             initial_setup_state = Setup::State.load(receipt["setup"]) if setup_plan
@@ -666,6 +690,27 @@ module Mcweb
           end
 
           plugin_id
+        end
+
+        def validate_uninstall_identity!(plugin_id:, manifest:, receipt:, expected_version:, expected_sha256:)
+          expected_version = expected_version.to_s
+          expected_sha256 = expected_sha256.to_s.downcase
+          actual_sha256 = receipt["sha256"].to_s.downcase
+          expected_identity_valid =
+            expected_version.length <= Manifest::MAX_VERSION_LENGTH &&
+            expected_version.match?(Manifest::SEMVER_PATTERN) &&
+            expected_sha256.match?(PackageArchive::SHA256_PATTERN)
+          receipt_identity_valid =
+            receipt["id"].to_s == plugin_id &&
+            receipt["version"].to_s == manifest.version &&
+            actual_sha256.match?(PackageArchive::SHA256_PATTERN)
+
+          unless expected_identity_valid &&
+                 receipt_identity_valid &&
+                 expected_version == manifest.version &&
+                 expected_sha256 == actual_sha256
+            raise IntegrityError, UNINSTALL_IDENTITY_ERROR
+          end
         end
 
         def write_receipt(manifest:, status:, operation_id:, source: nil, sha256: nil,

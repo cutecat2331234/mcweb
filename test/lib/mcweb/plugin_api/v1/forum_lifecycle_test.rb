@@ -356,6 +356,7 @@ class Mcweb::PluginApi::V1::ForumLifecycleTest < ActiveSupport::TestCase
     refute_includes uploaded.value.keys, "key"
     refute_includes uploaded.value.keys, "checksum"
     assert_nil uploaded.value.fetch("post_id")
+    mark_attachment_scan_clean!(Community::PostAttachment.find(attachment_id))
 
     assert_not_visible @forum.find_attachment(user: @member, id: attachment_id)
     assert_equal [ attachment_id ], @forum.unlinked_attachments(
@@ -401,6 +402,7 @@ class Mcweb::PluginApi::V1::ForumLifecycleTest < ActiveSupport::TestCase
       file: uploaded_file("private.txt", "text/plain", "private attachment")
     )
     attachment_id = uploaded.value.fetch("id")
+    mark_attachment_scan_clean!(Community::PostAttachment.find(attachment_id))
     linked = @forum.sync_post_attachments(
       user: @staff,
       post_id: private_reply.id,
@@ -556,6 +558,7 @@ class Mcweb::PluginApi::V1::ForumLifecycleTest < ActiveSupport::TestCase
       file: uploaded_file("immutable.txt", "text/plain", "immutable")
     )
     attachment_id = uploaded.value.fetch("id")
+    mark_attachment_scan_clean!(Community::PostAttachment.find(attachment_id))
     sync = @forum.sync_post_attachments(
       user: @author,
       post_id: @reply.id,

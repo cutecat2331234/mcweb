@@ -67,8 +67,11 @@ module Admin
         lifecycle(:disable, plugin_id, "disabled")
       end
 
-      def uninstall(plugin_id:)
-        lifecycle(:uninstall, plugin_id, "uninstalled")
+      def uninstall(plugin_id:, expected_version:, expected_sha256:)
+        raise error_for if error_for
+
+        calls << [ :uninstall, plugin_id, expected_version, expected_sha256 ]
+        result("uninstall", "uninstalled", plugin_id:)
       end
 
       private
@@ -170,11 +173,27 @@ module Admin
     test "enable disable and uninstall call only manager lifecycle APIs" do
       post enable_plugin_admin_system_applications_path, params: { plugin_id: "acme/demo" }
       post disable_plugin_admin_system_applications_path, params: { plugin_id: "acme/demo" }
-      delete uninstall_plugin_admin_system_applications_path, params: { plugin_id: "acme/demo" }
+      delete uninstall_plugin_admin_system_applications_path, params: {
+        plugin_id: "acme/demo",
+        confirmation: "acme/demo",
+        expected_version: "1.0.0",
+        expected_sha256: "a" * 64
+      }
 
       assert_includes @manager.calls, [ :enable, "acme/demo" ]
       assert_includes @manager.calls, [ :disable, "acme/demo" ]
-      assert_includes @manager.calls, [ :uninstall, "acme/demo" ]
+      assert_includes @manager.calls, [ :uninstall, "acme/demo", "1.0.0", "a" * 64 ]
+    end
+
+    test "uninstall requires the exact plugin id confirmation" do
+      delete uninstall_plugin_admin_system_applications_path, params: {
+        plugin_id: "acme/demo",
+        confirmation: "acme/other"
+      }
+
+      assert_redirected_to admin_system_applications_path
+      refute @manager.calls.any? { |entry| entry.first == :uninstall }
+      assert flash[:alert].present?
     end
 
     test "plugin management permission is required for mutations" do

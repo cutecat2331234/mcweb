@@ -5,7 +5,7 @@ module Community
     MIN_INTERVAL = 10.seconds
     MIN_BODY_LENGTH = 2
 
-    def initialize(user:, topic:, body:, quoted_post: nil, parent_post: nil, ip_address: nil, skip_interval_check: false, whisper: false, attachment_ids: nil)
+    def initialize(user:, topic:, body:, quoted_post: nil, parent_post: nil, ip_address: nil, skip_interval_check: false, whisper: false, attachment_ids: nil, idempotency_key: nil)
       @user = user
       @topic = topic
       @body = body.to_s.strip
@@ -15,6 +15,7 @@ module Community
       @skip_interval_check = skip_interval_check
       @whisper = ActiveModel::Type::Boolean.new.cast(whisper)
       @attachment_ids = attachment_ids
+      @idempotency_key = idempotency_key
       apply_plugin_filters!
       filter_censored_body!
     end
@@ -26,9 +27,6 @@ module Community
 
       state_error = topic_reply_state_error
       return ServiceResult.failure(error: state_error) if state_error
-
-      spam_result = check_spam
-      return spam_result if spam_result.failure?
 
       if @whisper && !can_post_whisper?
         return ServiceResult.failure(error: "You are not allowed to post staff whispers.")
@@ -62,13 +60,49 @@ module Community
         return ServiceResult.failure(error: "Parent post is not available.")
       end
 
+      rate_result = enforce_rate_limit
+      return rate_result if rate_result.failure?
+
       old_trust_level = Community::TrustLevel.level_for(@user)
       needs_approval = Community::RequiresPostApproval.required_for?(user: @user, whisper: @whisper)
       post_status = needs_approval ? "pending_approval" : "published"
       post = nil
-      @topic.with_lock do
+      attachment_result = nil
+      inline_upload_result = nil
+      request_result = nil
+      spam_result = nil
+      state_result = nil
+      replayed = false
+      Community::Post.transaction do
+        request_result = Community::ContentIdempotency.claim(
+          user: @user,
+          operation: "post.create",
+          key: @idempotency_key,
+          payload: idempotency_payload
+        )
+        raise ActiveRecord::Rollback if request_result.failure?
+
+        if request_result.value[:replay]
+          post = request_result.value[:resource]
+          replayed = true
+          next
+        end
+
+        spam_result = check_spam
+        raise ActiveRecord::Rollback if spam_result.failure?
+
+        @topic.lock!
         state_error = topic_reply_state_error
-        return ServiceResult.failure(error: state_error) if state_error
+        if state_error
+          state_result = ServiceResult.failure(error: state_error)
+          raise ActiveRecord::Rollback
+        end
+
+        attachment_result = Community::PreparePostAttachments.call(
+          user: @user,
+          attachment_ids: @attachment_ids
+        )
+        raise ActiveRecord::Rollback if attachment_result.failure?
 
         # Soft-deleted rows still participate in the database uniqueness
         # constraint, so their floor numbers must never be reused.
@@ -84,10 +118,31 @@ module Community
           status: post_status,
           post_type: @whisper ? "whisper" : "regular"
         )
+        inline_upload_result = Community::BindInlineUploads.call(
+          user: @user,
+          post: post,
+          body: @body
+        )
+        raise ActiveRecord::Rollback if inline_upload_result.failure?
+
+        attachment_result = Community::LinkPostAttachments.call(
+          user: @user,
+          post: post,
+          attachment_ids: @attachment_ids
+        )
+        raise ActiveRecord::Rollback if attachment_result.failure?
+
+        Community::ReadState.mark_read!(@user, @topic, floor: post.floor_number)
+        Community::Subscription.subscribe!(@user, @topic)
+        request_result.value[:request]&.complete!(post)
       end
 
-      Community::ReadState.mark_read!(@user, @topic, floor: post.floor_number)
-      Community::Subscription.subscribe!(@user, @topic)
+      return request_result if request_result&.failure?
+      return spam_result if spam_result&.failure?
+      return state_result if state_result&.failure?
+      return attachment_result if attachment_result&.failure?
+      return inline_upload_result if inline_upload_result&.failure?
+      return ServiceResult.success(post) if replayed
 
       Administration::AuditLogger.call(
         actor: @user,
@@ -102,8 +157,6 @@ module Community
         Community::PublishPostSideEffects.call(post: post)
         award_post_points(post)
       end
-      link_result = Community::LinkPostAttachments.call(user: @user, post: post, attachment_ids: @attachment_ids)
-      return link_result if link_result.failure?
       Community::CheckAutoBadges.call(user: @user)
       notify_trust_level_up!(old_trust_level)
 
@@ -121,6 +174,17 @@ module Community
       "This topic is locked." if @topic.locked?
     end
 
+    def idempotency_payload
+      {
+        topic_id: @topic.id,
+        body: @body,
+        quoted_post_id: @quoted_post&.id,
+        parent_post_id: @parent_post&.id,
+        whisper: @whisper,
+        attachment_ids: Array(@attachment_ids).map(&:to_s)
+      }
+    end
+
     # Reward the author for a newly published post. Side effect: never let an
     # awarding error bubble up and break post creation.
     def award_post_points(post)
@@ -133,13 +197,6 @@ module Community
       if @body.length < MIN_BODY_LENGTH
         return ServiceResult.failure(error: "Post body is too short.")
       end
-
-      rate_result = Administration::RateLimiter.call(
-        key: "forum_post:#{@user.id}",
-        limit: 20,
-        window: 1.hour
-      )
-      return rate_result if rate_result.failure?
 
       if muted_in_section?
         return ServiceResult.failure(error: "You are muted in this section.")
@@ -156,16 +213,19 @@ module Community
       ip_result = Administration::CheckIpBan.call(ip_address: @ip_address)
       return ip_result if ip_result.failure?
 
-      if slow_mode_active?
+      if !developer_mode_bypasses_spam_gates? && slow_mode_active?
         return ServiceResult.failure(error: "Slow mode is active. Please wait before posting again.")
       end
 
       recent = Community::Post.where(user: @user).order(created_at: :desc).first
-      if !@skip_interval_check && recent && recent.created_at > MIN_INTERVAL.ago
+      if !developer_mode_bypasses_spam_gates? &&
+          !@skip_interval_check &&
+          recent &&
+          recent.created_at > MIN_INTERVAL.ago
         return ServiceResult.failure(error: "Please wait before posting again.")
       end
 
-      if duplicate_body?
+      if !developer_mode_bypasses_spam_gates? && duplicate_body?
         return ServiceResult.failure(error: "Duplicate post detected.")
       end
 
@@ -180,6 +240,18 @@ module Community
       return post_restriction if post_restriction.failure?
 
       ServiceResult.success
+    end
+
+    def developer_mode_bypasses_spam_gates?
+      Mcweb::DeveloperMode.allow?(:skip_anti_spam)
+    end
+
+    def enforce_rate_limit
+      Administration::AbuseRateLimit.call(
+        action: :reply,
+        account: @user,
+        ip_address: @ip_address
+      )
     end
 
     def slow_mode_active?

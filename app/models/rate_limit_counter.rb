@@ -1,6 +1,7 @@
 class RateLimitCounter < ApplicationRecord
   validates :key, presence: true, uniqueness: true
   validates :count, numericality: { greater_than_or_equal_to: 0 }
+  validates :blocked_count, numericality: { greater_than_or_equal_to: 0 }
   validates :window_start, presence: true
 
   def self.increment!(key, limit:, window:)
@@ -9,6 +10,7 @@ class RateLimitCounter < ApplicationRecord
 
     counter.count += 1
     counter.window_start ||= Time.current
+    counter.expires_at = counter.window_start + window
     counter.save!
 
     counter.within_limit?(limit)
@@ -37,6 +39,7 @@ class RateLimitCounter < ApplicationRecord
   def self.reset_window!(counter, window)
     counter.count = 0
     counter.window_start = Time.current
+    counter.expires_at = counter.window_start + window
   end
   private_class_method :reset_window!
 end

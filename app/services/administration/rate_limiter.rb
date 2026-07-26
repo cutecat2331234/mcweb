@@ -2,21 +2,37 @@
 
 module Administration
   class RateLimiter < ApplicationService
-    def initialize(key:, limit:, window:)
+    def initialize(key:, limit:, window:, developer_mode_bypass: true)
       @key = key.to_s
       @limit = limit
       @window = window
+      @developer_mode_bypass = developer_mode_bypass
     end
 
     def call
+      if @developer_mode_bypass &&
+          Mcweb::DeveloperMode.allow?(:skip_rate_limits)
+        return ServiceResult.success(remaining: nil, developer_mode_bypassed: true)
+      end
+
       attempts = 0
       begin
         RateLimitCounter.transaction do
           counter = RateLimitCounter.lock.find_or_initialize_by(key: @key)
-          reset_counter_if_expired!(counter)
+          now = Time.current
+          reset_counter_if_expired!(counter, now)
+          counter.expires_at = counter.window_start + @window
 
           if counter.count >= @limit
-            return ServiceResult.failure(error: "Rate limit exceeded.")
+            counter.blocked_count += 1
+            counter.last_blocked_at = now
+            counter.save!
+
+            return ServiceResult.failure(
+              error: I18n.t("mcweb.flash.rate_limited", default: "Rate limit exceeded."),
+              code: :rate_limited,
+              retry_after: retry_after(counter, now)
+            )
           end
 
           counter.count += 1
@@ -35,15 +51,17 @@ module Administration
 
     private
 
-    def reset_counter_if_expired!(counter)
-      if counter.new_record? || counter.window_start.blank? || counter.window_start < @window.ago
+    def reset_counter_if_expired!(counter, now)
+      if counter.new_record? || counter.window_start.blank? || counter.window_start <= now - @window
         counter.count = 0
-        counter.window_start = Time.current
+        counter.blocked_count = 0
+        counter.last_blocked_at = nil
+        counter.window_start = now
       end
     end
 
-    def retry_after(counter)
-      (counter.window_start + @window - Time.current).ceil
+    def retry_after(counter, now)
+      [ (counter.window_start + @window - now).ceil, 1 ].max
     end
   end
 end

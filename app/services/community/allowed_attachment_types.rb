@@ -38,18 +38,31 @@ module Community
       [ mb, 1 ].max.megabytes
     end
 
-    def allowed?(filename:, content_type: nil)
+    def inspect_file(filename:, io:)
       ext = File.extname(filename.to_s).delete_prefix(".").downcase
-      return false if ext.blank?
+      return Community::AttachmentContentInspector::Result.new(status: :unsupported) if ext.blank?
+      return Community::AttachmentContentInspector::Result.new(status: :unsupported) unless extensions.include?(ext)
 
-      return false unless extensions.include?(ext)
+      # A configured extension has no generic fallback: formats without a
+      # byte-level inspector remain rejected instead of trusting request MIME.
+      content_type = DEFAULT_CONTENT_TYPES[ext]
+      return Community::AttachmentContentInspector::Result.new(status: :unsupported) unless content_type
 
-      return true if content_type.blank?
+      Community::AttachmentContentInspector.call(
+        extension: ext,
+        io: io,
+        max_bytes: max_size,
+        content_type: content_type
+      )
+    end
 
-      expected = DEFAULT_CONTENT_TYPES[ext]
-      return true if expected.blank?
+    def allowed?(filename:, io:)
+      inspect_file(filename: filename, io: io).success?
+    end
 
-      content_type.to_s == expected || content_type.to_s.start_with?("text/")
+    def download_content_type(filename)
+      ext = File.extname(filename.to_s).delete_prefix(".").downcase
+      DEFAULT_CONTENT_TYPES.fetch(ext, "application/octet-stream")
     end
   end
 end

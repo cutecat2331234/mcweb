@@ -9,6 +9,7 @@ function source(path: string) {
 
 const page = source('app/javascript/pages/Admin/System/Applications/Index.vue')
 const controller = source('app/controllers/admin/system/applications_controller.rb')
+const manager = source('lib/mcweb/plugins/marketplace/manager.rb')
 const routes = source('config/routes.rb')
 const seeds = source('db/seeds.rb')
 const accountAccess = source('app/services/identity/account_access.rb')
@@ -23,6 +24,12 @@ test('CE plugin package UI exposes verified upload lifecycle and operation histo
   assert.match(page, /router\.delete\(props\.pluginActions\.uninstall/)
   assert.match(page, /pluginMarketplace\.operations/)
   assert.match(page, /uninstallConfirmMessage/)
+  assert.match(page, /uninstallConfirmation\.value\.trim\(\) === uninstallTarget\.value\.id/)
+  assert.match(page, /confirmation: uninstallConfirmation\.value\.trim\(\)/)
+  assert.match(page, /expected_version: target\.version/)
+  assert.match(page, /expected_sha256: target\.sha256/)
+  assert.match(page, /hasVerifiedUninstallIdentity\(plugin\)/)
+  assert.match(page, /uninstallRiskTitle/)
 })
 
 test('CE plugin package controller only stages uploads and delegates lifecycle to Manager', () => {
@@ -31,7 +38,10 @@ test('CE plugin package controller only stages uploads and delegates lifecycle t
   assert.match(controller, /Tempfile\.create\(\[ "mcweb-plugin-upload-", "\.zip" \]\)/)
   assert.match(controller, /MAX_PLUGIN_PACKAGE_BYTES = 50\.megabytes/)
   assert.match(controller, /marketplace_manager\.install\(/)
-  assert.match(controller, /marketplace_manager\.public_send\(action, plugin_id:/)
+  assert.match(controller, /marketplace_manager\.public_send\([\s\S]*?plugin_id: params\[:plugin_id\]\.to_s/)
+  assert.match(controller, /params\[:confirmation\]\.to_s == plugin_id/)
+  assert.match(controller, /expected_version: params\[:expected_version\]\.to_s/)
+  assert.match(controller, /expected_sha256: params\[:expected_sha256\]\.to_s/)
   assert.match(controller, /def safe_marketplace_message/)
   assert.doesNotMatch(controller, /params\[:package_path\]/)
   assert.doesNotMatch(controller, /File\.(?:open|read|binread)\(params/)
@@ -44,6 +54,18 @@ test('CE plugin package controller only stages uploads and delegates lifecycle t
   ]) {
     assert.match(routes, new RegExp(route.replace(' ', '\\s+')))
   }
+})
+
+test('CE plugin uninstall revalidates version and package checksum under the lifecycle lock', () => {
+  assert.match(manager, /def uninstall\(plugin_id:, expected_version:, expected_sha256:\)/)
+  assert.match(manager, /def with_operation[\s\S]*?with_lock do/)
+
+  const transitionStart = manager.indexOf('def transition_to_inactive')
+  const transitionEnd = manager.indexOf('def with_operation', transitionStart)
+  const transition = manager.slice(transitionStart, transitionEnd)
+  assert.ok(transitionStart >= 0 && transitionEnd > transitionStart)
+  assert.ok(transition.indexOf('with_operation') < transition.indexOf('validate_uninstall_identity!'))
+  assert.ok(transition.indexOf('validate_uninstall_identity!') < transition.indexOf('load_setup_plan'))
 })
 
 test('CE plugin management permission is seeded and assigned to the system module', () => {

@@ -5,6 +5,7 @@ class ApplicationJob < ActiveJob::Base
     payments: "payments",
     minecraft: "minecraft",
     maintenance: "maintenance",
+    plugins: "plugins",
     website: "website"
   }.freeze
 

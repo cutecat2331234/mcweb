@@ -97,6 +97,7 @@ class Round114DraftAttachmentTest < ActiveSupport::TestCase
       byte_size: 12
     )
     @attachment.file.attach(io: StringIO.new("draft content"), filename: "draft.txt", content_type: "text/plain")
+    mark_attachment_scan_clean!(@attachment)
   end
 
   test "save topic draft links attachments" do
@@ -133,6 +134,7 @@ class Round114ScheduleTopicAttachmentTest < ActiveSupport::TestCase
       byte_size: 8
     )
     @attachment.file.attach(io: StringIO.new("schedule"), filename: "sched.txt", content_type: "text/plain")
+    mark_attachment_scan_clean!(@attachment)
   end
 
   test "schedule topic links attachments to opening post" do

@@ -7,7 +7,9 @@ module Community
     include Community::SectionVisibility
 
     def index
-      if search_index_rate_limited?
+      rate_limit_result = search_index_rate_limit
+      if rate_limit_result.failure?
+        apply_retry_after_header(rate_limit_result)
         return redirect_to forum_search_path, alert: t("mcweb.flash.rate_limited")
       end
 
@@ -281,8 +283,13 @@ module Community
     end
 
     def suggest
-      if search_suggest_rate_limited?
-        return render json: { topics: [], tags: [], users: [], sections: [] }
+      rate_limit_result = search_suggest_rate_limit
+      if rate_limit_result.failure?
+        apply_retry_after_header(rate_limit_result)
+        return render(
+          json: { error: "rate_limited", topics: [], tags: [], users: [], sections: [] },
+          status: :too_many_requests
+        )
       end
 
       q = params[:q].to_s.strip
@@ -582,22 +589,20 @@ module Community
       }.compact
     end
 
-    def search_suggest_rate_limited?
-      actor_key = logged_in? ? current_user.id : request.remote_ip
-      Administration::RateLimiter.call(
-        key: "forum_search_suggest:#{actor_key}",
-        limit: 60,
-        window: 1.minute
-      ).failure?
+    def search_suggest_rate_limit
+      Administration::AbuseRateLimit.call(
+        action: :search_suggest,
+        account: logged_in? ? current_user : nil,
+        ip_address: request.remote_ip
+      )
     end
 
-    def search_index_rate_limited?
-      actor_key = logged_in? ? current_user.id : request.remote_ip
-      Administration::RateLimiter.call(
-        key: "forum_search_index:#{actor_key}",
-        limit: 30,
-        window: 1.minute
-      ).failure?
+    def search_index_rate_limit
+      Administration::AbuseRateLimit.call(
+        action: :search,
+        account: logged_in? ? current_user : nil,
+        ip_address: request.remote_ip
+      )
     end
   end
 end

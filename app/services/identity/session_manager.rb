@@ -36,6 +36,7 @@ module Identity
         ip_address: @ip_address,
         user_agent: @user_agent,
         remember_me: @remember_me,
+        developer_mode: Mcweb::DeveloperMode.enabled?,
         last_active_at: Time.current,
         expires_at: expires_at
       )

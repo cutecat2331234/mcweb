@@ -17,6 +17,8 @@ mcweb_plugin.yml       # required, exactly once, at the archive root
 mcweb_package.yml      # optional host compatibility metadata
 plugin.rb              # the manifest entrypoint
 db/setup.rb            # optional versioned setup lifecycle
+config/settings.yml    # optional strict settings schema and migrations
+config/jobs.yml        # optional owned background-job declarations
 ...                    # plugin-owned Ruby and assets
 ```
 
@@ -174,6 +176,31 @@ undo external side effects or database work deliberately moved to another
 connection/thread. Plugin review should keep entrypoint registration
 side-effect-free and setup callbacks database-focused and idempotent.
 
+An optional `contributions.settings` file is parsed and validated during
+runtime registration. An invalid or path-escaping schema therefore fails the
+candidate reload and enters the normal package/runtime rollback boundary before
+the candidate becomes active. Setting values themselves live in encrypted,
+append-only host records keyed by plugin ID and `schema_version`; package
+rollback does not delete or reinterpret them. Moving forward to a new schema is
+an explicit admin or SDK migration, and moving the package back automatically
+selects the preserved older schema namespace. Disable and recoverable uninstall
+retain all setting versions.
+
+An optional `contributions.jobs` file is also validated during runtime
+registration. It must remain inside the package and declare only strict owned
+job keys and closed scalar argument schemas; packages cannot declare a Ruby
+class to place on the host queue. Invalid declarations, missing handlers, and
+path escapes fail activation inside the normal rollback boundary.
+
+Owned job-run records survive disable and recoverable uninstall. A queued
+delivery whose owner is unavailable, or whose installed version/declaration no
+longer matches, becomes `paused` without consuming a handler attempt. Before an
+intentional uninstall, cancel pending runs where practical. Re-enabling the
+exact compatible package permits an explicit resume; an incompatible upgrade
+must cancel the old run and enqueue a new one instead of reinterpreting its
+payload. Running Ruby cannot be interrupted by the lifecycle operation, so
+handlers must use the stable run public ID for idempotent external effects.
+
 ## State and observability
 
 The default state directory is `storage/plugin_marketplace`, outside the plugin
@@ -222,12 +249,25 @@ Lifecycle and status commands:
 $env:ID = "acme/example"
 bundle exec rake plugins:marketplace:disable
 bundle exec rake plugins:marketplace:enable
-bundle exec rake plugins:marketplace:uninstall
 bundle exec rake plugins:marketplace:status
 ```
 
 Use `LIMIT` to bound returned operation records. Omit `ID` from `status` to see
 the complete Marketplace catalog.
+
+Uninstall is bound to the exact version and reviewed package checksum shown by
+the current status response. Refresh status immediately before the destructive
+operation:
+
+```powershell
+$env:ID = "acme/example"
+$env:VERSION = "<current version from status>"
+$env:SHA256 = "<current 64-character SHA-256 from status>"
+bundle exec rake plugins:marketplace:uninstall
+```
+
+If the package changes before the lifecycle lock is acquired, Marketplace
+rejects the stale request before loading or executing teardown code.
 
 ## Deliberate boundaries
 

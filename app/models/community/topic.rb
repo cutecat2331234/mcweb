@@ -91,26 +91,25 @@ module Community
       window ? window.ago : nil
     end
 
-    # Rank topics by engagement within a time window. When `since` is present we
-    # only keep topics that received a published post in the window and order them
-    # by how many such posts they got (correlated subquery, so pagination/`includes`
-    # still work without a GROUP BY). For all-time we fall back to cumulative
-    # replies/views weight. `pinned` is ignored on purpose — "Top" is a pure
-    # engagement ranking, not the section view.
+    # Rank topics by engagement within a time window. The grouped subquery scans
+    # the qualifying post window once, then joins one count per topic. This keeps
+    # pagination/includes compatible without running a correlated count for every
+    # candidate topic. For all-time we fall back to cumulative replies/views.
+    # `pinned` is ignored on purpose — "Top" is a pure engagement ranking, not the
+    # section view.
     def self.top_ranked(since)
       if since
-        # Count only regular replies (mirrors Post.countable) — whispers and
-        # system small_action posts shouldn't inflate a topic's public ranking.
-        window_posts = sanitize_sql_array([
-          "SELECT 1 FROM forum_posts fp WHERE fp.forum_topic_id = forum_topics.id " \
-          "AND fp.status = 'published' AND fp.post_type = 'regular' AND fp.deleted_at IS NULL AND fp.created_at >= ?", since
-        ])
-        window_count = sanitize_sql_array([
-          "(SELECT COUNT(*) FROM forum_posts fp WHERE fp.forum_topic_id = forum_topics.id " \
-          "AND fp.status = 'published' AND fp.post_type = 'regular' AND fp.deleted_at IS NULL AND fp.created_at >= ?)", since
-        ])
-        where("EXISTS (#{window_posts})")
-          .order(Arel.sql("#{window_count} DESC"))
+        window_counts = Community::Post
+          .countable
+          .where("forum_posts.created_at >= ?", since)
+          .group(:forum_topic_id)
+          .select(:forum_topic_id, "COUNT(*) AS posts_count")
+
+        joins(<<~SQL.squish)
+          INNER JOIN (#{window_counts.to_sql}) top_window_counts
+            ON top_window_counts.forum_topic_id = forum_topics.id
+        SQL
+          .order(Arel.sql("top_window_counts.posts_count DESC"))
           .order(views_count: :desc, last_posted_at: :desc, id: :desc)
       else
         order(Arel.sql("(forum_topics.replies_count * 3 + forum_topics.views_count) DESC"))

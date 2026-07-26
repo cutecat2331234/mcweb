@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import { Moon, Sun, Bell, Mail, ShoppingCart, Menu, X } from '@lucide/vue'
+import { Moon, Sun, Bell, Mail, ShoppingCart, Menu, TriangleAlert, X } from '@lucide/vue'
 import { routes } from '@/lib/routes'
 import FlashMessages from '@/components/portal/FlashMessages.vue'
 import ForumShortcuts from '@/components/portal/ForumShortcuts.vue'
@@ -28,6 +28,14 @@ const forumAssigned = computed(() => page.props.forum_assigned as { count: numbe
 const forumModerationPending = computed(() => page.props.forum_moderation_pending as { count: number; url: string } | undefined)
 const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
+const developerMode = computed(
+  () =>
+    (page.props.developer_mode ?? { enabled: false }) as {
+      enabled: boolean
+      profile?: string
+      production_environment?: boolean
+    },
+)
 const globalAnnouncements = computed(() => page.props.global_announcements as Array<{ title: string; url: string; id: string }> | undefined)
 const forumNotices = computed(() => page.props.forum_notices as Array<{ id: number; title: string; message_html: string; style: string; dismissible: boolean; dismiss_url: string }> | undefined)
 const dismissedNoticesLocal = ref<number[]>([])
@@ -228,6 +236,27 @@ const sidebarProps = computed(() => ({
         </header>
 
         <div
+          v-if="developerMode.enabled"
+          class="border-b border-amber-500/35 bg-amber-500/10 text-amber-950 dark:text-amber-100"
+          data-testid="developer-mode-banner"
+          role="alert"
+        >
+          <div class="flex items-start gap-2.5 px-4 py-2.5 text-sm sm:items-center sm:px-6">
+            <TriangleAlert class="mt-0.5 h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400 sm:mt-0" />
+            <div class="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+              <span class="font-semibold">{{ t('common.developerMode') }}</span>
+              <span>{{ t('common.developerModeWarning') }}</span>
+              <span
+                v-if="developerMode.production_environment"
+                class="font-semibold text-red-700 dark:text-red-300"
+              >
+                {{ t('common.developerModeProductionWarning') }}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div
           v-if="features.forum && visibleAnnouncements.length"
           class="border-b bg-amber-500/10 text-amber-950 dark:bg-amber-500/10 dark:text-amber-100"
         >
@@ -281,7 +310,7 @@ const sidebarProps = computed(() => ({
           <div class="mx-auto w-full max-w-6xl">
             <FlashMessages />
             <Transition name="page-fade" mode="out-in">
-              <div :key="page.url" class="min-h-[1px]">
+              <div class="min-h-[1px]">
                 <slot />
               </div>
             </Transition>

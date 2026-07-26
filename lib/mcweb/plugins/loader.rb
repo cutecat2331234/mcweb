@@ -70,7 +70,9 @@ module Mcweb
 
       def manifest_entries
         manifest_paths.filter_map do |manifest_path|
-          [ manifest_path, Manifest.load_file(manifest_path) ]
+          manifest = Manifest.load_file(manifest_path)
+          PermissionContributionLoader.load(manifest)
+          [ manifest_path, manifest ]
         rescue StandardError, ScriptError => e
           record_load_failure(manifest_path, e)
           nil

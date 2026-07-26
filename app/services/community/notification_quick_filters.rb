@@ -9,16 +9,26 @@ module Community
       { key: "payment", type: "commerce.payment_confirmed" }
     ].freeze
 
-    def self.call(user:, category: nil, read: nil, active_type: nil, period: nil)
-      new(user: user, category: category, read: read, active_type: active_type, period: period).filters
+    def self.call(user:, category: nil, read: nil, active_type: nil, period: nil, counts: nil, unread_counts: nil)
+      new(
+        user: user,
+        category: category,
+        read: read,
+        active_type: active_type,
+        period: period,
+        counts: counts,
+        unread_counts: unread_counts
+      ).filters
     end
 
-    def initialize(user:, category:, read:, active_type:, period: nil)
+    def initialize(user:, category:, read:, active_type:, period: nil, counts: nil, unread_counts: nil)
       @user = user
       @category = category.to_s
       @read = read.to_s
       @active_type = active_type.to_s
       @period = period.to_s
+      @counts = counts
+      @unread_counts = unread_counts
     end
 
     def filters
@@ -27,8 +37,8 @@ module Community
       scope = scope.unread if @read == "unread"
       scope = Community::NotificationPeriodScope.call(scope, @period) if @period.present?
 
-      counts = scope.unscope(:order).group(:notification_type).count
-      unread_counts = scope.unread.unscope(:order).group(:notification_type).count
+      counts = @counts || scope.unscope(:order).group(:notification_type).count
+      unread_counts = @unread_counts || scope.unread.unscope(:order).group(:notification_type).count
 
       FILTERS.filter_map do |filter|
         count = counts[filter[:type]].to_i

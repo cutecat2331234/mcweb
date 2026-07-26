@@ -29,9 +29,13 @@ namespace :plugins do
       puts JSON.pretty_generate(result.to_h)
     end
 
-    desc "Uninstall a plugin into the recoverable quarantine (ID)"
+    desc "Uninstall the exact reviewed plugin into recoverable quarantine (ID, VERSION, SHA256)"
     task uninstall: :environment do
-      result = Mcweb::Plugins::Marketplace.manager.uninstall(plugin_id: ENV.fetch("ID"))
+      result = Mcweb::Plugins::Marketplace.manager.uninstall(
+        plugin_id: ENV.fetch("ID"),
+        expected_version: ENV.fetch("VERSION"),
+        expected_sha256: ENV.fetch("SHA256")
+      )
       puts JSON.pretty_generate(result.to_h)
     end
 

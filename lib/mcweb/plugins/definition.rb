@@ -7,24 +7,37 @@ module Mcweb
     Listener = Data.define(:plugin_id, :event, :priority, :sequence, :callback)
     Filter = Data.define(:plugin_id, :name, :priority, :sequence, :callback)
     ServiceDecorator = Data.define(:plugin_id, :name, :priority, :sequence, :callback)
+    JobHandler = Data.define(:plugin_id, :job_key, :callback)
 
     class Definition
       EVENT_PATTERN = /\A[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+\z/
       MAX_EVENT_NAME_LENGTH = 191
       PRIORITY_RANGE = (-10_000..10_000)
 
-      attr_reader :manifest, :api
+      attr_reader :manifest, :api, :job_contribution, :permission_contributions,
+                  :settings_schema
 
-      def initialize(manifest, event_bus: Mcweb::Events, capability_auditor: nil)
+      def initialize(
+        manifest,
+        event_bus: Mcweb::Events,
+        capability_auditor: nil,
+        permission_contributions: [],
+        permission_catalog: nil
+      )
         @manifest = manifest
+        @permission_contributions = permission_contributions.dup.freeze
         @api = Mcweb::PluginApi::V1::Host.new(
           manifest:,
           event_bus:,
-          capability_auditor:
+          capability_auditor:,
+          permission_catalog:
         )
+        @job_contribution = @api.jobs.declaration
+        @settings_schema = @api.settings.declaration
         @listeners = []
         @filters = []
         @service_decorators = []
+        @job_handlers = {}
         @sealed = false
         @status = :registered
         @failure_count = 0
@@ -107,6 +120,32 @@ module Mcweb
         self
       end
 
+      # Jobs are addressed only by keys declared in contributions.jobs. The
+      # callback is retained by the trusted runtime registry; no Ruby class name
+      # crosses the persistent queue boundary.
+      def job(job_key, &callback)
+        raise ArgumentError, "job callback is required" unless callback
+
+        normalized_key = normalize_job_key(job_key)
+        @mutex.synchronize do
+          raise LifecycleError, "plugin definition is sealed" if @sealed
+          unless job_contribution
+            raise LifecycleError, "plugin #{id} does not declare a jobs contribution"
+          end
+          job_contribution.fetch(normalized_key)
+          if @job_handlers.key?(normalized_key)
+            raise LifecycleError, "plugin job #{id}:#{normalized_key} is already registered"
+          end
+
+          @job_handlers[normalized_key] = JobHandler.new(
+            plugin_id: id,
+            job_key: normalized_key,
+            callback:
+          )
+        end
+        self
+      end
+
       def listeners
         @mutex.synchronize { @listeners.dup.freeze }
       end
@@ -117,6 +156,14 @@ module Mcweb
 
       def service_decorators
         @mutex.synchronize { @service_decorators.dup.freeze }
+      end
+
+      def job_handler(job_key)
+        @mutex.synchronize { @job_handlers[job_key.to_s] }
+      end
+
+      def job_handler_keys
+        @mutex.synchronize { @job_handlers.keys.sort.freeze }
       end
 
       def declares_capability?(capability)
@@ -145,10 +192,17 @@ module Mcweb
 
       def seal!
         @mutex.synchronize do
+          missing_jobs = job_contribution ? job_contribution.jobs.keys - @job_handlers.keys : []
+          if missing_jobs.any?
+            raise LifecycleError,
+              "plugin #{id} is missing handlers for jobs: #{missing_jobs.sort.join(', ')}"
+          end
+
           @sealed = true
           @listeners.freeze
           @filters.freeze
           @service_decorators.freeze
+          @job_handlers.freeze
         end
         self
       end
@@ -190,6 +244,10 @@ module Mcweb
         record_extension_failure!(error)
       end
 
+      def record_job_failure!(error)
+        record_extension_failure!(error)
+      end
+
       def record_extension_failure!(error)
         @mutex.synchronize do
           @status = :degraded
@@ -206,6 +264,10 @@ module Mcweb
             listener_count: @listeners.length,
             filter_count: @filters.length,
             service_decorator_count: @service_decorators.length,
+            job_handler_count: @job_handlers.length,
+            jobs_schema_version: job_contribution&.version,
+            permission_contribution_count: permission_contributions.length,
+            settings_schema_version: settings_schema&.version,
             failure_count: @failure_count,
             last_error: @last_error,
             activation_order: @activation_order
@@ -222,6 +284,15 @@ module Mcweb
           raise ArgumentError, "invalid #{label} name #{name.inspect}"
         end
         name
+      end
+
+      def normalize_job_key(value)
+        key = value.to_s.dup
+        unless key.length <= MAX_EVENT_NAME_LENGTH &&
+            key.match?(JobContribution::JOB_KEY_PATTERN)
+          raise ArgumentError, "invalid job key #{key.inspect}"
+        end
+        key.freeze
       end
 
       def validate_priority!(priority)

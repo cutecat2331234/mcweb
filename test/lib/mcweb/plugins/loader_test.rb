@@ -293,6 +293,52 @@ class Mcweb::Plugins::LoaderTest < ActiveSupport::TestCase
     end
   end
 
+  test "invalid permission contributions are rejected before entrypoint execution" do
+    plugin_dir = @root.join("invalid-permission-contribution")
+    FileUtils.mkdir_p(plugin_dir.join("config"))
+    File.write(
+      plugin_dir.join("mcweb_plugin.yml"),
+      {
+        "id" => "acme/permissions",
+        "name" => "Invalid permissions",
+        "version" => "1.0.0",
+        "api_version" => "1",
+        "entrypoint" => "plugin.rb",
+        "contributions" => {
+          "permissions" => "config/permissions.yml"
+        }
+      }.to_yaml
+    )
+    File.write(
+      plugin_dir.join("config/permissions.yml"),
+      {
+        "permissions" => [
+          {
+            "id" => "other/plugin.orders.view",
+            "group" => "acme.permissions.orders",
+            "title_phrase" => "permission.orders_view.title",
+            "description_phrase" => "permission.orders_view.description",
+            "scope" => "global",
+            "default" => "none"
+          }
+        ]
+      }.to_yaml
+    )
+    File.write(
+      plugin_dir.join("plugin.rb"),
+      "$mcweb_plugin_sdk_outside_executed = true\nMcweb::Plugins.register\n"
+    )
+
+    Mcweb::Plugins.reload!(root: @root)
+
+    refute $mcweb_plugin_sdk_outside_executed
+    assert_empty Mcweb::Plugins.list
+    assert Mcweb::Plugins.diagnostics.any? do |entry|
+      entry[:code] == "plugin_load_failed" &&
+        entry[:message].include?("permission contribution id")
+    end
+  end
+
   test "concurrent reloads leave one active generation and one subscription" do
     write_plugin(
       "concurrent-reload",

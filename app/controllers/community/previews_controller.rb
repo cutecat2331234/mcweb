@@ -18,14 +18,15 @@ module Community
     private
 
     def rate_limit_preview!
-      result = Administration::RateLimiter.call(
-        key: "forum_post_preview:#{current_user.id}:#{request.remote_ip}",
-        limit: 30,
-        window: 1.minute
+      result = Administration::AbuseRateLimit.call(
+        action: :preview,
+        account: current_user,
+        ip_address: request.remote_ip
       )
       return unless result.failure?
 
-      render json: { error: t("mcweb.flash.rate_limited") }, status: :too_many_requests
+      apply_retry_after_header(result)
+      render json: { error: "rate_limited", message: t("mcweb.flash.rate_limited") }, status: :too_many_requests
     end
   end
 end

@@ -33,8 +33,9 @@ module Identity
         merge_guest_cart!
         redirect_after_login default: FeatureFlags.primary_portal_path(self), notice: t("mcweb.flash.sign_in_success")
       else
+        apply_retry_after_header(result)
         render inertia: "Identity/Sessions/New",
-               status: :unprocessable_entity,
+               status: service_error_status(result),
                props: { login_error: service_error_message(result) }
       end
     end

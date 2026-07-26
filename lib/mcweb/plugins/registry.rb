@@ -4,6 +4,8 @@ require_relative "manifest_error"
 require_relative "duplicate_plugin_error"
 require_relative "lifecycle_error"
 require_relative "manifest"
+require_relative "permission_contribution"
+require_relative "permission_contribution_catalog"
 require_relative "definition"
 require_relative "../plugin_api/v1/normalizer"
 require_relative "../plugin_api/v1/event"
@@ -125,6 +127,7 @@ module Mcweb
         @definitions = {}
         @subscriptions = {}
         @diagnostics = []
+        @permission_catalog = PermissionContributionCatalog.new
         @mutex = Mutex.new
         @lifecycle_monitor = Monitor.new
         @pending_ids = Set.new
@@ -133,10 +136,13 @@ module Mcweb
       def register(manifest = nil, **attributes)
         @lifecycle_monitor.synchronize do
           manifest = resolve_manifest(manifest, attributes)
+          permission_contributions = PermissionContributionLoader.load(manifest)
           definition = Definition.new(
             manifest,
             event_bus:,
-            capability_auditor: ->(capability) { audit_capability_use(manifest, capability) }
+            capability_auditor: ->(capability) { audit_capability_use(manifest, capability) },
+            permission_contributions:,
+            permission_catalog: @permission_catalog
           )
 
           @mutex.synchronize do
@@ -166,6 +172,7 @@ module Mcweb
         @lifecycle_monitor.synchronize do
           unsubscribe_all!
           clear_diagnostics!("activation")
+          @permission_catalog.clear
 
           definitions = definition_snapshot
           definitions.each(&:mark_registered!)
@@ -193,6 +200,7 @@ module Mcweb
           order.each do |definition|
             next if cycle_ids.include?(definition.id)
             next unless dependencies_available?(definition)
+            next unless activate_permission_contributions(definition)
 
             definition.mark_active!(order: activation_index)
             activation_index += 1
@@ -209,6 +217,7 @@ module Mcweb
       def reset!
         @lifecycle_monitor.synchronize do
           unsubscribe_all!
+          @permission_catalog.clear
           @mutex.synchronize do
             @definitions.clear
             @diagnostics.clear
@@ -226,6 +235,7 @@ module Mcweb
         id = id.to_s
         @lifecycle_monitor.synchronize do
           @mutex.synchronize { @definitions.delete(id) }
+          @permission_catalog.deactivate(id)
         end
       end
 
@@ -235,6 +245,33 @@ module Mcweb
 
       def ids
         @mutex.synchronize { @definitions.keys.sort.freeze }
+      end
+
+      def permission_contributions
+        @permission_catalog.all.map(&:to_h).freeze
+      end
+
+      def permission_contribution(id)
+        @permission_catalog.find(id)&.to_h
+      end
+
+      def settings_catalog
+        definition_snapshot.sort_by(&:id).filter_map do |definition|
+          next unless definition.settings_schema
+
+          {
+            plugin_id: definition.id,
+            plugin_name: definition.manifest.name,
+            plugin_version: definition.manifest.version,
+            status: definition.status.to_s,
+            schema: definition.settings_schema
+          }.freeze
+        end.freeze
+      end
+
+      def settings_schema(plugin_id)
+        definition = definition_for(plugin_id.to_s)
+        definition&.settings_schema
       end
 
       def diagnostics
@@ -348,6 +385,73 @@ module Mcweb
         )
       ensure
         Thread.current.thread_variable_set(service_stack_key, service_stack) if stack_pushed
+      end
+
+      def dispatch_job(
+        plugin_id:,
+        plugin_version:,
+        contribution_schema_version:,
+        declaration_digest:,
+        job_key:,
+        arguments:,
+        context:
+      )
+        plugin_id = plugin_id.to_s
+        job_key = job_key.to_s
+        definition = definition_for(plugin_id)
+        unless definition&.dispatchable?
+          raise JobDispatchError.new(
+            code: "plugin_unavailable",
+            message: "plugin job owner is not active"
+          )
+        end
+
+        contribution = definition.job_contribution
+        declaration = contribution&.jobs&.[](job_key)
+        unless definition.manifest.version == plugin_version.to_s &&
+            contribution&.version == contribution_schema_version.to_s &&
+            declaration&.digest == declaration_digest.to_s
+          raise JobDispatchError.new(
+            code: "incompatible_job",
+            message: "plugin job payload is incompatible with the active plugin release"
+          )
+        end
+
+        handler = definition.job_handler(job_key)
+        unless handler
+          raise JobDispatchError.new(
+            code: "handler_unavailable",
+            message: "plugin job handler is not registered"
+          )
+        end
+
+        normalized_arguments = begin
+          declaration.validate_arguments(arguments)
+        rescue JobValidationError
+          raise JobDispatchError.new(
+            code: "job_payload_invalid",
+            message: "persisted plugin job arguments failed declaration validation"
+          )
+        end
+        handler.callback.call(normalized_arguments, context)
+      rescue JobDispatchError
+        raise
+      rescue StandardError
+        sanitized_error = JobDispatchError.new(
+          code: "handler_failed",
+          message: "plugin job handler failed"
+        )
+        definition&.record_job_failure!(sanitized_error)
+        record_diagnostic(
+          level: :error,
+          code: :job_handler_error,
+          phase: :job,
+          plugin_id:,
+          event: job_key,
+          message: sanitized_error.message,
+          exception: sanitized_error
+        )
+        raise sanitized_error
       end
 
       def record_diagnostic(level:, code:, message:, phase:, plugin_id: nil, event: nil, exception: nil)
@@ -489,6 +593,24 @@ module Mcweb
           level: :error, code:, phase: :activation,
           plugin_id: definition.id, message:
         )
+        false
+      end
+
+      def activate_permission_contributions(definition)
+        conflicts = @permission_catalog.activate(definition.permission_contributions)
+        return true if conflicts.empty?
+
+        definition.mark_disabled!("permission contribution conflict")
+        conflicts.each do |conflict|
+          record_diagnostic(
+            level: :error,
+            code: :permission_contribution_conflict,
+            phase: :activation,
+            plugin_id: definition.id,
+            message: "#{conflict.type} #{conflict.value} is already owned by " \
+              "#{conflict.existing_plugin_id}"
+          )
+        end
         false
       end
 
@@ -829,12 +951,32 @@ module Mcweb
         registry.diagnostics
       end
 
+      def permission_contributions
+        registry.permission_contributions
+      end
+
+      def permission_contribution(id)
+        registry.permission_contribution(id)
+      end
+
+      def settings_catalog
+        registry.settings_catalog
+      end
+
+      def settings_schema(plugin_id)
+        registry.settings_schema(plugin_id)
+      end
+
       def apply_filter(name, value, context: {})
         registry.apply_filter(name, value, context:)
       end
 
       def call_service(name, input: {}, context: {}, &operation)
         registry.call_service(name, input:, context:, &operation)
+      end
+
+      def dispatch_job(**attributes)
+        registry.dispatch_job(**attributes)
       end
 
       def boot!

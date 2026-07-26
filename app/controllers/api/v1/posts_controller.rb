@@ -30,7 +30,12 @@ module Api
       # params: emoji
       def react
         post = load_visible_post!(params[:id])
-        result = Community::ToggleReaction.call(user: api_user, post: post, emoji: params[:emoji].to_s)
+        result = Community::ToggleReaction.call(
+          user: api_user,
+          post: post,
+          emoji: params[:emoji].to_s,
+          ip_address: request.remote_ip
+        )
         return render_service_error(result) if result.failure?
 
         render json: { data: { post_id: post.id, added: result.value[:added], counts: result.value[:counts] } }
@@ -47,10 +52,12 @@ module Api
           body: params[:body].to_s,
           quoted_post: find_optional_post(params[:quoted_post_id]),
           parent_post: find_optional_post(params[:parent_post_id]),
+          idempotency_key: request.headers["Idempotency-Key"].presence || params[:idempotency_key],
           ip_address: request.remote_ip
         )
         return render_service_error(result) if result.failure?
 
+        response.set_header("Idempotency-Key", request.headers["Idempotency-Key"]) if request.headers["Idempotency-Key"].present?
         render json: { data: serialize_post(result.value) }, status: :created
       end
 

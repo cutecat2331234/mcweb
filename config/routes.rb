@@ -61,10 +61,11 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root "dashboard#index"
-    # POC — Element Plus overview facade for the backend redesign (safe to remove after review).
-    get "dashboard_pro_demo", to: "dashboard_pro_demo#index"
-    # Arco Design Vue admin UI showcase
-    get "arco-demo", to: "arco_demo#index"
+    unless Rails.env.production?
+      # Static design references are intentionally unavailable in production.
+      get "dashboard_pro_demo", to: "dashboard_pro_demo#index"
+      get "arco-demo", to: "arco_demo#index"
+    end
     resources :users, only: %i[index show edit update] do
       member do
         post :ban
@@ -126,6 +127,10 @@ Rails.application.routes.draw do
         collection do
           delete :prune_orphans
         end
+        member do
+          post :retry_scan
+          post :retry_cleanup
+        end
       end
       get "stats", to: "stats#index"
       get "points", to: "points#index", as: :points
@@ -185,9 +190,38 @@ Rails.application.routes.draw do
           post :staff_note
         end
       end
-      # POC — Element Plus ProTable redesign sample (safe to remove after review).
-      get   "orders_pro_demo",      to: "orders_pro_demo#index"
-      patch "orders_pro_demo/bulk", to: "orders_pro_demo#bulk", as: "orders_pro_demo_bulk"
+      get "payment-providers",
+        to: "payment_providers#show",
+        as: :payment_providers
+      patch "payment-providers",
+        to: "payment_providers#update"
+      post "payment-providers/stripe/connection-test",
+        to: "payment_providers#test_connection",
+        as: :payment_provider_connection_test
+      get "payment-operations", to: "payment_operations#index", as: :payment_operations
+      post "payment-operations/webhooks/:id/replay",
+        to: "payment_operations#replay",
+        as: :payment_webhook_replay
+      resources :late_payment_cases, path: "late-payment-cases", only: :index do
+        member do
+          patch :acknowledge
+        end
+      end
+      resources :payment_reconciliations,
+        path: "payment-reconciliations",
+        only: :index do
+        collection do
+          post :trigger
+          post :manual_authorization
+        end
+        member do
+          patch :review
+        end
+      end
+      unless Rails.env.production?
+        get   "orders_pro_demo",      to: "orders_pro_demo#index"
+        patch "orders_pro_demo/bulk", to: "orders_pro_demo#bulk", as: "orders_pro_demo_bulk"
+      end
       resources :reviews, only: %i[index show update]
       resources :fulfillments, only: %i[index show update]
       resources :webhook_deliveries, only: %i[index show] do
@@ -282,7 +316,16 @@ Rails.application.routes.draw do
     end
     namespace :system do
       resource :feature_toggles, only: %i[show update], path: "feature-toggles"
+      resource :rate_limits, only: %i[show update], path: "rate-limits"
+      resource :plugin_settings, only: %i[show update], path: "plugin-settings" do
+        post :migrate
+        post :rollback
+      end
       resource :settings, only: %i[show update]
+      resource :developer_workbench,
+        only: :show,
+        path: "developer-workbench",
+        controller: "developer_workbench"
       resources :jobs, only: %i[index]
       resources :ip_bans, only: %i[index create destroy]
       resources :email_bans, only: %i[index new create edit update destroy]
@@ -444,8 +487,10 @@ Rails.application.routes.draw do
     patch "unread/mark_selected_read", to: "unread#mark_selected_read", as: :unread_mark_selected_read
     resources :unread_filter_presets, only: %i[create destroy], path: "unread/filter_presets"
     post "preview", to: "previews#create"
-    post "uploads", to: "uploads#create"
-    resources :attachments, only: %i[create show]
+    resources :uploads, only: %i[create show]
+    resources :attachments, only: %i[create show] do
+      member { get :scan_status }
+    end
     get "bookmarks", to: "bookmarks#index"
     patch "bookmarks/:id", to: "bookmarks#update", as: :bookmark
     get "preferences", to: "preferences#show"

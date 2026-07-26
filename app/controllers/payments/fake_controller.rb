@@ -68,7 +68,7 @@ module Payments
     end
 
     def ensure_fake_payments_allowed!
-      return unless Rails.env.production?
+      return if Payments::Provider.known?("fake")
 
       head :not_found
     end

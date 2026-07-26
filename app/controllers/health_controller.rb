@@ -5,21 +5,35 @@ class HealthController < ApplicationController
   skip_before_action :block_setup_when_locked
 
   def live
-    render json: { status: "ok" }
+    render json: { status: "ok" }.merge(developer_mode_health)
   end
 
   def ready
     result = Operations::HealthChecker.call
     healthy = result.success? && result.value[:status] == "ok"
 
-    if detailed_health_check_allowed?
-      render json: result.value, status: healthy ? :ok : :service_unavailable
-    else
-      render json: { status: healthy ? "ok" : "degraded" }, status: healthy ? :ok : :service_unavailable
-    end
+    payload =
+      if detailed_health_check_allowed?
+        result.value
+      else
+        { status: healthy ? "ok" : "degraded" }
+      end
+    payload = payload.merge(developer_mode_health)
+
+    render json: payload, status: healthy ? :ok : :service_unavailable
   end
 
   private
+
+  def developer_mode_health
+    enabled = Mcweb::DeveloperMode.enabled?
+    {
+      developer_mode: enabled,
+      developer_mode_profile: enabled ? Mcweb::DeveloperMode.profile.to_s : nil,
+      scheduled_jobs_auto_registration:
+        Mcweb::SidekiqCronSchedule.automatic_registration_enabled?
+    }
+  end
 
   def detailed_health_check_allowed?
     return true if Rails.env.local?

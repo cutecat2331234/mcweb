@@ -1,3 +1,49 @@
+x-mcweb-environment: &mcweb-environment
+  RAILS_ENV: production
+  MCWEB_DATABASE_HOST: postgres
+  MCWEB_DATABASE_PORT: 5432
+  MCWEB_DATABASE_USERNAME: ${POSTGRES_USER:-mcweb}
+  MCWEB_DATABASE_PASSWORD: ${POSTGRES_PASSWORD}
+  MCWEB_DATABASE_NAME: ${POSTGRES_DB:-mcweb_production}
+  REDIS_URL: redis://redis:6379/0
+  SECRET_KEY_BASE: ${SECRET_KEY_BASE}
+  LOCKBOX_MASTER_KEY: ${LOCKBOX_MASTER_KEY}
+  RAILS_INBOUND_EMAIL_PASSWORD: ${RAILS_INBOUND_EMAIL_PASSWORD}
+  MCWEB_LOCAL_CONFIG_PATH: /var/lib/mcweb/local.yml
+  MCWEB_DEVELOPER_MODE: ${MCWEB_DEVELOPER_MODE:-0}
+  MCWEB_DEVELOPER_MODE_PRODUCTION_CONFIRMATION: ${MCWEB_DEVELOPER_MODE_PRODUCTION_CONFIRMATION:-}
+  MCWEB_PUBLIC_URL: ${MCWEB_PUBLIC_URL}
+  # The public hosts remain explicit; loopback is added only so the in-container
+  # readiness probe can reach Puma without weakening the published port.
+  MCWEB_ALLOWED_HOSTS: ${MCWEB_ALLOWED_HOSTS},127.0.0.1
+  MCWEB_TRUSTED_PROXIES: ${MCWEB_TRUSTED_PROXIES}
+  MCWEB_BIND: 0.0.0.0
+  MCWEB_SMTP_ADDRESS: ${MCWEB_SMTP_ADDRESS}
+  MCWEB_SMTP_PORT: ${MCWEB_SMTP_PORT:-587}
+  MCWEB_SMTP_AUTHENTICATION: ${MCWEB_SMTP_AUTHENTICATION:-plain}
+  MCWEB_SMTP_USERNAME: ${MCWEB_SMTP_USERNAME}
+  MCWEB_SMTP_PASSWORD: ${MCWEB_SMTP_PASSWORD}
+  MCWEB_SMTP_TLS: ${MCWEB_SMTP_TLS:-starttls}
+  MCWEB_MAIL_FROM: ${MCWEB_MAIL_FROM}
+  MCWEB_ACTIVE_STORAGE_SERVICE: private_s3
+  MCWEB_S3_BUCKET: ${MCWEB_S3_BUCKET}
+  MCWEB_S3_REGION: ${MCWEB_S3_REGION}
+  MCWEB_S3_ACCESS_KEY_ID: ${MCWEB_S3_ACCESS_KEY_ID}
+  MCWEB_S3_SECRET_ACCESS_KEY: ${MCWEB_S3_SECRET_ACCESS_KEY}
+  MCWEB_S3_ENDPOINT: ${MCWEB_S3_ENDPOINT:-}
+  MCWEB_S3_FORCE_PATH_STYLE: ${MCWEB_S3_FORCE_PATH_STYLE:-0}
+  MCWEB_ATTACHMENT_SCANNER: ${MCWEB_ATTACHMENT_SCANNER:-disabled}
+  MCWEB_CLAMD_HOST: ${MCWEB_CLAMD_HOST:-127.0.0.1}
+  MCWEB_CLAMD_PORT: ${MCWEB_CLAMD_PORT:-3310}
+
+x-mcweb-app: &mcweb-app
+  build:
+    context: ../..
+    dockerfile: deploy/docker/Dockerfile
+  environment: *mcweb-environment
+  volumes:
+    - mcweb_data:/var/lib/mcweb
+
 services:
   postgres:
     image: postgres:18
@@ -25,45 +71,49 @@ services:
       timeout: 5s
       retries: 5
 
-  mcweb-web:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile
-    restart: unless-stopped
+  mcweb-migrate:
+    <<: *mcweb-app
+    restart: "no"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
         condition: service_healthy
-    environment:
-      RAILS_ENV: production
-      DATABASE_URL: postgres://${POSTGRES_USER:-mcweb}:${POSTGRES_PASSWORD:-mcweb}@postgres:5432/${POSTGRES_DB:-mcweb_production}
-      REDIS_URL: redis://redis:6379/0
-      MCWEB_LOCAL_CONFIG_PATH: /var/lib/mcweb/local.yml
+    command: ["bundle", "exec", "rails", "db:prepare"]
+
+  mcweb-web:
+    <<: *mcweb-app
+    restart: unless-stopped
+    depends_on:
+      mcweb-migrate:
+        condition: service_completed_successfully
     ports:
-      - "${MCWEB_WEB_PORT:-3000}:3000"
-    volumes:
-      - mcweb_data:/var/lib/mcweb
+      - "127.0.0.1:${MCWEB_WEB_PORT:-3000}:3000"
     command: ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:3000/health/ready"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 45s
 
   mcweb-worker:
-    build:
-      context: ../..
-      dockerfile: deploy/docker/Dockerfile
+    <<: *mcweb-app
     restart: unless-stopped
     depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    environment:
-      RAILS_ENV: production
-      DATABASE_URL: postgres://${POSTGRES_USER:-mcweb}:${POSTGRES_PASSWORD:-mcweb}@postgres:5432/${POSTGRES_DB:-mcweb_production}
-      REDIS_URL: redis://redis:6379/0
-      MCWEB_LOCAL_CONFIG_PATH: /var/lib/mcweb/local.yml
-    volumes:
-      - mcweb_data:/var/lib/mcweb
+      mcweb-migrate:
+        condition: service_completed_successfully
     command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - >-
+          bundle exec ruby -rsidekiq -e
+          'Sidekiq.redis { |connection| exit(connection.call("PING") == "PONG" ? 0 : 1) }'
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
 
   # Reverse proxy + TLS termination. Replaces the former Caddy service.
   # First-time certificate issuance: run ./nginx/init-letsencrypt.sh once.
@@ -71,7 +121,8 @@ services:
     image: nginx:1.29-alpine
     restart: unless-stopped
     depends_on:
-      - mcweb-web
+      mcweb-web:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"

@@ -10,23 +10,27 @@ module Commerce
     end
 
     def call
-      coupon = @order.coupon
-      return ServiceResult.success(restored: false) unless coupon
-      return ServiceResult.success(restored: false) if @order.coupon_usage_restored?
-
       total_refunded = @already_refunded_cents + @refund_amount_cents
       return ServiceResult.success(restored: false) unless @payment_amount_cents.positive?
       return ServiceResult.success(restored: false) unless total_refunded >= @payment_amount_cents
 
+      restored = false
       Commerce::Order.transaction do
         @order.lock!
-        unless @order.coupon_usage_restored?
-          coupon.decrement!(:used_count) if coupon.used_count.positive?
-          @order.update!(coupon_usage_restored: true)
-        end
+        @order.reload
+        next if @order.coupon_usage_restored?
+
+        coupon = @order.coupon
+        next unless coupon
+
+        coupon.lock!
+        coupon.reload
+        coupon.update!(used_count: coupon.used_count - 1) if coupon.used_count.positive?
+        @order.update!(coupon_usage_restored: true)
+        restored = true
       end
 
-      ServiceResult.success(restored: true)
+      ServiceResult.success(restored: restored)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end

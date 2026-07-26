@@ -298,6 +298,103 @@ class Operations::HealthCheckerTest < ActiveSupport::TestCase
     assert result.success?
     assert_includes %w[ok degraded], result.value[:status]
     assert_equal "ok", result.value[:checks][:database][:status]
+    assert_equal "ok", result.value[:checks][:storage][:status]
+    assert result.value[:checks][:storage][:service].present?
+    assert_equal "write_read_delete", result.value[:checks][:storage][:probe]
+  end
+
+  test "readiness becomes degraded when the configured blob service is unreachable" do
+    failing_service = Object.new
+    failing_service.define_singleton_method(:upload) do |_key, _io, checksum:|
+      raise "storage unavailable (#{checksum})"
+    end
+    failing_service.define_singleton_method(:delete) { |_key| nil }
+    original_service = ActiveStorage::Blob.method(:service)
+    ActiveStorage::Blob.define_singleton_method(:service) { failing_service }
+
+    result = Operations::HealthChecker.call
+
+    assert result.success?
+    assert_equal "degraded", result.value[:status]
+    assert_equal "error", result.value[:checks][:storage][:status]
+    assert_equal "storage_unavailable", result.value[:checks][:storage][:error_code]
+    assert_not result.value[:checks][:storage].key?(:message)
+  ensure
+    ActiveStorage::Blob.define_singleton_method(:service, original_service) if original_service
+  end
+
+  test "storage readiness verifies bytes and removes the probe object" do
+    calls = []
+    payload = nil
+    service = Object.new
+    service.define_singleton_method(:upload) do |key, io, checksum:|
+      payload = io.read
+      calls << [ :upload, key, checksum ]
+    end
+    service.define_singleton_method(:download) do |key|
+      calls << [ :download, key ]
+      payload
+    end
+    service.define_singleton_method(:delete) do |key|
+      calls << [ :delete, key ]
+    end
+    original_service = ActiveStorage::Blob.method(:service)
+    ActiveStorage::Blob.define_singleton_method(:service) { service }
+
+    result = Operations::HealthChecker.call
+
+    assert_equal "ok", result.value.dig(:checks, :storage, :status)
+    assert_equal %i[upload download delete], calls.map(&:first)
+    assert_equal calls[0][1], calls[1][1]
+    assert_equal calls[0][1], calls[2][1]
+  ensure
+    ActiveStorage::Blob.define_singleton_method(:service, original_service) if original_service
+  end
+
+  test "storage readiness rejects mismatched bytes and still removes the probe object" do
+    deleted = []
+    service = Object.new
+    service.define_singleton_method(:upload) { |_key, _io, checksum:| checksum }
+    service.define_singleton_method(:download) { |_key| "unexpected" }
+    service.define_singleton_method(:delete) { |key| deleted << key }
+    original_service = ActiveStorage::Blob.method(:service)
+    ActiveStorage::Blob.define_singleton_method(:service) { service }
+
+    result = Operations::HealthChecker.call
+
+    assert_equal "degraded", result.value[:status]
+    assert_equal "storage_unavailable", result.value.dig(:checks, :storage, :error_code)
+    assert_equal 1, deleted.length
+  ensure
+    ActiveStorage::Blob.define_singleton_method(:service, original_service) if original_service
+  end
+
+  test "production readiness fails when Sidekiq has no live worker heartbeat" do
+    stats = Data.define(:enqueued, :failed).new(enqueued: 0, failed: 0)
+    result = Operations::HealthChecker.call(
+      queue_adapter: :sidekiq,
+      production: true,
+      sidekiq_stats: stats,
+      sidekiq_processes: []
+    )
+
+    assert_equal "degraded", result.value[:status]
+    assert_equal "error", result.value.dig(:checks, :queue, :status)
+    assert_equal "worker_unavailable", result.value.dig(:checks, :queue, :error_code)
+    assert_equal 0, result.value.dig(:checks, :queue, :worker_processes)
+  end
+
+  test "business integration degradation does not make core readiness fail" do
+    checker = Operations::HealthChecker.new
+    checker.define_singleton_method(:check_minecraft_nodes) do
+      { status: "degraded", stale_online_nodes: 1, process_mismatch_servers: 0 }
+    end
+
+    result = checker.call
+
+    assert result.success?
+    assert_equal "ok", result.value[:status]
+    assert_equal "degraded", result.value.dig(:checks, :minecraft_nodes, :status)
   end
 end
 

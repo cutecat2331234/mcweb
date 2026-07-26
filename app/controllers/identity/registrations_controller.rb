@@ -27,8 +27,9 @@ module Identity
       if result.success?
         redirect_to identity_sign_in_path, notice: t("mcweb.flash.registration_success")
       else
+        apply_retry_after_header(result)
         render inertia: "Identity/Registrations/New",
-               status: :unprocessable_entity,
+               status: service_error_status(result),
                props: {
                  form_errors: registration_form_errors(result),
                  registration_fields: Community::SerializeUserFields.for(user: User.new, viewer: nil, context: :registration)

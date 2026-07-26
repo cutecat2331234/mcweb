@@ -318,7 +318,10 @@ module Community
       min_trust = SiteSetting.get("forum.min_trust_level_signature", "0").to_i
       max_length = SiteSetting.get("forum.signature_max_length", "1000").to_i
 
-      unless enabled && Community::TrustLevel.level_for(current_user) >= min_trust
+      trust_allowed =
+        Mcweb::DeveloperMode.allow?(:skip_anti_spam) ||
+        Community::TrustLevel.level_for(current_user) >= min_trust
+      unless enabled && trust_allowed
         permitted.delete(:forum_signature)
         return
       end

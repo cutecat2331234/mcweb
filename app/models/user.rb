@@ -43,7 +43,12 @@ class User < ApplicationRecord
                        format: { with: /\A[a-zA-Z0-9_]+\z/ }, length: { minimum: 3, maximum: 32 }
   validates :locale, presence: true
   validates :time_zone, presence: true
-  validates :password, length: { minimum: 6 }, allow_nil: true
+  validates :password,
+            length: { minimum: 6 },
+            allow_nil: true,
+            unless: :developer_mode_relaxes_password_policy?
+
+  before_validation :track_developer_mode_relaxed_password, if: -> { password.present? }
 
   scope :verified, -> { where(email_verified: true) }
   scope :not_banned, -> { where(status: :active) }
@@ -56,9 +61,10 @@ class User < ApplicationRecord
     group_permission_keys.include?(key.to_s)
   end
 
-  # Effective permission keys from the user's groups, memoized per request.
+  # Effective permission keys are resolved from current memberships on every
+  # check so group edits cannot leave a stale authorization decision behind.
   def group_permission_keys
-    @group_permission_keys ||= Community::UserGroup.permission_keys_for(self)
+    Community::UserGroup.permission_keys_for(self)
   end
 
   def can_access_admin?
@@ -144,6 +150,7 @@ class User < ApplicationRecord
     update!(
       email_verified: true,
       email_verified_at: Time.current,
+      developer_mode_email_verified: false,
       email_verification_token_digest: nil,
       email_verification_sent_at: nil
     )
@@ -224,6 +231,15 @@ class User < ApplicationRecord
   end
 
   private
+
+  def developer_mode_relaxes_password_policy?
+    Mcweb::DeveloperMode.allow?(:relax_password_policy)
+  end
+
+  def track_developer_mode_relaxed_password
+    self.developer_mode_relaxed_password =
+      developer_mode_relaxes_password_policy? && password.to_s.length < 6
+  end
 
   def digest_token(token)
     Digest::SHA256.hexdigest(token)

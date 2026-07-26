@@ -2,11 +2,12 @@
 
 module Community
   class ShareTopicAsConversation < ApplicationService
-    def initialize(sender:, topic:, recipient_username:, message: nil)
+    def initialize(sender:, topic:, recipient_username:, message: nil, ip_address: nil)
       @sender = sender
       @topic = topic
       @recipient_username = recipient_username
       @message = message.to_s.strip
+      @ip_address = ip_address
     end
 
     def call
@@ -21,7 +22,12 @@ module Community
       end
 
       body = build_body
-      result = Community::CreateConversation.call(sender: @sender, recipient_username: recipient.username, body: body)
+      result = Community::CreateConversation.call(
+        sender: @sender,
+        recipient_username: recipient.username,
+        body: body,
+        ip_address: @ip_address
+      )
       return result unless result.success?
 
       ServiceResult.success(result.value)

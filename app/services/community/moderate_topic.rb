@@ -31,7 +31,10 @@ module Community
           @topic.update!(pinned: false, pinned_until: nil)
         when "bump"
           cooldown_hours = SiteSetting.get("forum.bump_cooldown_hours", "24").to_i
-          if cooldown_hours.positive? && @topic.bumped_at && @topic.bumped_at > cooldown_hours.hours.ago
+          if !Mcweb::DeveloperMode.allow?(:skip_anti_spam) &&
+              cooldown_hours.positive? &&
+              @topic.bumped_at &&
+              @topic.bumped_at > cooldown_hours.hours.ago
             remaining = ((@topic.bumped_at + cooldown_hours.hours) - Time.current).to_i
             return ServiceResult.failure(error: I18n.t("mcweb.services.errors.bump_cooldown_active", hours: remaining / 3600))
           end

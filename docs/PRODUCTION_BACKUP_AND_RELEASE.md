@@ -1,0 +1,252 @@
+# 生产备份、恢复、更新与回滚
+
+> 最近复核：2026-07-26
+> 适用范围：CE 原生 systemd/release 目录部署的仓库内安全合同
+> 状态：脚本与隔离合同测试已实现；尚未在真实生产数据库、对象存储或 systemd 主机演练
+
+## 安全边界
+
+`bin/backup`、`bin/restore`、`bin/update` 和 `bin/rollback` 采用失败关闭：
+
+- 不会把 `/etc/mcweb/mcweb.env` 明文复制进备份；
+- 数据库、存储、配置或校验失败都会使整个操作失败；
+- 恢复默认只验证，不能覆盖非空数据库、已有本地存储目录或已有配置文件；
+- 更新在切换 `/opt/mcweb/current` 前完成候选版本启动检查、备份、迁移和旧版本
+  回滚兼容检查；
+- 更新或回滚切流后的服务/就绪检查失败时，会尝试原子切回原版本；
+- 脚本不会自动执行数据库向下迁移。代码切回不等于数据库 schema 回退。
+
+这些脚本不会读取后再输出密钥。命令日志、工单和文档中也不得粘贴
+`DATABASE_URL`、私钥、解密后的环境文件或密钥管理系统返回值。
+
+## 备份格式
+
+每次成功备份会原子生成 `/var/backups/mcweb/<backup-id>/`，并在全部校验成功后
+更新 `latest` 指针：
+
+| 文件 | 内容 |
+|---|---|
+| `database.dump` | `pg_dump --format=custom` 数据库快照 |
+| `active_storage_objects.ndjson` | `private_s3` 模式下数据库引用的对象清单及逐对象存在性检查 |
+| `active_storage.tar.gz` | 仅本地盘模式下的文件归档 |
+| `active_storage_files.sha256` | 仅本地盘模式下的逐文件 SHA-256 |
+| `configuration.env` | 固定白名单中的非密钥配置 |
+| `mcweb.env.gpg` | 使用外部 OpenPGP 公钥加密的完整配置，二选一 |
+| `secret-config.reference` | 不可变密钥管理版本引用，二选一 |
+| `backup-manifest.json` | 格式、备份 ID、时间与各类产物清单 |
+| `SHA256SUMS` | 目录内全部正式产物的 SHA-256 |
+
+`configuration.env` 不包含数据库密码、Rails/Lockbox 密钥、SMTP 密码、S3
+访问密钥、Redis URL 或入站邮件密码。
+
+`private_s3` 模式只记录并验证 McWeb 数据库引用的对象，不下载整桶，也不包含孤儿
+对象。生产仍必须在对象存储供应商启用版本控制、不可变快照/异地复制和生命周期
+保护。只有供应商快照与本备份采用同一恢复点，才构成完整灾备。
+
+## 创建备份
+
+### OpenPGP 公钥方式
+
+备份主机只安装灾备公钥，解密私钥应保存在独立离线或受控恢复环境：
+
+```bash
+sudo gpg --import /secure-transfer/mcweb-backup-public-key.asc
+sudo env MCWEB_BACKUP_GPG_RECIPIENT='<完整公钥指纹>' \
+  /opt/mcweb/current/bin/backup
+```
+
+不得把私钥或私钥口令写入 `mcweb.env`。首次启用前应在隔离主机证明指定私钥可以
+解密测试产物。
+
+### 密钥管理系统引用方式
+
+环境配置完全由 Vault、云 Secret Manager 等系统管理时，备份只存不可变版本引用：
+
+```bash
+sudo env MCWEB_SECRET_BACKUP_REFERENCE='vault://production/mcweb/versions/42' \
+  /opt/mcweb/current/bin/backup
+```
+
+引用必须是仅含安全路径字符的 URI，并以 `/versions/IMMUTABLE_ID` 结尾；不能使用
+`latest`、`current` 或 `active`，也不能把真实 secret 值伪装成引用。
+
+### 旧本地盘模式
+
+生产新部署必须使用私有对象存储；仅迁移旧实例时可显式归档本地目录：
+
+```bash
+sudo env MCWEB_ACTIVE_STORAGE_SERVICE=local \
+  MCWEB_LOCAL_STORAGE_ROOT=/var/lib/mcweb/uploads \
+  MCWEB_BACKUP_GPG_RECIPIENT='<完整公钥指纹>' \
+  /opt/mcweb/current/bin/backup
+```
+
+本地目录含符号链接、设备或其他特殊文件时备份会拒绝继续。备份目录与本地存储
+目录不得相同、互为父目录或互相包含，避免把数据库 dump 和旧备份递归装入对象归档。
+
+## 默认验证与恢复演练
+
+以下命令只解析 manifest、校验全部 SHA-256、验证 PostgreSQL custom dump、检查
+归档路径和对象清单，不会连接目标数据库执行写入：
+
+```bash
+sudo /opt/mcweb/current/bin/restore \
+  --backup /var/backups/mcweb/20260726T120000Z
+```
+
+实际数据库恢复必须连接到新建空库，并同时提交精确数据库名与备份 ID：
+
+```bash
+sudo -u postgres createdb mcweb_restore_20260726
+sudo env DATABASE_URL='postgresql:///mcweb_restore_20260726' \
+  /opt/mcweb/current/bin/restore \
+  --backup /var/backups/mcweb/20260726T120000Z \
+  --apply \
+  --target-database mcweb_restore_20260726 \
+  --confirm RESTORE:20260726T120000Z
+```
+
+只要目标库已有非系统 schema、表、视图、序列、函数、用户类型、event trigger 或
+非默认扩展，连接到的数据库名不同，或确认文本不精确，恢复就会终止。
+`pg_restore` 使用单事务；任何后置必要表检查失败时仍应删除并重新创建演练库，
+不要在未确认状态的库上重试。
+
+本地盘恢复还必须指定一个不存在的绝对目录：
+
+```bash
+sudo env DATABASE_URL='postgresql:///mcweb_restore_20260726' \
+  /opt/mcweb/current/bin/restore \
+  --backup /var/backups/mcweb/20260726T120000Z \
+  --apply \
+  --target-database mcweb_restore_20260726 \
+  --storage-target /var/lib/mcweb-restore/uploads \
+  --confirm RESTORE:20260726T120000Z
+```
+
+归档不会恢复原始 owner 或危险权限。完成隔离比对后，按目标部署用户显式执行
+`chown -R mcweb:mcweb /var/lib/mcweb-restore/uploads`，不得对未确认路径使用递归
+改权。
+
+对象存储灾难恢复应先由供应商快照恢复到隔离 bucket，修改隔离恢复环境指向该
+bucket，再恢复数据库并逐项比对对象清单。脚本不会覆盖远程对象。
+
+需要恢复 OpenPGP 配置时，目标文件也必须不存在：
+
+```bash
+sudo install -d -m 700 /etc/mcweb-restore
+sudo env DATABASE_URL='postgresql:///mcweb_restore_20260726' \
+  /opt/mcweb/current/bin/restore \
+  --backup /var/backups/mcweb/20260726T120000Z \
+  --apply \
+  --target-database mcweb_restore_20260726 \
+  --restore-config \
+  --config-target /etc/mcweb-restore/mcweb.env \
+  --confirm RESTORE:20260726T120000Z
+```
+
+密钥管理引用方式不能由脚本自动取回 secret；恢复人员必须经平台审批取得该固定
+版本并写入新的隔离目标。
+
+`--storage-target` 与 `--config-target` 必须彼此独立、不得嵌套，也不得位于备份目录
+内。脚本在最终发布暂存目录或解密配置前会再次确认目标不存在；目标在恢复期间被
+其他进程占用时，发布会拒绝覆盖。
+
+## 安全更新
+
+先校验发布包 SHA-256，将其解压到新的 release 目录，不要提前修改 `current`
+软链接。候选目录必须包含 vendor bundle、预编译资产及可执行的 `bin/rails`、
+`bin/rollback`：
+
+```bash
+sudo /opt/mcweb/releases/2026.07.26/bin/update \
+  --release /opt/mcweb/releases/2026.07.26 \
+  --confirm UPDATE:2026.07.26
+```
+
+切流前顺序固定为：
+
+1. 验证当前 Web、Worker 和 `/health/ready`；
+2. 对候选 release 执行 bundle、Zeitwerk、数据库/model、迁移状态和资产检查；
+3. 执行 Stripe 账户绑定门禁并检查旧版本回滚兼容性；
+4. 停止 Web 与 Worker，确认服务已经排空，再次执行 Stripe 账户绑定门禁；
+5. 在停写窗口内使用候选版本创建并验证备份；
+6. 执行候选 migration；
+7. 用新 schema 再次检查候选版本、Stripe 门禁和旧版本回滚入口；
+8. 原子切换 `current`，启动 Web/Worker，并在限定时间内等待就绪；
+9. 只有新版本就绪后才把旧 release 写入 `previous`。
+
+未绑定 Stripe 账户的实例必须先在旧版本中关闭 Stripe。停服后的第二次门禁用于捕获
+第一次检查后完成的在途支付或 Webhook；只要出现财务历史，发布就会在备份和
+migration 前停止。身份未就绪的新版本还会对 Stripe Webhook 返回可重试错误，直到
+同一账户完成连接测试，避免重试事件抢先创建无法绑定的历史。
+
+更新与回滚共享一个非阻塞发布锁；脚本会在读取 `current`/`previous` 前取得锁。
+停服后的普通错误、显式安全拒绝以及可捕获的 `INT`、`TERM`、`HUP` 都通过统一
+退出清理恢复当前 release。`SIGKILL`、主机掉电等不可捕获故障仍必须由 systemd
+与值班流程处理。
+
+数据库 migration 必须遵守 expand/contract：先增加兼容结构，等旧代码完全退出后
+再在后续版本删除旧结构。脚本的旧版本启动检查不能证明全部业务请求都与破坏性
+schema 变化兼容。
+
+若 migration 本身失败，`current` 不会切换，但数据库可能已经完成此前的若干
+migration。此时必须停止发布，检查迁移状态和当前版本兼容性；需要恢复时使用新
+空库和已验证备份，不要未经审查直接执行连续 `db:rollback`。
+
+原生 hostd 的旧 Update 动作没有传候选路径和确认文本，安全脚本会拒绝无参数更新。
+在 hostd 适配显式候选 release 合同前，应通过受控命令行执行上述更新。
+
+发布包根目录的 `quick-install.sh` 在已有 `current` 时只是安全更新入口：它把发布包
+放入一个全新的 `/opt/mcweb/releases/<version>`（同名目录已存在时拒绝覆盖），然后
+使用精确的 `UPDATE:<version>` 确认文本调用候选版本的 `bin/update`。它自身不会
+修改 `current`、执行 migration 或重启服务。`--fresh` 只允许在尚无 `current`
+指针时使用，不能用来绕开升级门禁。
+
+本地 relay 部署同样先在解压后的候选版本中执行
+`scripts/check-stripe-account-binding.rb`，成功后才调用 `quick-install.sh`。候选
+Stripe 门禁或安全更新任一步返回非零时，relay 会原样失败退出；不会再直接执行
+migration、忽略 migration 错误或在失败后强制重启服务。
+
+## 回滚
+
+默认只检查 `previous` 指向的版本，不切换：
+
+```bash
+sudo /opt/mcweb/current/bin/rollback --check
+```
+
+也可检查明确目标：
+
+```bash
+sudo /opt/mcweb/current/bin/rollback \
+  --check --target /opt/mcweb/releases/2026.07.25
+```
+
+确认检查通过后才执行代码切回：
+
+```bash
+sudo /opt/mcweb/current/bin/rollback \
+  --apply \
+  --target /opt/mcweb/releases/2026.07.25 \
+  --confirm ROLLBACK:2026.07.25
+```
+
+若目标 release 无法在当前数据库上启动，回滚会在切流前失败。需要恢复旧 schema
+时，不应运行自动 `db:rollback`；应建立新空库并从目标时间点备份恢复，验证后再按
+事故变更流程切换数据库连接。
+
+## 上线前必须补做的真实验证
+
+仓库合同测试只能证明脚本可解析、危险默认值与操作顺序没有回退，不能代替：
+
+- 在与生产同版本 PostgreSQL 上完成 dump、空库恢复、表数量/关键记录比对并记录
+  RPO/RTO；
+- 从对象存储不可变快照恢复到隔离 bucket，并比对订单关联 Blob 与全部对象清单；
+- 在不接触应用主机的恢复环境中，用托管私钥解密配置并完成密钥轮换；
+- 在预发布 systemd 主机故障注入 bundle、migration、restart 和 readiness 失败，
+  证明切流前失败不改 `current`，切流后失败能返回原 release；
+- 独立配置并演练 Redis/Sidekiq 的持久化与恢复；本批脚本不备份 Redis；
+- 将备份复制到异地、不可变存储并签名或由平台提供真实性证明。`SHA256SUMS`
+  只能检测相对完整性，不能抵抗攻击者同时替换文件与校验清单；
+- 在静默写入窗口或一致性快照窗口执行完整灾备。数据库 dump 与远程对象清单不是
+  同一个分布式事务。

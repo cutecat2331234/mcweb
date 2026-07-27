@@ -15,7 +15,8 @@
 - PNG 由 ChunkyPNG 完整解码后重新编码。
 - JPEG 由 libvips 以 `fail_on: warning`、禁止 unlimited 解码的模式完整读取，
   应用 EXIF 方向、归一到 sRGB、移除元数据并以固定质量重新编码。同步路径仅接受
-  单扫描 baseline JPEG；progressive 与多扫描 JPEG 直接拒绝。
+  自包含、带本地量化表和 Huffman 表的单扫描 baseline JPEG；
+  progressive、缩略流与多扫描 JPEG 直接拒绝。
 - JPEG 规范化在每个 Web 进程内串行执行，并关闭高 CPU 的 Huffman 优化。单边
   不得超过 8192 像素，总像素不得超过 800 万；输入和重编码输出都必须
   落在调用方的字节上限内。

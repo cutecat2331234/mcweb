@@ -73,17 +73,37 @@ module Community
       assert_equal 3, decoded.bands
     end
 
-    test "rejects structurally plausible and truncated JPEG data" do
-      [
-        structural_jpeg,
-        valid_jpeg.byteslice(0...-2)
-      ].each do |payload|
+    test "rejects a JPEG marker stream without local coding tables" do
+      result = Community::ImageUploadInspector.call(
+        io: StringIO.new(structural_jpeg),
+        max_bytes: 1.megabyte
+      )
+
+      refute result.success?, "standalone JPEGs must define their quantization and Huffman tables"
+    end
+
+    test "rejects JPEG data truncated before the end marker" do
+      result = Community::ImageUploadInspector.call(
+        io: StringIO.new(valid_jpeg.byteslice(0...-2)),
+        max_bytes: 1.megabyte
+      )
+
+      refute result.success?, "a truncated JPEG must not be normalized"
+    end
+
+    test "accepts valid JPEG coding table redefinitions before the scan" do
+      jpeg = valid_jpeg(width: 3, height: 2)
+
+      {
+        quantization: duplicate_jpeg_segment(jpeg, marker: 0xDB),
+        huffman: duplicate_jpeg_segment(jpeg, marker: 0xC4)
+      }.each do |table_type, payload|
         result = Community::ImageUploadInspector.call(
           io: StringIO.new(payload),
           max_bytes: 1.megabyte
         )
 
-        refute result.success?
+        assert result.success?, "#{table_type} table redefinition must remain valid"
       end
     end
 
@@ -200,6 +220,18 @@ module Community
 
     def insert_jpeg_segment(jpeg, marker:, data:)
       segment = "\xFF".b + marker.chr.b + [ data.bytesize + 2 ].pack("n") + data.b
+      jpeg.byteslice(0, 2) + segment + jpeg.byteslice(2..)
+    end
+
+    def duplicate_jpeg_segment(jpeg, marker:)
+      marker_bytes = "\xFF".b + marker.chr.b
+      marker_offset = jpeg.index(marker_bytes)
+      raise "JPEG marker 0x#{marker.to_s(16)} is missing" unless marker_offset
+
+      segment_length = jpeg.byteslice(marker_offset + 2, 2)&.unpack1("n")
+      raise "JPEG marker 0x#{marker.to_s(16)} has no length" unless segment_length
+
+      segment = jpeg.byteslice(marker_offset, segment_length + 2)
       jpeg.byteslice(0, 2) + segment + jpeg.byteslice(2..)
     end
 

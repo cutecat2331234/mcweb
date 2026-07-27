@@ -21,6 +21,10 @@ module Community
       0xCD, 0xCE, 0xCF
     ].freeze
     JPEG_BASELINE_FRAME_MARKER = 0xC0
+    JPEG_HUFFMAN_TABLE_MARKER = 0xC4
+    JPEG_QUANTIZATION_TABLE_MARKER = 0xDB
+    JPEG_MAX_HUFFMAN_TABLE_ID = 1
+    JPEG_MAX_QUANTIZATION_TABLE_ID = 3
     JPEG_PROCESSING_MUTEX = Mutex.new
 
     Result = Struct.new(
@@ -134,6 +138,9 @@ module Community
       entropy_coded = false
       frame_seen = false
       scan_seen = false
+      frame_components = nil
+      quantization_tables = {}
+      huffman_tables = {}
 
       while offset < payload.bytesize
         if entropy_coded
@@ -183,9 +190,38 @@ module Community
         if JPEG_FRAME_MARKERS.include?(marker)
           return false if frame_seen || marker != JPEG_BASELINE_FRAME_MARKER
 
+          frame_components = parse_baseline_frame_segment(
+            payload,
+            length_offset + 2,
+            segment_end
+          )
+          return false unless frame_components
+
           frame_seen = true
+        elsif marker == JPEG_QUANTIZATION_TABLE_MARKER
+          return false unless parse_quantization_tables(
+            payload,
+            length_offset + 2,
+            segment_end,
+            quantization_tables
+          )
+        elsif marker == JPEG_HUFFMAN_TABLE_MARKER
+          return false unless parse_huffman_tables(
+            payload,
+            length_offset + 2,
+            segment_end,
+            huffman_tables
+          )
         elsif marker == 0xDA
           return false if scan_seen || !frame_seen
+          return false unless valid_baseline_scan_segment?(
+            payload,
+            length_offset + 2,
+            segment_end,
+            frame_components,
+            quantization_tables,
+            huffman_tables
+          )
 
           scan_seen = true
           entropy_coded = true
@@ -196,6 +232,127 @@ module Community
       false
     end
     private_class_method :single_complete_jpeg_stream?
+
+    def parse_baseline_frame_segment(payload, data_offset, segment_end)
+      component_count = payload.getbyte(data_offset + 5)
+      return nil unless component_count&.between?(1, 4)
+      return nil unless segment_end - data_offset == 6 + (component_count * 3)
+      return nil unless payload.getbyte(data_offset) == 8
+
+      height = payload.byteslice(data_offset + 1, 2)&.unpack1("n")
+      width = payload.byteslice(data_offset + 3, 2)&.unpack1("n")
+      return nil unless dimensions_allowed?(width, height)
+
+      components = {}
+      cursor = data_offset + 6
+      component_count.times do
+        component_id = payload.getbyte(cursor)
+        sampling_factors = payload.getbyte(cursor + 1)
+        quantization_table_id = payload.getbyte(cursor + 2)
+        return nil unless component_id && sampling_factors && quantization_table_id
+        return nil if components.key?(component_id)
+        return nil unless valid_sampling_factors?(sampling_factors)
+        return nil unless quantization_table_id.between?(0, JPEG_MAX_QUANTIZATION_TABLE_ID)
+
+        components[component_id] = quantization_table_id
+        cursor += 3
+      end
+      components
+    end
+    private_class_method :parse_baseline_frame_segment
+
+    def valid_sampling_factors?(value)
+      horizontal = value >> 4
+      vertical = value & 0x0F
+      horizontal.between?(1, 4) && vertical.between?(1, 4)
+    end
+    private_class_method :valid_sampling_factors?
+
+    def parse_quantization_tables(payload, data_offset, segment_end, tables)
+      cursor = data_offset
+      while cursor < segment_end
+        descriptor = payload.getbyte(cursor)
+        return false unless descriptor
+
+        precision = descriptor >> 4
+        table_id = descriptor & 0x0F
+        return false unless precision.zero?
+        return false unless table_id.between?(0, JPEG_MAX_QUANTIZATION_TABLE_ID)
+
+        cursor += 1
+        table_bytes = 64 * (precision + 1)
+        return false if cursor + table_bytes > segment_end
+
+        tables[table_id] = true
+        cursor += table_bytes
+      end
+      cursor == segment_end
+    end
+    private_class_method :parse_quantization_tables
+
+    def parse_huffman_tables(payload, data_offset, segment_end, tables)
+      cursor = data_offset
+      while cursor < segment_end
+        descriptor = payload.getbyte(cursor)
+        return false unless descriptor
+
+        table_class = descriptor >> 4
+        table_id = descriptor & 0x0F
+        return false unless table_class.between?(0, 1)
+        return false unless table_id.between?(0, JPEG_MAX_HUFFMAN_TABLE_ID)
+
+        code_counts = payload.byteslice(cursor + 1, 16)
+        return false unless code_counts&.bytesize == 16
+
+        symbol_count = code_counts.bytes.sum
+        return false unless symbol_count.between?(1, 256)
+
+        cursor += 17
+        return false if cursor + symbol_count > segment_end
+
+        tables[[ table_class, table_id ]] = true
+        cursor += symbol_count
+      end
+      cursor == segment_end
+    end
+    private_class_method :parse_huffman_tables
+
+    def valid_baseline_scan_segment?(
+      payload,
+      data_offset,
+      segment_end,
+      frame_components,
+      quantization_tables,
+      huffman_tables
+    )
+      scan_component_count = payload.getbyte(data_offset)
+      return false unless scan_component_count == frame_components.size
+      return false unless segment_end - data_offset == 4 + (scan_component_count * 2)
+      return false unless frame_components.values.all? { |table_id| quantization_tables.key?(table_id) }
+
+      cursor = data_offset + 1
+      scan_component_ids = []
+      scan_component_count.times do
+        component_id = payload.getbyte(cursor)
+        table_selectors = payload.getbyte(cursor + 1)
+        return false unless component_id && table_selectors
+        return false unless frame_components.key?(component_id)
+        return false if scan_component_ids.include?(component_id)
+
+        dc_table_id = table_selectors >> 4
+        ac_table_id = table_selectors & 0x0F
+        return false unless dc_table_id.between?(0, JPEG_MAX_HUFFMAN_TABLE_ID)
+        return false unless ac_table_id.between?(0, JPEG_MAX_HUFFMAN_TABLE_ID)
+        return false unless huffman_tables.key?([ 0, dc_table_id ])
+        return false unless huffman_tables.key?([ 1, ac_table_id ])
+
+        scan_component_ids << component_id
+        cursor += 2
+      end
+
+      payload.byteslice(cursor, 3)&.bytes == [ 0, 63, 0 ]
+    end
+    private_class_method :valid_baseline_scan_segment?
 
     def dimensions_allowed?(width, height)
       width.to_i.positive? &&

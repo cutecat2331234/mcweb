@@ -97,7 +97,12 @@ module Admin
         assert_equal "McWeb Community", SiteSetting.get("general.site_name")
         assert_equal "McWeb Community", SiteSetting.get("site.name")
         assert_equal "https://community.example.com", SiteSetting.get("site.url")
-        assert_equal original_forbidden_value, SiteSetting.get("store.order_webhook_secret")
+        actual_forbidden_value = SiteSetting.get("store.order_webhook_secret")
+        if original_forbidden_value.nil?
+          assert_nil actual_forbidden_value
+        else
+          assert_equal original_forbidden_value, actual_forbidden_value
+        end
 
         audit = AuditLog.where(action: "admin.settings_updated").order(:id).last
         assert_equal %w[general.site_name site.name site.url],

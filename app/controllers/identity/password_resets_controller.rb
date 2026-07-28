@@ -31,7 +31,12 @@ module Identity
       p = password_reset_params
       if p[:password].present? && p[:password] != p[:password_confirmation]
         return render inertia: "Identity/PasswordResets/Edit",
-                      props: { token: params[:token], form_errors: { base: "两次输入的密码不一致。" } },
+                      props: {
+                        token: params[:token],
+                        form_errors: {
+                          base: t("mcweb.services.errors.password_confirmation_mismatch")
+                        }
+                      },
                       status: :unprocessable_entity
       end
 

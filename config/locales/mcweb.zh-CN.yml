@@ -604,6 +604,11 @@
         invalid_reaction: 不支持该表情反应。
         content_not_found: 内容不存在或无权访问。
         invalid_email_or_password: 邮箱或密码错误。
+        two_factor_code_required: 请输入两步验证码。
+        invalid_two_factor_code: 两步验证码无效。
+        authentication_required: 请先登录。
+        email_banned_registration: 该邮箱已被封禁，无法注册。
+        password_confirmation_mismatch: 两次输入的密码不一致。
         group_title_required: 请填写群组名称。
         add_other_participant: 请至少添加一名其他成员。
         too_many_participants: 成员人数超出上限。

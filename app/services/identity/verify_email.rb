@@ -19,11 +19,11 @@ module Identity
         limit: 30,
         window: 15.minutes
       )
-      return ServiceResult.failure(error: "验证链接无效或已过期。") if rate_limit_result.failure?
+      return invalid_token_failure if rate_limit_result.failure?
 
       user = User.find_by(email_verification_token_digest: digest_token(@token))
-      return ServiceResult.failure(error: "验证链接无效或已过期。") unless user
-      return ServiceResult.failure(error: "验证链接无效或已过期。") if token_expired?(user)
+      return invalid_token_failure unless user
+      return invalid_token_failure if token_expired?(user)
       return ServiceResult.success(user) if user.email_verified? && !user.developer_mode_email_verified?
 
       user.update!(
@@ -51,6 +51,13 @@ module Identity
 
     def token_expired?(user)
       user.email_verification_sent_at.blank? || user.email_verification_sent_at < TOKEN_TTL.ago
+    end
+
+    def invalid_token_failure
+      ServiceResult.failure(
+        error: "invalid_or_expired_verification_token",
+        code: "invalid_or_expired_verification_token"
+      )
     end
   end
 end

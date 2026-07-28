@@ -604,6 +604,11 @@ en:
         invalid_reaction: Invalid reaction.
         content_not_found: Content not found.
         invalid_email_or_password: Invalid email or password.
+        two_factor_code_required: Enter your two-factor authentication code.
+        invalid_two_factor_code: Invalid two-factor authentication code.
+        authentication_required: Please sign in to continue.
+        email_banned_registration: This email address is blocked from registering.
+        password_confirmation_mismatch: Password confirmation does not match.
         group_title_required: Group title is required.
         add_other_participant: Add at least one other participant.
         too_many_participants: Too many participants.

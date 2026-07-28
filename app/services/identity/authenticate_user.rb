@@ -46,8 +46,18 @@ module Identity
       end
 
       if user.totp_enabled? && !Mcweb::DeveloperMode.allow?(:skip_two_factor)
-        return ServiceResult.failure(error: "请输入两步验证码。") if @totp_code.blank?
-        return ServiceResult.failure(error: "两步验证码无效。") unless verify_second_factor(user)
+        if @totp_code.blank?
+          return ServiceResult.failure(
+            error: "two_factor_code_required",
+            code: "two_factor_code_required"
+          )
+        end
+        unless verify_second_factor(user)
+          return ServiceResult.failure(
+            error: "invalid_two_factor_code",
+            code: "invalid_two_factor_code"
+          )
+        end
       end
 
       sign_in_attributes = {
@@ -112,7 +122,10 @@ module Identity
     end
 
     def generic_failure
-      ServiceResult.failure(error: "邮箱或密码错误。")
+      ServiceResult.failure(
+        error: "invalid_email_or_password",
+        code: "invalid_email_or_password"
+      )
     end
   end
 end

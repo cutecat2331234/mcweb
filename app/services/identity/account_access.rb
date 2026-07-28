@@ -18,7 +18,12 @@ module Identity
     end
 
     def call
-      return ServiceResult.failure(error: "未登录") unless @user
+      unless @user
+        return ServiceResult.failure(
+          error: "authentication_required",
+          code: "authentication_required"
+        )
+      end
 
       ServiceResult.success(
         account_type: @user.account_type,

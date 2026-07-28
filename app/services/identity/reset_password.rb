@@ -17,7 +17,10 @@ module Identity
       elsif @email.present?
         request_reset
       else
-        ServiceResult.failure(error: "请提供邮箱，或提供重置令牌与新密码。")
+        ServiceResult.failure(
+          error: "email_or_token_required",
+          code: "email_or_token_required"
+        )
       end
     end
 
@@ -62,11 +65,21 @@ module Identity
         limit: 20,
         window: 15.minutes
       )
-      return ServiceResult.failure(error: "操作过于频繁，请稍后再试。") if rate_limit_result.failure?
+      return rate_limit_result if rate_limit_result.failure?
 
       user = User.find_by(password_reset_token_digest: digest_token(@token))
-      return ServiceResult.failure(error: "重置链接无效或已过期。") unless user
-      return ServiceResult.failure(error: "重置链接已过期。") if token_expired?(user)
+      unless user
+        return ServiceResult.failure(
+          error: "invalid_or_expired_reset_token",
+          code: "invalid_or_expired_reset_token"
+        )
+      end
+      if token_expired?(user)
+        return ServiceResult.failure(
+          error: "reset_token_expired",
+          code: "reset_token_expired"
+        )
+      end
 
       user.update!(
         password: @new_password,

@@ -11,7 +11,10 @@ module Administration
       return ServiceResult.success if @email.blank?
       return ServiceResult.success unless Administration::EmailBan.match?(@email)
 
-      ServiceResult.failure(error: "该邮箱已被封禁，无法注册。")
+      ServiceResult.failure(
+        error: "email_banned_registration",
+        code: "email_banned_registration"
+      )
     end
   end
 end

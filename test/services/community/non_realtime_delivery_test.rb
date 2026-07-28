@@ -91,15 +91,22 @@ class Community::NonRealtimeDeliveryTest < ActiveSupport::TestCase
 end
 
 class Community::NoCableRouteTest < ActionDispatch::IntegrationTest
-  test "CE does not mount a cable endpoint" do
-    mounted_cable_routes = Rails.application.routes.routes.select do |route|
-      route.path.spec.to_s.match?(%r{\A/cable(?:\(|/|\z)})
+  REALTIME_ROUTE = %r{/(?:cable|realtime|websocket)(?:[(/.]|$)}i
+
+  test "CE does not mount a realtime transport endpoint" do
+    mounted_realtime_routes = Rails.application.routes.routes.filter_map do |route|
+      path = route.path.spec.to_s
+      endpoint = route.app.to_s
+      next unless path.match?(REALTIME_ROUTE) || endpoint.match?(/ActionCable|WebSocket/i)
+
+      "#{path} -> #{endpoint}"
     end
 
-    assert_empty mounted_cable_routes
+    assert_empty mounted_realtime_routes
 
-    get "/cable"
-
-    assert_response :not_found
+    %w[/cable /realtime /websocket].each do |path|
+      get path
+      assert_response :not_found, "#{path} unexpectedly exposed a CE realtime endpoint"
+    end
   end
 end

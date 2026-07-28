@@ -4,6 +4,15 @@ import { extname, join, resolve } from 'node:path'
 import test from 'node:test'
 
 const root = process.cwd()
+const REALTIME_CLIENT_PATTERNS: Record<string, RegExp> = {
+  'native WebSocket client': /\b(?:new\s+)?WebSocket\s*\(/,
+  'Action Cable package import': /@rails\/actioncable/,
+  'Action Cable consumer': /\bcreateConsumer\s*\(/,
+  'Action Cable subscription': /\bsubscriptions\.create\s*\(/,
+  'Cable endpoint': /\/cable\b/,
+  'server-sent event client': /\bnew\s+EventSource\s*\(/,
+  'event-stream response': /\btext\/event-stream\b/,
+}
 
 function source(path: string): string {
   return readFileSync(resolve(root, path), 'utf8')
@@ -17,19 +26,23 @@ function sourceFiles(directory: string): string[] {
   })
 }
 
-test('CE frontend contains no WebSocket or Action Cable client', () => {
+test('CE frontend contains no WebSocket, Action Cable, or event-stream client', () => {
   const frontend = sourceFiles(resolve(root, 'app/javascript'))
     .map((path) => readFileSync(path, 'utf8'))
     .join('\n')
 
-  assert.doesNotMatch(frontend, /\bnew\s+WebSocket\b/)
-  assert.doesNotMatch(frontend, /\/cable\b/)
+  for (const [label, pattern] of Object.entries(REALTIME_CLIENT_PATTERNS)) {
+    assert.doesNotMatch(frontend, pattern, `${label} must remain EE-only`)
+  }
   assert.doesNotMatch(
     frontend,
     /useNotificationStream|useConversationTyping|AuthenticatedNotificationStream/,
   )
   assert.equal(existsSync(resolve(root, 'app/javascript/lib/useNotificationStream.ts')), false)
   assert.equal(existsSync(resolve(root, 'app/javascript/lib/useConversationTyping.ts')), false)
+
+  const packageJson = source('package.json')
+  assert.doesNotMatch(packageJson, /@rails\/actioncable/)
 })
 
 test('notification count stays server-driven without a live subscription', () => {

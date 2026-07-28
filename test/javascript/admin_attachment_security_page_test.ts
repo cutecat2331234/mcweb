@@ -27,8 +27,11 @@ test('attachment lifecycle has separate desktop table and mobile cards', () => {
 
 test('attachment page renders safe lifecycle fields without raw scanner errors', () => {
   assert.match(source, /scan_result_code/)
+  assert.match(source, /scanResultLabel/)
+  assert.match(source, /admin\.attachments\.scanResultCodes/)
   assert.match(source, /scan_attempts/)
   assert.match(source, /cleanup_attempts/)
+  assert.doesNotMatch(source, /\{\{\s*(?:record|upload|releaseUpload\?)\.scan_result_code/)
   assert.doesNotMatch(source, /scan_error_message|cleanup_error_message/)
 })
 
@@ -38,4 +41,13 @@ test('attachment retry actions use Arco confirmation and stay permission-driven 
   assert.match(source, /await confirm\(/)
   assert.match(source, /router\.post\(upload\.actions\.retry_scan_url/)
   assert.match(source, /router\.post\(upload\.actions\.retry_cleanup_url/)
+})
+
+test('quarantine release keeps the review form open on JSON errors and reloads only queue props', () => {
+  assert.match(source, /HttpError, postJson/)
+  assert.match(source, /await postJson<\{ released: true \}>/)
+  assert.match(source, /releaseError\.value = releaseErrorMessage\(error\)/)
+  assert.match(source, /v-if="releaseError"/)
+  assert.match(source, /router\.reload\(\{[\s\S]*only: \['uploads', 'pagination', 'filterCounts', 'summary', 'quotaUsage'\]/)
+  assert.doesNotMatch(source, /router\.post\(\s*upload\.actions\.release_quarantine_url/)
 })

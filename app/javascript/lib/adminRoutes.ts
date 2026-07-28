@@ -108,6 +108,8 @@ export const adminRoutes = {
   storeGiftCard: (id: number) => `/admin/store/gift_cards/${id}`,
   newStoreGiftCard: '/admin/store/gift_cards/new',
   editStoreGiftCard: (id: number) => `/admin/store/gift_cards/${id}/edit`,
+  storeCreditUsers: '/admin/store/store-credits',
+  storeCreditUser: (id: string) => `/admin/store/store-credits/${id}`,
   storeOrders: '/admin/store/orders',
   storePaymentProviders: '/admin/store/payment-providers',
   storePaymentOperations: '/admin/store/payment-operations',

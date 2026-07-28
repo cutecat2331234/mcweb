@@ -110,3 +110,14 @@ test('responsive shell retains Inertia navigation and current system destination
   assert.match(source, /adminRoutes\.developerWorkbench/)
   assert.doesNotMatch(source, /window\.location|location\.reload/)
 })
+
+test('collapsed sidebar keeps its brand and menu inside the 48px rail', () => {
+  assert.match(
+    css,
+    /\.arco-admin-sider\.arco-layout-sider-collapsed \.arco-admin-brand\s*\{[\s\S]*?padding-inline:\s*7px/,
+  )
+  assert.match(
+    css,
+    /\.arco-admin-sider\.arco-layout-sider-collapsed \.arco-admin-sider__menu\s*\{[\s\S]*?padding-inline:\s*4px/,
+  )
+})

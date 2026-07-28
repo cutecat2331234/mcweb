@@ -51,6 +51,11 @@ module Admin
         post adjust_store_credit_admin_user_path(@target), params: { amount_cents: 500, note: "credit" }
       end
       assert_redirected_to root_path
+
+      post authorize_store_credit_adjustment_admin_user_path(@target),
+           params: { amount_cents: 500, note: "credit", request_id: SecureRandom.uuid },
+           as: :json
+      assert_redirected_to root_path
     end
 
     test "dedicated permissions and modules authorize each user action" do
@@ -96,9 +101,99 @@ module Admin
       assert_redirected_to admin_user_path(@target)
       assert_equal 2, @target.reload.forum_trust_level_override
 
-      post adjust_store_credit_admin_user_path(@target), params: { amount_cents: 500, note: "credit" }
-      assert_redirected_to admin_user_path(@target)
+      request_id = SecureRandom.uuid
+      post authorize_store_credit_adjustment_admin_user_path(@target),
+           params: { amount_cents: 500, note: "credit", request_id: request_id },
+           as: :json
+      assert_response :success
+      assert_equal "no-store", response.headers["Cache-Control"]
+      authorization = JSON.parse(response.body)
+
+      assert_difference -> {
+        AuditLog.where(
+          action: "commerce.store_credit_adjusted",
+          resource_type: "User",
+          resource_id: @target.id
+        ).count
+      }, 1 do
+        post adjust_store_credit_admin_user_path(@target),
+             params: {
+               amount_cents: 500,
+               note: "credit",
+               request_id: request_id,
+               authorization_token: authorization.fetch("token"),
+               confirmation: authorization.fetch("confirmation")
+             },
+             headers: { "HTTP_USER_AGENT" => "StoreCreditRequestTest" },
+             as: :json
+      end
+      assert_response :success
+      assert_equal "no-store", response.headers["Cache-Control"]
+      assert_equal false, JSON.parse(response.body).fetch("idempotent")
       assert_equal 500, @target.reload.store_credit_cents
+
+      audit_log = AuditLog.where(
+        action: "commerce.store_credit_adjusted",
+        resource_type: "User",
+        resource_id: @target.id
+      ).order(:id).last
+      assert_equal "StoreCreditRequestTest", audit_log.user_agent
+      assert_equal 500, audit_log.after_state.fetch("store_credit_cents")
+    end
+
+    test "store credit endpoint requires the typed confirmation challenge" do
+      grant_permission(@actor, "store.credit.adjust")
+      authorization = issue_store_credit_adjustment(
+        actor: @actor,
+        user: @target,
+        amount_cents: 500,
+        note: "credit"
+      )
+
+      assert_no_changes -> { @target.reload.store_credit_cents } do
+        assert_no_difference -> {
+          AuditLog.where(action: "commerce.store_credit_adjusted", resource_id: @target.id).count
+        } do
+          post adjust_store_credit_admin_user_path(@target),
+               params: {
+                 amount_cents: 500,
+                 note: "credit",
+                 request_id: authorization[:request_id],
+                 authorization_token: authorization[:token],
+                 confirmation: "ADJUST WRONG"
+               },
+               as: :json
+        end
+      end
+
+      assert_response :unprocessable_entity
+      assert_equal I18n.t("mcweb.services.errors.store_credit_confirmation_required"),
+                   JSON.parse(response.body).fetch("error")
+    end
+
+    test "store-only staff can authorize and adjust credit without system module access" do
+      grant_permission(@actor, "store.credit.adjust")
+      @actor.admin_module_grants.where(module_key: %w[system forum]).delete_all
+      request_id = SecureRandom.uuid
+
+      post authorize_store_credit_adjustment_admin_user_path(@target),
+           params: { amount_cents: 250, note: "Store support correction", request_id: request_id },
+           as: :json
+      assert_response :success
+      authorization = JSON.parse(response.body)
+
+      post adjust_store_credit_admin_user_path(@target),
+           params: {
+             amount_cents: 250,
+             note: "Store support correction",
+             request_id: request_id,
+             authorization_token: authorization.fetch("token"),
+             confirmation: authorization.fetch("confirmation")
+           },
+           as: :json
+
+      assert_response :success
+      assert_equal 250, @target.reload.store_credit_cents
     end
 
     test "user detail forms require their permission and domain module" do
@@ -121,7 +216,9 @@ module Admin
       assert props.fetch(:spamCleanForm)
       assert props.fetch(:silenceForm)
       assert props.fetch(:trustLevelForm)
-      assert props.fetch(:storeCreditForm)
+      store_credit_form = props.fetch(:storeCreditForm)
+      assert_equal authorize_store_credit_adjustment_admin_user_path(@target),
+                   store_credit_form.fetch(:authorization_url)
 
       @actor.admin_module_grants.where(module_key: %w[forum store]).delete_all
       get admin_user_path(@target)

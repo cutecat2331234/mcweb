@@ -10,28 +10,245 @@ html.dark body {
   color-scheme: dark;
 }
 
-/* Arco Pro–style page background inside the admin shell */
+/*
+ * Shared admin visual language.
+ *
+ * Geometry is deliberately mixed: the application shell and data tables stay
+ * comparatively crisp, content surfaces are softer, and badges/avatars use
+ * pills or circles. This keeps dense administration screens efficient without
+ * making every surface look like the same hard-edged white rectangle.
+ */
+body.mcweb-admin {
+  --mc-admin-canvas: #f3f6fb;
+  --mc-admin-surface: rgb(255 255 255 / 92%);
+  --mc-admin-surface-raised: #fff;
+  --mc-admin-surface-muted: #f8faff;
+  --mc-admin-border: rgb(91 112 146 / 16%);
+  --mc-admin-border-strong: rgb(65 98 162 / 24%);
+  --mc-admin-shadow-sm: 0 1px 2px rgb(23 43 77 / 4%), 0 6px 18px rgb(23 43 77 / 5%);
+  --mc-admin-shadow-md: 0 12px 32px rgb(23 43 77 / 9%);
+  --mc-admin-radius-shell: 4px;
+  --mc-admin-radius-control: 7px;
+  --mc-admin-radius-card: 11px;
+  --mc-admin-accent-blue: #165dff;
+  --mc-admin-accent-cyan: #0e9fbb;
+  --mc-admin-accent-violet: #7048e8;
+}
+
+html.dark body.mcweb-admin {
+  --mc-admin-canvas: #111827;
+  --mc-admin-surface: rgb(29 38 55 / 92%);
+  --mc-admin-surface-raised: #202a3b;
+  --mc-admin-surface-muted: #182233;
+  --mc-admin-border: rgb(154 172 205 / 15%);
+  --mc-admin-border-strong: rgb(109 149 225 / 28%);
+  --mc-admin-shadow-sm: 0 1px 2px rgb(0 0 0 / 18%), 0 8px 22px rgb(0 0 0 / 14%);
+  --mc-admin-shadow-md: 0 16px 36px rgb(0 0 0 / 24%);
+}
+
+/* Layered canvas: neutral enough for long sessions, colored enough for hierarchy. */
 .arco-admin-layout .arco-layout-content {
-  background: var(--color-fill-2);
+  background:
+    radial-gradient(circle at 8% 0%, rgb(22 93 255 / 8%), transparent 30rem),
+    radial-gradient(circle at 94% 12%, rgb(14 159 187 / 7%), transparent 28rem),
+    var(--mc-admin-canvas);
 }
 
 .arco-admin-main {
   padding: 20px 24px;
 }
 
+/* Page identity is a raised, softly colored surface instead of loose text. */
+.arco-admin-main .arco-page-header {
+  margin-bottom: 16px;
+  padding: 16px 18px !important;
+  overflow: hidden;
+  border: 1px solid var(--mc-admin-border);
+  border-radius: var(--mc-admin-radius-card);
+  background:
+    linear-gradient(115deg, rgb(22 93 255 / 10%), rgb(112 72 232 / 5%) 48%, transparent 78%),
+    var(--mc-admin-surface);
+  box-shadow: var(--mc-admin-shadow-sm);
+}
+
+.arco-admin-main .arco-page-header-title {
+  color: var(--color-text-1);
+  letter-spacing: -0.01em;
+}
+
+.arco-admin-main .arco-page-header-subtitle {
+  color: var(--color-text-3);
+}
+
+/* Content surfaces get depth and separation; tables remain slightly squarer. */
+.arco-admin-main .arco-card {
+  overflow: hidden;
+  border-color: var(--mc-admin-border);
+  border-radius: var(--mc-admin-radius-card);
+  background: var(--mc-admin-surface);
+  box-shadow: var(--mc-admin-shadow-sm);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+}
+
+.arco-admin-main .arco-card-hoverable:hover {
+  border-color: var(--mc-admin-border-strong);
+  box-shadow: var(--mc-admin-shadow-md);
+  transform: translateY(-1px);
+}
+
+.arco-admin-main .arco-card-header {
+  min-height: 48px;
+  border-bottom-color: var(--mc-admin-border);
+  background: linear-gradient(90deg, rgb(22 93 255 / 5%), transparent 56%);
+}
+
+.arco-admin-main .arco-card-header-title {
+  font-weight: 650;
+  color: var(--color-text-1);
+}
+
+.arco-admin-main .arco-table-container {
+  overflow: hidden;
+  border-radius: var(--mc-admin-radius-shell);
+}
+
+.arco-admin-main .arco-table-th {
+  color: var(--color-text-2);
+  background: linear-gradient(180deg, rgb(22 93 255 / 7%), rgb(22 93 255 / 3%));
+}
+
+.arco-admin-main .arco-table-tr:hover .arco-table-td {
+  background-color: rgb(22 93 255 / 5%);
+}
+
+.arco-admin-main .arco-table-border .arco-table-container,
+.arco-admin-main .arco-table-border-cell .arco-table-container {
+  border-color: var(--mc-admin-border);
+}
+
+/* Controls are soft rectangles; semantic chips stay fully rounded. */
+.mcweb-admin .arco-btn,
+.mcweb-admin .arco-input-wrapper,
+.mcweb-admin .arco-input-number,
+.mcweb-admin .arco-select-view-single,
+.mcweb-admin .arco-select-view-multiple,
+.mcweb-admin .arco-picker,
+.mcweb-admin .arco-textarea-wrapper,
+.mcweb-admin .arco-upload-list-item,
+.mcweb-admin .arco-pagination-item,
+.mcweb-admin .arco-pagination-item-previous,
+.mcweb-admin .arco-pagination-item-next {
+  border-radius: var(--mc-admin-radius-control);
+}
+
+.mcweb-admin .arco-btn-primary:not(
+  .arco-btn-status-danger,
+  .arco-btn-status-warning,
+  .arco-btn-status-success,
+  .arco-btn-disabled
+):not([disabled]) {
+  border-color: transparent;
+  background: linear-gradient(135deg, var(--mc-admin-accent-blue), #3b7cff);
+  box-shadow: 0 4px 12px rgb(22 93 255 / 20%);
+}
+
+.mcweb-admin .arco-btn-primary:not(
+  .arco-btn-status-danger,
+  .arco-btn-status-warning,
+  .arco-btn-status-success,
+  .arco-btn-disabled
+):not([disabled]):hover {
+  border-color: transparent;
+  background: linear-gradient(135deg, #0f4fe5, #2f6ff1);
+  box-shadow: 0 6px 16px rgb(22 93 255 / 26%);
+}
+
+.mcweb-admin .arco-tag,
+.mcweb-admin .arco-badge-status-text,
+.mcweb-admin .arco-tabs-type-rounded .arco-tabs-tab {
+  border-radius: 999px;
+}
+
+.mcweb-admin .arco-alert {
+  border-radius: 9px;
+}
+
+.arco-modal,
+.arco-drawer {
+  border-radius: 13px;
+  border: 1px solid var(--mc-admin-border, var(--color-border-2));
+  box-shadow: var(--mc-admin-shadow-md, 0 16px 36px rgb(0 0 0 / 16%));
+}
+
+.arco-trigger-popup,
+.arco-popover-popup-content {
+  border-radius: 9px;
+}
+
+.arco-admin-main .arco-tabs-nav::before {
+  background-color: var(--mc-admin-border);
+}
+
+.mcweb-admin :is(
+  .arco-input-wrapper,
+  .arco-input-number,
+  .arco-select-view,
+  .arco-picker,
+  .arco-textarea-wrapper
+):focus-within {
+  border-color: rgb(var(--primary-6));
+  box-shadow: 0 0 0 3px rgba(var(--primary-6), 0.12);
+}
+
+/* Reusable semantic surface accents for dashboards and summary cards. */
+.arco-admin-main .mc-admin-surface--primary {
+  border-top: 3px solid var(--mc-admin-accent-blue);
+}
+
+.arco-admin-main .mc-admin-surface--cyan {
+  border-top: 3px solid var(--mc-admin-accent-cyan);
+}
+
+.arco-admin-main .mc-admin-surface--violet {
+  border-top: 3px solid var(--mc-admin-accent-violet);
+}
+
+.arco-admin-main .mc-admin-surface--success {
+  border-top: 3px solid rgb(var(--success-6));
+}
+
+.arco-admin-main .mc-admin-surface--warning {
+  border-top: 3px solid rgb(var(--warning-6));
+}
+
+.arco-admin-main .mc-admin-surface--danger {
+  border-top: 3px solid rgb(var(--danger-6));
+}
+
 @media (max-width: 768px) {
   .arco-admin-main {
     padding: 16px;
+  }
+
+  .arco-admin-main .arco-page-header {
+    padding: 14px !important;
+    border-radius: 9px;
+  }
+
+  .arco-admin-main .arco-card {
+    border-radius: 9px;
   }
 }
 
 /* Stat cards — accent chips like Arco Pro dashboard */
 .arco-stat-card {
-  border-radius: 4px;
-  transition: box-shadow 0.2s ease;
+  position: relative;
+  min-height: 116px;
+  border-radius: var(--mc-admin-radius-card);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
 }
 .arco-stat-card:hover {
-  box-shadow: 0 4px 10px rgb(0 0 0 / 8%);
+  box-shadow: var(--mc-admin-shadow-md);
 }
 .arco-stat-card__icon {
   display: flex;
@@ -57,4 +274,15 @@ html.dark body {
 .arco-stat-card__icon--info {
   color: rgb(var(--arcoblue-6));
   background: rgb(var(--arcoblue-1));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mcweb-admin *,
+  .mcweb-admin *::before,
+  .mcweb-admin *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
 }

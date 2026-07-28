@@ -43,7 +43,21 @@ class Round58FeaturesTest < ActiveSupport::TestCase
   end
 
   test "wallet shows balance after adjustment" do
-    Commerce::AdjustStoreCredit.call(actor: @mod, user: @user, amount_cents: 300, note: "Test")
+    authorization = issue_store_credit_adjustment(
+      actor: @mod,
+      user: @user,
+      amount_cents: 300,
+      note: "Test"
+    )
+    Commerce::AdjustStoreCredit.call(
+      actor: @mod,
+      user: @user,
+      amount_cents: 300,
+      request_id: authorization[:request_id],
+      authorization_token: authorization[:token],
+      confirmation: authorization[:confirmation],
+      note: "Test"
+    )
     assert_equal 300, @user.reload.store_credit_cents
     assert_equal 1, @user.store_credit_transactions.count
   end

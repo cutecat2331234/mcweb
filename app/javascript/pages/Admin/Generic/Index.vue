@@ -56,6 +56,12 @@ export interface DateFilterProps {
   action: string
 }
 
+export interface SearchFilterProps {
+  query: string
+  placeholder: string
+  action: string
+}
+
 export interface AdminRow extends Record<string, string> {
   url?: string
   publicId?: string
@@ -74,6 +80,7 @@ const props = defineProps<{
   kindTabs?: StatusTab[]
   bulkRetry?: BulkRetryAction | null
   dateFilter?: DateFilterProps | null
+  search?: SearchFilterProps | null
   pagination?: PaginationMeta
   selectable?: boolean
   bulkModerateUrl?: string | null
@@ -85,6 +92,7 @@ const selectedPublicIds = ref<string[]>([])
 
 const dateFrom = ref('')
 const dateTo = ref('')
+const searchQuery = ref('')
 const selectableRowIds = computed(() =>
   props.rows.map((row) => row.publicId).filter((id): id is string => Boolean(id)),
 )
@@ -110,6 +118,14 @@ watch(
     dateTo.value = filter?.created_to || ''
   },
   { immediate: true }
+)
+
+watch(
+  () => props.search?.query,
+  (query) => {
+    searchQuery.value = query || ''
+  },
+  { immediate: true },
 )
 
 watch(
@@ -141,6 +157,18 @@ function applyDateFilter() {
   router.visit(query ? `${props.dateFilter.action}?${query}` : props.dateFilter.action, {
     preserveScroll: true,
   })
+}
+
+function applySearch(value?: string) {
+  if (!props.search) return
+  if (typeof value === 'string') searchQuery.value = value
+
+  const query = searchQuery.value.trim()
+  router.get(
+    props.search.action,
+    query ? { q: query } : {},
+    { preserveState: true, preserveScroll: true, replace: true },
+  )
 }
 
 function toggleRowSelection(publicId: string, checked: boolean) {
@@ -293,10 +321,27 @@ async function bulkOrder(action: string) {
     </a-space>
 
     <a-card
-      v-if="statusTabs?.length || eventTabs?.length || kindTabs?.length || dateFilter"
+      v-if="statusTabs?.length || eventTabs?.length || kindTabs?.length || dateFilter || search"
       class="mb-4"
       :bordered="true"
     >
+      <a-space
+        v-if="search"
+        class="mb-4 max-w-xl"
+        role="search"
+        direction="vertical"
+        fill
+      >
+        <a-input-search
+          v-model="searchQuery"
+          :placeholder="search.placeholder"
+          search-button
+          allow-clear
+          @search="applySearch"
+          @clear="applySearch('')"
+        />
+      </a-space>
+
       <a-tabs
         v-if="statusTabs?.length"
         :active-key="activeTab(statusTabs)"

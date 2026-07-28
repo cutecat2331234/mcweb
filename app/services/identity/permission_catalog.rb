@@ -188,6 +188,13 @@ module Identity
         ]
       ),
       build_entry.call(
+        "forum.attachments.security.read",
+        "查看附件安全状态",
+        execution_points: [
+          "app/controllers/admin/forum/attachments_controller.rb#index"
+        ]
+      ),
+      build_entry.call(
         "forum.attachments.security.manage",
         "管理附件安全处置",
         execution_points: [
@@ -195,6 +202,14 @@ module Identity
           "app/controllers/admin/forum/attachments_controller.rb#prune_orphans",
           "app/controllers/admin/forum/attachments_controller.rb#retry_scan",
           "app/controllers/admin/forum/attachments_controller.rb#retry_cleanup"
+        ]
+      ),
+      build_entry.call(
+        "forum.attachments.security.release",
+        "人工放行隔离附件",
+        execution_points: [
+          "app/controllers/admin/forum/attachments_controller.rb#release_quarantine",
+          "app/services/community/release_quarantined_upload.rb#call"
         ]
       ),
       build_entry.call(
@@ -338,7 +353,11 @@ module Identity
         "store.credit.adjust",
         "Adjust member store credit",
         execution_points: [
+          "app/controllers/admin/users_controller.rb#authorize_store_credit_adjustment",
           "app/controllers/admin/users_controller.rb#adjust_store_credit",
+          "app/controllers/admin/users_controller.rb#store_credit_index",
+          "app/controllers/admin/users_controller.rb#store_credit_show",
+          "app/services/commerce/store_credit_adjustment_authorization.rb#issue",
           "app/services/commerce/adjust_store_credit.rb#call"
         ]
       ),

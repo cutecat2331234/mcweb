@@ -2,7 +2,13 @@
 
 module Admin
   class UsersController < BaseController
-    before_action -> { require_admin_module!("system") }
+    before_action -> { require_admin_module!("system") },
+                  except: %i[
+                    store_credit_index
+                    store_credit_show
+                    authorize_store_credit_adjustment
+                    adjust_store_credit
+                  ]
     before_action -> { require_permission("system.settings.manage") },
                   only: %i[index show edit update destroy ban unban]
     before_action -> { require_admin_module!("forum") },
@@ -15,11 +21,24 @@ module Admin
                   only: %i[silence unsilence]
     before_action -> { require_permission("forum.users.trust.manage") },
                   only: :set_trust_level
-    before_action -> { require_admin_module!("store") }, only: :adjust_store_credit
-    before_action -> { require_permission("store.credit.adjust") }, only: :adjust_store_credit
-    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge revoke_badge warn staff_note silence unsilence set_trust_level adjust_store_credit clean_spam]
+    before_action -> { require_admin_module!("store") },
+                  only: %i[
+                    store_credit_index
+                    store_credit_show
+                    authorize_store_credit_adjustment
+                    adjust_store_credit
+                  ]
+    before_action -> { require_permission("store.credit.adjust") },
+                  only: %i[
+                    store_credit_index
+                    store_credit_show
+                    authorize_store_credit_adjustment
+                    adjust_store_credit
+                  ]
+    before_action :set_user, only: %i[show store_credit_show edit update destroy ban unban grant_badge revoke_badge warn staff_note silence unsilence set_trust_level authorize_store_credit_adjustment adjust_store_credit clean_spam]
+    before_action :ensure_store_credit_target_manageable!, only: :store_credit_show
     before_action :ensure_manageable_target!,
-                  only: %i[ban unban silence unsilence set_trust_level adjust_store_credit warn staff_note grant_badge revoke_badge clean_spam]
+                  only: %i[ban unban silence unsilence set_trust_level authorize_store_credit_adjustment adjust_store_credit warn staff_note grant_badge revoke_badge clean_spam]
 
     def index
       users_scope = User.order(created_at: :desc)
@@ -47,6 +66,68 @@ module Admin
           )
         end,
         pagination: pagy_props(@pagy)
+      }
+    end
+
+    def store_credit_index
+      users_scope = store_credit_manageable_users_scope.order(created_at: :desc)
+      if params[:q].present?
+        q = "%#{ActiveRecord::Base.sanitize_sql_like(params[:q].to_s.strip)}%"
+        users_scope = users_scope.where(
+          "username ILIKE :q OR display_name ILIKE :q",
+          q: q
+        )
+      end
+      @pagy, users = pagy(:offset, users_scope, limit: 50)
+
+      render inertia: "Admin/Generic/Index", props: {
+        title: t("mcweb.admin.store_credit_users.title"),
+        subtitle: t("mcweb.admin.store_credit_users.subtitle"),
+        columns: [
+          admin_column(
+            :username,
+            t("mcweb.admin.store_credit_users.col_username"),
+            link: true
+          ),
+          admin_column(
+            :store_credit,
+            t("mcweb.admin.store_credit_users.col_balance")
+          )
+        ],
+        rows: users.map do |user|
+          admin_row(
+            username: user.username,
+            store_credit: format_money(user.store_credit_cents.to_i, "CNY"),
+            url: admin_store_credit_user_path(user)
+          )
+        end,
+        search: {
+          query: params[:q].to_s.strip,
+          placeholder: t("mcweb.admin.store_credit_users.search_placeholder"),
+          action: admin_store_credit_users_path
+        },
+        pagination: pagy_props(@pagy)
+      }
+    end
+
+    def store_credit_show
+      render inertia: "Admin/Generic/Show", props: {
+        title: @user.username,
+        subtitle: t("mcweb.admin.store_credit_users.detail_subtitle"),
+        fields: [
+          {
+            label: t("mcweb.admin.store_credit_users.field_username"),
+            value: @user.username
+          },
+          {
+            key: "store_credit",
+            label: t("mcweb.admin.store_credit_users.field_balance"),
+            value: format_money(@user.store_credit_cents.to_i, "CNY")
+          }
+        ],
+        sections: [],
+        backUrl: admin_store_credit_users_path,
+        storeCreditForm: store_credit_form_props
       }
     end
 
@@ -82,7 +163,11 @@ module Admin
           { label: "沉默状态", value: @user.silenced? ? "是（可浏览不可发帖）" : "否" },
           { label: "信任等级", value: trust_level_label(@user) },
           { label: "信任等级覆盖", value: @user.forum_trust_level_override.present? ? "TL#{@user.forum_trust_level_override}" : "自动（按发帖数）" },
-          { label: "商店余额", value: format_money(@user.store_credit_cents.to_i, "CNY") }
+          {
+            key: "store_credit",
+            label: "商店余额",
+            value: format_money(@user.store_credit_cents.to_i, "CNY")
+          }
         ],
         sections: [
           mute_actions.any? ? {
@@ -139,11 +224,7 @@ module Admin
           override: @user.forum_trust_level_override,
           levels: Community::TrustLevel::LEVELS.map { |entry| { value: entry[:level], label: "TL#{entry[:level]} · #{entry[:name]}" } }
         } : nil,
-        storeCreditForm: allowed_user_action?("store", "store.credit.adjust") ? {
-          action_url: adjust_store_credit_admin_user_path(@user),
-          balance_cents: @user.store_credit_cents.to_i,
-          balance_label: format_money(@user.store_credit_cents.to_i, "CNY")
-        } : nil,
+        storeCreditForm: store_credit_form_props,
         accountForm: account_form_props,
         actions: mute_actions.map do |m|
           { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
@@ -313,17 +394,67 @@ module Admin
       end
     end
 
+    def authorize_store_credit_adjustment
+      result = Commerce::StoreCreditAdjustmentAuthorization.issue(
+        actor: current_user,
+        user: @user,
+        amount_cents: params[:amount_cents],
+        request_id: params[:request_id],
+        note: params[:note]
+      )
+
+      response.set_header("Cache-Control", "no-store")
+      if result.success?
+        render json: {
+          token: result.value[:token],
+          confirmation: result.value[:confirmation],
+          request_id: result.value[:request_id],
+          expires_in: result.value[:expires_in],
+          amount_cents: result.value[:amount_cents],
+          amount_label: format_money(result.value[:amount_cents], "CNY"),
+          balance_before_cents: result.value[:balance_before_cents],
+          balance_before_label: format_money(result.value[:balance_before_cents], "CNY"),
+          balance_after_cents: result.value[:balance_after_cents],
+          balance_after_label: format_money(result.value[:balance_after_cents], "CNY")
+        }
+      else
+        render json: { error: service_error_message(result) },
+               status: service_error_status(result)
+      end
+    end
+
     def adjust_store_credit
       result = Commerce::AdjustStoreCredit.call(
         actor: current_user,
         user: @user,
         amount_cents: params[:amount_cents],
-        note: params[:note]
+        request_id: params[:request_id],
+        authorization_token: params[:authorization_token],
+        confirmation: params[:confirmation],
+        note: params[:note],
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent
       )
       if result.success?
-        redirect_to admin_user_path(@user), notice: t("mcweb.flash.wallet_updated", amount: format_money(result.value[:balance_cents], "CNY"))
+        if request.format.json?
+          response.set_header("Cache-Control", "no-store")
+          render json: {
+            balance_cents: result.value[:balance_cents],
+            balance_label: format_money(result.value[:balance_cents], "CNY"),
+            request_id: result.value[:request_id],
+            idempotent: result.value[:idempotent]
+          }
+        else
+          redirect_to admin_user_path(@user), notice: t("mcweb.flash.wallet_updated", amount: format_money(result.value[:balance_cents], "CNY"))
+        end
       else
-        redirect_to admin_user_path(@user), alert: service_error_message(result)
+        if request.format.json?
+          response.set_header("Cache-Control", "no-store")
+          render json: { error: service_error_message(result) },
+                 status: service_error_status(result)
+        else
+          redirect_to admin_user_path(@user), alert: service_error_message(result)
+        end
       end
     end
 
@@ -413,6 +544,34 @@ module Admin
       return false if user.account_owner? && !current_user.account_owner?
 
       true
+    end
+
+    def store_credit_target_manageable?(user)
+      user != current_user && manageable_user?(user)
+    end
+
+    def store_credit_manageable_users_scope
+      scope = User.where.not(id: current_user.id)
+      scope = scope.where.not(account_type: "owner") unless current_user.account_owner?
+      scope
+    end
+
+    def ensure_store_credit_target_manageable!
+      return if store_credit_target_manageable?(@user)
+
+      head :not_found
+    end
+
+    def store_credit_form_props
+      return nil unless allowed_user_action?("store", "store.credit.adjust")
+      return nil unless store_credit_target_manageable?(@user)
+
+      {
+        action_url: adjust_store_credit_admin_user_path(@user),
+        authorization_url: authorize_store_credit_adjustment_admin_user_path(@user),
+        balance_cents: @user.store_credit_cents.to_i,
+        balance_label: format_money(@user.store_credit_cents.to_i, "CNY")
+      }
     end
 
     def ensure_manageable_target!

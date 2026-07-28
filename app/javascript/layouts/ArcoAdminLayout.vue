@@ -266,7 +266,7 @@ const nav = computed<NavGroup[]>(() => {
         {
           label: t('admin.forumAttachments'),
           href: adminRoutes.forumAttachments,
-          permissionKey: 'forum.sections.manage',
+          permissionKey: 'forum.attachments.security.read',
         },
         {
           label: t('admin.forumScheduledTasks'),
@@ -332,6 +332,11 @@ const nav = computed<NavGroup[]>(() => {
           label: t('admin.storeGiftCards'),
           href: adminRoutes.storeGiftCards,
           permissionKey: 'store.products.manage',
+        },
+        {
+          label: t('admin.storeCreditUsers'),
+          href: adminRoutes.storeCreditUsers,
+          permissionKey: 'store.credit.adjust',
         },
         {
           label: t('admin.storeOrders'),
@@ -753,7 +758,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   height: 100dvh;
   min-height: 100dvh;
   overflow: hidden;
-  background: var(--color-bg-1);
+  background: var(--mc-admin-canvas, var(--color-bg-1));
 }
 
 .arco-admin-body {
@@ -773,7 +778,8 @@ watch(isDark, syncArcoTheme, { immediate: true })
   color: var(--color-text-1);
   background: var(--color-bg-2);
   border: 1px solid rgb(var(--primary-6));
-  border-radius: 4px;
+  border-radius: var(--mc-admin-radius-control, 7px);
+  box-shadow: var(--mc-admin-shadow-md);
   transform: translateY(-150%);
 }
 .arco-admin-skip-link:focus {
@@ -787,8 +793,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
   flex-direction: column;
   flex: 0 0 auto;
   overflow: hidden;
-  border-right: 1px solid var(--color-border-2);
-  background: var(--color-bg-2);
+  border-right: 1px solid var(--mc-admin-border, var(--color-border-2));
+  background:
+    linear-gradient(180deg, rgba(var(--primary-6), 0.05), transparent 180px),
+    var(--mc-admin-surface-raised, var(--color-bg-2));
 }
 .arco-admin-sider :deep(.arco-layout-sider-children) {
   display: flex;
@@ -805,10 +813,13 @@ watch(isDark, syncArcoTheme, { immediate: true })
   height: 60px;
   min-width: 0;
   padding: 0 16px;
-  border-bottom: 1px solid var(--color-border-2);
+  border-bottom: 1px solid var(--mc-admin-border, var(--color-border-2));
 }
 .arco-admin-brand--drawer {
   flex-basis: 60px;
+}
+.arco-admin-sider.arco-layout-sider-collapsed .arco-admin-brand {
+  padding-inline: 7px;
 }
 .arco-admin-brand__link {
   min-width: 0;
@@ -822,8 +833,14 @@ watch(isDark, syncArcoTheme, { immediate: true })
 }
 .arco-admin-brand__icon {
   flex: 0 0 auto;
-  font-size: 22px;
-  color: rgb(var(--primary-6));
+  width: 34px;
+  height: 34px;
+  padding: 7px;
+  border-radius: 10px;
+  font-size: 20px;
+  color: #fff;
+  background: linear-gradient(145deg, rgb(var(--primary-6)), #7048e8);
+  box-shadow: 0 6px 16px rgba(var(--primary-6), 0.24);
 }
 .arco-admin-brand__text {
   overflow: hidden;
@@ -836,9 +853,25 @@ watch(isDark, syncArcoTheme, { immediate: true })
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+  padding: 8px;
 }
 .arco-admin-sider__menu :deep(.arco-menu-inner) {
   overflow: visible;
+  padding: 0;
+  background: transparent;
+}
+.arco-admin-sider.arco-layout-sider-collapsed .arco-admin-sider__menu {
+  padding-inline: 4px;
+}
+.arco-admin-sider__menu :deep(.arco-menu-item),
+.arco-admin-sider__menu :deep(.arco-menu-inline-header) {
+  margin-block: 2px;
+  border-radius: 8px;
+}
+.arco-admin-sider__menu :deep(.arco-menu-selected) {
+  color: rgb(var(--primary-6));
+  background: linear-gradient(90deg, rgba(var(--primary-6), 0.14), rgba(var(--primary-6), 0.05));
+  font-weight: 600;
 }
 
 .arco-admin-sider__footer {
@@ -847,7 +880,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
   padding: 12px 16px;
   font-size: 12px;
   color: var(--color-text-3);
-  border-top: 1px solid var(--color-border-2);
+  margin: 0 8px 8px;
+  border: 1px solid var(--mc-admin-border, var(--color-border-2));
+  border-radius: 8px;
+  background: var(--mc-admin-surface-muted, var(--color-fill-1));
 }
 .arco-admin-sider__footer a {
   color: var(--color-text-3);
@@ -866,8 +902,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
   min-width: 0;
   padding: 0 20px;
   gap: 12px;
-  background: var(--color-bg-2);
-  border-bottom: 1px solid var(--color-border-2);
+  background: var(--mc-admin-surface, var(--color-bg-2));
+  border-bottom: 1px solid var(--mc-admin-border, var(--color-border-2));
+  box-shadow: 0 2px 12px rgb(23 43 77 / 5%);
+  backdrop-filter: blur(14px);
 }
 .arco-admin-header__left {
   flex: 1 1 auto;
@@ -886,6 +924,11 @@ watch(isDark, syncArcoTheme, { immediate: true })
 }
 .arco-admin-header :deep(.arco-btn) {
   flex: 0 0 auto;
+  border-radius: 8px;
+}
+.arco-admin-header :deep(.arco-btn:hover) {
+  color: rgb(var(--primary-6));
+  background: rgba(var(--primary-6), 0.09);
 }
 
 .arco-admin-breadcrumb {
@@ -907,7 +950,8 @@ watch(isDark, syncArcoTheme, { immediate: true })
   flex: 0 0 auto;
   min-width: 0;
   max-width: 100%;
-  border-radius: 0;
+  margin: 10px 16px 0;
+  border-radius: 9px;
 }
 .arco-admin-developer-alert :deep(.arco-alert-body),
 .arco-admin-developer-alert :deep(.arco-alert-content) {
@@ -936,7 +980,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
 .arco-admin-main__inner {
   width: 100%;
   min-width: 0;
-  max-width: 1200px;
+  max-width: 1440px;
   margin: 0 auto;
 }
 
@@ -990,7 +1034,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   }
 
   .arco-admin-main :deep(.arco-page-header) {
-    padding: 8px 0;
+    padding: 14px !important;
   }
 
   .arco-admin-main :deep(.arco-page-header-header) {

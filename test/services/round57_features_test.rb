@@ -126,7 +126,21 @@ class Round57FeaturesTest < ActiveSupport::TestCase
   end
 
   test "adjust store credit" do
-    result = Commerce::AdjustStoreCredit.call(actor: @mod, user: @user, amount_cents: 1000, note: "Bonus")
+    authorization = issue_store_credit_adjustment(
+      actor: @mod,
+      user: @user,
+      amount_cents: 1000,
+      note: "Bonus"
+    )
+    result = Commerce::AdjustStoreCredit.call(
+      actor: @mod,
+      user: @user,
+      amount_cents: 1000,
+      request_id: authorization[:request_id],
+      authorization_token: authorization[:token],
+      confirmation: authorization[:confirmation],
+      note: "Bonus"
+    )
     assert result.success?
     assert_equal 1000, @user.reload.store_credit_cents
   end

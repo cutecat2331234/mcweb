@@ -91,6 +91,7 @@ class AdminWebsitePagesIntegrationTest < ActionDispatch::IntegrationTest
   setup do
     @admin = create_user
     grant_permission(@admin, "admin.access")
+    grant_permission(@admin, "website.pages.read")
     grant_permission(@admin, "website.pages.edit")
   end
 

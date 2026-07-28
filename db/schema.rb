@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_28_190000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1843,14 +1843,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_28_190000) do
   create_table "store_credit_transactions", force: :cascade do |t|
     t.bigint "actor_id"
     t.integer "amount_cents", null: false
+    t.string "authorization_digest", limit: 64
+    t.integer "balance_after_cents"
+    t.integer "balance_before_cents"
     t.datetime "created_at", null: false
     t.string "note"
+    t.string "request_fingerprint", limit: 64
+    t.string "request_id", limit: 36
     t.bigint "store_order_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["actor_id"], name: "index_store_credit_transactions_on_actor_id"
+    t.index ["authorization_digest"], name: "idx_store_credit_transactions_authorization", unique: true, where: "(authorization_digest IS NOT NULL)"
+    t.index ["request_id"], name: "idx_store_credit_transactions_request_id", unique: true, where: "(request_id IS NOT NULL)"
     t.index ["store_order_id"], name: "index_store_credit_transactions_on_store_order_id"
     t.index ["user_id"], name: "index_store_credit_transactions_on_user_id"
+    t.check_constraint "authorization_digest IS NULL OR authorization_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_credit_transactions_authorization_digest"
+    t.check_constraint "request_fingerprint IS NULL OR request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_credit_transactions_request_fingerprint"
+    t.check_constraint "request_id IS NULL AND request_fingerprint IS NULL AND authorization_digest IS NULL AND balance_before_cents IS NULL AND balance_after_cents IS NULL OR request_id IS NOT NULL AND request_fingerprint IS NOT NULL AND authorization_digest IS NOT NULL AND balance_before_cents IS NOT NULL AND balance_after_cents IS NOT NULL", name: "chk_store_credit_transactions_adjustment_metadata"
+    t.check_constraint "request_id IS NULL OR request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_store_credit_transactions_request_id"
   end
 
   create_table "store_fulfillment_attempts", force: :cascade do |t|

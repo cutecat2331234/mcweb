@@ -71,6 +71,29 @@ test('generic admin show keeps action forms and renders them with Arco controls'
   assert.match(source, /router\.patch/)
 })
 
+test('store-credit adjustment uses two JSON phases without remounting the page', () => {
+  const source = pageSource('Generic/Show.vue')
+
+  assert.match(source, /authorization_url: string/)
+  assert.match(source, /createIdempotencyKey/)
+  assert.match(source, /HttpError, postJson/)
+  assert.match(source, /storeCreditModalVisible/)
+  assert.match(source, /<a-modal[\s\S]*v-model:visible="storeCreditModalVisible"/)
+  assert.match(source, /<a-steps[\s\S]*storeCreditStep/)
+  assert.match(source, /<a-alert[\s\S]*storeCreditAuditTitle/)
+  assert.match(source, /postJson<StoreCreditAuthorization>[\s\S]*authorization_url/)
+  assert.match(source, /postJson<\{[\s\S]*props\.storeCreditForm\.action_url/)
+  assert.match(source, /storeCreditForm\.confirmation === storeCreditAuthorization\.value\?\.confirmation/)
+  assert.match(source, /storeCreditError\.value = storeCreditErrorMessage\(error\)/)
+  assert.match(source, /storeCreditForm\.request_id = createIdempotencyKey\(\)/)
+  assert.match(source, /field\.key === 'store_credit'[\s\S]*storeCreditBalanceLabel\.value/)
+  assert.match(source, /v-for="field in displayFields"/)
+  assert.match(source, /field="confirmation"/)
+  assert.match(source, /v-if="!storeCreditAuthorization"/)
+  assert.match(source, /:disabled="!canSubmitStoreCredit"/)
+  assert.doesNotMatch(source, /storeCreditForm\.post\(props\.storeCreditForm\.action_url/)
+})
+
 test('generic admin show lets owners edit account type, identity module access, and roles', () => {
   const source = pageSource('Generic/Show.vue')
 
@@ -159,6 +182,10 @@ test('admin dashboard uses Arco statistics, health, cards, table, and empty stat
   assert.match(source, /<a-card/)
   assert.match(source, /<a-table/)
   assert.match(source, /<a-empty/)
+  assert.match(source, /key: string/)
+  assert.match(source, /tone: 'primary' \| 'cyan' \| 'violet' \| 'success' \| 'warning' \| 'danger'/)
+  assert.match(source, /`mc-admin-surface--\$\{metric\.tone\}`/)
+  assert.doesNotMatch(source, /index % 5/)
 })
 
 test('topic field form uses Arco controls while retaining nested errors and mutations', () => {

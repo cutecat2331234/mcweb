@@ -5,10 +5,16 @@ module Admin
     # Attachment lifecycle and security console.
     class AttachmentsController < BaseController
       FILTERS = %w[scan_pending quarantined cleanup_failed cleaned orphans].freeze
+      READ_PERMISSION = "forum.attachments.security.read"
       MANAGE_PERMISSION = "forum.attachments.security.manage"
+      RELEASE_PERMISSION = ::Community::ReleaseQuarantinedUpload::PERMISSION
 
-      before_action -> { require_permission("forum.sections.manage") }, only: :index
-      before_action -> { require_permission(MANAGE_PERMISSION) }, except: :index
+      before_action -> { require_permission(READ_PERMISSION) },
+        only: %i[index release_quarantine]
+      before_action -> { require_permission(MANAGE_PERMISSION) },
+        except: %i[index release_quarantine]
+      before_action -> { require_permission(RELEASE_PERMISSION) },
+        only: :release_quarantine
 
       def index
         filter = normalized_filter
@@ -93,6 +99,45 @@ module Admin
         redirect_to(
           admin_forum_attachments_path(filter: "cleanup_failed"),
           notice: t("mcweb.flash.attachment_cleanup_retry_requested")
+        )
+      end
+
+      def release_quarantine
+        upload = ::Community::Upload.find(params[:id])
+        result = ::Community::ReleaseQuarantinedUpload.call(
+          upload: upload,
+          actor: current_user,
+          confirmation: params[:confirmation],
+          reason: params[:reason],
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent
+        )
+
+        unless result.success?
+          message = t("mcweb.flash.attachment_release_#{result.code}")
+          if request.format.json?
+            response.set_header("Cache-Control", "no-store")
+            return render json: { error: message }, status: :unprocessable_entity
+          end
+
+          return redirect_to(
+            admin_forum_attachments_path(filter: "quarantined"),
+            alert: message
+          )
+        end
+
+        if request.format.json?
+          response.set_header("Cache-Control", "no-store")
+          return render json: {
+            released: true,
+            upload_id: result.value[:upload].public_id,
+            message: t("mcweb.flash.attachment_quarantine_released")
+          }
+        end
+
+        redirect_to(
+          admin_forum_attachments_path(filter: "quarantined"),
+          notice: t("mcweb.flash.attachment_quarantine_released")
         )
       end
 
@@ -239,17 +284,19 @@ module Admin
       def serialize_upload(upload)
         attachment = upload.post_attachment
         post = upload.post || attachment&.post
-        actions =
-          if current_user.permission?(MANAGE_PERMISSION)
-            {
-              retry_scan_url: retryable_scan?(upload) ?
-                retry_scan_admin_forum_attachment_path(upload) : nil,
-              retry_cleanup_url: upload.status_cleanup_failed? ?
-                retry_cleanup_admin_forum_attachment_path(upload) : nil
-            }.compact
-          else
-            {}
-          end
+        actions = {}
+        if current_user.permission?(MANAGE_PERMISSION)
+          actions[:retry_scan_url] =
+            retry_scan_admin_forum_attachment_path(upload) if retryable_scan?(upload)
+          actions[:retry_cleanup_url] =
+            retry_cleanup_admin_forum_attachment_path(upload) if upload.status_cleanup_failed?
+        end
+        if current_user.permission?(RELEASE_PERMISSION) && releasable?(upload)
+          actions[:release_quarantine_url] =
+            release_quarantine_admin_forum_attachment_path(upload)
+          actions[:release_confirmation] =
+            ::Community::ReleaseQuarantinedUpload.confirmation_for(upload)
+        end
 
         {
           id: upload.id,
@@ -283,6 +330,17 @@ module Admin
         upload.kind_post_attachment? &&
           !upload.status_cleaned? &&
           upload.scan_status_error? &&
+          upload.active_storage_blob_id.present?
+      end
+
+      def releasable?(upload)
+        upload.kind_post_attachment? &&
+          upload.user_id != current_user.id &&
+          !upload.status_cleaned? &&
+          upload.scan_status_infected? &&
+          upload.scan_result_code.in?(
+            ::Community::ReleaseQuarantinedUpload::RELEASABLE_RESULT_CODES
+          ) &&
           upload.active_storage_blob_id.present?
       end
     end

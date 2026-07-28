@@ -42,11 +42,20 @@ class UserActionPermissionBoundariesTest < ActiveSupport::TestCase
 
   test "dedicated store credit permission authorizes the service" do
     grant_permission(@actor, "store.credit.adjust")
+    authorization = issue_store_credit_adjustment(
+      actor: @actor,
+      user: @target,
+      amount_cents: 500,
+      note: "credit"
+    )
 
     result = Commerce::AdjustStoreCredit.call(
       actor: @actor,
       user: @target,
       amount_cents: 500,
+      request_id: authorization[:request_id],
+      authorization_token: authorization[:token],
+      confirmation: authorization[:confirmation],
       note: "credit"
     )
 

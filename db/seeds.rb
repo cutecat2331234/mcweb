@@ -26,7 +26,8 @@ ROLES = {
     name: "论坛管理员",
     description: "管理论坛",
     permissions: %w[
-      forum.sections.manage forum.attachments.security.manage forum.topics.lock
+      forum.sections.manage forum.attachments.security.read forum.attachments.security.manage
+      forum.attachments.security.release forum.topics.lock
       forum.topics.move forum.posts.edit_others forum.topics.edit_others
       forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage
       forum.users.trust.manage forum.points.manage identity.groups.read identity.groups.manage

@@ -58,9 +58,15 @@ en:
       forum_sections_manage:
         name: "Manage forum structure"
         description: "Manage forum categories, sections, presentation, and community settings."
+      forum_attachments_security_read:
+        name: "View attachment security"
+        description: "View attachment scanning, quarantine, quota, and cleanup status without changing it."
       forum_attachments_security_manage:
         name: "Manage attachment security"
         description: "Retry attachment scans and cleanup, remove unsafe files, and prune orphaned attachments."
+      forum_attachments_security_release:
+        name: "Release quarantined attachments"
+        description: "Approve a quarantined attachment as a reviewed false positive after typed confirmation."
       forum_topics_lock:
         name: "Moderate forum topics"
         description: "Lock and unlock topics and perform general topic moderation."
@@ -540,6 +546,12 @@ en:
       attachment_cleanup_retry_requested: Attachment cleanup retry requested.
       attachment_scan_retry_not_allowed: This upload is not eligible for a scan retry.
       attachment_cleanup_retry_not_allowed: This upload is not eligible for a cleanup retry.
+      attachment_quarantine_released: The reviewed attachment was released from quarantine.
+      attachment_release_forbidden: You do not have permission to release quarantined attachments.
+      attachment_release_invalid_review_reason: Enter a review reason of at least 12 characters.
+      attachment_release_confirmation_mismatch: The typed confirmation did not match.
+      attachment_release_not_allowed: This upload cannot be released from quarantine.
+      attachment_release_failed: The quarantine release failed and no changes were saved.
       notice_created: Notice created.
       notice_updated: Notice updated.
       notice_deleted: Notice deleted.
@@ -683,6 +695,15 @@ en:
         shipping_management_disabled: Order shipping management is disabled.
         gift_card_invalid: Invalid gift card.
         store_credit_unauthorized: You are not allowed to adjust store credit.
+        store_credit_amount_invalid: The adjustment amount is invalid.
+        store_credit_amount_out_of_range: The adjustment exceeds the allowed per-operation range.
+        store_credit_balance_out_of_range: The resulting balance exceeds the supported storage limit.
+        store_credit_confirmation_required: The confirmation text is incorrect. Enter the challenge shown on the page.
+        store_credit_authorization_invalid: The review authorization is invalid, expired, or no longer matches the balance and form. Request a new authorization.
+        store_credit_request_id_invalid: The request ID is invalid. Close the dialog and try again.
+        store_credit_request_id_reused: This request ID was already used for a different balance adjustment.
+        store_credit_note_required: A business reason is required for balance adjustments.
+        store_credit_note_too_long: The business reason cannot exceed 1,000 characters.
         store_credit_adjustment_zero: Adjustment amount cannot be zero.
         store_credit_negative_balance: Balance cannot be negative.
         store_credit_below_reserved: Balance cannot fall below amounts reserved on pending orders.
@@ -1320,6 +1341,15 @@ en:
       notifications:
         default_title: Minecraft event
     admin:
+      store_credit_users:
+        title: Store credit accounts
+        subtitle: Review member balances and make authorized, audited adjustments.
+        search_placeholder: Search by username or public display name
+        col_username: Username
+        col_balance: Store credit
+        detail_subtitle: Store credit account
+        field_username: Username
+        field_balance: Store credit
       rate_limits:
         errors:
           invalid: One or more rate-limit values are invalid.

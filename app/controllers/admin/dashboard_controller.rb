@@ -61,23 +61,42 @@ module Admin
     def dashboard_metrics(metrics_data)
       metrics = []
       if show_system_dashboard?
-        metrics << { label: t("mcweb.admin.dashboard.metrics.users"), value: User.count }
+        metrics << {
+          key: "users",
+          tone: "primary",
+          label: t("mcweb.admin.dashboard.metrics.users"),
+          value: User.count
+        }
       end
       if show_forum_dashboard?
-        metrics << { label: t("mcweb.admin.dashboard.metrics.pending_reports"), value: Community::Report.pending_review.count }
+        metrics << {
+          key: "pending_reports",
+          tone: "warning",
+          label: t("mcweb.admin.dashboard.metrics.pending_reports"),
+          value: Community::Report.pending_review.count
+        }
       end
       return metrics unless show_store_dashboard? && metrics_data
 
       metrics + [
-        { label: t("mcweb.admin.dashboard.metrics.orders"), value: Commerce::Order.count },
-        { label: t("mcweb.admin.dashboard.metrics.total_revenue"), value: format("%.2f", metrics_data[:revenue_cents] / 100.0) },
-        { label: t("mcweb.admin.dashboard.metrics.revenue_7d"), value: format("%.2f", metrics_data[:revenue_7d_cents] / 100.0) },
-        { label: t("mcweb.admin.dashboard.metrics.aov"), value: format("%.2f", metrics_data[:aov_cents] / 100.0) },
-        { label: t("mcweb.admin.dashboard.metrics.pending_orders"), value: metrics_data[:pending_count] },
-        { label: t("mcweb.admin.dashboard.metrics.low_stock_products"), value: metrics_data[:low_stock_count] },
-        { label: t("mcweb.admin.dashboard.metrics.refunds_7d"), value: metrics_data[:refund_count_7d] },
-        { label: t("mcweb.admin.dashboard.metrics.abandoned_carts"), value: metrics_data[:abandoned_carts_count] }
+        dashboard_metric("orders", "cyan", Commerce::Order.count),
+        dashboard_metric("total_revenue", "success", format("%.2f", metrics_data[:revenue_cents] / 100.0)),
+        dashboard_metric("revenue_7d", "primary", format("%.2f", metrics_data[:revenue_7d_cents] / 100.0)),
+        dashboard_metric("aov", "violet", format("%.2f", metrics_data[:aov_cents] / 100.0)),
+        dashboard_metric("pending_orders", "warning", metrics_data[:pending_count]),
+        dashboard_metric("low_stock_products", "warning", metrics_data[:low_stock_count]),
+        dashboard_metric("refunds_7d", "danger", metrics_data[:refund_count_7d]),
+        dashboard_metric("abandoned_carts", "warning", metrics_data[:abandoned_carts_count])
       ]
+    end
+
+    def dashboard_metric(key, tone, value)
+      {
+        key: key,
+        tone: tone,
+        label: t("mcweb.admin.dashboard.metrics.#{key}"),
+        value: value
+      }
     end
   end
 end

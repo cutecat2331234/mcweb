@@ -9,6 +9,8 @@ defineOptions({ layout: AdminLayout })
 const { t } = useI18n()
 
 export interface Metric {
+  key: string
+  tone: 'primary' | 'cyan' | 'violet' | 'success' | 'warning' | 'danger'
   label: string
   value: number | string
 }
@@ -86,12 +88,16 @@ function metricPrecision(value: Metric['value']) {
     <a-row :gutter="[16, 16]" class="mb-6">
       <a-col
         v-for="metric in metrics"
-        :key="metric.label"
+        :key="metric.key"
         :xs="24"
         :sm="12"
         :lg="8"
       >
-        <a-card :bordered="true" hoverable>
+        <a-card
+          :class="['arco-stat-card', `mc-admin-surface--${metric.tone}`]"
+          :bordered="true"
+          hoverable
+        >
           <a-statistic
             v-if="isNumericMetric(metric.value)"
             :title="metric.label"
@@ -126,7 +132,11 @@ function metricPrecision(value: Metric['value']) {
       <h2 class="mb-3 text-base font-semibold">{{ t('admin.dashboard.webhookTitle') }}</h2>
       <a-row :gutter="[16, 16]">
         <a-col v-if="webhookStats.forum" :xs="24" :lg="12">
-          <a-card :title="t('admin.dashboard.forumSavedSearch')" :bordered="true">
+          <a-card
+            class="mc-admin-surface--cyan"
+            :title="t('admin.dashboard.forumSavedSearch')"
+            :bordered="true"
+          >
             <p class="text-sm text-[var(--color-text-3)]">
               {{ t('admin.dashboard.webhookSummary', { total: webhookStats.forum.total, success: webhookStats.forum.success, failed: webhookStats.forum.failed, pending: webhookStats.forum.pending }) }}
             </p>
@@ -155,7 +165,11 @@ function metricPrecision(value: Metric['value']) {
         </a-col>
 
         <a-col v-if="webhookStats.store" :xs="24" :lg="12">
-          <a-card :title="t('admin.dashboard.storeOrders')" :bordered="true">
+          <a-card
+            class="mc-admin-surface--violet"
+            :title="t('admin.dashboard.storeOrders')"
+            :bordered="true"
+          >
             <p class="text-sm text-[var(--color-text-3)]">
               {{ t('admin.dashboard.webhookSummary', { total: webhookStats.store.total, success: webhookStats.store.success, failed: webhookStats.store.failed, pending: webhookStats.store.pending }) }}
             </p>
@@ -205,7 +219,11 @@ function metricPrecision(value: Metric['value']) {
       </a-row>
     </section>
 
-    <a-card class="mb-6" :title="t('admin.dashboard.recentAudit')" :bordered="true">
+    <a-card
+      class="mb-6 mc-admin-surface--primary"
+      :title="t('admin.dashboard.recentAudit')"
+      :bordered="true"
+    >
       <a-table
         :data="recentAuditLogs"
         :pagination="false"
@@ -226,24 +244,28 @@ function metricPrecision(value: Metric['value']) {
       </a-table>
     </a-card>
 
-    <a-card :title="t('admin.dashboard.quickLinks')" :bordered="true">
+    <a-card
+      class="mc-admin-surface--success"
+      :title="t('admin.dashboard.quickLinks')"
+      :bordered="true"
+    >
       <a-space wrap :size="[16, 8]">
         <Link
           :href="adminRoutes.forumSections"
-          class="text-sm text-[rgb(var(--primary-6))] no-underline hover:underline"
+          class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
         >
           {{ t('admin.dashboard.linkForumSections') }}
         </Link>
         <Link
           :href="adminRoutes.storeProducts"
-          class="text-sm text-[rgb(var(--primary-6))] no-underline hover:underline"
+          class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
         >
           {{ t('admin.dashboard.linkStoreProducts') }}
         </Link>
         <a
           :href="adminRoutes.site"
           data-admin-hard-navigation
-          class="text-sm text-[rgb(var(--primary-6))] no-underline hover:underline"
+          class="arco-btn arco-btn-primary arco-btn-size-medium no-underline"
         >
           {{ t('admin.dashboard.linkViewSite') }}
         </a>

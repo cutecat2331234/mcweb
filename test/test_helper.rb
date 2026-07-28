@@ -174,6 +174,18 @@ module ActiveSupport
       end
     end
 
+    def issue_store_credit_adjustment(actor:, user:, amount_cents:, note:, request_id: SecureRandom.uuid)
+      result = Commerce::StoreCreditAdjustmentAuthorization.issue(
+        actor: actor,
+        user: user,
+        amount_cents: amount_cents,
+        request_id: request_id,
+        note: note
+      )
+      assert_predicate result, :success?, result.error
+      result.value
+    end
+
     def enable_store_feature!(feature_id)
       definition = Commerce::StoreFeatures.definition_for(feature_id)
       raise ArgumentError, "Unknown store feature: #{feature_id}" unless definition

@@ -2,15 +2,19 @@
 import { ref, computed } from 'vue'
 import { Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { Message } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { confirm } from '@/lib/arcoConfirm'
 import { isAdminSpaNavigationHref } from '@/lib/adminNavigation'
+import { createIdempotencyKey } from '@/lib/idempotency'
+import { HttpError, postJson } from '@/lib/http'
 
 defineOptions({ layout: AdminLayout })
 
 const { t } = useI18n()
 
 export interface DetailField {
+  key?: string
   label: string
   value: string
 }
@@ -85,8 +89,22 @@ export interface TrustLevelForm {
 
 export interface StoreCreditForm {
   action_url: string
+  authorization_url: string
   balance_cents: number
   balance_label: string
+}
+
+interface StoreCreditAuthorization {
+  token: string
+  confirmation: string
+  request_id: string
+  expires_in: number
+  amount_cents: number
+  amount_label: string
+  balance_before_cents: number
+  balance_before_label: string
+  balance_after_cents: number
+  balance_after_label: string
 }
 
 export interface AccountForm {
@@ -219,7 +237,36 @@ const staffNoteForm = useForm({
 const storeCreditForm = useForm({
   amount_cents: 0,
   note: '',
+  confirmation: '',
+  request_id: '',
 })
+const storeCreditModalVisible = ref(false)
+const storeCreditAuthorization = ref<StoreCreditAuthorization | null>(null)
+const storeCreditAuthorizing = ref(false)
+const storeCreditSubmitting = ref(false)
+const storeCreditError = ref('')
+const storeCreditBalanceLabel = ref(props.storeCreditForm?.balance_label || '')
+const displayFields = computed(() =>
+  props.fields.map((field) => (
+    field.key === 'store_credit'
+      ? { ...field, value: storeCreditBalanceLabel.value }
+      : field
+  )),
+)
+const storeCreditStep = computed(() => storeCreditAuthorization.value ? 2 : 1)
+const canAuthorizeStoreCredit = computed(() =>
+  Number.isInteger(Number(storeCreditForm.amount_cents))
+  && Number(storeCreditForm.amount_cents) !== 0
+  && storeCreditForm.note.trim().length > 0
+  && !storeCreditAuthorizing.value
+  && !storeCreditSubmitting.value,
+)
+const canSubmitStoreCredit = computed(() =>
+  Boolean(storeCreditAuthorization.value)
+  && storeCreditForm.confirmation === storeCreditAuthorization.value?.confirmation
+  && !storeCreditAuthorizing.value
+  && !storeCreditSubmitting.value,
+)
 
 const silenceForm = useForm({
   reason: '',
@@ -338,12 +385,96 @@ async function cleanSpam() {
   router.post(props.spamCleanForm.action_url, {}, { preserveScroll: true })
 }
 
-function submitStoreCredit() {
-  if (!props.storeCreditForm) return
-  storeCreditForm.post(props.storeCreditForm.action_url, {
-    preserveScroll: true,
-    onSuccess: () => { storeCreditForm.reset() },
-  })
+function openStoreCreditModal() {
+  resetStoreCreditFlow()
+  storeCreditModalVisible.value = true
+}
+
+function closeStoreCreditModal() {
+  if (storeCreditAuthorizing.value || storeCreditSubmitting.value) return
+  storeCreditModalVisible.value = false
+  resetStoreCreditFlow()
+}
+
+function resetStoreCreditFlow() {
+  storeCreditForm.reset()
+  storeCreditForm.request_id = createIdempotencyKey()
+  storeCreditForm.clearErrors()
+  storeCreditAuthorization.value = null
+  storeCreditError.value = ''
+}
+
+function storeCreditErrorMessage(error: unknown) {
+  if (error instanceof HttpError && error.body && typeof error.body === 'object') {
+    const message = (error.body as { error?: unknown }).error
+    if (typeof message === 'string' && message.length > 0) return message
+  }
+  return t('admin.genericShow.storeCreditRequestFailed')
+}
+
+async function authorizeStoreCredit() {
+  if (!props.storeCreditForm || !canAuthorizeStoreCredit.value) return
+
+  storeCreditAuthorizing.value = true
+  storeCreditError.value = ''
+  try {
+    const authorization = await postJson<StoreCreditAuthorization>(
+      props.storeCreditForm.authorization_url,
+      {
+        amount_cents: storeCreditForm.amount_cents,
+        note: storeCreditForm.note,
+        request_id: storeCreditForm.request_id,
+      },
+    )
+    storeCreditAuthorization.value = authorization
+    storeCreditForm.request_id = authorization.request_id
+    storeCreditForm.confirmation = ''
+  } catch (error) {
+    storeCreditError.value = storeCreditErrorMessage(error)
+  } finally {
+    storeCreditAuthorizing.value = false
+  }
+}
+
+function editStoreCreditRequest() {
+  if (storeCreditSubmitting.value) return
+  storeCreditAuthorization.value = null
+  storeCreditForm.confirmation = ''
+  storeCreditForm.request_id = createIdempotencyKey()
+  storeCreditError.value = ''
+}
+
+async function submitStoreCredit() {
+  const authorization = storeCreditAuthorization.value
+  if (!props.storeCreditForm || !authorization || !canSubmitStoreCredit.value) return
+
+  storeCreditSubmitting.value = true
+  storeCreditError.value = ''
+  try {
+    const result = await postJson<{
+      balance_cents: number
+      balance_label: string
+      request_id: string
+      idempotent: boolean
+    }>(
+      props.storeCreditForm.action_url,
+      {
+        amount_cents: storeCreditForm.amount_cents,
+        note: storeCreditForm.note,
+        request_id: storeCreditForm.request_id,
+        authorization_token: authorization.token,
+        confirmation: storeCreditForm.confirmation,
+      },
+    )
+    storeCreditBalanceLabel.value = result.balance_label
+    storeCreditModalVisible.value = false
+    resetStoreCreditFlow()
+    Message.success(t('admin.genericShow.storeCreditUpdated'))
+  } catch (error) {
+    storeCreditError.value = storeCreditErrorMessage(error)
+  } finally {
+    storeCreditSubmitting.value = false
+  }
 }
 
 function submitSilence() {
@@ -384,8 +515,8 @@ function submitAccountAccess() {
     <a-card class="max-w-3xl" :bordered="true">
       <a-descriptions :column="{ xs: 1, sm: 1 }" bordered>
         <a-descriptions-item
-          v-for="field in fields"
-          :key="field.label"
+          v-for="field in displayFields"
+          :key="field.key || field.label"
           :label="field.label"
         >
           <span class="break-words font-medium">{{ field.value }}</span>
@@ -773,30 +904,181 @@ function submitAccountAccess() {
       :title="t('admin.genericShow.storeCredit')"
       :bordered="true"
     >
-      <form class="grid gap-4" @submit.prevent="submitStoreCredit">
-        <p class="text-xs text-[var(--color-text-3)]">
-          {{ t('admin.genericShow.currentBalance', { balance: props.storeCreditForm.balance_label }) }}
-        </p>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.adjustCents') }}</span>
-          <a-input-number v-model="storeCreditForm.amount_cents" required />
-        </label>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.note') }}</span>
-          <a-input v-model="storeCreditForm.note" :placeholder="t('admin.common.optional')" />
-        </label>
+      <a-space direction="vertical" fill :size="16">
+        <a-alert
+          type="warning"
+          show-icon
+          :title="t('admin.genericShow.storeCreditRiskTitle')"
+        >
+          {{ t('admin.genericShow.storeCreditRiskHint') }}
+        </a-alert>
+        <a-descriptions :column="1" size="small" bordered>
+          <a-descriptions-item :label="t('admin.genericShow.balanceLabel')">
+            <strong>{{ storeCreditBalanceLabel }}</strong>
+          </a-descriptions-item>
+        </a-descriptions>
         <div>
-          <a-button
-            html-type="submit"
-            type="primary"
-            size="small"
-            :loading="storeCreditForm.processing"
-          >
-            {{ t('admin.genericShow.saveBalance') }}
+          <a-button type="primary" status="warning" @click="openStoreCreditModal">
+            {{ t('admin.genericShow.openStoreCreditAdjustment') }}
           </a-button>
         </div>
-      </form>
+      </a-space>
     </a-card>
+
+    <a-modal
+      v-if="props.storeCreditForm"
+      v-model:visible="storeCreditModalVisible"
+      :title="t('admin.genericShow.storeCreditModalTitle')"
+      :footer="false"
+      :mask-closable="!storeCreditAuthorizing && !storeCreditSubmitting"
+      :esc-to-close="!storeCreditAuthorizing && !storeCreditSubmitting"
+      :width="'min(560px, calc(100vw - 32px))'"
+      @cancel="closeStoreCreditModal"
+    >
+      <a-steps :current="storeCreditStep" size="small" class="mb-5">
+        <a-step :title="t('admin.genericShow.storeCreditStepDetails')" />
+        <a-step :title="t('admin.genericShow.storeCreditStepReview')" />
+      </a-steps>
+
+      <a-alert
+        v-if="storeCreditError"
+        class="mb-4"
+        type="error"
+        show-icon
+        :closable="false"
+      >
+        {{ storeCreditError }}
+      </a-alert>
+
+      <a-alert
+        class="mb-5"
+        type="warning"
+        show-icon
+        :closable="false"
+        :title="t('admin.genericShow.storeCreditAuditTitle')"
+      >
+        {{ t('admin.genericShow.storeCreditAuditHint') }}
+      </a-alert>
+
+      <a-form :model="storeCreditForm" layout="vertical">
+        <template v-if="!storeCreditAuthorization">
+          <a-form-item
+            field="amount_cents"
+            :label="t('admin.genericShow.adjustCents')"
+            required
+          >
+            <a-input-number
+              v-model="storeCreditForm.amount_cents"
+              :disabled="storeCreditAuthorizing"
+            />
+          </a-form-item>
+
+          <a-form-item
+            field="note"
+            :label="t('admin.genericShow.note')"
+            :extra="t('admin.genericShow.storeCreditNoteRequired')"
+            required
+          >
+            <a-textarea
+              v-model="storeCreditForm.note"
+              :placeholder="t('admin.genericShow.storeCreditNotePlaceholder')"
+              :auto-size="{ minRows: 3, maxRows: 6 }"
+              :max-length="1000"
+              show-word-limit
+              :disabled="storeCreditAuthorizing"
+            />
+          </a-form-item>
+
+          <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <a-button
+              class="w-full sm:w-auto"
+              :disabled="storeCreditAuthorizing"
+              @click="closeStoreCreditModal"
+            >
+              {{ t('common.cancel') }}
+            </a-button>
+            <a-button
+              class="w-full sm:w-auto"
+              type="primary"
+              status="warning"
+              :loading="storeCreditAuthorizing"
+              :disabled="!canAuthorizeStoreCredit"
+              @click="authorizeStoreCredit"
+            >
+              {{ t('admin.genericShow.storeCreditAuthorize') }}
+            </a-button>
+          </div>
+        </template>
+
+        <template v-else>
+          <a-descriptions :column="1" bordered size="small" class="mb-4">
+            <a-descriptions-item :label="t('admin.genericShow.storeCreditBefore')">
+              {{ storeCreditAuthorization.balance_before_label }}
+            </a-descriptions-item>
+            <a-descriptions-item :label="t('admin.genericShow.storeCreditChange')">
+              <a-tag :color="storeCreditAuthorization.amount_cents > 0 ? 'green' : 'red'">
+                {{ storeCreditAuthorization.amount_label }}
+              </a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item :label="t('admin.genericShow.storeCreditAfter')">
+              <strong>{{ storeCreditAuthorization.balance_after_label }}</strong>
+            </a-descriptions-item>
+            <a-descriptions-item :label="t('admin.genericShow.storeCreditRequestId')">
+              <code class="break-all text-xs">{{ storeCreditAuthorization.request_id }}</code>
+            </a-descriptions-item>
+          </a-descriptions>
+
+          <a-alert type="info" show-icon class="mb-4">
+            {{
+              t('admin.genericShow.storeCreditAuthorizationExpiry', {
+                minutes: Math.max(1, Math.ceil(storeCreditAuthorization.expires_in / 60)),
+              })
+            }}
+          </a-alert>
+
+          <a-form-item
+            field="confirmation"
+            :label="t('admin.genericShow.storeCreditConfirmation')"
+            required
+          >
+            <a-input
+              v-model="storeCreditForm.confirmation"
+              :placeholder="t('admin.genericShow.storeCreditConfirmationPlaceholder')"
+              :disabled="storeCreditSubmitting"
+              autocomplete="off"
+            />
+            <template #extra>
+              <div class="mt-1 grid gap-2">
+                <span>{{ t('admin.genericShow.storeCreditConfirmationHint') }}</span>
+                <a-tag color="orangered" class="w-fit max-w-full">
+                  <code class="break-all">{{ storeCreditAuthorization.confirmation }}</code>
+                </a-tag>
+              </div>
+            </template>
+          </a-form-item>
+
+          <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+            <a-button
+              class="w-full sm:w-auto"
+              :disabled="storeCreditSubmitting"
+              @click="editStoreCreditRequest"
+            >
+              {{ t('admin.genericShow.storeCreditBackToEdit') }}
+            </a-button>
+            <a-button
+              class="w-full sm:w-auto"
+              type="primary"
+              status="danger"
+              :loading="storeCreditSubmitting"
+              :disabled="!canSubmitStoreCredit"
+              @click="submitStoreCredit"
+            >
+              {{ t('admin.genericShow.confirmStoreCreditAdjustment') }}
+            </a-button>
+          </div>
+        </template>
+      </a-form>
+    </a-modal>
 
     <a-card
       v-if="props.silenceForm"

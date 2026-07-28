@@ -1,6 +1,6 @@
 # CE 开发文档入口
 
-> 最近复核：2026-07-26
+> 最近复核：2026-07-29
 > 本目录只保留当前有效的开发待办、架构约束和实现参考；已完成路线图、旧审计与迁移快照不保留在目录中，需要追溯时使用 Git 历史。
 
 ## 版本边界
@@ -15,10 +15,11 @@
 
 读取本目录全部文档后，按以下顺序派发开发任务：
 
-1. [`code-completion-and-developer-mode-plan.md`](code-completion-and-developer-mode-plan.md)：Developer Mode 与尚未形成闭环的代码总计划，按依赖关系拆分。
-2. [`production-readiness-backlog.md`](production-readiness-backlog.md)：论坛、商城、公共后台与生产运维缺口，P0 优先。
-3. [`PLUGIN_SYSTEM_ROADMAP.md`](PLUGIN_SYSTEM_ROADMAP.md)：插件平台的活动里程碑与待办。
-4. 其余文档是实现约束和现行参考，不应仅因为被读取就自动创建重写任务；开发上述待办时必须遵守它们。
+1. [`functional-development-plan.md`](functional-development-plan.md)：只包含产品功能与前端体验的统一开发计划；共享功能先 CE、EE 再精确合并，EE 专属任务只在 EE 实现。
+2. [`code-completion-and-developer-mode-plan.md`](code-completion-and-developer-mode-plan.md)：Developer Mode 与尚未形成闭环的代码总计划，按依赖关系拆分。
+3. [`production-readiness-backlog.md`](production-readiness-backlog.md)：论坛、商城、公共后台与生产运维缺口，P0 优先。
+4. [`PLUGIN_SYSTEM_ROADMAP.md`](PLUGIN_SYSTEM_ROADMAP.md)：插件平台的活动里程碑与待办。
+5. 其余文档是实现约束和现行参考，不应仅因为被读取就自动创建重写任务；开发上述待办时必须遵守它们。
 
 操作或排查已落地的 Developer Mode 前，先读
 [`DEVELOPER_MODE.md`](DEVELOPER_MODE.md)。它只描述当前源码已经接线的行为，并把
@@ -34,6 +35,7 @@ schema 中尚未实现的模拟项单独列出；不得用活动计划中的目�
 | [`code-completion-and-developer-mode-plan.md`](code-completion-and-developer-mode-plan.md) | 活动开发计划 | Developer Mode、代码闭环、阶段依赖与验收门禁 |
 | [`COMMUNITY_QUERY_PLAN_OPERATIONS.md`](COMMUNITY_QUERY_PLAN_OPERATIONS.md) | 现行数据库运维参考 | 社区高频查询的 PostgreSQL 计划基线、脱敏复核入口和容量边界 |
 | [`DEVELOPER_MODE.md`](DEVELOPER_MODE.md) | 现行运行参考 | 开关、实际绕过与替身、production foundation、验证、重启、风险和明确未实现项 |
+| [`functional-development-plan.md`](functional-development-plan.md) | 产品功能活动计划 | 只按产品功能和前端体验拆分 CE 共享与 EE 专属任务；明确排除部署、基础设施、灾备、监控和运维 |
 | [`PAYMENT_PROVIDER_CONFIGURATION.md`](PAYMENT_PROVIDER_CONFIGURATION.md) | 现行支付运维参考 | Stripe 加密配置、连接测试、Webhook 检查、权限和上线步骤 |
 | [`HOSTD.md`](HOSTD.md) | 现行部署参考 | 安装、主机控制台和运维任务的约束 |
 | [`minecraft-resource-packs.md`](minecraft-resource-packs.md) | 现行功能参考 | Minecraft 资源包与商城贴图任务的配置依据 |

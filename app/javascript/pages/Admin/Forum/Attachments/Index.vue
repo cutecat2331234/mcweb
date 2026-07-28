@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
@@ -9,8 +9,13 @@ import {
   Descriptions,
   DescriptionsItem,
   Empty,
+  Form,
+  FormItem,
   Grid,
   GridItem,
+  Input,
+  Message,
+  Modal,
   Option,
   PageHeader,
   Pagination,
@@ -19,11 +24,13 @@ import {
   Table,
   TableColumn,
   Tag,
+  Textarea as ArcoTextarea,
   TypographyText,
 } from '@mcweb/ui'
 import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { confirm } from '@/lib/arcoConfirm'
+import { HttpError, postJson } from '@/lib/http'
 
 defineOptions({ layout: ArcoAdminLayout })
 
@@ -59,6 +66,8 @@ type UploadRow = {
   actions: {
     retry_scan_url?: string
     retry_cleanup_url?: string
+    release_quarantine_url?: string
+    release_confirmation?: string
   }
 }
 
@@ -126,6 +135,16 @@ const props = defineProps<{
 
 const { locale, t, te } = useI18n()
 const selectedFilter = ref<FilterName>(props.filter)
+const releaseModalVisible = ref(false)
+const releaseUpload = ref<UploadRow | null>(null)
+const releaseReason = ref('')
+const releaseConfirmation = ref('')
+const releaseSubmitting = ref(false)
+const releaseError = ref('')
+const releaseReady = computed(() =>
+  releaseReason.value.trim().length >= 12 &&
+  releaseConfirmation.value === releaseUpload.value?.actions.release_confirmation,
+)
 
 watch(
   () => props.filter,
@@ -168,6 +187,14 @@ function lifecycleLabel(value: string) {
 
 function scanLabel(value: string) {
   return translation(`admin.attachments.scanStatuses.${value}`, value)
+}
+
+function scanResultLabel(value: string | null | undefined) {
+  if (!value) return '—'
+  return translation(
+    `admin.attachments.scanResultCodes.${value}`,
+    t('admin.attachments.scanResultUnknown'),
+  )
 }
 
 function lifecycleColor(value: UploadRow['status']) {
@@ -266,6 +293,59 @@ async function retryCleanup(upload: UploadRow) {
   if (!ok) return
 
   router.post(upload.actions.retry_cleanup_url, {}, { preserveScroll: true })
+}
+
+function openReleaseReview(upload: UploadRow) {
+  if (!upload.actions.release_quarantine_url) return
+
+  releaseUpload.value = upload
+  releaseReason.value = ''
+  releaseConfirmation.value = ''
+  releaseError.value = ''
+  releaseModalVisible.value = true
+}
+
+function closeReleaseReview() {
+  if (releaseSubmitting.value) return
+  releaseModalVisible.value = false
+  releaseUpload.value = null
+  releaseError.value = ''
+}
+
+function releaseErrorMessage(error: unknown) {
+  if (error instanceof HttpError && error.body && typeof error.body === 'object') {
+    const message = (error.body as { error?: unknown }).error
+    if (typeof message === 'string' && message.length > 0) return message
+  }
+
+  return t('admin.attachments.releaseRequestFailed')
+}
+
+async function submitReleaseReview() {
+  const upload = releaseUpload.value
+  if (!upload?.actions.release_quarantine_url || !releaseReady.value) return
+
+  releaseSubmitting.value = true
+  releaseError.value = ''
+  try {
+    await postJson<{ released: true }>(upload.actions.release_quarantine_url, {
+      reason: releaseReason.value.trim(),
+      confirmation: releaseConfirmation.value,
+    })
+    releaseModalVisible.value = false
+    releaseUpload.value = null
+    releaseReason.value = ''
+    releaseConfirmation.value = ''
+    Message.success(t('admin.attachments.releaseSuccess'))
+    router.reload({
+      only: ['uploads', 'pagination', 'filterCounts', 'summary', 'quotaUsage'],
+      preserveScroll: true,
+    })
+  } catch (error) {
+    releaseError.value = releaseErrorMessage(error)
+  } finally {
+    releaseSubmitting.value = false
+  }
 }
 
 async function prune() {
@@ -423,8 +503,8 @@ async function prune() {
                       {{ t('admin.attachments.quarantined') }}
                     </Tag>
                   </div>
-                  <p v-if="record.scan_result_code" class="break-all font-mono text-xs">
-                    {{ record.scan_result_code }}
+                  <p v-if="record.scan_result_code" class="text-xs text-[var(--color-text-2)]">
+                    {{ scanResultLabel(record.scan_result_code) }}
                   </p>
                   <p class="text-xs text-[var(--color-text-3)]">
                     {{ record.scanner || '—' }}
@@ -520,6 +600,15 @@ async function prune() {
                     {{ t('admin.attachments.retryCleanup') }}
                   </Button>
                   <Button
+                    v-if="record.actions.release_quarantine_url"
+                    type="primary"
+                    status="warning"
+                    size="small"
+                    @click="openReleaseReview(record)"
+                  >
+                    {{ t('admin.attachments.release') }}
+                  </Button>
+                  <Button
                     v-if="record.delete_url"
                     type="text"
                     status="danger"
@@ -586,8 +675,8 @@ async function prune() {
                 <p class="text-xs text-[var(--color-text-3)]">
                   {{ t('admin.attachments.scanResult') }}
                 </p>
-                <p class="mt-1 break-all font-mono text-xs">
-                  {{ upload.scan_result_code || '—' }}
+                <p class="mt-1 text-xs">
+                  {{ scanResultLabel(upload.scan_result_code) }}
                 </p>
               </div>
               <div>
@@ -630,6 +719,15 @@ async function prune() {
                   {{ t('admin.attachments.retryCleanup') }}
                 </Button>
                 <Button
+                  v-if="upload.actions.release_quarantine_url"
+                  type="primary"
+                  status="warning"
+                  size="small"
+                  @click="openReleaseReview(upload)"
+                >
+                  {{ t('admin.attachments.release') }}
+                </Button>
+                <Button
                   v-if="upload.delete_url"
                   type="text"
                   status="danger"
@@ -662,5 +760,86 @@ async function prune() {
         />
       </div>
     </Card>
+
+    <Modal
+      v-model:visible="releaseModalVisible"
+      :title="t('admin.attachments.releaseTitle')"
+      :footer="false"
+      :mask-closable="!releaseSubmitting"
+      :esc-to-close="!releaseSubmitting"
+      :width="'min(600px, calc(100vw - 32px))'"
+      @cancel="closeReleaseReview"
+    >
+      <Alert
+        v-if="releaseError"
+        type="error"
+        show-icon
+        :closable="false"
+        class="mb-4"
+      >
+        {{ releaseError }}
+      </Alert>
+
+      <Alert
+        type="warning"
+        show-icon
+        :closable="false"
+        :title="t('admin.attachments.releaseWarning')"
+        class="mb-5"
+      />
+
+      <Descriptions :column="1" bordered size="small" class="mb-5">
+        <DescriptionsItem :label="t('admin.attachments.colFile')">
+          {{ releaseUpload?.filename }}
+        </DescriptionsItem>
+        <DescriptionsItem :label="t('admin.attachments.scanResult')">
+          <TypographyText>{{ scanResultLabel(releaseUpload?.scan_result_code) }}</TypographyText>
+        </DescriptionsItem>
+      </Descriptions>
+
+      <Form :model="{ reason: releaseReason, confirmation: releaseConfirmation }" layout="vertical">
+        <FormItem field="reason" :label="t('admin.attachments.releaseReason')" required>
+          <ArcoTextarea
+            v-model="releaseReason"
+            :placeholder="t('admin.attachments.releaseReasonPlaceholder')"
+            :max-length="1000"
+            show-word-limit
+            :auto-size="{ minRows: 4, maxRows: 8 }"
+            :disabled="releaseSubmitting"
+          />
+          <template #extra>{{ t('admin.attachments.releaseReasonHelp') }}</template>
+        </FormItem>
+
+        <FormItem field="confirmation" :label="t('admin.attachments.releaseConfirmation')" required>
+          <Input
+            v-model="releaseConfirmation"
+            :placeholder="releaseUpload?.actions.release_confirmation"
+            :disabled="releaseSubmitting"
+            autocomplete="off"
+          />
+          <template #extra>
+            {{ t('admin.attachments.releaseConfirmationHelp') }}
+            <TypographyText code>
+              {{ releaseUpload?.actions.release_confirmation }}
+            </TypographyText>
+          </template>
+        </FormItem>
+
+        <div class="flex flex-wrap justify-end gap-2">
+          <Button :disabled="releaseSubmitting" @click="closeReleaseReview">
+            {{ t('admin.ui.cancel') }}
+          </Button>
+          <Button
+            type="primary"
+            status="warning"
+            :loading="releaseSubmitting"
+            :disabled="!releaseReady"
+            @click="submitReleaseReview"
+          >
+            {{ t('admin.attachments.releaseSubmit') }}
+          </Button>
+        </div>
+      </Form>
+    </Modal>
   </section>
 </template>

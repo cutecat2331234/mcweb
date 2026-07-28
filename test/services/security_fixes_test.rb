@@ -27,18 +27,93 @@ class SecurityFixesTest < ActiveSupport::TestCase
   end
 
   test "adjust store credit allows adjusting another user" do
-    result = Commerce::AdjustStoreCredit.call(
+    authorization = issue_store_credit_adjustment(
       actor: @staff,
       user: @target,
-      amount_cents: 500
+      amount_cents: 500,
+      note: "Manual correction"
     )
 
-    assert result.success?
+    assert_difference -> {
+      AuditLog.where(
+        action: "commerce.store_credit_adjusted",
+        resource_type: "User",
+        resource_id: @target.id
+      ).count
+    }, 1 do
+      result = Commerce::AdjustStoreCredit.call(
+        actor: @staff,
+        user: @target,
+        amount_cents: 500,
+        request_id: authorization[:request_id],
+        authorization_token: authorization[:token],
+        confirmation: authorization[:confirmation],
+        note: "Manual correction"
+      )
+
+      assert result.success?
+    end
     assert_equal 500, @target.reload.store_credit_cents
+
+    audit_log = AuditLog.where(
+      action: "commerce.store_credit_adjusted",
+      resource_type: "User",
+      resource_id: @target.id
+    ).order(:id).last
+    assert_equal({ "store_credit_cents" => 0 }, audit_log.before_state)
+    assert_equal({ "store_credit_cents" => 500 }, audit_log.after_state)
+    assert_equal 500, audit_log.metadata.fetch("amount_cents")
+    assert_equal "signed_typed_challenge", audit_log.metadata.fetch("confirmation_method")
+    assert_equal authorization[:request_id], audit_log.metadata.fetch("request_id")
+    refute audit_log.metadata.key?("authorization_token")
+    refute audit_log.metadata.key?("confirmation")
+    assert_equal "Manual correction", audit_log.reason
+    assert_not audit_log.update(action: "tampered")
+    assert_not audit_log.destroy
+  end
+
+  test "adjust store credit rejects missing or incorrect confirmation without side effects" do
+    authorization = issue_store_credit_adjustment(
+      actor: @staff,
+      user: @target,
+      amount_cents: 500,
+      note: "Manual correction"
+    )
+
+    [ nil, "ADJUST WRONG" ].each do |confirmation|
+      assert_no_changes -> { @target.reload.store_credit_cents } do
+        assert_no_difference -> {
+          Commerce::StoreCreditTransaction.where(user: @target).count
+        } do
+          assert_no_difference -> {
+            AuditLog.where(action: "commerce.store_credit_adjusted", resource_id: @target.id).count
+          } do
+            result = Commerce::AdjustStoreCredit.call(
+              actor: @staff,
+              user: @target,
+              amount_cents: 500,
+              request_id: authorization[:request_id],
+              authorization_token: authorization[:token],
+              note: "Manual correction",
+              confirmation: confirmation
+            )
+
+            assert_not result.success?
+            assert_equal I18n.t("mcweb.services.errors.store_credit_confirmation_required"), result.error
+          end
+        end
+      end
+    end
   end
 
   test "adjust store credit rejects reducing below pending reservation" do
     @target.update!(store_credit_cents: 1000)
+    authorization = issue_store_credit_adjustment(
+      actor: @staff,
+      user: @target,
+      amount_cents: -500,
+      note: "Manual correction"
+    )
     Commerce::Order.create!(
       public_id: "ord_sc_res_#{SecureRandom.hex(4)}",
       order_number: "ORD-SC-RES-#{SecureRandom.hex(4)}",
@@ -54,7 +129,11 @@ class SecurityFixesTest < ActiveSupport::TestCase
     result = Commerce::AdjustStoreCredit.call(
       actor: @staff,
       user: @target,
-      amount_cents: -500
+      amount_cents: -500,
+      request_id: authorization[:request_id],
+      authorization_token: authorization[:token],
+      confirmation: authorization[:confirmation],
+      note: "Manual correction"
     )
 
     assert_not result.success?

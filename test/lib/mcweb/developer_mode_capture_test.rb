@@ -13,7 +13,9 @@ class Mcweb::DeveloperModeCaptureTest < ActiveSupport::TestCase
       ),
       body: {
         event: "topic.created",
-        password: "body-secret"
+        password: "body-secret",
+        authorization_token: "signed-adjustment-secret",
+        confirmation: "typed-adjustment-secret"
       }.to_json,
       headers: {
         "Content-Type" => "application/json",
@@ -35,6 +37,8 @@ class Mcweb::DeveloperModeCaptureTest < ActiveSupport::TestCase
 
     assert_equal "topic.created", entry.dig("payload", "event")
     assert_equal "[FILTERED]", entry.dig("payload", "password")
+    assert_equal "[FILTERED]", entry.dig("payload", "authorization_token")
+    assert_equal "[FILTERED]", entry.dig("payload", "confirmation")
     assert_equal "[FILTERED]", entry.dig("headers", "Authorization")
     assert_equal "[FILTERED]", entry.dig("headers", "X-McWeb-Signature")
     assert_equal "application/json", entry.dig("headers", "Content-Type")
@@ -44,6 +48,8 @@ class Mcweb::DeveloperModeCaptureTest < ActiveSupport::TestCase
     assert_not_includes path.read, "path-token-secret"
     assert_not_includes path.read, "top-secret"
     assert_not_includes path.read, "body-secret"
+    assert_not_includes path.read, "signed-adjustment-secret"
+    assert_not_includes path.read, "typed-adjustment-secret"
     assert_not_includes path.read, "header-secret"
     assert_not_includes path.read, "signature-secret"
   ensure

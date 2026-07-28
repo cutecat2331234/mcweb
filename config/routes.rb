@@ -77,10 +77,17 @@ Rails.application.routes.draw do
         post :silence
         post :unsilence
         post :set_trust_level
+        post :authorize_store_credit_adjustment
         post :adjust_store_credit
         post :clean_spam
       end
     end
+    get "store/store-credits",
+      to: "users#store_credit_index",
+      as: :store_credit_users
+    get "store/store-credits/:id",
+      to: "users#store_credit_show",
+      as: :store_credit_user
     resources :roles, only: %i[index show create update destroy]
     resources :audit_logs, only: %i[index show]
     namespace :forum do
@@ -130,6 +137,7 @@ Rails.application.routes.draw do
         member do
           post :retry_scan
           post :retry_cleanup
+          post :release_quarantine
         end
       end
       get "stats", to: "stats#index"

@@ -24,3 +24,18 @@ test('public homepage copy describes user value instead of implementation detail
   assert.match(zhCN, /stat2Value:\s*'玩家中心'/)
   assert.doesNotMatch(layout, /\bappPrefix\b/)
 })
+
+test('member-facing copy avoids competitor and implementation labels', () => {
+  const en = source('app/javascript/locales/en.ts')
+  const zhCN = source('app/javascript/locales/zh-CN.ts')
+  const search = source('app/javascript/pages/Community/Search/Index.vue')
+
+  for (const locale of [en, zhCN]) {
+    assert.doesNotMatch(locale, /Discourse|XenForo|WooCommerce/)
+    assert.doesNotMatch(locale, /ruby tutorial/)
+    assert.doesNotMatch(locale, /Unknown block: \{type\}|未知区块：\{type\}/)
+  }
+
+  assert.match(search, /forum\.search\.exampleQuery/)
+  assert.doesNotMatch(search, /ruby tutorial/)
+})

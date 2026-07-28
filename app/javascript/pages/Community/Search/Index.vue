@@ -781,7 +781,7 @@ async function saveRenameSearch(search: { id: number; update_url?: string }) {
 
   <p class="mb-4 max-w-2xl text-xs text-muted-foreground">
     {{ t('forum.search.excludeSyntax') }} <code class="rounded bg-muted px-1">-</code> {{ t('forum.search.excludeSyntaxExample') }}
-    <code class="rounded bg-muted px-1">ruby tutorial -spam -offtopic</code>
+    <code class="rounded bg-muted px-1">{{ t('forum.search.exampleQuery') }}</code>
   </p>
 
   <div v-if="excludeTerms?.length && !activeFilters?.length" class="mb-4 flex flex-wrap items-center gap-2">

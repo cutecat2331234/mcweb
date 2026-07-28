@@ -4,6 +4,7 @@ import { createApp, h, type DefineComponent } from 'vue'
 import '@/styles/portal.css'
 import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'
 import { applyPhraseOverrides, createAppI18n, normalizeAppLocale, syncI18nLocale } from '@/lib/i18n'
+import { installPortalSpaNavigation } from '@/lib/portalNavigation'
 import AppProvider from '@/components/AppProvider.vue'
 
 function syncCsrfFromInertiaPage(page?: { props?: Record<string, unknown> }) {
@@ -16,6 +17,10 @@ function syncCsrfFromInertiaPage(page?: { props?: Record<string, unknown> }) {
 }
 
 const i18n = createAppI18n()
+const removePortalSpaNavigation = installPortalSpaNavigation((href) => router.visit(href))
+if (import.meta.hot) {
+  import.meta.hot.dispose(removePortalSpaNavigation)
+}
 
 function inertiaTitle(title: string): string {
   const prefix = document.documentElement.dataset.developerMode === 'true' ? '[DEV] ' : ''

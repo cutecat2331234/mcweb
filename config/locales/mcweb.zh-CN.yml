@@ -1,5 +1,183 @@
 "zh-CN":
   mcweb:
+    permission_catalog:
+      legacy_group: "已停用或遗留授权"
+      legacy_description: "该权限已不在当前核心或插件目录中；可以保留或移除，但不能重新授予。"
+    permissions:
+      identity_groups_read:
+        name: "查看身份组"
+        description: "查看全局身份组及其基础设置。"
+      identity_groups_manage:
+        name: "管理身份组"
+        description: "创建、编辑和删除全局身份组。"
+      identity_groups_members_assign:
+        name: "分配身份组成员"
+        description: "将用户加入全局身份组或从中移除。"
+      identity_groups_permissions_manage:
+        name: "管理身份组权限"
+        description: "配置由全局身份组应用的权限规则。"
+      identity_roles_read:
+        name: "查看角色"
+        description: "查看全局角色及其生效的权限授权。"
+      identity_roles_manage:
+        name: "管理角色"
+        description: "在自身可委派权限范围内创建、更新和删除全局角色。"
+      system_bans_manage:
+        name: "管理访问封禁"
+        description: "创建和移除 IP 地址与邮箱地址封禁。"
+      forum_users_trust_manage:
+        name: "管理论坛信任等级"
+        description: "设置或清除成员的论坛信任等级覆盖值。"
+      store_credit_adjust:
+        name: "调整成员商城余额"
+        description: "增加或减少成员的商城余额。"
+      admin_access:
+        name: "访问管理后台"
+        description: "进入并使用管理后台。"
+      website_pages_read:
+        name: "查看官网页面"
+        description: "查看官网页面、发布状态和修订记录。"
+      website_pages_edit:
+        name: "编辑官网页面"
+        description: "创建和编辑官网页面、内容区块、导航与草稿。"
+      website_pages_publish:
+        name: "发布官网页面"
+        description: "发布、定时发布并启用官网内容和主题。"
+      website_articles_read:
+        name: "查看官网文章"
+        description: "查看官网文章、预览和发布状态。"
+      website_articles_edit:
+        name: "编辑官网文章"
+        description: "创建、编辑和删除官网文章草稿。"
+      website_articles_publish:
+        name: "发布官网文章"
+        description: "发布和定时发布官网文章。"
+      website_templates_manage:
+        name: "管理前端模板"
+        description: "安装、配置、启用和移除公开前端模板。"
+      forum_sections_manage:
+        name: "管理论坛结构"
+        description: "管理论坛分类、板块、展示方式和社区设置。"
+      forum_attachments_security_manage:
+        name: "管理附件安全"
+        description: "重试附件扫描与清理、移除不安全文件并清理孤立附件。"
+      forum_topics_lock:
+        name: "管理论坛主题"
+        description: "锁定或解锁主题，并执行常规主题管理操作。"
+      forum_posts_edit_others:
+        name: "编辑他人帖子"
+        description: "编辑其他用户发布的论坛帖子。"
+      forum_topics_edit_others:
+        name: "编辑他人主题"
+        description: "编辑其他用户创建的论坛主题。"
+      forum_topics_move:
+        name: "移动论坛主题"
+        description: "移动、合并、拆分和重新整理论坛主题。"
+      forum_users_mute:
+        name: "禁言论坛用户"
+        description: "添加或解除论坛禁言和发言限制。"
+      forum_users_warn:
+        name: "警告论坛用户"
+        description: "发出警告、维护管理备注并执行受支持的管理操作。"
+      forum_badges_manage:
+        name: "管理论坛徽章"
+        description: "创建、编辑、授予和撤销论坛徽章。"
+      forum_tags_manage:
+        name: "管理论坛标签"
+        description: "创建、编辑、整理并应用受限论坛标签。"
+      forum_points_manage:
+        name: "管理论坛积分"
+        description: "配置论坛积分并调整用户积分余额。"
+      forum_conversations_create:
+        name: "分享他人主题到私信"
+        description: "允许将其他用户创建的论坛主题分享到私密会话；普通私信仍沿用现有规则。"
+      store_products_read:
+        name: "查看商城工作人员通知"
+        description: "接收低库存等仅面向商城工作人员的通知。"
+      store_products_manage:
+        name: "管理商城商品"
+        description: "创建、编辑、发布和整理商品及相关目录内容。"
+      store_questions_answer:
+        name: "回答商品问题"
+        description: "为顾客提出的商品问题发布官方回答。"
+      store_questions_manage:
+        name: "管理商品问答"
+        description: "审核、编辑和管理商品问题与回答。"
+      store_orders_read:
+        name: "查看商城订单"
+        description: "查看订单、支付、顾客信息和订单活动。"
+      store_orders_refund:
+        name: "管理订单与退款"
+        description: "更新受保护的订单状态并执行获授权退款。"
+      store_payments_configure:
+        name: "配置支付渠道"
+        description: "管理支付渠道模式、加密凭据和启用状态。"
+      store_payments_connection_test:
+        name: "测试支付渠道连接"
+        description: "对已配置的支付渠道执行需确认且留有审计记录的连接测试。"
+      store_payments_replay:
+        name: "重放支付 Webhook"
+        description: "通过受审计的重放流程重新处理符合条件的支付 Webhook 事件。"
+      store_payments_late_review:
+        name: "复核晚到支付"
+        description: "复核并处理超过预期处理时间后收到的支付。"
+      store_payments_reconciliation_read:
+        name: "查看支付对账"
+        description: "查看对账任务、汇总信息和支付差异。"
+      store_payments_reconciliation_review:
+        name: "复核支付对账差异"
+        description: "记录支付对账差异的复核结论。"
+      store_payments_reconciliation_run:
+        name: "执行支付对账"
+        description: "发起需确认且限定日期范围的支付对账任务。"
+      minecraft_servers_manage:
+        name: "管理 Minecraft 服务器"
+        description: "创建、配置和维护 Minecraft 服务器连接。"
+      minecraft_nodes_manage:
+        name: "管理 Minecraft 节点"
+        description: "注册、配置和维护 Minecraft 执行节点。"
+      minecraft_servers_control:
+        name: "控制 Minecraft 服务器"
+        description: "启动、停止、重启 Minecraft 服务器并发送受支持的控制操作。"
+      minecraft_players_view:
+        name: "查看 Minecraft 玩家"
+        description: "查看在线玩家及其当前服务器活动。"
+      minecraft_fulfillments_retry:
+        name: "重试 Minecraft 发货"
+        description: "重试失败或未完成的 Minecraft 订单发货操作。"
+      system_settings_manage:
+        name: "管理系统设置"
+        description: "配置全站设置、集成和运行行为。"
+      system_plugins_manage:
+        name: "管理插件包"
+        description: "安装、升级、启用、停用和卸载可信插件包。"
+      system_plugins_settings_manage:
+        name: "管理插件设置"
+        description: "查看和更新已安装插件提供的设置。"
+      system_jobs_read:
+        name: "查看后台任务"
+        description: "查看后台任务状态、调度信息和运行诊断。"
+      system_jobs_retry:
+        name: "重试后台任务（规划中）"
+        description: "为后续受控重试流程保留；当前不会授予任何重试操作。"
+      system_audit_read:
+        name: "查看审计日志"
+        description: "查看管理操作的审计事件及其记录上下文。"
+    permission_domains:
+      identity: "身份与成员"
+      admin: "管理后台"
+      website: "官网"
+      forum: "社区"
+      store: "商城"
+      minecraft: "Minecraft"
+      system: "系统"
+    role_admin:
+      title: "角色"
+      name: "名称"
+      key: "标识"
+      permission_count: "权限数"
+      system_role: "系统角色"
+      permissions: "权限"
     developer_mode:
       title: "开发模式"
       warning: "安全检查和生产优化已被部分关闭。"
@@ -324,13 +502,13 @@
       user_title_created: 头衔等级已创建。
       user_title_updated: 头衔等级已更新。
       user_title_deleted: 头衔等级已删除。
-      user_group_created: 用户组已创建。
-      user_group_updated: 用户组已更新。
-      user_group_deleted: 用户组已删除。
-      user_group_member_added: 成员已加入该组。
-      user_group_primary_set: 已更新该成员的主组。
-      user_group_member_removed: 成员已从该组移除。
-      user_group_member_not_found: 未找到该用户名的成员。
+      user_group_created: 身份组已创建。
+      user_group_updated: 身份组已更新。
+      user_group_deleted: 身份组已删除。
+      user_group_member_added: 成员已加入该身份组。
+      user_group_primary_set: 已更新该成员的主身份组。
+      user_group_member_removed: 成员已从该身份组移除。
+      user_group_member_not_found: 未找到可加入该身份组的用户。
       phrase_saved: 词条已保存。
       phrase_deleted: 词条已删除。
       forum_page_created: 页面已创建。
@@ -422,6 +600,13 @@
         user_not_found: 找不到该用户。
         user_not_participant: 该用户不是会话参与者。
         not_allowed: 无权执行此操作。
+        invalid_permission_keys: 选择的权限中包含不可用项目。
+        unknown_group_operation: 不支持此身份组操作。
+        user_group_or_member_not_found: 找不到身份组或成员。
+        unknown_role_operation: 不支持此角色操作。
+        role_not_found: 找不到该角色。
+        invalid_permission_ids: 选择的权限中包含不存在的项目。
+        system_role_immutable: 系统内置角色不可修改。
         cannot_remove_last_participant: 不能移除最后一名参与者。
         only_participants_can_add: 仅参与者可添加成员。
         group_full: 群组人数已满。
@@ -1612,15 +1797,16 @@
           form_edit: 编辑头衔等级
           form_new: 新建头衔等级
         user_groups:
-          title: 用户组
-          description: 带展示样式与权限键的用户组(主组 + 副组)。
+          title: 身份组
+          description: 管理在全站生效的身份、展示样式、成员关系与权限。
           col_name: 名称
           col_priority: 优先级
           col_members: 成员数
           col_primary_default: 默认主组
-          action_new: 新建用户组
-          form_edit: 编辑用户组
-          form_new: 新建用户组
+          action_new: 新建身份组
+          form_view: 查看身份组
+          form_edit: 编辑身份组
+          form_new: 新建身份组
         notices:
           title: 公告横幅
           description: 在论坛各页向用户展示的可关闭横幅。

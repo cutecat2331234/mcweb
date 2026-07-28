@@ -68,7 +68,7 @@ module Community
       end
 
       def staff_viewer?(viewer)
-        viewer&.permission?("forum.users.warn") || viewer&.permission?("admin.access")
+        viewer&.permission?("forum.users.warn")
       end
     end
   end

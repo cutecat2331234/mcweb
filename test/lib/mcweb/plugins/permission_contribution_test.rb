@@ -146,6 +146,25 @@ class Mcweb::Plugins::PermissionContributionTest < ActiveSupport::TestCase
     assert_equal "acme.demo_tools.orders", contribution.group
   end
 
+  test "core permission namespaces cannot be claimed by plugins" do
+    manifest = write_plugin(
+      directory: "reserved-core-namespace",
+      id: "system/jobs",
+      permissions: [
+        permission_attributes(
+          id: "system.jobs.retry",
+          group: "system.jobs"
+        )
+      ]
+    )
+
+    error = assert_raises(Mcweb::Plugins::ManifestError) do
+      Mcweb::Plugins::PermissionContributionLoader.load(manifest)
+    end
+
+    assert_includes error.message, "reserved by McWeb core"
+  end
+
   test "active contributions are queryable and authorization remains host controlled" do
     permission_key = "acme.identity.orders.view"
     manifest = write_plugin(

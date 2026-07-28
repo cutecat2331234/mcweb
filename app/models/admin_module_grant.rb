@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 class AdminModuleGrant < ApplicationRecord
-  MODULE_KEYS = %w[forum store minecraft system website].freeze
+  MODULE_KEYS = %w[forum identity store minecraft system website].freeze
 
   belongs_to :user
   belongs_to :granted_by, class_name: "User", optional: true

@@ -77,7 +77,7 @@ class Identity::AuthenticateUserTest < ActiveSupport::TestCase
 end
 
 class Identity::PermissionCheckerTest < ActiveSupport::TestCase
-  test "allows user with permission" do
+  test "allows user with role permission" do
     user = create_user
     grant_permission(user, "admin.access")
     result = Identity::PermissionChecker.call(user: user, permission_key: "admin.access")
@@ -90,6 +90,73 @@ class Identity::PermissionCheckerTest < ActiveSupport::TestCase
     result = Identity::PermissionChecker.call(user: user, permission_key: "admin.access")
     assert result.success?
     assert_not result.value[:allowed]
+  end
+
+  test "allows user with global identity group permission" do
+    user = create_user
+    group = create_permission_group(
+      name: "Conversation members",
+      permissions: [ "forum.conversations.create" ]
+    )
+    Community::GroupMembership.create!(user:, user_group: group)
+
+    result = Identity::PermissionChecker.call(
+      user: User.find(user.id),
+      permission_key: "forum.conversations.create"
+    )
+
+    assert result.success?
+    assert result.value[:allowed]
+  end
+
+  test "owner retains the owner permission invariant without a role row" do
+    owner = create_user(account_type: "owner")
+
+    result = Identity::PermissionChecker.call(
+      user: owner,
+      permission_key: "identity.groups.permissions.manage"
+    )
+
+    assert result.success?
+    assert result.value[:allowed]
+  end
+
+  test "revoking role and group sources takes effect on the next check" do
+    user = create_user
+    permission_key = "identity.groups.members.assign"
+    grant_permission(user, permission_key)
+    group = create_permission_group(
+      name: "Identity operators",
+      permissions: [ permission_key ]
+    )
+    membership = Community::GroupMembership.create!(user:, user_group: group)
+
+    assert Identity::PermissionChecker.call(
+      user:,
+      permission_key:
+    ).value[:allowed]
+
+    user.roles.each { |role| role.permissions.delete(Permission.find_by!(key: permission_key)) }
+    membership.destroy!
+    group.update!(permissions: [])
+
+    result = Identity::PermissionChecker.call(
+      user: User.find(user.id),
+      permission_key:
+    )
+
+    assert result.success?
+    assert_not result.value[:allowed]
+  end
+
+  private
+
+  def create_permission_group(attributes)
+    attributes = attributes.dup
+    if Community::UserGroup.column_names.include?("key")
+      attributes[:key] = "permission-checker-#{SecureRandom.hex(4)}"
+    end
+    Community::UserGroup.create!(attributes)
   end
 end
 

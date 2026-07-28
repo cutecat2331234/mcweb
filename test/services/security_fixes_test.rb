@@ -7,6 +7,7 @@ class SecurityFixesTest < ActiveSupport::TestCase
     @staff = create_user
     @target = create_user
     grant_permission(@staff, "store.orders.read")
+    grant_permission(@staff, "store.credit.adjust")
     @server = Minecraft::Server.create!(
       name: "Test Server",
       public_id: "srv-sec-#{SecureRandom.hex(4)}",

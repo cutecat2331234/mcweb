@@ -3,18 +3,20 @@
 module Admin
   class RolesController < BaseController
     before_action -> { require_admin_module!("system") }
-    before_action -> { require_permission("system.settings.manage") }
-    before_action :set_role, only: %i[show edit update destroy]
+    before_action -> { require_permission("identity.roles.read") }
+    before_action -> { require_permission("identity.roles.manage") },
+      only: %i[create update destroy]
+    before_action :set_role, only: %i[show update destroy]
 
     def index
       roles = Role.includes(:permissions).order(:name)
 
       render inertia: "Admin/Generic/Index", props: {
-        title: "角色",
+        title: t("mcweb.role_admin.title"),
         columns: [
-          admin_column(:name, "名称", link: true),
-          admin_column(:key, "标识"),
-          admin_column(:permissions, "权限数")
+          admin_column(:name, t("mcweb.role_admin.name"), link: true),
+          admin_column(:key, t("mcweb.role_admin.key")),
+          admin_column(:permissions, t("mcweb.role_admin.permission_count"))
         ],
         rows: roles.map do |role|
           admin_row(
@@ -32,14 +34,20 @@ module Admin
         title: @role.name,
         subtitle: @role.description,
         fields: [
-          { label: "标识", value: @role.key },
-          { label: "系统角色", value: @role.system_role? ? "是" : "否" }
+          { label: t("mcweb.role_admin.key"), value: @role.key },
+          {
+            label: t("mcweb.role_admin.system_role"),
+            value: @role.system_role? ? t("mcweb.labels.yes") : t("mcweb.labels.no")
+          }
         ],
         sections: [
           {
-            title: "权限",
+            title: t("mcweb.role_admin.permissions"),
             items: @role.permissions.order(:key).map do |permission|
-              { label: permission.key, value: permission.name }
+              {
+                label: translated_permission_name(permission),
+                value: permission.key
+              }
             end
           }
         ],
@@ -47,58 +55,83 @@ module Admin
       }
     end
 
-    def new
-      @role = Role.new
-    end
-
     def create
-      @role = Role.new(role_params)
-
-      if @role.save
-        sync_permissions!
-        Administration::AuditLogger.call(actor: current_user, action: "admin.role_created", resource: @role)
-        redirect_to admin_role_path(@role), notice: t("mcweb.flash.created", resource: t("mcweb.resources.role"))
+      result = apply_role_mutation(
+        :create,
+        attributes: role_params,
+        permissions_submitted: permission_ids_submitted?,
+        permission_ids: requested_permission_ids
+      )
+      if result.success?
+        redirect_to admin_role_path(result.value.fetch(:role)),
+          notice: t("mcweb.flash.created", resource: t("mcweb.resources.role"))
       else
-        render :new, status: :unprocessable_entity
+        redirect_to admin_roles_path, alert: service_error_message(result)
       end
     end
 
-    def edit
-    end
-
     def update
-      return redirect_to admin_roles_path, alert: t("mcweb.flash.system_role_immutable") if @role.system_role?
-
-      if @role.update(role_params)
-        sync_permissions!
-        Administration::AuditLogger.call(actor: current_user, action: "admin.role_updated", resource: @role)
+      result = apply_role_mutation(
+        :update,
+        role: @role,
+        attributes: role_params,
+        permissions_submitted: permission_ids_submitted?,
+        permission_ids: requested_permission_ids
+      )
+      if result.success?
         redirect_to admin_role_path(@role), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.role"))
       else
-        render :edit, status: :unprocessable_entity
+        redirect_to admin_role_path(@role), alert: service_error_message(result)
       end
     end
 
     def destroy
-      return redirect_to admin_roles_path, alert: t("mcweb.flash.system_role_undeletable") if @role.system_role?
-
-      @role.destroy!
-      Administration::AuditLogger.call(actor: current_user, action: "admin.role_deleted", resource: @role)
-      redirect_to admin_roles_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.role"))
+      result = apply_role_mutation(:destroy, role: @role)
+      if result.success?
+        redirect_to admin_roles_path, notice: t("mcweb.flash.deleted", resource: t("mcweb.resources.role"))
+      else
+        redirect_to admin_role_path(@role), alert: service_error_message(result)
+      end
     end
 
     private
 
     def set_role
-      @role = Role.find_by!(key: params[:id])
+      @role = Role.find(params[:id])
     end
 
     def role_params
-      params.expect(role: %i[name key description])[:role]
+      params.expect(role: %i[name key description])
     end
 
-    def sync_permissions!
-      permission_ids = Array(params.dig(:role, :permission_ids)).reject(&:blank?).map(&:to_i)
-      @role.permission_ids = permission_ids
+    def apply_role_mutation(operation, role: nil, attributes: {}, permission_ids: [],
+                            permissions_submitted: false)
+      Identity::ApplyRoleMutation.call(
+        actor: current_user,
+        operation:,
+        role:,
+        attributes:,
+        permission_ids:,
+        permissions_submitted:
+      )
+    end
+
+    def requested_permission_ids
+      Array(params.dig(:role, :permission_ids))
+    end
+
+    def permission_ids_submitted?
+      params.fetch(:role, {}).key?(:permission_ids)
+    end
+
+    def translated_permission_name(permission)
+      catalog_entry = Identity::PermissionCatalog.find(permission.key)
+      return permission.name unless catalog_entry
+
+      I18n.t(
+        "#{catalog_entry.i18n_key}.name",
+        default: permission.name
+      )
     end
   end
 end

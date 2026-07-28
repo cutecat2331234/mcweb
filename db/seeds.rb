@@ -1,49 +1,6 @@
 # frozen_string_literal: true
 
-PERMISSIONS = [
-  { key: "store.payments.configure", name: "Configure payment providers", category: "store" },
-  { key: "store.payments.connection_test", name: "Test payment-provider connections", category: "store" },
-  { key: "store.payments.replay", name: "Payment webhook replay", category: "store" },
-  { key: "store.payments.late_review", name: "Late payment review", category: "store" },
-  { key: "store.payments.reconciliation.read", name: "View payment reconciliation", category: "store" },
-  { key: "store.payments.reconciliation.review", name: "Review payment reconciliation discrepancies", category: "store" },
-  { key: "store.payments.reconciliation.run", name: "Run payment reconciliation", category: "store" },
-  { key: "website.pages.read", name: "查看官网页面", category: "website" },
-  { key: "website.pages.edit", name: "编辑官网页面", category: "website" },
-  { key: "website.pages.publish", name: "发布官网页面", category: "website" },
-  { key: "website.articles.read", name: "查看官网文章", category: "website" },
-  { key: "website.articles.edit", name: "编辑官网文章", category: "website" },
-  { key: "website.articles.publish", name: "发布官网文章", category: "website" },
-  { key: "website.templates.manage", name: "管理前台模板", category: "website" },
-  { key: "forum.sections.manage", name: "管理论坛分区", category: "forum" },
-  { key: "forum.attachments.security.manage", name: "管理附件安全处置", category: "forum" },
-  { key: "forum.topics.lock", name: "锁定主题", category: "forum" },
-  { key: "forum.posts.edit_others", name: "编辑他人帖子", category: "forum" },
-  { key: "forum.topics.edit_others", name: "编辑他人主题", category: "forum" },
-  { key: "forum.topics.move", name: "移动主题", category: "forum" },
-  { key: "forum.users.mute", name: "禁言用户", category: "forum" },
-  { key: "forum.users.warn", name: "警告用户", category: "forum" },
-  { key: "forum.badges.manage", name: "管理论坛徽章", category: "forum" },
-  { key: "forum.tags.manage", name: "管理论坛标签", category: "forum" },
-  { key: "forum.points.manage", name: "管理论坛积分", category: "forum" },
-  { key: "store.products.manage", name: "管理商品", category: "store" },
-  { key: "store.questions.answer", name: "官方回答商品问答", category: "store" },
-  { key: "store.questions.manage", name: "管理商品问答", category: "store" },
-  { key: "store.orders.read", name: "查看订单", category: "store" },
-  { key: "store.orders.refund", name: "退款", category: "store" },
-  { key: "minecraft.servers.manage", name: "管理 Minecraft 服务器", category: "minecraft" },
-  { key: "minecraft.nodes.manage", name: "管理 Minecraft 节点", category: "minecraft" },
-  { key: "minecraft.servers.control", name: "远程控制 Minecraft 服务器", category: "minecraft" },
-  { key: "minecraft.players.view", name: "查看在线玩家", category: "minecraft" },
-  { key: "minecraft.fulfillments.retry", name: "重试发货", category: "minecraft" },
-  { key: "system.settings.manage", name: "管理系统设置", category: "system" },
-  { key: "system.plugins.manage", name: "管理插件包", category: "system" },
-  { key: "system.plugins.settings.manage", name: "管理插件设置", category: "system" },
-  { key: "system.jobs.read", name: "查看后台任务", category: "system" },
-  { key: "system.jobs.retry", name: "重试后台任务", category: "system" },
-  { key: "system.audit.read", name: "查看审计日志", category: "system" },
-  { key: "admin.access", name: "访问后台", category: "admin" }
-].freeze
+PERMISSIONS = Identity::PermissionCatalog.seed_attributes(locale: :en).freeze
 
 ROLES = {
   "owner" => {
@@ -68,7 +25,13 @@ ROLES = {
   "forum_admin" => {
     name: "论坛管理员",
     description: "管理论坛",
-    permissions: %w[forum.sections.manage forum.attachments.security.manage forum.topics.lock forum.topics.move forum.posts.edit_others forum.topics.edit_others forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage forum.points.manage admin.access]
+    permissions: %w[
+      forum.sections.manage forum.attachments.security.manage forum.topics.lock
+      forum.topics.move forum.posts.edit_others forum.topics.edit_others
+      forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage
+      forum.users.trust.manage forum.points.manage identity.groups.read identity.groups.manage
+      identity.groups.members.assign identity.groups.permissions.manage admin.access
+    ]
   },
   "moderator" => {
     name: "版主",
@@ -78,12 +41,12 @@ ROLES = {
   "store_admin" => {
     name: "商城管理员",
     description: "管理商城",
-    permissions: %w[store.products.manage store.orders.read store.questions.answer store.questions.manage admin.access]
+    permissions: %w[store.products.manage store.orders.read store.credit.adjust store.questions.answer store.questions.manage admin.access]
   },
   "finance" => {
     name: "财务",
     description: "订单与退款",
-    permissions: %w[store.orders.read store.orders.refund admin.access]
+    permissions: %w[store.orders.read store.orders.refund store.credit.adjust admin.access]
   },
   "support" => {
     name: "客服",
@@ -106,10 +69,13 @@ SiteSetting.set("minecraft.graceful_stop.commands", "save-all,stop") unless Site
 
 puts "Seeding permissions and roles..."
 PERMISSIONS.each do |attrs|
-  Permission.find_or_create_by!(key: attrs[:key]) do |permission|
-    permission.name = attrs[:name]
-    permission.category = attrs[:category]
-  end
+  permission = Permission.find_or_initialize_by(key: attrs.fetch(:key))
+  permission.assign_attributes(
+    name: attrs.fetch(:name),
+    description: attrs.fetch(:description),
+    category: attrs.fetch(:category)
+  )
+  permission.save!
 end
 
 ROLES.each do |key, attrs|

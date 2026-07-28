@@ -33,7 +33,7 @@ class ApplicationController < ActionController::Base
         alert: flash[:alert]
       },
       developer_mode: developer_mode_frontend_payload,
-      admin_demo_enabled: !Rails.env.production? || Mcweb::DeveloperMode.enabled?,
+      admin_demo_enabled: admin_demo_enabled?,
       features: FeatureFlags.frontend_hash
     }
 
@@ -215,6 +215,10 @@ class ApplicationController < ActionController::Base
   end
 
   private
+
+  def admin_demo_enabled?
+    !Rails.env.production?
+  end
 
   def developer_mode_frontend_payload
     return { enabled: false } unless Mcweb::DeveloperMode.enabled?

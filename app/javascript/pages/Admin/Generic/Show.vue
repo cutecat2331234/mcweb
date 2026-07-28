@@ -89,6 +89,16 @@ export interface StoreCreditForm {
   balance_label: string
 }
 
+export interface AccountForm {
+  action_url: string
+  account_type?: string
+  account_types?: Array<{ value: string; label: string }>
+  admin_modules?: string[]
+  module_options?: string[]
+  role_ids?: number[]
+  roles?: Array<{ id: number; name: string; key: string }>
+}
+
 const props = defineProps<{
   title: string
   subtitle?: string
@@ -108,6 +118,7 @@ const props = defineProps<{
   silenceForm?: SilenceForm | null
   trustLevelForm?: TrustLevelForm | null
   storeCreditForm?: StoreCreditForm | null
+  accountForm?: AccountForm | null
   backUrl: string
 }>()
 
@@ -124,6 +135,75 @@ const trustLevelOptions = computed(() => [
   { value: 'auto', label: t('admin.genericShow.autoTrust') },
   ...(props.trustLevelForm?.levels || []).map((level) => ({ value: String(level.value), label: level.label })),
 ])
+
+function accountTypeLabel(value: string, fallback: string) {
+  switch (value) {
+    case 'member':
+      return t('admin.genericShow.accountTypeMember')
+    case 'staff':
+      return t('admin.genericShow.accountTypeStaff')
+    case 'admin':
+      return t('admin.genericShow.accountTypeAdmin')
+    case 'owner':
+      return t('admin.genericShow.accountTypeOwner')
+    default:
+      return fallback || value
+  }
+}
+
+function adminModuleLabel(moduleKey: string) {
+  switch (moduleKey) {
+    case 'forum':
+      return t('admin.genericShow.adminModuleForum')
+    case 'store':
+      return t('admin.genericShow.adminModuleStore')
+    case 'minecraft':
+      return t('admin.genericShow.adminModuleMinecraft')
+    case 'system':
+      return t('admin.genericShow.adminModuleSystem')
+    case 'website':
+      return t('admin.genericShow.adminModuleWebsite')
+    case 'identity':
+      return t('admin.genericShow.adminModuleIdentity')
+    default:
+      return moduleKey
+  }
+}
+
+const accountTypeOptions = computed(() =>
+  (props.accountForm?.account_types || []).map((option) => ({
+    value: option.value,
+    label: accountTypeLabel(option.value, option.label),
+  })),
+)
+
+const adminModuleOptions = computed(() =>
+  (props.accountForm?.module_options || []).map((moduleKey) => ({
+    value: moduleKey,
+    label: adminModuleLabel(moduleKey),
+  })),
+)
+
+const accountRoleOptions = computed(() =>
+  (props.accountForm?.roles || []).map((role) => ({
+    value: role.id,
+    label: role.name,
+  })),
+)
+
+const canEditAccountAccess = computed(() =>
+  accountTypeOptions.value.length > 0
+  || adminModuleOptions.value.length > 0
+  || accountRoleOptions.value.length > 0,
+)
+
+const accountAccessForm = useForm({
+  user: {
+    account_type: props.accountForm?.account_type || 'member',
+    admin_modules: [ ...(props.accountForm?.admin_modules || []) ],
+    role_ids: [ ...(props.accountForm?.role_ids || []) ],
+  },
+})
 
 const warningForm = useForm({
   reason: '',
@@ -285,6 +365,11 @@ function submitTrustLevel() {
     forum_trust_level_override: trustLevelOverride.value,
   }, { preserveScroll: true })
 }
+
+function submitAccountAccess() {
+  if (!props.accountForm) return
+  accountAccessForm.patch(props.accountForm.action_url, { preserveScroll: true })
+}
 </script>
 
 <template>
@@ -306,6 +391,77 @@ function submitTrustLevel() {
           <span class="break-words font-medium">{{ field.value }}</span>
         </a-descriptions-item>
       </a-descriptions>
+    </a-card>
+
+    <a-card
+      v-if="props.accountForm && canEditAccountAccess"
+      class="mt-6 max-w-3xl"
+      :title="t('admin.genericShow.accountAccess')"
+      :bordered="true"
+    >
+      <a-alert
+        class="mb-5"
+        type="info"
+        show-icon
+        :title="t('admin.genericShow.accountAccessHint')"
+      />
+
+      <a-form :model="accountAccessForm.user" layout="vertical" @submit="submitAccountAccess">
+        <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="20" :row-gap="4">
+          <a-grid-item>
+            <a-form-item field="account_type" :label="t('admin.genericShow.accountType')">
+              <a-select
+                v-model="accountAccessForm.user.account_type"
+                :options="accountTypeOptions"
+              />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="role_ids" :label="t('admin.genericShow.roles')">
+              <a-select
+                v-model="accountAccessForm.user.role_ids"
+                :options="accountRoleOptions"
+                :placeholder="t('admin.genericShow.rolesPlaceholder')"
+                multiple
+                allow-clear
+                allow-search
+              />
+            </a-form-item>
+          </a-grid-item>
+        </a-grid>
+
+        <a-form-item
+          field="admin_modules"
+          :label="t('admin.genericShow.adminModules')"
+          :extra="accountAccessForm.user.account_type === 'staff'
+            ? t('admin.genericShow.adminModulesHint')
+            : t('admin.genericShow.adminModulesStaffOnly')"
+        >
+          <a-checkbox-group
+            v-model="accountAccessForm.user.admin_modules"
+            :disabled="accountAccessForm.user.account_type !== 'staff'"
+          >
+            <a-grid :cols="{ xs: 1, sm: 2, lg: 3 }" :col-gap="12" :row-gap="12">
+              <a-grid-item
+                v-for="option in adminModuleOptions"
+                :key="option.value"
+              >
+                <a-checkbox :value="option.value">
+                  {{ option.label }}
+                </a-checkbox>
+              </a-grid-item>
+            </a-grid>
+          </a-checkbox-group>
+        </a-form-item>
+
+        <a-button
+          html-type="submit"
+          type="primary"
+          :loading="accountAccessForm.processing"
+        >
+          {{ t('admin.genericShow.saveAccountAccess') }}
+        </a-button>
+      </a-form>
     </a-card>
 
     <a-card

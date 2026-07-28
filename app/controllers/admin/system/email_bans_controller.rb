@@ -4,7 +4,7 @@ module Admin
   module System
     # XenForo-style email ban / filter management.
     class EmailBansController < BaseController
-      before_action -> { require_permission("admin.access") }
+      before_action -> { require_permission("system.bans.manage") }
       before_action :set_ban, only: %i[edit update destroy]
 
       def index

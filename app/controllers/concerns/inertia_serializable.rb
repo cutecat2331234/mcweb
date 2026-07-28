@@ -20,17 +20,49 @@ module InertiaSerializable
   def inertia_user
     return nil unless current_user
 
+    can_access_admin = current_user.can_access_admin?
+    admin_permissions =
+      if can_access_admin
+        Identity::AccountAccess.effective_permission_keys(current_user)
+      else
+        []
+      end
+    admin_modules =
+      if can_access_admin
+        Identity::AccountAccess.allowed_module_keys(
+          current_user,
+          admin_access_checked: true,
+          effective_permission_keys: admin_permissions
+        )
+      else
+        []
+      end
+    admin_capabilities = {
+      "forum.approvals.read" => forum_approvals_admin_capability?(
+        admin_modules: admin_modules,
+        admin_permissions: admin_permissions
+      )
+    }
     {
       id: current_user.public_id,
       username: current_user.username,
       email: current_user.email,
       account_type: current_user.account_type,
       locale: current_user.locale,
-      can_access_admin: current_user.can_access_admin?,
-      admin_modules: current_user.admin_module_grants.pluck(:module_key),
+      can_access_admin: can_access_admin,
+      admin_modules: admin_modules,
+      admin_permissions: admin_permissions,
+      admin_capabilities: admin_capabilities,
       can_upload_images: Community::TrustLevel.can_upload_images?(current_user),
       can_upload_attachments: Community::TrustLevel.can_upload_attachments?(current_user)
     }
+  end
+
+  def forum_approvals_admin_capability?(admin_modules:, admin_permissions:)
+    return false unless admin_modules.include?("forum")
+    return true if admin_permissions.include?("forum.topics.lock")
+
+    Community::SectionModerator.exists?(user_id: current_user.id)
   end
 
   def admin_column(key, label, link: false)

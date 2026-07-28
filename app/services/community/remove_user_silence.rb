@@ -8,7 +8,7 @@ module Community
     end
 
     def call
-      unless @actor.permission?("forum.users.mute") || @actor.permission?("admin.access")
+      unless @actor.permission?("forum.users.mute")
         return ServiceResult.failure(error: "unsilence_unauthorized")
       end
 

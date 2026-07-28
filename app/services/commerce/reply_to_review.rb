@@ -10,7 +10,7 @@ module Commerce
 
     def call
       return ServiceResult.failure(error: "merchant_reply_blank") if @body.blank?
-      unless @actor.permission?("store.products.manage") || @actor.permission?("admin.access")
+      unless @actor.permission?("store.products.manage")
         return ServiceResult.failure(error: "merchant_reply_unauthorized")
       end
 

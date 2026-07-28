@@ -11,7 +11,7 @@ module Community
     end
 
     def call
-      unless @actor.permission?("forum.users.warn") || @actor.permission?("admin.access")
+      unless @actor.permission?("forum.users.warn")
         return ServiceResult.failure(error: "You are not authorized to run the spam cleaner.")
       end
       if @user.account_owner? || @user.id == @actor.id

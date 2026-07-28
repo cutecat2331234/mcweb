@@ -28,7 +28,7 @@ module Commerce
     private
 
     def authorized?
-      @actor.permission?("store.orders.read") || @actor.permission?("admin.access")
+      @actor.permission?("store.orders.read")
     end
   end
 end

@@ -3,9 +3,23 @@
 module Admin
   class UsersController < BaseController
     before_action -> { require_admin_module!("system") }
-    before_action -> { require_permission("system.settings.manage") }
-    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge warn staff_note silence unsilence set_trust_level adjust_store_credit clean_spam]
-    before_action :ensure_manageable_target!, only: %i[ban unban silence unsilence set_trust_level adjust_store_credit warn grant_badge clean_spam]
+    before_action -> { require_permission("system.settings.manage") },
+                  only: %i[index show edit update destroy ban unban]
+    before_action -> { require_admin_module!("forum") },
+                  only: %i[grant_badge revoke_badge warn staff_note clean_spam silence unsilence set_trust_level]
+    before_action -> { require_permission("forum.badges.manage") },
+                  only: %i[grant_badge revoke_badge]
+    before_action -> { require_permission("forum.users.warn") },
+                  only: %i[warn staff_note clean_spam]
+    before_action -> { require_permission("forum.users.mute") },
+                  only: %i[silence unsilence]
+    before_action -> { require_permission("forum.users.trust.manage") },
+                  only: :set_trust_level
+    before_action -> { require_admin_module!("store") }, only: :adjust_store_credit
+    before_action -> { require_permission("store.credit.adjust") }, only: :adjust_store_credit
+    before_action :set_user, only: %i[show edit update destroy ban unban grant_badge revoke_badge warn staff_note silence unsilence set_trust_level adjust_store_credit clean_spam]
+    before_action :ensure_manageable_target!,
+                  only: %i[ban unban silence unsilence set_trust_level adjust_store_credit warn staff_note grant_badge revoke_badge clean_spam]
 
     def index
       users_scope = User.order(created_at: :desc)
@@ -38,7 +52,7 @@ module Admin
 
     def show
       mutes = Community::Mute.active.where(user: @user).includes(:section, :created_by)
-      mute_actions = if current_user.permission?("forum.users.mute")
+      mute_actions = if allowed_user_action?("forum", "forum.users.mute")
                        mutes.map do |mute|
                          {
                            id: mute.id,
@@ -89,7 +103,7 @@ module Admin
           }
         ].compact,
         backUrl: admin_users_path,
-        muteForm: current_user.permission?("forum.users.mute") ? {
+        muteForm: allowed_user_action?("forum", "forum.users.mute") ? {
           user_id: @user.public_id,
           action_url: admin_forum_mutes_path
         } : nil,
@@ -98,34 +112,34 @@ module Admin
           ban_url: ban_admin_user_path(@user),
           unban_url: unban_admin_user_path(@user)
         },
-        badgeForm: current_user.permission?("forum.badges.manage") || current_user.permission?("admin.access") ? {
+        badgeForm: allowed_user_action?("forum", "forum.badges.manage") ? {
           action_url: grant_badge_admin_user_path(@user),
           revoke_url: revoke_badge_admin_user_path(@user),
           badges: Community::Badge.order(:name).map { |badge| { slug: badge.slug, name: badge.name } },
           earned: @user.user_badges.includes(:badge).map { |ub| ub.badge.name }
         } : nil,
-        warningForm: current_user.permission?("forum.users.warn") || current_user.permission?("admin.access") ? {
+        warningForm: allowed_user_action?("forum", "forum.users.warn") ? {
           action_url: warn_admin_user_path(@user),
           warning_points: Community::UserWarning.total_points_for(@user)
         } : nil,
-        staffNoteForm: current_user.permission?("forum.users.warn") || current_user.permission?("admin.access") ? {
+        staffNoteForm: allowed_user_action?("forum", "forum.users.warn") ? {
           action_url: staff_note_admin_user_path(@user)
         } : nil,
-        spamCleanForm: (current_user.permission?("forum.users.warn") || current_user.permission?("admin.access")) && manageable_user?(@user) ? {
+        spamCleanForm: allowed_user_action?("forum", "forum.users.warn") && manageable_user?(@user) ? {
           action_url: clean_spam_admin_user_path(@user)
         } : nil,
-        silenceForm: current_user.permission?("forum.users.mute") || current_user.permission?("admin.access") ? {
+        silenceForm: allowed_user_action?("forum", "forum.users.mute") ? {
           silenced: @user.silenced?,
           silence_url: silence_admin_user_path(@user),
           unsilence_url: unsilence_admin_user_path(@user)
         } : nil,
-        trustLevelForm: current_user.permission?("admin.access") || current_user.permission?("system.settings.manage") ? {
+        trustLevelForm: allowed_user_action?("forum", "forum.users.trust.manage") ? {
           action_url: set_trust_level_admin_user_path(@user),
           current_level: Community::TrustLevel.level_for(@user),
           override: @user.forum_trust_level_override,
           levels: Community::TrustLevel::LEVELS.map { |entry| { value: entry[:level], label: "TL#{entry[:level]} · #{entry[:name]}" } }
         } : nil,
-        storeCreditForm: current_user.permission?("store.orders.read") || current_user.permission?("admin.access") ? {
+        storeCreditForm: allowed_user_action?("store", "store.credit.adjust") ? {
           action_url: adjust_store_credit_admin_user_path(@user),
           balance_cents: @user.store_credit_cents.to_i,
           balance_label: format_money(@user.store_credit_cents.to_i, "CNY")
@@ -205,8 +219,6 @@ module Admin
     end
 
     def grant_badge
-      return redirect_to admin_user_path(@user), alert: t("mcweb.flash.cannot_grant_badge") unless current_user.permission?("forum.badges.manage") || current_user.permission?("admin.access")
-
       result = Community::AwardBadge.call(user: @user, badge_slug: params[:badge_slug])
       if result.success?
         redirect_to admin_user_path(@user), notice: t("mcweb.flash.badge_granted")
@@ -216,8 +228,6 @@ module Admin
     end
 
     def revoke_badge
-      return redirect_to admin_user_path(@user), alert: t("mcweb.flash.cannot_grant_badge") unless current_user.permission?("forum.badges.manage") || current_user.permission?("admin.access")
-
       result = Community::RevokeBadge.call(user: @user, badge_slug: params[:badge_slug])
       if result.success?
         redirect_to admin_user_path(@user), notice: t("mcweb.flash.badge_revoked")
@@ -409,6 +419,10 @@ module Admin
       return if manageable_user?(@user)
 
       redirect_to admin_user_path(@user), alert: t("mcweb.flash.permission_denied")
+    end
+
+    def allowed_user_action?(module_key, permission_key)
+      current_user.admin_module_allowed?(module_key) && current_user.permission?(permission_key)
     end
   end
 end

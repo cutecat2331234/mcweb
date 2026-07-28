@@ -9,7 +9,7 @@ module Community
     module_function
 
     def accepts?(recipient:, sender:)
-      return true if sender.permission?("forum.topics.lock") || sender.permission?("admin.access")
+      return true if sender.permission?("forum.topics.lock")
 
       case recipient.forum_pm_policy
       when "following_only" then Community::UserFollow.exists?(follower: recipient, followed: sender)

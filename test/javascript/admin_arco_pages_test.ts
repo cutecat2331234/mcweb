@@ -71,6 +71,84 @@ test('generic admin show keeps action forms and renders them with Arco controls'
   assert.match(source, /router\.patch/)
 })
 
+test('generic admin show lets owners edit account type, identity module access, and roles', () => {
+  const source = pageSource('Generic/Show.vue')
+
+  assert.match(source, /accountForm\?: AccountForm/)
+  assert.match(source, /accountAccessForm = useForm\(\{\s*user:\s*\{/)
+  assert.match(source, /account_type:/)
+  assert.match(source, /admin_modules:/)
+  assert.match(source, /role_ids:/)
+  assert.match(source, /case 'identity':/)
+  assert.match(source, /<a-form[^>]+@submit="submitAccountAccess"/)
+  assert.match(source, /<a-select/)
+  assert.match(source, /multiple/)
+  assert.match(source, /<a-checkbox-group/)
+  assert.match(source, /accountAccessForm\.patch\(props\.accountForm\.action_url, \{ preserveScroll: true \}\)/)
+})
+
+test('admin layout exposes only effective modules and gives identity groups their own section', () => {
+  const source = javascriptSource('layouts/ArcoAdminLayout.vue')
+
+  assert.match(source, /admin_modules\?: string\[\]/)
+  assert.match(source, /admin_permissions\?: string\[\]/)
+  assert.match(source, /admin_capabilities\?: Record<string, boolean>/)
+  assert.match(source, /grantedAdminModules/)
+  assert.match(source, /hasAdminModule/)
+  assert.match(source, /hasAdminPermission/)
+  assert.match(source, /hasAnyAdminPermission/)
+  assert.match(source, /hasAdminCapability/)
+  assert.match(source, /moduleKey: 'identity'/)
+  assert.match(source, /key: 'identity'[\s\S]*?forumUserGroups/)
+  assert.match(source, /moduleKey: 'forum'/)
+  assert.match(source, /moduleKey: 'store'/)
+  assert.match(source, /moduleKey: 'minecraft'/)
+  assert.match(source, /moduleKey: 'system'/)
+  assert.match(source, /const requiredModuleKey = item\.moduleKey \?\? group\.moduleKey/)
+  assert.match(source, /\(!requiredModuleKey \|\| hasAdminModule\(requiredModuleKey\)\)/)
+  assert.doesNotMatch(source, /\.filter\(\(group\) => !group\.moduleKey \|\| hasAdminModule\(group\.moduleKey\)\)/)
+  assert.match(source, /\.filter\(\(group\) => group\.items\.length > 0\)/)
+  assert.match(source, /permissionKey: 'identity\.groups\.read'/)
+  assert.match(source, /permissionKey: 'forum\.topics\.lock'/)
+  assert.match(source, /permissionKey: 'store\.orders\.read'/)
+  assert.match(source, /permissionAny: \[ 'system\.settings\.manage', 'system\.plugins\.manage' \]/)
+  assert.match(source, /capabilityKey: 'forum\.approvals\.read'/)
+})
+
+test('cross-product configuration navigation follows each item system module gate', () => {
+  const source = javascriptSource('layouts/ArcoAdminLayout.vue')
+  const systemOnlyRoutes = [
+    'forumSettings',
+    'forumWebhookDeliveries',
+    'forumEventWebhookDeliveries',
+    'storeWebhookDeliveries',
+    'storeSettings',
+  ]
+
+  for (const route of systemOnlyRoutes) {
+    assert.match(
+      source,
+      new RegExp(
+        `href: adminRoutes\\.${route},\\s+moduleKey: 'system',\\s+permissionKey: 'system\\.settings\\.manage'`,
+      ),
+    )
+  }
+
+  const itemIsVisible = (
+    grantedModules: Set<string>,
+    itemModuleKey: string | undefined,
+    groupModuleKey: string | undefined,
+  ) => {
+    const requiredModuleKey = itemModuleKey ?? groupModuleKey
+    return !requiredModuleKey || grantedModules.has(requiredModuleKey)
+  }
+
+  assert.equal(itemIsVisible(new Set(['system']), 'system', 'forum'), true)
+  assert.equal(itemIsVisible(new Set(['system']), 'system', 'store'), true)
+  assert.equal(itemIsVisible(new Set(['forum']), 'system', 'forum'), false)
+  assert.equal(itemIsVisible(new Set(['store']), 'system', 'store'), false)
+})
+
 test('admin dashboard uses Arco statistics, health, cards, table, and empty state', () => {
   const source = pageSource('Dashboard/Index.vue')
 

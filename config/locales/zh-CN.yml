@@ -14,6 +14,7 @@
       community/post: 回复
       community/section: 分区
       community/category: 分类
+      community/user_group: 身份组
       community/report: 举报
       commerce/product: 商品
       commerce/order: 订单
@@ -41,6 +42,13 @@
         name: 名称
         slug: 标识
         description: 描述
+      community/user_group:
+        name: 名称
+        color_hex: 颜色
+        priority: 优先级
+        banner_text: 标识文字
+        is_primary_default: 默认主身份组
+        permissions: 权限
       commerce/product:
         name: 名称
         slug: 标识

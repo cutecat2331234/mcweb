@@ -58,7 +58,7 @@ module Community
         SiteSetting.get("forum.group_pm_creator_only_add", "false") == "true"
       return true unless creator_only
 
-      staff = actor.permission?("forum.topics.lock") || actor.permission?("admin.access")
+      staff = actor.permission?("forum.topics.lock")
       staff || actor.id == conversation.creator_id
     end
 

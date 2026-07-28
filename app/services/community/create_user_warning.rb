@@ -12,7 +12,7 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "warn_user_unauthorized") unless @actor.permission?("forum.users.warn") || @actor.permission?("admin.access")
+      return ServiceResult.failure(error: "warn_user_unauthorized") unless @actor.permission?("forum.users.warn")
       return ServiceResult.failure(error: "cannot_warn_self") if @actor.id == @user.id
       return ServiceResult.failure(error: "warning_reason_required") if @reason.blank?
 

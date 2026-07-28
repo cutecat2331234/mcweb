@@ -8,10 +8,7 @@ module Identity
     end
 
     def call
-      allowed = Permission
-        .joins(roles: :users)
-        .where(users: { id: @user.id }, permissions: { key: @permission_key })
-        .exists?
+      allowed = @user&.permission?(@permission_key) || false
 
       ServiceResult.success(allowed: allowed)
     end

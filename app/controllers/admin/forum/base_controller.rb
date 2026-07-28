@@ -3,9 +3,13 @@
 module Admin
   module Forum
     class BaseController < Admin::BaseController
-      before_action -> { require_admin_module!("forum") }
+      before_action :require_forum_admin_module!
 
       private
+
+      def require_forum_admin_module!
+        require_admin_module!("forum")
+      end
 
       def forum_t(key, **options)
         I18n.t("mcweb.admin.forum.#{key}", **options)

@@ -1,36 +1,16 @@
 # frozen_string_literal: true
 
+require "set"
+
 module Identity
   class AccountAccess < ApplicationService
-    ADMIN_MODULES = {
-      "forum" => %w[
-        forum.sections.manage forum.attachments.security.manage
-        forum.topics.lock forum.topics.move forum.users.mute forum.users.warn
-        forum.badges.manage forum.tags.manage forum.points.manage
-        forum.posts.edit_others forum.topics.edit_others
-      ],
-      "store" => %w[
-        store.products.manage store.orders.read store.orders.refund
-        store.questions.answer store.questions.manage
-        store.payments.configure store.payments.connection_test
-        store.payments.replay store.payments.late_review
-        store.payments.reconciliation.read store.payments.reconciliation.review
-        store.payments.reconciliation.run
-      ],
-      "minecraft" => %w[
-        minecraft.nodes.manage minecraft.servers.manage minecraft.servers.control
-        minecraft.players.view minecraft.fulfillments.retry
-      ],
-      "system" => %w[
-        system.settings.manage system.plugins.manage system.plugins.settings.manage
-        system.jobs.read system.jobs.retry system.audit.read
-      ],
-      "website" => %w[
-        website.pages.read website.pages.edit website.pages.publish
-        website.articles.read website.articles.edit website.articles.publish
-        website.templates.manage
-      ]
-    }.transform_values { |permissions| permissions.map { |permission| permission.dup.freeze }.freeze }.freeze
+    ADMIN_MODULES = PermissionCatalog.active_entries
+      .select(&:admin_module)
+      .group_by(&:admin_module)
+      .transform_values do |entries|
+        entries.map(&:key).sort.map { |permission| permission.dup.freeze }.freeze
+      end
+      .freeze
 
     def initialize(user:, module_key: nil)
       @user = user
@@ -72,6 +52,41 @@ module Identity
       ADMIN_MODULES.keys.sort.freeze
     end
 
+    def self.effective_permission_keys(user)
+      return [] unless user
+      return PermissionCatalog.assignable_keys.sort if user.account_owner?
+
+      assignable_keys = PermissionCatalog.assignable_keys.to_set
+      (user.permissions.pluck(:key) + user.group_permission_keys)
+        .uniq
+        .select { |permission_key| assignable_keys.include?(permission_key) }
+        .sort
+    end
+
+    def self.allowed_module_keys(
+      user,
+      admin_access_checked: false,
+      effective_permission_keys: nil
+    )
+      return [] unless user
+      return [] unless admin_access_checked || can_access_admin?(user)
+      return admin_module_keys if user.account_type.in?(%w[owner admin])
+
+      if user.account_type == "staff"
+        return user.admin_module_grants
+          .where(module_key: admin_module_keys)
+          .pluck(:module_key)
+          .uniq
+          .sort
+      end
+
+      effective_permissions =
+        Array(effective_permission_keys || self.effective_permission_keys(user)).to_set
+      admin_modules.filter_map do |module_key, permission_keys|
+        module_key if permission_keys.any? { |permission_key| effective_permissions.include?(permission_key) }
+      end.sort
+    end
+
     def self.module_allowed?(user, module_key)
       return false unless user
 
@@ -90,18 +105,14 @@ module Identity
     private
 
     def can_access_admin?
-      self.class.can_access_admin?(@user)
+      @can_access_admin ||= self.class.can_access_admin?(@user)
     end
 
     def granted_modules
-      case @user.account_type
-      when "owner", "admin"
-        self.class.admin_module_keys
-      when "staff"
-        @user.admin_module_grants.pluck(:module_key) & self.class.admin_module_keys
-      else
-        []
-      end
+      self.class.allowed_module_keys(
+        @user,
+        admin_access_checked: can_access_admin?
+      )
     end
 
     def can_edit_others_posts?

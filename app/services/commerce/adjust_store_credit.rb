@@ -44,7 +44,7 @@ module Commerce
     def authorized?
       return false if @actor.id == @user.id
 
-      @actor.permission?("store.orders.read") || @actor.permission?("admin.access")
+      @actor.permission?("store.credit.adjust")
     end
   end
 end

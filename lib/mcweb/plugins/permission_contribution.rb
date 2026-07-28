@@ -8,6 +8,16 @@ module Mcweb
     class PermissionContribution
       SCOPES = %w[global].freeze
       DEFAULT_RECOMMENDATIONS = %w[none member staff admin].freeze
+      RESERVED_ROOT_NAMESPACES = %w[
+        admin
+        forum
+        identity
+        mcweb
+        minecraft
+        store
+        system
+        website
+      ].freeze
       MAX_KEY_LENGTH = 191
       PHRASE_PATTERN = /\A[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+\z/
 
@@ -81,6 +91,11 @@ module Mcweb
 
       def validate!
         namespace = plugin_id.tr("/-", "._")
+        namespace_root = namespace.split(".", 2).first
+        if RESERVED_ROOT_NAMESPACES.include?(namespace_root)
+          raise ManifestError,
+            "permission contribution namespace #{namespace_root.inspect} is reserved by McWeb core"
+        end
         if id.start_with?("mcweb.")
           raise ManifestError, "permission contribution id cannot use the reserved mcweb namespace"
         end

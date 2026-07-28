@@ -4,6 +4,8 @@ module Admin
   # Arco Design Vue showcase — static demo data, no DB access.
   # Preview at /admin/arco-demo
   class ArcoDemoController < BaseController
+    prepend_before_action :require_admin_demo!
+
     def index
       render inertia: "Admin/ArcoDemo/Index", props: {
         title: "Arco UI 范例",
@@ -14,6 +16,10 @@ module Admin
     end
 
     private
+
+    def require_admin_demo!
+      head :not_found unless admin_demo_enabled?
+    end
 
     def demo_stats
       [

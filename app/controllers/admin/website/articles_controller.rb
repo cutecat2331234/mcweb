@@ -5,7 +5,7 @@ module Admin
     class ArticlesController < BaseController
       include NestedLocaleParams
 
-      before_action -> { require_permission("website.articles.read") }, only: %i[index show preview]
+      before_action -> { require_permission("website.articles.read") }
       before_action -> { require_permission("website.articles.edit") }, only: %i[new create edit update destroy]
       before_action -> { require_permission("website.articles.publish") }, only: %i[publish schedule]
       before_action :set_article, only: %i[show edit update destroy publish schedule preview]

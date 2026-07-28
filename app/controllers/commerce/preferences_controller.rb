@@ -29,6 +29,8 @@ module Commerce
     ].freeze
 
     CHANNELS = %w[email in_app].freeze
+    STAFF_NOTIFICATION_PERMISSIONS =
+      Commerce::NotifyLowStockStaffJob::PERMISSION_KEYS
 
     def show
       prefs = NOTIFICATION_TYPES.map do |type|
@@ -76,7 +78,7 @@ module Commerce
     private
 
     def staff_notifications?
-      current_user.permission?("store.products.read") || current_user.permission?("admin.access")
+      STAFF_NOTIFICATION_PERMISSIONS.any? { |permission_key| current_user.permission?(permission_key) }
     end
 
     def notification_label(type)

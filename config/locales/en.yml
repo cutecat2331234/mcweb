@@ -2,6 +2,7 @@ en:
   activerecord:
     models:
       user: User
+      community/user_group: Identity group
     attributes:
       user:
         email: Email
@@ -11,6 +12,13 @@ en:
         display_name: Display name
         locale: Locale
         time_zone: Time zone
+      community/user_group:
+        name: Name
+        color_hex: Color
+        priority: Priority
+        banner_text: Banner text
+        is_primary_default: Default primary identity group
+        permissions: Permissions
     errors:
       messages:
         blank: can't be blank

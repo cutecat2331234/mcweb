@@ -9,6 +9,7 @@ class Round57FeaturesTest < ActiveSupport::TestCase
     grant_permission(@mod, "forum.topics.lock")
     grant_permission(@mod, "forum.users.warn")
     grant_permission(@mod, "store.orders.read")
+    grant_permission(@mod, "store.credit.adjust")
     grant_permission(@mod, "admin.access")
 
     category = Community::Category.find_or_create_by!(slug: "r57-cat-#{SecureRandom.hex(4)}") { |c| c.name = "R57 Cat" }

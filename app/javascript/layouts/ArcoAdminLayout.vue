@@ -23,17 +23,29 @@ import { useTheme } from '@/lib/useTheme'
 interface NavItem {
   label: string
   href: string
+  moduleKey?: string
+  permissionKey?: string
+  permissionAny?: string[]
+  capabilityKey?: string
 }
 interface NavGroup {
   key: string
   label: string
   items: NavItem[]
+  moduleKey?: string
 }
 
 const page = usePage()
 const { t } = useI18n()
 const auth = computed(
-  () => (page.props.auth ?? { user: null }) as { user: { username: string } | null },
+  () => (page.props.auth ?? { user: null }) as {
+    user: {
+      username: string
+      admin_modules?: string[]
+      admin_permissions?: string[]
+      admin_capabilities?: Record<string, boolean>
+    } | null
+  },
 )
 const { isDark, toggleTheme } = useTheme()
 const adminDemoEnabled = computed(() => page.props.admin_demo_enabled === true)
@@ -59,116 +71,452 @@ const STORAGE_KEY = 'mc-admin-arco-nav-open'
 const collapsed = ref(false)
 const mobileNavOpen = ref(false)
 
-const nav = computed<NavGroup[]>(() => [
-  {
-    key: 'overview',
-    label: t('admin.overview'),
-    items: [
-      { label: t('admin.dashboard.title'), href: adminRoutes.dashboard },
-      { label: t('admin.users'), href: adminRoutes.users },
-      { label: t('admin.roles'), href: adminRoutes.roles },
-      ...(adminDemoEnabled.value
-        ? [{ label: t('admin.arcoDemo'), href: adminRoutes.arcoDemo }]
-        : []),
-    ],
-  },
-  {
-    key: 'website',
-    label: t('admin.website.title'),
-    items: [
-      { label: t('admin.pages'), href: adminRoutes.websitePages },
-      { label: t('admin.articles'), href: adminRoutes.websiteArticles },
-      { label: t('admin.website.nav.title', 'Navigation'), href: adminRoutes.websiteNavItems },
-      { label: t('admin.website.themes.title', 'Themes'), href: adminRoutes.websiteThemes },
-      { label: t('admin.frontendTemplates'), href: adminRoutes.frontendTemplates },
-    ],
-  },
-  {
-    key: 'community',
-    label: t('admin.community'),
-    items: [
-      { label: t('admin.forumStats'), href: adminRoutes.forumStats },
-      { label: t('admin.forumSections'), href: adminRoutes.forumSections },
-      { label: t('admin.forumCategories'), href: adminRoutes.forumCategories },
-      { label: t('admin.forumTopics'), href: adminRoutes.forumTopics },
-      { label: t('admin.forumReports'), href: adminRoutes.forumReports },
-      { label: t('admin.forumApprovals'), href: adminRoutes.forumApprovals },
-      { label: t('admin.forumUserFields'), href: adminRoutes.forumUserFields },
-      { label: t('admin.forumTopicFields'), href: adminRoutes.forumTopicFields },
-      { label: t('admin.forumBadges'), href: adminRoutes.forumBadges },
-      { label: t('admin.forumPoints'), href: adminRoutes.forumPoints },
-      { label: t('admin.forumWarningTemplates'), href: adminRoutes.forumWarningTemplates },
-      { label: t('admin.forumUserTitles'), href: adminRoutes.forumUserTitles },
-      { label: t('admin.forumUserGroups'), href: adminRoutes.forumUserGroups },
-      { label: t('admin.forumNotices'), href: adminRoutes.forumNotices },
-      { label: t('admin.forumHelpArticles'), href: adminRoutes.forumHelpArticles },
-      { label: t('admin.forumSmilies'), href: adminRoutes.forumSmilies },
-      { label: t('admin.forumReactionTypes'), href: adminRoutes.forumReactionTypes },
-      { label: t('admin.forumCustomBbcodes'), href: adminRoutes.forumCustomBbcodes },
-      { label: t('admin.forumThemes'), href: adminRoutes.forumThemes },
-      { label: t('admin.forumPages'), href: adminRoutes.forumPages },
-      { label: t('admin.forumPhrases'), href: adminRoutes.forumPhrases },
-      { label: t('admin.forumAttachments'), href: adminRoutes.forumAttachments },
-      { label: t('admin.forumScheduledTasks'), href: adminRoutes.forumScheduledTasks },
-      { label: t('admin.forumTags'), href: adminRoutes.forumTags },
-      { label: t('admin.forumSettings.title'), href: adminRoutes.forumSettings },
-      { label: t('admin.forumWebhookDeliveries'), href: adminRoutes.forumWebhookDeliveries },
-      { label: t('admin.forumEventWebhookDeliveries'), href: adminRoutes.forumEventWebhookDeliveries },
-    ],
-  },
-  {
-    key: 'store',
-    label: t('admin.store'),
-    items: [
-      { label: t('admin.storeProducts'), href: adminRoutes.storeProducts },
-      { label: t('admin.storeCategories'), href: adminRoutes.storeCategories },
-      { label: t('admin.storeCoupons'), href: adminRoutes.storeCoupons },
-      { label: t('admin.storeMembershipTypes'), href: adminRoutes.storeMembershipTypes },
-      { label: t('admin.storeUserMemberships'), href: adminRoutes.storeUserMemberships },
-      { label: t('admin.storeGiftCards'), href: adminRoutes.storeGiftCards },
-      { label: t('admin.storeOrders'), href: adminRoutes.storeOrders },
-      { label: t('admin.storePaymentProviders'), href: adminRoutes.storePaymentProviders },
-      { label: t('admin.storePaymentOperations'), href: adminRoutes.storePaymentOperations },
-      { label: t('admin.storeLatePaymentCases'), href: adminRoutes.storeLatePaymentCases },
-      { label: t('admin.storePaymentReconciliations'), href: adminRoutes.storePaymentReconciliations },
-      { label: t('admin.storeWebhookDeliveries'), href: adminRoutes.storeWebhookDeliveries },
-      { label: t('admin.storeReviews'), href: adminRoutes.storeReviews },
-      { label: t('admin.storeProductQuestions'), href: adminRoutes.storeProductQuestions },
-      { label: t('admin.storeFulfillments'), href: adminRoutes.storeFulfillments },
-      { label: t('admin.storeSettings.title'), href: adminRoutes.storeSettings },
-    ],
-  },
-  {
-    key: 'system',
-    label: t('admin.system'),
-    items: [
-      { label: t('admin.minecraftServers'), href: adminRoutes.minecraftServers },
-      { label: t('admin.minecraftNodes'), href: adminRoutes.minecraftNodes },
-      { label: t('admin.minecraftPlayers'), href: adminRoutes.minecraftPlayers },
-      { label: t('admin.minecraftSettings'), href: adminRoutes.minecraftSettings },
-      { label: t('admin.minecraftIntegrationActions'), href: adminRoutes.minecraftIntegrationActions },
-      { label: t('admin.minecraftProfileFields'), href: adminRoutes.minecraftProfileFields },
-      { label: t('admin.minecraftPermissionMappings'), href: adminRoutes.minecraftPermissionMappings },
-      { label: t('admin.auditLogs'), href: adminRoutes.auditLogs },
-      { label: t('admin.ipBans'), href: adminRoutes.ipBans },
-      { label: t('admin.emailBans'), href: adminRoutes.emailBans },
-      { label: t('admin.systemApiKeys'), href: adminRoutes.systemApiKeys },
-      { label: t('admin.systemWebhookSubscriptions'), href: adminRoutes.systemWebhookSubscriptions },
-      { label: t('admin.featureToggles.title'), href: adminRoutes.featureToggles },
-      { label: t('admin.rateLimits.title'), href: adminRoutes.rateLimits },
-      { label: t('admin.applications.nav'), href: adminRoutes.applications },
-      { label: t('admin.pluginSettings.nav'), href: adminRoutes.pluginSettings },
-      { label: t('admin.settings'), href: adminRoutes.settings },
-      ...(developerMode.value.workbench_access
-        ? [{
-            label: t('admin.developerWorkbench.nav'),
-            href: adminRoutes.developerWorkbench,
-          }]
-        : []),
-      { label: t('admin.jobs'), href: adminRoutes.jobs },
-    ],
-  },
-])
+const grantedAdminModules = computed(
+  () => new Set(auth.value.user?.admin_modules || []),
+)
+const grantedAdminPermissions = computed(
+  () => new Set(auth.value.user?.admin_permissions || []),
+)
+
+function hasAdminModule(moduleKey: string) {
+  return grantedAdminModules.value.has(moduleKey)
+}
+
+function hasAdminPermission(permissionKey: string) {
+  return grantedAdminPermissions.value.has(permissionKey)
+}
+
+function hasAnyAdminPermission(permissionKeys: string[]) {
+  return permissionKeys.some((permissionKey) => hasAdminPermission(permissionKey))
+}
+
+function hasAdminCapability(capabilityKey: string) {
+  return auth.value.user?.admin_capabilities?.[capabilityKey] === true
+}
+
+const nav = computed<NavGroup[]>(() => {
+  const groups: NavGroup[] = [
+    {
+      key: 'overview',
+      label: t('admin.overview'),
+      items: [
+        { label: t('admin.dashboard.title'), href: adminRoutes.dashboard },
+        {
+          label: t('admin.users'),
+          href: adminRoutes.users,
+          moduleKey: 'system',
+          permissionKey: 'system.settings.manage',
+        },
+        {
+          label: t('admin.roles'),
+          href: adminRoutes.roles,
+          moduleKey: 'system',
+          permissionKey: 'identity.roles.read',
+        },
+        ...(adminDemoEnabled.value
+          ? [{ label: t('admin.arcoDemo'), href: adminRoutes.arcoDemo }]
+          : []),
+      ],
+    },
+    {
+      key: 'identity',
+      label: t('admin.identity'),
+      moduleKey: 'identity',
+      items: [
+        {
+          label: t('admin.forumUserGroups'),
+          href: adminRoutes.forumUserGroups,
+          permissionKey: 'identity.groups.read',
+        },
+      ],
+    },
+    {
+      key: 'website',
+      label: t('admin.website.title'),
+      moduleKey: 'website',
+      items: [
+        {
+          label: t('admin.pages'),
+          href: adminRoutes.websitePages,
+          permissionKey: 'website.pages.read',
+        },
+        {
+          label: t('admin.articles'),
+          href: adminRoutes.websiteArticles,
+          permissionKey: 'website.articles.read',
+        },
+        {
+          label: t('admin.website.nav.title', 'Navigation'),
+          href: adminRoutes.websiteNavItems,
+          permissionKey: 'website.pages.read',
+        },
+        {
+          label: t('admin.website.themes.title', 'Themes'),
+          href: adminRoutes.websiteThemes,
+          permissionKey: 'website.pages.read',
+        },
+        {
+          label: t('admin.frontendTemplates'),
+          href: adminRoutes.frontendTemplates,
+          permissionKey: 'website.templates.manage',
+        },
+      ],
+    },
+    {
+      key: 'community',
+      label: t('admin.community'),
+      moduleKey: 'forum',
+      items: [
+        { label: t('admin.forumStats'), href: adminRoutes.forumStats },
+        {
+          label: t('admin.forumSections'),
+          href: adminRoutes.forumSections,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumCategories'),
+          href: adminRoutes.forumCategories,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumTopics'),
+          href: adminRoutes.forumTopics,
+          permissionKey: 'forum.topics.lock',
+        },
+        {
+          label: t('admin.forumReports'),
+          href: adminRoutes.forumReports,
+          permissionKey: 'forum.topics.lock',
+        },
+        {
+          label: t('admin.forumApprovals'),
+          href: adminRoutes.forumApprovals,
+          capabilityKey: 'forum.approvals.read',
+        },
+        {
+          label: t('admin.forumUserFields'),
+          href: adminRoutes.forumUserFields,
+          permissionKey: 'forum.topics.lock',
+        },
+        {
+          label: t('admin.forumTopicFields'),
+          href: adminRoutes.forumTopicFields,
+          permissionKey: 'forum.topics.lock',
+        },
+        {
+          label: t('admin.forumBadges'),
+          href: adminRoutes.forumBadges,
+          permissionKey: 'forum.badges.manage',
+        },
+        {
+          label: t('admin.forumPoints'),
+          href: adminRoutes.forumPoints,
+          permissionKey: 'forum.points.manage',
+        },
+        {
+          label: t('admin.forumWarningTemplates'),
+          href: adminRoutes.forumWarningTemplates,
+          permissionKey: 'forum.users.warn',
+        },
+        {
+          label: t('admin.forumUserTitles'),
+          href: adminRoutes.forumUserTitles,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumNotices'),
+          href: adminRoutes.forumNotices,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumHelpArticles'),
+          href: adminRoutes.forumHelpArticles,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumSmilies'),
+          href: adminRoutes.forumSmilies,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumReactionTypes'),
+          href: adminRoutes.forumReactionTypes,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumCustomBbcodes'),
+          href: adminRoutes.forumCustomBbcodes,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumThemes'),
+          href: adminRoutes.forumThemes,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumPages'),
+          href: adminRoutes.forumPages,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumPhrases'),
+          href: adminRoutes.forumPhrases,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumAttachments'),
+          href: adminRoutes.forumAttachments,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumScheduledTasks'),
+          href: adminRoutes.forumScheduledTasks,
+          permissionKey: 'forum.sections.manage',
+        },
+        {
+          label: t('admin.forumTags'),
+          href: adminRoutes.forumTags,
+          permissionKey: 'forum.tags.manage',
+        },
+        {
+          label: t('admin.forumSettings.title'),
+          href: adminRoutes.forumSettings,
+          moduleKey: 'system',
+          permissionKey: 'system.settings.manage',
+        },
+        {
+          label: t('admin.forumWebhookDeliveries'),
+          href: adminRoutes.forumWebhookDeliveries,
+          moduleKey: 'system',
+          permissionKey: 'system.settings.manage',
+        },
+        {
+          label: t('admin.forumEventWebhookDeliveries'),
+          href: adminRoutes.forumEventWebhookDeliveries,
+          moduleKey: 'system',
+          permissionKey: 'system.settings.manage',
+        },
+      ],
+    },
+    {
+      key: 'store',
+      label: t('admin.store'),
+      moduleKey: 'store',
+      items: [
+        {
+          label: t('admin.storeProducts'),
+          href: adminRoutes.storeProducts,
+          permissionKey: 'store.products.manage',
+        },
+        {
+          label: t('admin.storeCategories'),
+          href: adminRoutes.storeCategories,
+          permissionKey: 'store.products.manage',
+        },
+        {
+          label: t('admin.storeCoupons'),
+          href: adminRoutes.storeCoupons,
+          permissionKey: 'store.products.manage',
+        },
+        {
+          label: t('admin.storeMembershipTypes'),
+          href: adminRoutes.storeMembershipTypes,
+          permissionKey: 'store.products.manage',
+        },
+        {
+          label: t('admin.storeUserMemberships'),
+          href: adminRoutes.storeUserMemberships,
+          permissionKey: 'store.products.manage',
+        },
+        {
+          label: t('admin.storeGiftCards'),
+          href: adminRoutes.storeGiftCards,
+          permissionKey: 'store.products.manage',
+        },
+        {
+          label: t('admin.storeOrders'),
+          href: adminRoutes.storeOrders,
+          permissionKey: 'store.orders.read',
+        },
+        {
+          label: t('admin.storePaymentProviders'),
+          href: adminRoutes.storePaymentProviders,
+          permissionKey: 'store.payments.configure',
+        },
+        {
+          label: t('admin.storePaymentOperations'),
+          href: adminRoutes.storePaymentOperations,
+          permissionKey: 'store.orders.read',
+        },
+        {
+          label: t('admin.storeLatePaymentCases'),
+          href: adminRoutes.storeLatePaymentCases,
+          permissionKey: 'store.payments.late_review',
+        },
+        {
+          label: t('admin.storePaymentReconciliations'),
+          href: adminRoutes.storePaymentReconciliations,
+          permissionKey: 'store.payments.reconciliation.read',
+        },
+        {
+          label: t('admin.storeWebhookDeliveries'),
+          href: adminRoutes.storeWebhookDeliveries,
+          moduleKey: 'system',
+          permissionKey: 'system.settings.manage',
+        },
+        {
+          label: t('admin.storeReviews'),
+          href: adminRoutes.storeReviews,
+          permissionKey: 'store.products.manage',
+        },
+        {
+          label: t('admin.storeProductQuestions'),
+          href: adminRoutes.storeProductQuestions,
+          permissionKey: 'store.questions.manage',
+        },
+        {
+          label: t('admin.storeFulfillments'),
+          href: adminRoutes.storeFulfillments,
+          permissionKey: 'minecraft.fulfillments.retry',
+        },
+        {
+          label: t('admin.storeSettings.title'),
+          href: adminRoutes.storeSettings,
+          moduleKey: 'system',
+          permissionKey: 'system.settings.manage',
+        },
+      ],
+    },
+    {
+      key: 'minecraft',
+      label: t('admin.minecraft'),
+      moduleKey: 'minecraft',
+      items: [
+        {
+          label: t('admin.minecraftServers'),
+          href: adminRoutes.minecraftServers,
+          permissionKey: 'minecraft.servers.manage',
+        },
+        {
+          label: t('admin.minecraftNodes'),
+          href: adminRoutes.minecraftNodes,
+          permissionKey: 'minecraft.nodes.manage',
+        },
+        {
+          label: t('admin.minecraftPlayers'),
+          href: adminRoutes.minecraftPlayers,
+          permissionKey: 'minecraft.players.view',
+        },
+        {
+          label: t('admin.minecraftSettings'),
+          href: adminRoutes.minecraftSettings,
+          permissionKey: 'minecraft.servers.manage',
+        },
+        {
+          label: t('admin.minecraftIntegrationActions'),
+          href: adminRoutes.minecraftIntegrationActions,
+          permissionKey: 'minecraft.servers.manage',
+        },
+        {
+          label: t('admin.minecraftProfileFields'),
+          href: adminRoutes.minecraftProfileFields,
+          permissionKey: 'minecraft.servers.manage',
+        },
+        {
+          label: t('admin.minecraftPermissionMappings'),
+          href: adminRoutes.minecraftPermissionMappings,
+          permissionKey: 'minecraft.servers.manage',
+        },
+      ],
+    },
+    {
+      key: 'system',
+      label: t('admin.system'),
+      moduleKey: 'system',
+      items: [
+        {
+          label: t('admin.auditLogs'),
+          href: adminRoutes.auditLogs,
+          permissionKey: 'system.audit.read',
+        },
+        {
+          label: t('admin.ipBans'),
+          href: adminRoutes.ipBans,
+          permissionKey: 'system.bans.manage',
+        },
+        {
+          label: t('admin.emailBans'),
+          href: adminRoutes.emailBans,
+          permissionKey: 'system.bans.manage',
+        },
+        {
+          label: t('admin.systemApiKeys'),
+          href: adminRoutes.systemApiKeys,
+          permissionKey: 'system.settings.manage',
+        },
+        {
+          label: t('admin.systemWebhookSubscriptions'),
+          href: adminRoutes.systemWebhookSubscriptions,
+          permissionKey: 'system.settings.manage',
+        },
+        {
+          label: t('admin.featureToggles.title'),
+          href: adminRoutes.featureToggles,
+          permissionKey: 'system.settings.manage',
+        },
+        {
+          label: t('admin.rateLimits.title'),
+          href: adminRoutes.rateLimits,
+          permissionKey: 'system.settings.manage',
+        },
+        {
+          label: t('admin.applications.nav'),
+          href: adminRoutes.applications,
+          permissionAny: [ 'system.settings.manage', 'system.plugins.manage' ],
+        },
+        {
+          label: t('admin.pluginSettings.nav'),
+          href: adminRoutes.pluginSettings,
+          permissionKey: 'system.plugins.settings.manage',
+        },
+        {
+          label: t('admin.settings'),
+          href: adminRoutes.settings,
+          permissionKey: 'system.settings.manage',
+        },
+        ...(developerMode.value.workbench_access
+          ? [{
+              label: t('admin.developerWorkbench.nav'),
+              href: adminRoutes.developerWorkbench,
+              permissionKey: 'system.settings.manage',
+            }]
+          : []),
+        {
+          label: t('admin.jobs'),
+          href: adminRoutes.jobs,
+          permissionKey: 'system.jobs.read',
+        },
+      ],
+    },
+  ]
+
+  return groups
+    .map((group) => ({
+      ...group,
+      items: group.items.filter(
+        (item) => {
+          const requiredModuleKey = item.moduleKey ?? group.moduleKey
+          return (
+            (!requiredModuleKey || hasAdminModule(requiredModuleKey))
+            && (!item.permissionKey || hasAdminPermission(item.permissionKey))
+            && (!item.permissionAny || hasAnyAdminPermission(item.permissionAny))
+            && (!item.capabilityKey || hasAdminCapability(item.capabilityKey))
+          )
+        },
+      ),
+    }))
+    .filter((group) => group.items.length > 0)
+})
 
 const currentPath = computed(() => {
   const path = page.url.split('?')[0].replace(/\/+$/, '')

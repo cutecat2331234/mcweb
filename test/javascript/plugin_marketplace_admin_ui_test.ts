@@ -11,7 +11,7 @@ const page = source('app/javascript/pages/Admin/System/Applications/Index.vue')
 const controller = source('app/controllers/admin/system/applications_controller.rb')
 const manager = source('lib/mcweb/plugins/marketplace/manager.rb')
 const routes = source('config/routes.rb')
-const seeds = source('db/seeds.rb')
+const permissionCatalog = source('app/services/identity/permission_catalog.rb')
 const accountAccess = source('app/services/identity/account_access.rb')
 
 test('CE plugin package UI exposes verified upload lifecycle and operation history', () => {
@@ -68,7 +68,11 @@ test('CE plugin uninstall revalidates version and package checksum under the lif
   assert.ok(transition.indexOf('validate_uninstall_identity!') < transition.indexOf('load_setup_plan'))
 })
 
-test('CE plugin management permission is seeded and assigned to the system module', () => {
-  assert.match(seeds, /key: "system\.plugins\.manage"/)
-  assert.match(accountAccess, /system\.settings\.manage system\.plugins\.manage/)
+test('CE plugin management permission comes from the shared system catalog', () => {
+  assert.match(
+    permissionCatalog,
+    /"system\.plugins\.manage"[\s\S]*?app\/controllers\/admin\/system\/applications_controller\.rb/,
+  )
+  assert.match(accountAccess, /PermissionCatalog\.active_entries/)
+  assert.match(accountAccess, /\.group_by\(&:admin_module\)/)
 })

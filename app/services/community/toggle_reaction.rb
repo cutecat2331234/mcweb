@@ -73,7 +73,7 @@ module Community
     # Discourse-style daily like cap, scaled by trust level. Off by default
     # (forum.max_daily_reactions = 0 => unlimited); staff are exempt.
     def daily_limit_reached?
-      return false if @user.permission?("forum.topics.lock") || @user.permission?("admin.access")
+      return false if @user.permission?("forum.topics.lock")
 
       base = SiteSetting.get("forum.max_daily_reactions", "0").to_i
       return false if base <= 0
@@ -86,7 +86,7 @@ module Community
     # setting, while AbuseRateLimit also applies a conservative IP ceiling.
     # Staff are exempt from both dimensions.
     def reaction_rate_limit
-      if @user.permission?("forum.topics.lock") || @user.permission?("admin.access")
+      if @user.permission?("forum.topics.lock")
         return ServiceResult.success
       end
 

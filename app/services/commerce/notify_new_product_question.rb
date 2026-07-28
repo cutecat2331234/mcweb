@@ -2,7 +2,7 @@
 
 module Commerce
   class NotifyNewProductQuestion < ApplicationService
-    STAFF_PERMISSIONS = %w[store.questions.answer store.questions.manage admin.access].freeze
+    STAFF_PERMISSIONS = %w[store.questions.answer store.questions.manage].freeze
 
     def initialize(question:)
       @question = question

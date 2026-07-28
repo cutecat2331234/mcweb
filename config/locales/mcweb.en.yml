@@ -1,5 +1,183 @@
 en:
   mcweb:
+    permission_catalog:
+      legacy_group: "Inactive or legacy grants"
+      legacy_description: "This permission is no longer published by the active core or plugin catalog. It can be retained or removed, but cannot be newly granted."
+    permissions:
+      identity_groups_read:
+        name: "View identity groups"
+        description: "View global identity groups and their basic settings."
+      identity_groups_manage:
+        name: "Manage identity groups"
+        description: "Create, edit, and delete global identity groups."
+      identity_groups_members_assign:
+        name: "Assign identity-group members"
+        description: "Add users to and remove users from global identity groups."
+      identity_groups_permissions_manage:
+        name: "Manage identity-group permissions"
+        description: "Configure permission rules applied by global identity groups."
+      identity_roles_read:
+        name: "View roles"
+        description: "View global roles and their effective permission grants."
+      identity_roles_manage:
+        name: "Manage roles"
+        description: "Create, update, and remove global roles within your delegation boundary."
+      system_bans_manage:
+        name: "Manage access bans"
+        description: "Create and remove IP address and email address bans."
+      forum_users_trust_manage:
+        name: "Manage forum trust levels"
+        description: "Set or clear a member's forum trust-level override."
+      store_credit_adjust:
+        name: "Adjust member store credit"
+        description: "Increase or decrease a member's store-credit balance."
+      admin_access:
+        name: "Access administration"
+        description: "Open and use the administration area."
+      website_pages_read:
+        name: "View website pages"
+        description: "View website pages, their status, and revision history."
+      website_pages_edit:
+        name: "Edit website pages"
+        description: "Create and edit website pages, blocks, navigation, and drafts."
+      website_pages_publish:
+        name: "Publish website pages"
+        description: "Publish, schedule, and activate website content and themes."
+      website_articles_read:
+        name: "View website articles"
+        description: "View website articles, previews, and publication status."
+      website_articles_edit:
+        name: "Edit website articles"
+        description: "Create, edit, and delete website article drafts."
+      website_articles_publish:
+        name: "Publish website articles"
+        description: "Publish and schedule website articles."
+      website_templates_manage:
+        name: "Manage frontend templates"
+        description: "Install, configure, activate, and remove public frontend templates."
+      forum_sections_manage:
+        name: "Manage forum structure"
+        description: "Manage forum categories, sections, presentation, and community settings."
+      forum_attachments_security_manage:
+        name: "Manage attachment security"
+        description: "Retry attachment scans and cleanup, remove unsafe files, and prune orphaned attachments."
+      forum_topics_lock:
+        name: "Moderate forum topics"
+        description: "Lock and unlock topics and perform general topic moderation."
+      forum_posts_edit_others:
+        name: "Edit other users' posts"
+        description: "Edit forum posts created by other users."
+      forum_topics_edit_others:
+        name: "Edit other users' topics"
+        description: "Edit forum topics created by other users."
+      forum_topics_move:
+        name: "Move forum topics"
+        description: "Move, merge, split, and reorganize forum topics."
+      forum_users_mute:
+        name: "Mute forum users"
+        description: "Apply and remove forum mutes and posting restrictions."
+      forum_users_warn:
+        name: "Warn forum users"
+        description: "Issue warnings, maintain staff notes, and run supported moderation actions."
+      forum_badges_manage:
+        name: "Manage forum badges"
+        description: "Create, edit, grant, and revoke forum badges."
+      forum_tags_manage:
+        name: "Manage forum tags"
+        description: "Create, edit, organize, and apply restricted forum tags."
+      forum_points_manage:
+        name: "Manage forum points"
+        description: "Configure forum points and adjust user point balances."
+      forum_conversations_create:
+        name: "Share others' topics privately"
+        description: "Share a forum topic created by another user into a private conversation; normal private messaging keeps its existing policy."
+      store_products_read:
+        name: "View store staff notifications"
+        description: "Receive staff-only store notifications such as low-stock alerts."
+      store_products_manage:
+        name: "Manage store products"
+        description: "Create, edit, publish, and organize products and related catalog content."
+      store_questions_answer:
+        name: "Answer product questions"
+        description: "Post official answers to customer questions about products."
+      store_questions_manage:
+        name: "Manage product questions"
+        description: "Review, edit, and moderate product questions and answers."
+      store_orders_read:
+        name: "View store orders"
+        description: "View orders, payments, customer details, and order activity."
+      store_orders_refund:
+        name: "Manage orders and refunds"
+        description: "Update protected order states and issue authorized refunds."
+      store_payments_configure:
+        name: "Configure payment providers"
+        description: "Manage payment-provider modes, encrypted credentials, and enabled state."
+      store_payments_connection_test:
+        name: "Test payment-provider connections"
+        description: "Run confirmed and audited connection tests for configured payment providers."
+      store_payments_replay:
+        name: "Replay payment webhooks"
+        description: "Retry eligible payment webhook events through the audited replay workflow."
+      store_payments_late_review:
+        name: "Review late payments"
+        description: "Review and resolve payments received after their expected processing window."
+      store_payments_reconciliation_read:
+        name: "View payment reconciliation"
+        description: "View reconciliation runs, summaries, and payment discrepancies."
+      store_payments_reconciliation_review:
+        name: "Review reconciliation discrepancies"
+        description: "Record reviewed outcomes for payment reconciliation discrepancies."
+      store_payments_reconciliation_run:
+        name: "Run payment reconciliation"
+        description: "Start confirmed, date-bound payment reconciliation runs."
+      minecraft_servers_manage:
+        name: "Manage Minecraft servers"
+        description: "Create, configure, and maintain Minecraft server connections."
+      minecraft_nodes_manage:
+        name: "Manage Minecraft nodes"
+        description: "Register, configure, and maintain Minecraft execution nodes."
+      minecraft_servers_control:
+        name: "Control Minecraft servers"
+        description: "Start, stop, restart, and send supported control actions to Minecraft servers."
+      minecraft_players_view:
+        name: "View Minecraft players"
+        description: "View connected players and their current server activity."
+      minecraft_fulfillments_retry:
+        name: "Retry Minecraft fulfillment"
+        description: "Retry failed or incomplete Minecraft order fulfillment actions."
+      system_settings_manage:
+        name: "Manage system settings"
+        description: "Configure site-wide settings, integrations, and operational behavior."
+      system_plugins_manage:
+        name: "Manage plugin packages"
+        description: "Install, upgrade, enable, disable, and uninstall trusted plugin packages."
+      system_plugins_settings_manage:
+        name: "Manage plugin settings"
+        description: "View and update settings exposed by installed plugins."
+      system_jobs_read:
+        name: "View background jobs"
+        description: "View background-job status, schedules, and operational diagnostics."
+      system_jobs_retry:
+        name: "Retry background jobs (planned)"
+        description: "Reserved for a future controlled retry workflow; it currently grants no retry action."
+      system_audit_read:
+        name: "View audit logs"
+        description: "View administrative audit events and their recorded context."
+    permission_domains:
+      identity: "Identity"
+      admin: "Administration"
+      website: "Website"
+      forum: "Community"
+      store: "Store"
+      minecraft: "Minecraft"
+      system: "System"
+    role_admin:
+      title: "Roles"
+      name: "Name"
+      key: "Key"
+      permission_count: "Permissions"
+      system_role: "System role"
+      permissions: "Permissions"
     developer_mode:
       title: "Developer Mode"
       warning: "Some security checks and production optimizations are disabled."
@@ -324,13 +502,13 @@ en:
       user_title_created: Title rung created.
       user_title_updated: Title rung updated.
       user_title_deleted: Title rung deleted.
-      user_group_created: User group created.
-      user_group_updated: User group updated.
-      user_group_deleted: User group deleted.
-      user_group_member_added: Member added to the group.
-      user_group_primary_set: Primary group updated for the member.
-      user_group_member_removed: Member removed from the group.
-      user_group_member_not_found: No member found with that username.
+      user_group_created: Identity group created.
+      user_group_updated: Identity group updated.
+      user_group_deleted: Identity group deleted.
+      user_group_member_added: Member added to the identity group.
+      user_group_primary_set: Primary identity group updated for the member.
+      user_group_member_removed: Member removed from the identity group.
+      user_group_member_not_found: No matching user is available for this identity group.
       phrase_saved: Phrase saved.
       phrase_deleted: Phrase deleted.
       forum_page_created: Page created.
@@ -422,6 +600,13 @@ en:
         user_not_found: User not found.
         user_not_participant: User is not a participant.
         not_allowed: Not allowed.
+        invalid_permission_keys: One or more selected permissions are unavailable.
+        unknown_group_operation: Unsupported identity-group operation.
+        user_group_or_member_not_found: Identity group or member not found.
+        unknown_role_operation: Unsupported role operation.
+        role_not_found: Role not found.
+        invalid_permission_ids: One or more selected permissions do not exist.
+        system_role_immutable: System roles cannot be modified.
         cannot_remove_last_participant: Cannot remove the last participant.
         only_participants_can_add: Only participants can add members.
         group_full: Group is full.
@@ -1612,15 +1797,16 @@ en:
           form_edit: Edit title rung
           form_new: New title rung
         user_groups:
-          title: User groups
-          description: Groups with display styling and permission keys (primary + secondary memberships).
+          title: Identity groups
+          description: Manage site-wide identity, display styling, memberships, and permissions.
           col_name: Name
           col_priority: Priority
           col_members: Members
           col_primary_default: Default primary
-          action_new: New user group
-          form_edit: Edit user group
-          form_new: New user group
+          action_new: New identity group
+          form_view: View identity group
+          form_edit: Edit identity group
+          form_new: New identity group
         notices:
           title: Notices
           description: Dismissible banners shown to members across the forum.

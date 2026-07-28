@@ -5,7 +5,7 @@ module Admin
     class PagesController < BaseController
       include NestedLocaleParams
 
-      before_action -> { require_permission("website.pages.read") }, only: %i[index show preview]
+      before_action -> { require_permission("website.pages.read") }
       before_action -> { require_permission("website.pages.edit") }, only: %i[new create edit update destroy]
       before_action -> { require_permission("website.pages.publish") }, only: %i[publish schedule]
       before_action :set_page, only: %i[show edit update destroy publish schedule preview]

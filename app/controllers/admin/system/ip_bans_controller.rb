@@ -3,7 +3,7 @@
 module Admin
   module System
     class IpBansController < BaseController
-      before_action -> { require_permission("admin.access") }
+      before_action -> { require_permission("system.bans.manage") }
 
       def index
         bans = Administration::IpBan.order(created_at: :desc).limit(100)

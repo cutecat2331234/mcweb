@@ -80,7 +80,7 @@ module Community
     def can_use_staff_tags?
       return false unless @user
 
-      @user.permission?("forum.tags.manage") || @user.permission?("admin.access")
+      @user.permission?("forum.tags.manage")
     end
   end
 end

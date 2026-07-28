@@ -19,7 +19,7 @@ module Community
       return false unless enabled?
       return false if Community::UserBlock.exists?(blocker: profile_user, blocked: author)
       return true if Mcweb::DeveloperMode.allow?(:skip_anti_spam)
-      return true if author.permission?("forum.topics.lock") || author.permission?("admin.access")
+      return true if author.permission?("forum.topics.lock")
 
       Community::TrustLevel.level_for(author) >= min_trust_level
     end

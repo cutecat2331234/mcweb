@@ -18,7 +18,7 @@ module Community
     def requires_approval?
       return false if @whisper
       return false if Mcweb::DeveloperMode.allow?(:skip_anti_spam)
-      return false if @user.permission?("forum.topics.lock") || @user.permission?("admin.access")
+      return false if @user.permission?("forum.topics.lock")
 
       threshold = SiteSetting.get("forum.require_post_approval_below_tl", "1").to_i
       return false if threshold <= 0

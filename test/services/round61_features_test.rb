@@ -136,4 +136,15 @@ class Round61StaffLowStockPreferenceTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "commerce.low_stock"
   end
+
+  test "admin access alone does not expose the low stock preference" do
+    admin = create_user
+    grant_permission(admin, "admin.access")
+    sign_in_as(admin)
+
+    get store_preferences_path
+
+    assert_response :success
+    assert_not_includes response.body, "commerce.low_stock"
+  end
 end

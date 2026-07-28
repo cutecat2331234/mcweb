@@ -7,6 +7,7 @@ class Round58FeaturesTest < ActiveSupport::TestCase
     @user = create_user
     @mod = create_user
     grant_permission(@mod, "store.orders.read")
+    grant_permission(@mod, "store.credit.adjust")
     grant_permission(@mod, "admin.access")
 
     category = Community::Category.find_or_create_by!(slug: "r58-cat-#{SecureRandom.hex(4)}") { |c| c.name = "R58" }

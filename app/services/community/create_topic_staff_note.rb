@@ -9,7 +9,7 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "staff_note_unauthorized") unless @actor.permission?("forum.topics.lock") || @actor.permission?("admin.access")
+      return ServiceResult.failure(error: "staff_note_unauthorized") unless @actor.permission?("forum.topics.lock")
       return ServiceResult.failure(error: "staff_note_blank") if @body.blank?
 
       note = Community::TopicStaffNote.create!(

@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import { routes, appPrefix } from '@/lib/routes'
+import { routes } from '@/lib/routes'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
@@ -141,7 +141,7 @@ function isActive(href: string) {
           </div>
         </div>
         <p class="mt-10 border-t border-green-500/15 pt-6 text-center text-xs text-slate-500">
-          {{ t('website.layout.copyright', { year: new Date().getFullYear(), appPrefix }) }}
+          {{ t('website.layout.copyright', { year: new Date().getFullYear() }) }}
         </p>
       </div>
     </footer>

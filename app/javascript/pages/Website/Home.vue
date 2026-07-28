@@ -76,7 +76,7 @@ const appEntryHref = computed(() => {
   return routes.signIn
 })
 
-// Stats: some values are pure numbers (count-up), others are tokens like "/app" or "Rails 8" (reveal as-is).
+// Stats: numeric values animate; descriptive values are revealed as-is.
 const stats = computed(() => [
   { value: t('website.home.stat1Value'), label: t('website.home.stat1Label') },
   { value: t('website.home.stat2Value'), label: t('website.home.stat2Label') },

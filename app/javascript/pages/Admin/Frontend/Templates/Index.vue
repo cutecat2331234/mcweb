@@ -95,7 +95,12 @@ function statusColor(status: string) {
   <a-card :title="t('admin.templates.uploadTitle')" :bordered="true" class="mb-4">
     <a-typography-paragraph type="secondary">
       {{ t('admin.templates.uploadHint') }}
-      <a-link href="/template-starter/manifest.json" target="_blank" rel="noopener">
+      <a-link
+        href="/template-starter/manifest.json"
+        target="_blank"
+        rel="noopener"
+        data-admin-hard-navigation
+      >
         {{ t('admin.templates.manifestSpec') }}
       </a-link>
       {{ t('admin.templates.orDownload') }}
@@ -178,6 +183,7 @@ function statusColor(status: string) {
             :href="template.preview_website_url"
             target="_blank"
             rel="noopener"
+            data-admin-hard-navigation
           >
             {{ t('admin.templates.previewWebsite') }}
           </a-link>
@@ -205,6 +211,7 @@ function statusColor(status: string) {
             :href="template.preview_portal_url"
             target="_blank"
             rel="noopener"
+            data-admin-hard-navigation
           >
             {{ t('admin.templates.previewPortal') }}
           </a-link>

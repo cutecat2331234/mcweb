@@ -17,7 +17,10 @@ test('background jobs page uses Arco and explains Developer Mode scheduling', ()
   assert.match(source, /<a-button/)
   assert.match(source, /v-if="developerMode\.enabled"/)
   assert.match(source, /automaticRegistration/)
-  assert.match(source, /<a-button type="primary" :href="dashboardUrl">/)
+  assert.match(
+    source,
+    /<a-button type="primary" :href="dashboardUrl" data-admin-hard-navigation>/,
+  )
   assert.doesNotMatch(source, /window\.location/)
   assert.doesNotMatch(source, /<(?:input|select|button|table)(?:\s|>)/)
 })

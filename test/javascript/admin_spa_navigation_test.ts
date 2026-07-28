@@ -1,13 +1,73 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { readFileSync, readdirSync } from 'node:fs'
+import { resolve } from 'node:path'
 import test from 'node:test'
 import {
   isPlainPrimaryClick,
   resolveAdminSpaHref,
 } from '../../app/javascript/lib/adminNavigation.ts'
 
+const root = process.cwd()
+
 function source(relativePath: string) {
   return readFileSync(new URL(`../../${relativePath}`, import.meta.url), 'utf8')
+}
+
+function adminVueSources() {
+  const pagesRoot = resolve(root, 'app/javascript/pages/Admin')
+  const pages = readdirSync(pagesRoot, { recursive: true, encoding: 'utf8' })
+    .filter((relativePath) => relativePath.endsWith('.vue'))
+    .map((relativePath) => ({
+      path: `app/javascript/pages/Admin/${relativePath.replaceAll('\\', '/')}`,
+      source: readFileSync(resolve(pagesRoot, relativePath), 'utf8'),
+    }))
+
+  return [
+    {
+      path: 'app/javascript/layouts/ArcoAdminLayout.vue',
+      source: source('app/javascript/layouts/ArcoAdminLayout.vue'),
+    },
+    ...pages,
+  ]
+}
+
+function openingTags(sourceText: string): string[] {
+  const tags: string[] = []
+  let cursor = 0
+
+  while (cursor < sourceText.length) {
+    const start = sourceText.indexOf('<', cursor)
+    if (start === -1) break
+
+    const tagName = sourceText.slice(start + 1).match(/^[A-Za-z][\w-]*/)
+    if (!tagName) {
+      cursor = start + 1
+      continue
+    }
+
+    let quote: '"' | "'" | null = null
+    let end = start + tagName[0].length + 1
+    for (; end < sourceText.length; end += 1) {
+      const character = sourceText[end]
+      if (quote) {
+        if (character === quote) quote = null
+      } else if (character === '"' || character === "'") {
+        quote = character
+      } else if (character === '>') {
+        tags.push(sourceText.slice(start, end + 1))
+        break
+      }
+    }
+
+    cursor = end + 1
+  }
+
+  return tags
+}
+
+function hrefValue(tag: string): string | null {
+  const match = tag.match(/\s:?href\s*=\s*(?:"([^"]*)"|'([^']*)')/)
+  return match?.[1] ?? match?.[2] ?? null
 }
 
 const currentHref = 'https://mcweb.test/admin/users?page=2'
@@ -107,6 +167,68 @@ test('admin entry installs delegated SPA navigation and preserves intentional ha
   assert.doesNotMatch(settings, /data-admin-hard-navigation/)
   assert.match(genericIndex, /v-if="exportUrl"[\s\S]*data-admin-hard-navigation/)
   assert.match(orderIndex, /v-if="exportUrl"[^>]*data-admin-hard-navigation/)
+})
+
+test('admin source keeps internal links on Inertia and explicitly inventories every hard boundary', () => {
+  const hardDestinations: string[] = []
+
+  for (const page of adminVueSources()) {
+    for (const tag of openingTags(page.source)) {
+      const href = hrefValue(tag)
+      if (href === null) continue
+
+      const tagName = tag.match(/^<([A-Za-z][\w-]*)/)?.[1]
+      if (tagName === 'Link') continue
+      if (tagName === 'a' && href.startsWith('#')) continue
+
+      assert.match(
+        tag,
+        /\sdata-admin-hard-navigation(?:\s|>|=)/,
+        `${page.path} uses a non-Inertia href without an explicit hard-navigation boundary: ${tag}`,
+      )
+      hardDestinations.push(`${page.path}|${href}`)
+    }
+  }
+
+  assert.deepEqual(
+    hardDestinations.sort(),
+    [
+      'app/javascript/layouts/ArcoAdminLayout.vue|adminRoutes.site',
+      'app/javascript/layouts/ArcoAdminLayout.vue|adminRoutes.site',
+      'app/javascript/pages/Admin/Dashboard/Index.vue|adminRoutes.site',
+      'app/javascript/pages/Admin/Forum/Attachments/Index.vue|record.post_url',
+      'app/javascript/pages/Admin/Forum/Attachments/Index.vue|upload.post_url',
+      'app/javascript/pages/Admin/Frontend/Templates/Index.vue|/template-starter/manifest.json',
+      'app/javascript/pages/Admin/Frontend/Templates/Index.vue|starterDownloadUrl',
+      'app/javascript/pages/Admin/Frontend/Templates/Index.vue|template.preview_portal_url',
+      'app/javascript/pages/Admin/Frontend/Templates/Index.vue|template.preview_website_url',
+      'app/javascript/pages/Admin/Generic/Index.vue|action.href',
+      'app/javascript/pages/Admin/Generic/Index.vue|exportUrl',
+      'app/javascript/pages/Admin/Generic/Index.vue|record.url',
+      'app/javascript/pages/Admin/Generic/Show.vue|action.href',
+      'app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue|exportUrl',
+      'app/javascript/pages/Admin/System/Jobs/Index.vue|dashboardUrl',
+    ].sort(),
+  )
+})
+
+test('native admin forms always prevent browser submission', () => {
+  for (const page of adminVueSources()) {
+    for (const tag of openingTags(page.source)) {
+      if (!/^<form(?:\s|>)/.test(tag)) continue
+
+      assert.match(
+        tag,
+        /\s@submit\.prevent(?:\s|=)/,
+        `${page.path} contains a native form that can reload the document: ${tag}`,
+      )
+      assert.doesNotMatch(
+        tag,
+        /\saction\s*=/,
+        `${page.path} contains a native form action instead of an Inertia request: ${tag}`,
+      )
+    }
+  }
 })
 
 test('admin pages share one persistent shell and cross-entry links stay outside Inertia', () => {

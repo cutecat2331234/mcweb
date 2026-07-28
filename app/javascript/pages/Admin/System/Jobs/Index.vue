@@ -69,7 +69,7 @@ const props = defineProps<{
         <p class="mb-4 text-sm text-[var(--color-text-2)]">
           {{ t('admin.jobsPage.dashboardDescription') }}
         </p>
-        <a-button type="primary" :href="dashboardUrl">
+        <a-button type="primary" :href="dashboardUrl" data-admin-hard-navigation>
           {{ t('admin.jobsPage.openDashboard') }}
         </a-button>
       </a-card>

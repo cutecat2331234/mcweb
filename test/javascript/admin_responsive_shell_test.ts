@@ -111,6 +111,23 @@ test('responsive shell retains Inertia navigation and current system destination
   assert.doesNotMatch(source, /window\.location|location\.reload/)
 })
 
+test('admin navigation uses distinct product-area icons instead of one repeated glyph', () => {
+  for (const icon of [
+    'IconDashboard',
+    'IconUserGroup',
+    'IconHome',
+    'IconMessage',
+    'IconGift',
+    'IconCloud',
+    'IconSettings',
+  ]) {
+    assert.match(source, new RegExp(`icon: ${icon}`))
+  }
+
+  assert.match(source, /<component :is="group\.icon" \/>/)
+  assert.doesNotMatch(source, /<template #icon><icon-apps \/><\/template>/)
+})
+
 test('collapsed sidebar keeps its brand and menu inside the 48px rail', () => {
   assert.match(
     css,

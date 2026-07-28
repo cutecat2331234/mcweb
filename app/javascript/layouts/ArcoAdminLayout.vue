@@ -3,17 +3,22 @@
  * ArcoAdminLayout — Arco Design shell for McWeb admin (sidebar + navbar + content).
  * Inspired by Arco Pro default-layout; navigation uses Inertia router.visit(), not vue-router.
  */
-import { computed, ref, watch } from 'vue'
+import { computed, ref, watch, type Component } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
-  IconApps,
-  IconBook,
+  IconCloud,
   IconCommand,
+  IconDashboard,
+  IconGift,
+  IconHome,
   IconMenuFold,
   IconMenuUnfold,
+  IconMessage,
   IconMoon,
+  IconSettings,
   IconSun,
+  IconUserGroup,
 } from '@arco-design/web-vue/es/icon'
 import AdminFlashMessages from '@/components/admin/AdminFlashMessages.vue'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
@@ -32,6 +37,7 @@ interface NavGroup {
   key: string
   label: string
   items: NavItem[]
+  icon: Component
   moduleKey?: string
 }
 
@@ -99,6 +105,7 @@ const nav = computed<NavGroup[]>(() => {
     {
       key: 'overview',
       label: t('admin.overview'),
+      icon: IconDashboard,
       items: [
         { label: t('admin.dashboard.title'), href: adminRoutes.dashboard },
         {
@@ -121,6 +128,7 @@ const nav = computed<NavGroup[]>(() => {
     {
       key: 'identity',
       label: t('admin.identity'),
+      icon: IconUserGroup,
       moduleKey: 'identity',
       items: [
         {
@@ -133,6 +141,7 @@ const nav = computed<NavGroup[]>(() => {
     {
       key: 'website',
       label: t('admin.website.title'),
+      icon: IconHome,
       moduleKey: 'website',
       items: [
         {
@@ -165,6 +174,7 @@ const nav = computed<NavGroup[]>(() => {
     {
       key: 'community',
       label: t('admin.community'),
+      icon: IconMessage,
       moduleKey: 'forum',
       items: [
         { label: t('admin.forumStats'), href: adminRoutes.forumStats },
@@ -301,6 +311,7 @@ const nav = computed<NavGroup[]>(() => {
     {
       key: 'store',
       label: t('admin.store'),
+      icon: IconGift,
       moduleKey: 'store',
       items: [
         {
@@ -395,6 +406,7 @@ const nav = computed<NavGroup[]>(() => {
     {
       key: 'minecraft',
       label: t('admin.minecraft'),
+      icon: IconCloud,
       moduleKey: 'minecraft',
       items: [
         {
@@ -437,6 +449,7 @@ const nav = computed<NavGroup[]>(() => {
     {
       key: 'system',
       label: t('admin.system'),
+      icon: IconSettings,
       moduleKey: 'system',
       items: [
         {
@@ -627,8 +640,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
           :collapsed="collapsed"
           @menu-item-click="onMenuClick"
         >
-          <a-sub-menu v-for="group in nav" :key="group.key">
-            <template #icon><icon-apps /></template>
+          <a-sub-menu
+            v-for="group in nav"
+            :key="group.key"
+            :class="`arco-admin-nav-group arco-admin-nav-group--${group.key}`"
+          >
+            <template #icon><component :is="group.icon" /></template>
             <template #title>{{ group.label }}</template>
             <a-menu-item v-for="item in group.items" :key="item.href">
               {{ item.label }}
@@ -729,8 +746,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
           v-model:open-keys="openKeys"
           @menu-item-click="onMenuClick"
         >
-          <a-sub-menu v-for="group in nav" :key="group.key">
-            <template #icon><icon-book /></template>
+          <a-sub-menu
+            v-for="group in nav"
+            :key="group.key"
+            :class="`arco-admin-nav-group arco-admin-nav-group--${group.key}`"
+          >
+            <template #icon><component :is="group.icon" /></template>
             <template #title>{{ group.label }}</template>
             <a-menu-item v-for="item in group.items" :key="item.href">
               {{ item.label }}
@@ -872,6 +893,38 @@ watch(isDark, syncArcoTheme, { immediate: true })
   color: rgb(var(--primary-6));
   background: linear-gradient(90deg, rgba(var(--primary-6), 0.14), rgba(var(--primary-6), 0.05));
   font-weight: 600;
+}
+.arco-admin-sider__menu :deep(.arco-admin-nav-group > .arco-menu-inline-header .arco-menu-icon) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin-right: 8px;
+  color: rgb(var(--primary-6));
+  border-radius: 50%;
+  background: rgba(var(--primary-6), 0.09);
+}
+.arco-admin-sider__menu :deep(.arco-admin-nav-group--community > .arco-menu-inline-header .arco-menu-icon) {
+  color: rgb(var(--purple-6));
+  background: rgb(var(--purple-1));
+}
+.arco-admin-sider__menu :deep(.arco-admin-nav-group--store > .arco-menu-inline-header .arco-menu-icon) {
+  color: rgb(var(--orangered-6));
+  background: rgb(var(--orangered-1));
+}
+.arco-admin-sider__menu :deep(.arco-admin-nav-group--minecraft > .arco-menu-inline-header .arco-menu-icon) {
+  color: rgb(var(--green-6));
+  background: rgb(var(--green-1));
+}
+.arco-admin-sider__menu :deep(.arco-admin-nav-group--system > .arco-menu-inline-header .arco-menu-icon) {
+  color: rgb(var(--gray-8));
+  background: var(--color-fill-3);
+}
+.arco-admin-sider.arco-layout-sider-collapsed
+  .arco-admin-sider__menu
+  :deep(.arco-admin-nav-group > .arco-menu-inline-header .arco-menu-icon) {
+  margin-right: 0;
 }
 
 .arco-admin-sider__footer {

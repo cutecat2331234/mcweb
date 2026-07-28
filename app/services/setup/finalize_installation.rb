@@ -95,9 +95,10 @@ module Setup
         user = result.value[:user]
         user.update!(email_verified: true, email_verified_at: Time.current, account_type: :owner)
 
+        Identity::PermissionMutationLock.acquire_exclusive!
         Rails.application.load_seed unless Role.exists?(key: "owner")
         admin_role = Role.find_by!(key: "owner")
-        user.roles << admin_role unless user.roles.include?(admin_role)
+        UserRole.find_or_create_by!(user:, role: admin_role)
 
         SiteSetting.set("site.name", @site[:name]) if @site[:name].present?
         SiteSetting.set("site.url", @site[:url]) if @site[:url].present?

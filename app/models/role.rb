@@ -12,12 +12,16 @@ class Role < ApplicationRecord
   scope :custom_roles, -> { where(system_role: false) }
 
   def grant_permission!(permission)
-    permission = Permission.find_by!(key: permission) if permission.is_a?(String)
-    permissions << permission unless permissions.include?(permission)
+    Identity::PermissionMutationLock.with_exclusive do
+      permission = Permission.find_by!(key: permission) if permission.is_a?(String)
+      RolePermission.find_or_create_by!(role: self, permission:)
+    end
   end
 
   def revoke_permission!(permission)
-    permission = Permission.find_by!(key: permission) if permission.is_a?(String)
-    permissions.delete(permission)
+    Identity::PermissionMutationLock.with_exclusive do
+      permission = Permission.find_by!(key: permission) if permission.is_a?(String)
+      RolePermission.where(role: self, permission:).delete_all
+    end
   end
 end

@@ -250,12 +250,19 @@ module Admin
 
       updated = false
       User.transaction do
+        Identity::PermissionMutationLock.acquire_exclusive! if role_ids_update_requested?
         updated = @user.update(user_params)
         sync_roles_and_modules! if updated
+        if updated
+          Administration::AuditLogger.call(
+            actor: current_user,
+            action: "admin.user_updated",
+            resource: @user
+          )
+        end
       end
 
       if updated
-        Administration::AuditLogger.call(actor: current_user, action: "admin.user_updated", resource: @user)
         redirect_to admin_user_path(@user), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.user"))
       else
         redirect_to admin_user_path(@user), alert: @user.errors.full_messages.to_sentence
@@ -478,7 +485,7 @@ module Admin
     def sync_roles_and_modules!
       return unless params[:user]
 
-      if current_user.account_owner? && params[:user][:role_ids]
+      if role_ids_update_requested?
         @user.role_ids = Array(params[:user][:role_ids]).reject(&:blank?).map(&:to_i)
       end
 
@@ -496,6 +503,10 @@ module Admin
           @user.admin_module_grants.delete_all
         end
       end
+    end
+
+    def role_ids_update_requested?
+      current_user.account_owner? && params[:user]&.[](:role_ids)
     end
 
     def requested_admin_modules

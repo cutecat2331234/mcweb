@@ -79,16 +79,18 @@ PERMISSIONS.each do |attrs|
   permission.save!
 end
 
-ROLES.each do |key, attrs|
-  role = Role.find_or_create_by!(key: key) do |r|
-    r.name = attrs[:name]
-    r.description = attrs[:description]
-    r.system_role = true
-  end
+Identity::PermissionMutationLock.with_exclusive do
+  ROLES.each do |key, attrs|
+    role = Role.find_or_create_by!(key: key) do |r|
+      r.name = attrs[:name]
+      r.description = attrs[:description]
+      r.system_role = true
+    end
 
-  attrs[:permissions].each do |permission_key|
-    permission = Permission.find_by!(key: permission_key)
-    role.permissions << permission unless role.permissions.include?(permission)
+    attrs[:permissions].each do |permission_key|
+      permission = Permission.find_by!(key: permission_key)
+      RolePermission.find_or_create_by!(role:, permission:)
+    end
   end
 end
 

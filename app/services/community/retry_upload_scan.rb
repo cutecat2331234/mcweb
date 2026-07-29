@@ -19,9 +19,11 @@ module Community
           scan_status: @upload.scan_status,
           scan_result_code: @upload.scan_result_code,
           scan_attempts: @upload.scan_attempts,
-          quarantined: @upload.quarantined_at.present?
+          quarantined: @upload.quarantined_at.present?,
+          manual_review_status: @upload.manual_review_status,
+          manual_review_version: @upload.manual_review_version
         }
-        @upload.update!(
+        attributes = {
           scan_status: "pending",
           scan_started_at: nil,
           scan_attempts: 0,
@@ -31,7 +33,20 @@ module Community
           scanner: nil,
           scan_result_code: nil,
           scan_error_message: nil
-        )
+        }
+        if @upload.manual_review_status_revoked?
+          attributes.merge!(
+            manual_review_status: "none",
+            manual_review_version: @upload.manual_review_version + 1,
+            manual_reviewed_at: nil,
+            manual_reviewed_by: nil,
+            manual_review_source_result_code: nil,
+            manual_review_file_sha256: nil,
+            manual_review_revoked_at: nil,
+            manual_review_revoked_by: nil
+          )
+        end
+        @upload.update!(attributes)
       end
 
       enqueued = enqueue_retry
@@ -62,7 +77,7 @@ module Community
     def retryable?
       @upload.kind_post_attachment? &&
         !@upload.status_cleaned? &&
-        @upload.scan_status_error? &&
+        (@upload.scan_status_error? || @upload.manual_review_status_revoked?) &&
         @upload.blob.present?
     end
 

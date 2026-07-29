@@ -11,7 +11,7 @@ class Community::NonRealtimeDeliveryTest < ActiveSupport::TestCase
   ].freeze
 
   FORBIDDEN_BACKEND_PATTERNS = {
-    "Action Cable reference" => /\bActionCable\b/,
+    "Action Cable runtime reference" => /\bActionCable(?=::|\.)/,
     "application cable namespace" => /\bApplicationCable\b/,
     "channel broadcast" => /\.broadcast_to\s*\(/,
     "server broadcast" => /\.server\.broadcast\s*\(/

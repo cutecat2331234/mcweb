@@ -148,7 +148,7 @@ class Community::ToggleReactionVisibilityTest < ActiveSupport::TestCase
     result = Community::ToggleReaction.call(user: @other, post: @post, emoji: "👍")
 
     assert result.failure?
-    assert_match(/not available/i, result.error)
+    assert_equal I18n.t("mcweb.services.errors.post_not_available"), result.error
   end
 
   test "cannot react on hidden post without moderation permission" do
@@ -157,7 +157,7 @@ class Community::ToggleReactionVisibilityTest < ActiveSupport::TestCase
     result = Community::ToggleReaction.call(user: @other, post: @post, emoji: "👍")
 
     assert result.failure?
-    assert_match(/not available/i, result.error)
+    assert_equal I18n.t("mcweb.services.errors.post_not_available"), result.error
   end
 end
 
@@ -239,7 +239,7 @@ class Community::HiddenPostTopicListTest < ActionDispatch::IntegrationTest
     )
 
     assert result.failure?
-    assert_match(/quoted post is not available/i, result.error)
+    assert_equal I18n.t("mcweb.services.errors.quoted_post_is_not_available"), result.error
   end
 end
 
@@ -390,7 +390,7 @@ class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
     result = Community::EditPost.call(user: other, post: @post, body: "Attempted edit text")
 
     assert result.failure?
-    assert_match(/not available/i, result.error)
+    assert_equal I18n.t("mcweb.services.errors.post_not_available"), result.error
   end
 
   test "fork topic rejects hidden source posts for other users" do
@@ -402,7 +402,7 @@ class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
     result = Community::CreateTopicFromPost.call(user: other, post: @post, ip_address: "127.0.0.1")
 
     assert result.failure?
-    assert_match(/not available/i, result.error)
+    assert_equal I18n.t("mcweb.services.errors.post_not_available"), result.error
   end
 
   test "create post rejects hidden topics for other users" do
@@ -414,7 +414,7 @@ class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
     result = Community::CreatePost.call(user: other, topic: @topic, body: "Sneaky reply", ip_address: "127.0.0.1", skip_interval_check: true)
 
     assert result.failure?
-    assert_match(/not available/i, result.error)
+    assert_equal I18n.t("mcweb.services.errors.topic_not_available"), result.error
   end
 
   test "save reply draft rejects hidden topics for other users" do
@@ -426,7 +426,7 @@ class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
     result = Community::SaveReplyDraft.call(user: other, topic: @topic, body: "Draft reply")
 
     assert result.failure?
-    assert_match(/not available/i, result.error)
+    assert_equal I18n.t("mcweb.services.errors.topic_not_available"), result.error
   end
 end
 

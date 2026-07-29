@@ -12,17 +12,17 @@ module Community
 
     def call
       unless @user.permission?("forum.topics.move") || @user.permission?("forum.topics.lock")
-        return ServiceResult.failure(error: "You are not authorized to split topics.")
+        return ServiceResult.failure(error: :you_are_not_authorized_to_split_topics)
       end
 
-      return ServiceResult.failure(error: "Cannot split the opening post.") if @post.floor_number <= 1
-      return ServiceResult.failure(error: "Post does not belong to this topic.") if @post.forum_topic_id != @topic.id
+      return ServiceResult.failure(error: :cannot_split_the_opening_post) if @post.floor_number <= 1
+      return ServiceResult.failure(error: :post_does_not_belong_to_this_topic) if @post.forum_topic_id != @topic.id
 
       new_topic = nil
       @topic.with_lock do
         @post.reload
-        return ServiceResult.failure(error: "Cannot split the opening post.") if @post.floor_number <= 1
-        return ServiceResult.failure(error: "Post does not belong to this topic.") if @post.forum_topic_id != @topic.id
+        return ServiceResult.failure(error: :cannot_split_the_opening_post) if @post.floor_number <= 1
+        return ServiceResult.failure(error: :post_does_not_belong_to_this_topic) if @post.forum_topic_id != @topic.id
 
         posts_to_move = Community::Post.with_discarded
           .where(forum_topic_id: @topic.id)

@@ -7,6 +7,7 @@ module Community
     KINDS = %w[inline_image post_attachment].freeze
     STATUSES = %w[reserved stored linked cleanup_pending cleanup_failed cleaned].freeze
     SCAN_STATUSES = %w[pending clean infected error].freeze
+    MANUAL_REVIEW_STATUSES = %w[none released revoked].freeze
     QUOTA_STATUSES = (STATUSES - [ "cleaned" ]).freeze
     CLEANUP_STATUSES = %w[reserved stored linked cleanup_pending cleanup_failed].freeze
 
@@ -25,15 +26,26 @@ module Community
       foreign_key: :forum_post_id,
       optional: true,
       inverse_of: :inline_uploads
+    belongs_to :manual_reviewed_by,
+      class_name: "User",
+      optional: true
+    belongs_to :manual_review_revoked_by,
+      class_name: "User",
+      optional: true
 
     enum :kind, KINDS.index_by(&:itself), validate: true, prefix: true
     enum :status, STATUSES.index_by(&:itself), validate: true, prefix: true
     enum :scan_status, SCAN_STATUSES.index_by(&:itself), validate: true, prefix: true
+    enum :manual_review_status,
+      MANUAL_REVIEW_STATUSES.index_by(&:itself),
+      validate: true,
+      prefix: true
 
     validates :public_id, presence: true, uniqueness: true
     validates :byte_size, numericality: { only_integer: true, greater_than: 0 }
     validates :cleanup_attempts, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
     validates :scan_attempts, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+    validates :manual_review_version, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
 
     scope :counted_toward_quota, -> { where(status: QUOTA_STATUSES) }
     scope :cleanup_due, ->(at = Time.current) {

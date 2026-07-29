@@ -9,11 +9,11 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Post not available.") unless PostAccess.editable?(post: @post, user: @user)
-      return ServiceResult.failure(error: "Not allowed.") unless can_restore?
+      return ServiceResult.failure(error: :post_not_available) unless PostAccess.editable?(post: @post, user: @user)
+      return ServiceResult.failure(error: :not_allowed) unless can_restore?
 
       body = @edit.body_before.to_s
-      return ServiceResult.failure(error: "Nothing to restore.") if body.blank?
+      return ServiceResult.failure(error: :nothing_to_restore) if body.blank?
 
       old_body = @post.body
       reason = I18n.t("mcweb.forum.restore_post_edit.reason", time: I18n.l(@edit.created_at, format: :short))

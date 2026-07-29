@@ -73,7 +73,7 @@ module Commerce
 
       ServiceResult.success(pdf.render)
     rescue LoadError
-      ServiceResult.failure(error: "PDF generation is not available.")
+      ServiceResult.failure(error: :pdf_generation_is_not_available)
     end
 
     private

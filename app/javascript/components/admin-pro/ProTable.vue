@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import { IconApps, IconSettings } from '@arco-design/web-vue/es/icon'
+import { useI18n } from 'vue-i18n'
 
 export interface ProColumn {
   key: string
@@ -62,12 +63,13 @@ const emit = defineEmits<{
   (event: 'bulk', action: string, ids: Array<string | number>): void
 }>()
 
+const { t } = useI18n()
 const density = ref<Density>('medium')
-const densityOptions: Array<{ label: string; value: Density }> = [
-  { label: 'Comfortable', value: 'large' },
-  { label: 'Default', value: 'medium' },
-  { label: 'Compact', value: 'small' },
-]
+const densityOptions = computed<Array<{ label: string; value: Density }>>(() => [
+  { label: t('common.tableDensity.comfortable'), value: 'large' },
+  { label: t('common.tableDensity.default'), value: 'medium' },
+  { label: t('common.tableDensity.compact'), value: 'small' },
+])
 const visibleKeys = ref(props.columns.map((column) => column.key))
 const selectedIds = ref<Array<string | number>>([])
 const visibleColumns = computed(() =>
@@ -97,7 +99,7 @@ const pageSize = computed(() => {
 function goToPage(page: number) {
   const url = new URL(window.location.href)
   url.searchParams.set(props.pageParam, String(page))
-  router.get(url.pathname + url.search, {}, { preserveScroll: true, preserveState: false })
+  router.get(url.pathname + url.search, {}, { preserveScroll: true, preserveState: true })
 }
 
 function runBulk(action: string) {
@@ -153,8 +155,8 @@ function columnSorter(column: ProColumn) {
         <slot name="toolbar-right" />
 
         <a-dropdown trigger="click" @select="density = $event as Density">
-          <a-tooltip content="Density">
-            <a-button shape="circle" :aria-label="'Density'">
+          <a-tooltip :content="t('common.tableDensity.label')">
+            <a-button shape="circle" :aria-label="t('common.tableDensity.label')">
               <template #icon><icon-apps /></template>
             </a-button>
           </a-tooltip>
@@ -171,8 +173,8 @@ function columnSorter(column: ProColumn) {
         </a-dropdown>
 
         <a-popover trigger="click" position="br">
-          <a-tooltip content="Columns">
-            <a-button shape="circle" :aria-label="'Columns'">
+          <a-tooltip :content="t('common.tableColumns')">
+            <a-button shape="circle" :aria-label="t('common.tableColumns')">
               <template #icon><icon-settings /></template>
             </a-button>
           </a-tooltip>
@@ -246,7 +248,13 @@ function columnSorter(column: ProColumn) {
       class="mt-4 flex flex-wrap items-center justify-between gap-3"
     >
       <a-typography-text type="secondary">
-        {{ pagination.count }} total · {{ pagination.from }}–{{ pagination.to }}
+        {{
+          t('common.tableRange', {
+            count: pagination.count,
+            from: pagination.from,
+            to: pagination.to,
+          })
+        }}
       </a-typography-text>
       <a-pagination
         v-if="pagination.pages > 1"

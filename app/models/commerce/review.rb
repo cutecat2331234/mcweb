@@ -19,7 +19,7 @@ module Commerce
     def photos_limit
       return unless photos.attached? && photos.count > 3
 
-      errors.add(:photos, "cannot exceed 3 images")
+      errors.add(:photos, I18n.t("mcweb.validation_errors.cannot_exceed_3_images"))
     end
   end
 end

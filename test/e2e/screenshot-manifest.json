@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "files": [
+    "test/e2e/__screenshots__/desktop-chromium/admin-quality.spec.ts/jobs-empty-long.png",
+    "test/e2e/__screenshots__/desktop-chromium/admin-quality.spec.ts/jobs-en.png",
+    "test/e2e/__screenshots__/desktop-chromium/admin-quality.spec.ts/jobs-zh-CN.png",
+    "test/e2e/__screenshots__/mobile-chromium/admin-quality.spec.ts/jobs-empty-long.png",
+    "test/e2e/__screenshots__/mobile-chromium/admin-quality.spec.ts/jobs-en.png",
+    "test/e2e/__screenshots__/mobile-chromium/admin-quality.spec.ts/jobs-zh-CN.png"
+  ]
+}

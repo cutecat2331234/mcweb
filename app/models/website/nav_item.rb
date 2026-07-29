@@ -21,19 +21,19 @@ module Website
     def url_or_page_present
       return if page.present? || url.present?
 
-      errors.add(:base, "must have either a page or url")
+      errors.add(:base, I18n.t("mcweb.validation_errors.website_nav_target_required"))
     end
 
     def safe_url_format
       return if url.blank?
 
       unless url.match?(/\A(https?:\/\/|\/[^\/])/) || url.start_with?("/")
-        errors.add(:url, "格式无效，仅允许 http(s):// 或以 / 开头的站内路径")
+        errors.add(:url, I18n.t("mcweb.validation_errors.website_nav_url_format"))
         return
       end
 
       if url.match?(/\A(javascript:|data:|vbscript:|\/\/)/i)
-        errors.add(:url, "不允许使用该协议")
+        errors.add(:url, I18n.t("mcweb.validation_errors.website_nav_url_scheme"))
       end
     end
   end

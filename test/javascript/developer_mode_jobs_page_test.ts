@@ -15,8 +15,18 @@ test('background jobs page uses Arco and explains Developer Mode scheduling', ()
   assert.match(source, /<a-descriptions/)
   assert.match(source, /<a-tag/)
   assert.match(source, /<a-button/)
+  assert.match(source, /<a-statistic/)
+  assert.match(source, /<a-progress/)
+  assert.match(source, /<a-table/)
   assert.match(source, /v-if="developerMode\.enabled"/)
   assert.match(source, /automaticRegistration/)
+  assert.match(source, /queueSnapshot\.oldest_wait_seconds/)
+  assert.match(source, /queueSnapshot\.utilization_percent/)
+  assert.match(source, /workerHeartbeat\.fresh_count/)
+  assert.match(source, /workerHeartbeat\.latest_at/)
+  assert.match(source, /const \{ t, locale \} = useI18n\(\)/)
+  assert.match(source, /new Intl\.DateTimeFormat\(locale\.value,/)
+  assert.doesNotMatch(source, /new Intl\.DateTimeFormat\(undefined,/)
   assert.match(
     source,
     /<a-button type="primary" :href="dashboardUrl" data-admin-hard-navigation>/,
@@ -36,5 +46,9 @@ test('background jobs warning is translated in English and Chinese', () => {
     assert.match(source, /automaticRegistration:/)
     assert.match(source, /manualExecution:/)
     assert.match(source, /openDashboard:/)
+    assert.match(source, /queue:\s*\{/)
+    assert.match(source, /oldestWait:/)
+    assert.match(source, /unavailableDescription:/)
+    assert.match(source, /heartbeatStatus:/)
   }
 })

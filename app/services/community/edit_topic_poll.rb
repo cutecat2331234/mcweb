@@ -22,11 +22,11 @@ module Community
 
     def call
       unless @user && Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
-      return ServiceResult.failure(error: "You cannot edit this poll.") unless can_edit?
+      return ServiceResult.failure(error: :this_topic_is_archived) if @topic.archived_at.present?
+      return ServiceResult.failure(error: :you_cannot_edit_this_poll) unless can_edit?
 
       poll = @topic.poll
       if @remove_poll || poll_removal_requested?(poll)
@@ -34,14 +34,14 @@ module Community
         return ServiceResult.success(nil)
       end
 
-      return ServiceResult.failure(error: "Poll not found.") unless poll || @poll_question.present?
+      return ServiceResult.failure(error: :poll_not_found) unless poll || @poll_question.present?
 
       if poll&.votes&.exists? && options_changed?(poll)
-        return ServiceResult.failure(error: "Cannot change poll options after votes have been cast.")
+        return ServiceResult.failure(error: :cannot_change_poll_options_after_votes_have_been_cast)
       end
 
       if poll&.votes&.exists? && @poll_question_provided && @poll_question.present? && @poll_question != poll.question
-        return ServiceResult.failure(error: "Cannot change poll question after votes have been cast.")
+        return ServiceResult.failure(error: :cannot_change_poll_question_after_votes_have_been_cast)
       end
 
       Community::SyncTopicPoll.call(

@@ -128,13 +128,23 @@ function submitMessage() {
       </div>
       <div class="space-y-2">
         <Label for="recipients">{{ t('forum.messages.recipients') }}</Label>
-        <Input id="recipients" v-model="form.conversation.recipients" required placeholder="user1, user2" />
+        <Input
+          id="recipients"
+          v-model="form.conversation.recipients"
+          required
+          :placeholder="t('forum.messages.recipientsPlaceholder')"
+        />
         <p v-if="fieldError('recipients')" class="text-sm text-destructive">{{ fieldError('recipients') }}</p>
       </div>
     </template>
     <div v-else class="space-y-2">
       <Label for="recipient">{{ t('forum.messages.recipient') }}</Label>
-      <Input id="recipient" v-model="form.conversation.recipient" required placeholder="username" />
+      <Input
+        id="recipient"
+        v-model="form.conversation.recipient"
+        required
+        :placeholder="t('forum.messages.recipientPlaceholder')"
+      />
       <p v-if="fieldError('recipient')" class="text-sm text-destructive">{{ fieldError('recipient') }}</p>
     </div>
     <div class="space-y-2">

@@ -11,10 +11,10 @@ module Community
 
     def call
       unless @user && Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
+      return ServiceResult.failure(error: :this_topic_is_archived) if @topic.archived_at.present?
 
       unless SiteSetting.get("forum.allow_op_close", "true") == "true"
         return ServiceResult.failure(error: "topic_close_disabled")
@@ -44,7 +44,7 @@ module Community
             body: reopen_body
           )
         else
-          return ServiceResult.failure(error: "Unknown action.")
+          return ServiceResult.failure(error: :unknown_action)
         end
         raise ActiveRecord::Rollback if action_result.failure?
       end

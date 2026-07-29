@@ -14,7 +14,23 @@ class Identity::PermissionCatalogTest < ActiveSupport::TestCase
     identity.roles.manage
     system.bans.manage
     forum.users.trust.manage
+    store.credit.read
     store.credit.adjust
+    store.entitlements.read
+    store.entitlements.grant
+    store.entitlements.revoke
+    store.orders.mark_paid
+    store.orders.mark_fulfilled
+    store.orders.cancel
+    system.plugins.view
+    system.plugins.install
+    system.plugins.enable
+    system.plugins.disable
+    system.plugins.diagnostics
+    system.plugins.recover
+    system.plugins.rollback
+    system.plugins.uninstall_preserve
+    system.plugins.uninstall_purge
   ].freeze
 
   test "catalog entries are unique and expose their complete contract" do

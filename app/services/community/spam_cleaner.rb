@@ -12,10 +12,10 @@ module Community
 
     def call
       unless @actor.permission?("forum.users.warn")
-        return ServiceResult.failure(error: "You are not authorized to run the spam cleaner.")
+        return ServiceResult.failure(error: :you_are_not_authorized_to_run_the_spam_cleaner)
       end
       if @user.account_owner? || @user.id == @actor.id
-        return ServiceResult.failure(error: "This user cannot be cleaned.")
+        return ServiceResult.failure(error: :this_user_cannot_be_cleaned)
       end
 
       topics_count = 0

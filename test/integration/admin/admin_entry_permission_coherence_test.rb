@@ -5,20 +5,25 @@ require "inertia_rails/minitest"
 
 module Admin
   class ArcoDemoAccessTest < ActionDispatch::IntegrationTest
-    test "production cannot reach the static Arco demo directly" do
-      Rails.env.stub(:production?, true) do
+    test "the static Arco demo stays hidden while Developer Mode is disabled" do
+      Mcweb::DeveloperMode.stub(:enabled?, false) do
         get admin_arco_demo_path
+        assert_response :not_found
 
+        get admin_dashboard_pro_demo_path
+        assert_response :not_found
+
+        get admin_store_orders_pro_demo_path
         assert_response :not_found
       end
     end
 
-    test "non-production authorized admins can use the static Arco demo" do
+    test "authorized admins can use the static Arco demo in Developer Mode" do
       admin = create_user
       grant_permission(admin, "admin.access")
       sign_in_as(admin)
 
-      Rails.env.stub(:production?, false) do
+      Mcweb::DeveloperMode.stub(:enabled?, true) do
         get admin_arco_demo_path
 
         assert_response :success

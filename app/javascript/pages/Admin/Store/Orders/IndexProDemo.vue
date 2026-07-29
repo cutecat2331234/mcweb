@@ -102,7 +102,11 @@ function applyFilter(patch: Record<string, string | undefined>) {
     else url.searchParams.delete(key)
   })
   url.searchParams.delete('page')
-  router.get(url.pathname + url.search, {}, { preserveScroll: true })
+  router.get(url.pathname + url.search, {}, {
+    preserveScroll: true,
+    preserveState: true,
+    replace: true,
+  })
 }
 
 function goToPage(page: number) {
@@ -110,7 +114,8 @@ function goToPage(page: number) {
   url.searchParams.set('page', String(page))
   router.get(url.pathname + url.search, {}, {
     preserveScroll: true,
-    preserveState: false,
+    preserveState: true,
+    replace: true,
   })
 }
 

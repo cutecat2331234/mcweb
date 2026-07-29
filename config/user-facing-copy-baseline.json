@@ -1,0 +1,237 @@
+{
+  "version": 2,
+  "description": "Reviewed non-production exceptions only. Production user-facing copy must use paired en/zh I18N entries.",
+  "entries": [
+    {
+      "file": "app/controllers/admin/arco_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "本月收入",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/arco_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "待处理",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/arco_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "注册用户",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/arco_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "总订单",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/arco_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "Arco Design Vue 组件库 + Arco Pro 布局风格的 McWeb 后台演示（静态数据）",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/arco_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "Arco UI 范例",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/dashboard_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "概览",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/dashboard_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "Element Plus 布局 + 卡片 + 表格一套语言的门面（演示数据，不影响真实后台）",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "标记已发货",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "标记已支付",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "订单号",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "金额",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "客户",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "取消订单",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "全部",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "商城订单",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "下单时间",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "演示:已对 个订单执行「 」(样板页不写入数据库)",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "支付",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "状态",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/controllers/admin/store/orders_pro_demo_controller.rb",
+      "kind": "ruby-user-keyword",
+      "text": "Element Plus ProTable 重做样板（演示数据，不影响真实订单）",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/ArcoDemo/Index.vue",
+      "kind": "vue-text",
+      "text": "概览",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/ArcoDemo/Index.vue",
+      "kind": "vue-text",
+      "text": "Arco UI 范例",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/DashboardProDemo.vue",
+      "kind": "vue-attribute:title",
+      "text": "Recent orders",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/DashboardProDemo.vue",
+      "kind": "vue-text",
+      "text": "Demo data",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/DashboardProDemo.vue",
+      "kind": "vue-text",
+      "text": "This compatibility demo now uses the same Arco Design shell and components as every admin page. It contains static data and does not read or write the database.",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue",
+      "kind": "vue-attribute:description",
+      "text": "服务端分页、URL 筛选、批量动作、列设置、密度切换与状态徽章均保持可用。",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue",
+      "kind": "vue-attribute:placeholder",
+      "text": "搜索订单号",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue",
+      "kind": "vue-attribute:title",
+      "text": "Arco Design 后台样板页",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue",
+      "kind": "vue-text",
+      "text": "导出 CSV",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue",
+      "kind": "vue-text",
+      "text": "列设置",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    },
+    {
+      "file": "app/javascript/pages/Admin/Store/PaymentProviders/Show.vue",
+      "kind": "vue-text",
+      "text": "Stripe",
+      "category": "proper-name",
+      "reason": "Official third-party payment-provider product name; it must not be translated."
+    },
+    {
+      "file": "app/services/operations/developer_scenario_seeder.rb",
+      "kind": "ruby-user-keyword",
+      "text": "Developer Mode baseline scenario",
+      "category": "development-demo",
+      "reason": "Developer-mode-only compatibility fixture; route and data are gated by developer mode."
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+---
+id: examples/hello_event
+name: Hello Event
+version: 1.0.0
+api_version: "1"
+description: Demonstrates settings, events, translations, and a safe admin page.
+author: McWeb
+capabilities:
+- forum.events.publish
+- forum.events.read
+- plugin.settings.read
+contributions:
+  catalog: config/contributions.yml
+  settings: config/settings.yml
+entrypoint: plugin.rb

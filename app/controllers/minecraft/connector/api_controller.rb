@@ -96,7 +96,7 @@ module Minecraft
 
       def events
         unless connector_payload["event_id"].present?
-          return render json: { error: "event_id required" }, status: :unprocessable_entity
+          return render json: { error: I18n.t("mcweb.user_copy.event_id_required") }, status: :unprocessable_entity
         end
 
         payload = connector_payload.fetch("payload", {}).deep_stringify_keys
@@ -208,7 +208,7 @@ module Minecraft
 
       def verify_connector_event_player!(payload)
         player_ref = resolve_connector_player_ref(payload)
-        return ServiceResult.failure(error: "Unable to resolve player.") unless player_ref
+        return ServiceResult.failure(error: I18n.t("mcweb.user_copy.unable_to_resolve_player")) unless player_ref
 
         Minecraft::AssertPlayerOnServer.call(server: @server, player_ref: player_ref)
       end

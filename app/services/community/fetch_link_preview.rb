@@ -14,7 +14,7 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Invalid URL.") unless UrlSafety.public_http_url?(@url)
+      return ServiceResult.failure(error: :invalid_url) unless UrlSafety.public_http_url?(@url)
 
       cached = Rails.cache.read(cache_key)
       return ServiceResult.success(cached) if cached
@@ -23,7 +23,7 @@ module Community
       Rails.cache.write(cache_key, preview, expires_in: 1.day) if preview
       ServiceResult.success(preview)
     rescue StandardError
-      ServiceResult.failure(error: "Preview unavailable.")
+      ServiceResult.failure(error: :preview_unavailable)
     end
 
     private

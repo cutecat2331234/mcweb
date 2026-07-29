@@ -13,11 +13,11 @@ module Setup
     end
 
     def call
-      return ServiceResult.failure(error: "installation already complete") if installation_complete?
+      return ServiceResult.failure(error: :installation_already_complete) if installation_complete?
 
       password = @admin[:password].to_s
-      return ServiceResult.failure(error: "password required") if password.blank?
-      return ServiceResult.failure(error: "password too short") if password.length < 6
+      return ServiceResult.failure(error: :password_required) if password.blank?
+      return ServiceResult.failure(error: :password_too_short) if password.length < 6
 
       unless @skip_database
         db_result = configure_database!
@@ -109,14 +109,16 @@ module Setup
 
       case outcome
       when :already_complete
-        ServiceResult.success({ message: "already complete" })
+        ServiceResult.success({ message: I18n.t("mcweb.user_copy.installation_already_complete") })
       when :register_failed
         ServiceResult.failure(error: register_error)
       when :success
         Frontend::EnsureDefaultTemplate.call
-        ServiceResult.success({ user: user, message: "installation complete" })
+        ServiceResult.success(
+          { user: user, message: I18n.t("mcweb.user_copy.installation_complete") }
+        )
       else
-        ServiceResult.failure(error: "unknown finalize outcome")
+        ServiceResult.failure(error: :unknown_finalize_outcome)
       end
     end
 

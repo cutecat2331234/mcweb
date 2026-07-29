@@ -31,7 +31,9 @@ ROLES = {
       forum.topics.move forum.posts.edit_others forum.topics.edit_others
       forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage
       forum.users.trust.manage forum.points.manage identity.groups.read identity.groups.manage
-      identity.groups.members.assign identity.groups.permissions.manage admin.access
+      identity.groups.members.assign identity.groups.permissions.manage
+      data_governance.read data_governance.holds.manage data_governance.content.delete
+      data_governance.content.restore admin.access
     ]
   },
   "moderator" => {
@@ -42,22 +44,45 @@ ROLES = {
   "store_admin" => {
     name: "商城管理员",
     description: "管理商城",
-    permissions: %w[store.products.manage store.orders.read store.credit.adjust store.questions.answer store.questions.manage admin.access]
+    permissions: %w[
+      store.products.manage store.inventory.read store.inventory.adjust store.inventory.recover
+      store.orders.read store.credit.read
+      store.credit.adjust store.entitlements.read store.entitlements.grant
+      store.entitlements.revoke store.questions.answer store.questions.manage
+      store.fulfillments.read store.fulfillments.retry store.fulfillments.cancel
+      store.disputes.read store.disputes.sensitive_read store.disputes.assign
+      store.disputes.note store.disputes.evidence_submit store.disputes.accept_loss
+      store.disputes.close store.disputes.rights_manage
+      store.finance.read
+      admin.access
+    ]
   },
   "finance" => {
     name: "财务",
     description: "订单与退款",
-    permissions: %w[store.orders.read store.orders.refund store.credit.adjust admin.access]
+    permissions: %w[
+      store.orders.read store.orders.refund store.orders.mark_paid
+      store.orders.mark_fulfilled store.orders.cancel store.inventory.read store.inventory.recover store.credit.read
+      store.credit.adjust store.fulfillments.read store.fulfillments.retry store.fulfillments.cancel admin.access
+      store.disputes.read store.disputes.sensitive_read store.disputes.assign
+      store.disputes.note store.disputes.evidence_submit store.disputes.accept_loss
+      store.disputes.close store.disputes.rights_manage
+      store.finance.read store.finance.documents.manage
+      store.finance.exports.create store.finance.exports.download
+    ]
   },
   "support" => {
     name: "客服",
     description: "客服支持",
-    permissions: %w[store.orders.read admin.access]
+    permissions: %w[
+      store.orders.read store.fulfillments.read store.disputes.read
+      store.disputes.assign store.disputes.note admin.access
+    ]
   },
   "auditor" => {
     name: "只读审计员",
     description: "只读审计",
-    permissions: %w[system.audit.read admin.access]
+    permissions: %w[system.audit.read data_governance.read admin.access]
   }
 }.freeze
 
@@ -271,6 +296,9 @@ if Rails.env.development?
     c.settings = { webhook_secret: "fake_webhook_secret" }
   end
 end
+
+puts "Ensuring data retention policies..."
+DataGovernance::RetentionPolicy.ensure_defaults!
 
 puts "Ensuring builtin frontend template..."
 Frontend::EnsureDefaultTemplate.call

@@ -151,7 +151,7 @@ module Commerce
       end
 
       return ServiceResult.failure(error: error) if error
-      return ServiceResult.failure(error: "Unable to prepare refund.") unless refund&.persisted?
+      return ServiceResult.failure(error: :unable_to_prepare_refund) unless refund&.persisted?
 
       { refund: refund, idempotent: idempotent, provider_required: provider_required }
     end
@@ -253,6 +253,31 @@ module Commerce
             amount_cents: locked_refund.amount_cents,
             restoration_amount_cents: progress.fetch(:refund_amount_cents)
           }
+        )
+        dispute_result = Commerce::Disputes::RebalanceExposure.call(
+          payment_record: @payment_record,
+          trigger_idempotency: "refund:#{locked_refund.id}:dispute-rebalance"
+        )
+        unless dispute_result.success?
+          raise RestorationFailure,
+            dispute_result.error.presence || "Dispute exposure could not be reconciled."
+        end
+        receipt_result = Commerce::IssueFinanceRefundReceipt.call(
+          refund: locked_refund,
+          actor: @approved_by || @requested_by
+        )
+        unless receipt_result.success?
+          raise RestorationFailure,
+            receipt_result.error.presence || "Refund receipt could not be issued."
+        end
+        payload = Commerce::DomainEvents.refund(locked_refund)
+        Commerce::DomainEvents.publish_after_commit(
+          "commerce.refund.processed",
+          payload
+        )
+        Commerce::DomainEvents.publish_after_commit(
+          "commerce.payment.refunded",
+          payload
         )
         success_refund = locked_refund
       end
@@ -387,12 +412,15 @@ module Commerce
     end
 
     def deliver_refund_notifications!(refund, previous_status)
-      MailDeliveryJob.perform_later(
-        "Commerce::OrderMailer",
-        "refund_processed",
-        "deliver_now",
-        args: [ refund.id ]
-      )
+      refund_id = refund.id
+      ActiveRecord.after_all_transactions_commit do
+        MailDeliveryJob.perform_later(
+          "Commerce::OrderMailer",
+          "refund_processed",
+          "deliver_now",
+          args: [ refund_id ]
+        )
+      end
       Commerce::NotifyOrderEvent.call(
         user: @order.user,
         notification_type: "commerce.refund_processed",
@@ -441,7 +469,7 @@ module Commerce
     def ensure_refund_binding!(refund)
       return if validate_refund_identity(refund).nil?
 
-      refund.errors.add(:base, "Refund binding changed while processing.")
+      refund.errors.add(:base, I18n.t("mcweb.validation_errors.refund_binding_changed_while_processing"))
       raise ActiveRecord::RecordInvalid.new(refund)
     end
 

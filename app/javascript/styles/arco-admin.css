@@ -276,6 +276,11 @@ html.dark body.mcweb-admin {
   background: rgb(var(--arcoblue-1));
 }
 
+.mcweb-admin :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid rgb(var(--primary-6)) !important;
+  outline-offset: 2px !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mcweb-admin *,
   .mcweb-admin *::before,

@@ -1141,14 +1141,14 @@ module Payments
 
     def invalid_date_result
       ServiceResult.failure(
-        error: "Enter a valid ISO reconciliation date.",
+        error: :enter_a_valid_iso_reconciliation_date,
         code: "invalid_date"
       )
     end
 
     def failure_result(code)
       ServiceResult.failure(
-        error: "Payment reconciliation could not be completed.",
+        error: :payment_reconciliation_could_not_be_completed,
         code: code
       )
     end

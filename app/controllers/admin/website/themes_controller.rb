@@ -36,7 +36,7 @@ module Admin
           subtitle: @theme.key,
           fields: [
             { label: t("admin.common.status"), value: @theme.active? ? "active" : "inactive" },
-            { label: "Tokens", value: @theme.tokens.to_json.truncate(200) }
+            { label: t("mcweb.user_copy.theme_tokens"), value: @theme.tokens.to_json.truncate(200) }
           ],
           backUrl: admin_website_themes_path,
           actions: [
@@ -100,7 +100,7 @@ module Admin
           begin
             permitted[:tokens] = JSON.parse(permitted.delete(:tokens_json))
           rescue JSON::ParserError
-            theme.errors.add(:tokens, "must be valid JSON")
+            theme.errors.add(:tokens, I18n.t("mcweb.validation_errors.invalid_json"))
             return nil
           end
         elsif permitted[:tokens].is_a?(ActionController::Parameters)

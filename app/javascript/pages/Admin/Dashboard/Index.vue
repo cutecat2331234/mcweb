@@ -96,6 +96,7 @@ function metricPrecision(value: Metric['value']) {
         <a-card
           :class="['arco-stat-card', `mc-admin-surface--${metric.tone}`]"
           :bordered="true"
+          :body-style="{ minWidth: 0 }"
           hoverable
         >
           <a-statistic
@@ -104,10 +105,16 @@ function metricPrecision(value: Metric['value']) {
             :value="metricNumber(metric.value)"
             :precision="metricPrecision(metric.value)"
           />
-          <div v-else class="arco-statistic">
-            <div class="arco-statistic-title">{{ metric.label }}</div>
-            <div class="arco-statistic-content">{{ metric.value }}</div>
-          </div>
+          <a-space v-else direction="vertical" :size="8" fill>
+            <a-typography-text type="secondary">{{ metric.label }}</a-typography-text>
+            <a-typography-title
+              :heading="4"
+              :ellipsis="{ showTooltip: true }"
+              :style="{ margin: 0 }"
+            >
+              {{ metric.value }}
+            </a-typography-title>
+          </a-space>
         </a-card>
       </a-col>
     </a-row>
@@ -228,6 +235,7 @@ function metricPrecision(value: Metric['value']) {
         :data="recentAuditLogs"
         :pagination="false"
         :bordered="{ cell: true }"
+        :scroll="{ minWidth: 640 }"
         row-key="created_at"
         stripe
       >
@@ -273,13 +281,3 @@ function metricPrecision(value: Metric['value']) {
     </a-card>
   </div>
 </template>
-
-<style scoped>
-.admin-dashboard :deep(.arco-statistic-title) {
-  color: var(--color-text-3);
-}
-
-.admin-dashboard :deep(.arco-card-body) {
-  min-width: 0;
-}
-</style>

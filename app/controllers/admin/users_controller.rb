@@ -11,6 +11,8 @@ module Admin
                   ]
     before_action -> { require_permission("system.settings.manage") },
                   only: %i[index show edit update destroy ban unban]
+    before_action -> { require_permission("identity.permissions.explain") },
+                  only: :permission_explanation
     before_action -> { require_admin_module!("forum") },
                   only: %i[grant_badge revoke_badge warn staff_note clean_spam silence unsilence set_trust_level]
     before_action -> { require_permission("forum.badges.manage") },
@@ -28,14 +30,17 @@ module Admin
                     authorize_store_credit_adjustment
                     adjust_store_credit
                   ]
-    before_action -> { require_permission("store.credit.adjust") },
+    before_action -> { require_permission("store.credit.read") },
                   only: %i[
                     store_credit_index
                     store_credit_show
+                  ]
+    before_action -> { require_permission("store.credit.adjust") },
+                  only: %i[
                     authorize_store_credit_adjustment
                     adjust_store_credit
                   ]
-    before_action :set_user, only: %i[show store_credit_show edit update destroy ban unban grant_badge revoke_badge warn staff_note silence unsilence set_trust_level authorize_store_credit_adjustment adjust_store_credit clean_spam]
+    before_action :set_user, only: %i[show permission_explanation store_credit_show edit update destroy ban unban grant_badge revoke_badge warn staff_note silence unsilence set_trust_level authorize_store_credit_adjustment adjust_store_credit clean_spam]
     before_action :ensure_store_credit_target_manageable!, only: :store_credit_show
     before_action :ensure_manageable_target!,
                   only: %i[ban unban silence unsilence set_trust_level authorize_store_credit_adjustment adjust_store_credit warn staff_note grant_badge revoke_badge clean_spam]
@@ -49,18 +54,18 @@ module Admin
       @pagy, users = pagy(:offset, users_scope, limit: 50)
 
       render inertia: "Admin/Generic/Index", props: {
-        title: "用户",
+        title: t("mcweb.admin.users.title"),
         columns: [
-          admin_column(:username, "用户名", link: true),
-          admin_column(:email, "邮箱"),
-          admin_column(:status, "状态"),
-          admin_column(:joined, "注册时间")
+          admin_column(:username, t("mcweb.admin.users.fields.username"), link: true),
+          admin_column(:email, t("mcweb.admin.users.fields.email")),
+          admin_column(:status, t("mcweb.admin.users.fields.status")),
+          admin_column(:joined, t("mcweb.admin.users.fields.joined_at"))
         ],
         rows: users.map do |user|
           admin_row(
             username: user.username,
             email: user.email,
-            status: user.status,
+            status: user_status_label(user.status),
             joined: l(user.created_at, format: :short),
             url: admin_user_path(user)
           )
@@ -137,9 +142,9 @@ module Admin
                        mutes.map do |mute|
                          {
                            id: mute.id,
-                           section: mute.section&.name || "全站",
+                           section: mute.section&.name || t("mcweb.admin.users.global_scope"),
                            reason: mute.reason,
-                           expires_at: mute.expires_at ? l(mute.expires_at, format: :short) : "永久",
+                           expires_at: mute.expires_at ? l(mute.expires_at, format: :short) : t("mcweb.admin.users.permanent"),
                            remove_url: admin_forum_mute_path(mute)
                          }
                        end
@@ -151,40 +156,52 @@ module Admin
         title: @user.display_name.presence || @user.username,
         subtitle: @user.email,
         fields: [
-          { label: "用户名", value: @user.username },
-          { label: "状态", value: @user.status },
-          { label: "封禁原因", value: @user.ban_reason.presence || "—" },
-          { label: "封禁到期", value: @user.ban_expires_at ? l(@user.ban_expires_at, format: :long) : (@user.banned? ? "永久" : "—") },
-          { label: "角色", value: @user.roles.pluck(:name).join(", ").presence || "—" },
-          { label: "账户类型", value: account_type_label(@user.account_type) },
-          { label: "邮箱已验证", value: @user.email_verified? ? "是" : "否" },
-          { label: "注册时间", value: l(@user.created_at, format: :long) },
-          { label: "警告积分", value: Community::UserWarning.total_points_for(@user).to_s },
-          { label: "沉默状态", value: @user.silenced? ? "是（可浏览不可发帖）" : "否" },
-          { label: "信任等级", value: trust_level_label(@user) },
-          { label: "信任等级覆盖", value: @user.forum_trust_level_override.present? ? "TL#{@user.forum_trust_level_override}" : "自动（按发帖数）" },
-          {
+          { label: t("mcweb.admin.users.fields.username"), value: @user.username },
+          { label: t("mcweb.admin.users.fields.status"), value: user_status_label(@user.status) },
+          { label: t("mcweb.admin.users.fields.ban_reason"), value: @user.ban_reason.presence || not_available_label },
+          { label: t("mcweb.admin.users.fields.ban_expires_at"), value: @user.ban_expires_at ? l(@user.ban_expires_at, format: :long) : (@user.banned? ? t("mcweb.admin.users.permanent") : not_available_label) },
+          { label: t("mcweb.admin.users.fields.roles"), value: @user.roles.pluck(:name).join(", ").presence || not_available_label },
+          { label: t("mcweb.admin.users.fields.account_type"), value: account_type_label(@user.account_type) },
+          { label: t("mcweb.admin.users.fields.email_verified"), value: boolean_label(@user.email_verified?) },
+          { label: t("mcweb.admin.users.fields.joined_at"), value: l(@user.created_at, format: :long) },
+          { label: t("mcweb.admin.users.fields.warning_points"), value: Community::UserWarning.total_points_for(@user).to_s },
+          { label: t("mcweb.admin.users.fields.silence_status"), value: @user.silenced? ? t("mcweb.admin.users.silenced") : t("mcweb.admin.users.not_silenced") },
+          { label: t("mcweb.admin.users.fields.trust_level"), value: trust_level_label(@user) },
+          { label: t("mcweb.admin.users.fields.trust_override"), value: @user.forum_trust_level_override.present? ? "TL#{@user.forum_trust_level_override}" : t("mcweb.admin.users.trust_automatic") },
+          allowed_user_action?("store", "store.credit.read") ? {
             key: "store_credit",
-            label: "商店余额",
+            label: t("mcweb.admin.users.fields.store_credit"),
             value: format_money(@user.store_credit_cents.to_i, "CNY")
-          }
-        ],
+          } : nil
+        ].compact,
         sections: [
           mute_actions.any? ? {
-            title: "当前禁言",
-            items: mute_actions.map { |m| { label: m[:section], value: "#{m[:reason] || '—'} · 到期: #{m[:expires_at]}" } }
+            title: t("mcweb.admin.users.sections.active_mutes"),
+            items: mute_actions.map do |mute|
+              {
+                label: mute[:section],
+                value: t(
+                  "mcweb.admin.users.mute_summary",
+                  reason: mute[:reason].presence || not_available_label,
+                  expires_at: mute[:expires_at]
+                )
+              }
+            end
           } : nil,
           {
-            title: "社区警告",
+            title: t("mcweb.admin.users.sections.warnings"),
             items: @user.forum_warnings.recent.limit(5).map do |warning|
-              { label: l(warning.created_at, format: :short), value: "#{warning.points} 点 · #{warning.reason}" }
-            end.presence || [ { label: "记录", value: "无" } ]
+              {
+                label: l(warning.created_at, format: :short),
+                value: t("mcweb.admin.users.warning_summary", points: warning.points, reason: warning.reason)
+              }
+            end.presence || empty_record_items
           },
           {
-            title: "员工备注（仅管理可见）",
+            title: t("mcweb.admin.users.sections.staff_notes"),
             items: @user.forum_staff_notes.recent.limit(5).map do |note|
               { label: "#{note.author.username} · #{l(note.created_at, format: :short)}", value: note.body }
-            end.presence || [ { label: "记录", value: "无" } ]
+            end.presence || empty_record_items
           }
         ].compact,
         backUrl: admin_users_path,
@@ -222,14 +239,40 @@ module Admin
           action_url: set_trust_level_admin_user_path(@user),
           current_level: Community::TrustLevel.level_for(@user),
           override: @user.forum_trust_level_override,
-          levels: Community::TrustLevel::LEVELS.map { |entry| { value: entry[:level], label: "TL#{entry[:level]} · #{entry[:name]}" } }
+          levels: Community::TrustLevel::LEVELS.map do |entry|
+            { value: entry[:level], label: trust_level_option_label(entry[:level]) }
+          end
         } : nil,
         storeCreditForm: store_credit_form_props,
         accountForm: account_form_props,
-        actions: mute_actions.map do |m|
-          { label: "解除禁言 (#{m[:section]})", href: m[:remove_url], method: "delete" }
-        end
+        actions: (
+          mute_actions.map do |m|
+          {
+            label: t("mcweb.admin.users.remove_mute", section: m[:section]),
+            href: m[:remove_url],
+            method: "delete"
+          }
+          end +
+          if allowed_user_action?("system", "identity.permissions.explain")
+            [ {
+              label: t("mcweb.permission_explanation.open"),
+              href: permissions_admin_user_path(@user),
+              method: "get"
+            } ]
+          else
+            []
+          end
+        )
       }
+    end
+
+    def permission_explanation
+      result = Identity::PermissionExplanation.call(user: @user, locale: I18n.locale)
+      return redirect_to admin_user_path(@user), alert: service_error_message(result) unless result.success?
+
+      render inertia: "Admin/Users/Permissions", props: result.value.merge(
+        backUrl: admin_user_path(@user)
+      )
     end
 
     def edit
@@ -468,30 +511,54 @@ module Admin
     private
 
     def trust_level_label(user)
-      level = Community::TrustLevel.level_for(user)
-      info = Community::TrustLevel::LEVELS.find { |entry| entry[:level] == level }
-      "TL#{level} · #{info&.dig(:name) || '未知'}"
+      trust_level_option_label(Community::TrustLevel.level_for(user))
+    end
+
+    def trust_level_option_label(level)
+      name = t("mcweb.admin.users.trust_levels.tl#{level}", default: t("mcweb.admin.users.unknown"))
+      "TL#{level} · #{name}"
     end
 
     def account_type_label(account_type)
-      {
-        "member" => "普通会员",
-        "staff" => "工作人员",
-        "admin" => "管理员",
-        "owner" => "站主"
-      }[account_type.to_s] || account_type.to_s
+      t(
+        "mcweb.admin.users.account_types.#{account_type}",
+        default: t("mcweb.admin.users.unknown")
+      )
+    end
+
+    def user_status_label(status)
+      t("mcweb.admin.users.statuses.#{status}", default: t("mcweb.admin.users.unknown"))
+    end
+
+    def boolean_label(value)
+      t(value ? "mcweb.admin.users.boolean_yes" : "mcweb.admin.users.boolean_no")
+    end
+
+    def not_available_label
+      t("mcweb.admin.users.not_available")
+    end
+
+    def empty_record_items
+      [ {
+        label: t("mcweb.admin.users.record"),
+        value: t("mcweb.admin.users.none")
+      } ]
     end
 
     def sync_roles_and_modules!
       return unless params[:user]
 
+      permission_context_changed = false
       if role_ids_update_requested?
-        @user.role_ids = Array(params[:user][:role_ids]).reject(&:blank?).map(&:to_i)
+        requested_role_ids = Array(params[:user][:role_ids]).reject(&:blank?).map(&:to_i).uniq.sort
+        permission_context_changed ||= @user.role_ids.sort != requested_role_ids
+        @user.role_ids = requested_role_ids
       end
 
       if current_user.account_owner?
         if @user.account_staff? && params[:user].key?(:admin_modules)
           modules = requested_admin_modules
+          permission_context_changed ||= @user.admin_module_grants.pluck(:module_key).sort != modules.sort
           @user.admin_module_grants.where.not(module_key: modules).delete_all
           modules.each do |module_key|
             @user.admin_module_grants.find_or_create_by!(module_key: module_key) do |grant|
@@ -500,9 +567,11 @@ module Admin
             end
           end
         elsif !@user.account_staff? || @user.saved_change_to_account_type?
+          permission_context_changed ||= @user.admin_module_grants.exists?
           @user.admin_module_grants.delete_all
         end
       end
+      Identity::PermissionVersion.bump_users!([ @user.id ]) if permission_context_changed
     end
 
     def role_ids_update_requested?

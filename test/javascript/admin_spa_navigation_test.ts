@@ -207,6 +207,7 @@ test('admin source keeps internal links on Inertia and explicitly inventories ev
       'app/javascript/pages/Admin/Generic/Index.vue|record.url',
       'app/javascript/pages/Admin/Generic/Show.vue|action.href',
       'app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue|exportUrl',
+      'app/javascript/pages/Admin/System/DeveloperWorkbench/Show.vue|diagnosticUrl',
       'app/javascript/pages/Admin/System/Jobs/Index.vue|dashboardUrl',
     ].sort(),
   )
@@ -232,14 +233,39 @@ test('native admin forms always prevent browser submission', () => {
 })
 
 test('admin pages share one persistent shell and cross-entry links stay outside Inertia', () => {
-  const demo = source('app/javascript/pages/Admin/ArcoDemo/Index.vue')
+  const canonicalLayout = source('app/javascript/layouts/AdminLayout.vue')
   const dashboard = source('app/javascript/pages/Admin/Dashboard/Index.vue')
   const attachments = source('app/javascript/pages/Admin/Forum/Attachments/Index.vue')
   const genericIndex = source('app/javascript/pages/Admin/Generic/Index.vue')
   const genericShow = source('app/javascript/pages/Admin/Generic/Show.vue')
+  const pages = adminVueSources().filter(({ path }) =>
+    path.startsWith('app/javascript/pages/Admin/'),
+  )
 
-  assert.match(demo, /import AdminLayout from '@\/layouts\/AdminLayout\.vue'/)
-  assert.match(demo, /defineOptions\(\{ layout: AdminLayout \}\)/)
+  assert.match(
+    canonicalLayout,
+    /import ArcoAdminLayout from '@\/layouts\/ArcoAdminLayout\.vue'/,
+  )
+  assert.match(canonicalLayout, /<ArcoAdminLayout>/)
+  assert.equal(pages.length, 83, 'update the reviewed Admin page inventory')
+  for (const page of pages) {
+    assert.match(
+      page.source,
+      /import AdminLayout from '@\/layouts\/AdminLayout\.vue'/,
+      `${page.path} must import the canonical persistent Admin layout`,
+    )
+    assert.match(
+      page.source,
+      /defineOptions\(\{ layout: AdminLayout \}\)/,
+      `${page.path} must use the canonical persistent Admin layout identity`,
+    )
+    assert.doesNotMatch(
+      page.source,
+      /import ArcoAdminLayout from '@\/layouts\/ArcoAdminLayout\.vue'/,
+      `${page.path} bypasses the canonical layout and would remount shell state`,
+    )
+  }
+
   assert.match(dashboard, /:href="adminRoutes\.site"[\s\S]*data-admin-hard-navigation/)
   assert.match(attachments, /:href="record\.post_url"[\s\S]*target="_blank"/)
   assert.match(genericIndex, /isAdminSpaNavigationHref\(record\.url\)/)
@@ -258,4 +284,28 @@ test('website previews deliberately use the public Inertia entry', () => {
     articlesController,
     /render inertia: "Website\/Articles\/Show", layout: "inertia", props:/,
   )
+})
+
+test('shared admin tables paginate without remounting the current Inertia page', () => {
+  const proTable = source('app/javascript/components/admin-pro/ProTable.vue')
+
+  assert.match(
+    proTable,
+    /router\.get\(url\.pathname \+ url\.search, \{\}, \{ preserveScroll: true, preserveState: true \}\)/,
+  )
+  assert.doesNotMatch(proTable, /preserveState:\s*false/)
+  assert.match(proTable, /useI18n\(\)/)
+  assert.doesNotMatch(proTable, />\s*Density\s*</)
+  assert.doesNotMatch(proTable, />\s*Columns\s*</)
+  assert.doesNotMatch(proTable, /\{\{\s*pagination\.count\s*\}\}\s+total/)
+})
+
+test('ordinary admin page visits never opt into an Inertia component remount', () => {
+  for (const page of adminVueSources()) {
+    assert.doesNotMatch(
+      page.source,
+      /preserveState:\s*false/,
+      `${page.path} forces the current admin page to remount`,
+    )
+  }
 })

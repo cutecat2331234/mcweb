@@ -20,13 +20,22 @@ module Identity
       when :revoke then revoke_session
       when :revoke_all then revoke_all_sessions
       else
-        ServiceResult.failure(error: "Unknown session action: #{@action}")
+        ServiceResult.failure(
+          error: I18n.t("mcweb.user_copy.unknown_session_action", action: @action)
+        )
       end
     end
 
     private
 
     def create_session
+      unless @user&.session_eligible?
+        return ServiceResult.failure(
+          error: "session_ineligible",
+          code: "session_ineligible"
+        )
+      end
+
       token = generate_token
       expires_at = (@remember_me ? REMEMBER_ME_TTL : DEFAULT_TTL).from_now
 
@@ -45,14 +54,14 @@ module Identity
     end
 
     def revoke_session
-      return ServiceResult.failure(error: "Session is required.") unless @session
+      return ServiceResult.failure(error: :session_is_required) unless @session
 
       @session.update!(revoked_at: Time.current) unless @session.revoked_at?
       ServiceResult.success(@session)
     end
 
     def revoke_all_sessions
-      return ServiceResult.failure(error: "User is required.") unless @user
+      return ServiceResult.failure(error: :user_is_required) unless @user
 
       Session.where(user: @user, revoked_at: nil).find_each do |session|
         session.update!(revoked_at: Time.current)

@@ -39,6 +39,37 @@ class Mcweb::EventsTest < ActiveSupport::TestCase
     assert_raises(ArgumentError) { Mcweb::Events.subscribe("test.event.gamma") }
   end
 
+  test "deferred domain and raw notifications flush on success and discard on error" do
+    domain_events = []
+    raw_events = []
+    domain = Mcweb::Events.subscribe("test.event.deferred") do |payload|
+      domain_events << payload.fetch(:value)
+    end
+    raw = ActiveSupport::Notifications.subscribe("test.raw.deferred") do |notification|
+      raw_events << notification.payload.fetch(:value)
+    end
+
+    assert_raises(RuntimeError) do
+      Mcweb::Events.defer_until_success do
+        Mcweb::Events.publish("test.event.deferred", value: "discarded")
+        Mcweb::Events.publish_notification("test.raw.deferred", value: "discarded")
+        raise "rollback"
+      end
+    end
+    assert_empty domain_events
+    assert_empty raw_events
+
+    Mcweb::Events.defer_until_success do
+      Mcweb::Events.publish("test.event.deferred", value: "committed")
+      Mcweb::Events.publish_notification("test.raw.deferred", value: "committed")
+    end
+    assert_equal [ "committed" ], domain_events
+    assert_equal [ "committed" ], raw_events
+  ensure
+    Mcweb::Events.unsubscribe(domain) if domain
+    ActiveSupport::Notifications.unsubscribe(raw) if raw
+  end
+
   test "catalog lists documented core events" do
     assert_includes Mcweb::Events::CATALOG, "forum.post.created"
     assert_includes Mcweb::Events::CATALOG, "forum.reaction.added"

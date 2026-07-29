@@ -5,8 +5,12 @@ require_relative "forum"
 require_relative "events"
 require_relative "identity"
 require_relative "jobs"
+require_relative "mailer"
+require_relative "notifications"
 require_relative "site"
 require_relative "settings"
+require_relative "storage"
+require_relative "webhooks"
 
 module Mcweb
   module PluginApi
@@ -15,7 +19,8 @@ module Mcweb
         API_VERSION = "1"
 
         attr_reader :plugin_id, :api_version, :capabilities, :commerce, :forum, :events,
-                    :identity, :jobs, :site, :settings
+                    :identity, :jobs, :mail, :notifications, :site, :settings,
+                    :storage, :webhooks
 
         def initialize(
           manifest:,
@@ -26,7 +31,10 @@ module Mcweb
           @plugin_id = manifest.id
           @api_version = API_VERSION
           @capabilities = manifest.capabilities
-          @commerce = Commerce.new(capability_auditor:)
+          @commerce = Commerce.new(
+            plugin_id: manifest.id,
+            capability_auditor:
+          )
           @forum = Forum.new(capability_auditor:)
           @events = Events.new(event_bus:, capability_auditor:)
           @identity = Identity.new(
@@ -35,8 +43,12 @@ module Mcweb
             capability_auditor:
           )
           @jobs = Jobs.new(manifest:, capability_auditor:)
+          @mail = Mailer.new(plugin_id: manifest.id, capability_auditor:)
+          @notifications = Notifications.new(plugin_id: manifest.id, capability_auditor:)
           @site = Site.new(capability_auditor:)
           @settings = Settings.new(manifest:, capability_auditor:)
+          @storage = Storage.new(plugin_id: manifest.id, capability_auditor:)
+          @webhooks = Webhooks.new(plugin_id: manifest.id, capability_auditor:)
           freeze
         end
 

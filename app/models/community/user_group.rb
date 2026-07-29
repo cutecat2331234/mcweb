@@ -15,8 +15,14 @@ module Community
     validates :name, presence: true, length: { maximum: 100 }
     validates :priority, numericality: { only_integer: true }
 
+    # EE extends this shared table with a required, human-readable identity
+    # key. Keep CE's legacy create paths compatible with that downstream schema
+    # without making the EE-only column part of CE's own database contract.
+    before_validation :assign_downstream_compatible_key, on: :create
     scope :ordered, -> { order(priority: :desc, name: :asc) }
     scope :primary_defaults, -> { where(is_primary_default: true) }
+
+    after_update :bump_member_permission_versions, if: :saved_change_to_permissions?
 
     def permission_keys
       Array(permissions).map(&:to_s)
@@ -29,6 +35,27 @@ module Community
       where(id: Community::GroupMembership.where(user_id: user.id).select(:community_user_group_id))
         .flat_map(&:permission_keys)
         .uniq
+    end
+
+    private
+
+    def assign_downstream_compatible_key
+      return unless has_attribute?("key")
+      return if self[:key].present?
+
+      base = name.to_s.parameterize(separator: "_").tr("-", "_")
+      base = "identity_group" unless base.match?(/\A[a-z]/)
+      candidate = base
+      suffix = 2
+      while self.class.where.not(id: id).exists?(key: candidate)
+        candidate = "#{base}_#{suffix}"
+        suffix += 1
+      end
+      self[:key] = candidate
+    end
+
+    def bump_member_permission_versions
+      Identity::PermissionVersion.bump_group_users!(id)
     end
   end
 end

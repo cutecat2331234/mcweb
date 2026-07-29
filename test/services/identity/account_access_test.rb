@@ -6,7 +6,7 @@ class Identity::AccountAccessTest < ActiveSupport::TestCase
   MODULE_PERMISSIONS = {
     "forum.points.manage" => "forum",
     "identity.groups.read" => "identity",
-    "minecraft.fulfillments.retry" => "store",
+    "store.fulfillments.read" => "store",
     "system.plugins.manage" => "system",
     "minecraft.nodes.manage" => "minecraft",
     "minecraft.servers.control" => "minecraft",

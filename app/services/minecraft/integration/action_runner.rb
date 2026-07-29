@@ -6,7 +6,7 @@ module Minecraft
       STALE_PROCESSING_AFTER = 10.minutes
 
       def self.acquire_or_enqueue(event_key:, event_id:, payload: {})
-        return ServiceResult.failure(error: "event_id required") if event_id.blank?
+        return ServiceResult.failure(error: :event_id_required) if event_id.blank?
 
         existing = Minecraft::IntegrationActionLog.find_by(event_id: event_id)
         if existing&.status.in?(%w[completed processing failed queued])

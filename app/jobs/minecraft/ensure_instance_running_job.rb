@@ -7,6 +7,8 @@ module Minecraft
     def perform(fulfillment_id)
       fulfillment = Commerce::Fulfillment.find_by(id: fulfillment_id)
       return unless fulfillment&.pending?
+      return unless fulfillment.retryable?
+      return if fulfillment.next_attempt_at.present? && fulfillment.next_attempt_at.future?
 
       server = resolve_server(fulfillment)
       if server && maintenance_blocks_fulfillment?(server)

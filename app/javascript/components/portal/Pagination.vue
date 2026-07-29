@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { usePage } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
 
 export interface PaginationMeta {
   page: number
@@ -28,8 +30,12 @@ const pageUrl = (page: number) => {
 }
 
 const summary = computed(() => {
-  if (!props.pagination.count) return 'No results'
-  return `Showing ${props.pagination.from}–${props.pagination.to} of ${props.pagination.count}`
+  if (!props.pagination.count) return t('common.pagination.noResults')
+  return t('common.pagination.summary', {
+    from: props.pagination.from,
+    to: props.pagination.to,
+    count: props.pagination.count,
+  })
 })
 </script>
 
@@ -42,15 +48,17 @@ const summary = computed(() => {
         :href="pageUrl(pagination.prev)"
         class="rounded-md border px-3 py-1.5 hover:bg-muted transition-colors"
       >
-        Previous
+        {{ t('common.pagination.previous') }}
       </a>
-      <span class="text-muted-foreground">Page {{ pagination.page }} / {{ pagination.pages }}</span>
+      <span class="text-muted-foreground">
+        {{ t('common.pagination.page', { page: pagination.page, pages: pagination.pages }) }}
+      </span>
       <a
         v-if="pagination.next"
         :href="pageUrl(pagination.next)"
         class="rounded-md border px-3 py-1.5 hover:bg-muted transition-colors"
       >
-        Next
+        {{ t('common.pagination.next') }}
       </a>
     </div>
   </div>

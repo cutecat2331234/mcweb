@@ -44,7 +44,8 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
     ENV.delete("MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND")
     result = Minecraft::ValidateExecCommand.call(command: "anything")
     assert result.failure?
-    assert_includes result.error, "not configured"
+    assert_equal I18n.t("mcweb.services.errors.exec_command_prefixes_are_not_configured"),
+      result.error
   ensure
     if previous.nil?
       ENV.delete("MCWEB_ALLOW_UNRESTRICTED_EXEC_COMMAND")
@@ -62,7 +63,8 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
     begin
       result = Minecraft::ValidateExecCommand.call(command: "anything")
       assert result.failure?
-      assert_includes result.error, "not configured"
+      assert_equal I18n.t("mcweb.services.errors.exec_command_prefixes_are_not_configured"),
+        result.error
     ensure
       singleton.define_method(:env) { original_env }
     end

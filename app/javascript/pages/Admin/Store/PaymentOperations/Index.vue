@@ -23,10 +23,10 @@ import {
   Textarea,
   TypographyText,
 } from '@mcweb/ui'
-import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 
-defineOptions({ layout: ArcoAdminLayout })
+defineOptions({ layout: AdminLayout })
 
 type ViewName = 'payments' | 'webhooks' | 'orphans' | 'refunds'
 

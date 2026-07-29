@@ -1,0 +1,4 @@
+---
+en:
+  examples.commerce_fulfillment.name: Commerce Fulfillment
+  examples.commerce_fulfillment.summary: After-commit, idempotency, and retry example.

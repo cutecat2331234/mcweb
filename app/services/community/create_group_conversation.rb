@@ -21,17 +21,17 @@ module Community
       )
       return rate_limit_result if rate_limit_result.failure?
 
-      return ServiceResult.failure(error: "Group title is required.") if @title.blank?
-      return ServiceResult.failure(error: "Add at least one other participant.") if @usernames.empty?
-      return ServiceResult.failure(error: "Too many participants.") if @usernames.size > MAX_PARTICIPANTS
-      return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
-      return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@sender)
+      return ServiceResult.failure(error: :group_title_required) if @title.blank?
+      return ServiceResult.failure(error: :add_other_participant) if @usernames.empty?
+      return ServiceResult.failure(error: :too_many_participants) if @usernames.size > MAX_PARTICIPANTS
+      return ServiceResult.failure(error: :message_too_short) if @body.length < 1
+      return ServiceResult.failure(error: :new_members_cannot_send_pm) unless Community::TrustLevel.can_send_pm?(@sender)
 
       pm_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :pm)
       return pm_restriction if pm_restriction.failure?
 
       if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@sender)
-        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+        return ServiceResult.failure(error: :new_members_cannot_post_links)
       end
 
       link_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :link)
@@ -39,11 +39,20 @@ module Community
 
       recipients = User.where(username: @usernames)
       missing = @usernames - recipients.pluck(:username)
-      return ServiceResult.failure(error: "Users not found: #{missing.join(', ')}") if missing.any?
+      if missing.any?
+        return ServiceResult.failure(
+          error: I18n.t("mcweb.services.errors.users_not_found", names: missing.join(", "))
+        )
+      end
 
       recipients.each do |recipient|
         if Community::UserBlock.blocked?(@sender, recipient)
-          return ServiceResult.failure(error: "You cannot message #{recipient.username}.")
+          return ServiceResult.failure(
+            error: I18n.t(
+              "mcweb.services.errors.cannot_message_user_named",
+              name: recipient.username
+            )
+          )
         end
         unless Community::PmPolicy.accepts?(recipient: recipient, sender: @sender)
           return ServiceResult.failure(error: "pm_not_accepted")

@@ -8,7 +8,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "No image provided.") if @signed_id.blank?
+      return ServiceResult.failure(error: :no_image_provided) if @signed_id.blank?
 
       blob = ActiveStorage::Blob.find_signed!(@signed_id)
       @product.cover_image.attach(blob)
@@ -16,7 +16,7 @@ module Commerce
       @product.update!(image_url: url)
       ServiceResult.success(url: url)
     rescue ActiveSupport::MessageVerifier::InvalidSignature, ActiveRecord::RecordNotFound
-      ServiceResult.failure(error: "Invalid image upload.")
+      ServiceResult.failure(error: :invalid_image_upload)
     end
   end
 end

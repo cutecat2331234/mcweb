@@ -1,0 +1,72 @@
+---
+schema_version: "1"
+contributions:
+- type: navigation
+  id: examples.hello_event.navigation.admin
+  payload:
+    surface: admin
+    position: sidebar
+    label_phrase: examples.hello_event.navigation.label
+    href: "/admin/plugins/examples/hello_event/overview"
+- type: page
+  id: examples.hello_event.page.overview
+  payload:
+    surface: admin
+    path: "/admin/plugins/examples/hello_event/overview"
+    title_phrase: examples.hello_event.page.title
+    description_phrase: examples.hello_event.page.description
+    blocks:
+    - type: alert
+      title_phrase: examples.hello_event.page.welcome.title
+      body_phrase: examples.hello_event.page.welcome.body
+      tone: success
+    - type: description_list
+      title_phrase: examples.hello_event.page.contract.title
+      items:
+      - label_phrase: examples.hello_event.page.contract.event
+        value: forum.topic.created
+      - label_phrase: examples.hello_event.page.contract.output
+        value: examples.hello_event.topic_seen
+- type: event
+  id: examples.hello_event.event.topic_seen
+  payload:
+    name: examples.hello_event.topic_seen
+    direction: emits
+    schema_version: "1"
+    description_phrase: examples.hello_event.event.topic_seen.description
+- type: translation
+  id: examples.hello_event.translation.en
+  payload:
+    locale: en
+    phrases:
+      examples.hello_event.navigation.label: Hello Event
+      examples.hello_event.page.title: Hello Event
+      examples.hello_event.page.description: Event plugin diagnostics and settings.
+      examples.hello_event.page.welcome.title: Plugin active
+      examples.hello_event.page.welcome.body: Topic events are handled through the stable Host API.
+      examples.hello_event.page.contract.title: Event contract
+      examples.hello_event.page.contract.event: Listens to
+      examples.hello_event.page.contract.output: Emits
+      examples.hello_event.event.topic_seen.description: Emitted after a topic-created event is handled.
+      examples.hello_event.settings.groups.general.title: General
+      examples.hello_event.settings.groups.general.description: Event handling behavior.
+      examples.hello_event.settings.enabled.title: Enabled
+      examples.hello_event.settings.enabled.description: Handle topic-created events.
+- type: translation
+  id: examples.hello_event.translation.zh_cn
+  payload:
+    locale: zh-CN
+    phrases:
+      examples.hello_event.navigation.label: 事件示例
+      examples.hello_event.page.title: 事件示例
+      examples.hello_event.page.description: 事件插件诊断与设置。
+      examples.hello_event.page.welcome.title: 插件已启用
+      examples.hello_event.page.welcome.body: 主题事件通过稳定的 Host API 处理。
+      examples.hello_event.page.contract.title: 事件合同
+      examples.hello_event.page.contract.event: 监听
+      examples.hello_event.page.contract.output: 发出
+      examples.hello_event.event.topic_seen.description: 主题创建事件处理完成后发出。
+      examples.hello_event.settings.groups.general.title: 常规
+      examples.hello_event.settings.groups.general.description: 事件处理行为。
+      examples.hello_event.settings.enabled.title: 启用
+      examples.hello_event.settings.enabled.description: 处理主题创建事件。

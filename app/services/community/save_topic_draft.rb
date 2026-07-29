@@ -26,14 +26,14 @@ module Community
 
     def call
       unless Community::SectionAccess.view?(section: @section, user: @user)
-        return ServiceResult.failure(error: "Section not available.")
+        return ServiceResult.failure(error: :section_not_available)
       end
 
       if @topic && !Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "Title is required.") if @title.blank?
+      return ServiceResult.failure(error: :title_required) if @title.blank?
 
       if @section.requires_tags_or_groups? && @tag_names.blank?
         return ServiceResult.failure(error: @section.tag_requirements_message)

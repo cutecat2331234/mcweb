@@ -13,7 +13,7 @@ module Administration
       ban = Administration::IpBan.active.find_by(ip_address: @ip_address)
       return ServiceResult.success unless ban
 
-      ServiceResult.failure(error: "Your IP address is banned from posting.")
+      ServiceResult.failure(error: :your_ip_address_is_banned_from_posting)
     end
   end
 end

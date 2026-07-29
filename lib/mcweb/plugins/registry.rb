@@ -3,9 +3,11 @@
 require_relative "manifest_error"
 require_relative "duplicate_plugin_error"
 require_relative "lifecycle_error"
+require_relative "fulfillment_provider_error"
 require_relative "manifest"
 require_relative "permission_contribution"
 require_relative "permission_contribution_catalog"
+require_relative "contribution_registry"
 require_relative "definition"
 require_relative "../plugin_api/v1/normalizer"
 require_relative "../plugin_api/v1/event"
@@ -114,8 +116,11 @@ module Mcweb
     end
 
     class Registry
-      EVENT_CAPABILITY = "forum.events.read"
       FILTER_CAPABILITY_SUFFIX = ".extend"
+      FULFILLMENT_PROVIDER_CAPABILITY = "commerce.fulfillments.write"
+      FULFILLMENT_PROVIDER_ID_PATTERN =
+        /\A[a-z][a-z0-9_.-]*\/[a-z][a-z0-9_.-]*:[a-z][a-z0-9_.-]{0,63}\z/
+      FULFILLMENT_RESULT_STATUSES = %w[succeeded retryable failed].freeze
       MAX_DIAGNOSTICS = 1_000
       MAX_DIAGNOSTIC_MESSAGE_LENGTH = 4_096
 
@@ -128,6 +133,7 @@ module Mcweb
         @subscriptions = {}
         @diagnostics = []
         @permission_catalog = PermissionContributionCatalog.new
+        @contribution_catalog = ContributionRegistry.new
         @mutex = Mutex.new
         @lifecycle_monitor = Monitor.new
         @pending_ids = Set.new
@@ -137,12 +143,14 @@ module Mcweb
         @lifecycle_monitor.synchronize do
           manifest = resolve_manifest(manifest, attributes)
           permission_contributions = PermissionContributionLoader.load(manifest)
+          contributions = ContributionDocumentLoader.load(manifest)
           definition = Definition.new(
             manifest,
             event_bus:,
             capability_auditor: ->(capability) { audit_capability_use(manifest, capability) },
             permission_contributions:,
-            permission_catalog: @permission_catalog
+            permission_catalog: @permission_catalog,
+            contributions:
           )
 
           @mutex.synchronize do
@@ -173,6 +181,7 @@ module Mcweb
           unsubscribe_all!
           clear_diagnostics!("activation")
           @permission_catalog.clear
+          @contribution_catalog.clear
 
           definitions = definition_snapshot
           definitions.each(&:mark_registered!)
@@ -201,12 +210,14 @@ module Mcweb
             next if cycle_ids.include?(definition.id)
             next unless dependencies_available?(definition)
             next unless activate_permission_contributions(definition)
+            next unless activate_contributions(definition)
 
             definition.mark_active!(order: activation_index)
             activation_index += 1
             audit_listener_capabilities(definition)
             audit_filter_capabilities(definition)
             audit_service_decorator_capabilities(definition)
+            audit_fulfillment_provider_capabilities(definition)
           end
 
           subscribe_to_active_events!
@@ -218,6 +229,7 @@ module Mcweb
         @lifecycle_monitor.synchronize do
           unsubscribe_all!
           @permission_catalog.clear
+          @contribution_catalog.clear
           @mutex.synchronize do
             @definitions.clear
             @diagnostics.clear
@@ -236,6 +248,7 @@ module Mcweb
         @lifecycle_monitor.synchronize do
           @mutex.synchronize { @definitions.delete(id) }
           @permission_catalog.deactivate(id)
+          @contribution_catalog.deactivate(id)
         end
       end
 
@@ -255,6 +268,35 @@ module Mcweb
         @permission_catalog.find(id)&.to_h
       end
 
+      def contributions(type: nil)
+        active_definitions = definition_snapshot.select(&:dispatchable?)
+        generic = @contribution_catalog.all(type:).map { |entry| entry.to_h.except(:source) }
+        legacy = active_definitions.flat_map(&:legacy_contribution_descriptors)
+        legacy.select! { |entry| entry.fetch(:type) == type.to_s } if type
+        (generic + legacy).sort_by do |entry|
+          [
+            entry.fetch(:priority),
+            entry.fetch(:type),
+            entry.fetch(:plugin_id),
+            entry.fetch(:id)
+          ]
+        end.freeze
+      end
+
+      def contributions_for(plugin_id)
+        generic = @contribution_catalog.for_plugin(plugin_id).map { |entry| entry.to_h.except(:source) }
+        definition = definition_for(plugin_id.to_s)
+        legacy = definition&.dispatchable? ? definition.legacy_contribution_descriptors : []
+        (generic + legacy).sort_by do |entry|
+          [
+            entry.fetch(:priority),
+            entry.fetch(:type),
+            entry.fetch(:plugin_id),
+            entry.fetch(:id)
+          ]
+        end.freeze
+      end
+
       def settings_catalog
         definition_snapshot.sort_by(&:id).filter_map do |definition|
           next unless definition.settings_schema
@@ -272,6 +314,74 @@ module Mcweb
       def settings_schema(plugin_id)
         definition = definition_for(plugin_id.to_s)
         definition&.settings_schema
+      end
+
+      def fulfillment_providers
+        definition_snapshot
+          .select(&:dispatchable?)
+          .flat_map(&:fulfillment_provider_descriptors)
+          .sort_by { |provider| provider.fetch(:id) }
+          .freeze
+      end
+
+      # Invokes an active provider across the stable plugin boundary. Both the
+      # request and the validated response are deeply immutable JSON-like
+      # values, and provider failures are sanitized before reaching commerce
+      # persistence or customer-facing surfaces.
+      def dispatch_fulfillment(provider_id:, request:)
+        provider_id = provider_id.to_s
+        unless provider_id.match?(FULFILLMENT_PROVIDER_ID_PATTERN)
+          raise FulfillmentProviderError.new(
+            code: "provider_invalid",
+            message: "fulfillment provider id is invalid"
+          )
+        end
+
+        plugin_id, key = provider_id.split(":", 2)
+        definition = definition_for(plugin_id)
+        provider = definition&.dispatchable? && definition.fulfillment_provider_handler(key)
+        unless provider
+          raise FulfillmentProviderError.new(
+            code: "provider_unavailable",
+            message: "fulfillment provider is not active"
+          )
+        end
+
+        immutable_request = Mcweb::PluginApi::V1::Normalizer.call(request)
+        candidate = Mcweb::PluginApi::V1::Normalizer.call(
+          provider.callback.call(immutable_request)
+        )
+        validate_fulfillment_result(candidate)
+      rescue FulfillmentProviderError => error
+        if error.code == "provider_response_invalid" && definition
+          definition.record_extension_failure!(error)
+          record_diagnostic(
+            level: :error,
+            code: :fulfillment_provider_response_invalid,
+            phase: :fulfillment,
+            plugin_id: definition.id,
+            event: provider_id,
+            message: error.message,
+            exception: error
+          )
+        end
+        raise
+      rescue StandardError => error
+        sanitized_error = FulfillmentProviderError.new(
+          code: "provider_failed",
+          message: "fulfillment provider failed"
+        )
+        definition&.record_extension_failure!(sanitized_error)
+        record_diagnostic(
+          level: :error,
+          code: :fulfillment_provider_error,
+          phase: :fulfillment,
+          plugin_id: definition&.id,
+          event: provider_id,
+          message: sanitized_error.message,
+          exception: error
+        )
+        raise sanitized_error
       end
 
       def diagnostics
@@ -614,16 +724,48 @@ module Mcweb
         false
       end
 
-      def audit_listener_capabilities(definition)
-        return if definition.listeners.empty? || definition.declares_capability?(EVENT_CAPABILITY)
+      def activate_contributions(definition)
+        conflicts = @contribution_catalog.activate(definition.contributions)
+        return true if conflicts.empty?
 
-        record_diagnostic(
-          level: :warning,
-          code: :undeclared_capability,
-          phase: :activation,
-          plugin_id: definition.id,
-          message: "event listeners are registered without declaring #{EVENT_CAPABILITY}; allowed because plugins are fully trusted"
-        )
+        @permission_catalog.deactivate(definition.id)
+        definition.mark_disabled!("plugin contribution conflict")
+        conflicts.each do |conflict|
+          record_diagnostic(
+            level: :error,
+            code: :"contribution_#{conflict.code}",
+            phase: :activation,
+            plugin_id: definition.id,
+            event: conflict.contribution_id,
+            message: [
+              conflict.code,
+              conflict.contribution_id,
+              conflict.other_plugin_id,
+              conflict.other_contribution_id,
+              conflict.recommendation
+            ].compact.join(" · ")
+          )
+        end
+        false
+      end
+
+      def audit_listener_capabilities(definition)
+        definition.listeners
+          .map { |listener| "#{listener.event.split('.', 2).first}.events.read" }
+          .uniq
+          .sort
+          .each do |capability|
+            next if definition.declares_capability?(capability)
+
+            record_diagnostic(
+              level: :warning,
+              code: :undeclared_capability,
+              phase: :activation,
+              plugin_id: definition.id,
+              message: "event listeners are registered without declaring " \
+                "#{capability}; allowed because plugins are fully trusted"
+            )
+          end
       end
 
       def audit_filter_capabilities(definition)
@@ -662,6 +804,20 @@ module Mcweb
               message: "service decorators are registered without declaring #{capability}; allowed because plugins are fully trusted"
             )
           end
+      end
+
+      def audit_fulfillment_provider_capabilities(definition)
+        return if definition.fulfillment_provider_descriptors.empty?
+        return if definition.declares_capability?(FULFILLMENT_PROVIDER_CAPABILITY)
+
+        record_diagnostic(
+          level: :warning,
+          code: :undeclared_capability,
+          phase: :activation,
+          plugin_id: definition.id,
+          message: "fulfillment providers are registered without declaring " \
+            "#{FULFILLMENT_PROVIDER_CAPABILITY}; allowed because plugins are fully trusted"
+        )
       end
 
       def audit_capability_use(manifest, capability)
@@ -750,6 +906,59 @@ module Mcweb
           raise ArgumentError, "invalid service name #{normalized.inspect}"
         end
         normalized
+      end
+
+      def validate_fulfillment_result(candidate)
+        unless candidate.is_a?(Hash)
+          raise FulfillmentProviderError.new(
+            code: "provider_response_invalid",
+            message: "fulfillment provider response must be a mapping"
+          )
+        end
+
+        allowed_keys = %w[status external_reference error_code]
+        unless (candidate.keys - allowed_keys).empty?
+          raise FulfillmentProviderError.new(
+            code: "provider_response_invalid",
+            message: "fulfillment provider response contains unsupported fields"
+          )
+        end
+
+        status = candidate["status"].to_s
+        unless FULFILLMENT_RESULT_STATUSES.include?(status)
+          raise FulfillmentProviderError.new(
+            code: "provider_response_invalid",
+            message: "fulfillment provider response status is invalid"
+          )
+        end
+
+        external_reference = candidate["external_reference"]
+        if external_reference.present? && (
+          !external_reference.is_a?(String) ||
+          external_reference.length > 200
+        )
+          raise FulfillmentProviderError.new(
+            code: "provider_response_invalid",
+            message: "fulfillment provider external reference is invalid"
+          )
+        end
+
+        error_code = candidate["error_code"]
+        if status != "succeeded" && (
+          !error_code.is_a?(String) ||
+          !error_code.match?(/\A[a-z0-9_.-]{1,100}\z/)
+        )
+          raise FulfillmentProviderError.new(
+            code: "provider_response_invalid",
+            message: "fulfillment provider error code is invalid"
+          )
+        end
+
+        {
+          "status" => status,
+          "external_reference" => external_reference,
+          "error_code" => error_code
+        }.compact.freeze
       end
 
       def filters_for(name)
@@ -959,12 +1168,24 @@ module Mcweb
         registry.permission_contribution(id)
       end
 
+      def contributions(type: nil)
+        registry.contributions(type:)
+      end
+
+      def contributions_for(plugin_id)
+        registry.contributions_for(plugin_id)
+      end
+
       def settings_catalog
         registry.settings_catalog
       end
 
       def settings_schema(plugin_id)
         registry.settings_schema(plugin_id)
+      end
+
+      def fulfillment_providers
+        registry.fulfillment_providers
       end
 
       def apply_filter(name, value, context: {})
@@ -977,6 +1198,10 @@ module Mcweb
 
       def dispatch_job(**attributes)
         registry.dispatch_job(**attributes)
+      end
+
+      def dispatch_fulfillment(**attributes)
+        registry.dispatch_fulfillment(**attributes)
       end
 
       def boot!

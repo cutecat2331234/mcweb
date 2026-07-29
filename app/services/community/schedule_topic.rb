@@ -23,16 +23,16 @@ module Community
 
     def call
       unless Community::SectionAccess.view?(section: @section, user: @user)
-        return ServiceResult.failure(error: "Section not available.")
+        return ServiceResult.failure(error: :section_not_available)
       end
 
-      return ServiceResult.failure(error: "Scheduled time must be in the future.") unless @scheduled_at > Time.current
+      return ServiceResult.failure(error: :scheduled_time_must_be_in_the_future) unless @scheduled_at > Time.current
 
       ip_result = Administration::CheckIpBan.call(ip_address: @ip_address)
       return ip_result if ip_result.failure?
 
       unless @section.allowed?(@user, :create_topic)
-        return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
+        return ServiceResult.failure(error: :cannot_create_topic_in_section)
       end
 
       if @section.requires_tags_or_groups? && @tag_names.blank?

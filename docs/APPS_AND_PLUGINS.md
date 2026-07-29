@@ -93,6 +93,21 @@ Mcweb::Plugins.list
 Mcweb::Plugins.diagnostics
 ```
 
+后台“应用与扩展”还维护一份数据库持久清单。成功的非 dry-run
+安装、升级、启用、禁用、回滚、恢复和卸载会同步：
+
+- `PluginRelease`：版本状态（`active` / `disabled` / `rollback` /
+  `uninstalled`）、安全的 manifest 描述符、manifest/package SHA-256；
+- `PluginContribution`：规范化贡献描述符、descriptor SHA-256 与可选的
+  schema SHA-256；
+- `PluginFile`：仅限插件内相对路径、预期/实际大小与 SHA-256、健康状态。
+
+拥有 `system.plugins.diagnostics` 的管理员可以执行“对账并补录”。该操作
+不会修改插件文件、receipt 或运行时，只会幂等更新数据库清单并写审计日志；
+因此也可补录数据库迁移之前已经存在的插件。receipt、运行时与文件系统不一致
+时会保留明确的诊断代码，不会悄悄把其中任意一方当成正确结果。后台响应和审计
+元数据不包含绝对路径、source URL、异常原文、凭据或插件设置值。
+
 后台 **系统 → 应用与扩展** 会展示当前进程已加载插件的版本、依赖、能力声明、状态、监听器数量、
 最近错误，以及加载/激活/派发诊断。
 
@@ -151,8 +166,21 @@ Mcweb::Events.publish("forum.post.created", post: post, topic: topic)
 | `forum.post.edited` / `.deleted` / `.restored` / `.rejected` / `.approved` | `topic`, `post` | 帖子生命周期 |
 | `forum.topic.solved` / `.moved` | `topic`, `post` | 主题状态变更 |
 | `forum.reaction.added` / `.removed` | `post`, `user`, `emoji`, `counts` | 反应增减 |
+| `commerce.order.paid` | `order` | 可履约订单完成付款 |
+| `commerce.payment.confirmed` / `.failed` / `.refunded` | `payment`, `order`；退款时另含 `refund` | 支付成功、终态失败、每笔退款完成 |
+| `commerce.refund.requested` / `.processed` / `.rejected` | `refund`, `payment`, `order` | 退款申请生命周期 |
+| `commerce.inventory.reserved` / `.released` / `.confirmed` / `.adjusted` | `inventory`, `movement`，有订单时另含 `order` | 每笔实际库存流水提交 |
+| `commerce.fulfillment.dispatched` / `.retryable_failed` / `.failed` / `.completed` / `.cancelled` | `fulfillment`, `order`，按事件可含 `attempt`, `result` | 每次权威履约状态转换 |
 | `identity.user.registered` | `user`, `ip_address` | 新用户注册完成 |
 | `plugin.settings.changed` | `plugin_id`, `schema_version`, `schema_digest`, `revision`, `change_kind`, `changed_keys` | 插件设置修订提交后；不包含设置值 |
+
+商业事件统一通过 `ActiveRecord.after_all_transactions_commit` 和
+`Mcweb::Events.defer_until_success` 发布：事务回滚不会产生事件，幂等重放不会重复发布。
+插件执行外部副作用时仍应使用订单 public ID、退款 ID、库存 movement public ID，或
+`delivery_id + attempt.number` 做幂等。负载是固定白名单快照，只包含状态、金额、币种、
+数量、公开/稳定标识和受限错误码；不会包含用户名、邮箱、地址、备注/原因、支付渠道
+引用、provider secret/metadata、原始 Webhook 或 Connector 响应。履约插件应监听
+`commerce.order.paid`，不要把 `commerce.payment.confirmed` 当作自动发货信号。
 
 > 论坛事件的中央发出点是 `Community::DispatchForumEventWebhook`：无论是否配置了出站 Webhook，
 > 内部事件总线都会收到事件（出站 Webhook 仍受其 URL/开关门控）。
@@ -163,6 +191,8 @@ Mcweb::Events.publish("forum.post.created", post: post, topic: topic)
 后台 **系统 → 事件 Webhook 订阅**（`Administration::WebhookSubscription`）配置 `event` + `url` + 可选签名密钥，
 每次匹配事件触发时经 `Administration::WebhookFanout` 异步投递（HMAC-SHA256 签名、失败自动重试计数、连续失败自动停用）。
 无订阅时零开销，因此这是给插件/外部系统「订阅核心事件」的即用集成点。
+商业事件的出站数据仍会再次经过逐字段白名单清洗；即使队列参数被手工构造，未声明字段
+也会在真正发送前删除。
 
 ## 如何扩展 Rails 业务逻辑？
 

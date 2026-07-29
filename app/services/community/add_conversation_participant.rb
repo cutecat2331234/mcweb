@@ -15,18 +15,18 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Not a group conversation.") unless @conversation.is_group?
-      return ServiceResult.failure(error: "Only participants can add members.") unless @conversation.participant?(@actor)
-      return ServiceResult.failure(error: "Group is full.") if @conversation.participants.count >= self.class.max_participants
-      return ServiceResult.failure(error: "Only the group creator can add members.") unless can_add_member?(@actor)
+      return ServiceResult.failure(error: :not_group_conversation) unless @conversation.is_group?
+      return ServiceResult.failure(error: :only_participants_can_add) unless @conversation.participant?(@actor)
+      return ServiceResult.failure(error: :group_full) if @conversation.participants.count >= self.class.max_participants
+      return ServiceResult.failure(error: :only_creator_can_add) unless can_add_member?(@actor)
 
       user = User.find_by(username: @username)
-      return ServiceResult.failure(error: "User not found.") unless user
-      return ServiceResult.failure(error: "User is already a participant.") if @conversation.participant?(user)
-      return ServiceResult.failure(error: "Cannot add yourself.") if user.id == @actor.id
-      return ServiceResult.failure(error: "Cannot message blocked user.") if Community::UserBlock.blocked?(@actor, user)
-      return ServiceResult.failure(error: "User is silenced.") if Community::UserSilence.silenced?(user)
-      return ServiceResult.failure(error: "User cannot participate in private messages.") unless Community::TrustLevel.can_send_pm?(user)
+      return ServiceResult.failure(error: :user_not_found) unless user
+      return ServiceResult.failure(error: :user_already_participant) if @conversation.participant?(user)
+      return ServiceResult.failure(error: :cannot_add_self) if user.id == @actor.id
+      return ServiceResult.failure(error: :cannot_message_blocked_user) if Community::UserBlock.blocked?(@actor, user)
+      return ServiceResult.failure(error: :user_silenced) if Community::UserSilence.silenced?(user)
+      return ServiceResult.failure(error: :user_cannot_pm) unless Community::TrustLevel.can_send_pm?(user)
       return ServiceResult.failure(error: "pm_not_accepted") unless Community::PmPolicy.accepts?(recipient: user, sender: @actor)
 
       pm_restriction = Community::CheckWarningRestrictions.call(user: user, action: :pm)

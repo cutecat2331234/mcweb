@@ -35,13 +35,13 @@ module Payments
         discrepancy = Payments::ReconciliationDiscrepancy.lock.find(@discrepancy.id)
         unless Payments::ReconciliationReviewToken.valid?(@token, discrepancy)
           return ServiceResult.failure(
-            error: "Reconciliation review authorization expired or is invalid.",
+            error: :reconciliation_review_authorization_expired_or_is_invalid,
             code: "invalid_review_token"
           )
         end
         unless secure_confirmation_match?(discrepancy.public_id)
           return ServiceResult.failure(
-            error: "Enter the exact discrepancy ID to confirm this review.",
+            error: :enter_the_exact_discrepancy_id_to_confirm_this_review,
             code: "confirmation_mismatch"
           )
         end
@@ -55,7 +55,7 @@ module Payments
           end
 
           return ServiceResult.failure(
-            error: "This discrepancy was already reviewed with different details.",
+            error: :this_discrepancy_was_already_reviewed_with_different_details,
             code: "already_reviewed"
           )
         end
@@ -107,15 +107,18 @@ module Payments
 
     def invalid_input_result
       ServiceResult.failure(
-        error: "Select a valid decision and enter a note between " \
-          "#{MIN_NOTE_LENGTH} and #{MAX_NOTE_LENGTH} characters.",
+        error: I18n.t(
+          "mcweb.user_copy.reconciliation_review_input_invalid",
+          min: MIN_NOTE_LENGTH,
+          max: MAX_NOTE_LENGTH
+        ),
         code: "invalid_review_details"
       )
     end
 
     def forbidden_result
       ServiceResult.failure(
-        error: "You do not have permission to review reconciliation discrepancies.",
+        error: :you_do_not_have_permission_to_review_reconciliation_discrepancies,
         code: "forbidden"
       )
     end

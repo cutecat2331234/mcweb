@@ -151,7 +151,8 @@ class SecurityFixesTest < ActiveSupport::TestCase
     )
 
     assert_not search.valid?
-    assert_includes search.errors[:webhook_url], "不能指向内网或本地地址"
+    assert_includes search.errors[:webhook_url],
+      I18n.t("mcweb.validation_errors.saved_search_private_url")
   end
 
   test "sync profile fields rejects players not on server" do
@@ -172,7 +173,8 @@ class SecurityFixesTest < ActiveSupport::TestCase
     )
 
     assert_not result.success?
-    assert_includes result.error, "not associated"
+    assert_equal I18n.t("mcweb.services.errors.player_is_not_associated_with_this_server"),
+      result.error
   end
 
   test "sync presence rejects join without online_player_uuids" do
@@ -187,7 +189,8 @@ class SecurityFixesTest < ActiveSupport::TestCase
     )
 
     assert_not result.success?
-    assert_includes result.error, "online_player_uuids"
+    assert_equal I18n.t("mcweb.services.errors.online_player_uuids_is_required"),
+      result.error
   end
 
   test "stripe provider refuses fake fallback in production" do
@@ -931,7 +934,8 @@ class ValidateExecCommandProductionSecurityTest < ActiveSupport::TestCase
     begin
       result = Minecraft::ValidateExecCommand.call(command: "rm -rf /")
       assert result.failure?
-      assert_includes result.error, "not configured"
+      assert_equal I18n.t("mcweb.services.errors.exec_command_prefixes_are_not_configured"),
+        result.error
     ensure
       singleton.define_method(:env) { original_env }
     end

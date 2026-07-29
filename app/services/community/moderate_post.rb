@@ -12,7 +12,7 @@ module Community
 
     def call
       unless Community::SectionModeration.can_moderate_topic?(user: @user, topic: @post.topic)
-        return ServiceResult.failure(error: "You are not authorized to moderate this post.")
+        return ServiceResult.failure(error: :not_authorized_moderate_post)
       end
 
       Community::Post.transaction do
@@ -36,7 +36,7 @@ module Community
         when "change_author"
           return Community::ChangePostAuthor.call(user: @user, post: @post, new_username: @new_username)
         else
-          return ServiceResult.failure(error: "Unknown moderation action.")
+          return ServiceResult.failure(error: :unknown_moderation_action)
         end
       end
 

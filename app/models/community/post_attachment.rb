@@ -4,6 +4,8 @@ module Community
   class PostAttachment < ApplicationRecord
     self.table_name = "forum_post_attachments"
 
+    include SoftDeletable
+
     belongs_to :post, class_name: "Community::Post", foreign_key: :forum_post_id, optional: true, inverse_of: :attachments
     belongs_to :user
 

@@ -37,6 +37,8 @@ test('boolean settings preserve their backend storage format', () => {
 
 test('system settings render localized labels and never promote raw keys to labels', () => {
   assert.doesNotMatch(pageSource, /:label="setting\.key"/)
+  assert.doesNotMatch(pageSource, /technicalKey/)
+  assert.doesNotMatch(pageSource, /\{ key: setting\.key \}/)
   assert.match(pageSource, /:label="setting\.label"/)
   assert.match(pageSource, /<a-input-search/)
   assert.match(pageSource, /<a-tabs/)

@@ -23,9 +23,9 @@ module Minecraft
     end
 
     def call
-      return ServiceResult.failure(error: "Unknown task type.") unless TASK_TYPES.include?(@task_type)
-      return ServiceResult.failure(error: "Server is required for this task.") if instance_task? && @server.nil?
-      return ServiceResult.failure(error: "Server is not managed by this node.") if @server && @server.minecraft_node_id != @node.id
+      return ServiceResult.failure(error: :unknown_task_type) unless TASK_TYPES.include?(@task_type)
+      return ServiceResult.failure(error: :server_is_required_for_this_task) if instance_task? && @server.nil?
+      return ServiceResult.failure(error: :server_is_not_managed_by_this_node) if @server && @server.minecraft_node_id != @node.id
 
       if @task_type == "sync_files"
         url_check = Minecraft::ValidateSyncFileUrl.call(url: @payload["url"])

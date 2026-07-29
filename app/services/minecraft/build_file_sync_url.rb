@@ -10,10 +10,10 @@ module Minecraft
     end
 
     def call
-      return ServiceResult.failure(error: "Path is required.") if @path.blank?
+      return ServiceResult.failure(error: :path_is_required) if @path.blank?
 
       resolved = Minecraft::SyncFilePath.resolve(@path)
-      return ServiceResult.failure(error: "Path is not allowed.") unless resolved
+      return ServiceResult.failure(error: :path_is_not_allowed) unless resolved
 
       relative_path = resolved.relative_path_from(Rails.root).to_s
 

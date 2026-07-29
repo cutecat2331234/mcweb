@@ -4,6 +4,7 @@ import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
+import DeveloperModeTools from '@/components/portal/DeveloperModeTools.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
 import { isBlogHref } from '@/lib/featureFlags'
@@ -37,11 +38,22 @@ const websiteNav = computed(() => {
         { label: t('website.layout.about'), href: routes.page('about') },
         { label: t('website.layout.blog'), href: routes.blog },
       ]
+  const pluginItems =
+    (
+      page.props.plugin_contributions as
+        | { navigation?: { public?: NavItem[] } }
+        | undefined
+    )?.navigation?.public || []
 
-  return base.filter((item) => {
-    if (!features.value.website_blog && isBlogHref(item.href)) return false
-    return true
-  })
+  return [...base, ...pluginItems]
+    .filter((item) => {
+      if (!features.value.website_blog && isBlogHref(item.href)) return false
+      return true
+    })
+    .filter(
+      (item, index, collection) =>
+        collection.findIndex((candidate) => candidate.href === item.href) === index,
+    )
 })
 
 function isActive(href: string) {
@@ -52,6 +64,7 @@ function isActive(href: string) {
 </script>
 
 <template>
+  <DeveloperModeTools />
   <div class="website-page" :style="tokenStyle">
     <TemplateAssets />
 
@@ -74,7 +87,12 @@ function isActive(href: string) {
     <header v-else class="website-nav sticky top-0 z-50">
       <div class="mx-auto flex max-w-6xl items-center justify-between px-4 py-3.5">
         <Link :href="routes.home" class="website-brand flex items-center gap-2 no-underline">
-          <img v-if="activeTemplate?.logoUrl" :src="activeTemplate.logoUrl" alt="Logo" class="h-8 w-auto">
+          <img
+            v-if="activeTemplate?.logoUrl"
+            :src="activeTemplate.logoUrl"
+            :alt="t('website.layout.logoAlt')"
+            class="h-8 w-auto"
+          >
           <span v-else class="website-brand-mark bg-gradient-to-br from-green-500/25 to-emerald-600/20 border-green-500/40">⛏</span>
           <span class="text-lg font-semibold tracking-tight text-white">McWeb</span>
         </Link>

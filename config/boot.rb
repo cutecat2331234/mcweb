@@ -1,5 +1,12 @@
 ENV["BUNDLE_GEMFILE"] ||= File.expand_path("../Gemfile", __dir__)
 
+# Developer Mode settings are cached below, before Rails loads
+# config/environments/test.rb. A local development configuration must never
+# make the normal test suite use fake integrations or relaxed security.
+if ENV["RAILS_ENV"] == "test" || ENV["RACK_ENV"] == "test"
+  ENV["MCWEB_DEVELOPER_MODE"] = "0"
+end
+
 require "bundler/setup" # Set up gems listed in the Gemfile.
 require_relative "../lib/mcweb/local_config"
 require_relative "../lib/mcweb/developer_mode"

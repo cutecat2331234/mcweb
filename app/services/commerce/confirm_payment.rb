@@ -77,6 +77,12 @@ module Commerce
             raise ActiveRecord::Rollback
           end
 
+          inventory_result = Commerce::ConfirmInventoryReservations.call(order:)
+          unless inventory_result.success?
+            payment_error = inventory_result.error || "inventory_reservation_invalid"
+            raise ActiveRecord::Rollback
+          end
+
           Commerce::OrderEvent.create!(
             order: order,
             event_type: "payment_confirmed",
@@ -90,6 +96,10 @@ module Commerce
             status: "succeeded",
             provider_payment_id: @provider_payment_id || record.provider_payment_id,
             metadata: record.metadata.merge(@metadata)
+          )
+          Commerce::DomainEvents.publish_after_commit(
+            "commerce.payment.confirmed",
+            Commerce::DomainEvents.payment(record)
           )
         end
       end

@@ -7,6 +7,18 @@ Commerce::InAppNotification # preload before parallel test workers fork
 Commerce::MembershipSummary
 Community::SectionModeration
 Minecraft::SyncFilePath
+DataGovernance::RetentionPolicy
+DataGovernance::RetentionHold
+DataGovernance::ContentLifecycleRecord
+DataGovernance::ContentRegistry
+DataGovernance::DeletionPolicy
+DataGovernance::PlaceRetentionHold
+DataGovernance::ReleaseRetentionHold
+DataGovernance::SoftDeleteContent
+DataGovernance::RestoreContent
+DataGovernance::PurgePolicy
+DataGovernance::PermanentlyPurgeContent
+DataGovernance::UpdateRetentionPolicy
 require "rails/test_help"
 require "minitest/reporters"
 require "active_job/test_helper"
@@ -23,7 +35,7 @@ module ActiveSupport
   class TestCase
     include ActiveJob::TestHelper
     include StripeTestHelpers
-    parallelize(workers: :number_of_processors)
+    parallelize(workers: ENV.fetch("PARALLEL_WORKERS", "1").to_i)
 
     parallelize_setup do
       I18n.reload!

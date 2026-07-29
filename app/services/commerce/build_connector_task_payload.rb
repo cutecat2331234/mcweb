@@ -13,15 +13,15 @@ module Commerce
 
     def call
       commands = extract_commands
-      return ServiceResult.failure(error: "missing_commands") if commands.empty?
+      return ServiceResult.failure(error: "missing_commands", code: "missing_commands") if commands.empty?
 
       if substitution_needed?(commands)
         player_ref = resolve_player_ref
-        return ServiceResult.failure(error: "player_not_linked") unless player_ref
+        return ServiceResult.failure(error: "player_not_linked", code: "player_not_linked") unless player_ref
 
         player_name = player_ref.username
         player_uuid = player_ref.active_uuid
-        return ServiceResult.failure(error: "player_not_linked") if player_name.blank? && player_uuid.blank?
+        return ServiceResult.failure(error: "player_not_linked", code: "player_not_linked") if player_name.blank? && player_uuid.blank?
 
         commands = commands.map { |command| substitute(command, player_name: player_name, player_uuid: player_uuid) }
       end

@@ -11,8 +11,15 @@ module SoftDeletable
     deleted_at.present?
   end
 
-  def soft_delete!
-    update_column(:deleted_at, Time.current)
+  # Some governed models also expose a `deleted` enum value, which generates a
+  # `deleted?` method after this concern is included. Lifecycle code must use
+  # this unambiguous predicate instead of depending on method-definition order.
+  def soft_deleted?
+    deleted_at.present?
+  end
+
+  def soft_delete!(at: Time.current)
+    update_column(:deleted_at, at)
   end
 
   def restore!

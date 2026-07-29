@@ -1,38 +1,23 @@
-# Be sure to restart your server when you modify this file.
+# frozen_string_literal: true
 
-# Define an application-wide content security policy.
-# See the Securing Rails Applications Guide for more information:
-# https://guides.rubyonrails.org/security.html#content-security-policy-header
-
-# Rails.application.configure do
-#   config.content_security_policy do |policy|
-#     policy.default_src :self, :https
-#     policy.font_src    :self, :https, :data
-#     policy.img_src     :self, :https, :data
-#     policy.object_src  :none
-#     policy.script_src  :self, :https
-# Allow @vite/client to hot reload javascript changes in development
-#    policy.script_src *policy.script_src, :unsafe_eval, "http://#{ ViteRuby.config.host_with_port }" if Rails.env.development?
-
-# You may need to enable this in production as well depending on your setup.
-#    policy.script_src *policy.script_src, :blob if Rails.env.test?
-
-#     policy.style_src   :self, :https
-# Allow @vite/client to hot reload style changes in development
-#    policy.style_src *policy.style_src, :unsafe_inline if Rails.env.development?
-
-#     # Specify URI for violation reports
-#     # policy.report_uri "/csp-violation-report-endpoint"
-#   end
-#
-#   # Generate session nonces for permitted importmap, inline scripts, and inline styles.
-#   config.content_security_policy_nonce_generator = ->(request) { request.session.id.to_s }
-#   config.content_security_policy_nonce_directives = %w(script-src style-src)
-#
-#   # Automatically add `nonce` to `javascript_tag`, `javascript_include_tag`, and `stylesheet_link_tag`
-#   # if the corresponding directives are specified in `content_security_policy_nonce_directives`.
-#   # config.content_security_policy_nonce_auto = true
-#
-#   # Report violations without enforcing the policy.
-#   # config.content_security_policy_report_only = true
-# end
+# Developer Mode deliberately disables the global browser policy so local
+# proxies, source maps and HMR-like tooling can be inspected without editing
+# the application policy. Endpoint-specific sandbox policies (downloads and
+# uploads) are set by their controllers and remain in force.
+unless Mcweb::DeveloperMode.allow?(:disable_csp)
+  Rails.application.config.content_security_policy do |policy|
+    policy.default_src :self
+    policy.base_uri :self
+    policy.object_src :none
+    policy.frame_ancestors :self
+    policy.form_action :self
+    policy.script_src :self, :https, :unsafe_inline
+    policy.style_src :self, :https, :unsafe_inline
+    policy.img_src :self, :https, :data, :blob
+    policy.font_src :self, :https, :data
+    policy.connect_src :self, :https, :wss
+    policy.media_src :self, :https, :blob
+    policy.worker_src :self, :blob
+    policy.manifest_src :self
+  end
+end

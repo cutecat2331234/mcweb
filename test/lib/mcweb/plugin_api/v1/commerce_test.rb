@@ -185,7 +185,7 @@ class Mcweb::PluginApi::V1::CommerceTest < ActiveSupport::TestCase
     refute_includes forbidden.error, "private moderation state"
   end
 
-  test "capability use is audited while the public facade stays read only" do
+  test "capability use is audited and undeclared low-level writes stay unavailable" do
     audits = []
     api = build_host(capability_auditor: ->(capability) { audits << capability })
 
@@ -209,10 +209,8 @@ class Mcweb::PluginApi::V1::CommerceTest < ActiveSupport::TestCase
     assert api.declares_capability?("commerce.orders.read")
 
     %i[
-      cancel_order
       create_payment
       process_refund
-      request_refund
       transition_order
     ].each do |write_method|
       refute_respond_to api.commerce, write_method

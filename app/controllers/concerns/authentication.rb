@@ -84,7 +84,7 @@ module Authentication
     end
 
     user = record.user
-    if user.deleted? || user.banned?
+    unless user.session_eligible?
       record.revoke!
       @session_record = nil
       return

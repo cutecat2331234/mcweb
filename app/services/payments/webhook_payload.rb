@@ -15,9 +15,17 @@ module Payments
       currency
       client_reference_id
       payment_intent
+      charge
+      status
+      reason
     ].freeze
     STRIPE_METADATA_KEYS = %w[payment_record_id order_public_id].freeze
-    FAKE_EVENT_TYPES = %w[payment.succeeded].freeze
+    STRIPE_EVIDENCE_DETAIL_KEYS = %w[
+      due_by has_evidence past_due submission_count
+    ].freeze
+    FAKE_EVENT_TYPES = %w[
+      payment.succeeded dispute.created dispute.updated dispute.closed
+    ].freeze
 
     class << self
       def normalize(provider:, event_id:, event_type:, payload:)
@@ -31,7 +39,7 @@ module Payments
             event_type: event_type.to_s
           )
         when "fake"
-          { "payment_id" => parsed["payment_id"].to_s.first(255) }
+          normalize_fake(parsed, event_type: event_type.to_s)
         else
           raise InvalidPayloadError, "Unsupported payment provider."
         end
@@ -50,7 +58,8 @@ module Payments
         when "stripe"
           (
             Payments::StripeProvider::PAYMENT_SUCCEEDED_EVENTS +
-            Payments::StripeProvider::PAYMENT_FAILED_EVENTS
+            Payments::StripeProvider::PAYMENT_FAILED_EVENTS +
+            Payments::StripeProvider::DISPUTE_EVENTS
           ).include?(event_type.to_s)
         when "fake"
           FAKE_EVENT_TYPES.include?(event_type.to_s)
@@ -90,13 +99,41 @@ module Payments
         metadata = object.fetch("metadata", {}).to_h.deep_stringify_keys
         minimal_object = object.slice(*STRIPE_OBJECT_KEYS)
         minimal_object["metadata"] = metadata.slice(*STRIPE_METADATA_KEYS)
+        minimal_object["evidence_details"] =
+          object.fetch("evidence_details", {}).to_h
+            .deep_stringify_keys
+            .slice(*STRIPE_EVIDENCE_DETAIL_KEYS)
 
         {
           "type" => payload_type,
+          "created" => integer_or_nil(payload["created"]),
           "data" => {
             "object" => minimal_object
           }
+        }.compact
+      end
+
+      def normalize_fake(payload, event_type:)
+        return { "payment_id" => payload["payment_id"].to_s.first(255) } if event_type == "payment.succeeded"
+
+        {
+          "payment_id" => payload["payment_id"].to_s.first(255),
+          "dispute_id" => payload["dispute_id"].to_s.first(255),
+          "status" => payload["status"].to_s.first(100),
+          "amount" => integer_or_nil(payload["amount"]),
+          "currency" => payload["currency"].to_s.first(12),
+          "occurred_at" => payload["occurred_at"].to_s.first(64),
+          "sequence" => integer_or_nil(payload["sequence"]),
+          "evidence_due_at" => payload["evidence_due_at"].to_s.first(64),
+          "risk_level" => payload["risk_level"].to_s.first(32),
+          "reason" => payload["reason"].to_s.first(100)
         }
+      end
+
+      def integer_or_nil(value)
+        Integer(value) if value.present?
+      rescue ArgumentError, TypeError
+        nil
       end
 
       def secure_match?(left, right)

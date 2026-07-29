@@ -32,10 +32,18 @@ module Identity
         limit: 5,
         window: 1.hour
       )
-      return ServiceResult.success(message: "If the email exists, a reset link has been sent.") if rate_limit_result.failure?
+      if rate_limit_result.failure?
+        return ServiceResult.success(
+          message: I18n.t("mcweb.user_copy.password_reset_request_accepted")
+        )
+      end
 
       user = User.find_by(email: @email)
-      return ServiceResult.success(message: "If the email exists, a reset link has been sent.") unless user
+      unless user
+        return ServiceResult.success(
+          message: I18n.t("mcweb.user_copy.password_reset_request_accepted")
+        )
+      end
 
       reset_token = generate_token
       user.update!(

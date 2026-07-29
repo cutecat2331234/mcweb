@@ -30,12 +30,30 @@ class User < ApplicationRecord
     has_many :memberships, class_name: "Commerce::UserMembership", dependent: :destroy
     has_many :entitlements, class_name: "Commerce::UserEntitlement", dependent: :destroy
   has_many :admin_module_grants, dependent: :destroy
+  has_many :data_exports, class_name: "Identity::DataExport", dependent: :destroy
+  has_many :created_retention_holds,
+           class_name: "DataGovernance::RetentionHold",
+           foreign_key: :created_by_id,
+           dependent: :restrict_with_error
+  has_many :deleted_content_lifecycle_records,
+           class_name: "DataGovernance::ContentLifecycleRecord",
+           foreign_key: :deleted_by_id,
+           dependent: :nullify
+  has_many :restored_content_lifecycle_records,
+           class_name: "DataGovernance::ContentLifecycleRecord",
+           foreign_key: :restored_by_id,
+           dependent: :nullify
+  has_many :purged_content_lifecycle_records,
+           class_name: "DataGovernance::ContentLifecycleRecord",
+           foreign_key: :purged_by_id,
+           dependent: :nullify
   has_many :minecraft_identities, class_name: "Minecraft::Identity", dependent: :destroy
   has_many :minecraft_identity_links, class_name: "Minecraft::IdentityLink", dependent: :destroy
   has_many :minecraft_player_profiles, through: :minecraft_identity_links, source: :player_profile
 
   enum :status, { active: "active", banned: "banned", deleted: "deleted" }, validate: true
   enum :account_type, { member: "member", staff: "staff", admin: "admin", owner: "owner" }, validate: true, prefix: :account
+  DEVELOPER_MODE_PERSONAS = %w[owner moderator member].freeze
 
   validates :email, presence: true, uniqueness: { case_sensitive: false },
                     format: { with: URI::MailTo::EMAIL_REGEXP }
@@ -43,15 +61,29 @@ class User < ApplicationRecord
                        format: { with: /\A[a-zA-Z0-9_]+\z/ }, length: { minimum: 3, maximum: 32 }
   validates :locale, presence: true
   validates :time_zone, presence: true
+  validates :developer_mode_persona,
+            inclusion: { in: DEVELOPER_MODE_PERSONAS },
+            uniqueness: true,
+            allow_nil: true
   validates :password,
             length: { minimum: 6 },
             allow_nil: true,
             unless: :developer_mode_relaxes_password_policy?
 
   before_validation :track_developer_mode_relaxed_password, if: -> { password.present? }
+  after_update :bump_permission_version_for_access_change,
+               if: -> { saved_change_to_status? || saved_change_to_account_type? }
 
   scope :verified, -> { where(email_verified: true) }
   scope :not_banned, -> { where(status: :active) }
+
+  private
+
+  def bump_permission_version_for_access_change
+    Identity::PermissionVersion.bump_users!([ id ])
+  end
+
+  public
 
   def permission?(key)
     return true if account_owner?
@@ -97,7 +129,9 @@ class User < ApplicationRecord
   # Shared eligibility predicate for HTTP sessions and long-lived realtime
   # connections. Expired temporary bans follow the existing #banned? behavior.
   def session_eligible?
-    !deleted? && !banned?
+    !deleted? &&
+      !banned? &&
+      (developer_mode_persona.blank? || Mcweb::DeveloperMode.enabled?)
   end
 
   def ban_active?

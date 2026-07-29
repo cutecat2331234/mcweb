@@ -7,11 +7,13 @@ module Identity
 
     def show
       render inertia: "Identity/Security/Show", props: {
+        email: current_user.email,
         email_verified: current_user.email_verified?,
         totp_enabled: current_user.totp_enabled?,
         require_totp: current_user.require_totp?,
         pending_totp: pending_totp_props,
-        recovery_codes_remaining: current_user.totp_enabled? ? Array(current_user.recovery_codes).size : 0
+        recovery_codes_remaining: current_user.totp_enabled? ? Array(current_user.recovery_codes).size : 0,
+        new_recovery_codes: session.delete(:identity_recovery_codes)
       }
     end
 
@@ -32,25 +34,109 @@ module Identity
         return redirect_to identity_security_path, alert: t("mcweb.flash.totp_invalid")
       end
 
-      current_user.update!(totp_enabled: true)
+      User.transaction do
+        current_user.lock!
+        current_user.update!(totp_enabled: true)
+        Administration::AuditLogger.call(
+          actor: current_user,
+          action: "identity.totp_enabled",
+          resource: current_user,
+          metadata: { recovery_code_count: Array(current_user.recovery_codes).size },
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent
+        )
+      end
       session.delete(:pending_totp_secret)
+      session[:identity_recovery_codes] = Array(current_user.recovery_codes)
 
       redirect_to identity_security_path, notice: t("mcweb.flash.totp_enabled")
     end
 
     def disable_totp
-      unless current_user.authenticate(disable_params[:password].to_s)
-        return redirect_to identity_security_path, alert: t("mcweb.flash.password_incorrect")
+      verification = nil
+      User.transaction do
+        current_user.lock!
+        verification = Identity::SensitiveActionVerifier.call(
+          user: current_user,
+          password: disable_params[:password],
+          code: disable_params[:code]
+        )
+        raise ActiveRecord::Rollback unless verification.success?
+
+        current_user.update!(totp_enabled: false, totp_secret: nil, recovery_codes: nil)
+        Administration::AuditLogger.call(
+          actor: current_user,
+          action: "identity.totp_disabled",
+          resource: current_user,
+          metadata: { verification_method: verification.value.fetch(:method) },
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent
+        )
+      end
+      unless verification&.success?
+        return redirect_to identity_security_path, alert: service_error_message(verification)
       end
 
-      unless current_user.verify_totp(disable_params[:code].to_s) || current_user.consume_recovery_code!(disable_params[:code].to_s)
-        return redirect_to identity_security_path, alert: t("mcweb.flash.totp_invalid")
-      end
-
-      current_user.update!(totp_enabled: false, totp_secret: nil, recovery_codes: nil)
       session.delete(:pending_totp_secret)
+      session.delete(:identity_recovery_codes)
 
       redirect_to identity_security_path, notice: t("mcweb.flash.totp_disabled")
+    end
+
+    def regenerate_recovery_codes
+      result = Identity::RegenerateRecoveryCodes.call(
+        user: current_user,
+        password: recovery_code_params[:password],
+        code: recovery_code_params[:code],
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent
+      )
+
+      if result.success?
+        session[:identity_recovery_codes] = result.value.fetch(:codes)
+        redirect_to identity_security_path, notice: t("mcweb.flash.totp_recovery_codes_regenerated")
+      else
+        redirect_to identity_security_path, alert: service_error_message(result)
+      end
+    end
+
+    def change_email
+      result = Identity::ChangeEmail.call(
+        user: current_user,
+        email: email_params[:email],
+        password: email_params[:password],
+        code: email_params[:code],
+        current_session: current_session,
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent
+      )
+
+      if result.success?
+        flash_key = result.value.fetch(:verification_required) ? :email_changed_verify : :email_changed
+        redirect_to identity_security_path, notice: t("mcweb.flash.#{flash_key}")
+      else
+        redirect_to identity_security_path, alert: service_error_message(result)
+      end
+    end
+
+    def close_account
+      result = Identity::CloseAccount.call(
+        user: current_user,
+        password: account_close_params[:password],
+        code: account_close_params[:code],
+        confirmation: account_close_params[:confirmation],
+        closure_mode: account_close_params[:closure_mode].presence || "anonymize",
+        reason: account_close_params[:reason],
+        ip_address: request.remote_ip,
+        user_agent: request.user_agent
+      )
+
+      unless result.success?
+        return redirect_to identity_security_path, alert: service_error_message(result)
+      end
+
+      sign_out
+      redirect_to root_path, notice: t("mcweb.flash.account_closed")
     end
 
     private
@@ -70,11 +156,23 @@ module Identity
     end
 
     def confirm_params
-      params.expect(totp: [ :code ])[:totp]
+      params.expect(totp: [ :code ])
     end
 
     def disable_params
-      params.expect(totp: %i[password code])[:totp]
+      params.expect(totp: %i[password code])
+    end
+
+    def recovery_code_params
+      params.expect(recovery_codes: %i[password code])
+    end
+
+    def email_params
+      params.expect(email_change: %i[email password code])
+    end
+
+    def account_close_params
+      params.expect(account_close: %i[password code confirmation closure_mode reason])
     end
   end
 end

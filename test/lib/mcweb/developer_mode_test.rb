@@ -226,7 +226,61 @@ class Mcweb::DeveloperModeTest < ActiveSupport::TestCase
     assert_raises(FrozenError) { configured.runtime[:job_backend] = :async }
   end
 
+  test "every declared security capability has enabled disabled and inherit pairs" do
+    unrestricted = parse(developer_mode: { enabled: true })
+    disabled = parse(developer_mode: { enabled: false })
+
+    with_settings(unrestricted) do
+      Mcweb::DeveloperMode::CAPABILITIES.each_key do |capability|
+        assert Mcweb::DeveloperMode.allow?(capability),
+          "#{capability} should be active in unrestricted mode"
+      end
+    end
+
+    with_settings(disabled) do
+      Mcweb::DeveloperMode::CAPABILITIES.each_key do |capability|
+        assert_not Mcweb::DeveloperMode.allow?(capability),
+          "#{capability} must preserve normal behavior while disabled"
+      end
+    end
+
+    Mcweb::DeveloperMode::CAPABILITIES.each do |capability, (setting, _value)|
+      inherited = parse(
+        developer_mode: {
+          enabled: true,
+          security: { setting => "inherit" }
+        }
+      )
+      with_settings(inherited) do
+        assert_not Mcweb::DeveloperMode.allow?(capability),
+          "#{capability} must preserve normal behavior when inherited"
+      end
+    end
+  end
+
+  test "global CSP is explicit and Developer Mode only disables the global policy" do
+    source = Rails.root.join(
+      "config/initializers/content_security_policy.rb"
+    ).read
+
+    assert_includes source,
+      "unless Mcweb::DeveloperMode.allow?(:disable_csp)"
+    assert_includes source, "policy.default_src :self"
+    assert_includes source, "policy.object_src :none"
+    assert_includes source, "policy.frame_ancestors :self"
+    assert_includes source, "Endpoint-specific sandbox policies"
+  end
+
   private
+
+  def with_settings(settings)
+    previous_settings =
+      Mcweb::DeveloperMode.instance_variable_get(:@settings)
+    Mcweb::DeveloperMode.instance_variable_set(:@settings, settings)
+    yield
+  ensure
+    Mcweb::DeveloperMode.instance_variable_set(:@settings, previous_settings)
+  end
 
   def parse(config = nil, environment: {}, **config_keywords)
     config = config_keywords if config.nil?

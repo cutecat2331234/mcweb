@@ -1,0 +1,50 @@
+---
+schema_version: "1"
+contributions:
+- type: entity_metadata
+  id: examples.forum_extension.metadata.topic_review
+  payload:
+    entity: forum.topic
+    fields:
+      examples.forum_extension.review_note:
+        type: string
+      examples.forum_extension.review_score:
+        type: integer
+- type: ui_slot
+  id: examples.forum_extension.slot.report_review
+  payload:
+    target: "/admin/forum/reports"
+    slot: detail.actions
+    kind: action
+    title_phrase: examples.forum_extension.action.review.title
+    permission: examples.forum_extension.moderation.review
+    schema:
+      action: open_moderation_review
+      confirmation_phrase: examples.forum_extension.action.review.confirm
+- type: event
+  id: examples.forum_extension.event.review_requested
+  payload:
+    name: examples.forum_extension.review_requested
+    direction: emits
+    schema_version: "1"
+    description_phrase: examples.forum_extension.event.review_requested.description
+- type: translation
+  id: examples.forum_extension.translation.en
+  payload:
+    locale: en
+    phrases:
+      examples.forum_extension.permission.review.title: Review escalated reports
+      examples.forum_extension.permission.review.description: Open the extension review action from the report workbench.
+      examples.forum_extension.action.review.title: Extension review
+      examples.forum_extension.action.review.confirm: Open this report in the extension review workflow?
+      examples.forum_extension.event.review_requested.description: Emitted after a report enters the extension review workflow.
+- type: translation
+  id: examples.forum_extension.translation.zh_cn
+  payload:
+    locale: zh-CN
+    phrases:
+      examples.forum_extension.permission.review.title: 审核升级举报
+      examples.forum_extension.permission.review.description: 从举报工作台打开扩展审核动作。
+      examples.forum_extension.action.review.title: 扩展审核
+      examples.forum_extension.action.review.confirm: 要在扩展审核流程中打开此举报吗？
+      examples.forum_extension.event.review_requested.description: 举报进入扩展审核流程后发出。

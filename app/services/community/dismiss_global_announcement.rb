@@ -8,7 +8,7 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Topic id required.") if @topic_public_id.blank?
+      return ServiceResult.failure(error: :topic_id_required) if @topic_public_id.blank?
 
       ids = Array(@user.dismissed_global_announcement_ids).map(&:to_s)
       return ServiceResult.success(dismissed: ids) if ids.include?(@topic_public_id)

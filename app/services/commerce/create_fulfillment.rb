@@ -32,7 +32,7 @@ module Commerce
         retries += 1
         retry if retries < MAX_RETRIES
 
-        ServiceResult.failure(error: "Unable to generate unique delivery ID.")
+        ServiceResult.failure(error: :unable_to_generate_unique_delivery_id)
       rescue ActiveRecord::RecordInvalid => e
         ServiceResult.failure(errors: e.record.errors.to_hash)
       end

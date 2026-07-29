@@ -17,13 +17,15 @@ module Payments
     end
 
     def process_webhook_event(event)
+      return process_dispute_event(event) if event.event_type.to_s.start_with?("dispute.")
+
       payment_record = Payments::Record.find_by(
         provider: "fake",
         provider_payment_id: event.payload.dig("payment_id")
       )
       unless payment_record
         return ServiceResult.failure(
-          error: "Payment record not found.",
+          error: :payment_not_found,
           code: "payment_not_found"
         )
       end
@@ -47,6 +49,33 @@ module Payments
     end
 
     private
+
+    def process_dispute_event(event)
+      payment_record = Payments::Record.find_by(
+        provider: "fake",
+        provider_payment_id: event.payload["payment_id"]
+      )
+      return ServiceResult.failure(error: :payment_not_found, code: "payment_not_found") unless payment_record
+
+      Commerce::Disputes::ApplyChannelEvent.call(
+        provider: "fake",
+        provider_event_id: event.event_id,
+        provider_dispute_id: event.payload["dispute_id"],
+        payment_record: payment_record,
+        event_type: event.event_type,
+        provider_status: event.payload["status"],
+        amount_cents: event.payload["amount"],
+        currency: event.payload["currency"],
+        occurred_at: event.payload["occurred_at"].presence || event.created_at,
+        sequence: event.payload["sequence"],
+        evidence_due_at: event.payload["evidence_due_at"],
+        risk_level: event.payload["risk_level"],
+        reason_code: event.payload["reason"],
+        kind: "dispute",
+        payload_digest: event.payload_digest,
+        webhook_event: event
+      )
+    end
 
     def webhook_secret
       secret = Rails.application.credentials.dig(:payments, :fake, :webhook_secret)

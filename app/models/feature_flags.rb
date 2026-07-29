@@ -7,32 +7,32 @@ class FeatureFlags
     Definition.new(
       id: :forum,
       key: "features.forum.enabled",
-      label: "论坛",
-      description: "社区论坛、私信、通知及相关导航入口",
+      label: "mcweb.user_copy.feature_forum_label",
+      description: "mcweb.user_copy.feature_forum_description",
       default: true,
       path_prefixes: [ "/app/forum" ]
     ),
     Definition.new(
       id: :store,
       key: "features.store.enabled",
-      label: "商城",
-      description: "商品、购物车、订单及相关导航入口",
+      label: "mcweb.user_copy.feature_store_label",
+      description: "mcweb.user_copy.feature_store_description",
       default: true,
       path_prefixes: [ "/app/store" ]
     ),
     Definition.new(
       id: :website_blog,
       key: "features.website_blog.enabled",
-      label: "官网博客",
-      description: "官网导航与页脚中的「动态 / 博客」入口",
+      label: "mcweb.user_copy.feature_blog_label",
+      description: "mcweb.user_copy.feature_blog_description",
       default: true,
       path_prefixes: [ "/blog" ]
     ),
     Definition.new(
       id: :minecraft,
       key: "features.minecraft.enabled",
-      label: "Minecraft 绑定",
-      description: "玩家 Minecraft 账号绑定页面",
+      label: "mcweb.user_copy.feature_minecraft_label",
+      description: "mcweb.user_copy.feature_minecraft_description",
       default: true,
       path_prefixes: [ "/app/minecraft/link" ]
     )
@@ -62,8 +62,8 @@ class FeatureFlags
       DEFINITIONS.map do |definition|
         {
           id: definition.id.to_s,
-          label: definition.label,
-          description: definition.description,
+          label: I18n.t(definition.label),
+          description: I18n.t(definition.description),
           enabled: enabled?(definition.id)
         }
       end
@@ -74,7 +74,7 @@ class FeatureFlags
       states = proposed_states(permitted)
 
       if !states[:forum] && !states[:store]
-        return ServiceResult.failure(error: "论坛和商城至少需要保留一个开启。")
+        return ServiceResult.failure(error: :feature_portal_required)
       end
 
       DEFINITIONS.each do |definition|
@@ -114,8 +114,12 @@ class FeatureFlags
 
     def disabled_message(feature_id)
       definition = definition_for(feature_id)
-      label = definition&.label || "该功能"
-      "#{label}已被管理员关闭。"
+      label = if definition
+        I18n.t(definition.label)
+      else
+        I18n.t("mcweb.user_copy.feature_generic_label")
+      end
+      I18n.t("mcweb.user_copy.feature_disabled_message", feature: label)
     end
 
     private

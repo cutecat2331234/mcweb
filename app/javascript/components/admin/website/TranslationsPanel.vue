@@ -1,4 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
+
+const { t } = useI18n()
+
 const props = defineProps<{
   locales: string[]
   fields: Array<'title' | 'summary' | 'description'>
@@ -26,22 +30,30 @@ function ensureSeo(locale: string) {
   <a-space direction="vertical" fill>
     <a-card v-for="locale in props.locales" :key="locale" :title="locale" :bordered="true">
       <a-form :model="ensure(locale)" layout="vertical">
-        <a-form-item v-if="fields.includes('title')" field="title" label="Title">
+        <a-form-item
+          v-if="fields.includes('title')"
+          field="title"
+          :label="t('admin.website.translations.title')"
+        >
           <a-input v-model="ensure(locale).title" allow-clear />
         </a-form-item>
-        <a-form-item v-if="fields.includes('summary')" field="summary" label="Summary">
+        <a-form-item
+          v-if="fields.includes('summary')"
+          field="summary"
+          :label="t('admin.website.translations.summary')"
+        >
           <a-textarea
             v-model="ensure(locale).summary"
             :auto-size="{ minRows: 2, maxRows: 6 }"
           />
         </a-form-item>
-        <a-form-item field="seo.title" label="SEO title">
+        <a-form-item field="seo.title" :label="t('admin.website.translations.seoTitle')">
           <a-input v-model="ensureSeo(locale).title" allow-clear />
         </a-form-item>
         <a-form-item
           v-if="fields.includes('description')"
           field="seo.description"
-          label="SEO description"
+          :label="t('admin.website.translations.seoDescription')"
         >
           <a-textarea
             v-model="ensureSeo(locale).description"

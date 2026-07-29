@@ -1,0 +1,16 @@
+---
+id: examples/forum_extension
+name: Forum Extension
+version: 1.0.0
+api_version: "1"
+description: Demonstrates forum metadata, moderation permissions, events, and UI slots.
+author: McWeb
+capabilities:
+- forum.events.publish
+- forum.events.read
+- forum.moderate
+- identity.permissions.read
+contributions:
+  catalog: config/contributions.yml
+  permissions: config/permissions.yml
+entrypoint: plugin.rb

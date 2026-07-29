@@ -21,7 +21,7 @@ class Role < ApplicationRecord
   def revoke_permission!(permission)
     Identity::PermissionMutationLock.with_exclusive do
       permission = Permission.find_by!(key: permission) if permission.is_a?(String)
-      RolePermission.where(role: self, permission:).delete_all
+      RolePermission.where(role: self, permission:).destroy_all
     end
   end
 end

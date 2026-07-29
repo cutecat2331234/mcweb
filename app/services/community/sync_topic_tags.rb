@@ -13,11 +13,11 @@ module Community
 
     def call
       unless @user && Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
-      return ServiceResult.failure(error: "You cannot edit this topic.") unless can_update_tags?
+      return ServiceResult.failure(error: :this_topic_is_archived) if @topic.archived_at.present?
+      return ServiceResult.failure(error: :you_cannot_edit_this_topic) unless can_update_tags?
 
       @tag_names.each do |name|
         slug = name.to_s.parameterize.presence
@@ -26,7 +26,9 @@ module Community
         tag = Community::Tag.find_by(slug: slug)
         tag = tag&.effective_tag
         if tag&.staff_only? && !can_use_staff_tags?
-          return ServiceResult.failure(error: "You cannot use restricted tag: #{tag.name}")
+          return ServiceResult.failure(
+            error: I18n.t("mcweb.user_copy.restricted_tag", name: tag.name)
+          )
         end
       end
 

@@ -28,6 +28,7 @@ module Identity
       clear_expired_ban!(user)
       return generic_failure if user.banned?
       return generic_failure if user.deleted?
+      return generic_failure unless user.session_eligible?
       if !Mcweb::DeveloperMode.allow?(:skip_account_lockout) && locked?(user)
         return generic_failure
       end

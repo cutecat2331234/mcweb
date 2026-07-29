@@ -10,7 +10,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Question is required.") if @body.blank?
+      return ServiceResult.failure(error: :question_is_required) if @body.blank?
 
       if @order_item
         return ServiceResult.failure(error: "order_item_mismatch") unless @order_item.store_product_id == @product.id

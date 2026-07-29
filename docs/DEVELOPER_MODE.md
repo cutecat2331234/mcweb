@@ -1,7 +1,7 @@
 # McWeb CE Developer Mode
 
-> 状态：部分实现，可用于受控开发环境
-> 最近复核：2026-07-26
+> 状态：代码功能闭环，可用于受控开发环境；多网络浏览器矩阵仍待统一验收
+> 最近复核：2026-07-29
 > 版本范围：McWeb CE；EE 必须先合并 CE 的通用实现，再追加 EE 专属行为
 
 Developer Mode 是启动期配置，不是管理员后台中的热开关。它可以关闭一批妨碍本地
@@ -56,6 +56,11 @@ developer_mode:
 `auto_login_user` 都会在 Rails 初始化前中止启动。即使总开关为 `false`，错误的细项
 仍会被校验，避免以后启用时静默采用错误配置。
 
+`RAILS_ENV=test` / `RACK_ENV=test` 会在 boot 缓存设置前强制
+`MCWEB_DEVELOPER_MODE=0`。普通测试因此始终验证正常安全与真实集成选择逻辑，不会因
+开发者本机 `local.yml` 开启了 Developer Mode 而改走 fake provider；需要测试某个
+开发能力时，测试代码必须通过不可变 settings 快照显式注入。
+
 在 `RAILS_ENV=production` 中开启还必须同时提供以下独立确认：
 
 ```text
@@ -103,8 +108,8 @@ production 进程都必须收到相同确认值。
 | `attachment_quota` | `bypass` | 跳过站点、身份组和账号配额判定，但仍创建正常的 upload reservation，输入与数据库约束继续执行。 |
 | `browser_policy` | `bypass` | 跳过 Rails modern-browser gate。 |
 
-`csp: disabled` 已进入严格配置 schema，但 McWeb 当前没有全局 CSP 可供切换，因此该值
-目前不会额外修改响应。附件与上传下载端点显式设置的
+McWeb 现在定义了全局 CSP。`csp: disabled` 会只关闭这层全局浏览器策略，便于调试
+代理、Source Map 和热更新；附件与上传下载端点显式设置的
 `Content-Security-Policy: sandbox` 永远保留。
 
 `plugin_signature: allow_unsigned` 需要单独解释：当前 Marketplace 本来就没有可关闭的
@@ -172,24 +177,43 @@ endpoint，因此没有另行虚构或导出同名 gauge。
 - 具备 `system.settings.manage` 的管理员可访问
   `/admin/system/developer-workbench`，查看最终生效配置与安全脱敏的本地状态。
 
+所有 Inertia 壳和旧 Rails 页面还会显示低透明度 `DEV` 水印。管理后台右下角的开发
+工具按钮打开 Arco Drawer，可复制当前页面组件、request id、环境和配置档组成的脱敏
+诊断摘要；具备权限时还可进入 Workbench 或切换测试身份。
+
 `noindex` 只是搜索引擎提示，不是访问控制。
 
 ### 2.5 Developer Workbench
 
-Workbench 是只读诊断页，不是 Developer Mode 配置页：
+Workbench 不允许热修改 Developer Mode 配置，但提供受控、可审计的本地数据工具：
 
 - Developer Mode 关闭时，路由在认证处理前直接返回 `404`，侧栏入口也不出现。
 - 开启时仍要求普通后台访问条件、`admin.access` 和
   `system.settings.manage`；Developer Mode 不绕过这些 RBAC 检查。
 - 页面显示 profile、production 风险、security/integrations/runtime 最终生效枚举、
   Cron 自动注册状态，以及 `auto_login_user` 是否已配置；自动登录目标值绝不返回。
-- 邮件、Webhook、Web Push 只显示相对目录、有限文件统计和最新白名单元数据。
+- 邮件、Webhook、Web Push 只显示相对目录、有限文件统计和白名单元数据，并支持
+  脱敏分页浏览与逐类清理。
   服务端不会把邮件正文、URL、headers、payload、完整 capture ID 或绝对路径放入
   Inertia props。
 - Minecraft 区域只汇总 Developer Mode 模拟任务的类型、状态与时间，不返回节点、
   服务器、任务 payload 或 result。
-- “系统设置”和“后台任务”按钮使用 Inertia 内部导航；页面没有启用、关闭、清理或
-  重放操作。模式开关仍只能修改 `config/local.yml` 或启动环境变量并重启进程。
+- 可重复生成测试身份、论坛与商城基础场景，可对一个有效附件制造
+  clean/infected/quarantined/timeout 状态，并可从固定 allowlist 手动入队周期任务。
+- 捕获清理、场景 seed、附件状态注入和任务触发全部记录不可变 AuditLog。
+- “系统设置”和“后台任务”按钮使用 Inertia 内部导航；模式开关仍只能修改
+  `config/local.yml` 或启动环境变量并重启进程。
+
+### 2.6 测试身份与场景
+
+Workbench 的 `personas` 或 `all` 场景会幂等生成 owner、moderator、member 三个固定
+测试身份。密码使用不回显的随机值；切换只允许拥有系统设置权限的操作员或已经进入的
+测试身份执行，不接受任意用户 ID。测试身份带独立数据库标记，Developer Mode 关闭后
+不能建立新会话，已有 Developer Mode Session 也会按正常规则失效。
+
+`forum` 场景增加一个可丢弃的 Playground 分区和基础主题，`store` 场景增加一个
+可购买的测试商品，`all` 同时生成全部内容。它们会真实写当前数据库，因此只用于可
+丢弃环境。
 
 ## 3. production 环境仍强制保留的 foundation
 
@@ -266,6 +290,14 @@ Web Push 只有在通知仍对用户可见、用户偏好允许且至少存在�
 fake 支付没有独立捕获目录。它创建正常的 payment/order 数据并使用
 `/app/payments/fake/...` 完成支付，退款也走正常服务层。因此必须使用可丢弃的开发
 数据库；“fake”只代表不连接外部支付网络，不代表不会修改业务数据。
+
+fake 支付页在 Developer Mode 下提供四种显式结果：
+
+- 立即成功：正常确认支付并触发履约；
+- 渠道失败：将当前支付尝试置为失败；
+- 用户取消：将当前支付尝试置为取消；
+- 延迟到账：保持 pending，并在 10 秒后通过受保护 Job 确认。若届时 Developer Mode
+  已关闭或支付替身已恢复为 `inherit`，任务不会确认付款。
 
 ## 6. 启动后验证
 
@@ -355,20 +387,19 @@ Action Mailer、Active Storage 和 Vite build 选项都不能靠刷新浏览器�
 - 关闭前应删除总开关与 production 确认变量并重启全部进程，再重新核验 headers、
   provider 和邮件 adapter，不能只把 YAML 改回 `false`。
 
-## 9. 当前未实现
+## 9. 仍待最终环境验收或不属于本模式的事项
 
 以下仍属于活动计划，不能从配置名称或 UI 文案推断为已完成：
 
-- 捕获记录浏览/清空 UI、前端调试抽屉和可下载的脱敏诊断包。
-- owner/moderator/member 一键身份切换；当前只有一个可选 `auto_login_user`。
-- fake 支付的失败、取消、延迟到账等可选故障场景。
 - 插件包密码学签名能力本身尚不存在；`plugin_signature: allow_unsigned` 当前是
   no-op，且绝不关闭 SHA-256/ZIP/路径/manifest 边界。
-- 全局 CSP 切换；当前只确认没有全局 CSP，并保留端点 sandbox。
-- 上传 clean/infected/quarantined/timeout 一键场景制造工具。
-- 模式开关与配置变化的持久审计日志、`mcweb_developer_mode` 指标和完整系统信息面板。
-- 独立视觉水印；当前已有横幅、`[DEV]` 标题、HTML 属性和响应头。
-- 自动启动 Vite HMR、完整多网络浏览器 E2E，以及每个声明 capability 的成对门禁。
+- 项目尚未引入 Prometheus endpoint，因此不虚构 `mcweb_developer_mode` gauge；现有
+  health、后台任务页、Workbench、响应头和持久审计已经暴露同一状态。
+- `bin/dev` 已同时启动 Rails、Tailwind watcher 与 Vite dev server/HMR；直接运行
+  `bin/rails server` 不会隐式管理额外子进程。
+- localhost、局域网、公网 IP/域名、HTTP、HTTPS 与反向代理的完整浏览器矩阵，以及
+  自动登录、fake 支付、邮件、Webhook、Web Push 的浏览器 E2E，仍按全项目统一
+  Chrome 验收波次执行。
 
 进度与未完成验收项以
 [`code-completion-and-developer-mode-plan.md`](code-completion-and-developer-mode-plan.md)

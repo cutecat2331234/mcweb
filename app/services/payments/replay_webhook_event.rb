@@ -24,14 +24,14 @@ module Payments
 
         unless Payments::WebhookReplayToken.valid?(@token, event)
           return ServiceResult.failure(
-            error: "Webhook replay authorization expired or is invalid.",
+            error: :webhook_replay_authorization_expired_or_is_invalid,
             code: "invalid_replay_token"
           )
         end
 
         unless event.manually_replayable?
           return ServiceResult.failure(
-            error: "This webhook event is not eligible for manual replay.",
+            error: :this_webhook_event_is_not_eligible_for_manual_replay,
             code: "webhook_not_replayable"
           )
         end
@@ -84,14 +84,18 @@ module Payments
 
     def invalid_reason_result
       ServiceResult.failure(
-        error: "A replay reason between #{MIN_REASON_LENGTH} and #{MAX_REASON_LENGTH} characters is required.",
+        error: I18n.t(
+          "mcweb.user_copy.webhook_replay_reason_invalid",
+          min: MIN_REASON_LENGTH,
+          max: MAX_REASON_LENGTH
+        ),
         code: "invalid_replay_reason"
       )
     end
 
     def forbidden_result
       ServiceResult.failure(
-        error: "You do not have permission to replay payment webhooks.",
+        error: :you_do_not_have_permission_to_replay_payment_webhooks,
         code: "forbidden"
       )
     end

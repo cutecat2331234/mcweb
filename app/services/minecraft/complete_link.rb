@@ -13,13 +13,13 @@ module Minecraft
         .where("expires_at > ?", Time.current)
         .first
 
-      return ServiceResult.failure(error: "Invalid or expired link code.") unless link_code
+      return ServiceResult.failure(error: :invalid_or_expired_link_code) unless link_code
 
       identity = nil
       player_ref = nil
       ActiveRecord::Base.transaction do
         link_code.lock!
-        return ServiceResult.failure(error: "Link code has already been used.") if link_code.used_at?
+        return ServiceResult.failure(error: :link_code_used) if link_code.used_at?
 
         player_ref = PlayerRef.resolve(
           uuid: link_code.minecraft_uuid,
@@ -29,12 +29,12 @@ module Minecraft
         )
 
         if player_ref.website_user && player_ref.website_user.id != @user.id
-          return ServiceResult.failure(error: "This Minecraft account is already linked.")
+          return ServiceResult.failure(error: :minecraft_already_linked)
         end
 
         existing = Minecraft::Identity.find_by(uuid: link_code.minecraft_uuid, identity_type: link_code.identity_type)
         if existing && existing.user_id != @user.id
-          return ServiceResult.failure(error: "This Minecraft account is already linked.")
+          return ServiceResult.failure(error: :minecraft_already_linked)
         end
 
         identity = existing || Minecraft::Identity.create!(

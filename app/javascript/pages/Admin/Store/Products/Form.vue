@@ -51,6 +51,13 @@ const props = defineProps<{
   categories: Array<{ id: number; name: string }>
   membership_types?: Array<{ id: number; name: string }>
   prerequisite_products?: Array<{ id: number; name: string }>
+  fulfillment_providers?: Array<{
+    id: string
+    key: string
+    plugin_id: string
+    plugin_name: string
+    plugin_version: string
+  }>
   submitUrl: string
   method: 'post' | 'patch'
   backUrl: string
@@ -124,6 +131,32 @@ const imagePackOptions = computed(() => [
 
 const imagePackId = ref('')
 const imageTexture = ref('')
+const fulfillmentProviderId = ref('')
+
+const fulfillmentProviderOptions = computed(() => {
+  const options = [
+    {
+      value: '',
+      label: t('admin.forms.product.fulfillmentProviderBuiltIn'),
+    },
+    ...(props.fulfillment_providers || []).map((provider) => ({
+      value: provider.id,
+      label: `${provider.plugin_name} · ${provider.key} (${provider.plugin_version})`,
+    })),
+  ]
+  if (
+    fulfillmentProviderId.value &&
+    !options.some((option) => option.value === fulfillmentProviderId.value)
+  ) {
+    options.push({
+      value: fulfillmentProviderId.value,
+      label: t('admin.forms.product.fulfillmentProviderUnavailable', {
+        id: fulfillmentProviderId.value,
+      }),
+    })
+  }
+  return options
+})
 
 const availableAt = computed<string | undefined>({
   get: () => form.product.available_at || undefined,
@@ -214,6 +247,24 @@ function removeVariant(variant: (typeof form.product.variants)[number]) {
   }
 }
 
+function syncFulfillmentProviderToConfig() {
+  const config = parseFulfillmentConfig()
+  delete config.fulfillment_provider
+  if (fulfillmentProviderId.value) {
+    config.plugin_provider = fulfillmentProviderId.value
+  } else {
+    delete config.plugin_provider
+  }
+  form.product.fulfillment_config = JSON.stringify(config, null, 2)
+}
+
+function loadFulfillmentProviderFromConfig() {
+  const config = parseFulfillmentConfig()
+  fulfillmentProviderId.value = String(
+    config.plugin_provider || config.fulfillment_provider || '',
+  )
+}
+
 function fieldError(field: string) {
   return form.errors[field] || form.errors[`product.${field}`]
 }
@@ -234,6 +285,7 @@ function submit(event?: { errors?: unknown }) {
     form.product.requires_shipping = false
   }
   syncImagePackToFulfillmentConfig()
+  syncFulfillmentProviderToConfig()
   form.product.prerequisites = form.product.prerequisites.filter(
     (p) => p._destroy || p.required_product_id,
   )
@@ -283,6 +335,7 @@ onMounted(() => {
     form.product.requires_shipping = false
   }
   loadImagePackFromFulfillmentConfig()
+  loadFulfillmentProviderFromConfig()
 })
 </script>
 
@@ -631,6 +684,20 @@ onMounted(() => {
         </a-card>
 
         <a-card :bordered="true">
+          <a-alert
+            :title="t('admin.forms.product.fulfillmentProviderTitle')"
+            :content="t('admin.forms.product.fulfillmentProviderHint')"
+            type="info"
+            class="mb-4"
+          />
+          <a-form-item :label="t('admin.forms.product.fulfillmentProvider')">
+            <a-select
+              v-model="fulfillmentProviderId"
+              :options="fulfillmentProviderOptions"
+              allow-search
+            />
+          </a-form-item>
+          <a-divider />
           <a-form-item
             field="image_url"
             :label="t('admin.forms.product.imageUrl')"

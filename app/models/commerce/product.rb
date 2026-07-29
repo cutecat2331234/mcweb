@@ -13,6 +13,8 @@ module Commerce
     has_many :wishlist_items, class_name: "Commerce::WishlistItem", foreign_key: :store_product_id, dependent: :destroy
     has_many :reviews, class_name: "Commerce::Review", foreign_key: :store_product_id, dependent: :destroy
     has_many :questions, class_name: "Commerce::ProductQuestion", foreign_key: :store_product_id, dependent: :destroy
+    has_many :inventory_reservations, as: :target, class_name: "Commerce::InventoryReservation", dependent: :restrict_with_error
+    has_many :inventory_movements, as: :target, class_name: "Commerce::InventoryMovement", dependent: :restrict_with_error
 
     has_one_attached :cover_image
 
@@ -139,7 +141,7 @@ module Commerce
       return if maximum_quantity.blank?
 
       if maximum_quantity < minimum_quantity
-        errors.add(:maximum_quantity, "must be greater than or equal to minimum quantity")
+        errors.add(:maximum_quantity, I18n.t("mcweb.validation_errors.must_be_greater_than_or_equal_to_minimum_quantity"))
       end
     end
 
@@ -147,7 +149,7 @@ module Commerce
       return if compare_at_price_cents.blank?
 
       if compare_at_price_cents < price_cents
-        errors.add(:compare_at_price_cents, "must be greater than or equal to sale price")
+        errors.add(:compare_at_price_cents, I18n.t("mcweb.validation_errors.must_be_greater_than_or_equal_to_sale_price"))
       end
     end
 
@@ -161,7 +163,7 @@ module Commerce
       return if image_url.blank?
       return if UrlSafety.safe_image_src?(image_url)
 
-      errors.add(:image_url, "must be a safe http(s) or uploaded image URL")
+      errors.add(:image_url, I18n.t("mcweb.validation_errors.must_be_a_safe_https_or_uploaded_image_url"))
     end
 
     def gallery_urls_safe
@@ -169,7 +171,7 @@ module Commerce
         next if url.blank?
         next if UrlSafety.safe_image_src?(url)
 
-        errors.add(:gallery_urls, "contains an unsafe URL")
+        errors.add(:gallery_urls, I18n.t("mcweb.validation_errors.contains_an_unsafe_url"))
         break
       end
     end

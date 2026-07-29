@@ -1,5 +1,8 @@
 en:
   mcweb:
+    plugin_maintenance:
+      title: "Brief maintenance in progress"
+      message: "A trusted plugin is being updated. This page will be available again shortly; your account and saved content are unchanged."
     permission_catalog:
       legacy_group: "Inactive or legacy grants"
       legacy_description: "This permission is no longer published by the active core or plugin catalog. It can be retained or removed, but cannot be newly granted."
@@ -22,6 +25,9 @@ en:
       identity_roles_manage:
         name: "Manage roles"
         description: "Create, update, and remove global roles within your delegation boundary."
+      identity_permissions_explain:
+        name: "Explain effective permissions"
+        description: "View a member's final global permission decisions and the role, group, or account source of each grant."
       system_bans_manage:
         name: "Manage access bans"
         description: "Create and remove IP address and email address bans."
@@ -31,6 +37,27 @@ en:
       store_credit_adjust:
         name: "Adjust member store credit"
         description: "Increase or decrease a member's store-credit balance."
+      store_credit_read:
+        name: "View member store credit"
+        description: "View member store-credit balances and adjustment history."
+      store_entitlements_read:
+        name: "View member entitlements"
+        description: "View manually managed memberships and digital entitlements."
+      store_entitlements_grant:
+        name: "Grant member entitlements"
+        description: "Manually grant memberships and digital entitlements."
+      store_entitlements_revoke:
+        name: "Revoke member entitlements"
+        description: "Manually revoke memberships and digital entitlements."
+      store_orders_mark_paid:
+        name: "Mark orders paid"
+        description: "Manually mark eligible orders as paid."
+      store_orders_mark_fulfilled:
+        name: "Mark orders fulfilled"
+        description: "Manually mark eligible orders as fulfilled."
+      store_orders_cancel:
+        name: "Cancel orders"
+        description: "Manually cancel pending orders."
       admin_access:
         name: "Access administration"
         description: "Open and use the administration area."
@@ -100,6 +127,60 @@ en:
       store_products_read:
         name: "View store staff notifications"
         description: "Receive staff-only store notifications such as low-stock alerts."
+      store_inventory_read:
+        name: "View inventory"
+        description: "View available, reserved, sold, and anomalous inventory with immutable movement history."
+      store_inventory_adjust:
+        name: "Adjust inventory"
+        description: "Make signed, reasoned, and audited manual inventory adjustments."
+      store_inventory_recover:
+        name: "Recover inventory anomalies"
+        description: "Review and resolve expired reservations and order-to-inventory inconsistencies."
+      store_finance_read:
+        name: "View finance records"
+        description: "View tax snapshots, invoices, refund receipts, and finance export status."
+      store_finance_documents_manage:
+        name: "Manage finance documents"
+        description: "Void or create controlled revisions of issued finance documents."
+      store_finance_exports_create:
+        name: "Create finance exports"
+        description: "Request filtered asynchronous finance exports."
+      store_finance_exports_download:
+        name: "Download finance exports"
+        description: "Download completed finance exports before their file expires."
+      store_disputes_read:
+        name: "View payment disputes"
+        description: "View dispute deadlines, states, ownership, and safe order context."
+      store_disputes_sensitive_read:
+        name: "View sensitive dispute details"
+        description: "View payment references, evidence metadata, and detailed financial exposure."
+      store_disputes_assign:
+        name: "Assign payment disputes"
+        description: "Assign or reassign dispute owners with an immutable reason."
+      store_disputes_note:
+        name: "Add payment dispute notes"
+        description: "Add immutable internal notes to the dispute timeline."
+      store_disputes_evidence_submit:
+        name: "Submit dispute evidence"
+        description: "Create retained evidence packages for active payment disputes."
+      store_disputes_accept_loss:
+        name: "Accept dispute losses"
+        description: "Accept financial loss after a signed impact preview and typed confirmation."
+      store_disputes_close:
+        name: "Close payment disputes"
+        description: "Close terminal disputes and start their retained-evidence period."
+      store_disputes_rights_manage:
+        name: "Manage disputed-order rights"
+        description: "Freeze, revoke, or restore memberships and digital rights linked to disputed orders."
+      store_fulfillments_read:
+        name: "View fulfillment recovery"
+        description: "View fulfillment states, retry schedules, safe failure reasons, and attempt history."
+      store_fulfillments_retry:
+        name: "Retry fulfillments"
+        description: "Retry eligible fulfillment tasks with signed confirmation, a business reason, and audit history."
+      store_fulfillments_cancel:
+        name: "Cancel fulfillments"
+        description: "Cancel unfinished fulfillment tasks with signed confirmation, a business reason, and audit history."
       store_products_manage:
         name: "Manage store products"
         description: "Create, edit, publish, and organize products and related catalog content."
@@ -157,6 +238,33 @@ en:
       system_plugins_manage:
         name: "Manage plugin packages"
         description: "Install, upgrade, enable, disable, and uninstall trusted plugin packages."
+      system_plugins_view:
+        name: "View plugins"
+        description: "View installed plugins, contributions, and package state."
+      system_plugins_install:
+        name: "Install and upgrade plugins"
+        description: "Install reviewed plugin packages and upgrade installed versions."
+      system_plugins_enable:
+        name: "Enable plugins"
+        description: "Enable a disabled plugin package."
+      system_plugins_disable:
+        name: "Disable plugins"
+        description: "Disable an active plugin package."
+      system_plugins_diagnostics:
+        name: "View plugin diagnostics"
+        description: "Inspect file health, lifecycle runs, and process generations."
+      system_plugins_recover:
+        name: "Recover plugins"
+        description: "Restore a verified plugin package from its recovery point."
+      system_plugins_rollback:
+        name: "Roll back plugins"
+        description: "Request a plugin release or runtime generation rollback."
+      system_plugins_uninstall_preserve:
+        name: "Uninstall plugins and preserve data"
+        description: "Remove plugin code while retaining plugin-owned data."
+      system_plugins_uninstall_purge:
+        name: "Uninstall plugins and purge data"
+        description: "Run trusted teardown and purge plugin-owned data during uninstall."
       system_plugins_settings_manage:
         name: "Manage plugin settings"
         description: "View and update settings exposed by installed plugins."
@@ -169,6 +277,27 @@ en:
       system_audit_read:
         name: "View audit logs"
         description: "View administrative audit events and their recorded context."
+      system_audit_export:
+        name: "Export audit logs"
+        description: "Export permission-controlled audit results. Every export is recorded as a new audit event."
+      data_governance_read:
+        name: "View data governance"
+        description: "View retention policies, holds, and governed-content lifecycle records."
+      data_governance_policies_manage:
+        name: "Manage retention policies"
+        description: "Change governed-content retention periods and lifecycle capabilities."
+      data_governance_holds_manage:
+        name: "Manage retention holds"
+        description: "Place and release audited retention holds on governed content."
+      data_governance_content_delete:
+        name: "Soft-delete governed content"
+        description: "Move governed content into its reversible retention period."
+      data_governance_content_restore:
+        name: "Restore governed content"
+        description: "Restore eligible governed content before permanent cleanup."
+      data_governance_content_purge:
+        name: "Permanently purge governed content"
+        description: "Permanently remove due content after all retention and evidence blockers clear."
     permission_domains:
       identity: "Identity"
       admin: "Administration"
@@ -177,6 +306,7 @@ en:
       store: "Store"
       minecraft: "Minecraft"
       system: "System"
+      data_governance: "Data governance"
     role_admin:
       title: "Roles"
       name: "Name"
@@ -184,10 +314,29 @@ en:
       permission_count: "Permissions"
       system_role: "System role"
       permissions: "Permissions"
+    permission_explanation:
+      open: "Explain permissions"
+      sources:
+        owner: "Site owner account"
     developer_mode:
       title: "Developer Mode"
       warning: "Some security checks and production optimizations are disabled."
       production_warning: "Developer Mode is running in the production environment."
+      personas:
+        owner: "site owner"
+        moderator: "moderator"
+        member: "member"
+    identity:
+      deleted_content_title: "Content removed by account owner"
+      deleted_content_body: "This content was removed when its author closed their account."
+    data_governance:
+      resource_types:
+        community_topic: "Topic"
+        community_post: "Post"
+        community_message: "Private message"
+        community_post_attachment: "Post attachment"
+        community_profile_post: "Profile post"
+        community_profile_post_comment: "Profile-post comment"
     flash:
       payment_provider_configuration_updated: Payment-provider configuration updated.
       payment_provider_connection_test_succeeded: Stripe connection test succeeded.
@@ -211,6 +360,16 @@ en:
       totp_disabled: Two-factor authentication is disabled.
       totp_already_enabled: Two-factor authentication is already enabled.
       totp_setup_required: Your account must enable two-factor authentication before continuing.
+      totp_recovery_codes_regenerated: New recovery codes generated. Every previous code is now invalid.
+      totp_recovery_email_sent: If the account is eligible, a recovery link was sent to its verified email address.
+      totp_recovery_completed: Two-factor authentication was reset and every current session was revoked. Sign in again.
+      email_changed_verify: Email changed. Verify the replacement address; other sessions were revoked.
+      email_changed: Email changed.
+      account_closed: Account closed. The profile was anonymized and every session was revoked.
+      data_export_requested: Your data export was queued. You can leave this page while it is generated.
+      data_export_retried: Your data export was queued again.
+      data_export_revoked: The export was revoked and its download was removed.
+      data_export_unavailable: This export is not available for download.
       password_incorrect: Incorrect password.
       sign_in_required_short: Please sign in first.
       operation_failed: Operation failed.
@@ -269,7 +428,22 @@ en:
       discussion_topic_created: Discussion topic created.
       payment_success: Payment successful.
       payment_access_denied: You do not have access to this payment.
+      payment_unavailable: This order cannot be paid in its current state.
       payment_expired: Payment session expired. Please start again.
+      developer_fake_payment_failed: The simulated provider failure was applied.
+      developer_fake_payment_cancelled: The simulated payment was cancelled.
+      developer_fake_payment_delayed: Delayed confirmation was scheduled for 10 seconds from now.
+      developer_mode_persona_invalid: That test persona is not supported.
+      developer_mode_persona_unavailable: Seed that test persona in Developer Workbench first.
+      developer_mode_persona_switched: "Switched to the %{persona} test persona."
+      developer_mode_captures_cleared:
+        one: "Cleared %{count} local capture file."
+        other: "Cleared %{count} local capture files."
+      developer_mode_capture_kind_invalid: That capture category is not supported.
+      developer_mode_scenario_seeded: Development scenario data is ready.
+      developer_mode_attachment_state_applied: The simulated attachment scan state was applied.
+      developer_mode_task_enqueued: The selected task was enqueued.
+      developer_mode_tool_failed: The development action could not be completed. Check the selected resource and try again.
       password_reset_sent: If that email is registered, we sent a reset link.
       password_reset_success: Password reset. You can sign in now.
       session_revoked_current: Current session revoked. Please sign in again.
@@ -414,6 +588,8 @@ en:
       mapping_deleted: Mapping deleted.
       membership_granted: Membership granted.
       membership_revoked: Membership revoked.
+      entitlement_granted: Digital entitlement granted.
+      entitlement_revoked: Digital entitlement revoked.
       rule_created: Rule created.
       rule_updated: Rule updated.
       rule_deleted: Rule deleted.
@@ -552,6 +728,7 @@ en:
       attachment_release_confirmation_mismatch: The typed confirmation did not match.
       attachment_release_not_allowed: This upload cannot be released from quarantine.
       attachment_release_failed: The quarantine release failed and no changes were saved.
+      attachment_release_revoked: The manual release was revoked and the attachment was quarantined again.
       notice_created: Notice created.
       notice_updated: Notice updated.
       notice_deleted: Notice deleted.
@@ -606,6 +783,72 @@ en:
         invalid_email_or_password: Invalid email or password.
         two_factor_code_required: Enter your two-factor authentication code.
         invalid_two_factor_code: Invalid two-factor authentication code.
+        password_incorrect: Incorrect password.
+        two_factor_not_enabled: Two-factor authentication is not enabled.
+        email_required: Enter a replacement email address.
+        email_unchanged: The replacement address is the same as the current address.
+        email_not_available: This email address cannot be used.
+        account_close_confirmation_invalid: Type DELETE to confirm account closure.
+        account_close_mode_invalid: Select a supported content-handling option.
+        last_owner_account_cannot_close: The site's last owner account cannot be closed. Transfer ownership first.
+        idempotency_key_required: A stable request identifier is required.
+        idempotency_key_invalid: The request identifier is invalid.
+        data_export_rate_limited: You have reached the data export limit. Try again later.
+        data_export_retry_not_allowed: This export cannot be retried in its current state.
+        data_export_conflict: The export changed while it was being updated. Refresh and try again.
+        data_export_generation_failed: The export could not be generated. You can retry it safely.
+        reason_required: Enter a business reason for this operation.
+        unsupported_resource_type: This resource type is not governed.
+        retention_policy_missing: No retention policy exists for this resource type.
+        retention_hold_not_supported: This resource type does not support retention holds.
+        active_retention_holds_exist: Release active holds before disabling hold support.
+        content_not_deletable: The retention policy does not allow reversible deletion.
+        content_not_restorable: The retention policy does not allow moderator restoration.
+        content_already_purged: This content has already been permanently purged.
+        content_target_missing: The original content record no longer exists.
+        content_purge_blocked: Retention or evidence rules block permanent cleanup.
+        content_purge_failed: Permanent cleanup failed without changing the lifecycle state.
+        inventory_target_unavailable: This item does not use tracked inventory.
+        inventory_delta_invalid: Enter a non-zero inventory adjustment within the supported range.
+        fulfillment_action_invalid: This fulfillment action is not supported.
+        fulfillment_not_retryable: The current fulfillment state, order state, or retry limit does not allow another retry.
+        fulfillment_not_cancellable: The current fulfillment state cannot be cancelled.
+        fulfillment_inventory_unavailable: Order inventory has not been confirmed, so fulfillment cannot be retried.
+        fulfillment_state_changed: The fulfillment changed. Open a new impact preview.
+        dispute_payment_invalid: The payment cannot be used for a dispute.
+        dispute_provider_mismatch: The dispute channel does not match the payment channel.
+        dispute_event_identity_invalid: The channel event is missing a stable dispute or event identifier.
+        dispute_event_type_invalid: The dispute event type is invalid.
+        dispute_event_time_invalid: The dispute event time is invalid.
+        dispute_amount_invalid: The disputed amount must be greater than zero.
+        dispute_amount_exceeds_payment: The disputed amount cannot exceed the original payment.
+        dispute_currency_mismatch: The dispute currency does not match the payment currency.
+        dispute_channel_event_conflict: This channel event ID was already stored with different content.
+        dispute_action_invalid: This dispute action is not supported.
+        dispute_action_not_high_risk: This action does not use the signed high-risk flow.
+        dispute_state_changed: The dispute changed. Open a new impact preview.
+        dispute_closed: Closed disputes cannot be reassigned.
+        dispute_assignee_invalid: Select a valid dispute owner.
+        dispute_note_required: Enter an internal note.
+        dispute_note_too_long: Internal notes cannot exceed 5,000 characters.
+        dispute_evidence_state_invalid: Evidence cannot be submitted in the current dispute state.
+        dispute_evidence_title_required: Enter an evidence title.
+        dispute_evidence_content_required: Enter evidence content.
+        dispute_evidence_too_large: Evidence content cannot exceed 64 KB.
+        dispute_evidence_type_invalid: This evidence content type is not supported.
+        dispute_evidence_unavailable: This evidence is no longer available.
+        dispute_accept_loss_state_invalid: The current dispute state cannot accept a loss.
+        dispute_no_financial_exposure: This dispute has no remaining financial exposure.
+        dispute_close_state_invalid: Only a won, lost, or withdrawn dispute can be closed.
+        dispute_rights_state_invalid: Customer rights cannot be changed from the current dispute state.
+        dispute_rights_action_invalid: This customer-rights action is not supported.
+        dispute_idempotency_invalid: The dispute request is missing a stable idempotency key.
+        dispute_idempotency_conflict: This request ID was already used for a different dispute action.
+        dispute_retention_blocked: Retention or legal-hold rules still block evidence cleanup.
+        inventory_reservation_released: Inventory was already released and cannot be confirmed.
+        inventory_reservation_confirmed: Sold inventory cannot be released as an active reservation.
+        inventory_release_failed: The inventory reservation could not be released.
+        invalid_or_expired_totp_recovery_token: Two-factor recovery link is invalid or expired.
         authentication_required: Please sign in to continue.
         email_banned_registration: This email address is blocked from registering.
         password_confirmation_mismatch: Password confirmation does not match.
@@ -712,6 +955,24 @@ en:
         store_credit_adjustment_zero: Adjustment amount cannot be zero.
         store_credit_negative_balance: Balance cannot be negative.
         store_credit_below_reserved: Balance cannot fall below amounts reserved on pending orders.
+        high_risk_action_invalid: This high-risk action is not supported.
+        high_risk_target_invalid: The selected target is invalid or no longer available.
+        high_risk_request_id_invalid: The request ID is invalid. Close the dialog and try again.
+        high_risk_reason_required: A business reason is required.
+        high_risk_reason_too_long: The business reason cannot exceed 1,000 characters.
+        high_risk_targets_required: Select at least one target.
+        high_risk_unauthorized: You do not have permission for this high-risk action.
+        high_risk_authorization_invalid: The confirmation challenge is invalid, expired, or no longer matches current target state. Request a new preview.
+        high_risk_authorization_replayed: This one-time confirmation challenge was already used.
+        high_risk_confirmation_invalid: The typed confirmation does not match the challenge.
+        high_risk_request_id_reused: This request ID was already used for a different operation.
+        high_risk_result_missing: The completed operation can no longer resolve its result.
+        high_risk_order_action_failed: No orders were changed because the operation could not be completed atomically.
+        entitlement_not_configured: This product does not define a digital-entitlement duration.
+        missing_commands: The membership does not define any game-permission commands.
+        player_not_linked: The target member does not have a linked Minecraft identity.
+        no_minecraft_server: No Minecraft server is available to receive the membership command.
+        membership_command_delivery_conflict: A membership command delivery already exists with conflicting details.
         user_invalid: Invalid user.
         store_credit_insufficient: Insufficient store credit.
         gift_card_insufficient: Insufficient gift card balance.
@@ -815,6 +1076,300 @@ en:
         avatar_file_required: Select an image file.
         avatar_unsupported_format: Unsupported image format (JPEG, PNG, GIF, and WebP only).
         avatar_too_large: Image is too large (max 2MB).
+        answer_is_required: "Answer is required."
+        badge_not_found: "Badge not found."
+        bookmark_not_found: "Bookmark not found."
+        builtin_template_cannot_delete: "The built-in default template cannot be deleted."
+        cannot_ban_site_owner: "Cannot ban site owner."
+        cannot_ban_yourself: "Cannot ban yourself."
+        cannot_change_poll_options_after_votes_have_been_cast: "Cannot change poll options after votes have been cast."
+        cannot_change_poll_question_after_votes_have_been_cast: "Cannot change poll question after votes have been cast."
+        cannot_follow_yourself: "Cannot follow yourself."
+        cannot_merge_a_topic_into_itself: "Cannot merge a topic into itself."
+        cannot_split_the_opening_post: "Cannot split the opening post."
+        command_is_required: "Command is required."
+        conversation_not_available: "Conversation not available."
+        draft_body_is_required: "Draft body is required."
+        duplicate_post_detected: "Duplicate post detected."
+        enter_a_valid_iso_reconciliation_date: "Enter a valid ISO reconciliation date."
+        enter_the_exact_discrepancy_id_to_confirm_this_review: "Enter the exact discrepancy ID to confirm this review."
+        enter_the_exact_order_number_to_confirm_this_review: "Enter the exact order number to confirm this review."
+        event_id_required: "event_id required"
+        exec_command_prefixes_are_not_configured: "Exec command prefixes are not configured."
+        identity_not_found: "identity not found"
+        installation_already_complete: "installation already complete"
+        invalid_image_upload: "Invalid image upload."
+        invalid_node_signature: "Invalid node signature."
+        invalid_or_expired_pairing_token: "Invalid or expired pairing token."
+        invalid_template_scope: "Invalid scope."
+        invalid_webhook_signature: "Invalid webhook signature."
+        ip_address_is_required: "IP address is required."
+        ip_ban_not_found: "IP ban not found."
+        late_payment_review_authorization_expired_or_is_invalid: "Late payment review authorization expired or is invalid."
+        no_download_available: "No download available."
+        no_image_provided: "No image provided."
+        no_minecraft_servers_configured: "No Minecraft servers configured."
+        node_secret_is_not_configured: "Node secret is not configured."
+        not_a_gift_card_product: "Not a gift card product."
+        not_allowed_to_close_poll: "Not allowed to close poll."
+        not_authorized: "Not authorized."
+        not_authorized_to_mute_users: "Not authorized to mute users."
+        not_your_draft: "Not your draft."
+        not_your_order: "Not your order."
+        nothing_to_restore: "Nothing to restore."
+        online_player_uuids_is_required: "online_player_uuids is required."
+        order_is_not_refundable: "Order is not refundable."
+        order_not_accessible: "Order not accessible."
+        order_not_paid: "Order not paid."
+        pairing_token_is_required: "Pairing token is required."
+        parent_post_is_not_available: "Parent post is not available."
+        password_required: "password required"
+        password_too_short: "password too short"
+        path_is_not_allowed: "Path is not allowed."
+        path_is_required: "Path is required."
+        payment_provider_mismatch: "Payment provider mismatch."
+        payment_reconciliation_could_not_be_completed: "Payment reconciliation could not be completed."
+        pdf_generation_is_not_available: "PDF generation is not available."
+        player_is_not_associated_with_this_server: "Player is not associated with this server."
+        player_is_not_listed_as_online_on_this_server: "Player is not listed as online on this server."
+        poll_is_already_closed: "Poll is already closed."
+        poll_not_found: "Poll not found."
+        post_does_not_belong_to_this_topic: "Post does not belong to this topic."
+        post_not_available: "Post not available."
+        preview_unavailable: "Preview unavailable."
+        question_is_required: "Question is required."
+        quoted_post_is_not_available: "Quoted post is not available."
+        reconciliation_review_authorization_expired_or_is_invalid: "Reconciliation review authorization expired or is invalid."
+        refund_window_has_expired: "Refund window has expired."
+        release_blocked_disable_stripe_before_establishing_the_first_verified_account_binding: "Release blocked: disable Stripe before establishing the first verified account binding."
+        release_blocked_stripe_financial_history_exists_without_a_verified_account_binding: "Release blocked: Stripe financial history exists without a verified account binding."
+        replay_detected: "Replay detected."
+        scheduled_time_must_be_in_the_future: "Scheduled time must be in the future."
+        section_not_available: "Section not available."
+        server_connector_is_offline: "Server connector is offline."
+        server_is_not_bound_to_a_node: "Server is not bound to a node."
+        server_is_not_managed_by_this_node: "Server is not managed by this node."
+        server_is_required_for_this_task: "Server is required for this task."
+        session_is_required: "Session is required."
+        stored_webhook_payload_failed_integrity_verification: "Stored webhook payload failed integrity verification."
+        stripe_account_identity_is_not_ready: "Stripe account identity is not ready."
+        stripe_checkout_session_is_not_paid: "Stripe checkout session is not paid."
+        stripe_checkout_session_mismatch: "Stripe checkout session mismatch."
+        stripe_configuration_is_unavailable: "Stripe configuration is unavailable."
+        stripe_could_not_create_the_payment_session_please_try_again: "Stripe could not create the payment session. Please try again."
+        stripe_could_not_process_the_refund: "Stripe could not process the refund."
+        stripe_environment_mismatch: "Stripe environment mismatch."
+        stripe_event_object_is_missing: "Stripe event object is missing."
+        stripe_event_type_mismatch: "Stripe event type mismatch."
+        stripe_is_not_enabled_or_fully_configured: "Stripe is not enabled or fully configured."
+        stripe_payment_amount_or_currency_mismatch: "Stripe payment amount or currency mismatch."
+        stripe_payment_environment_mismatch: "Stripe payment environment mismatch."
+        stripe_payment_intent_is_unavailable_for_this_payment: "Stripe payment intent is unavailable for this payment."
+        stripe_payment_intent_mismatch: "Stripe payment intent mismatch."
+        stripe_payment_metadata_mismatch: "Stripe payment metadata mismatch."
+        stripe_reconciliation_could_not_read_provider_records: "Stripe reconciliation could not read provider records."
+        stripe_refund_failed: "Stripe refund failed."
+        stripe_refund_is_still_pending: "Stripe refund is still pending."
+        stripe_refund_response_does_not_match_the_local_refund: "Stripe refund response does not match the local refund."
+        stripe_returned_a_different_environment_than_the_configured_mode: "Stripe returned a different environment than the configured mode."
+        stripe_returned_an_invalid_reconciliation_page: "Stripe returned an invalid reconciliation page."
+        sync_url_host_is_not_allowed: "Sync URL host is not allowed."
+        sync_url_is_invalid: "Sync URL is invalid."
+        sync_url_is_required: "Sync URL is required."
+        sync_url_path_is_not_allowed: "Sync URL path is not allowed."
+        sync_url_scheme_is_not_allowed: "Sync URL scheme is not allowed."
+        target_topic_not_found: "Target topic not found."
+        task_not_found: "Task not found."
+        template_missing_or_not_installed: "Template does not exist or is not installed."
+        textures_not_found: "textures not found"
+        the_payment_provider_configuration_could_not_be_saved: "The payment-provider configuration could not be saved."
+        the_payment_stripe_environment_differs_from_the_active_provider: "The payment Stripe environment differs from the active provider."
+        the_payment_stripe_environment_is_unknown_or_differs_from_the_active_provider: "The payment Stripe environment is unknown or differs from the active provider."
+        the_public_checkout_return_url_is_invalid: "The public checkout return URL is invalid."
+        the_public_checkout_return_url_must_use_https_in_production: "The public checkout return URL must use HTTPS in production."
+        this_discrepancy_was_already_reviewed_with_different_details: "This discrepancy was already reviewed with different details."
+        this_late_payment_was_already_acknowledged_with_different_review_details: "This late payment was already acknowledged with different review details."
+        this_topic_is_archived: "This topic is archived."
+        this_user_cannot_be_cleaned: "This user cannot be cleaned."
+        this_webhook_event_is_not_eligible_for_manual_replay: "This webhook event is not eligible for manual replay."
+        topic_already_published: "Topic already published."
+        topic_id_required: "Topic id required."
+        topic_is_already_in_this_section: "Topic is already in this section."
+        topic_is_not_a_draft: "Topic is not a draft."
+        topic_is_not_ready: "Topic is not ready."
+        topic_is_not_scheduled: "Topic is not scheduled."
+        topic_not_available: "Topic not available."
+        unable_to_generate_unique_delivery_id: "Unable to generate unique delivery ID."
+        unable_to_prepare_refund: "Unable to prepare refund."
+        unable_to_resolve_player: "Unable to resolve player."
+        unknown_action: "Unknown action."
+        unknown_finalize_outcome: "unknown finalize outcome"
+        unknown_task_type: "Unknown task type."
+        user_is_required: "User is required."
+        webhook_event_identifiers_are_invalid: "Webhook event identifiers are invalid."
+        webhook_event_payload_does_not_match_the_recorded_event: "Webhook event payload does not match the recorded event."
+        webhook_processing_failed: "Webhook processing failed."
+        webhook_replay_authorization_expired_or_is_invalid: "Webhook replay authorization expired or is invalid."
+        you_are_not_allowed_to_mark_this_topic_as_solved: "You are not allowed to mark this topic as solved."
+        you_are_not_allowed_to_post_staff_whispers: "You are not allowed to post staff whispers."
+        you_are_not_allowed_to_reply_in_this_section: "You are not allowed to reply in this section."
+        you_are_not_allowed_to_unsolve_this_topic: "You are not allowed to unsolve this topic."
+        you_are_not_authorized_to_copy_this_topic: "You are not authorized to copy this topic."
+        you_are_not_authorized_to_merge_topics: "You are not authorized to merge topics."
+        you_are_not_authorized_to_moderate_this_topic: "You are not authorized to moderate this topic."
+        you_are_not_authorized_to_move_this_topic: "You are not authorized to move this topic."
+        you_are_not_authorized_to_run_the_spam_cleaner: "You are not authorized to run the spam cleaner."
+        you_are_not_authorized_to_split_topics: "You are not authorized to split topics."
+        you_cannot_block_yourself: "You cannot block yourself."
+        you_cannot_edit_this_poll: "You cannot edit this poll."
+        you_cannot_edit_this_post: "You cannot edit this post."
+        you_cannot_edit_this_topic: "You cannot edit this topic."
+        you_do_not_have_permission_to_replay_payment_webhooks: "You do not have permission to replay payment webhooks."
+        you_do_not_have_permission_to_review_late_payments: "You do not have permission to review late payments."
+        you_do_not_have_permission_to_review_reconciliation_discrepancies: "You do not have permission to review reconciliation discrepancies."
+        you_have_not_voted: "You have not voted."
+        your_ip_address_is_banned_from_posting: "Your IP address is banned from posting."
+        your_trust_level_is_too_low_to_reply_in_this_section: "Your trust level is too low to reply in this section."
+        feature_portal_required: "Keep at least one of Forum or Store enabled."
+    validation_errors:
+      cannot_be_attached_to_a_payment_discrepancy: "cannot be attached to a payment discrepancy"
+      cannot_be_changed_after_creation: "cannot be changed after creation"
+      cannot_be_changed_after_it_is_assigned: "cannot be changed after it is assigned"
+      cannot_be_self: "cannot be self"
+      cannot_be_set_on_a_reviewed_discrepancy: "cannot be set on a reviewed discrepancy"
+      cannot_be_the_same_as_the_product: "cannot be the same as the product"
+      cannot_be_yourself: "cannot be yourself"
+      cannot_exceed_3_images: "cannot exceed 3 images"
+      cannot_exceed_the_payment_amount: "cannot exceed the payment amount"
+      cannot_follow_yourself: "cannot follow yourself"
+      cannot_resolve_a_manually_reviewed_discrepancy: "cannot resolve a manually reviewed discrepancy"
+      contains_an_unsafe_url: "contains an unsafe URL"
+      dispute_amount_is_not_conserved: "dispute amount is not conserved"
+      document_amounts_must_conserve_the_gross_amount: "document amounts must conserve the gross amount"
+      does_not_match_content: "does not match content"
+      does_not_match_the_payment: "does not match the payment"
+      does_not_match_the_refund: "does not match the refund"
+      does_not_match_the_webhook: "does not match the webhook"
+      evidence_snapshot_fields_are_immutable: "evidence snapshot fields are immutable"
+      finance_export_request_contract_is_immutable: "finance export request contract is immutable"
+      invalid_json: "must be valid JSON"
+      invalid_scope: "contains invalid scope: %{scope}"
+      is_invalid: "is invalid"
+      is_required: "is required"
+      is_too_large: "is too large"
+      issued_finance_document_content_is_immutable: "issued finance document content is immutable"
+      must_be_a_mapping: "must be a mapping"
+      must_be_a_normalized_relative_path: "must be a normalized relative path"
+      must_be_a_safe_https_or_uploaded_image_url: "must be a safe http(s) or uploaded image URL"
+      must_be_absent_for_an_invoice: "must be absent for an invoice"
+      must_be_acknowledged_before_review_details_are_recorded: "must be acknowledged before review details are recorded"
+      must_be_after_the_start: "must be after the start"
+      must_be_an_array: "must be an array"
+      must_be_an_object: "must be an object"
+      must_be_attached_through_a_local_refund: "must be attached through a local refund"
+      must_be_greater_than_or_equal_to_minimum_quantity: "must be greater than or equal to minimum quantity"
+      must_be_greater_than_or_equal_to_sale_price: "must be greater than or equal to sale price"
+      must_be_present_for_a_refund_receipt: "must be present for a refund receipt"
+      must_be_present_only_for_migration_versions: "must be present only for migration versions"
+      must_be_present_only_for_rollback_versions: "must be present only for rollback versions"
+      must_be_reviewed_before_review_details_are_recorded: "must be reviewed before review details are recorded"
+      must_belong_to_the_dispute_order: "must belong to the dispute order"
+      must_belong_to_the_refund_order: "must belong to the refund order"
+      must_contain_at_least_one_option: "must contain at least one option"
+      must_contain_process_identifiers: "must contain process identifiers"
+      must_match_the_payment_currency: "must match the payment currency"
+      must_not_traverse_directories: "must not traverse directories"
+      plugin_job_ownership_and_payload_are_immutable: "plugin job ownership and payload are immutable"
+      plugin_setting_versions_are_immutable: "plugin setting versions are immutable"
+      refund_binding_changed_while_processing: "Refund binding changed while processing."
+      saved_search_limit_reached: "Saved-search limit reached (%{limit})."
+      saved_search_private_url: "cannot point to a private or local address"
+      tax_amounts_must_conserve_the_captured_gross_amount: "tax amounts must conserve the captured gross amount"
+      transition_is_not_allowed: "transition is not allowed"
+      website_nav_target_required: "must have either a page or URL"
+      website_nav_url_format: "has an invalid format; use http(s):// or an internal path beginning with /"
+      website_nav_url_scheme: "uses a disallowed URL scheme"
+      valid_http_url: "must be a valid http(s) URL"
+    user_copy:
+      topic_fields_title: "Topic fields"
+      display_location: "Display location"
+      enabled: "Enabled"
+      new_topic_field: "New topic field"
+      ip_bans_title: "IP bans"
+      reason: "Reason"
+      expires_at: "Expires"
+      created_at: "Created at"
+      permanent: "Permanent"
+      server_not_bound_to_node: "Server is not bound to a node."
+      plugin_settings_schema_unavailable: "Plugin settings schema is not available."
+      plugin_settings_values_mapping: "Settings values must be a mapping."
+      expected_revision_required: "Expected revision is required."
+      theme_tokens: "Tokens"
+      event_id_required: "Event ID is required."
+      unable_to_resolve_player: "Unable to resolve player."
+      too_many_pairing_attempts: "Too many pairing attempts."
+      feature_forum_label: "Forum"
+      feature_forum_description: "Community forum, private messages, notifications, and related navigation"
+      feature_store_label: "Store"
+      feature_store_description: "Products, cart, orders, and related navigation"
+      feature_blog_label: "Website blog"
+      feature_blog_description: "News and blog entries in the website navigation and footer"
+      feature_minecraft_label: "Minecraft linking"
+      feature_minecraft_description: "Player Minecraft account-linking page"
+      feature_generic_label: "This feature"
+      feature_disabled_message: "%{feature} has been disabled by an administrator."
+      store_feature_physical_label: "Physical products"
+      store_feature_physical_description: "Allow physical products and shipping requirements"
+      store_feature_shipping_label: "Shipping"
+      store_feature_shipping_description: "Checkout addresses, delivery methods, shipping fees, and address book"
+      store_feature_gift_wrap_label: "Gift wrapping"
+      store_feature_gift_wrap_description: "Gift-wrap options and fees during checkout"
+      store_feature_order_shipping_label: "Order shipping management"
+      store_feature_order_shipping_description: "Tracking numbers, shipment status, and packing slips in admin"
+      moderation_quarantined_attachment: "Quarantined attachment %{id}"
+      moderation_quarantined_attachment_summary: "Security review required for an upload from %{username}"
+      moderation_active_warning: "Active warning for %{username}"
+      moderation_active_warning_summary: "%{points} warning points issued by %{issuer}"
+      moderation_active_mute: "Active mute for %{username}"
+      moderation_section_mute: "Muted in %{section}"
+      moderation_sitewide_mute: "Site-wide forum mute"
+      moderation_active_account_ban: "Active account ban for %{username}"
+      moderation_account_suspended: "Account access is currently suspended"
+      restricted_tag: "You cannot use restricted tag: %{name}"
+      template_scope_unsupported: "The template does not support the %{scope} scope."
+      builtin_template_archive_missing: "Built-in template archive is missing: %{archive}"
+      template_install_failed: "Installation failed: %{error}"
+      template_archive_empty: "Template archive is empty."
+      template_archive_too_many_files: "Template archive contains too many files (maximum %{count})."
+      template_archive_invalid_path: "Template archive contains an invalid path: %{path}"
+      template_archive_file_type: "Template archive contains a disallowed file type: %{path}"
+      template_archive_too_large: "Template archive is too large (maximum %{megabytes} MB)."
+      template_manifest_missing: "manifest.json is missing."
+      template_archive_invalid_zip: "Invalid ZIP archive: %{error}"
+      template_manifest_object: "manifest.json must be a JSON object."
+      template_manifest_key_missing: "Manifest is missing %{key}."
+      template_manifest_key_invalid: "Manifest key has an invalid format."
+      template_manifest_scopes_empty: "Manifest scopes cannot be empty."
+      template_manifest_scope_invalid: "Manifest scope is not allowed: %{scope}"
+      template_manifest_css_missing: "Manifest references missing CSS: %{path}"
+      template_manifest_asset_missing: "Manifest references missing %{kind}: %{path}"
+      template_manifest_slot_path_invalid: "slots.%{slot} must be an HTML file under slots/."
+      template_manifest_slot_missing: "Manifest references a missing slot: %{path}"
+      password_reset_request_accepted: "If the email exists, a reset link has been sent."
+      unknown_session_action: "Unknown session action: %{action}"
+      unknown_task_action: "Unknown task action: %{action}"
+      command_prefix_not_allowed: "Command not allowed. Permitted prefixes: %{prefixes}"
+      late_payment_review_input_invalid: "Select a valid disposition and enter a review note between %{min} and %{max} characters."
+      webhook_replay_reason_invalid: "A replay reason between %{min} and %{max} characters is required."
+      reconciliation_review_input_invalid: "Select a valid decision and enter a note between %{min} and %{max} characters."
+      installation_already_complete: "Installation is already complete."
+      installation_complete: "Installation complete."
+      minecraft_node_offline_title: "Minecraft node offline: %{name}"
+      minecraft_node_offline_body: "Node %{name} (%{hostname}) missed heartbeats and was marked offline."
+      minecraft_process_missing: "connector online but process not running"
+      minecraft_connector_offline: "process running but connector offline"
+      minecraft_process_mismatch_title: "Minecraft process mismatch: %{name}"
+      minecraft_process_mismatch_body: "%{name} — %{state} (process state: %{process_state})."
     commerce:
       default_store_title: Store
       list_separator: ", "
@@ -1345,7 +1900,82 @@ en:
         deliver_item: Deliver item (commands)
       notifications:
         default_title: Minecraft event
+    audit:
+      actions:
+        system_audit_exported: "Audit log exported"
+        commerce_inventory_adjusted: "Inventory adjusted"
+        data_governance_retention_policy_updated: "Retention policy updated"
+        data_governance_retention_hold_placed: "Retention hold placed"
+        data_governance_retention_hold_released: "Retention hold released"
+        data_governance_content_soft_deleted: "Governed content soft-deleted"
+        data_governance_content_restored: "Governed content restored"
+        data_governance_content_purge_blocked: "Permanent content cleanup blocked"
+        data_governance_content_purged: "Governed content permanently purged"
     admin:
+      audit:
+        export_too_large: "The export contains more than 10,000 entries. Narrow the time range or filters and try again."
+        csv:
+          id: "ID"
+          occurred_at: "Time"
+          action: "Action"
+          action_code: "Action code"
+          actor: "Actor"
+          actor_public_id: "Actor public ID"
+          resource_type: "Resource type"
+          resource_identifier: "Resource identifier"
+          request_id: "Request ID"
+          reason: "Business reason"
+          metadata: "Recorded context"
+      users:
+        title: Users
+        global_scope: Site-wide
+        permanent: Permanent
+        boolean_yes: "Yes"
+        boolean_no: "No"
+        unknown: Unknown
+        not_available: "—"
+        none: None
+        record: Record
+        silenced: "Yes (can browse but cannot publish)"
+        not_silenced: "No"
+        trust_automatic: Automatic (based on published posts)
+        mute_summary: "%{reason} · Expires: %{expires_at}"
+        warning_summary: "%{points} points · %{reason}"
+        remove_mute: "Remove mute (%{section})"
+        fields:
+          username: Username
+          email: Email
+          status: Status
+          joined_at: Joined
+          ban_reason: Ban reason
+          ban_expires_at: Ban expires
+          roles: Roles
+          account_type: Account type
+          email_verified: Email verified
+          warning_points: Warning points
+          silence_status: Mute status
+          trust_level: Trust level
+          trust_override: Trust-level override
+          store_credit: Store credit
+        sections:
+          active_mutes: Active mutes
+          warnings: Community warnings
+          staff_notes: Staff notes (administrators only)
+        statuses:
+          active: Active
+          banned: Banned
+          deleted: Deleted
+        account_types:
+          member: Member
+          staff: Staff
+          admin: Administrator
+          owner: Site owner
+        trust_levels:
+          tl0: New member
+          tl1: Basic user
+          tl2: Member
+          tl3: Regular
+          tl4: Leader
       store_credit_users:
         title: Store credit accounts
         subtitle: Review member balances and make authorized, audited adjustments.
@@ -1514,8 +2144,18 @@ en:
             invalid_sha256: Expected SHA-256 must contain exactly 64 lowercase hexadecimal characters.
             unavailable: Plugin package state is temporarily unavailable.
             operation_succeeded: "%{action} completed for %{plugin}."
+            dry_run_succeeded: "%{action} validation completed for %{plugin}; no package or runtime state changed."
             operation_failed: The plugin package operation could not be completed.
             uninstall_confirmation_mismatch: Type the exact plugin ID before running teardown and uninstalling.
+            health_completed: "%{plugin} file health check completed: %{status}."
+            catalog_reconciled: "Plugin catalog reconciled: %{plugins} release(s) synchronized, %{findings} finding(s)."
+            health_status:
+              healthy: healthy
+              changed: files changed
+              missing: files missing
+              unavailable: unavailable
+              untracked: no installed baseline
+              not_installed: not installed
         plugin_settings:
           title: Plugin settings
           updated: Plugin settings were saved as a new version.
@@ -2011,6 +2651,22 @@ en:
         alert_node_stale: Heartbeat is stale — the node may be unreachable.
         alert_stale_nodes: "%{count} node(s) marked online but heartbeat is stale."
         alert_process_mismatch: "%{count} managed server(s) have a process/connector state mismatch."
+      high_risk:
+        target_user: Target user
+        membership_type: Membership type
+        product: Product
+        current_count: Current active count
+        result_count: Active count after operation
+        expires_at: Expires
+        status_change: Status change
+        action: Action
+        target_count: Target count
+        before_statuses: Current statuses
+        after_statuses: Resulting statuses
+        actions:
+          order_mark_paid: Mark paid
+          order_mark_fulfilled: Mark fulfilled
+          order_cancel: Cancel
       store:
         action_edit: Edit
         membership_types:
@@ -2053,8 +2709,32 @@ en:
           field_source: Source
           action_revoke: Revoke
           confirm_revoke: Revoke this membership?
+          revoke_title: Review membership revocation
           filter_all: All
           filter_all_types: All types
+        user_entitlements:
+          title: Digital entitlements
+          grant: Grant entitlement
+          grant_title: Grant digital entitlement
+          col_user: User
+          col_product: Product
+          col_status: Status
+          col_expires_at: Expires
+          field_user: User
+          field_product: Product
+          field_status: Status
+          field_starts_at: Starts
+          field_expires_at: Expires
+          action_revoke: Revoke
+          revoke_title: Review entitlement revocation
+          filter_all: All
+          status_active: Active
+          status_expired: Expired
+          status_revoked: Revoked
+          status_active_to_revoked: Active → revoked
+          duration_days:
+            one: "%{count} day"
+            other: "%{count} days"
         products:
           title: Products
           col_name: Name
@@ -2119,6 +2799,163 @@ en:
           col_status: Status
           col_order: Order
           col_product: Product
+          actions:
+            retry:
+              completed: The fulfillment was queued again.
+            cancel:
+              completed: The fulfillment was cancelled.
+          attempt_actions:
+            dispatch: Dispatch
+            retry: Manual retry
+            cancel: Manual cancellation
+          attempt_triggers:
+            automatic: Automatic job
+            manual: Staff action
+            recovery: Interrupted-job recovery
+          attempt_statuses:
+            pending: Pending
+            processing: Processing
+            succeeded: Succeeded
+            failed: Failed
+            cancelled: Cancelled
+          inventory_statuses:
+            active: Still reserved
+            confirmed: Inventory confirmed
+            released: Inventory released
+            expired: Reservation expired
+            legacy: Legacy order without a reservation record
+          preview:
+            delivery_id: Fulfillment ID
+            order: Order
+            product: Product
+            current_status: Current status
+            next_status: Status after action
+            attempts: Attempts used
+            inventory: Inventory state
+            entitlement: Active entitlement already exists
+            active_tasks: Active connector tasks
+          error_codes:
+            fulfillment_failed: Fulfillment did not complete. Review the attempt history before choosing the next action.
+            server_not_found: The target server was not found. Check the product fulfillment configuration.
+            player_not_linked: The customer has not linked a game account that can receive this delivery.
+            missing_commands: The product has no executable fulfillment commands.
+            delivery_failed: The external node reported a failed delivery.
+            worker_interrupted: The background job stopped before commit and entered the safe retry flow.
+            timeout: The external fulfillment operation timed out.
+        disputes:
+          statuses:
+            open: Open
+            evidence_required: Evidence required
+            evidence_submitted: Evidence submitted
+            under_review: Under channel review
+            won: Won
+            lost: Lost
+            withdrawn: Withdrawn
+            closed: Closed
+          risks:
+            low: Low
+            medium: Medium
+            high: High
+            critical: Critical
+          rights_statuses:
+            unchanged: Unchanged
+            frozen: Frozen
+            revoked: Revoked
+            restored: Restored
+          resolutions:
+            won: Won
+            lost: Lost
+            withdrawn: Withdrawn
+            accepted_loss: Loss accepted
+          retention_blockers:
+            open_dispute: The dispute is not closed.
+            legal_hold: A legal hold is active.
+            retention_period: The required retention period has not elapsed.
+          sources:
+            channel: Payment channel
+            manual: Staff action
+            policy: Risk policy
+            system: System
+          evidence_statuses:
+            submitted: Submitted
+            failed: Submission failed
+            purged: Content purged
+          actions:
+            assign:
+              label: Assign owner
+              completed: The dispute owner was updated.
+            note:
+              label: Add note
+              completed: The note was added to the immutable timeline.
+            submit_evidence:
+              label: Submit evidence
+              completed: The evidence package was retained and marked submitted.
+            accept_loss:
+              label: Accept loss
+              completed: The loss was accepted and linked rights were revoked by policy.
+            close:
+              label: Close case
+              completed: The dispute was closed and its retention period started.
+            freeze_rights:
+              label: Freeze rights
+              completed: Linked customer rights were frozen.
+            revoke_rights:
+              label: Revoke rights
+              completed: Linked customer rights were revoked.
+            restore_rights:
+              label: Restore rights
+              completed: Linked customer rights were restored where no other dispute blocks them.
+          preview:
+            dispute: Dispute
+            order: Order
+            action: Action
+            current_status: Current status
+            next_status: Status after action
+            amount: Disputed amount
+            liability: Financial exposure
+            rights: Customer-rights state
+          event_types:
+            updated: Dispute updated
+            charge_dispute_created: Channel dispute opened
+            charge_dispute_updated: Channel dispute updated
+            charge_dispute_closed: Channel dispute closed
+            charge_dispute_funds_withdrawn: Disputed funds withdrawn
+            charge_dispute_funds_reinstated: Disputed funds reinstated
+            dispute_created: Dispute opened
+            dispute_updated: Dispute updated
+            dispute_closed: Dispute closed
+            assign: Owner assigned
+            note: Internal note added
+            submit_evidence: Evidence submitted
+            accept_loss: Loss accepted
+            close: Case closed
+            freeze_rights: Rights frozen
+            revoke_rights: Rights revoked
+            restore_rights: Rights restored
+            exposure_rebalanced: Financial exposure rebalanced
+            evidence_purged: Evidence content purged
+          provider_statuses:
+            open: Open
+            warning_needs_response: Warning needs response
+            needs_response: Response required
+            evidence_required: Evidence required
+            evidence_submitted: Evidence submitted
+            warning_under_review: Warning under review
+            under_review: Under review
+            won: Won
+            lost: Lost
+            charge_refunded: Charge refunded
+            withdrawn: Withdrawn
+            warning_closed: Warning closed
+          reason_codes:
+            fraudulent: Fraud suspected
+            duplicate: Duplicate charge
+            subscription_canceled: Subscription cancelled
+            product_unacceptable: Product unacceptable
+            unrecognized: Charge not recognized
+            credit_not_processed: Credit not processed
+            general: General dispute
+            other: Other or undisclosed reason
         orders:
           title: Orders
           show_title: "Order %{number}"
@@ -2134,6 +2971,7 @@ en:
             created_at: Created at
           bulk_processed: "Processed %{count} order(s)."
           bulk_processed_with_failures: "Processed %{processed} order(s), %{failed} failed."
+          high_risk_title: "Review order action: %{action}"
           filter_all: All
           section_items: Items
           section_fulfillments: Fulfillments
@@ -2413,6 +3251,7 @@ en:
         processing: Processing
         fulfilled: Fulfilled
         failed: Failed
+        cancelled: Cancelled
       account_type:
         member: Member
         staff: Staff
@@ -2451,6 +3290,13 @@ en:
       greeting: "Hi %{username},"
       greeting_formal: "Hello %{username},"
       greeting_short: "Hello,"
+      totp_recovery:
+        subject: McWeb two-factor recovery
+        greeting: "Hello %{name},"
+        instructions: We received a request to reset two-factor authentication. Open the link below and enter your account password to continue.
+        action: Reset two-factor authentication
+        expiry: This link expires in 30 minutes. A successful recovery revokes every current sign-in session.
+        ignore: If you did not request this, ignore this email. Your two-factor settings will not change.
       unsubscribe_type: "Turn off this type of email"
       manage_preferences: "Manage in notification preferences"
       view_topic: "View topic"

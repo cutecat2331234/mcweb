@@ -40,12 +40,25 @@ module Minecraft
     end
 
     def notify_process_mismatch!(server, connector_online)
-      state_label = connector_online ? "connector online but process not running" : "process running but connector offline"
+      state_label =
+        if connector_online
+          I18n.t("mcweb.user_copy.minecraft_process_missing")
+        else
+          I18n.t("mcweb.user_copy.minecraft_connector_offline")
+        end
 
       Minecraft::NotifyStaff.call(
         notification_type: "minecraft.process_mismatch",
-        title: "Minecraft process mismatch: #{server.name}",
-        body: "#{server.name} — #{state_label} (process_state=#{server.process_state}).",
+        title: I18n.t(
+          "mcweb.user_copy.minecraft_process_mismatch_title",
+          name: server.name
+        ),
+        body: I18n.t(
+          "mcweb.user_copy.minecraft_process_mismatch_body",
+          name: server.name,
+          state: state_label,
+          process_state: server.process_state
+        ),
         metadata: {
           path: "/admin/minecraft/servers/#{server.public_id}",
           server_id: server.public_id,

@@ -251,7 +251,8 @@ module Community
         )
       end
       assert topic_result.failure?
-      assert_equal "Section not available.", topic_result.error
+      assert_equal I18n.t("mcweb.services.errors.section_not_available"),
+        topic_result.error
 
       post_result = nil
       assert_no_difference -> { Community::Post.count } do
@@ -264,7 +265,8 @@ module Community
         )
       end
       assert post_result.failure?
-      assert_equal "Topic not available.", post_result.error
+      assert_equal I18n.t("mcweb.services.errors.topic_not_available"),
+        post_result.error
     end
 
     test "draft and scheduled write paths reject an unreadable section" do
@@ -278,7 +280,8 @@ module Community
         )
       end
       assert draft_result.failure?
-      assert_equal "Section not available.", draft_result.error
+      assert_equal I18n.t("mcweb.services.errors.section_not_available"),
+        draft_result.error
 
       schedule_result = nil
       assert_no_difference -> { Community::Topic.count } do
@@ -292,7 +295,8 @@ module Community
         )
       end
       assert schedule_result.failure?
-      assert_equal "Section not available.", schedule_result.error
+      assert_equal I18n.t("mcweb.services.errors.section_not_available"),
+        schedule_result.error
     end
 
     test "publish and edit paths stop when section visibility has been revoked" do
@@ -308,14 +312,16 @@ module Community
 
       publish_result = Community::PublishTopicDraft.call(user: @member, topic: draft)
       assert publish_result.failure?
-      assert_equal "Topic not available.", publish_result.error
+      assert_equal I18n.t("mcweb.services.errors.topic_not_available"),
+        publish_result.error
       assert_predicate draft.reload, :draft?
       assert_predicate draft_post.reload, :published?
 
       draft.update!(scheduled_at: 1.minute.ago)
       scheduled_result = Community::PublishScheduledTopic.call(topic: draft)
       assert scheduled_result.failure?
-      assert_equal "Topic not available.", scheduled_result.error
+      assert_equal I18n.t("mcweb.services.errors.topic_not_available"),
+        scheduled_result.error
       assert_predicate draft.reload, :draft?
 
       edit_result = Community::EditTopic.call(
@@ -324,7 +330,8 @@ module Community
         title: "Leaked edit"
       )
       assert edit_result.failure?
-      assert_equal "Topic not available.", edit_result.error
+      assert_equal I18n.t("mcweb.services.errors.topic_not_available"),
+        edit_result.error
       assert_equal "Restricted policy topic", @restricted_topic.reload.title
     end
 

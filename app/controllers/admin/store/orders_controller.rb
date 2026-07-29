@@ -38,36 +38,58 @@ module Admin
             )
           end,
           pagination: pagy_props(@pagy),
-          selectable: current_user.permission?("store.orders.refund"),
-          bulkOrderUrl: current_user.permission?("store.orders.refund") ? bulk_update_admin_store_orders_path : nil,
+          selectable: bulk_order_actions.any?,
+          bulkOrderUrl: bulk_order_actions.any? ? bulk_update_admin_store_orders_path : nil,
+          bulkOrderAuthorizationUrl: bulk_order_actions.any? ?
+            authorize_high_risk_action_admin_store_orders_path : nil,
           bulkOrderActions: bulk_order_actions
         }
       end
 
       def bulk_update
-        require_bulk_update_permission!
-        result = Commerce::BulkUpdateOrders.call(
+        result = high_risk_order_action.call
+        return render_high_risk_error(result) if result.failure?
+
+        render json: {
+          request_id: result.value[:request_id],
+          idempotent: result.value[:idempotent],
+          processed: result.value[:processed],
+          message: t(
+            "mcweb.admin.store.orders.bulk_processed",
+            count: result.value[:processed]
+          )
+        }
+      end
+
+      def authorize_high_risk_action
+        result = high_risk_order_action.authorize
+        return render_high_risk_error(result) if result.failure?
+
+        response.set_header("Cache-Control", "no-store")
+        value = result.value
+        render json: {
+          authorization_token: value[:authorization_token],
+          confirmation: value[:confirmation],
+          request_id: value[:request_id],
+          expires_in: value[:expires_in],
+          preview_items: order_action_preview_items(value[:preview])
+        }
+      end
+
+      def high_risk_order_action
+        Commerce::HighRiskOrderAction.new(
           actor: current_user,
           order_public_ids: params[:order_ids],
-          action: params[:action_type]
+          action: params[:action_type],
+          request_id: params[:request_id],
+          reason: params[:reason],
+          authorization_token: params[:authorization_token],
+          confirmation: params[:confirmation],
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent
         )
-
-        destination = safe_local_path(params[:return_to]) || admin_store_orders_path
-        if result.success?
-          notice = if result.value[:failed].positive?
-                     t(
-                       "mcweb.admin.store.orders.bulk_processed_with_failures",
-                       processed: result.value[:processed],
-                       failed: result.value[:failed]
-                     )
-          else
-                     t("mcweb.admin.store.orders.bulk_processed", count: result.value[:processed])
-          end
-          redirect_to destination, notice: notice
-        else
-          redirect_to destination, alert: result.error || t("mcweb.flash.operation_failed")
-        end
       end
+      private :high_risk_order_action
 
       def export
         require_permission("store.orders.read")
@@ -156,6 +178,7 @@ module Admin
           ],
           backUrl: admin_store_orders_path,
           actions: refund_actions(payment) + pending_refund_actions(pending_refunds) + shipping_actions,
+          highRiskActions: high_risk_order_actions,
           refundForm: refund_form_props(payment),
           shippingForm: shipping_form_props,
           staffNoteForm: { action_url: staff_note_admin_store_order_path(@order) }
@@ -178,7 +201,7 @@ module Admin
       end
 
       def update_shipping
-        if ActiveModel::Type::Boolean.new.cast(params[:mark_shipped]) && !current_user.permission?("store.orders.refund")
+        unless current_user.permission?("store.orders.mark_fulfilled")
           return redirect_to admin_store_order_path(@order), alert: t("mcweb.flash.permission_denied")
         end
 
@@ -350,7 +373,7 @@ module Admin
 
       def shipping_form_props
         return nil unless Commerce::StoreFeatures.enabled?(:order_shipping_management)
-        return nil unless current_user.permission?("store.orders.refund")
+        return nil unless current_user.permission?("store.orders.mark_fulfilled")
 
         {
           action_url: admin_store_order_path(@order),
@@ -401,21 +424,74 @@ module Admin
 
       def bulk_order_actions
         actions = []
-        if current_user.permission?("store.orders.refund")
+        if current_user.permission?("store.orders.cancel")
           actions << { label: t("mcweb.admin.store.orders.bulk_cancel_pending"), action: "cancel_pending" }
+        end
+        if current_user.permission?("store.orders.mark_paid")
           actions << { label: t("mcweb.admin.store.orders.bulk_mark_paid"), action: "mark_paid" }
+        end
+        if current_user.permission?("store.orders.mark_fulfilled")
           actions << { label: t("mcweb.admin.store.orders.bulk_mark_fulfilled"), action: "mark_fulfilled" }
         end
         actions
       end
 
-      def require_bulk_update_permission!
-        action = params[:action_type].to_s
-        if %w[mark_paid mark_fulfilled cancel_pending].include?(action)
-          require_permission("store.orders.refund")
-        else
-          require_permission("store.orders.read")
+      def high_risk_order_actions
+        bulk_order_actions.filter_map do |entry|
+          action = entry[:action]
+          eligible = case action
+          when "cancel_pending"
+            @order.pending? || @order.awaiting_payment?
+          when "mark_paid"
+            (@order.pending? || @order.awaiting_payment?) && !@order.payment_expired?
+          when "mark_fulfilled"
+            @order.may_mark_fulfilled?
+          else
+            false
+          end
+          next unless eligible
+
+          {
+            key: "order_#{action}",
+            label: entry[:label],
+            title: t("mcweb.admin.store.orders.high_risk_title", action: entry[:label]),
+            authorization_url: authorize_high_risk_action_admin_store_orders_path,
+            action_url: bulk_update_admin_store_orders_path,
+            method: "patch",
+            data: {
+              order_ids: [ @order.public_id ],
+              action_type: action
+            }
+          }
         end
+      end
+
+      def order_action_preview_items(preview)
+        before = Array(preview[:before])
+        after = Array(preview[:after])
+        [
+          {
+            label: t("mcweb.admin.high_risk.action"),
+            value: t("mcweb.admin.high_risk.actions.#{preview[:action].to_s.tr('.', '_')}")
+          },
+          {
+            label: t("mcweb.admin.high_risk.target_count"),
+            value: preview[:count].to_s
+          },
+          {
+            label: t("mcweb.admin.high_risk.before_statuses"),
+            value: before.map { |state| "#{state[:public_id]}: #{state[:status]}" }.join(", ")
+          },
+          {
+            label: t("mcweb.admin.high_risk.after_statuses"),
+            value: after.map { |state| "#{state[:public_id]}: #{state[:status]}" }.join(", ")
+          }
+        ]
+      end
+
+      def render_high_risk_error(result)
+        render json: { error: service_error_message(result) },
+          status: service_error_status(result)
       end
 
       def reject_superseded_pending_refunds!

@@ -91,25 +91,26 @@ test('priority community views do not fall back to document-level navigation', (
   assert.match(hoverCard, /<Link v-if="card\.message_url" :href="card\.message_url"/)
 })
 
-test('native forms are prevented unless they contain only explicit button-driven actions', () => {
+test('native forms always prevent browser submission', () => {
   const orders = source('app/javascript/pages/Commerce/Orders/Show.vue')
   const sources = vueSourcesUnder('app/javascript')
 
   for (const file of sources) {
     const formTags = openingTags(file.source, 'form')
     for (const tag of formTags) {
-      if (tag.includes('@submit.prevent')) continue
-
-      assert.equal(
-        file.path,
-        'pages/Commerce/Orders/Show.vue',
+      assert.match(
+        tag,
+        /@submit\.prevent/,
         `${file.path} contains a native form without @submit.prevent: ${tag}`,
       )
-      assert.match(tag, /order\.payment_providers\.length > 1/)
     }
   }
 
-  assert.match(orders, /<Button type="button" @click="payForm\.post\(routes\.storeCheckout\)"/)
+  assert.match(
+    orders,
+    /@submit\.prevent="payForm\.post\(routes\.storeCheckout\)"/,
+  )
+  assert.match(orders, /<Button type="submit" :disabled="payForm\.processing"/)
 })
 
 test('document reload APIs are not used for ordinary application navigation', () => {

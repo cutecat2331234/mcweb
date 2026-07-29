@@ -217,6 +217,39 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
     )
   end
 
+  test "test boot disables developer mode before settings are cached" do
+    directory = Dir.mktmpdir("mcweb-test-boot")
+    local_config_path = File.join(directory, "local.yml")
+    File.write(
+      local_config_path,
+      <<~YAML
+        developer_mode:
+          enabled: true
+      YAML
+    )
+    marker = "TEST_DEVELOPER_MODE="
+
+    stdout, stderr, status = Open3.capture3(
+      {
+        "RAILS_ENV" => "test",
+        "RACK_ENV" => "test",
+        "MCWEB_LOCAL_CONFIG_PATH" => local_config_path,
+        "MCWEB_DEVELOPER_MODE" => nil
+      },
+      RbConfig.ruby,
+      Rails.root.join("bin/rails").to_s,
+      "runner",
+      "puts \"#{marker}\#{Mcweb::DeveloperMode.enabled?}:" \
+        "\#{ENV.fetch('MCWEB_DEVELOPER_MODE')}\"",
+      chdir: Rails.root.to_s
+    )
+
+    assert status.success?, "test boot failed:\n#{stderr}\n#{stdout}"
+    assert_includes stdout, "#{marker}false:0"
+  ensure
+    FileUtils.remove_entry(directory) if directory && Dir.exist?(directory)
+  end
+
   test "attachment sandbox headers remain explicit developer mode boundaries" do
     %w[
       app/controllers/community/attachments_controller.rb

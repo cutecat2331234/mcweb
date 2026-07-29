@@ -29,6 +29,10 @@ module Commerce
           event_type: "refund_rejected",
           metadata: { refund_id: refund.id, reason: @reason }
         )
+        Commerce::DomainEvents.publish_after_commit(
+          "commerce.refund.rejected",
+          Commerce::DomainEvents.refund(refund)
+        )
         @refund = refund
       end
 

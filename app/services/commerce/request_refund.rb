@@ -10,9 +10,9 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Not your order.") unless @order.user_id == @user.id
-      return ServiceResult.failure(error: "Order is not refundable.") unless %w[paid fulfilled completed].include?(@order.status)
-      return ServiceResult.failure(error: "Refund window has expired.") unless within_refund_window?
+      return ServiceResult.failure(error: :not_your_order) unless @order.user_id == @user.id
+      return ServiceResult.failure(error: :order_is_not_refundable) unless %w[paid fulfilled completed].include?(@order.status)
+      return ServiceResult.failure(error: :refund_window_has_expired) unless within_refund_window?
 
       refund = nil
       failure_error = nil
@@ -59,16 +59,19 @@ module Commerce
           requested_by: @user,
           requested_by_customer: true
         )
+        Commerce::OrderEvent.create!(
+          order: @order,
+          actor: @user,
+          event_type: "refund_requested",
+          metadata: { refund_id: refund.id, amount_cents: refund.amount_cents }
+        )
+        Commerce::DomainEvents.publish_after_commit(
+          "commerce.refund.requested",
+          Commerce::DomainEvents.refund(refund)
+        )
       end
 
       return ServiceResult.failure(error: failure_error) if failure_error.present?
-
-      Commerce::OrderEvent.create!(
-        order: @order,
-        actor: @user,
-        event_type: "refund_requested",
-        metadata: { refund_id: refund.id, amount_cents: refund.amount_cents }
-      )
 
       Commerce::NotifyOrderEvent.call(
         user: @order.user,
@@ -78,7 +81,15 @@ module Commerce
         path: "/app/store/orders/#{@order.public_id}"
       )
 
-      MailDeliveryJob.perform_later("Commerce::OrderMailer", "refund_requested", "deliver_now", args: [ refund.id ])
+      refund_id = refund.id
+      ActiveRecord.after_all_transactions_commit do
+        MailDeliveryJob.perform_later(
+          "Commerce::OrderMailer",
+          "refund_requested",
+          "deliver_now",
+          args: [ refund_id ]
+        )
+      end
 
       ServiceResult.success(refund)
     rescue ActiveRecord::RecordInvalid => e

@@ -72,6 +72,7 @@ module Mcweb
         manifest_paths.filter_map do |manifest_path|
           manifest = Manifest.load_file(manifest_path)
           PermissionContributionLoader.load(manifest)
+          ContributionDocumentLoader.load(manifest)
           [ manifest_path, manifest ]
         rescue StandardError, ScriptError => e
           record_load_failure(manifest_path, e)

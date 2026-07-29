@@ -272,6 +272,86 @@ class Mcweb::Plugins::RegistryTest < ActiveSupport::TestCase
     assert @registry.diagnostics.any? { |entry| entry[:code] == "plugins_disabled" }
   end
 
+  test "fulfillment providers are namespaced immutable and strictly validated" do
+    received = nil
+    definition = register(
+      "acme/fulfillment",
+      capabilities: [ "commerce.fulfillments.write" ]
+    ) do |plugin|
+      plugin.fulfillment_provider("delivery") do |request|
+        received = request
+        {
+          status: "succeeded",
+          external_reference: "provider-reference"
+        }
+      end
+    end
+
+    assert_raises(Mcweb::Plugins::LifecycleError) do
+      definition.fulfillment_provider("delivery") { { status: "succeeded" } }
+    end
+
+    @registry.boot!
+    assert_equal(
+      [ "acme/fulfillment:delivery" ],
+      @registry.fulfillment_providers.pluck(:id)
+    )
+
+    result = @registry.dispatch_fulfillment(
+      provider_id: "acme/fulfillment:delivery",
+      request: {
+        delivery_id: "delivery-one",
+        nested: { values: [ "one" ] }
+      }
+    )
+
+    assert_equal "succeeded", result.fetch("status")
+    assert_equal "provider-reference", result.fetch("external_reference")
+    assert_predicate result, :frozen?
+    assert_predicate received, :frozen?
+    assert_predicate received.dig("nested", "values"), :frozen?
+    assert_raises(FrozenError) { received["delivery_id"] << "-changed" }
+
+    definition = register("acme/invalid-provider") do |plugin|
+      plugin.fulfillment_provider("delivery") { { status: "maybe", secret: "no" } }
+    end
+    @registry.boot!
+    error = assert_raises(Mcweb::Plugins::FulfillmentProviderError) do
+      @registry.dispatch_fulfillment(
+        provider_id: "acme/invalid-provider:delivery",
+        request: { delivery_id: "delivery-two" }
+      )
+    end
+    assert_equal "provider_response_invalid", error.code
+    assert_equal "degraded", plugin("acme/invalid-provider").fetch(:status)
+    assert @registry.diagnostics.any? do |entry|
+      entry[:code] == "fulfillment_provider_response_invalid" &&
+        entry[:plugin_id] == definition.id
+    end
+  end
+
+  test "disabled and unknown fulfillment providers never dispatch" do
+    calls = 0
+    register("acme/provider") do |plugin|
+      plugin.fulfillment_provider("default") do
+        calls += 1
+        { status: "succeeded" }
+      end
+    end
+
+    ENV["MCWEB_DISABLE_PLUGINS"] = "1"
+    @registry.boot!
+
+    error = assert_raises(Mcweb::Plugins::FulfillmentProviderError) do
+      @registry.dispatch_fulfillment(
+        provider_id: "acme/provider:default",
+        request: {}
+      )
+    end
+    assert_equal "provider_unavailable", error.code
+    assert_equal 0, calls
+  end
+
   test "boot and reset unsubscribe old central listeners" do
     calls = []
     register("acme/reload") { |plugin| plugin.on("forum.reload") { calls << true } }

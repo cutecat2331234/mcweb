@@ -78,6 +78,7 @@ class Commerce::StoreFeaturesAdminOrderPropsTest < ActionDispatch::IntegrationTe
     @admin = create_user
     grant_permission(@admin, "admin.access")
     grant_permission(@admin, "store.orders.read")
+    grant_permission(@admin, "store.orders.mark_fulfilled")
     @user = create_user
     @order = Commerce::Order.create!(
       public_id: "ord_admin_feat_#{SecureRandom.hex(4)}",

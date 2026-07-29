@@ -485,9 +485,13 @@ function refreshDownload(url: string) {
   </form>
 
   <div class="flex flex-wrap gap-3">
-    <form v-if="order.can_pay && order.payment_providers.length > 1" class="flex items-center gap-2">
+    <form
+      v-if="order.can_pay && order.payment_providers.length > 1"
+      class="flex items-center gap-2"
+      @submit.prevent="payForm.post(routes.storeCheckout)"
+    >
       <Select v-model="payForm.checkout.provider" :options="paymentProviderOptions" size="sm" />
-      <Button type="button" @click="payForm.post(routes.storeCheckout)">{{ t('commerce.orderShow.pay') }}</Button>
+      <Button type="submit" :disabled="payForm.processing">{{ t('commerce.orderShow.pay') }}</Button>
     </form>
     <Button v-else-if="order.can_confirm_free" type="button" @click="payForm.post(routes.storeCheckout)">{{ t('commerce.orderShow.confirmOrder') }}</Button>
     <Button v-else-if="order.can_pay" type="button" @click="payForm.post(routes.storeCheckout)">{{ t('commerce.orderShow.pay') }}</Button>

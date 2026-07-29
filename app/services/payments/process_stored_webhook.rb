@@ -53,7 +53,7 @@ module Payments
         unless record.verified_payload?
           quarantine_integrity_failure!(record)
           blocked_result = ServiceResult.failure(
-            error: "Stored webhook payload failed integrity verification.",
+            error: :stored_webhook_payload_failed_integrity_verification,
             code: "payload_integrity_failure"
           )
           next record
@@ -109,7 +109,7 @@ module Payments
     end
 
     def finish_exception_claim!(claim, code:, retryable:)
-      return ServiceResult.failure(error: "Webhook processing failed.", code: code) unless claim.is_a?(Claim)
+      return ServiceResult.failure(error: :webhook_processing_failed, code: code) unless claim.is_a?(Claim)
 
       finalize_failure!(claim, code: code, retryable: retryable)
     end

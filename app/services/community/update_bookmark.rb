@@ -11,7 +11,7 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Bookmark not found.") unless @bookmark.user_id == @user.id
+      return ServiceResult.failure(error: :bookmark_not_found) unless @bookmark.user_id == @user.id
 
       attrs = {}
       attrs[:note] = @note unless @note.nil?

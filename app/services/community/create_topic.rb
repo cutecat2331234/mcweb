@@ -44,19 +44,19 @@ module Community
 
     def call_core
       unless Community::SectionAccess.view?(section: @section, user: @user)
-        return ServiceResult.failure(error: "Section not available.")
+        return ServiceResult.failure(error: :section_not_available)
       end
 
       unless @section.allowed?(@user, :create_topic)
-        return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
+        return ServiceResult.failure(error: :cannot_create_topic_in_section)
       end
 
       unless @section.trust_allowed?(@user, :create_topic)
-        return ServiceResult.failure(error: "Your trust level is too low to create topics in this section.")
+        return ServiceResult.failure(error: :trust_level_too_low)
       end
 
       unless @section.writable_by?(@user, :create_topic)
-        return ServiceResult.failure(error: "This section is read-only.")
+        return ServiceResult.failure(error: :section_read_only)
       end
 
       rate_result = enforce_rate_limit
@@ -211,15 +211,15 @@ module Community
 
     def check_spam
       if @title.blank?
-        return ServiceResult.failure(error: "Title is required.")
+        return ServiceResult.failure(error: :title_required)
       end
 
       if @body.length < MIN_BODY_LENGTH
-        return ServiceResult.failure(error: "Post body is too short.")
+        return ServiceResult.failure(error: :post_body_too_short)
       end
 
       if muted_in_section?
-        return ServiceResult.failure(error: "You are muted in this section.")
+        return ServiceResult.failure(error: :muted_in_section)
       end
 
       if @section.requires_tags_or_groups? && @tag_names.blank?
@@ -231,11 +231,11 @@ module Community
       end
 
       if @user.banned?
-        return ServiceResult.failure(error: "Your account is banned.")
+        return ServiceResult.failure(error: :account_banned)
       end
 
       if Community::UserSilence.silenced?(@user)
-        return ServiceResult.failure(error: "You are silenced and cannot post.")
+        return ServiceResult.failure(error: :silenced_cannot_post)
       end
 
       ip_result = Administration::CheckIpBan.call(ip_address: @ip_address)
@@ -245,15 +245,15 @@ module Community
       if !developer_mode_bypasses_spam_gates? &&
           recent &&
           recent.created_at > MIN_INTERVAL.ago
-        return ServiceResult.failure(error: "Please wait before creating another topic.")
+        return ServiceResult.failure(error: :wait_before_new_topic)
       end
 
       if !developer_mode_bypasses_spam_gates? && duplicate_title?
-        return ServiceResult.failure(error: "A similar topic was recently created.")
+        return ServiceResult.failure(error: :similar_topic_recent)
       end
 
       if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@user)
-        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+        return ServiceResult.failure(error: :new_members_cannot_post_links)
       end
 
       link_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :link)

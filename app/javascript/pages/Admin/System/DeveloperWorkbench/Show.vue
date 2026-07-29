@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
+import { Message, Modal } from '@arco-design/web-vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -35,6 +36,20 @@ interface MinecraftTask {
   completedAt: string | null
 }
 
+interface Persona {
+  key: string
+  available: boolean
+}
+
+interface CaptureBrowser {
+  kind: string
+  page: number
+  perPage: number
+  hasPreviousPage: boolean
+  hasNextPage: boolean
+  entries: CaptureEntry[]
+}
+
 interface Props {
   profile: string
   productionEnvironment: boolean
@@ -50,6 +65,14 @@ interface Props {
     webhooks: CaptureSummary
     webPush: CaptureSummary
   }
+  captureBrowser: CaptureBrowser
+  personas: Persona[]
+  scenarios: {
+    seeds: string[]
+    attachmentStates: string[]
+  }
+  manualTasks: string[]
+  diagnostics: Record<string, unknown>
   minecraft: {
     available: boolean
     total: number
@@ -59,12 +82,25 @@ interface Props {
     failed: number
     recent: MinecraftTask[]
   }
+  workbenchUrl: string
   settingsUrl: string
   jobsUrl: string
+  diagnosticUrl: string
+  clearCapturesUrl: string
+  seedScenarioUrl: string
+  attachmentScenarioUrl: string
+  runTaskUrl: string
+  personaSwitchUrl: string
 }
 
 const props = defineProps<Props>()
 const { locale, t } = useI18n()
+const captureDrawerVisible = ref(false)
+const seedScenario = ref('all')
+const uploadPublicId = ref('')
+const attachmentScenario = ref('clean')
+const manualTask = ref(props.manualTasks[0] ?? '')
+const pendingAction = ref<string | null>(null)
 
 const configurationGroups = computed(() => [
   {
@@ -107,6 +143,22 @@ const captureGroups = computed(() => [
 
 function visit(url: string) {
   router.visit(url)
+}
+
+function postAction(
+  action: string,
+  url: string,
+  data: Record<string, string>,
+) {
+  if (pendingAction.value) return
+
+  pendingAction.value = action
+  router.post(url, data, {
+    preserveScroll: true,
+    onFinish: () => {
+      pendingAction.value = null
+    },
+  })
 }
 
 function configurationLabel(key: string) {
@@ -163,6 +215,78 @@ function statusColor(status: string) {
   if (status === 'claimed') return 'arcoblue'
   return 'orange'
 }
+
+function captureKind(kind: string) {
+  return kind === 'webPush' ? 'web_push' : kind
+}
+
+function browseCaptures(kind: string, page = 1) {
+  router.get(
+    props.workbenchUrl,
+    { capture_kind: captureKind(kind), capture_page: page },
+    {
+      only: ['captureBrowser'],
+      preserveState: true,
+      preserveScroll: true,
+      replace: true,
+      onSuccess: () => {
+        captureDrawerVisible.value = true
+      },
+    },
+  )
+}
+
+function confirmClear(kind: string) {
+  Modal.warning({
+    title: t('admin.developerWorkbench.captures.clearTitle'),
+    content: t('admin.developerWorkbench.captures.clearDescription'),
+    hideCancel: false,
+    okText: t('admin.developerWorkbench.captures.clearConfirm'),
+    cancelText: t('common.cancel'),
+    onOk: () => {
+      postAction('clear-captures', props.clearCapturesUrl, {
+        kind: captureKind(kind),
+      })
+    },
+  })
+}
+
+function applyAttachmentScenario() {
+  if (!uploadPublicId.value.trim()) {
+    Message.warning(
+      t('admin.developerWorkbench.scenarios.attachmentIdRequired'),
+    )
+    return
+  }
+
+  postAction('attachment-scenario', props.attachmentScenarioUrl, {
+    upload_public_id: uploadPublicId.value.trim(),
+    scenario: attachmentScenario.value,
+  })
+}
+
+function switchPersona(persona: Persona) {
+  if (!persona.available) return
+
+  postAction(`persona-${persona.key}`, props.personaSwitchUrl, {
+    persona: persona.key,
+  })
+}
+
+async function copyDiagnostics() {
+  try {
+    await navigator.clipboard.writeText(
+      JSON.stringify(props.diagnostics, null, 2),
+    )
+    Message.success(
+      t('admin.developerWorkbench.diagnostics.copySuccess'),
+    )
+  } catch {
+    Message.error(
+      t('admin.developerWorkbench.diagnostics.copyFailure'),
+    )
+  }
+}
 </script>
 
 <template>
@@ -175,6 +299,12 @@ function statusColor(status: string) {
     >
       <template #extra>
         <a-space wrap>
+          <a-button @click="copyDiagnostics">
+            {{ t('admin.developerWorkbench.diagnostics.copy') }}
+          </a-button>
+          <a-button :href="diagnosticUrl" data-admin-hard-navigation>
+            {{ t('admin.developerWorkbench.diagnostics.download') }}
+          </a-button>
           <a-button @click="visit(settingsUrl)">
             {{ t('admin.developerWorkbench.openSettings') }}
           </a-button>
@@ -294,6 +424,26 @@ function statusColor(status: string) {
     <a-grid :cols="{ xs: 1, xl: 3 }" :col-gap="16" :row-gap="16" class="mb-4">
       <a-grid-item v-for="capture in captureGroups" :key="capture.key">
         <a-card :title="capture.title">
+          <template #extra>
+            <a-space>
+              <a-button
+                type="text"
+                size="small"
+                @click="browseCaptures(capture.key)"
+              >
+                {{ t('common.browse') }}
+              </a-button>
+              <a-button
+                type="text"
+                status="danger"
+                size="small"
+                :loading="pendingAction === 'clear-captures'"
+                @click="confirmClear(capture.key)"
+              >
+                {{ t('admin.developerWorkbench.captures.clear') }}
+              </a-button>
+            </a-space>
+          </template>
           <a-descriptions :column="1" bordered size="small" class="mb-3">
             <a-descriptions-item :label="t('admin.developerWorkbench.captures.directory')">
               <a-typography-text code>
@@ -348,7 +498,173 @@ function statusColor(status: string) {
       </a-grid-item>
     </a-grid>
 
-    <a-card :title="t('admin.developerWorkbench.minecraft.title')">
+    <a-typography-title :heading="5" class="mb-3">
+      {{ t('admin.developerWorkbench.scenarios.title') }}
+    </a-typography-title>
+    <a-alert
+      type="warning"
+      show-icon
+      :title="t('admin.developerWorkbench.scenarios.warningTitle')"
+      class="mb-3"
+    >
+      {{ t('admin.developerWorkbench.scenarios.warningDescription') }}
+    </a-alert>
+    <a-grid
+      :cols="{ xs: 1, lg: 2, xl: 4 }"
+      :col-gap="16"
+      :row-gap="16"
+      class="mb-4"
+    >
+      <a-grid-item>
+        <a-card :title="t('admin.developerWorkbench.personas.title')">
+          <p class="mb-3 text-sm text-muted-foreground">
+            {{ t('admin.developerWorkbench.personas.description') }}
+          </p>
+          <a-space wrap>
+            <a-button
+              v-for="persona in personas"
+              :key="persona.key"
+              :disabled="!persona.available"
+              :loading="pendingAction === `persona-${persona.key}`"
+              @click="switchPersona(persona)"
+            >
+              {{
+                t(
+                  `admin.developerWorkbench.personas.options.${persona.key}`,
+                )
+              }}
+            </a-button>
+          </a-space>
+          <a-empty
+            v-if="!personas.some((persona) => persona.available)"
+            :description="t('admin.developerWorkbench.personas.empty')"
+            class="mt-3"
+          />
+        </a-card>
+      </a-grid-item>
+
+      <a-grid-item>
+        <a-card :title="t('admin.developerWorkbench.scenarios.seedTitle')">
+          <a-form layout="vertical">
+            <a-form-item
+              :label="t('admin.developerWorkbench.scenarios.seedProfile')"
+            >
+              <a-select v-model="seedScenario">
+                <a-option
+                  v-for="scenario in scenarios.seeds"
+                  :key="scenario"
+                  :value="scenario"
+                >
+                  {{
+                    t(
+                      `admin.developerWorkbench.scenarios.seedOptions.${scenario}`,
+                    )
+                  }}
+                </a-option>
+              </a-select>
+            </a-form-item>
+            <a-button
+              type="primary"
+              html-type="button"
+              long
+              :loading="pendingAction === 'seed-scenario'"
+              @click="
+                postAction('seed-scenario', seedScenarioUrl, {
+                  scenario: seedScenario,
+                })
+              "
+            >
+              {{ t('admin.developerWorkbench.scenarios.seedAction') }}
+            </a-button>
+          </a-form>
+        </a-card>
+      </a-grid-item>
+
+      <a-grid-item>
+        <a-card
+          :title="t('admin.developerWorkbench.scenarios.attachmentTitle')"
+        >
+          <a-form layout="vertical">
+            <a-form-item
+              :label="t('admin.developerWorkbench.scenarios.attachmentId')"
+            >
+              <a-input
+                v-model="uploadPublicId"
+                allow-clear
+                :placeholder="
+                  t(
+                    'admin.developerWorkbench.scenarios.attachmentIdPlaceholder',
+                  )
+                "
+              />
+            </a-form-item>
+            <a-form-item
+              :label="t('admin.developerWorkbench.scenarios.attachmentState')"
+            >
+              <a-select v-model="attachmentScenario">
+                <a-option
+                  v-for="scenario in scenarios.attachmentStates"
+                  :key="scenario"
+                  :value="scenario"
+                >
+                  {{
+                    t(
+                      `admin.developerWorkbench.scenarios.attachmentOptions.${scenario}`,
+                    )
+                  }}
+                </a-option>
+              </a-select>
+            </a-form-item>
+            <a-button
+              type="primary"
+              html-type="button"
+              long
+              :loading="pendingAction === 'attachment-scenario'"
+              @click="applyAttachmentScenario"
+            >
+              {{
+                t('admin.developerWorkbench.scenarios.attachmentAction')
+              }}
+            </a-button>
+          </a-form>
+        </a-card>
+      </a-grid-item>
+
+      <a-grid-item>
+        <a-card :title="t('admin.developerWorkbench.tasks.title')">
+          <a-form layout="vertical">
+            <a-form-item :label="t('admin.developerWorkbench.tasks.task')">
+              <a-select v-model="manualTask">
+                <a-option
+                  v-for="task in manualTasks"
+                  :key="task"
+                  :value="task"
+                >
+                  {{ t(`admin.developerWorkbench.tasks.options.${task}`) }}
+                </a-option>
+              </a-select>
+            </a-form-item>
+            <a-button
+              type="primary"
+              html-type="button"
+              long
+              :disabled="!manualTask"
+              :loading="pendingAction === 'run-task'"
+              @click="
+                postAction('run-task', runTaskUrl, { task: manualTask })
+              "
+            >
+              {{ t('admin.developerWorkbench.tasks.run') }}
+            </a-button>
+          </a-form>
+        </a-card>
+      </a-grid-item>
+    </a-grid>
+
+    <a-card
+      :title="t('admin.developerWorkbench.minecraft.title')"
+      class="mb-4"
+    >
       <a-alert
         v-if="!minecraft.available"
         type="warning"
@@ -419,5 +735,80 @@ function statusColor(status: string) {
         </template>
       </a-table>
     </a-card>
+
+    <a-drawer
+      v-model:visible="captureDrawerVisible"
+      :title="t('admin.developerWorkbench.captures.browserTitle')"
+      :width="'min(760px, 100vw)'"
+      :footer="false"
+      unmount-on-close
+    >
+      <a-alert
+        type="info"
+        show-icon
+        :title="t('admin.developerWorkbench.captures.privacyTitle')"
+        class="mb-3"
+      >
+        {{ t('admin.developerWorkbench.captures.privacyDescription') }}
+      </a-alert>
+      <a-table
+        :data="captureBrowser.entries"
+        :pagination="false"
+        row-key="capturedAt"
+        size="small"
+        :scroll="{ x: 560 }"
+      >
+        <template #columns>
+          <a-table-column
+            :title="t('admin.developerWorkbench.captures.capturedAt')"
+            data-index="capturedAt"
+            :width="190"
+          >
+            <template #cell="{ record }">
+              {{ formatTime(record.capturedAt) }}
+            </template>
+          </a-table-column>
+          <a-table-column
+            :title="t('admin.developerWorkbench.captures.redactedEntry')"
+          >
+            <template #cell="{ record }">
+              {{ captureDetail(captureBrowser.kind, record) }}
+              <a-typography-text
+                v-if="record.sizeBytes !== undefined"
+                type="secondary"
+              >
+                · {{ formatBytes(record.sizeBytes) }}
+              </a-typography-text>
+            </template>
+          </a-table-column>
+        </template>
+        <template #empty>
+          <a-empty
+            :description="t('admin.developerWorkbench.captures.empty')"
+          />
+        </template>
+      </a-table>
+      <div class="mt-4 flex items-center justify-between gap-3">
+        <a-button
+          :disabled="!captureBrowser.hasPreviousPage"
+          @click="browseCaptures(captureBrowser.kind, captureBrowser.page - 1)"
+        >
+          {{ t('admin.developerWorkbench.captures.previous') }}
+        </a-button>
+        <a-tag>
+          {{
+            t('admin.developerWorkbench.captures.page', {
+              page: captureBrowser.page,
+            })
+          }}
+        </a-tag>
+        <a-button
+          :disabled="!captureBrowser.hasNextPage"
+          @click="browseCaptures(captureBrowser.kind, captureBrowser.page + 1)"
+        >
+          {{ t('admin.developerWorkbench.captures.next') }}
+        </a-button>
+      </div>
+    </a-drawer>
   </section>
 </template>

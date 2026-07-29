@@ -2,12 +2,14 @@
 
 module Commerce
   class GrantMembership < ApplicationService
-    def initialize(user:, membership_type:, source: "purchase", source_order_item: nil, grant_game_permissions: true)
+    def initialize(user:, membership_type:, source: "purchase", source_order_item: nil,
+                   grant_game_permissions: true, idempotency_key: nil)
       @user = user
       @membership_type = membership_type
       @source = source
       @source_order_item = source_order_item
       @grant_game_permissions = grant_game_permissions
+      @idempotency_key = idempotency_key.to_s.presence
     end
 
     def call
@@ -16,41 +18,51 @@ module Commerce
         return ServiceResult.success(existing)
       end
 
-      starts_at, expires_at = calculate_window
-      should_grant_commands = @grant_game_permissions
+      membership = nil
+      command_result = nil
 
-      membership = Commerce::UserMembership.create!(
-        user: @user,
-        membership_type: @membership_type,
-        status: :active,
-        starts_at: starts_at,
-        expires_at: expires_at,
-        source: @source,
-        source_order_item: @source_order_item
-      )
-
-      if @source_order_item
-        Commerce::OrderEvent.create!(
-          order: @source_order_item.order,
-          event_type: "membership_granted",
-          metadata: {
-            membership_type_id: @membership_type.id,
-            user_membership_id: membership.id,
-            expires_at: membership.expires_at&.iso8601
-          }
+      Commerce::UserMembership.transaction do
+        @user.lock!
+        @membership_type.lock!
+        starts_at, expires_at = calculate_window
+        membership = Commerce::UserMembership.create!(
+          user: @user,
+          membership_type: @membership_type,
+          status: :active,
+          starts_at: starts_at,
+          expires_at: expires_at,
+          source: @source,
+          source_order_item: @source_order_item
         )
-      end
 
-      if should_grant_commands && @membership_type.game_permission_enabled?
-        grant_on_purchase = !@membership_type.game_permission_website_managed? || first_active_membership_for_type?(membership)
-        if grant_on_purchase
-          Commerce::DispatchMembershipCommands.call(
-            user: @user,
-            membership_type: @membership_type,
-            commands: @membership_type.resolved_grant_commands
+        if @source_order_item
+          Commerce::OrderEvent.create!(
+            order: @source_order_item.order,
+            event_type: "membership_granted",
+            metadata: {
+              membership_type_id: @membership_type.id,
+              user_membership_id: membership.id,
+              expires_at: membership.expires_at&.iso8601
+            }
           )
         end
+
+        if @grant_game_permissions && @membership_type.game_permission_enabled?
+          grant_on_purchase = !@membership_type.game_permission_website_managed? ||
+            first_active_membership_for_type?(membership)
+          if grant_on_purchase
+            command_result = Commerce::DispatchMembershipCommands.call(
+              user: @user,
+              membership_type: @membership_type,
+              commands: @membership_type.resolved_grant_commands,
+              idempotency_key: @idempotency_key
+            )
+            raise ActiveRecord::Rollback if command_result.failure?
+          end
+        end
       end
+
+      return command_result if command_result&.failure?
 
       ServiceResult.success(membership)
     rescue ActiveRecord::RecordNotUnique
@@ -69,8 +81,9 @@ module Commerce
     def calculate_window
       now = Time.current
       latest_expiry = Commerce::UserMembership
-        .currently_active
+        .active
         .where(user: @user, store_membership_type_id: @membership_type.id)
+        .where("expires_at IS NULL OR expires_at > ?", now)
         .maximum(:expires_at)
 
       starts_at = if latest_expiry.present? && latest_expiry > now

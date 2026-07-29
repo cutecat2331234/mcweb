@@ -53,7 +53,12 @@ async function destroy() {
         <a-col :xs="24" :sm="12">
           <label class="admin-forum-field">
             <span>{{ t('admin.reactionTypes.name') }}</span>
-            <a-input v-model="form.reaction_type.name" placeholder="Like" :input-attrs="{ required: true, maxlength: 40 }" allow-clear />
+            <a-input
+              v-model="form.reaction_type.name"
+              :placeholder="t('admin.reactionTypes.namePlaceholder')"
+              :input-attrs="{ required: true, maxlength: 40 }"
+              allow-clear
+            />
           </label>
         </a-col>
         <a-col :xs="24" :sm="12">

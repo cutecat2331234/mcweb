@@ -10,6 +10,7 @@ import PortalSidebar from '@/components/portal/PortalSidebar.vue'
 import PortalUserMenu from '@/components/portal/PortalUserMenu.vue'
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
+import DeveloperModeTools from '@/components/portal/DeveloperModeTools.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
@@ -115,6 +116,7 @@ const sidebarProps = computed(() => ({
 </script>
 
 <template>
+  <DeveloperModeTools />
   <div class="min-h-dvh bg-background portal-themed" :style="portalStyle">
     <TemplateAssets :include-css="false" />
 

@@ -9,7 +9,7 @@ module Community
 
     def call
       participant = @conversation.participants.find_by(user: @user)
-      return ServiceResult.failure(error: "Not a participant.") unless participant
+      return ServiceResult.failure(error: :not_a_participant) unless participant
 
       participant.update!(archived_at: Time.current)
       ServiceResult.success(archived: true)

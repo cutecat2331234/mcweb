@@ -12,7 +12,7 @@ module Community
 
     def call
       unless @actor.permission?("forum.users.mute")
-        return ServiceResult.failure(error: "Not authorized to mute users.")
+        return ServiceResult.failure(error: :not_authorized_to_mute_users)
       end
 
       mute = Community::Mute.create!(

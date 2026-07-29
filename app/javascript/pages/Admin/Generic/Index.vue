@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { confirm } from '@/lib/arcoConfirm'
 import { isAdminSpaNavigationHref } from '@/lib/adminNavigation'
+import HighRiskActionModal from '@/components/admin/HighRiskActionModal.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -85,10 +86,17 @@ const props = defineProps<{
   selectable?: boolean
   bulkModerateUrl?: string | null
   bulkOrderUrl?: string | null
+  bulkOrderAuthorizationUrl?: string | null
   bulkOrderActions?: Array<{ label: string; action: string }>
 }>()
 
 const selectedPublicIds = ref<string[]>([])
+const selectedBulkOrderAction = ref<{ label: string; action: string } | null>(null)
+const bulkOrderModalVisible = ref(false)
+const bulkOrderPayload = computed(() => ({
+  order_ids: [ ...selectedPublicIds.value ],
+  action_type: selectedBulkOrderAction.value?.action || '',
+}))
 
 const dateFrom = ref('')
 const dateTo = ref('')
@@ -215,20 +223,20 @@ function bulkModerate(action: string) {
   })
 }
 
-async function bulkOrder(action: string) {
-  if (!props.bulkOrderUrl || selectedPublicIds.value.length === 0) return
-  const ok = await confirm({
-    title: t('admin.common.bulkAction'),
-    message: t('admin.common.bulkConfirm'),
-  })
-  if (!ok) return
-  router.patch(props.bulkOrderUrl, {
-    order_ids: selectedPublicIds.value,
-    action_type: action,
-    return_to: window.location.pathname + window.location.search,
-  }, {
-    onSuccess: () => { selectedPublicIds.value = [] },
-  })
+function bulkOrder(item: { label: string; action: string }) {
+  if (
+    !props.bulkOrderUrl
+    || !props.bulkOrderAuthorizationUrl
+    || selectedPublicIds.value.length === 0
+  ) return
+  selectedBulkOrderAction.value = item
+  bulkOrderModalVisible.value = true
+}
+
+function bulkOrderCompleted() {
+  selectedPublicIds.value = []
+  selectedBulkOrderAction.value = null
+  router.reload({ preserveScroll: true })
 }
 </script>
 
@@ -300,7 +308,7 @@ async function bulkOrder(action: string) {
               v-for="item in bulkOrderActions"
               :key="item.action"
               type="outline"
-              @click="bulkOrder(item.action)"
+              @click="bulkOrder(item)"
             >
               {{ item.label }}（{{ selectedPublicIds.length }}）
             </a-button>
@@ -491,6 +499,17 @@ async function bulkOrder(action: string) {
         @change="visitPage"
       />
     </div>
+
+    <HighRiskActionModal
+      v-if="selectedBulkOrderAction && bulkOrderUrl && bulkOrderAuthorizationUrl"
+      v-model:visible="bulkOrderModalVisible"
+      :title="t('admin.highRisk.bulkTitle', { action: selectedBulkOrderAction.label })"
+      :authorization-url="bulkOrderAuthorizationUrl"
+      :action-url="bulkOrderUrl"
+      method="PATCH"
+      :payload="bulkOrderPayload"
+      @completed="bulkOrderCompleted"
+    />
   </div>
 </template>
 

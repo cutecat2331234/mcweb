@@ -8,7 +8,7 @@ module Administration
 
     def call
       ban = Administration::IpBan.find_by(ip_address: @ip_address)
-      return ServiceResult.failure(error: "IP ban not found.") unless ban
+      return ServiceResult.failure(error: :ip_ban_not_found) unless ban
 
       ban.destroy!
       ServiceResult.success

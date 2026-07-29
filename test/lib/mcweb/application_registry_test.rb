@@ -42,6 +42,7 @@ class AdminSystemApplicationsTest < ActionDispatch::IntegrationTest
     @admin = create_user
     grant_permission(@admin, "admin.access")
     grant_permission(@admin, "system.settings.manage")
+    grant_permission(@admin, "system.plugins.diagnostics")
     grant_admin_module(@admin, "system")
 
     Mcweb::Plugins.reset!

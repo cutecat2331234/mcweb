@@ -11,7 +11,7 @@ module Community
 
     def call
       badge = Community::Badge.find_by(slug: @badge_slug)
-      return ServiceResult.failure(error: "Badge not found.") unless badge
+      return ServiceResult.failure(error: :badge_not_found) unless badge
 
       user_badge = Community::UserBadge.find_by(user: @user, badge: badge)
       user_badge&.destroy!

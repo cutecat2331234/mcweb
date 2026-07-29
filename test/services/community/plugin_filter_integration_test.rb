@@ -172,6 +172,75 @@ class Community::PluginFilterIntegrationTest < ActiveSupport::TestCase
     assert_equal "Plugin policy", opening_post.edits.order(:id).last.reason
   end
 
+  test "reply and edit services expose stable around-service decorator boundaries" do
+    topic, opening_post = create_visible_forum_notification_resource(
+      user: @user,
+      title: "Decorator operations"
+    )
+    calls = []
+    register do |plugin|
+      plugin.decorate_service("forum.post.create") do |proceed, input, context|
+        calls << "post.create"
+        assert_equal topic.id, context.dig("topic", "id")
+        proceed.call(input.merge("body" => "#{input.fetch('body')} [decorated]"))
+      end
+      plugin.decorate_service("forum.topic.edit") do |proceed, input, context|
+        calls << "topic.edit"
+        assert_equal topic.id, context.dig("topic", "id")
+        proceed.call(
+          input.merge(
+            "title" => "Decorated title",
+            "title_provided" => true
+          )
+        )
+      end
+      plugin.decorate_service("forum.post.edit") do |proceed, input, context|
+        calls << "post.edit"
+        assert_equal opening_post.id, context.dig("post", "id")
+        proceed.call(
+          input.merge(
+            "body" => "#{input.fetch('body')} [decorated]",
+            "reason" => "Decorator policy"
+          )
+        )
+      end
+    end
+    @registry.boot!
+
+    created = with_plugin_registry do
+      Community::CreatePost.call(
+        user: @user,
+        topic:,
+        body: "Reply",
+        skip_interval_check: true
+      )
+    end
+    edited_topic = with_plugin_registry do
+      Community::EditTopic.call(
+        user: @user,
+        topic:,
+        title: "Requested title"
+      )
+    end
+    edited_post = with_plugin_registry do
+      Community::EditPost.call(
+        user: @user,
+        post: opening_post,
+        body: "Updated opening post",
+        reason: "User reason"
+      )
+    end
+
+    assert_predicate created, :success?
+    assert_equal "Reply [decorated]", created.value.body
+    assert_predicate edited_topic, :success?
+    assert_equal "Decorated title", topic.reload.title
+    assert_predicate edited_post, :success?
+    assert_equal "Updated opening post [decorated]", opening_post.reload.body
+    assert_equal "Decorator policy", opening_post.edits.order(:id).last.reason
+    assert_equal %w[post.create topic.edit post.edit], calls
+  end
+
   private
 
   def register(&block)

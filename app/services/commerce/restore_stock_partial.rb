@@ -50,6 +50,17 @@ module Commerce
 
           target.update!(stock: target.stock + restore_qty)
           item.update!(stock_restored_quantity: already_restored + restore_qty)
+          InventoryMovement.record!(
+            target:,
+            reservation: item.inventory_reservation,
+            order: @order,
+            order_item: item,
+            movement_type: "refund",
+            quantity: restore_qty,
+            available_delta: restore_qty,
+            sold_delta: -restore_qty,
+            idempotency_key: "order-item:#{item.id}:refund-restored:#{already_restored + restore_qty}"
+          )
           restored_units += restore_qty
         end
       end

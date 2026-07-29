@@ -11,7 +11,7 @@ module Community
     private
 
     def cannot_follow_self
-      errors.add(:followed_id, "cannot follow yourself") if follower_id == followed_id
+      errors.add(:followed_id, I18n.t("mcweb.validation_errors.cannot_follow_yourself")) if follower_id == followed_id
     end
   end
 end

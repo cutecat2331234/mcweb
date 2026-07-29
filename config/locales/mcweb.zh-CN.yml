@@ -1,5 +1,8 @@
 "zh-CN":
   mcweb:
+    plugin_maintenance:
+      title: "正在进行短暂维护"
+      message: "系统正在更新受信任插件，页面很快会恢复；您的账号和已保存内容不会受影响。"
     permission_catalog:
       legacy_group: "已停用或遗留授权"
       legacy_description: "该权限已不在当前核心或插件目录中；可以保留或移除，但不能重新授予。"
@@ -22,6 +25,9 @@
       identity_roles_manage:
         name: "管理角色"
         description: "在自身可委派权限范围内创建、更新和删除全局角色。"
+      identity_permissions_explain:
+        name: "解释最终权限"
+        description: "查看成员的最终全局权限结论，以及每项授权来自角色、身份组还是账户覆盖。"
       system_bans_manage:
         name: "管理访问封禁"
         description: "创建和移除 IP 地址与邮箱地址封禁。"
@@ -31,6 +37,27 @@
       store_credit_adjust:
         name: "调整成员商城余额"
         description: "增加或减少成员的商城余额。"
+      store_credit_read:
+        name: "查看成员商城余额"
+        description: "查看成员商城余额与调整记录。"
+      store_entitlements_read:
+        name: "查看成员权益"
+        description: "查看人工管理的会员资格与数字权益。"
+      store_entitlements_grant:
+        name: "授予成员权益"
+        description: "人工授予会员资格与数字权益。"
+      store_entitlements_revoke:
+        name: "撤销成员权益"
+        description: "人工撤销会员资格与数字权益。"
+      store_orders_mark_paid:
+        name: "人工标记订单已付款"
+        description: "将符合条件的订单人工标记为已付款。"
+      store_orders_mark_fulfilled:
+        name: "人工标记订单已履约"
+        description: "将符合条件的订单人工标记为已履约。"
+      store_orders_cancel:
+        name: "人工取消订单"
+        description: "人工取消待处理订单。"
       admin_access:
         name: "访问管理后台"
         description: "进入并使用管理后台。"
@@ -100,6 +127,60 @@
       store_products_read:
         name: "查看商城工作人员通知"
         description: "接收低库存等仅面向商城工作人员的通知。"
+      store_inventory_read:
+        name: "查看库存"
+        description: "查看可售、预留、已售和异常库存，以及不可变库存流水。"
+      store_inventory_adjust:
+        name: "调整库存"
+        description: "执行带签名确认、业务理由和审计的人工库存调整。"
+      store_inventory_recover:
+        name: "恢复库存异常"
+        description: "复核并解决过期预留和订单与库存不一致。"
+      store_finance_read:
+        name: "查看财务记录"
+        description: "查看税费快照、发票、退款凭证和财务导出状态。"
+      store_finance_documents_manage:
+        name: "管理财务凭证"
+        description: "作废或以受控版本修订已出具的财务凭证。"
+      store_finance_exports_create:
+        name: "创建财务导出"
+        description: "按筛选条件请求异步财务导出。"
+      store_finance_exports_download:
+        name: "下载财务导出"
+        description: "在文件到期前下载已完成的财务导出。"
+      store_disputes_read:
+        name: "查看支付争议"
+        description: "查看争议期限、状态、负责人和安全的订单上下文。"
+      store_disputes_sensitive_read:
+        name: "查看争议敏感信息"
+        description: "查看付款引用、证据元数据和详细资金敞口。"
+      store_disputes_assign:
+        name: "分派支付争议"
+        description: "带不可变原因地分派或改派争议负责人。"
+      store_disputes_note:
+        name: "添加争议备注"
+        description: "向争议时间线添加不可变内部备注。"
+      store_disputes_evidence_submit:
+        name: "提交争议证据"
+        description: "为处理中的支付争议创建受保留规则约束的证据包。"
+      store_disputes_accept_loss:
+        name: "接受争议损失"
+        description: "在签名影响预览和输入确认后接受资金损失。"
+      store_disputes_close:
+        name: "关闭支付争议"
+        description: "关闭终态争议并开始证据保留期限。"
+      store_disputes_rights_manage:
+        name: "管理争议订单权益"
+        description: "冻结、撤销或恢复争议订单关联的会员与数字权益。"
+      store_fulfillments_read:
+        name: "查看履约恢复队列"
+        description: "查看履约状态、重试计划、失败原因和每次尝试记录。"
+      store_fulfillments_retry:
+        name: "重试履约"
+        description: "经签名确认、业务理由和审计后重试符合条件的履约任务。"
+      store_fulfillments_cancel:
+        name: "取消履约"
+        description: "经签名确认、业务理由和审计后取消尚未完成的履约任务。"
       store_products_manage:
         name: "管理商城商品"
         description: "创建、编辑、发布和整理商品及相关目录内容。"
@@ -157,6 +238,33 @@
       system_plugins_manage:
         name: "管理插件包"
         description: "安装、升级、启用、停用和卸载可信插件包。"
+      system_plugins_view:
+        name: "查看插件"
+        description: "查看已安装插件、贡献项和插件包状态。"
+      system_plugins_install:
+        name: "安装和升级插件"
+        description: "安装已审查的插件包并升级已安装版本。"
+      system_plugins_enable:
+        name: "启用插件"
+        description: "启用已停用的插件包。"
+      system_plugins_disable:
+        name: "停用插件"
+        description: "停用正在运行的插件包。"
+      system_plugins_diagnostics:
+        name: "查看插件诊断"
+        description: "查看文件健康、生命周期记录和进程 Generation。"
+      system_plugins_recover:
+        name: "恢复插件"
+        description: "从恢复点还原经过身份校验的插件包。"
+      system_plugins_rollback:
+        name: "回滚插件"
+        description: "请求插件版本或运行时 Generation 回滚。"
+      system_plugins_uninstall_preserve:
+        name: "卸载插件并保留数据"
+        description: "移除插件代码，同时保留插件自有数据。"
+      system_plugins_uninstall_purge:
+        name: "卸载插件并清除数据"
+        description: "卸载时执行可信 teardown 并清除插件自有数据。"
       system_plugins_settings_manage:
         name: "管理插件设置"
         description: "查看和更新已安装插件提供的设置。"
@@ -169,6 +277,27 @@
       system_audit_read:
         name: "查看审计日志"
         description: "查看管理操作的审计事件及其记录上下文。"
+      system_audit_export:
+        name: "导出审计日志"
+        description: "导出经过权限控制的审计查询结果；每次导出都会生成新的审计事件。"
+      data_governance_read:
+        name: "查看数据治理"
+        description: "查看保留策略、保全和受管内容生命周期记录。"
+      data_governance_policies_manage:
+        name: "管理保留策略"
+        description: "变更受管内容的保留期限和生命周期能力。"
+      data_governance_holds_manage:
+        name: "管理保留保全"
+        description: "为受管内容设置或释放经过审计的保留保全。"
+      data_governance_content_delete:
+        name: "软删除受管内容"
+        description: "让受管内容进入可恢复的保留期限。"
+      data_governance_content_restore:
+        name: "恢复受管内容"
+        description: "在永久清理前恢复符合条件的受管内容。"
+      data_governance_content_purge:
+        name: "永久清理受管内容"
+        description: "仅在保留与证据阻断项全部清除后永久移除到期内容。"
     permission_domains:
       identity: "身份与成员"
       admin: "管理后台"
@@ -177,6 +306,7 @@
       store: "商城"
       minecraft: "Minecraft"
       system: "系统"
+      data_governance: "数据治理"
     role_admin:
       title: "角色"
       name: "名称"
@@ -184,10 +314,29 @@
       permission_count: "权限数"
       system_role: "系统角色"
       permissions: "权限"
+    permission_explanation:
+      open: "解释权限"
+      sources:
+        owner: "站点所有者账户"
     developer_mode:
       title: "开发模式"
       warning: "安全检查和生产优化已被部分关闭。"
       production_warning: "当前 production 环境正在运行开发模式。"
+      personas:
+        owner: "站点所有者"
+        moderator: "版主"
+        member: "普通会员"
+    identity:
+      deleted_content_title: "内容已由账户所有者删除"
+      deleted_content_body: "作者关闭账户时删除了此内容。"
+    data_governance:
+      resource_types:
+        community_topic: "主题"
+        community_post: "帖子"
+        community_message: "私信消息"
+        community_post_attachment: "帖子附件"
+        community_profile_post: "个人动态"
+        community_profile_post_comment: "个人动态回复"
     flash:
       payment_provider_configuration_updated: 支付渠道配置已更新。
       payment_provider_connection_test_succeeded: Stripe 连接测试成功。
@@ -211,6 +360,16 @@
       totp_disabled: 两步验证已关闭。
       totp_already_enabled: 两步验证已经启用。
       totp_setup_required: 管理员要求启用两步验证，请先完成设置。
+      totp_recovery_codes_regenerated: 新恢复码已生成，全部旧恢复码已失效。
+      totp_recovery_email_sent: 如果该账户符合恢复条件，我们已向已验证邮箱发送恢复链接。
+      totp_recovery_completed: 两步验证已重置，所有现有会话均已撤销。请重新登录。
+      email_changed_verify: 邮箱已修改。请查收新邮箱并完成验证，其他登录会话已撤销。
+      email_changed: 邮箱已修改。
+      account_closed: 账户已关闭，个人资料已匿名化，所有会话均已撤销。
+      data_export_requested: 数据导出已加入队列，生成期间可以离开此页面。
+      data_export_retried: 数据导出已重新加入队列。
+      data_export_revoked: 导出已撤销，下载文件已移除。
+      data_export_unavailable: 此导出当前无法下载。
       password_incorrect: 密码不正确。
       sign_in_required_short: 请先登录。
       operation_failed: 操作失败。
@@ -269,7 +428,22 @@
       discussion_topic_created: 讨论帖已创建。
       payment_success: 支付成功。
       payment_access_denied: 无权访问此支付。
+      payment_unavailable: 当前订单状态无法继续支付。
       payment_expired: 支付信息已失效，请重新发起支付。
+      developer_fake_payment_failed: 已应用模拟渠道失败。
+      developer_fake_payment_cancelled: 已取消本次模拟支付。
+      developer_fake_payment_delayed: 已安排在 10 秒后确认到账。
+      developer_mode_persona_invalid: 不支持该测试身份。
+      developer_mode_persona_unavailable: 请先在开发工作台生成该测试身份。
+      developer_mode_persona_switched: "已切换为%{persona}测试身份。"
+      developer_mode_captures_cleared:
+        one: "已清空 %{count} 个本地捕获文件。"
+        other: "已清空 %{count} 个本地捕获文件。"
+      developer_mode_capture_kind_invalid: 不支持该捕获分类。
+      developer_mode_scenario_seeded: 开发场景数据已准备完成。
+      developer_mode_attachment_state_applied: 已应用模拟附件扫描状态。
+      developer_mode_task_enqueued: 已将所选任务加入队列。
+      developer_mode_tool_failed: 开发操作未能完成，请检查所选资源后重试。
       password_reset_sent: 若该邮箱已注册，我们已发送重置链接。
       password_reset_success: 密码已重置，现在可以登录了。
       session_revoked_current: 当前会话已撤销，请重新登录。
@@ -414,6 +588,8 @@
       mapping_deleted: 映射已删除。
       membership_granted: 会员已授予。
       membership_revoked: 会员已撤销。
+      entitlement_granted: 数字权益已授予。
+      entitlement_revoked: 数字权益已撤销。
       rule_created: 规则已创建。
       rule_updated: 规则已更新。
       rule_deleted: 规则已删除。
@@ -552,6 +728,7 @@
       attachment_release_confirmation_mismatch: 输入的确认文本不匹配。
       attachment_release_not_allowed: 当前上传不符合人工放行条件。
       attachment_release_failed: 解除隔离失败，未保存任何更改。
+      attachment_release_revoked: 人工放行已撤销，附件已重新隔离。
       notice_created: 公告已创建。
       notice_updated: 公告已更新。
       notice_deleted: 公告已删除。
@@ -606,6 +783,72 @@
         invalid_email_or_password: 邮箱或密码错误。
         two_factor_code_required: 请输入两步验证码。
         invalid_two_factor_code: 两步验证码无效。
+        password_incorrect: 密码不正确。
+        two_factor_not_enabled: 尚未启用两步验证。
+        email_required: 请输入新邮箱。
+        email_unchanged: 新邮箱与当前邮箱相同。
+        email_not_available: 无法使用该邮箱。
+        account_close_confirmation_invalid: 请输入 DELETE 确认关闭账户。
+        account_close_mode_invalid: 请选择支持的内容处理方式。
+        last_owner_account_cannot_close: 不能关闭站点最后一个所有者账户，请先转移所有权。
+        idempotency_key_required: 此操作需要稳定的请求标识。
+        idempotency_key_invalid: 请求标识无效。
+        data_export_rate_limited: 已达到数据导出次数上限，请稍后再试。
+        data_export_retry_not_allowed: 此导出当前不能重试。
+        data_export_conflict: 更新期间导出状态已变化，请刷新后重试。
+        data_export_generation_failed: 无法生成导出文件，可以安全重试。
+        reason_required: 请输入此操作的业务理由。
+        unsupported_resource_type: 此资源类型不受数据治理管理。
+        retention_policy_missing: 此资源类型没有保留策略。
+        retention_hold_not_supported: 此资源类型不支持保留保全。
+        active_retention_holds_exist: 关闭保全能力前必须先释放有效保全。
+        content_not_deletable: 保留策略不允许可恢复删除。
+        content_not_restorable: 保留策略不允许版主恢复。
+        content_already_purged: 此内容已经被永久清理。
+        content_target_missing: 原始内容记录已不存在。
+        content_purge_blocked: 保留或证据规则阻止了永久清理。
+        content_purge_failed: 永久清理失败，生命周期状态未被改变。
+        inventory_target_unavailable: 此项目没有启用可跟踪库存。
+        inventory_delta_invalid: 请输入支持范围内的非零库存调整数量。
+        fulfillment_action_invalid: 不支持此履约操作。
+        fulfillment_not_retryable: 当前履约状态、订单状态或重试次数不允许再次重试。
+        fulfillment_not_cancellable: 当前履约状态不允许取消。
+        fulfillment_inventory_unavailable: 订单库存尚未确认，不能重试履约。
+        fulfillment_state_changed: 履约状态已变化，请重新打开影响预览。
+        dispute_payment_invalid: 当前付款不能用于建立争议。
+        dispute_provider_mismatch: 争议渠道与付款渠道不一致。
+        dispute_event_identity_invalid: 渠道事件缺少稳定的争议编号或事件编号。
+        dispute_event_type_invalid: 争议事件类型无效。
+        dispute_event_time_invalid: 争议事件时间无效。
+        dispute_amount_invalid: 争议金额必须大于零。
+        dispute_amount_exceeds_payment: 争议金额不能超过原始付款。
+        dispute_currency_mismatch: 争议币种与付款币种不一致。
+        dispute_channel_event_conflict: 此渠道事件编号已保存了不同内容。
+        dispute_action_invalid: 不支持此争议操作。
+        dispute_action_not_high_risk: 此操作不使用签名高风险流程。
+        dispute_state_changed: 争议状态已变化，请重新生成影响预览。
+        dispute_closed: 已关闭争议不能重新分派。
+        dispute_assignee_invalid: 请选择有效的争议负责人。
+        dispute_note_required: 请输入内部备注。
+        dispute_note_too_long: 内部备注不能超过 5,000 个字符。
+        dispute_evidence_state_invalid: 当前争议状态不能提交证据。
+        dispute_evidence_title_required: 请输入证据标题。
+        dispute_evidence_content_required: 请输入证据内容。
+        dispute_evidence_too_large: 证据内容不能超过 64 KB。
+        dispute_evidence_type_invalid: 不支持此证据内容类型。
+        dispute_evidence_unavailable: 此证据已不可下载。
+        dispute_accept_loss_state_invalid: 当前争议状态不能接受损失。
+        dispute_no_financial_exposure: 此争议已没有剩余资金敞口。
+        dispute_close_state_invalid: 只有已胜诉、已败诉或已撤销的争议才能关闭。
+        dispute_rights_state_invalid: 当前争议状态不能变更用户权益。
+        dispute_rights_action_invalid: 不支持此用户权益操作。
+        dispute_idempotency_invalid: 争议请求缺少稳定幂等键。
+        dispute_idempotency_conflict: 此请求编号已用于其他争议操作。
+        dispute_retention_blocked: 保留期限或保全规则仍阻止清理证据。
+        inventory_reservation_released: 库存已释放，无法再确认预留。
+        inventory_reservation_confirmed: 已售库存不能按活动预留释放。
+        inventory_release_failed: 无法释放库存预留。
+        invalid_or_expired_totp_recovery_token: 两步验证恢复链接无效或已过期。
         authentication_required: 请先登录。
         email_banned_registration: 该邮箱已被封禁，无法注册。
         password_confirmation_mismatch: 两次输入的密码不一致。
@@ -712,6 +955,24 @@
         store_credit_adjustment_zero: 调整金额不能为零。
         store_credit_negative_balance: 余额不能为负数。
         store_credit_below_reserved: 余额不能低于待付款订单已预留的金额。
+        high_risk_action_invalid: 不支持此高风险动作。
+        high_risk_target_invalid: 所选目标无效或已不可用。
+        high_risk_request_id_invalid: 请求 ID 无效，请关闭弹窗后重试。
+        high_risk_reason_required: 必须填写业务理由。
+        high_risk_reason_too_long: 业务理由不能超过 1000 个字符。
+        high_risk_targets_required: 请至少选择一个目标。
+        high_risk_unauthorized: 你没有执行此高风险动作的权限。
+        high_risk_authorization_invalid: 确认挑战无效、已过期，或目标当前状态已变化；请重新生成影响预览。
+        high_risk_authorization_replayed: 此单次确认挑战已被使用。
+        high_risk_confirmation_invalid: 输入的确认文本与挑战不一致。
+        high_risk_request_id_reused: 此请求 ID 已用于其他操作。
+        high_risk_result_missing: 已完成操作对应的结果已无法读取。
+        high_risk_order_action_failed: 操作无法原子完成，因此未改变任何订单。
+        entitlement_not_configured: 此商品未配置数字权益有效期。
+        missing_commands: 此会员类型未配置游戏权限命令。
+        player_not_linked: 目标用户尚未关联 Minecraft 身份。
+        no_minecraft_server: 当前没有可接收会员命令的 Minecraft 服务器。
+        membership_command_delivery_conflict: 已存在内容冲突的会员命令投递记录。
         user_invalid: 用户信息无效。
         store_credit_insufficient: 商店余额不足。
         gift_card_insufficient: 礼品卡余额不足。
@@ -815,6 +1076,300 @@
         avatar_file_required: 请选择图片文件。
         avatar_unsupported_format: 不支持的图片格式（仅支持 JPEG、PNG、GIF、WebP）。
         avatar_too_large: 图片过大（最大 2MB）。
+        answer_is_required: "请填写回答内容。"
+        badge_not_found: "找不到该徽章。"
+        bookmark_not_found: "找不到该书签。"
+        builtin_template_cannot_delete: "内置默认模板无法删除。"
+        cannot_ban_site_owner: "不能封禁站点所有者。"
+        cannot_ban_yourself: "不能封禁自己。"
+        cannot_change_poll_options_after_votes_have_been_cast: "投票开始后不能修改选项。"
+        cannot_change_poll_question_after_votes_have_been_cast: "投票开始后不能修改问题。"
+        cannot_follow_yourself: "不能关注自己。"
+        cannot_merge_a_topic_into_itself: "不能将主题合并到自身。"
+        cannot_split_the_opening_post: "不能拆分主题首帖。"
+        command_is_required: "请输入命令。"
+        conversation_not_available: "会话不存在或无权访问。"
+        draft_body_is_required: "草稿内容不能为空。"
+        duplicate_post_detected: "检测到重复帖子。"
+        enter_a_valid_iso_reconciliation_date: "请输入有效的 ISO 对账日期。"
+        enter_the_exact_discrepancy_id_to_confirm_this_review: "请输入完整的差异编号以确认复核。"
+        enter_the_exact_order_number_to_confirm_this_review: "请输入完整的订单号以确认复核。"
+        event_id_required: "缺少事件编号。"
+        exec_command_prefixes_are_not_configured: "尚未配置可执行命令前缀。"
+        identity_not_found: "找不到该玩家身份。"
+        installation_already_complete: "安装已完成。"
+        invalid_image_upload: "图片上传无效。"
+        invalid_node_signature: "节点签名无效。"
+        invalid_or_expired_pairing_token: "配对令牌无效或已过期。"
+        invalid_template_scope: "模板作用域无效。"
+        invalid_webhook_signature: "Webhook 签名无效。"
+        ip_address_is_required: "请输入 IP 地址。"
+        ip_ban_not_found: "找不到该 IP 封禁记录。"
+        late_payment_review_authorization_expired_or_is_invalid: "逾期支付复核授权无效或已过期。"
+        no_download_available: "没有可下载的文件。"
+        no_image_provided: "请选择图片。"
+        no_minecraft_servers_configured: "尚未配置 Minecraft 服务器。"
+        node_secret_is_not_configured: "尚未配置节点密钥。"
+        not_a_gift_card_product: "该商品不是礼品卡商品。"
+        not_allowed_to_close_poll: "无权关闭该投票。"
+        not_authorized: "无权执行此操作。"
+        not_authorized_to_mute_users: "无权将用户设为免打扰。"
+        not_your_draft: "这不是你的草稿。"
+        not_your_order: "无权访问该订单。"
+        nothing_to_restore: "没有可恢复的内容。"
+        online_player_uuids_is_required: "必须提供在线玩家 UUID 列表。"
+        order_is_not_refundable: "该订单当前不可退款。"
+        order_not_accessible: "无法访问该订单。"
+        order_not_paid: "订单尚未支付。"
+        pairing_token_is_required: "请输入配对令牌。"
+        parent_post_is_not_available: "父级帖子不存在或无权访问。"
+        password_required: "请输入密码。"
+        password_too_short: "密码长度不足。"
+        path_is_not_allowed: "不允许使用该路径。"
+        path_is_required: "请输入路径。"
+        payment_provider_mismatch: "支付渠道不匹配。"
+        payment_reconciliation_could_not_be_completed: "无法完成支付对账。"
+        pdf_generation_is_not_available: "当前无法生成 PDF。"
+        player_is_not_associated_with_this_server: "该玩家未关联此服务器。"
+        player_is_not_listed_as_online_on_this_server: "该玩家不在此服务器的在线名单中。"
+        poll_is_already_closed: "投票已经关闭。"
+        poll_not_found: "找不到该投票。"
+        post_does_not_belong_to_this_topic: "该帖子不属于此主题。"
+        post_not_available: "帖子不存在或无权访问。"
+        preview_unavailable: "暂时无法生成预览。"
+        question_is_required: "请输入问题内容。"
+        quoted_post_is_not_available: "引用的帖子不存在或无权访问。"
+        reconciliation_review_authorization_expired_or_is_invalid: "对账差异复核授权无效或已过期。"
+        refund_window_has_expired: "退款期限已过。"
+        release_blocked_disable_stripe_before_establishing_the_first_verified_account_binding: "发布已阻止：首次建立已验证账户绑定前必须停用 Stripe。"
+        release_blocked_stripe_financial_history_exists_without_a_verified_account_binding: "发布已阻止：已有 Stripe 财务记录，但缺少已验证的账户绑定。"
+        replay_detected: "检测到重复请求。"
+        scheduled_time_must_be_in_the_future: "计划时间必须晚于当前时间。"
+        section_not_available: "分区不存在或无权访问。"
+        server_connector_is_offline: "服务器连接器已离线。"
+        server_is_not_bound_to_a_node: "服务器尚未绑定节点。"
+        server_is_not_managed_by_this_node: "该服务器不由此节点管理。"
+        server_is_required_for_this_task: "此任务必须指定服务器。"
+        session_is_required: "缺少会话。"
+        stored_webhook_payload_failed_integrity_verification: "保存的 Webhook 内容未通过完整性校验。"
+        stripe_account_identity_is_not_ready: "Stripe 账户身份尚未就绪。"
+        stripe_checkout_session_is_not_paid: "Stripe 结账会话尚未支付。"
+        stripe_checkout_session_mismatch: "Stripe 结账会话不匹配。"
+        stripe_configuration_is_unavailable: "Stripe 配置不可用。"
+        stripe_could_not_create_the_payment_session_please_try_again: "Stripe 无法创建支付会话，请重试。"
+        stripe_could_not_process_the_refund: "Stripe 无法处理退款。"
+        stripe_environment_mismatch: "Stripe 运行环境不匹配。"
+        stripe_event_object_is_missing: "Stripe 事件缺少业务对象。"
+        stripe_event_type_mismatch: "Stripe 事件类型不匹配。"
+        stripe_is_not_enabled_or_fully_configured: "Stripe 未启用或配置不完整。"
+        stripe_payment_amount_or_currency_mismatch: "Stripe 支付金额或币种不匹配。"
+        stripe_payment_environment_mismatch: "Stripe 支付环境不匹配。"
+        stripe_payment_intent_is_unavailable_for_this_payment: "此支付没有可用的 Stripe 支付意图。"
+        stripe_payment_intent_mismatch: "Stripe 支付意图不匹配。"
+        stripe_payment_metadata_mismatch: "Stripe 支付元数据不匹配。"
+        stripe_reconciliation_could_not_read_provider_records: "Stripe 对账无法读取渠道记录。"
+        stripe_refund_failed: "Stripe 退款失败。"
+        stripe_refund_is_still_pending: "Stripe 退款仍在处理中。"
+        stripe_refund_response_does_not_match_the_local_refund: "Stripe 退款响应与本地退款记录不匹配。"
+        stripe_returned_a_different_environment_than_the_configured_mode: "Stripe 返回的环境与配置模式不一致。"
+        stripe_returned_an_invalid_reconciliation_page: "Stripe 返回了无效的对账页面。"
+        sync_url_host_is_not_allowed: "不允许使用该同步 URL 主机。"
+        sync_url_is_invalid: "同步 URL 无效。"
+        sync_url_is_required: "请输入同步 URL。"
+        sync_url_path_is_not_allowed: "不允许使用该同步 URL 路径。"
+        sync_url_scheme_is_not_allowed: "不允许使用该同步 URL 协议。"
+        target_topic_not_found: "找不到目标主题。"
+        task_not_found: "找不到该任务。"
+        template_missing_or_not_installed: "模板不存在或尚未安装。"
+        textures_not_found: "找不到玩家皮肤纹理。"
+        the_payment_provider_configuration_could_not_be_saved: "无法保存支付渠道配置。"
+        the_payment_stripe_environment_differs_from_the_active_provider: "该支付的 Stripe 环境与当前渠道不一致。"
+        the_payment_stripe_environment_is_unknown_or_differs_from_the_active_provider: "该支付的 Stripe 环境未知或与当前渠道不一致。"
+        the_public_checkout_return_url_is_invalid: "公开结账返回地址无效。"
+        the_public_checkout_return_url_must_use_https_in_production: "生产环境的公开结账返回地址必须使用 HTTPS。"
+        this_discrepancy_was_already_reviewed_with_different_details: "该差异已用其他复核内容处理。"
+        this_late_payment_was_already_acknowledged_with_different_review_details: "该逾期支付已用其他复核内容确认。"
+        this_topic_is_archived: "该主题已归档。"
+        this_user_cannot_be_cleaned: "无法清理该用户。"
+        this_webhook_event_is_not_eligible_for_manual_replay: "该 Webhook 事件不允许手动重放。"
+        topic_already_published: "主题已经发布。"
+        topic_id_required: "缺少主题编号。"
+        topic_is_already_in_this_section: "主题已经位于此分区。"
+        topic_is_not_a_draft: "主题不是草稿。"
+        topic_is_not_ready: "主题尚未满足发布条件。"
+        topic_is_not_scheduled: "主题未设置定时发布。"
+        topic_not_available: "主题不存在或无权访问。"
+        unable_to_generate_unique_delivery_id: "无法生成唯一投递编号。"
+        unable_to_prepare_refund: "无法准备退款。"
+        unable_to_resolve_player: "无法识别玩家。"
+        unknown_action: "未知操作。"
+        unknown_finalize_outcome: "无法完成安装。"
+        unknown_task_type: "未知任务类型。"
+        user_is_required: "缺少用户。"
+        webhook_event_identifiers_are_invalid: "Webhook 事件标识无效。"
+        webhook_event_payload_does_not_match_the_recorded_event: "Webhook 事件内容与已记录事件不匹配。"
+        webhook_processing_failed: "Webhook 处理失败。"
+        webhook_replay_authorization_expired_or_is_invalid: "Webhook 重放授权无效或已过期。"
+        you_are_not_allowed_to_mark_this_topic_as_solved: "无权将该主题标记为已解决。"
+        you_are_not_allowed_to_post_staff_whispers: "无权发布仅员工可见的回复。"
+        you_are_not_allowed_to_reply_in_this_section: "无权在此分区回复。"
+        you_are_not_allowed_to_unsolve_this_topic: "无权取消该主题的已解决状态。"
+        you_are_not_authorized_to_copy_this_topic: "无权复制该主题。"
+        you_are_not_authorized_to_merge_topics: "无权合并主题。"
+        you_are_not_authorized_to_moderate_this_topic: "无权管理该主题。"
+        you_are_not_authorized_to_move_this_topic: "无权移动该主题。"
+        you_are_not_authorized_to_run_the_spam_cleaner: "无权运行垃圾内容清理。"
+        you_are_not_authorized_to_split_topics: "无权拆分主题。"
+        you_cannot_block_yourself: "不能拉黑自己。"
+        you_cannot_edit_this_poll: "不能编辑该投票。"
+        you_cannot_edit_this_post: "不能编辑该帖子。"
+        you_cannot_edit_this_topic: "不能编辑该主题。"
+        you_do_not_have_permission_to_replay_payment_webhooks: "无权重放支付 Webhook。"
+        you_do_not_have_permission_to_review_late_payments: "无权复核逾期支付。"
+        you_do_not_have_permission_to_review_reconciliation_discrepancies: "无权复核对账差异。"
+        you_have_not_voted: "你尚未投票。"
+        your_ip_address_is_banned_from_posting: "当前 IP 地址已被禁止发帖。"
+        your_trust_level_is_too_low_to_reply_in_this_section: "信任等级不足，无法在此分区回复。"
+        feature_portal_required: "论坛和商城至少需要保留一个开启。"
+    validation_errors:
+      cannot_be_attached_to_a_payment_discrepancy: "不能附加到支付差异。"
+      cannot_be_changed_after_creation: "创建后不能修改。"
+      cannot_be_changed_after_it_is_assigned: "分配后不能修改。"
+      cannot_be_self: "不能指向自身。"
+      cannot_be_set_on_a_reviewed_discrepancy: "已复核的差异不能设置此项。"
+      cannot_be_the_same_as_the_product: "不能与当前商品相同。"
+      cannot_be_yourself: "不能选择自己。"
+      cannot_exceed_3_images: "不能超过 3 张图片。"
+      cannot_exceed_the_payment_amount: "不能超过支付金额。"
+      cannot_follow_yourself: "不能关注自己。"
+      cannot_resolve_a_manually_reviewed_discrepancy: "不能自动解决已人工复核的差异。"
+      contains_an_unsafe_url: "包含不安全的 URL。"
+      dispute_amount_is_not_conserved: "争议金额不守恒。"
+      document_amounts_must_conserve_the_gross_amount: "单据金额合计必须与总额一致。"
+      does_not_match_content: "与内容不匹配。"
+      does_not_match_the_payment: "与支付记录不匹配。"
+      does_not_match_the_refund: "与退款记录不匹配。"
+      does_not_match_the_webhook: "与 Webhook 记录不匹配。"
+      evidence_snapshot_fields_are_immutable: "证据快照字段不可修改。"
+      finance_export_request_contract_is_immutable: "财务导出请求参数不可修改。"
+      invalid_json: "必须是有效的 JSON。"
+      invalid_scope: "包含无效作用域：%{scope}"
+      is_invalid: "无效。"
+      is_required: "不能为空。"
+      is_too_large: "过大。"
+      issued_finance_document_content_is_immutable: "已签发财务单据的内容不可修改。"
+      must_be_a_mapping: "必须是键值映射。"
+      must_be_a_normalized_relative_path: "必须是规范化的相对路径。"
+      must_be_a_safe_https_or_uploaded_image_url: "必须是安全的 http(s) 地址或已上传图片地址。"
+      must_be_absent_for_an_invoice: "发票不能设置此项。"
+      must_be_acknowledged_before_review_details_are_recorded: "记录复核详情前必须先确认。"
+      must_be_after_the_start: "必须晚于开始时间。"
+      must_be_an_array: "必须是数组。"
+      must_be_an_object: "必须是对象。"
+      must_be_attached_through_a_local_refund: "必须通过本地退款记录关联。"
+      must_be_greater_than_or_equal_to_minimum_quantity: "必须大于或等于最小数量。"
+      must_be_greater_than_or_equal_to_sale_price: "必须大于或等于促销价。"
+      must_be_present_for_a_refund_receipt: "退款收据必须设置此项。"
+      must_be_present_only_for_migration_versions: "仅迁移版本可以设置此项。"
+      must_be_present_only_for_rollback_versions: "仅回滚版本可以设置此项。"
+      must_be_reviewed_before_review_details_are_recorded: "记录复核详情前必须先完成复核。"
+      must_belong_to_the_dispute_order: "必须属于争议对应的订单。"
+      must_belong_to_the_refund_order: "必须属于退款对应的订单。"
+      must_contain_at_least_one_option: "必须至少包含一个选项。"
+      must_contain_process_identifiers: "必须包含进程标识。"
+      must_match_the_payment_currency: "必须与支付币种一致。"
+      must_not_traverse_directories: "不能包含目录穿越路径。"
+      plugin_job_ownership_and_payload_are_immutable: "插件任务的归属与内容不可修改。"
+      plugin_setting_versions_are_immutable: "插件设置版本不可修改。"
+      refund_binding_changed_while_processing: "处理期间退款绑定关系发生变化。"
+      saved_search_limit_reached: "保存搜索已达上限（%{limit}）。"
+      saved_search_private_url: "不能指向内网或本地地址。"
+      tax_amounts_must_conserve_the_captured_gross_amount: "税额合计必须与捕获的总额一致。"
+      transition_is_not_allowed: "不允许执行此状态转换。"
+      website_nav_target_required: "必须选择页面或填写 URL。"
+      website_nav_url_format: "格式无效；请使用 http(s):// 或以 / 开头的站内路径。"
+      website_nav_url_scheme: "不允许使用该 URL 协议。"
+      valid_http_url: "必须是有效的 http(s) URL。"
+    user_copy:
+      topic_fields_title: "主题自定义字段"
+      display_location: "显示位置"
+      enabled: "启用"
+      new_topic_field: "新建主题字段"
+      ip_bans_title: "IP 封禁"
+      reason: "原因"
+      expires_at: "过期时间"
+      created_at: "创建时间"
+      permanent: "永久"
+      server_not_bound_to_node: "服务器尚未绑定节点。"
+      plugin_settings_schema_unavailable: "插件设置结构不可用。"
+      plugin_settings_values_mapping: "设置值必须是键值映射。"
+      expected_revision_required: "必须提供预期修订版本。"
+      theme_tokens: "设计令牌"
+      event_id_required: "缺少事件编号。"
+      unable_to_resolve_player: "无法识别玩家。"
+      too_many_pairing_attempts: "配对尝试过于频繁。"
+      feature_forum_label: "论坛"
+      feature_forum_description: "社区论坛、私信、通知及相关导航入口"
+      feature_store_label: "商城"
+      feature_store_description: "商品、购物车、订单及相关导航入口"
+      feature_blog_label: "官网博客"
+      feature_blog_description: "官网导航与页脚中的动态和博客入口"
+      feature_minecraft_label: "Minecraft 绑定"
+      feature_minecraft_description: "玩家 Minecraft 账号绑定页面"
+      feature_generic_label: "该功能"
+      feature_disabled_message: "%{feature}已被管理员关闭。"
+      store_feature_physical_label: "实体商品"
+      store_feature_physical_description: "允许创建实体商品并配置物流要求"
+      store_feature_shipping_label: "物流配送"
+      store_feature_shipping_description: "结账收货地址、配送方式、运费计算与用户地址簿"
+      store_feature_gift_wrap_label: "礼品包装"
+      store_feature_gift_wrap_description: "结账页礼品包装选项与费用"
+      store_feature_order_shipping_label: "订单物流管理"
+      store_feature_order_shipping_description: "后台填写快递单号、标记发货与生成装箱单"
+      moderation_quarantined_attachment: "隔离附件 %{id}"
+      moderation_quarantined_attachment_summary: "需要审核 %{username} 上传文件的安全性"
+      moderation_active_warning: "%{username} 的生效警告"
+      moderation_active_warning_summary: "%{issuer} 发出了 %{points} 点警告"
+      moderation_active_mute: "%{username} 的生效禁言"
+      moderation_section_mute: "已在 %{section} 禁言"
+      moderation_sitewide_mute: "全站论坛禁言"
+      moderation_active_account_ban: "%{username} 的生效账户封禁"
+      moderation_account_suspended: "账户访问当前已暂停"
+      restricted_tag: "不能使用受限标签：%{name}"
+      template_scope_unsupported: "模板不支持 %{scope} 作用域。"
+      builtin_template_archive_missing: "缺少内置模板包：%{archive}"
+      template_install_failed: "安装失败：%{error}"
+      template_archive_empty: "模板包为空。"
+      template_archive_too_many_files: "模板包文件过多（最多 %{count} 个）。"
+      template_archive_invalid_path: "模板包包含非法路径：%{path}"
+      template_archive_file_type: "模板包包含不允许的文件类型：%{path}"
+      template_archive_too_large: "模板包过大（最大 %{megabytes} MB）。"
+      template_manifest_missing: "缺少 manifest.json。"
+      template_archive_invalid_zip: "ZIP 文件无效：%{error}"
+      template_manifest_object: "manifest.json 必须是 JSON 对象。"
+      template_manifest_key_missing: "manifest 缺少 %{key}。"
+      template_manifest_key_invalid: "manifest key 格式无效。"
+      template_manifest_scopes_empty: "manifest scopes 不能为空。"
+      template_manifest_scope_invalid: "不允许使用 manifest scope：%{scope}"
+      template_manifest_css_missing: "manifest 引用的 CSS 不存在：%{path}"
+      template_manifest_asset_missing: "manifest 引用的 %{kind} 不存在：%{path}"
+      template_manifest_slot_path_invalid: "slots.%{slot} 必须是 slots/ 下的 HTML 文件。"
+      template_manifest_slot_missing: "manifest 引用的 slot 不存在：%{path}"
+      password_reset_request_accepted: "如果邮箱存在，重置链接已发送。"
+      unknown_session_action: "未知会话操作：%{action}"
+      unknown_task_action: "未知任务操作：%{action}"
+      command_prefix_not_allowed: "不允许执行该命令，可用前缀：%{prefixes}"
+      late_payment_review_input_invalid: "请选择有效的处理结果，并输入 %{min} 至 %{max} 个字符的复核说明。"
+      webhook_replay_reason_invalid: "重放原因必须为 %{min} 至 %{max} 个字符。"
+      reconciliation_review_input_invalid: "请选择有效的决定，并输入 %{min} 至 %{max} 个字符的说明。"
+      installation_already_complete: "安装已经完成。"
+      installation_complete: "安装完成。"
+      minecraft_node_offline_title: "Minecraft 节点离线：%{name}"
+      minecraft_node_offline_body: "节点 %{name}（%{hostname}）心跳超时，已标记为离线。"
+      minecraft_process_missing: "连接器在线，但服务进程未运行"
+      minecraft_connector_offline: "服务进程正在运行，但连接器离线"
+      minecraft_process_mismatch_title: "Minecraft 进程状态不一致：%{name}"
+      minecraft_process_mismatch_body: "%{name} — %{state}（进程状态：%{process_state}）。"
     commerce:
       default_store_title: 商城
       list_separator: "、"
@@ -1345,7 +1900,82 @@
         deliver_item: 发货（命令/物品）
       notifications:
         default_title: Minecraft 事件
+    audit:
+      actions:
+        system_audit_exported: "已导出审计日志"
+        commerce_inventory_adjusted: "已调整库存"
+        data_governance_retention_policy_updated: "已更新保留策略"
+        data_governance_retention_hold_placed: "已设置保留保全"
+        data_governance_retention_hold_released: "已释放保留保全"
+        data_governance_content_soft_deleted: "已软删除受管内容"
+        data_governance_content_restored: "已恢复受管内容"
+        data_governance_content_purge_blocked: "永久清理被阻止"
+        data_governance_content_purged: "已永久清理受管内容"
     admin:
+      audit:
+        export_too_large: "导出结果超过 10,000 条，请缩小时间范围或增加筛选条件后重试。"
+        csv:
+          id: "编号"
+          occurred_at: "发生时间"
+          action: "操作"
+          action_code: "操作代码"
+          actor: "操作者"
+          actor_public_id: "操作者公开 ID"
+          resource_type: "资源类型"
+          resource_identifier: "资源标识"
+          request_id: "请求 ID"
+          reason: "业务理由"
+          metadata: "记录的上下文"
+      users:
+        title: 用户
+        global_scope: 全站
+        permanent: 永久
+        boolean_yes: 是
+        boolean_no: 否
+        unknown: 未知
+        not_available: "—"
+        none: 无
+        record: 记录
+        silenced: 是（可浏览但不可发布）
+        not_silenced: 否
+        trust_automatic: 自动（按已发布内容）
+        mute_summary: "%{reason} · 到期：%{expires_at}"
+        warning_summary: "%{points} 点 · %{reason}"
+        remove_mute: "解除禁言（%{section}）"
+        fields:
+          username: 用户名
+          email: 邮箱
+          status: 状态
+          joined_at: 注册时间
+          ban_reason: 封禁原因
+          ban_expires_at: 封禁到期
+          roles: 角色
+          account_type: 账户类型
+          email_verified: 邮箱已验证
+          warning_points: 警告积分
+          silence_status: 禁言状态
+          trust_level: 信任等级
+          trust_override: 信任等级覆盖
+          store_credit: 商店余额
+        sections:
+          active_mutes: 当前禁言
+          warnings: 社区警告
+          staff_notes: 员工备注（仅管理员可见）
+        statuses:
+          active: 正常
+          banned: 已封禁
+          deleted: 已删除
+        account_types:
+          member: 普通会员
+          staff: 工作人员
+          admin: 管理员
+          owner: 站点所有者
+        trust_levels:
+          tl0: 新成员
+          tl1: 基本用户
+          tl2: 成员
+          tl3: 常客
+          tl4: 领导者
       store_credit_users:
         title: 余额用户
         subtitle: 查看用户余额，并执行经过授权和审计的余额调整。
@@ -1514,8 +2144,18 @@
             invalid_sha256: 预期 SHA-256 必须是 64 位小写十六进制字符。
             unavailable: 暂时无法读取插件包状态。
             operation_succeeded: "%{plugin} 的 %{action} 操作已完成。"
+            dry_run_succeeded: "%{plugin} 的 %{action} 预检已完成，插件包与运行状态均未更改。"
             operation_failed: 无法完成插件包操作。
             uninstall_confirmation_mismatch: 请输入准确的插件 ID，才能执行 teardown 并卸载。
+            health_completed: "%{plugin} 文件健康检查完成：%{status}。"
+            catalog_reconciled: "插件清单对账完成：已同步 %{plugins} 个版本，发现 %{findings} 个差异。"
+            health_status:
+              healthy: 健康
+              changed: 文件已变化
+              missing: 文件缺失
+              unavailable: 无法检查
+              untracked: 暂无安装基线
+              not_installed: 未安装
         plugin_settings:
           title: 插件设置
           updated: 插件设置已保存为一个新版本。
@@ -2011,6 +2651,22 @@
         alert_node_stale: 心跳超时，节点可能不可达。
         alert_stale_nodes: "有 %{count} 个节点标记为在线但心跳已超时。"
         alert_process_mismatch: "有 %{count} 个托管服务器的进程/Connector 状态不一致。"
+      high_risk:
+        target_user: 目标用户
+        membership_type: 会员类型
+        product: 商品
+        current_count: 当前有效数量
+        result_count: 操作后有效数量
+        expires_at: 到期时间
+        status_change: 状态变化
+        action: 动作
+        target_count: 目标数量
+        before_statuses: 当前状态
+        after_statuses: 操作后状态
+        actions:
+          order_mark_paid: 标记已付款
+          order_mark_fulfilled: 标记已履约
+          order_cancel: 取消订单
       store:
         action_edit: 编辑
         membership_types:
@@ -2053,8 +2709,32 @@
           field_source: 来源
           action_revoke: 撤销
           confirm_revoke: 确定撤销此会员？
+          revoke_title: 复核会员撤销
           filter_all: 全部
           filter_all_types: 全部类型
+        user_entitlements:
+          title: 数字权益
+          grant: 授予权益
+          grant_title: 授予数字权益
+          col_user: 用户
+          col_product: 商品
+          col_status: 状态
+          col_expires_at: 到期时间
+          field_user: 用户
+          field_product: 商品
+          field_status: 状态
+          field_starts_at: 开始
+          field_expires_at: 到期
+          action_revoke: 撤销
+          revoke_title: 复核权益撤销
+          filter_all: 全部
+          status_active: 有效
+          status_expired: 已过期
+          status_revoked: 已撤销
+          status_active_to_revoked: 有效 → 已撤销
+          duration_days:
+            one: "%{count} 天"
+            other: "%{count} 天"
         products:
           title: 商品
           col_name: 名称
@@ -2119,6 +2799,163 @@
           col_status: 状态
           col_order: 订单
           col_product: 商品
+          actions:
+            retry:
+              completed: 履约任务已重新排队。
+            cancel:
+              completed: 履约任务已取消。
+          attempt_actions:
+            dispatch: 发起履约
+            retry: 人工重试
+            cancel: 人工取消
+          attempt_triggers:
+            automatic: 自动任务
+            manual: 人工操作
+            recovery: 中断恢复
+          attempt_statuses:
+            pending: 等待中
+            processing: 处理中
+            succeeded: 已成功
+            failed: 已失败
+            cancelled: 已取消
+          inventory_statuses:
+            active: 仍在预留
+            confirmed: 库存已确认
+            released: 库存已释放
+            expired: 预留已过期
+            legacy: 旧订单无预留记录
+          preview:
+            delivery_id: 履约编号
+            order: 订单
+            product: 商品
+            current_status: 当前状态
+            next_status: 操作后状态
+            attempts: 已尝试次数
+            inventory: 库存状态
+            entitlement: 已有有效权益
+            active_tasks: 活跃连接任务
+          error_codes:
+            fulfillment_failed: 履约未完成，请查看尝试记录后选择下一步。
+            server_not_found: 找不到目标服务器，请检查商品履约配置。
+            player_not_linked: 顾客尚未绑定可用于发放的游戏账号。
+            missing_commands: 商品没有可执行的履约指令。
+            delivery_failed: 外部节点报告履约失败。
+            worker_interrupted: 后台任务在提交前中断，系统已进入安全重试流程。
+            timeout: 外部履约操作超时。
+        disputes:
+          statuses:
+            open: 处理中
+            evidence_required: 待提交证据
+            evidence_submitted: 已提交证据
+            under_review: 渠道审核中
+            won: 已胜诉
+            lost: 已败诉
+            withdrawn: 已撤销
+            closed: 已关闭
+          risks:
+            low: 低
+            medium: 中
+            high: 高
+            critical: 严重
+          rights_statuses:
+            unchanged: 未变更
+            frozen: 已冻结
+            revoked: 已撤销
+            restored: 已恢复
+          resolutions:
+            won: 胜诉
+            lost: 败诉
+            withdrawn: 已撤销
+            accepted_loss: 已接受损失
+          retention_blockers:
+            open_dispute: 争议尚未关闭。
+            legal_hold: 当前存在保全。
+            retention_period: 法定或产品保留期限尚未结束。
+          sources:
+            channel: 支付渠道
+            manual: 人工操作
+            policy: 风险策略
+            system: 系统
+          evidence_statuses:
+            submitted: 已提交
+            failed: 提交失败
+            purged: 内容已清理
+          actions:
+            assign:
+              label: 分派负责人
+              completed: 争议负责人已更新。
+            note:
+              label: 添加备注
+              completed: 备注已写入不可变时间线。
+            submit_evidence:
+              label: 提交证据
+              completed: 证据包已保留并标记为已提交。
+            accept_loss:
+              label: 接受损失
+              completed: 已接受损失，并按策略撤销关联权益。
+            close:
+              label: 关闭案件
+              completed: 争议已关闭，保留期限已开始。
+            freeze_rights:
+              label: 冻结权益
+              completed: 关联用户权益已冻结。
+            revoke_rights:
+              label: 撤销权益
+              completed: 关联用户权益已撤销。
+            restore_rights:
+              label: 恢复权益
+              completed: 不受其他争议阻止的关联权益已恢复。
+          preview:
+            dispute: 争议
+            order: 订单
+            action: 操作
+            current_status: 当前状态
+            next_status: 操作后状态
+            amount: 争议金额
+            liability: 资金敞口
+            rights: 用户权益状态
+          event_types:
+            updated: 争议已更新
+            charge_dispute_created: 渠道争议已建立
+            charge_dispute_updated: 渠道争议已更新
+            charge_dispute_closed: 渠道争议已关闭
+            charge_dispute_funds_withdrawn: 争议资金已扣除
+            charge_dispute_funds_reinstated: 争议资金已恢复
+            dispute_created: 争议已建立
+            dispute_updated: 争议已更新
+            dispute_closed: 争议已关闭
+            assign: 已分派负责人
+            note: 已添加内部备注
+            submit_evidence: 已提交证据
+            accept_loss: 已接受损失
+            close: 已关闭案件
+            freeze_rights: 已冻结权益
+            revoke_rights: 已撤销权益
+            restore_rights: 已恢复权益
+            exposure_rebalanced: 已重新平衡资金敞口
+            evidence_purged: 已清理证据内容
+          provider_statuses:
+            open: 处理中
+            warning_needs_response: 预警待响应
+            needs_response: 待响应
+            evidence_required: 待提交证据
+            evidence_submitted: 已提交证据
+            warning_under_review: 预警审核中
+            under_review: 审核中
+            won: 胜诉
+            lost: 败诉
+            charge_refunded: 已退回扣款
+            withdrawn: 已撤销
+            warning_closed: 预警已关闭
+          reason_codes:
+            fraudulent: 涉嫌欺诈
+            duplicate: 重复扣款
+            subscription_canceled: 订阅已取消
+            product_unacceptable: 商品不符合预期
+            unrecognized: 不认识此扣款
+            credit_not_processed: 退款未处理
+            general: 一般争议
+            other: 其他或未披露原因
         orders:
           title: 订单
           show_title: "订单 %{number}"
@@ -2134,6 +2971,7 @@
             created_at: 创建时间
           bulk_processed: "已处理 %{count} 个订单。"
           bulk_processed_with_failures: "已处理 %{processed} 个订单，%{failed} 个失败。"
+          high_risk_title: "复核订单动作：%{action}"
           filter_all: 全部
           section_items: 商品
           section_fulfillments: 发货
@@ -2413,6 +3251,7 @@
         processing: 处理中
         fulfilled: 已发货
         failed: 失败
+        cancelled: 已取消
       account_type:
         member: 普通会员
         staff: 工作人员
@@ -2451,6 +3290,13 @@
       greeting: "你好 %{username}，"
       greeting_formal: "您好 %{username}，"
       greeting_short: "你好，"
+      totp_recovery:
+        subject: McWeb 两步验证恢复
+        greeting: "你好 %{name}，"
+        instructions: 我们收到了重置两步验证的申请。请使用下方链接，并再次输入账户密码完成恢复。
+        action: 重置两步验证
+        expiry: 此链接将在 30 分钟后失效，成功恢复后所有现有登录会话都会被撤销。
+        ignore: 如果这不是你的操作，请忽略本邮件；你的两步验证设置不会改变。
       unsubscribe_type: "关闭此类邮件通知"
       manage_preferences: "在通知偏好中管理"
       view_topic: "查看主题"

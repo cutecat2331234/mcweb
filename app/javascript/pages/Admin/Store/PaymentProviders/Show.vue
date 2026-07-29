@@ -25,9 +25,9 @@ import {
   TypographyText,
   TypographyTitle,
 } from '@mcweb/ui'
-import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
-defineOptions({ layout: ArcoAdminLayout })
+defineOptions({ layout: AdminLayout })
 
 type Mode = 'test' | 'live'
 

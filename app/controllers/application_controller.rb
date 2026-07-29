@@ -12,6 +12,9 @@ class ApplicationController < ActionController::Base
   include LocaleSettable
 
   before_action :require_totp_setup
+  before_action :audit_developer_mode_configuration
+  before_action :enforce_plugin_maintenance_window
+  before_action :reconcile_plugin_runtime_generation
   after_action :mark_developer_mode_response
 
   allow_browser versions: :modern,
@@ -205,9 +208,74 @@ class ApplicationController < ActionController::Base
       nil
     end
 
+    begin
+      plugin_presenter = PluginContributionPresenter.new(
+        user: current_user,
+        locale: I18n.locale,
+        path: request.path
+      )
+      plugin_payload = plugin_presenter.shared_payload
+      if plugin_payload.dig(:navigation, :public).any? ||
+          plugin_payload.dig(:navigation, :admin).any? ||
+          plugin_payload[:ui_slots].any?
+        share[:plugin_contributions] = plugin_payload
+      end
+
+      plugin_phrases = plugin_presenter.translation_overrides
+      if plugin_phrases.any?
+        plugin_overrides = unflatten_phrase_overrides(plugin_phrases)
+        share[:phrase_overrides] = (share[:phrase_overrides] || {}).deep_merge(plugin_overrides)
+      end
+    rescue StandardError => e
+      Rails.logger.warn(
+        "[mcweb.plugins] contribution presentation skipped: #{e.class}"
+      )
+    end
+
     share = share.merge(share_active_template)
     share[:csrf_token] = form_authenticity_token
     share
+  end
+
+  private
+
+  def audit_developer_mode_configuration
+    Operations::AuditDeveloperModeConfiguration.call
+  end
+
+  def enforce_plugin_maintenance_window
+    return unless defined?(PluginMaintenanceWindow)
+    return if controller_path.start_with?("admin/", "setup/", "api/")
+    return if controller_path == "identity/sessions"
+    return if %w[health commerce/webhooks].include?(controller_path)
+    return if current_user&.can_access_admin?
+    return unless PluginMaintenanceWindow.active?
+
+    response.set_header("Retry-After", "30")
+    payload = {
+      error: "plugin_maintenance",
+      message: t("mcweb.plugin_maintenance.message")
+    }
+    if request.format.json?
+      render json: payload, status: :service_unavailable
+    else
+      render(
+        template: "shared/plugin_maintenance",
+        layout: false,
+        status: :service_unavailable,
+        locals: payload
+      )
+    end
+  rescue ActiveRecord::ActiveRecordError
+    nil
+  end
+
+  def reconcile_plugin_runtime_generation
+    Mcweb::Plugins.generation_coordinator.reconcile_current_process!(process_kind: "web")
+  rescue StandardError => e
+    Rails.logger.warn(
+      "[mcweb.plugins] generation reconciliation skipped: #{e.class}: #{e.message}"
+    )
   end
 
   def safe_local_path(path)
@@ -217,22 +285,53 @@ class ApplicationController < ActionController::Base
   private
 
   def admin_demo_enabled?
-    !Rails.env.production?
+    Mcweb::DeveloperMode.enabled?
   end
 
   def developer_mode_frontend_payload
     return { enabled: false } unless Mcweb::DeveloperMode.enabled?
 
-    {
+    payload = {
       enabled: true,
       profile: Mcweb::DeveloperMode.profile,
       production_environment: Rails.env.production?,
+      environment: Rails.env,
+      request_id: request.request_id,
       workbench_access:
         current_user.present? &&
           current_user.can_access_admin? &&
           current_user.permission?("admin.access") &&
           current_user.permission?("system.settings.manage")
     }
+
+    tools_access =
+      current_user.present? &&
+        (
+          current_user.developer_mode_persona.present? ||
+          current_user.permission?("system.settings.manage")
+        )
+    payload[:tools_access] = tools_access
+    return payload unless tools_access
+
+    available_personas = User
+      .where(
+        developer_mode_persona: User::DEVELOPER_MODE_PERSONAS,
+        status: "active"
+      )
+      .pluck(:developer_mode_persona)
+    payload.merge(
+      current_persona:
+        current_user.developer_mode_persona.presence || "operator",
+      persona_switch_url: developer_mode_switch_persona_path,
+      personas: User::DEVELOPER_MODE_PERSONAS.map do |persona|
+        {
+          key: persona,
+          available: available_personas.include?(persona)
+        }
+      end
+    )
+  rescue ActiveRecord::ActiveRecordError
+    payload
   end
 
   def mark_developer_mode_response
@@ -240,7 +339,11 @@ class ApplicationController < ActionController::Base
 
     response.set_header("X-McWeb-Developer-Mode", "unrestricted")
     response.set_header("X-Robots-Tag", "noindex, nofollow")
-    response.set_header("Cache-Control", "no-store")
+    existing_cache_control = response.get_header("Cache-Control").to_s
+    response.set_header(
+      "Cache-Control",
+      existing_cache_control.match?(/(?:^|,)\s*private(?:\s*,|$)/i) ? "private, no-store" : "no-store"
+    )
   end
 
   # Turns a flat map of dotted i18n keys into a nested hash so vue-i18n can

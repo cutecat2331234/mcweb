@@ -11,12 +11,12 @@ module Community
 
     def call
       unless @user && Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
+      return ServiceResult.failure(error: :this_topic_is_archived) if @topic.archived_at.present?
       unless Community::SectionModeration.can_edit_topic?(user: @user, topic: @topic)
-        return ServiceResult.failure(error: "You cannot edit this topic.")
+        return ServiceResult.failure(error: :you_cannot_edit_this_topic)
       end
 
       definitions = editable_definitions

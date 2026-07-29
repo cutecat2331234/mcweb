@@ -1,0 +1,5 @@
+<p><%= t("mcweb.mail.totp_recovery.greeting", name: @user.display_name.presence || @user.username) %></p>
+<p><%= t("mcweb.mail.totp_recovery.instructions") %></p>
+<p><%= link_to t("mcweb.mail.totp_recovery.action"), @recovery_url %></p>
+<p><%= t("mcweb.mail.totp_recovery.expiry") %></p>
+<p><%= t("mcweb.mail.totp_recovery.ignore") %></p>

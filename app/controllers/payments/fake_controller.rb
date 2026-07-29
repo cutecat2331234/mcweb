@@ -10,7 +10,9 @@ module Payments
       order = @payment.order
       return redirect_to root_path, alert: t("mcweb.flash.payment_access_denied") unless order.user_id == current_user.id
       unless order.payable?
-        message = order.payment_expired? ? "订单支付已过期。" : "该订单无法继续支付。"
+        message = order.payment_expired? ?
+          t("mcweb.flash.payment_expired") :
+          t("mcweb.flash.payment_unavailable")
         return redirect_to store_order_path(order), alert: message
       end
 
@@ -20,7 +22,7 @@ module Payments
       end
 
       if @payment.status == "pending" && @payment.amount_cents != order.total_cents
-        @payment.update!(status: "failed")
+        @payment.mark_failed!
         return redirect_to store_order_path(order), alert: t("mcweb.flash.payment_expired")
       end
 
@@ -32,7 +34,8 @@ module Payments
           order_number: order.order_number,
           url: store_order_path(order)
         },
-        payUrl: fake_payment_path(@payment.provider_payment_id)
+        payUrl: fake_payment_path(@payment.provider_payment_id),
+        developerScenarios: developer_scenarios_enabled?
       }
     end
 
@@ -40,22 +43,29 @@ module Payments
       order = @payment.order
       return redirect_to root_path, alert: t("mcweb.flash.payment_access_denied") unless order.user_id == current_user.id
       unless order.payable?
-        message = order.payment_expired? ? "订单支付已过期。" : "该订单无法继续支付。"
+        message = order.payment_expired? ?
+          t("mcweb.flash.payment_expired") :
+          t("mcweb.flash.payment_unavailable")
         return redirect_to store_order_path(order), alert: message
       end
 
       if @payment.status == "pending" && @payment.amount_cents != order.total_cents
-        @payment.update!(status: "failed")
+        @payment.mark_failed!
         return redirect_to store_order_path(order), alert: t("mcweb.flash.payment_expired")
       end
 
-      result = Commerce::ConfirmPayment.call(
+      scenario = developer_scenarios_enabled? ?
+        params[:scenario].to_s.presence || "success" :
+        "success"
+      result = Payments::RunFakeScenario.call(
         payment_record: @payment,
-        provider_payment_id: @payment.provider_payment_id
+        scenario: scenario,
+        actor: current_user
       )
 
       if result.success?
-        redirect_to store_order_path(order), notice: t("mcweb.flash.payment_success")
+        redirect_to store_order_path(order),
+          notice: fake_scenario_notice(scenario)
       else
         redirect_to fake_payment_path(@payment.provider_payment_id), alert: service_error_message(result)
       end
@@ -71,6 +81,22 @@ module Payments
       return if Payments::Provider.known?("fake")
 
       head :not_found
+    end
+
+    def developer_scenarios_enabled?
+      Mcweb::DeveloperMode.enabled? &&
+        Mcweb::DeveloperMode.integration(:payments) == :fake
+    end
+
+    def fake_scenario_notice(scenario)
+      key =
+        case scenario
+        when "failure" then "developer_fake_payment_failed"
+        when "cancellation" then "developer_fake_payment_cancelled"
+        when "delayed" then "developer_fake_payment_delayed"
+        else "payment_success"
+        end
+      t("mcweb.flash.#{key}")
     end
   end
 end

@@ -1,0 +1,96 @@
+name: Production acceptance
+
+on:
+  workflow_dispatch:
+    inputs:
+      infrastructure:
+        description: Run real PostgreSQL, Redis, S3, backup, and restore acceptance
+        required: true
+        type: boolean
+        default: true
+      system_e2e:
+        description: Run Chromium UI, screenshot, and accessibility acceptance
+        required: true
+        type: boolean
+        default: true
+
+concurrency:
+  group: production-acceptance-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  infrastructure:
+    if: inputs.infrastructure
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install PostgreSQL 18 client and libvips
+        run: |
+          sudo install -d -m 0755 /usr/share/postgresql-common/pgdg
+          curl --fail --silent --show-error \
+            https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+            | sudo tee /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc >/dev/null
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update
+          sudo apt-get install --no-install-recommends -y libvips-dev postgresql-client-18
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.6"
+          bundler-cache: true
+      - name: Run fail-closed production lifecycle acceptance
+        run: bash scripts/run-production-acceptance.sh
+
+  system_e2e:
+    if: inputs.system_e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:18.4-trixie
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      MCWEB_E2E_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/mcweb_test_e2e
+      PARALLEL_WORKERS: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - name: Install libvips
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "4.0.6"
+          bundler-cache: true
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "26"
+          cache: npm
+      - run: npm ci
+      - name: Require reviewed screenshot baselines
+        run: npm run check:e2e-baselines
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Run system, screenshot, and accessibility acceptance
+        run: npm run test:e2e
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report
+            test-results
+          retention-days: 14
+          if-no-files-found: ignore

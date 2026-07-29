@@ -61,6 +61,13 @@ Rails.application.routes.draw do
 
   namespace :admin do
     root "dashboard#index"
+    get "plugins/:vendor/:name/*plugin_path",
+      to: "plugin_pages#show",
+      as: :plugin_page,
+      constraints: {
+        vendor: /[a-z][a-z0-9._-]*/,
+        name: /[a-z][a-z0-9._-]*/
+      }
     unless Rails.env.production?
       # Static design references are intentionally unavailable in production.
       get "dashboard_pro_demo", to: "dashboard_pro_demo#index"
@@ -80,6 +87,7 @@ Rails.application.routes.draw do
         post :authorize_store_credit_adjustment
         post :adjust_store_credit
         post :clean_spam
+        get :permissions, action: :permission_explanation
       end
     end
     get "store/store-credits",
@@ -89,7 +97,9 @@ Rails.application.routes.draw do
       to: "users#store_credit_show",
       as: :store_credit_user
     resources :roles, only: %i[index show create update destroy]
-    resources :audit_logs, only: %i[index show]
+    resources :audit_logs, only: %i[index show] do
+      collection { get :export }
+    end
     namespace :forum do
       resource :settings, only: %i[show update] do
         post :test_webhook
@@ -138,6 +148,7 @@ Rails.application.routes.draw do
           post :retry_scan
           post :retry_cleanup
           post :release_quarantine
+          post :revoke_release
         end
       end
       get "stats", to: "stats#index"
@@ -151,6 +162,20 @@ Rails.application.routes.draw do
         member do
           post :approve
           post :reject
+        end
+      end
+      resources :moderation_workbench,
+        path: "moderation-workbench",
+        controller: "moderation_workbench",
+        only: %i[index show] do
+        collection do
+          post :authorize_action, path: "authorize-action"
+          post :execute_action, path: "execute-action"
+        end
+        member do
+          post :claim
+          post :assign
+          post :notes
         end
       end
       resources :user_fields, path: "user-fields"
@@ -187,12 +212,53 @@ Rails.application.routes.draw do
       end
       resources :coupons
       resources :membership_types
-      resources :user_memberships, only: %i[index show new create destroy]
+      resources :user_memberships, only: %i[index show new create destroy] do
+        collection do
+          post :authorize_grant
+        end
+        member do
+          post :authorize_revoke
+          post :revoke
+        end
+      end
+      resources :user_entitlements, only: %i[index show new create] do
+        collection do
+          post :authorize_grant
+        end
+        member do
+          post :authorize_revoke
+          post :revoke
+        end
+      end
       resources :gift_cards, only: %i[index show new create edit update]
+      get "inventory", to: "inventory#index", as: :inventory
+      post "inventory/authorize-adjustment",
+           to: "inventory#authorize_adjustment",
+           as: :inventory_authorize_adjustment
+      post "inventory/adjust",
+           to: "inventory#adjust",
+           as: :inventory_adjust
+      get "finance", to: "finance#index", as: :finance
+      get "finance/documents/:id",
+          to: "finance#document",
+          as: :finance_document
+      post "finance/documents/:id/transition",
+           to: "finance#transition_document",
+           as: :finance_document_transition
+      post "finance/exports",
+           to: "finance#create_export",
+           as: :finance_exports
+      get "finance/exports/:id/download",
+          to: "finance#download_export",
+          as: :finance_export_download
+      post "finance/exports/:id/revoke",
+           to: "finance#revoke_export",
+           as: :finance_export_revoke
       resources :orders, only: %i[index show update] do
         collection do
           get :export
           patch :bulk_update
+          post :authorize_high_risk_action
         end
         member do
           post :staff_note
@@ -226,12 +292,29 @@ Rails.application.routes.draw do
           patch :review
         end
       end
+      resources :disputes, only: %i[index show] do
+        member do
+          post :authorize_action
+          post :execute_action
+          post "evidence/:evidence_id/download-token",
+               to: "disputes#evidence_download_token",
+               as: :evidence_download_token
+          get "evidence/:evidence_id/download",
+              to: "disputes#evidence_download",
+              as: :evidence_download
+        end
+      end
       unless Rails.env.production?
         get   "orders_pro_demo",      to: "orders_pro_demo#index"
         patch "orders_pro_demo/bulk", to: "orders_pro_demo#bulk", as: "orders_pro_demo_bulk"
       end
       resources :reviews, only: %i[index show update]
-      resources :fulfillments, only: %i[index show update]
+      resources :fulfillments, only: %i[index show] do
+        member do
+          post :authorize_action
+          post :execute_action
+        end
+      end
       resources :webhook_deliveries, only: %i[index show] do
         collection do
           post :bulk_retry
@@ -325,6 +408,25 @@ Rails.application.routes.draw do
     namespace :system do
       resource :feature_toggles, only: %i[show update], path: "feature-toggles"
       resource :rate_limits, only: %i[show update], path: "rate-limits"
+      get "data-governance", to: "data_governance#index", as: :data_governance
+      patch "data-governance/policies/:id",
+        to: "data_governance#update_policy",
+        as: :data_governance_policy
+      post "data-governance/holds",
+        to: "data_governance#create_hold",
+        as: :data_governance_holds
+      patch "data-governance/holds/:id/release",
+        to: "data_governance#release_hold",
+        as: :data_governance_release_hold
+      post "data-governance/content/soft-delete",
+        to: "data_governance#soft_delete",
+        as: :data_governance_soft_delete
+      patch "data-governance/records/:id/restore",
+        to: "data_governance#restore",
+        as: :data_governance_restore
+      delete "data-governance/records/:id/purge",
+        to: "data_governance#purge",
+        as: :data_governance_purge
       resource :plugin_settings, only: %i[show update], path: "plugin-settings" do
         post :migrate
         post :rollback
@@ -333,7 +435,15 @@ Rails.application.routes.draw do
       resource :developer_workbench,
         only: :show,
         path: "developer-workbench",
-        controller: "developer_workbench"
+        controller: "developer_workbench" do
+        get :diagnostic
+        post "clear-captures", action: :clear_captures, as: :clear_captures
+        post "seed-scenario", action: :seed_scenario, as: :seed_scenario
+        post "inject-attachment-state",
+          action: :inject_attachment_state,
+          as: :inject_attachment_state
+        post "run-task", action: :run_task, as: :run_task
+      end
       resources :jobs, only: %i[index]
       resources :ip_bans, only: %i[index create destroy]
       resources :email_bans, only: %i[index new create edit update destroy]
@@ -348,6 +458,10 @@ Rails.application.routes.draw do
           post :install_plugin
           post :enable_plugin
           post :disable_plugin
+          post :recover_plugin
+          post :rollback_plugin
+          post :health_plugin
+          post :reconcile_plugin_catalog
           delete :uninstall_plugin
         end
       end
@@ -366,6 +480,20 @@ Rails.application.routes.draw do
       post "security/totp/setup", to: "security#setup_totp"
       post "security/totp/confirm", to: "security#confirm_totp"
       post "security/totp/disable", to: "security#disable_totp"
+      post "security/totp/recovery-codes", to: "security#regenerate_recovery_codes"
+      patch "security/email", to: "security#change_email"
+      delete "security/account", to: "security#close_account"
+      resources :data_exports, only: %i[index create], path: "data-exports" do
+        member do
+          get :download
+          post :retry
+          delete :revoke
+        end
+      end
+      resources :totp_recoveries,
+                only: %i[new create edit update],
+                param: :token,
+                path: "security/totp/recovery"
       resources :sessions_management, only: %i[index destroy], path: "sessions"
     end
 
@@ -562,6 +690,9 @@ Rails.application.routes.draw do
 
     get "payments/fake/:id", to: "payments/fake#show", as: :fake_payment
     post "payments/fake/:id", to: "payments/fake#create"
+    post "developer-mode/persona",
+      to: "developer_mode_tools#switch_persona",
+      as: :developer_mode_switch_persona
 
     scope module: :commerce, path: "store", as: :store do
     get "image-packs/:pack_id/*texture_path", to: "image_pack_textures#show", as: :image_pack_texture, format: false
@@ -668,6 +799,14 @@ Rails.application.routes.draw do
   get "website/blog", to: redirect("/blog")
   get "website/blog/:slug", to: redirect("/blog/%{slug}")
   get "website/pages/:slug", to: redirect("/%{slug}")
+
+  get "plugins/:vendor/:name/*plugin_path",
+    to: "plugin_pages#show",
+    as: :plugin_page,
+    constraints: {
+      vendor: /[a-z][a-z0-9._-]*/,
+      name: /[a-z][a-z0-9._-]*/
+    }
 
   get "/forum(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/forum/#{params[:path]}" : "/app/forum/latest" }
   get "/store(/*path)", to: redirect { |params, _| params[:path].present? ? "/app/store/#{params[:path]}" : "/app/store/products" }

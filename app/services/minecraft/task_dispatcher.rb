@@ -16,7 +16,9 @@ module Minecraft
       when :claim then claim_tasks
       when :complete then complete_task
       else
-        ServiceResult.failure(error: "Unknown task action: #{@action}")
+        ServiceResult.failure(
+          error: I18n.t("mcweb.user_copy.unknown_task_action", action: @action)
+        )
       end
     end
 
@@ -82,7 +84,7 @@ module Minecraft
 
     def complete_task
       task = @task || Minecraft::ConnectorTask.find_by(id: @task_id, server: @server)
-      return ServiceResult.failure(error: "Task not found.") unless task
+      return ServiceResult.failure(error: :task_not_found) unless task
 
       Minecraft::ConnectorTask.transaction do
         task.lock!
@@ -98,15 +100,26 @@ module Minecraft
 
         if task.fulfillment
           if delivery_successful?
-            task.fulfillment.update!(
-              status: "fulfilled",
-              fulfilled_at: Time.current,
-              last_error: nil
+            task.fulfillment.mark_fulfilled!(
+              result: {
+                success: true,
+                status: normalized_result_value(:status) || "completed",
+                simulated: normalized_result_value(:simulated),
+                external_reference: task.delivery_id
+              }
             )
             Commerce::SyncOrderFulfillmentStatusJob.perform_later(task.fulfillment.store_order_id)
           else
-            error_message = extract_error_message
-            task.fulfillment.mark_failed!(error: error_message)
+            error_code = extract_error_code
+            task.fulfillment.mark_failed!(
+              error: error_code,
+              result: {
+                success: false,
+                status: normalized_result_value(:status) || "failed",
+                error_code: error_code,
+                external_reference: task.delivery_id
+              }
+            )
           end
         end
 
@@ -138,10 +151,20 @@ module Minecraft
       true
     end
 
-    def extract_error_message
+    def extract_error_code
+      Commerce::Fulfillment.normalize_error_code(
+        normalized_result_value(:error_code) ||
+          normalized_result_value(:code) ||
+          normalized_result_value(:error) ||
+          normalized_result_value(:status) ||
+          "delivery_failed"
+      )
+    end
+
+    def normalized_result_value(key)
       value = @result
       value = value.with_indifferent_access if value.respond_to?(:with_indifferent_access)
-      value[:error] || value["error"] || value[:message] || value["message"] || "Delivery failed"
+      value[key]
     end
 
     def developer_mode_simulation?

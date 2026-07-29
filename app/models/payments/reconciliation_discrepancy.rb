@@ -83,36 +83,36 @@ module Payments
     def review_is_complete
       if open?
         if reviewed_by || reviewed_at || resolved_at || review_note.present?
-          errors.add(:status, "must be reviewed before review details are recorded")
+          errors.add(:status, I18n.t("mcweb.validation_errors.must_be_reviewed_before_review_details_are_recorded"))
         end
       elsif resolved?
-        errors.add(:resolved_at, "is required") unless resolved_at
+        errors.add(:resolved_at, I18n.t("mcweb.validation_errors.is_required")) unless resolved_at
         if reviewed_by || reviewed_at || review_note.present?
-          errors.add(:status, "cannot resolve a manually reviewed discrepancy")
+          errors.add(:status, I18n.t("mcweb.validation_errors.cannot_resolve_a_manually_reviewed_discrepancy"))
         end
       else
-        errors.add(:reviewed_by, "is required") unless reviewed_by
-        errors.add(:reviewed_at, "is required") unless reviewed_at
-        errors.add(:review_note, "is required") if review_note.blank?
-        errors.add(:resolved_at, "cannot be set on a reviewed discrepancy") if resolved_at
+        errors.add(:reviewed_by, I18n.t("mcweb.validation_errors.is_required")) unless reviewed_by
+        errors.add(:reviewed_at, I18n.t("mcweb.validation_errors.is_required")) unless reviewed_at
+        errors.add(:review_note, I18n.t("mcweb.validation_errors.is_required")) if review_note.blank?
+        errors.add(:resolved_at, I18n.t("mcweb.validation_errors.cannot_be_set_on_a_reviewed_discrepancy")) if resolved_at
       end
     end
 
     def associations_match
       if subject_type == "payment" && refund_id.present?
-        errors.add(:refund, "cannot be attached to a payment discrepancy")
+        errors.add(:refund, I18n.t("mcweb.validation_errors.cannot_be_attached_to_a_payment_discrepancy"))
       elsif subject_type == "refund" && payment_record_id.present? && refund.nil?
-        errors.add(:payment_record, "must be attached through a local refund")
+        errors.add(:payment_record, I18n.t("mcweb.validation_errors.must_be_attached_through_a_local_refund"))
       end
 
       if payment_record && order && payment_record.store_order_id != store_order_id
-        errors.add(:store_order_id, "does not match the payment")
+        errors.add(:store_order_id, I18n.t("mcweb.validation_errors.does_not_match_the_payment"))
       end
       if refund && order && refund.store_order_id != store_order_id
-        errors.add(:store_order_id, "does not match the refund")
+        errors.add(:store_order_id, I18n.t("mcweb.validation_errors.does_not_match_the_refund"))
       end
       if refund && payment_record && refund.payment_record_id != payment_record_id
-        errors.add(:payment_record_id, "does not match the refund")
+        errors.add(:payment_record_id, I18n.t("mcweb.validation_errors.does_not_match_the_refund"))
       end
     end
   end

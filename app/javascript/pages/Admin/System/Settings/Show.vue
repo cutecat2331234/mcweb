@@ -10,7 +10,6 @@ import {
   IconDashboard,
   IconExperiment,
   IconHome,
-  IconInfoCircle,
   IconLink,
   IconLock,
   IconSafe,
@@ -466,11 +465,6 @@ function resetChanges() {
                       <template #label>
                         <a-space :size="6" wrap>
                           <span>{{ setting.label }}</span>
-                          <a-tooltip
-                            :content="t('admin.systemSettings.technicalKey', { key: setting.key })"
-                          >
-                            <IconInfoCircle />
-                          </a-tooltip>
                           <a-tag v-if="setting.readOnly" size="small">
                             {{ t('admin.systemSettings.automaticValue') }}
                           </a-tag>

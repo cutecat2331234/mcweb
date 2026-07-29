@@ -265,7 +265,7 @@ module Admin
         permitted
       rescue JSON::ParserError
         @server ||= ::Minecraft::Server.new
-        @server.errors.add(:process_config, "invalid JSON")
+        @server.errors.add(:process_config, I18n.t("mcweb.validation_errors.invalid_json"))
         server_params.except(:process_config)
       end
 
@@ -329,7 +329,7 @@ module Admin
 
       def enqueue_node_task!(task_type, payload = {})
         unless @server.node_managed?
-          return ServiceResult.failure(error: "Server is not bound to a node.")
+          return ServiceResult.failure(error: I18n.t("mcweb.user_copy.server_not_bound_to_node"))
         end
 
         Minecraft::EnqueueNodeTask.call(

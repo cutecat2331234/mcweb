@@ -223,6 +223,36 @@ rest of the catalog. Each plugin reports both its filesystem state and current
 per-process runtime status, so an installed package that did not load is shown
 as `not_loaded` instead of being mislabeled active.
 
+Successful non-dry-run install, upgrade, enable, disable, rollback, recover,
+and uninstall operations also synchronize a database catalog:
+
+- `PluginRelease` retains the active, disabled, rollback, or uninstalled
+  release identity, an allow-listed manifest descriptor, canonical manifest
+  digest, verified package digest, health, and safe diagnostic codes.
+- `PluginContribution` stores each normalized static contribution descriptor,
+  its descriptor SHA-256, and a separate schema SHA-256 where a settings or UI
+  schema exists. Runtime setting values and credentials are never copied.
+- `PluginFile` stores package-relative paths, expected size/SHA-256, observed
+  size/SHA-256, and per-file health. Absolute paths are rejected and are never
+  returned by the admin API.
+
+The catalog is synchronized only after the package, receipt, local runtime, and
+runtime generation have succeeded. Validation-only (`dry_run`) operations never
+write catalog rows.
+
+Administrators with `system.plugins.diagnostics` can run **Reconcile catalog**
+from Apps & extensions. Reconciliation is idempotent and read-only with respect
+to plugin packages: it scans manifests, receipts, managed files, and runtime
+state, then updates only the database inventory and writes an audit event. It
+backfills plugins installed before the catalog migration. When a historical
+receipt has no package digest, the row is explicitly marked `derived`; it is
+not represented as a verified archive digest.
+
+Receipt/file/runtime differences remain visible as bounded diagnostic codes.
+Reconciliation does not silently repair those authoritative sources.
+Diagnostic records contain plugin IDs and codes only—never absolute paths,
+exception text, source URLs, secrets, or plugin setting values.
+
 For production releases, set `MCWEB_PLUGIN_DIR` to the deployment-owned plugin
 directory. Installing into a source checkout's default `plugins/` directory
 will correctly appear as a working-tree change; Marketplace never stages or

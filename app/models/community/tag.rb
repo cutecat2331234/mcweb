@@ -79,7 +79,7 @@ module Community
       return if canonical_tag_id.blank?
 
       if persisted? && canonical_tag_id == id
-        errors.add(:canonical_tag_id, "cannot be self")
+        errors.add(:canonical_tag_id, I18n.t("mcweb.validation_errors.cannot_be_self"))
       end
     end
   end

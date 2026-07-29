@@ -17,10 +17,6 @@ module Admin
 
     private
 
-    def require_admin_demo!
-      head :not_found unless admin_demo_enabled?
-    end
-
     def demo_stats
       [
         { key: "orders", label: "总订单", value: "1,284", trend: "+12.5%", trend_type: "up", accent: "primary" },

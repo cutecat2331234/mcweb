@@ -1,0 +1,22 @@
+---
+schema_version: "1"
+contributions:
+- type: event
+  id: examples.commerce_fulfillment.event.completed
+  payload:
+    name: examples.commerce_fulfillment.completed
+    direction: emits
+    schema_version: "1"
+    description_phrase: examples.commerce_fulfillment.event.completed.description
+- type: translation
+  id: examples.commerce_fulfillment.translation.en
+  payload:
+    locale: en
+    phrases:
+      examples.commerce_fulfillment.event.completed.description: Emitted after an idempotent fulfillment job succeeds.
+- type: translation
+  id: examples.commerce_fulfillment.translation.zh_cn
+  payload:
+    locale: zh-CN
+    phrases:
+      examples.commerce_fulfillment.event.completed.description: 幂等履约任务成功后发出。

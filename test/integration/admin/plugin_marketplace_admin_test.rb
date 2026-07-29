@@ -30,7 +30,17 @@ module Admin
               source: { scheme: "file", url: "file:///admin-upload/demo.zip" },
               sha256: "a" * 64,
               recovery_path: "quarantine/private/location",
-              updated_at: "2026-07-25T00:00:00Z"
+              rollback_available: true,
+              updated_at: "2026-07-25T00:00:00Z",
+              data_mode: "preserve_data",
+              health: {
+                status: "changed",
+                expected_count: 2,
+                actual_count: 2,
+                missing: [],
+                modified: [ "plugin.rb" ],
+                unknown: []
+              }
             }
           ],
           errors: [],
@@ -59,19 +69,75 @@ module Admin
         result("install", "active")
       end
 
-      def enable(plugin_id:)
+      def enable(plugin_id:, actor: nil, dry_run: false, maintenance_mode: false)
         lifecycle(:enable, plugin_id, "active")
       end
 
-      def disable(plugin_id:)
+      def disable(plugin_id:, actor: nil, dry_run: false, maintenance_mode: false)
         lifecycle(:disable, plugin_id, "disabled")
       end
 
-      def uninstall(plugin_id:, expected_version:, expected_sha256:)
+      def recover(plugin_id:, expected_version:, expected_sha256:, actor: nil,
+                  dry_run: false, maintenance_mode: false)
         raise error_for if error_for
 
-        calls << [ :uninstall, plugin_id, expected_version, expected_sha256 ]
+        calls << [ :recover, plugin_id, expected_version, expected_sha256 ]
+        result("recover", "active", plugin_id:)
+      end
+
+      def rollback(plugin_id:, expected_version:, expected_sha256:, actor: nil,
+                   dry_run: false, maintenance_mode: false)
+        raise error_for if error_for
+
+        calls << [ :rollback, plugin_id, expected_version, expected_sha256 ]
+        result("rollback", "active", plugin_id:)
+      end
+
+      def uninstall(plugin_id:, expected_version:, expected_sha256:, data_mode:,
+                    actor: nil, dry_run: false, maintenance_mode: false)
+        raise error_for if error_for
+
+        calls << [ :uninstall, plugin_id, expected_version, expected_sha256, data_mode ]
         result("uninstall", "uninstalled", plugin_id:)
+      end
+
+      def health(plugin_id:)
+        raise error_for if error_for
+
+        calls << [ :health, plugin_id ]
+        {
+          plugin_id:,
+          status: "healthy",
+          expected_count: 2,
+          actual_count: 2,
+          missing: [],
+          modified: [],
+          unknown: []
+        }
+      end
+
+      def reconcile_catalog
+        raise error_for if error_for
+
+        calls << [ :reconcile_catalog ]
+        Mcweb::Plugins::Marketplace::Manager::ReconcileResult.new(
+          scanned_count: 2,
+          synchronized_count: 1,
+          unavailable_count: 1,
+          finding_count: 2,
+          findings: [
+            {
+              plugin_id: "acme/demo",
+              code: "receipt_missing",
+              severity: "warning"
+            },
+            {
+              plugin_id: "acme/missing",
+              code: "filesystem_missing",
+              severity: "error"
+            }
+          ]
+        )
       end
 
       private
@@ -121,11 +187,26 @@ module Admin
       assert props[:pluginMarketplace][:available]
       assert_equal "acme/demo", props[:pluginMarketplace][:plugins].sole[:id]
       assert props[:pluginMarketplace][:plugins].sole[:recoverable]
+      assert props[:pluginMarketplace][:plugins].sole[:rollback_available]
+      assert_equal "preserve_data", props[:pluginMarketplace][:plugins].sole[:data_mode]
+      assert_equal "changed", props[:pluginMarketplace][:plugins].sole.dig(:health, :status)
+      assert_equal 1, props[:pluginMarketplace][:plugins].sole.dig(:health, :modified_count)
       refute props[:pluginMarketplace][:plugins].sole.key?(:recovery_path)
       refute props[:pluginMarketplace][:plugins].sole.dig(:source)&.key?(:url)
       assert_equal "operation-1", props[:pluginMarketplace][:operations].sole[:operation_id]
       refute props[:pluginMarketplace][:operations].sole.key?(:recovery_path)
       assert_equal install_plugin_admin_system_applications_path, props[:pluginActions][:install]
+      assert_equal rollback_plugin_admin_system_applications_path, props[:pluginActions][:rollback]
+      assert_equal health_plugin_admin_system_applications_path, props[:pluginActions][:health]
+      assert_equal reconcile_plugin_catalog_admin_system_applications_path,
+                   props[:pluginActions][:reconcileCatalog]
+      assert props[:pluginRuntimeGenerations][:available]
+      assert_kind_of Array, props[:pluginRuntimeGenerations][:generations]
+      assert props[:pluginLifecycle][:available]
+      assert_kind_of Array, props[:pluginLifecycle][:installations]
+      assert_kind_of Array, props[:pluginLifecycle][:runs]
+      assert props[:pluginCatalog][:available]
+      assert_kind_of Array, props[:pluginCatalog][:releases]
     end
 
     test "plugin managers can open applications without the broader settings permission" do
@@ -158,6 +239,8 @@ module Admin
       assert_equal "a" * 64, call[:expected_sha256]
       assert_equal "acme/demo", call[:expected_id]
       assert_equal false, call[:allow_downgrade]
+      assert_equal false, call[:dry_run]
+      assert_equal false, call[:maintenance_mode]
       refute_equal "C:/operator/secret.zip", @manager.staged_path
       refute File.exist?(@manager.staged_path)
 
@@ -170,6 +253,44 @@ module Admin
       refute @manager.calls.any? { |entry| entry.first == :install }
     end
 
+    test "install forwards validation-only and maintenance lifecycle options" do
+      post install_plugin_admin_system_applications_path, params: {
+        plugin_package: uploaded_package,
+        expected_sha256: "a" * 64,
+        expected_id: "acme/demo",
+        dry_run: "1",
+        maintenance_mode: "1"
+      }
+
+      call = @manager.calls.find { |entry| entry.first == :install }.second
+      assert_equal true, call[:dry_run]
+      assert_equal true, call[:maintenance_mode]
+    end
+
+    test "recover delegates a server-verified quarantined package identity" do
+      post recover_plugin_admin_system_applications_path, params: {
+        plugin_id: "acme/demo",
+        expected_version: "1.0.0",
+        expected_sha256: "a" * 64
+      }
+
+      assert_redirected_to admin_system_applications_path
+      assert_includes @manager.calls,
+                      [ :recover, "acme/demo", "1.0.0", "a" * 64 ]
+    end
+
+    test "rollback delegates the currently confirmed package identity" do
+      post rollback_plugin_admin_system_applications_path, params: {
+        plugin_id: "acme/demo",
+        expected_version: "1.0.0",
+        expected_sha256: "a" * 64
+      }
+
+      assert_redirected_to admin_system_applications_path
+      assert_includes @manager.calls,
+                      [ :rollback, "acme/demo", "1.0.0", "a" * 64 ]
+    end
+
     test "enable disable and uninstall call only manager lifecycle APIs" do
       post enable_plugin_admin_system_applications_path, params: { plugin_id: "acme/demo" }
       post disable_plugin_admin_system_applications_path, params: { plugin_id: "acme/demo" }
@@ -177,12 +298,50 @@ module Admin
         plugin_id: "acme/demo",
         confirmation: "acme/demo",
         expected_version: "1.0.0",
-        expected_sha256: "a" * 64
+        expected_sha256: "a" * 64,
+        data_mode: "purge_data"
       }
 
       assert_includes @manager.calls, [ :enable, "acme/demo" ]
       assert_includes @manager.calls, [ :disable, "acme/demo" ]
-      assert_includes @manager.calls, [ :uninstall, "acme/demo", "1.0.0", "a" * 64 ]
+      assert_includes @manager.calls,
+                      [ :uninstall, "acme/demo", "1.0.0", "a" * 64, "purge_data" ]
+    end
+
+    test "uninstall preserves plugin data by default and health delegates to the manager" do
+      delete uninstall_plugin_admin_system_applications_path, params: {
+        plugin_id: "acme/demo",
+        confirmation: "acme/demo",
+        expected_version: "1.0.0",
+        expected_sha256: "a" * 64
+      }
+      post health_plugin_admin_system_applications_path, params: { plugin_id: "acme/demo" }
+
+      assert_includes @manager.calls,
+                      [ :uninstall, "acme/demo", "1.0.0", "a" * 64, "preserve_data" ]
+      assert_includes @manager.calls, [ :health, "acme/demo" ]
+      assert flash[:notice].present?
+    end
+
+    test "diagnostics permission reconciles and audits the persistent catalog" do
+      revoke_permission(@admin, "system.plugins.manage")
+      revoke_permission(@admin, "system.settings.manage")
+      grant_permission(@admin, "system.plugins.diagnostics")
+
+      assert_difference -> {
+        AuditLog.where(action: "admin.plugin_catalog_reconciled").count
+      }, 1 do
+        post reconcile_plugin_catalog_admin_system_applications_path
+      end
+
+      assert_redirected_to admin_system_applications_path
+      assert_includes @manager.calls, [ :reconcile_catalog ]
+      audit = AuditLog.where(action: "admin.plugin_catalog_reconciled").last
+      assert_equal 2, audit.metadata.fetch("finding_count")
+      assert_equal %w[filesystem_missing receipt_missing],
+                   audit.metadata.fetch("finding_codes")
+      refute_includes audit.metadata.to_json, "acme/missing"
+      assert flash[:notice].present?
     end
 
     test "uninstall requires the exact plugin id confirmation" do
@@ -209,6 +368,66 @@ module Admin
       refute @manager.calls.any? { |entry| entry.first == :disable }
     end
 
+    test "view permission exposes package state without mutation capabilities" do
+      revoke_permission(@admin, "system.settings.manage")
+      revoke_permission(@admin, "system.plugins.manage")
+      grant_permission(@admin, "system.plugins.view")
+
+      get admin_system_applications_path
+
+      assert_response :success
+      props = inertia.props.deep_symbolize_keys
+      refute props[:canManagePlugins]
+      assert props[:pluginMarketplace][:available]
+      assert props[:pluginCapabilities].values.none?
+
+      post disable_plugin_admin_system_applications_path,
+           params: { plugin_id: "acme/demo" }
+      assert_redirected_to root_path
+      refute @manager.calls.any? { |entry| entry.first == :disable }
+    end
+
+    test "lifecycle mutation permissions are independently enforced" do
+      revoke_permission(@admin, "system.plugins.manage")
+      grant_permission(@admin, "system.plugins.enable")
+
+      post enable_plugin_admin_system_applications_path,
+           params: { plugin_id: "acme/demo" }
+      assert_redirected_to admin_system_applications_path
+      assert_includes @manager.calls, [ :enable, "acme/demo" ]
+
+      @manager.calls.clear
+      post disable_plugin_admin_system_applications_path,
+           params: { plugin_id: "acme/demo" }
+      assert_redirected_to root_path
+      refute @manager.calls.any? { |entry| entry.first == :disable }
+    end
+
+    test "preserve-data uninstall permission cannot authorize data purge" do
+      revoke_permission(@admin, "system.plugins.manage")
+      grant_permission(@admin, "system.plugins.uninstall_preserve")
+
+      delete uninstall_plugin_admin_system_applications_path, params: {
+        plugin_id: "acme/demo",
+        confirmation: "acme/demo",
+        expected_version: "1.0.0",
+        expected_sha256: "a" * 64
+      }
+      assert_redirected_to admin_system_applications_path
+      assert @manager.calls.any? { |entry| entry.first == :uninstall }
+
+      @manager.calls.clear
+      delete uninstall_plugin_admin_system_applications_path, params: {
+        plugin_id: "acme/demo",
+        confirmation: "acme/demo",
+        expected_version: "1.0.0",
+        expected_sha256: "a" * 64,
+        data_mode: "purge_data"
+      }
+      assert_redirected_to root_path
+      refute @manager.calls.any? { |entry| entry.first == :uninstall }
+    end
+
     test "manager errors remain readable without leaking paths or secrets" do
       @manager.error_for = Mcweb::Plugins::Marketplace::DependencyError.new(
         "plugin acme/demo is required; C:\\private\\plugins\\demo access_token=never-show"
@@ -223,6 +442,14 @@ module Admin
     end
 
     private
+
+    def revoke_permission(user, permission_key)
+      permission = Permission.find_by!(key: permission_key)
+      user.roles
+        .joins(:permissions)
+        .where(permissions: { id: permission.id })
+        .each { |role| user.roles.delete(role) }
+    end
 
     def uploaded_package
       @package.rewind

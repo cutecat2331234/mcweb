@@ -92,6 +92,74 @@ module Identity
         ]
       ),
       build_entry.call(
+        "store.disputes.read",
+        "View payment disputes",
+        execution_points: [
+          "app/controllers/admin/store/disputes_controller.rb#index",
+          "app/controllers/admin/store/disputes_controller.rb#show"
+        ]
+      ),
+      build_entry.call(
+        "store.disputes.sensitive_read",
+        "View sensitive dispute details",
+        execution_points: [
+          "app/controllers/admin/store/disputes_controller.rb#show",
+          "app/controllers/admin/store/disputes_controller.rb#evidence_download_token",
+          "app/controllers/admin/store/disputes_controller.rb#evidence_download"
+        ]
+      ),
+      build_entry.call(
+        "store.disputes.assign",
+        "Assign payment disputes",
+        execution_points: [
+          "app/controllers/admin/store/disputes_controller.rb#execute_action",
+          "app/services/commerce/disputes/execute_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.disputes.note",
+        "Add payment dispute notes",
+        execution_points: [
+          "app/controllers/admin/store/disputes_controller.rb#execute_action",
+          "app/services/commerce/disputes/execute_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.disputes.evidence_submit",
+        "Submit payment dispute evidence",
+        execution_points: [
+          "app/controllers/admin/store/disputes_controller.rb#execute_action",
+          "app/services/commerce/disputes/execute_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.disputes.accept_loss",
+        "Accept payment dispute losses",
+        execution_points: [
+          "app/controllers/admin/store/disputes_controller.rb#authorize_action",
+          "app/controllers/admin/store/disputes_controller.rb#execute_action",
+          "app/services/commerce/disputes/execute_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.disputes.close",
+        "Close payment disputes",
+        execution_points: [
+          "app/controllers/admin/store/disputes_controller.rb#execute_action",
+          "app/services/commerce/disputes/execute_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.disputes.rights_manage",
+        "Manage disputed-order rights",
+        execution_points: [
+          "app/controllers/admin/store/disputes_controller.rb#authorize_action",
+          "app/controllers/admin/store/disputes_controller.rb#execute_action",
+          "app/services/commerce/disputes/execute_action.rb",
+          "app/services/commerce/disputes/rights_policy.rb"
+        ]
+      ),
+      build_entry.call(
         "store.payments.reconciliation.read",
         "View payment reconciliation",
         execution_points: [
@@ -317,6 +385,30 @@ module Identity
         ]
       ),
       build_entry.call(
+        "store.inventory.read",
+        "View inventory ledger and anomalies",
+        execution_points: [
+          "app/controllers/admin/store/inventory_controller.rb#index",
+          "app/services/commerce/inventory_health.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "store.inventory.adjust",
+        "Adjust inventory",
+        execution_points: [
+          "app/controllers/admin/store/inventory_controller.rb#authorize_adjustment",
+          "app/controllers/admin/store/inventory_controller.rb#adjust",
+          "app/services/commerce/inventory_adjustment.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "store.inventory.recover",
+        "Recover inventory anomalies",
+        execution_points: [
+          "app/controllers/admin/store/inventory_controller.rb#index"
+        ]
+      ),
+      build_entry.call(
         "store.questions.answer",
         "官方回答商品问答",
         admin_module: nil,
@@ -341,12 +433,81 @@ module Identity
         ]
       ),
       build_entry.call(
+        "store.finance.read",
+        "View finance records",
+        execution_points: [
+          "app/controllers/admin/store/finance_controller.rb#index",
+          "app/controllers/admin/store/finance_controller.rb#document",
+          "app/services/commerce/finance_document_query.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.finance.documents.manage",
+        "Manage finance documents",
+        execution_points: [
+          "app/controllers/admin/store/finance_controller.rb#transition_document",
+          "app/services/commerce/transition_finance_document.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "store.finance.exports.create",
+        "Create finance exports",
+        execution_points: [
+          "app/controllers/admin/store/finance_controller.rb#create_export",
+          "app/controllers/admin/store/finance_controller.rb#revoke_export",
+          "app/services/commerce/request_finance_export.rb#call",
+          "app/jobs/commerce/build_finance_export_job.rb#perform"
+        ]
+      ),
+      build_entry.call(
+        "store.finance.exports.download",
+        "Download finance exports",
+        execution_points: [
+          "app/controllers/admin/store/finance_controller.rb#download_export",
+          "app/services/commerce/authorize_finance_export_download.rb#call"
+        ]
+      ),
+      build_entry.call(
         "store.orders.refund",
         "退款",
         execution_points: [
           "app/controllers/admin/store/orders_controller.rb#process_refund",
-          "app/controllers/admin/store/orders_controller.rb#reject_refund",
-          "app/controllers/admin/store/orders_controller.rb#bulk_update"
+          "app/controllers/admin/store/orders_controller.rb#reject_refund"
+        ]
+      ),
+      build_entry.call(
+        "store.orders.mark_paid",
+        "Manually mark orders paid",
+        execution_points: [
+          "app/controllers/admin/store/orders_controller.rb#authorize_high_risk_action",
+          "app/controllers/admin/store/orders_controller.rb#bulk_update",
+          "app/services/commerce/high_risk_order_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.orders.mark_fulfilled",
+        "Manually mark orders fulfilled",
+        execution_points: [
+          "app/controllers/admin/store/orders_controller.rb#authorize_high_risk_action",
+          "app/controllers/admin/store/orders_controller.rb#bulk_update",
+          "app/services/commerce/high_risk_order_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.orders.cancel",
+        "Manually cancel orders",
+        execution_points: [
+          "app/controllers/admin/store/orders_controller.rb#authorize_high_risk_action",
+          "app/controllers/admin/store/orders_controller.rb#bulk_update",
+          "app/services/commerce/high_risk_order_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.credit.read",
+        "View member store credit",
+        execution_points: [
+          "app/controllers/admin/users_controller.rb#store_credit_index",
+          "app/controllers/admin/users_controller.rb#store_credit_show"
         ]
       ),
       build_entry.call(
@@ -355,10 +516,38 @@ module Identity
         execution_points: [
           "app/controllers/admin/users_controller.rb#authorize_store_credit_adjustment",
           "app/controllers/admin/users_controller.rb#adjust_store_credit",
-          "app/controllers/admin/users_controller.rb#store_credit_index",
-          "app/controllers/admin/users_controller.rb#store_credit_show",
           "app/services/commerce/store_credit_adjustment_authorization.rb#issue",
           "app/services/commerce/adjust_store_credit.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "store.entitlements.read",
+        "View member entitlements",
+        execution_points: [
+          "app/controllers/admin/store/user_memberships_controller.rb#index",
+          "app/controllers/admin/store/user_memberships_controller.rb#show",
+          "app/controllers/admin/store/user_entitlements_controller.rb#index",
+          "app/controllers/admin/store/user_entitlements_controller.rb#show"
+        ]
+      ),
+      build_entry.call(
+        "store.entitlements.grant",
+        "Grant member entitlements",
+        execution_points: [
+          "app/controllers/admin/store/user_memberships_controller.rb#create",
+          "app/controllers/admin/store/user_entitlements_controller.rb#create",
+          "app/services/commerce/high_risk_membership_action.rb",
+          "app/services/commerce/high_risk_entitlement_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.entitlements.revoke",
+        "Revoke member entitlements",
+        execution_points: [
+          "app/controllers/admin/store/user_memberships_controller.rb#revoke",
+          "app/controllers/admin/store/user_entitlements_controller.rb#revoke",
+          "app/services/commerce/high_risk_membership_action.rb",
+          "app/services/commerce/high_risk_entitlement_action.rb"
         ]
       ),
       build_entry.call(
@@ -394,12 +583,39 @@ module Identity
         ]
       ),
       build_entry.call(
-        "minecraft.fulfillments.retry",
-        "重试发货",
+        "store.fulfillments.read",
+        "View fulfillment recovery",
         admin_module: "store",
         execution_points: [
-          "app/controllers/admin/store/fulfillments_controller.rb#update"
+          "app/controllers/admin/store/fulfillments_controller.rb#index",
+          "app/controllers/admin/store/fulfillments_controller.rb#show"
         ]
+      ),
+      build_entry.call(
+        "store.fulfillments.retry",
+        "Retry failed fulfillments",
+        admin_module: "store",
+        execution_points: [
+          "app/controllers/admin/store/fulfillments_controller.rb#authorize_action",
+          "app/controllers/admin/store/fulfillments_controller.rb#execute_action",
+          "app/services/commerce/manual_fulfillment_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "store.fulfillments.cancel",
+        "Cancel pending fulfillments",
+        admin_module: "store",
+        execution_points: [
+          "app/controllers/admin/store/fulfillments_controller.rb#authorize_action",
+          "app/controllers/admin/store/fulfillments_controller.rb#execute_action",
+          "app/services/commerce/manual_fulfillment_action.rb"
+        ]
+      ),
+      build_entry.call(
+        "minecraft.fulfillments.retry",
+        "Legacy fulfillment retry permission",
+        status: "reserved",
+        admin_module: "store"
       ),
       build_entry.call(
         "system.bans.manage",
@@ -426,6 +642,71 @@ module Identity
         ]
       ),
       build_entry.call(
+        "system.plugins.view",
+        "View plugins",
+        execution_points: [
+          "app/controllers/admin/system/applications_controller.rb#index"
+        ]
+      ),
+      build_entry.call(
+        "system.plugins.install",
+        "Install and upgrade plugins",
+        execution_points: [
+          "app/controllers/admin/system/applications_controller.rb#install_plugin"
+        ]
+      ),
+      build_entry.call(
+        "system.plugins.enable",
+        "Enable plugins",
+        execution_points: [
+          "app/controllers/admin/system/applications_controller.rb#enable_plugin"
+        ]
+      ),
+      build_entry.call(
+        "system.plugins.disable",
+        "Disable plugins",
+        execution_points: [
+          "app/controllers/admin/system/applications_controller.rb#disable_plugin"
+        ]
+      ),
+        build_entry.call(
+          "system.plugins.diagnostics",
+          "View plugin diagnostics",
+          execution_points: [
+            "app/controllers/admin/system/applications_controller.rb#index",
+            "app/controllers/admin/system/applications_controller.rb#health_plugin",
+            "app/controllers/admin/system/applications_controller.rb#reconcile_plugin_catalog"
+          ]
+        ),
+      build_entry.call(
+        "system.plugins.recover",
+        "Recover plugins",
+        execution_points: [
+          "app/controllers/admin/system/applications_controller.rb#recover_plugin"
+        ]
+      ),
+      build_entry.call(
+        "system.plugins.rollback",
+        "Roll back plugins",
+        execution_points: [
+          "app/controllers/admin/system/applications_controller.rb"
+        ]
+      ),
+      build_entry.call(
+        "system.plugins.uninstall_preserve",
+        "Uninstall plugins and preserve data",
+        execution_points: [
+          "app/controllers/admin/system/applications_controller.rb#uninstall_plugin"
+        ]
+      ),
+      build_entry.call(
+        "system.plugins.uninstall_purge",
+        "Uninstall plugins and purge data",
+        execution_points: [
+          "app/controllers/admin/system/applications_controller.rb#uninstall_plugin"
+        ]
+      ),
+      build_entry.call(
         "system.plugins.settings.manage",
         "管理插件设置",
         execution_points: [
@@ -437,6 +718,7 @@ module Identity
         "查看后台任务",
         execution_points: [
           "app/controllers/admin/system/jobs_controller.rb#index",
+          "app/services/operations/metrics/trend_query.rb#call",
           "app/constraints/sidekiq_web_constraint.rb"
         ]
       ),
@@ -451,6 +733,69 @@ module Identity
         "查看审计日志",
         execution_points: [
           "app/controllers/admin/audit_logs_controller.rb"
+        ]
+      ),
+      build_entry.call(
+        "system.audit.export",
+        "导出审计日志",
+        execution_points: [
+          "app/controllers/admin/audit_logs_controller.rb#export"
+        ]
+      ),
+      build_entry.call(
+        "data_governance.read",
+        "View data governance",
+        admin_module: "system",
+        execution_points: [
+          "app/controllers/admin/system/data_governance_controller.rb#index"
+        ]
+      ),
+      build_entry.call(
+        "data_governance.policies.manage",
+        "Manage retention policies",
+        admin_module: "system",
+        execution_points: [
+          "app/controllers/admin/system/data_governance_controller.rb#update_policy",
+          "app/services/data_governance/update_retention_policy.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "data_governance.holds.manage",
+        "Manage retention holds",
+        admin_module: "system",
+        execution_points: [
+          "app/controllers/admin/system/data_governance_controller.rb#create_hold",
+          "app/controllers/admin/system/data_governance_controller.rb#release_hold",
+          "app/services/data_governance/place_retention_hold.rb#call",
+          "app/services/data_governance/release_retention_hold.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "data_governance.content.delete",
+        "Soft-delete governed content",
+        admin_module: "system",
+        execution_points: [
+          "app/controllers/admin/system/data_governance_controller.rb#soft_delete",
+          "app/services/data_governance/soft_delete_content.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "data_governance.content.restore",
+        "Restore governed content",
+        admin_module: "system",
+        execution_points: [
+          "app/controllers/admin/system/data_governance_controller.rb#restore",
+          "app/services/data_governance/restore_content.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "data_governance.content.purge",
+        "Permanently purge governed content",
+        admin_module: "system",
+        execution_points: [
+          "app/controllers/admin/system/data_governance_controller.rb#purge",
+          "app/services/data_governance/permanently_purge_content.rb#call",
+          "app/jobs/maintenance/purge_governed_content_job.rb#perform"
         ]
       ),
       build_entry.call(
@@ -514,6 +859,15 @@ module Identity
           "app/controllers/admin/roles_controller.rb#create",
           "app/controllers/admin/roles_controller.rb#update",
           "app/controllers/admin/roles_controller.rb#destroy"
+        ]
+      ),
+      build_entry.call(
+        "identity.permissions.explain",
+        "Explain effective permissions",
+        admin_module: "system",
+        execution_points: [
+          "app/controllers/admin/users_controller.rb#permission_explanation",
+          "app/services/identity/permission_explanation.rb#call"
         ]
       )
     ].freeze

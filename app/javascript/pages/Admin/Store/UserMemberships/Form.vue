@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { Link, useForm } from '@inertiajs/vue3'
+import { computed, ref } from 'vue'
+import { Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
+import HighRiskActionModal from '@/components/admin/HighRiskActionModal.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -12,6 +13,7 @@ const props = defineProps<{
   title: string
   membership_types: Array<{ id: number; name: string }>
   submitUrl: string
+  authorizationUrl: string
   backUrl: string
 }>()
 
@@ -29,6 +31,14 @@ const typeOptions = computed(() =>
     label: type.name,
   })),
 )
+const confirmationVisible = ref(false)
+const highRiskPayload = computed(() => ({
+  user_membership: {
+    username: form.user_membership.username.trim(),
+    membership_type_id: form.user_membership.membership_type_id,
+    grant_game_permissions: form.user_membership.grant_game_permissions,
+  },
+}))
 
 function fieldError(field: string) {
   return form.errors[field] || form.errors[`user_membership.${field}`]
@@ -36,7 +46,14 @@ function fieldError(field: string) {
 
 function submit(event?: { errors?: unknown }) {
   if (event?.errors) return
-  form.post(props.submitUrl)
+  confirmationVisible.value = true
+}
+
+function completed(result: Record<string, unknown>) {
+  const redirectUrl = result.redirect_url
+  if (typeof redirectUrl === 'string' && redirectUrl.length > 0) {
+    router.visit(redirectUrl)
+  }
 }
 </script>
 
@@ -79,7 +96,7 @@ function submit(event?: { errors?: unknown }) {
         </a-form-item>
 
         <a-space wrap>
-          <a-button type="primary" html-type="submit" :loading="form.processing">
+          <a-button type="primary" html-type="submit">
             {{ t('admin.forms.userMembership.grant') }}
           </a-button>
           <Link
@@ -91,5 +108,14 @@ function submit(event?: { errors?: unknown }) {
         </a-space>
       </a-form>
     </a-card>
+
+    <HighRiskActionModal
+      v-model:visible="confirmationVisible"
+      :title="t('admin.forms.userMembership.grantReviewTitle')"
+      :authorization-url="authorizationUrl"
+      :action-url="submitUrl"
+      :payload="highRiskPayload"
+      @completed="completed"
+    />
   </section>
 </template>

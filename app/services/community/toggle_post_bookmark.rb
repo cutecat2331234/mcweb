@@ -8,7 +8,7 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Post not available.") unless PostAccess.readable?(post: @post, user: @user)
+      return ServiceResult.failure(error: :post_not_available) unless PostAccess.readable?(post: @post, user: @user)
 
       bookmark = Community::Bookmark.find_by(user: @user, post: @post)
       if bookmark

@@ -12,7 +12,14 @@ module Frontend
         return ServiceResult.success(template)
       end
 
-      return ServiceResult.failure(error: "缺少内置模板包：#{STARTER_ARCHIVE}") unless STARTER_ARCHIVE.exist?
+      unless STARTER_ARCHIVE.exist?
+        return ServiceResult.failure(
+          error: I18n.t(
+            "mcweb.user_copy.builtin_template_archive_missing",
+            archive: STARTER_ARCHIVE
+          )
+        )
+      end
 
       File.open(STARTER_ARCHIVE, "rb") do |io|
         result = InstallTemplateArchive.call(

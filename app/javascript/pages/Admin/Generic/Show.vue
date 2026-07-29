@@ -8,6 +8,7 @@ import { confirm } from '@/lib/arcoConfirm'
 import { isAdminSpaNavigationHref } from '@/lib/adminNavigation'
 import { createIdempotencyKey } from '@/lib/idempotency'
 import { HttpError, postJson } from '@/lib/http'
+import HighRiskActionModal from '@/components/admin/HighRiskActionModal.vue'
 
 defineOptions({ layout: AdminLayout })
 
@@ -32,6 +33,16 @@ export interface DetailAction {
   variant?: 'default' | 'outline'
   data?: Record<string, unknown>
   external?: boolean
+}
+
+export interface HighRiskAction {
+  key: string
+  label: string
+  title: string
+  authorization_url: string
+  action_url: string
+  method?: 'post' | 'patch' | 'put' | 'delete'
+  data?: Record<string, unknown>
 }
 
 export interface MuteForm {
@@ -125,6 +136,7 @@ const props = defineProps<{
   preformatted?: { title: string; content: string }
   preformattedSections?: Array<{ title: string; content: string }>
   actions?: DetailAction[]
+  highRiskActions?: HighRiskAction[]
   muteForm?: MuteForm | null
   banForm?: BanForm | null
   refundForm?: RefundForm | null
@@ -246,6 +258,8 @@ const storeCreditAuthorizing = ref(false)
 const storeCreditSubmitting = ref(false)
 const storeCreditError = ref('')
 const storeCreditBalanceLabel = ref(props.storeCreditForm?.balance_label || '')
+const highRiskModalVisible = ref(false)
+const selectedHighRiskAction = ref<HighRiskAction | null>(null)
 const displayFields = computed(() =>
   props.fields.map((field) => (
     field.key === 'store_credit'
@@ -311,6 +325,24 @@ async function runAction(action: DetailAction) {
     return
   }
   router.visit(action.href, { method, data: action.data })
+}
+
+function openHighRiskAction(action: HighRiskAction) {
+  selectedHighRiskAction.value = action
+  highRiskModalVisible.value = true
+}
+
+function highRiskCompleted(result: Record<string, unknown>) {
+  const redirectUrl = result.redirect_url
+  if (typeof redirectUrl === 'string' && redirectUrl.length > 0) {
+    router.visit(redirectUrl)
+    return
+  }
+  router.reload({ preserveScroll: true })
+}
+
+function highRiskMethod(action: HighRiskAction | null) {
+  return (action?.method || 'post').toUpperCase() as 'POST' | 'PATCH' | 'PUT' | 'DELETE'
 }
 
 function submitMute() {
@@ -1145,6 +1177,15 @@ function submitAccountAccess() {
     </a-card>
 
     <a-space class="mt-6" wrap :size="[12, 12]">
+      <a-button
+        v-for="action in highRiskActions || []"
+        :key="action.key"
+        type="primary"
+        status="warning"
+        @click="openHighRiskAction(action)"
+      >
+        {{ action.label }}
+      </a-button>
       <template v-for="action in actions" :key="action.href + action.label">
         <a-button
           v-if="action.method && action.method !== 'get'"
@@ -1188,6 +1229,17 @@ function submitAccountAccess() {
         {{ t('admin.genericShow.back') }}
       </Link>
     </a-space>
+
+    <HighRiskActionModal
+      v-if="selectedHighRiskAction"
+      v-model:visible="highRiskModalVisible"
+      :title="selectedHighRiskAction.title"
+      :authorization-url="selectedHighRiskAction.authorization_url"
+      :action-url="selectedHighRiskAction.action_url"
+      :method="highRiskMethod(selectedHighRiskAction)"
+      :payload="selectedHighRiskAction.data || {}"
+      @completed="highRiskCompleted"
+    />
   </div>
 </template>
 

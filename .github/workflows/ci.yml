@@ -109,9 +109,11 @@ jobs:
       - name: Install JavaScript dependencies
         run: npm ci
       - name: Check frontend locale parity and TypeScript
-        run: npm run check:i18n && npm run typecheck
+        run: npm run check:i18n && npm run check:user-copy && npm run typecheck
       - name: Run JavaScript contract tests
         run: npm run test:javascript
+      - name: Compile system acceptance inventory
+        run: npm run test:e2e:list
       - name: Build Tailwind CSS
         run: bundle exec rails tailwindcss:build
       - name: Build Vite test assets

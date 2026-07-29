@@ -1,0 +1,21 @@
+---
+schema_version: "1"
+groups:
+  general:
+    title_phrase: examples.hello_event.settings.groups.general.title
+    description_phrase: examples.hello_event.settings.groups.general.description
+    position: 10
+schema:
+  "$schema": https://json-schema.org/draft/2020-12/schema
+  type: object
+  additionalProperties: false
+  required: []
+  properties:
+    enabled:
+      type: boolean
+      default: true
+      x-mcweb-title-phrase: examples.hello_event.settings.enabled.title
+      x-mcweb-description-phrase: examples.hello_event.settings.enabled.description
+      x-mcweb-group: general
+      x-mcweb-input: switch
+migrations: []

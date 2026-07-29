@@ -235,7 +235,7 @@ module Admin
           raise(
             Mcweb::Plugins::SettingValidationError.new(
               code: "plugin_not_found",
-              message: "plugin settings schema is not available"
+              message: I18n.t("mcweb.user_copy.plugin_settings_schema_unavailable")
             )
           )
       end
@@ -258,7 +258,7 @@ module Admin
         else
           raise Mcweb::Plugins::SettingValidationError.new(
             code: "validation_failed",
-            message: "settings values must be a mapping"
+            message: I18n.t("mcweb.user_copy.plugin_settings_values_mapping")
           )
         end
         schema.sensitive_keys.each do |key|
@@ -279,7 +279,7 @@ module Admin
         if value.nil?
           raise Mcweb::Plugins::SettingValidationError.new(
             code: "invalid_argument",
-            message: "expected revision is required"
+            message: I18n.t("mcweb.user_copy.expected_revision_required")
           )
         end
         value

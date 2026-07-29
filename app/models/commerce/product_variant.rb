@@ -1,6 +1,8 @@
 module Commerce
   class ProductVariant < ApplicationRecord
     belongs_to :product, class_name: "Commerce::Product", foreign_key: :store_product_id
+    has_many :inventory_reservations, as: :target, class_name: "Commerce::InventoryReservation", dependent: :restrict_with_error
+    has_many :inventory_movements, as: :target, class_name: "Commerce::InventoryMovement", dependent: :restrict_with_error
 
     validates :name, presence: true
     validates :sku, presence: true, uniqueness: true

@@ -35,10 +35,12 @@ schema 中尚未实现的模拟项单独列出；不得用活动计划中的目�
 | [`ATTACHMENT_SECURITY.md`](ATTACHMENT_SECURITY.md) | 现行附件安全参考 | 内容识别、扫描、隔离、配额、清理、下载边界与上线检查 |
 | [`code-completion-and-developer-mode-plan.md`](code-completion-and-developer-mode-plan.md) | 活动开发计划 | Developer Mode、代码闭环、阶段依赖与验收门禁 |
 | [`COMMUNITY_QUERY_PLAN_OPERATIONS.md`](COMMUNITY_QUERY_PLAN_OPERATIONS.md) | 现行数据库运维参考 | 社区高频查询的 PostgreSQL 计划基线、脱敏复核入口和容量边界 |
+| [`OPERATIONS_METRICS.md`](OPERATIONS_METRICS.md) | 现行运行指标参考 | 低基数采集、分钟原子累加、隐私合同、阈值、保留和后台趋势查询预算 |
 | [`DEVELOPER_MODE.md`](DEVELOPER_MODE.md) | 现行运行参考 | 开关、实际绕过与替身、production foundation、验证、重启、风险和明确未实现项 |
 | [`functional-production-readiness.md`](functional-production-readiness.md) | 活动功能发布门禁 | 只按产品功能判断 CE/EE 生产就绪程度，维护 P0/P1/P2、完成条件与首发范围 |
 | [`functional-development-plan.md`](functional-development-plan.md) | 产品功能活动计划 | 只按产品功能和前端体验拆分 CE 共享与 EE 专属任务；明确排除部署、基础设施、灾备、监控和运维 |
 | [`PAYMENT_PROVIDER_CONFIGURATION.md`](PAYMENT_PROVIDER_CONFIGURATION.md) | 现行支付运维参考 | Stripe 加密配置、连接测试、Webhook 检查、权限和上线步骤 |
+| [`QUALITY_ACCEPTANCE.md`](QUALITY_ACCEPTANCE.md) | 现行质量门禁参考 | 硬编码文案增量门禁、Playwright/截图/a11y 和真实基础设施验收入口及未完成边界 |
 | [`HOSTD.md`](HOSTD.md) | 现行部署参考 | 安装、主机控制台和运维任务的约束 |
 | [`minecraft-resource-packs.md`](minecraft-resource-packs.md) | 现行功能参考 | Minecraft 资源包与商城贴图任务的配置依据 |
 | [`PLUGIN_MARKETPLACE.md`](PLUGIN_MARKETPLACE.md) | 现行安全与运维参考 | Marketplace 安装、校验和受信代码边界 |

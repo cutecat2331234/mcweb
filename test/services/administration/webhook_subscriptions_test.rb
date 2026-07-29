@@ -206,6 +206,41 @@ class Administration::SerializeEventPayloadTest < ActiveSupport::TestCase
     refute_includes result.to_json, author.username
     refute_match(/title|body|username|reason|SENTINEL/i, result.to_json)
   end
+
+  test "commerce envelopes retain only their documented safe snapshot fields" do
+    result = Administration::SerializeEventPayload.call(
+      event: "commerce.fulfillment.retryable_failed",
+      payload: {
+        fulfillment: {
+          id: 12,
+          delivery_id: "delivery-safe",
+          status: "failed",
+          attempts_count: 2,
+          retryable: true,
+          provider_secret: "PRIVATE_PROVIDER_SECRET"
+        },
+        order: {
+          public_id: "order-safe",
+          status: "fulfilling",
+          total_cents: 1_000,
+          currency: "CNY",
+          email: "PRIVATE_CUSTOMER_EMAIL"
+        },
+        result: {
+          status: "retryable",
+          error_code: "provider_timeout",
+          metadata: { raw_response: "PRIVATE_PROVIDER_RESPONSE" }
+        },
+        reason: "PRIVATE_REASON"
+      }
+    )
+    sanitized = Administration::SerializeEventPayload.sanitize_envelope(result)
+
+    assert_equal result, sanitized
+    assert_equal "delivery-safe", result.dig("data", "fulfillment", "delivery_id")
+    assert_equal "provider_timeout", result.dig("data", "result", "error_code")
+    refute_match(/PRIVATE_|email|metadata|reason|provider_secret/i, result.to_json)
+  end
 end
 
 class Administration::WebhookSubscriptionsAdminTest < ActionDispatch::IntegrationTest

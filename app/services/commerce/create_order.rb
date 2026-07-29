@@ -78,7 +78,7 @@ module Commerce
           line_total = unit_price_cents * item.quantity
           subtotal_cents += line_total
 
-          Commerce::OrderItem.create!(
+          order_item = Commerce::OrderItem.create!(
             order: order,
             product: product,
             variant: variant,
@@ -92,7 +92,10 @@ module Commerce
             ).compact
           )
 
-          stock_result = decrement_stock!(product, variant, item.quantity)
+          stock_result = Commerce::ReserveInventory.call(
+            order_item:,
+            expires_at: order.payment_expires_at
+          )
           if stock_result&.failure?
             coupon_error = stock_result.error
             raise ActiveRecord::Rollback
@@ -138,6 +141,15 @@ module Commerce
           end
         end
 
+        tax_snapshot_result = Commerce::CaptureFinanceTaxSnapshot.call(
+          order:,
+          actor: @user
+        )
+        unless tax_snapshot_result.success?
+          coupon_error = tax_snapshot_result.error || "finance_tax_snapshot_invalid"
+          raise ActiveRecord::Rollback
+        end
+
         @cart.items.destroy_all
       end
 
@@ -179,24 +191,6 @@ module Commerce
     end
 
     private
-
-    def decrement_stock!(product, variant, quantity)
-      target = variant || product
-      return ServiceResult.success if target.stock.nil?
-
-      target.with_lock do
-        if target.stock < quantity && !product.allow_backorder?
-          return ServiceResult.failure(error: "stock_insufficient")
-        end
-
-        # Decrement by the full quantity even past zero for backorders. The negative
-        # value records the oversold count and keeps decrement/restore symmetric, so a
-        # later refund or cancel cannot create phantom inventory (capping at 0 did).
-        target.update!(stock: target.stock - quantity)
-      end
-
-      ServiceResult.success
-    end
 
     def snapshot_fulfillment(product, variant)
       config = variant&.fulfillment_config.presence || product.fulfillment_config

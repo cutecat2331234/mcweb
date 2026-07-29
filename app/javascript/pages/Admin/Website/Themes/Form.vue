@@ -34,7 +34,7 @@ function submit() {
     <a-form :model="form.theme" layout="vertical" @submit="submit">
       <a-form-item
         field="name"
-        label="Name"
+        :label="t('admin.website.themes.name')"
         required
         :validate-status="fieldError('name') ? 'error' : undefined"
         :help="fieldError('name')"
@@ -43,7 +43,7 @@ function submit() {
       </a-form-item>
       <a-form-item
         field="key"
-        label="Key"
+        :label="t('admin.website.themes.key')"
         required
         :validate-status="fieldError('key') ? 'error' : undefined"
         :help="fieldError('key')"
@@ -52,7 +52,7 @@ function submit() {
       </a-form-item>
       <a-form-item
         field="tokens_json"
-        label="Tokens (JSON)"
+        :label="t('admin.website.themes.tokensJson')"
         :validate-status="fieldError('tokens_json') ? 'error' : undefined"
         :help="fieldError('tokens_json')"
       >

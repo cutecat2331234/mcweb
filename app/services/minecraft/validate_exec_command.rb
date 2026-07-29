@@ -8,11 +8,11 @@ module Minecraft
     end
 
     def call
-      return ServiceResult.failure(error: "Command is required.") if @command.blank?
+      return ServiceResult.failure(error: :command_is_required) if @command.blank?
 
       prefixes = allowed_prefixes
       if prefixes.empty?
-        return ServiceResult.failure(error: "Exec command prefixes are not configured.") unless unrestricted_exec_allowed?
+        return ServiceResult.failure(error: :exec_command_prefixes_are_not_configured) unless unrestricted_exec_allowed?
 
         return ServiceResult.success(true)
       end
@@ -20,7 +20,12 @@ module Minecraft
       allowed = prefixes.any? { |prefix| @command.start_with?(prefix) }
       return ServiceResult.success(true) if allowed
 
-      ServiceResult.failure(error: "Command not allowed. Permitted prefixes: #{prefixes.join(', ')}")
+      ServiceResult.failure(
+        error: I18n.t(
+          "mcweb.user_copy.command_prefix_not_allowed",
+          prefixes: prefixes.join(", ")
+        )
+      )
     end
 
     private

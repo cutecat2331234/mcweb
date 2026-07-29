@@ -220,14 +220,14 @@ module Payments
 
     def invalid_response
       ServiceResult.failure(
-        error: "Stripe returned an invalid reconciliation page.",
+        error: :stripe_returned_an_invalid_reconciliation_page,
         code: "invalid_provider_response"
       )
     end
 
     def failure(code)
       ServiceResult.failure(
-        error: "Stripe reconciliation could not read provider records.",
+        error: :stripe_reconciliation_could_not_read_provider_records,
         code: code
       )
     end

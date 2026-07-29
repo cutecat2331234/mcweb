@@ -206,6 +206,11 @@ module Admin
         assert_nil upload.quarantined_at
         assert_equal "manual_review", upload.scanner
         assert_equal "manual_false_positive", upload.scan_result_code
+        assert_predicate upload, :manual_review_status_released?
+        assert_equal 1, upload.manual_review_version
+        assert_equal @admin.id, upload.manual_reviewed_by_id
+        assert upload.manual_reviewed_at.present?
+        assert_equal "malware_detected", upload.manual_review_source_result_code
 
         audit = AuditLog.where(
           action: "admin.forum_attachment_quarantine_released",
@@ -219,6 +224,85 @@ module Admin
         assert_equal "text/plain", audit.metadata.fetch("inspected_content_type")
         assert_equal "infected", audit.before_state.fetch("scan_status")
         assert_equal "clean", audit.after_state.fetch("scan_status")
+      end
+
+      test "reviewer can revoke a manual release and every later download fails closed" do
+        grant_permission(@admin, "forum.attachments.security.release")
+        owner = create_user
+        payload = "false positive later found unsafe"
+        blob = ActiveStorage::Blob.create_and_upload!(
+          io: StringIO.new(payload),
+          filename: "revocable.txt",
+          content_type: "text/plain"
+        )
+        attachment = Community::PostAttachment.create!(
+          user: owner,
+          filename: "revocable.txt",
+          content_type: "text/plain",
+          byte_size: payload.bytesize
+        )
+        attachment.file.attach(blob)
+        upload = create_upload(
+          user: owner,
+          scan_status: "infected",
+          quarantined_at: Time.current,
+          scan_result_code: "malware_detected",
+          blob: blob,
+          attachment: attachment
+        )
+
+        post release_quarantine_admin_forum_attachment_path(upload), params: {
+          reason: "Independent review initially concluded this was safe.",
+          confirmation: Community::ReleaseQuarantinedUpload.confirmation_for(upload)
+        }, as: :json
+        assert_response :success
+        upload.reload
+        assert_predicate upload, :manual_review_status_released?
+
+        delete identity_session_path
+        sign_in_as(owner)
+        get forum_attachment_path(attachment)
+        assert_response :success
+        assert_equal "private, no-store", response.headers["Cache-Control"]
+
+        delete identity_session_path
+        sign_in_as(@admin)
+        get admin_forum_attachments_path
+        row = inertia.props.deep_symbolize_keys.fetch(:uploads).find { |item| item[:id] == upload.id }
+        assert_equal(
+          revoke_release_admin_forum_attachment_path(upload),
+          row.dig(:actions, :revoke_release_url)
+        )
+        confirmation = row.dig(:actions, :revoke_confirmation)
+
+        assert_difference(
+          -> {
+            AuditLog.where(
+              action: "admin.forum_attachment_quarantine_release_revoked",
+              resource_id: upload.id
+            ).count
+          },
+          1
+        ) do
+          post revoke_release_admin_forum_attachment_path(upload), params: {
+            reason: "New evidence invalidates the previous false-positive decision.",
+            confirmation: confirmation
+          }, as: :json
+        end
+
+        assert_response :success
+        assert_equal true, JSON.parse(response.body).fetch("revoked")
+        upload.reload
+        assert_predicate upload, :manual_review_status_revoked?
+        assert_predicate upload, :scan_status_infected?
+        assert_equal "manual_release_revoked", upload.scan_result_code
+        assert_equal 2, upload.manual_review_version
+        assert upload.quarantined_at.present?
+
+        delete identity_session_path
+        sign_in_as(owner)
+        get forum_attachment_path(attachment)
+        assert_response :locked
       end
 
       test "attachment manager cannot release quarantine without independent permission" do
@@ -430,7 +514,8 @@ module Admin
         scan_error_message: nil,
         cleanup_error_code: nil,
         cleanup_error_message: nil,
-        blob: nil
+        blob: nil,
+        attachment: nil
       )
         Community::Upload.create!(
           user: user || create_user,
@@ -445,6 +530,7 @@ module Admin
           cleanup_error_code: cleanup_error_code,
           cleanup_error_message: cleanup_error_message,
           blob: blob,
+          post_attachment: attachment,
           expires_at: 1.day.from_now
         )
       end

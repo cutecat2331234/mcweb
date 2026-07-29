@@ -15,5 +15,17 @@ module Identity
 
       mail(to: @user.email, subject: "McWeb 密码重置")
     end
+
+    def totp_recovery_email(user_id, token)
+      @user = User.find(user_id)
+      @recovery_url = edit_identity_totp_recovery_url(token: token)
+
+      I18n.with_locale(@user.locale) do
+        mail(
+          to: @user.email,
+          subject: I18n.t("mcweb.mail.totp_recovery.subject")
+        )
+      end
+    end
   end
 end

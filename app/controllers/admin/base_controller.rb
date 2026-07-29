@@ -29,6 +29,10 @@ module Admin
       false
     end
 
+    def require_admin_demo!
+      head :not_found unless admin_demo_enabled?
+    end
+
     def product_type_label(type)
       return t("mcweb.labels.not_available") if type.blank?
 

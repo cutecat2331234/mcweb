@@ -10,15 +10,15 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "You are not allowed to vote in this topic.") unless PollParticipation.allowed?(user: @user, poll: @poll)
-      return ServiceResult.failure(error: "Poll is closed.") unless @poll.open?
-      return ServiceResult.failure(error: "No options selected.") if @option_indices.empty?
+      return ServiceResult.failure(error: :cannot_vote_in_topic) unless PollParticipation.allowed?(user: @user, poll: @poll)
+      return ServiceResult.failure(error: :poll_closed) unless @poll.open?
+      return ServiceResult.failure(error: :no_options_selected) if @option_indices.empty?
 
       max = @poll.multiple_choice? ? @poll.max_choices : 1
-      return ServiceResult.failure(error: "Too many options selected.") if @option_indices.size > max
+      return ServiceResult.failure(error: :too_many_options_selected) if @option_indices.size > max
 
       invalid = @option_indices.any? { |index| !index.between?(0, @poll.options.size - 1) }
-      return ServiceResult.failure(error: "Invalid option.") if invalid
+      return ServiceResult.failure(error: :invalid_poll_option) if invalid
 
       # Lock the poll so concurrent votes by the same user can't interleave their
       # destroy/create and leave more rows than max_choices (double-vote / overflow).

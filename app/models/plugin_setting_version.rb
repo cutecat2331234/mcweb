@@ -41,20 +41,20 @@ class PluginSettingVersion < ApplicationRecord
   private
 
   def values_must_be_mapping
-    errors.add(:values, "must be a mapping") unless values.is_a?(Hash)
+    errors.add(:values, I18n.t("mcweb.validation_errors.must_be_a_mapping")) unless values.is_a?(Hash)
   end
 
   def source_matches_change_kind
     if migration_source_id.present? != (change_kind == "migration")
-      errors.add(:migration_source, "must be present only for migration versions")
+      errors.add(:migration_source, I18n.t("mcweb.validation_errors.must_be_present_only_for_migration_versions"))
     end
     if rollback_source_id.present? != (change_kind == "rollback")
-      errors.add(:rollback_source, "must be present only for rollback versions")
+      errors.add(:rollback_source, I18n.t("mcweb.validation_errors.must_be_present_only_for_rollback_versions"))
     end
   end
 
   def prevent_mutation
-    errors.add(:base, "plugin setting versions are immutable")
+    errors.add(:base, I18n.t("mcweb.validation_errors.plugin_setting_versions_are_immutable"))
     throw(:abort)
   end
 end

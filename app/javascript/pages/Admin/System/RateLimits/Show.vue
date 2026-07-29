@@ -17,9 +17,9 @@ import {
   Tag,
   TypographyText,
 } from '@mcweb/ui'
-import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
-defineOptions({ layout: ArcoAdminLayout })
+defineOptions({ layout: AdminLayout })
 
 type Dimension = 'account' | 'ip'
 type NumericValue = number | undefined

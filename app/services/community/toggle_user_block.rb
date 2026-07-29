@@ -8,8 +8,8 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "User not found.") unless @blocked
-      return ServiceResult.failure(error: "You cannot block yourself.") if @blocker.id == @blocked.id
+      return ServiceResult.failure(error: :user_not_found) unless @blocked
+      return ServiceResult.failure(error: :you_cannot_block_yourself) if @blocker.id == @blocked.id
 
       existing = Community::UserBlock.find_by(blocker: @blocker, blocked: @blocked)
       if existing

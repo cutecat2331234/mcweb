@@ -240,7 +240,8 @@ class Community::TopicFieldsTest < ActiveSupport::TestCase
     definition = create_definition(key: "stable_key", owner_plugin_id: "Vendor.Name/Plugin_Name")
     assert_equal "vendor.name/plugin_name", definition.owner_plugin_id
     assert_not definition.update(key: "changed_key")
-    assert_includes definition.errors[:key], "cannot be changed after creation"
+    assert_includes definition.errors[:key],
+      I18n.t("mcweb.validation_errors.cannot_be_changed_after_creation")
 
     definition.owner_plugin_id = "invalid owner"
     assert_not definition.valid?
@@ -263,7 +264,8 @@ class Community::TopicFieldsTest < ActiveSupport::TestCase
     )
 
     assert_not definition.valid?
-    assert_includes definition.errors[:choices], "must contain at least one option"
+    assert_includes definition.errors[:choices],
+      I18n.t("mcweb.validation_errors.must_contain_at_least_one_option")
   end
 
   private
@@ -369,6 +371,7 @@ class Community::TopicFieldsAdminTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     props = inertia.props.deep_symbolize_keys
     assert_equal "Broken select", props.dig(:topicField, :label)
-    assert_includes props.dig(:formErrors, :choices), "must contain at least one option"
+    assert_includes props.dig(:formErrors, :choices),
+      I18n.t("mcweb.validation_errors.must_contain_at_least_one_option")
   end
 end

@@ -58,6 +58,42 @@ class Mcweb::PluginApi::V1::IdentityTest < ActiveSupport::TestCase
     refute deleted_status.value.fetch("session_eligible")
   end
 
+  test "updates allow-listed user profile fields through the audited core service" do
+    result = @api.identity.update_user(
+      actor: @user,
+      user: @user,
+      attributes: {
+        display_name: "Updated Member",
+        locale: "en",
+        time_zone: "UTC",
+        account_type: "owner"
+      }
+    )
+
+    assert_predicate result, :success?
+    assert result.value.fetch("changed")
+    assert_equal "Updated Member", result.value.dig("user", "display_name")
+    assert_equal "member", @user.reload.account_type
+    audit = AuditLog.where(
+      action: "identity.user.profile_updated",
+      resource_type: "User",
+      resource_id: @user.id
+    ).order(:id).last
+    assert audit
+    assert_equal %w[display_name locale time_zone],
+                 audit.metadata.fetch("changed_fields")
+    refute contains_active_record?(result.value)
+
+    denied = @api.identity.update_user(
+      actor: create_user,
+      user: @user,
+      attributes: { display_name: "Forbidden" }
+    )
+    assert_predicate denied, :failure?
+    assert_equal "forbidden", denied.code
+    assert_equal "Updated Member", @user.reload.display_name
+  end
+
   test "lists global groups and user memberships as deeply frozen snapshots" do
     primary = Community::UserGroup.create!(
       name: "Operators",
@@ -97,6 +133,65 @@ class Mcweb::PluginApi::V1::IdentityTest < ActiveSupport::TestCase
     assert_predicate memberships.value.first.fetch("permission_keys"), :frozen?
     assert_predicate memberships.value.first.fetch("permission_keys").first, :frozen?
     refute contains_active_record?(memberships.value)
+  end
+
+  test "mutates global group membership through canonical permission and audit checks" do
+    actor = create_user
+    grant_permission(actor, "identity.groups.members.assign")
+    primary = Community::UserGroup.create!(
+      name: "Plugin Members",
+      priority: 20,
+      permissions: []
+    )
+    secondary = Community::UserGroup.create!(
+      name: "Plugin Guests",
+      priority: 10,
+      permissions: []
+    )
+    Community::GroupMembership.create!(
+      user: @user,
+      user_group: secondary,
+      is_primary: true
+    )
+
+    added = @api.identity.add_group_member(
+      actor:,
+      user: @user,
+      group: primary
+    )
+    assert_predicate added, :success?
+    assert added.value.fetch("member")
+    refute added.value.dig("group", "primary")
+
+    made_primary = @api.identity.set_primary_group(
+      actor:,
+      user: @user,
+      group: primary.id
+    )
+    assert_predicate made_primary, :success?
+    assert made_primary.value.dig("group", "primary")
+    refute Community::GroupMembership.find_by!(
+      user: @user,
+      user_group: secondary
+    ).is_primary?
+
+    removed = @api.identity.remove_group_member(
+      actor:,
+      user: @user,
+      group: primary
+    )
+    assert_predicate removed, :success?
+    refute removed.value.fetch("member")
+    refute contains_active_record?(removed.value)
+
+    assert_equal(
+      %w[
+        identity.group.member_added
+        identity.group.primary_changed
+        identity.group.member_removed
+      ],
+      AuditLog.where(actor:).order(:id).pluck(:action)
+    )
   end
 
   test "returns effective permission decisions with role and group grant sources" do
@@ -191,8 +286,10 @@ class Mcweb::PluginApi::V1::IdentityTest < ActiveSupport::TestCase
       api_version: "1",
       capabilities: %w[
         identity.groups.read
+        identity.groups.members.write
         identity.permissions.read
         identity.users.read
+        identity.users.write
       ]
     })
   end

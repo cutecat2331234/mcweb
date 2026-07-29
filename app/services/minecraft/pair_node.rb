@@ -8,10 +8,10 @@ module Minecraft
     end
 
     def call
-      return ServiceResult.failure(error: "Pairing token is required.") if @token.blank?
+      return ServiceResult.failure(error: :pairing_token_is_required) if @token.blank?
 
       node = find_node_by_token
-      return ServiceResult.failure(error: "Invalid or expired pairing token.") unless node
+      return ServiceResult.failure(error: :invalid_or_expired_pairing_token) unless node
 
       secret = node.generate_node_secret!
       metadata = node.metadata.except("pairing_token", "pairing_token_expires_at")

@@ -263,6 +263,7 @@ module Admin
           categories: ::Commerce::Category.ordered.map { |c| { id: c.id, name: c.name } },
           membership_types: ::Commerce::MembershipType.active_types.by_display_priority.map { |type| { id: type.id, name: type.name } },
           prerequisite_products: ::Commerce::Product.order(:name).pluck(:id, :name).map { |id, name| { id: id, name: name } },
+          fulfillment_providers: Mcweb::Plugins.fulfillment_providers,
           submitUrl: product.persisted? ? admin_store_product_path(product) : admin_store_products_path,
           method: product.persisted? ? "patch" : "post",
           backUrl: admin_store_products_path,

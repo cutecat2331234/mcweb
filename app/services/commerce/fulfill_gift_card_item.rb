@@ -10,7 +10,7 @@ module Commerce
     def call
       snapshot = @order_item.fulfillment_snapshot || {}
       product_type = snapshot["product_type"] || snapshot[:product_type]
-      return ServiceResult.failure(error: "Not a gift card product.") unless product_type == "gift_card"
+      return ServiceResult.failure(error: :not_a_gift_card_product) unless product_type == "gift_card"
 
       cards = nil
       newly_issued = false

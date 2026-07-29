@@ -23,9 +23,9 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Post not available.") unless PostAccess.readable?(post: @post, user: @user)
-      return ServiceResult.failure(error: "This topic is archived.") if @post.topic.archived_at.present?
-      return ServiceResult.failure(error: "Invalid reaction.") unless self.class.allowed_emoji.include?(@emoji)
+      return ServiceResult.failure(error: :post_not_available) unless PostAccess.readable?(post: @post, user: @user)
+      return ServiceResult.failure(error: :this_topic_is_archived) if @post.topic.archived_at.present?
+      return ServiceResult.failure(error: :invalid_reaction) unless self.class.allowed_emoji.include?(@emoji)
       return ServiceResult.failure(error: "cannot_react_to_own_post") if @user.id == @post.user_id
       return ServiceResult.failure(error: "trust_level_cannot_react") unless Community::TrustLevel.can_react?(@user)
       adding = adding?

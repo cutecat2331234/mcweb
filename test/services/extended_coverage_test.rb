@@ -375,13 +375,89 @@ class Operations::HealthCheckerTest < ActiveSupport::TestCase
       queue_adapter: :sidekiq,
       production: true,
       sidekiq_stats: stats,
-      sidekiq_processes: []
+      sidekiq_processes: [],
+      sidekiq_queues: []
     )
 
     assert_equal "degraded", result.value[:status]
     assert_equal "error", result.value.dig(:checks, :queue, :status)
     assert_equal "worker_unavailable", result.value.dig(:checks, :queue, :error_code)
     assert_equal 0, result.value.dig(:checks, :queue, :worker_processes)
+  end
+
+  test "production readiness fails when the oldest Sidekiq job exceeds the latency threshold" do
+    stats = Data.define(
+      :enqueued,
+      :failed,
+      :retry_size,
+      :scheduled_size,
+      :dead_size,
+      :processed
+    ).new(
+      enqueued: 1,
+      failed: 0,
+      retry_size: 0,
+      scheduled_size: 0,
+      dead_size: 0,
+      processed: 10
+    )
+    queue = Data.define(:name, :size, :latency).new(
+      name: "default",
+      size: 1,
+      latency: Operations::QueueSnapshot::DEFAULT_LATENCY_WARNING_SECONDS + 1
+    )
+    result = Operations::HealthChecker.call(
+      queue_adapter: :sidekiq,
+      production: true,
+      sidekiq_stats: stats,
+      sidekiq_processes: [ { "busy" => 0, "concurrency" => 5 } ],
+      sidekiq_queues: [ queue ]
+    )
+
+    assert_equal "degraded", result.value[:status]
+    assert_equal "error", result.value.dig(:checks, :queue, :status)
+    assert_equal "queue_latency", result.value.dig(:checks, :queue, :error_code)
+    assert_operator result.value.dig(:checks, :queue, :oldest_wait_seconds),
+      :>,
+      Operations::QueueSnapshot::DEFAULT_LATENCY_WARNING_SECONDS
+  end
+
+  test "production readiness requires a fresh persistent worker heartbeat" do
+    stats = Data.define(
+      :enqueued,
+      :failed,
+      :retry_size,
+      :scheduled_size,
+      :dead_size,
+      :processed
+    ).new(
+      enqueued: 0,
+      failed: 0,
+      retry_size: 0,
+      scheduled_size: 0,
+      dead_size: 0,
+      processed: 10
+    )
+    now = Time.zone.parse("2026-07-29 14:00:00")
+    result = Operations::HealthChecker.call(
+      queue_adapter: :sidekiq,
+      production: true,
+      sidekiq_stats: stats,
+      sidekiq_processes: [ { "busy" => 0, "concurrency" => 5 } ],
+      sidekiq_queues: [],
+      worker_heartbeat_at: now - Operations::WorkerHeartbeat::FRESH_FOR - 1.second,
+      clock: -> { now }
+    )
+
+    assert_equal "degraded", result.value[:status]
+    assert_equal(
+      "worker_heartbeat_stale",
+      result.value.dig(:checks, :queue, :error_code)
+    )
+    assert_equal(
+      (now - Operations::WorkerHeartbeat::FRESH_FOR - 1.second).iso8601,
+      result.value.dig(:checks, :queue, :last_worker_heartbeat_at)
+    )
   end
 
   test "business integration degradation does not make core readiness fail" do

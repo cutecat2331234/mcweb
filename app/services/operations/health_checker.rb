@@ -15,12 +15,18 @@ module Operations
       production: Rails.env.production?,
       sidekiq_stats: nil,
       sidekiq_processes: nil,
+      sidekiq_queues: nil,
+      worker_heartbeat_at: :auto,
+      clock: -> { Time.current },
       storage_service: nil
     )
       @queue_adapter = queue_adapter
       @production = production
       @sidekiq_stats = sidekiq_stats
       @sidekiq_processes = sidekiq_processes
+      @sidekiq_queues = sidekiq_queues
+      @worker_heartbeat_at = worker_heartbeat_at
+      @clock = clock
       @storage_service = storage_service
     end
 
@@ -48,25 +54,14 @@ module Operations
     def check_queue
       adapter = @queue_adapter
       if adapter == :sidekiq
-        stats = @sidekiq_stats || Sidekiq::Stats.new
-        processes = @sidekiq_processes || Sidekiq::ProcessSet.new(false).to_a
-        if @production && processes.empty?
-          return {
-            status: "error",
-            error_code: "worker_unavailable",
-            adapter: "sidekiq",
-            worker_processes: 0
-          }
-        end
-
-        {
-          status: "ok",
-          pending_jobs: stats.enqueued,
-          failed_jobs: stats.failed,
-          adapter: "sidekiq",
-          worker_processes: processes.length,
-          busiest_workers: processes.sum { |process| process["busy"].to_i }
-        }
+        snapshot = QueueSnapshot.call(
+          queue_adapter: adapter,
+          production: @production,
+          stats: @sidekiq_stats,
+          processes: @sidekiq_processes,
+          queues: @sidekiq_queues
+        ).value
+        attach_worker_heartbeat(queue_health_payload(snapshot))
       else
         { status: "ok", pending_jobs: 0, failed_jobs: 0, adapter: adapter.to_s }
       end
@@ -107,6 +102,64 @@ module Operations
         service: service.class.name.to_s.demodulize,
         probe: "write_read_delete"
       }
+    end
+
+    def queue_health_payload(snapshot)
+      payload = {
+        pending_jobs: snapshot.fetch(:enqueued),
+        failed_jobs: snapshot.fetch(:failed_count),
+        adapter: snapshot.fetch(:adapter),
+        worker_processes: snapshot.fetch(:worker_count),
+        busiest_workers: snapshot.fetch(:busy_workers),
+        concurrency: snapshot.fetch(:concurrency),
+        utilization_percent: snapshot.fetch(:utilization_percent),
+        oldest_wait_seconds: snapshot.fetch(:oldest_wait_seconds),
+        retry_jobs: snapshot.fetch(:retry_count),
+        dead_jobs: snapshot.fetch(:dead_count)
+      }
+      return payload.merge(status: "ok") if snapshot.fetch(:status) == "healthy"
+
+      payload.merge(
+        status: "error",
+        error_code: queue_error_code(snapshot)
+      )
+    end
+
+    def attach_worker_heartbeat(payload)
+      return payload unless @production
+
+      heartbeat_at = latest_worker_heartbeat_at
+      payload = payload.merge(
+        last_worker_heartbeat_at: heartbeat_at&.iso8601
+      )
+      return payload unless payload.fetch(:status) == "ok"
+      return payload if heartbeat_at &&
+        heartbeat_at >= @clock.call - WorkerHeartbeat::FRESH_FOR
+
+      payload.merge(
+        status: "error",
+        error_code: "worker_heartbeat_stale"
+      )
+    end
+
+    def latest_worker_heartbeat_at
+      return @worker_heartbeat_at unless @worker_heartbeat_at == :auto
+
+      WorkerHeartbeat.sidekiq.maximum(:last_seen_at)
+    end
+
+    def queue_error_code(snapshot)
+      return "queue_unavailable" unless snapshot.fetch(:available)
+      return "worker_unavailable" if
+        @production && snapshot.fetch(:worker_count).zero?
+      return "queue_dead_jobs" if snapshot.fetch(:dead_count).positive?
+      return "queue_backlog" if
+        snapshot.fetch(:enqueued) >= snapshot.fetch(:backlog_warning)
+      return "queue_latency" if
+        snapshot.fetch(:oldest_wait_seconds) >=
+          snapshot.fetch(:latency_warning_seconds)
+
+      "queue_saturated"
     end
 
     def check_minecraft_nodes

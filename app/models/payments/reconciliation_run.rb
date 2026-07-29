@@ -46,7 +46,7 @@ module Payments
     def valid_window
       return unless window_start && window_end
 
-      errors.add(:window_end, "must be after the start") unless window_end > window_start
+      errors.add(:window_end, I18n.t("mcweb.validation_errors.must_be_after_the_start")) unless window_end > window_start
     end
   end
 end

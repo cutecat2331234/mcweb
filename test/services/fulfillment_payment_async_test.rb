@@ -82,7 +82,7 @@ class Commerce::BuildConnectorTaskPayloadTest < ActiveSupport::TestCase
     result = Commerce::BuildConnectorTaskPayload.call(fulfillment: @fulfillment)
 
     assert result.failure?
-    assert_equal "player_not_linked", result.error
+    assert_equal "player_not_linked", result.code
   end
 
   test "passes commands through when no placeholders are used" do
@@ -106,7 +106,7 @@ class Commerce::BuildConnectorTaskPayloadTest < ActiveSupport::TestCase
     result = Commerce::BuildConnectorTaskPayload.call(fulfillment: @fulfillment)
 
     assert result.failure?
-    assert_equal "missing_commands", result.error
+    assert_equal "missing_commands", result.code
   end
 end
 
@@ -238,6 +238,149 @@ class Minecraft::DispatchFulfillmentJobTest < ActiveSupport::TestCase
     task.reload
     assert_equal "pending", task.status
     assert_equal other_server.id, task.server.id
+  end
+end
+
+class Minecraft::PluginFulfillmentProviderTest < ActiveSupport::TestCase
+  setup do
+    Mcweb::Plugins.reset!
+    @provider_result = {
+      status: "succeeded",
+      external_reference: "external-delivery"
+    }
+    @requests = []
+    Mcweb::Plugins.register(
+      id: "tests/fulfillment",
+      name: "Test fulfillment",
+      version: "1.0.0",
+      api_version: "1",
+      capabilities: [ "commerce.fulfillments.write" ]
+    ) do |plugin|
+      plugin.fulfillment_provider("direct") do |request|
+        @requests << request
+        raise "temporary provider outage" if @provider_result == :raise
+
+        @provider_result
+      end
+    end
+    Mcweb::Plugins.boot!
+
+    @user = create_user
+    @order = Commerce::Order.create!(
+      public_id: "ord_#{SecureRandom.alphanumeric(16)}",
+      order_number: "PLUGIN#{SecureRandom.hex(4).upcase}",
+      user: @user,
+      status: "fulfilling",
+      currency: "CNY",
+      subtotal_cents: 1_200,
+      total_cents: 1_200
+    )
+    @order_item = Commerce::OrderItem.create!(
+      order: @order,
+      product_name: "External entitlement",
+      unit_price_cents: 1_200,
+      quantity: 1,
+      total_cents: 1_200,
+      fulfillment_snapshot: {
+        fulfillment_config: {
+          plugin_provider: "tests/fulfillment:direct",
+          provider_options: {
+            plan: "premium"
+          }
+        }
+      }
+    )
+    @fulfillment = Commerce::Fulfillment.create!(
+      order: @order,
+      order_item: @order_item,
+      status: "pending"
+    )
+  end
+
+  teardown do
+    Mcweb::Plugins.reset!
+  end
+
+  test "dispatches an immutable safe request and completes exactly once" do
+    assert_no_difference -> { Minecraft::ConnectorTask.count } do
+      Minecraft::DispatchFulfillmentJob.perform_now(@fulfillment.id)
+      Minecraft::DispatchFulfillmentJob.perform_now(@fulfillment.id)
+    end
+
+    assert_equal 1, @requests.length
+    request = @requests.sole
+    assert_predicate request, :frozen?
+    assert_equal @fulfillment.delivery_id, request.fetch("delivery_id")
+    assert_equal "premium", request.dig("options", "plan")
+    assert_equal @order.public_id, request.dig("order", "public_id")
+    refute request.dig("order").key?("user")
+    refute_includes request.to_s, @user.email
+
+    @fulfillment.reload
+    assert_equal "fulfilled", @fulfillment.status
+    assert_equal 1, @fulfillment.attempts_count
+    assert_equal "external-delivery",
+                 @fulfillment.last_result_summary.fetch("external_reference")
+    assert_equal "succeeded", @fulfillment.attempts.sole.status
+  end
+
+  test "retryable failures retain the delivery id and use a new attempt" do
+    @provider_result = {
+      status: "retryable",
+      error_code: "provider_busy"
+    }
+    delivery_id = @fulfillment.delivery_id
+
+    Minecraft::DispatchFulfillmentJob.perform_now(@fulfillment.id)
+
+    @fulfillment.reload
+    assert_equal "failed", @fulfillment.status
+    assert_equal "provider_busy", @fulfillment.last_error
+    assert @fulfillment.next_attempt_at.present?
+    assert_equal 1, @fulfillment.attempts_count
+
+    @fulfillment.update!(status: "pending", next_attempt_at: nil)
+    @provider_result = {
+      status: "succeeded",
+      external_reference: "retry-success"
+    }
+    Minecraft::DispatchFulfillmentJob.perform_now(@fulfillment.id)
+
+    assert_equal "fulfilled", @fulfillment.reload.status
+    assert_equal 2, @fulfillment.attempts_count
+    assert_equal [ delivery_id, delivery_id ],
+                 @requests.map { |request| request.fetch("delivery_id") }
+    assert_equal [ 1, 2 ],
+                 @requests.map { |request| request.dig("attempt", "number") }
+  end
+
+  test "terminal response exhausts automatic retries" do
+    @provider_result = {
+      status: "failed",
+      error_code: "account_rejected"
+    }
+
+    Minecraft::DispatchFulfillmentJob.perform_now(@fulfillment.id)
+
+    @fulfillment.reload
+    assert_equal "failed", @fulfillment.status
+    assert_equal @fulfillment.max_attempts, @fulfillment.attempts_count
+    assert @fulfillment.exhausted?
+    assert_nil @fulfillment.next_attempt_at
+  end
+
+  test "provider exceptions are sanitized and scheduled for retry" do
+    @provider_result = :raise
+
+    assert_nothing_raised do
+      Minecraft::DispatchFulfillmentJob.perform_now(@fulfillment.id)
+    end
+
+    @fulfillment.reload
+    assert_equal "failed", @fulfillment.status
+    assert_equal "provider_failed", @fulfillment.last_error
+    assert @fulfillment.next_attempt_at.present?
+    refute_includes @fulfillment.last_result_summary.to_s, "temporary provider outage"
   end
 end
 

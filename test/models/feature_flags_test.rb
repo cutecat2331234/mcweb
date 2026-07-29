@@ -39,4 +39,22 @@ class FeatureFlagsTest < ActiveSupport::TestCase
     assert_equal :minecraft, FeatureFlags.feature_for_path("/app/minecraft/link")
     assert_nil FeatureFlags.feature_for_path("/admin/users")
   end
+
+  test "disabled messages localize known and unknown features" do
+    I18n.with_locale(:en) do
+      assert_equal(
+        "Forum has been disabled by an administrator.",
+        FeatureFlags.disabled_message(:forum)
+      )
+      assert_equal(
+        "This feature has been disabled by an administrator.",
+        FeatureFlags.disabled_message(:unknown)
+      )
+    end
+
+    I18n.with_locale(:"zh-CN") do
+      assert_equal "论坛已被管理员关闭。", FeatureFlags.disabled_message(:forum)
+      assert_equal "该功能已被管理员关闭。", FeatureFlags.disabled_message(:unknown)
+    end
+  end
 end

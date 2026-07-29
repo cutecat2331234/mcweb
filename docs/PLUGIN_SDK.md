@@ -449,9 +449,103 @@ type-only snapshot. Collection normalization is bounded to 64 levels; a deeper
 branch becomes an immutable `{ "type" => "maximum_depth" }` marker rather than
 risking a stack overflow.
 
-Declaring `forum.events.read` documents that a plugin consumes events. Missing
-that declaration produces an `undeclared_capability` warning but does not block
-registration or delivery because deployment plugins are fully trusted.
+### Stable commerce events
+
+Core commerce events are registered with
+`ActiveRecord.after_all_transactions_commit` and published through
+`Mcweb::Events.defer_until_success`. A listener therefore never observes a
+rolled-back payment, refund, inventory movement, or fulfillment transition.
+Idempotent service replays do not publish a second event. Handlers should still
+use the resource key below when enqueueing an external side effect, because a
+job or an external provider can use at-least-once delivery.
+
+| Event | Emitted for | Stable idempotency key |
+| --- | --- | --- |
+| `commerce.order.paid` | accepted order payment has completed the core paid transition | `order.public_id` |
+| `commerce.payment.confirmed` | a pending/processing payment becomes `succeeded` for a payable order | `payment.id` |
+| `commerce.payment.failed` | a payment enters the terminal `failed` state; retryable provider notices that leave it pending do not emit | `payment.id` |
+| `commerce.payment.refunded` | each completed full or partial refund against a payment | `refund.id` |
+| `commerce.refund.requested` | a customer refund request is created | `refund.id` |
+| `commerce.refund.processed` | provider confirmation and all local restoration work commit | `refund.id` |
+| `commerce.refund.rejected` | a pending refund request becomes rejected | `refund.id` |
+| `commerce.inventory.reserved` | an order item creates a stock reservation | `movement.public_id` |
+| `commerce.inventory.released` | an active reservation is released or expires; inspect `movement.type` | `movement.public_id` |
+| `commerce.inventory.confirmed` | a reservation converts from reserved to sold | `movement.public_id` |
+| `commerce.inventory.adjusted` | a signed manual inventory adjustment commits | `movement.public_id` |
+| `commerce.fulfillment.dispatched` | a new dispatch attempt enters processing | `fulfillment.delivery_id` + `attempt.number` |
+| `commerce.fulfillment.retryable_failed` | an attempt fails and has a scheduled retry | `fulfillment.delivery_id` + `attempt.number` |
+| `commerce.fulfillment.failed` | an attempt reaches a terminal/non-retryable failure | `fulfillment.delivery_id` + `attempt.number` |
+| `commerce.fulfillment.completed` | a fulfillment first becomes fulfilled | `fulfillment.delivery_id` |
+| `commerce.fulfillment.cancelled` | a signed manual cancellation commits | `fulfillment.delivery_id` |
+
+Every payload is an explicit v1 allow-list:
+
+- `order`: `public_id`, `status`, `total_cents`, `currency`;
+- `payment`: `id`, `status`, `amount_cents`, `currency`;
+- `refund`: `id`, `status`, `amount_cents`, `currency`;
+- `inventory`: target/product/variant identifiers plus available, reserved, and
+  sold quantities;
+- `movement`: `public_id`, type, quantity, and the three quantity deltas;
+- `fulfillment`: `id`, stable `delivery_id`, order-item ID, status, attempt
+  counts, retry state, and lifecycle timestamps;
+- `attempt`: number, trigger, and status; `result` is limited to
+  `success/status/error_code/simulated/external_reference`.
+
+Customer identity, username, email, shipping/billing address, free-form reasons,
+provider payment/refund references, provider secrets, provider metadata, raw
+webhook bodies, and raw connector responses are never included. Use
+`commerce.order.paid`—not `commerce.payment.confirmed`—as the normal fulfillment
+trigger, because confirmed late/orphan payments intentionally do not make an
+order fulfillable.
+
+### Plugin fulfillment providers
+
+A trusted CE plugin can register a synchronous fulfillment adapter without
+patching the Minecraft connector:
+
+```ruby
+Mcweb::Plugins.register do |plugin|
+  plugin.fulfillment_provider("direct") do |request|
+    {
+      status: "succeeded",
+      external_reference: "acme:#{request.fetch("delivery_id")}"
+    }
+  end
+end
+```
+
+Select it on a product with
+`fulfillment_config.plugin_provider = "<plugin-id>:<key>"`; optional
+`fulfillment_config.provider_options` is copied into the allow-listed request.
+It is static product configuration: operators must not place credentials,
+customer data, or order-derived templates in it. The frozen request contains
+`schema_version`, `provider_id`, stable
+`delivery_id`, `attempt` (`number` and `idempotency_key`), safe order totals and
+status, safe item/product/variant identifiers and amounts, and `options`. It
+contains no host-injected user identity, address, payment data, provider
+credential, or arbitrary order metadata.
+
+The provider must use `delivery_id` (or the supplied attempt idempotency key) to
+deduplicate external work. It must return only:
+
+```ruby
+{ status: "succeeded", external_reference: "..." }
+{ status: "retryable", error_code: "provider_timeout" }
+{ status: "failed", error_code: "invalid_destination" }
+```
+
+`status` is exactly `succeeded`, `retryable`, or `failed`;
+`external_reference` is an optional string of at most 200 characters; failed
+results require a normalized `error_code`. Extra keys, invalid results, missing
+or disabled providers, and handler exceptions are converted into safe
+fulfillment failures without exposing the exception to the customer. Declare
+`commerce.fulfillments.write`.
+
+Declare the matching `<domain>.events.read` capability for every event domain a
+plugin consumes—for example `commerce.events.read` for the catalog above and
+`forum.events.read` for forum events. A missing declaration produces an
+`undeclared_capability` warning but does not block registration or delivery
+because deployment plugins are fully trusted.
 
 ## Synchronous service filters
 
@@ -518,10 +612,11 @@ end
 Mcweb::Plugins.call_service(
   "forum.topic.create",
   input: topic_attributes,
-  context: { actor: current_user }
+  context: { user: current_user, section: section }
 ) do |input, context|
   Community::CreateTopic.call(
-    user: User.find(context.dig("actor", "id")),
+    user: User.find(context.dig("user", "id")),
+    section: Community::Section.find(context.dig("section", "id")),
     **input.symbolize_keys
   )
 end
@@ -545,6 +640,18 @@ instances retain identity and behavior. A decorator may return a replacement
 result only when it preserves the downstream root kind or class. Declare the
 matching `<domain>.extend` capability, such as `forum.extend`, for capability
 auditing.
+
+The stable forum service decorator boundaries are:
+
+| Service | Input keys | Context |
+| --- | --- | --- |
+| `forum.topic.create` | `title`, `body`, `tag_names`, `prefix`, `custom_fields` | `user`, `section` identity snapshots |
+| `forum.post.create` | `body`, `whisper` | `user`, `topic` identity snapshots |
+| `forum.topic.edit` | values plus the `*_provided` flags for `title`, `tag_names`, `prefix`, `poll_params`, `custom_fields` | `user`, `topic` identity snapshots |
+| `forum.post.edit` | `body`, `reason` | `user`, `post`, `topic` identity snapshots |
+
+These use the same field and context contracts as the matching synchronous
+filters. All four require the compatibility/audit capability `forum.extend`.
 
 ## Versioned host API
 
@@ -978,9 +1085,11 @@ reviewed plugin should request only keys it needs and must not log their values.
 
 Recommended declarations are `forum.read`, `forum.write`, `forum.moderate`,
 `forum.events.read`, `forum.events.publish`, `site.features.read`, and
-`site.settings.read`. The first undeclared runtime use of each facade capability
-records an `undeclared_capability` diagnostic. It is still allowed: capability
-metadata is an audit/compatibility signal, never a security boundary.
+`site.settings.read`. A commerce event consumer/provider normally declares
+`commerce.events.read` and `commerce.fulfillments.write`. The first undeclared
+runtime use of each facade capability records an `undeclared_capability`
+diagnostic. It is still allowed: capability metadata is an audit/compatibility
+signal, never a security boundary.
 
 ## Lifecycle and operations
 

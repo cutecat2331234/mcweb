@@ -215,6 +215,7 @@ class Community::FormatPostBodyOneboxSafetyTest < ActiveSupport::TestCase
     )
 
     assert_not product.valid?
-    assert_includes product.errors[:image_url], "must be a safe http(s) or uploaded image URL"
+    assert_includes product.errors[:image_url],
+      I18n.t("mcweb.validation_errors.must_be_a_safe_https_or_uploaded_image_url")
   end
 end

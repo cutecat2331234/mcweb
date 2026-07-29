@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
+ActiveRecord::Schema[8.1].define(version: 2026_07_29_127000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -90,14 +90,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.string "ip_address"
     t.jsonb "metadata", default: {}, null: false
     t.text "reason"
+    t.string "request_id", limit: 100
     t.bigint "resource_id"
     t.string "resource_public_id"
     t.string "resource_type"
     t.datetime "updated_at", null: false
     t.text "user_agent"
+    t.index ["action", "created_at"], name: "index_audit_logs_on_action_and_created_at"
     t.index ["action"], name: "index_audit_logs_on_action"
+    t.index ["actor_id", "created_at"], name: "index_audit_logs_on_actor_id_and_created_at"
     t.index ["actor_id"], name: "index_audit_logs_on_actor_id"
     t.index ["created_at"], name: "index_audit_logs_on_created_at"
+    t.index ["request_id"], name: "index_audit_logs_on_request_id"
+    t.index ["resource_public_id"], name: "index_audit_logs_on_resource_public_id"
     t.index ["resource_type", "resource_id"], name: "index_audit_logs_on_resource_type_and_resource_id"
   end
 
@@ -202,6 +207,82 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.datetime "updated_at", null: false
   end
 
+  create_table "data_content_lifecycle_records", force: :cascade do |t|
+    t.jsonb "blocker_codes", default: [], null: false
+    t.datetime "created_at", null: false
+    t.bigint "deleted_by_id"
+    t.text "deletion_reason", null: false
+    t.datetime "last_evaluated_at"
+    t.integer "lock_version", default: 0, null: false
+    t.string "public_id", null: false
+    t.datetime "purge_after"
+    t.integer "purge_attempts", default: 0, null: false
+    t.text "purge_reason"
+    t.datetime "purged_at"
+    t.bigint "purged_by_id"
+    t.text "restoration_reason"
+    t.datetime "restored_at"
+    t.bigint "restored_by_id"
+    t.datetime "soft_deleted_at", null: false
+    t.string "status", default: "soft_deleted", null: false
+    t.bigint "target_id", null: false
+    t.jsonb "target_snapshot", default: {}, null: false
+    t.string "target_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["deleted_by_id"], name: "index_data_content_lifecycle_records_on_deleted_by_id"
+    t.index ["public_id"], name: "index_data_content_lifecycle_records_on_public_id", unique: true
+    t.index ["purged_by_id"], name: "index_data_content_lifecycle_records_on_purged_by_id"
+    t.index ["restored_by_id"], name: "index_data_content_lifecycle_records_on_restored_by_id"
+    t.index ["status", "purge_after", "id"], name: "idx_data_lifecycle_due"
+    t.index ["target_type", "target_id"], name: "idx_data_lifecycle_target", unique: true
+    t.check_constraint "purge_attempts >= 0", name: "chk_data_content_lifecycle_attempts"
+    t.check_constraint "status::text = ANY (ARRAY['soft_deleted'::character varying, 'restored'::character varying, 'purged'::character varying]::text[])", name: "chk_data_content_lifecycle_status"
+  end
+
+  create_table "data_retention_holds", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.bigint "created_by_id", null: false
+    t.datetime "expires_at"
+    t.string "policy_reference"
+    t.string "public_id", null: false
+    t.text "reason", null: false
+    t.text "release_reason"
+    t.datetime "released_at"
+    t.bigint "released_by_id"
+    t.string "status", default: "active", null: false
+    t.bigint "target_id", null: false
+    t.string "target_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["created_by_id"], name: "index_data_retention_holds_on_created_by_id"
+    t.index ["public_id"], name: "index_data_retention_holds_on_public_id", unique: true
+    t.index ["released_by_id"], name: "index_data_retention_holds_on_released_by_id"
+    t.index ["target_type", "target_id", "status"], name: "idx_retention_holds_target_status"
+    t.index ["target_type", "target_id"], name: "index_data_retention_holds_on_target"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'released'::character varying]::text[])", name: "chk_data_retention_holds_status"
+  end
+
+  create_table "data_retention_policies", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.boolean "legal_hold_supported", default: true, null: false
+    t.boolean "moderator_restorable", default: true, null: false
+    t.text "notes"
+    t.string "resource_type", null: false
+    t.integer "retention_days"
+    t.datetime "updated_at", null: false
+    t.boolean "user_deletable", default: true, null: false
+    t.index ["resource_type"], name: "index_data_retention_policies_on_resource_type", unique: true
+  end
+
+  create_table "developer_mode_runtime_states", force: :cascade do |t|
+    t.string "configuration_digest", null: false
+    t.jsonb "configuration_summary", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.boolean "enabled", default: false, null: false
+    t.datetime "observed_at", null: false
+    t.string "profile"
+    t.datetime "updated_at", null: false
+  end
+
   create_table "email_bans", force: :cascade do |t|
     t.bigint "banned_by_id"
     t.datetime "created_at", null: false
@@ -299,7 +380,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["forum_topic_id"], name: "index_forum_content_requests_on_forum_topic_id"
     t.index ["user_id", "operation", "key_digest"], name: "idx_forum_content_requests_idempotency", unique: true
     t.index ["user_id"], name: "index_forum_content_requests_on_user_id"
-    t.check_constraint "operation::text = ANY (ARRAY['topic.create'::character varying::text, 'post.create'::character varying::text])", name: "chk_forum_content_requests_operation"
+    t.check_constraint "operation::text = ANY (ARRAY['topic.create'::character varying, 'post.create'::character varying]::text[])", name: "chk_forum_content_requests_operation"
   end
 
   create_table "forum_conversation_participants", force: :cascade do |t|
@@ -403,6 +484,71 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["user_id"], name: "index_forum_messages_on_user_id"
   end
 
+  create_table "forum_moderation_case_notes", force: :cascade do |t|
+    t.bigint "author_id", null: false
+    t.text "body", null: false
+    t.datetime "created_at", null: false
+    t.bigint "moderation_case_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["author_id"], name: "index_forum_moderation_case_notes_on_author_id"
+    t.index ["moderation_case_id", "created_at"], name: "idx_forum_moderation_case_notes_timeline"
+  end
+
+  create_table "forum_moderation_cases", force: :cascade do |t|
+    t.bigint "assignee_id"
+    t.datetime "claimed_at"
+    t.datetime "created_at", null: false
+    t.bigint "forum_section_id"
+    t.string "last_action"
+    t.text "last_reason"
+    t.integer "lock_version", default: 0, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "priority", default: "normal", null: false
+    t.datetime "resolved_at"
+    t.string "risk_level", default: "medium", null: false
+    t.bigint "source_id", null: false
+    t.string "source_kind", null: false
+    t.string "source_type", null: false
+    t.datetime "source_updated_at", null: false
+    t.string "status", default: "open", null: false
+    t.text "summary", default: "", null: false
+    t.bigint "target_user_id"
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["assignee_id", "status"], name: "idx_forum_moderation_cases_assignee"
+    t.index ["assignee_id"], name: "index_forum_moderation_cases_on_assignee_id"
+    t.index ["forum_section_id", "status"], name: "idx_forum_moderation_cases_section"
+    t.index ["forum_section_id"], name: "index_forum_moderation_cases_on_forum_section_id"
+    t.index ["source_kind", "source_updated_at"], name: "idx_forum_moderation_cases_source_kind"
+    t.index ["source_type", "source_id"], name: "idx_forum_moderation_cases_source", unique: true
+    t.index ["status", "priority", "risk_level", "updated_at"], name: "idx_forum_moderation_cases_queue"
+    t.index ["target_user_id"], name: "index_forum_moderation_cases_on_target_user_id"
+    t.check_constraint "priority::text = ANY (ARRAY['low'::character varying, 'normal'::character varying, 'high'::character varying, 'critical'::character varying]::text[])", name: "forum_moderation_cases_priority"
+    t.check_constraint "risk_level::text = ANY (ARRAY['low'::character varying, 'medium'::character varying, 'high'::character varying, 'critical'::character varying]::text[])", name: "forum_moderation_cases_risk"
+    t.check_constraint "source_kind::text = ANY (ARRAY['pending_topic'::character varying, 'pending_post'::character varying, 'report'::character varying, 'spam_hit'::character varying, 'quarantined_attachment'::character varying, 'user_risk'::character varying]::text[])", name: "forum_moderation_cases_source_kind"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'claimed'::character varying, 'resolved'::character varying, 'dismissed'::character varying, 'actioned'::character varying, 'stale'::character varying]::text[])", name: "forum_moderation_cases_status"
+  end
+
+  create_table "forum_moderation_operations", force: :cascade do |t|
+    t.string "action", null: false
+    t.bigint "actor_id", null: false
+    t.string "authorization_digest", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.text "reason", null: false
+    t.string "request_fingerprint", null: false
+    t.string "request_id", null: false
+    t.jsonb "result_snapshot", default: [], null: false
+    t.jsonb "target_snapshot", default: [], null: false
+    t.datetime "updated_at", null: false
+    t.index ["actor_id", "created_at"], name: "idx_forum_moderation_operations_actor"
+    t.index ["actor_id"], name: "index_forum_moderation_operations_on_actor_id"
+    t.index ["authorization_digest"], name: "index_forum_moderation_operations_on_authorization_digest", unique: true
+    t.index ["request_id"], name: "index_forum_moderation_operations_on_request_id", unique: true
+    t.check_constraint "char_length(request_fingerprint::text) = 64 AND char_length(authorization_digest::text) = 64", name: "forum_moderation_operations_digests"
+    t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "forum_moderation_operations_request_id"
+  end
+
   create_table "forum_mutes", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "created_by_id", null: false
@@ -491,11 +637,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.bigint "byte_size", default: 0, null: false
     t.string "content_type"
     t.datetime "created_at", null: false
+    t.datetime "deleted_at"
     t.integer "download_count", default: 0, null: false
     t.string "filename", null: false
     t.bigint "forum_post_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
+    t.index ["deleted_at"], name: "index_forum_post_attachments_on_deleted_at"
     t.index ["forum_post_id"], name: "index_forum_post_attachments_on_forum_post_id"
     t.index ["user_id", "forum_post_id"], name: "index_forum_post_attachments_on_user_id_and_forum_post_id"
     t.index ["user_id"], name: "index_forum_post_attachments_on_user_id"
@@ -946,6 +1094,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.bigint "forum_post_attachment_id"
     t.bigint "forum_post_id"
     t.string "kind", null: false
+    t.string "manual_review_file_sha256"
+    t.datetime "manual_review_revoked_at"
+    t.bigint "manual_review_revoked_by_id"
+    t.string "manual_review_source_result_code"
+    t.string "manual_review_status", default: "none", null: false
+    t.integer "manual_review_version", default: 0, null: false
+    t.datetime "manual_reviewed_at"
+    t.bigint "manual_reviewed_by_id"
     t.datetime "next_scan_at"
     t.string "public_id", null: false
     t.datetime "quarantined_at"
@@ -963,6 +1119,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["forum_post_attachment_id"], name: "index_forum_uploads_on_forum_post_attachment_id", unique: true
     t.index ["forum_post_id"], name: "index_forum_uploads_on_forum_post_id"
     t.index ["kind", "status"], name: "index_forum_uploads_on_kind_and_status"
+    t.index ["manual_review_revoked_by_id"], name: "index_forum_uploads_on_manual_review_revoked_by_id"
+    t.index ["manual_review_status"], name: "index_forum_uploads_on_manual_review_status"
+    t.index ["manual_reviewed_by_id"], name: "index_forum_uploads_on_manual_reviewed_by_id"
     t.index ["public_id"], name: "index_forum_uploads_on_public_id", unique: true
     t.index ["quarantined_at"], name: "index_forum_uploads_on_quarantined_at"
     t.index ["scan_status", "next_scan_at"], name: "idx_forum_uploads_scan_due"
@@ -970,10 +1129,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["user_id", "status"], name: "index_forum_uploads_on_user_id_and_status"
     t.index ["user_id"], name: "index_forum_uploads_on_user_id"
     t.check_constraint "byte_size > 0", name: "forum_uploads_positive_byte_size"
-    t.check_constraint "kind::text = ANY (ARRAY['inline_image'::character varying::text, 'post_attachment'::character varying::text])", name: "forum_uploads_valid_kind"
+    t.check_constraint "kind::text = ANY (ARRAY['inline_image'::character varying, 'post_attachment'::character varying]::text[])", name: "forum_uploads_valid_kind"
+    t.check_constraint "manual_review_status::text = ANY (ARRAY['none'::character varying, 'released'::character varying, 'revoked'::character varying]::text[])", name: "forum_uploads_valid_manual_review_status"
+    t.check_constraint "manual_review_version >= 0", name: "forum_uploads_nonnegative_manual_review_version"
     t.check_constraint "scan_attempts >= 0", name: "forum_uploads_nonnegative_scan_attempts"
-    t.check_constraint "scan_status::text = ANY (ARRAY['pending'::character varying::text, 'clean'::character varying::text, 'infected'::character varying::text, 'error'::character varying::text])", name: "forum_uploads_valid_scan_status"
-    t.check_constraint "status::text = ANY (ARRAY['reserved'::character varying::text, 'stored'::character varying::text, 'linked'::character varying::text, 'cleanup_pending'::character varying::text, 'cleanup_failed'::character varying::text, 'cleaned'::character varying::text])", name: "forum_uploads_valid_status"
+    t.check_constraint "scan_status::text = ANY (ARRAY['pending'::character varying, 'clean'::character varying, 'infected'::character varying, 'error'::character varying]::text[])", name: "forum_uploads_valid_scan_status"
+    t.check_constraint "status::text = ANY (ARRAY['reserved'::character varying, 'stored'::character varying, 'linked'::character varying, 'cleanup_pending'::character varying, 'cleanup_failed'::character varying, 'cleaned'::character varying]::text[])", name: "forum_uploads_valid_status"
   end
 
   create_table "forum_user_badges", force: :cascade do |t|
@@ -1104,6 +1265,31 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.string "version", default: "1.0.0", null: false
     t.index ["key"], name: "index_frontend_templates_on_key", unique: true
     t.index ["status"], name: "index_frontend_templates_on_status"
+  end
+
+  create_table "identity_data_exports", force: :cascade do |t|
+    t.integer "attempts", default: 0, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "error_code"
+    t.datetime "expires_at"
+    t.datetime "failed_at"
+    t.string "format", default: "zip", null: false
+    t.string "idempotency_key", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.jsonb "manifest", default: {}, null: false
+    t.string "public_id", null: false
+    t.datetime "requested_at", null: false
+    t.datetime "revoked_at"
+    t.datetime "started_at"
+    t.string "status", default: "queued", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["public_id"], name: "index_identity_data_exports_on_public_id", unique: true
+    t.index ["user_id", "idempotency_key"], name: "idx_identity_exports_idempotency", unique: true
+    t.index ["user_id", "status", "requested_at"], name: "idx_identity_exports_user_status"
+    t.index ["user_id"], name: "index_identity_data_exports_on_user_id"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying, 'revoked'::character varying, 'expired'::character varying]::text[])", name: "chk_identity_data_exports_status"
   end
 
   create_table "installation_locks", force: :cascade do |t|
@@ -1442,6 +1628,36 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["user_id"], name: "index_notifications_on_user_id"
   end
 
+  create_table "operations_metric_buckets", force: :cascade do |t|
+    t.datetime "bucket_at", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "dimensions", default: {}, null: false
+    t.string "dimensions_key", limit: 64, null: false
+    t.string "metric_name", limit: 96, null: false
+    t.bigint "sample_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.decimal "value_max", precision: 20, scale: 6, default: "0.0", null: false
+    t.decimal "value_min", precision: 20, scale: 6, default: "0.0", null: false
+    t.decimal "value_sum", precision: 30, scale: 6, default: "0.0", null: false
+    t.index ["bucket_at", "metric_name", "dimensions_key"], name: "idx_operations_metric_buckets_identity", unique: true
+    t.index ["metric_name", "bucket_at"], name: "idx_operations_metric_buckets_trends"
+    t.check_constraint "jsonb_typeof(dimensions) = 'object'::text", name: "operations_metric_buckets_dimensions_object"
+    t.check_constraint "sample_count > 0", name: "operations_metric_buckets_positive_samples"
+    t.check_constraint "value_min <= value_max", name: "operations_metric_buckets_value_range"
+  end
+
+  create_table "operations_worker_heartbeats", force: :cascade do |t|
+    t.datetime "created_at", null: false
+    t.datetime "last_seen_at", null: false
+    t.string "process_kind", default: "sidekiq", null: false
+    t.string "process_ref", null: false
+    t.datetime "started_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["process_kind", "last_seen_at"], name: "idx_operations_worker_heartbeats_freshness"
+    t.index ["process_ref"], name: "index_operations_worker_heartbeats_on_process_ref", unique: true
+    t.check_constraint "process_kind::text = 'sidekiq'::text", name: "operations_worker_heartbeats_kind"
+  end
+
   create_table "payment_attempts", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.bigint "payment_record_id", null: false
@@ -1496,10 +1712,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["provider"], name: "index_payment_provider_configs_on_provider", unique: true
     t.check_constraint "account_fingerprint IS NULL OR account_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "payment_provider_configs_account_fingerprint"
     t.check_constraint "last_connection_test_credential_revision IS NULL OR last_connection_test_credential_revision::text ~ '^[0-9a-f]{64}$'::text", name: "payment_provider_configs_test_credential_revision"
-    t.check_constraint "last_connection_test_mode IS NULL OR (last_connection_test_mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text]))", name: "payment_provider_configs_connection_test_mode"
-    t.check_constraint "last_connection_test_status IS NULL OR (last_connection_test_status::text = ANY (ARRAY['success'::character varying::text, 'failed'::character varying::text]))", name: "payment_provider_configs_connection_test_status"
+    t.check_constraint "last_connection_test_mode IS NULL OR (last_connection_test_mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[]))", name: "payment_provider_configs_connection_test_mode"
+    t.check_constraint "last_connection_test_status IS NULL OR (last_connection_test_status::text = ANY (ARRAY['success'::character varying, 'failed'::character varying]::text[]))", name: "payment_provider_configs_connection_test_status"
     t.check_constraint "last_connection_test_status::text IS DISTINCT FROM 'success'::text OR account_fingerprint IS NOT NULL AND last_connection_test_credential_revision IS NOT NULL", name: "payment_provider_configs_success_identity"
-    t.check_constraint "mode IS NULL OR (mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text]))", name: "payment_provider_configs_mode"
+    t.check_constraint "mode IS NULL OR (mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[]))", name: "payment_provider_configs_mode"
   end
 
   create_table "payment_reconciliation_discrepancies", force: :cascade do |t|
@@ -1541,9 +1757,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["status", "created_at"], name: "idx_payment_recon_discrepancies_status"
     t.index ["store_order_id"], name: "index_payment_reconciliation_discrepancies_on_store_order_id"
     t.check_constraint "(local_amount_cents IS NULL OR local_amount_cents >= 0) AND (provider_amount_cents IS NULL OR provider_amount_cents >= 0)", name: "payment_recon_discrepancies_amounts"
-    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text])", name: "payment_recon_discrepancies_mode"
-    t.check_constraint "status::text = ANY (ARRAY['open'::character varying::text, 'acknowledged'::character varying::text, 'ignored'::character varying::text, 'resolved'::character varying::text])", name: "payment_recon_discrepancies_status"
-    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying::text, 'refund'::character varying::text])", name: "payment_recon_discrepancies_subject"
+    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[])", name: "payment_recon_discrepancies_mode"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'acknowledged'::character varying, 'ignored'::character varying, 'resolved'::character varying]::text[])", name: "payment_recon_discrepancies_status"
+    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying, 'refund'::character varying]::text[])", name: "payment_recon_discrepancies_subject"
   end
 
   create_table "payment_reconciliation_observations", force: :cascade do |t|
@@ -1554,7 +1770,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.datetime "updated_at", null: false
     t.index ["run_id", "subject_type", "reference_digest"], name: "idx_payment_recon_observations_unique", unique: true
     t.index ["subject_type", "reference_digest", "run_id"], name: "idx_payment_recon_observations_lookup"
-    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying::text, 'refund'::character varying::text])", name: "payment_recon_observations_subject"
+    t.check_constraint "subject_type::text = ANY (ARRAY['payment'::character varying, 'refund'::character varying]::text[])", name: "payment_recon_observations_subject"
   end
 
   create_table "payment_reconciliation_runs", force: :cascade do |t|
@@ -1584,10 +1800,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["provider", "mode", "window_start", "window_end"], name: "idx_payment_recon_runs_window", unique: true
     t.index ["status", "last_heartbeat_at"], name: "idx_payment_recon_runs_recovery"
     t.check_constraint "attempt_count >= 0 AND payments_checked >= 0 AND refunds_checked >= 0 AND discrepancies_count >= 0", name: "payment_recon_runs_counters"
-    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text])", name: "payment_recon_runs_mode"
-    t.check_constraint "phase::text = ANY (ARRAY['payments'::character varying::text, 'refunds'::character varying::text, 'local_checks'::character varying::text, 'completed'::character varying::text])", name: "payment_recon_runs_phase"
+    t.check_constraint "mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[])", name: "payment_recon_runs_mode"
+    t.check_constraint "phase::text = ANY (ARRAY['payments'::character varying, 'refunds'::character varying, 'local_checks'::character varying, 'completed'::character varying]::text[])", name: "payment_recon_runs_phase"
     t.check_constraint "refresh_count >= 0", name: "payment_recon_runs_refresh_count"
-    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying::text, 'running'::character varying::text, 'completed'::character varying::text, 'failed'::character varying::text, 'skipped'::character varying::text])", name: "payment_recon_runs_status"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying, 'skipped'::character varying]::text[])", name: "payment_recon_runs_status"
     t.check_constraint "window_end > window_start", name: "payment_recon_runs_window"
   end
 
@@ -1608,7 +1824,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["provider", "provider_payment_id"], name: "index_payment_records_on_provider_and_provider_payment_id", unique: true
     t.index ["provider", "status", "created_at", "id"], name: "idx_payment_records_reconciliation_local"
     t.index ["store_order_id"], name: "index_payment_records_on_store_order_id"
-    t.check_constraint "provider_mode IS NULL OR (provider_mode::text = ANY (ARRAY['test'::character varying::text, 'live'::character varying::text]))", name: "payment_records_provider_mode"
+    t.check_constraint "provider_mode IS NULL OR (provider_mode::text = ANY (ARRAY['test'::character varying, 'live'::character varying]::text[]))", name: "payment_records_provider_mode"
   end
 
   create_table "payment_webhook_events", force: :cascade do |t|
@@ -1651,6 +1867,84 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["key"], name: "index_permissions_on_key", unique: true
   end
 
+  create_table "plugin_contributions", force: :cascade do |t|
+    t.string "contribution_id", null: false
+    t.string "contribution_type", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "descriptor", default: {}, null: false
+    t.string "descriptor_sha256", null: false
+    t.bigint "plugin_release_id", null: false
+    t.string "schema_sha256"
+    t.datetime "updated_at", null: false
+    t.index ["contribution_type", "contribution_id"], name: "idx_on_contribution_type_contribution_id_d592d8a26c"
+    t.index ["plugin_release_id", "contribution_id"], name: "idx_plugin_contributions_release_id", unique: true
+    t.index ["plugin_release_id"], name: "index_plugin_contributions_on_plugin_release_id"
+  end
+
+  create_table "plugin_files", force: :cascade do |t|
+    t.bigint "byte_size", null: false
+    t.datetime "created_at", null: false
+    t.boolean "expected", default: true, null: false
+    t.string "health", null: false
+    t.bigint "observed_byte_size"
+    t.string "observed_sha256"
+    t.string "path", null: false
+    t.bigint "plugin_release_id", null: false
+    t.string "sha256", null: false
+    t.datetime "updated_at", null: false
+    t.index ["health", "updated_at"], name: "index_plugin_files_on_health_and_updated_at"
+    t.index ["plugin_release_id", "path"], name: "idx_plugin_files_release_path", unique: true
+    t.index ["plugin_release_id"], name: "index_plugin_files_on_plugin_release_id"
+    t.check_constraint "byte_size >= 0 AND (observed_byte_size IS NULL OR observed_byte_size >= 0)", name: "plugin_files_nonnegative_sizes"
+    t.check_constraint "health::text = ANY (ARRAY['healthy'::character varying, 'missing'::character varying, 'modified'::character varying, 'unknown'::character varying, 'unavailable'::character varying, 'untracked'::character varying]::text[])", name: "plugin_files_health"
+  end
+
+  create_table "plugin_generations", force: :cascade do |t|
+    t.string "action", null: false
+    t.datetime "activated_at"
+    t.datetime "created_at", null: false
+    t.datetime "deadline_at", null: false
+    t.jsonb "desired_plugins", default: {}, null: false
+    t.string "error_code"
+    t.text "error_message"
+    t.jsonb "expected_process_uids", default: [], null: false
+    t.bigint "initiated_by_id"
+    t.integer "lock_version", default: 0, null: false
+    t.decimal "minimum_ack_ratio", precision: 5, scale: 4, default: "1.0", null: false
+    t.bigint "number", null: false
+    t.string "operation_id"
+    t.bigint "parent_generation_id"
+    t.jsonb "previous_plugins", default: {}, null: false
+    t.datetime "rollback_started_at"
+    t.datetime "rolled_back_at"
+    t.string "state", default: "pending", null: false
+    t.string "target_plugin_id"
+    t.datetime "updated_at", null: false
+    t.index ["initiated_by_id"], name: "index_plugin_generations_on_initiated_by_id"
+    t.index ["number"], name: "index_plugin_generations_on_number", unique: true
+    t.index ["operation_id"], name: "index_plugin_generations_on_operation_id"
+    t.index ["parent_generation_id"], name: "index_plugin_generations_on_parent_generation_id"
+    t.index ["state", "number"], name: "index_plugin_generations_on_state_and_number"
+  end
+
+  create_table "plugin_installations", force: :cascade do |t|
+    t.bigint "active_generation_number"
+    t.datetime "created_at", null: false
+    t.string "current_state", default: "uploaded", null: false
+    t.string "current_version"
+    t.string "desired_state", default: "disabled", null: false
+    t.string "edition", default: "ce", null: false
+    t.string "error_code"
+    t.text "error_message"
+    t.string "last_operation_id"
+    t.integer "lock_version", default: 0, null: false
+    t.string "plugin_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["current_state", "updated_at"], name: "index_plugin_installations_on_current_state_and_updated_at"
+    t.index ["last_operation_id"], name: "index_plugin_installations_on_last_operation_id"
+    t.index ["plugin_id"], name: "index_plugin_installations_on_plugin_id", unique: true
+  end
+
   create_table "plugin_job_runs", force: :cascade do |t|
     t.string "active_job_id", limit: 191
     t.integer "attempts", default: 0, null: false
@@ -1690,7 +1984,143 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.check_constraint "payload_digest_version = 2", name: "plugin_job_runs_payload_digest_version"
     t.check_constraint "requested_wait_seconds >= 0 AND requested_wait_seconds <= 31536000", name: "plugin_job_runs_requested_wait_bounds"
     t.check_constraint "retry_wait_seconds >= 0 AND retry_wait_seconds <= 86400", name: "plugin_job_runs_retry_wait_bounds"
-    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying::text, 'running'::character varying::text, 'retrying'::character varying::text, 'succeeded'::character varying::text, 'failed'::character varying::text, 'paused'::character varying::text, 'cancelled'::character varying::text])", name: "plugin_job_runs_status"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'retrying'::character varying, 'succeeded'::character varying, 'failed'::character varying, 'paused'::character varying, 'cancelled'::character varying]::text[])", name: "plugin_job_runs_status"
+  end
+
+  create_table "plugin_lifecycle_runs", force: :cascade do |t|
+    t.string "action", null: false
+    t.bigint "actor_id"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.boolean "dry_run", default: false, null: false
+    t.string "error_code"
+    t.text "error_message"
+    t.string "from_version"
+    t.bigint "generation_number"
+    t.boolean "maintenance_mode", default: false, null: false
+    t.string "operation_id", null: false
+    t.string "plugin_id"
+    t.bigint "plugin_installation_id"
+    t.string "recovery_path"
+    t.boolean "retryable", default: true, null: false
+    t.datetime "started_at", null: false
+    t.string "state", default: "running", null: false
+    t.string "to_version"
+    t.datetime "updated_at", null: false
+    t.index ["actor_id"], name: "index_plugin_lifecycle_runs_on_actor_id"
+    t.index ["operation_id"], name: "index_plugin_lifecycle_runs_on_operation_id", unique: true
+    t.index ["plugin_id", "started_at"], name: "index_plugin_lifecycle_runs_on_plugin_id_and_started_at"
+    t.index ["plugin_installation_id"], name: "index_plugin_lifecycle_runs_on_plugin_installation_id"
+    t.index ["state", "started_at"], name: "index_plugin_lifecycle_runs_on_state_and_started_at"
+  end
+
+  create_table "plugin_lifecycle_steps", force: :cascade do |t|
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.jsonb "details", default: {}, null: false
+    t.string "error_code"
+    t.text "error_message"
+    t.string "idempotency_key", null: false
+    t.bigint "plugin_lifecycle_run_id", null: false
+    t.boolean "retryable", default: true, null: false
+    t.integer "sequence", null: false
+    t.datetime "started_at", null: false
+    t.string "state", null: false
+    t.string "step_key", null: false
+    t.datetime "updated_at", null: false
+    t.index ["plugin_lifecycle_run_id", "idempotency_key"], name: "index_plugin_lifecycle_steps_on_run_and_idempotency", unique: true
+    t.index ["plugin_lifecycle_run_id", "sequence"], name: "index_plugin_lifecycle_steps_on_run_and_sequence", unique: true
+    t.index ["plugin_lifecycle_run_id"], name: "index_plugin_lifecycle_steps_on_plugin_lifecycle_run_id"
+    t.index ["state", "started_at"], name: "index_plugin_lifecycle_steps_on_state_and_started_at"
+  end
+
+  create_table "plugin_maintenance_windows", force: :cascade do |t|
+    t.boolean "active", default: true, null: false
+    t.bigint "actor_id"
+    t.datetime "created_at", null: false
+    t.datetime "ended_at"
+    t.datetime "expires_at", null: false
+    t.string "operation_id", null: false
+    t.string "plugin_id"
+    t.datetime "started_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["active", "expires_at"], name: "index_plugin_maintenance_windows_on_active_and_expiry"
+    t.index ["actor_id"], name: "index_plugin_maintenance_windows_on_actor_id"
+    t.index ["operation_id"], name: "index_plugin_maintenance_windows_on_operation_id", unique: true
+    t.check_constraint "expires_at > started_at", name: "plugin_maintenance_windows_valid_interval"
+  end
+
+  create_table "plugin_outbound_deliveries", force: :cascade do |t|
+    t.integer "attempts", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.datetime "delivered_at"
+    t.text "encrypted_destination"
+    t.text "encrypted_payload", null: false
+    t.text "encrypted_secret"
+    t.string "idempotency_key", null: false
+    t.string "kind", null: false
+    t.string "last_error_code"
+    t.integer "last_http_status"
+    t.integer "lock_version", default: 0, null: false
+    t.integer "max_attempts", default: 5, null: false
+    t.datetime "next_attempt_at"
+    t.string "owner_plugin_id", null: false
+    t.string "payload_digest", null: false
+    t.string "public_id", null: false
+    t.text "response_summary"
+    t.string "status", default: "queued", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id"
+    t.index ["owner_plugin_id", "kind", "idempotency_key"], name: "index_plugin_deliveries_on_owner_kind_idempotency", unique: true
+    t.index ["public_id"], name: "index_plugin_outbound_deliveries_on_public_id", unique: true
+    t.index ["status", "next_attempt_at"], name: "index_plugin_outbound_deliveries_on_status_and_next_attempt_at"
+    t.index ["user_id"], name: "index_plugin_outbound_deliveries_on_user_id"
+  end
+
+  create_table "plugin_process_acks", force: :cascade do |t|
+    t.datetime "acked_at", null: false
+    t.datetime "created_at", null: false
+    t.string "error_code"
+    t.text "error_message"
+    t.string "hostname"
+    t.datetime "last_seen_at", null: false
+    t.bigint "plugin_generation_id", null: false
+    t.jsonb "plugin_versions", default: {}, null: false
+    t.string "process_kind", null: false
+    t.integer "process_pid"
+    t.string "process_uid", null: false
+    t.string "status", null: false
+    t.datetime "updated_at", null: false
+    t.index ["plugin_generation_id", "process_uid"], name: "index_plugin_process_acks_on_generation_and_process", unique: true
+    t.index ["plugin_generation_id"], name: "index_plugin_process_acks_on_plugin_generation_id"
+    t.index ["process_uid", "last_seen_at"], name: "index_plugin_process_acks_on_process_uid_and_last_seen_at"
+    t.index ["status", "last_seen_at"], name: "index_plugin_process_acks_on_status_and_last_seen_at"
+  end
+
+  create_table "plugin_releases", force: :cascade do |t|
+    t.string "api_version", null: false
+    t.datetime "created_at", null: false
+    t.jsonb "diagnostics", default: [], null: false
+    t.string "health", default: "untracked", null: false
+    t.jsonb "manifest_descriptor", default: {}, null: false
+    t.string "manifest_sha256", null: false
+    t.datetime "observed_at", null: false
+    t.string "operation_id"
+    t.string "package_digest_source", null: false
+    t.string "package_sha256", null: false
+    t.string "plugin_id", null: false
+    t.bigint "plugin_installation_id", null: false
+    t.string "state", null: false
+    t.datetime "updated_at", null: false
+    t.string "version", null: false
+    t.index ["health", "observed_at"], name: "index_plugin_releases_on_health_and_observed_at"
+    t.index ["plugin_id", "state"], name: "index_plugin_releases_on_plugin_id_and_state"
+    t.index ["plugin_installation_id", "version", "package_sha256"], name: "idx_plugin_releases_identity", unique: true
+    t.index ["plugin_installation_id"], name: "idx_plugin_releases_current", unique: true, where: "((state)::text = ANY ((ARRAY['active'::character varying, 'disabled'::character varying, 'uninstalled'::character varying])::text[]))"
+    t.index ["plugin_installation_id"], name: "index_plugin_releases_on_plugin_installation_id"
+    t.check_constraint "health::text = ANY (ARRAY['healthy'::character varying, 'changed'::character varying, 'missing'::character varying, 'unavailable'::character varying, 'untracked'::character varying]::text[])", name: "plugin_releases_health"
+    t.check_constraint "package_digest_source::text = ANY (ARRAY['receipt'::character varying, 'derived'::character varying]::text[])", name: "plugin_releases_digest_source"
+    t.check_constraint "state::text = ANY (ARRAY['active'::character varying, 'disabled'::character varying, 'rollback'::character varying, 'uninstalled'::character varying]::text[])", name: "plugin_releases_state"
   end
 
   create_table "plugin_setting_versions", force: :cascade do |t|
@@ -1710,9 +2140,26 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["plugin_id", "schema_version", "created_at"], name: "idx_plugin_settings_namespace_version_created"
     t.index ["plugin_id", "schema_version", "revision"], name: "idx_plugin_settings_namespace_version_revision", unique: true
     t.index ["rollback_source_id"], name: "index_plugin_setting_versions_on_rollback_source_id"
-    t.check_constraint "change_kind::text = ANY (ARRAY['update'::character varying::text, 'migration'::character varying::text, 'rollback'::character varying::text])", name: "plugin_setting_versions_change_kind"
+    t.check_constraint "change_kind::text = ANY (ARRAY['update'::character varying, 'migration'::character varying, 'rollback'::character varying]::text[])", name: "plugin_setting_versions_change_kind"
     t.check_constraint "revision > 0", name: "plugin_setting_versions_positive_revision"
     t.check_constraint "schema_digest::text ~ '^[0-9a-f]{64}$'::text", name: "plugin_setting_versions_schema_digest"
+  end
+
+  create_table "plugin_storage_objects", force: :cascade do |t|
+    t.bigint "byte_size", null: false
+    t.string "checksum_sha256", null: false
+    t.string "content_type", null: false
+    t.datetime "created_at", null: false
+    t.text "encrypted_metadata", null: false
+    t.datetime "expires_at"
+    t.string "key", limit: 512, null: false
+    t.integer "lock_version", default: 0, null: false
+    t.string "owner_plugin_id", null: false
+    t.string "public_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["expires_at"], name: "index_plugin_storage_objects_on_expires_at"
+    t.index ["owner_plugin_id", "key"], name: "index_plugin_storage_objects_on_owner_plugin_id_and_key", unique: true
+    t.index ["public_id"], name: "index_plugin_storage_objects_on_public_id", unique: true
   end
 
   create_table "rate_limit_counters", force: :cascade do |t|
@@ -1864,27 +2311,317 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.check_constraint "request_id IS NULL OR request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_store_credit_transactions_request_id"
   end
 
-  create_table "store_fulfillment_attempts", force: :cascade do |t|
+  create_table "store_dispute_events", force: :cascade do |t|
+    t.bigint "actor_id"
     t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.string "from_status"
+    t.string "idempotency_key", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.text "note"
+    t.string "payload_digest", limit: 64
+    t.bigint "payment_webhook_event_id"
+    t.string "provider_event_id"
+    t.datetime "provider_occurred_at"
+    t.bigint "provider_sequence"
+    t.string "provider_status"
+    t.string "request_id"
+    t.string "source", null: false
+    t.bigint "store_dispute_id", null: false
+    t.string "to_status"
+    t.index ["actor_id"], name: "index_store_dispute_events_on_actor_id"
+    t.index ["idempotency_key"], name: "index_store_dispute_events_on_idempotency_key", unique: true
+    t.index ["payment_webhook_event_id"], name: "index_store_dispute_events_on_payment_webhook_event_id"
+    t.index ["provider_event_id"], name: "index_store_dispute_events_on_provider_event_id"
+    t.index ["request_id"], name: "index_store_dispute_events_on_request_id"
+    t.index ["store_dispute_id", "created_at"], name: "idx_store_dispute_events_timeline"
+    t.index ["store_dispute_id"], name: "index_store_dispute_events_on_store_dispute_id"
+    t.check_constraint "payload_digest IS NULL OR payload_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_dispute_events_digest"
+    t.check_constraint "source::text = ANY (ARRAY['channel'::character varying, 'manual'::character varying, 'policy'::character varying, 'system'::character varying]::text[])", name: "chk_store_dispute_events_source"
+  end
+
+  create_table "store_dispute_evidence", force: :cascade do |t|
+    t.integer "byte_size", null: false
+    t.text "content"
+    t.string "content_type", default: "text/plain", null: false
+    t.datetime "created_at", null: false
+    t.string "filename", null: false
+    t.string "idempotency_key", null: false
+    t.string "provider_reference"
+    t.string "public_id", null: false
+    t.datetime "purged_at"
+    t.datetime "retention_until"
+    t.string "sha256", limit: 64, null: false
+    t.bigint "store_dispute_id", null: false
+    t.string "submission_status", default: "submitted", null: false
+    t.datetime "submitted_at", null: false
+    t.bigint "submitted_by_id", null: false
+    t.string "title", null: false
+    t.datetime "updated_at", null: false
+    t.index ["idempotency_key"], name: "index_store_dispute_evidence_on_idempotency_key", unique: true
+    t.index ["public_id"], name: "index_store_dispute_evidence_on_public_id", unique: true
+    t.index ["retention_until", "purged_at"], name: "idx_store_dispute_evidence_retention"
+    t.index ["store_dispute_id"], name: "index_store_dispute_evidence_on_store_dispute_id"
+    t.index ["submitted_by_id"], name: "index_store_dispute_evidence_on_submitted_by_id"
+    t.check_constraint "byte_size >= 0", name: "chk_store_dispute_evidence_size"
+    t.check_constraint "sha256::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_dispute_evidence_digest"
+    t.check_constraint "submission_status::text = ANY (ARRAY['submitted'::character varying, 'failed'::character varying, 'purged'::character varying]::text[])", name: "chk_store_dispute_evidence_status"
+  end
+
+  create_table "store_dispute_rights_actions", force: :cascade do |t|
+    t.string "action", null: false
+    t.bigint "actor_id"
+    t.jsonb "after_state", default: {}, null: false
+    t.jsonb "before_state", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.string "idempotency_key", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.text "reason"
+    t.bigint "store_dispute_id", null: false
+    t.bigint "subject_id", null: false
+    t.string "subject_type", null: false
+    t.index ["actor_id"], name: "index_store_dispute_rights_actions_on_actor_id"
+    t.index ["idempotency_key"], name: "index_store_dispute_rights_actions_on_idempotency_key", unique: true
+    t.index ["store_dispute_id", "subject_type", "subject_id"], name: "idx_store_dispute_rights_subject"
+    t.index ["store_dispute_id"], name: "index_store_dispute_rights_actions_on_store_dispute_id"
+    t.index ["subject_type", "subject_id"], name: "index_store_dispute_rights_actions_on_subject"
+    t.check_constraint "action::text = ANY (ARRAY['freeze'::character varying, 'revoke'::character varying, 'restore'::character varying]::text[])", name: "chk_store_dispute_rights_action"
+  end
+
+  create_table "store_disputes", force: :cascade do |t|
+    t.datetime "accepted_loss_at"
+    t.bigint "accepted_loss_by_id"
+    t.integer "amount_cents", null: false
+    t.bigint "assigned_to_id"
+    t.datetime "closed_at"
+    t.bigint "closed_by_id"
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.datetime "evidence_due_at"
+    t.string "kind", default: "dispute", null: false
+    t.datetime "latest_provider_event_at"
+    t.string "latest_provider_event_id"
+    t.bigint "latest_provider_sequence"
+    t.boolean "legal_hold", default: false, null: false
+    t.integer "liability_cents", default: 0, null: false
+    t.integer "lock_version", default: 0, null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "offset_cents", default: 0, null: false
+    t.bigint "payment_record_id", null: false
+    t.string "provider", null: false
+    t.string "provider_dispute_id", null: false
+    t.string "provider_status"
+    t.string "public_id", null: false
+    t.string "reason_code"
+    t.string "resolution"
+    t.datetime "retention_until"
+    t.string "rights_status", default: "unchanged", null: false
+    t.string "risk_level", default: "high", null: false
+    t.string "status", default: "open", null: false
+    t.bigint "store_order_id", null: false
+    t.datetime "updated_at", null: false
+    t.index ["accepted_loss_by_id"], name: "index_store_disputes_on_accepted_loss_by_id"
+    t.index ["assigned_to_id", "status"], name: "idx_store_disputes_assignee_status"
+    t.index ["assigned_to_id"], name: "index_store_disputes_on_assigned_to_id"
+    t.index ["closed_by_id"], name: "index_store_disputes_on_closed_by_id"
+    t.index ["payment_record_id"], name: "index_store_disputes_on_payment_record_id"
+    t.index ["provider", "provider_dispute_id"], name: "idx_store_disputes_provider_identity", unique: true
+    t.index ["public_id"], name: "index_store_disputes_on_public_id", unique: true
+    t.index ["retention_until", "legal_hold"], name: "idx_store_disputes_retention"
+    t.index ["risk_level", "status"], name: "idx_store_disputes_risk_status"
+    t.index ["status", "evidence_due_at"], name: "idx_store_disputes_status_due"
+    t.index ["store_order_id"], name: "index_store_disputes_on_store_order_id"
+    t.check_constraint "amount_cents > 0 AND liability_cents >= 0 AND offset_cents >= 0 AND (liability_cents + offset_cents) = amount_cents", name: "chk_store_disputes_amount_conservation"
+    t.check_constraint "kind::text = ANY (ARRAY['dispute'::character varying, 'chargeback'::character varying]::text[])", name: "chk_store_disputes_kind"
+    t.check_constraint "resolution IS NULL OR (resolution::text = ANY (ARRAY['won'::character varying, 'lost'::character varying, 'withdrawn'::character varying, 'accepted_loss'::character varying]::text[]))", name: "chk_store_disputes_resolution"
+    t.check_constraint "rights_status::text = ANY (ARRAY['unchanged'::character varying, 'frozen'::character varying, 'revoked'::character varying, 'restored'::character varying]::text[])", name: "chk_store_disputes_rights_status"
+    t.check_constraint "risk_level::text = ANY (ARRAY['low'::character varying, 'medium'::character varying, 'high'::character varying, 'critical'::character varying]::text[])", name: "chk_store_disputes_risk"
+    t.check_constraint "status::text = ANY (ARRAY['open'::character varying, 'evidence_required'::character varying, 'evidence_submitted'::character varying, 'under_review'::character varying, 'won'::character varying, 'lost'::character varying, 'withdrawn'::character varying, 'closed'::character varying]::text[])", name: "chk_store_disputes_status"
+  end
+
+  create_table "store_finance_document_events", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.jsonb "after_state", default: {}, null: false
+    t.jsonb "before_state", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.string "event_type", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.text "reason"
+    t.string "request_id"
+    t.bigint "store_finance_document_id", null: false
+    t.index ["actor_id"], name: "index_store_finance_document_events_on_actor_id"
+    t.index ["request_id"], name: "index_store_finance_document_events_on_request_id", unique: true, where: "(request_id IS NOT NULL)"
+    t.index ["store_finance_document_id", "created_at"], name: "idx_finance_document_events_timeline"
+    t.index ["store_finance_document_id"], name: "idx_finance_document_events_document"
+    t.check_constraint "event_type::text = ANY (ARRAY['issued'::character varying, 'superseded'::character varying, 'voided'::character varying]::text[])", name: "chk_finance_document_events_type"
+  end
+
+  create_table "store_finance_documents", force: :cascade do |t|
+    t.string "channel", null: false
+    t.jsonb "content_snapshot", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.string "document_kind", null: false
+    t.string "document_number", null: false
+    t.integer "gross_amount_cents", null: false
+    t.datetime "issued_at", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.integer "net_amount_cents", null: false
+    t.string "public_id", null: false
+    t.datetime "retention_until", null: false
+    t.string "source_digest", null: false
+    t.string "status", default: "issued", null: false
+    t.bigint "store_finance_tax_snapshot_id", null: false
+    t.bigint "store_order_id", null: false
+    t.bigint "store_refund_id"
+    t.datetime "superseded_at"
+    t.bigint "supersedes_id"
+    t.integer "tax_amount_cents", null: false
+    t.datetime "updated_at", null: false
+    t.integer "version", default: 1, null: false
+    t.datetime "voided_at"
+    t.index ["channel", "currency", "issued_at"], name: "idx_finance_documents_channel_currency"
+    t.index ["document_kind", "status", "issued_at"], name: "idx_finance_documents_kind_status_time"
+    t.index ["document_number", "version"], name: "idx_finance_documents_number_version", unique: true
+    t.index ["public_id"], name: "index_store_finance_documents_on_public_id", unique: true
+    t.index ["retention_until"], name: "index_store_finance_documents_on_retention_until"
+    t.index ["store_finance_tax_snapshot_id"], name: "idx_finance_documents_tax_snapshot"
+    t.index ["store_order_id", "document_kind", "version"], name: "idx_finance_documents_order_kind_version", unique: true, where: "((document_kind)::text = 'invoice'::text)"
+    t.index ["store_order_id", "document_kind"], name: "idx_finance_documents_current_invoice", unique: true, where: "(((document_kind)::text = 'invoice'::text) AND ((status)::text = 'issued'::text))"
+    t.index ["store_order_id"], name: "index_store_finance_documents_on_store_order_id"
+    t.index ["store_refund_id", "document_kind", "version"], name: "idx_finance_documents_refund_kind_version", unique: true, where: "(store_refund_id IS NOT NULL)"
+    t.index ["store_refund_id", "document_kind"], name: "idx_finance_documents_current_refund", unique: true, where: "((store_refund_id IS NOT NULL) AND ((document_kind)::text = 'refund_receipt'::text) AND ((status)::text = 'issued'::text))"
+    t.index ["store_refund_id"], name: "index_store_finance_documents_on_store_refund_id"
+    t.index ["supersedes_id"], name: "idx_finance_documents_supersedes"
+    t.check_constraint "(net_amount_cents + tax_amount_cents) = gross_amount_cents", name: "chk_finance_document_conservation"
+    t.check_constraint "document_kind::text = 'invoice'::text AND store_refund_id IS NULL OR document_kind::text = 'refund_receipt'::text AND store_refund_id IS NOT NULL", name: "chk_finance_document_source"
+    t.check_constraint "document_kind::text = ANY (ARRAY['invoice'::character varying, 'refund_receipt'::character varying]::text[])", name: "chk_finance_documents_kind"
+    t.check_constraint "net_amount_cents >= 0 AND tax_amount_cents >= 0 AND gross_amount_cents >= 0", name: "chk_finance_document_amounts"
+    t.check_constraint "status::text = ANY (ARRAY['issued'::character varying, 'superseded'::character varying, 'voided'::character varying]::text[])", name: "chk_finance_documents_status"
+  end
+
+  create_table "store_finance_export_events", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.datetime "created_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.integer "progress_percent", null: false
+    t.string "request_id"
+    t.string "status", null: false
+    t.bigint "store_finance_export_id", null: false
+    t.index ["actor_id"], name: "index_store_finance_export_events_on_actor_id"
+    t.index ["store_finance_export_id", "created_at"], name: "idx_finance_export_events_timeline"
+    t.index ["store_finance_export_id"], name: "idx_finance_export_events_export"
+    t.check_constraint "progress_percent >= 0 AND progress_percent <= 100", name: "chk_finance_export_events_progress"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying, 'expired'::character varying, 'revoked'::character varying]::text[])", name: "chk_finance_export_events_status"
+  end
+
+  create_table "store_finance_exports", force: :cascade do |t|
+    t.integer "attempts", default: 0, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "error_code"
+    t.datetime "expires_at"
+    t.datetime "failed_at"
+    t.string "file_sha256"
+    t.jsonb "filters", default: {}, null: false
+    t.string "filters_digest", null: false
+    t.string "format", default: "csv", null: false
+    t.string "idempotency_key", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.integer "progress_percent", default: 0, null: false
+    t.string "public_id", null: false
+    t.datetime "requested_at", null: false
+    t.bigint "requested_by_id", null: false
+    t.datetime "retention_until", null: false
+    t.datetime "revoked_at"
+    t.integer "row_count"
+    t.datetime "started_at"
+    t.string "status", default: "queued", null: false
+    t.datetime "updated_at", null: false
+    t.index ["public_id"], name: "index_store_finance_exports_on_public_id", unique: true
+    t.index ["requested_by_id", "idempotency_key"], name: "idx_finance_exports_request_idempotency", unique: true
+    t.index ["requested_by_id", "status", "requested_at"], name: "idx_finance_exports_actor_status"
+    t.index ["requested_by_id"], name: "index_store_finance_exports_on_requested_by_id"
+    t.index ["retention_until"], name: "index_store_finance_exports_on_retention_until"
+    t.index ["status", "expires_at"], name: "idx_finance_exports_expiry"
+    t.check_constraint "attempts >= 0 AND (row_count IS NULL OR row_count >= 0)", name: "chk_finance_exports_counts"
+    t.check_constraint "format::text = 'csv'::text", name: "chk_finance_exports_format"
+    t.check_constraint "progress_percent >= 0 AND progress_percent <= 100", name: "chk_finance_exports_progress"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'completed'::character varying, 'failed'::character varying, 'expired'::character varying, 'revoked'::character varying]::text[])", name: "chk_finance_exports_status"
+  end
+
+  create_table "store_finance_tax_snapshots", force: :cascade do |t|
+    t.integer "calculation_version", default: 1, null: false
+    t.datetime "captured_at", null: false
+    t.datetime "created_at", null: false
+    t.string "currency", null: false
+    t.integer "gross_cents", null: false
+    t.string "jurisdiction_country", null: false
+    t.string "jurisdiction_region"
+    t.jsonb "line_snapshot", default: [], null: false
+    t.string "pricing_mode", default: "inclusive", null: false
+    t.datetime "retention_until", null: false
+    t.string "rounding_mode", default: "half_up", null: false
+    t.string "source_digest", null: false
+    t.bigint "store_order_id", null: false
+    t.integer "tax_cents", null: false
+    t.string "tax_code", default: "standard", null: false
+    t.integer "tax_rate_bps", null: false
+    t.integer "taxable_base_cents", null: false
+    t.datetime "updated_at", null: false
+    t.index ["jurisdiction_country", "jurisdiction_region", "tax_rate_bps"], name: "idx_finance_tax_snapshots_dimensions"
+    t.index ["retention_until"], name: "index_store_finance_tax_snapshots_on_retention_until"
+    t.index ["store_order_id"], name: "idx_finance_tax_snapshots_order", unique: true
+    t.check_constraint "(taxable_base_cents + tax_cents) = gross_cents", name: "chk_finance_tax_conservation"
+    t.check_constraint "pricing_mode::text = 'inclusive'::text AND rounding_mode::text = 'half_up'::text", name: "chk_finance_tax_calculation_contract"
+    t.check_constraint "tax_rate_bps >= 0 AND tax_rate_bps <= 100000", name: "chk_finance_tax_rate"
+    t.check_constraint "taxable_base_cents >= 0 AND tax_cents >= 0 AND gross_cents >= 0", name: "chk_finance_tax_amounts"
+  end
+
+  create_table "store_fulfillment_attempts", force: :cascade do |t|
+    t.string "action", default: "dispatch", null: false
+    t.bigint "actor_id"
+    t.integer "attempt_number", null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "error_code"
+    t.string "idempotency_key", null: false
+    t.datetime "next_retry_at"
+    t.text "reason"
     t.jsonb "request_data", default: {}, null: false
+    t.string "request_id"
     t.jsonb "response_data", default: {}, null: false
+    t.jsonb "result_summary", default: {}, null: false
+    t.datetime "started_at"
     t.string "status", null: false
     t.bigint "store_fulfillment_id", null: false
+    t.string "trigger", default: "automatic", null: false
     t.datetime "updated_at", null: false
+    t.index ["actor_id"], name: "index_store_fulfillment_attempts_on_actor_id"
+    t.index ["idempotency_key"], name: "index_store_fulfillment_attempts_on_idempotency_key", unique: true
+    t.index ["request_id"], name: "index_store_fulfillment_attempts_on_request_id"
+    t.index ["store_fulfillment_id", "attempt_number"], name: "idx_fulfillment_attempt_number", unique: true
     t.index ["store_fulfillment_id"], name: "index_store_fulfillment_attempts_on_store_fulfillment_id"
   end
 
   create_table "store_fulfillments", force: :cascade do |t|
     t.integer "attempts_count", default: 0, null: false
+    t.text "cancel_reason"
+    t.datetime "cancelled_at"
     t.datetime "created_at", null: false
     t.string "delivery_id", null: false
     t.datetime "fulfilled_at"
     t.text "last_error"
+    t.jsonb "last_result_summary", default: {}, null: false
+    t.integer "lock_version", default: 0, null: false
+    t.integer "max_attempts", default: 5, null: false
+    t.datetime "next_attempt_at"
     t.string "status", default: "pending", null: false
     t.bigint "store_order_id", null: false
     t.bigint "store_order_item_id", null: false
     t.datetime "updated_at", null: false
     t.index ["delivery_id"], name: "index_store_fulfillments_on_delivery_id", unique: true
+    t.index ["status", "next_attempt_at"], name: "idx_store_fulfillments_recovery"
     t.index ["store_order_id"], name: "index_store_fulfillments_on_store_order_id"
     t.index ["store_order_item_id"], name: "index_store_fulfillments_on_store_order_item_id", unique: true
   end
@@ -1918,6 +2655,96 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["created_by_id"], name: "index_store_gift_cards_on_created_by_id"
     t.index ["owner_user_id"], name: "index_store_gift_cards_on_owner_user_id"
     t.index ["source_order_item_id"], name: "index_store_gift_cards_on_source_order_item_id"
+  end
+
+  create_table "store_high_risk_operations", force: :cascade do |t|
+    t.string "action", limit: 64, null: false
+    t.bigint "actor_id", null: false
+    t.jsonb "after_state", default: {}, null: false
+    t.string "authorization_digest", limit: 64, null: false
+    t.jsonb "before_state", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.text "reason", null: false
+    t.string "request_fingerprint", limit: 64, null: false
+    t.string "request_id", limit: 36, null: false
+    t.bigint "resource_id"
+    t.string "resource_public_id"
+    t.string "resource_type"
+    t.jsonb "target_snapshot", default: {}, null: false
+    t.bigint "target_user_id"
+    t.datetime "updated_at", null: false
+    t.index ["action"], name: "index_store_high_risk_operations_on_action"
+    t.index ["actor_id"], name: "index_store_high_risk_operations_on_actor_id"
+    t.index ["authorization_digest"], name: "idx_store_high_risk_operations_authorization", unique: true
+    t.index ["request_fingerprint"], name: "idx_store_high_risk_operations_fingerprint"
+    t.index ["request_id"], name: "idx_store_high_risk_operations_request", unique: true
+    t.index ["resource_type", "resource_id"], name: "idx_store_high_risk_operations_resource"
+    t.index ["target_user_id"], name: "index_store_high_risk_operations_on_target_user_id"
+    t.check_constraint "authorization_digest::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_high_risk_operations_authorization"
+    t.check_constraint "request_fingerprint::text ~ '^[0-9a-f]{64}$'::text", name: "chk_store_high_risk_operations_fingerprint"
+    t.check_constraint "request_id::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'::text", name: "chk_store_high_risk_operations_request_id"
+  end
+
+  create_table "store_inventory_movements", force: :cascade do |t|
+    t.bigint "actor_id"
+    t.integer "available_after"
+    t.integer "available_delta", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.string "idempotency_key", null: false
+    t.jsonb "metadata", default: {}, null: false
+    t.string "movement_type", null: false
+    t.string "public_id", null: false
+    t.integer "quantity", null: false
+    t.text "reason"
+    t.string "request_id"
+    t.integer "reserved_after", default: 0, null: false
+    t.integer "reserved_delta", default: 0, null: false
+    t.integer "sold_after", default: 0, null: false
+    t.integer "sold_delta", default: 0, null: false
+    t.bigint "store_inventory_reservation_id"
+    t.bigint "store_order_id"
+    t.bigint "store_order_item_id"
+    t.bigint "target_id", null: false
+    t.string "target_type", null: false
+    t.index ["actor_id"], name: "index_store_inventory_movements_on_actor_id"
+    t.index ["idempotency_key"], name: "index_store_inventory_movements_on_idempotency_key", unique: true
+    t.index ["public_id"], name: "index_store_inventory_movements_on_public_id", unique: true
+    t.index ["request_id"], name: "index_store_inventory_movements_on_request_id"
+    t.index ["store_inventory_reservation_id"], name: "idx_on_store_inventory_reservation_id_fcf435c2a7"
+    t.index ["store_order_id"], name: "index_store_inventory_movements_on_store_order_id"
+    t.index ["store_order_item_id"], name: "index_store_inventory_movements_on_store_order_item_id"
+    t.index ["target_type", "target_id", "created_at"], name: "idx_inventory_movements_target_time"
+    t.index ["target_type", "target_id"], name: "index_store_inventory_movements_on_target"
+    t.check_constraint "movement_type::text = ANY (ARRAY['reserve'::character varying, 'confirm'::character varying, 'release'::character varying, 'expire'::character varying, 'refund'::character varying, 'damage'::character varying, 'adjustment'::character varying, 'recovery'::character varying]::text[])", name: "chk_inventory_movements_type"
+    t.check_constraint "quantity > 0", name: "chk_inventory_movements_quantity"
+  end
+
+  create_table "store_inventory_reservations", force: :cascade do |t|
+    t.datetime "confirmed_at"
+    t.datetime "created_at", null: false
+    t.datetime "expires_at", null: false
+    t.string "idempotency_key", null: false
+    t.integer "lock_version", default: 0, null: false
+    t.integer "quantity", null: false
+    t.string "release_reason"
+    t.datetime "released_at"
+    t.datetime "reserved_at", null: false
+    t.string "status", default: "active", null: false
+    t.bigint "store_order_id", null: false
+    t.bigint "store_order_item_id", null: false
+    t.bigint "target_id", null: false
+    t.string "target_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["idempotency_key"], name: "index_store_inventory_reservations_on_idempotency_key", unique: true
+    t.index ["status", "expires_at"], name: "idx_inventory_reservations_expiry"
+    t.index ["store_order_id"], name: "index_store_inventory_reservations_on_store_order_id"
+    t.index ["store_order_item_id"], name: "idx_inventory_reservations_order_item", unique: true
+    t.index ["store_order_item_id"], name: "index_store_inventory_reservations_on_store_order_item_id"
+    t.index ["target_type", "target_id", "status"], name: "idx_inventory_reservations_target_status"
+    t.index ["target_type", "target_id"], name: "index_store_inventory_reservations_on_target"
+    t.check_constraint "quantity > 0", name: "chk_inventory_reservations_quantity"
+    t.check_constraint "status::text = ANY (ARRAY['active'::character varying, 'confirmed'::character varying, 'released'::character varying, 'expired'::character varying]::text[])", name: "chk_inventory_reservations_status"
   end
 
   create_table "store_membership_types", force: :cascade do |t|
@@ -2206,7 +3033,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.index ["status", "processing_started_at"], name: "index_store_refunds_on_status_and_processing_started_at"
     t.index ["store_order_id"], name: "index_store_refunds_on_store_order_id"
     t.check_constraint "amount_cents > 0", name: "store_refunds_amount_cents_positive"
-    t.check_constraint "restoration_status::text = ANY (ARRAY['pending'::character varying::text, 'processing'::character varying::text, 'failed'::character varying::text, 'completed'::character varying::text])", name: "store_refunds_restoration_status_valid"
+    t.check_constraint "restoration_status::text = ANY (ARRAY['pending'::character varying, 'processing'::character varying, 'failed'::character varying, 'completed'::character varying]::text[])", name: "store_refunds_restoration_status_valid"
   end
 
   create_table "store_review_helpful_votes", force: :cascade do |t|
@@ -2269,6 +3096,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.datetime "created_at", null: false
     t.datetime "expires_at"
     t.datetime "revoked_at"
+    t.datetime "risk_held_at"
+    t.bigint "risk_hold_dispute_id"
     t.bigint "source_order_item_id"
     t.datetime "starts_at", null: false
     t.bigint "store_product_id", null: false
@@ -2276,6 +3105,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.bigint "user_id", null: false
     t.index ["expires_at"], name: "index_store_user_entitlements_on_expires_at"
     t.index ["revoked_at"], name: "index_store_user_entitlements_on_revoked_at"
+    t.index ["risk_held_at"], name: "index_store_user_entitlements_on_risk_held_at"
+    t.index ["risk_hold_dispute_id"], name: "index_store_user_entitlements_on_risk_hold_dispute_id"
     t.index ["source_order_item_id"], name: "idx_user_entitlements_source_order_item_unique", unique: true, where: "(source_order_item_id IS NOT NULL)"
     t.index ["store_product_id"], name: "index_store_user_entitlements_on_store_product_id"
     t.index ["user_id", "store_product_id"], name: "index_store_user_entitlements_on_user_id_and_store_product_id"
@@ -2285,6 +3116,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   create_table "store_user_memberships", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "expires_at"
+    t.datetime "risk_held_at"
+    t.bigint "risk_hold_dispute_id"
     t.string "source", default: "purchase", null: false
     t.bigint "source_order_item_id"
     t.datetime "starts_at", null: false
@@ -2293,6 +3126,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["expires_at"], name: "index_store_user_memberships_on_expires_at"
+    t.index ["risk_held_at"], name: "index_store_user_memberships_on_risk_held_at"
+    t.index ["risk_hold_dispute_id"], name: "index_store_user_memberships_on_risk_hold_dispute_id"
     t.index ["source_order_item_id"], name: "idx_user_memberships_source_order_item_unique", unique: true, where: "(source_order_item_id IS NOT NULL)"
     t.index ["store_membership_type_id"], name: "index_store_user_memberships_on_store_membership_type_id"
     t.index ["user_id", "store_membership_type_id", "status"], name: "idx_user_memberships_user_type_status"
@@ -2333,6 +3168,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   end
 
   create_table "users", force: :cascade do |t|
+    t.datetime "account_closed_at"
+    t.string "account_closure_outcome"
     t.string "account_type", default: "member", null: false
     t.datetime "ban_expires_at"
     t.text "ban_reason"
@@ -2343,6 +3180,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
     t.boolean "developer_mode_email_verified", default: false, null: false
+    t.string "developer_mode_persona"
     t.boolean "developer_mode_relaxed_password", default: false, null: false
     t.jsonb "dismissed_forum_notice_ids", default: [], null: false
     t.jsonb "dismissed_global_announcement_ids", default: [], null: false
@@ -2374,6 +3212,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.string "password_digest", null: false
     t.datetime "password_reset_sent_at"
     t.string "password_reset_token_digest"
+    t.bigint "permission_version", default: 0, null: false
     t.string "public_id", null: false
     t.text "recovery_codes_ciphertext"
     t.boolean "require_totp", default: false, null: false
@@ -2381,21 +3220,28 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
     t.integer "store_credit_cents", default: 0, null: false
     t.string "time_zone", default: "Asia/Shanghai", null: false
     t.boolean "totp_enabled", default: false, null: false
+    t.datetime "totp_recovery_sent_at"
+    t.string "totp_recovery_token_digest"
     t.string "totp_secret_ciphertext"
     t.datetime "updated_at", null: false
     t.string "username", null: false
     t.string "wishlist_share_token"
+    t.index ["account_closure_outcome"], name: "index_users_on_account_closure_outcome"
     t.index ["account_type"], name: "index_users_on_account_type"
     t.index ["compare_share_token"], name: "index_users_on_compare_share_token", unique: true
     t.index ["deleted_at"], name: "index_users_on_deleted_at"
     t.index ["developer_mode_email_verified", "developer_mode_relaxed_password"], name: "index_users_on_developer_mode_credentials"
+    t.index ["developer_mode_persona"], name: "idx_users_unique_developer_mode_persona", unique: true, where: "(developer_mode_persona IS NOT NULL)"
     t.index ["email"], name: "index_users_on_email", unique: true
     t.index ["last_seen_at"], name: "index_users_on_last_seen_at"
     t.index ["public_id"], name: "index_users_on_public_id", unique: true
     t.index ["status"], name: "index_users_on_status"
+    t.index ["totp_recovery_token_digest"], name: "index_users_on_totp_recovery_token_digest", unique: true, where: "(totp_recovery_token_digest IS NOT NULL)"
     t.index ["username", "display_name"], name: "idx_users_suggest_names_trgm", opclass: :gin_trgm_ops, where: "((status)::text = 'active'::text)", using: :gin
     t.index ["username"], name: "index_users_on_username", unique: true
     t.index ["wishlist_share_token"], name: "index_users_on_wishlist_share_token", unique: true
+    t.check_constraint "developer_mode_persona IS NULL OR (developer_mode_persona::text = ANY (ARRAY['owner'::character varying, 'moderator'::character varying, 'member'::character varying]::text[]))", name: "users_developer_mode_persona"
+    t.check_constraint "permission_version >= 0", name: "users_permission_version_nonnegative"
   end
 
   create_table "webhook_subscriptions", force: :cascade do |t|
@@ -2511,6 +3357,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   add_foreign_key "community_group_memberships", "community_user_groups"
   add_foreign_key "community_group_memberships", "users"
   add_foreign_key "community_push_subscriptions", "users"
+  add_foreign_key "data_content_lifecycle_records", "users", column: "deleted_by_id"
+  add_foreign_key "data_content_lifecycle_records", "users", column: "purged_by_id"
+  add_foreign_key "data_content_lifecycle_records", "users", column: "restored_by_id"
+  add_foreign_key "data_retention_holds", "users", column: "created_by_id"
+  add_foreign_key "data_retention_holds", "users", column: "released_by_id"
   add_foreign_key "email_bans", "users", column: "banned_by_id"
   add_foreign_key "forum_bookmarks", "forum_posts"
   add_foreign_key "forum_bookmarks", "forum_topics"
@@ -2532,6 +3383,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   add_foreign_key "forum_event_webhook_deliveries", "forum_topics"
   add_foreign_key "forum_messages", "forum_conversations"
   add_foreign_key "forum_messages", "users"
+  add_foreign_key "forum_moderation_case_notes", "forum_moderation_cases", column: "moderation_case_id"
+  add_foreign_key "forum_moderation_case_notes", "users", column: "author_id"
+  add_foreign_key "forum_moderation_cases", "forum_sections"
+  add_foreign_key "forum_moderation_cases", "users", column: "assignee_id"
+  add_foreign_key "forum_moderation_cases", "users", column: "target_user_id"
+  add_foreign_key "forum_moderation_operations", "users", column: "actor_id"
   add_foreign_key "forum_mutes", "forum_sections"
   add_foreign_key "forum_mutes", "users"
   add_foreign_key "forum_mutes", "users", column: "created_by_id"
@@ -2601,6 +3458,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   add_foreign_key "forum_uploads", "forum_post_attachments", on_delete: :nullify
   add_foreign_key "forum_uploads", "forum_posts", on_delete: :nullify
   add_foreign_key "forum_uploads", "users"
+  add_foreign_key "forum_uploads", "users", column: "manual_review_revoked_by_id", on_delete: :nullify
+  add_foreign_key "forum_uploads", "users", column: "manual_reviewed_by_id", on_delete: :nullify
   add_foreign_key "forum_user_badges", "forum_badges"
   add_foreign_key "forum_user_badges", "users"
   add_foreign_key "forum_user_blocks", "users", column: "blocked_id"
@@ -2615,6 +3474,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   add_foreign_key "forum_user_silences", "users", column: "created_by_id"
   add_foreign_key "forum_user_warnings", "users"
   add_foreign_key "forum_user_warnings", "users", column: "issuer_id"
+  add_foreign_key "identity_data_exports", "users"
   add_foreign_key "installation_locks", "users", column: "locked_by_id"
   add_foreign_key "ip_bans", "users", column: "banned_by_id"
   add_foreign_key "minecraft_connector_tasks", "minecraft_servers"
@@ -2656,6 +3516,17 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   add_foreign_key "payment_reconciliation_observations", "payment_reconciliation_runs", column: "run_id"
   add_foreign_key "payment_records", "store_orders"
   add_foreign_key "payment_webhook_events", "users", column: "last_replayed_by_id"
+  add_foreign_key "plugin_contributions", "plugin_releases", on_delete: :cascade
+  add_foreign_key "plugin_files", "plugin_releases", on_delete: :cascade
+  add_foreign_key "plugin_generations", "plugin_generations", column: "parent_generation_id"
+  add_foreign_key "plugin_generations", "users", column: "initiated_by_id"
+  add_foreign_key "plugin_lifecycle_runs", "plugin_installations"
+  add_foreign_key "plugin_lifecycle_runs", "users", column: "actor_id"
+  add_foreign_key "plugin_lifecycle_steps", "plugin_lifecycle_runs"
+  add_foreign_key "plugin_maintenance_windows", "users", column: "actor_id"
+  add_foreign_key "plugin_outbound_deliveries", "users"
+  add_foreign_key "plugin_process_acks", "plugin_generations"
+  add_foreign_key "plugin_releases", "plugin_installations", on_delete: :cascade
   add_foreign_key "plugin_setting_versions", "plugin_setting_versions", column: "migration_source_id"
   add_foreign_key "plugin_setting_versions", "plugin_setting_versions", column: "rollback_source_id"
   add_foreign_key "plugin_setting_versions", "users", column: "actor_id"
@@ -2669,7 +3540,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   add_foreign_key "store_credit_transactions", "store_orders"
   add_foreign_key "store_credit_transactions", "users"
   add_foreign_key "store_credit_transactions", "users", column: "actor_id"
+  add_foreign_key "store_dispute_events", "payment_webhook_events"
+  add_foreign_key "store_dispute_events", "store_disputes"
+  add_foreign_key "store_dispute_events", "users", column: "actor_id"
+  add_foreign_key "store_dispute_evidence", "store_disputes"
+  add_foreign_key "store_dispute_evidence", "users", column: "submitted_by_id"
+  add_foreign_key "store_dispute_rights_actions", "store_disputes"
+  add_foreign_key "store_dispute_rights_actions", "users", column: "actor_id"
+  add_foreign_key "store_disputes", "payment_records"
+  add_foreign_key "store_disputes", "store_orders"
+  add_foreign_key "store_disputes", "users", column: "accepted_loss_by_id"
+  add_foreign_key "store_disputes", "users", column: "assigned_to_id"
+  add_foreign_key "store_disputes", "users", column: "closed_by_id"
+  add_foreign_key "store_finance_document_events", "store_finance_documents"
+  add_foreign_key "store_finance_document_events", "users", column: "actor_id"
+  add_foreign_key "store_finance_documents", "store_finance_documents", column: "supersedes_id"
+  add_foreign_key "store_finance_documents", "store_finance_tax_snapshots"
+  add_foreign_key "store_finance_documents", "store_orders"
+  add_foreign_key "store_finance_documents", "store_refunds"
+  add_foreign_key "store_finance_export_events", "store_finance_exports"
+  add_foreign_key "store_finance_export_events", "users", column: "actor_id"
+  add_foreign_key "store_finance_exports", "users", column: "requested_by_id"
+  add_foreign_key "store_finance_tax_snapshots", "store_orders"
   add_foreign_key "store_fulfillment_attempts", "store_fulfillments"
+  add_foreign_key "store_fulfillment_attempts", "users", column: "actor_id"
   add_foreign_key "store_fulfillments", "store_order_items"
   add_foreign_key "store_fulfillments", "store_orders"
   add_foreign_key "store_gift_card_transactions", "store_gift_cards"
@@ -2677,6 +3571,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   add_foreign_key "store_gift_cards", "store_order_items", column: "source_order_item_id"
   add_foreign_key "store_gift_cards", "users", column: "created_by_id"
   add_foreign_key "store_gift_cards", "users", column: "owner_user_id"
+  add_foreign_key "store_high_risk_operations", "users", column: "actor_id"
+  add_foreign_key "store_high_risk_operations", "users", column: "target_user_id"
+  add_foreign_key "store_inventory_movements", "store_inventory_reservations"
+  add_foreign_key "store_inventory_movements", "store_order_items"
+  add_foreign_key "store_inventory_movements", "store_orders"
+  add_foreign_key "store_inventory_movements", "users", column: "actor_id"
+  add_foreign_key "store_inventory_reservations", "store_order_items"
+  add_foreign_key "store_inventory_reservations", "store_orders"
   add_foreign_key "store_order_events", "store_orders"
   add_foreign_key "store_order_events", "users", column: "actor_id"
   add_foreign_key "store_order_items", "store_orders"
@@ -2720,9 +3622,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_002000) do
   add_foreign_key "store_stock_alerts", "store_product_variants"
   add_foreign_key "store_stock_alerts", "store_products"
   add_foreign_key "store_stock_alerts", "users"
+  add_foreign_key "store_user_entitlements", "store_disputes", column: "risk_hold_dispute_id"
   add_foreign_key "store_user_entitlements", "store_order_items", column: "source_order_item_id"
   add_foreign_key "store_user_entitlements", "store_products"
   add_foreign_key "store_user_entitlements", "users"
+  add_foreign_key "store_user_memberships", "store_disputes", column: "risk_hold_dispute_id"
   add_foreign_key "store_user_memberships", "store_membership_types"
   add_foreign_key "store_user_memberships", "store_order_items", column: "source_order_item_id"
   add_foreign_key "store_user_memberships", "users"

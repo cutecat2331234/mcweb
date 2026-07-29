@@ -39,9 +39,9 @@ module Minecraft
       uuid = normalize_uuid(payload["uuid"])
       roster = Array(payload["online_player_uuids"]).map { |value| normalize_uuid(value) }
 
-      return ServiceResult.failure(error: "Player is not listed as online on this server.") if uuid.blank?
-      return ServiceResult.failure(error: "online_player_uuids is required.") if roster.empty?
-      return ServiceResult.failure(error: "Player is not listed as online on this server.") unless roster.include?(uuid)
+      return ServiceResult.failure(error: :player_is_not_listed_as_online_on_this_server) if uuid.blank?
+      return ServiceResult.failure(error: :online_player_uuids_is_required) if roster.empty?
+      return ServiceResult.failure(error: :player_is_not_listed_as_online_on_this_server) unless roster.include?(uuid)
 
       record!(server: server, uuids: roster)
       ServiceResult.success

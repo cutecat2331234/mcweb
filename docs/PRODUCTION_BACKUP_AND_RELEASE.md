@@ -237,7 +237,24 @@ sudo /opt/mcweb/current/bin/rollback \
 
 ## 上线前必须补做的真实验证
 
-仓库合同测试只能证明脚本可解析、危险默认值与操作顺序没有回退，不能代替：
+仓库现在提供可重复的真实依赖演练：
+
+```bash
+bash scripts/run-production-acceptance.sh
+```
+
+它会在唯一临时 Compose project 中构建生产镜像，启动 PostgreSQL 18、Redis 8 和
+带临时 TLS 的 S3 兼容存储，随后执行全新建库、migration 基线升级、对象写读、
+`bin/backup`、verify-only 和空库 `bin/restore`。对象存储不可达、错误确认、
+非空目标库和 Redis 不可达必须失败。手动 GitHub Actions 入口是
+`.github/workflows/production-acceptance.yml`。
+
+该脚本要求 Docker Compose、PostgreSQL 18 client、OpenSSL、Ruby 和已安装 bundle，
+并只允许 `mcweb_acceptance_*` 数据库。当前开发机没有 Docker，因此截至
+2026-07-29 尚无本机真实运行成功记录；静态合同测试通过不能替代 workflow 结果。
+详细边界见 [`QUALITY_ACCEPTANCE.md`](QUALITY_ACCEPTANCE.md)。
+
+即使上述自动演练通过，也不能代替：
 
 - 在与生产同版本 PostgreSQL 上完成 dump、空库恢复、表数量/关键记录比对并记录
   RPO/RTO；

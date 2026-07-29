@@ -45,9 +45,18 @@ test('attachment retry actions use Arco confirmation and stay permission-driven 
 
 test('quarantine release keeps the review form open on JSON errors and reloads only queue props', () => {
   assert.match(source, /HttpError, postJson/)
-  assert.match(source, /await postJson<\{ released: true \}>/)
+  assert.match(source, /await postJson<\{ released\?: true; revoked\?: true \}>/)
   assert.match(source, /releaseError\.value = releaseErrorMessage\(error\)/)
   assert.match(source, /v-if="releaseError"/)
   assert.match(source, /router\.reload\(\{[\s\S]*only: \['uploads', 'pagination', 'filterCounts', 'summary', 'quotaUsage'\]/)
   assert.doesNotMatch(source, /router\.post\(\s*upload\.actions\.release_quarantine_url/)
+})
+
+test('manual release state is visible and revocation uses the same audited modal flow', () => {
+  assert.match(source, /manual_review_status: 'none' \| 'released' \| 'revoked'/)
+  assert.match(source, /actions\.revoke_release_url/)
+  assert.match(source, /openRevokeReview/)
+  assert.match(source, /expectedReviewConfirmation/)
+  assert.match(source, /admin\.attachments\.revokeWarning/)
+  assert.match(source, /reviewMode === 'release'/)
 })

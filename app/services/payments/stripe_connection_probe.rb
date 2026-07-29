@@ -40,7 +40,7 @@ module Payments
       actual_mode = livemode ? "live" : "test"
       unless actual_mode == @expected_mode
         return ServiceResult.failure(
-          error: "Stripe returned a different environment than the configured mode.",
+          error: :stripe_returned_a_different_environment_than_the_configured_mode,
           code: "environment_mismatch"
         )
       end

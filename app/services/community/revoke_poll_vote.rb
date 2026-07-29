@@ -8,11 +8,11 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "You are not allowed to vote in this topic.") unless PollParticipation.allowed?(user: @user, poll: @poll)
-      return ServiceResult.failure(error: "Poll is closed.") unless @poll.open?
+      return ServiceResult.failure(error: :cannot_vote_in_topic) unless PollParticipation.allowed?(user: @user, poll: @poll)
+      return ServiceResult.failure(error: :poll_closed) unless @poll.open?
 
       removed = @poll.votes.where(user: @user).destroy_all.size
-      return ServiceResult.failure(error: "You have not voted.") if removed.zero?
+      return ServiceResult.failure(error: :you_have_not_voted) if removed.zero?
 
       ServiceResult.success
     end

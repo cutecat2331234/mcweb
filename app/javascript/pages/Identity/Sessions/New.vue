@@ -94,6 +94,9 @@ function submit() {
         <Link :href="routes.resendVerification" class="text-muted-foreground hover:text-foreground">
           {{ t('identity.resendVerification.submit') }}
         </Link>
+        <Link :href="routes.totpRecoveryRequest" class="text-muted-foreground hover:text-foreground">
+          {{ t('auth.signIn.lostTwoFactor') }}
+        </Link>
       </div>
     </div>
   </form>

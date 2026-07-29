@@ -16,12 +16,25 @@ module Community
     end
 
     def call
+      return call_core unless plugin_service_decorators_available?
+
+      Mcweb::Plugins.call_service(
+        "forum.topic.edit",
+        input: plugin_attributes,
+        context: { user: @user, topic: @topic }
+      ) do |input, _context|
+        apply_plugin_attributes!(input)
+        call_core
+      end
+    end
+
+    def call_core
       unless Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
-      return ServiceResult.failure(error: "You cannot edit this topic.") unless can_edit?
+      return ServiceResult.failure(error: :this_topic_is_archived) if @topic.archived_at.present?
+      return ServiceResult.failure(error: :you_cannot_edit_this_topic) unless can_edit?
 
       tag_result = nil
       poll_result = nil
@@ -65,6 +78,25 @@ module Community
 
     private
 
+    def plugin_service_decorators_available?
+      defined?(Mcweb::Plugins) && Mcweb::Plugins.respond_to?(:call_service)
+    end
+
+    def plugin_attributes
+      {
+        title: @title,
+        title_provided: !@title.nil?,
+        tag_names: @tag_names,
+        tag_names_provided: !@tag_names.nil?,
+        prefix: @prefix,
+        prefix_provided: !@prefix.nil?,
+        poll_params: @poll_params,
+        poll_params_provided: !@poll_params.nil?,
+        custom_fields: @custom_fields.equal?(NOT_PROVIDED) ? nil : @custom_fields,
+        custom_fields_provided: !@custom_fields.equal?(NOT_PROVIDED)
+      }
+    end
+
     def can_edit?
       Community::SectionModeration.can_edit_topic?(user: @user, topic: @topic)
     end
@@ -81,20 +113,15 @@ module Community
 
       filtered = Mcweb::Plugins.apply_filter(
         "forum.topic.edit.attributes",
-        {
-          title: @title,
-          title_provided: !@title.nil?,
-          tag_names: @tag_names,
-          tag_names_provided: !@tag_names.nil?,
-          prefix: @prefix,
-          prefix_provided: !@prefix.nil?,
-          poll_params: @poll_params,
-          poll_params_provided: !@poll_params.nil?,
-          custom_fields: @custom_fields.equal?(NOT_PROVIDED) ? nil : @custom_fields,
-          custom_fields_provided: !@custom_fields.equal?(NOT_PROVIDED)
-        },
+        plugin_attributes,
         context: { user: @user, topic: @topic }
       )
+      apply_plugin_attributes!(filtered)
+    rescue StandardError => e
+      Rails.logger.error("[mcweb.plugins] forum.topic.edit.attributes host integration failed: #{e.class}: #{e.message}")
+    end
+
+    def apply_plugin_attributes!(filtered)
       return unless filtered.is_a?(Hash)
 
       boolean = ActiveModel::Type::Boolean.new
@@ -120,8 +147,6 @@ module Community
       @prefix = prefix
       @poll_params = poll_params
       @custom_fields = custom_fields
-    rescue StandardError => e
-      Rails.logger.error("[mcweb.plugins] forum.topic.edit.attributes host integration failed: #{e.class}: #{e.message}")
     end
   end
 end

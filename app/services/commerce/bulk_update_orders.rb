@@ -8,12 +8,12 @@ module Commerce
 
 
 
-    def initialize(actor:, order_public_ids:, action:)
+    def initialize(actor:, order_public_ids:, action:, reason: nil, idempotency_key: nil)
       @actor = actor
-
       @order_public_ids = Array(order_public_ids).map(&:to_s).uniq
-
       @action = action.to_s
+      @reason = reason.to_s.strip.presence || "staff_bulk"
+      @idempotency_key = idempotency_key.to_s.presence
     end
 
 
@@ -65,7 +65,7 @@ module Commerce
 
 
 
-        Commerce::CancelOrder.call(order: order, actor: @actor, reason: "staff_bulk")
+        Commerce::CancelOrder.call(order: order, actor: @actor, reason: @reason)
 
       when "mark_fulfilled"
 
@@ -176,6 +176,12 @@ module Commerce
 
             raise ActiveRecord::Rollback
 
+          end
+
+          inventory_result = Commerce::ConfirmInventoryReservations.call(order: order)
+          unless inventory_result.success?
+            mark_paid_error = inventory_result.error
+            raise ActiveRecord::Rollback
           end
         end
 

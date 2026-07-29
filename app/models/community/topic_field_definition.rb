@@ -78,13 +78,13 @@ module Community
     end
 
     def key_is_immutable
-      errors.add(:key, "cannot be changed after creation") if will_save_change_to_key?
+      errors.add(:key, I18n.t("mcweb.validation_errors.cannot_be_changed_after_creation")) if will_save_change_to_key?
     end
 
     def choices_are_present_for_select
       return unless field_type == "select" && choice_list.empty?
 
-      errors.add(:choices, "must contain at least one option")
+      errors.add(:choices, I18n.t("mcweb.validation_errors.must_contain_at_least_one_option"))
     end
   end
 end

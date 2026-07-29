@@ -309,7 +309,8 @@ class ConnectorEventsEventIdTest < ActionDispatch::IntegrationTest
          headers: connector_headers(payload)
 
     assert_response :unprocessable_entity
-    assert_includes response.parsed_body["error"], "event_id"
+    assert_equal I18n.t("mcweb.user_copy.event_id_required"),
+      response.parsed_body["error"]
   end
 
   private

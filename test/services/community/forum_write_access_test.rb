@@ -75,7 +75,8 @@ module Community
       end
 
       assert_predicate result, :failure?
-      assert_equal "You are not allowed to reply in this section.", result.error
+      assert_equal I18n.t("mcweb.services.errors.you_are_not_allowed_to_reply_in_this_section"),
+        result.error
     end
 
     test "published unlisted topics remain directly readable and replyable" do
@@ -160,11 +161,13 @@ module Community
           body: "Archived mutation by #{actor.id}"
         )
         assert_predicate edit_result, :failure?
-        assert_equal "Post not available.", edit_result.error
+        assert_equal I18n.t("mcweb.services.errors.post_not_available"),
+          edit_result.error
 
         restore_result = Community::RestorePostEdit.call(user: actor, edit: edit)
         assert_predicate restore_result, :failure?
-        assert_equal "Post not available.", restore_result.error
+        assert_equal I18n.t("mcweb.services.errors.post_not_available"),
+          restore_result.error
       end
 
       topic_result = Community::EditTopic.call(
@@ -173,7 +176,8 @@ module Community
         title: "Archived title mutation"
       )
       assert_predicate topic_result, :failure?
-      assert_equal "This topic is archived.", topic_result.error
+      assert_equal I18n.t("mcweb.services.errors.this_topic_is_archived"),
+        topic_result.error
 
       poll_result = Community::EditTopicPoll.call(
         user: @author,
@@ -181,7 +185,8 @@ module Community
         poll_question: "Archived poll mutation?"
       )
       assert_predicate poll_result, :failure?
-      assert_equal "This topic is archived.", poll_result.error
+      assert_equal I18n.t("mcweb.services.errors.this_topic_is_archived"),
+        poll_result.error
 
       assert_equal "Current archived body", @opening_post.reload.body
       assert_not_equal "Archived title mutation", @topic.reload.title
@@ -239,11 +244,13 @@ module Community
         body: "Edit after deletion"
       )
       assert_predicate edit_result, :failure?
-      assert_equal "Post not available.", edit_result.error
+      assert_equal I18n.t("mcweb.services.errors.post_not_available"),
+        edit_result.error
 
       restore_result = Community::RestorePostEdit.call(user: @moderator, edit: edit)
       assert_predicate restore_result, :failure?
-      assert_equal "Post not available.", restore_result.error
+      assert_equal I18n.t("mcweb.services.errors.post_not_available"),
+        restore_result.error
     end
 
     test "post editing and revision restore require an authenticated actor" do
@@ -255,7 +262,8 @@ module Community
 
       restore_result = Community::RestorePostEdit.call(user: nil, edit: edit)
       assert_predicate restore_result, :failure?
-      assert_equal "Post not available.", restore_result.error
+      assert_equal I18n.t("mcweb.services.errors.post_not_available"),
+        restore_result.error
       assert_equal "Wiki revision", @opening_post.reload.body
     end
 
@@ -300,7 +308,8 @@ module Community
 
       unsolve_result = Community::UnsolveTopic.call(user: @author, topic: topic)
       assert_predicate unsolve_result, :failure?
-      assert_equal "Topic not available.", unsolve_result.error
+      assert_equal I18n.t("mcweb.services.errors.topic_not_available"),
+        unsolve_result.error
       assert_equal post.id, topic.reload.solved_post_id
 
       close_result = nil
@@ -312,7 +321,8 @@ module Community
         )
       end
       assert_predicate close_result, :failure?
-      assert_equal "Topic not available.", close_result.error
+      assert_equal I18n.t("mcweb.services.errors.topic_not_available"),
+        close_result.error
       assert_not_predicate topic.reload, :locked?
 
       edit_poll_result = Community::EditTopicPoll.call(
@@ -321,12 +331,14 @@ module Community
         poll_question: "Mutated restricted poll?"
       )
       assert_predicate edit_poll_result, :failure?
-      assert_equal "Topic not available.", edit_poll_result.error
+      assert_equal I18n.t("mcweb.services.errors.topic_not_available"),
+        edit_poll_result.error
       assert_equal "Original restricted poll?", poll.reload.question
 
       close_poll_result = Community::ClosePoll.call(user: @author, poll: poll)
       assert_predicate close_poll_result, :failure?
-      assert_equal "Topic not available.", close_poll_result.error
+      assert_equal I18n.t("mcweb.services.errors.topic_not_available"),
+        close_poll_result.error
       assert_predicate poll.reload, :open?
     end
 

@@ -11,22 +11,22 @@ module Community
 
     def call
       unless Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
       state_error = topic_reply_state_error
       return ServiceResult.failure(error: state_error) if state_error
 
       unless @topic.section.allowed?(@user, :reply)
-        return ServiceResult.failure(error: "You are not allowed to reply in this section.")
+        return ServiceResult.failure(error: :you_are_not_allowed_to_reply_in_this_section)
       end
 
       unless @topic.section.trust_allowed?(@user, :reply)
-        return ServiceResult.failure(error: "Your trust level is too low to reply in this section.")
+        return ServiceResult.failure(error: :your_trust_level_is_too_low_to_reply_in_this_section)
       end
 
       unless @topic.section.writable_by?(@user, :reply)
-        return ServiceResult.failure(error: "This section is read-only.")
+        return ServiceResult.failure(error: :section_read_only)
       end
 
       if Community::TopicReplyBan.active.exists?(forum_topic_id: @topic.id, user_id: @user.id)

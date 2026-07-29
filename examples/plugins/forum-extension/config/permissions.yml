@@ -1,0 +1,8 @@
+---
+permissions:
+- id: examples.forum_extension.moderation.review
+  group: examples.forum_extension.moderation
+  title_phrase: examples.forum_extension.permission.review.title
+  description_phrase: examples.forum_extension.permission.review.description
+  scope: global
+  default: staff

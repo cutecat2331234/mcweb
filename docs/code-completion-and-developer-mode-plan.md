@@ -1,7 +1,7 @@
 # McWeb CE 未完成代码与 Developer Mode 开发计划
 
-> 状态：持续开发；P0 仓库代码基础已大幅闭环，真实环境验收、诊断与完整 E2E 尚未完成
-> 最近复核：2026-07-28
+> 状态：持续开发；Developer Mode 代码闭环已完成，真实网络浏览器矩阵与完整 E2E 尚待统一验收
+> 最近复核：2026-07-29
 > 优先级：Developer Mode 与 C0/C1/C2 为 P0，其余按依赖关系推进
 > 范围：规划尚未实现、仅部分实现或尚未形成可靠闭环的代码；已落地基线只用于界定剩余工作
 > 不包含：证书申请、域名解析、服务器采购、人工备份值班等纯运维事项
@@ -18,7 +18,7 @@
 
 ## 2. 总体交付顺序
 
-1. 完成 Developer Mode 剩余诊断、模拟 adapter 和测试门禁；统一基础设施已经落地。
+1. 完成 Developer Mode 诊断、模拟 adapter 和代码测试门禁；统一浏览器验收仍按最终波次执行。
 2. 完成附件安全、配额和生命周期闭环。
 3. 完成真实支付、Webhook、退款和对账闭环。
 4. 完成公网滥用防护、查询规模和权限回归矩阵。
@@ -39,11 +39,11 @@
 | 阶段 | 当前状态 | 已落地基线 | 主要剩余工作 |
 |---|---|---|---|
 | D1 策略与配置 | 基本完成 | 启动期严格解析、`unrestricted` preset、环境变量覆盖、枚举覆盖、production 精确双重确认与分粒度校验、Workbench 脱敏最终配置摘要 | 更完整的运维输出 |
-| D2 身份与请求安全 | 部分完成 | 邮箱验证/TOTP/锁定/密码/限流与反垃圾绕过；CSRF、TLS、Host、CORS、Cookie、Frame、浏览器策略；可选单账号自动登录 | 多身份切换；CSP 的明确全局策略；逐 capability 成对门禁 |
-| D3 外部服务替身 | 部分完成 | 邮件文件捕获、出站 Webhook JSONL、Web Push JSONL、Workbench 安全捕获摘要、fake-only 支付、Minecraft task/远程皮肤模拟、Marketplace local-only、本地 Active Storage | 完整捕获浏览与清理 UI；fake 失败/取消/延迟场景；插件签名能力本身尚不存在 |
-| D4 上传与任务 | 部分完成 | 扫描 `dev_bypassed`、上传配额绕过、async/inline Job 选择、Sidekiq Cron poller 与启动注册抑制、旧 Redis 记录停止自动入队 | 上传状态故障注入；更完整手动触发机制 |
-| D5 可见性与诊断 | 部分完成 | 三套前端与旧页面横幅、`[DEV]` 标题、noindex、响应头、live/readiness 标志、production CRITICAL 警告、RBAC Workbench | 调试抽屉、水印、诊断包、配置变化审计、场景 seed；若引入指标端点再增加 gauge |
-| D6 测试门禁 | 部分完成 | parser/runtime、production boot、身份、自动登录、附件、支付隔离、Webhook/Web Push 捕获、Workbench 404/RBAC/脱敏和可见性测试 | 完整 capability 矩阵、多网络浏览器 E2E、真实外部服务零调用的全链路证明 |
+| D2 身份与请求安全 | 代码完成 | 邮箱验证/TOTP/锁定/密码/限流与反垃圾绕过；CSRF、TLS、Host、CORS、Cookie、Frame、浏览器策略；可选自动登录；owner/moderator/member 测试身份切换；显式全局 CSP 与逐 capability 成对门禁 | 最终浏览器矩阵 |
+| D3 外部服务替身 | 代码完成 | 邮件文件捕获、出站 Webhook JSONL、Web Push JSONL、安全分页浏览与清理、fake-only 支付及成功/失败/取消/延迟场景、Minecraft task/远程皮肤模拟、Marketplace local-only、本地 Active Storage | 插件密码学签名属于插件平台能力，本模式继续保留 no-op 边界 |
+| D4 上传与任务 | 代码完成 | 扫描 `dev_bypassed`、上传配额绕过、async/inline Job、Cron 抑制、clean/infected/quarantined/timeout 故障注入、审计化手动任务 allowlist | 最终浏览器验收 |
+| D5 可见性与诊断 | 代码完成 | 三套前端与旧页面横幅、水印、`[DEV]` 标题、noindex、响应头、health 标志、production CRITICAL 警告、RBAC Workbench、调试 Drawer、脱敏诊断下载/复制、场景 seed、配置变化持久审计 | 项目尚无 Prometheus endpoint，故不虚构 gauge |
+| D6 测试门禁 | 部分完成 | parser/runtime、production boot、身份、自动登录、附件、支付隔离、Webhook/Web Push 捕获、Workbench 404/RBAC/脱敏、完整 capability 策略矩阵和开发工具纵向测试 | localhost/局域网/公网域名/HTTP/HTTPS/反向代理浏览器矩阵与浏览器 E2E |
 
 Developer Mode 目前不是完整交付状态。`plugin_signature` 只有配置声明，原因不是
 绕过尚未接线，而是项目当前没有密码学插件签名能力可关闭；SHA-256、ZIP、路径、
@@ -275,8 +275,8 @@ Developer Mode 必须在 Rails 初始化早期生效，因为以下选项不能�
 - [x] anti-spam 绕过信任门槛、自动审核阈值、发帖/主题间隔、重复内容、
   slow mode、bump cooldown 与签名最低信任等级，同时保留登录、RBAC/板块权限、
   block/ban/silence/mute、内容结构校验、warning sanction 和状态机。
-- [ ] 提供 owner/moderator/member 一键身份切换。
-- [ ] 明确接线全局 CSP policy；当前无全局 CSP，端点 sandbox 始终保留。
+- [x] 提供 developer-only owner/moderator/member 一键身份切换；测试账号关闭模式后不可建立或继续会话。
+- [x] 接线全局 CSP policy；Developer Mode 可明确关闭全局策略，端点 sandbox 始终保留。
 
 #### D3：外部服务替身（部分完成）
 
@@ -289,11 +289,11 @@ Developer Mode 必须在 Rails 初始化早期生效，因为以下选项不能�
   不会取得待执行命令。
 - [x] Marketplace 在 Developer Mode 下只接受本地 `file:` 包。
 - [x] Workbench 提供邮件/Webhook/Web Push 的有限统计与最新白名单元数据，不读取正文。
-- [ ] 提供完整捕获浏览与显式清理页面。
-- [ ] 提供 fake 支付失败、取消、延迟到账等场景。
+- [x] 提供分页、脱敏的捕获浏览与逐类显式清理页面；清理动作写审计且不跟随符号链接。
+- [x] 提供 fake 支付成功、失败、取消、延迟到账场景；延迟任务关闭模式后 fail-closed。
 - [ ] 若产品需要密码学插件签名，先设计并实现该能力；当前
   `plugin_signature: allow_unsigned` 是 no-op，不得关闭现有 SHA-256/ZIP/路径边界。
-- [ ] 为全部声明的集成证明 Developer Mode 不会静默调用真实外部服务。
+- [x] 邮件、支付、Webhook、Web Push、Minecraft、远程皮肤、Marketplace 与对象存储均有替身配置和零真实调用回归测试。
 
 #### D4：上传与任务（部分完成）
 
@@ -304,8 +304,8 @@ Developer Mode 必须在 Rails 初始化早期生效，因为以下选项不能�
 - [x] 支持 `async` 和 `inline` Job adapter。
 - [x] Worker 启动时禁用 Sidekiq Cron poller 且不加载 schedule；切换前的 Redis
   Cron 记录保留但不会自动入队，并在 live/ready health 与 admin jobs 显示状态。
-- [ ] 提供一键制造 clean、infected、quarantined、timeout 文件状态。
-- [ ] 补齐可审计的手动触发入口。
+- [x] 提供一键制造 clean、infected、quarantined、timeout 文件状态，保留上传类型和状态边界。
+- [x] 补齐固定 allowlist 的可审计手动周期任务入口。
 
 #### D5：可见性与诊断（部分完成）
 
@@ -316,11 +316,11 @@ Developer Mode 必须在 Rails 初始化早期生效，因为以下选项不能�
 - [x] 普通启动命令读取配置，启动期配置变化明确要求重启。
 - [x] 增加严格 RBAC 的只读 Developer Workbench，集中显示生效配置、捕获摘要、
   Cron 状态和 Minecraft 模拟任务；关闭模式时路由 404 且导航不可见。
-- [ ] 增加独立视觉水印。
-- [ ] 增加场景 seed、前端调试抽屉和可复制的脱敏诊断摘要。
+- [x] 增加三套 Inertia 壳与旧 Rails 页面的独立低干扰视觉水印。
+- [x] 增加可重复场景 seed、前端调试抽屉、可复制与下载的脱敏诊断摘要。
 - [ ] 若项目引入指标端点，再在后台概览/系统信息与该端点暴露同一状态；当前没有
   Prometheus endpoint，因此不虚构 `mcweb_developer_mode` gauge。
-- [ ] 持久审计模式开启、关闭和配置变化。
+- [x] 以单例运行状态和不可变 AuditLog 持久审计模式开启、关闭和最终生效配置变化；不保存自动登录目标值。
 
 #### D6：测试门禁（部分完成）
 
@@ -328,9 +328,9 @@ Developer Mode 必须在 Rails 初始化早期生效，因为以下选项不能�
 - [x] 覆盖身份 bypass、自动登录不提权、附件扫描/配额、支付 fake-only 与签名边界。
 - [x] 覆盖 Webhook/Web Push 脱敏捕获以及 Web Push 不加载 VAPID/不访问网络。
 - [x] 覆盖 Minecraft task/皮肤模拟与 Marketplace local-only 来源边界。
-- [ ] 为每个声明 capability 补齐“关闭保留生产行为、开启只绕过目标”的成对测试。
+- [x] 为每个声明 capability 补齐“关闭保留生产行为、开启只绕过目标、inherit 恢复”的策略成对测试，并保留各真实执行点专项测试。
 - [ ] 完成 localhost、局域网、公网 IP、域名、HTTP、HTTPS、反向代理浏览器矩阵。
-- [ ] 扩展 RBAC、私密附件、私信和管理后台的 Developer Mode 越权回归矩阵。
+- [x] 扩展 RBAC、私密附件、私信和管理后台的 Developer Mode 越权回归矩阵。
 - [ ] 增加自动登录、fake 支付、邮件、Webhook 和 Web Push 的浏览器 E2E。
 
 ## 4. CE 尚未完成的代码阶段
@@ -346,15 +346,19 @@ Developer Mode 必须在 Rails 初始化早期生效，因为以下选项不能�
 - [x] Web、Worker、数据库、Redis 和存储增加可判定的 healthcheck。
 - [x] 备份/恢复代码覆盖数据库、对象存储清单和加密配置，包含校验和及空库恢复。
 - [x] 更新/回滚脚本在切换 release 前完成兼容检查，失败时不切换流量。
-- [ ] 增加“全新安装、升级、备份、恢复”的自动化真实基础设施验收环境。
+- [x] 增加“全新安装、升级、备份、恢复”的自动化真实基础设施验收环境；
+  `scripts/run-production-acceptance.sh` 使用临时 PostgreSQL 18、Redis 8 和 HTTPS
+  S3 兼容存储，并注入依赖不可达、错误确认及非空恢复库。
 
 仓库内第一批安全闭环已完成：备份使用 PostgreSQL custom dump、Active Storage
 本地归档或对象清单、非密钥配置、外部公钥加密配置/不可变 secret 引用和完整
 SHA-256；恢复默认只验证，实际执行要求精确确认、空库和不存在的目标；更新/回滚在
 切流前执行候选与旧版本兼容检查，并在切流后就绪失败时尝试切回。实现合同见
 [`PRODUCTION_BACKUP_AND_RELEASE.md`](PRODUCTION_BACKUP_AND_RELEASE.md) 和
-`test/lib/mcweb/production_recovery_contract_test.rb`。真实 PostgreSQL、对象存储、
-systemd、Redis 及故障恢复演练仍属于未完成验收，不能因合同测试通过而视为 C0 完成。
+`test/lib/mcweb/production_recovery_contract_test.rb`。仓库还提供手动触发的
+`Production acceptance` workflow；当前开发机没有 Docker，本轮没有真实运行该
+workflow。systemd 切流、跨 bucket 对象恢复、托管密钥取回和异地灾备仍属于未完成
+的预发布验收，不能因合同测试或验收脚本存在而视为生产演练已经通过。
 
 验收：
 
@@ -458,22 +462,36 @@ systemd、Redis 及故障恢复演练仍属于未完成验收，不能因合同�
 ### C6：I18N、可访问性和质量门禁
 
 - [x] CI 检查 Rails locale 键集合、缺失翻译和生产 fallback。
-- [ ] 检测业务 Vue/Ruby 代码中的硬编码用户文案。
+- [x] 检测业务 Vue/Ruby 代码中的硬编码用户文案；CI 拒绝新增和过期 baseline，
+  技术 ID 与真实误报使用独立的严格例外机制。扫描覆盖范围内的生产文案债务已清零；
+  baseline 仅保留 32 项开发模式演示数据和 1 项第三方产品名，并逐项记录类别与理由。
 - [ ] 人工复核资金、权限、审核和安全错误翻译。
-- [ ] 键盘、焦点、ARIA、对比度、Reduce Motion 和移动端验收。
+- [x] 编写键盘、焦点、ARIA、WCAG 对比度、Reduce Motion 和移动端自动验收；
+  初次真实 Chromium 运行仍待统一 Chrome 验收阶段执行。
 - [x] 将全部 Node 测试纳入 CI，而不是只在本地执行。
-- [ ] 增加 Playwright 系统 E2E 和稳定截图基线。
+- [ ] 完成 Playwright 系统 E2E 的首批人工审核截图基线；测试框架、桌面/移动项目、
+  英中页面、空状态、长文本、整页刷新断言和 fail-closed baseline manifest 已完成，
+  但本轮按约定未启动 Chrome，因此六张基线 PNG 尚未生成。
 
 ### C7：可观测与运行状态代码
 
 只实现应用代码部分：
 
 - [x] Readiness 检查数据库、真实存储写读、生产 Worker 进程存在性和队列状态。
-- [ ] 增加独立 Worker 心跳与队列等待时长阈值，不能只依赖进程列表和积压计数。
+- [x] Readiness 和后台任务页检查队列最长等待、积压、死亡任务和并发利用率；
+  阈值由 `MCWEB_QUEUE_BACKLOG_WARNING` 与
+  `MCWEB_QUEUE_LATENCY_WARNING_SECONDS` 配置。
+- [x] 增加独立于 Sidekiq ProcessSet 的每分钟持久 Worker 心跳；仅保存随机进程摘要与
+  时间，Readiness 在生产环境中拒绝缺失或超过两分钟的心跳，七天后清理旧进程记录。
 - [x] Liveness 不受 Minecraft 节点等业务降级影响。
-- [ ] 增加请求延迟、慢查询、队列积压、邮件、Webhook、上传和支付指标。
-- [ ] 为异常上报提供 adapter 和敏感字段过滤。
-- [ ] 后台显示关键依赖、失败任务和容量趋势。
+- [x] 增加请求延迟、慢查询、队列积压、邮件、Webhook、上传和支付指标；只持久化
+  固定低基数维度，分钟原子累加、失败回填、阈值和保留策略见
+  [`OPERATIONS_METRICS.md`](OPERATIONS_METRICS.md)。
+- [x] 为 Rails Error Reporter 提供可替换 adapter、稳定 fingerprint、上下文白名单和
+  URL 凭据、Bearer、令牌、邮箱等敏感字段过滤；adapter 自身失败不会影响业务请求。
+- [x] 后台显示 Worker、失败/重试/死亡任务、积压、等待时间和当前容量。
+- [x] 持久保存容量趋势并在后台展示 1h/6h/24h/7d/30d 与上一周期对比；范围切换
+  只局部更新指标 prop，聚合查询受 5,000 行硬预算约束。
 
 ## 5. 依赖关系
 

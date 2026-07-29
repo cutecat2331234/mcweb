@@ -22,6 +22,8 @@ import {
 } from '@arco-design/web-vue/es/icon'
 import AdminFlashMessages from '@/components/admin/AdminFlashMessages.vue'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
+import DeveloperModeTools from '@/components/admin/DeveloperModeTools.vue'
+import PluginUiSlots from '@/components/plugins/PluginUiSlots.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { useTheme } from '@/lib/useTheme'
 
@@ -204,6 +206,11 @@ const nav = computed<NavGroup[]>(() => {
           capabilityKey: 'forum.approvals.read',
         },
         {
+          label: t('admin.forumModerationWorkbench'),
+          href: adminRoutes.forumModerationWorkbench,
+          capabilityKey: 'forum.moderation_workbench.read',
+        },
+        {
           label: t('admin.forumUserFields'),
           href: adminRoutes.forumUserFields,
           permissionKey: 'forum.topics.lock',
@@ -320,6 +327,16 @@ const nav = computed<NavGroup[]>(() => {
           permissionKey: 'store.products.manage',
         },
         {
+          label: t('admin.storeInventory'),
+          href: adminRoutes.storeInventory,
+          permissionKey: 'store.inventory.read',
+        },
+        {
+          label: t('admin.storeFinance'),
+          href: adminRoutes.storeFinance,
+          permissionKey: 'store.finance.read',
+        },
+        {
           label: t('admin.storeCategories'),
           href: adminRoutes.storeCategories,
           permissionKey: 'store.products.manage',
@@ -337,7 +354,12 @@ const nav = computed<NavGroup[]>(() => {
         {
           label: t('admin.storeUserMemberships'),
           href: adminRoutes.storeUserMemberships,
-          permissionKey: 'store.products.manage',
+          permissionKey: 'store.entitlements.read',
+        },
+        {
+          label: t('admin.storeUserEntitlements'),
+          href: adminRoutes.storeUserEntitlements,
+          permissionKey: 'store.entitlements.read',
         },
         {
           label: t('admin.storeGiftCards'),
@@ -347,7 +369,7 @@ const nav = computed<NavGroup[]>(() => {
         {
           label: t('admin.storeCreditUsers'),
           href: adminRoutes.storeCreditUsers,
-          permissionKey: 'store.credit.adjust',
+          permissionKey: 'store.credit.read',
         },
         {
           label: t('admin.storeOrders'),
@@ -363,6 +385,11 @@ const nav = computed<NavGroup[]>(() => {
           label: t('admin.storePaymentOperations'),
           href: adminRoutes.storePaymentOperations,
           permissionKey: 'store.orders.read',
+        },
+        {
+          label: t('admin.storeDisputes'),
+          href: adminRoutes.storeDisputes,
+          permissionKey: 'store.disputes.read',
         },
         {
           label: t('admin.storeLatePaymentCases'),
@@ -393,7 +420,7 @@ const nav = computed<NavGroup[]>(() => {
         {
           label: t('admin.storeFulfillments'),
           href: adminRoutes.storeFulfillments,
-          permissionKey: 'minecraft.fulfillments.retry',
+          permissionKey: 'store.fulfillments.read',
         },
         {
           label: t('admin.storeSettings.title'),
@@ -458,6 +485,11 @@ const nav = computed<NavGroup[]>(() => {
           permissionKey: 'system.audit.read',
         },
         {
+          label: t('admin.dataGovernance.nav'),
+          href: adminRoutes.dataGovernance,
+          permissionKey: 'data_governance.read',
+        },
+        {
           label: t('admin.ipBans'),
           href: adminRoutes.ipBans,
           permissionKey: 'system.bans.manage',
@@ -517,6 +549,24 @@ const nav = computed<NavGroup[]>(() => {
       ],
     },
   ]
+
+  const pluginItems =
+    (
+      page.props.plugin_contributions as
+        | { navigation?: { admin?: Array<{ label: string; href: string }> } }
+        | undefined
+    )?.navigation?.admin || []
+  if (pluginItems.length > 0) {
+    groups.push({
+      key: 'plugin-contributions',
+      label: t('admin.pluginPages.navGroup'),
+      icon: IconGift,
+      items: pluginItems.map((item) => ({
+        label: item.label,
+        href: item.href,
+      })),
+    })
+  }
 
   return groups
     .map((group) => ({
@@ -630,7 +680,9 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <div class="arco-admin-brand">
         <Link :href="adminRoutes.dashboard" class="arco-admin-brand__link">
           <icon-command class="arco-admin-brand__icon" />
-          <span v-show="!collapsed" class="arco-admin-brand__text">McWeb Admin</span>
+          <span v-show="!collapsed" class="arco-admin-brand__text">
+            {{ t('common.adminBrand') }}
+          </span>
         </Link>
       </div>
       <div class="arco-admin-sider__menu">
@@ -718,6 +770,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <a-layout-content id="admin-content" class="arco-admin-main" tabindex="-1">
         <div class="arco-admin-main__inner">
           <AdminFlashMessages />
+          <PluginUiSlots />
           <slot />
         </div>
       </a-layout-content>
@@ -772,6 +825,8 @@ watch(isDark, syncArcoTheme, { immediate: true })
       </div>
     </div>
   </a-drawer>
+
+  <DeveloperModeTools />
 </template>
 
 <style scoped>

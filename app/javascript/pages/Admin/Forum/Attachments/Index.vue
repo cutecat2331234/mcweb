@@ -27,12 +27,12 @@ import {
   Textarea as ArcoTextarea,
   TypographyText,
 } from '@mcweb/ui'
-import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { confirm } from '@/lib/arcoConfirm'
 import { HttpError, postJson } from '@/lib/http'
 
-defineOptions({ layout: ArcoAdminLayout })
+defineOptions({ layout: AdminLayout })
 
 type UploadRow = {
   id: number
@@ -53,6 +53,10 @@ type UploadRow = {
   scan_status: 'pending' | 'clean' | 'infected' | 'error'
   scan_result_code: string | null
   scanner: string | null
+  manual_review_status: 'none' | 'released' | 'revoked'
+  manual_review_version: number
+  manual_reviewed_at: string | null
+  manual_review_revoked_at: string | null
   scan_attempts: number
   cleanup_attempts: number
   quarantined: boolean
@@ -68,6 +72,8 @@ type UploadRow = {
     retry_cleanup_url?: string
     release_quarantine_url?: string
     release_confirmation?: string
+    revoke_release_url?: string
+    revoke_confirmation?: string
   }
 }
 
@@ -137,13 +143,19 @@ const { locale, t, te } = useI18n()
 const selectedFilter = ref<FilterName>(props.filter)
 const releaseModalVisible = ref(false)
 const releaseUpload = ref<UploadRow | null>(null)
+const reviewMode = ref<'release' | 'revoke'>('release')
 const releaseReason = ref('')
 const releaseConfirmation = ref('')
 const releaseSubmitting = ref(false)
 const releaseError = ref('')
+const expectedReviewConfirmation = computed(() =>
+  reviewMode.value === 'release'
+    ? releaseUpload.value?.actions.release_confirmation
+    : releaseUpload.value?.actions.revoke_confirmation,
+)
 const releaseReady = computed(() =>
   releaseReason.value.trim().length >= 12 &&
-  releaseConfirmation.value === releaseUpload.value?.actions.release_confirmation,
+  releaseConfirmation.value === expectedReviewConfirmation.value,
 )
 
 watch(
@@ -195,6 +207,16 @@ function scanResultLabel(value: string | null | undefined) {
     `admin.attachments.scanResultCodes.${value}`,
     t('admin.attachments.scanResultUnknown'),
   )
+}
+
+function manualReviewLabel(value: UploadRow['manual_review_status']) {
+  return t(`admin.attachments.manualReviewStatuses.${value}`)
+}
+
+function manualReviewColor(value: UploadRow['manual_review_status']) {
+  if (value === 'released') return 'green'
+  if (value === 'revoked') return 'red'
+  return 'gray'
 }
 
 function lifecycleColor(value: UploadRow['status']) {
@@ -299,6 +321,18 @@ function openReleaseReview(upload: UploadRow) {
   if (!upload.actions.release_quarantine_url) return
 
   releaseUpload.value = upload
+  reviewMode.value = 'release'
+  releaseReason.value = ''
+  releaseConfirmation.value = ''
+  releaseError.value = ''
+  releaseModalVisible.value = true
+}
+
+function openRevokeReview(upload: UploadRow) {
+  if (!upload.actions.revoke_release_url) return
+
+  releaseUpload.value = upload
+  reviewMode.value = 'revoke'
   releaseReason.value = ''
   releaseConfirmation.value = ''
   releaseError.value = ''
@@ -323,12 +357,16 @@ function releaseErrorMessage(error: unknown) {
 
 async function submitReleaseReview() {
   const upload = releaseUpload.value
-  if (!upload?.actions.release_quarantine_url || !releaseReady.value) return
+  const reviewUrl =
+    reviewMode.value === 'release'
+      ? upload?.actions.release_quarantine_url
+      : upload?.actions.revoke_release_url
+  if (!reviewUrl || !releaseReady.value) return
 
   releaseSubmitting.value = true
   releaseError.value = ''
   try {
-    await postJson<{ released: true }>(upload.actions.release_quarantine_url, {
+    await postJson<{ released?: true; revoked?: true }>(reviewUrl, {
       reason: releaseReason.value.trim(),
       confirmation: releaseConfirmation.value,
     })
@@ -336,7 +374,11 @@ async function submitReleaseReview() {
     releaseUpload.value = null
     releaseReason.value = ''
     releaseConfirmation.value = ''
-    Message.success(t('admin.attachments.releaseSuccess'))
+    Message.success(
+      reviewMode.value === 'release'
+        ? t('admin.attachments.releaseSuccess')
+        : t('admin.attachments.revokeSuccess'),
+    )
     router.reload({
       only: ['uploads', 'pagination', 'filterCounts', 'summary', 'quotaUsage'],
       preserveScroll: true,
@@ -502,6 +544,12 @@ async function prune() {
                     <Tag v-if="record.quarantined" color="red">
                       {{ t('admin.attachments.quarantined') }}
                     </Tag>
+                    <Tag
+                      v-if="record.manual_review_status !== 'none'"
+                      :color="manualReviewColor(record.manual_review_status)"
+                    >
+                      {{ manualReviewLabel(record.manual_review_status) }}
+                    </Tag>
                   </div>
                   <p v-if="record.scan_result_code" class="text-xs text-[var(--color-text-2)]">
                     {{ scanResultLabel(record.scan_result_code) }}
@@ -609,6 +657,15 @@ async function prune() {
                     {{ t('admin.attachments.release') }}
                   </Button>
                   <Button
+                    v-if="record.actions.revoke_release_url"
+                    type="outline"
+                    status="danger"
+                    size="small"
+                    @click="openRevokeReview(record)"
+                  >
+                    {{ t('admin.attachments.revoke') }}
+                  </Button>
+                  <Button
                     v-if="record.delete_url"
                     type="text"
                     status="danger"
@@ -654,6 +711,12 @@ async function prune() {
               </Tag>
               <Tag v-if="upload.quarantined" color="red">
                 {{ t('admin.attachments.quarantined') }}
+              </Tag>
+              <Tag
+                v-if="upload.manual_review_status !== 'none'"
+                :color="manualReviewColor(upload.manual_review_status)"
+              >
+                {{ manualReviewLabel(upload.manual_review_status) }}
               </Tag>
               <Tag v-if="!upload.linked" color="orange">{{ t('admin.attachments.orphan') }}</Tag>
             </div>
@@ -728,6 +791,15 @@ async function prune() {
                   {{ t('admin.attachments.release') }}
                 </Button>
                 <Button
+                  v-if="upload.actions.revoke_release_url"
+                  type="outline"
+                  status="danger"
+                  size="small"
+                  @click="openRevokeReview(upload)"
+                >
+                  {{ t('admin.attachments.revoke') }}
+                </Button>
+                <Button
                   v-if="upload.delete_url"
                   type="text"
                   status="danger"
@@ -763,7 +835,11 @@ async function prune() {
 
     <Modal
       v-model:visible="releaseModalVisible"
-      :title="t('admin.attachments.releaseTitle')"
+      :title="
+        reviewMode === 'release'
+          ? t('admin.attachments.releaseTitle')
+          : t('admin.attachments.revokeTitle')
+      "
       :footer="false"
       :mask-closable="!releaseSubmitting"
       :esc-to-close="!releaseSubmitting"
@@ -784,7 +860,11 @@ async function prune() {
         type="warning"
         show-icon
         :closable="false"
-        :title="t('admin.attachments.releaseWarning')"
+        :title="
+          reviewMode === 'release'
+            ? t('admin.attachments.releaseWarning')
+            : t('admin.attachments.revokeWarning')
+        "
         class="mb-5"
       />
 
@@ -795,13 +875,25 @@ async function prune() {
         <DescriptionsItem :label="t('admin.attachments.scanResult')">
           <TypographyText>{{ scanResultLabel(releaseUpload?.scan_result_code) }}</TypographyText>
         </DescriptionsItem>
+        <DescriptionsItem :label="t('admin.attachments.manualReviewStatus')">
+          <Tag
+            v-if="releaseUpload"
+            :color="manualReviewColor(releaseUpload.manual_review_status)"
+          >
+            {{ manualReviewLabel(releaseUpload.manual_review_status) }}
+          </Tag>
+        </DescriptionsItem>
       </Descriptions>
 
       <Form :model="{ reason: releaseReason, confirmation: releaseConfirmation }" layout="vertical">
         <FormItem field="reason" :label="t('admin.attachments.releaseReason')" required>
           <ArcoTextarea
             v-model="releaseReason"
-            :placeholder="t('admin.attachments.releaseReasonPlaceholder')"
+            :placeholder="
+              reviewMode === 'release'
+                ? t('admin.attachments.releaseReasonPlaceholder')
+                : t('admin.attachments.revokeReasonPlaceholder')
+            "
             :max-length="1000"
             show-word-limit
             :auto-size="{ minRows: 4, maxRows: 8 }"
@@ -813,14 +905,14 @@ async function prune() {
         <FormItem field="confirmation" :label="t('admin.attachments.releaseConfirmation')" required>
           <Input
             v-model="releaseConfirmation"
-            :placeholder="releaseUpload?.actions.release_confirmation"
+            :placeholder="expectedReviewConfirmation"
             :disabled="releaseSubmitting"
             autocomplete="off"
           />
           <template #extra>
             {{ t('admin.attachments.releaseConfirmationHelp') }}
             <TypographyText code>
-              {{ releaseUpload?.actions.release_confirmation }}
+              {{ expectedReviewConfirmation }}
             </TypographyText>
           </template>
         </FormItem>
@@ -831,12 +923,16 @@ async function prune() {
           </Button>
           <Button
             type="primary"
-            status="warning"
+            :status="reviewMode === 'release' ? 'warning' : 'danger'"
             :loading="releaseSubmitting"
             :disabled="!releaseReady"
             @click="submitReleaseReview"
           >
-            {{ t('admin.attachments.releaseSubmit') }}
+            {{
+              reviewMode === 'release'
+                ? t('admin.attachments.releaseSubmit')
+                : t('admin.attachments.revokeSubmit')
+            }}
           </Button>
         </div>
       </Form>

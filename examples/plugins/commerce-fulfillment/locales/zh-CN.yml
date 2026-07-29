@@ -1,0 +1,4 @@
+---
+zh-CN:
+  examples.commerce_fulfillment.name: 商城履约示例
+  examples.commerce_fulfillment.summary: 事务提交后事件、幂等与重试示例。

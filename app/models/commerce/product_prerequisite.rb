@@ -17,7 +17,7 @@ module Commerce
       return if store_product_id.blank? || required_product_id.blank?
       return unless store_product_id == required_product_id
 
-      errors.add(:required_product_id, "cannot be the same as the product")
+      errors.add(:required_product_id, I18n.t("mcweb.validation_errors.cannot_be_the_same_as_the_product"))
     end
   end
 end

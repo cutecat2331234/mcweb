@@ -3,11 +3,19 @@
   "type": "module",
   "scripts": {
     "check:i18n": "node scripts/check-frontend-i18n.mjs",
+    "check:e2e-baselines": "node scripts/check-e2e-baselines.mjs",
+    "check:user-copy": "node scripts/check-user-facing-copy.mjs",
+    "check:user-copy:update-baseline": "node scripts/check-user-facing-copy.mjs --write-baseline",
     "demo:arco": "vite --config vite.arco-demo.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:list": "playwright test --list",
+    "test:e2e:update": "playwright test --update-snapshots",
     "test:javascript": "node --test \"test/javascript/*.ts\"",
     "typecheck": "tsc --noEmit --pretty false"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@playwright/test": "^1.62.0",
     "@types/node": "^26.1.1",
     "typescript": "^7.0.2",
     "vite": "^8.1.5",

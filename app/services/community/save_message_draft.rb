@@ -10,7 +10,7 @@ module Community
 
     def call
       unless @conversation.participant?(@user)
-        return ServiceResult.failure(error: "Conversation not available.")
+        return ServiceResult.failure(error: :conversation_not_available)
       end
 
       if @body.strip.blank?

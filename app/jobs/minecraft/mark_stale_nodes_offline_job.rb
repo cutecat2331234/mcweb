@@ -31,8 +31,12 @@ module Minecraft
     def notify_node_offline!(node)
       Minecraft::NotifyStaff.call(
         notification_type: "minecraft.node_offline",
-        title: "Minecraft node offline: #{node.name}",
-        body: "Node #{node.name} (#{node.hostname}) missed heartbeats and was marked offline.",
+        title: I18n.t("mcweb.user_copy.minecraft_node_offline_title", name: node.name),
+        body: I18n.t(
+          "mcweb.user_copy.minecraft_node_offline_body",
+          name: node.name,
+          hostname: node.hostname
+        ),
         metadata: {
           path: "/admin/minecraft/nodes/#{node.public_id}",
           node_id: node.public_id

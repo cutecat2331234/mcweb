@@ -10,7 +10,7 @@ module Administration
     end
 
     def call
-      return ServiceResult.failure(error: "IP address is required.") if @ip_address.blank?
+      return ServiceResult.failure(error: :ip_address_is_required) if @ip_address.blank?
 
       ban = Administration::IpBan.find_or_initialize_by(ip_address: @ip_address)
       ban.assign_attributes(reason: @reason, banned_by: @actor, expires_at: @expires_at)

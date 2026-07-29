@@ -7,6 +7,9 @@ module Commerce
     belongs_to :user
     belongs_to :membership_type, class_name: "Commerce::MembershipType", foreign_key: :store_membership_type_id
     belongs_to :source_order_item, class_name: "Commerce::OrderItem", optional: true
+    belongs_to :risk_hold_dispute,
+               class_name: "Commerce::Dispute",
+               optional: true
 
     enum :status, { active: "active", expired: "expired", revoked: "revoked" }, validate: true
     enum :source, { purchase: "purchase", admin_grant: "admin_grant", import: "import" }, validate: true, prefix: true
@@ -15,7 +18,9 @@ module Commerce
 
     scope :currently_active, -> {
       now = Time.current
-      active.where("starts_at <= ?", now).where("expires_at IS NULL OR expires_at > ?", now)
+      active.where(risk_held_at: nil)
+        .where("starts_at <= ?", now)
+        .where("expires_at IS NULL OR expires_at > ?", now)
     }
 
     scope :expired_pending, -> {
@@ -27,7 +32,9 @@ module Commerce
     end
 
     def currently_active?
-      active? && (expires_at.nil? || expires_at > Time.current)
+      active? &&
+        risk_held_at.nil? &&
+        (expires_at.nil? || expires_at > Time.current)
     end
 
     def expire!

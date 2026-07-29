@@ -54,7 +54,15 @@ module Community
           expires_at: released_expiry(upload),
           scanner: "manual_review",
           scan_result_code: "manual_false_positive",
-          scan_error_message: nil
+          scan_error_message: nil,
+          manual_review_status: "released",
+          manual_review_version: upload.manual_review_version + 1,
+          manual_reviewed_at: @now,
+          manual_reviewed_by: @actor,
+          manual_review_source_result_code: before_state.fetch(:scan_result_code),
+          manual_review_file_sha256: evidence.fetch(:file_sha256),
+          manual_review_revoked_at: nil,
+          manual_review_revoked_by: nil
         )
 
         Administration::AuditLogger.call(
@@ -77,13 +85,15 @@ module Community
             scan_status: upload.scan_status,
             scan_result_code: upload.scan_result_code,
             scanner: upload.scanner,
-            quarantined_at: upload.quarantined_at
+            quarantined_at: upload.quarantined_at,
+            manual_review_status: upload.manual_review_status,
+            manual_review_version: upload.manual_review_version
           }
         )
         released_upload = upload
       end
 
-      ActiveSupport::Notifications.instrument(
+      Mcweb::Events.publish_notification(
         "community.attachment.quarantine_released",
         upload_id: released_upload.id,
         actor_id: @actor.id
@@ -155,6 +165,7 @@ module Community
         upload.user_id != @actor.id &&
         !upload.status_cleaned? &&
         upload.scan_status_infected? &&
+        upload.manual_review_status_none? &&
         upload.scan_result_code.in?(RELEASABLE_RESULT_CODES) &&
         upload.active_storage_blob_id == evidence.fetch(:blob_id) &&
         upload.blob&.checksum.to_s == evidence.fetch(:checksum)

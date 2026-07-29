@@ -9,13 +9,13 @@ module Community
 
     def call
       unless @user && Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
+      return ServiceResult.failure(error: :this_topic_is_archived) if @topic.archived_at.present?
 
       unless can_unsolve?
-        return ServiceResult.failure(error: "You are not allowed to unsolve this topic.")
+        return ServiceResult.failure(error: :you_are_not_allowed_to_unsolve_this_topic)
       end
 
       @topic.update!(solved_post_id: nil)

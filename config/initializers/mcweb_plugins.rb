@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "mcweb/plugins/loader"
+require "mcweb/plugins/generation_coordinator"
 
 # Deployment plugins are trusted Ruby code loaded from plugins/**/mcweb_plugin.yml.
 # to_prepare also runs after development reloads; Registry#reset! unsubscribes every

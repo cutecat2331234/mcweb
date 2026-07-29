@@ -29,14 +29,14 @@ module Payments
 
         unless Payments::LatePaymentReviewToken.valid?(@token, review_case)
           return ServiceResult.failure(
-            error: "Late payment review authorization expired or is invalid.",
+            error: :late_payment_review_authorization_expired_or_is_invalid,
             code: "invalid_review_token"
           )
         end
 
         unless secure_confirmation_match?(review_case.order.order_number)
           return ServiceResult.failure(
-            error: "Enter the exact order number to confirm this review.",
+            error: :enter_the_exact_order_number_to_confirm_this_review,
             code: "confirmation_mismatch"
           )
         end
@@ -49,7 +49,7 @@ module Payments
           end
 
           return ServiceResult.failure(
-            error: "This late payment was already acknowledged with different review details.",
+            error: :this_late_payment_was_already_acknowledged_with_different_review_details,
             code: "already_acknowledged"
           )
         end
@@ -103,15 +103,18 @@ module Payments
 
     def invalid_input_result
       ServiceResult.failure(
-        error: "Select a valid disposition and enter a review note between " \
-          "#{MIN_NOTE_LENGTH} and #{MAX_NOTE_LENGTH} characters.",
+        error: I18n.t(
+          "mcweb.user_copy.late_payment_review_input_invalid",
+          min: MIN_NOTE_LENGTH,
+          max: MAX_NOTE_LENGTH
+        ),
         code: "invalid_review_details"
       )
     end
 
     def forbidden_result
       ServiceResult.failure(
-        error: "You do not have permission to review late payments.",
+        error: :you_do_not_have_permission_to_review_late_payments,
         code: "forbidden"
       )
     end

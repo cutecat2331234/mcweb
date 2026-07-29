@@ -10,7 +10,7 @@ module Frontend
 
     def call
       unless Frontend::Template::SCOPES.include?(@scope)
-        return ServiceResult.failure(error: "无效的 scope")
+        return ServiceResult.failure(error: :invalid_template_scope)
       end
 
       setting_key = Frontend::Template::SITE_SETTING_KEYS.fetch(@scope)
@@ -29,8 +29,12 @@ module Frontend
       end
 
       template = Frontend::Template.installed.find_by(key: @template_key)
-      return ServiceResult.failure(error: "模板不存在或未安装") unless template
-      return ServiceResult.failure(error: "模板不支持 #{@scope} 范围") unless template.supports_scope?(@scope)
+      return ServiceResult.failure(error: :template_missing_or_not_installed) unless template
+      unless template.supports_scope?(@scope)
+        return ServiceResult.failure(
+          error: I18n.t("mcweb.user_copy.template_scope_unsupported", scope: @scope)
+        )
+      end
 
       SiteSetting.set(setting_key, template.key)
       log_audit(template, "activated")

@@ -21,8 +21,11 @@ module Operations
     SAFE_TOKEN_PATTERN = /\A[a-z0-9_.:-]{1,64}\z/i
 
     class << self
-      def call(root: Rails.root)
-        new(root: root).call
+      def call(root: Rails.root, capture_kind: "mail", capture_page: 1)
+        new(root: root).call(
+          capture_kind: capture_kind,
+          capture_page: capture_page
+        )
       end
     end
 
@@ -30,7 +33,7 @@ module Operations
       @root = Pathname(root).expand_path
     end
 
-    def call
+    def call(capture_kind: "mail", capture_page: 1)
       settings = Mcweb::DeveloperMode.settings
 
       {
@@ -51,6 +54,17 @@ module Operations
           webhooks: capture_summary(:webhooks),
           webPush: capture_summary(:webPush)
         },
+        captureBrowser: capture_browser(
+          kind: capture_kind,
+          page: capture_page
+        ),
+        personas: persona_summary,
+        scenarios: {
+          seeds: Operations::DeveloperScenarioSeeder::SCENARIOS,
+          attachmentStates: Operations::DeveloperUploadScenario::SCENARIOS
+        },
+        manualTasks: Operations::DeveloperTaskRunner::TASKS.keys,
+        diagnostics: diagnostic_summary(settings),
         minecraft: minecraft_summary
       }
     end
@@ -281,6 +295,58 @@ module Operations
     def safe_token(value)
       token = value.to_s
       token.match?(SAFE_TOKEN_PATTERN) ? token : "other"
+    end
+
+    def capture_browser(kind:, page:)
+      Operations::DeveloperCaptureStore.new(root: @root).page(
+        kind: kind,
+        page: page
+      )
+    rescue ArgumentError
+      Operations::DeveloperCaptureStore.new(root: @root).page(
+        kind: "mail",
+        page: 1
+      )
+    end
+
+    def persona_summary
+      users = User
+        .where(developer_mode_persona: User::DEVELOPER_MODE_PERSONAS)
+        .pluck(:developer_mode_persona, :status)
+        .to_h
+
+      User::DEVELOPER_MODE_PERSONAS.map do |persona|
+        {
+          key: persona,
+          available: users[persona] == "active"
+        }
+      end
+    rescue ActiveRecord::ActiveRecordError
+      User::DEVELOPER_MODE_PERSONAS.map do |persona|
+        { key: persona, available: false }
+      end
+    end
+
+    def diagnostic_summary(settings)
+      {
+        application: "McWeb",
+        environment: Rails.env,
+        railsVersion: Rails.version,
+        rubyVersion: RUBY_VERSION,
+        developerMode: {
+          enabled: settings.enabled?,
+          profile: settings.profile.to_s,
+          productionEnvironment: Rails.env.production?,
+          autoLoginConfigured: settings.auto_login_user.present?,
+          scheduledJobsAutoRegistration:
+            Mcweb::SidekiqCronSchedule.automatic_registration_enabled?(
+              settings: settings
+            ),
+          security: active_configuration(settings.security),
+          integrations: active_configuration(settings.integrations),
+          runtime: active_configuration(settings.runtime)
+        }
+      }
     end
   end
 end

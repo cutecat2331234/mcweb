@@ -17,7 +17,9 @@ module Minecraft
       when :claim then claim_tasks
       when :complete then complete_task
       else
-        ServiceResult.failure(error: "Unknown task action: #{@action}")
+        ServiceResult.failure(
+          error: I18n.t("mcweb.user_copy.unknown_task_action", action: @action)
+        )
       end
     end
 
@@ -48,7 +50,7 @@ module Minecraft
 
     def complete_task
       task = @task || Minecraft::NodeTask.find_by(id: @task_id, node: @node)
-      return ServiceResult.failure(error: "Task not found.") unless task
+      return ServiceResult.failure(error: :task_not_found) unless task
 
       Minecraft::NodeTask.transaction do
         task.lock!

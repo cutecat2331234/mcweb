@@ -15,7 +15,7 @@ module Community
     private
 
     def cannot_ignore_self
-      errors.add(:ignored, "cannot be yourself") if ignorer_id == ignored_id
+      errors.add(:ignored, I18n.t("mcweb.validation_errors.cannot_be_yourself")) if ignorer_id == ignored_id
     end
   end
 end

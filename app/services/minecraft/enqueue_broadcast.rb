@@ -11,7 +11,7 @@ module Minecraft
 
     def call
       servers = target_servers
-      return ServiceResult.failure(error: "No Minecraft servers configured.") if servers.empty?
+      return ServiceResult.failure(error: :no_minecraft_servers_configured) if servers.empty?
 
       created = 0
       servers.each do |server|

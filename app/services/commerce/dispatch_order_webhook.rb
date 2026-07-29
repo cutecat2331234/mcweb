@@ -38,7 +38,9 @@ module Commerce
       }.merge(@extra.symbolize_keys)
 
       secret = SiteSetting.get("store.order_webhook_secret", "").to_s.strip.presence
-      Commerce::DispatchOrderWebhookJob.perform_later(url, payload, secret)
+      ActiveRecord.after_all_transactions_commit do
+        Commerce::DispatchOrderWebhookJob.perform_later(url, payload, secret)
+      end
       ServiceResult.success(queued: true)
     end
   end

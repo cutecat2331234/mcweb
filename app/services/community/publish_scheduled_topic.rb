@@ -9,12 +9,12 @@ module Community
     def call
       user = @topic&.user
       unless Community::ForumAccess.topic_visible?(topic: @topic, user: user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "Topic is not scheduled.") unless @topic.scheduled_at.present?
-      return ServiceResult.failure(error: "Topic is not ready.") unless @topic.scheduled_at <= Time.current
-      return ServiceResult.failure(error: "Topic already published.") unless @topic.draft?
+      return ServiceResult.failure(error: :topic_is_not_scheduled) unless @topic.scheduled_at.present?
+      return ServiceResult.failure(error: :topic_is_not_ready) unless @topic.scheduled_at <= Time.current
+      return ServiceResult.failure(error: :topic_already_published) unless @topic.draft?
 
       tag_ids = @topic.tags.pluck(:id)
       required_result = Community::ValidateSectionRequiredTags.call(

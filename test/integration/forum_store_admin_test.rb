@@ -225,7 +225,7 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     get fake_payment_path(payment.provider_payment_id)
 
     assert_redirected_to store_order_path(order)
-    assert_match(/过期/, flash[:alert].to_s)
+    assert_equal I18n.t("mcweb.flash.payment_expired"), flash[:alert]
   end
 
   test "fake payment page rejects stale payment amount" do

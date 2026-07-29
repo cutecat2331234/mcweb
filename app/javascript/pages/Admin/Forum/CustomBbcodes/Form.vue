@@ -47,7 +47,7 @@ async function destroy() {
         <span>{{ t('admin.customBbcodes.tag') }}</span>
         <a-input
           v-model="form.custom_bbcode.tag"
-          placeholder="note"
+          :placeholder="t('admin.customBbcodes.tagPlaceholder')"
           :input-attrs="{ required: true, maxlength: 20 }"
           allow-clear
         />

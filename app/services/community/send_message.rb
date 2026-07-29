@@ -17,15 +17,15 @@ module Community
       )
       return rate_limit_result if rate_limit_result.failure?
 
-      return ServiceResult.failure(error: "Not a participant.") unless participant?
-      return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
-      return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@user)
+      return ServiceResult.failure(error: :not_a_participant) unless participant?
+      return ServiceResult.failure(error: :message_too_short) if @body.length < 1
+      return ServiceResult.failure(error: :new_members_cannot_send_pm) unless Community::TrustLevel.can_send_pm?(@user)
 
       pm_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :pm)
       return pm_restriction if pm_restriction.failure?
 
       if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@user)
-        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+        return ServiceResult.failure(error: :new_members_cannot_post_links)
       end
 
       link_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :link)
@@ -34,7 +34,9 @@ module Community
       others = @conversation.participants.where.not(user: @user).includes(:user).map(&:user)
       others.each do |other|
         if Community::UserBlock.blocked?(@user, other)
-          return ServiceResult.failure(error: "You cannot message #{other.username}.")
+          return ServiceResult.failure(
+            error: I18n.t("mcweb.services.errors.cannot_message_user_named", name: other.username)
+          )
         end
       end
 

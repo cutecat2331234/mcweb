@@ -4,6 +4,18 @@ expire_pending_orders:
   queue: maintenance
   active_job: true
 
+expire_inventory_reservations:
+  cron: "* * * * *"
+  class: "Commerce::ExpireInventoryReservationsJob"
+  queue: maintenance
+  active_job: true
+
+recover_fulfillments:
+  cron: "* * * * *"
+  class: "Commerce::RecoverFulfillmentsJob"
+  queue: maintenance
+  active_job: true
+
 pending_order_payment_reminders:
   cron: "*/15 * * * *"
   class: "Commerce::PendingOrderPaymentReminderJob"
@@ -142,6 +154,24 @@ cleanup_expired_sessions:
   queue: maintenance
   active_job: true
 
+expire_data_exports:
+  cron: "15 * * * *"
+  class: "Maintenance::ExpireDataExportsJob"
+  queue: maintenance
+  active_job: true
+
+sync_finance_documents:
+  cron: "*/10 * * * *"
+  class: "Commerce::SyncFinanceDocumentsJob"
+  queue: maintenance
+  active_job: true
+
+expire_finance_exports:
+  cron: "*/15 * * * *"
+  class: "Maintenance::ExpireFinanceExportsJob"
+  queue: maintenance
+  active_job: true
+
 cleanup_rate_limit_counters:
   cron: "15 3 * * *"
   class: "Maintenance::CleanupRateLimitCountersJob"
@@ -218,4 +248,52 @@ publish_scheduled_website_content:
   cron: "*/5 * * * *"
   class: "Website::PublishScheduledContentJob"
   queue: website
+  active_job: true
+
+purge_expired_dispute_evidence:
+  cron: "30 4 * * *"
+  class: "Commerce::PurgeExpiredDisputeEvidenceJob"
+  queue: maintenance
+  active_job: true
+
+purge_governed_content:
+  cron: "15 * * * *"
+  class: "Maintenance::PurgeGovernedContentJob"
+  queue: maintenance
+  active_job: true
+
+expire_plugin_storage_objects:
+  cron: "45 4 * * *"
+  class: "ExpirePluginStorageObjectsJob"
+  queue: maintenance
+  active_job: true
+
+recover_plugin_outbound_deliveries:
+  cron: "*/5 * * * *"
+  class: "RecoverPluginOutboundDeliveriesJob"
+  queue: maintenance
+  active_job: true
+
+recover_plugin_lifecycle_runs:
+  cron: "*/5 * * * *"
+  class: "RecoverPluginLifecycleRunsJob"
+  queue: plugins
+  active_job: true
+
+record_worker_heartbeat:
+  cron: "* * * * *"
+  class: "Operations::RecordWorkerHeartbeatJob"
+  queue: maintenance
+  active_job: true
+
+flush_operations_metrics:
+  cron: "* * * * *"
+  class: "Operations::FlushMetricsJob"
+  queue: maintenance
+  active_job: true
+
+cleanup_operations_metrics:
+  cron: "25 3 * * *"
+  class: "Operations::CleanupMetricBucketsJob"
+  queue: maintenance
   active_job: true

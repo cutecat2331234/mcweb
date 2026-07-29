@@ -10,7 +10,7 @@ module Minecraft
     def call
       return ServiceResult.success if accessible_on_server?
 
-      ServiceResult.failure(error: "Player is not associated with this server.")
+      ServiceResult.failure(error: :player_is_not_associated_with_this_server)
     end
 
     private

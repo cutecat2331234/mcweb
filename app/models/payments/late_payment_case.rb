@@ -86,21 +86,21 @@ module Payments
     def associations_match
       return unless payment_record && webhook_event && order
 
-      errors.add(:store_order_id, "does not match the payment") unless payment_record.store_order_id == store_order_id
-      errors.add(:provider, "does not match the payment") unless payment_record.provider == provider
-      errors.add(:provider, "does not match the webhook") unless webhook_event.provider == provider
-      errors.add(:amount_cents, "does not match the payment") unless payment_record.amount_cents == amount_cents
-      errors.add(:currency, "does not match the payment") unless payment_record.currency.to_s.casecmp?(currency.to_s)
+      errors.add(:store_order_id, I18n.t("mcweb.validation_errors.does_not_match_the_payment")) unless payment_record.store_order_id == store_order_id
+      errors.add(:provider, I18n.t("mcweb.validation_errors.does_not_match_the_payment")) unless payment_record.provider == provider
+      errors.add(:provider, I18n.t("mcweb.validation_errors.does_not_match_the_webhook")) unless webhook_event.provider == provider
+      errors.add(:amount_cents, I18n.t("mcweb.validation_errors.does_not_match_the_payment")) unless payment_record.amount_cents == amount_cents
+      errors.add(:currency, I18n.t("mcweb.validation_errors.does_not_match_the_payment")) unless payment_record.currency.to_s.casecmp?(currency.to_s)
     end
 
     def acknowledgement_is_complete
       if acknowledged?
-        errors.add(:acknowledged_by, "is required") unless acknowledged_by
-        errors.add(:acknowledged_at, "is required") unless acknowledged_at
-        errors.add(:disposition, "is required") unless disposition
-        errors.add(:review_note, "is required") if review_note.blank?
+        errors.add(:acknowledged_by, I18n.t("mcweb.validation_errors.is_required")) unless acknowledged_by
+        errors.add(:acknowledged_at, I18n.t("mcweb.validation_errors.is_required")) unless acknowledged_at
+        errors.add(:disposition, I18n.t("mcweb.validation_errors.is_required")) unless disposition
+        errors.add(:review_note, I18n.t("mcweb.validation_errors.is_required")) if review_note.blank?
       elsif acknowledged_by || acknowledged_at || disposition || review_note.present?
-        errors.add(:status, "must be acknowledged before review details are recorded")
+        errors.add(:status, I18n.t("mcweb.validation_errors.must_be_acknowledged_before_review_details_are_recorded"))
       end
     end
   end

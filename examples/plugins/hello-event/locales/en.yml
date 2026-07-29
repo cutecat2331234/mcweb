@@ -1,0 +1,4 @@
+---
+en:
+  examples.hello_event.name: Hello Event
+  examples.hello_event.summary: Settings, events, translations, and an admin page.

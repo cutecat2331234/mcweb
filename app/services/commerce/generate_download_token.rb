@@ -9,13 +9,13 @@ module Commerce
 
     def call
       order = @order_item.order
-      return ServiceResult.failure(error: "Order not accessible.") unless order.user_id == @user.id
-      return ServiceResult.failure(error: "Order not paid.") unless %w[paid processing fulfilling fulfilled completed].include?(order.status)
+      return ServiceResult.failure(error: :order_not_accessible) unless order.user_id == @user.id
+      return ServiceResult.failure(error: :order_not_paid) unless %w[paid processing fulfilling fulfilled completed].include?(order.status)
 
       snapshot = @order_item.fulfillment_snapshot || {}
       config = snapshot["fulfillment_config"] || snapshot[:fulfillment_config] || {}
       url = config["download_url"] || config[:download_url]
-      return ServiceResult.failure(error: "No download available.") if url.blank?
+      return ServiceResult.failure(error: :no_download_available) if url.blank?
 
       payload = {
         order_item_id: @order_item.id,

@@ -10,7 +10,7 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: "Answer is required.") if @body.blank?
+      return ServiceResult.failure(error: :answer_is_required) if @body.blank?
 
       answer = Commerce::ProductAnswer.create!(
         question: @question,

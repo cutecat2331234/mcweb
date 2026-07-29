@@ -8,13 +8,13 @@ module Admin
 
       def index
         render inertia: "Admin/Generic/Index", props: {
-          title: "主题自定义字段",
+          title: t("mcweb.user_copy.topic_fields_title"),
           columns: [
             admin_column(:key, t("mcweb.admin.minecraft.col_key"), link: true),
             admin_column(:label, t("mcweb.admin.minecraft.col_label")),
             admin_column(:field_type, t("mcweb.admin.minecraft.col_type")),
-            admin_column(:display_location, "显示位置"),
-            admin_column(:active, "启用")
+            admin_column(:display_location, t("mcweb.user_copy.display_location")),
+            admin_column(:active, t("mcweb.user_copy.enabled"))
           ],
           rows: Community::TopicFieldDefinition.ordered.map do |definition|
             admin_row(
@@ -26,7 +26,7 @@ module Admin
               url: edit_admin_forum_topic_field_path(definition)
             )
           end,
-          actions: [ { label: "新建主题字段", href: new_admin_forum_topic_field_path } ]
+          actions: [ { label: t("mcweb.user_copy.new_topic_field"), href: new_admin_forum_topic_field_path } ]
         }
       end
 

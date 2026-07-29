@@ -166,7 +166,7 @@ class Minecraft::TaskDispatcherFailureTest < ActiveSupport::TestCase
     )
     assert result.success?
     assert_equal "failed", @fulfillment.reload.status
-    assert_includes @fulfillment.last_error, "player offline"
+    assert_equal "player_offline", @fulfillment.last_error
     delivery = Minecraft::ProcessedDelivery.find_by!(server: @server, delivery_id: @fulfillment.delivery_id)
     assert_equal "failed", delivery.status
     assert_equal "failed", @task.reload.status

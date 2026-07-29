@@ -13,22 +13,22 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Post not available.") unless PostAccess.readable?(post: @post, user: @user)
+      return ServiceResult.failure(error: :post_not_available) unless PostAccess.readable?(post: @post, user: @user)
 
       unless Community::SectionAccess.view?(section: @section, user: @user)
-        return ServiceResult.failure(error: "Section not available.")
+        return ServiceResult.failure(error: :section_not_available)
       end
 
       unless @section.allowed?(@user, :create_topic)
-        return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
+        return ServiceResult.failure(error: :cannot_create_topic_in_section)
       end
 
       unless @section.trust_allowed?(@user, :create_topic)
-        return ServiceResult.failure(error: "Your trust level is too low to create topics in this section.")
+        return ServiceResult.failure(error: :trust_level_too_low)
       end
 
       unless @section.writable_by?(@user, :create_topic)
-        return ServiceResult.failure(error: "This section is read-only.")
+        return ServiceResult.failure(error: :section_read_only)
       end
 
       topic_title = @title || I18n.t("mcweb.forum.create_topic_from_post.default_title", title: @source_topic.title).truncate(120)

@@ -23,7 +23,7 @@ module Mcweb
       SUPPORTED_API_VERSIONS = %w[1].freeze
       REQUIRED_KEYS = %w[id name version api_version].freeze
       OPTIONAL_STRING_KEYS = %w[description author homepage].freeze
-      CONTRIBUTION_KEYS = %w[jobs permissions settings].freeze
+      CONTRIBUTION_KEYS = %w[catalog jobs permissions settings].freeze
       ALLOWED_KEYS = (
         REQUIRED_KEYS + %w[
           description author homepage requires capabilities contributions
@@ -159,6 +159,10 @@ module Mcweb
 
       def jobs_contribution_path
         contributions["jobs"]
+      end
+
+      def contribution_catalog_path
+        contributions["catalog"]
       end
 
       def to_h

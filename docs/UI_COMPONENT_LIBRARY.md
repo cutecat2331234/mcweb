@@ -16,11 +16,15 @@ See also `vendor/arco-design-vue/README.mcweb.md`.
 
 ## Import convention
 
-Use the **`@mcweb/ui`** alias — do not deep-import from `node_modules` in application code.
+The admin entrypoint registers the published Arco runtime directly:
 
 ```ts
-import ArcoVue, { Button, Table } from '@mcweb/ui'
+import ArcoVue from '@arco-design/web-vue'
 ```
+
+Admin modules may use the **`@mcweb/ui`** alias for named component services. The alias resolves
+to the same published package and gives the project one controlled seam for a future reviewed
+vendor-source switch:
 
 ```vue
 <script setup lang="ts">
@@ -35,24 +39,35 @@ import '@arco-design/web-vue/dist/arco.css'
 import '@/styles/arco-admin.css'
 ```
 
-The **portal** entry (`entrypoints/inertia.ts`) keeps the existing shadcn/reka-ui stack. New portal work should not pull Arco unless we explicitly migrate.
+`arco-admin.css` is a deliberate centralized product-theme layer, not official Arco CSS. It is
+limited to the admin shell, design tokens, visual hierarchy, focus/reduced-motion behavior and
+cross-page component normalization that Arco props cannot express consistently. Page-scoped
+CSS remains an exception and must not recreate Arco components.
+
+The admin entry must not import `portal.css`. The **portal** entry (`entrypoints/inertia.ts`)
+keeps the existing shadcn/reka-ui stack. New portal work should not pull Arco unless we
+explicitly migrate.
 
 ## Admin layout
 
 | Layout | Stack | Use when |
 |--------|-------|----------|
-| `layouts/AdminLayout.vue` | Arco + Inertia | Compatibility alias used by existing admin pages |
-| `layouts/ArcoAdminLayout.vue` | Arco + Inertia | Canonical admin shell |
+| `layouts/AdminLayout.vue` | Arco + Inertia | Canonical persistent layout identity for every Admin page |
+| `layouts/ArcoAdminLayout.vue` | Arco + Inertia | Shell implementation used only inside `AdminLayout` |
 | `components/admin-pro/ProLayout.vue` | Arco + Inertia | Compatibility alias for former POC imports |
 
 Example Arco page:
 
 ```vue
 <script setup lang="ts">
-import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
-defineOptions({ layout: ArcoAdminLayout })
+import AdminLayout from '@/layouts/AdminLayout.vue'
+defineOptions({ layout: AdminLayout })
 </script>
 ```
+
+Do not import `ArcoAdminLayout` directly from a page. Inertia preserves a layout only while its
+component identity stays the same; mixing the wrapper and implementation would remount the
+sidebar/header and lose local shell state during otherwise normal SPA navigation.
 
 Preview:
 
@@ -61,7 +76,9 @@ Preview:
 
 ## Rule for new work
 
-**Plugins and new admin features must use `@mcweb/ui` (Arco)** — not ad-hoc CSS frameworks or one-off component kits. Prefer `ArcoAdminLayout` for shell chrome.
+**Plugins and new admin features must use Arco** (the direct package or the `@mcweb/ui` alias
+described above) — not ad-hoc CSS frameworks or one-off component kits. Prefer
+the canonical `AdminLayout` for shell chrome.
 
 Exceptions (document in PR):
 
@@ -82,7 +99,9 @@ npm install
 bin/dev          # or: bundle exec rails server + bin/vite dev
 ```
 
-Admin assets compile through `app/javascript/entrypoints/admin.ts` with Arco only. Element Plus and its POC runtime dependencies have been removed.
+Admin assets compile through `app/javascript/entrypoints/admin.ts` with the Arco runtime,
+official Arco base styles and the reviewed `arco-admin.css` product-theme layer. They do not
+load portal styles. Element Plus and its POC runtime dependencies have been removed.
 
 Smoke-build admin bundle:
 

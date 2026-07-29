@@ -11,6 +11,7 @@ module Commerce
     def call
       cancelled = false
       previous_status = nil
+      inventory_error = nil
 
       Commerce::Order.transaction do
         @order.lock!
@@ -26,7 +27,11 @@ module Commerce
 
         previous_status = @order.status
         @order.cancel!
-        restore_stock!
+        stock_result = restore_stock!
+        unless stock_result.success?
+          inventory_error = stock_result.error || "inventory_release_failed"
+          raise ActiveRecord::Rollback
+        end
         restore_coupon_usage!
         restore_gift_card_balance_if_debited!
         restore_store_credit_if_debited!
@@ -34,6 +39,7 @@ module Commerce
         cancelled = true
       end
 
+      return ServiceResult.failure(error: inventory_error) if inventory_error
       return ServiceResult.failure(error: "order_cannot_cancel") unless cancelled
 
       if @reason.present?
@@ -69,10 +75,19 @@ module Commerce
     private
 
     def restore_stock!
+      reservation_result = Commerce::ReleaseInventoryReservations.call(
+        order: @order,
+        reason: @reason || "order_cancelled",
+        expired: @reason.in?(%w[expired inventory_reservation_expired])
+      )
+      return reservation_result unless reservation_result.success?
+      return reservation_result unless reservation_result.value.fetch(:legacy)
+
       @order.items.includes(:product, :variant).find_each do |item|
         target = item.variant || item.product
         Commerce::IncrementStock.call(target: target, quantity: item.quantity)
       end
+      ServiceResult.success(legacy: true)
     end
 
     def restore_coupon_usage!

@@ -1,0 +1,18 @@
+---
+id: examples/commerce_fulfillment
+name: Commerce Fulfillment
+version: 1.0.0
+api_version: "1"
+description: Demonstrates after-commit order events and idempotent retryable fulfillment jobs.
+author: McWeb
+capabilities:
+- commerce.events.read
+- commerce.fulfillments.write
+- commerce.orders.read
+- forum.events.publish
+- plugin.jobs.enqueue
+- plugin.jobs.read
+contributions:
+  catalog: config/contributions.yml
+  jobs: config/jobs.yml
+entrypoint: plugin.rb

@@ -8,24 +8,28 @@ module Mcweb
     Filter = Data.define(:plugin_id, :name, :priority, :sequence, :callback)
     ServiceDecorator = Data.define(:plugin_id, :name, :priority, :sequence, :callback)
     JobHandler = Data.define(:plugin_id, :job_key, :callback)
+    FulfillmentProvider = Data.define(:plugin_id, :key, :provider_id, :callback)
 
     class Definition
       EVENT_PATTERN = /\A[a-z][a-z0-9_]*(?:\.[a-z][a-z0-9_]*)+\z/
+      FULFILLMENT_PROVIDER_KEY_PATTERN = /\A[a-z][a-z0-9_.-]{0,63}\z/
       MAX_EVENT_NAME_LENGTH = 191
       PRIORITY_RANGE = (-10_000..10_000)
 
       attr_reader :manifest, :api, :job_contribution, :permission_contributions,
-                  :settings_schema
+                  :settings_schema, :contributions
 
       def initialize(
         manifest,
         event_bus: Mcweb::Events,
         capability_auditor: nil,
         permission_contributions: [],
-        permission_catalog: nil
+        permission_catalog: nil,
+        contributions: []
       )
         @manifest = manifest
         @permission_contributions = permission_contributions.dup.freeze
+        @contributions = contributions.dup.freeze
         @api = Mcweb::PluginApi::V1::Host.new(
           manifest:,
           event_bus:,
@@ -38,6 +42,7 @@ module Mcweb
         @filters = []
         @service_decorators = []
         @job_handlers = {}
+        @fulfillment_providers = {}
         @sealed = false
         @status = :registered
         @failure_count = 0
@@ -146,6 +151,36 @@ module Mcweb
         self
       end
 
+      # Registers a synchronous commerce fulfillment provider owned by this
+      # plugin. Products address it by the stable, namespaced provider id
+      # "<plugin-id>:<key>". The callback receives only an immutable,
+      # allow-listed request and must return a strict status mapping.
+      def fulfillment_provider(key, &callback)
+        raise ArgumentError, "fulfillment provider callback is required" unless callback
+
+        normalized_key = key.to_s.dup
+        unless normalized_key.match?(FULFILLMENT_PROVIDER_KEY_PATTERN)
+          raise ArgumentError, "invalid fulfillment provider key #{normalized_key.inspect}"
+        end
+        normalized_key.freeze
+        provider_id = "#{id}:#{normalized_key}".freeze
+
+        @mutex.synchronize do
+          raise LifecycleError, "plugin definition is sealed" if @sealed
+          if @fulfillment_providers.key?(normalized_key)
+            raise LifecycleError, "plugin fulfillment provider #{provider_id} is already registered"
+          end
+
+          @fulfillment_providers[normalized_key] = FulfillmentProvider.new(
+            plugin_id: id,
+            key: normalized_key,
+            provider_id:,
+            callback:
+          )
+        end
+        self
+      end
+
       def listeners
         @mutex.synchronize { @listeners.dup.freeze }
       end
@@ -164,6 +199,88 @@ module Mcweb
 
       def job_handler_keys
         @mutex.synchronize { @job_handlers.keys.sort.freeze }
+      end
+
+      def fulfillment_provider_handler(key)
+        @mutex.synchronize { @fulfillment_providers[key.to_s] }
+      end
+
+      def fulfillment_provider_descriptors
+        @mutex.synchronize do
+          @fulfillment_providers.values.sort_by(&:provider_id).map do |provider|
+            {
+              id: provider.provider_id,
+              key: provider.key,
+              plugin_id: provider.plugin_id,
+              plugin_name: manifest.name,
+              plugin_version: manifest.version
+            }.freeze
+          end.freeze
+        end
+      end
+
+      def legacy_contribution_descriptors
+        descriptors = permission_contributions.map do |entry|
+          {
+            plugin_id: id,
+            type: "permission",
+            id: entry.id,
+            priority: 100,
+            before: [],
+            after: [],
+            requires: [],
+            conflicts: [],
+            payload: entry.to_h.except(:plugin_id)
+          }.freeze
+        end
+        if settings_schema
+          descriptors << {
+            plugin_id: id,
+            type: "settings",
+            id: "#{id.tr('/-', '._')}.settings.schema",
+            priority: 100,
+            before: [],
+            after: [],
+            requires: [],
+            conflicts: [],
+            payload: {
+              schema_version: settings_schema.version,
+              groups: settings_schema.groups.keys,
+              fields: settings_schema.properties.keys,
+              required_fields: settings_schema.required_keys
+            }
+          }.freeze
+        end
+        if job_contribution
+          job_contribution.jobs.each_value do |job|
+            descriptors << {
+              plugin_id: id,
+              type: "job",
+              id: "#{id.tr('/-', '._')}.job.#{job.key.tr('.', '_')}",
+              priority: 100,
+              before: [],
+              after: [],
+              requires: [],
+              conflicts: [],
+              payload: {
+                key: job.key,
+                max_attempts: job.max_attempts,
+                retry_wait_seconds: job.retry_wait_seconds,
+                lease_seconds: job.lease_seconds
+              }
+            }.freeze
+          end
+        end
+        descriptors.sort_by { |entry| [ entry.fetch(:type), entry.fetch(:id) ] }.freeze
+      end
+
+      def contribution_descriptors
+        (
+          contributions.map { |entry| entry.to_h.except(:source) } +
+            legacy_contribution_descriptors
+        ).sort_by do |entry|
+          [ entry.fetch(:priority), entry.fetch(:type), entry.fetch(:plugin_id), entry.fetch(:id) ]
+        end.freeze
       end
 
       def declares_capability?(capability)
@@ -203,6 +320,7 @@ module Mcweb
           @filters.freeze
           @service_decorators.freeze
           @job_handlers.freeze
+          @fulfillment_providers.freeze
         end
         self
       end
@@ -265,9 +383,13 @@ module Mcweb
             filter_count: @filters.length,
             service_decorator_count: @service_decorators.length,
             job_handler_count: @job_handlers.length,
+            fulfillment_provider_count: @fulfillment_providers.length,
+            fulfillment_provider_ids: @fulfillment_providers.values.map(&:provider_id).sort.freeze,
             jobs_schema_version: job_contribution&.version,
             permission_contribution_count: permission_contributions.length,
             settings_schema_version: settings_schema&.version,
+            contribution_count: contribution_descriptors.length,
+            contribution_descriptors: contribution_descriptors,
             failure_count: @failure_count,
             last_error: @last_error,
             activation_order: @activation_order

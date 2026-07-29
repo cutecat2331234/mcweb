@@ -9,7 +9,7 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Small action body is required.") if @body.blank?
+      return ServiceResult.failure(error: :small_action_body_required) if @body.blank?
 
       post = nil
       @topic.with_lock do

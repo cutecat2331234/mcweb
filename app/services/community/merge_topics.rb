@@ -10,12 +10,12 @@ module Community
 
     def call
       unless @user.permission?("forum.topics.move") || @user.permission?("forum.topics.lock")
-        return ServiceResult.failure(error: "You are not authorized to merge topics.")
+        return ServiceResult.failure(error: :you_are_not_authorized_to_merge_topics)
       end
 
       target = Community::Topic.find_by(public_id: @target_public_id, status: :published)
-      return ServiceResult.failure(error: "Target topic not found.") unless target
-      return ServiceResult.failure(error: "Cannot merge a topic into itself.") if @source.id == target.id
+      return ServiceResult.failure(error: :target_topic_not_found) unless target
+      return ServiceResult.failure(error: :cannot_merge_a_topic_into_itself) if @source.id == target.id
 
       Community::Topic.transaction do
         # Lock both rows in a stable order. CreatePost uses the same topic-row
@@ -24,7 +24,7 @@ module Community
         Community::Topic.where(id: [ @source.id, target.id ]).order(:id).lock.load
         @source.reload
         target.reload
-        return ServiceResult.failure(error: "Target topic not found.") unless target.status == "published"
+        return ServiceResult.failure(error: :target_topic_not_found) unless target.status == "published"
 
         posts_to_move = Community::Post.with_discarded
           .where(forum_topic_id: @source.id)

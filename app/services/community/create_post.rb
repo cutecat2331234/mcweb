@@ -21,27 +21,40 @@ module Community
     end
 
     def call
+      return call_core unless plugin_service_decorators_available?
+
+      Mcweb::Plugins.call_service(
+        "forum.post.create",
+        input: plugin_attributes,
+        context: { user: @user, topic: @topic }
+      ) do |input, _context|
+        apply_plugin_attributes!(input)
+        call_core
+      end
+    end
+
+    def call_core
       unless Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
       state_error = topic_reply_state_error
       return ServiceResult.failure(error: state_error) if state_error
 
       if @whisper && !can_post_whisper?
-        return ServiceResult.failure(error: "You are not allowed to post staff whispers.")
+        return ServiceResult.failure(error: :you_are_not_allowed_to_post_staff_whispers)
       end
 
       unless @topic.section.allowed?(@user, :reply)
-        return ServiceResult.failure(error: "You are not allowed to reply in this section.")
+        return ServiceResult.failure(error: :you_are_not_allowed_to_reply_in_this_section)
       end
 
       unless @topic.section.trust_allowed?(@user, :reply)
-        return ServiceResult.failure(error: "Your trust level is too low to reply in this section.")
+        return ServiceResult.failure(error: :your_trust_level_is_too_low_to_reply_in_this_section)
       end
 
       unless @topic.section.writable_by?(@user, :reply)
-        return ServiceResult.failure(error: "This section is read-only.")
+        return ServiceResult.failure(error: :section_read_only)
       end
 
       if Community::TopicReplyBan.active.exists?(forum_topic_id: @topic.id, user_id: @user.id)
@@ -49,15 +62,15 @@ module Community
       end
 
       if @parent_post && @parent_post.forum_topic_id != @topic.id
-        return ServiceResult.failure(error: "Invalid parent post.")
+        return ServiceResult.failure(error: :invalid_parent_post)
       end
 
       if @quoted_post && !PostAccess.readable?(post: @quoted_post, user: @user)
-        return ServiceResult.failure(error: "Quoted post is not available.")
+        return ServiceResult.failure(error: :quoted_post_is_not_available)
       end
 
       if @parent_post && !PostAccess.readable?(post: @parent_post, user: @user)
-        return ServiceResult.failure(error: "Parent post is not available.")
+        return ServiceResult.failure(error: :parent_post_is_not_available)
       end
 
       rate_result = enforce_rate_limit
@@ -167,6 +180,26 @@ module Community
 
     private
 
+    def plugin_service_decorators_available?
+      defined?(Mcweb::Plugins) && Mcweb::Plugins.respond_to?(:call_service)
+    end
+
+    def plugin_attributes
+      {
+        body: @body,
+        whisper: @whisper
+      }
+    end
+
+    def apply_plugin_attributes!(filtered)
+      return unless filtered.is_a?(Hash)
+
+      @body = filtered.fetch("body", @body).to_s.strip
+      @whisper = ActiveModel::Type::Boolean.new.cast(
+        filtered.fetch("whisper", @whisper)
+      )
+    end
+
     def topic_reply_state_error
       return "This topic is archived." if @topic.archived_at.present?
       return "This topic is not open for replies." unless @topic.status == "published"
@@ -195,26 +228,26 @@ module Community
 
     def check_spam
       if @body.length < MIN_BODY_LENGTH
-        return ServiceResult.failure(error: "Post body is too short.")
+        return ServiceResult.failure(error: :post_body_too_short)
       end
 
       if muted_in_section?
-        return ServiceResult.failure(error: "You are muted in this section.")
+        return ServiceResult.failure(error: :muted_in_section)
       end
 
       if @user.banned?
-        return ServiceResult.failure(error: "Your account is banned.")
+        return ServiceResult.failure(error: :account_banned)
       end
 
       if Community::UserSilence.silenced?(@user)
-        return ServiceResult.failure(error: "You are silenced and cannot post.")
+        return ServiceResult.failure(error: :silenced_cannot_post)
       end
 
       ip_result = Administration::CheckIpBan.call(ip_address: @ip_address)
       return ip_result if ip_result.failure?
 
       if !developer_mode_bypasses_spam_gates? && slow_mode_active?
-        return ServiceResult.failure(error: "Slow mode is active. Please wait before posting again.")
+        return ServiceResult.failure(error: :slow_mode_active)
       end
 
       recent = Community::Post.where(user: @user).order(created_at: :desc).first
@@ -222,15 +255,15 @@ module Community
           !@skip_interval_check &&
           recent &&
           recent.created_at > MIN_INTERVAL.ago
-        return ServiceResult.failure(error: "Please wait before posting again.")
+        return ServiceResult.failure(error: :wait_before_posting)
       end
 
       if !developer_mode_bypasses_spam_gates? && duplicate_body?
-        return ServiceResult.failure(error: "Duplicate post detected.")
+        return ServiceResult.failure(error: :duplicate_post_detected)
       end
 
       if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@user)
-        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+        return ServiceResult.failure(error: :new_members_cannot_post_links)
       end
 
       link_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :link)
@@ -284,16 +317,10 @@ module Community
 
       filtered = Mcweb::Plugins.apply_filter(
         "forum.post.create.attributes",
-        {
-          body: @body,
-          whisper: @whisper
-        },
+        plugin_attributes,
         context: { user: @user, topic: @topic }
       )
-      return unless filtered.is_a?(Hash)
-
-      @body = filtered.fetch("body", @body).to_s.strip
-      @whisper = ActiveModel::Type::Boolean.new.cast(filtered.fetch("whisper", @whisper))
+      apply_plugin_attributes!(filtered)
     rescue StandardError => e
       Rails.logger.error("[mcweb.plugins] forum.post.create.attributes host integration failed: #{e.class}: #{e.message}")
     end

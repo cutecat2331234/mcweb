@@ -9,9 +9,9 @@ module Minecraft
     end
 
     def call
-      return ServiceResult.failure(error: "Command is required.") if @command.blank?
+      return ServiceResult.failure(error: :command_is_required) if @command.blank?
       unless connector_online? || developer_mode_simulation?
-        return ServiceResult.failure(error: "Server connector is offline.")
+        return ServiceResult.failure(error: :server_connector_is_offline)
       end
 
       task = Minecraft::ConnectorTask.create!(

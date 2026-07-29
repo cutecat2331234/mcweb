@@ -4,6 +4,7 @@
 # and recreated between test runs. Don't rely on the data there!
 
 require_relative "../developer_mode_runtime"
+require_relative "../../lib/mcweb/test_log_path"
 
 Rails.application.configure do
   # Settings specified here will take precedence over those in config/application.rb.
@@ -46,6 +47,14 @@ Rails.application.configure do
   # Print deprecation notices to the stderr.
   config.active_support.deprecation = :stderr
 
+  # Parallel test processes must never rotate or close another process's log
+  # stream on Windows. Keep log/test.log for the normal single-worker run,
+  # suffix parallel-worker logs with TEST_ENV_NUMBER, and allow CI to select an
+  # explicit path when it orchestrates multiple suites.
+  config.logger = ActiveSupport::TaggedLogging.logger(
+    Mcweb::TestLogPath.resolve(root: Rails.root)
+  )
+
   # Raises error for missing translations.
   config.i18n.raise_on_missing_translations = true
 
@@ -56,4 +65,8 @@ Rails.application.configure do
   config.action_controller.raise_on_missing_callback_actions = true
 
   Mcweb::DeveloperModeRuntime.apply!(config)
+
+  # Developer-mode runtime profiles may use async or inline jobs locally, but
+  # the test environment must retain deterministic queue assertions.
+  config.active_job.queue_adapter = :test
 end

@@ -18,12 +18,6 @@ module Commerce
       order = Commerce::Order.find(order_id)
       return unless %w[processing fulfilling].include?(order.status)
 
-      if minecraft_maintenance_active?
-        Rails.logger.info("[FulfillOrderJob] Deferred order #{order.id} — Minecraft maintenance active")
-        Commerce::FulfillOrderJob.set(wait: 10.minutes).perform_later(order_id)
-        return
-      end
-
       fulfillment_failures = 0
 
       order.items.find_each do |order_item|
@@ -101,12 +95,6 @@ module Commerce
     end
 
     private
-
-    def minecraft_maintenance_active?
-      return false unless Minecraft::MaintenanceActive.pause_fulfillment?
-
-      Minecraft::MaintenanceActive.call.value[:active]
-    end
 
     def handle_fulfillment_result!(order_item, result)
       return true if result.success?

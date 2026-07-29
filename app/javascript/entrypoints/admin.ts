@@ -1,8 +1,7 @@
 import { createInertiaApp, router } from '@inertiajs/vue3'
 import { createApp, h, type DefineComponent } from 'vue'
-import ArcoVue from '@mcweb/ui'
+import ArcoVue from '@arco-design/web-vue'
 
-import '@/styles/portal.css'
 // Arco Design Vue — unified admin UI library (see docs/UI_COMPONENT_LIBRARY.md)
 import '@arco-design/web-vue/dist/arco.css'
 import '@/styles/arco-admin.css'

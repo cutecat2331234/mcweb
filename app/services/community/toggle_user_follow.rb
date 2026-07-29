@@ -9,7 +9,7 @@ module Community
 
     def call
       followed = User.find_by!(username: @followed_username)
-      return ServiceResult.failure(error: "Cannot follow yourself.") if @follower.id == followed.id
+      return ServiceResult.failure(error: :cannot_follow_yourself) if @follower.id == followed.id
 
       existing = Community::UserFollow.find_by(follower: @follower, followed: followed)
       if existing
@@ -21,7 +21,7 @@ module Community
         ServiceResult.success(following: true)
       end
     rescue ActiveRecord::RecordNotFound
-      ServiceResult.failure(error: "User not found.")
+      ServiceResult.failure(error: :user_not_found)
     end
 
     private

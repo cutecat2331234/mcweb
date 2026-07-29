@@ -9,7 +9,7 @@ module Community
 
     def call
       badge = Community::Badge.find_by(slug: @badge_slug)
-      return ServiceResult.failure(error: "Badge not found.") unless badge
+      return ServiceResult.failure(error: :badge_not_found) unless badge
 
       user_badge = Community::UserBadge.find_or_initialize_by(user: @user, badge: badge)
       return ServiceResult.success(user_badge) if user_badge.persisted?

@@ -180,6 +180,7 @@ class Commerce::RetryFulfillmentTest < ActiveSupport::TestCase
     Commerce::CartItem.create!(cart: cart, product: @product, quantity: 1)
     order = Commerce::CreateOrder.call(cart: cart, user: @user).value
     order.update!(status: "paid")
+    Commerce::ConfirmInventoryReservations.call(order: order)
     @fulfillment = Commerce::CreateFulfillment.call(order_item: order.items.first).value
     @fulfillment.update!(status: "failed", last_error: "timeout")
   end

@@ -1,0 +1,4 @@
+---
+en:
+  examples.forum_extension.name: Forum Extension
+  examples.forum_extension.summary: Metadata, moderation permission, and UI-slot example.

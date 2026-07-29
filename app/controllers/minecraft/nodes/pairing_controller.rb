@@ -10,7 +10,7 @@ module Minecraft
           window: 1.minute
         )
         if rate_result.failure?
-          return render json: { error: "Too many pairing attempts." }, status: :too_many_requests
+          return render json: { error: I18n.t("mcweb.user_copy.too_many_pairing_attempts") }, status: :too_many_requests
         end
 
         result = Minecraft::PairNode.call(

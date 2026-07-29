@@ -11,7 +11,7 @@ module Payments
 
       if history_present && !account_bound
         return ServiceResult.failure(
-          error: "Release blocked: Stripe financial history exists without a verified account binding.",
+          error: :release_blocked_stripe_financial_history_exists_without_a_verified_account_binding,
           code: RELEASE_BLOCKED_CODE,
           value: {
             account_bound: false,
@@ -23,7 +23,7 @@ module Payments
 
       if provider_enabled && !account_bound
         return ServiceResult.failure(
-          error: "Release blocked: disable Stripe before establishing the first verified account binding.",
+          error: :release_blocked_disable_stripe_before_establishing_the_first_verified_account_binding,
           code: "stripe_account_binding_disable_required",
           value: {
             account_bound: false,

@@ -52,7 +52,7 @@ module Payments
       result
     rescue ActiveRecord::RecordInvalid
       ServiceResult.failure(
-        error: "The payment-provider configuration could not be saved.",
+        error: :the_payment_provider_configuration_could_not_be_saved,
         code: "configuration_invalid"
       )
     end

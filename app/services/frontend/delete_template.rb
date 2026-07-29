@@ -9,7 +9,7 @@ module Frontend
 
     def call
       if builtin?
-        return ServiceResult.failure(error: "内置默认模板无法删除。")
+        return ServiceResult.failure(error: :builtin_template_cannot_delete)
       end
 
       Frontend::Template::SITE_SETTING_KEYS.each do |scope, setting_key|

@@ -94,6 +94,35 @@ test('store-credit adjustment uses two JSON phases without remounting the page',
   assert.doesNotMatch(source, /storeCreditForm\.post\(props\.storeCreditForm\.action_url/)
 })
 
+test('high-risk commerce actions share a two-phase local-error modal contract', () => {
+  const modal = adminComponentSource('HighRiskActionModal.vue')
+  const index = pageSource('Generic/Index.vue')
+  const show = pageSource('Generic/Show.vue')
+  const membership = pageSource('Store/UserMemberships/Form.vue')
+  const entitlement = pageSource('Store/UserEntitlements/Form.vue')
+
+  assert.match(modal, /createIdempotencyKey/)
+  assert.match(modal, /postJson<Authorization>\(props\.authorizationUrl/)
+  assert.match(modal, /authorization_token: challenge\.authorization_token/)
+  assert.match(modal, /confirmation\.value === authorization\.value\?\.confirmation/)
+  assert.match(modal, /preview_items/)
+  assert.match(modal, /errorMessage\.value = errorText\(error\)/)
+  assert.match(modal, /<a-modal/)
+  assert.match(modal, /<a-steps/)
+  assert.match(modal, /<a-textarea/)
+  assert.match(modal, /:max-length="1000"/)
+
+  assert.match(index, /bulkOrderAuthorizationUrl/)
+  assert.match(index, /HighRiskActionModal/)
+  assert.match(index, /router\.reload\(\{ preserveScroll: true \}\)/)
+  assert.match(show, /highRiskActions\?: HighRiskAction\[\]/)
+  assert.match(show, /HighRiskActionModal/)
+  assert.match(membership, /authorizationUrl: string/)
+  assert.doesNotMatch(membership, /form\.post\(props\.submitUrl\)/)
+  assert.match(entitlement, /HighRiskActionModal/)
+  assert.match(entitlement, /user_entitlement/)
+})
+
 test('generic admin show lets owners edit account type, identity module access, and roles', () => {
   const source = pageSource('Generic/Show.vue')
 
@@ -220,7 +249,7 @@ test('system API key pages use Arco controls while retaining create and revoke m
   for (const source of [form, index]) {
     assertNoLegacyPagePrimitives(source)
     assertNoNativeAdminControls(source)
-    assert.match(source, /<a-page-header/)
+    assert.match(source, /<(?:a-page-header|PageHeader)/)
     assert.match(source, /<a-card/)
   }
 
@@ -430,7 +459,7 @@ test('store specialized pages use Arco without legacy, native, or Element Plus c
     assert.doesNotMatch(source, /@\/components\/admin-pro\//)
     assert.doesNotMatch(source, /<el-/)
     assert.doesNotMatch(source, /<textarea(?:\s|>)/i)
-    assert.match(source, /<a-page-header/)
+    assert.match(source, /<(?:a-page-header|PageHeader)/)
   }
 })
 
@@ -446,6 +475,9 @@ test('store forms retain nested payloads, amount units, associations, and mutati
   assert.match(products, /body\.append\('file', file\)/)
   assert.match(products, /<a-upload/)
   assert.match(products, /value-format="YYYY-MM-DDTHH:mm"/)
+  assert.match(products, /props\.fulfillment_providers/)
+  assert.match(products, /config\.plugin_provider/)
+  assert.match(products, /<a-select[\s\S]*fulfillmentProviderOptions/)
 
   const coupons = pageSource('Store/Coupons/Form.vue')
   assert.match(coupons, /coupon:\s*\{ \.\.\.props\.coupon \}/)
@@ -468,7 +500,9 @@ test('store forms retain nested payloads, amount units, associations, and mutati
 
   const userMemberships = pageSource('Store/UserMemberships/Form.vue')
   assert.match(userMemberships, /user_membership:\s*\{/)
-  assert.match(userMemberships, /form\.post\(props\.submitUrl\)/)
+  assert.match(userMemberships, /authorizationUrl: string/)
+  assert.match(userMemberships, /HighRiskActionModal/)
+  assert.doesNotMatch(userMemberships, /form\.post\(props\.submitUrl\)/)
 })
 
 test('store operational pages retain filters, bulk actions, retries, moderation, and webhook polling', () => {
@@ -482,9 +516,11 @@ test('store operational pages retain filters, bulk actions, retries, moderation,
   assert.match(orders, /<a-pagination/)
 
   const fulfillments = pageSource('Store/Fulfillments/Show.vue')
-  assert.match(fulfillments, /method="patch"/)
-  assert.match(fulfillments, /:data="\{ retry: '1' \}"/)
-  assert.match(fulfillments, /adminRoutes\.storeFulfillment/)
+  assert.match(fulfillments, /HighRiskActionModal/)
+  assert.match(fulfillments, /:authorization-url="paths\.authorize"/)
+  assert.match(fulfillments, /:action-url="paths\.execute"/)
+  assert.match(fulfillments, /router\.reload\(\{/)
+  assert.doesNotMatch(fulfillments, /method="patch"|window\.location|location\.reload/)
 
   const questions = pageSource('Store/ProductQuestions/Index.vue')
   assert.match(questions, /<a-table/)
@@ -644,6 +680,14 @@ test('admin links that leave the admin Inertia entry use full document navigatio
   assert.match(layout, /<a :href="adminRoutes\.site"/)
   assert.doesNotMatch(dashboard, /<Link[^>]+:href="adminRoutes\.site"/)
   assert.match(dashboard, /<a\s+:href="adminRoutes\.site"/)
+})
+
+test('plugin setting history formats timestamps with the active application locale', () => {
+  const source = pageSource('System/PluginSettings/Show.vue')
+
+  assert.match(source, /const \{ t, locale \} = useI18n\(\)/)
+  assert.match(source, /new Intl\.DateTimeFormat\(locale\.value,/)
+  assert.doesNotMatch(source, /new Intl\.DateTimeFormat\(undefined,/)
 })
 
 test('every reachable admin page is free of legacy controls and uses the Arco confirm facade', () => {

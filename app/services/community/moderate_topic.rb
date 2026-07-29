@@ -12,7 +12,7 @@ module Community
 
     def call
       unless Community::SectionModeration.can_moderate_topic_action?(user: @user, topic: @topic, action: @action)
-        return ServiceResult.failure(error: "You are not authorized to moderate this topic.")
+        return ServiceResult.failure(error: :you_are_not_authorized_to_moderate_this_topic)
       end
 
       small_action_result = nil
@@ -73,7 +73,7 @@ module Community
         when "unassign"
           @topic.update!(assigned_to_id: nil)
         else
-          return ServiceResult.failure(error: "Unknown moderation action.")
+          return ServiceResult.failure(error: :unknown_moderation_action)
         end
 
         small_action_result = record_small_action! unless @action == "bump"

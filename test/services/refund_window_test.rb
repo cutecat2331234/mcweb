@@ -34,7 +34,7 @@ class Commerce::RefundWindowUnitTest < ActiveSupport::TestCase
     assert_not Commerce::RefundWindow.within_window?(@order)
     result = Commerce::RequestRefund.call(order: @order, user: @user, reason: "test")
     assert result.failure?
-    assert_equal "Refund window has expired.", result.error
+    assert_equal I18n.t("mcweb.services.errors.refund_window_has_expired"), result.error
   end
 
   test "enabled window allows recent payments" do
@@ -53,6 +53,6 @@ class Commerce::RefundWindowUnitTest < ActiveSupport::TestCase
     assert_not Commerce::RefundWindow.within_window?(@order)
     result = Commerce::RequestRefund.call(order: @order, user: @user, reason: "late")
     assert result.failure?
-    assert_equal "Refund window has expired.", result.error
+    assert_equal I18n.t("mcweb.services.errors.refund_window_has_expired"), result.error
   end
 end

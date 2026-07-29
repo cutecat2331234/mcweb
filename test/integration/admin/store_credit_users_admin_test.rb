@@ -36,6 +36,7 @@ module Admin
       )
 
       grant_permission(@actor, "admin.access")
+      grant_permission(@actor, "store.credit.read")
       grant_permission(@actor, "store.credit.adjust")
       grant_admin_module(@actor, "store")
       sign_in_as(@actor)
@@ -48,6 +49,7 @@ module Admin
       user_props = inertia.props.deep_symbolize_keys.dig(:auth, :user)
       assert_equal [ "store" ], user_props.fetch(:admin_modules)
       assert_includes user_props.fetch(:admin_permissions), "store.credit.adjust"
+      assert_includes user_props.fetch(:admin_permissions), "store.credit.read"
       assert_not_includes user_props.fetch(:admin_permissions), "system.settings.manage"
 
       get admin_store_credit_users_path
@@ -166,13 +168,61 @@ module Admin
 
       without_module = create_user(account_type: "staff")
       grant_permission(without_module, "admin.access")
-      grant_permission(without_module, "store.credit.adjust")
+      grant_permission(without_module, "store.credit.read")
       grant_admin_module(without_module, "forum")
       reset!
       sign_in_as(without_module)
 
       get admin_store_credit_users_path
       assert_redirected_to admin_root_path
+    end
+
+    test "balance read and adjustment permissions are independent" do
+      read_only = create_user(account_type: "staff")
+      grant_permission(read_only, "admin.access")
+      grant_permission(read_only, "store.credit.read")
+      grant_admin_module(read_only, "store")
+      reset!
+      sign_in_as(read_only)
+
+      get admin_store_credit_user_path(@target)
+      assert_response :success
+      assert_nil inertia.props.deep_symbolize_keys.fetch(:storeCreditForm)
+
+      adjust_only = create_user(account_type: "staff")
+      grant_permission(adjust_only, "admin.access")
+      grant_permission(adjust_only, "store.credit.adjust")
+      grant_admin_module(adjust_only, "store")
+      reset!
+      sign_in_as(adjust_only)
+
+      get admin_store_credit_users_path
+      assert_redirected_to root_path
+
+      post authorize_store_credit_adjustment_admin_user_path(@target),
+        params: {
+          amount_cents: 100,
+          note: "Permission boundary check",
+          request_id: SecureRandom.uuid
+        },
+        as: :json
+      assert_response :success
+    end
+
+    test "system user detail does not disclose balance without the store read permission" do
+      system_only = create_user(account_type: "staff")
+      grant_permission(system_only, "admin.access")
+      grant_permission(system_only, "system.settings.manage")
+      grant_admin_module(system_only, "system")
+      reset!
+      sign_in_as(system_only)
+
+      get admin_user_path(@target)
+
+      assert_response :success
+      props = inertia.props.deep_symbolize_keys
+      refute_includes props.fetch(:fields).filter_map { |field| field[:key] }, "store_credit"
+      assert_nil props.fetch(:storeCreditForm)
     end
 
     test "system user management keeps its original full projection" do

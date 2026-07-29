@@ -13,7 +13,7 @@ module Minecraft
     def call
       player_ref = resolve_player_ref
       identity = player_ref.active_identity
-      return ServiceResult.failure(error: "Unable to resolve player.") unless identity
+      return ServiceResult.failure(error: :unable_to_resolve_player) unless identity
 
       event = @payload["event"].presence || "player.join"
 
@@ -74,10 +74,10 @@ module Minecraft
           return ServiceResult.success
         end
 
-        return ServiceResult.failure(error: "Player is not associated with this server.")
+        return ServiceResult.failure(error: :player_is_not_associated_with_this_server)
       end
 
-      ServiceResult.failure(error: "Player is not associated with this server.")
+      ServiceResult.failure(error: :player_is_not_associated_with_this_server)
     end
 
     def join_event?(event)

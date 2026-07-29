@@ -7,6 +7,10 @@ module Payments
       class_name: "Payments::LatePaymentCase",
       foreign_key: :payment_webhook_event_id,
       dependent: :restrict_with_error
+    has_many :dispute_events,
+             class_name: "Commerce::DisputeEvent",
+             foreign_key: :payment_webhook_event_id,
+             dependent: :restrict_with_error
 
     enum :status, {
       received: "received",

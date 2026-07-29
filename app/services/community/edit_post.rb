@@ -36,12 +36,25 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Post not available.") unless PostAccess.editable?(post: @post, user: @user)
-      return ServiceResult.failure(error: "Post body is too short.") if @body.length < CreatePost::MIN_BODY_LENGTH
-      return ServiceResult.failure(error: "You cannot edit this post.") unless can_edit?
+      return call_core unless plugin_service_decorators_available?
+
+      Mcweb::Plugins.call_service(
+        "forum.post.edit",
+        input: plugin_attributes,
+        context: { user: @user, post: @post, topic: @post.topic }
+      ) do |input, _context|
+        apply_plugin_attributes!(input)
+        call_core
+      end
+    end
+
+    def call_core
+      return ServiceResult.failure(error: :post_not_available) unless PostAccess.editable?(post: @post, user: @user)
+      return ServiceResult.failure(error: :post_body_too_short) if @body.length < CreatePost::MIN_BODY_LENGTH
+      return ServiceResult.failure(error: :you_cannot_edit_this_post) unless can_edit?
 
       if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@user)
-        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+        return ServiceResult.failure(error: :new_members_cannot_post_links)
       end
 
       link_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :link)
@@ -95,6 +108,24 @@ module Community
 
     private
 
+    def plugin_service_decorators_available?
+      defined?(Mcweb::Plugins) && Mcweb::Plugins.respond_to?(:call_service)
+    end
+
+    def plugin_attributes
+      {
+        body: @body,
+        reason: @reason
+      }
+    end
+
+    def apply_plugin_attributes!(filtered)
+      return unless filtered.is_a?(Hash)
+
+      @body = filtered.fetch("body", @body).to_s.strip
+      @reason = filtered.fetch("reason", @reason).to_s.strip.presence
+    end
+
     def can_edit?
       self.class.editable_by?(@user, @post)
     end
@@ -119,16 +150,10 @@ module Community
 
       filtered = Mcweb::Plugins.apply_filter(
         "forum.post.edit.attributes",
-        {
-          body: @body,
-          reason: @reason
-        },
+        plugin_attributes,
         context: { user: @user, post: @post, topic: @post.topic }
       )
-      return unless filtered.is_a?(Hash)
-
-      @body = filtered.fetch("body", @body).to_s.strip
-      @reason = filtered.fetch("reason", @reason).to_s.strip.presence
+      apply_plugin_attributes!(filtered)
     rescue StandardError => e
       Rails.logger.error("[mcweb.plugins] forum.post.edit.attributes host integration failed: #{e.class}: #{e.message}")
     end

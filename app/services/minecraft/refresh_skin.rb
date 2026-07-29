@@ -11,7 +11,7 @@ module Minecraft
 
     def call
       identity = find_identity
-      return ServiceResult.failure(error: "identity not found") unless identity
+      return ServiceResult.failure(error: :identity_not_found) unless identity
 
       if developer_mode_simulation?
         return ServiceResult.success(
@@ -23,7 +23,7 @@ module Minecraft
       end
 
       profile_data = fetch_mojang_textures(identity.external_uuid)
-      return ServiceResult.failure(error: "textures not found") unless profile_data
+      return ServiceResult.failure(error: :textures_not_found) unless profile_data
 
       identity.update!(
         skin_texture_url: profile_data[:texture_url],

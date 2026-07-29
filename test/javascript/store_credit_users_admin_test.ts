@@ -13,7 +13,7 @@ test('store-credit users have a store-scoped permission-gated Arco navigation en
   assert.match(routes, /storeCreditUsers: '\/admin\/store\/store-credits'/)
   assert.match(
     layout,
-    /label: t\('admin\.storeCreditUsers'\),\s+href: adminRoutes\.storeCreditUsers,\s+permissionKey: 'store\.credit\.adjust'/,
+    /label: t\('admin\.storeCreditUsers'\),\s+href: adminRoutes\.storeCreditUsers,\s+permissionKey: 'store\.credit\.read'/,
   )
   assert.match(layout, /key: 'store',[\s\S]*moduleKey: 'store'/)
 })

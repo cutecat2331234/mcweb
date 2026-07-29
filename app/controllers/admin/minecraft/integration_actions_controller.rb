@@ -42,7 +42,7 @@ module Admin
         parsed = parsed_action_params
         unless parsed
           action = ::Minecraft::IntegrationAction.new(action_params.except(:conditions_json, :actions_json))
-          action.errors.add(:base, "JSON 格式无效")
+          action.errors.add(:base, I18n.t("mcweb.validation_errors.invalid_json"))
           return render inertia: "Admin/Minecraft/IntegrationActions/Form", props: form_props(action), status: :unprocessable_entity
         end
 
@@ -58,7 +58,7 @@ module Admin
         parsed = parsed_action_params
         unless parsed
           @action.assign_attributes(action_params.except(:conditions_json, :actions_json))
-          @action.errors.add(:base, "JSON 格式无效")
+          @action.errors.add(:base, I18n.t("mcweb.validation_errors.invalid_json"))
           return render inertia: "Admin/Minecraft/IntegrationActions/Form", props: form_props(@action), status: :unprocessable_entity
         end
 

@@ -41,6 +41,9 @@ module InertiaSerializable
       "forum.approvals.read" => forum_approvals_admin_capability?(
         admin_modules: admin_modules,
         admin_permissions: admin_permissions
+      ),
+      "forum.moderation_workbench.read" => forum_moderation_workbench_admin_capability?(
+        admin_modules: admin_modules
       )
     }
     {
@@ -63,6 +66,11 @@ module InertiaSerializable
     return true if admin_permissions.include?("forum.topics.lock")
 
     Community::SectionModerator.exists?(user_id: current_user.id)
+  end
+
+  def forum_moderation_workbench_admin_capability?(admin_modules:)
+    admin_modules.include?("forum") &&
+      Community::ModerationWorkbench::Policy.new(current_user).accessible?
   end
 
   def admin_column(key, label, link: false)

@@ -10,16 +10,16 @@ module Community
     def call
       topic = @poll.topic.reload
       unless @user && Community::ForumAccess.topic_visible?(topic: topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "This topic is archived.") if topic.archived_at.present?
+      return ServiceResult.failure(error: :this_topic_is_archived) if topic.archived_at.present?
 
       unless @user.id == topic.user_id || @user.permission?("forum.topics.lock")
-        return ServiceResult.failure(error: "Not allowed to close poll.")
+        return ServiceResult.failure(error: :not_allowed_to_close_poll)
       end
 
-      return ServiceResult.failure(error: "Poll is already closed.") unless @poll.open?
+      return ServiceResult.failure(error: :poll_is_already_closed) unless @poll.open?
 
       finalize_result = nil
       Community::Poll.transaction do
@@ -39,7 +39,7 @@ module Community
 
       ServiceResult.success(@poll)
     rescue ActiveRecord::RecordNotFound
-      ServiceResult.failure(error: "Topic not available.")
+      ServiceResult.failure(error: :topic_not_available)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end

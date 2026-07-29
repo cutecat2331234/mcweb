@@ -17,23 +17,23 @@ module Community
       )
       return rate_limit_result if rate_limit_result.failure?
 
-      return ServiceResult.failure(error: "Recipient not found.") unless @recipient
-      return ServiceResult.failure(error: "You cannot message yourself.") if @sender.id == @recipient.id
-      return ServiceResult.failure(error: "You cannot message this user.") if Community::UserBlock.blocked?(@sender, @recipient)
+      return ServiceResult.failure(error: :recipient_not_found) unless @recipient
+      return ServiceResult.failure(error: :cannot_message_self) if @sender.id == @recipient.id
+      return ServiceResult.failure(error: :cannot_message_user) if Community::UserBlock.blocked?(@sender, @recipient)
       return ServiceResult.failure(error: "pm_not_accepted") unless Community::PmPolicy.accepts?(recipient: @recipient, sender: @sender)
-      return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@sender)
+      return ServiceResult.failure(error: :new_members_cannot_send_pm) unless Community::TrustLevel.can_send_pm?(@sender)
 
       pm_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :pm)
       return pm_restriction if pm_restriction.failure?
 
       if Community::TrustLevel.contains_link?(@body) && !Community::TrustLevel.can_post_links?(@sender)
-        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+        return ServiceResult.failure(error: :new_members_cannot_post_links)
       end
 
       link_restriction = Community::CheckWarningRestrictions.call(user: @sender, action: :link)
       return link_restriction if link_restriction.failure? && Community::TrustLevel.contains_link?(@body)
 
-      return ServiceResult.failure(error: "Message is too short.") if @body.length < 1
+      return ServiceResult.failure(error: :message_too_short) if @body.length < 1
 
       conversation = find_existing || create_conversation!
       message = conversation.messages.create!(user: @sender, body: @body)

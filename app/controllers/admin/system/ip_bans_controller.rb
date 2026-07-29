@@ -9,19 +9,19 @@ module Admin
         bans = Administration::IpBan.order(created_at: :desc).limit(100)
 
         render inertia: "Admin/Generic/Index", props: {
-          title: "IP 封禁",
+          title: t("mcweb.user_copy.ip_bans_title"),
           columns: [
             { key: "ip_address", label: "IP" },
-            { key: "reason", label: "原因" },
-            { key: "expires_at", label: "过期" },
-            { key: "created_at", label: "创建时间" }
+            { key: "reason", label: t("mcweb.user_copy.reason") },
+            { key: "expires_at", label: t("mcweb.user_copy.expires_at") },
+            { key: "created_at", label: t("mcweb.user_copy.created_at") }
           ],
           rows: bans.map do |ban|
             {
               id: ban.id,
               ip_address: ban.ip_address,
               reason: ban.reason || "—",
-              expires_at: ban.expires_at ? l(ban.expires_at, format: :short) : "永久",
+              expires_at: ban.expires_at ? l(ban.expires_at, format: :short) : t("mcweb.user_copy.permanent"),
               created_at: l(ban.created_at, format: :short)
             }
           end,

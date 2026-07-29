@@ -10,21 +10,21 @@ module Community
 
     def call
       unless @user && Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "This topic is archived.") if @topic.archived_at.present?
+      return ServiceResult.failure(error: :this_topic_is_archived) if @topic.archived_at.present?
 
       unless can_mark?
-        return ServiceResult.failure(error: "You are not allowed to mark this topic as solved.")
+        return ServiceResult.failure(error: :you_are_not_allowed_to_mark_this_topic_as_solved)
       end
 
       if @post.forum_topic_id != @topic.id
-        return ServiceResult.failure(error: "Post does not belong to this topic.")
+        return ServiceResult.failure(error: :post_does_not_belong_to_this_topic)
       end
 
       unless PostAccess.readable?(post: @post, user: @user)
-        return ServiceResult.failure(error: "Post not available.")
+        return ServiceResult.failure(error: :post_not_available)
       end
 
       auto_close_result = nil

@@ -15,7 +15,19 @@ module Commerce
     has_many :events, class_name: "Commerce::OrderEvent", foreign_key: :store_order_id, dependent: :destroy
     has_many :fulfillments, class_name: "Commerce::Fulfillment", foreign_key: :store_order_id, dependent: :destroy
     has_many :refunds, class_name: "Commerce::Refund", foreign_key: :store_order_id, dependent: :destroy
+    has_many :inventory_reservations,
+             class_name: "Commerce::InventoryReservation",
+             foreign_key: :store_order_id,
+             dependent: :restrict_with_error
+    has_many :inventory_movements,
+             class_name: "Commerce::InventoryMovement",
+             foreign_key: :store_order_id,
+             dependent: :restrict_with_error
     has_many :payment_records, class_name: "Payments::Record", foreign_key: :store_order_id, dependent: :destroy
+    has_many :disputes,
+             class_name: "Commerce::Dispute",
+             foreign_key: :store_order_id,
+             dependent: :restrict_with_error
     has_many :late_payment_cases,
       class_name: "Payments::LatePaymentCase",
       foreign_key: :store_order_id,

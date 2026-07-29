@@ -9,7 +9,7 @@ module Minecraft
     end
 
     def call
-      return ServiceResult.failure(error: "Server is not managed by this node.") unless @server.minecraft_node_id == @node.id
+      return ServiceResult.failure(error: :server_is_not_managed_by_this_node) unless @server.minecraft_node_id == @node.id
 
       attrs = {}
       attrs[:process_state] = @payload["process_state"] if @payload["process_state"].present?

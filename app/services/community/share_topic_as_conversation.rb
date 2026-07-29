@@ -12,13 +12,13 @@ module Community
 
     def call
       recipient = User.find_by(username: @recipient_username.to_s.strip)
-      return ServiceResult.failure(error: "Recipient not found.") unless recipient
-      return ServiceResult.failure(error: "You cannot message yourself.") if @sender.id == recipient.id
-      return ServiceResult.failure(error: "You cannot message this user.") if Community::UserBlock.blocked?(@sender, recipient)
-      return ServiceResult.failure(error: "New members cannot send private messages yet.") unless Community::TrustLevel.can_send_pm?(@sender)
+      return ServiceResult.failure(error: :recipient_not_found) unless recipient
+      return ServiceResult.failure(error: :cannot_message_self) if @sender.id == recipient.id
+      return ServiceResult.failure(error: :cannot_message_user) if Community::UserBlock.blocked?(@sender, recipient)
+      return ServiceResult.failure(error: :new_members_cannot_send_pm) unless Community::TrustLevel.can_send_pm?(@sender)
 
       unless can_share?
-        return ServiceResult.failure(error: "You are not allowed to share this topic.")
+        return ServiceResult.failure(error: :cannot_share_topic)
       end
 
       body = build_body

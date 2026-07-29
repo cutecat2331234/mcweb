@@ -1,18 +1,18 @@
 import { createI18n } from 'vue-i18n'
 import zhCN from '@/locales/zh-CN'
 import en from '@/locales/en'
+import {
+  missingTranslation,
+  normalizeAppLocale,
+  type AppLocale,
+} from './i18nRuntime'
 
-export type AppLocale = 'zh-CN' | 'en'
-
-const SUPPORTED_LOCALES: AppLocale[] = [ 'zh-CN', 'en' ]
-
-export function normalizeAppLocale(value: unknown): AppLocale {
-  const raw = String(value || '').trim().toLowerCase().replace('_', '-')
-  if (raw === 'zh' || raw === 'zh-cn' || raw === 'zh-hans') return 'zh-CN'
-  if (raw === 'en' || raw === 'en-us' || raw === 'en-gb') return 'en'
-  const match = SUPPORTED_LOCALES.find((locale) => locale.toLowerCase() === raw)
-  return match || 'zh-CN'
-}
+export {
+  MISSING_TRANSLATION_EVENT,
+  normalizeAppLocale,
+  type AppLocale,
+  type MissingTranslationDetail,
+} from './i18nRuntime'
 
 export function createAppI18n(locale: AppLocale = 'zh-CN') {
   return createI18n({
@@ -20,6 +20,11 @@ export function createAppI18n(locale: AppLocale = 'zh-CN') {
     globalInjection: true,
     locale,
     fallbackLocale: 'en',
+    missingWarn: false,
+    fallbackWarn: false,
+    missing: (missingLocale, key, _instance, type) => (
+      missingTranslation(String(missingLocale), String(key), type)
+    ),
     messages: {
       'zh-CN': zhCN,
       en,

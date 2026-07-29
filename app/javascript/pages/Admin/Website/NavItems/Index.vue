@@ -39,13 +39,18 @@ const draft = ref({
   visible: true,
 })
 const pageOptions = computed(() => [
-  { value: '', label: '— external URL —' },
+  { value: '', label: t('admin.website.nav.externalUrl') },
   ...props.pages.map((page) => ({
     value: page.id,
     label: `${page.title} (/${page.slug})`,
   })),
 ])
-const locationOptions = locations.map((value) => ({ value, label: value }))
+const locationOptions = computed(() =>
+  locations.map((value) => ({
+    value,
+    label: t(`admin.website.nav.locations.${value}`),
+  })),
+)
 
 function itemsForLocation(location: string) {
   return props.items.filter((item) => item.location === location)
@@ -83,7 +88,7 @@ function createItem() {
 function removeItem(item: NavItem) {
   Modal.warning({
     title: t('admin.ui.delete'),
-    content: t('admin.website.nav.deleteConfirm', `Delete “${item.label}”?`),
+    content: t('admin.website.nav.deleteConfirm', { label: item.label }),
     okText: t('admin.ui.delete'),
     cancelText: t('admin.ui.cancel'),
     hideCancel: false,
@@ -103,8 +108,8 @@ function moveItem(location: string, index: number, direction: -1 | 1) {
 
 const columns = computed(() => [
   { title: t('admin.common.title'), dataIndex: 'label', width: 180 },
-  { title: 'URL', dataIndex: 'href' },
-  { title: t('admin.common.visible', 'Visible'), slotName: 'visible', width: 100 },
+  { title: t('admin.website.nav.url'), dataIndex: 'href' },
+  { title: t('admin.common.visible'), slotName: 'visible', width: 100 },
   { title: t('adminMinecraft.actions'), slotName: 'actions', width: 190 },
 ])
 </script>
@@ -112,21 +117,21 @@ const columns = computed(() => [
 <template>
   <a-page-header :title="title" :show-back="false" />
 
-  <a-card :title="t('admin.website.nav.add', 'Add item')" :bordered="true" class="mb-4">
+  <a-card :title="t('admin.website.nav.add')" :bordered="true" class="mb-4">
     <a-form :model="draft" layout="vertical" @submit="createItem">
       <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="16">
         <a-grid-item>
-          <a-form-item field="label" label="Label" required>
+          <a-form-item field="label" :label="t('admin.website.nav.label')" required>
             <a-input v-model="draft.label" allow-clear />
           </a-form-item>
         </a-grid-item>
         <a-grid-item>
-          <a-form-item field="location" label="Location">
+          <a-form-item field="location" :label="t('admin.website.nav.location')">
             <a-select v-model="draft.location" :options="locationOptions" />
           </a-form-item>
         </a-grid-item>
         <a-grid-item>
-          <a-form-item field="website_page_id" label="Page">
+          <a-form-item field="website_page_id" :label="t('admin.website.nav.page')">
             <a-select
               v-model="draft.website_page_id"
               :options="pageOptions"
@@ -136,12 +141,12 @@ const columns = computed(() => [
           </a-form-item>
         </a-grid-item>
         <a-grid-item v-if="!draft.website_page_id">
-          <a-form-item field="url" label="URL">
+          <a-form-item field="url" :label="t('admin.website.nav.url')">
             <a-input v-model="draft.url" placeholder="/blog" allow-clear />
           </a-form-item>
         </a-grid-item>
       </a-grid>
-      <a-form-item field="visible" :label="t('admin.common.visible', 'Visible')">
+      <a-form-item field="visible" :label="t('admin.common.visible')">
         <a-switch v-model="draft.visible" />
       </a-form-item>
       <a-button html-type="submit" type="primary" :disabled="!draft.label.trim()">

@@ -1,0 +1,4 @@
+---
+zh-CN:
+  examples.forum_extension.name: 论坛扩展示例
+  examples.forum_extension.summary: 元数据、审核权限与 UI 插槽示例。

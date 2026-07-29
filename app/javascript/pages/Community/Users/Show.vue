@@ -361,7 +361,7 @@ function deleteWallItem(url: string) {
               @{{ profile.username }} · {{ t('userProfile.joinedAt') }} {{ profile.member_since }}
               <span v-if="profile.last_seen_at"> · {{ t('userProfile.lastSeen') }} {{ profile.last_seen_at }}</span>
               <span v-if="profile.online"> · {{ t('userProfile.online') }}</span>
-              · {{ profile.trust_name }} (Lv.{{ profile.trust_level }})
+              · {{ t('userProfile.trustSummary', { name: profile.trust_name, level: profile.trust_level }) }}
             </p>
             <div class="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm lg:justify-start">
               <span><strong>{{ profile.topics_count }}</strong> {{ t('userProfile.topics') }}</span>

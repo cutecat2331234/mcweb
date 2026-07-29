@@ -10,7 +10,7 @@ module Minecraft
     end
 
     def call
-      return ServiceResult.failure(error: "Server is not bound to a node.") unless @server.node_managed?
+      return ServiceResult.failure(error: :server_is_not_bound_to_a_node) unless @server.node_managed?
 
       unless graceful_stop_enabled?
         return raw_stop

@@ -78,6 +78,35 @@ class Mcweb::Plugins::Marketplace::SetupLifecycleTest < ActiveSupport::TestCase
     assert_equal %w[create_setting remove_setting], completed.pluck("id")
   end
 
+  test "preserve-data uninstall quarantines files without executing trusted teardown" do
+    key = setting_key
+    install(
+      plugin_package(
+        setup: <<~RUBY
+          Mcweb::Plugins::Marketplace::Setup.define do
+            install_step("create_setting") do
+              SiteSetting.set(#{key.inspect}, { "installed" => true })
+              $mcweb_setup_lifecycle_hits << "install"
+            end
+            teardown_step("remove_setting") do
+              SiteSetting.unset(#{key.inspect})
+              $mcweb_setup_lifecycle_hits << "uninstall"
+            end
+          end
+        RUBY
+      )
+    )
+
+    result = uninstall(data_mode: "preserve_data")
+
+    assert_equal "preserve_data", result.data_mode
+    assert_equal({ "installed" => true }, SiteSetting.get(key))
+    assert_equal [ "install" ], $mcweb_setup_lifecycle_hits
+    assert @state_root.join(result.recovery_path, "mcweb_plugin.yml").file?
+    assert_equal "preserve_data",
+                 @manager.status.fetch(:plugins).sole.fetch(:data_mode)
+  end
+
   test "stale uninstall identity is rejected before the upgraded teardown can run" do
     install(
       plugin_package(
@@ -247,6 +276,50 @@ class Mcweb::Plugins::Marketplace::SetupLifecycleTest < ActiveSupport::TestCase
     refute_includes snapshot.fetch(:operations).to_json, "never-persist"
   end
 
+  test "runtime generation is published after forward compatible setup commits" do
+    key = setting_key
+    package = plugin_package(
+      setup: <<~RUBY
+        Mcweb::Plugins::Marketplace::Setup.define do
+          install_step("prepare_schema") { SiteSetting.set(#{key.inspect}, { "prepared" => true }) }
+        end
+      RUBY
+    )
+    coordinator = Class.new do
+      attr_reader :open_transactions
+
+      def publish!(**)
+        @open_transactions = ActiveRecord::Base.connection.open_transactions
+        raise "generation acknowledgement failed"
+      end
+    end.new
+    baseline_open_transactions = ActiveRecord::Base.connection.open_transactions
+    catalog = -> { catalog_from_disk }
+    manager = Mcweb::Plugins::Marketplace::Manager.new(
+      root: @root,
+      state_root: @state_root,
+      reload_callback: catalog,
+      runtime_catalog: catalog,
+      generation_coordinator: coordinator,
+      ruby_version: "4.0.6",
+      rails_version: "8.1.2"
+    )
+
+    error = assert_raises(Mcweb::Plugins::Marketplace::LifecycleError) do
+      manager.install(
+        package_path: package,
+        source: "file:///reviewed/#{package.basename}",
+        expected_sha256: Digest::SHA256.file(package).hexdigest
+      )
+    end
+
+    assert_equal baseline_open_transactions, coordinator.open_transactions
+    assert_equal({ "prepared" => true }, SiteSetting.get(key))
+    assert_includes error.message, "previous filesystem state restored"
+    refute @root.join("acme/demo").exist?
+    assert_empty manager.status.fetch(:plugins)
+  end
+
   test "failed uninstall rolls database filesystem runtime and receipt back" do
     key = setting_key
     package = plugin_package(
@@ -334,12 +407,13 @@ class Mcweb::Plugins::Marketplace::SetupLifecycleTest < ActiveSupport::TestCase
     )
   end
 
-  def uninstall(expected_version: nil, expected_sha256: nil)
+  def uninstall(expected_version: nil, expected_sha256: nil, data_mode: "purge_data")
     plugin = @manager.status(plugin_id: "acme/demo").fetch(:plugins).sole
     @manager.uninstall(
       plugin_id: "acme/demo",
       expected_version: expected_version || plugin.fetch(:version),
-      expected_sha256: expected_sha256 || plugin.fetch(:sha256)
+      expected_sha256: expected_sha256 || plugin.fetch(:sha256),
+      data_mode:
     )
   end
 

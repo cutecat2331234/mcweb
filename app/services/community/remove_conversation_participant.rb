@@ -9,19 +9,19 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "Not a group conversation.") unless @conversation.is_group?
+      return ServiceResult.failure(error: :not_group_conversation) unless @conversation.is_group?
 
       user = User.find_by(username: @username)
-      return ServiceResult.failure(error: "User not found.") unless user
+      return ServiceResult.failure(error: :user_not_found) unless user
 
       participant = @conversation.participants.find_by(user: user)
-      return ServiceResult.failure(error: "User is not a participant.") unless participant
+      return ServiceResult.failure(error: :user_not_participant) unless participant
 
       unless @actor.id == user.id || @actor.id == @conversation.creator_id || @actor.permission?("forum.topics.lock")
-        return ServiceResult.failure(error: "Not allowed.")
+        return ServiceResult.failure(error: :not_allowed)
       end
 
-      return ServiceResult.failure(error: "Cannot remove the last participant.") if @conversation.participants.count <= 1
+      return ServiceResult.failure(error: :cannot_remove_last_participant) if @conversation.participants.count <= 1
 
       Community::Conversation.transaction do
         participant.destroy!

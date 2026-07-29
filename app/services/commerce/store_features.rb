@@ -8,29 +8,29 @@ module Commerce
       Definition.new(
         id: :physical_products,
         key: "store.features.physical_products",
-        label: "实体商品",
-        description: "允许创建 physical 类型商品及 requires_shipping 字段",
+        label: "mcweb.user_copy.store_feature_physical_label",
+        description: "mcweb.user_copy.store_feature_physical_description",
         default: false
       ),
       Definition.new(
         id: :shipping,
         key: "store.features.shipping",
-        label: "物流配送",
-        description: "结账收货地址、配送方式、运费计算与用户地址簿",
+        label: "mcweb.user_copy.store_feature_shipping_label",
+        description: "mcweb.user_copy.store_feature_shipping_description",
         default: false
       ),
       Definition.new(
         id: :gift_wrap,
         key: "store.features.gift_wrap",
-        label: "礼品包装",
-        description: "结账页礼品包装选项与费用",
+        label: "mcweb.user_copy.store_feature_gift_wrap_label",
+        description: "mcweb.user_copy.store_feature_gift_wrap_description",
         default: false
       ),
       Definition.new(
         id: :order_shipping_management,
         key: "store.features.order_shipping_management",
-        label: "订单物流管理",
-        description: "后台填写快递单号、标记发货与装箱单",
+        label: "mcweb.user_copy.store_feature_order_shipping_label",
+        description: "mcweb.user_copy.store_feature_order_shipping_description",
         default: false
       )
     ].freeze
@@ -94,8 +94,8 @@ module Commerce
       def localized_definition(definition)
         {
           id: definition.id.to_s,
-          label: I18n.t("mcweb.store_features.#{definition.id}.label", default: definition.label),
-          description: I18n.t("mcweb.store_features.#{definition.id}.description", default: definition.description),
+          label: I18n.t(definition.label),
+          description: I18n.t(definition.description),
           enabled: enabled?(definition.id)
         }
       end

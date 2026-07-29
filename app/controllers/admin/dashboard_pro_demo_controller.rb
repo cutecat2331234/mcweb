@@ -9,6 +9,8 @@ module Admin
   # the whole unified language can be screenshotted in one shot. Performs NO
   # database reads/writes. Safe to delete once the redesign is signed off.
   class DashboardProDemoController < BaseController
+    prepend_before_action :require_admin_demo!
+
     def index
       render inertia: "Admin/DashboardProDemo", props: {
         title: "概览",

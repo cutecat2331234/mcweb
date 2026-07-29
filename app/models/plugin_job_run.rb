@@ -76,7 +76,7 @@ class PluginJobRun < ApplicationRecord
   end
 
   def arguments_must_be_mapping
-    errors.add(:arguments, "must be a mapping") unless arguments.is_a?(Hash)
+    errors.add(:arguments, I18n.t("mcweb.validation_errors.must_be_a_mapping")) unless arguments.is_a?(Hash)
   end
 
   def validate_arguments_payload?
@@ -87,6 +87,6 @@ class PluginJobRun < ApplicationRecord
     forbidden = changes_to_save.keys - MUTABLE_COLUMNS
     return if forbidden.empty?
 
-    errors.add(:base, "plugin job ownership and payload are immutable")
+    errors.add(:base, I18n.t("mcweb.validation_errors.plugin_job_ownership_and_payload_are_immutable"))
   end
 end

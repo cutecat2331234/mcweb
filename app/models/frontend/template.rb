@@ -42,7 +42,7 @@ module Frontend
 
     def scopes_must_be_valid
       Array(scopes).each do |scope|
-        errors.add(:scopes, "contains invalid scope: #{scope}") unless SCOPES.include?(scope.to_s)
+        errors.add(:scopes, I18n.t("mcweb.validation_errors.invalid_scope", scope: scope)) unless SCOPES.include?(scope.to_s)
       end
     end
   end

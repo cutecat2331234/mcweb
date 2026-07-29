@@ -15,7 +15,7 @@ module Commerce
         return ServiceResult.failure(error: "shipping_management_disabled")
       end
 
-      return ServiceResult.failure(error: "Order has no shippable items.") unless order_requires_tracking?
+      return ServiceResult.failure(error: :order_no_shippable_items) unless order_requires_tracking?
 
       was_shipped = @order.shipped_at.present?
       previous_status = @order.status

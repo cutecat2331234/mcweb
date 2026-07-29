@@ -10,11 +10,11 @@ module Admin
       RELEASE_PERMISSION = ::Community::ReleaseQuarantinedUpload::PERMISSION
 
       before_action -> { require_permission(READ_PERMISSION) },
-        only: %i[index release_quarantine]
+        only: %i[index release_quarantine revoke_release]
       before_action -> { require_permission(MANAGE_PERMISSION) },
-        except: %i[index release_quarantine]
+        except: %i[index release_quarantine revoke_release]
       before_action -> { require_permission(RELEASE_PERMISSION) },
-        only: :release_quarantine
+        only: %i[release_quarantine revoke_release]
 
       def index
         filter = normalized_filter
@@ -138,6 +138,42 @@ module Admin
         redirect_to(
           admin_forum_attachments_path(filter: "quarantined"),
           notice: t("mcweb.flash.attachment_quarantine_released")
+        )
+      end
+
+      def revoke_release
+        upload = ::Community::Upload.find(params[:id])
+        result = ::Community::RevokeQuarantinedUploadRelease.call(
+          upload: upload,
+          actor: current_user,
+          confirmation: params[:confirmation],
+          reason: params[:reason],
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent
+        )
+
+        unless result.success?
+          message = t("mcweb.flash.attachment_release_#{result.code}")
+          if request.format.json?
+            response.set_header("Cache-Control", "no-store")
+            return render json: { error: message }, status: :unprocessable_entity
+          end
+
+          return redirect_to admin_forum_attachments_path, alert: message
+        end
+
+        if request.format.json?
+          response.set_header("Cache-Control", "no-store")
+          return render json: {
+            revoked: true,
+            upload_id: result.value[:upload].public_id,
+            message: t("mcweb.flash.attachment_release_revoked")
+          }
+        end
+
+        redirect_to(
+          admin_forum_attachments_path(filter: "quarantined"),
+          notice: t("mcweb.flash.attachment_release_revoked")
         )
       end
 
@@ -297,6 +333,12 @@ module Admin
           actions[:release_confirmation] =
             ::Community::ReleaseQuarantinedUpload.confirmation_for(upload)
         end
+        if current_user.permission?(RELEASE_PERMISSION) && revocable?(upload)
+          actions[:revoke_release_url] =
+            revoke_release_admin_forum_attachment_path(upload)
+          actions[:revoke_confirmation] =
+            ::Community::RevokeQuarantinedUploadRelease.confirmation_for(upload)
+        end
 
         {
           id: upload.id,
@@ -311,6 +353,10 @@ module Admin
           scan_status: upload.scan_status,
           scan_result_code: upload.scan_result_code,
           scanner: upload.scanner,
+          manual_review_status: upload.manual_review_status,
+          manual_review_version: upload.manual_review_version,
+          manual_reviewed_at: upload.manual_reviewed_at&.iso8601,
+          manual_review_revoked_at: upload.manual_review_revoked_at&.iso8601,
           scan_attempts: upload.scan_attempts,
           cleanup_attempts: upload.cleanup_attempts,
           quarantined: upload.scan_quarantined?,
@@ -329,7 +375,7 @@ module Admin
       def retryable_scan?(upload)
         upload.kind_post_attachment? &&
           !upload.status_cleaned? &&
-          upload.scan_status_error? &&
+          (upload.scan_status_error? || upload.manual_review_status_revoked?) &&
           upload.active_storage_blob_id.present?
       end
 
@@ -338,9 +384,18 @@ module Admin
           upload.user_id != current_user.id &&
           !upload.status_cleaned? &&
           upload.scan_status_infected? &&
+          upload.manual_review_status_none? &&
           upload.scan_result_code.in?(
             ::Community::ReleaseQuarantinedUpload::RELEASABLE_RESULT_CODES
           ) &&
+          upload.active_storage_blob_id.present?
+      end
+
+      def revocable?(upload)
+        upload.kind_post_attachment? &&
+          !upload.status_cleaned? &&
+          upload.scan_status_clean? &&
+          upload.manual_review_status_released? &&
           upload.active_storage_blob_id.present?
       end
     end

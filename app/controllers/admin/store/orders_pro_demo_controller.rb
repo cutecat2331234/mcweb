@@ -10,6 +10,7 @@ module Admin
     # of DB contents, and performs NO database writes. Safe to delete once the
     # redesign direction is signed off.
     class OrdersProDemoController < BaseController
+      prepend_before_action :require_admin_demo!
       before_action -> { require_permission("store.orders.read") }
 
       PER_PAGE = 8

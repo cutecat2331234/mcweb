@@ -3,9 +3,9 @@ import { computed, ref, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { Modal } from '@mcweb/ui'
 import { useI18n } from 'vue-i18n'
-import ArcoAdminLayout from '@/layouts/ArcoAdminLayout.vue'
+import AdminLayout from '@/layouts/AdminLayout.vue'
 
-defineOptions({ layout: ArcoAdminLayout })
+defineOptions({ layout: AdminLayout })
 
 type Scalar = string | number | boolean | null
 
@@ -84,7 +84,7 @@ const props = defineProps<{
   }
 }>()
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const processing = ref(false)
 const formValues = ref<Record<string, Scalar | undefined>>({})
 const unsetValues = ref<Record<string, boolean>>({})
@@ -114,7 +114,8 @@ function selectPlugin(value: string | number | boolean | Record<string, unknown>
   if (typeof value !== 'string') return
   router.get(props.actions.show, { plugin_id: value }, {
     preserveScroll: true,
-    preserveState: false,
+    preserveState: true,
+    replace: true,
   })
 }
 
@@ -204,7 +205,7 @@ function changeKindLabel(kind: string) {
 
 function formatTime(value?: string | null) {
   if (!value) return '—'
-  return new Intl.DateTimeFormat(undefined, {
+  return new Intl.DateTimeFormat(locale.value, {
     dateStyle: 'medium',
     timeStyle: 'short',
   }).format(new Date(value))

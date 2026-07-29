@@ -63,7 +63,7 @@ module Commerce
       return if payment_record.nil? || store_order_id.nil?
       return if payment_record.store_order_id == store_order_id
 
-      errors.add(:payment_record, "must belong to the refund order")
+      errors.add(:payment_record, I18n.t("mcweb.validation_errors.must_belong_to_the_refund_order"))
     end
   end
 end

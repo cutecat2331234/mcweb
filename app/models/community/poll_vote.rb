@@ -14,7 +14,7 @@ module Community
     def option_index_in_range
       return if poll && option_index.present? && option_index.between?(0, poll.options.size - 1)
 
-      errors.add(:option_index, "is invalid")
+      errors.add(:option_index, I18n.t("mcweb.validation_errors.is_invalid"))
     end
   end
 end

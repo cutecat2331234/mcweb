@@ -7,19 +7,25 @@ module Commerce
     end
 
     def call
-      unless @fulfillment.pending? || @fulfillment.failed?
-        return ServiceResult.failure(error: "Fulfillment cannot be retried.")
+      Commerce::Fulfillment.transaction do
+        @fulfillment.lock!
+        return ServiceResult.failure(error: "fulfillment_not_retryable") unless @fulfillment.retryable?
+
+        reservation = @fulfillment.order_item.inventory_reservation
+        return ServiceResult.failure(error: "fulfillment_inventory_unavailable") if reservation && !reservation.confirmed?
+
+        supersede_active_connector_tasks!
+        @fulfillment.update!(
+          status: "pending",
+          last_error: nil,
+          next_attempt_at: nil,
+          cancelled_at: nil,
+          cancel_reason: nil
+        )
       end
-
-      order = @fulfillment.order
-      if order.refunded? || order.cancelled?
-        return ServiceResult.failure(error: "Order is no longer eligible for fulfillment.")
+      ActiveRecord.after_all_transactions_commit do
+        Minecraft::EnsureInstanceRunningJob.perform_later(@fulfillment.id)
       end
-
-      supersede_active_connector_tasks!
-
-      @fulfillment.update!(status: "pending", last_error: nil)
-      Minecraft::EnsureInstanceRunningJob.perform_later(@fulfillment.id)
 
       ServiceResult.success(@fulfillment)
     rescue ActiveRecord::RecordInvalid => e

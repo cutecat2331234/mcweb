@@ -5,6 +5,10 @@ module Payments
     belongs_to :order, class_name: "Commerce::Order", foreign_key: :store_order_id
     has_many :attempts, class_name: "Payments::Attempt", foreign_key: :payment_record_id, dependent: :destroy
     has_many :refunds, class_name: "Commerce::Refund", foreign_key: :payment_record_id, dependent: :restrict_with_error
+    has_many :disputes,
+             class_name: "Commerce::Dispute",
+             foreign_key: :payment_record_id,
+             dependent: :restrict_with_error
     has_one :late_payment_case,
       class_name: "Payments::LatePaymentCase",
       foreign_key: :payment_record_id,
@@ -25,8 +29,21 @@ module Payments
       update!(status: :succeeded, provider_payment_id: provider_payment_id || self.provider_payment_id)
     end
 
-    def mark_failed!
-      update!(status: :failed)
+    def mark_failed!(metadata: nil)
+      transitioned = false
+      with_lock do
+        next unless pending? || processing?
+
+        attributes = { status: :failed }
+        attributes[:metadata] = self.metadata.to_h.merge(metadata.to_h) if metadata
+        update!(attributes)
+        Commerce::DomainEvents.publish_after_commit(
+          "commerce.payment.failed",
+          Commerce::DomainEvents.payment(self)
+        )
+        transitioned = true
+      end
+      transitioned
     end
 
     private
@@ -55,7 +72,7 @@ module Payments
       previous_mode = provider_mode_change_to_be_saved&.first
       return if previous_mode.blank?
 
-      errors.add(:provider_mode, "cannot be changed after it is assigned")
+      errors.add(:provider_mode, I18n.t("mcweb.validation_errors.cannot_be_changed_after_it_is_assigned"))
     end
   end
 end

@@ -1,0 +1,5 @@
+<% if @html_body.present? %>
+  <%= sanitize(@html_body) %>
+<% else %>
+  <%= simple_format(h(@text_body)) %>
+<% end %>

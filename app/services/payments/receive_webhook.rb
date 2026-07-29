@@ -18,7 +18,7 @@ module Payments
     def call
       unless valid_identifier?(@event_id) && valid_identifier?(@event_type)
         return ServiceResult.failure(
-          error: "Webhook event identifiers are invalid.",
+          error: :webhook_event_identifiers_are_invalid,
           code: "invalid_event_identifier"
         )
       end
@@ -42,7 +42,7 @@ module Payments
         config = Payments::ProviderConfig.lock.find_by(provider: "stripe")
         unless config&.reconciliation_ready?
           result = ServiceResult.failure(
-            error: "Stripe account identity is not ready.",
+            error: :stripe_account_identity_is_not_ready,
             code: STRIPE_IDENTITY_UNAVAILABLE_CODE,
             retry_after: STRIPE_IDENTITY_RETRY_AFTER
           )
@@ -66,7 +66,7 @@ module Payments
         headers: @headers
       )
         return ServiceResult.failure(
-          error: "Invalid webhook signature.",
+          error: :invalid_webhook_signature,
           code: "invalid_signature"
         )
       end
@@ -145,7 +145,7 @@ module Payments
 
       if mismatch
         return ServiceResult.failure(
-          error: "Webhook event payload does not match the recorded event.",
+          error: :webhook_event_payload_does_not_match_the_recorded_event,
           code: "event_payload_mismatch"
         )
       end

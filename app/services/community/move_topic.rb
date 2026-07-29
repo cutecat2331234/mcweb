@@ -13,9 +13,9 @@ module Community
       from_section = nil
       @topic.with_lock do
         unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
-          return ServiceResult.failure(error: "You are not authorized to move this topic.")
+          return ServiceResult.failure(error: :you_are_not_authorized_to_move_this_topic)
         end
-        return ServiceResult.failure(error: "Topic is already in this section.") if @topic.forum_section_id == @section.id
+        return ServiceResult.failure(error: :topic_is_already_in_this_section) if @topic.forum_section_id == @section.id
 
         from_section = @topic.section
         @topic.update!(section: @section)

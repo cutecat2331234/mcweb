@@ -7,7 +7,12 @@ require "pathname"
 require "securerandom"
 require "time"
 require_relative "../manifest"
+require_relative "../generation_coordinator"
+require_relative "../owned_data_purger"
+require_relative "catalog_store"
 require_relative "error"
+require_relative "file_health"
+require_relative "lifecycle_store"
 require_relative "operation_journal"
 require_relative "package_archive"
 require_relative "package_metadata"
@@ -20,9 +25,14 @@ module Mcweb
         ACTIVE_RUNTIME_STATUSES = %w[active degraded].freeze
         UNINSTALL_IDENTITY_ERROR =
           "plugin identity changed or cannot be verified; refresh the plugin list and confirm uninstall again"
+        UNINSTALL_DATA_MODES = %w[preserve_data purge_data].freeze
         Result = Data.define(
           :operation_id, :action, :plugin_id, :version, :status,
-          :source, :sha256, :recovery_path
+          :source, :sha256, :recovery_path, :data_mode
+        )
+        ReconcileResult = Data.define(
+          :scanned_count, :synchronized_count, :unavailable_count,
+          :finding_count, :findings
         )
         InventoryEntry = Data.define(:manifest, :directory, :manifest_path)
 
@@ -30,6 +40,9 @@ module Mcweb
 
         def initialize(root: Mcweb::Plugins.default_root, state_root: nil,
                        reload_callback: nil, runtime_catalog: nil,
+                       generation_coordinator: :auto,
+                       lifecycle_store: :auto,
+                       catalog_store: :auto,
                        ruby_version: RUBY_VERSION, rails_version: Rails.version,
                        clock: -> { Time.now.utc })
           @root = Pathname(root).expand_path.cleanpath
@@ -40,14 +53,28 @@ module Mcweb
 
           @reload_callback = reload_callback || -> { Mcweb::Plugins.reload!(root: @root) }
           @runtime_catalog = runtime_catalog || -> { Mcweb::Plugins.list }
+          @generation_coordinator =
+            generation_coordinator == :auto ? default_generation_coordinator : generation_coordinator
+          @lifecycle_store =
+            lifecycle_store == :auto ? default_lifecycle_store : lifecycle_store
+          @catalog_store =
+            catalog_store == :auto ? default_catalog_store : catalog_store
           @ruby_version = ruby_version.to_s.freeze
           @rails_version = rails_version.to_s.freeze
           @clock = clock
           @journal = OperationJournal.new(path: @state_root.join("operations.jsonl"), clock:)
         end
 
-        def install(package_path:, source:, expected_sha256:, expected_id: nil, allow_downgrade: false)
-          with_operation(:install, plugin_id: expected_id) do |operation_id, context|
+        def install(package_path:, source:, expected_sha256:, expected_id: nil,
+                    allow_downgrade: false, actor: nil, dry_run: false,
+                    maintenance_mode: false)
+          with_operation(
+            :install,
+            plugin_id: expected_id,
+            actor:,
+            dry_run:,
+            maintenance_mode:
+          ) do |operation_id, context|
             archive = PackageArchive.new(
               path: package_path,
               source: source,
@@ -71,12 +98,27 @@ module Mcweb
             )
             active = active_inventory!
             disabled = disabled_inventory!
+            previous_plugins = runtime_plugin_versions
             validate_install_target!(manifest, active:, disabled:)
             validate_version_change!(manifest, active[manifest.id], allow_downgrade:)
             validate_candidate_dependencies!(manifest, active:, disabled:)
 
             target = managed_path(manifest.id)
             installed = active[manifest.id]
+            phase = installed ? :upgrade : :install
+            bind_lifecycle_run!(
+              context,
+              plugin_id: manifest.id,
+              action: phase,
+              from_version: installed&.manifest&.version,
+              to_version: manifest.version
+            )
+            lifecycle_checkpoint!(
+              context,
+              "package_validated",
+              version: manifest.version,
+              package_sha256: archive.sha256
+            )
             setup_plan = load_setup_plan(stage, manifest)
             setup_managed = setup_plan || installed&.manifest&.setup
             previous_receipt = read_receipt(manifest.id, strict: installed && setup_managed)
@@ -84,7 +126,28 @@ module Mcweb
               installed ? Setup::State.load(previous_receipt["setup"]) : Setup::State.empty
             end
             preserved_setup_state = installed ? previous_receipt["setup"] : nil
-            phase = installed ? :upgrade : :install
+            if dry_run
+              lifecycle_checkpoint!(
+                context,
+                "impact_analyzed",
+                phase:,
+                from_version: installed&.manifest&.version,
+                to_version: manifest.version,
+                dependency_count: manifest.requires.length,
+                setup_step_count: setup_plan&.steps&.length || 0
+              )
+              next Result.new(
+                operation_id:,
+                action: phase.to_s,
+                plugin_id: manifest.id,
+                version: manifest.version,
+                status: "validated",
+                source: archive.source.to_h,
+                sha256: archive.sha256,
+                recovery_path: nil,
+                data_mode: nil
+              )
+            end
 
             with_receipt_rollback(manifest.id) do
               activate_candidate!(stage:, target:, manifest:) do |recovery|
@@ -98,7 +161,9 @@ module Mcweb
                   to_version: manifest.version,
                   operation_id:
                 ) do |completed_setup_state|
+                  lifecycle_checkpoint!(context, "setup_committed") if setup_plan
                   ensure_runtime_state!(manifest, present: true)
+                  lifecycle_checkpoint!(context, "runtime_verified")
                   write_receipt(
                     manifest: manifest,
                     status: "active",
@@ -106,8 +171,28 @@ module Mcweb
                     source: archive.source.to_h,
                     sha256: archive.sha256,
                     recovery_path: context[:recovery_path],
-                    setup_state: completed_setup_state&.to_h || preserved_setup_state
+                    setup_state: completed_setup_state&.to_h || preserved_setup_state,
+                    file_manifest: FileHealth.manifest(target),
+                    rollback_release: recovery && rollback_release_snapshot(
+                      path: recovery,
+                      manifest: installed.manifest,
+                      receipt: previous_receipt
+                    )
                   )
+                  lifecycle_checkpoint!(context, "receipt_persisted")
+                  generation = coordinate_runtime_generation!(
+                    action: phase,
+                    target_plugin_id: manifest.id,
+                    operation_id:,
+                    previous_plugins:,
+                    actor: context[:actor]
+                  )
+                  lifecycle_checkpoint!(
+                    context,
+                    "generation_activated",
+                    number: generation.respond_to?(:number) ? generation.number : nil
+                  ) if generation
+                  synchronize_catalog_for!(manifest.id, strict: true)
                 end
               end
             end
@@ -119,22 +204,38 @@ module Mcweb
               status: "active",
               source: archive.source.to_h,
               sha256: archive.sha256,
-              recovery_path: context[:recovery_path]
+              recovery_path: context[:recovery_path],
+              data_mode: nil
             )
           ensure
             FileUtils.rm_rf(stage) if stage&.exist?
           end
         end
 
-        def disable(plugin_id:)
-          transition_to_inactive(plugin_id:, action: :disable)
+        def disable(plugin_id:, actor: nil, dry_run: false,
+                    maintenance_mode: false)
+          transition_to_inactive(
+            plugin_id:,
+            action: :disable,
+            actor:,
+            dry_run:,
+            maintenance_mode:
+          )
         end
 
-        def enable(plugin_id:)
-          with_operation(:enable, plugin_id:) do |operation_id, context|
+        def enable(plugin_id:, actor: nil, dry_run: false,
+                   maintenance_mode: false)
+          with_operation(
+            :enable,
+            plugin_id:,
+            actor:,
+            dry_run:,
+            maintenance_mode:
+          ) do |operation_id, context|
             plugin_id = validate_plugin_id!(plugin_id)
             active = active_inventory!
             disabled = disabled_inventory!
+            previous_plugins = runtime_plugin_versions
             raise LifecycleError, "plugin #{plugin_id} is already active" if active.key?(plugin_id)
 
             entry = disabled.fetch(plugin_id) do
@@ -146,9 +247,31 @@ module Mcweb
             validate_candidate_dependencies!(entry.manifest, active:, disabled: disabled.except(plugin_id))
 
             receipt = read_receipt(plugin_id, strict: entry.manifest.setup.present?)
+            bind_lifecycle_run!(
+              context,
+              plugin_id:,
+              action: :enable,
+              from_version: entry.manifest.version,
+              to_version: entry.manifest.version
+            )
+            if dry_run
+              lifecycle_checkpoint!(
+                context,
+                "impact_analyzed",
+                phase: :enable,
+                to_version: entry.manifest.version
+              )
+              next lifecycle_preview_result(
+                operation_id:,
+                action: :enable,
+                entry:,
+                receipt:
+              )
+            end
             with_receipt_rollback(plugin_id) do
               move_with_runtime_rollback!(source: entry.directory, destination: target) do
                 ensure_runtime_state!(entry.manifest, present: true)
+                lifecycle_checkpoint!(context, "runtime_verified")
                 context.merge!(plugin_id:, version: entry.manifest.version)
                 write_receipt(
                   manifest: entry.manifest,
@@ -156,8 +279,25 @@ module Mcweb
                   operation_id: operation_id,
                   source: receipt["source"],
                   sha256: receipt["sha256"],
-                  setup_state: receipt["setup"]
+                  setup_state: receipt["setup"],
+                  file_manifest: receipt["file_manifest"] || FileHealth.manifest(target),
+                  data_mode: receipt["data_mode"],
+                  rollback_release: receipt["rollback_release"]
                 )
+                lifecycle_checkpoint!(context, "receipt_persisted")
+                generation = coordinate_runtime_generation!(
+                  action: :enable,
+                  target_plugin_id: plugin_id,
+                  operation_id:,
+                  previous_plugins:,
+                  actor: context[:actor]
+                )
+                lifecycle_checkpoint!(
+                  context,
+                  "generation_activated",
+                  number: generation.respond_to?(:number) ? generation.number : nil
+                ) if generation
+                synchronize_catalog_for!(plugin_id, strict: true)
               end
             end
             Result.new(
@@ -168,18 +308,295 @@ module Mcweb
               status: "active",
               source: receipt["source"],
               sha256: receipt["sha256"],
-              recovery_path: nil
+              recovery_path: nil,
+              data_mode: receipt["data_mode"]
             )
           end
         end
 
-        def uninstall(plugin_id:, expected_version:, expected_sha256:)
+        def recover(plugin_id:, expected_version:, expected_sha256:, actor: nil,
+                    dry_run: false, maintenance_mode: false)
+          with_operation(
+            :recover,
+            plugin_id:,
+            actor:,
+            dry_run:,
+            maintenance_mode:
+          ) do |operation_id, context|
+            plugin_id = validate_plugin_id!(plugin_id)
+            active = active_inventory!
+            disabled = disabled_inventory!
+            if active.key?(plugin_id) || disabled.key?(plugin_id)
+              raise LifecycleError, "plugin #{plugin_id} is already installed"
+            end
+
+            receipt = read_receipt(plugin_id, strict: true)
+            recovery = recovery_directory!(receipt.fetch("recovery_path"))
+            manifest = Manifest.load_file(
+              recovery.join(PackageArchive::MANIFEST_NAME)
+            )
+            validate_expected_id!(manifest, plugin_id)
+            validate_uninstall_identity!(
+              plugin_id:,
+              manifest:,
+              receipt:,
+              expected_version:,
+              expected_sha256:
+            )
+            validate_candidate_dependencies!(manifest, active:, disabled:)
+            target = managed_path(plugin_id)
+            refuse_occupied_target!(target)
+            previous_plugins = runtime_plugin_versions
+            bind_lifecycle_run!(
+              context,
+              plugin_id:,
+              action: :recover,
+              from_version: nil,
+              to_version: manifest.version
+            )
+            if dry_run
+              lifecycle_checkpoint!(
+                context,
+                "impact_analyzed",
+                phase: :recover,
+                to_version: manifest.version
+              )
+              next Result.new(
+                operation_id:,
+                action: "recover",
+                plugin_id:,
+                version: manifest.version,
+                status: "validated",
+                source: receipt["source"],
+                sha256: receipt["sha256"],
+                recovery_path: nil,
+                data_mode: receipt["data_mode"]
+              )
+            end
+
+            with_receipt_rollback(plugin_id) do
+              move_with_runtime_rollback!(source: recovery, destination: target) do
+                ensure_runtime_state!(manifest, present: true)
+                lifecycle_checkpoint!(context, "runtime_verified")
+                context.merge!(plugin_id:, version: manifest.version)
+                write_receipt(
+                  manifest:,
+                  status: "active",
+                  operation_id:,
+                  source: receipt["source"],
+                  sha256: receipt["sha256"],
+                  setup_state: receipt["setup"],
+                  file_manifest: receipt["file_manifest"] ||
+                    FileHealth.manifest(target),
+                  data_mode: receipt["data_mode"],
+                  rollback_release: receipt["rollback_release"]
+                )
+                lifecycle_checkpoint!(context, "receipt_persisted")
+                generation = coordinate_runtime_generation!(
+                  action: :recover,
+                  target_plugin_id: plugin_id,
+                  operation_id:,
+                  previous_plugins:,
+                  actor: context[:actor]
+                )
+                lifecycle_checkpoint!(
+                  context,
+                  "generation_activated",
+                  number: generation.respond_to?(:number) ? generation.number : nil
+                ) if generation
+                synchronize_catalog_for!(plugin_id, strict: true)
+              end
+            end
+
+            Result.new(
+              operation_id:,
+              action: "recover",
+              plugin_id:,
+              version: manifest.version,
+              status: "active",
+              source: receipt["source"],
+              sha256: receipt["sha256"],
+              recovery_path: nil,
+              data_mode: receipt["data_mode"]
+            )
+          end
+        end
+
+        def rollback(plugin_id:, expected_version:, expected_sha256:, actor: nil,
+                     dry_run: false, maintenance_mode: false)
+          with_operation(
+            :rollback,
+            plugin_id:,
+            actor:,
+            dry_run:,
+            maintenance_mode:
+          ) do |operation_id, context|
+            plugin_id = validate_plugin_id!(plugin_id)
+            active = active_inventory!
+            disabled = disabled_inventory!
+            entry = active.fetch(plugin_id) do
+              raise LifecycleError, "active plugin #{plugin_id} was not found"
+            end
+            ensure_managed_entry!(entry, managed_path(plugin_id))
+            receipt = read_receipt(plugin_id, strict: true)
+            validate_uninstall_identity!(
+              plugin_id:,
+              manifest: entry.manifest,
+              receipt:,
+              expected_version:,
+              expected_sha256:
+            )
+
+            release = validate_rollback_release!(
+              receipt["rollback_release"],
+              plugin_id:
+            )
+            candidate = recovery_directory!(release.fetch("path"))
+            manifest = Manifest.load_file(
+              candidate.join(PackageArchive::MANIFEST_NAME)
+            )
+            validate_rollback_manifest!(manifest:, release:, plugin_id:)
+            validate_rollback_files!(candidate:, release:)
+            validate_candidate_dependencies!(
+              manifest,
+              active: active.except(plugin_id),
+              disabled:
+            )
+
+            previous_plugins = runtime_plugin_versions
+            current_file_manifest =
+              receipt["file_manifest"] || FileHealth.manifest(entry.directory)
+            bind_lifecycle_run!(
+              context,
+              plugin_id:,
+              action: :rollback,
+              from_version: entry.manifest.version,
+              to_version: manifest.version
+            )
+            lifecycle_checkpoint!(
+              context,
+              "rollback_release_verified",
+              version: manifest.version
+            )
+            if dry_run
+              lifecycle_checkpoint!(
+                context,
+                "impact_analyzed",
+                phase: :rollback,
+                from_version: entry.manifest.version,
+                to_version: manifest.version
+              )
+              next Result.new(
+                operation_id:,
+                action: "rollback",
+                plugin_id:,
+                version: manifest.version,
+                status: "validated",
+                source: release["source"],
+                sha256: release["sha256"],
+                recovery_path: nil,
+                data_mode: receipt["data_mode"]
+              )
+            end
+
+            with_receipt_rollback(plugin_id) do
+              swap_rollback_release!(
+                candidate:,
+                target: entry.directory,
+                current_manifest: entry.manifest
+              ) do |current_backup|
+                context.merge!(
+                  plugin_id:,
+                  version: manifest.version,
+                  recovery_path: state_relative(current_backup)
+                )
+                ensure_runtime_state!(manifest, present: true)
+                lifecycle_checkpoint!(context, "runtime_verified")
+                write_receipt(
+                  manifest:,
+                  status: "active",
+                  operation_id:,
+                  source: release["source"],
+                  sha256: release["sha256"],
+                  recovery_path: state_relative(current_backup),
+                  setup_state: receipt["setup"],
+                  file_manifest: release["file_manifest"],
+                  data_mode: receipt["data_mode"],
+                  rollback_release: rollback_release_snapshot(
+                    path: current_backup,
+                    manifest: entry.manifest,
+                    receipt: receipt,
+                    file_manifest: current_file_manifest
+                  )
+                )
+                lifecycle_checkpoint!(context, "receipt_persisted")
+                generation = coordinate_runtime_generation!(
+                  action: :rollback,
+                  target_plugin_id: plugin_id,
+                  operation_id:,
+                  previous_plugins:,
+                  actor: context[:actor]
+                )
+                lifecycle_checkpoint!(
+                  context,
+                  "generation_activated",
+                  number: generation.respond_to?(:number) ? generation.number : nil
+                ) if generation
+                synchronize_catalog_for!(plugin_id, strict: true)
+              end
+            end
+
+            Result.new(
+              operation_id:,
+              action: "rollback",
+              plugin_id:,
+              version: manifest.version,
+              status: "active",
+              source: release["source"],
+              sha256: release["sha256"],
+              recovery_path: context[:recovery_path],
+              data_mode: receipt["data_mode"]
+            )
+          end
+        end
+
+        def uninstall(plugin_id:, expected_version:, expected_sha256:,
+                      data_mode: "preserve_data", actor: nil, dry_run: false,
+                      maintenance_mode: false)
           transition_to_inactive(
             plugin_id:,
             action: :uninstall,
             expected_version:,
-            expected_sha256:
+            expected_sha256:,
+            data_mode:,
+            actor:,
+            dry_run:,
+            maintenance_mode:
           )
+        end
+
+        def health(plugin_id:)
+          with_lock(shared: true) do
+            plugin_id = validate_plugin_id!(plugin_id)
+            active = active_inventory!
+            disabled = disabled_inventory!
+            entry = active[plugin_id] || disabled[plugin_id]
+            raise LifecycleError, "plugin #{plugin_id} was not found" unless entry
+
+            receipt = read_receipt(plugin_id)
+            expected = receipt["file_manifest"]
+            return {
+              plugin_id:,
+              status: "untracked",
+              expected_count: 0,
+              actual_count: 0,
+              missing: [],
+              modified: [],
+              unknown: []
+            }.freeze unless expected
+
+            FileHealth.check(directory: entry.directory, expected:).to_h.merge(plugin_id:).freeze
+          end
         end
 
         def status(plugin_id: nil, recent_operations: 100)
@@ -207,6 +624,13 @@ module Mcweb
                 receipt["status"]
               end
               runtime_status = runtime[id]
+              health = if entry && receipt["file_manifest"]
+                FileHealth.check(directory: entry.directory, expected: receipt["file_manifest"]).to_h
+              elsif entry
+                { status: "untracked" }
+              else
+                { status: "not_installed" }
+              end
               {
                 id: id,
                 name: manifest&.name || receipt["name"],
@@ -220,7 +644,12 @@ module Mcweb
                 recovery_path: receipt["recovery_path"],
                 updated_at: receipt["updated_at"],
                 last_operation_id: receipt["last_operation_id"],
-                setup: receipt["setup"]
+                setup: receipt["setup"],
+                data_mode: receipt["data_mode"],
+                rollback_available: rollback_release_available?(
+                  receipt["rollback_release"]
+                ),
+                health: health
               }.compact.freeze
             end.freeze
 
@@ -232,13 +661,195 @@ module Mcweb
           end
         end
 
+        # Rebuilds the database catalog from the authoritative manifest,
+        # receipt, runtime, and managed-file views. It never changes plugin
+        # packages, receipts, runtime registrations, or recovery files.
+        def reconcile_catalog
+          with_lock do
+            unless @catalog_store&.available?
+              raise LifecycleError, "plugin catalog database is unavailable"
+            end
+
+            errors = []
+            active = inventory(root, errors:)
+            disabled = inventory(disabled_root, errors:)
+            receipts = receipt_catalog(errors:)
+            runtime = runtime_catalog_for_status(errors:)
+            known_catalog_ids = @catalog_store.plugin_ids
+            ids = (
+              active.keys + disabled.keys + receipts.keys + known_catalog_ids
+            ).uniq.sort
+            findings = errors.map do |error|
+              catalog_finding(
+                plugin_id: nil,
+                code: error.fetch(:code, "catalog_scan_failed"),
+                severity: "error"
+              )
+            end
+            synchronized_count = 0
+            unavailable_count = 0
+
+            ids.each do |id|
+              plugin_findings = []
+              entry = active[id] || disabled[id]
+              receipt = receipts.fetch(id, {})
+              state = catalog_state(
+                active: active.key?(id),
+                disabled: disabled.key?(id),
+                receipt:
+              )
+              if active.key?(id) && disabled.key?(id)
+                plugin_findings << catalog_finding(
+                  plugin_id: id,
+                  code: "filesystem_status_mismatch",
+                  severity: "error"
+                )
+              end
+              if receipt.empty?
+                plugin_findings << catalog_finding(
+                  plugin_id: id,
+                  code: "receipt_missing",
+                  severity: "warning"
+                )
+              elsif receipt["status"].to_s != state
+                plugin_findings << catalog_finding(
+                  plugin_id: id,
+                  code: "receipt_status_mismatch",
+                  severity: "error"
+                )
+              end
+              unless known_catalog_ids.include?(id)
+                plugin_findings << catalog_finding(
+                  plugin_id: id,
+                  code: "catalog_record_missing",
+                  severity: "warning"
+                )
+              end
+              plugin_findings.concat(
+                runtime_catalog_findings(
+                  plugin_id: id,
+                  state:,
+                  runtime_status: runtime[id]
+                )
+              )
+
+              directory = entry&.directory
+              manifest = entry&.manifest
+              if !manifest && state == "uninstalled"
+                begin
+                  directory = recovery_directory!(receipt["recovery_path"])
+                  manifest = Manifest.load_file(
+                    directory.join(PackageArchive::MANIFEST_NAME)
+                  )
+                rescue StandardError
+                  plugin_findings << catalog_finding(
+                    plugin_id: id,
+                    code: "filesystem_missing",
+                    severity: "error"
+                  )
+                end
+              elsif !manifest
+                plugin_findings << catalog_finding(
+                  plugin_id: id,
+                  code: "filesystem_missing",
+                  severity: "error"
+                )
+              end
+
+              if manifest
+                if receipt.present? && !receipt["file_manifest"].is_a?(Hash)
+                  plugin_findings << catalog_finding(
+                    plugin_id: id,
+                    code: "file_manifest_invalid",
+                    severity: "warning"
+                  )
+                elsif receipt["file_manifest"].is_a?(Hash)
+                  health = FileHealth.check(
+                    directory:,
+                    expected: receipt["file_manifest"]
+                  )
+                  unless health.healthy?
+                    plugin_findings << catalog_finding(
+                      plugin_id: id,
+                      code: "file_health_changed",
+                      severity: "error"
+                    )
+                  end
+                end
+
+                @catalog_store.synchronize!(
+                  plugin_id: id,
+                  state:,
+                  manifest:,
+                  package_sha256: receipt["sha256"],
+                  expected_file_manifest: receipt["file_manifest"],
+                  directory:,
+                  operation_id: receipt["last_operation_id"],
+                  diagnostics: plugin_findings,
+                  rollback_release: catalog_rollback_release(
+                    receipt["rollback_release"],
+                    strict: false
+                  )
+                )
+                synchronized_count += 1
+              else
+                @catalog_store.mark_unavailable!(
+                  plugin_id: id,
+                  state:,
+                  diagnostics: plugin_findings
+                )
+                unavailable_count += 1
+              end
+              findings.concat(plugin_findings)
+            rescue StandardError
+              unavailable_count += 1
+              failure = catalog_finding(
+                plugin_id: id,
+                code: "contribution_catalog_invalid",
+                severity: "error"
+              )
+              findings << failure
+              @catalog_store.mark_unavailable!(
+                plugin_id: id,
+                state: state || "uninstalled",
+                diagnostics: plugin_findings.to_a + [ failure ]
+              )
+            end
+
+            (runtime.keys - ids).sort.each do |id|
+              findings << catalog_finding(
+                plugin_id: id,
+                code: "runtime_without_filesystem",
+                severity: "error"
+              )
+            end
+            findings = findings.uniq.freeze
+            ReconcileResult.new(
+              scanned_count: ids.length,
+              synchronized_count:,
+              unavailable_count:,
+              finding_count: findings.length,
+              findings:
+            )
+          end
+        end
+
         private
 
-        def transition_to_inactive(plugin_id:, action:, expected_version: nil, expected_sha256: nil)
-          with_operation(action, plugin_id:) do |operation_id, context|
+        def transition_to_inactive(plugin_id:, action:, expected_version: nil, expected_sha256: nil,
+                                   data_mode: "preserve_data", actor: nil,
+                                   dry_run: false, maintenance_mode: false)
+          with_operation(
+            action,
+            plugin_id:,
+            actor:,
+            dry_run:,
+            maintenance_mode:
+          ) do |operation_id, context|
             plugin_id = validate_plugin_id!(plugin_id)
             active = active_inventory!
             disabled = disabled_inventory!
+            previous_plugins = runtime_plugin_versions
             entry = active[plugin_id] || disabled[plugin_id]
             raise LifecycleError, "plugin #{plugin_id} was not found" unless entry
             raise LifecycleError, "plugin #{plugin_id} is already disabled" if action == :disable && disabled.key?(plugin_id)
@@ -255,6 +866,7 @@ module Mcweb
               sha256: receipt["sha256"]
             )
             if action == :uninstall
+              data_mode = validate_uninstall_data_mode!(data_mode)
               validate_uninstall_identity!(
                 plugin_id:,
                 manifest: entry.manifest,
@@ -272,8 +884,33 @@ module Mcweb
             raise LifecycleError, "plugin lifecycle destination already exists" if destination.exist?
 
             result_status = action == :disable ? "disabled" : "uninstalled"
-            setup_plan = load_setup_plan(entry.directory, entry.manifest) if action == :uninstall
+            setup_plan = load_setup_plan(entry.directory, entry.manifest) if action == :uninstall &&
+              data_mode == "purge_data"
             initial_setup_state = Setup::State.load(receipt["setup"]) if setup_plan
+            bind_lifecycle_run!(
+              context,
+              plugin_id:,
+              action:,
+              from_version: entry.manifest.version,
+              to_version: nil
+            )
+            if dry_run
+              lifecycle_checkpoint!(
+                context,
+                "impact_analyzed",
+                phase: action,
+                from_version: entry.manifest.version,
+                data_mode: action == :uninstall ? data_mode : nil,
+                setup_step_count: setup_plan&.steps&.length || 0
+              )
+              next lifecycle_preview_result(
+                operation_id:,
+                action:,
+                entry:,
+                receipt:,
+                data_mode: action == :uninstall ? data_mode : receipt["data_mode"]
+              )
+            end
 
             with_receipt_rollback(plugin_id) do
               move_with_runtime_rollback!(source: entry.directory, destination: destination) do
@@ -292,7 +929,9 @@ module Mcweb
                   to_version: nil,
                   operation_id:
                 ) do |completed_setup_state|
+                  lifecycle_checkpoint!(context, "setup_committed") if setup_plan
                   ensure_runtime_state!(entry.manifest, present: false)
+                  lifecycle_checkpoint!(context, "runtime_verified")
                   write_receipt(
                     manifest: entry.manifest,
                     status: result_status,
@@ -300,8 +939,29 @@ module Mcweb
                     source: receipt["source"],
                     sha256: receipt["sha256"],
                     recovery_path: recovery_path,
-                    setup_state: completed_setup_state&.to_h || receipt["setup"]
+                    setup_state: completed_setup_state&.to_h || receipt["setup"],
+                    file_manifest: receipt["file_manifest"],
+                    data_mode: action == :uninstall ? data_mode : receipt["data_mode"],
+                    rollback_release: receipt["rollback_release"]
                   )
+                  lifecycle_checkpoint!(context, "receipt_persisted")
+                  generation = coordinate_runtime_generation!(
+                    action:,
+                    target_plugin_id: plugin_id,
+                    operation_id:,
+                    previous_plugins:,
+                    actor: context[:actor]
+                  )
+                  lifecycle_checkpoint!(
+                    context,
+                    "generation_activated",
+                    number: generation.respond_to?(:number) ? generation.number : nil
+                  ) if generation
+                  purge_owned_host_data!(plugin_id) if
+                    action == :uninstall && data_mode == "purge_data"
+                  lifecycle_checkpoint!(context, "host_data_purged") if
+                    action == :uninstall && data_mode == "purge_data"
+                  synchronize_catalog_for!(plugin_id, strict: true)
                 end
               end
             end
@@ -314,15 +974,38 @@ module Mcweb
               status: result_status,
               source: receipt["source"],
               sha256: receipt["sha256"],
-              recovery_path: recovery_path
+              recovery_path: recovery_path,
+              data_mode: action == :uninstall ? data_mode : receipt["data_mode"]
             )
           end
         end
 
-        def with_operation(action, plugin_id: nil)
+        def with_operation(action, plugin_id: nil, actor: nil, dry_run: false,
+                           maintenance_mode: false)
           with_lock do
+            maintenance_window = nil
             operation_id = @journal.start(action:, plugin_id:)
-            context = { plugin_id: plugin_id }
+            context = { plugin_id: plugin_id, actor: actor }
+            lifecycle_run = @lifecycle_store&.start!(
+              operation_id:,
+              action:,
+              plugin_id:,
+              actor:,
+              dry_run:,
+              maintenance_mode:
+            )
+            if maintenance_mode && !dry_run
+              maintenance_window = @lifecycle_store&.open_maintenance!(
+                operation_id:,
+                plugin_id:,
+                actor:
+              )
+            end
+            context.merge!(
+              lifecycle_run:,
+              dry_run:,
+              maintenance_mode:
+            )
             result = yield(operation_id, context)
             finish_journal(
               operation_id: operation_id,
@@ -332,6 +1015,13 @@ module Mcweb
               version: result.version,
               source: result.source,
               sha256: result.sha256,
+              recovery_path: result.recovery_path
+            )
+            @lifecycle_store&.finish!(
+              run: lifecycle_run,
+              succeeded: true,
+              plugin_id: result.plugin_id,
+              version: result.version,
               recovery_path: result.recovery_path
             )
             result
@@ -348,8 +1038,203 @@ module Mcweb
               error_class: e.class.name,
               recovery_path: context&.fetch(:recovery_path, nil)
             ) if operation_id
+            @lifecycle_store&.finish!(
+              run: lifecycle_run,
+              succeeded: false,
+              plugin_id: context&.fetch(:plugin_id, nil),
+              version: context&.fetch(:version, nil),
+              recovery_path: context&.fetch(:recovery_path, nil),
+              error: e
+            ) if lifecycle_run
             raise
+          ensure
+            @lifecycle_store&.close_maintenance!(maintenance_window) if
+              maintenance_window
           end
+        end
+
+        def default_lifecycle_store
+          return unless @root == Mcweb::Plugins.default_root.expand_path.cleanpath
+
+          store = LifecycleStore.new(clock: @clock)
+          store if store.available?
+        rescue StandardError
+          nil
+        end
+
+        def default_catalog_store
+          return unless @root == Mcweb::Plugins.default_root.expand_path.cleanpath
+
+          store = CatalogStore.new(clock: @clock)
+          store if store.available?
+        rescue StandardError
+          nil
+        end
+
+        def synchronize_catalog_for!(plugin_id, strict:)
+          return unless @catalog_store
+
+          active = active_inventory!
+          disabled = disabled_inventory!
+          receipt = read_receipt(plugin_id, strict:)
+          entry = active[plugin_id] || disabled[plugin_id]
+          state = catalog_state(
+            active: active.key?(plugin_id),
+            disabled: disabled.key?(plugin_id),
+            receipt:
+          )
+          directory = entry&.directory
+          manifest = entry&.manifest
+          if !manifest && state == "uninstalled"
+            directory = recovery_directory!(receipt.fetch("recovery_path"))
+            manifest = Manifest.load_file(
+              directory.join(PackageArchive::MANIFEST_NAME)
+            )
+          end
+          raise LifecycleError, "plugin catalog manifest is unavailable" unless manifest
+
+          @catalog_store.synchronize!(
+            plugin_id:,
+            state:,
+            manifest:,
+            package_sha256: receipt["sha256"],
+            expected_file_manifest: receipt["file_manifest"],
+            directory:,
+            operation_id: receipt["last_operation_id"],
+            rollback_release: catalog_rollback_release(
+              receipt["rollback_release"],
+              strict:
+            )
+          )
+        rescue StandardError
+          raise if strict
+
+          nil
+        end
+
+        def catalog_rollback_release(value, strict:)
+          return unless value.is_a?(Hash)
+
+          directory = recovery_directory!(value.fetch("path"))
+          manifest = Manifest.load_file(
+            directory.join(PackageArchive::MANIFEST_NAME)
+          )
+          {
+            manifest:,
+            package_sha256: value["sha256"],
+            expected_file_manifest: value["file_manifest"],
+            directory:
+          }.freeze
+        rescue StandardError
+          raise if strict
+
+          nil
+        end
+
+        def catalog_state(active:, disabled:, receipt:)
+          return "active" if active
+          return "disabled" if disabled
+          return "uninstalled" if receipt["status"].to_s == "uninstalled"
+
+          status = receipt["status"].to_s
+          %w[active disabled].include?(status) ? status : "uninstalled"
+        end
+
+        def runtime_catalog_findings(plugin_id:, state:, runtime_status:)
+          if state == "active"
+            return [] if ACTIVE_RUNTIME_STATUSES.include?(runtime_status.to_s)
+
+            code = runtime_status.present? ?
+              "runtime_status_mismatch" : "runtime_missing"
+            return [
+              catalog_finding(plugin_id:, code:, severity: "error")
+            ]
+          end
+          return [] if runtime_status.blank?
+
+          [
+            catalog_finding(
+              plugin_id:,
+              code: "runtime_status_mismatch",
+              severity: "error"
+            )
+          ]
+        end
+
+        def catalog_finding(plugin_id:, code:, severity:)
+          {
+            plugin_id: plugin_id.to_s.presence,
+            code: code.to_s.slice(0, 128),
+            severity: severity.to_s.in?(%w[warning error]) ?
+              severity.to_s : "warning"
+          }.compact.freeze
+        end
+
+        def bind_lifecycle_run!(context, plugin_id:, action: nil,
+                                from_version: nil, to_version: nil)
+          context[:plugin_id] = plugin_id
+          return unless context[:lifecycle_run]
+
+          @lifecycle_store.bind!(
+            run: context[:lifecycle_run],
+            plugin_id:,
+            action:,
+            from_version:,
+            to_version:
+          )
+        end
+
+        def lifecycle_checkpoint!(context, step_key, details = {})
+          return unless context[:lifecycle_run]
+
+          @lifecycle_store.checkpoint!(
+            run: context[:lifecycle_run],
+            step_key:,
+            details:
+          )
+        end
+
+        def default_generation_coordinator
+          return unless @root == Mcweb::Plugins.default_root.expand_path.cleanpath
+
+          coordinator = Mcweb::Plugins.generation_coordinator
+          coordinator if coordinator.available?
+        rescue StandardError
+          nil
+        end
+
+        def coordinate_runtime_generation!(action:, target_plugin_id:, operation_id:,
+                                           previous_plugins:, actor: nil)
+          return unless @generation_coordinator
+
+          @generation_coordinator.publish!(
+            desired_plugins: runtime_plugin_versions,
+            previous_plugins:,
+            action: action.to_s,
+            target_plugin_id:,
+            operation_id:,
+            actor:,
+            timeout: ENV.fetch("MCWEB_PLUGIN_GENERATION_TIMEOUT_SECONDS", "45").to_i.seconds,
+            minimum_ack_ratio: ENV.fetch("MCWEB_PLUGIN_GENERATION_ACK_RATIO", "1"),
+            wait_for_acknowledgements: true
+          )
+        end
+
+        def purge_owned_host_data!(plugin_id)
+          Mcweb::Plugins::OwnedDataPurger.call(plugin_id:)
+        end
+
+        def runtime_plugin_versions
+          Array(@runtime_catalog.call).filter_map do |entry|
+            status = runtime_value(entry, :status).to_s
+            next unless ACTIVE_RUNTIME_STATUSES.include?(status)
+
+            id = runtime_value(entry, :id).to_s
+            version = runtime_value(entry, :version).to_s
+            [ id, version ] if id.present? && version.present?
+          end.to_h.sort.to_h.freeze
+        rescue StandardError
+          {}.freeze
         end
 
         def finish_journal(**attributes)
@@ -357,6 +1242,21 @@ module Mcweb
         rescue StandardError => e
           logger&.error("[mcweb.plugin_marketplace] unable to finish operation journal: #{e.class}: #{e.message}")
           nil
+        end
+
+        def lifecycle_preview_result(operation_id:, action:, entry:, receipt:,
+                                     data_mode: nil)
+          Result.new(
+            operation_id:,
+            action: action.to_s,
+            plugin_id: entry.manifest.id,
+            version: entry.manifest.version,
+            status: "validated",
+            source: receipt["source"],
+            sha256: receipt["sha256"],
+            recovery_path: nil,
+            data_mode:
+          )
         end
 
         def with_lock(shared: false)
@@ -401,6 +1301,31 @@ module Mcweb
             rollback_error = reload_after_rollback
             message = "plugin activation failed; previous filesystem state restored: #{original_error.message}"
             message += " (runtime rollback also failed: #{rollback_error.message})" if rollback_error
+            raise LifecycleError, message
+          end
+          backup
+        end
+
+        def swap_rollback_release!(candidate:, target:, current_manifest:)
+          backup = backup_path(current_manifest.id, current_manifest.version)
+          backup.dirname.mkpath(mode: 0o700)
+          File.rename(target, backup)
+
+          begin
+            File.rename(candidate, target)
+            yield backup
+          rescue StandardError => original_error
+            candidate.dirname.mkpath(mode: 0o700)
+            File.rename(target, candidate) if target.exist? && !candidate.exist?
+            File.rename(backup, target) if backup.exist? && !target.exist?
+            rollback_error = reload_after_rollback
+            message =
+              "plugin rollback failed; current release and rollback point were restored: " \
+              "#{original_error.message}"
+            if rollback_error
+              message +=
+                " (runtime rollback also failed: #{rollback_error.message})"
+            end
             raise LifecycleError, message
           end
           backup
@@ -632,6 +1557,7 @@ module Mcweb
             raise SetupError, "plugin setup database lifecycle is unavailable"
           end
 
+          completed_state = nil
           ActiveRecord::Base.connection_pool.with_connection do |connection|
             connection.transaction(requires_new: true) do
               completed_state = Setup.execute(
@@ -645,14 +1571,83 @@ module Mcweb
                 connection:,
                 clock: @clock
               )
-              yield completed_state
             end
           end
+          # Runtime generations must be published only after setup commits.
+          # Otherwise other web/worker processes cannot observe the generation
+          # row while this process waits for their acknowledgements.
+          yield completed_state
         end
 
         def managed_path(plugin_id)
           plugin_id = validate_plugin_id!(plugin_id)
           root.join(*plugin_id.split("/")).tap { |path| ensure_no_symlink_components!(path) }
+        end
+
+        def recovery_directory!(relative_path)
+          value = relative_path.to_s
+          raise LifecycleError, "plugin recovery files are unavailable" if value.blank?
+
+          candidate = state_root.join(value).cleanpath
+          unless contained_path?(candidate, state_root) && candidate.directory?
+            raise LifecycleError, "plugin recovery files are unavailable"
+          end
+          ensure_no_symlink_components!(candidate, base: state_root)
+          candidate
+        rescue Errno::ENOENT, Errno::EACCES, Errno::ELOOP, ArgumentError
+          raise LifecycleError, "plugin recovery files are unavailable"
+        end
+
+        def validate_rollback_release!(release, plugin_id:)
+          unless release.is_a?(Hash) &&
+              release["path"].present? &&
+              release["id"] == plugin_id &&
+              release["version"].present? &&
+              release["sha256"].to_s.match?(/\A[0-9a-f]{64}\z/) &&
+              release["file_manifest"].is_a?(Hash)
+            raise LifecycleError, "verified plugin rollback release is unavailable"
+          end
+
+          release
+        end
+
+        def validate_rollback_manifest!(manifest:, release:, plugin_id:)
+          unless manifest.id == plugin_id &&
+              manifest.id == release["id"] &&
+              manifest.version == release["version"] &&
+              manifest.api_version == release["api_version"]
+            raise IntegrityError,
+              "plugin rollback release identity changed or cannot be verified"
+          end
+        end
+
+        def validate_rollback_files!(candidate:, release:)
+          health = FileHealth.check(
+            directory: candidate,
+            expected: release.fetch("file_manifest")
+          )
+          return if health.healthy?
+
+          raise IntegrityError,
+            "plugin rollback release files changed or cannot be verified"
+        end
+
+        def rollback_release_available?(release)
+          return false unless release.is_a?(Hash)
+
+          candidate = recovery_directory!(release["path"])
+          manifest = Manifest.load_file(
+            candidate.join(PackageArchive::MANIFEST_NAME)
+          )
+          validate_rollback_manifest!(
+            manifest:,
+            release:,
+            plugin_id: release["id"].to_s
+          )
+          validate_rollback_files!(candidate:, release:)
+          true
+        rescue StandardError
+          false
         end
 
         def disabled_path(plugin_id)
@@ -713,8 +1708,30 @@ module Mcweb
           end
         end
 
+        def validate_uninstall_data_mode!(value)
+          mode = value.to_s
+          return mode if UNINSTALL_DATA_MODES.include?(mode)
+
+          raise LifecycleError,
+            "uninstall data mode must be one of: #{UNINSTALL_DATA_MODES.join(', ')}"
+        end
+
+        def rollback_release_snapshot(path:, manifest:, receipt:, file_manifest: nil)
+          {
+            "path" => state_relative(path),
+            "id" => manifest.id,
+            "version" => manifest.version,
+            "api_version" => manifest.api_version,
+            "source" => receipt["source"],
+            "sha256" => receipt["sha256"],
+            "file_manifest" => file_manifest || receipt["file_manifest"] ||
+              FileHealth.manifest(path)
+          }.compact.freeze
+        end
+
         def write_receipt(manifest:, status:, operation_id:, source: nil, sha256: nil,
-                          recovery_path: nil, setup_state: nil)
+                          recovery_path: nil, setup_state: nil, file_manifest: nil,
+                          data_mode: nil, rollback_release: nil)
           path = receipt_path(manifest.id)
           path.dirname.mkpath(mode: 0o700)
           payload = {
@@ -727,6 +1744,9 @@ module Mcweb
             sha256: sha256,
             recovery_path: recovery_path,
             setup: setup_state,
+            file_manifest: file_manifest,
+            data_mode: data_mode,
+            rollback_release: rollback_release,
             updated_at: @clock.call.utc.iso8601(6),
             last_operation_id: operation_id
           }.compact

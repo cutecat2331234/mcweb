@@ -1,0 +1,22 @@
+---
+schema_version: "1"
+jobs:
+  fulfill:
+    max_attempts: 3
+    retry_wait_seconds: 0
+    lease_seconds: 60
+    arguments:
+      "$schema": https://json-schema.org/draft/2020-12/schema
+      type: object
+      additionalProperties: false
+      required:
+      - order_public_id
+      properties:
+        order_public_id:
+          type: string
+          minLength: 1
+          maxLength: 255
+        fail_until_attempt:
+          type: integer
+          minimum: 0
+          maximum: 2

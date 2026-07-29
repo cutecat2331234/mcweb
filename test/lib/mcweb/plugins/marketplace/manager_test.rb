@@ -49,6 +49,310 @@ class Mcweb::Plugins::Marketplace::ManagerTest < ActiveSupport::TestCase
     refute_includes serialized, "never-store"
     refute_includes serialized, package.to_s
     assert_equal %w[started succeeded], snapshot.fetch(:operations).pluck("status")
+    assert_equal "healthy", plugin.dig(:health, :status)
+    assert_operator plugin.dig(:health, :expected_count), :>=, 2
+  end
+
+  test "installed file health detects local modifications and supports a manual check" do
+    install(plugin_package)
+
+    healthy = @manager.health(plugin_id: "acme/demo")
+    assert_equal "healthy", healthy.fetch(:status)
+
+    @root.join("acme/demo/plugin.rb").write("PLUGIN = :changed\n")
+    @root.join("acme/demo/unknown.txt").write("operator file\n")
+
+    changed = @manager.health(plugin_id: "acme/demo")
+    assert_equal "changed", changed.fetch(:status)
+    assert_equal [ "plugin.rb" ], changed.fetch(:modified)
+    assert_equal [ "unknown.txt" ], changed.fetch(:unknown)
+    assert_equal "changed",
+                 @manager.status.fetch(:plugins).sole.dig(:health, :status)
+  end
+
+  test "managed lifecycle publishes the exact runtime generation inside the rollback boundary" do
+    coordinator = Class.new do
+      attr_reader :calls
+
+      def initialize
+        @calls = []
+      end
+
+      def publish!(**attributes)
+        @calls << attributes
+        true
+      end
+    end.new
+    manager = Mcweb::Plugins::Marketplace::Manager.new(
+      root: @root,
+      state_root: @state_root,
+      reload_callback: -> { catalog_from_disk },
+      runtime_catalog: -> { catalog_from_disk },
+      generation_coordinator: coordinator,
+      ruby_version: "4.0.6",
+      rails_version: "8.1.2"
+    )
+    package = plugin_package
+
+    manager.install(
+      package_path: package,
+      source: "file:///reviewed/demo.zip",
+      expected_sha256: Digest::SHA256.file(package).hexdigest
+    )
+
+    call = coordinator.calls.sole
+    assert_equal "install", call.fetch(:action)
+    assert_equal "acme/demo", call.fetch(:target_plugin_id)
+    assert_equal({}, call.fetch(:previous_plugins))
+    assert_equal({ "acme/demo" => "1.0.0" }, call.fetch(:desired_plugins))
+    assert call.fetch(:wait_for_acknowledgements)
+  end
+
+  test "managed lifecycle persists installation run and completed checkpoints" do
+    store = Mcweb::Plugins::Marketplace::LifecycleStore.new
+    manager = Mcweb::Plugins::Marketplace::Manager.new(
+      root: @root,
+      state_root: @state_root,
+      reload_callback: -> { catalog_from_disk },
+      runtime_catalog: -> { catalog_from_disk },
+      generation_coordinator: nil,
+      lifecycle_store: store,
+      ruby_version: "4.0.6",
+      rails_version: "8.1.2"
+    )
+
+    package = plugin_package
+    result = manager.install(
+      package_path: package,
+      source: "file:///reviewed/demo.zip",
+      expected_sha256: Digest::SHA256.file(package).hexdigest
+    )
+
+    run = PluginLifecycleRun.find_by!(operation_id: result.operation_id)
+    installation = PluginInstallation.find_by!(plugin_id: "acme/demo")
+    assert_equal "succeeded", run.state
+    assert_equal "enabled", installation.current_state
+    assert_equal "1.0.0", installation.current_version
+    assert_equal(
+      %w[package_validated runtime_verified receipt_persisted],
+      run.steps.pluck(:step_key)
+    )
+  end
+
+  test "successful lifecycle keeps the database release catalog synchronized" do
+    manager = Mcweb::Plugins::Marketplace::Manager.new(
+      root: @root,
+      state_root: @state_root,
+      reload_callback: -> { catalog_from_disk },
+      runtime_catalog: -> { catalog_from_disk },
+      generation_coordinator: nil,
+      lifecycle_store: nil,
+      catalog_store: Mcweb::Plugins::Marketplace::CatalogStore.new,
+      ruby_version: "4.0.6",
+      rails_version: "8.1.2"
+    )
+    first_package = plugin_package(version: "1.0.0")
+    first_digest = Digest::SHA256.file(first_package).hexdigest
+
+    manager.install(
+      package_path: first_package,
+      source: "file:///reviewed/demo.zip",
+      expected_sha256: first_digest
+    )
+    release = PluginRelease.current.sole
+    assert_equal "active", release.state
+    assert_equal first_digest, release.package_sha256
+
+    manager.disable(plugin_id: "acme/demo")
+    assert_equal "disabled", release.reload.state
+    manager.enable(plugin_id: "acme/demo")
+    assert_equal "active", release.reload.state
+
+    second_package = plugin_package(version: "2.0.0")
+    second_digest = Digest::SHA256.file(second_package).hexdigest
+    manager.install(
+      package_path: second_package,
+      source: "file:///reviewed/demo-v2.zip",
+      expected_sha256: second_digest,
+      dry_run: true
+    )
+    assert_equal 1, PluginRelease.count
+
+    manager.install(
+      package_path: second_package,
+      source: "file:///reviewed/demo-v2.zip",
+      expected_sha256: second_digest
+    )
+    assert_equal "rollback", release.reload.state
+    current = PluginRelease.current.sole
+    assert_equal "2.0.0", current.version
+
+    manager.rollback(
+      plugin_id: "acme/demo",
+      expected_version: current.version,
+      expected_sha256: current.package_sha256
+    )
+    assert_equal "1.0.0", PluginRelease.current.sole.version
+
+    current = PluginRelease.current.sole
+    manager.uninstall(
+      plugin_id: "acme/demo",
+      expected_version: current.version,
+      expected_sha256: current.package_sha256
+    )
+    assert_equal "uninstalled", PluginRelease.current.sole.state
+    manager.recover(
+      plugin_id: "acme/demo",
+      expected_version: current.version,
+      expected_sha256: current.package_sha256
+    )
+    assert_equal "active", PluginRelease.current.sole.state
+  end
+
+  test "catalog reconcile backfills pre-catalog plugins and is idempotent" do
+    target = @root.join("acme/demo")
+    target.mkpath
+    target.join("mcweb_plugin.yml").write(
+      {
+        "id" => "acme/demo",
+        "name" => "Demo",
+        "version" => "1.0.0",
+        "api_version" => "1",
+        "entrypoint" => "plugin.rb"
+      }.to_yaml
+    )
+    target.join("plugin.rb").write("PLUGIN = true\n")
+    manager = Mcweb::Plugins::Marketplace::Manager.new(
+      root: @root,
+      state_root: @state_root,
+      reload_callback: -> { catalog_from_disk },
+      runtime_catalog: -> { catalog_from_disk },
+      generation_coordinator: nil,
+      lifecycle_store: nil,
+      catalog_store: Mcweb::Plugins::Marketplace::CatalogStore.new,
+      ruby_version: "4.0.6",
+      rails_version: "8.1.2"
+    )
+
+    first = manager.reconcile_catalog
+    second = manager.reconcile_catalog
+
+    assert_equal 1, first.synchronized_count
+    assert_equal 1, second.synchronized_count
+    assert_equal 1, PluginRelease.count
+    release = PluginRelease.current.sole
+    assert_equal "derived", release.package_digest_source
+    assert_equal "untracked", release.health
+    assert_includes release.diagnostics.pluck("code"), "receipt_missing"
+    assert_includes first.findings.pluck(:code), "catalog_record_missing"
+    refute_includes first.to_h.to_json, @temporary.to_s
+  end
+
+  test "catalog reconcile keeps runtime and receipt file differences visible" do
+    runtime_available = true
+    runtime = -> { runtime_available ? catalog_from_disk : [] }
+    manager = Mcweb::Plugins::Marketplace::Manager.new(
+      root: @root,
+      state_root: @state_root,
+      reload_callback: -> { catalog_from_disk },
+      runtime_catalog: runtime,
+      generation_coordinator: nil,
+      lifecycle_store: nil,
+      catalog_store: Mcweb::Plugins::Marketplace::CatalogStore.new,
+      ruby_version: "4.0.6",
+      rails_version: "8.1.2"
+    )
+    package = plugin_package
+    manager.install(
+      package_path: package,
+      source: "file:///reviewed/demo.zip",
+      expected_sha256: Digest::SHA256.file(package).hexdigest
+    )
+    @root.join("acme/demo/plugin.rb").write("PLUGIN = :changed\n")
+    runtime_available = false
+
+    result = manager.reconcile_catalog
+    release = PluginRelease.current.sole
+    codes = release.diagnostics.pluck("code")
+
+    assert_includes codes, "file_health_changed"
+    assert_includes codes, "runtime_missing"
+    assert_includes result.findings.pluck(:code), "file_health_changed"
+    assert_equal "modified",
+                 release.files.find_by!(path: "plugin.rb").health
+    refute_includes result.to_h.to_json, @root.to_s
+  end
+
+  test "install dry run records its impact without changing package state" do
+    store = Mcweb::Plugins::Marketplace::LifecycleStore.new
+    manager = Mcweb::Plugins::Marketplace::Manager.new(
+      root: @root,
+      state_root: @state_root,
+      reload_callback: -> { catalog_from_disk },
+      runtime_catalog: -> { catalog_from_disk },
+      generation_coordinator: nil,
+      lifecycle_store: store,
+      ruby_version: "4.0.6",
+      rails_version: "8.1.2"
+    )
+    package = plugin_package
+
+    result = manager.install(
+      package_path: package,
+      source: "file:///reviewed/demo.zip",
+      expected_sha256: Digest::SHA256.file(package).hexdigest,
+      actor: create_user,
+      dry_run: true,
+      maintenance_mode: true
+    )
+
+    assert_equal "validated", result.status
+    refute @root.join("acme/demo").exist?
+    run = PluginLifecycleRun.find_by!(operation_id: result.operation_id)
+    assert_predicate run, :dry_run?
+    assert_predicate run, :maintenance_mode?
+    assert_equal "succeeded", run.state
+    assert_equal "acme/demo", run.plugin_id
+    assert_equal(
+      %w[package_validated impact_analyzed],
+      run.steps.order(:sequence).pluck(:step_key)
+    )
+    assert_nil run.plugin_installation
+  end
+
+  test "maintenance lifecycle pauses public access only while code changes" do
+    store = Mcweb::Plugins::Marketplace::LifecycleStore.new
+    maintenance_observed = false
+    manager = Mcweb::Plugins::Marketplace::Manager.new(
+      root: @root,
+      state_root: @state_root,
+      reload_callback: lambda {
+        maintenance_observed ||= PluginMaintenanceWindow.currently_active.exists?
+        catalog_from_disk
+      },
+      runtime_catalog: -> { catalog_from_disk },
+      generation_coordinator: nil,
+      lifecycle_store: store,
+      ruby_version: "4.0.6",
+      rails_version: "8.1.2"
+    )
+    package = plugin_package
+
+    result = manager.install(
+      package_path: package,
+      source: "file:///reviewed/demo.zip",
+      expected_sha256: Digest::SHA256.file(package).hexdigest,
+      maintenance_mode: true
+    )
+
+    assert maintenance_observed
+    refute PluginMaintenanceWindow.currently_active.exists?
+    window = PluginMaintenanceWindow.find_by!(operation_id: result.operation_id)
+    refute_predicate window, :active?
+    assert window.ended_at
+    assert_equal "acme/demo", window.plugin_id
+    assert_predicate PluginLifecycleRun.find_by!(operation_id: result.operation_id),
+                     :maintenance_mode?
   end
 
   test "install records integrity failures without touching the managed path" do
@@ -165,6 +469,71 @@ class Mcweb::Plugins::Marketplace::ManagerTest < ActiveSupport::TestCase
     assert_equal "uninstalled", @manager.status.fetch(:plugins).sole.fetch(:status)
   end
 
+  test "disable and uninstall dry runs validate without moving the plugin" do
+    install(plugin_package)
+    installed = @manager.status(plugin_id: "acme/demo").fetch(:plugins).sole
+
+    disable_preview = @manager.disable(
+      plugin_id: "acme/demo",
+      dry_run: true
+    )
+    assert_equal "validated", disable_preview.status
+    assert @root.join("acme/demo").directory?
+
+    uninstall_preview = @manager.uninstall(
+      plugin_id: "acme/demo",
+      expected_version: installed.fetch(:version),
+      expected_sha256: installed.fetch(:sha256),
+      data_mode: "purge_data",
+      dry_run: true
+    )
+    assert_equal "validated", uninstall_preview.status
+    assert_equal "purge_data", uninstall_preview.data_mode
+    assert @root.join("acme/demo").directory?
+    refute @state_root.glob("quarantine/**/acme/demo").any?
+  end
+
+  test "recover restores a verified quarantined package without changing its identity" do
+    install(plugin_package)
+    installed = @manager.status(plugin_id: "acme/demo").fetch(:plugins).sole
+    uninstalled = uninstall
+    recovery = @state_root.join(uninstalled.recovery_path)
+    assert recovery.directory?
+
+    result = @manager.recover(
+      plugin_id: "acme/demo",
+      expected_version: installed.fetch(:version),
+      expected_sha256: installed.fetch(:sha256)
+    )
+
+    assert_equal "recover", result.action
+    assert_equal "active", result.status
+    assert @root.join("acme/demo/mcweb_plugin.yml").file?
+    refute recovery.exist?
+    recovered = @manager.status(plugin_id: "acme/demo").fetch(:plugins).sole
+    assert_equal "active", recovered.fetch(:status)
+    refute recovered.key?(:recovery_path)
+    assert_equal "preserve_data", recovered.fetch(:data_mode)
+  end
+
+  test "recover rejects stale identity before moving quarantined files" do
+    install(plugin_package)
+    installed = @manager.status(plugin_id: "acme/demo").fetch(:plugins).sole
+    uninstalled = uninstall
+    recovery = @state_root.join(uninstalled.recovery_path)
+
+    assert_raises(Mcweb::Plugins::Marketplace::IntegrityError) do
+      @manager.recover(
+        plugin_id: "acme/demo",
+        expected_version: installed.fetch(:version),
+        expected_sha256: "f" * 64
+      )
+    end
+
+    assert recovery.directory?
+    refute @root.join("acme/demo").exist?
+  end
+
   test "dependants prevent unsafe disable and uninstall" do
     install(plugin_package(id: "base/core"))
     install(plugin_package(id: "addon/feature", requires: { "base/core" => ">= 1.0.0" }))
@@ -258,6 +627,63 @@ class Mcweb::Plugins::Marketplace::ManagerTest < ActiveSupport::TestCase
     assert @state_root.join(result.recovery_path, "mcweb_plugin.yml").file?
   end
 
+  test "rollback swaps verified releases and retains the replaced release" do
+    install(plugin_package(version: "1.0.0", body: "VERSION = 'one'\n"))
+    upgraded = install(
+      plugin_package(version: "2.0.0", body: "VERSION = 'two'\n")
+    )
+    current = @manager.status(plugin_id: "acme/demo").fetch(:plugins).sole
+    assert current.fetch(:rollback_available)
+
+    rolled_back = @manager.rollback(
+      plugin_id: "acme/demo",
+      expected_version: current.fetch(:version),
+      expected_sha256: current.fetch(:sha256)
+    )
+
+    assert_equal "rollback", rolled_back.action
+    assert_equal "1.0.0", rolled_back.version
+    assert_equal "VERSION = 'one'\n", @root.join("acme/demo/plugin.rb").read
+    refute @state_root.join(upgraded.recovery_path).exist?
+    assert @state_root.join(rolled_back.recovery_path, "plugin.rb").file?
+    restored = @manager.status(plugin_id: "acme/demo").fetch(:plugins).sole
+    assert restored.fetch(:rollback_available)
+
+    rolled_forward = @manager.rollback(
+      plugin_id: "acme/demo",
+      expected_version: restored.fetch(:version),
+      expected_sha256: restored.fetch(:sha256)
+    )
+    assert_equal "2.0.0", rolled_forward.version
+    assert_equal "VERSION = 'two'\n", @root.join("acme/demo/plugin.rb").read
+  end
+
+  test "rollback refuses a modified retained release without moving current code" do
+    install(plugin_package(version: "1.0.0", body: "VERSION = 'one'\n"))
+    upgraded = install(
+      plugin_package(version: "2.0.0", body: "VERSION = 'two'\n")
+    )
+    @state_root.join(upgraded.recovery_path, "plugin.rb").write(
+      "VERSION = 'tampered'\n"
+    )
+    current = @manager.status(plugin_id: "acme/demo").fetch(:plugins).sole
+    refute current.fetch(:rollback_available)
+
+    assert_raises(Mcweb::Plugins::Marketplace::IntegrityError) do
+      @manager.rollback(
+        plugin_id: "acme/demo",
+        expected_version: current.fetch(:version),
+        expected_sha256: current.fetch(:sha256)
+      )
+    end
+
+    assert_equal "2.0.0",
+                 Mcweb::Plugins::Manifest.load_file(
+                   @root.join("acme/demo/mcweb_plugin.yml")
+                 ).version
+    assert_equal "VERSION = 'two'\n", @root.join("acme/demo/plugin.rb").read
+  end
+
   test "concurrent installs serialize and never replace the same version twice" do
     package = plugin_package
     outcomes = Queue.new
@@ -302,7 +728,7 @@ class Mcweb::Plugins::Marketplace::ManagerTest < ActiveSupport::TestCase
       next if path.dirname.join("plugin.rb").read.include?("BROKEN")
 
       manifest = Mcweb::Plugins::Manifest.load_file(path)
-      { id: manifest.id, status: "active" }
+      { id: manifest.id, version: manifest.version, status: "active" }
     end
   end
 

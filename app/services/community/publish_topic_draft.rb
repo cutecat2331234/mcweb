@@ -10,20 +10,20 @@ module Community
 
     def call
       unless Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
-        return ServiceResult.failure(error: "Topic not available.")
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
-      return ServiceResult.failure(error: "Not your draft.") unless @topic.user_id == @user.id
-      return ServiceResult.failure(error: "Topic is not a draft.") unless @topic.status == "draft"
+      return ServiceResult.failure(error: :not_your_draft) unless @topic.user_id == @user.id
+      return ServiceResult.failure(error: :topic_is_not_a_draft) unless @topic.status == "draft"
 
       post = @topic.posts.first
-      return ServiceResult.failure(error: "Draft body is required.") unless post&.body.present?
+      return ServiceResult.failure(error: :draft_body_is_required) unless post&.body.present?
 
       unless @topic.section.allowed?(@user, :create_topic)
-        return ServiceResult.failure(error: "You are not allowed to create topics in this section.")
+        return ServiceResult.failure(error: :cannot_create_topic_in_section)
       end
 
-      return ServiceResult.failure(error: "You are muted in this section.") if Community::Mute.muted?(@user, section: @topic.section)
+      return ServiceResult.failure(error: :muted_in_section) if Community::Mute.muted?(@user, section: @topic.section)
 
       tag_ids = @topic.tags.pluck(:id)
       required_result = Community::ValidateSectionRequiredTags.call(
@@ -46,7 +46,7 @@ module Community
       return field_result if field_result.failure?
 
       if Community::TrustLevel.contains_link?(post.body) && !Community::TrustLevel.can_post_links?(@user)
-        return ServiceResult.failure(error: "New members cannot post links. Participate more to unlock this.")
+        return ServiceResult.failure(error: :new_members_cannot_post_links)
       end
 
       link_restriction = Community::CheckWarningRestrictions.call(user: @user, action: :link)

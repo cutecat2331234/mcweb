@@ -60,7 +60,9 @@ module Frontend
         if template.persisted?
           template.update!(status: "failed", error_message: e.message)
         end
-        ServiceResult.failure(error: "安装失败：#{e.message}")
+        ServiceResult.failure(
+          error: I18n.t("mcweb.user_copy.template_install_failed", error: e.message)
+        )
       end
     end
 

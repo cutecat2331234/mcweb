@@ -9,16 +9,16 @@ module Minecraft
     end
 
     def call
-      return ServiceResult.failure(error: "Sync URL is required.") if @url.blank?
+      return ServiceResult.failure(error: :sync_url_is_required) if @url.blank?
 
       uri = URI.parse(@url)
-      return ServiceResult.failure(error: "Sync URL scheme is not allowed.") unless allowed_scheme?(uri)
-      return ServiceResult.failure(error: "Sync URL host is not allowed.") unless allowed_host?(uri)
-      return ServiceResult.failure(error: "Sync URL path is not allowed.") unless uri.path.include?(SYNC_PATH)
+      return ServiceResult.failure(error: :sync_url_scheme_is_not_allowed) unless allowed_scheme?(uri)
+      return ServiceResult.failure(error: :sync_url_host_is_not_allowed) unless allowed_host?(uri)
+      return ServiceResult.failure(error: :sync_url_path_is_not_allowed) unless uri.path.include?(SYNC_PATH)
 
       ServiceResult.success(true)
     rescue URI::InvalidURIError
-      ServiceResult.failure(error: "Sync URL is invalid.")
+      ServiceResult.failure(error: :sync_url_is_invalid)
     end
 
     private

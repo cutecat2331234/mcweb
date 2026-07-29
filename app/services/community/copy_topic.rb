@@ -15,7 +15,7 @@ module Community
       new_topic = nil
       @topic.with_lock do
         unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
-          return ServiceResult.failure(error: "You are not authorized to copy this topic.")
+          return ServiceResult.failure(error: :you_are_not_authorized_to_copy_this_topic)
         end
 
         new_topic = duplicate_topic

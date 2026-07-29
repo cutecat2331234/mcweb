@@ -6,9 +6,9 @@ require_relative "result"
 module Mcweb
   module PluginApi
     module V1
-      # Read-only identity facade. It resolves users through stable selectors,
-      # exposes allow-listed snapshots, and delegates the effective grant check
-      # to User#permission? so host roles and global user groups stay canonical.
+      # Identity facade. Reads expose allow-listed snapshots; controlled writes
+      # delegate to core identity services so account eligibility, delegation,
+      # validation and audit behavior stay canonical.
       class Identity
         DEFAULT_LIMIT = 50
         MAX_LIMIT = 100
@@ -37,6 +37,29 @@ module Mcweb
           failure || Result.success(IdentitySnapshot.user_status(user))
         rescue StandardError => e
           Result.failure_from_exception(e)
+        end
+
+        def update_user(actor:, user:, attributes:)
+          audit("identity.users.write")
+          actor, failure = resolve_mutation_user(actor, role: "actor")
+          return failure if failure
+
+          user, failure = resolve_mutation_user(user, role: "user")
+          return failure if failure
+
+          service_result = ::Identity::UpdateProfile.call(
+            actor:,
+            user:,
+            attributes:
+          )
+          identity_service_result(service_result) do |value|
+            {
+              user: IdentitySnapshot.user(value.fetch(:user)),
+              changed: value.fetch(:changed)
+            }
+          end
+        rescue StandardError
+          Result.failure(code: "host_error", error: "identity operation failed")
         end
 
         def groups(limit: DEFAULT_LIMIT)
@@ -72,6 +95,33 @@ module Mcweb
           Result.success(snapshots)
         rescue StandardError => e
           Result.failure_from_exception(e)
+        end
+
+        def add_group_member(actor:, user:, group:)
+          mutate_group_membership(
+            operation: :add_member,
+            actor:,
+            user:,
+            group:
+          )
+        end
+
+        def remove_group_member(actor:, user:, group:)
+          mutate_group_membership(
+            operation: :remove_member,
+            actor:,
+            user:,
+            group:
+          )
+        end
+
+        def set_primary_group(actor:, user:, group:)
+          mutate_group_membership(
+            operation: :set_primary,
+            actor:,
+            user:,
+            group:
+          )
         end
 
         def permission_contributions(limit: DEFAULT_LIMIT)
@@ -149,6 +199,88 @@ module Mcweb
         end
 
         private
+
+        def mutate_group_membership(operation:, actor:, user:, group:)
+          audit("identity.groups.members.write")
+          actor, failure = resolve_mutation_user(actor, role: "actor")
+          return failure if failure
+
+          user, failure = resolve_mutation_user(user, role: "user")
+          return failure if failure
+
+          group, failure = resolve_mutation_group(group)
+          return failure if failure
+
+          service_result = ::Identity::ApplyGroupMutation.call(
+            actor:,
+            operation:,
+            group:,
+            user:
+          )
+          identity_service_result(service_result) do
+            membership = Community::GroupMembership.find_by(
+              user:,
+              user_group: group
+            )
+            {
+              user: IdentitySnapshot.user(user.reload),
+              group: IdentitySnapshot.group(
+                group.reload,
+                primary: membership&.reload&.is_primary? || false
+              ),
+              member: membership.present?
+            }
+          end
+        rescue StandardError
+          Result.failure(code: "host_error", error: "identity operation failed")
+        end
+
+        def identity_service_result(service_result)
+          if service_result.success?
+            Result.success(yield(service_result.value))
+          else
+            code = service_result.code.to_s
+            code = "service_failure" unless code.match?(/\A[a-z][a-z0-9_]*\z/)
+            Result.failure(
+              code:,
+              error: "identity operation was rejected",
+              errors: service_result.errors
+            )
+          end
+        end
+
+        def resolve_mutation_user(value, role:)
+          unless value.is_a?(::User) && value.persisted?
+            return [
+              nil,
+              Result.failure(
+                code: "invalid_#{role}",
+                error: "a persisted #{role} is required"
+              )
+            ]
+          end
+
+          [ value, nil ]
+        end
+
+        def resolve_mutation_group(value)
+          group =
+            if value.is_a?(Community::UserGroup) && value.persisted?
+              value
+            else
+              id = Integer(value, exception: false)
+              Community::UserGroup.find_by(id:) if id&.positive?
+            end
+          return [ group, nil ] if group
+
+          [
+            nil,
+            Result.failure(
+              code: "invalid_group",
+              error: "a persisted group is required"
+            )
+          ]
+        end
 
         def permission_decision(user, permission_key, contribution: nil)
           eligible = user.session_eligible?

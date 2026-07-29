@@ -339,11 +339,10 @@ class ApplicationController < ActionController::Base
 
     response.set_header("X-McWeb-Developer-Mode", "unrestricted")
     response.set_header("X-Robots-Tag", "noindex, nofollow")
-    existing_cache_control = response.get_header("Cache-Control").to_s
-    response.set_header(
-      "Cache-Control",
-      existing_cache_control.match?(/(?:^|,)\s*private(?:\s*,|$)/i) ? "private, no-store" : "no-store"
-    )
+    # Merge the developer-mode directive through Action Dispatch so endpoints
+    # carrying authenticated or one-time data retain their existing `private`
+    # classification. Replacing the header would silently weaken that contract.
+    response.cache_control[:no_store] = true
   end
 
   # Turns a flat map of dotted i18n keys into a nested hash so vue-i18n can

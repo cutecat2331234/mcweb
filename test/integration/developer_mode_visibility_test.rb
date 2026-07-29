@@ -55,6 +55,22 @@ class DeveloperModeVisibilityTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "enabled mode preserves an endpoint private cache classification" do
+    controller = ApplicationController.new
+    test_response = ActionDispatch::TestResponse.new
+    controller.set_response!(test_response)
+    test_response.set_header("Cache-Control", "private, max-age=0")
+
+    with_unrestricted_developer_mode do
+      controller.send(:mark_developer_mode_response)
+      test_response.commit!
+    end
+
+    assert_includes test_response.headers.fetch("Cache-Control"), "private"
+    assert_includes test_response.headers.fetch("Cache-Control"), "no-store"
+    assert_not_includes test_response.headers.fetch("Cache-Control"), "public"
+  end
+
   private
 
   def with_unrestricted_developer_mode

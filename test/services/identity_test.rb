@@ -173,6 +173,33 @@ class Identity::ResetPasswordTest < ActiveSupport::TestCase
     user.reload
     assert user.password_reset_token_digest.present?
   end
+
+  test "completion revokes sessions through the model lifecycle" do
+    user = create_user(
+      email: "reset-sessions@example.com",
+      username: "resetsessions"
+    )
+    session = Session.create!(
+      user:,
+      token_digest: SecureRandom.hex(32),
+      expires_at: 1.day.from_now
+    )
+    session.update_columns(
+      created_at: 2.days.ago,
+      updated_at: 2.days.ago
+    )
+    previous_updated_at = session.reload.updated_at
+    request = Identity::ResetPassword.call(email: user.email)
+
+    result = Identity::ResetPassword.call(
+      token: request.value.fetch(:reset_token),
+      new_password: "newpassword456"
+    )
+
+    assert_predicate result, :success?
+    assert_predicate session.reload, :revoked?
+    assert_operator session.updated_at, :>, previous_updated_at
+  end
 end
 
 class Identity::MailerTest < ActionMailer::TestCase

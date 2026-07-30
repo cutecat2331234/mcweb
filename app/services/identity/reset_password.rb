@@ -97,7 +97,10 @@ module Identity
         locked_until: nil
       )
 
-      Session.where(user: user).update_all(revoked_at: Time.current)
+      # Use the model revocation path so edition extensions and security
+      # callbacks (for example, disconnecting an active realtime session) run
+      # for every credential invalidated by the password change.
+      Session.where(user: user, revoked_at: nil).find_each(&:revoke!)
 
       Administration::AuditLogger.call(
         actor: user,

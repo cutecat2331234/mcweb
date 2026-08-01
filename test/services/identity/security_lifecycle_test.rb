@@ -132,7 +132,16 @@ module Identity
     end
 
     test "the last active owner cannot close their account" do
+      User
+        .where(account_type: :owner, status: :active)
+        .where.not(id: @user.id)
+        .update_all(account_type: :admin)
       @user.update!(account_type: :owner)
+
+      assert_equal [ @user.id ], User.where(
+        account_type: :owner,
+        status: :active
+      ).pluck(:id)
 
       result = CloseAccount.call(
         user: @user,
@@ -143,6 +152,22 @@ module Identity
       assert result.failure?
       assert_equal "last_owner_account_cannot_close", result.code
       assert @user.reload.active?
+    end
+
+    test "an active successor owner permits account closure" do
+      @user.update!(account_type: :owner)
+      successor = create_user(account_type: :owner)
+
+      result = CloseAccount.call(
+        user: @user,
+        password: "password123",
+        confirmation: "DELETE"
+      )
+
+      assert result.success?
+      assert @user.reload.deleted?
+      assert successor.reload.active?
+      assert successor.account_owner?
     end
 
     test "account closure can delete eligible authored content with a stable result" do

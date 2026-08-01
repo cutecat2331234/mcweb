@@ -29,12 +29,14 @@ module Identity
     def call
       return failure("account_close_confirmation_invalid") unless @confirmation == CONFIRMATION
       return failure("account_close_mode_invalid") unless CLOSURE_MODES.include?(@closure_mode)
-      return failure("last_owner_account_cannot_close") if last_active_owner?
 
       avatar = nil
       closure_outcome = nil
       User.transaction do
+        lock_active_owner_roster!
         @user.lock!
+        raise LastActiveOwner if last_active_owner?
+
         verification = SensitiveActionVerifier.call(
           user: @user,
           password: @password,
@@ -101,6 +103,8 @@ module Identity
       ServiceResult.success(user: @user)
     rescue VerificationFailed => e
       e.result
+    rescue LastActiveOwner
+      failure("last_owner_account_cannot_close")
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end
@@ -114,6 +118,8 @@ module Identity
       end
     end
 
+    class LastActiveOwner < StandardError; end
+
     private
 
     def failure(code)
@@ -122,7 +128,16 @@ module Identity
 
     def last_active_owner?
       @user.account_owner? &&
+        @user.active? &&
         !User.where(account_type: :owner, status: :active).where.not(id: @user.id).exists?
+    end
+
+    def lock_active_owner_roster!
+      User
+        .where(account_type: :owner, status: :active)
+        .order(:id)
+        .lock
+        .load
     end
 
     def apply_content_outcome!

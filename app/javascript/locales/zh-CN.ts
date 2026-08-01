@@ -11,6 +11,7 @@ export default {
     browse: '浏览',
     back: '返回',
     view: '查看',
+    actions: '操作',
     mine: '我的',
     announcement: '公告',
     closeAnnouncement: '关闭公告',

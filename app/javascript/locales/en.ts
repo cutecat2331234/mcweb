@@ -11,6 +11,7 @@ export default {
     browse: 'Browse',
     back: 'Back',
     view: 'View',
+    actions: 'Actions',
     mine: 'Mine',
     announcement: 'Announcement',
     closeAnnouncement: 'Dismiss announcements',

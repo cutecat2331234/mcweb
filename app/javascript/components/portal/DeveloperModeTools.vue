@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import { IconBug } from '@arco-design/web-vue/es/icon'
 
 interface Persona {
   key: string
@@ -33,7 +34,7 @@ function switchPersona(persona: Persona) {
     { persona: persona.key },
     {
       preserveState: false,
-      preserveScroll: false,
+      preserveScroll: true,
       onFinish: () => {
         switching.value = null
       },
@@ -44,50 +45,71 @@ function switchPersona(persona: Persona) {
 
 <template>
   <template v-if="developerMode.enabled">
-    <div
-      aria-hidden="true"
-      class="pointer-events-none fixed inset-0 z-[90] flex items-center justify-center overflow-hidden"
-    >
-      <span
-        class="-rotate-12 select-none text-6xl font-black tracking-[0.18em] text-amber-500 opacity-[0.055] md:text-8xl"
-      >
-        {{ t('common.developerModeBadge') }}
-      </span>
-    </div>
-
-    <div
-      v-if="developerMode.tools_access"
-      class="fixed bottom-4 right-4 z-[95]"
-    >
-      <button
-        type="button"
-        class="rounded-full border border-amber-500/50 bg-amber-100 px-4 py-2 text-sm font-semibold text-amber-950 shadow-lg hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-500"
+    <a-back-top v-if="developerMode.tools_access" :visible-height="-1">
+      <a-button
+        type="primary"
+        status="warning"
+        shape="circle"
+        :aria-label="t('common.openDeveloperTools')"
         :aria-expanded="open"
-        @click="open = !open"
+        @click.stop="open = true"
       >
-        {{ t('common.developerPersonas') }}
-      </button>
-      <div
-        v-if="open"
-        class="mt-2 w-56 rounded-xl border border-amber-500/30 bg-background p-3 shadow-xl"
+        <template #icon><icon-bug /></template>
+      </a-button>
+    </a-back-top>
+
+    <a-drawer
+      v-model:visible="open"
+      :title="t('common.developerPersonas')"
+      :width="'min(380px, 100vw)'"
+      :footer="false"
+      unmount-on-close
+    >
+      <a-watermark
+        :content="t('common.developerModeBadge')"
+        :font="{ color: '#ff7d00', fontSize: 18, fontWeight: 700 }"
+        :gap="[120, 48]"
+        :alpha="0.09"
+        :repeat="true"
       >
-        <p class="mb-2 text-xs text-muted-foreground">
-          {{ t('common.developerCurrentPersona') }}
-          {{ t(`common.developerPersona.${developerMode.current_persona ?? 'operator'}`) }}
-        </p>
-        <div class="grid gap-2">
-          <button
-            v-for="persona in developerMode.personas ?? []"
-            :key="persona.key"
-            type="button"
-            class="rounded-lg border border-border px-3 py-2 text-left text-sm hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary disabled:cursor-not-allowed disabled:opacity-50"
-            :disabled="!persona.available || switching !== null"
-            @click="switchPersona(persona)"
+        <a-space direction="vertical" :size="16" fill>
+          <a-alert
+            type="warning"
+            show-icon
+            :title="t('common.developerMode')"
           >
-            {{ t(`common.developerPersona.${persona.key}`) }}
-          </button>
-        </div>
-      </div>
-    </div>
+            {{ t('common.developerModeWarning') }}
+          </a-alert>
+
+          <a-descriptions :column="1" bordered size="small">
+            <a-descriptions-item :label="t('common.developerCurrentPersona')">
+              <a-tag color="orangered">
+                {{ t(`common.developerPersona.${developerMode.current_persona ?? 'operator'}`) }}
+              </a-tag>
+            </a-descriptions-item>
+          </a-descriptions>
+
+          <a-space direction="vertical" :size="8" fill>
+            <a-button
+              v-for="persona in developerMode.personas ?? []"
+              :key="persona.key"
+              :type="developerMode.current_persona === persona.key ? 'primary' : 'outline'"
+              shape="round"
+              long
+              :disabled="!persona.available || switching !== null"
+              :loading="switching === persona.key"
+              @click="switchPersona(persona)"
+            >
+              {{ t(`common.developerPersona.${persona.key}`) }}
+            </a-button>
+          </a-space>
+
+          <a-empty
+            v-if="(developerMode.personas ?? []).length === 0"
+            :description="t('common.developerPersonasEmpty')"
+          />
+        </a-space>
+      </a-watermark>
+    </a-drawer>
   </template>
 </template>

@@ -25,7 +25,8 @@ export interface WebhookStatBlock {
 }
 
 export interface AuditLogItem {
-  action: string
+  actionLabel: string
+  actionCode: string
   actor: string | null
   created_at: string
 }
@@ -387,11 +388,23 @@ function metricSpan(index: number) {
         <template #columns>
           <a-table-column
             :title="t('admin.dashboard.colAction')"
-            data-index="action"
-            :width="300"
-            ellipsis
-            tooltip
-          />
+            :width="340"
+          >
+            <template #cell="{ record }">
+              <a-space direction="vertical" :size="2" fill>
+                <a-typography-text :ellipsis="{ showTooltip: true }">
+                  {{ record.actionLabel }}
+                </a-typography-text>
+                <a-typography-text
+                  type="secondary"
+                  code
+                  :ellipsis="{ showTooltip: true }"
+                >
+                  {{ record.actionCode }}
+                </a-typography-text>
+              </a-space>
+            </template>
+          </a-table-column>
           <a-table-column
             :title="t('admin.dashboard.colActor')"
             data-index="actor"

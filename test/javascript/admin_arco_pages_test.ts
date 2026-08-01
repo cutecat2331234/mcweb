@@ -595,6 +595,21 @@ test('admin-only shared components use Arco instead of legacy and native control
   }
 })
 
+test('admin language switcher dismisses its tooltip while the locale menu is open', () => {
+  const source = adminComponentSource('AdminLanguageSwitcher.vue')
+
+  assert.match(source, /const dropdownVisible = ref\(false\)/)
+  assert.match(source, /const tooltipVisible = ref\(false\)/)
+  assert.match(
+    source,
+    /function handleDropdownVisibility\(visible: boolean\)[\s\S]*if \(visible\) tooltipVisible\.value = false/,
+  )
+  assert.match(source, /<a-dropdown[\s\S]*v-model:popup-visible="dropdownVisible"/)
+  assert.match(source, /@popup-visible-change="handleDropdownVisibility"/)
+  assert.match(source, /<a-tooltip[\s\S]*v-model:popup-visible="tooltipVisible"/)
+  assert.match(source, /:disabled="dropdownVisible"/)
+})
+
 test('website and frontend Arco pages retain publishing, ordering, upload, and destructive confirmations', () => {
   const templates = pageSource('Frontend/Templates/Index.vue')
   assert.match(templates, /<a-upload/)

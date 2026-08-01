@@ -121,10 +121,7 @@ module Admin
     end
 
     def audit_action_label(action)
-      key = "mcweb.audit.actions.#{action.to_s.tr('.', '_')}"
-      return t(key) if I18n.exists?(key, I18n.locale)
-
-      action.to_s.split(".").map { |segment| segment.tr("_", " ").humanize }.join(" · ")
+      Administration::AuditActionLabel.call(action)
     end
 
     def resource_type_label(resource_type)

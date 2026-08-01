@@ -57,7 +57,7 @@ test('Developer Workbench copy is available in English and Chinese', () => {
   }
 })
 
-test('Developer Mode global tools provide a watermark, drawer, and persona switching', () => {
+test('Developer Mode global tools keep the persistent warning in each layout', () => {
   const adminTools = projectSource(
     'app/javascript/components/admin/DeveloperModeTools.vue',
   )
@@ -85,9 +85,32 @@ test('Developer Mode global tools provide a watermark, drawer, and persona switc
   assert.doesNotMatch(adminTools, /<style\b/)
   assert.match(portalTools, /persona_switch_url/)
   assert.match(portalTools, /router\.post/)
+  assert.match(portalTools, /<a-watermark/)
+  assert.match(portalTools, /<a-back-top/)
+  assert.match(portalTools, /<a-drawer/)
+  assert.match(portalTools, /<a-button/)
   assert.match(portalTools, /common\.developerModeBadge/)
+  assert.doesNotMatch(portalTools, /<button\b/)
+  assert.doesNotMatch(portalTools, /<style\b/)
+
+  for (const tools of [adminTools, portalTools]) {
+    const drawerStart = tools.indexOf('<a-drawer')
+    assert.ok(drawerStart > 0, 'developer tools must keep secondary details in a drawer')
+    assert.doesNotMatch(
+      tools.slice(0, drawerStart),
+      /<a-alert/,
+      'developer tools must not duplicate the layout warning while the drawer is closed',
+    )
+    assert.match(tools.slice(drawerStart), /<a-alert/)
+  }
+
   for (const source of [adminLayout, portalLayout, websiteLayout]) {
     assert.match(source, /<DeveloperModeTools/)
+    assert.equal(
+      source.match(/data-testid="developer-mode-banner"/g)?.length,
+      1,
+      'each layout must render exactly one persistent developer mode warning',
+    )
   }
 })
 

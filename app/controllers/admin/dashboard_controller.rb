@@ -32,7 +32,8 @@ module Admin
         },
         recentAuditLogs: show_system_dashboard? ? AuditLog.recent.limit(10).map do |log|
           {
-            action: log.action,
+            actionLabel: Administration::AuditActionLabel.call(log.action),
+            actionCode: log.action,
             actor: log.actor&.username,
             created_at: l(log.created_at, format: :short)
           }

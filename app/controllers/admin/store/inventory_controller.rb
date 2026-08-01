@@ -51,14 +51,15 @@ module Admin
       private
 
       def set_target
-        @target = case adjustment_params[:target_type]
-                  when "product"
-                    ::Commerce::Product.find_by!(public_id: adjustment_params[:target_id])
-                  when "variant"
-                    ::Commerce::ProductVariant.find(adjustment_params[:target_id])
-                  else
-                    raise ActiveRecord::RecordNotFound
-                  end
+        @target =
+          case adjustment_params[:target_type]
+          when "product"
+            ::Commerce::Product.find_by!(public_id: adjustment_params[:target_id])
+          when "variant"
+            ::Commerce::ProductVariant.find(adjustment_params[:target_id])
+          else
+            raise ActiveRecord::RecordNotFound
+          end
       end
 
       def adjustment_params

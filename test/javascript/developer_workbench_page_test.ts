@@ -78,10 +78,10 @@ test('Developer Mode global tools provide a watermark, drawer, and persona switc
   assert.match(adminTools, /navigator\.clipboard\.writeText/)
   assert.match(adminTools, /persona_switch_url/)
   assert.match(adminTools, /router\.post/)
-  assert.match(adminTools, />\s*DEV\s*</)
+  assert.match(adminTools, /common\.developerModeBadge/)
   assert.match(portalTools, /persona_switch_url/)
   assert.match(portalTools, /router\.post/)
-  assert.match(portalTools, />\s*DEV\s*</)
+  assert.match(portalTools, /common\.developerModeBadge/)
   for (const source of [adminLayout, portalLayout, websiteLayout]) {
     assert.match(source, /<DeveloperModeTools/)
   }

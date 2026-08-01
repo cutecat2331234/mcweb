@@ -94,7 +94,7 @@ function switchPersona(persona: Persona) {
       <span
         class="-rotate-12 select-none text-6xl font-black tracking-[0.18em] text-orange-500 opacity-[0.055] md:text-8xl"
       >
-        DEV
+        {{ t('common.developerModeBadge') }}
       </span>
     </div>
 
@@ -107,7 +107,7 @@ function switchPersona(persona: Persona) {
       @click="visible = true"
     >
       <template #icon><icon-bug /></template>
-      DEV
+      {{ t('common.developerModeBadge') }}
     </a-button>
 
     <a-drawer

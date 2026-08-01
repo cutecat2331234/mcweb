@@ -49,6 +49,25 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
       "service_completed_successfully",
       services.dig("mcweb-worker", "depends_on", "mcweb-migrate", "condition")
     )
+    assert_equal(
+      "service_healthy",
+      services.dig("mcweb-web", "depends_on", "clamav", "condition")
+    )
+    assert_equal(
+      "service_healthy",
+      services.dig("mcweb-worker", "depends_on", "clamav", "condition")
+    )
+    assert_equal "clamav/clamav:1.5_base", services.dig("clamav", "image")
+    assert_nil services.dig("clamav", "ports")
+    assert_includes services.dig("clamav", "volumes"), "clamavdata:/var/lib/clamav"
+    assert_equal(
+      "${MCWEB_ATTACHMENT_SCANNER:-clamd_tcp}",
+      compose.dig("x-mcweb-environment", "MCWEB_ATTACHMENT_SCANNER")
+    )
+    assert_equal(
+      "${MCWEB_CLAMD_HOST:-clamav}",
+      compose.dig("x-mcweb-environment", "MCWEB_CLAMD_HOST")
+    )
     assert_includes(
       services.dig("mcweb-web", "healthcheck", "test"),
       "http://127.0.0.1:3000/health/ready"

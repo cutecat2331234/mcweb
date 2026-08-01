@@ -85,7 +85,8 @@ JSON shape:
 
 Files live in [`deploy/docker/`](../deploy/docker/). The stack bundles `nginx` +
 `certbot` services that terminate TLS and auto-renew Let's Encrypt certificates
-(replacing the former Caddy service). Copy to `/opt/mcweb/docker` on the server:
+(replacing the former Caddy service), plus a private `clamav` service for
+fail-closed attachment scanning. Copy to `/opt/mcweb/docker` on the server:
 
 ```bash
 sudo cp -r deploy/docker /opt/mcweb/docker
@@ -99,6 +100,8 @@ docker compose up -d
 resolving to this host and ports 80/443 reachable); afterwards the `certbot`
 service renews automatically and `nginx` reloads periodically to pick up renewals.
 Set `CERTBOT_STAGING=1` in `.env` to test against Let's Encrypt staging first.
+The clamd port is not published to the host. Budget at least the 4 GiB configured
+by `MCWEB_CLAMAV_MEMORY_LIMIT` so signature reloads do not kill the scanner.
 
 Then use hostd **Install** wizard steps 4–7 (database defaults match compose `.env`).
 

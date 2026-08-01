@@ -47,6 +47,11 @@ MCWEB_CLAMD_PORT=3310
 TCP 适配器使用 clamd `INSTREAM` 协议，不向扫描服务暴露对象存储 URL。clamd 必须只在
 可信私网监听，并由防火墙限制来源。
 
+仓库的 Docker Compose 示例默认启动官方 `clamav/clamav:1.5_base` 服务，持久化
+`/var/lib/clamav` 病毒库，并让 Web/worker 等待 clamd 健康后再启动。该服务不向宿主机
+发布 3310 端口；应用容器通过内部服务名 `clamav` 访问。默认预留 4 GiB 内存，可通过
+`MCWEB_CLAMAV_MEMORY_LIMIT` 调整；若改用外部 clamd，仍必须保持在可信私网中。
+
 可选配置：
 
 | 配置 | 默认值 | 说明 |
@@ -74,7 +79,8 @@ TCP 适配器使用 clamd `INSTREAM` 协议，不向扫描服务暴露对象存�
 
 ## 上线检查
 
-1. 先安装并更新扫描引擎及病毒库，再配置上述环境变量。
+1. Compose 部署先确认 `clamav` 健康且病毒库已更新；非 Compose 部署则先安装、更新
+   扫描引擎及病毒库，再配置上述环境变量。
 2. 启动 worker，确认 `scan_forum_attachments` 和 `cleanup_forum_uploads` 只注册一次。
 3. 在非生产环境验证干净样本、标准反病毒测试样本、扫描器断连、超时和恢复重试。
 4. 监控 `community.attachment.scan_clean`、`scan_infected`、`scan_error` 事件和

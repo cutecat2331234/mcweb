@@ -32,8 +32,8 @@ x-mcweb-environment: &mcweb-environment
   MCWEB_S3_SECRET_ACCESS_KEY: ${MCWEB_S3_SECRET_ACCESS_KEY}
   MCWEB_S3_ENDPOINT: ${MCWEB_S3_ENDPOINT:-}
   MCWEB_S3_FORCE_PATH_STYLE: ${MCWEB_S3_FORCE_PATH_STYLE:-0}
-  MCWEB_ATTACHMENT_SCANNER: ${MCWEB_ATTACHMENT_SCANNER:-disabled}
-  MCWEB_CLAMD_HOST: ${MCWEB_CLAMD_HOST:-127.0.0.1}
+  MCWEB_ATTACHMENT_SCANNER: ${MCWEB_ATTACHMENT_SCANNER:-clamd_tcp}
+  MCWEB_CLAMD_HOST: ${MCWEB_CLAMD_HOST:-clamav}
   MCWEB_CLAMD_PORT: ${MCWEB_CLAMD_PORT:-3310}
 
 x-mcweb-app: &mcweb-app
@@ -71,6 +71,15 @@ services:
       timeout: 5s
       retries: 5
 
+  # Private malware scanner for forum attachments. The service is intentionally
+  # not published to the host because clamd TCP has no transport security.
+  clamav:
+    image: clamav/clamav:1.5_base
+    restart: unless-stopped
+    mem_limit: ${MCWEB_CLAMAV_MEMORY_LIMIT:-4g}
+    volumes:
+      - clamavdata:/var/lib/clamav
+
   mcweb-migrate:
     <<: *mcweb-app
     restart: "no"
@@ -87,6 +96,8 @@ services:
     depends_on:
       mcweb-migrate:
         condition: service_completed_successfully
+      clamav:
+        condition: service_healthy
     ports:
       - "127.0.0.1:${MCWEB_WEB_PORT:-3000}:3000"
     command: ["bundle", "exec", "puma", "-C", "config/puma.rb"]
@@ -103,6 +114,8 @@ services:
     depends_on:
       mcweb-migrate:
         condition: service_completed_successfully
+      clamav:
+        condition: service_healthy
     command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
     healthcheck:
       test:
@@ -148,6 +161,7 @@ services:
 volumes:
   pgdata:
   redisdata:
+  clamavdata:
   mcweb_data:
   letsencrypt:
   certbot_www:

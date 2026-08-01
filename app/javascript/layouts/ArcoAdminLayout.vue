@@ -1056,8 +1056,9 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
 .arco-admin-developer-alert {
   flex: 0 0 auto;
+  width: auto;
   min-width: 0;
-  max-width: 100%;
+  max-width: calc(100% - 32px);
   margin: 10px 16px 0;
   border-radius: 9px;
 }
@@ -1142,6 +1143,8 @@ watch(isDark, syncArcoTheme, { immediate: true })
   }
 
   .arco-admin-main :deep(.arco-page-header) {
+    box-sizing: border-box;
+    max-width: 100%;
     padding: 14px !important;
   }
 
@@ -1178,6 +1181,11 @@ watch(isDark, syncArcoTheme, { immediate: true })
 @media (max-width: 767px) {
   .arco-admin-main {
     padding: 16px;
+    overflow-x: hidden;
+  }
+
+  .arco-admin-main :deep(.arco-table-content-scroll-x) {
+    overflow-x: auto;
   }
 }
 

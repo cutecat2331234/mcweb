@@ -80,8 +80,9 @@ test('admin header, breadcrumb, and developer warning can shrink without widenin
   assert.match(css, /\.arco-admin-breadcrumb :deep\(\.arco-breadcrumb-item-label\)[\s\S]*?text-overflow:\s*ellipsis/)
 
   assert.match(rule('.arco-admin-developer-alert'), /flex:\s*0 0 auto/)
+  assert.match(rule('.arco-admin-developer-alert'), /width:\s*auto/)
   assert.match(rule('.arco-admin-developer-alert'), /min-width:\s*0/)
-  assert.match(rule('.arco-admin-developer-alert'), /max-width:\s*100%/)
+  assert.match(rule('.arco-admin-developer-alert'), /max-width:\s*calc\(100% - 32px\)/)
   assert.match(css, /\.arco-admin-developer-alert :deep\(\.arco-alert-description\)[\s\S]*?overflow-wrap:\s*anywhere/)
 })
 
@@ -90,6 +91,7 @@ test('admin shell uses tiered padding without replacing Arco structural componen
   assert.match(css, /@media \(max-width: 1279px\)[\s\S]*?\.arco-admin-main\s*\{\s*padding:\s*20px/)
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.arco-admin-main\s*\{\s*padding:\s*16px/)
   assert.match(css, /@media \(max-width: 479px\)[\s\S]*?\.arco-admin-main\s*\{\s*padding:\s*12px/)
+  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.arco-admin-main\s*\{[\s\S]*?overflow-x:\s*hidden/)
 
   assert.match(source, /<a-layout class="arco-admin-layout">/)
   assert.match(source, /<a-layout-sider/)
@@ -98,8 +100,11 @@ test('admin shell uses tiered padding without replacing Arco structural componen
   assert.match(source, /<a-drawer/)
   assert.match(source, /<a-menu/)
   assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header-main\)[\s\S]*?flex-direction:\s*column/)
+  assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header\)\s*\{[\s\S]*?box-sizing:\s*border-box/)
+  assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header\)\s*\{[\s\S]*?max-width:\s*100%/)
   assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header-divider\)[\s\S]*?display:\s*none/)
   assert.match(css, /\.arco-admin-main :deep\(\.arco-page-header-subtitle\)[\s\S]*?white-space:\s*normal/)
+  assert.match(css, /\.arco-admin-main :deep\(\.arco-table-content-scroll-x\)\s*\{\s*overflow-x:\s*auto/)
 })
 
 test('responsive shell retains Inertia navigation and current system destinations', () => {

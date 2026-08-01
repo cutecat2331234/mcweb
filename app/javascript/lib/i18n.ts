@@ -39,6 +39,9 @@ export function syncI18nLocale(i18n: AppI18n, locale: unknown) {
   if (i18n.global.locale.value !== next) {
     i18n.global.locale.value = next
   }
+  if (typeof document !== 'undefined') {
+    document.documentElement.lang = next
+  }
 }
 
 // Merge DB-backed admin "phrase overrides" (shared as a nested Inertia prop for

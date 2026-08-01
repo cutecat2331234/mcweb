@@ -423,7 +423,7 @@ function dismissRecoveryCodes() {
             id="close_confirmation"
             v-model="accountCloseForm.account_close.confirmation"
             autocomplete="off"
-            placeholder="DELETE"
+            :placeholder="t('identity.security.closeAccountConfirmationPlaceholder')"
             required
           />
         </div>

@@ -4772,6 +4772,7 @@ export default {
       closeAccountRecords: 'Orders, payments, refunds, moderation evidence, and audit records remain under legal and product retention rules.',
       closeAccountSessions: 'Every sign-in session and API key is revoked immediately.',
       closeAccountConfirmation: 'Type DELETE to confirm closure',
+      closeAccountConfirmationPlaceholder: 'DELETE',
       closeAccountReason: 'Reason for closing (optional)',
       closeAccountReasonPlaceholder: 'Help us understand your decision. Do not include passwords or other sensitive information.',
       closeAccountContentChoice: 'Choose how your authored community content should be handled',

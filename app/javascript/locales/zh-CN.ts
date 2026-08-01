@@ -4772,6 +4772,7 @@ export default {
       closeAccountRecords: '订单、付款、退款、审核和审计记录会按法定及产品保留要求继续保存。',
       closeAccountSessions: '所有登录会话和 API 密钥会立即撤销。',
       closeAccountConfirmation: '输入 DELETE 确认关闭',
+      closeAccountConfirmationPlaceholder: 'DELETE',
       closeAccountReason: '关闭原因（可选）',
       closeAccountReasonPlaceholder: '帮助我们理解你的决定，请勿填写密码或其他敏感信息。',
       closeAccountContentChoice: '选择如何处理你发布的社区内容',

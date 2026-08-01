@@ -30,11 +30,14 @@ test('finance workbench uses Arco hierarchy, responsive documents, drawer timeli
   ]) {
     assert.match(source, new RegExp(`<${component}`))
   }
-  assert.match(source, /finance-desktop-table/)
-  assert.match(source, /finance-mobile-list/)
-  assert.match(source, /@media \(max-width: 767px\)/)
-  assert.match(source, /--finance-section-radius: 8px/)
-  assert.match(source, /--finance-content-radius: 12px/)
+  assert.match(source, /:span="\{ xs: 0, md: 24 \}"/)
+  assert.match(source, /:span="\{ xs: 24, md: 0 \}"/)
+  assert.match(source, /<Grid :cols="1" :row-gap="12"/)
+  assert.match(source, /:cols="\{ xs: 1, md: 2, xl: 3 \}"/)
+  assert.doesNotMatch(
+    source,
+    /\s(?:class|:class|v-bind:class|style|:style|v-bind:style)=|<style\b|<(?:form|label|input|select|textarea)(?:\s|>)/,
+  )
 })
 
 test('finance filters and asynchronous export update only local Inertia props', () => {

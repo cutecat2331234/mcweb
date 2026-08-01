@@ -31,6 +31,7 @@ import {
   Textarea,
   Timeline,
   TimelineItem,
+  TypographyParagraph,
   TypographyText,
 } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -391,27 +392,27 @@ function rightsColor(status: string) {
 
     <Grid :cols="{ xs: 1, sm: 2, lg: 5 }" :col-gap="16" :row-gap="16">
       <GridItem>
-        <Card class="risk-summary-card" :bordered="false">
+        <Card :bordered="true" hoverable>
           <Statistic :title="t('admin.disputes.metrics.total')" :value="summary.total" />
         </Card>
       </GridItem>
       <GridItem>
-        <Card class="risk-summary-card" :bordered="false">
+        <Card :bordered="true" hoverable>
           <Statistic :title="t('admin.disputes.metrics.active')" :value="summary.active" />
         </Card>
       </GridItem>
       <GridItem>
-        <Card class="risk-summary-card" :bordered="false">
+        <Card :bordered="true" hoverable>
           <Statistic :title="t('admin.disputes.metrics.dueSoon')" :value="summary.dueSoon" />
         </Card>
       </GridItem>
       <GridItem>
-        <Card class="risk-summary-card" :bordered="false">
+        <Card :bordered="true" hoverable>
           <Statistic :title="t('admin.disputes.metrics.overdue')" :value="summary.overdue" />
         </Card>
       </GridItem>
       <GridItem>
-        <Card class="risk-summary-card" :bordered="false">
+        <Card :bordered="true" hoverable>
           <Statistic
             :title="t('admin.disputes.metrics.liability')"
             :value="summary.liabilityCents / 100"
@@ -421,56 +422,68 @@ function rightsColor(status: string) {
       </GridItem>
     </Grid>
 
-    <Card class="risk-workbench" :title="t('admin.disputes.queueTitle')" :bordered="false">
-      <div class="mb-4 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-        <Input
-          v-model="filters.q"
-          allow-clear
-          :placeholder="t('admin.disputes.filters.search')"
-          @press-enter="applyFilters()"
-        />
-        <Select v-model="filters.status" allow-clear :placeholder="t('admin.disputes.filters.status')">
-          <Option v-for="option in filterOptions.statuses" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </Option>
-        </Select>
-        <Select v-model="filters.provider" allow-clear :placeholder="t('admin.disputes.filters.provider')">
-          <Option v-for="option in filterOptions.providers" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </Option>
-        </Select>
-        <Select v-model="filters.risk" allow-clear :placeholder="t('admin.disputes.filters.risk')">
-          <Option v-for="option in filterOptions.risks" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </Option>
-        </Select>
-        <Select v-model="filters.assignee" allow-clear :placeholder="t('admin.disputes.filters.assignee')">
-          <Option value="unassigned">{{ t('admin.disputes.unassigned') }}</Option>
-          <Option v-for="option in assignees" :key="option.value" :value="option.value">
-            {{ option.label }}
-          </Option>
-        </Select>
-        <Select v-model="filters.due" allow-clear :placeholder="t('admin.disputes.filters.due')">
-          <Option value="soon">{{ t('admin.disputes.dueSoon') }}</Option>
-          <Option value="overdue">{{ t('admin.disputes.overdue') }}</Option>
-        </Select>
-      </div>
+    <Card :title="t('admin.disputes.queueTitle')" :bordered="false">
+      <Space direction="vertical" size="large" fill>
+        <Grid :cols="24" :col-gap="12" :row-gap="12">
+        <GridItem :span="{ xs: 24, sm: 12, xl: 4 }">
+          <Input
+            v-model="filters.q"
+            allow-clear
+            :placeholder="t('admin.disputes.filters.search')"
+            @press-enter="applyFilters()"
+          />
+        </GridItem>
+        <GridItem :span="{ xs: 24, sm: 12, xl: 4 }">
+          <Select v-model="filters.status" allow-clear :placeholder="t('admin.disputes.filters.status')">
+            <Option v-for="option in filterOptions.statuses" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </Option>
+          </Select>
+        </GridItem>
+        <GridItem :span="{ xs: 24, sm: 12, xl: 4 }">
+          <Select v-model="filters.provider" allow-clear :placeholder="t('admin.disputes.filters.provider')">
+            <Option v-for="option in filterOptions.providers" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </Option>
+          </Select>
+        </GridItem>
+        <GridItem :span="{ xs: 24, sm: 12, xl: 4 }">
+          <Select v-model="filters.risk" allow-clear :placeholder="t('admin.disputes.filters.risk')">
+            <Option v-for="option in filterOptions.risks" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </Option>
+          </Select>
+        </GridItem>
+        <GridItem :span="{ xs: 24, sm: 12, xl: 4 }">
+          <Select v-model="filters.assignee" allow-clear :placeholder="t('admin.disputes.filters.assignee')">
+            <Option value="unassigned">{{ t('admin.disputes.unassigned') }}</Option>
+            <Option v-for="option in assignees" :key="option.value" :value="option.value">
+              {{ option.label }}
+            </Option>
+          </Select>
+        </GridItem>
+        <GridItem :span="{ xs: 24, sm: 12, xl: 4 }">
+          <Select v-model="filters.due" allow-clear :placeholder="t('admin.disputes.filters.due')">
+            <Option value="soon">{{ t('admin.disputes.dueSoon') }}</Option>
+            <Option value="overdue">{{ t('admin.disputes.overdue') }}</Option>
+          </Select>
+        </GridItem>
+        </Grid>
 
-      <div class="mb-4 flex flex-wrap justify-end gap-2">
-        <Button @click="clearFilters">{{ t('common.reset') }}</Button>
-        <Button type="primary" @click="applyFilters()">{{ t('common.apply') }}</Button>
-      </div>
+        <Space justify="end" wrap fill>
+          <Button @click="clearFilters">{{ t('common.reset') }}</Button>
+          <Button type="primary" @click="applyFilters()">{{ t('common.apply') }}</Button>
+        </Space>
 
-      <Empty v-if="rows.length === 0" :description="t('admin.disputes.empty')" />
-      <Table
-        v-else
-        class="risk-table"
-        :data="rows"
-        :pagination="false"
-        row-key="publicId"
-        :scroll="{ x: 1320 }"
-        @row-click="openDetail"
-      >
+        <Empty v-if="rows.length === 0" :description="t('admin.disputes.empty')" />
+        <Table
+          v-else
+          :data="rows"
+          :pagination="false"
+          row-key="publicId"
+          :scroll="{ x: 1320 }"
+          @row-click="openDetail"
+        >
         <TableColumn :title="t('admin.disputes.columns.case')" :width="180">
           <template #cell="{ record }">
             <Button type="text" @click.stop="openDetail(record)">
@@ -517,17 +530,18 @@ function rightsColor(status: string) {
             </Tag>
           </template>
         </TableColumn>
-      </Table>
+        </Table>
 
-      <div v-if="pagination.pages > 1" class="mt-5 flex justify-end">
-        <Pagination
-          :current="pagination.page"
-          :total="pagination.count"
-          :page-size="pagination.limit"
-          show-total
-          @change="applyFilters"
-        />
-      </div>
+        <Space v-if="pagination.pages > 1" justify="end" fill>
+          <Pagination
+            :current="pagination.page"
+            :total="pagination.count"
+            :page-size="pagination.limit"
+            show-total
+            @change="applyFilters"
+          />
+        </Space>
+      </Space>
     </Card>
   </Space>
 
@@ -538,8 +552,9 @@ function rightsColor(status: string) {
     :footer="false"
     unmount-on-close
   >
-    <Spin :loading="drawerLoading" class="w-full">
-      <Alert v-if="detailError" type="error" show-icon>{{ detailError }}</Alert>
+    <Space direction="vertical" size="large" fill>
+      <Spin v-if="drawerLoading" :loading="true" :tip="t('admin.disputes.loading')" />
+      <Alert v-else-if="detailError" type="error" show-icon>{{ detailError }}</Alert>
       <template v-else-if="detail">
         <Space direction="vertical" size="large" fill>
           <Alert
@@ -560,11 +575,10 @@ function rightsColor(status: string) {
               :percent="dueProgress"
               :status="dueProgress >= 0.9 ? 'danger' : 'warning'"
               show-text
-              class="mt-3"
             />
           </Alert>
 
-          <Card class="risk-detail-card" :title="t('admin.disputes.caseSummary')" :bordered="false">
+          <Card :title="t('admin.disputes.caseSummary')" :bordered="false">
             <Descriptions :column="1" bordered size="small">
               <DescriptionsItem :label="t('admin.disputes.columns.status')">
                 <Tag :color="statusColor(detail.dispute.status)">
@@ -572,8 +586,8 @@ function rightsColor(status: string) {
                 </Tag>
               </DescriptionsItem>
               <DescriptionsItem :label="t('admin.disputes.columns.order')">
-                <Link :href="detail.dispute.orderUrl" class="arco-link">
-                  {{ detail.dispute.orderNumber }}
+                <Link :href="detail.dispute.orderUrl">
+                  <TypographyText type="primary">{{ detail.dispute.orderNumber }}</TypographyText>
                 </Link>
               </DescriptionsItem>
               <DescriptionsItem :label="t('admin.disputes.columns.amount')">
@@ -612,18 +626,17 @@ function rightsColor(status: string) {
           </Alert>
           <Card
             v-else-if="detail.dispute.sensitive"
-            class="risk-detail-card"
             :title="t('admin.disputes.sensitiveDetails')"
             :bordered="false"
           >
             <Descriptions :column="1" bordered size="small">
               <DescriptionsItem :label="t('admin.disputes.providerDisputeId')">
-                <code class="break-all">{{ detail.dispute.sensitive.providerDisputeId }}</code>
+                <TypographyText code>{{ detail.dispute.sensitive.providerDisputeId }}</TypographyText>
               </DescriptionsItem>
               <DescriptionsItem :label="t('admin.disputes.paymentReference')">
-                <code class="break-all">
+                <TypographyText code>
                   {{ detail.dispute.sensitive.paymentReference || t('common.notAvailable') }}
-                </code>
+                </TypographyText>
               </DescriptionsItem>
               <DescriptionsItem :label="t('admin.disputes.paymentAmount')">
                 {{ detail.dispute.sensitive.paymentAmount }}
@@ -631,8 +644,8 @@ function rightsColor(status: string) {
             </Descriptions>
           </Card>
 
-          <Card class="risk-detail-card" :title="t('admin.disputes.actionsTitle')" :bordered="false">
-            <div class="flex flex-wrap gap-2">
+          <Card :title="t('admin.disputes.actionsTitle')" :bordered="false">
+            <Space wrap>
               <Button v-if="detail.permissions.assign && detail.dispute.status !== 'closed'" @click="openAction('assign')">
                 {{ t('admin.disputes.actions.assign') }}
               </Button>
@@ -679,73 +692,74 @@ function rightsColor(status: string) {
               >
                 {{ t('admin.disputes.actions.close') }}
               </Button>
-            </div>
+            </Space>
           </Card>
 
-          <Card class="risk-detail-card" :title="t('admin.disputes.evidenceTitle')" :bordered="false">
+          <Card :title="t('admin.disputes.evidenceTitle')" :bordered="false">
             <Empty v-if="detail.evidence.length === 0" :description="t('admin.disputes.evidenceEmpty')" />
-            <div v-else class="grid gap-3">
-              <div
+            <Space v-else direction="vertical" fill>
+              <Card
                 v-for="item in detail.evidence"
                 :key="item.publicId"
-                class="evidence-row"
+                :bordered="true"
               >
-                <div class="min-w-0">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <strong class="break-words">{{ item.title }}</strong>
+                <Space direction="vertical" fill>
+                  <Space wrap>
+                    <TypographyText bold>{{ item.title }}</TypographyText>
                     <Tag :color="item.status === 'submitted' ? 'green' : 'gray'">
                       {{ item.statusLabel }}
                     </Tag>
-                  </div>
+                  </Space>
                   <TypographyText type="secondary">
                     {{ item.filename }} · {{ formatBytes(item.byteSize) }} ·
                     {{ formatDate(item.submittedAt) }}
                   </TypographyText>
-                  <code v-if="item.sha256" class="mt-1 block break-all text-xs">
+                  <TypographyText v-if="item.sha256" code>
                     {{ item.sha256 }}
-                  </code>
-                </div>
-                <Button
-                  v-if="item.downloadTokenUrl"
-                  size="small"
-                  :loading="downloadingId === item.publicId"
-                  @click="downloadEvidence(item)"
-                >
-                  {{ t('common.download') }}
-                </Button>
-              </div>
-            </div>
+                  </TypographyText>
+                  <Space v-if="item.downloadTokenUrl">
+                    <Button
+                      size="small"
+                      :loading="downloadingId === item.publicId"
+                      @click="downloadEvidence(item)"
+                    >
+                      {{ t('common.download') }}
+                    </Button>
+                  </Space>
+                </Space>
+              </Card>
+            </Space>
           </Card>
 
-          <Card class="risk-detail-card" :title="t('admin.disputes.timelineTitle')" :bordered="false">
+          <Card :title="t('admin.disputes.timelineTitle')" :bordered="false">
             <Timeline>
               <TimelineItem
                 v-for="event in detail.events"
                 :key="event.id"
                 :dot-color="event.stale ? 'gray' : statusColor(event.toStatus || '')"
               >
-                <div class="grid gap-1">
-                  <div class="flex flex-wrap items-center gap-2">
-                    <strong>{{ event.typeLabel }}</strong>
+                <Space direction="vertical" size="mini" fill>
+                  <Space wrap>
+                    <TypographyText bold>{{ event.typeLabel }}</TypographyText>
                     <Tag size="small">{{ event.sourceLabel }}</Tag>
                     <Tag v-if="event.stale" size="small" color="gray">
                       {{ t('admin.disputes.staleEvent') }}
                     </Tag>
-                  </div>
+                  </Space>
                   <TypographyText type="secondary">
                     {{ event.actor || t('admin.disputes.systemActor') }} ·
                     {{ formatDate(event.createdAt) }}
                   </TypographyText>
-                  <p v-if="event.note" class="m-0 whitespace-pre-wrap break-words">
+                  <TypographyParagraph v-if="event.note">
                     {{ event.note }}
-                  </p>
-                </div>
+                  </TypographyParagraph>
+                </Space>
               </TimelineItem>
             </Timeline>
           </Card>
         </Space>
       </template>
-    </Spin>
+    </Space>
   </Drawer>
 
   <Modal
@@ -809,42 +823,3 @@ function rightsColor(status: string) {
     @completed="highRiskCompleted"
   />
 </template>
-
-<style scoped>
-.risk-summary-card {
-  min-height: 112px;
-  border-radius: var(--mcweb-radius-card, 12px);
-  background: var(--color-bg-2);
-}
-
-.risk-workbench {
-  border-radius: var(--mcweb-radius-section, 8px);
-}
-
-.risk-table :deep(.arco-table-container) {
-  border-radius: var(--mcweb-radius-structure, 4px);
-}
-
-.risk-detail-card {
-  border-radius: var(--mcweb-radius-card, 10px);
-  background: var(--color-fill-1);
-}
-
-.evidence-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  padding: 12px 16px;
-  border: 1px solid var(--color-border-2);
-  border-radius: var(--mcweb-radius-control, 8px);
-  background: var(--color-bg-2);
-}
-
-@media (max-width: 640px) {
-  .evidence-row {
-    align-items: stretch;
-    flex-direction: column;
-  }
-}
-</style>

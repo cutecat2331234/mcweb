@@ -404,7 +404,7 @@
       topic_marked_unread: 已标记为未读。
       topic_shared_pm: 主题已通过私信分享。
       topic_scheduled: "主题已定时，将于 %{time} 发布。"
-      staff_note_added: 员工备注已添加。
+      staff_note_added: 管理备注已添加。
       cannot_post_in_section: 你无权在此分区发帖。
       cannot_moderate_bulk: 无权执行批量版主操作。
       cannot_export_topic: 无权导出此主题。
@@ -995,7 +995,7 @@
         cannot_review_own: 不能给自己的评价点有帮助。
         cannot_mark_own_answer: 不能给自己的回答点有帮助。
         compare_limit_reached: "最多只能对比 %{count} 件商品。"
-        staff_note_unauthorized: 无权添加员工备注。
+        staff_note_unauthorized: 无权添加管理备注。
         staff_note_blank: 请填写备注内容。
         webhook_event_unsupported: 不支持的事件类型。
         webhook_url_missing: 未配置 Webhook URL。
@@ -1043,7 +1043,7 @@
         bump_cooldown_active: "提升冷却中，请 %{hours} 小时后再试。"
         assignee_not_found: 指派用户不存在。
         topics_not_selected: 未选择主题。
-        staff_notice_blank: 员工提示内容不能为空。
+        staff_notice_blank: 管理提示内容不能为空。
         section_tag_group_required: "此分区要求从标签组「%{group}」中至少选择一个标签。"
         tag_group_single_only: "标签组「%{group}」每个主题只能选一个标签，当前选了：%{names}"
         unban_reply_unauthorized: 无权解除回复禁言。
@@ -1211,7 +1211,7 @@
         webhook_processing_failed: "Webhook 处理失败。"
         webhook_replay_authorization_expired_or_is_invalid: "Webhook 重放授权无效或已过期。"
         you_are_not_allowed_to_mark_this_topic_as_solved: "无权将该主题标记为已解决。"
-        you_are_not_allowed_to_post_staff_whispers: "无权发布仅员工可见的回复。"
+        you_are_not_allowed_to_post_staff_whispers: "无权发布仅版务人员可见的私语。"
         you_are_not_allowed_to_reply_in_this_section: "无权在此分区回复。"
         you_are_not_allowed_to_unsolve_this_topic: "无权取消该主题的已解决状态。"
         you_are_not_authorized_to_copy_this_topic: "无权复制该主题。"
@@ -1713,7 +1713,7 @@
         list: 此主题已恢复公开列表显示。
         archive: 此主题已归档。
         unarchive: 此主题已取消归档。
-        assign: 此主题已指派给员工。
+        assign: 此主题已指派给管理成员。
         unassign: 此主题已取消指派。
       notification_timeline:
         today: 今天
@@ -1960,7 +1960,7 @@
         sections:
           active_mutes: 当前禁言
           warnings: 社区警告
-          staff_notes: 员工备注（仅管理员可见）
+          staff_notes: 管理备注（仅管理员可见）
         statuses:
           active: 正常
           banned: 已封禁
@@ -2977,12 +2977,12 @@
           section_fulfillments: 发货
           section_refunds: 退款记录
           section_restorations: 退款恢复明细
-          section_staff_notes: 员工备注
+          section_staff_notes: 管理备注
           section_webhooks: Webhook 投递记录
           empty_fulfillments: 暂无发货记录
           empty_refunds: 暂无退款
           empty_restorations: 暂无恢复记录
-          empty_staff_notes: 暂无员工备注
+          empty_staff_notes: 暂无管理备注
           empty_webhooks: 暂无投递记录
           field_customer: 客户
           field_subtotal: 小计
@@ -3206,7 +3206,7 @@
         commerce.price_drop: 降价提醒
         commerce.product_changelog: 商品更新日志
         commerce.question_answered: 问答回复通知
-        commerce.new_product_question: 新商品提问（员工）
+        commerce.new_product_question: 新商品提问（管理）
         commerce.merchant_review_reply: 商家评价回复
         commerce.review_request: 购后评价邀请
         forum:
@@ -3218,7 +3218,7 @@
           refund_processed: 退款通知
           refund_rejected: 退款拒绝通知
         commerce.product_available: 商品上架通知
-        commerce.low_stock_staff: 低库存提醒（员工）
+        commerce.low_stock_staff: 低库存提醒（管理）
         minecraft.custom: Minecraft 事件
         minecraft.link_completed: Minecraft 绑定成功
         minecraft.player_join: 玩家上线

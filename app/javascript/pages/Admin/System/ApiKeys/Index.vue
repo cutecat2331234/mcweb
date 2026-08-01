@@ -40,20 +40,16 @@ async function revoke(key: ApiKey) {
 </script>
 
 <template>
-  <section class="admin-system-api-keys">
+  <a-space direction="vertical" :size="16" fill>
     <a-page-header
       :title="title"
       :subtitle="subtitle"
       :show-back="false"
-      class="mb-4 !px-0"
     >
       <template #extra>
-        <Link
-          :href="newUrl"
-          class="arco-btn arco-btn-primary arco-btn-size-medium no-underline"
-        >
+        <a-button type="primary" :href="newUrl">
           {{ t('admin.apiKeys.new') }}
-        </Link>
+        </a-button>
       </template>
     </a-page-header>
 
@@ -179,5 +175,5 @@ async function revoke(key: ApiKey) {
         </a-card>
       </a-grid-item>
     </a-grid>
-  </section>
+  </a-space>
 </template>

@@ -7,6 +7,8 @@ import AdminLayout from '@/layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
 
+const { t } = useI18n()
+
 const props = defineProps<{
   title: string
   page: { id: string; title: string }
@@ -20,7 +22,6 @@ const props = defineProps<{
   }
   backUrl: string
 }>()
-const { t } = useI18n()
 const snapshotText = computed(() => JSON.stringify(props.revision.snapshot, null, 2))
 
 function restoreDraft() {
@@ -38,31 +39,33 @@ function restoreDraft() {
 </script>
 
 <template>
-  <a-page-header
-    :title="title"
-    :subtitle="`${page.title} · #${revision.revision_number}`"
-    :show-back="false"
-  />
-  <a-card :bordered="true">
-    <a-descriptions :column="{ xs: 1, sm: 2 }" bordered>
-      <a-descriptions-item :label="t('admin.website.revisions.author')">
-        {{ revision.author || '—' }}
-      </a-descriptions-item>
-      <a-descriptions-item :label="t('admin.website.revisions.createdAt')">
-        {{ revision.created_at }}
-      </a-descriptions-item>
-    </a-descriptions>
-    <a-divider />
-    <a-textarea
-      :model-value="snapshotText"
-      readonly
-      :auto-size="{ minRows: 12, maxRows: 28 }"
+  <a-space direction="vertical" :size="16" fill>
+    <a-page-header
+      :title="title"
+      :subtitle="`${page.title} · #${revision.revision_number}`"
+      :show-back="false"
     />
-  </a-card>
-  <a-space class="mt-4">
-    <a-button type="primary" status="warning" @click="restoreDraft">
-      {{ t('admin.website.revisions.restoreAsDraft') }}
-    </a-button>
-    <a-button @click="router.visit(backUrl)">{{ t('common.back') }}</a-button>
+    <a-card :bordered="true">
+      <a-descriptions :column="{ xs: 1, sm: 2 }" bordered>
+        <a-descriptions-item :label="t('admin.website.revisions.author')">
+          {{ revision.author || '—' }}
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.website.revisions.createdAt')">
+          {{ revision.created_at }}
+        </a-descriptions-item>
+      </a-descriptions>
+      <a-divider />
+      <a-textarea
+        :model-value="snapshotText"
+        readonly
+        :auto-size="{ minRows: 12, maxRows: 28 }"
+      />
+    </a-card>
+    <a-space>
+      <a-button type="primary" status="warning" @click="restoreDraft">
+        {{ t('admin.website.revisions.restoreAsDraft') }}
+      </a-button>
+      <a-button @click="router.visit(backUrl)">{{ t('common.back') }}</a-button>
+    </a-space>
   </a-space>
 </template>

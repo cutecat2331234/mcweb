@@ -290,12 +290,11 @@ async function copyDiagnostics() {
 </script>
 
 <template>
-  <section>
+  <a-space direction="vertical" :size="16" fill>
     <a-page-header
       :title="t('admin.developerWorkbench.title')"
       :subtitle="t('admin.developerWorkbench.subtitle')"
       :show-back="false"
-      class="mb-4 !px-0"
     >
       <template #extra>
         <a-space wrap>
@@ -320,7 +319,6 @@ async function copyDiagnostics() {
       type="error"
       show-icon
       :title="t('admin.developerWorkbench.productionWarningTitle')"
-      class="mb-4"
     >
       {{ t('admin.developerWorkbench.productionWarningDescription') }}
     </a-alert>
@@ -329,12 +327,11 @@ async function copyDiagnostics() {
       type="warning"
       show-icon
       :title="t('admin.developerWorkbench.readOnlyTitle')"
-      class="mb-4"
     >
       {{ t('admin.developerWorkbench.readOnlyDescription') }}
     </a-alert>
 
-    <a-card :title="t('admin.developerWorkbench.overview')" class="mb-4">
+    <a-card :title="t('admin.developerWorkbench.overview')">
       <a-descriptions :column="{ xs: 1, md: 2, lg: 4 }" bordered size="small">
         <a-descriptions-item :label="t('admin.developerWorkbench.profile')">
           <a-tag color="orangered">{{ configurationValue(profile) }}</a-tag>
@@ -369,10 +366,10 @@ async function copyDiagnostics() {
       </a-descriptions>
     </a-card>
 
-    <a-typography-title :heading="5" class="mb-3">
+    <a-typography-title :heading="5">
       {{ t('admin.developerWorkbench.activeConfiguration') }}
     </a-typography-title>
-    <a-grid :cols="{ xs: 1, lg: 3 }" :col-gap="16" :row-gap="16" class="mb-4">
+    <a-grid :cols="{ xs: 1, lg: 3 }" :col-gap="16" :row-gap="16">
       <a-grid-item v-for="group in configurationGroups" :key="group.key">
         <a-card :title="group.title">
           <a-table
@@ -410,18 +407,17 @@ async function copyDiagnostics() {
       </a-grid-item>
     </a-grid>
 
-    <a-typography-title :heading="5" class="mb-3">
+    <a-typography-title :heading="5">
       {{ t('admin.developerWorkbench.captures.title') }}
     </a-typography-title>
     <a-alert
       type="info"
       show-icon
       :title="t('admin.developerWorkbench.captures.privacyTitle')"
-      class="mb-3"
     >
       {{ t('admin.developerWorkbench.captures.privacyDescription') }}
     </a-alert>
-    <a-grid :cols="{ xs: 1, xl: 3 }" :col-gap="16" :row-gap="16" class="mb-4">
+    <a-grid :cols="{ xs: 1, xl: 3 }" :col-gap="16" :row-gap="16">
       <a-grid-item v-for="capture in captureGroups" :key="capture.key">
         <a-card :title="capture.title">
           <template #extra>
@@ -444,7 +440,8 @@ async function copyDiagnostics() {
               </a-button>
             </a-space>
           </template>
-          <a-descriptions :column="1" bordered size="small" class="mb-3">
+          <a-space direction="vertical" :size="12" fill>
+          <a-descriptions :column="1" bordered size="small">
             <a-descriptions-item :label="t('admin.developerWorkbench.captures.directory')">
               <a-typography-text code>
                 {{ capture.summary.relativeDirectory }}
@@ -462,7 +459,6 @@ async function copyDiagnostics() {
             v-if="capture.summary.truncated"
             type="warning"
             :title="t('admin.developerWorkbench.captures.truncated')"
-            class="mb-3"
           />
 
           <a-table
@@ -494,18 +490,18 @@ async function copyDiagnostics() {
               <a-empty :description="t('admin.developerWorkbench.captures.empty')" />
             </template>
           </a-table>
+          </a-space>
         </a-card>
       </a-grid-item>
     </a-grid>
 
-    <a-typography-title :heading="5" class="mb-3">
+    <a-typography-title :heading="5">
       {{ t('admin.developerWorkbench.scenarios.title') }}
     </a-typography-title>
     <a-alert
       type="warning"
       show-icon
       :title="t('admin.developerWorkbench.scenarios.warningTitle')"
-      class="mb-3"
     >
       {{ t('admin.developerWorkbench.scenarios.warningDescription') }}
     </a-alert>
@@ -513,13 +509,13 @@ async function copyDiagnostics() {
       :cols="{ xs: 1, lg: 2, xl: 4 }"
       :col-gap="16"
       :row-gap="16"
-      class="mb-4"
     >
       <a-grid-item>
         <a-card :title="t('admin.developerWorkbench.personas.title')">
-          <p class="mb-3 text-sm text-muted-foreground">
+          <a-space direction="vertical" :size="12" fill>
+          <a-typography-paragraph type="secondary">
             {{ t('admin.developerWorkbench.personas.description') }}
-          </p>
+          </a-typography-paragraph>
           <a-space wrap>
             <a-button
               v-for="persona in personas"
@@ -538,8 +534,8 @@ async function copyDiagnostics() {
           <a-empty
             v-if="!personas.some((persona) => persona.available)"
             :description="t('admin.developerWorkbench.personas.empty')"
-            class="mt-3"
           />
+          </a-space>
         </a-card>
       </a-grid-item>
 
@@ -661,18 +657,14 @@ async function copyDiagnostics() {
       </a-grid-item>
     </a-grid>
 
-    <a-card
-      :title="t('admin.developerWorkbench.minecraft.title')"
-      class="mb-4"
-    >
+    <a-card :title="t('admin.developerWorkbench.minecraft.title')">
       <a-alert
         v-if="!minecraft.available"
         type="warning"
         show-icon
         :title="t('admin.developerWorkbench.minecraft.unavailable')"
-        class="mb-3"
       />
-      <a-grid :cols="{ xs: 2, sm: 3, lg: 5 }" :col-gap="16" :row-gap="16" class="mb-3">
+      <a-grid :cols="{ xs: 2, sm: 3, lg: 5 }" :col-gap="16" :row-gap="16">
         <a-grid-item>
           <a-statistic :title="t('admin.developerWorkbench.minecraft.total')" :value="minecraft.total" />
         </a-grid-item>
@@ -743,11 +735,11 @@ async function copyDiagnostics() {
       :footer="false"
       unmount-on-close
     >
+      <a-space direction="vertical" :size="12" fill>
       <a-alert
         type="info"
         show-icon
         :title="t('admin.developerWorkbench.captures.privacyTitle')"
-        class="mb-3"
       >
         {{ t('admin.developerWorkbench.captures.privacyDescription') }}
       </a-alert>
@@ -788,7 +780,7 @@ async function copyDiagnostics() {
           />
         </template>
       </a-table>
-      <div class="mt-4 flex items-center justify-between gap-3">
+      <a-space justify="space-between" fill>
         <a-button
           :disabled="!captureBrowser.hasPreviousPage"
           @click="browseCaptures(captureBrowser.kind, captureBrowser.page - 1)"
@@ -808,7 +800,8 @@ async function copyDiagnostics() {
         >
           {{ t('admin.developerWorkbench.captures.next') }}
         </a-button>
-      </div>
+      </a-space>
+      </a-space>
     </a-drawer>
-  </section>
+  </a-space>
 </template>

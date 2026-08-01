@@ -87,28 +87,17 @@ function switchPersona(persona: Persona) {
 
 <template>
   <template v-if="developerMode.enabled">
-    <div
-      aria-hidden="true"
-      class="pointer-events-none fixed inset-0 z-[1090] flex items-center justify-center overflow-hidden"
-    >
-      <span
-        class="-rotate-12 select-none text-6xl font-black tracking-[0.18em] text-orange-500 opacity-[0.055] md:text-8xl"
+    <a-back-top :visible-height="-1">
+      <a-button
+        type="primary"
+        status="warning"
+        shape="circle"
+        :aria-label="t('common.openDeveloperTools')"
+        @click.stop="visible = true"
       >
-        {{ t('common.developerModeBadge') }}
-      </span>
-    </div>
-
-    <a-button
-      type="primary"
-      status="warning"
-      shape="round"
-      class="!fixed bottom-5 right-5 z-[1095] !shadow-lg"
-      :aria-label="t('common.openDeveloperTools')"
-      @click="visible = true"
-    >
-      <template #icon><icon-bug /></template>
-      {{ t('common.developerModeBadge') }}
-    </a-button>
+        <template #icon><icon-bug /></template>
+      </a-button>
+    </a-back-top>
 
     <a-drawer
       v-model:visible="visible"
@@ -117,79 +106,81 @@ function switchPersona(persona: Persona) {
       :footer="false"
       unmount-on-close
     >
-      <a-alert
-        type="warning"
-        show-icon
-        :title="t('common.developerMode')"
-        class="mb-4"
+      <a-watermark
+        :content="t('common.developerModeBadge')"
+        :gap="[120, 96]"
+        :rotate="-18"
+        :alpha="0.08"
+        :font="{ color: '#f53f3f', fontSize: 24, fontWeight: 700 }"
       >
-        {{ t('common.developerModeWarning') }}
-      </a-alert>
-
-      <a-descriptions :column="1" bordered size="small" class="mb-4">
-        <a-descriptions-item :label="t('common.developerProfile')">
-          <a-tag color="orangered">
-            {{ developerMode.profile }}
-          </a-tag>
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('common.developerEnvironment')">
-          {{ developerMode.environment }}
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('common.developerPageComponent')">
-          <a-typography-text code copyable>
-            {{ page.component }}
-          </a-typography-text>
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('common.developerRequestId')">
-          <a-typography-text code copyable>
-            {{ developerMode.request_id ?? t('common.notAvailable') }}
-          </a-typography-text>
-        </a-descriptions-item>
-      </a-descriptions>
-
-      <a-card
-        v-if="developerMode.tools_access"
-        :title="t('common.developerPersonas')"
-        class="mb-4"
-      >
-        <a-space wrap>
-          <a-button
-            v-for="persona in developerMode.personas ?? []"
-            :key="persona.key"
-            :type="
-              developerMode.current_persona === persona.key
-                ? 'primary'
-                : 'outline'
-            "
-            :disabled="!persona.available"
-            :loading="switchingPersona === persona.key"
-            @click="switchPersona(persona)"
+        <a-space direction="vertical" :size="16" fill>
+          <a-alert
+            type="warning"
+            show-icon
+            :title="t('common.developerMode')"
           >
-            {{ t(`common.developerPersona.${persona.key}`) }}
-          </a-button>
-        </a-space>
-        <a-empty
-          v-if="!(developerMode.personas ?? []).some((persona) => persona.available)"
-          :description="t('common.developerPersonasEmpty')"
-          class="mt-3"
-        />
-      </a-card>
+            {{ t('common.developerModeWarning') }}
+          </a-alert>
 
-      <a-space direction="vertical" fill>
-        <a-button long @click="copyDiagnostics">
-          <template #icon><icon-copy /></template>
-          {{ t('common.copyDeveloperDiagnostics') }}
-        </a-button>
-        <a-button
-          v-if="developerMode.workbench_access"
-          type="primary"
-          long
-          @click="openWorkbench"
-        >
-          <template #icon><icon-launch /></template>
-          {{ t('common.openDeveloperWorkbench') }}
-        </a-button>
-      </a-space>
+          <a-descriptions :column="1" bordered size="small">
+            <a-descriptions-item :label="t('common.developerProfile')">
+              <a-tag color="orangered">{{ developerMode.profile }}</a-tag>
+            </a-descriptions-item>
+            <a-descriptions-item :label="t('common.developerEnvironment')">
+              {{ developerMode.environment }}
+            </a-descriptions-item>
+            <a-descriptions-item :label="t('common.developerPageComponent')">
+              <a-typography-text code copyable>{{ page.component }}</a-typography-text>
+            </a-descriptions-item>
+            <a-descriptions-item :label="t('common.developerRequestId')">
+              <a-typography-text code copyable>
+                {{ developerMode.request_id ?? t('common.notAvailable') }}
+              </a-typography-text>
+            </a-descriptions-item>
+          </a-descriptions>
+
+          <a-card
+            v-if="developerMode.tools_access"
+            :title="t('common.developerPersonas')"
+            :bordered="true"
+          >
+            <a-space direction="vertical" :size="12" fill>
+              <a-space wrap>
+                <a-button
+                  v-for="persona in developerMode.personas ?? []"
+                  :key="persona.key"
+                  :type="developerMode.current_persona === persona.key ? 'primary' : 'outline'"
+                  :disabled="!persona.available"
+                  :loading="switchingPersona === persona.key"
+                  @click="switchPersona(persona)"
+                >
+                  {{ t(`common.developerPersona.${persona.key}`) }}
+                </a-button>
+              </a-space>
+              <a-empty
+                v-if="!(developerMode.personas ?? []).some((persona) => persona.available)"
+                :description="t('common.developerPersonasEmpty')"
+              />
+            </a-space>
+          </a-card>
+
+          <a-space direction="vertical" fill>
+            <a-button long @click="copyDiagnostics">
+              <template #icon><icon-copy /></template>
+              {{ t('common.copyDeveloperDiagnostics') }}
+            </a-button>
+            <a-button
+              v-if="developerMode.workbench_access"
+              type="primary"
+              long
+              @click="openWorkbench"
+            >
+              <template #icon><icon-launch /></template>
+              {{ t('common.openDeveloperWorkbench') }}
+            </a-button>
+          </a-space>
+        </a-space>
+      </a-watermark>
     </a-drawer>
   </template>
 </template>

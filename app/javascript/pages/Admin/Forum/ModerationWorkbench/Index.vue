@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref, watch } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
@@ -17,7 +17,6 @@ import {
   FormItem,
   Grid,
   GridItem,
-  Input,
   Message,
   Option,
   PageHeader,
@@ -29,6 +28,7 @@ import {
   TableColumn,
   Tag,
   Textarea,
+  TypographyParagraph,
   TypographyText,
 } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -152,6 +152,22 @@ const noteBody = ref('')
 const noteSubmitting = ref(false)
 const actionLoadingIds = ref<number[]>([])
 const pageError = ref('')
+const isMobile = ref(false)
+let viewportQuery: MediaQueryList | null = null
+
+function syncViewport(event?: MediaQueryListEvent) {
+  isMobile.value = event?.matches ?? viewportQuery?.matches ?? false
+}
+
+onMounted(() => {
+  viewportQuery = window.matchMedia('(max-width: 767px)')
+  syncViewport()
+  viewportQuery.addEventListener('change', syncViewport)
+})
+
+onBeforeUnmount(() => {
+  viewportQuery?.removeEventListener('change', syncViewport)
+})
 
 const rowSelection = {
   type: 'checkbox' as const,
@@ -491,12 +507,11 @@ function noteAuthor(note: Note) {
 </script>
 
 <template>
-  <section class="admin-moderation-workbench px-1 sm:px-0">
+  <Space direction="vertical" :size="16" fill>
     <PageHeader
       :title="t('admin.moderationWorkbench.title')"
       :subtitle="t('admin.moderationWorkbench.subtitle')"
       :show-back="false"
-      class="mb-5 !px-0"
     />
 
     <Alert
@@ -504,13 +519,12 @@ function noteAuthor(note: Note) {
       :type="pageError ? 'error' : 'warning'"
       show-icon
       :closable="false"
-      class="mb-4"
     >
       {{ pageError || sync_warning }}
     </Alert>
 
-    <Card :bordered="false" class="mb-4">
-      <Form :model="filters" layout="vertical" @submit.prevent="applyFilters">
+    <Card :bordered="false">
+      <Form :model="filters" layout="vertical" @submit="applyFilters">
         <Grid :cols="{ xs: 1, sm: 2, lg: 4 }" :col-gap="16" :row-gap="4">
           <GridItem>
             <FormItem field="source_kind" :label="t('admin.moderationWorkbench.filters.sourceKind')">
@@ -580,11 +594,9 @@ function noteAuthor(note: Note) {
           <GridItem>
             <FormItem field="assignee_id" :label="t('admin.moderationWorkbench.filters.assignee')">
               <Select v-model="filters.assignee_id" allow-clear allow-search>
-                <Option value="me">
-                  {{ t('admin.moderationWorkbench.filters.me') }}
-                </Option>
+                <Option value="me">{{ t('admin.moderationWorkbench.columns.me') }}</Option>
                 <Option value="unassigned">
-                  {{ t('admin.moderationWorkbench.filters.unassigned') }}
+                  {{ t('admin.moderationWorkbench.columns.unassigned') }}
                 </Option>
                 <Option
                   v-for="option in filter_options.staff"
@@ -603,7 +615,7 @@ function noteAuthor(note: Note) {
                 value-format="YYYY-MM-DD"
                 format="YYYY-MM-DD"
                 allow-clear
-                class="w-full"
+                long
               />
             </FormItem>
           </GridItem>
@@ -614,17 +626,17 @@ function noteAuthor(note: Note) {
                 value-format="YYYY-MM-DD"
                 format="YYYY-MM-DD"
                 allow-clear
-                class="w-full"
+                long
               />
             </FormItem>
           </GridItem>
         </Grid>
 
         <Space wrap>
-          <Button type="primary" html-type="submit">
+          <Button type="primary" shape="round" html-type="submit">
             {{ t('admin.moderationWorkbench.filters.apply') }}
           </Button>
-          <Button :disabled="activeFilterCount === 0" @click="clearFilters">
+          <Button shape="round" :disabled="activeFilterCount === 0" @click="clearFilters">
             {{ t('admin.moderationWorkbench.filters.clear') }}
           </Button>
         </Space>
@@ -632,149 +644,161 @@ function noteAuthor(note: Note) {
     </Card>
 
     <Card :bordered="false">
-      <div
-        v-if="selectedCaseIds.length"
-        class="mb-4 grid gap-3 rounded-lg bg-[var(--color-fill-1)] p-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto]"
-      >
-        <Select
-          v-model="bulkAction"
-          :placeholder="t('admin.moderationWorkbench.bulk.selectAction')"
-          allow-clear
+      <Space direction="vertical" :size="16" fill>
+        <Card
+          v-if="selectedCaseIds.length"
+          :title="t('admin.moderationWorkbench.bulk.review', { count: selectedCaseIds.length })"
+          :bordered="true"
+          size="small"
         >
-          <Option v-for="action in commonActions" :key="action" :value="action">
-            {{ t(`admin.moderationWorkbench.actions.${action}`) }}
-          </Option>
-        </Select>
-        <Select
-          v-if="bulkAction === 'move_topic'"
-          v-model="bulkMoveSectionId"
-          :placeholder="t('admin.moderationWorkbench.bulk.destinationSection')"
-          allow-search
-        >
-          <Option
-            v-for="option in filter_options.move_sections"
-            :key="optionValue(option)"
-            :value="optionValue(option)"
-          >
-            {{ optionLabel(option) }}
-          </Option>
-        </Select>
-        <Button
-          type="primary"
-          status="warning"
-          class="w-full sm:w-auto"
-          :disabled="!canOpenBulk"
-          @click="bulkVisible = true"
-        >
-          {{ t('admin.moderationWorkbench.bulk.review', { count: selectedCaseIds.length }) }}
-        </Button>
-      </div>
-
-      <Empty
-        v-if="rows.length === 0"
-        :description="t('admin.moderationWorkbench.empty')"
-      >
-        <template #extra>
-          <Button v-if="activeFilterCount" @click="clearFilters">
-            {{ t('admin.moderationWorkbench.filters.clear') }}
-          </Button>
-        </template>
-      </Empty>
-
-      <template v-else>
-        <div class="hidden overflow-x-auto lg:block">
-          <Table
-            v-model:selected-keys="selectedCaseIds"
-            :data="rows"
-            :pagination="false"
-            :row-selection="rowSelection"
-            :bordered="{ wrapper: true }"
-            :scroll="{ minWidth: 1260 }"
-            row-key="id"
-            stripe
-          >
-            <template #columns>
-              <TableColumn :title="t('admin.moderationWorkbench.columns.case')" :width="300">
-                <template #cell="{ record }">
-                  <Button type="text" class="!h-auto !justify-start !whitespace-normal !px-0" @click="openDetail(record)">
-                    <span class="text-left">
-                      <strong class="block">{{ record.title }}</strong>
-                      <TypographyText type="secondary" class="line-clamp-2">
-                        {{ record.summary }}
-                      </TypographyText>
-                    </span>
-                  </Button>
-                </template>
-              </TableColumn>
-              <TableColumn :title="t('admin.moderationWorkbench.columns.source')" :width="145">
-                <template #cell="{ record }">
-                  {{ t(`admin.moderationWorkbench.sourceKinds.${record.source_kind}`) }}
-                </template>
-              </TableColumn>
-              <TableColumn :title="t('admin.moderationWorkbench.columns.status')" :width="135">
-                <template #cell="{ record }">
-                  <Tag :color="statusColor(record.status)">
-                    {{ t(`admin.moderationWorkbench.statuses.${record.status}`) }}
-                  </Tag>
-                </template>
-              </TableColumn>
-              <TableColumn :title="t('admin.moderationWorkbench.columns.priority')" :width="125">
-                <template #cell="{ record }">
-                  <Tag :color="priorityColor(record.priority)">
-                    {{ t(`admin.moderationWorkbench.priorities.${record.priority}`) }}
-                  </Tag>
-                </template>
-              </TableColumn>
-              <TableColumn :title="t('admin.moderationWorkbench.columns.risk')" :width="120">
-                <template #cell="{ record }">
-                  <Tag :color="riskColor(record.risk_level)">
-                    {{ t(`admin.moderationWorkbench.riskLevels.${record.risk_level}`) }}
-                  </Tag>
-                </template>
-              </TableColumn>
-              <TableColumn :title="t('admin.moderationWorkbench.columns.section')" :width="150">
-                <template #cell="{ record }">{{ entityLabel(record.section) }}</template>
-              </TableColumn>
-              <TableColumn :title="t('admin.moderationWorkbench.columns.assignee')" :width="150">
-                <template #cell="{ record }">{{ entityLabel(record.assignee) }}</template>
-              </TableColumn>
-              <TableColumn :title="t('admin.moderationWorkbench.columns.updatedAt')" :width="190">
-                <template #cell="{ record }">{{ formatTime(record.updated_at) }}</template>
-              </TableColumn>
-              <TableColumn
-                :title="t('admin.moderationWorkbench.columns.actions')"
-                :width="210"
-                fixed="right"
+          <Grid :cols="{ xs: 1, sm: 2, lg: 3 }" :col-gap="12" :row-gap="12">
+            <GridItem>
+              <Select
+                v-model="bulkAction"
+                :placeholder="t('admin.moderationWorkbench.bulk.selectAction')"
+                allow-clear
               >
-                <template #cell="{ record }">
-                  <Space wrap>
-                    <Button size="small" @click="openDetail(record)">
-                      {{ t('admin.moderationWorkbench.details.open') }}
-                    </Button>
-                    <Button
-                      v-if="record.available_actions.includes('claim')"
-                      size="small"
-                      type="primary"
-                      :loading="actionLoadingIds.includes(record.id)"
-                      @click="claim(record)"
-                    >
-                      {{ t('admin.moderationWorkbench.actions.claim') }}
-                    </Button>
-                  </Space>
-                </template>
-              </TableColumn>
-            </template>
-          </Table>
-        </div>
+                <Option v-for="action in commonActions" :key="action" :value="action">
+                  {{ t(`admin.moderationWorkbench.actions.${action}`) }}
+                </Option>
+              </Select>
+            </GridItem>
+            <GridItem>
+              <Select
+                v-if="bulkAction === 'move_topic'"
+                v-model="bulkMoveSectionId"
+                :placeholder="t('admin.moderationWorkbench.bulk.destinationSection')"
+                allow-search
+              >
+                <Option
+                  v-for="option in filter_options.move_sections"
+                  :key="optionValue(option)"
+                  :value="optionValue(option)"
+                >
+                  {{ optionLabel(option) }}
+                </Option>
+              </Select>
+            </GridItem>
+            <GridItem>
+              <Button
+                type="primary"
+                status="warning"
+                long
+                :disabled="!canOpenBulk"
+                @click="bulkVisible = true"
+              >
+                {{ t('admin.moderationWorkbench.bulk.review', { count: selectedCaseIds.length }) }}
+              </Button>
+            </GridItem>
+          </Grid>
+        </Card>
 
-        <div class="space-y-3 lg:hidden">
+        <Empty
+          v-if="rows.length === 0"
+          :description="t('admin.moderationWorkbench.empty')"
+        >
+          <template #extra>
+            <Button v-if="activeFilterCount" shape="round" @click="clearFilters">
+              {{ t('admin.moderationWorkbench.filters.clear') }}
+            </Button>
+          </template>
+        </Empty>
+
+        <Table
+          v-else-if="!isMobile"
+          v-model:selected-keys="selectedCaseIds"
+          :data="rows"
+          :pagination="false"
+          :row-selection="rowSelection"
+          :bordered="{ wrapper: true }"
+          :scroll="{ minWidth: 1260 }"
+          row-key="id"
+          stripe
+        >
+          <template #columns>
+            <TableColumn :title="t('admin.moderationWorkbench.columns.case')" :width="300">
+              <template #cell="{ record }">
+                <Space direction="vertical" :size="2" fill>
+                  <Button type="text" long @click="openDetail(record)">
+                    {{ record.title }}
+                  </Button>
+                  <TypographyText type="secondary" :ellipsis="{ rows: 2 }">
+                    {{ record.summary }}
+                  </TypographyText>
+                </Space>
+              </template>
+            </TableColumn>
+            <TableColumn :title="t('admin.moderationWorkbench.columns.source')" :width="145">
+              <template #cell="{ record }">
+                {{ t(`admin.moderationWorkbench.sourceKinds.${record.source_kind}`) }}
+              </template>
+            </TableColumn>
+            <TableColumn :title="t('admin.moderationWorkbench.columns.status')" :width="135">
+              <template #cell="{ record }">
+                <Tag :color="statusColor(record.status)">
+                  {{ t(`admin.moderationWorkbench.statuses.${record.status}`) }}
+                </Tag>
+              </template>
+            </TableColumn>
+            <TableColumn :title="t('admin.moderationWorkbench.columns.priority')" :width="125">
+              <template #cell="{ record }">
+                <Tag :color="priorityColor(record.priority)">
+                  {{ t(`admin.moderationWorkbench.priorities.${record.priority}`) }}
+                </Tag>
+              </template>
+            </TableColumn>
+            <TableColumn :title="t('admin.moderationWorkbench.columns.risk')" :width="120">
+              <template #cell="{ record }">
+                <Tag :color="riskColor(record.risk_level)">
+                  {{ t(`admin.moderationWorkbench.riskLevels.${record.risk_level}`) }}
+                </Tag>
+              </template>
+            </TableColumn>
+            <TableColumn :title="t('admin.moderationWorkbench.columns.section')" :width="150">
+              <template #cell="{ record }">{{ entityLabel(record.section) }}</template>
+            </TableColumn>
+            <TableColumn :title="t('admin.moderationWorkbench.columns.assignee')" :width="150">
+              <template #cell="{ record }">{{ entityLabel(record.assignee) }}</template>
+            </TableColumn>
+            <TableColumn :title="t('admin.moderationWorkbench.columns.updatedAt')" :width="190">
+              <template #cell="{ record }">{{ formatTime(record.updated_at) }}</template>
+            </TableColumn>
+            <TableColumn
+              :title="t('admin.moderationWorkbench.columns.actions')"
+              :width="210"
+              fixed="right"
+            >
+              <template #cell="{ record }">
+                <Space wrap>
+                  <Button size="small" @click="openDetail(record)">
+                    {{ t('admin.moderationWorkbench.details.open') }}
+                  </Button>
+                  <Button
+                    v-if="record.available_actions.includes('claim')"
+                    size="small"
+                    type="primary"
+                    :loading="actionLoadingIds.includes(record.id)"
+                    @click="claim(record)"
+                  >
+                    {{ t('admin.moderationWorkbench.actions.claim') }}
+                  </Button>
+                </Space>
+              </template>
+            </TableColumn>
+          </template>
+        </Table>
+
+        <Space v-else direction="vertical" :size="12" fill>
           <Card
             v-for="item in rows"
             :key="item.id"
-            :bordered="false"
-            class="bg-[var(--color-fill-1)]"
+            :bordered="true"
+            hoverable
           >
-            <div class="flex items-start gap-3">
+            <template #title>
+              <Button type="text" @click="openDetail(item)">{{ item.title }}</Button>
+            </template>
+            <template #extra>
               <Checkbox
                 :model-value="selectedCaseIds.includes(item.id)"
                 :aria-label="t('admin.moderationWorkbench.selectCase', { id: item.id })"
@@ -784,62 +808,59 @@ function noteAuthor(note: Note) {
                     : selectedCaseIds.filter((id) => id !== item.id)
                 }"
               />
-              <div class="min-w-0 flex-1">
-                <Button
-                  type="text"
-                  class="!h-auto w-full !justify-start !whitespace-normal !px-0 text-left"
-                  @click="openDetail(item)"
-                >
-                  <strong class="block break-words">{{ item.title }}</strong>
-                  <span class="mt-1 block break-words text-sm text-[var(--color-text-2)]">
-                    {{ item.summary }}
-                  </span>
-                </Button>
-                <Space wrap class="mt-3">
-                  <Tag :color="statusColor(item.status)">
-                    {{ t(`admin.moderationWorkbench.statuses.${item.status}`) }}
-                  </Tag>
-                  <Tag :color="riskColor(item.risk_level)">
-                    {{ t(`admin.moderationWorkbench.riskLevels.${item.risk_level}`) }}
-                  </Tag>
-                  <Tag :color="priorityColor(item.priority)">
-                    {{ t(`admin.moderationWorkbench.priorities.${item.priority}`) }}
-                  </Tag>
-                </Space>
-                <Descriptions :column="1" size="small" class="mt-3">
-                  <DescriptionsItem :label="t('admin.moderationWorkbench.columns.source')">
-                    {{ t(`admin.moderationWorkbench.sourceKinds.${item.source_kind}`) }}
-                  </DescriptionsItem>
-                  <DescriptionsItem :label="t('admin.moderationWorkbench.columns.section')">
-                    {{ entityLabel(item.section) }}
-                  </DescriptionsItem>
-                  <DescriptionsItem :label="t('admin.moderationWorkbench.columns.assignee')">
-                    {{ entityLabel(item.assignee) }}
-                  </DescriptionsItem>
-                  <DescriptionsItem :label="t('admin.moderationWorkbench.columns.updatedAt')">
-                    {{ formatTime(item.updated_at) }}
-                  </DescriptionsItem>
-                </Descriptions>
-                <div class="mt-3 flex flex-col gap-2 min-[390px]:flex-row">
-                  <Button class="w-full" @click="openDetail(item)">
+            </template>
+
+            <Space direction="vertical" :size="12" fill>
+              <TypographyParagraph type="secondary" :ellipsis="{ rows: 3, expandable: true }">
+                {{ item.summary }}
+              </TypographyParagraph>
+              <Space wrap>
+                <Tag :color="statusColor(item.status)">
+                  {{ t(`admin.moderationWorkbench.statuses.${item.status}`) }}
+                </Tag>
+                <Tag :color="riskColor(item.risk_level)">
+                  {{ t(`admin.moderationWorkbench.riskLevels.${item.risk_level}`) }}
+                </Tag>
+                <Tag :color="priorityColor(item.priority)">
+                  {{ t(`admin.moderationWorkbench.priorities.${item.priority}`) }}
+                </Tag>
+              </Space>
+              <Descriptions :column="1" bordered size="small">
+                <DescriptionsItem :label="t('admin.moderationWorkbench.columns.source')">
+                  {{ t(`admin.moderationWorkbench.sourceKinds.${item.source_kind}`) }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="t('admin.moderationWorkbench.columns.section')">
+                  {{ entityLabel(item.section) }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="t('admin.moderationWorkbench.columns.assignee')">
+                  {{ entityLabel(item.assignee) }}
+                </DescriptionsItem>
+                <DescriptionsItem :label="t('admin.moderationWorkbench.columns.updatedAt')">
+                  {{ formatTime(item.updated_at) }}
+                </DescriptionsItem>
+              </Descriptions>
+              <Grid :cols="{ xs: 1, sm: 2 }" :col-gap="8" :row-gap="8">
+                <GridItem>
+                  <Button long @click="openDetail(item)">
                     {{ t('admin.moderationWorkbench.details.open') }}
                   </Button>
+                </GridItem>
+                <GridItem v-if="item.available_actions.includes('claim')">
                   <Button
-                    v-if="item.available_actions.includes('claim')"
                     type="primary"
-                    class="w-full"
+                    long
                     :loading="actionLoadingIds.includes(item.id)"
                     @click="claim(item)"
                   >
                     {{ t('admin.moderationWorkbench.actions.claim') }}
                   </Button>
-                </div>
-              </div>
-            </div>
+                </GridItem>
+              </Grid>
+            </Space>
           </Card>
-        </div>
+        </Space>
 
-        <div class="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <Space v-if="rows.length" direction="vertical" :size="8" fill>
           <TypographyText type="secondary">
             {{ t('admin.moderationWorkbench.pagination.total', { count: pagination.count }) }}
           </TypographyText>
@@ -852,8 +873,8 @@ function noteAuthor(note: Note) {
             simple
             @change="visitPage"
           />
-        </div>
-      </template>
+        </Space>
+      </Space>
     </Card>
 
     <Drawer
@@ -863,103 +884,92 @@ function noteAuthor(note: Note) {
       :footer="false"
       unmount-on-close
     >
-      <div class="min-h-40">
-        <div v-if="drawerLoading" class="flex min-h-48 items-center justify-center">
-          <Spin :tip="t('admin.moderationWorkbench.details.loading')" />
-        </div>
+      <Spin v-if="drawerLoading" :tip="t('admin.moderationWorkbench.details.loading')" />
+      <Alert
+        v-else-if="detailError && !detail"
+        type="error"
+        show-icon
+        :closable="false"
+      >
+        {{ detailError }}
+      </Alert>
+      <Space v-else-if="detail" direction="vertical" :size="16" fill>
         <Alert
-          v-else-if="detailError && !detail"
+          v-if="detailError"
           type="error"
           show-icon
           :closable="false"
         >
           {{ detailError }}
         </Alert>
-        <template v-else-if="detail">
-          <Alert
-            v-if="detailError"
-            type="error"
-            show-icon
-            :closable="false"
-            class="mb-4"
+
+        <Descriptions :column="1" bordered size="small">
+          <DescriptionsItem :label="t('admin.moderationWorkbench.columns.source')">
+            {{ t(`admin.moderationWorkbench.sourceKinds.${detail.source_kind}`) }}
+          </DescriptionsItem>
+          <DescriptionsItem :label="t('admin.moderationWorkbench.columns.status')">
+            <Tag :color="statusColor(detail.status)">
+              {{ t(`admin.moderationWorkbench.statuses.${detail.status}`) }}
+            </Tag>
+          </DescriptionsItem>
+          <DescriptionsItem :label="t('admin.moderationWorkbench.columns.priority')">
+            <Tag :color="priorityColor(detail.priority)">
+              {{ t(`admin.moderationWorkbench.priorities.${detail.priority}`) }}
+            </Tag>
+          </DescriptionsItem>
+          <DescriptionsItem :label="t('admin.moderationWorkbench.columns.risk')">
+            <Tag :color="riskColor(detail.risk_level)">
+              {{ t(`admin.moderationWorkbench.riskLevels.${detail.risk_level}`) }}
+            </Tag>
+          </DescriptionsItem>
+          <DescriptionsItem :label="t('admin.moderationWorkbench.columns.section')">
+            {{ entityLabel(detail.section) }}
+          </DescriptionsItem>
+          <DescriptionsItem :label="t('admin.moderationWorkbench.columns.assignee')">
+            {{ entityLabel(detail.assignee) }}
+          </DescriptionsItem>
+          <DescriptionsItem :label="t('admin.moderationWorkbench.details.claimedAt')">
+            {{ formatTime(detail.claimed_at) }}
+          </DescriptionsItem>
+        </Descriptions>
+
+        <Divider orientation="left">{{ t('admin.moderationWorkbench.details.summary') }}</Divider>
+        <TypographyParagraph type="secondary">{{ detail.summary }}</TypographyParagraph>
+
+        <Divider orientation="left">{{ t('admin.moderationWorkbench.details.evidence') }}</Divider>
+        <Alert
+          v-if="evidenceWasTruncated"
+          type="warning"
+          show-icon
+          :closable="false"
+          :title="t('admin.moderationWorkbench.details.evidenceTruncated')"
+        />
+        <Space v-if="evidenceItems.length" direction="vertical" :size="12" fill>
+          <Card
+            v-for="(item, index) in evidenceItems"
+            :key="index"
+            :title="evidenceLabel(item, index)"
+            :bordered="true"
+            size="small"
           >
-            {{ detailError }}
-          </Alert>
+            <Textarea
+              :model-value="displayEvidence(item)"
+              readonly
+              :auto-size="{ minRows: 2, maxRows: 12 }"
+              :aria-label="evidenceLabel(item, index)"
+            />
+          </Card>
+        </Space>
+        <Empty v-else :description="t('admin.moderationWorkbench.details.noEvidence')" />
 
-          <Descriptions :column="1" bordered size="small">
-            <DescriptionsItem :label="t('admin.moderationWorkbench.columns.source')">
-              {{ t(`admin.moderationWorkbench.sourceKinds.${detail.source_kind}`) }}
-            </DescriptionsItem>
-            <DescriptionsItem :label="t('admin.moderationWorkbench.columns.status')">
-              <Tag :color="statusColor(detail.status)">
-                {{ t(`admin.moderationWorkbench.statuses.${detail.status}`) }}
-              </Tag>
-            </DescriptionsItem>
-            <DescriptionsItem :label="t('admin.moderationWorkbench.columns.priority')">
-              <Tag :color="priorityColor(detail.priority)">
-                {{ t(`admin.moderationWorkbench.priorities.${detail.priority}`) }}
-              </Tag>
-            </DescriptionsItem>
-            <DescriptionsItem :label="t('admin.moderationWorkbench.columns.risk')">
-              <Tag :color="riskColor(detail.risk_level)">
-                {{ t(`admin.moderationWorkbench.riskLevels.${detail.risk_level}`) }}
-              </Tag>
-            </DescriptionsItem>
-            <DescriptionsItem :label="t('admin.moderationWorkbench.columns.section')">
-              {{ entityLabel(detail.section) }}
-            </DescriptionsItem>
-            <DescriptionsItem :label="t('admin.moderationWorkbench.columns.assignee')">
-              {{ entityLabel(detail.assignee) }}
-            </DescriptionsItem>
-            <DescriptionsItem :label="t('admin.moderationWorkbench.details.claimedAt')">
-              {{ formatTime(detail.claimed_at) }}
-            </DescriptionsItem>
-          </Descriptions>
-
-          <Divider orientation="left">
-            {{ t('admin.moderationWorkbench.details.summary') }}
-          </Divider>
-          <p class="break-words text-sm leading-6 text-[var(--color-text-2)]">
-            {{ detail.summary }}
-          </p>
-
-          <Divider orientation="left">
-            {{ t('admin.moderationWorkbench.details.evidence') }}
-          </Divider>
-          <Alert
-            v-if="evidenceWasTruncated"
-            type="warning"
-            show-icon
-            :closable="false"
-            class="mb-3"
-            :title="t('admin.moderationWorkbench.details.evidenceTruncated')"
-          />
-          <div v-if="evidenceItems.length" class="space-y-3">
-            <Card
-              v-for="(item, index) in evidenceItems"
-              :key="index"
-              :title="evidenceLabel(item, index)"
-              :bordered="false"
-              size="small"
-              class="bg-[var(--color-fill-1)]"
-            >
-              <pre class="max-h-72 overflow-auto whitespace-pre-wrap break-words text-xs">{{ displayEvidence(item) }}</pre>
-            </Card>
-          </div>
-          <Empty v-else :description="t('admin.moderationWorkbench.details.noEvidence')" />
-
-          <template
-            v-if="capabilities.can_assign && detail.available_actions.includes('assign')"
-          >
-            <Divider orientation="left">
-              {{ t('admin.moderationWorkbench.details.assign') }}
-            </Divider>
-            <div class="flex flex-col gap-2 sm:flex-row">
+        <template v-if="capabilities.can_assign && detail.available_actions.includes('assign')">
+          <Divider orientation="left">{{ t('admin.moderationWorkbench.details.assign') }}</Divider>
+          <Grid :cols="{ xs: 1, sm: 3 }" :col-gap="8" :row-gap="8">
+            <GridItem :span="{ xs: 1, sm: 2 }">
               <Select
                 v-model="assigneeId"
                 allow-search
                 allow-clear
-                class="min-w-0 flex-1"
                 :placeholder="t('admin.moderationWorkbench.details.selectAssignee')"
               >
                 <Option
@@ -970,13 +980,13 @@ function noteAuthor(note: Note) {
                   {{ optionLabel(option) }}
                 </Option>
               </Select>
+            </GridItem>
+            <GridItem>
               <Button
                 type="primary"
-                class="w-full sm:w-auto"
+                long
                 :loading="assigning"
-                :disabled="
-                  (assigneeId === '' || assigneeId == null) && !detail.assignee
-                "
+                :disabled="(assigneeId === '' || assigneeId == null) && !detail.assignee"
                 @click="assign"
               >
                 {{ assigneeId === '' || assigneeId == null
@@ -985,87 +995,83 @@ function noteAuthor(note: Note) {
                     : t('admin.moderationWorkbench.actions.assign')
                   : t('admin.moderationWorkbench.actions.assign') }}
               </Button>
-            </div>
-          </template>
+            </GridItem>
+          </Grid>
+        </template>
 
-          <Divider orientation="left">
-            {{ t('admin.moderationWorkbench.details.notes') }}
-          </Divider>
-          <div v-if="detail.notes.length" class="mb-4 space-y-3">
-            <Card
-              v-for="(note, index) in detail.notes"
-              :key="note.id || index"
-              :bordered="false"
-              size="small"
-              class="bg-[var(--color-fill-1)]"
-            >
-              <p class="whitespace-pre-wrap break-words">{{ note.body }}</p>
-              <TypographyText type="secondary" class="mt-2 block text-xs">
+        <Divider orientation="left">{{ t('admin.moderationWorkbench.details.notes') }}</Divider>
+        <Space v-if="detail.notes.length" direction="vertical" :size="12" fill>
+          <Card
+            v-for="(note, index) in detail.notes"
+            :key="note.id || index"
+            :bordered="true"
+            size="small"
+          >
+            <Space direction="vertical" :size="6" fill>
+              <TypographyParagraph>{{ note.body }}</TypographyParagraph>
+              <TypographyText type="secondary">
                 {{ t('admin.moderationWorkbench.details.noteMeta', {
                   author: noteAuthor(note),
                   time: formatTime(note.created_at),
                 }) }}
               </TypographyText>
-            </Card>
-          </div>
-          <Empty v-else :description="t('admin.moderationWorkbench.details.noNotes')" />
+            </Space>
+          </Card>
+        </Space>
+        <Empty v-else :description="t('admin.moderationWorkbench.details.noNotes')" />
 
-          <div
-            v-if="capabilities.can_note && detail.available_actions.includes('note')"
-            class="mt-4"
+        <Space
+          v-if="capabilities.can_note && detail.available_actions.includes('note')"
+          direction="vertical"
+          :size="8"
+          fill
+        >
+          <Textarea
+            v-model="noteBody"
+            :placeholder="t('admin.moderationWorkbench.details.notePlaceholder')"
+            :auto-size="{ minRows: 3, maxRows: 7 }"
+            :max-length="2000"
+            show-word-limit
+            :disabled="noteSubmitting"
+          />
+          <Button
+            type="primary"
+            long
+            :loading="noteSubmitting"
+            :disabled="noteBody.trim().length === 0"
+            @click="addNote"
           >
-            <Textarea
-              v-model="noteBody"
-              :placeholder="t('admin.moderationWorkbench.details.notePlaceholder')"
-              :auto-size="{ minRows: 3, maxRows: 7 }"
-              :max-length="2000"
-              show-word-limit
-              :disabled="noteSubmitting"
-            />
-            <div class="mt-2 flex justify-end">
-              <Button
-                type="primary"
-                class="w-full sm:w-auto"
-                :loading="noteSubmitting"
-                :disabled="noteBody.trim().length === 0"
-                @click="addNote"
-              >
-                {{ t('admin.moderationWorkbench.actions.addNote') }}
-              </Button>
-            </div>
-          </div>
+            {{ t('admin.moderationWorkbench.actions.addNote') }}
+          </Button>
+        </Space>
 
-          <Divider orientation="left">
-            {{ t('admin.moderationWorkbench.details.actions') }}
-          </Divider>
-          <Select
-            v-if="detail.available_actions.includes('move_topic')"
-            v-model="drawerMoveSectionId"
-            :placeholder="t('admin.moderationWorkbench.bulk.destinationSection')"
-            allow-search
-            class="mb-3 w-full"
+        <Divider orientation="left">{{ t('admin.moderationWorkbench.details.actions') }}</Divider>
+        <Select
+          v-if="detail.available_actions.includes('move_topic')"
+          v-model="drawerMoveSectionId"
+          :placeholder="t('admin.moderationWorkbench.bulk.destinationSection')"
+          allow-search
+        >
+          <Option
+            v-for="option in filter_options.move_sections"
+            :key="optionValue(option)"
+            :value="optionValue(option)"
           >
-            <Option
-              v-for="option in filter_options.move_sections"
-              :key="optionValue(option)"
-              :value="optionValue(option)"
-            >
-              {{ optionLabel(option) }}
-            </Option>
-          </Select>
-          <Space wrap>
-            <Button
-              v-for="action in detail.available_actions.filter((item) => !['claim', 'assign', 'note'].includes(item))"
-              :key="action"
-              :status="['delete_content', 'delete_attachment', 'ban_user'].includes(action) ? 'danger' : 'normal'"
-              :disabled="action === 'move_topic' && drawerMoveSectionId === ''"
-              @click="openAction(action, [detail.id])"
-            >
-              {{ t(`admin.moderationWorkbench.actions.${action}`) }}
-            </Button>
-          </Space>
-        </template>
-      </div>
+            {{ optionLabel(option) }}
+          </Option>
+        </Select>
+        <Space wrap>
+          <Button
+            v-for="action in detail.available_actions.filter((item) => !['claim', 'assign', 'note'].includes(item))"
+            :key="action"
+            :status="['delete_content', 'delete_attachment', 'ban_user'].includes(action) ? 'danger' : 'normal'"
+            :disabled="action === 'move_topic' && drawerMoveSectionId === ''"
+            @click="openAction(action, [detail.id])"
+          >
+            {{ t(`admin.moderationWorkbench.actions.${action}`) }}
+          </Button>
+        </Space>
+      </Space>
     </Drawer>
 
     <ModerationActionModal
@@ -1075,5 +1081,5 @@ function noteAuthor(note: Note) {
       :attributes="bulkAttributes"
       @completed="handleBulkCompleted"
     />
-  </section>
+  </Space>
 </template>

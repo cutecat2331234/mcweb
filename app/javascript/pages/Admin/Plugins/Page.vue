@@ -18,13 +18,16 @@ defineProps<{
 </script>
 
 <template>
-  <div class="min-w-0">
-    <a-page-header
-      :title="pluginPage.title"
-      :subtitle="pluginPage.description"
-      :show-back="false"
-      class="mb-4 !px-0"
-    />
-    <PluginPageContent :blocks="pluginPage.blocks" />
-  </div>
+  <a-row justify="center">
+    <a-col :xs="24" :md="22" :xl="20">
+      <a-space direction="vertical" :size="16" fill>
+        <a-page-header
+          :title="pluginPage.title"
+          :subtitle="pluginPage.description"
+          :show-back="false"
+        />
+        <PluginPageContent :blocks="pluginPage.blocks" />
+      </a-space>
+    </a-col>
+  </a-row>
 </template>

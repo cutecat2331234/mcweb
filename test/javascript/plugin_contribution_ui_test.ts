@@ -15,6 +15,13 @@ test('declarative plugin pages use Arco components without raw HTML rendering', 
   assert.doesNotMatch(content, /v-html/)
   assert.match(publicPage, /WebsiteLayout/)
   assert.match(adminPage, /AdminLayout/)
+  assert.match(adminPage, /<a-row justify="center">/)
+  assert.match(adminPage, /<a-col :xs="24" :md="22" :xl="20">/)
+  assert.match(adminPage, /<a-space direction="vertical" :size="16" fill>/)
+  assert.doesNotMatch(
+    adminPage,
+    /<style\b|\sclass=|\s:class=|\sstyle=|\s:style=/,
+  )
 })
 
 test('plugin navigation and targeted slots are composed into shared layouts', () => {

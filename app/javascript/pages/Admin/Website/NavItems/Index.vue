@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import { Modal } from '@mcweb/ui'
+import { Modal } from '@arco-design/web-vue'
 import { IconArrowDown, IconArrowUp, IconDelete } from '@arco-design/web-vue/es/icon'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
@@ -115,9 +115,10 @@ const columns = computed(() => [
 </script>
 
 <template>
+  <a-space direction="vertical" :size="16" fill>
   <a-page-header :title="title" :show-back="false" />
 
-  <a-card :title="t('admin.website.nav.add')" :bordered="true" class="mb-4">
+  <a-card :title="t('admin.website.nav.add')" :bordered="true">
     <a-form :model="draft" layout="vertical" @submit="createItem">
       <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="16">
         <a-grid-item>
@@ -159,7 +160,7 @@ const columns = computed(() => [
     <a-card
       v-for="location in locations"
       :key="location"
-      :title="location"
+      :title="locationLabel(location)"
       :bordered="true"
     >
       <a-table
@@ -200,5 +201,6 @@ const columns = computed(() => [
         <template #empty><a-empty /></template>
       </a-table>
     </a-card>
+  </a-space>
   </a-space>
 </template>

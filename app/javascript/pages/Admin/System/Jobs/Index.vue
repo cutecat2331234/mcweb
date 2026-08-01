@@ -194,12 +194,11 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
 </script>
 
 <template>
-  <section data-testid="admin-jobs-page">
+  <a-space direction="vertical" :size="16" fill data-testid="admin-jobs-page">
     <a-page-header
       :title="t('admin.jobsPage.title')"
       :subtitle="t('admin.jobsPage.subtitle')"
       :show-back="false"
-      class="mb-4 !px-0"
       data-testid="admin-jobs-header"
     />
 
@@ -208,7 +207,6 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
       type="warning"
       show-icon
       :title="t('admin.jobsPage.developerModeTitle')"
-      class="mb-4"
     >
       {{ t('admin.jobsPage.developerModeDescription') }}
     </a-alert>
@@ -218,7 +216,6 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
       :type="queueAlertType(queueSnapshot.status)"
       show-icon
       :title="t(`admin.jobsPage.queue.status.${queueSnapshot.status}`)"
-      class="mb-4"
     >
       {{
         queueSnapshot.status === 'warning'
@@ -230,8 +227,9 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
       }}
     </a-alert>
 
-    <div class="grid gap-4 lg:grid-cols-2">
-      <a-card :title="t('admin.jobsPage.schedulerTitle')" :bordered="true">
+    <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
+      <a-grid-item>
+        <a-card :title="t('admin.jobsPage.schedulerTitle')" :bordered="true">
         <a-descriptions :column="1" bordered size="small">
           <a-descriptions-item :label="t('admin.jobsPage.runtimeMode')">
             <a-space wrap>
@@ -242,7 +240,9 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
                     : t('admin.jobsPage.standardMode')
                 }}
               </a-tag>
-              <span v-if="developerMode.profile">{{ developerMode.profile }}</span>
+              <a-typography-text v-if="developerMode.profile">
+                {{ developerMode.profile }}
+              </a-typography-text>
             </a-space>
           </a-descriptions-item>
           <a-descriptions-item :label="t('admin.jobsPage.automaticRegistration')">
@@ -258,22 +258,26 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
             <a-tag color="green">{{ t('admin.jobsPage.available') }}</a-tag>
           </a-descriptions-item>
         </a-descriptions>
-      </a-card>
+        </a-card>
+      </a-grid-item>
 
-      <a-card :title="t('admin.jobsPage.dashboardTitle')" :bordered="true">
-        <p class="mb-4 text-sm text-[var(--color-text-2)]">
-          {{ t('admin.jobsPage.dashboardDescription') }}
-        </p>
-        <a-button type="primary" :href="dashboardUrl" data-admin-hard-navigation>
-          {{ t('admin.jobsPage.openDashboard') }}
-        </a-button>
-      </a-card>
-    </div>
+      <a-grid-item>
+        <a-card :title="t('admin.jobsPage.dashboardTitle')" :bordered="true">
+          <a-space direction="vertical" :size="12" fill>
+            <a-typography-paragraph>
+              {{ t('admin.jobsPage.dashboardDescription') }}
+            </a-typography-paragraph>
+            <a-button type="primary" :href="dashboardUrl" long data-admin-hard-navigation>
+              {{ t('admin.jobsPage.openDashboard') }}
+            </a-button>
+          </a-space>
+        </a-card>
+      </a-grid-item>
+    </a-grid>
 
     <a-card
       :title="t('admin.jobsPage.queue.title')"
-      :bordered="false"
-      class="mt-4 overflow-hidden rounded-xl shadow-sm"
+      :bordered="true"
     >
       <template #extra>
         <a-space wrap>
@@ -284,82 +288,88 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
         </a-space>
       </template>
 
-      <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-        <a-card :bordered="true" class="rounded-lg">
-          <a-statistic
-            :title="t('admin.jobsPage.queue.heartbeats')"
-            :value="workerHeartbeat.fresh_count"
-          />
-          <a-space wrap class="mt-2">
-            <a-tag
-              :color="workerHeartbeat.status === 'healthy' ? 'green' : 'orange'"
-            >
-              {{ t(`admin.jobsPage.queue.heartbeatStatus.${workerHeartbeat.status}`) }}
-            </a-tag>
-            <a-tooltip :content="formatDate(workerHeartbeat.latest_at)">
-              <a-typography-text type="secondary">
-                {{ t('admin.jobsPage.queue.lastSeen') }}
-              </a-typography-text>
-            </a-tooltip>
+      <a-descriptions
+        :column="{ xs: 2, sm: 2, xl: 5 }"
+        layout="vertical"
+        bordered
+        size="small"
+      >
+        <a-descriptions-item :label="t('admin.jobsPage.queue.heartbeats')">
+          <a-space direction="vertical" :size="4" fill>
+            <a-statistic :value="workerHeartbeat.fresh_count" />
+            <a-space wrap size="small">
+              <a-tag
+                :color="workerHeartbeat.status === 'healthy' ? 'green' : 'orange'"
+              >
+                {{ t(`admin.jobsPage.queue.heartbeatStatus.${workerHeartbeat.status}`) }}
+              </a-tag>
+              <a-tooltip :content="formatDate(workerHeartbeat.latest_at)">
+                <a-typography-text type="secondary">
+                  {{ t('admin.jobsPage.queue.lastSeen') }}
+                </a-typography-text>
+              </a-tooltip>
+            </a-space>
           </a-space>
-        </a-card>
-        <a-card :bordered="true" class="rounded-lg">
-          <a-statistic
-            :title="t('admin.jobsPage.queue.workers')"
-            :value="queueSnapshot.worker_count"
-          >
-            <template #suffix>
-              <span class="text-sm text-[var(--color-text-3)]">
-                / {{ queueSnapshot.concurrency }}
-              </span>
-            </template>
-          </a-statistic>
-          <a-progress
-            :percent="queueSnapshot.utilization_percent / 100"
-            :status="queueSnapshot.utilization_percent >= 90 ? 'warning' : 'normal'"
-            size="small"
-            class="mt-2"
-          />
-        </a-card>
-        <a-card :bordered="true" class="rounded-lg">
-          <a-statistic
-            :title="t('admin.jobsPage.queue.enqueued')"
-            :value="queueSnapshot.enqueued"
-          />
-          <a-typography-text type="secondary" data-testid="volatile-timestamp">
-            {{ t('admin.jobsPage.queue.warningAt', { count: queueSnapshot.backlog_warning }) }}
-          </a-typography-text>
-        </a-card>
-        <a-card :bordered="true" class="rounded-lg">
-          <a-statistic
-            :title="t('admin.jobsPage.queue.oldestWait')"
-            :value="queueSnapshot.oldest_wait_seconds"
-            :precision="1"
-            :suffix="t('admin.jobsPage.queue.seconds')"
-          />
-          <a-typography-text type="secondary">
-            {{
-              t('admin.jobsPage.queue.warningAtSeconds', {
-                count: queueSnapshot.latency_warning_seconds,
-              })
-            }}
-          </a-typography-text>
-        </a-card>
-        <a-card :bordered="true" class="rounded-lg">
-          <a-statistic
-            :title="t('admin.jobsPage.queue.failures')"
-            :value="queueSnapshot.failed_count"
-          />
-          <a-space wrap class="mt-2">
-            <a-tag color="orange">
-              {{ t('admin.jobsPage.queue.retries', { count: queueSnapshot.retry_count }) }}
-            </a-tag>
-            <a-tag :color="queueSnapshot.dead_count ? 'red' : 'green'">
-              {{ t('admin.jobsPage.queue.dead', { count: queueSnapshot.dead_count }) }}
-            </a-tag>
+        </a-descriptions-item>
+
+        <a-descriptions-item :label="t('admin.jobsPage.queue.workers')">
+          <a-space direction="vertical" :size="4" fill>
+            <a-statistic :value="queueSnapshot.worker_count">
+              <template #suffix>
+                <a-typography-text type="secondary">
+                  / {{ queueSnapshot.concurrency }}
+                </a-typography-text>
+              </template>
+            </a-statistic>
+            <a-progress
+              :percent="queueSnapshot.utilization_percent / 100"
+              :status="queueSnapshot.utilization_percent >= 90 ? 'warning' : 'normal'"
+              size="small"
+              aria-hidden="true"
+            />
           </a-space>
-        </a-card>
-      </div>
+        </a-descriptions-item>
+
+        <a-descriptions-item :label="t('admin.jobsPage.queue.enqueued')">
+          <a-space direction="vertical" :size="4" fill>
+            <a-statistic :value="queueSnapshot.enqueued" />
+            <a-typography-text type="secondary" data-testid="volatile-timestamp">
+              {{ t('admin.jobsPage.queue.warningAt', { count: queueSnapshot.backlog_warning }) }}
+            </a-typography-text>
+          </a-space>
+        </a-descriptions-item>
+
+        <a-descriptions-item :label="t('admin.jobsPage.queue.oldestWait')">
+          <a-space direction="vertical" :size="4" fill>
+            <a-statistic
+              :value="queueSnapshot.oldest_wait_seconds"
+              :precision="1"
+              :suffix="t('admin.jobsPage.queue.seconds')"
+            />
+            <a-typography-text type="secondary">
+              {{
+                t('admin.jobsPage.queue.warningAtSeconds', {
+                  count: queueSnapshot.latency_warning_seconds,
+                })
+              }}
+            </a-typography-text>
+          </a-space>
+        </a-descriptions-item>
+
+        <a-descriptions-item :label="t('admin.jobsPage.queue.failures')">
+          <a-space direction="vertical" :size="4" fill>
+            <a-statistic :value="queueSnapshot.failed_count" />
+            <a-space wrap size="small">
+              <a-tag color="orange">
+                {{ t('admin.jobsPage.queue.retries', { count: queueSnapshot.retry_count }) }}
+              </a-tag>
+              <a-tag :color="queueSnapshot.dead_count ? 'red' : 'green'">
+                {{ t('admin.jobsPage.queue.dead', { count: queueSnapshot.dead_count }) }}
+              </a-tag>
+            </a-space>
+          </a-space>
+        </a-descriptions-item>
+      </a-descriptions>
 
       <a-divider />
 
@@ -404,8 +414,7 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
 
     <a-card
       :title="t('admin.jobsPage.metrics.title')"
-      :bordered="false"
-      class="mt-4 overflow-hidden rounded-2xl shadow-sm"
+      :bordered="true"
     >
       <template #extra>
         <a-space wrap>
@@ -435,7 +444,7 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
         </a-space>
       </template>
 
-      <a-spin :loading="metricsLoading" class="w-full">
+      <a-spin :loading="metricsLoading">
         <a-alert
           v-if="!operationsMetrics.available"
           :type="operationsMetrics.truncated ? 'warning' : 'error'"
@@ -452,135 +461,140 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
         </a-alert>
 
         <template v-else>
-          <div class="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            <a-card :bordered="true" class="rounded-xl">
-              <a-statistic
-                :title="t('admin.jobsPage.metrics.requestLatency')"
-                :value="operationsMetrics.summary.request_average_ms || 0"
-                :precision="2"
-                :suffix="t('admin.jobsPage.metrics.ms')"
-              />
-              <a-space wrap class="mt-2">
-                <a-tag
-                  :color="deltaColor(operationsMetrics.comparison.request_average_ms)"
-                >
-                  {{ formatDelta(operationsMetrics.comparison.request_average_ms) }}
-                </a-tag>
-                <a-typography-text type="secondary">
-                  {{
-                    t('admin.jobsPage.metrics.sampleCount', {
-                      count: operationsMetrics.summary.request_count || 0,
-                    })
-                  }}
-                </a-typography-text>
+          <a-descriptions
+            :column="{ xs: 2, sm: 2, xl: 4 }"
+            layout="vertical"
+            bordered
+            size="small"
+          >
+            <a-descriptions-item :label="t('admin.jobsPage.metrics.requestLatency')">
+              <a-space direction="vertical" :size="4" fill>
+                <a-statistic
+                  :value="operationsMetrics.summary.request_average_ms || 0"
+                  :precision="2"
+                  :suffix="t('admin.jobsPage.metrics.ms')"
+                />
+                <a-space wrap size="small">
+                  <a-tag
+                    :color="deltaColor(operationsMetrics.comparison.request_average_ms)"
+                  >
+                    {{ formatDelta(operationsMetrics.comparison.request_average_ms) }}
+                  </a-tag>
+                  <a-typography-text type="secondary">
+                    {{
+                      t('admin.jobsPage.metrics.sampleCount', {
+                        count: operationsMetrics.summary.request_count || 0,
+                      })
+                    }}
+                  </a-typography-text>
+                </a-space>
               </a-space>
-            </a-card>
+            </a-descriptions-item>
 
-            <a-card :bordered="true" class="!rounded-none">
-              <a-statistic
-                :title="t('admin.jobsPage.metrics.serverErrors')"
-                :value="operationsMetrics.summary.server_errors || 0"
-              />
-              <a-space wrap class="mt-2">
-                <a-tag
-                  :color="
-                    (operationsMetrics.summary.request_error_rate_percent || 0) >=
-                    operationsMetrics.thresholds.request_error_rate_percent
-                      ? 'orange'
-                      : 'green'
-                  "
-                >
-                  {{
-                    t('admin.jobsPage.metrics.rateValue', {
-                      value:
-                        operationsMetrics.summary.request_error_rate_percent || 0,
-                    })
-                  }}
-                </a-tag>
-                <a-typography-text type="secondary">
-                  {{
-                    t('admin.jobsPage.metrics.thresholdValue', {
-                      value:
-                        operationsMetrics.thresholds
-                          .request_error_rate_percent,
-                    })
-                  }}
-                </a-typography-text>
+            <a-descriptions-item :label="t('admin.jobsPage.metrics.serverErrors')">
+              <a-space direction="vertical" :size="4" fill>
+                <a-statistic :value="operationsMetrics.summary.server_errors || 0" />
+                <a-space wrap size="small">
+                  <a-tag
+                    :color="
+                      (operationsMetrics.summary.request_error_rate_percent || 0) >=
+                      operationsMetrics.thresholds.request_error_rate_percent
+                        ? 'orange'
+                        : 'green'
+                    "
+                  >
+                    {{
+                      t('admin.jobsPage.metrics.rateValue', {
+                        value:
+                          operationsMetrics.summary.request_error_rate_percent || 0,
+                      })
+                    }}
+                  </a-tag>
+                  <a-typography-text type="secondary">
+                    {{
+                      t('admin.jobsPage.metrics.thresholdValue', {
+                        value:
+                          operationsMetrics.thresholds
+                            .request_error_rate_percent,
+                      })
+                    }}
+                  </a-typography-text>
+                </a-space>
               </a-space>
-            </a-card>
+            </a-descriptions-item>
 
-            <a-card :bordered="true" class="rounded-xl">
-              <a-statistic
-                :title="t('admin.jobsPage.metrics.jobFailures')"
-                :value="operationsMetrics.summary.job_failures || 0"
-              />
-              <a-space wrap class="mt-2">
-                <a-tag
-                  :color="
-                    (operationsMetrics.summary.job_failure_rate_percent || 0) >=
-                    operationsMetrics.thresholds.job_failure_rate_percent
-                      ? 'orange'
-                      : 'green'
-                  "
-                >
-                  {{
-                    t('admin.jobsPage.metrics.rateValue', {
-                      value:
-                        operationsMetrics.summary.job_failure_rate_percent || 0,
-                    })
-                  }}
-                </a-tag>
-                <a-typography-text type="secondary">
-                  {{
-                    t('admin.jobsPage.metrics.sampleCount', {
-                      count: operationsMetrics.summary.job_count || 0,
-                    })
-                  }}
-                </a-typography-text>
+            <a-descriptions-item :label="t('admin.jobsPage.metrics.jobFailures')">
+              <a-space direction="vertical" :size="4" fill>
+                <a-statistic :value="operationsMetrics.summary.job_failures || 0" />
+                <a-space wrap size="small">
+                  <a-tag
+                    :color="
+                      (operationsMetrics.summary.job_failure_rate_percent || 0) >=
+                      operationsMetrics.thresholds.job_failure_rate_percent
+                        ? 'orange'
+                        : 'green'
+                    "
+                  >
+                    {{
+                      t('admin.jobsPage.metrics.rateValue', {
+                        value:
+                          operationsMetrics.summary.job_failure_rate_percent || 0,
+                      })
+                    }}
+                  </a-tag>
+                  <a-typography-text type="secondary">
+                    {{
+                      t('admin.jobsPage.metrics.sampleCount', {
+                        count: operationsMetrics.summary.job_count || 0,
+                      })
+                    }}
+                  </a-typography-text>
+                </a-space>
               </a-space>
-            </a-card>
+            </a-descriptions-item>
 
-            <a-card :bordered="true" class="!rounded-none">
-              <a-statistic
-                :title="t('admin.jobsPage.metrics.queueUtilization')"
-                :value="operationsMetrics.summary.queue_utilization_percent || 0"
-                :precision="1"
-                suffix="%"
-              />
-              <a-space wrap class="mt-2">
-                <a-tag color="arcoblue">
-                  {{
-                    t('admin.jobsPage.metrics.queueBacklogValue', {
-                      count: operationsMetrics.summary.queue_enqueued || 0,
-                    })
-                  }}
-                </a-tag>
-                <a-typography-text type="secondary">
-                  {{
-                    t('admin.jobsPage.metrics.workerCount', {
-                      count: operationsMetrics.summary.queue_worker_count || 0,
-                    })
-                  }}
-                </a-typography-text>
+            <a-descriptions-item :label="t('admin.jobsPage.metrics.queueUtilization')">
+              <a-space direction="vertical" :size="4" fill>
+                <a-statistic
+                  :value="operationsMetrics.summary.queue_utilization_percent || 0"
+                  :precision="1"
+                  suffix="%"
+                />
+                <a-space wrap size="small">
+                  <a-tag color="arcoblue">
+                    {{
+                      t('admin.jobsPage.metrics.queueBacklogValue', {
+                        count: operationsMetrics.summary.queue_enqueued || 0,
+                      })
+                    }}
+                  </a-tag>
+                  <a-typography-text type="secondary">
+                    {{
+                      t('admin.jobsPage.metrics.workerCount', {
+                        count: operationsMetrics.summary.queue_worker_count || 0,
+                      })
+                    }}
+                  </a-typography-text>
+                </a-space>
               </a-space>
-            </a-card>
-          </div>
+            </a-descriptions-item>
+          </a-descriptions>
 
           <a-divider />
 
-          <div class="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)]">
+          <a-grid :cols="{ xs: 1, xl: 5 }" :col-gap="16" :row-gap="16">
+            <a-grid-item :span="{ xs: 1, xl: 2 }">
             <a-card
               :title="t('admin.jobsPage.metrics.thresholdsTitle')"
               :bordered="true"
-              class="rounded-xl"
             >
               <a-list :bordered="false" :split="true">
                 <a-list-item
                   v-for="check in operationsMetrics.checks"
                   :key="check.key"
                 >
-                  <div class="w-full">
-                    <div class="mb-2 flex items-center justify-between gap-3">
+                  <a-space direction="vertical" :size="8" fill>
+                    <a-row align="center" justify="space-between">
                       <a-space wrap>
                         <a-tag :color="metricStatusColor(check.status)">
                           {{
@@ -600,21 +614,23 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
                       <a-typography-text type="secondary">
                         {{ formatCheckValue(check) }}
                       </a-typography-text>
-                    </div>
+                    </a-row>
                     <a-progress
                       :percent="check.percent"
                       :status="metricProgressStatus(check.status)"
                       size="small"
+                      aria-hidden="true"
                     />
-                  </div>
+                  </a-space>
                 </a-list-item>
               </a-list>
             </a-card>
+            </a-grid-item>
 
+            <a-grid-item :span="{ xs: 1, xl: 3 }">
             <a-card
               :title="t('admin.jobsPage.metrics.activityTitle')"
               :bordered="true"
-              class="!rounded-none"
             >
               <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" bordered size="small">
                 <a-descriptions-item :label="t('admin.jobsPage.metrics.slowQueries')">
@@ -667,7 +683,8 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
                 </a-descriptions-item>
               </a-descriptions>
             </a-card>
-          </div>
+            </a-grid-item>
+          </a-grid>
 
           <a-divider />
 
@@ -740,5 +757,5 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
         </template>
       </a-spin>
     </a-card>
-  </section>
+  </a-space>
 </template>

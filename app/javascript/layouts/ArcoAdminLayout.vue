@@ -987,14 +987,14 @@ watch(isDark, syncArcoTheme, { immediate: true })
   min-width: 0;
   padding: 12px 16px;
   font-size: 12px;
-  color: var(--color-text-3);
+  color: var(--color-text-2);
   margin: 0 8px 8px;
   border: 1px solid var(--mc-admin-border, var(--color-border-2));
   border-radius: 8px;
   background: var(--mc-admin-surface-muted, var(--color-fill-1));
 }
 .arco-admin-sider__footer a {
-  color: var(--color-text-3);
+  color: var(--color-text-2);
   text-decoration: none;
 }
 .arco-admin-sider__footer a:hover {

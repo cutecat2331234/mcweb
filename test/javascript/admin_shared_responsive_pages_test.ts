@@ -44,22 +44,25 @@ test('webhook subscriptions use Arco responsive cards and preserve SPA edit navi
   assert.match(source, /:span="\{ xs: 0, md: 24 \}"/)
   assert.match(source, /<a-descriptions\b/)
   assert.match(source, /:scroll="\{ minWidth: 1120 \}"/)
-  assert.match(source, /:href="subscription\.editUrl"/)
+  assert.match(source, /router\.visit\(url, \{ preserveScroll: true \}\)/)
+  assert.match(source, /@click="visit\(subscription\.editUrl\)"/)
+  assert.doesNotMatch(source, /:href="(?:subscription\.editUrl|record\.editUrl|newUrl)"/)
   assert.doesNotMatch(source, /<style\b/)
   assertNoHardReload(source)
 })
 
-test('dashboard relies on Arco responsive primitives without page-scoped CSS', () => {
+test('dashboard relies on Arco responsive primitives with one bounded semantic style block', () => {
   const source = pageSource('Dashboard/Index.vue')
 
-  assert.match(source, /<a-row\b/)
-  assert.match(source, /:xs="24"/)
-  assert.match(source, /:sm="12"/)
+  assert.match(source, /<a-grid\b/)
+  assert.match(source, /:cols="\{ xs: 1, sm: 2, lg: 3, xl: 4 \}"/)
+  assert.match(source, /:span="metricSpan\(index\)"/)
   assert.match(source, /<a-statistic\b/)
   assert.match(source, /<a-typography-title\b/)
   assert.match(source, /:body-style="\{ minWidth: 0 \}"/)
-  assert.match(source, /:scroll="\{ minWidth: 640 \}"/)
-  assert.doesNotMatch(source, /<style\b/)
+  assert.match(source, /:scroll="\{ x: 720 \}"/)
+  assert.equal((source.match(/<style\b/g) ?? []).length, 1)
+  assert.match(source, /\.admin-dashboard :deep\(\.arco-card-body\)/)
   assertNoHardReload(source)
 })
 

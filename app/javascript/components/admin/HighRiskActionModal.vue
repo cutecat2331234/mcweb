@@ -155,14 +155,13 @@ async function execute() {
     :width="'min(600px, calc(100vw - 32px))'"
     @cancel="close"
   >
-    <a-steps :current="step" size="small" class="mb-5">
+    <a-steps :current="step" size="small">
       <a-step :title="t('admin.highRisk.stepReason')" />
       <a-step :title="t('admin.highRisk.stepConfirm')" />
     </a-steps>
 
     <a-alert
       v-if="errorMessage"
-      class="mb-4"
       type="error"
       show-icon
       :closable="false"
@@ -171,7 +170,6 @@ async function execute() {
     </a-alert>
 
     <a-alert
-      class="mb-5"
       type="warning"
       show-icon
       :closable="false"
@@ -198,38 +196,42 @@ async function execute() {
           />
         </a-form-item>
 
-        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <a-button class="w-full sm:w-auto" :disabled="authorizing" @click="close">
-            {{ t('common.cancel') }}
-          </a-button>
-          <a-button
-            class="w-full sm:w-auto"
-            type="primary"
-            status="warning"
-            :loading="authorizing"
-            :disabled="!canAuthorize"
-            @click="authorize"
-          >
-            {{ t('admin.highRisk.preview') }}
-          </a-button>
-        </div>
+        <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="8" :row-gap="8">
+          <a-grid-item>
+            <a-button long :disabled="authorizing" @click="close">
+              {{ t('common.cancel') }}
+            </a-button>
+          </a-grid-item>
+          <a-grid-item>
+            <a-button
+              long
+              type="primary"
+              status="warning"
+              :loading="authorizing"
+              :disabled="!canAuthorize"
+              @click="authorize"
+            >
+              {{ t('admin.highRisk.preview') }}
+            </a-button>
+          </a-grid-item>
+        </a-grid>
       </template>
 
       <template v-else>
-        <a-descriptions :column="1" bordered size="small" class="mb-4">
+        <a-descriptions :column="1" bordered size="small">
           <a-descriptions-item
             v-for="item in authorization.preview_items"
             :key="item.label"
             :label="item.label"
           >
-            <span class="break-words">{{ item.value }}</span>
+            <a-typography-paragraph copyable>{{ item.value }}</a-typography-paragraph>
           </a-descriptions-item>
           <a-descriptions-item :label="t('admin.highRisk.requestId')">
-            <code class="break-all text-xs">{{ authorization.request_id }}</code>
+            <a-typography-text code copyable>{{ authorization.request_id }}</a-typography-text>
           </a-descriptions-item>
         </a-descriptions>
 
-        <a-alert type="info" show-icon class="mb-4">
+        <a-alert type="info" show-icon>
           {{
             t('admin.highRisk.expires', {
               minutes: Math.max(1, Math.ceil(authorization.expires_in / 60)),
@@ -249,30 +251,34 @@ async function execute() {
             autocomplete="off"
           />
           <template #extra>
-            <div class="mt-1 grid gap-2">
-              <span>{{ t('admin.highRisk.confirmationHint') }}</span>
-              <a-tag color="orangered" class="w-fit max-w-full">
-                <code class="break-all">{{ authorization.confirmation }}</code>
+            <a-space direction="vertical" :size="8" fill>
+              <a-typography-text>{{ t('admin.highRisk.confirmationHint') }}</a-typography-text>
+              <a-tag color="orangered">
+                <a-typography-text code copyable>{{ authorization.confirmation }}</a-typography-text>
               </a-tag>
-            </div>
+            </a-space>
           </template>
         </a-form-item>
 
-        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <a-button class="w-full sm:w-auto" :disabled="submitting" @click="editRequest">
-            {{ t('admin.highRisk.backToEdit') }}
-          </a-button>
-          <a-button
-            class="w-full sm:w-auto"
-            type="primary"
-            status="danger"
-            :loading="submitting"
-            :disabled="!canSubmit"
-            @click="execute"
-          >
-            {{ t('admin.highRisk.execute') }}
-          </a-button>
-        </div>
+        <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="8" :row-gap="8">
+          <a-grid-item>
+            <a-button long :disabled="submitting" @click="editRequest">
+              {{ t('admin.highRisk.backToEdit') }}
+            </a-button>
+          </a-grid-item>
+          <a-grid-item>
+            <a-button
+              long
+              type="primary"
+              status="danger"
+              :loading="submitting"
+              :disabled="!canSubmit"
+              @click="execute"
+            >
+              {{ t('admin.highRisk.execute') }}
+            </a-button>
+          </a-grid-item>
+        </a-grid>
       </template>
     </a-form>
   </a-modal>

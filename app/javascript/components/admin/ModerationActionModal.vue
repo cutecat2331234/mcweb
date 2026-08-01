@@ -9,6 +9,8 @@ import {
   DescriptionsItem,
   Form,
   FormItem,
+  Grid,
+  GridItem,
   Input,
   InputNumber,
   Modal,
@@ -278,7 +280,7 @@ async function execute() {
     :width="'min(720px, calc(100vw - 24px))'"
     @cancel="close"
   >
-    <Steps :current="currentStep" size="small" class="mb-5">
+    <Steps :current="currentStep" size="small">
       <Step :title="t('admin.moderationWorkbench.actionModal.steps.reason')" />
       <Step :title="t('admin.moderationWorkbench.actionModal.steps.confirm')" />
       <Step :title="t('admin.moderationWorkbench.actionModal.steps.results')" />
@@ -289,7 +291,6 @@ async function execute() {
       type="error"
       show-icon
       :closable="false"
-      class="mb-4"
     >
       {{ errorMessage }}
     </Alert>
@@ -299,56 +300,51 @@ async function execute() {
         :type="execution.results.every((item) => resultColor(item.status) === 'green') ? 'success' : 'warning'"
         show-icon
         :closable="false"
-        class="mb-4"
         :title="execution.replayed
           ? t('admin.moderationWorkbench.actionModal.replayed')
           : t('admin.moderationWorkbench.actionModal.completed')"
       />
 
-      <Descriptions :column="1" bordered size="small" class="mb-4">
+      <Descriptions :column="1" bordered size="small">
         <DescriptionsItem :label="t('admin.moderationWorkbench.actionModal.requestId')">
-          <code class="break-all text-xs">{{ execution.request_id }}</code>
+          <TypographyText code copyable>{{ execution.request_id }}</TypographyText>
         </DescriptionsItem>
       </Descriptions>
 
-      <div class="max-h-[46vh] overflow-auto rounded-lg">
-        <Table
-          :data="execution.results"
-          :pagination="false"
-          :bordered="{ wrapper: true }"
-          :scroll="{ minWidth: 560 }"
-          row-key="case_id"
-        >
-          <template #columns>
-            <TableColumn
-              :title="t('admin.moderationWorkbench.actionModal.case')"
-              data-index="case_id"
-              :width="110"
-            />
-            <TableColumn
-              :title="t('admin.moderationWorkbench.actionModal.status')"
-              :width="140"
-            >
-              <template #cell="{ record }">
-                <Tag :color="resultColor(record.status)">
-                  {{ t(`admin.moderationWorkbench.resultStatuses.${record.status}`) }}
-                </Tag>
-              </template>
-            </TableColumn>
-            <TableColumn
-              :title="t('admin.moderationWorkbench.actionModal.message')"
-              data-index="message"
-              :width="310"
-            />
-          </template>
-        </Table>
-      </div>
+      <Table
+        :data="execution.results"
+        :pagination="false"
+        :bordered="{ wrapper: true }"
+        :scroll="{ minWidth: 560, maxHeight: 420 }"
+        row-key="case_id"
+      >
+        <template #columns>
+          <TableColumn
+            :title="t('admin.moderationWorkbench.actionModal.case')"
+            data-index="case_id"
+            :width="110"
+          />
+          <TableColumn
+            :title="t('admin.moderationWorkbench.actionModal.status')"
+            :width="140"
+          >
+            <template #cell="{ record }">
+              <Tag :color="resultColor(record.status)">
+                {{ t(`admin.moderationWorkbench.resultStatuses.${record.status}`) }}
+              </Tag>
+            </template>
+          </TableColumn>
+          <TableColumn
+            :title="t('admin.moderationWorkbench.actionModal.message')"
+            data-index="message"
+            :width="310"
+          />
+        </template>
+      </Table>
 
-      <div class="mt-5 flex justify-end">
-        <Button type="primary" class="w-full sm:w-auto" @click="close">
-          {{ t('admin.moderationWorkbench.actionModal.done') }}
-        </Button>
-      </div>
+      <Button type="primary" long @click="close">
+        {{ t('admin.moderationWorkbench.actionModal.done') }}
+      </Button>
     </template>
 
     <Form v-else layout="vertical">
@@ -357,7 +353,6 @@ async function execute() {
           type="warning"
           show-icon
           :closable="false"
-          class="mb-4"
           :title="t('admin.moderationWorkbench.actionModal.warning')"
         />
 
@@ -377,34 +372,38 @@ async function execute() {
           />
         </FormItem>
 
-        <div v-if="action === 'warn_user'" class="grid gap-3 sm:grid-cols-2">
-          <FormItem
-            field="points"
-            :label="t('admin.moderationWorkbench.actionModal.warningPoints')"
-            required
-          >
-            <InputNumber
-              v-model="warningPoints"
-              :min="1"
-              :max="10"
-              class="w-full"
-              :disabled="authorizing"
-            />
-          </FormItem>
-          <FormItem
-            field="expire_days"
-            :label="t('admin.moderationWorkbench.actionModal.warningExpireDays')"
-            required
-          >
-            <InputNumber
-              v-model="warningExpireDays"
-              :min="0"
-              :max="3650"
-              class="w-full"
-              :disabled="authorizing"
-            />
-          </FormItem>
-        </div>
+        <Grid v-if="action === 'warn_user'" :cols="{ xs: 1, sm: 2 }" :col-gap="12">
+          <GridItem>
+            <FormItem
+              field="points"
+              :label="t('admin.moderationWorkbench.actionModal.warningPoints')"
+              required
+            >
+              <InputNumber
+                v-model="warningPoints"
+                :min="1"
+                :max="10"
+                long
+                :disabled="authorizing"
+              />
+            </FormItem>
+          </GridItem>
+          <GridItem>
+            <FormItem
+              field="expire_days"
+              :label="t('admin.moderationWorkbench.actionModal.warningExpireDays')"
+              required
+            >
+              <InputNumber
+                v-model="warningExpireDays"
+                :min="0"
+                :max="3650"
+                long
+                :disabled="authorizing"
+              />
+            </FormItem>
+          </GridItem>
+        </Grid>
 
         <FormItem
           v-if="action === 'mute_user' || action === 'ban_user'"
@@ -419,26 +418,30 @@ async function execute() {
             v-model="durationDays"
             :min="action === 'ban_user' ? 0 : 1"
             :max="3650"
-            class="w-full"
+            long
             :disabled="authorizing"
           />
         </FormItem>
 
-        <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <Button class="w-full sm:w-auto" :disabled="authorizing" @click="close">
-            {{ t('admin.moderationWorkbench.common.cancel') }}
-          </Button>
-          <Button
-            type="primary"
-            status="warning"
-            class="w-full sm:w-auto"
-            :loading="authorizing"
-            :disabled="!canPreview"
-            @click="authorize"
-          >
-            {{ t('admin.moderationWorkbench.actionModal.preview') }}
-          </Button>
-        </div>
+        <Grid :cols="{ xs: 1, sm: 2 }" :col-gap="8" :row-gap="8">
+          <GridItem>
+            <Button long :disabled="authorizing" @click="close">
+              {{ t('admin.moderationWorkbench.common.cancel') }}
+            </Button>
+          </GridItem>
+          <GridItem>
+            <Button
+              type="primary"
+              status="warning"
+              long
+              :loading="authorizing"
+              :disabled="!canPreview"
+              @click="authorize"
+            >
+              {{ t('admin.moderationWorkbench.actionModal.preview') }}
+            </Button>
+          </GridItem>
+        </Grid>
       </template>
 
       <template v-else>
@@ -446,19 +449,17 @@ async function execute() {
           type="info"
           show-icon
           :closable="false"
-          class="mb-4"
           :title="t('admin.moderationWorkbench.actionModal.expiresAt', {
             time: formatTime(authorization.expires_at),
           })"
         />
 
-        <div class="mb-4 max-h-[38vh] space-y-3 overflow-auto pr-1">
+        <Space direction="vertical" :size="12" fill>
           <Card
             v-for="item in authorization.preview"
             :key="item.case_id"
-            :bordered="false"
+            :bordered="true"
             size="small"
-            class="bg-[var(--color-fill-1)]"
           >
             <template #title>
               {{ t('admin.moderationWorkbench.actionModal.caseWithId', { id: item.case_id }) }}
@@ -469,11 +470,11 @@ async function execute() {
                 :key="key"
                 :label="t(`admin.moderationWorkbench.preview.${key}`)"
               >
-                <span class="break-words">{{ displayPreviewValue(value) }}</span>
+                <TypographyText>{{ displayPreviewValue(value) }}</TypographyText>
               </DescriptionsItem>
             </Descriptions>
           </Card>
-        </div>
+        </Space>
 
         <FormItem
           field="typed_confirmation"
@@ -487,31 +488,36 @@ async function execute() {
             autocomplete="off"
           />
           <template #extra>
-            <div class="mt-2 grid gap-2">
+            <Space direction="vertical" :size="8" fill>
               <TypographyText type="secondary">
                 {{ t('admin.moderationWorkbench.actionModal.typedConfirmationHint') }}
               </TypographyText>
-              <Tag color="orangered" class="w-fit max-w-full">
-                <code class="break-all">{{ authorization.typed_confirmation }}</code>
+              <Tag color="orangered">
+                <TypographyText code copyable>{{ authorization.typed_confirmation }}</TypographyText>
               </Tag>
-            </div>
+            </Space>
           </template>
         </FormItem>
 
-        <Space wrap class="w-full justify-end">
-          <Button :disabled="executing" @click="editRequest">
-            {{ t('admin.moderationWorkbench.actionModal.back') }}
-          </Button>
-          <Button
-            type="primary"
-            status="danger"
-            :loading="executing"
-            :disabled="!canExecute"
-            @click="execute"
-          >
-            {{ t('admin.moderationWorkbench.actionModal.execute') }}
-          </Button>
-        </Space>
+        <Grid :cols="{ xs: 1, sm: 2 }" :col-gap="8" :row-gap="8">
+          <GridItem>
+            <Button long :disabled="executing" @click="editRequest">
+              {{ t('admin.moderationWorkbench.actionModal.back') }}
+            </Button>
+          </GridItem>
+          <GridItem>
+            <Button
+              type="primary"
+              status="danger"
+              long
+              :loading="executing"
+              :disabled="!canExecute"
+              @click="execute"
+            >
+              {{ t('admin.moderationWorkbench.actionModal.execute') }}
+            </Button>
+          </GridItem>
+        </Grid>
       </template>
     </Form>
   </Modal>

@@ -27,8 +27,12 @@ test('dispute workbench uses Arco hierarchy, filters, Drawer, Timeline, and dead
   for (const filter of ['filters.status', 'filters.provider', 'filters.risk', 'filters.assignee', 'filters.due']) {
     assert.match(source, new RegExp(filter.replace('.', '\\.')))
   }
-  assert.match(source, /risk-summary-card/)
-  assert.match(source, /risk-table/)
+  assert.match(source, /:cols="\{ xs: 1, sm: 2, lg: 5 \}"/)
+  assert.match(source, /:span="\{ xs: 24, sm: 12, xl: 4 \}"/)
+  assert.doesNotMatch(
+    source,
+    /\s(?:class|:class|v-bind:class|style|:style|v-bind:style)=|<style\b|<(?:form|label|input|select|textarea)(?:\s|>)/,
+  )
   assert.doesNotMatch(source, /window\.location|location\.reload/)
 })
 

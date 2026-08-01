@@ -1,31 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import {
-  Alert,
-  Button,
-  Card,
-  DatePicker,
-  Empty,
-  Form,
-  FormItem,
-  Grid,
-  GridItem,
-  Input,
-  InputSearch,
-  Modal,
-  Option,
-  PageHeader,
-  Pagination,
-  Select,
-  Statistic,
-  Table,
-  TableColumn,
-  Tag,
-  Textarea,
-  TypographyText,
-} from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { postJson } from '@/lib/http'
@@ -281,7 +257,7 @@ function formatMoney(amount: number | null | undefined, currency: string | null 
       style: 'currency',
       currency,
     })
-    const fractionDigits = formatter.resolvedOptions().maximumFractionDigits
+    const fractionDigits = formatter.resolvedOptions().maximumFractionDigits ?? 2
     return formatter.format(amount / (10 ** fractionDigits))
   } catch {
     return `${amount} ${currency}`
@@ -488,372 +464,398 @@ function submitManualTrigger() {
 </script>
 
 <template>
-  <section>
-    <PageHeader
+  <a-space direction="vertical" :size="16" fill>
+    <a-page-header
       :title="t('admin.paymentReconciliation.title')"
       :subtitle="t('admin.paymentReconciliation.subtitle')"
       :show-back="false"
-      class="mb-5 !px-0"
     />
-
-    <Alert
+    <a-alert
       type="warning"
       show-icon
       :closable="false"
       :title="t('admin.paymentReconciliation.safetyNotice')"
-      class="mb-3"
     />
-    <Alert
+    <a-alert
       type="info"
       show-icon
       :closable="false"
       :title="t('admin.paymentReconciliation.scheduleNotice')"
-      class="mb-5"
     />
 
-    <Grid :cols="{ xs: 1, sm: 2, xl: 5 }" :col-gap="16" :row-gap="16" class="mb-5">
-      <GridItem>
-        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
-          <Statistic :title="t('admin.paymentReconciliation.total')" :value="summary.total" />
-        </Card>
-      </GridItem>
-      <GridItem>
-        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
-          <Statistic :title="t('admin.paymentReconciliation.open')" :value="summary.open" />
-        </Card>
-      </GridItem>
-      <GridItem>
-        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
-          <Statistic
+    <a-grid :cols="{ xs: 1, sm: 2, xl: 5 }" :col-gap="12" :row-gap="12">
+      <a-grid-item>
+        <a-card :bordered="false" size="small">
+          <a-statistic :title="t('admin.paymentReconciliation.total')" :value="summary.total" />
+        </a-card>
+      </a-grid-item>
+      <a-grid-item>
+        <a-card :bordered="false" size="small">
+          <a-statistic :title="t('admin.paymentReconciliation.open')" :value="summary.open" />
+        </a-card>
+      </a-grid-item>
+      <a-grid-item>
+        <a-card :bordered="false" size="small">
+          <a-statistic
             :title="t('admin.paymentReconciliation.acknowledged')"
             :value="summary.acknowledged"
           />
-        </Card>
-      </GridItem>
-      <GridItem>
-        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
-          <Statistic :title="t('admin.paymentReconciliation.ignored')" :value="summary.ignored" />
-        </Card>
-      </GridItem>
-      <GridItem>
-        <Card :bordered="false" class="bg-[var(--color-fill-1)]">
-          <Statistic :title="t('admin.paymentReconciliation.resolved')" :value="summary.resolved" />
-        </Card>
-      </GridItem>
-    </Grid>
+        </a-card>
+      </a-grid-item>
+      <a-grid-item>
+        <a-card :bordered="false" size="small">
+          <a-statistic
+            :title="t('admin.paymentReconciliation.ignored')"
+            :value="summary.ignored"
+          />
+        </a-card>
+      </a-grid-item>
+      <a-grid-item>
+        <a-card :bordered="false" size="small">
+          <a-statistic
+            :title="t('admin.paymentReconciliation.resolved')"
+            :value="summary.resolved"
+          />
+        </a-card>
+      </a-grid-item>
+    </a-grid>
 
-    <Card v-if="manualTrigger.allowed" :bordered="false" class="mb-5">
-      <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div class="min-w-0 max-w-3xl">
-          <h2 class="text-lg font-semibold">
-            {{ t('admin.paymentReconciliation.manualTitle') }}
-          </h2>
-          <TypographyText type="secondary" class="mt-1 block leading-6">
-            {{ t('admin.paymentReconciliation.manualHint') }}
-          </TypographyText>
-        </div>
-
-        <Button
-          v-if="manualTrigger.ready"
-          type="primary"
-          status="warning"
-          class="w-full shrink-0 sm:w-auto"
-          :disabled="manualSubmitting"
-          @click="openManualTrigger"
-        >
-          {{ t('admin.paymentReconciliation.manualOpen') }}
-        </Button>
-      </div>
-
-      <Alert
-        v-if="!manualTrigger.ready"
-        type="warning"
-        show-icon
-        :closable="false"
-        :title="t('admin.paymentReconciliation.manualUnavailable')"
-        class="mt-4"
-      />
-    </Card>
-
-    <Card :bordered="false" class="mb-5">
-      <div class="mb-4 flex flex-wrap items-start justify-between gap-2">
-        <div>
-          <h2 class="text-lg font-semibold">{{ t('admin.paymentReconciliation.runHistory') }}</h2>
-          <TypographyText type="secondary">
-            {{ t('admin.paymentReconciliation.runHistoryHint') }}
-          </TypographyText>
-        </div>
-      </div>
-
-      <div class="overflow-x-auto">
-        <Table
-          :data="runs"
-          :pagination="false"
-          :bordered="false"
-          :scroll="{ minWidth: 1080 }"
-          row-key="id"
-          stripe
-        >
-          <template #columns>
-            <TableColumn :title="t('admin.paymentReconciliation.window')" :width="170">
-              <template #cell="{ record }">
-                <div class="space-y-1">
-                  <p class="font-medium">{{ formatWindow(record) }}</p>
-                  <Tag size="small" :color="record.mode === 'live' ? 'red' : 'arcoblue'">
-                    {{ modeLabel(record.mode) }}
-                  </Tag>
-                </div>
-              </template>
-            </TableColumn>
-            <TableColumn :title="t('admin.paymentReconciliation.runState')" :width="190">
-              <template #cell="{ record }">
-                <div class="space-y-1">
-                  <Tag :color="statusColor(record.status)">{{ statusLabel(record.status) }}</Tag>
-                  <p class="text-xs text-[var(--color-text-3)]">{{ phaseLabel(record.phase) }}</p>
-                </div>
-              </template>
-            </TableColumn>
-            <TableColumn :title="t('admin.paymentReconciliation.comparison')" :width="280">
-              <template #cell="{ record }">
-                <div class="space-y-1 text-sm">
-                  <p>
-                    {{ t('admin.paymentReconciliation.checked', {
-                      payments: record.payments_checked,
-                      refunds: record.refunds_checked,
-                    }) }}
-                  </p>
-                  <p class="text-[var(--color-text-3)]">
-                    {{ t('admin.paymentReconciliation.findings', {
-                      count: record.discrepancies_count,
-                    }) }}
-                  </p>
-                </div>
-              </template>
-            </TableColumn>
-            <TableColumn :title="t('admin.paymentReconciliation.attempts', { count: '' })" :width="150">
-              <template #cell="{ record }">
-                {{ t('admin.paymentReconciliation.attempts', { count: record.attempt_count }) }}
-              </template>
-            </TableColumn>
-            <TableColumn :title="t('admin.paymentReconciliation.status')" :width="240">
-              <template #cell="{ record }">
-                <TypographyText v-if="record.failure_code" type="danger">
-                  {{ t('admin.paymentReconciliation.failure', { code: record.failure_code }) }}
-                </TypographyText>
-                <TypographyText v-else type="secondary">
-                  {{ formatTime(record.completed_at || record.started_at) }}
-                </TypographyText>
-              </template>
-            </TableColumn>
-          </template>
-          <template #empty>
-            <Empty :description="t('admin.paymentReconciliation.noRuns')" />
-          </template>
-        </Table>
-      </div>
-    </Card>
-
-    <Card :bordered="false">
-      <div class="mb-5 grid gap-3 md:grid-cols-2 xl:grid-cols-6">
-        <Select
-          v-model="status"
-          allow-clear
-          :placeholder="t('admin.paymentReconciliation.allStatuses')"
-          class="w-full"
-          @change="visit({ status: status || undefined, page: undefined })"
-          @clear="visit({ status: undefined, page: undefined })"
-        >
-          <Option v-for="item in filterOptions.statuses" :key="item" :value="item">
-            {{ statusLabel(item) }}
-          </Option>
-        </Select>
-
-        <Select
-          v-model="kind"
-          allow-clear
-          :placeholder="t('admin.paymentReconciliation.allKinds')"
-          class="w-full"
-          @change="visit({ kind: kind || undefined, page: undefined })"
-          @clear="visit({ kind: undefined, page: undefined })"
-        >
-          <Option v-for="item in filterOptions.kinds" :key="item" :value="item">
-            {{ kindLabel(item) }}
-          </Option>
-        </Select>
-
-        <Select
-          v-model="subjectType"
-          allow-clear
-          :placeholder="t('admin.paymentReconciliation.allSubjects')"
-          class="w-full"
-          @change="visit({ subject_type: subjectType || undefined, page: undefined })"
-          @clear="visit({ subject_type: undefined, page: undefined })"
-        >
-          <Option v-for="item in filterOptions.subject_types" :key="item" :value="item">
-            {{ subjectLabel(item) }}
-          </Option>
-        </Select>
-
-        <Select
-          v-model="provider"
-          allow-clear
-          :placeholder="t('admin.paymentReconciliation.allProviders')"
-          class="w-full"
-          @change="visit({ provider: provider || undefined, page: undefined })"
-          @clear="visit({ provider: undefined, page: undefined })"
-        >
-          <Option v-for="item in filterOptions.providers" :key="item" :value="item">
-            {{ item }}
-          </Option>
-        </Select>
-
-        <Select
-          v-model="mode"
-          allow-clear
-          :placeholder="t('admin.paymentReconciliation.allModes')"
-          class="w-full"
-          @change="visit({ mode: mode || undefined, page: undefined })"
-          @clear="visit({ mode: undefined, page: undefined })"
-        >
-          <Option v-for="item in filterOptions.modes" :key="item" :value="item">
-            {{ modeLabel(item) }}
-          </Option>
-        </Select>
-
-        <InputSearch
-          v-model="query"
-          allow-clear
-          search-button
-          :placeholder="t('admin.paymentReconciliation.searchPlaceholder')"
-          class="w-full md:col-span-2 xl:col-span-1"
-          @search="visit({ q: query || undefined, page: undefined })"
-          @clear="visit({ q: undefined, page: undefined })"
+    <a-card v-if="manualTrigger.allowed" :bordered="false">
+      <a-space direction="vertical" :size="16" fill>
+        <a-space align="center" justify="space-between" wrap fill>
+          <a-space direction="vertical" size="mini">
+            <a-typography-title :heading="5">
+              {{ t('admin.paymentReconciliation.manualTitle') }}
+            </a-typography-title>
+            <a-typography-text type="secondary">
+              {{ t('admin.paymentReconciliation.manualHint') }}
+            </a-typography-text>
+          </a-space>
+          <a-button
+            v-if="manualTrigger.ready"
+            type="primary"
+            status="warning"
+            :disabled="manualSubmitting"
+            @click="openManualTrigger"
+          >
+            {{ t('admin.paymentReconciliation.manualOpen') }}
+          </a-button>
+        </a-space>
+        <a-alert
+          v-if="!manualTrigger.ready"
+          type="warning"
+          show-icon
+          :closable="false"
+          :title="t('admin.paymentReconciliation.manualUnavailable')"
         />
-      </div>
+      </a-space>
+    </a-card>
 
-      <TypographyText type="secondary" class="mb-3 hidden lg:block">
-        {{ t('admin.paymentReconciliation.scrollHint') }}
-      </TypographyText>
+    <a-card :bordered="false">
+      <template #title>
+        <a-space direction="vertical" size="mini" fill>
+          <a-typography-title :heading="5">
+            {{ t('admin.paymentReconciliation.runHistory') }}
+          </a-typography-title>
+          <a-typography-text type="secondary">
+            {{ t('admin.paymentReconciliation.runHistoryHint') }}
+          </a-typography-text>
+        </a-space>
+      </template>
+      <a-table
+        :data="runs"
+        :pagination="false"
+        :bordered="false"
+        :scroll="{ x: 1080 }"
+        row-key="id"
+        stripe
+      >
+        <template #columns>
+          <a-table-column :title="t('admin.paymentReconciliation.window')" :width="180">
+            <template #cell="{ record }">
+              <a-space direction="vertical" size="mini" fill>
+                <a-typography-text bold>{{ formatWindow(record) }}</a-typography-text>
+                <a-tag size="small" :color="record.mode === 'live' ? 'red' : 'arcoblue'">
+                  {{ modeLabel(record.mode) }}
+                </a-tag>
+              </a-space>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.paymentReconciliation.runState')" :width="190">
+            <template #cell="{ record }">
+              <a-space direction="vertical" size="mini" fill>
+                <a-tag :color="statusColor(record.status)">
+                  {{ statusLabel(record.status) }}
+                </a-tag>
+                <a-typography-text type="secondary">
+                  {{ phaseLabel(record.phase) }}
+                </a-typography-text>
+              </a-space>
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.paymentReconciliation.comparison')" :width="300">
+            <template #cell="{ record }">
+              <a-space direction="vertical" size="mini" fill>
+                <a-typography-text>
+                  {{ t('admin.paymentReconciliation.checked', {
+                    payments: record.payments_checked,
+                    refunds: record.refunds_checked,
+                  }) }}
+                </a-typography-text>
+                <a-typography-text type="secondary">
+                  {{ t('admin.paymentReconciliation.findings', {
+                    count: record.discrepancies_count,
+                  }) }}
+                </a-typography-text>
+              </a-space>
+            </template>
+          </a-table-column>
+          <a-table-column
+            :title="t('admin.paymentReconciliation.attempts', { count: '' })"
+            :width="150"
+          >
+            <template #cell="{ record }">
+              {{ t('admin.paymentReconciliation.attempts', { count: record.attempt_count }) }}
+            </template>
+          </a-table-column>
+          <a-table-column :title="t('admin.paymentReconciliation.status')" :width="260">
+            <template #cell="{ record }">
+              <a-typography-text v-if="record.failure_code" type="danger">
+                {{ t('admin.paymentReconciliation.failure', { code: record.failure_code }) }}
+              </a-typography-text>
+              <a-typography-text v-else type="secondary">
+                {{ formatTime(record.completed_at || record.started_at) }}
+              </a-typography-text>
+            </template>
+          </a-table-column>
+        </template>
+        <template #empty>
+          <a-empty :description="t('admin.paymentReconciliation.noRuns')" />
+        </template>
+      </a-table>
+    </a-card>
 
-      <div class="hidden overflow-x-auto lg:block">
-        <Table
+    <a-card :bordered="false">
+      <a-space direction="vertical" :size="16" fill>
+        <a-grid :cols="{ xs: 1, md: 2, xl: 6 }" :col-gap="12" :row-gap="12">
+          <a-grid-item>
+            <a-select
+              v-model="status"
+              allow-clear
+              :placeholder="t('admin.paymentReconciliation.allStatuses')"
+              @change="visit({ status: status || undefined, page: undefined })"
+              @clear="visit({ status: undefined, page: undefined })"
+            >
+              <a-option v-for="item in filterOptions.statuses" :key="item" :value="item">
+                {{ statusLabel(item) }}
+              </a-option>
+            </a-select>
+          </a-grid-item>
+          <a-grid-item>
+            <a-select
+              v-model="kind"
+              allow-clear
+              :placeholder="t('admin.paymentReconciliation.allKinds')"
+              @change="visit({ kind: kind || undefined, page: undefined })"
+              @clear="visit({ kind: undefined, page: undefined })"
+            >
+              <a-option v-for="item in filterOptions.kinds" :key="item" :value="item">
+                {{ kindLabel(item) }}
+              </a-option>
+            </a-select>
+          </a-grid-item>
+          <a-grid-item>
+            <a-select
+              v-model="subjectType"
+              allow-clear
+              :placeholder="t('admin.paymentReconciliation.allSubjects')"
+              @change="visit({ subject_type: subjectType || undefined, page: undefined })"
+              @clear="visit({ subject_type: undefined, page: undefined })"
+            >
+              <a-option
+                v-for="item in filterOptions.subject_types"
+                :key="item"
+                :value="item"
+              >
+                {{ subjectLabel(item) }}
+              </a-option>
+            </a-select>
+          </a-grid-item>
+          <a-grid-item>
+            <a-select
+              v-model="provider"
+              allow-clear
+              :placeholder="t('admin.paymentReconciliation.allProviders')"
+              @change="visit({ provider: provider || undefined, page: undefined })"
+              @clear="visit({ provider: undefined, page: undefined })"
+            >
+              <a-option v-for="item in filterOptions.providers" :key="item" :value="item">
+                {{ item }}
+              </a-option>
+            </a-select>
+          </a-grid-item>
+          <a-grid-item>
+            <a-select
+              v-model="mode"
+              allow-clear
+              :placeholder="t('admin.paymentReconciliation.allModes')"
+              @change="visit({ mode: mode || undefined, page: undefined })"
+              @clear="visit({ mode: undefined, page: undefined })"
+            >
+              <a-option v-for="item in filterOptions.modes" :key="item" :value="item">
+                {{ modeLabel(item) }}
+              </a-option>
+            </a-select>
+          </a-grid-item>
+          <a-grid-item>
+            <a-input-search
+              v-model="query"
+              allow-clear
+              search-button
+              :placeholder="t('admin.paymentReconciliation.searchPlaceholder')"
+              @search="visit({ q: query || undefined, page: undefined })"
+              @clear="visit({ q: undefined, page: undefined })"
+            />
+          </a-grid-item>
+        </a-grid>
+
+        <a-alert
+          type="info"
+          show-icon
+          :closable="false"
+          :title="t('admin.paymentReconciliation.scrollHint')"
+        />
+
+        <a-table
           :data="rows"
           :pagination="false"
           :bordered="false"
-          :scroll="{ minWidth: 1710 }"
+          :scroll="{ x: 1710 }"
           row-key="id"
           stripe
         >
           <template #columns>
-            <TableColumn :title="t('admin.paymentReconciliation.discrepancy')" :width="270">
+            <a-table-column
+              :title="t('admin.paymentReconciliation.discrepancy')"
+              :width="270"
+            >
               <template #cell="{ record }">
-                <div class="min-w-0 space-y-1.5">
-                  <p class="truncate font-mono text-xs" :title="record.id">{{ record.id }}</p>
-                  <p class="line-clamp-2 font-medium" :title="kindLabel(record.kind)">
-                    {{ kindLabel(record.kind) }}
-                  </p>
-                  <div class="flex flex-wrap gap-1">
-                    <Tag :color="record.subject_type === 'payment' ? 'arcoblue' : 'purple'">
+                <a-space direction="vertical" size="mini" fill>
+                  <a-typography-text code ellipsis>{{ record.id }}</a-typography-text>
+                  <a-typography-text bold ellipsis>{{ kindLabel(record.kind) }}</a-typography-text>
+                  <a-space wrap>
+                    <a-tag
+                      :color="record.subject_type === 'payment' ? 'arcoblue' : 'purple'"
+                    >
                       {{ subjectLabel(record.subject_type) }}
-                    </Tag>
-                    <Tag :color="statusColor(record.status)">{{ statusLabel(record.status) }}</Tag>
-                  </div>
-                </div>
+                    </a-tag>
+                    <a-tag :color="statusColor(record.status)">
+                      {{ statusLabel(record.status) }}
+                    </a-tag>
+                  </a-space>
+                </a-space>
               </template>
-            </TableColumn>
-
-            <TableColumn :title="t('admin.paymentReconciliation.order')" :width="190">
+            </a-table-column>
+            <a-table-column :title="t('admin.paymentReconciliation.order')" :width="190">
               <template #cell="{ record }">
-                <Link
+                <a-link
                   v-if="record.order_id"
-                  :href="adminRoutes.storeOrder(record.order_id)"
-                  class="arco-link font-medium no-underline"
+                  @click="router.visit(adminRoutes.storeOrder(record.order_id))"
                 >
                   {{ record.order_number }}
-                </Link>
-                <TypographyText v-else type="secondary">—</TypographyText>
+                </a-link>
+                <a-typography-text v-else type="secondary">—</a-typography-text>
               </template>
-            </TableColumn>
-
-            <TableColumn :title="t('admin.paymentReconciliation.reference')" :width="190">
+            </a-table-column>
+            <a-table-column :title="t('admin.paymentReconciliation.reference')" :width="210">
               <template #cell="{ record }">
-                <div class="space-y-1">
-                  <Tag :color="record.mode === 'live' ? 'red' : 'arcoblue'">
+                <a-space direction="vertical" size="mini" fill>
+                  <a-tag :color="record.mode === 'live' ? 'red' : 'arcoblue'">
                     {{ record.provider }} · {{ modeLabel(record.mode) }}
-                  </Tag>
-                  <p class="truncate font-mono text-xs" :title="record.reference || undefined">
+                  </a-tag>
+                  <a-typography-text code ellipsis>
                     {{ record.reference || '—' }}
-                  </p>
-                </div>
+                  </a-typography-text>
+                </a-space>
               </template>
-            </TableColumn>
-
-            <TableColumn :title="t('admin.paymentReconciliation.local')" :width="200">
+            </a-table-column>
+            <a-table-column :title="t('admin.paymentReconciliation.local')" :width="200">
               <template #cell="{ record }">
-                <div class="space-y-1">
-                  <p class="font-semibold">
+                <a-space direction="vertical" size="mini" fill>
+                  <a-typography-text bold>
                     {{ formatMoney(record.local_amount_cents, record.local_currency) }}
-                  </p>
-                  <TypographyText type="secondary">
+                  </a-typography-text>
+                  <a-typography-text type="secondary">
                     {{ record.local_status ? statusLabel(record.local_status) : '—' }}
-                  </TypographyText>
-                </div>
+                  </a-typography-text>
+                </a-space>
               </template>
-            </TableColumn>
-
-            <TableColumn :title="t('admin.paymentReconciliation.provider')" :width="200">
+            </a-table-column>
+            <a-table-column :title="t('admin.paymentReconciliation.provider')" :width="200">
               <template #cell="{ record }">
-                <div class="space-y-1">
-                  <p class="font-semibold">
+                <a-space direction="vertical" size="mini" fill>
+                  <a-typography-text bold>
                     {{ formatMoney(record.provider_amount_cents, record.provider_currency) }}
-                  </p>
-                  <TypographyText type="secondary">
+                  </a-typography-text>
+                  <a-typography-text type="secondary">
                     {{ record.provider_status ? statusLabel(record.provider_status) : '—' }}
-                  </TypographyText>
-                </div>
+                  </a-typography-text>
+                </a-space>
               </template>
-            </TableColumn>
-
-            <TableColumn :title="t('admin.paymentReconciliation.window')" :width="170">
+            </a-table-column>
+            <a-table-column :title="t('admin.paymentReconciliation.window')" :width="210">
               <template #cell="{ record }">
-                <div class="space-y-1">
-                  <p>{{ formatWindow(record.run) }}</p>
-                  <TypographyText type="secondary">
+                <a-space direction="vertical" size="mini" fill>
+                  <a-typography-text>{{ formatWindow(record.run) }}</a-typography-text>
+                  <a-typography-text type="secondary">
                     {{ formatTime(record.first_seen_at) }}
-                  </TypographyText>
-                </div>
+                  </a-typography-text>
+                  <a-typography-text type="secondary">
+                    {{ formatTime(record.last_seen_at) }}
+                  </a-typography-text>
+                </a-space>
               </template>
-            </TableColumn>
-
-            <TableColumn :title="t('admin.paymentReconciliation.review')" :width="290">
+            </a-table-column>
+            <a-table-column :title="t('admin.paymentReconciliation.review')" :width="300">
               <template #cell="{ record }">
-                <div v-if="record.status === 'resolved'" class="space-y-1">
-                  <p class="font-medium">{{ statusLabel(record.status) }}</p>
-                  <p class="text-xs text-[var(--color-text-3)]">
+                <a-space v-if="record.status === 'resolved'" direction="vertical" size="mini">
+                  <a-typography-text bold>{{ statusLabel(record.status) }}</a-typography-text>
+                  <a-typography-text type="secondary">
                     {{ t('admin.paymentReconciliation.autoResolved') }}
-                  </p>
-                </div>
-                <div v-else-if="record.status !== 'open'" class="space-y-1">
-                  <p class="font-medium">{{ statusLabel(record.status) }}</p>
-                  <p class="text-xs text-[var(--color-text-3)]">
+                  </a-typography-text>
+                </a-space>
+                <a-space
+                  v-else-if="record.status !== 'open'"
+                  direction="vertical"
+                  size="mini"
+                  fill
+                >
+                  <a-typography-text bold>{{ statusLabel(record.status) }}</a-typography-text>
+                  <a-typography-text type="secondary">
                     {{ t('admin.paymentReconciliation.reviewedBy', {
                       user: record.reviewed_by,
                       time: formatTime(record.reviewed_at),
                     }) }}
-                  </p>
-                  <p v-if="record.review_note" class="line-clamp-2 text-sm text-[var(--color-text-2)]">
+                  </a-typography-text>
+                  <a-typography-paragraph
+                    v-if="record.review_note"
+                    :ellipsis="{ rows: 2, showTooltip: true }"
+                  >
                     {{ record.review_note }}
-                  </p>
-                </div>
-                <TypographyText v-else type="secondary">
+                  </a-typography-paragraph>
+                </a-space>
+                <a-typography-text v-else type="secondary">
                   {{ t('admin.paymentReconciliation.noReview') }}
-                </TypographyText>
+                </a-typography-text>
               </template>
-            </TableColumn>
-
-            <TableColumn :title="t('admin.paymentReconciliation.actions')" :width="120" fixed="right">
+            </a-table-column>
+            <a-table-column
+              :title="t('admin.paymentReconciliation.actions')"
+              :width="120"
+              fixed="right"
+            >
               <template #cell="{ record }">
-                <Button
+                <a-button
                   v-if="record.action"
                   type="outline"
                   status="warning"
@@ -861,272 +863,194 @@ function submitManualTrigger() {
                   @click="openReview(record)"
                 >
                   {{ t('admin.paymentReconciliation.reviewAction') }}
-                </Button>
+                </a-button>
               </template>
-            </TableColumn>
+            </a-table-column>
           </template>
           <template #empty>
-            <Empty :description="t('admin.paymentReconciliation.empty')" />
+            <a-empty :description="t('admin.paymentReconciliation.empty')" />
           </template>
-        </Table>
-      </div>
+        </a-table>
 
-      <div class="space-y-3 lg:hidden">
-        <Card
-          v-for="row in rows"
-          :key="row.id"
-          :bordered="false"
-          class="bg-[var(--color-fill-1)]"
-        >
-          <div class="space-y-4">
-            <div class="flex flex-wrap items-start justify-between gap-2">
-              <div class="min-w-0 flex-1">
-                <p class="truncate font-mono text-xs text-[var(--color-text-3)]">{{ row.id }}</p>
-                <p class="mt-1 font-semibold">{{ kindLabel(row.kind) }}</p>
-              </div>
-              <Tag :color="statusColor(row.status)">{{ statusLabel(row.status) }}</Tag>
-            </div>
+        <a-space align="center" justify="space-between" wrap fill>
+          <a-typography-text type="secondary">
+            {{ t('admin.paymentReconciliation.range', {
+              from: pagination.from || 0,
+              to: pagination.to || 0,
+              count: pagination.count,
+            }) }}
+          </a-typography-text>
+          <a-pagination
+            v-if="pagination.pages > 1"
+            :current="pagination.page"
+            :total="pagination.count"
+            :page-size="40"
+            :show-page-size="false"
+            @change="visit({ page: $event })"
+          />
+        </a-space>
+      </a-space>
+    </a-card>
 
-            <div class="flex flex-wrap gap-1.5">
-              <Tag :color="row.subject_type === 'payment' ? 'arcoblue' : 'purple'">
-                {{ subjectLabel(row.subject_type) }}
-              </Tag>
-              <Tag :color="row.mode === 'live' ? 'red' : 'arcoblue'">
-                {{ row.provider }} · {{ modeLabel(row.mode) }}
-              </Tag>
-              <Tag v-if="row.reference">{{ row.reference }}</Tag>
-            </div>
-
-            <Link
-              v-if="row.order_id"
-              :href="adminRoutes.storeOrder(row.order_id)"
-              class="arco-link inline-block font-medium no-underline"
-            >
-              {{ row.order_number }}
-            </Link>
-
-            <div class="grid gap-3 sm:grid-cols-2">
-              <div class="rounded-md bg-[var(--color-bg-2)] p-3">
-                <p class="mb-1 text-xs text-[var(--color-text-3)]">
-                  {{ t('admin.paymentReconciliation.local') }}
-                </p>
-                <p class="font-semibold">
-                  {{ formatMoney(row.local_amount_cents, row.local_currency) }}
-                </p>
-                <p class="mt-1 text-sm">{{ row.local_status ? statusLabel(row.local_status) : '—' }}</p>
-              </div>
-              <div class="rounded-md bg-[var(--color-bg-2)] p-3">
-                <p class="mb-1 text-xs text-[var(--color-text-3)]">
-                  {{ t('admin.paymentReconciliation.provider') }}
-                </p>
-                <p class="font-semibold">
-                  {{ formatMoney(row.provider_amount_cents, row.provider_currency) }}
-                </p>
-                <p class="mt-1 text-sm">
-                  {{ row.provider_status ? statusLabel(row.provider_status) : '—' }}
-                </p>
-              </div>
-            </div>
-
-            <div class="flex flex-wrap items-center justify-between gap-3 text-sm">
-              <TypographyText type="secondary">{{ formatWindow(row.run) }}</TypographyText>
-              <Button
-                v-if="row.action"
-                type="outline"
-                status="warning"
-                size="small"
-                @click="openReview(row)"
-              >
-                {{ t('admin.paymentReconciliation.reviewAction') }}
-              </Button>
-            </div>
-          </div>
-        </Card>
-        <Empty v-if="rows.length === 0" :description="t('admin.paymentReconciliation.empty')" />
-      </div>
-
-      <div class="mt-5 flex flex-wrap items-center justify-between gap-3">
-        <TypographyText type="secondary">
-          {{ t('admin.paymentReconciliation.range', {
-            from: pagination.from || 0,
-            to: pagination.to || 0,
-            count: pagination.count,
-          }) }}
-        </TypographyText>
-        <Pagination
-          v-if="pagination.pages > 1"
-          :current="pagination.page"
-          :total="pagination.count"
-          :page-size="40"
-          :show-page-size="false"
-          @change="visit({ page: $event })"
-        />
-      </div>
-    </Card>
-
-    <Modal
+    <a-modal
       v-model:visible="manualModalVisible"
       :title="t('admin.paymentReconciliation.manualDialogTitle')"
       :footer="false"
       :mask-closable="!manualSubmitting && !manualAuthorizationLoading"
       :esc-to-close="!manualSubmitting && !manualAuthorizationLoading"
-      :width="'min(560px, calc(100vw - 32px))'"
+      width="560px"
     >
-      <Alert
-        type="warning"
-        show-icon
-        :closable="false"
-        :title="t('admin.paymentReconciliation.manualWarning')"
-        class="mb-5"
-      />
-
-      <Form :model="manualForm" layout="vertical">
-        <FormItem
-          field="date"
-          :label="t('admin.paymentReconciliation.manualDate')"
-          required
-        >
-          <DatePicker
-            v-model="manualForm.date"
-            value-format="YYYY-MM-DD"
-            format="YYYY-MM-DD"
-            :allow-clear="false"
-            :disabled-date="disabledManualDate"
-            :disabled="manualSubmitting || manualAuthorizationLoading"
-            :placeholder="t('admin.paymentReconciliation.manualDatePlaceholder')"
-            class="w-full"
-          />
-          <template #extra>
-            {{ t('admin.paymentReconciliation.manualRange', {
-              min: manualTrigger.minDate,
-              max: manualTrigger.maxDate,
-            }) }}
-          </template>
-        </FormItem>
-
-        <Alert
-          v-if="manualAuthorizationFailed"
-          type="error"
+      <a-space direction="vertical" :size="16" fill>
+        <a-alert
+          type="warning"
           show-icon
           :closable="false"
-          :title="t('admin.paymentReconciliation.manualUnavailable')"
-          class="mb-4"
+          :title="t('admin.paymentReconciliation.manualWarning')"
         />
-
-        <FormItem
-          field="confirmation"
-          :label="t('admin.paymentReconciliation.manualConfirmation')"
-          required
-        >
-          <Input
-            v-model="manualForm.confirmation"
-            :placeholder="t('admin.paymentReconciliation.manualConfirmationPlaceholder', {
-              confirmation: expectedManualConfirmation,
-            })"
-            :disabled="manualSubmitting || manualAuthorizationLoading"
-            autocomplete="off"
+        <a-form :model="manualForm" layout="vertical">
+          <a-form-item
+            field="date"
+            :label="t('admin.paymentReconciliation.manualDate')"
+            required
+          >
+            <a-date-picker
+              v-model="manualForm.date"
+              value-format="YYYY-MM-DD"
+              format="YYYY-MM-DD"
+              :allow-clear="false"
+              :disabled-date="disabledManualDate"
+              :disabled="manualSubmitting || manualAuthorizationLoading"
+              :placeholder="t('admin.paymentReconciliation.manualDatePlaceholder')"
+            />
+            <template #extra>
+              {{ t('admin.paymentReconciliation.manualRange', {
+                min: manualTrigger.minDate,
+                max: manualTrigger.maxDate,
+              }) }}
+            </template>
+          </a-form-item>
+          <a-alert
+            v-if="manualAuthorizationFailed"
+            type="error"
+            show-icon
+            :closable="false"
+            :title="t('admin.paymentReconciliation.manualUnavailable')"
           />
-          <template #extra>
-            {{ t('admin.paymentReconciliation.manualConfirmationHelp', {
-              confirmation: expectedManualConfirmation,
-            }) }}
-          </template>
-        </FormItem>
-      </Form>
+          <a-form-item
+            field="confirmation"
+            :label="t('admin.paymentReconciliation.manualConfirmation')"
+            required
+          >
+            <a-input
+              v-model="manualForm.confirmation"
+              :placeholder="t('admin.paymentReconciliation.manualConfirmationPlaceholder', {
+                confirmation: expectedManualConfirmation,
+              })"
+              :disabled="manualSubmitting || manualAuthorizationLoading"
+              autocomplete="off"
+            />
+            <template #extra>
+              {{ t('admin.paymentReconciliation.manualConfirmationHelp', {
+                confirmation: expectedManualConfirmation,
+              }) }}
+            </template>
+          </a-form-item>
+        </a-form>
+        <a-space justify="end" wrap fill>
+          <a-button
+            :disabled="manualSubmitting || manualAuthorizationLoading"
+            @click="closeManualTrigger"
+          >
+            {{ t('admin.paymentReconciliation.cancel') }}
+          </a-button>
+          <a-button
+            type="primary"
+            status="warning"
+            :loading="manualSubmitting || manualAuthorizationLoading"
+            :disabled="!canSubmitManual"
+            @click="submitManualTrigger"
+          >
+            {{ t('admin.paymentReconciliation.manualSubmit') }}
+          </a-button>
+        </a-space>
+      </a-space>
+    </a-modal>
 
-      <div class="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end">
-        <Button
-          class="w-full sm:w-auto"
-          :disabled="manualSubmitting || manualAuthorizationLoading"
-          @click="closeManualTrigger"
-        >
-          {{ t('admin.paymentReconciliation.cancel') }}
-        </Button>
-        <Button
-          type="primary"
-          status="warning"
-          class="w-full sm:w-auto"
-          :loading="manualSubmitting || manualAuthorizationLoading"
-          :disabled="!canSubmitManual"
-          @click="submitManualTrigger"
-        >
-          {{ t('admin.paymentReconciliation.manualSubmit') }}
-        </Button>
-      </div>
-    </Modal>
-
-    <Modal
+    <a-modal
       v-model:visible="modalVisible"
       :title="t('admin.paymentReconciliation.reviewTitle')"
       :footer="false"
       :mask-closable="!submitting"
       :esc-to-close="!submitting"
-      :width="'min(620px, calc(100vw - 32px))'"
+      width="620px"
     >
-      <Alert
-        type="warning"
-        show-icon
-        :closable="false"
-        :title="t('admin.paymentReconciliation.reviewWarning')"
-        class="mb-5"
-      />
-
-      <Form :model="reviewForm" layout="vertical">
-        <FormItem field="decision" :label="t('admin.paymentReconciliation.decision')" required>
-          <Select
-            v-model="reviewForm.decision"
-            :placeholder="t('admin.paymentReconciliation.decisionPlaceholder')"
-            :disabled="submitting"
+      <a-space direction="vertical" :size="16" fill>
+        <a-alert
+          type="warning"
+          show-icon
+          :closable="false"
+          :title="t('admin.paymentReconciliation.reviewWarning')"
+        />
+        <a-form :model="reviewForm" layout="vertical">
+          <a-form-item
+            field="decision"
+            :label="t('admin.paymentReconciliation.decision')"
+            required
           >
-            <Option v-for="item in decisions" :key="item" :value="item">
-              {{ decisionLabel(item) }}
-            </Option>
-          </Select>
-        </FormItem>
-
-        <FormItem field="note" :label="t('admin.paymentReconciliation.note')" required>
-          <Textarea
-            v-model="reviewForm.note"
-            :placeholder="t('admin.paymentReconciliation.notePlaceholder')"
-            :max-length="1000"
-            show-word-limit
-            :auto-size="{ minRows: 4, maxRows: 8 }"
-            :disabled="submitting"
-          />
-          <template #extra>{{ t('admin.paymentReconciliation.noteHelp') }}</template>
-        </FormItem>
-
-        <FormItem
-          field="confirmation"
-          :label="t('admin.paymentReconciliation.confirmation')"
-          required
-        >
-          <Input
-            v-model="reviewForm.confirmation"
-            :placeholder="t('admin.paymentReconciliation.confirmationPlaceholder', {
-              id: selected?.id,
-            })"
-            :disabled="submitting"
-            autocomplete="off"
-          />
-          <template #extra>{{ t('admin.paymentReconciliation.confirmationHelp') }}</template>
-        </FormItem>
-      </Form>
-
-      <div class="flex flex-wrap justify-end gap-2 pt-2">
-        <Button :disabled="submitting" @click="closeReview">
-          {{ t('admin.paymentReconciliation.cancel') }}
-        </Button>
-        <Button
-          type="primary"
-          status="danger"
-          :loading="submitting"
-          :disabled="!canSubmit"
-          @click="submitReview"
-        >
-          {{ t('admin.paymentReconciliation.confirmReview') }}
-        </Button>
-      </div>
-    </Modal>
-  </section>
+            <a-select
+              v-model="reviewForm.decision"
+              :placeholder="t('admin.paymentReconciliation.decisionPlaceholder')"
+              :disabled="submitting"
+            >
+              <a-option v-for="item in decisions" :key="item" :value="item">
+                {{ decisionLabel(item) }}
+              </a-option>
+            </a-select>
+          </a-form-item>
+          <a-form-item field="note" :label="t('admin.paymentReconciliation.note')" required>
+            <a-textarea
+              v-model="reviewForm.note"
+              :placeholder="t('admin.paymentReconciliation.notePlaceholder')"
+              :max-length="1000"
+              show-word-limit
+              :auto-size="{ minRows: 4, maxRows: 8 }"
+              :disabled="submitting"
+            />
+            <template #extra>{{ t('admin.paymentReconciliation.noteHelp') }}</template>
+          </a-form-item>
+          <a-form-item
+            field="confirmation"
+            :label="t('admin.paymentReconciliation.confirmation')"
+            required
+          >
+            <a-input
+              v-model="reviewForm.confirmation"
+              :placeholder="t('admin.paymentReconciliation.confirmationPlaceholder', {
+                id: selected?.id,
+              })"
+              :disabled="submitting"
+              autocomplete="off"
+            />
+            <template #extra>
+              {{ t('admin.paymentReconciliation.confirmationHelp') }}
+            </template>
+          </a-form-item>
+        </a-form>
+        <a-space justify="end" wrap fill>
+          <a-button :disabled="submitting" @click="closeReview">
+            {{ t('admin.paymentReconciliation.cancel') }}
+          </a-button>
+          <a-button
+            type="primary"
+            status="danger"
+            :loading="submitting"
+            :disabled="!canSubmit"
+            @click="submitReview"
+          >
+            {{ t('admin.paymentReconciliation.confirmReview') }}
+          </a-button>
+        </a-space>
+      </a-space>
+    </a-modal>
+  </a-space>
 </template>

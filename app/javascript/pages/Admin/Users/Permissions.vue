@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Link } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
   Alert,
@@ -113,17 +113,16 @@ function sourceLabel(source: Source) {
 </script>
 
 <template>
-  <section class="admin-permission-explanation">
+  <Space direction="vertical" :size="16" fill>
     <PageHeader
       :title="t('admin.permissionExplanation.title')"
       :subtitle="t('admin.permissionExplanation.subtitle')"
       :show-back="false"
-      class="mb-5 !px-0"
     >
       <template #extra>
-        <Link :href="backUrl">
-          <Button>{{ t('admin.permissionExplanation.back') }}</Button>
-        </Link>
+        <Button @click="router.visit(backUrl)">
+          {{ t('admin.permissionExplanation.back') }}
+        </Button>
       </template>
     </PageHeader>
 
@@ -132,7 +131,6 @@ function sourceLabel(source: Source) {
       show-icon
       :closable="false"
       :title="t('admin.permissionExplanation.memberViewNotice')"
-      class="mb-4"
     />
     <Alert
       v-if="!user.eligible"
@@ -140,14 +138,13 @@ function sourceLabel(source: Source) {
       show-icon
       :closable="false"
       :title="t('admin.permissionExplanation.ineligibleNotice')"
-      class="mb-4"
     />
 
-    <Card :bordered="false" class="mb-4">
+    <Card :bordered="false">
       <Descriptions :column="{ xs: 1, sm: 2, lg: 4 }" bordered>
         <DescriptionsItem :label="t('admin.permissionExplanation.member')">
           <Space direction="vertical" :size="0">
-            <TypographyText class="font-semibold">
+            <TypographyText bold>
               {{ user.display_name || user.username }}
             </TypographyText>
             <TypographyText type="secondary">{{ user.username }}</TypographyText>
@@ -167,7 +164,7 @@ function sourceLabel(source: Source) {
       </Descriptions>
     </Card>
 
-    <Grid :cols="{ xs: 1, sm: 3 }" :col-gap="16" :row-gap="16" class="mb-4">
+    <Grid :cols="{ xs: 1, sm: 3 }" :col-gap="16" :row-gap="16">
       <GridItem>
         <Card :bordered="false">
           <Statistic :title="t('admin.permissionExplanation.total')" :value="summary.total" />
@@ -178,7 +175,6 @@ function sourceLabel(source: Source) {
           <Statistic
             :title="t('admin.permissionExplanation.allowed')"
             :value="summary.allowed"
-            :value-style="{ color: 'rgb(var(--green-6))' }"
           />
         </Card>
       </GridItem>
@@ -187,42 +183,46 @@ function sourceLabel(source: Source) {
           <Statistic
             :title="t('admin.permissionExplanation.denied')"
             :value="summary.denied"
-            :value-style="{ color: 'rgb(var(--red-6))' }"
           />
         </Card>
       </GridItem>
     </Grid>
 
     <Card :bordered="false">
-      <div class="permission-filters">
-        <InputSearch
-          v-model="search"
-          allow-clear
-          :placeholder="t('admin.permissionExplanation.searchPlaceholder')"
-          :aria-label="t('admin.permissionExplanation.search')"
-        />
-        <Select
-          v-model="outcome"
-          :aria-label="t('admin.permissionExplanation.outcome')"
-        >
-          <Option value="all">{{ t('admin.permissionExplanation.all') }}</Option>
-          <Option value="allowed">{{ t('admin.permissionExplanation.allowedOnly') }}</Option>
-          <Option value="denied">{{ t('admin.permissionExplanation.deniedOnly') }}</Option>
-        </Select>
-      </div>
+      <Space direction="vertical" :size="16" fill>
+      <Grid :cols="24" :col-gap="12" :row-gap="12">
+        <GridItem :span="{ xs: 24, sm: 16, lg: 18 }">
+          <InputSearch
+            v-model="search"
+            allow-clear
+            :placeholder="t('admin.permissionExplanation.searchPlaceholder')"
+            :aria-label="t('admin.permissionExplanation.search')"
+          />
+        </GridItem>
+        <GridItem :span="{ xs: 24, sm: 8, lg: 6 }">
+          <Select
+            v-model="outcome"
+            :aria-label="t('admin.permissionExplanation.outcome')"
+          >
+            <Option value="all">{{ t('admin.permissionExplanation.all') }}</Option>
+            <Option value="allowed">{{ t('admin.permissionExplanation.allowedOnly') }}</Option>
+            <Option value="denied">{{ t('admin.permissionExplanation.deniedOnly') }}</Option>
+          </Select>
+        </GridItem>
+      </Grid>
 
       <Empty
         v-if="filteredRows.length === 0"
         :description="t('admin.permissionExplanation.empty')"
       />
-      <div v-else class="permission-table-scroll">
-        <Table
-          :data="filteredRows"
-          :pagination="{ pageSize: 50, showTotal: true }"
-          :bordered="{ wrapper: true }"
-          :scroll="{ minWidth: 900 }"
-          row-key="key"
-        >
+      <Table
+        v-else
+        :data="filteredRows"
+        :pagination="{ pageSize: 50, showTotal: true }"
+        :bordered="{ wrapper: true }"
+        :scroll="{ minWidth: 900 }"
+        row-key="key"
+      >
           <template #columns>
             <TableColumn
               :title="t('admin.permissionExplanation.category')"
@@ -232,7 +232,7 @@ function sourceLabel(source: Source) {
             <TableColumn :title="t('admin.permissionExplanation.permission')" :width="300">
               <template #cell="{ record }">
                 <Space direction="vertical" :size="2">
-                  <TypographyText class="font-semibold">{{ record.name }}</TypographyText>
+                  <TypographyText bold>{{ record.name }}</TypographyText>
                   <TypographyText type="secondary">{{ record.description }}</TypographyText>
                 </Space>
               </template>
@@ -277,8 +277,8 @@ function sourceLabel(source: Source) {
               </template>
             </TableColumn>
           </template>
-        </Table>
-      </div>
+      </Table>
+      </Space>
     </Card>
 
     <Drawer
@@ -288,7 +288,7 @@ function sourceLabel(source: Source) {
       :footer="false"
       unmount-on-close
     >
-      <template v-if="selected">
+      <Space v-if="selected" direction="vertical" :size="12" fill>
         <Descriptions :column="1" bordered>
           <DescriptionsItem :label="t('admin.permissionExplanation.decision')">
             <Tag :color="selected.allowed ? 'green' : 'red'">
@@ -308,12 +308,11 @@ function sourceLabel(source: Source) {
         <Card
           v-for="source in selected.sources"
           :key="`${source.type}-${source.id || source.name}`"
-          :bordered="false"
-          class="mt-3 permission-source-card"
+          :bordered="true"
         >
           <Space direction="vertical" :size="4">
             <Tag bordered>{{ t(`admin.permissionExplanation.sourceTypes.${source.type}`) }}</Tag>
-            <TypographyText class="font-semibold">{{ source.name }}</TypographyText>
+            <TypographyText bold>{{ source.name }}</TypographyText>
             <TypographyText v-if="source.type === 'group'" type="secondary">
               {{ t('admin.permissionExplanation.primaryGroup') }}:
               {{ t(source.primary
@@ -325,33 +324,8 @@ function sourceLabel(source: Source) {
         <Empty
           v-if="selected.sources.length === 0"
           :description="t('admin.permissionExplanation.noSource')"
-          class="mt-4"
         />
-      </template>
+      </Space>
     </Drawer>
-  </section>
+  </Space>
 </template>
-
-<style scoped>
-.permission-filters {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
-  gap: 12px;
-  margin-bottom: 16px;
-}
-
-.permission-table-scroll {
-  overflow-x: auto;
-}
-
-.permission-source-card {
-  background: var(--color-fill-1);
-  border-radius: 10px;
-}
-
-@media (max-width: 575px) {
-  .permission-filters {
-    grid-template-columns: 1fr;
-  }
-}
-</style>

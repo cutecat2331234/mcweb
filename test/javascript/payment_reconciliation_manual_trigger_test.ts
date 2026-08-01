@@ -11,12 +11,12 @@ test('payment reconciliation manual trigger uses bounded Arco controls and exact
     'app/javascript/pages/Admin/Store/PaymentReconciliations/Index.vue',
   )
 
-  assert.match(source, /DatePicker,/)
-  assert.match(source, /<Card v-if="manualTrigger\.allowed"/)
+  assert.match(source, /<a-date-picker/)
+  assert.match(source, /<a-card v-if="manualTrigger\.allowed"/)
   assert.match(source, /v-if="manualTrigger\.ready"/)
   assert.match(source, /v-if="!manualTrigger\.ready"/)
-  assert.match(source, /<DatePicker[\s\S]*?value-format="YYYY-MM-DD"/)
-  assert.match(source, /<DatePicker[\s\S]*?format="YYYY-MM-DD"/)
+  assert.match(source, /<a-date-picker[\s\S]*?value-format="YYYY-MM-DD"/)
+  assert.match(source, /<a-date-picker[\s\S]*?format="YYYY-MM-DD"/)
   assert.match(source, /:disabled-date="disabledManualDate"/)
   assert.match(source, /value >= props\.manualTrigger\.minDate/)
   assert.match(source, /value <= props\.manualTrigger\.maxDate/)
@@ -36,7 +36,7 @@ test('payment reconciliation manual trigger uses bounded Arco controls and exact
   )
   assert.match(source, /:loading="manualSubmitting \|\| manualAuthorizationLoading"/)
   assert.match(source, /:disabled="!canSubmitManual"/)
-  assert.match(source, /flex flex-col-reverse gap-2[\s\S]*?sm:flex-row/)
+  assert.match(source, /<a-space justify="end" wrap fill>/)
   assert.doesNotMatch(source, /<(?:input|select|button)(?:\s|>)/)
 })
 

@@ -352,7 +352,8 @@ test('system webhook pages use Arco controls while retaining nested mutations an
   assert.match(index, /<a-table/)
   assert.match(index, /<a-tag/)
   assert.match(index, /<a-empty/)
-  assert.match(index, /:href="record\.editUrl"/)
+  assert.match(index, /@click="visit\(record\.editUrl\)"/)
+  assert.match(index, /router\.visit\(url, \{ preserveScroll: true \}\)/)
 })
 
 const forumArcoPagePaths = [
@@ -470,8 +471,8 @@ test('store forms retain nested payloads, amount units, associations, and mutati
   assert.match(products, /compare_at_price_cents/)
   assert.match(products, /form\.product\.prerequisites/)
   assert.match(products, /form\.product\.variants/)
-  assert.match(products, /form\.patch\(props\.submitUrl\)/)
-  assert.match(products, /form\.post\(props\.submitUrl\)/)
+  assert.match(products, /form\.patch\(props\.submitUrl, submitOptions\)/)
+  assert.match(products, /form\.post\(props\.submitUrl, submitOptions\)/)
   assert.match(products, /body\.append\('file', file\)/)
   assert.match(products, /<a-upload/)
   assert.match(products, /value-format="YYYY-MM-DDTHH:mm"/)

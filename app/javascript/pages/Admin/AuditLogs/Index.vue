@@ -1,28 +1,8 @@
 <script setup lang="ts">
 import { computed, reactive } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import {
-  Alert,
-  Button,
-  Card,
-  DatePicker,
-  Empty,
-  Form,
-  FormItem,
-  Grid,
-  GridItem,
-  Input,
-  Option,
-  PageHeader,
-  Pagination,
-  Select,
-  Space,
-  Table,
-  TableColumn,
-  Tag,
-  TypographyText,
-} from '@mcweb/ui'
+import { IconDownload, IconFilter, IconRefresh } from '@arco-design/web-vue/es/icon'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
@@ -132,6 +112,13 @@ function changePageSize(perPage: number) {
   })
 }
 
+function visitDetail(url: string) {
+  router.visit(url, {
+    preserveScroll: true,
+    preserveState: true,
+  })
+}
+
 function exportLogs() {
   const url = new URL(props.exportUrl, window.location.origin)
   Object.entries(query()).forEach(([key, value]) => {
@@ -148,190 +135,186 @@ function exportLogs() {
 </script>
 
 <template>
-  <section class="admin-audit-index">
-    <PageHeader
-      :title="t('admin.audit.title')"
-      :subtitle="t('admin.audit.subtitle')"
-      :show-back="false"
-      class="mb-5 !px-0"
-    >
+  <a-space direction="vertical" :size="16" fill>
+    <a-page-header :title="t('admin.audit.title')" :subtitle="t('admin.audit.subtitle')" :show-back="false">
       <template #extra>
-        <Button
+        <a-button
           v-if="canExport"
           type="primary"
+          shape="round"
           :aria-label="t('admin.audit.export')"
           @click="exportLogs"
         >
+          <template #icon><icon-download /></template>
           {{ t('admin.audit.export') }}
-        </Button>
+        </a-button>
       </template>
-    </PageHeader>
+    </a-page-header>
 
-    <Alert
+    <a-alert
       type="info"
       show-icon
       :closable="false"
       :title="t('admin.audit.immutableNotice')"
-      class="mb-4"
     />
 
-    <Alert
+    <a-alert
       v-if="Object.keys(filterErrors).length"
       type="error"
       show-icon
       :closable="false"
       :title="t('admin.audit.invalidDate')"
-      class="mb-4"
     />
 
-    <Card :bordered="false" class="mb-4 audit-filter-card">
-      <Form :model="form" layout="vertical" @submit.prevent="applyFilters">
-        <Grid :cols="{ xs: 1, sm: 2, lg: 4 }" :col-gap="16" :row-gap="4">
-          <GridItem>
-            <FormItem field="action" :label="t('admin.audit.action')">
-              <Input
+    <a-card :bordered="false">
+      <a-form :model="form" layout="vertical" @submit="applyFilters">
+        <a-grid :cols="{ xs: 1, md: 2, xl: 4 }" :col-gap="16" :row-gap="8">
+          <a-grid-item>
+            <a-form-item field="action" :label="t('admin.audit.action')">
+              <a-input
                 v-model="form.action"
                 allow-clear
                 :placeholder="t('admin.audit.actionPlaceholder')"
               />
-            </FormItem>
-          </GridItem>
-          <GridItem>
-            <FormItem field="actor" :label="t('admin.audit.actor')">
-              <Input
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="actor" :label="t('admin.audit.actor')">
+              <a-input
                 v-model="form.actor"
                 allow-clear
                 :placeholder="t('admin.audit.actorPlaceholder')"
               />
-            </FormItem>
-          </GridItem>
-          <GridItem>
-            <FormItem field="resource_type" :label="t('admin.audit.resourceType')">
-              <Select
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="resource_type" :label="t('admin.audit.resourceType')">
+              <a-select
                 v-model="form.resource_type"
                 allow-clear
                 allow-search
                 :placeholder="t('admin.audit.resourceTypePlaceholder')"
               >
-                <Option v-for="resourceType in resourceTypes" :key="resourceType" :value="resourceType">
+                <a-option v-for="resourceType in resourceTypes" :key="resourceType" :value="resourceType">
                   {{ resourceType }}
-                </Option>
-              </Select>
-            </FormItem>
-          </GridItem>
-          <GridItem>
-            <FormItem field="resource" :label="t('admin.audit.resource')">
-              <Input
+                </a-option>
+              </a-select>
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="resource" :label="t('admin.audit.resource')">
+              <a-input
                 v-model="form.resource"
                 allow-clear
                 :placeholder="t('admin.audit.resourcePlaceholder')"
               />
-            </FormItem>
-          </GridItem>
-          <GridItem>
-            <FormItem field="request_id" :label="t('admin.audit.requestId')">
-              <Input
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="request_id" :label="t('admin.audit.requestId')">
+              <a-input
                 v-model="form.request_id"
                 allow-clear
                 :placeholder="t('admin.audit.requestIdPlaceholder')"
               />
-            </FormItem>
-          </GridItem>
-          <GridItem>
-            <FormItem field="from" :label="t('admin.audit.from')">
-              <DatePicker
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="from" :label="t('admin.audit.from')">
+              <a-date-picker
                 v-model="form.from"
                 value-format="YYYY-MM-DD"
                 format="YYYY-MM-DD"
                 allow-clear
-                class="w-full"
+                long
               />
-            </FormItem>
-          </GridItem>
-          <GridItem>
-            <FormItem field="to" :label="t('admin.audit.to')">
-              <DatePicker
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item field="to" :label="t('admin.audit.to')">
+              <a-date-picker
                 v-model="form.to"
                 value-format="YYYY-MM-DD"
                 format="YYYY-MM-DD"
                 allow-clear
-                class="w-full"
+                long
               />
-            </FormItem>
-          </GridItem>
-          <GridItem class="audit-filter-actions">
-            <FormItem hide-label>
-              <Space wrap>
-                <Button type="primary" html-type="submit">
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item :label="t('admin.audit.applyFilters')">
+              <a-space wrap>
+                <a-button type="primary" shape="round" html-type="submit">
+                  <template #icon><icon-filter /></template>
                   {{ t('admin.audit.applyFilters') }}
-                </Button>
-                <Button :disabled="activeFilterCount === 0" @click="clearFilters">
+                </a-button>
+                <a-button shape="round" :disabled="activeFilterCount === 0" @click="clearFilters">
+                  <template #icon><icon-refresh /></template>
                   {{ t('admin.audit.clearFilters') }}
-                </Button>
-              </Space>
-            </FormItem>
-          </GridItem>
-        </Grid>
-      </Form>
-    </Card>
+                </a-button>
+              </a-space>
+            </a-form-item>
+          </a-grid-item>
+        </a-grid>
+      </a-form>
+    </a-card>
 
-    <Card :bordered="false" class="audit-table-card">
-      <Empty v-if="rows.length === 0" :description="t('admin.audit.empty')" />
+    <a-card :bordered="false">
+      <a-empty v-if="rows.length === 0" :description="t('admin.audit.empty')" />
       <template v-else>
-        <div class="audit-table-scroll">
-          <Table
-            :data="rows"
-            :pagination="false"
-            :bordered="{ wrapper: true }"
-            :scroll="{ minWidth: 1040 }"
-            row-key="id"
-          >
-            <template #columns>
-              <TableColumn :title="t('admin.audit.action')" :width="230">
-                <template #cell="{ record }">
-                  <Link :href="record.showUrl" class="audit-primary-link">
-                    {{ record.actionLabel }}
-                  </Link>
-                </template>
-              </TableColumn>
-              <TableColumn :title="t('admin.audit.actor')" :width="170">
-                <template #cell="{ record }">
-                  <TypographyText v-if="record.actor">{{ record.actor.username }}</TypographyText>
-                  <TypographyText v-else type="secondary">{{ t('admin.audit.systemActor') }}</TypographyText>
-                </template>
-              </TableColumn>
-              <TableColumn :title="t('admin.audit.resource')" :width="210">
-                <template #cell="{ record }">
-                  <Space direction="vertical" :size="0">
-                    <TypographyText>{{ record.resource.typeLabel }}</TypographyText>
-                    <TypographyText type="secondary">
-                      {{ record.resource.publicId || record.resource.id || t('admin.audit.notAvailable') }}
-                    </TypographyText>
-                  </Space>
-                </template>
-              </TableColumn>
-              <TableColumn :title="t('admin.audit.requestId')" :width="220">
-                <template #cell="{ record }">
-                  <Tag v-if="record.requestId" color="arcoblue" bordered>
-                    {{ record.requestId }}
-                  </Tag>
-                  <TypographyText v-else type="secondary">{{ t('admin.audit.notAvailable') }}</TypographyText>
-                </template>
-              </TableColumn>
-              <TableColumn :title="t('admin.audit.occurredAt')" :width="190">
-                <template #cell="{ record }">
-                  <time :datetime="record.occurredAtIso">{{ record.occurredAt }}</time>
-                </template>
-              </TableColumn>
-            </template>
-          </Table>
-        </div>
+        <a-table
+          :data="rows"
+          :pagination="false"
+          :bordered="{ wrapper: true }"
+          :scroll="{ minWidth: 1040 }"
+          row-key="id"
+          stripe
+        >
+          <template #columns>
+            <a-table-column :title="t('admin.audit.action')" :width="230">
+              <template #cell="{ record }">
+                <a-link :href="record.showUrl" @click.prevent="visitDetail(record.showUrl)">
+                  {{ record.actionLabel }}
+                </a-link>
+              </template>
+            </a-table-column>
+            <a-table-column :title="t('admin.audit.actor')" :width="170">
+              <template #cell="{ record }">
+                <a-typography-text v-if="record.actor">{{ record.actor.username }}</a-typography-text>
+                <a-typography-text v-else type="secondary">{{ t('admin.audit.systemActor') }}</a-typography-text>
+              </template>
+            </a-table-column>
+            <a-table-column :title="t('admin.audit.resource')" :width="210">
+              <template #cell="{ record }">
+                <a-space direction="vertical" :size="0">
+                  <a-typography-text>{{ record.resource.typeLabel }}</a-typography-text>
+                  <a-typography-text type="secondary">
+                    {{ record.resource.publicId || record.resource.id || t('admin.audit.notAvailable') }}
+                  </a-typography-text>
+                </a-space>
+              </template>
+            </a-table-column>
+            <a-table-column :title="t('admin.audit.requestId')" :width="220">
+              <template #cell="{ record }">
+                <a-tag v-if="record.requestId" color="arcoblue" bordered>
+                  {{ record.requestId }}
+                </a-tag>
+                <a-typography-text v-else type="secondary">{{ t('admin.audit.notAvailable') }}</a-typography-text>
+              </template>
+            </a-table-column>
+            <a-table-column :title="t('admin.audit.occurredAt')" :width="190">
+              <template #cell="{ record }">
+                <time :datetime="record.occurredAtIso">{{ record.occurredAt }}</time>
+              </template>
+            </a-table-column>
+          </template>
+        </a-table>
 
-        <div class="audit-pagination">
-          <TypographyText type="secondary">
+        <a-space direction="vertical" :size="12" fill>
+          <a-typography-text type="secondary">
             {{ t('admin.audit.total', { count: pagination.total }) }}
-          </TypographyText>
-          <Pagination
+          </a-typography-text>
+          <a-pagination
             :current="pagination.page"
             :page-size="pagination.perPage"
             :total="pagination.total"
@@ -341,50 +324,8 @@ function exportLogs() {
             @change="changePage"
             @page-size-change="changePageSize"
           />
-        </div>
+        </a-space>
       </template>
-    </Card>
-  </section>
+    </a-card>
+  </a-space>
 </template>
-
-<style scoped>
-.audit-filter-actions {
-  display: flex;
-  align-items: end;
-}
-
-.audit-filter-actions :deep(.arco-form-item) {
-  width: 100%;
-}
-
-.audit-table-scroll {
-  overflow-x: auto;
-}
-
-.audit-primary-link {
-  color: rgb(var(--primary-6));
-  font-weight: 600;
-  text-decoration: none;
-}
-
-.audit-primary-link:focus-visible {
-  outline: 2px solid rgb(var(--primary-6));
-  outline-offset: 3px;
-  border-radius: 6px;
-}
-
-.audit-pagination {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16px;
-  margin-top: 16px;
-}
-
-@media (max-width: 575px) {
-  .audit-pagination {
-    align-items: stretch;
-    flex-direction: column;
-  }
-}
-</style>

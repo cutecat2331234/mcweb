@@ -25,8 +25,8 @@ module Community
         scope = enum_filter(scope, :risk_level, Community::ModerationCase::RISK_LEVELS)
         scope = section_filter(scope)
         scope = assignee_filter(scope)
-        scope = time_filter(scope, :from, ">=")
-        scope = time_filter(scope, :to, "<=")
+        scope = time_filter(scope, :from)
+        scope = time_filter(scope, :to)
         scope.recent_first
       end
 
@@ -130,13 +130,16 @@ module Community
         id ? scope.where(assignee_id: id) : scope
       end
 
-      def time_filter(scope, key, operator)
+      def time_filter(scope, key)
         value = filters[key]
         return scope if value.blank?
 
         time = Time.zone.parse(value.to_s)
-        key == :to ? scope.where("source_updated_at #{operator} ?", time.end_of_day) :
-          scope.where("source_updated_at #{operator} ?", time.beginning_of_day)
+        if key == :to
+          scope.where("source_updated_at <= ?", time.end_of_day)
+        else
+          scope.where("source_updated_at >= ?", time.beginning_of_day)
+        end
       rescue ArgumentError, TypeError
         scope
       end

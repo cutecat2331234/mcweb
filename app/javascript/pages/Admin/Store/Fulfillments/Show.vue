@@ -1,25 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { Link, router } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import {
-  Alert,
-  Button,
-  Card,
-  Descriptions,
-  DescriptionsItem,
-  Empty,
-  Grid,
-  GridItem,
-  PageHeader,
-  Progress,
-  Space,
-  Statistic,
-  Tag,
-  Timeline,
-  TimelineItem,
-  TypographyText,
-} from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import HighRiskActionModal from '@/components/admin/HighRiskActionModal.vue'
 
@@ -104,173 +86,207 @@ function completed() {
     preserveScroll: true,
   })
 }
+
+function visitTargetServer() {
+  const url = props.fulfillment.target_server_url
+  if (url) router.visit(url)
+}
+
 </script>
 
 <template>
-  <PageHeader
-    :title="t('admin.fulfillments.title', { id: fulfillment.delivery_id })"
-    :subtitle="t('admin.fulfillments.detailSubtitle')"
-  >
-    <template #extra>
-      <Space wrap>
-        <Button
-          v-if="permissions.retry && fulfillment.retryable"
-          type="primary"
-          status="warning"
-          @click="action = 'retry'"
-        >
-          {{ t('admin.fulfillments.retry') }}
-        </Button>
-        <Button
-          v-if="permissions.cancel && fulfillment.cancellable"
-          status="danger"
-          @click="action = 'cancel'"
-        >
-          {{ t('admin.fulfillments.cancel') }}
-        </Button>
-        <Link :href="paths.index">
-          <Button>{{ t('admin.ui.back') }}</Button>
-        </Link>
-      </Space>
-    </template>
-  </PageHeader>
-
-  <Space direction="vertical" size="large" fill>
-    <Alert
-      v-if="fulfillment.exhausted"
-      type="error"
-      show-icon
-      :title="t('admin.fulfillments.exhaustedTitle')"
+  <a-space direction="vertical" :size="16" fill>
+    <a-page-header
+      :title="t('admin.fulfillments.title', { id: fulfillment.delivery_id })"
+      :subtitle="t('admin.fulfillments.detailSubtitle')"
+      :show-back="false"
     >
-      {{ t('admin.fulfillments.exhaustedDescription') }}
-    </Alert>
-    <Alert
-      v-else-if="fulfillment.error_label"
-      type="warning"
-      show-icon
-      :title="t('admin.fulfillments.failureTitle')"
-    >
-      {{ fulfillment.error_label }}
-    </Alert>
-
-    <Grid :cols="{ xs: 1, md: 3 }" :col-gap="16" :row-gap="16">
-      <GridItem>
-        <Card :bordered="false">
-          <Statistic :title="t('admin.common.status')" :value="fulfillment.status_label">
-            <template #suffix>
-              <Tag :color="statusColor(fulfillment.status)">{{ fulfillment.status_label }}</Tag>
-            </template>
-          </Statistic>
-        </Card>
-      </GridItem>
-      <GridItem>
-        <Card :bordered="false">
-          <Statistic
-            :title="t('admin.fulfillments.attempts')"
-            :value="fulfillment.attempts_count"
-            :suffix="`/ ${fulfillment.max_attempts}`"
-          />
-          <Progress
-            class="mt-3"
-            :percent="Math.min(1, fulfillment.attempts_count / fulfillment.max_attempts)"
-            :show-text="false"
-            :status="fulfillment.exhausted ? 'danger' : 'normal'"
-          />
-        </Card>
-      </GridItem>
-      <GridItem>
-        <Card :bordered="false">
-          <Statistic
-            :title="t('admin.fulfillments.nextAttempt')"
-            :value="formatDate(fulfillment.next_attempt_at)"
-          />
-        </Card>
-      </GridItem>
-    </Grid>
-
-    <Card :title="t('admin.fulfillments.contextTitle')" :bordered="false">
-      <Descriptions :column="{ xs: 1, md: 2 }" bordered>
-        <DescriptionsItem :label="t('admin.fulfillments.columns.delivery')">
-          {{ fulfillment.delivery_id }}
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.common.order')">
-          {{ fulfillment.order_number }}
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.common.product')">
-          {{ fulfillment.product_name }}
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.fulfillments.targetServer')">
-          <Link
-            v-if="fulfillment.target_server_url"
-            :href="fulfillment.target_server_url"
-            class="arco-link no-underline"
+      <template #extra>
+        <a-space wrap>
+          <a-button
+            v-if="permissions.retry && fulfillment.retryable"
+            type="primary"
+            status="warning"
+            @click="action = 'retry'"
           >
-            {{ fulfillment.target_server }}
-          </Link>
-          <TypographyText v-else type="secondary">
-            {{ fulfillment.target_server || t('admin.fulfillments.notConfigured') }}
-          </TypographyText>
-        </DescriptionsItem>
-        <DescriptionsItem
-          v-if="fulfillment.target_server"
-          :label="t('admin.fulfillments.targetServerState')"
-        >
-          {{ fulfillment.target_server_process_state || t('admin.fulfillments.unknownState') }}
-        </DescriptionsItem>
-        <DescriptionsItem
-          v-if="fulfillment.cancel_reason"
-          :label="t('admin.fulfillments.cancelReason')"
-        >
-          {{ fulfillment.cancel_reason }}
-        </DescriptionsItem>
-      </Descriptions>
-    </Card>
+            {{ t('admin.fulfillments.retry') }}
+          </a-button>
+          <a-button
+            v-if="permissions.cancel && fulfillment.cancellable"
+            status="danger"
+            @click="action = 'cancel'"
+          >
+            {{ t('admin.fulfillments.cancel') }}
+          </a-button>
+          <a-button @click="router.visit(paths.index)">
+            {{ t('admin.ui.back') }}
+          </a-button>
+        </a-space>
+      </template>
+    </a-page-header>
 
-    <Card :title="t('admin.fulfillments.timelineTitle')" :bordered="false">
-      <Empty v-if="attempts.length === 0" :description="t('admin.fulfillments.noAttempts')" />
-      <Timeline v-else>
-        <TimelineItem
-          v-for="attempt in attempts"
-          :key="attempt.id"
-          :dot-color="statusColor(attempt.status)"
-        >
-          <Space direction="vertical" size="mini">
-            <Space wrap>
-              <TypographyText bold>
-                {{ t('admin.fulfillments.attemptTitle', { number: attempt.number }) }}
-              </TypographyText>
-              <Tag :color="statusColor(attempt.status)">{{ attempt.status_label }}</Tag>
-              <Tag bordered>{{ attempt.action_label }}</Tag>
-              <Tag bordered>{{ attempt.trigger_label }}</Tag>
-            </Space>
-            <TypographyText type="secondary">
-              {{ formatDate(attempt.started_at) }}
-              <template v-if="attempt.actor"> · {{ attempt.actor }}</template>
-            </TypographyText>
-            <TypographyText v-if="attempt.error_label" type="danger">
-              {{ attempt.error_label }}
-            </TypographyText>
-            <TypographyText v-if="attempt.reason">
-              {{ t('admin.fulfillments.reasonLabel', { reason: attempt.reason }) }}
-            </TypographyText>
-            <TypographyText v-if="attempt.next_retry_at" type="warning">
-              {{ t('admin.fulfillments.retryScheduled', { time: formatDate(attempt.next_retry_at) }) }}
-            </TypographyText>
-          </Space>
-        </TimelineItem>
-      </Timeline>
-    </Card>
-  </Space>
+    <a-row justify="center">
+      <a-col :xs="24" :md="22" :lg="20" :xl="18">
+        <a-space direction="vertical" :size="16" fill>
+          <a-alert
+            v-if="fulfillment.exhausted"
+            type="error"
+            show-icon
+            :title="t('admin.fulfillments.exhaustedTitle')"
+          >
+            {{ t('admin.fulfillments.exhaustedDescription') }}
+          </a-alert>
+          <a-alert
+            v-else-if="fulfillment.error_label"
+            type="warning"
+            show-icon
+            :title="t('admin.fulfillments.failureTitle')"
+          >
+            {{ fulfillment.error_label }}
+          </a-alert>
 
-  <HighRiskActionModal
-    :visible="action !== null"
-    :title="action === 'cancel'
-      ? t('admin.fulfillments.cancelTitle')
-      : t('admin.fulfillments.retryTitle')"
-    :authorization-url="paths.authorize"
-    :action-url="paths.execute"
-    :payload="{ fulfillment_action: { action } }"
-    @update:visible="(visible) => { if (!visible) action = null }"
-    @completed="completed"
-  />
+          <a-grid :cols="{ xs: 1, md: 3 }" :col-gap="16" :row-gap="16">
+            <a-grid-item>
+              <a-card size="small" :bordered="true">
+                <a-statistic
+                  :title="t('admin.common.status')"
+                  :value="fulfillment.status_label"
+                >
+                  <template #suffix>
+                    <a-tag :color="statusColor(fulfillment.status)">
+                      {{ fulfillment.status_label }}
+                    </a-tag>
+                  </template>
+                </a-statistic>
+              </a-card>
+            </a-grid-item>
+            <a-grid-item>
+              <a-card size="small" :bordered="true">
+                <a-space direction="vertical" :size="12" fill>
+                  <a-statistic
+                    :title="t('admin.fulfillments.attempts')"
+                    :value="fulfillment.attempts_count"
+                    :suffix="'/ ' + fulfillment.max_attempts"
+                  />
+                  <a-progress
+                    :percent="Math.min(1, fulfillment.attempts_count / fulfillment.max_attempts)"
+                    :show-text="false"
+                    :status="fulfillment.exhausted ? 'danger' : 'normal'"
+                  />
+                </a-space>
+              </a-card>
+            </a-grid-item>
+            <a-grid-item>
+              <a-card size="small" :bordered="true">
+                <a-statistic
+                  :title="t('admin.fulfillments.nextAttempt')"
+                  :value="formatDate(fulfillment.next_attempt_at)"
+                />
+              </a-card>
+            </a-grid-item>
+          </a-grid>
+
+          <a-card
+            size="small"
+            :title="t('admin.fulfillments.contextTitle')"
+            :bordered="true"
+          >
+            <a-descriptions :column="{ xs: 1, md: 2 }" bordered>
+              <a-descriptions-item :label="t('admin.fulfillments.columns.delivery')">
+                {{ fulfillment.delivery_id }}
+              </a-descriptions-item>
+              <a-descriptions-item :label="t('admin.common.order')">
+                {{ fulfillment.order_number }}
+              </a-descriptions-item>
+              <a-descriptions-item :label="t('admin.common.product')">
+                {{ fulfillment.product_name }}
+              </a-descriptions-item>
+              <a-descriptions-item :label="t('admin.fulfillments.targetServer')">
+                <a-link
+                  v-if="fulfillment.target_server_url"
+                  :href="fulfillment.target_server_url"
+                  @click.prevent="visitTargetServer"
+                >
+                  {{ fulfillment.target_server }}
+                </a-link>
+                <a-typography-text v-else type="secondary">
+                  {{ fulfillment.target_server || t('admin.fulfillments.notConfigured') }}
+                </a-typography-text>
+              </a-descriptions-item>
+              <a-descriptions-item
+                v-if="fulfillment.target_server"
+                :label="t('admin.fulfillments.targetServerState')"
+              >
+                {{ fulfillment.target_server_process_state || t('admin.fulfillments.unknownState') }}
+              </a-descriptions-item>
+              <a-descriptions-item
+                v-if="fulfillment.cancel_reason"
+                :label="t('admin.fulfillments.cancelReason')"
+              >
+                {{ fulfillment.cancel_reason }}
+              </a-descriptions-item>
+            </a-descriptions>
+          </a-card>
+
+          <a-card
+            size="small"
+            :title="t('admin.fulfillments.timelineTitle')"
+            :bordered="true"
+          >
+            <a-empty
+              v-if="attempts.length === 0"
+              :description="t('admin.fulfillments.noAttempts')"
+            />
+            <a-timeline v-else>
+              <a-timeline-item
+                v-for="attempt in attempts"
+                :key="attempt.id"
+                :dot-color="statusColor(attempt.status)"
+              >
+                <a-space direction="vertical" size="mini">
+                  <a-space wrap>
+                    <a-typography-text bold>
+                      {{ t('admin.fulfillments.attemptTitle', { number: attempt.number }) }}
+                    </a-typography-text>
+                    <a-tag :color="statusColor(attempt.status)">
+                      {{ attempt.status_label }}
+                    </a-tag>
+                    <a-tag bordered>{{ attempt.action_label }}</a-tag>
+                    <a-tag bordered>{{ attempt.trigger_label }}</a-tag>
+                  </a-space>
+                  <a-typography-text type="secondary">
+                    {{ formatDate(attempt.started_at) }}
+                    <template v-if="attempt.actor"> · {{ attempt.actor }}</template>
+                  </a-typography-text>
+                  <a-typography-text v-if="attempt.error_label" type="danger">
+                    {{ attempt.error_label }}
+                  </a-typography-text>
+                  <a-typography-text v-if="attempt.reason">
+                    {{ t('admin.fulfillments.reasonLabel', { reason: attempt.reason }) }}
+                  </a-typography-text>
+                  <a-typography-text v-if="attempt.next_retry_at" type="warning">
+                    {{ t('admin.fulfillments.retryScheduled', {
+                      time: formatDate(attempt.next_retry_at),
+                    }) }}
+                  </a-typography-text>
+                </a-space>
+              </a-timeline-item>
+            </a-timeline>
+          </a-card>
+        </a-space>
+      </a-col>
+    </a-row>
+
+    <HighRiskActionModal
+      :visible="action !== null"
+      :title="action === 'cancel'
+        ? t('admin.fulfillments.cancelTitle')
+        : t('admin.fulfillments.retryTitle')"
+      :authorization-url="paths.authorize"
+      :action-url="paths.execute"
+      :payload="{ fulfillment_action: { action } }"
+      @update:visible="(visible) => { if (!visible) action = null }"
+      @completed="completed"
+    />
+  </a-space>
 </template>

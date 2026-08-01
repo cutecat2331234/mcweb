@@ -16,9 +16,13 @@ test('fulfillment recovery uses Arco queue, summaries, and a bounded timeline', 
   for (const component of ['PageHeader', 'Statistic', 'Table', 'Tag', 'Alert']) {
     assert.match(indexSource, new RegExp(`<${component}`))
   }
-  for (const component of ['Descriptions', 'Timeline', 'HighRiskActionModal']) {
-    assert.match(showSource, new RegExp(`<${component}`))
-  }
+  assert.match(showSource, /<a-descriptions/)
+  assert.match(showSource, /<a-timeline/)
+  assert.match(showSource, /<HighRiskActionModal/)
+  assert.doesNotMatch(
+    indexSource,
+    /\s(?:class|:class|v-bind:class|style|:style|v-bind:style)=|<style\b|<(?:form|label|input|select|textarea)(?:\s|>)/,
+  )
   assert.doesNotMatch(indexSource + showSource, /window\.location|location\.reload/)
 })
 

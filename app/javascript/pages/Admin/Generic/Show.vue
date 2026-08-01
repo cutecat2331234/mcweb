@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import { Link, router, useForm } from '@inertiajs/vue3'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import { router, useForm } from '@inertiajs/vue3'
+import type { RequestPayload } from '@inertiajs/core'
 import { useI18n } from 'vue-i18n'
 import { Message } from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
@@ -31,7 +32,7 @@ export interface DetailAction {
   method?: 'get' | 'post' | 'patch' | 'delete'
   confirm?: string
   variant?: 'default' | 'outline'
-  data?: Record<string, unknown>
+  data?: RequestPayload
   external?: boolean
 }
 
@@ -155,6 +156,66 @@ const props = defineProps<{
 const trustLevelOverride = ref(props.trustLevelForm?.override?.toString() ?? 'auto')
 
 const badgeSlug = ref('')
+type OperationPanel =
+  | 'mute'
+  | 'ban'
+  | 'refund'
+  | 'badge'
+  | 'warning'
+  | 'shipping'
+  | 'staffNote'
+  | 'spam'
+  | 'storeCredit'
+  | 'silence'
+  | 'trust'
+
+const detailTab = ref<'overview' | 'sections' | 'raw' | 'operations'>('overview')
+const operationDrawer = ref<OperationPanel | null>(null)
+const isMobile = ref(false)
+let viewportQuery: MediaQueryList | null = null
+
+function syncViewport(event?: MediaQueryListEvent) {
+  isMobile.value = event?.matches ?? viewportQuery?.matches ?? false
+}
+
+onMounted(() => {
+  viewportQuery = window.matchMedia('(max-width: 767px)')
+  syncViewport()
+  viewportQuery.addEventListener('change', syncViewport)
+})
+
+onBeforeUnmount(() => {
+  viewportQuery?.removeEventListener('change', syncViewport)
+})
+
+const operationEntries = computed(() => [
+  ...(props.muteForm ? [{ key: 'mute' as const, label: t('admin.genericShow.muteUser'), danger: true }] : []),
+  ...(props.banForm ? [{
+    key: 'ban' as const,
+    label: props.banForm.banned ? t('admin.genericShow.unban') : t('admin.genericShow.banUser'),
+    danger: true,
+  }] : []),
+  ...(props.refundForm ? [{ key: 'refund' as const, label: t('admin.genericShow.partialRefund'), danger: false }] : []),
+  ...(props.badgeForm ? [{ key: 'badge' as const, label: t('admin.genericShow.grantBadge'), danger: false }] : []),
+  ...(props.warningForm ? [{ key: 'warning' as const, label: t('admin.genericShow.warning'), danger: true }] : []),
+  ...(props.shippingForm ? [{ key: 'shipping' as const, label: t('admin.genericShow.shippingManagement'), danger: false }] : []),
+  ...(props.staffNoteForm ? [{ key: 'staffNote' as const, label: t('admin.genericShow.staffNote'), danger: false }] : []),
+  ...(props.spamCleanForm ? [{ key: 'spam' as const, label: t('admin.genericShow.spamCleanTitle'), danger: true }] : []),
+  ...(props.storeCreditForm ? [{ key: 'storeCredit' as const, label: t('admin.genericShow.storeCredit'), danger: false }] : []),
+  ...(props.silenceForm ? [{
+    key: 'silence' as const,
+    label: props.silenceForm.silenced ? t('admin.genericShow.removeSilence') : t('admin.genericShow.silence'),
+    danger: true,
+  }] : []),
+  ...(props.trustLevelForm ? [{ key: 'trust' as const, label: t('admin.genericShow.trustLevel'), danger: false }] : []),
+])
+
+const operationTitle = computed(() =>
+  operationEntries.value.find((entry) => entry.key === operationDrawer.value)?.label || '',
+)
+
+const hasStructuredSections = computed(() => Boolean(props.sections?.length))
+const hasRawContent = computed(() => Boolean(props.preformatted || props.preformattedSections?.length))
 
 const badgeOptions = computed(() => [
   { value: '', label: t('admin.common.pleaseSelect') },
@@ -238,7 +299,7 @@ const accountAccessForm = useForm({
 const warningForm = useForm({
   reason: '',
   points: 1,
-  expire_days: '' as number | string,
+  expire_days: 0,
 })
 
 const staffNoteForm = useForm({
@@ -309,8 +370,8 @@ const shippingForm = useForm({
   mark_shipped: false,
 })
 
-async function runAction(action: DetailAction) {
-  if (action.confirm) {
+async function runAction(action: DetailAction, confirmed = false) {
+  if (action.confirm && !confirmed) {
     const ok = await confirm({
       title: t('admin.common.confirmOperation'),
       message: action.confirm,
@@ -321,6 +382,10 @@ async function runAction(action: DetailAction) {
   }
   const method = action.method || 'get'
   if (method === 'get') {
+    if (action.external || !isAdminSpaNavigationHref(action.href)) {
+      window.open(action.href, '_blank', 'noopener')
+      return
+    }
     router.visit(action.href)
     return
   }
@@ -536,34 +601,147 @@ function submitAccountAccess() {
 </script>
 
 <template>
-  <div class="admin-generic-show">
+  <a-space direction="vertical" :size="16" fill>
     <a-page-header
       :title="title"
       :subtitle="subtitle"
       :show-back="false"
-      class="mb-4 !px-0"
-    />
+    >
+      <template #extra>
+        <a-button @click="router.visit(backUrl)">
+          {{ t('admin.genericShow.back') }}
+        </a-button>
+      </template>
+    </a-page-header>
 
-    <a-card class="max-w-3xl" :bordered="true">
-      <a-descriptions :column="{ xs: 1, sm: 1 }" bordered>
-        <a-descriptions-item
-          v-for="field in displayFields"
-          :key="field.key || field.label"
-          :label="field.label"
-        >
-          <span class="break-words font-medium">{{ field.value }}</span>
-        </a-descriptions-item>
-      </a-descriptions>
+    <a-card :bordered="true">
+      <a-tabs v-model:active-key="detailTab" type="line">
+        <a-tab-pane key="overview" :title="t('admin.overview')">
+          <a-space direction="vertical" size="large" fill>
+            <a-descriptions :column="{ xs: 1, md: 2, xl: 3 }" bordered>
+              <a-descriptions-item
+                v-for="field in displayFields"
+                :key="field.key || field.label"
+                :label="field.label"
+              >
+                <a-typography-text :ellipsis="{ rows: 2, showTooltip: true }">
+                  {{ field.value }}
+                </a-typography-text>
+              </a-descriptions-item>
+            </a-descriptions>
+
+            <a-card v-if="actions?.length" :title="t('admin.ui.actions')" :bordered="true">
+              <a-space wrap>
+                <template v-for="action in actions" :key="action.href + action.label">
+                  <a-popconfirm
+                    v-if="action.confirm"
+                    :content="action.confirm"
+                    :ok-text="t('admin.common.continue')"
+                    :cancel-text="t('common.cancel')"
+                    @ok="runAction(action, true)"
+                  >
+                    <a-button
+                      :type="action.variant === 'outline' ? 'outline' : 'primary'"
+                      :status="action.method === 'delete' ? 'danger' : undefined"
+                    >
+                      {{ action.label }}
+                    </a-button>
+                  </a-popconfirm>
+                  <a-button
+                    v-else
+                    :type="action.variant === 'outline' ? 'outline' : 'primary'"
+                    :status="action.method === 'delete' ? 'danger' : undefined"
+                    @click="runAction(action)"
+                  >
+                    {{ action.label }}
+                  </a-button>
+                </template>
+              </a-space>
+            </a-card>
+          </a-space>
+        </a-tab-pane>
+
+        <a-tab-pane v-if="hasStructuredSections" key="sections" :title="t('admin.common.description')">
+          <a-collapse accordion>
+            <a-collapse-item
+              v-for="(section, sectionIndex) in sections"
+              :key="section.title"
+              :header="section.title"
+              :name="String(sectionIndex)"
+            >
+              <a-list :bordered="false" size="small">
+                <a-list-item v-for="(item, index) in section.items" :key="index">
+                  <a-space wrap>
+                    <a-typography-text v-if="item.label" code>{{ item.label }}</a-typography-text>
+                    <a-typography-text v-if="item.value">{{ item.value }}</a-typography-text>
+                  </a-space>
+                </a-list-item>
+              </a-list>
+            </a-collapse-item>
+          </a-collapse>
+        </a-tab-pane>
+
+        <a-tab-pane v-if="hasRawContent" key="raw" :title="t('admin.common.body')">
+          <a-collapse>
+            <a-collapse-item v-if="preformatted" :header="preformatted.title" name="primary">
+              <a-textarea
+                :model-value="preformatted.content"
+                readonly
+                :auto-size="{ minRows: 8, maxRows: 24 }"
+              />
+            </a-collapse-item>
+            <a-collapse-item
+              v-for="(section, index) in preformattedSections"
+              :key="section.title"
+              :header="section.title"
+              :name="`raw-${index}`"
+            >
+              <a-textarea
+                :model-value="section.content"
+                readonly
+                :auto-size="{ minRows: 8, maxRows: 24 }"
+              />
+            </a-collapse-item>
+          </a-collapse>
+        </a-tab-pane>
+
+        <a-tab-pane key="operations" :title="t('admin.ui.actions')">
+          <a-grid
+            v-if="operationEntries.length || highRiskActions?.length"
+            :cols="{ xs: 1, md: 2, xl: 3 }"
+            :col-gap="16"
+            :row-gap="16"
+          >
+            <a-grid-item v-for="entry in operationEntries" :key="entry.key">
+              <a-card :title="entry.label" size="small" :bordered="true">
+                <a-button
+                  :type="entry.danger ? 'outline' : 'primary'"
+                  :status="entry.danger ? 'danger' : undefined"
+                  @click="operationDrawer = entry.key"
+                >
+                  {{ entry.label }}
+                </a-button>
+              </a-card>
+            </a-grid-item>
+            <a-grid-item v-for="action in highRiskActions || []" :key="action.key">
+              <a-card :title="action.label" size="small" :bordered="true">
+                <a-button type="primary" status="warning" @click="openHighRiskAction(action)">
+                  {{ action.label }}
+                </a-button>
+              </a-card>
+            </a-grid-item>
+          </a-grid>
+          <a-result v-else status="info" :title="t('admin.ui.noResults')" />
+        </a-tab-pane>
+      </a-tabs>
     </a-card>
 
     <a-card
       v-if="props.accountForm && canEditAccountAccess"
-      class="mt-6 max-w-3xl"
       :title="t('admin.genericShow.accountAccess')"
       :bordered="true"
     >
       <a-alert
-        class="mb-5"
         type="info"
         show-icon
         :title="t('admin.genericShow.accountAccessHint')"
@@ -627,316 +805,233 @@ function submitAccountAccess() {
       </a-form>
     </a-card>
 
-    <a-card
-      v-for="section in sections"
-      :key="section.title"
-      class="mt-6 max-w-3xl"
-      :title="section.title"
-      :bordered="true"
+    <a-drawer
+      :visible="operationDrawer !== null"
+      :title="operationTitle"
+      :width="isMobile ? '100%' : 520"
+      :footer="false"
+      unmount-on-close
+      @cancel="operationDrawer = null"
     >
-      <a-list :bordered="false" size="small">
-        <a-list-item v-for="(item, index) in section.items" :key="index">
-          <div class="break-words">
-            <code v-if="item.label" class="text-xs text-[var(--color-text-3)]">
-              {{ item.label }}
-            </code>
-            <span v-if="item.value"> — {{ item.value }}</span>
-          </div>
-        </a-list-item>
-      </a-list>
-    </a-card>
-
-    <a-card
-      v-if="preformatted"
-      class="mt-6 max-w-3xl"
-      :title="preformatted.title"
-      :bordered="true"
-    >
-      <pre class="admin-generic-show__pre">{{ preformatted.content }}</pre>
-    </a-card>
-
-    <a-card
-      v-for="section in preformattedSections"
-      :key="section.title"
-      class="mt-6 max-w-3xl"
-      :title="section.title"
-      :bordered="true"
-    >
-      <pre class="admin-generic-show__pre">{{ section.content }}</pre>
-    </a-card>
-
-    <a-card
-      v-if="props.muteForm"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.muteUser')"
-      :bordered="true"
-    >
-      <form class="grid gap-4" @submit.prevent="submitMute">
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.common.reason') }}</span>
+      <a-form v-if="operationDrawer === 'mute' && props.muteForm" :model="muteForm" layout="vertical" @submit="submitMute">
+        <a-form-item field="reason" :label="t('admin.common.reason')">
           <a-input v-model="muteForm.reason" :placeholder="t('admin.genericShow.muteReason')" />
-        </label>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.expiresAt') }}</span>
-          <a-input v-model="muteForm.expires_at" type="datetime-local" />
-        </label>
-        <div>
-          <a-button
-            html-type="submit"
-            type="primary"
-            status="danger"
-            size="small"
-            :loading="muteForm.processing"
-          >
-            {{ t('admin.genericShow.mute') }}
-          </a-button>
-        </div>
-      </form>
-    </a-card>
+        </a-form-item>
+        <a-form-item field="expires_at" :label="t('admin.genericShow.expiresAt')">
+          <a-date-picker
+            v-model="muteForm.expires_at"
+            show-time
+            value-format="YYYY-MM-DDTHH:mm"
+            allow-clear
+          />
+        </a-form-item>
+        <a-button
+          html-type="submit"
+          type="primary"
+          status="danger"
+          :loading="muteForm.processing"
+        >
+          {{ t('admin.genericShow.mute') }}
+        </a-button>
+      </a-form>
 
-    <a-card
-      v-if="props.banForm && !props.banForm.banned"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.banUser')"
-      :bordered="true"
-    >
-      <form class="grid gap-4" @submit.prevent="submitBan">
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.banReason') }}</span>
-          <a-input v-model="banForm.reason" :placeholder="t('admin.genericShow.banReason')" />
-        </label>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.expiresAt') }}</span>
-          <a-input v-model="banForm.expires_at" type="datetime-local" />
-        </label>
-        <div>
+      <template v-else-if="operationDrawer === 'ban' && props.banForm">
+        <a-result
+          v-if="props.banForm.banned"
+          status="warning"
+          :title="t('admin.genericShow.bannedNotice')"
+        >
+          <template #extra>
+            <a-popconfirm
+              :content="t('admin.common.confirmOperation')"
+              :ok-text="t('admin.common.continue')"
+              :cancel-text="t('common.cancel')"
+              @ok="submitUnban"
+            >
+          <a-button type="primary">{{ t('admin.genericShow.unban') }}</a-button>
+            </a-popconfirm>
+          </template>
+        </a-result>
+        <a-form v-else :model="banForm" layout="vertical" @submit="submitBan">
+          <a-form-item field="reason" :label="t('admin.genericShow.banReason')">
+            <a-input v-model="banForm.reason" :placeholder="t('admin.genericShow.banReason')" />
+          </a-form-item>
+          <a-form-item field="expires_at" :label="t('admin.genericShow.expiresAt')">
+            <a-date-picker
+              v-model="banForm.expires_at"
+              show-time
+              value-format="YYYY-MM-DDTHH:mm"
+              allow-clear
+            />
+          </a-form-item>
           <a-button
             html-type="submit"
             type="primary"
             status="danger"
-            size="small"
             :loading="banForm.processing"
           >
             {{ t('admin.genericShow.banAccount') }}
           </a-button>
-        </div>
-      </form>
-    </a-card>
+        </a-form>
+      </template>
 
-    <a-card v-if="props.banForm?.banned" class="mt-6 max-w-lg" :bordered="true">
-      <a-alert type="error" show-icon class="mb-4">
-        {{ t('admin.genericShow.bannedNotice') }}
-      </a-alert>
-      <a-button type="outline" size="small" @click="submitUnban">
-        {{ t('admin.genericShow.unban') }}
-      </a-button>
-    </a-card>
-
-    <a-card
-      v-if="props.refundForm"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.partialRefund')"
-      :bordered="true"
-    >
-      <form class="grid gap-4" @submit.prevent="submitRefund">
-        <p class="text-xs text-[var(--color-text-3)]">
+      <a-form
+        v-else-if="operationDrawer === 'refund' && props.refundForm"
+        :model="refundForm"
+        layout="vertical"
+        @submit="submitRefund"
+      >
+        <a-alert type="info">
           {{ t('admin.genericShow.maxRefund', { amount: props.refundForm.max_label }) }}
-        </p>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.refundCents') }}</span>
+        </a-alert>
+        <a-form-item field="amount_cents" :label="t('admin.genericShow.refundCents')">
           <a-input-number
             v-model="refundForm.amount_cents"
             :max="props.refundForm.max_cents"
             :min="1"
             required
           />
-        </label>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.common.reason') }}</span>
+        </a-form-item>
+        <a-form-item field="reason" :label="t('admin.common.reason')">
           <a-input v-model="refundForm.reason" :placeholder="t('admin.genericShow.refundReason')" />
-        </label>
-        <div>
-          <a-button
-            html-type="submit"
-            type="primary"
-            size="small"
-            :loading="refundForm.processing"
-          >
-            {{ t('admin.genericShow.processRefund') }}
-          </a-button>
-        </div>
-      </form>
-    </a-card>
+        </a-form-item>
+        <a-button html-type="submit" type="primary" :loading="refundForm.processing">
+          {{ t('admin.genericShow.processRefund') }}
+        </a-button>
+      </a-form>
 
-    <a-card
-      v-if="props.badgeForm"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.grantBadge')"
-      :bordered="true"
-    >
-      <form class="grid gap-4" @submit.prevent="submitBadge">
-        <p v-if="props.badgeForm.earned.length" class="text-xs text-[var(--color-text-3)]">
+      <a-form
+        v-else-if="operationDrawer === 'badge' && props.badgeForm"
+        :model="{ badgeSlug }"
+        layout="vertical"
+        @submit="submitBadge"
+      >
+        <a-alert v-if="props.badgeForm.earned.length" type="info">
           {{ t('admin.genericShow.earnedBadges', { badges: props.badgeForm.earned.join(t('common.listSeparator')) }) }}
-        </p>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.selectBadge') }}</span>
+        </a-alert>
+        <a-form-item field="badgeSlug" :label="t('admin.genericShow.selectBadge')">
           <a-select v-model="badgeSlug" :options="badgeOptions" allow-clear />
-        </label>
+        </a-form-item>
         <a-space wrap>
-          <a-button html-type="submit" type="primary" size="small">
+        <a-button html-type="submit" type="primary" :disabled="!badgeSlug">
             {{ t('admin.genericShow.grant') }}
           </a-button>
           <a-button
             v-if="props.badgeForm.revoke_url"
             type="outline"
-            size="small"
+            :disabled="!badgeSlug"
             @click="revokeBadge"
           >
             {{ t('admin.genericShow.revoke') }}
           </a-button>
         </a-space>
-      </form>
-    </a-card>
+      </a-form>
 
-    <a-card
-      v-if="props.warningForm"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.warning')"
-      :bordered="true"
-    >
-      <form class="grid gap-4" @submit.prevent="submitWarning">
-        <p class="text-xs text-[var(--color-text-3)]">
+      <a-form
+        v-else-if="operationDrawer === 'warning' && props.warningForm"
+        :model="warningForm"
+        layout="vertical"
+        @submit="submitWarning"
+      >
+        <a-alert type="warning">
           {{ t('admin.genericShow.warningPoints', { points: props.warningForm.warning_points }) }}
-        </p>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.warningReason') }}</span>
+        </a-alert>
+        <a-form-item field="reason" :label="t('admin.genericShow.warningReason')">
           <a-input
             v-model="warningForm.reason"
             :placeholder="t('admin.genericShow.warningReasonPlaceholder')"
             required
           />
-        </label>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.warningPointsLabel') }}</span>
+        </a-form-item>
+        <a-form-item field="points" :label="t('admin.genericShow.warningPointsLabel')">
           <a-input-number v-model="warningForm.points" :min="1" :max="10" />
-        </label>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.warningExpireDays') }}</span>
-          <a-input
+        </a-form-item>
+        <a-form-item field="expire_days" :label="t('admin.genericShow.warningExpireDays')">
+          <a-input-number
             v-model="warningForm.expire_days"
-            type="number"
-            min="0"
+            :min="0"
             :placeholder="t('admin.genericShow.warningExpireDaysPlaceholder')"
           />
-        </label>
-        <div>
-          <a-button
-            html-type="submit"
-            type="primary"
-            status="danger"
-            size="small"
-            :loading="warningForm.processing"
-          >
-            {{ t('admin.genericShow.issueWarning') }}
-          </a-button>
-        </div>
-      </form>
-    </a-card>
+        </a-form-item>
+        <a-button
+          html-type="submit"
+          type="primary"
+          status="danger"
+          :loading="warningForm.processing"
+        >
+          {{ t('admin.genericShow.issueWarning') }}
+        </a-button>
+      </a-form>
 
-    <a-card
-      v-if="props.shippingForm"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.shippingManagement')"
-      :bordered="true"
-    >
-      <form class="grid gap-4" @submit.prevent="submitShipping">
+      <a-form
+        v-else-if="operationDrawer === 'shipping' && props.shippingForm"
+        :model="shippingForm"
+        layout="vertical"
+        @submit="submitShipping"
+      >
         <a-alert v-if="props.shippingForm.shipped" type="info" show-icon>
           {{ t('admin.genericShow.orderAlreadyShipped') }}
         </a-alert>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.trackingNumber') }}</span>
+        <a-form-item field="tracking_number" :label="t('admin.genericShow.trackingNumber')">
           <a-input
             v-model="shippingForm.tracking_number"
             :placeholder="t('admin.genericShow.trackingNumberPlaceholder')"
           />
-        </label>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.shippingCarrier') }}</span>
+        </a-form-item>
+        <a-form-item field="shipping_carrier" :label="t('admin.genericShow.shippingCarrier')">
           <a-input
             v-model="shippingForm.shipping_carrier"
             :placeholder="t('admin.genericShow.shippingCarrierPlaceholder')"
           />
-        </label>
-        <a-checkbox v-if="!props.shippingForm.shipped" v-model="shippingForm.mark_shipped">
-          {{ t('admin.genericShow.markShipped') }}
-        </a-checkbox>
-        <div>
-          <a-button
-            html-type="submit"
-            type="primary"
-            size="small"
-            :loading="shippingForm.processing"
-          >
-            {{ t('admin.genericShow.saveShipping') }}
-          </a-button>
-        </div>
-      </form>
-    </a-card>
+        </a-form-item>
+        <a-form-item v-if="!props.shippingForm.shipped" field="mark_shipped">
+          <a-checkbox v-model="shippingForm.mark_shipped">{{ t('admin.genericShow.markShipped') }}</a-checkbox>
+        </a-form-item>
+        <a-button html-type="submit" type="primary" :loading="shippingForm.processing">
+          {{ t('admin.genericShow.saveShipping') }}
+        </a-button>
+      </a-form>
 
-    <a-card
-      v-if="props.staffNoteForm"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.staffNote')"
-      :bordered="true"
-    >
-      <form class="grid gap-4" @submit.prevent="submitStaffNote">
-        <p class="text-xs text-[var(--color-text-3)]">{{ t('admin.genericShow.staffNoteHint') }}</p>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.noteBody') }}</span>
+      <a-form
+        v-else-if="operationDrawer === 'staffNote' && props.staffNoteForm"
+        :model="staffNoteForm"
+        layout="vertical"
+        @submit="submitStaffNote"
+      >
+        <a-alert type="info">{{ t('admin.genericShow.staffNoteHint') }}</a-alert>
+        <a-form-item field="body" :label="t('admin.genericShow.noteBody')">
           <a-textarea
             v-model="staffNoteForm.body"
             :placeholder="t('admin.genericShow.notePlaceholder')"
-            :auto-size="{ minRows: 2, maxRows: 6 }"
+            :auto-size="{ minRows: 4, maxRows: 10 }"
             required
           />
-        </label>
-        <a-checkbox v-model="staffNoteForm.visible_to_customer">
-          {{ t('admin.genericShow.visibleToBuyer') }}
-        </a-checkbox>
-        <div>
-          <a-button
-            html-type="submit"
-            type="primary"
-            size="small"
-            :loading="staffNoteForm.processing"
-          >
-            {{ t('admin.genericShow.saveNote') }}
-          </a-button>
-        </div>
-      </form>
-    </a-card>
+        </a-form-item>
+        <a-form-item field="visible_to_customer">
+          <a-checkbox v-model="staffNoteForm.visible_to_customer">
+            {{ t('admin.genericShow.visibleToBuyer') }}
+          </a-checkbox>
+        </a-form-item>
+        <a-button html-type="submit" type="primary" :loading="staffNoteForm.processing">
+          {{ t('admin.genericShow.saveNote') }}
+        </a-button>
+      </a-form>
 
-    <a-card v-if="props.spamCleanForm" class="mt-6 max-w-lg" :bordered="true">
-      <a-alert
-        type="warning"
-        show-icon
-        :title="t('admin.genericShow.spamCleanTitle')"
-        class="mb-4"
+      <a-space v-else-if="operationDrawer === 'spam' && props.spamCleanForm" direction="vertical" size="large" fill>
+        <a-alert type="warning" show-icon :title="t('admin.genericShow.spamCleanTitle')">
+          {{ t('admin.genericShow.spamCleanHint') }}
+        </a-alert>
+        <a-button type="primary" status="danger" @click="cleanSpam">
+          {{ t('admin.genericShow.spamCleanAction') }}
+        </a-button>
+      </a-space>
+
+      <a-space
+        v-else-if="operationDrawer === 'storeCredit' && props.storeCreditForm"
+        direction="vertical"
+        :size="16"
+        fill
       >
-        {{ t('admin.genericShow.spamCleanHint') }}
-      </a-alert>
-      <a-button type="primary" status="danger" size="small" @click="cleanSpam">
-        {{ t('admin.genericShow.spamCleanAction') }}
-      </a-button>
-    </a-card>
-
-    <a-card
-      v-if="props.storeCreditForm"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.storeCredit')"
-      :bordered="true"
-    >
-      <a-space direction="vertical" fill :size="16">
         <a-alert
           type="warning"
           show-icon
@@ -949,13 +1044,69 @@ function submitAccountAccess() {
             <strong>{{ storeCreditBalanceLabel }}</strong>
           </a-descriptions-item>
         </a-descriptions>
-        <div>
-          <a-button type="primary" status="warning" @click="openStoreCreditModal">
-            {{ t('admin.genericShow.openStoreCreditAdjustment') }}
-          </a-button>
-        </div>
+        <a-button type="primary" status="warning" @click="openStoreCreditModal">
+          {{ t('admin.genericShow.openStoreCreditAdjustment') }}
+        </a-button>
       </a-space>
-    </a-card>
+
+      <template v-else-if="operationDrawer === 'silence' && props.silenceForm">
+        <a-result
+          v-if="props.silenceForm.silenced"
+          status="warning"
+          :title="t('admin.genericShow.silencedNotice')"
+          :subtitle="t('admin.genericShow.silenceHint')"
+        >
+          <template #extra>
+            <a-popconfirm
+              :content="t('admin.common.confirmOperation')"
+              :ok-text="t('admin.common.continue')"
+              :cancel-text="t('common.cancel')"
+              @ok="submitUnsilence"
+            >
+              <a-button type="primary">{{ t('admin.genericShow.removeSilence') }}</a-button>
+            </a-popconfirm>
+          </template>
+        </a-result>
+        <a-form v-else :model="silenceForm" layout="vertical" @submit="submitSilence">
+          <a-alert type="info">{{ t('admin.genericShow.silenceHint') }}</a-alert>
+          <a-form-item field="reason" :label="t('admin.common.reason')">
+            <a-input v-model="silenceForm.reason" :placeholder="t('admin.common.optional')" />
+          </a-form-item>
+          <a-form-item field="days" :label="t('admin.genericShow.days')">
+            <a-input-number
+              v-model="silenceForm.days"
+              :min="1"
+              :placeholder="t('admin.genericShow.daysPlaceholder')"
+            />
+          </a-form-item>
+          <a-button
+            html-type="submit"
+            type="primary"
+            status="danger"
+            :loading="silenceForm.processing"
+          >
+            {{ t('admin.genericShow.applySilence') }}
+          </a-button>
+        </a-form>
+      </template>
+
+      <a-form
+        v-else-if="operationDrawer === 'trust' && props.trustLevelForm"
+        :model="{ trustLevelOverride }"
+        layout="vertical"
+        @submit="submitTrustLevel"
+      >
+        <a-alert type="info">
+          {{ t('admin.genericShow.currentTrust', { level: props.trustLevelForm.current_level }) }}
+        </a-alert>
+        <a-form-item field="trustLevelOverride" :label="t('admin.genericShow.manualOverride')">
+          <a-select v-model="trustLevelOverride" :options="trustLevelOptions" />
+        </a-form-item>
+        <a-button html-type="submit" type="primary">
+          {{ t('admin.genericShow.saveTrust') }}
+        </a-button>
+      </a-form>
+    </a-drawer>
 
     <a-modal
       v-if="props.storeCreditForm"
@@ -967,268 +1118,146 @@ function submitAccountAccess() {
       :width="'min(560px, calc(100vw - 32px))'"
       @cancel="closeStoreCreditModal"
     >
-      <a-steps :current="storeCreditStep" size="small" class="mb-5">
+      <a-steps :current="storeCreditStep" size="small">
         <a-step :title="t('admin.genericShow.storeCreditStepDetails')" />
         <a-step :title="t('admin.genericShow.storeCreditStepReview')" />
       </a-steps>
 
-      <a-alert
-        v-if="storeCreditError"
-        class="mb-4"
-        type="error"
-        show-icon
-        :closable="false"
-      >
-        {{ storeCreditError }}
-      </a-alert>
+      <a-space direction="vertical" :size="16" fill>
+        <a-alert
+          v-if="storeCreditError"
+          type="error"
+          show-icon
+          :closable="false"
+        >
+          {{ storeCreditError }}
+        </a-alert>
 
-      <a-alert
-        class="mb-5"
-        type="warning"
-        show-icon
-        :closable="false"
-        :title="t('admin.genericShow.storeCreditAuditTitle')"
-      >
-        {{ t('admin.genericShow.storeCreditAuditHint') }}
-      </a-alert>
+        <a-alert
+          type="warning"
+          show-icon
+          :closable="false"
+          :title="t('admin.genericShow.storeCreditAuditTitle')"
+        >
+          {{ t('admin.genericShow.storeCreditAuditHint') }}
+        </a-alert>
 
-      <a-form :model="storeCreditForm" layout="vertical">
-        <template v-if="!storeCreditAuthorization">
-          <a-form-item
-            field="amount_cents"
-            :label="t('admin.genericShow.adjustCents')"
-            required
-          >
-            <a-input-number
-              v-model="storeCreditForm.amount_cents"
-              :disabled="storeCreditAuthorizing"
-            />
-          </a-form-item>
-
-          <a-form-item
-            field="note"
-            :label="t('admin.genericShow.note')"
-            :extra="t('admin.genericShow.storeCreditNoteRequired')"
-            required
-          >
-            <a-textarea
-              v-model="storeCreditForm.note"
-              :placeholder="t('admin.genericShow.storeCreditNotePlaceholder')"
-              :auto-size="{ minRows: 3, maxRows: 6 }"
-              :max-length="1000"
-              show-word-limit
-              :disabled="storeCreditAuthorizing"
-            />
-          </a-form-item>
-
-          <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <a-button
-              class="w-full sm:w-auto"
-              :disabled="storeCreditAuthorizing"
-              @click="closeStoreCreditModal"
+        <a-form :model="storeCreditForm" layout="vertical">
+          <template v-if="!storeCreditAuthorization">
+            <a-form-item
+              field="amount_cents"
+              :label="t('admin.genericShow.adjustCents')"
+              required
             >
-              {{ t('common.cancel') }}
-            </a-button>
-            <a-button
-              class="w-full sm:w-auto"
-              type="primary"
-              status="warning"
-              :loading="storeCreditAuthorizing"
-              :disabled="!canAuthorizeStoreCredit"
-              @click="authorizeStoreCredit"
+              <a-input-number
+                v-model="storeCreditForm.amount_cents"
+                :disabled="storeCreditAuthorizing"
+              />
+            </a-form-item>
+
+            <a-form-item
+              field="note"
+              :label="t('admin.genericShow.note')"
+              :extra="t('admin.genericShow.storeCreditNoteRequired')"
+              required
             >
-              {{ t('admin.genericShow.storeCreditAuthorize') }}
-            </a-button>
-          </div>
-        </template>
+              <a-textarea
+                v-model="storeCreditForm.note"
+                :placeholder="t('admin.genericShow.storeCreditNotePlaceholder')"
+                :auto-size="{ minRows: 3, maxRows: 6 }"
+                :max-length="1000"
+                show-word-limit
+                :disabled="storeCreditAuthorizing"
+              />
+            </a-form-item>
 
-        <template v-else>
-          <a-descriptions :column="1" bordered size="small" class="mb-4">
-            <a-descriptions-item :label="t('admin.genericShow.storeCreditBefore')">
-              {{ storeCreditAuthorization.balance_before_label }}
-            </a-descriptions-item>
-            <a-descriptions-item :label="t('admin.genericShow.storeCreditChange')">
-              <a-tag :color="storeCreditAuthorization.amount_cents > 0 ? 'green' : 'red'">
-                {{ storeCreditAuthorization.amount_label }}
-              </a-tag>
-            </a-descriptions-item>
-            <a-descriptions-item :label="t('admin.genericShow.storeCreditAfter')">
-              <strong>{{ storeCreditAuthorization.balance_after_label }}</strong>
-            </a-descriptions-item>
-            <a-descriptions-item :label="t('admin.genericShow.storeCreditRequestId')">
-              <code class="break-all text-xs">{{ storeCreditAuthorization.request_id }}</code>
-            </a-descriptions-item>
-          </a-descriptions>
+            <a-space justify="end" wrap>
+              <a-button
+                :disabled="storeCreditAuthorizing"
+                @click="closeStoreCreditModal"
+              >
+                {{ t('common.cancel') }}
+              </a-button>
+              <a-button
+                type="primary"
+                status="warning"
+                :loading="storeCreditAuthorizing"
+                :disabled="!canAuthorizeStoreCredit"
+                @click="authorizeStoreCredit"
+              >
+                {{ t('admin.genericShow.storeCreditAuthorize') }}
+              </a-button>
+            </a-space>
+          </template>
 
-          <a-alert type="info" show-icon class="mb-4">
-            {{
-              t('admin.genericShow.storeCreditAuthorizationExpiry', {
-                minutes: Math.max(1, Math.ceil(storeCreditAuthorization.expires_in / 60)),
-              })
-            }}
-          </a-alert>
-
-          <a-form-item
-            field="confirmation"
-            :label="t('admin.genericShow.storeCreditConfirmation')"
-            required
-          >
-            <a-input
-              v-model="storeCreditForm.confirmation"
-              :placeholder="t('admin.genericShow.storeCreditConfirmationPlaceholder')"
-              :disabled="storeCreditSubmitting"
-              autocomplete="off"
-            />
-            <template #extra>
-              <div class="mt-1 grid gap-2">
-                <span>{{ t('admin.genericShow.storeCreditConfirmationHint') }}</span>
-                <a-tag color="orangered" class="w-fit max-w-full">
-                  <code class="break-all">{{ storeCreditAuthorization.confirmation }}</code>
+          <template v-else>
+            <a-descriptions :column="1" bordered size="small">
+              <a-descriptions-item :label="t('admin.genericShow.storeCreditBefore')">
+                {{ storeCreditAuthorization.balance_before_label }}
+              </a-descriptions-item>
+              <a-descriptions-item :label="t('admin.genericShow.storeCreditChange')">
+                <a-tag :color="storeCreditAuthorization.amount_cents > 0 ? 'green' : 'red'">
+                  {{ storeCreditAuthorization.amount_label }}
                 </a-tag>
-              </div>
-            </template>
-          </a-form-item>
+              </a-descriptions-item>
+              <a-descriptions-item :label="t('admin.genericShow.storeCreditAfter')">
+                <strong>{{ storeCreditAuthorization.balance_after_label }}</strong>
+              </a-descriptions-item>
+              <a-descriptions-item :label="t('admin.genericShow.storeCreditRequestId')">
+                <code>{{ storeCreditAuthorization.request_id }}</code>
+              </a-descriptions-item>
+            </a-descriptions>
 
-          <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-            <a-button
-              class="w-full sm:w-auto"
-              :disabled="storeCreditSubmitting"
-              @click="editStoreCreditRequest"
+            <a-alert type="info" show-icon>
+              {{
+                t('admin.genericShow.storeCreditAuthorizationExpiry', {
+                  minutes: Math.max(1, Math.ceil(storeCreditAuthorization.expires_in / 60)),
+                })
+              }}
+            </a-alert>
+
+            <a-form-item
+              field="confirmation"
+              :label="t('admin.genericShow.storeCreditConfirmation')"
+              required
             >
-              {{ t('admin.genericShow.storeCreditBackToEdit') }}
-            </a-button>
-            <a-button
-              class="w-full sm:w-auto"
-              type="primary"
-              status="danger"
-              :loading="storeCreditSubmitting"
-              :disabled="!canSubmitStoreCredit"
-              @click="submitStoreCredit"
-            >
-              {{ t('admin.genericShow.confirmStoreCreditAdjustment') }}
-            </a-button>
-          </div>
-        </template>
-      </a-form>
+              <a-input
+                v-model="storeCreditForm.confirmation"
+                :placeholder="t('admin.genericShow.storeCreditConfirmationPlaceholder')"
+                :disabled="storeCreditSubmitting"
+                autocomplete="off"
+              />
+              <template #extra>
+                <a-space direction="vertical" :size="8" fill>
+                  <span>{{ t('admin.genericShow.storeCreditConfirmationHint') }}</span>
+                  <a-tag color="orangered">
+                    <code>{{ storeCreditAuthorization.confirmation }}</code>
+                  </a-tag>
+                </a-space>
+              </template>
+            </a-form-item>
+
+            <a-space justify="end" wrap>
+              <a-button
+                :disabled="storeCreditSubmitting"
+                @click="editStoreCreditRequest"
+              >
+                {{ t('admin.genericShow.storeCreditBackToEdit') }}
+              </a-button>
+              <a-button
+                type="primary"
+                status="danger"
+                :loading="storeCreditSubmitting"
+                :disabled="!canSubmitStoreCredit"
+                @click="submitStoreCredit"
+              >
+                {{ t('admin.genericShow.confirmStoreCreditAdjustment') }}
+              </a-button>
+            </a-space>
+          </template>
+        </a-form>
+      </a-space>
     </a-modal>
-
-    <a-card
-      v-if="props.silenceForm"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.silence')"
-      :bordered="true"
-    >
-      <p class="mb-4 text-xs text-[var(--color-text-3)]">
-        {{ t('admin.genericShow.silenceHint') }}
-      </p>
-      <a-alert v-if="props.silenceForm.silenced" type="warning" show-icon class="mb-4">
-        {{ t('admin.genericShow.silencedNotice') }}
-      </a-alert>
-      <form v-if="!props.silenceForm.silenced" class="grid gap-4" @submit.prevent="submitSilence">
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.common.reason') }}</span>
-          <a-input v-model="silenceForm.reason" :placeholder="t('admin.common.optional')" />
-        </label>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.days') }}</span>
-          <a-input-number
-            v-model="silenceForm.days"
-            :min="1"
-            :placeholder="t('admin.genericShow.daysPlaceholder')"
-          />
-        </label>
-        <div>
-          <a-button
-            html-type="submit"
-            type="primary"
-            status="danger"
-            size="small"
-            :loading="silenceForm.processing"
-          >
-            {{ t('admin.genericShow.applySilence') }}
-          </a-button>
-        </div>
-      </form>
-      <a-button v-else type="outline" size="small" @click="submitUnsilence">
-        {{ t('admin.genericShow.removeSilence') }}
-      </a-button>
-    </a-card>
-
-    <a-card
-      v-if="props.trustLevelForm"
-      class="mt-6 max-w-lg"
-      :title="t('admin.genericShow.trustLevel')"
-      :bordered="true"
-    >
-      <form class="grid gap-4" @submit.prevent="submitTrustLevel">
-        <p class="text-xs text-[var(--color-text-3)]">
-          {{ t('admin.genericShow.currentTrust', { level: props.trustLevelForm.current_level }) }}
-        </p>
-        <label class="admin-generic-show__field">
-          <span>{{ t('admin.genericShow.manualOverride') }}</span>
-          <a-select v-model="trustLevelOverride" :options="trustLevelOptions" />
-        </label>
-        <div>
-          <a-button html-type="submit" type="primary" size="small">
-            {{ t('admin.genericShow.saveTrust') }}
-          </a-button>
-        </div>
-      </form>
-    </a-card>
-
-    <a-space class="mt-6" wrap :size="[12, 12]">
-      <a-button
-        v-for="action in highRiskActions || []"
-        :key="action.key"
-        type="primary"
-        status="warning"
-        @click="openHighRiskAction(action)"
-      >
-        {{ action.label }}
-      </a-button>
-      <template v-for="action in actions" :key="action.href + action.label">
-        <a-button
-          v-if="action.method && action.method !== 'get'"
-          :type="action.variant === 'outline' ? 'outline' : 'primary'"
-          :status="action.method === 'delete' ? 'danger' : undefined"
-          @click="runAction(action)"
-        >
-          {{ action.label }}
-        </a-button>
-        <a-button
-          v-else-if="action.confirm"
-          :type="action.variant === 'default' ? 'primary' : 'outline'"
-          @click="runAction(action)"
-        >
-          {{ action.label }}
-        </a-button>
-        <Link
-          v-else-if="!action.external && isAdminSpaNavigationHref(action.href)"
-          :href="action.href"
-          class="arco-btn arco-btn-size-medium no-underline"
-          :class="action.variant === 'default' ? 'arco-btn-primary' : 'arco-btn-outline'"
-        >
-          {{ action.label }}
-        </Link>
-        <a
-          v-else
-          :href="action.href"
-          target="_blank"
-          rel="noopener"
-          data-admin-hard-navigation
-          class="arco-btn arco-btn-size-medium no-underline"
-          :class="action.variant === 'default' ? 'arco-btn-primary' : 'arco-btn-outline'"
-        >
-          {{ action.label }}
-        </a>
-      </template>
-      <Link
-        :href="backUrl"
-        class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
-      >
-        {{ t('admin.genericShow.back') }}
-      </Link>
-    </a-space>
 
     <HighRiskActionModal
       v-if="selectedHighRiskAction"
@@ -1240,29 +1269,5 @@ function submitAccountAccess() {
       :payload="selectedHighRiskAction.data || {}"
       @completed="highRiskCompleted"
     />
-  </div>
+  </a-space>
 </template>
-
-<style scoped>
-.admin-generic-show__field {
-  display: grid;
-  gap: 6px;
-  font-size: 14px;
-  color: var(--color-text-2);
-}
-
-.admin-generic-show__pre {
-  max-width: 100%;
-  overflow: auto;
-  border-radius: 4px;
-  background: var(--color-fill-2);
-  padding: 16px;
-  font-size: 12px;
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
-}
-
-.admin-generic-show :deep(.arco-list-content) {
-  overflow: hidden;
-}
-</style>

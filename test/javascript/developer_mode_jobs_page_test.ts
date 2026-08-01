@@ -29,7 +29,7 @@ test('background jobs page uses Arco and explains Developer Mode scheduling', ()
   assert.doesNotMatch(source, /new Intl\.DateTimeFormat\(undefined,/)
   assert.match(
     source,
-    /<a-button type="primary" :href="dashboardUrl" data-admin-hard-navigation>/,
+    /<a-button type="primary" :href="dashboardUrl" long data-admin-hard-navigation>/,
   )
   assert.doesNotMatch(source, /window\.location/)
   assert.doesNotMatch(source, /<(?:input|select|button|table)(?:\s|>)/)

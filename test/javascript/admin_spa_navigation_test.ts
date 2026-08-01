@@ -169,8 +169,9 @@ test('admin entry installs delegated SPA navigation and preserves intentional ha
   assert.match(orderIndex, /v-if="exportUrl"[^>]*data-admin-hard-navigation/)
 })
 
-test('admin source keeps internal links on Inertia and explicitly inventories every hard boundary', () => {
+test('admin source keeps internal links on Inertia or delegated Arco navigation and inventories hard boundaries', () => {
   const hardDestinations: string[] = []
+  const delegatedDestinations: string[] = []
 
   for (const page of adminVueSources()) {
     for (const tag of openingTags(page.source)) {
@@ -180,16 +181,29 @@ test('admin source keeps internal links on Inertia and explicitly inventories ev
       const tagName = tag.match(/^<([A-Za-z][\w-]*)/)?.[1]
       if (tagName === 'Link') continue
       if (tagName === 'a' && href.startsWith('#')) continue
+      if (!/\s:?data-admin-hard-navigation(?:\s|>|=)/.test(tag)) {
+        assert.match(
+          tagName ?? '',
+          /^a-(?:button|link)$/,
+          `${page.path} bypasses Inertia without using delegated Arco navigation: ${tag}`,
+        )
+        assert.doesNotMatch(
+          tag,
+          /\s(?:target|download)\s*=/,
+          `${page.path} has a native navigation boundary without an explicit marker: ${tag}`,
+        )
+        delegatedDestinations.push(`${page.path}|${href}`)
+        continue
+      }
 
-      assert.match(
-        tag,
-        /\sdata-admin-hard-navigation(?:\s|>|=)/,
-        `${page.path} uses a non-Inertia href without an explicit hard-navigation boundary: ${tag}`,
-      )
       hardDestinations.push(`${page.path}|${href}`)
     }
   }
 
+  assert.ok(
+    delegatedDestinations.includes('app/javascript/pages/Admin/System/ApiKeys/Index.vue|newUrl'),
+    'ordinary Arco links should remain inside the delegated admin SPA boundary',
+  )
   assert.deepEqual(
     hardDestinations.sort(),
     [
@@ -205,9 +219,10 @@ test('admin source keeps internal links on Inertia and explicitly inventories ev
       'app/javascript/pages/Admin/Generic/Index.vue|action.href',
       'app/javascript/pages/Admin/Generic/Index.vue|exportUrl',
       'app/javascript/pages/Admin/Generic/Index.vue|record.url',
-      'app/javascript/pages/Admin/Generic/Show.vue|action.href',
+      'app/javascript/pages/Admin/Generic/Index.vue|record.url',
       'app/javascript/pages/Admin/Store/Orders/IndexProDemo.vue|exportUrl',
       'app/javascript/pages/Admin/System/DeveloperWorkbench/Show.vue|diagnosticUrl',
+      'app/javascript/pages/Admin/System/Applications/Index.vue|plugin.homepage',
       'app/javascript/pages/Admin/System/Jobs/Index.vue|dashboardUrl',
     ].sort(),
   )
@@ -269,7 +284,8 @@ test('admin pages share one persistent shell and cross-entry links stay outside 
   assert.match(dashboard, /:href="adminRoutes\.site"[\s\S]*data-admin-hard-navigation/)
   assert.match(attachments, /:href="record\.post_url"[\s\S]*target="_blank"/)
   assert.match(genericIndex, /isAdminSpaNavigationHref\(record\.url\)/)
-  assert.match(genericShow, /!action\.external && isAdminSpaNavigationHref\(action\.href\)/)
+  assert.match(genericShow, /action\.external \|\| !isAdminSpaNavigationHref\(action\.href\)/)
+  assert.match(genericShow, /router\.visit\(action\.href\)/)
 })
 
 test('website previews deliberately use the public Inertia entry', () => {

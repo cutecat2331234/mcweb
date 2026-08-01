@@ -116,57 +116,59 @@ function changePage(page: number) {
 
     <Grid :cols="{ xs: 1, sm: 2, lg: 4 }" :col-gap="16" :row-gap="16">
       <GridItem>
-        <Card :bordered="false">
+        <Card :bordered="true" hoverable>
           <Statistic :title="t('admin.fulfillments.metrics.total')" :value="summary.total" />
         </Card>
       </GridItem>
       <GridItem>
-        <Card :bordered="false">
+        <Card :bordered="true" hoverable>
           <Statistic :title="t('admin.fulfillments.metrics.pending')" :value="summary.pending" />
         </Card>
       </GridItem>
       <GridItem>
-        <Card :bordered="false">
+        <Card :bordered="true" hoverable>
           <Statistic :title="t('admin.fulfillments.metrics.failed')" :value="summary.failed" />
         </Card>
       </GridItem>
       <GridItem>
-        <Card :bordered="false">
+        <Card :bordered="true" hoverable>
           <Statistic :title="t('admin.fulfillments.metrics.exhausted')" :value="summary.exhausted" />
         </Card>
       </GridItem>
     </Grid>
 
     <Card :title="t('admin.fulfillments.queueTitle')" :bordered="false">
-      <template #extra>
-        <Select
-          v-model="selectedStatus"
-          :placeholder="t('admin.fulfillments.filterStatus')"
-          allow-clear
-          :style="{ width: '220px', maxWidth: '50vw' }"
-        >
-          <a-option
-            v-for="option in status_options"
-            :key="option.value"
-            :value="option.value"
-          >
-            {{ option.label }}
-          </a-option>
-        </Select>
-      </template>
+      <Space direction="vertical" size="large" fill>
+        <Grid :cols="24" :col-gap="12" :row-gap="12">
+          <GridItem :span="{ xs: 24, sm: 12, lg: 8, xl: 6 }">
+            <Select
+              v-model="selectedStatus"
+              :placeholder="t('admin.fulfillments.filterStatus')"
+              allow-clear
+            >
+              <a-option
+                v-for="option in status_options"
+                :key="option.value"
+                :value="option.value"
+              >
+                {{ option.label }}
+              </a-option>
+            </Select>
+          </GridItem>
+        </Grid>
 
-      <Empty v-if="rows.length === 0" :description="t('admin.fulfillments.empty')" />
-      <Table
-        v-else
-        :data="rows"
-        :pagination="false"
-        row-key="id"
-        :scroll="{ x: 1040 }"
-      >
+        <Empty v-if="rows.length === 0" :description="t('admin.fulfillments.empty')" />
+        <Table
+          v-else
+          :data="rows"
+          :pagination="false"
+          row-key="id"
+          :scroll="{ x: 1040 }"
+        >
         <TableColumn :title="t('admin.fulfillments.columns.delivery')" :width="230">
           <template #cell="{ record }">
-            <Link :href="record.url" class="arco-link no-underline">
-              {{ record.delivery_id }}
+            <Link :href="record.url">
+              <TypographyText type="primary">{{ record.delivery_id }}</TypographyText>
             </Link>
           </template>
         </TableColumn>
@@ -203,17 +205,18 @@ function changePage(page: number) {
             </TypographyText>
           </template>
         </TableColumn>
-      </Table>
+        </Table>
 
-      <div v-if="pagination.pages > 1" class="mt-5 flex justify-end">
-        <Pagination
-          :current="pagination.page"
-          :total="pagination.count"
-          :page-size="pagination.limit"
-          show-total
-          @change="changePage"
-        />
-      </div>
+        <Space v-if="pagination.pages > 1" justify="end" fill>
+          <Pagination
+            :current="pagination.page"
+            :total="pagination.count"
+            :page-size="pagination.limit"
+            show-total
+            @change="changePage"
+          />
+        </Space>
+      </Space>
     </Card>
   </Space>
 </template>

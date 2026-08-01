@@ -2,21 +2,6 @@
 import { computed } from 'vue'
 import { Link } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import {
-  Alert,
-  Button,
-  Card,
-  Descriptions,
-  DescriptionsItem,
-  Empty,
-  Grid,
-  GridItem,
-  PageHeader,
-  Space,
-  Tag,
-  Textarea,
-  TypographyText,
-} from '@mcweb/ui'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
@@ -60,127 +45,113 @@ const hasMetadata = computed(() => Object.keys(props.log.metadata).length > 0)
 </script>
 
 <template>
-  <section class="admin-audit-show">
-    <PageHeader
+  <a-space direction="vertical" :size="16" fill>
+    <a-page-header
       :title="log.actionLabel"
       :subtitle="t('admin.audit.detailSubtitle')"
       :show-back="false"
-      class="mb-5 !px-0"
     >
       <template #extra>
         <Link :href="backUrl">
-          <Button>{{ t('admin.audit.back') }}</Button>
+          <a-button shape="round">{{ t('admin.audit.back') }}</a-button>
         </Link>
       </template>
-    </PageHeader>
+    </a-page-header>
 
-    <Alert
+    <a-alert
       type="info"
       show-icon
       :closable="false"
       :title="t('admin.audit.immutableNotice')"
-      class="mb-4"
     />
 
-    <Card :bordered="false" class="mb-4">
-      <Descriptions
+    <a-card :bordered="false">
+      <a-descriptions
         :column="{ xs: 1, sm: 2, lg: 3 }"
         bordered
         size="large"
       >
-        <DescriptionsItem :label="t('admin.audit.action')">
-          <Space direction="vertical" :size="2">
-            <TypographyText class="font-semibold">{{ log.actionLabel }}</TypographyText>
-            <TypographyText code copyable>{{ log.actionCode }}</TypographyText>
-          </Space>
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.audit.actor')">
-          <Space v-if="log.actor" direction="vertical" :size="2">
-            <TypographyText>{{ log.actor.username }}</TypographyText>
-            <TypographyText type="secondary">{{ log.actor.publicId }}</TypographyText>
-          </Space>
-          <TypographyText v-else type="secondary">{{ t('admin.audit.systemActor') }}</TypographyText>
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.audit.occurredAt')">
+        <a-descriptions-item :label="t('admin.audit.action')">
+          <a-space direction="vertical" :size="2">
+            <a-typography-text bold>{{ log.actionLabel }}</a-typography-text>
+            <a-typography-text code copyable>{{ log.actionCode }}</a-typography-text>
+          </a-space>
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.audit.actor')">
+          <a-space v-if="log.actor" direction="vertical" :size="2">
+            <a-typography-text>{{ log.actor.username }}</a-typography-text>
+            <a-typography-text type="secondary">{{ log.actor.publicId }}</a-typography-text>
+          </a-space>
+          <a-typography-text v-else type="secondary">{{ t('admin.audit.systemActor') }}</a-typography-text>
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.audit.occurredAt')">
           <time :datetime="log.occurredAtIso">{{ log.occurredAt }}</time>
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.audit.resource')">
-          <Space direction="vertical" :size="2">
-            <TypographyText>{{ log.resource.typeLabel }}</TypographyText>
-            <TypographyText type="secondary">
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.audit.resource')">
+          <a-space direction="vertical" :size="2">
+            <a-typography-text>{{ log.resource.typeLabel }}</a-typography-text>
+            <a-typography-text type="secondary">
               {{ log.resource.publicId || log.resource.id || t('admin.audit.notAvailable') }}
-            </TypographyText>
-          </Space>
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.audit.requestId')">
-          <Tag v-if="log.requestId" color="arcoblue" bordered>{{ log.requestId }}</Tag>
-          <TypographyText v-else type="secondary">{{ t('admin.audit.notAvailable') }}</TypographyText>
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.audit.ipAddress')">
-          <TypographyText>{{ log.ipAddress || t('admin.audit.notAvailable') }}</TypographyText>
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.audit.reason')" :span="3">
-          <TypographyText>{{ log.reason || t('admin.audit.notAvailable') }}</TypographyText>
-        </DescriptionsItem>
-        <DescriptionsItem :label="t('admin.audit.userAgent')" :span="3">
-          <TypographyText class="audit-wrap">
+            </a-typography-text>
+          </a-space>
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.audit.requestId')">
+          <a-tag v-if="log.requestId" color="arcoblue" bordered>{{ log.requestId }}</a-tag>
+          <a-typography-text v-else type="secondary">{{ t('admin.audit.notAvailable') }}</a-typography-text>
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.audit.ipAddress')">
+          <a-typography-text>{{ log.ipAddress || t('admin.audit.notAvailable') }}</a-typography-text>
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.audit.reason')" :span="3">
+          <a-typography-paragraph>
+            {{ log.reason || t('admin.audit.notAvailable') }}
+          </a-typography-paragraph>
+        </a-descriptions-item>
+        <a-descriptions-item :label="t('admin.audit.userAgent')" :span="3">
+          <a-typography-paragraph copyable :ellipsis="{ rows: 2, expandable: true }">
             {{ log.userAgent || t('admin.audit.notAvailable') }}
-          </TypographyText>
-        </DescriptionsItem>
-      </Descriptions>
-    </Card>
+          </a-typography-paragraph>
+        </a-descriptions-item>
+      </a-descriptions>
+    </a-card>
 
-    <Grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
-      <GridItem>
-        <Card :bordered="false" :title="t('admin.audit.beforeState')" class="audit-state-card">
-          <Textarea
+    <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
+      <a-grid-item>
+        <a-card :bordered="false" :title="t('admin.audit.beforeState')">
+          <a-textarea
             v-if="hasBeforeState"
             :model-value="pretty(log.beforeState)"
             readonly
             :auto-size="{ minRows: 8, maxRows: 20 }"
-            class="audit-json"
             :aria-label="t('admin.audit.beforeState')"
           />
-          <Empty v-else :description="t('admin.audit.noState')" />
-        </Card>
-      </GridItem>
-      <GridItem>
-        <Card :bordered="false" :title="t('admin.audit.afterState')" class="audit-state-card">
-          <Textarea
+          <a-empty v-else :description="t('admin.audit.noState')" />
+        </a-card>
+      </a-grid-item>
+      <a-grid-item>
+        <a-card :bordered="false" :title="t('admin.audit.afterState')">
+          <a-textarea
             v-if="hasAfterState"
             :model-value="pretty(log.afterState)"
             readonly
             :auto-size="{ minRows: 8, maxRows: 20 }"
-            class="audit-json"
             :aria-label="t('admin.audit.afterState')"
           />
-          <Empty v-else :description="t('admin.audit.noState')" />
-        </Card>
-      </GridItem>
-      <GridItem :span="{ xs: 1, lg: 2 }">
-        <Card :bordered="false" :title="t('admin.audit.context')" class="audit-state-card">
-          <Textarea
+          <a-empty v-else :description="t('admin.audit.noState')" />
+        </a-card>
+      </a-grid-item>
+      <a-grid-item :span="{ xs: 1, lg: 2 }">
+        <a-card :bordered="false" :title="t('admin.audit.context')">
+          <a-textarea
             v-if="hasMetadata"
             :model-value="pretty(log.metadata)"
             readonly
             :auto-size="{ minRows: 8, maxRows: 24 }"
-            class="audit-json"
             :aria-label="t('admin.audit.context')"
           />
-          <Empty v-else :description="t('admin.audit.noContext')" />
-        </Card>
-      </GridItem>
-    </Grid>
-  </section>
+          <a-empty v-else :description="t('admin.audit.noContext')" />
+        </a-card>
+      </a-grid-item>
+    </a-grid>
+  </a-space>
 </template>
-
-<style scoped>
-.audit-wrap {
-  overflow-wrap: anywhere;
-}
-
-.audit-json :deep(textarea) {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  line-height: 1.55;
-}
-</style>

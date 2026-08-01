@@ -34,15 +34,16 @@ test('moderation workbench uses Arco with all contracted filters and SPA paginat
 })
 
 test('desktop table and mobile cards both provide selection and moderation access', () => {
-  assert.match(page, /class="hidden overflow-x-auto lg:block"/)
-  assert.match(page, /class="space-y-3 lg:hidden"/)
+  assert.match(page, /window\.matchMedia\('\(max-width: 767px\)'\)/)
+  assert.match(page, /v-else-if="!isMobile"/)
+  assert.match(page, /<Space v-else direction="vertical"/)
   assert.match(page, /v-model:selected-keys="selectedCaseIds"/)
   assert.match(page, /:row-selection="rowSelection"/)
   assert.match(page, /<Checkbox/)
   assert.match(page, /commonActions/)
   assert.match(page, /available_actions/)
-  assert.match(page, /px-1 sm:px-0/)
-  assert.match(page, /min-\[390px\]:flex-row/)
+  assert.doesNotMatch(page, /\s(?:v-bind:class|:class|class)=/)
+  assert.doesNotMatch(page, /<style\b/)
 })
 
 test('drawer loads detail separately and handles evidence truncation, claiming, assigning, and notes', () => {
@@ -51,7 +52,7 @@ test('drawer loads detail separately and handles evidence truncation, claiming, 
   assert.match(page, /`\/admin\/forum\/moderation-workbench\/\$\{id\}`/)
   assert.match(page, /evidenceWasTruncated/)
   assert.match(page, /details\.evidenceTruncated/)
-  assert.match(page, /max-h-72 overflow-auto/)
+  assert.match(page, /:auto-size="\{ minRows: 2, maxRows: 12 \}"/)
   assert.match(page, /\/claim`/)
   assert.match(page, /\{ lock_version: item\.lock_version \}/)
   assert.match(page, /\/assign`/)

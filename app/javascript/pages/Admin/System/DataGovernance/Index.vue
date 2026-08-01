@@ -421,14 +421,19 @@ async function executeLifecycleAction() {
     <Card :bordered="false">
       <Tabs v-model:active-key="activeTab" type="rounded">
         <TabPane key="lifecycle" :title="t('admin.dataGovernance.tabs.lifecycle')">
-          <div class="overflow-x-auto">
-            <Table :data="records" row-key="id" :pagination="false" :bordered="false">
+            <Table
+              :data="records"
+              row-key="id"
+              :pagination="false"
+              :bordered="false"
+              :scroll="{ x: 1240 }"
+            >
               <template #empty>
                 <Empty :description="t('admin.dataGovernance.empty.lifecycle')" />
               </template>
               <TableColumn :title="t('admin.dataGovernance.columns.content')" :width="260">
                 <template #cell="{ record }">
-                  <Button type="text" class="!px-0" @click="selectedRecord = record">
+                  <Button type="text" @click="selectedRecord = record">
                     {{ record.targetLabel }}
                   </Button>
                   <div>
@@ -485,12 +490,16 @@ async function executeLifecycleAction() {
                 </template>
               </TableColumn>
             </Table>
-          </div>
         </TabPane>
 
         <TabPane key="holds" :title="t('admin.dataGovernance.tabs.holds')">
-          <div class="overflow-x-auto">
-            <Table :data="holds" row-key="id" :pagination="false" :bordered="false">
+            <Table
+              :data="holds"
+              row-key="id"
+              :pagination="false"
+              :bordered="false"
+              :scroll="{ x: 1230 }"
+            >
               <template #empty>
                 <Empty :description="t('admin.dataGovernance.empty.holds')" />
               </template>
@@ -526,12 +535,16 @@ async function executeLifecycleAction() {
                 </template>
               </TableColumn>
             </Table>
-          </div>
         </TabPane>
 
         <TabPane key="policies" :title="t('admin.dataGovernance.tabs.policies')">
-          <div class="overflow-x-auto">
-            <Table :data="policies" row-key="id" :pagination="false" :bordered="false">
+            <Table
+              :data="policies"
+              row-key="id"
+              :pagination="false"
+              :bordered="false"
+              :scroll="{ x: 1240 }"
+            >
               <TableColumn :title="t('admin.dataGovernance.columns.resourceType')" :width="240">
                 <template #cell="{ record }">
                   <strong>{{ record.resourceLabel }}</strong>
@@ -570,7 +583,6 @@ async function executeLifecycleAction() {
                 </template>
               </TableColumn>
             </Table>
-          </div>
         </TabPane>
       </Tabs>
     </Card>
@@ -588,7 +600,7 @@ async function executeLifecycleAction() {
         <Input :model-value="selectedPolicy?.resourceLabel" disabled />
       </FormItem>
       <FormItem field="retentionDays" :label="t('admin.dataGovernance.fields.retentionDays')">
-        <InputNumber v-model="policyForm.retentionDays" :min="0" :precision="0" allow-clear class="w-full" />
+        <InputNumber v-model="policyForm.retentionDays" :min="0" :precision="0" allow-clear />
       </FormItem>
       <Grid :cols="1" :row-gap="8">
         <GridItem>
@@ -610,7 +622,7 @@ async function executeLifecycleAction() {
           </Space>
         </GridItem>
       </Grid>
-      <FormItem field="notes" :label="t('admin.dataGovernance.fields.notes')" class="mt-4">
+      <FormItem field="notes" :label="t('admin.dataGovernance.fields.notes')">
         <Textarea v-model="policyForm.notes" :max-length="2000" show-word-limit />
       </FormItem>
       <FormItem field="reason" :label="t('admin.dataGovernance.fields.changeReason')" required>
@@ -689,7 +701,6 @@ async function executeLifecycleAction() {
           v-model="targetForm.expiresAt"
           show-time
           value-format="YYYY-MM-DD HH:mm:ss"
-          class="w-full"
         />
       </FormItem>
       <FormItem field="reason" :label="t('admin.dataGovernance.fields.holdReason')" required>
@@ -708,24 +719,26 @@ async function executeLifecycleAction() {
     unmount-on-close
     @ok="softDelete"
   >
-    <Alert type="warning" show-icon :closable="false" class="mb-4">
-      {{ t('admin.dataGovernance.softDeleteDescription') }}
-    </Alert>
-    <Form :model="targetForm" layout="vertical">
-      <FormItem field="targetType" :label="t('admin.dataGovernance.fields.resourceType')" required>
-        <Select v-model="targetForm.targetType">
-          <Option v-for="entry in resourceTypes" :key="entry.value" :value="entry.value">
-            {{ entry.label }}
-          </Option>
-        </Select>
-      </FormItem>
-      <FormItem field="targetReference" :label="t('admin.dataGovernance.fields.targetReference')" required>
-        <Input v-model="targetForm.targetReference" />
-      </FormItem>
-      <FormItem field="reason" :label="t('admin.dataGovernance.fields.deletionReason')" required>
-        <Textarea v-model="targetForm.reason" :max-length="2000" show-word-limit />
-      </FormItem>
-    </Form>
+    <Space direction="vertical" :size="16" fill>
+      <Alert type="warning" show-icon :closable="false">
+        {{ t('admin.dataGovernance.softDeleteDescription') }}
+      </Alert>
+      <Form :model="targetForm" layout="vertical">
+        <FormItem field="targetType" :label="t('admin.dataGovernance.fields.resourceType')" required>
+          <Select v-model="targetForm.targetType">
+            <Option v-for="entry in resourceTypes" :key="entry.value" :value="entry.value">
+              {{ entry.label }}
+            </Option>
+          </Select>
+        </FormItem>
+        <FormItem field="targetReference" :label="t('admin.dataGovernance.fields.targetReference')" required>
+          <Input v-model="targetForm.targetReference" />
+        </FormItem>
+        <FormItem field="reason" :label="t('admin.dataGovernance.fields.deletionReason')" required>
+          <Textarea v-model="targetForm.reason" :max-length="2000" show-word-limit />
+        </FormItem>
+      </Form>
+    </Space>
   </Modal>
 
   <Modal
@@ -758,18 +771,19 @@ async function executeLifecycleAction() {
     unmount-on-close
     @ok="executeLifecycleAction"
   >
-    <Alert
-      :type="lifecycleAction?.action === 'purge' ? 'error' : 'info'"
-      show-icon
-      :closable="false"
-      class="mb-4"
-    >
-      {{ t(`admin.dataGovernance.${lifecycleAction?.action === 'purge' ? 'purgeDescription' : 'restoreDescription'}`) }}
-    </Alert>
-    <Form layout="vertical">
-      <FormItem :label="t('admin.dataGovernance.fields.actionReason')" required>
-        <Textarea v-model="actionReason" :max-length="2000" show-word-limit />
-      </FormItem>
-    </Form>
+    <Space direction="vertical" :size="16" fill>
+      <Alert
+        :type="lifecycleAction?.action === 'purge' ? 'error' : 'info'"
+        show-icon
+        :closable="false"
+      >
+        {{ t(`admin.dataGovernance.${lifecycleAction?.action === 'purge' ? 'purgeDescription' : 'restoreDescription'}`) }}
+      </Alert>
+      <Form layout="vertical">
+        <FormItem :label="t('admin.dataGovernance.fields.actionReason')" required>
+          <Textarea v-model="actionReason" :max-length="2000" show-word-limit />
+        </FormItem>
+      </Form>
+    </Space>
   </Modal>
 </template>

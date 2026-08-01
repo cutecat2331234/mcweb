@@ -28,6 +28,10 @@ owner.assign_attributes(
 owner.save!
 InstallationLock.lock!(user: owner)
 
+# Each Playwright launch must begin below the production login thresholds while
+# keeping the production limiter enabled for the browser flow itself.
+RateLimitCounter.delete_all
+
 if ActiveRecord::Base.connection.data_source_exists?("operations_metric_buckets")
   Operations::MetricBucket.delete_all
 end

@@ -14,8 +14,9 @@ test('operations trends use Arco statistics, progress, table, and range controls
   assert.match(source, /<a-progress/)
   assert.match(source, /<a-table/)
   assert.match(source, /<a-empty/)
-  assert.match(source, /rounded-2xl/)
-  assert.match(source, /!rounded-none/)
+  assert.match(source, /<a-descriptions/)
+  assert.match(source, /layout="vertical"/)
+  assert.doesNotMatch(source, /rounded-2xl|!rounded-none/)
 })
 
 test('range changes request only the metrics prop without remounting the page', () => {

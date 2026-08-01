@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link } from '@inertiajs/vue3'
+import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
@@ -35,23 +35,23 @@ function deliveryStatusColor(status: string | null) {
   if (normalized.includes('pending')) return 'orange'
   return 'red'
 }
+
+function visit(url: string) {
+  router.visit(url, { preserveScroll: true })
+}
 </script>
 
 <template>
-  <section class="admin-system-webhook-subscriptions">
+  <a-space direction="vertical" :size="16" fill>
     <a-page-header
       :title="title"
       :subtitle="subtitle"
       :show-back="false"
-      class="mb-4 !px-0"
     >
       <template #extra>
-        <Link
-          :href="newUrl"
-          class="arco-btn arco-btn-primary arco-btn-size-medium no-underline"
-        >
+        <a-button type="primary" @click="visit(newUrl)">
           {{ t('admin.webhookSubscriptions.new') }}
-        </Link>
+        </a-button>
       </template>
     </a-page-header>
 
@@ -117,17 +117,14 @@ function deliveryStatusColor(status: string | null) {
           </a-descriptions>
 
           <a-divider />
-          <Link
-            :href="subscription.editUrl"
-            class="arco-btn arco-btn-outline arco-btn-size-small no-underline"
-          >
+          <a-button size="small" @click="visit(subscription.editUrl)">
             {{ t('admin.ui.edit') }}
-          </Link>
+          </a-button>
         </a-card>
       </a-grid-item>
 
       <a-grid-item :span="{ xs: 0, md: 24 }">
-        <a-card :bordered="true" :body-style="{ padding: 0 }">
+        <a-card :bordered="true">
           <a-table
             :data="subscriptions"
             row-key="id"
@@ -145,11 +142,9 @@ function deliveryStatusColor(status: string | null) {
               </a-table-column>
               <a-table-column :title="t('admin.webhookSubscriptions.url')" :width="300">
                 <template #cell="{ record }">
-                  <a-tooltip :content="record.url">
-                    <a-typography-text ellipsis class="block max-w-[270px]">
-                      {{ record.url }}
-                    </a-typography-text>
-                  </a-tooltip>
+                  <a-typography-paragraph :ellipsis="{ rows: 1, showTooltip: true }">
+                    {{ record.url }}
+                  </a-typography-paragraph>
                 </template>
               </a-table-column>
               <a-table-column :title="t('admin.webhookSubscriptions.status')" :width="240">
@@ -182,12 +177,9 @@ function deliveryStatusColor(status: string | null) {
               </a-table-column>
               <a-table-column :title="t('admin.ui.actions')" :width="110" fixed="right">
                 <template #cell="{ record }">
-                  <Link
-                    :href="record.editUrl"
-                    class="arco-btn arco-btn-outline arco-btn-size-small no-underline"
-                  >
+                  <a-button size="small" @click="visit(record.editUrl)">
                     {{ t('admin.ui.edit') }}
-                  </Link>
+                  </a-button>
                 </template>
               </a-table-column>
             </template>
@@ -199,5 +191,5 @@ function deliveryStatusColor(status: string | null) {
         </a-card>
       </a-grid-item>
     </a-grid>
-  </section>
+  </a-space>
 </template>

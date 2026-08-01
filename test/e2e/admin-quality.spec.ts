@@ -34,7 +34,7 @@ test('admin metrics filtering preserves the mounted document', async ({ page }) 
       url.searchParams.get('range') === '7d'
     )
   })
-  await page.getByTestId('metrics-range').locator('input[value="7d"]').click({ force: true })
+  await page.getByTestId('metrics-range').getByText('7 days', { exact: true }).click()
   expect((await metricsRequest).status()).toBeLessThan(400)
   await expect(page.getByTestId('metrics-range').locator('input[value="7d"]')).toBeChecked()
   expect(

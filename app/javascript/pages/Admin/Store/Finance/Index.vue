@@ -396,13 +396,11 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <section class="finance-workbench">
-    <PageHeader
-      :title="t('admin.finance.title')"
-      :subtitle="t('admin.finance.subtitle')"
-      :show-back="false"
-      class="finance-page-header"
-    >
+  <PageHeader
+    :title="t('admin.finance.title')"
+    :subtitle="t('admin.finance.subtitle')"
+    :show-back="false"
+  >
       <template #extra>
         <Button
           v-if="permissions.createExports"
@@ -413,9 +411,9 @@ onUnmounted(() => {
           {{ t('admin.finance.exports.create') }}
         </Button>
       </template>
-    </PageHeader>
+  </PageHeader>
 
-    <Space direction="vertical" size="large" fill>
+  <Space direction="vertical" size="large" fill>
       <Alert type="info" :title="t('admin.finance.retention.title')">
         {{
           t('admin.finance.retention.description', {
@@ -427,22 +425,22 @@ onUnmounted(() => {
 
       <Grid :cols="{ xs: 1, sm: 2, lg: 5 }" :col-gap="16" :row-gap="16">
         <GridItem>
-          <Card :bordered="false" class="finance-stat finance-stat--primary">
+          <Card :bordered="true" hoverable>
             <Statistic :title="t('admin.finance.metrics.documents')" :value="summary.documents" />
           </Card>
         </GridItem>
         <GridItem>
-          <Card :bordered="false" class="finance-stat finance-stat--invoice">
+          <Card :bordered="true" hoverable>
             <Statistic :title="t('admin.finance.metrics.invoices')" :value="summary.invoices" />
           </Card>
         </GridItem>
         <GridItem>
-          <Card :bordered="false" class="finance-stat finance-stat--refund">
+          <Card :bordered="true" hoverable>
             <Statistic :title="t('admin.finance.metrics.refundReceipts')" :value="summary.refund_receipts" />
           </Card>
         </GridItem>
         <GridItem>
-          <Card :bordered="false" class="finance-stat finance-stat--gross">
+          <Card :bordered="true" hoverable>
             <Statistic
               :title="t('admin.finance.metrics.gross')"
               :value="formatSummaryAmount('gross_cents')"
@@ -450,7 +448,7 @@ onUnmounted(() => {
           </Card>
         </GridItem>
         <GridItem>
-          <Card :bordered="false" class="finance-stat finance-stat--tax">
+          <Card :bordered="true" hoverable>
             <Statistic
               :title="t('admin.finance.metrics.tax')"
               :value="formatSummaryAmount('tax_cents')"
@@ -459,7 +457,7 @@ onUnmounted(() => {
         </GridItem>
       </Grid>
 
-      <Card :title="t('admin.finance.filters.title')" :bordered="false" class="finance-filter-card">
+      <Card :title="t('admin.finance.filters.title')" :bordered="false">
         <Form layout="vertical" @submit.prevent="applyFilters">
           <Grid :cols="{ xs: 1, sm: 2, lg: 4 }" :col-gap="16" :row-gap="4">
             <GridItem>
@@ -534,7 +532,7 @@ onUnmounted(() => {
                 </Select>
               </FormItem>
             </GridItem>
-            <GridItem class="finance-filter-actions">
+            <GridItem>
               <FormItem hide-label>
                 <Space wrap>
                   <Button type="primary" html-type="submit">{{ t('admin.finance.filters.apply') }}</Button>
@@ -548,11 +546,12 @@ onUnmounted(() => {
         </Form>
       </Card>
 
-      <Card :title="t('admin.finance.documents.title')" :bordered="false" class="finance-documents-card">
+      <Card :title="t('admin.finance.documents.title')" :bordered="false">
         <Empty v-if="documents.length === 0" :description="t('admin.finance.documents.empty')" />
         <template v-else>
-          <div class="finance-desktop-table">
-            <Table :data="documents" :pagination="false" row-key="id" :scroll="{ x: 1180 }">
+          <Grid :cols="24" :row-gap="12">
+            <GridItem :span="{ xs: 0, md: 24 }">
+              <Table :data="documents" :pagination="false" row-key="id" :scroll="{ x: 1180 }">
               <TableColumn :title="t('admin.finance.columns.document')" :width="220">
                 <template #cell="{ record }">
                   <Button type="text" @click="openDocument(record)">
@@ -597,30 +596,35 @@ onUnmounted(() => {
               <TableColumn :title="t('admin.finance.columns.issuedAt')" :width="190">
                 <template #cell="{ record }">{{ formatDate(record.issued_at) }}</template>
               </TableColumn>
-            </Table>
-          </div>
+              </Table>
+            </GridItem>
 
-          <div class="finance-mobile-list">
-            <Card v-for="record in documents" :key="record.id" class="finance-mobile-document">
-              <Space direction="vertical" fill>
-                <Space justify="space-between" fill>
-                  <Button type="text" @click="openDocument(record)">{{ record.number }}</Button>
-                  <Tag :color="statusColor(record.status)">{{ t(`admin.finance.statuses.${record.status}`) }}</Tag>
-                </Space>
-                <TypographyText type="secondary">
-                  {{ t(`admin.finance.kinds.${record.kind}`) }} · v{{ record.version }} · {{ record.order.number }}
-                </TypographyText>
-                <TypographyText bold>{{ formatMoney(record.gross_cents, record.currency) }}</TypographyText>
-                <TypographyText>
-                  {{ t('admin.finance.columns.tax') }}:
-                  {{ formatMoney(record.tax_cents, record.currency) }} · {{ formatRate(record.tax.rate_bps) }}
-                </TypographyText>
-                <TypographyText type="secondary">{{ formatDate(record.issued_at) }}</TypographyText>
-              </Space>
-            </Card>
-          </div>
+            <GridItem :span="{ xs: 24, md: 0 }">
+              <Grid :cols="1" :row-gap="12">
+                <GridItem v-for="record in documents" :key="record.id">
+                  <Card :bordered="true">
+                    <Space direction="vertical" fill>
+                      <Space justify="space-between" fill wrap>
+                        <Button type="text" @click="openDocument(record)">{{ record.number }}</Button>
+                        <Tag :color="statusColor(record.status)">{{ t(`admin.finance.statuses.${record.status}`) }}</Tag>
+                      </Space>
+                      <TypographyText type="secondary">
+                        {{ t(`admin.finance.kinds.${record.kind}`) }} · v{{ record.version }} · {{ record.order.number }}
+                      </TypographyText>
+                      <TypographyText bold>{{ formatMoney(record.gross_cents, record.currency) }}</TypographyText>
+                      <TypographyText>
+                        {{ t('admin.finance.columns.tax') }}:
+                        {{ formatMoney(record.tax_cents, record.currency) }} · {{ formatRate(record.tax.rate_bps) }}
+                      </TypographyText>
+                      <TypographyText type="secondary">{{ formatDate(record.issued_at) }}</TypographyText>
+                    </Space>
+                  </Card>
+                </GridItem>
+              </Grid>
+            </GridItem>
+          </Grid>
 
-          <div v-if="pagination.pages > 1" class="finance-pagination">
+          <Space v-if="pagination.pages > 1" justify="end" fill>
             <Pagination
               :current="pagination.page"
               :total="pagination.count"
@@ -628,15 +632,16 @@ onUnmounted(() => {
               show-total
               @change="changePage"
             />
-          </div>
+          </Space>
         </template>
       </Card>
 
-      <Card :title="t('admin.finance.exports.title')" :bordered="false" class="finance-exports-card">
+      <Card :title="t('admin.finance.exports.title')" :bordered="false">
         <Empty v-if="exports.length === 0" :description="t('admin.finance.exports.empty')" />
-        <div v-else class="finance-export-grid">
-          <Card v-for="financeExport in exports" :key="financeExport.id" class="finance-export-item">
-            <Space direction="vertical" fill>
+        <Grid v-else :cols="{ xs: 1, md: 2, xl: 3 }" :col-gap="16" :row-gap="16">
+          <GridItem v-for="financeExport in exports" :key="financeExport.id">
+            <Card :bordered="true">
+              <Space direction="vertical" fill>
               <Space justify="space-between" fill>
                 <TypographyText bold>{{ t('admin.finance.exports.item', { id: financeExport.id }) }}</TypographyText>
                 <Tag :color="statusColor(financeExport.status)">
@@ -678,11 +683,12 @@ onUnmounted(() => {
                   {{ t('admin.finance.exports.revoke') }}
                 </Button>
               </Space>
-            </Space>
-          </Card>
-        </div>
+              </Space>
+            </Card>
+          </GridItem>
+        </Grid>
       </Card>
-    </Space>
+  </Space>
 
     <Drawer
       :visible="documentLoading || Boolean(selectedDocument)"
@@ -741,9 +747,8 @@ onUnmounted(() => {
             </Button>
           </Space>
 
-          <div>
-            <TypographyText bold>{{ t('admin.finance.documents.timeline') }}</TypographyText>
-            <Timeline v-if="selectedDocument.events.length" class="finance-document-timeline">
+          <Card :title="t('admin.finance.documents.timeline')" :bordered="false">
+            <Timeline v-if="selectedDocument.events.length">
               <TimelineItem v-for="event in selectedDocument.events" :key="`${event.type}-${event.created_at}`">
                 <Space direction="vertical" size="mini">
                   <TypographyText bold>{{ t(`admin.finance.events.${event.type}`) }}</TypographyText>
@@ -754,7 +759,8 @@ onUnmounted(() => {
                 </Space>
               </TimelineItem>
             </Timeline>
-          </div>
+            <Empty v-else :description="t('admin.finance.notAvailable')" />
+          </Card>
         </Space>
       </template>
     </Drawer>
@@ -774,7 +780,7 @@ onUnmounted(() => {
       <Alert type="warning" :title="t('admin.finance.transitions.warningTitle')">
         {{ t('admin.finance.transitions.warningDescription') }}
       </Alert>
-      <Form layout="vertical" class="finance-transition-form">
+      <Form layout="vertical">
         <FormItem :label="t('admin.finance.transitions.reason')" required>
           <Textarea
             v-model="transitionReason"
@@ -787,107 +793,5 @@ onUnmounted(() => {
           <Input v-model="transitionRequestId" readonly />
         </FormItem>
       </Form>
-    </Modal>
-  </section>
+  </Modal>
 </template>
-
-<style scoped>
-.finance-workbench {
-  --finance-section-radius: 8px;
-  --finance-content-radius: 12px;
-}
-
-.finance-page-header {
-  padding-inline: 0;
-}
-
-.finance-stat {
-  min-height: 112px;
-  border-radius: var(--finance-content-radius);
-  box-shadow: 0 8px 24px rgb(15 23 42 / 5%);
-}
-
-.finance-stat--primary {
-  border-top: 3px solid rgb(var(--primary-6));
-}
-
-.finance-stat--invoice {
-  border-top: 3px solid rgb(var(--arcoblue-6));
-}
-
-.finance-stat--refund {
-  border-top: 3px solid rgb(var(--orange-6));
-}
-
-.finance-stat--gross {
-  border-top: 3px solid rgb(var(--green-6));
-}
-
-.finance-stat--tax {
-  border-top: 3px solid rgb(var(--purple-6));
-}
-
-.finance-filter-card,
-.finance-documents-card,
-.finance-exports-card {
-  border-radius: var(--finance-section-radius);
-}
-
-.finance-filter-actions {
-  display: flex;
-  align-items: end;
-}
-
-.finance-pagination {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 20px;
-}
-
-.finance-mobile-list {
-  display: none;
-}
-
-.finance-export-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 310px), 1fr));
-  gap: 16px;
-}
-
-.finance-export-item,
-.finance-mobile-document {
-  border-radius: var(--finance-content-radius);
-  background: var(--color-fill-1);
-}
-
-.finance-document-timeline,
-.finance-transition-form {
-  margin-top: 16px;
-}
-
-@media (max-width: 767px) {
-  .finance-desktop-table {
-    display: none;
-  }
-
-  .finance-mobile-list {
-    display: grid;
-    gap: 12px;
-  }
-
-  .finance-pagination {
-    justify-content: center;
-    overflow-x: auto;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .finance-workbench *,
-  .finance-workbench *::before,
-  .finance-workbench *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-  }
-}
-</style>

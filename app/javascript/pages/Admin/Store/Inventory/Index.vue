@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, reactive, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
 import { router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
@@ -15,10 +15,14 @@ import {
   Grid,
   GridItem,
   Input,
+  InputSearch,
   InputNumber,
+  List,
+  ListItem,
   Message,
   Modal,
   PageHeader,
+  Select,
   Space,
   Statistic,
   Table,
@@ -85,6 +89,8 @@ type Authorization = {
   }
 }
 
+type HealthFilter = 'all' | 'healthy' | 'anomaly'
+
 const props = defineProps<{
   summary: {
     targets: number
@@ -112,6 +118,10 @@ const adjustmentTarget = ref<Target | null>(null)
 const authorization = ref<Authorization | null>(null)
 const submitting = ref(false)
 const resultBalance = ref<number | null>(null)
+const searchQuery = ref('')
+const healthFilter = ref<HealthFilter>('all')
+const isMobile = ref(false)
+let viewportQuery: MediaQueryList | null = null
 const adjustment = reactive({
   delta: 0,
   reason: '',
@@ -130,6 +140,41 @@ const anomalies = computed(() => [
   ...props.expired_reservations,
   ...props.mismatched_reservations,
 ])
+
+const healthOptions = computed(() => [
+  { label: t('admin.inventory.stockTable'), value: 'all' },
+  { label: t('admin.inventory.healthy'), value: 'healthy' },
+  { label: t('admin.inventory.metrics.anomalies'), value: 'anomaly' },
+])
+
+const filteredTargets = computed(() => {
+  const query = searchQuery.value.trim().toLocaleLowerCase(locale.value)
+
+  return props.targets.filter((target) => {
+    const matchesQuery = !query || [target.name, target.sku]
+      .filter((value): value is string => Boolean(value))
+      .some((value) => value.toLocaleLowerCase(locale.value).includes(query))
+    const matchesHealth = healthFilter.value === 'all'
+      || (healthFilter.value === 'healthy' && target.anomalies.length === 0)
+      || (healthFilter.value === 'anomaly' && target.anomalies.length > 0)
+
+    return matchesQuery && matchesHealth
+  })
+})
+
+function syncViewport(event?: MediaQueryListEvent) {
+  isMobile.value = event?.matches ?? viewportQuery?.matches ?? false
+}
+
+onMounted(() => {
+  viewportQuery = window.matchMedia('(max-width: 767px)')
+  syncViewport()
+  viewportQuery.addEventListener('change', syncViewport)
+})
+
+onBeforeUnmount(() => {
+  viewportQuery?.removeEventListener('change', syncViewport)
+})
 
 function formatDate(value: string) {
   return new Intl.DateTimeFormat(locale.value, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value))
@@ -219,12 +264,13 @@ async function executeAdjustment() {
 </script>
 
 <template>
-  <PageHeader
-    :title="t('admin.inventory.title')"
-    :subtitle="t('admin.inventory.subtitle')"
-  />
+  <Space direction="vertical" :size="24" fill>
+    <PageHeader
+      :title="t('admin.inventory.title')"
+      :subtitle="t('admin.inventory.subtitle')"
+      :show-back="false"
+    />
 
-  <Space direction="vertical" size="large" fill>
     <Alert
       v-if="summary.anomalies > 0"
       type="warning"
@@ -262,11 +308,35 @@ async function executeAdjustment() {
     </Grid>
 
     <Card :title="t('admin.inventory.stockTable')" :bordered="false">
+      <Grid :cols="{ xs: 1, md: 2 }" :col-gap="12" :row-gap="12">
+        <GridItem>
+          <InputSearch
+            v-model="searchQuery"
+            allow-clear
+            :placeholder="t('nav.search')"
+          />
+        </GridItem>
+        <GridItem>
+          <Select
+            v-model="healthFilter"
+            :options="healthOptions"
+          />
+        </GridItem>
+      </Grid>
+
+      <Empty
+        v-if="filteredTargets.length === 0"
+        :description="t('common.pagination.noResults')"
+      />
       <Table
-        :data="targets"
+        v-else-if="!isMobile"
+        :data="filteredTargets"
         :pagination="false"
         row-key="id"
+        size="small"
+        :bordered="{ cell: true }"
         :scroll="{ x: 980 }"
+        stripe
         @row-click="(record: Target) => (selectedTarget = record)"
       >
         <TableColumn :title="t('admin.inventory.columns.item')" data-index="name" :width="260">
@@ -309,11 +379,63 @@ async function executeAdjustment() {
           </template>
         </TableColumn>
       </Table>
+
+      <List v-else :bordered="false" size="small">
+        <ListItem v-for="target in filteredTargets" :key="target.id">
+          <Space direction="vertical" :size="12" fill>
+            <Space align="center" wrap>
+              <TypographyText bold>{{ target.name }}</TypographyText>
+              <TypographyText v-if="target.sku" type="secondary">{{ target.sku }}</TypographyText>
+              <Tag :color="anomalyColor(target)">
+                {{
+                  target.anomalies.length
+                    ? t('admin.inventory.anomalyCount', { count: target.anomalies.length })
+                    : t('admin.inventory.healthy')
+                }}
+              </Tag>
+            </Space>
+
+            <Descriptions :column="1" bordered size="small">
+              <DescriptionsItem :label="t('admin.inventory.columns.available')">
+                {{ target.available }}
+              </DescriptionsItem>
+              <DescriptionsItem :label="t('admin.inventory.columns.reserved')">
+                {{ target.reserved }}
+              </DescriptionsItem>
+              <DescriptionsItem :label="t('admin.inventory.columns.sold')">
+                {{ target.sold }}
+              </DescriptionsItem>
+            </Descriptions>
+
+            <Grid :cols="permissions.adjust ? 2 : 1" :col-gap="8">
+              <GridItem>
+                <Button long @click="selectedTarget = target">
+                  {{ t('admin.inventory.viewLedger') }}
+                </Button>
+              </GridItem>
+              <GridItem v-if="permissions.adjust">
+                <Button type="primary" long @click="openAdjustment(target)">
+                  {{ t('admin.inventory.adjust') }}
+                </Button>
+              </GridItem>
+            </Grid>
+          </Space>
+        </ListItem>
+      </List>
     </Card>
 
     <Card :title="t('admin.inventory.anomalyQueue')" :bordered="false">
       <Empty v-if="anomalies.length === 0" :description="t('admin.inventory.noAnomalies')" />
-      <Table v-else :data="anomalies" :pagination="false" row-key="id" :scroll="{ x: 760 }">
+      <Table
+        v-else-if="!isMobile"
+        :data="anomalies"
+        :pagination="false"
+        row-key="id"
+        size="small"
+        :bordered="{ cell: true }"
+        :scroll="{ x: 760 }"
+        stripe
+      >
         <TableColumn :title="t('admin.inventory.columns.order')" data-index="order_number" />
         <TableColumn :title="t('admin.inventory.columns.quantity')" data-index="quantity" />
         <TableColumn :title="t('admin.inventory.columns.expiresAt')">
@@ -325,6 +447,25 @@ async function executeAdjustment() {
           </template>
         </TableColumn>
       </Table>
+
+      <List v-else :bordered="false" size="small">
+        <ListItem v-for="anomaly in anomalies" :key="anomaly.id">
+          <Space direction="vertical" :size="12" fill>
+            <Space align="center" wrap>
+              <TypographyText bold>{{ anomaly.order_number }}</TypographyText>
+              <Tag color="orange">{{ t(`admin.inventory.anomalies.${anomaly.anomaly}`) }}</Tag>
+            </Space>
+            <Descriptions :column="1" bordered size="small">
+              <DescriptionsItem :label="t('admin.inventory.columns.quantity')">
+                {{ anomaly.quantity }}
+              </DescriptionsItem>
+              <DescriptionsItem :label="t('admin.inventory.columns.expiresAt')">
+                {{ formatDate(anomaly.expires_at) }}
+              </DescriptionsItem>
+            </Descriptions>
+          </Space>
+        </ListItem>
+      </List>
     </Card>
   </Space>
 
@@ -336,35 +477,37 @@ async function executeAdjustment() {
     @cancel="selectedTarget = null"
   >
     <template v-if="selectedTarget">
-      <Descriptions :column="1" bordered size="small">
-        <DescriptionsItem :label="t('admin.inventory.columns.item')">{{ selectedTarget.name }}</DescriptionsItem>
-        <DescriptionsItem :label="t('admin.inventory.columns.available')">{{ selectedTarget.available }}</DescriptionsItem>
-        <DescriptionsItem :label="t('admin.inventory.columns.reserved')">{{ selectedTarget.reserved }}</DescriptionsItem>
-        <DescriptionsItem :label="t('admin.inventory.columns.sold')">{{ selectedTarget.sold }}</DescriptionsItem>
-      </Descriptions>
+      <Space direction="vertical" :size="20" fill>
+        <Descriptions :column="1" bordered size="small">
+          <DescriptionsItem :label="t('admin.inventory.columns.item')">{{ selectedTarget.name }}</DescriptionsItem>
+          <DescriptionsItem :label="t('admin.inventory.columns.available')">{{ selectedTarget.available }}</DescriptionsItem>
+          <DescriptionsItem :label="t('admin.inventory.columns.reserved')">{{ selectedTarget.reserved }}</DescriptionsItem>
+          <DescriptionsItem :label="t('admin.inventory.columns.sold')">{{ selectedTarget.sold }}</DescriptionsItem>
+        </Descriptions>
 
-      <Empty
-        v-if="selectedTarget.movements.length === 0"
-        :description="t('admin.inventory.noMovements')"
-      />
-      <Timeline v-else style="margin-top: 20px">
-        <TimelineItem v-for="movement in selectedTarget.movements" :key="movement.id">
-          <Space direction="vertical" size="mini">
-            <TypographyText bold>{{ t(`admin.inventory.movements.${movement.type}`) }}</TypographyText>
-            <TypographyText type="secondary">{{ formatDate(movement.created_at) }}</TypographyText>
-            <TypographyText>
-              {{
-                t('admin.inventory.movementDeltas', {
-                  available: signedNumber(movement.available_delta),
-                  reserved: signedNumber(movement.reserved_delta),
-                  sold: signedNumber(movement.sold_delta),
-                })
-              }}
-            </TypographyText>
-            <TypographyText v-if="movement.reason">{{ movement.reason }}</TypographyText>
-          </Space>
-        </TimelineItem>
-      </Timeline>
+        <Empty
+          v-if="selectedTarget.movements.length === 0"
+          :description="t('admin.inventory.noMovements')"
+        />
+        <Timeline v-else>
+          <TimelineItem v-for="movement in selectedTarget.movements" :key="movement.id">
+            <Space direction="vertical" size="mini">
+              <TypographyText bold>{{ t(`admin.inventory.movements.${movement.type}`) }}</TypographyText>
+              <TypographyText type="secondary">{{ formatDate(movement.created_at) }}</TypographyText>
+              <TypographyText>
+                {{
+                  t('admin.inventory.movementDeltas', {
+                    available: signedNumber(movement.available_delta),
+                    reserved: signedNumber(movement.reserved_delta),
+                    sold: signedNumber(movement.sold_delta),
+                  })
+                }}
+              </TypographyText>
+              <TypographyText v-if="movement.reason">{{ movement.reason }}</TypographyText>
+            </Space>
+          </TimelineItem>
+        </Timeline>
+      </Space>
     </template>
   </Drawer>
 
@@ -380,53 +523,54 @@ async function executeAdjustment() {
     @ok="authorization ? executeAdjustment() : authorizeAdjustment()"
   >
     <template v-if="adjustmentTarget">
-      <Alert type="warning" :title="t('admin.inventory.adjustmentRiskTitle')">
-        {{ t('admin.inventory.adjustmentRiskDescription') }}
-      </Alert>
-
-      <Form layout="vertical" style="margin-top: 16px">
-        <FormItem :label="t('admin.inventory.columns.item')">
-          <Input :model-value="adjustmentTarget.name" readonly />
-        </FormItem>
-        <FormItem :label="t('admin.inventory.adjustmentDelta')" required>
-          <InputNumber
-            v-model="adjustment.delta"
-            :min="-1000000"
-            :max="1000000"
-            :disabled="Boolean(authorization)"
-            style="width: 100%"
-          />
-        </FormItem>
-        <FormItem :label="t('admin.inventory.adjustmentReason')" required>
-          <Textarea
-            v-model="adjustment.reason"
-            :max-length="1000"
-            show-word-limit
-            :disabled="Boolean(authorization)"
-          />
-        </FormItem>
-
-        <Descriptions v-if="authorization" :column="1" bordered size="small">
-          <DescriptionsItem :label="t('admin.inventory.before')">{{ authorization.preview.before }}</DescriptionsItem>
-          <DescriptionsItem :label="t('admin.inventory.adjustmentDelta')">
-            {{ signedNumber(authorization.preview.delta) }}
-          </DescriptionsItem>
-          <DescriptionsItem :label="t('admin.inventory.after')">{{ authorization.preview.after }}</DescriptionsItem>
-        </Descriptions>
-
-        <FormItem
-          v-if="authorization"
-          :label="t('admin.inventory.confirmationLabel', { confirmation: authorization.confirmation })"
-          required
-          style="margin-top: 16px"
-        >
-          <Input v-model="adjustment.confirmation" autocomplete="off" />
-        </FormItem>
-
-        <Alert v-if="resultBalance !== null" type="success">
-          {{ t('admin.inventory.resultBalance', { balance: resultBalance }) }}
+      <Space direction="vertical" :size="16" fill>
+        <Alert type="warning" :title="t('admin.inventory.adjustmentRiskTitle')">
+          {{ t('admin.inventory.adjustmentRiskDescription') }}
         </Alert>
-      </Form>
+
+        <Form layout="vertical">
+          <FormItem :label="t('admin.inventory.columns.item')">
+            <Input :model-value="adjustmentTarget.name" readonly />
+          </FormItem>
+          <FormItem :label="t('admin.inventory.adjustmentDelta')" required>
+            <InputNumber
+              v-model="adjustment.delta"
+              :min="-1000000"
+              :max="1000000"
+              :disabled="Boolean(authorization)"
+              long
+            />
+          </FormItem>
+          <FormItem :label="t('admin.inventory.adjustmentReason')" required>
+            <Textarea
+              v-model="adjustment.reason"
+              :max-length="1000"
+              show-word-limit
+              :disabled="Boolean(authorization)"
+            />
+          </FormItem>
+
+          <Descriptions v-if="authorization" :column="1" bordered size="small">
+            <DescriptionsItem :label="t('admin.inventory.before')">{{ authorization.preview.before }}</DescriptionsItem>
+            <DescriptionsItem :label="t('admin.inventory.adjustmentDelta')">
+              {{ signedNumber(authorization.preview.delta) }}
+            </DescriptionsItem>
+            <DescriptionsItem :label="t('admin.inventory.after')">{{ authorization.preview.after }}</DescriptionsItem>
+          </Descriptions>
+
+          <FormItem
+            v-if="authorization"
+            :label="t('admin.inventory.confirmationLabel', { confirmation: authorization.confirmation })"
+            required
+          >
+            <Input v-model="adjustment.confirmation" autocomplete="off" />
+          </FormItem>
+
+          <Alert v-if="resultBalance !== null" type="success">
+            {{ t('admin.inventory.resultBalance', { balance: resultBalance }) }}
+          </Alert>
+        </Form>
+      </Space>
     </template>
   </Modal>
 </template>

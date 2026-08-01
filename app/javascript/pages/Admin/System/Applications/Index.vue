@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Link, router, useForm } from '@inertiajs/vue3'
+import { router, useForm } from '@inertiajs/vue3'
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import type { FileItem } from '@arco-design/web-vue'
@@ -235,13 +235,13 @@ interface PluginCatalogRelease {
   }>
 }
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   title: string
   platform: CatalogItem[]
   applications: CatalogItem[]
   extensions: CatalogItem[]
-  plugins: PluginItem[]
-  pluginDiagnostics: PluginDiagnostic[]
+  plugins?: PluginItem[]
+  pluginDiagnostics?: PluginDiagnostic[]
   pluginMarketplace: MarketplaceSnapshot
   pluginLifecycle: {
     available: boolean
@@ -279,7 +279,10 @@ const props = defineProps<{
   }
   freelyExtensible: boolean
   featureFlagsUrl: string
-}>()
+}>(), {
+  plugins: () => [],
+  pluginDiagnostics: () => [],
+})
 
 const pluginFiles = ref<FileItem[]>([])
 const selectedLifecycleRun = ref<PluginLifecycleRun | null>(null)
@@ -288,6 +291,15 @@ const uninstallTarget = ref<MarketplacePlugin | null>(null)
 const uninstallConfirmation = ref('')
 const uninstallSubmitting = ref(false)
 const uninstallDataMode = ref<'preserve_data' | 'purge_data'>('preserve_data')
+const canMutatePlugins = computed(() =>
+  props.pluginCapabilities.install ||
+  props.pluginCapabilities.enable ||
+  props.pluginCapabilities.disable ||
+  props.pluginCapabilities.recover ||
+  props.pluginCapabilities.rollback ||
+  props.pluginCapabilities.uninstall_preserve ||
+  props.pluginCapabilities.uninstall_purge,
+)
 const uninstallModalVisible = computed({
   get: () => uninstallTarget.value !== null,
   set: (visible: boolean) => {
@@ -591,1124 +603,1163 @@ function submitUninstall() {
 </script>
 
 <template>
-  <a-page-header
-    :title="title"
-    :subtitle="t('admin.applications.subtitle')"
-    class="mb-5 !px-0"
-  />
-
-  <a-alert
-    type="warning"
-    show-icon
-    :title="t('admin.applications.trustedPluginWarning')"
-    class="mb-6"
-  >
-    {{ t('admin.applications.readDocs') }}
-  </a-alert>
-
-  <section class="mb-8">
-    <h2 class="mb-1 text-lg font-semibold">
-      {{ t('admin.applications.marketplace.title') }}
-    </h2>
-    <p class="mb-4 text-sm text-muted-foreground">
-      {{ t('admin.applications.marketplace.hint') }}
-    </p>
-
-    <a-space
-      v-if="canManagePlugins"
-      wrap
-      class="mb-4"
-      :size="[20, 8]"
-    >
-      <a-checkbox v-model="installForm.dry_run">
-        {{ t('admin.applications.marketplace.dryRun') }}
-      </a-checkbox>
-      <a-checkbox v-model="installForm.maintenance_mode">
-        {{ t('admin.applications.marketplace.maintenanceMode') }}
-      </a-checkbox>
-      <span class="text-xs text-muted-foreground">
-        {{
-          installForm.dry_run
-            ? t('admin.applications.marketplace.dryRunHint')
-            : t('admin.applications.marketplace.maintenanceModeHint')
-        }}
-      </span>
-    </a-space>
-
-    <a-space
-      v-if="pluginMarketplace.errors.length"
-      direction="vertical"
-      fill
-      class="mb-4"
-    >
-      <a-alert
-        v-for="error in pluginMarketplace.errors"
-        :key="`${error.code}-${error.message}`"
-        type="warning"
-        show-icon
-        :title="t('admin.applications.marketplace.errorsTitle')"
-      >
-        {{ error.message }}
-      </a-alert>
-    </a-space>
-
-    <div class="grid gap-4 xl:grid-cols-2">
-      <a-card
-        v-if="pluginCapabilities.install"
-        :title="t('admin.applications.marketplace.installTitle')"
-        :bordered="false"
-      >
-        <a-form :model="installForm" layout="vertical" @submit="installPlugin">
-          <a-form-item
-            field="plugin_package"
-            :label="t('admin.applications.marketplace.packageLabel')"
-            :extra="t('admin.applications.marketplace.packageHint')"
+  <a-space direction="vertical" :size="16" fill>
+    <a-card :bordered="true" size="small">
+      <a-row :gutter="[16, 12]" align="center">
+        <a-col :xs="24" :lg="17">
+          <a-page-header
+            :title="title"
+            :subtitle="t('admin.applications.subtitle')"
+            :show-back="false"
           >
-            <a-upload
-              :file-list="pluginFiles"
-              :auto-upload="false"
-              :limit="1"
-              accept=".zip,application/zip"
-              @change="handlePluginPackageChange"
-            />
-          </a-form-item>
-          <a-form-item
-            field="expected_sha256"
-            :label="t('admin.applications.marketplace.checksumLabel')"
-            :extra="t('admin.applications.marketplace.checksumHint')"
-          >
-            <a-input
-              v-model="installForm.expected_sha256"
-              :max-length="64"
-              allow-clear
-            />
-          </a-form-item>
-          <a-form-item
-            field="expected_id"
-            :label="t('admin.applications.marketplace.expectedIdLabel')"
-            :extra="t('admin.applications.marketplace.expectedIdHint')"
-          >
-            <a-input v-model="installForm.expected_id" allow-clear />
-          </a-form-item>
-          <a-form-item field="allow_downgrade">
-            <a-checkbox v-model="installForm.allow_downgrade">
-              {{ t('admin.applications.marketplace.allowDowngrade') }}
-            </a-checkbox>
-          </a-form-item>
-          <a-button
-            type="primary"
-            html-type="submit"
-            :loading="installForm.processing"
-            :disabled="!installForm.plugin_package || installForm.expected_sha256.length !== 64"
-          >
-            {{ lifecycleActionLabel('install') }}
-          </a-button>
-        </a-form>
-      </a-card>
-
-      <a-card
-        :title="t('admin.applications.marketplace.managedTitle')"
-        :bordered="false"
-      >
-        <a-space
-          v-if="pluginMarketplace.plugins.length"
-          direction="vertical"
-          fill
-        >
-          <a-card
-            v-for="plugin in pluginMarketplace.plugins"
-            :key="plugin.id"
-            :bordered="false"
-            class="bg-[var(--color-fill-1)]"
-          >
-            <template #title>
-              <a-space wrap>
-                <span>{{ plugin.name }}</span>
-                <a-tag :color="marketplaceStatusColor(plugin.status)">
-                  {{ marketplaceStatusLabel(plugin.status) }}
-                </a-tag>
-                <a-tag>v{{ plugin.version }}</a-tag>
-              </a-space>
-            </template>
-            <a-descriptions
-              :column="{ xs: 1, sm: 2 }"
-              layout="vertical"
-              :bordered="false"
-            >
-              <a-descriptions-item :label="t('admin.applications.pluginIdLabel')">
-                {{ plugin.id }}
-              </a-descriptions-item>
-              <a-descriptions-item :label="t('admin.applications.marketplace.filesystemStatus')">
-                {{ marketplaceStatusLabel(plugin.filesystem_status) }}
-              </a-descriptions-item>
-              <a-descriptions-item :label="t('admin.applications.marketplace.runtimeStatus')">
-                {{ marketplaceStatusLabel(plugin.runtime_status) }}
-              </a-descriptions-item>
-              <a-descriptions-item
-                v-if="plugin.sha256"
-                :label="t('admin.applications.marketplace.checksum')"
-              >
-                {{ plugin.sha256 }}
-              </a-descriptions-item>
-              <a-descriptions-item
-                v-if="plugin.source?.scheme || plugin.source?.host"
-                :label="t('admin.applications.marketplace.source')"
-              >
-                {{ [plugin.source?.scheme, plugin.source?.host].filter(Boolean).join(' · ') }}
-              </a-descriptions-item>
-              <a-descriptions-item
-                v-if="plugin.updated_at"
-                :label="t('admin.applications.marketplace.updatedAt')"
-              >
-                {{ plugin.updated_at }}
-              </a-descriptions-item>
-              <a-descriptions-item :label="t('admin.applications.marketplace.fileHealth')">
-                <a-space wrap>
-                  <a-tag :color="marketplaceStatusColor(plugin.health.status)">
-                    {{ marketplaceStatusLabel(plugin.health.status) }}
-                  </a-tag>
-                  <span
-                    v-if="plugin.health.status === 'changed'"
-                    class="text-xs text-muted-foreground"
-                  >
-                    {{
-                      t('admin.applications.marketplace.fileHealthSummary', {
-                        missing: plugin.health.missing_count,
-                        modified: plugin.health.modified_count,
-                        unknown: plugin.health.unknown_count,
-                      })
-                    }}
-                  </span>
-                </a-space>
-              </a-descriptions-item>
-              <a-descriptions-item
-                v-if="plugin.data_mode"
-                :label="t('admin.applications.marketplace.lastDataMode')"
-              >
-                {{ t(`admin.applications.marketplace.dataModes.${plugin.data_mode}.label`) }}
-              </a-descriptions-item>
-            </a-descriptions>
-            <a-space v-if="canManagePlugins" wrap class="mt-3">
-              <a-button
-                v-if="pluginCapabilities.diagnostics &&
-                  ['installed', 'disabled'].includes(plugin.filesystem_status)"
-                size="small"
-                @click="checkPluginHealth(plugin.id)"
-              >
-                {{ t('admin.applications.marketplace.checkHealth') }}
-              </a-button>
-              <a-button
-                v-if="pluginCapabilities.enable &&
-                  plugin.filesystem_status === 'disabled'"
-                size="small"
-                @click="changePluginState('enable', plugin.id)"
-              >
-                {{ lifecycleActionLabel('enable') }}
-              </a-button>
-              <a-button
-                v-if="pluginCapabilities.disable &&
-                  plugin.filesystem_status === 'installed'"
-                size="small"
-                @click="changePluginState('disable', plugin.id)"
-              >
-                {{ lifecycleActionLabel('disable') }}
-              </a-button>
-              <a-button
-                v-if="pluginCapabilities.recover &&
-                  plugin.filesystem_status === 'uninstalled' &&
-                  plugin.recoverable &&
-                  hasVerifiedUninstallIdentity(plugin)"
-                size="small"
-                type="primary"
-                @click="recoverPlugin(plugin)"
-              >
-                {{ lifecycleActionLabel('recover') }}
-              </a-button>
-              <a-button
-                v-if="pluginCapabilities.rollback &&
-                  plugin.filesystem_status === 'installed' &&
-                  plugin.rollback_available &&
-                  hasVerifiedUninstallIdentity(plugin)"
-                size="small"
-                status="warning"
-                @click="rollbackPlugin(plugin)"
-              >
-                {{ lifecycleActionLabel('rollback') }}
-              </a-button>
-              <a-button
-                v-if="(pluginCapabilities.uninstall_preserve ||
-                  pluginCapabilities.uninstall_purge) &&
-                  ['installed', 'disabled'].includes(plugin.filesystem_status) &&
-                  hasVerifiedUninstallIdentity(plugin)"
-                size="small"
-                status="danger"
-                @click="openUninstall(plugin)"
-              >
-                {{ lifecycleActionLabel('uninstall') }}
-              </a-button>
-            </a-space>
-          </a-card>
-        </a-space>
-        <a-empty
-          v-else
-          :description="t('admin.applications.marketplace.noManagedPlugins')"
-        />
-      </a-card>
-    </div>
-
-    <a-card
-      class="mt-4"
-      :title="t('admin.applications.marketplace.operationsTitle')"
-      :bordered="false"
-    >
-      <a-table
-        :data="pluginMarketplace.operations"
-        :pagination="false"
-        :bordered="false"
-        :scroll="{ minWidth: 960 }"
-      >
-        <template #columns>
-          <a-table-column
-            :title="t('admin.applications.marketplace.action')"
-            data-index="action"
-            :width="130"
-          />
-          <a-table-column
-            :title="t('admin.applications.marketplace.status')"
-            :width="130"
-          >
-            <template #cell="{ record }">
-              <a-tag :color="marketplaceStatusColor(record.status)">
-                {{ marketplaceStatusLabel(record.status) }}
-              </a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column
-            :title="t('admin.applications.marketplace.plugin')"
-            data-index="plugin_id"
-            :width="190"
-          />
-          <a-table-column
-            :title="t('admin.applications.marketplace.version')"
-            data-index="version"
-            :width="120"
-          />
-          <a-table-column
-            :title="t('admin.applications.marketplace.message')"
-            data-index="message"
-          />
-          <a-table-column
-            :title="t('admin.applications.marketplace.time')"
-            data-index="occurred_at"
-            :width="210"
-          />
-        </template>
-        <template #empty>
-          <a-empty :description="t('admin.applications.marketplace.noOperations')" />
-        </template>
-      </a-table>
+          </a-page-header>
+        </a-col>
+        <a-col :xs="24" :lg="7">
+          <a-row justify="end">
+            <a-button type="outline" :href="featureFlagsUrl">
+              <template #icon><IconSettings /></template>
+              {{ t('admin.applications.manageToggles') }}
+            </a-button>
+          </a-row>
+        </a-col>
+      </a-row>
     </a-card>
-  </section>
 
-  <section v-if="pluginCapabilities.diagnostics" class="mb-8">
-    <div class="mb-4 flex flex-wrap items-end justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold">
-          {{ t('admin.applications.catalog.title') }}
-        </h2>
-        <p class="text-sm text-muted-foreground">
-          {{ t('admin.applications.catalog.hint') }}
-        </p>
-      </div>
-      <a-button type="primary" @click="reconcilePluginCatalog">
-        {{ t('admin.applications.catalog.reconcile') }}
-      </a-button>
-    </div>
-
-    <a-alert
-      v-if="!pluginCatalog.available"
-      type="warning"
-      show-icon
-      :title="t('admin.applications.catalog.unavailable')"
-    />
-    <a-card v-else :bordered="false">
-      <a-table
-        :data="pluginCatalog.releases"
-        :pagination="{ pageSize: 12, hideOnSinglePage: true }"
-        :bordered="false"
-        :scroll="{ minWidth: 980 }"
-      >
-        <template #columns>
-          <a-table-column
-            :title="t('admin.applications.catalog.plugin')"
-            :width="230"
-          >
-            <template #cell="{ record }">
-              <a-space direction="vertical" size="mini">
-                <strong>{{ record.manifest.name || record.plugin_id }}</strong>
-                <span class="font-mono text-xs text-muted-foreground">
-                  {{ record.plugin_id }}
-                </span>
-              </a-space>
-            </template>
-          </a-table-column>
-          <a-table-column
-            :title="t('admin.applications.catalog.version')"
-            data-index="version"
-            :width="120"
-          />
-          <a-table-column
-            :title="t('admin.applications.catalog.state')"
-            :width="130"
-          >
-            <template #cell="{ record }">
-              <a-tag :color="marketplaceStatusColor(record.state)">
-                {{ marketplaceStatusLabel(record.state) }}
-              </a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column
-            :title="t('admin.applications.catalog.health')"
-            :width="150"
-          >
-            <template #cell="{ record }">
-              <a-space>
-                <a-tag :color="marketplaceStatusColor(record.health)">
-                  {{ marketplaceStatusLabel(record.health) }}
-                </a-tag>
-                <a-tag v-if="record.diagnostics.length" color="red">
-                  {{ record.diagnostics.length }}
-                </a-tag>
-              </a-space>
-            </template>
-          </a-table-column>
-          <a-table-column
-            :title="t('admin.applications.catalog.contents')"
-            :width="220"
-          >
-            <template #cell="{ record }">
-              {{
-                t('admin.applications.catalog.contentCounts', {
-                  contributions: record.contributions.length,
-                  files: record.file_count,
-                })
-              }}
-            </template>
-          </a-table-column>
-          <a-table-column
-            :title="t('admin.applications.catalog.observedAt')"
-            data-index="observed_at"
-            :width="210"
-          />
-          <a-table-column
-            :title="t('admin.applications.catalog.details')"
-            :width="110"
-            fixed="right"
-          >
-            <template #cell="{ record }">
-              <a-button
-                type="text"
-                size="small"
-                @click="selectedCatalogRelease = record"
-              >
-                {{ t('admin.applications.catalog.view') }}
-              </a-button>
-            </template>
-          </a-table-column>
-        </template>
-        <template #empty>
-          <a-empty :description="t('admin.applications.catalog.empty')" />
-        </template>
-      </a-table>
-    </a-card>
-  </section>
-
-  <section v-if="pluginCapabilities.diagnostics" class="mb-8">
-    <div class="mb-4">
-      <h2 class="text-lg font-semibold">
-        {{ t('admin.applications.lifecycle.title') }}
-      </h2>
-      <p class="text-sm text-muted-foreground">
-        {{ t('admin.applications.lifecycle.hint') }}
-      </p>
-    </div>
-
-    <a-alert
-      v-if="!pluginLifecycle.available"
-      type="warning"
-      show-icon
-      :title="t('admin.applications.lifecycle.unavailable')"
-    />
-    <a-space v-else direction="vertical" :size="16" fill>
-      <a-card :title="t('admin.applications.lifecycle.installationsTitle')">
-        <a-table
-          :data="pluginLifecycle.installations"
-          :pagination="false"
-          :bordered="false"
-          :scroll="{ minWidth: 760 }"
-        >
-          <template #columns>
-            <a-table-column
-              :title="t('admin.applications.lifecycle.plugin')"
-              data-index="plugin_id"
-            />
-            <a-table-column
-              :title="t('admin.applications.lifecycle.version')"
-              data-index="current_version"
-              :width="130"
-            />
-            <a-table-column
-              :title="t('admin.applications.lifecycle.currentState')"
-              :width="150"
-            >
-              <template #cell="{ record }">
-                <a-tag :color="lifecycleStatusColor(record.current_state)">
-                  {{ lifecycleLabel(record.current_state) }}
-                </a-tag>
-              </template>
-            </a-table-column>
-            <a-table-column
-              :title="t('admin.applications.lifecycle.desiredState')"
-              :width="150"
-            >
-              <template #cell="{ record }">
-                {{ lifecycleLabel(record.desired_state) }}
-              </template>
-            </a-table-column>
-            <a-table-column
-              :title="t('admin.applications.lifecycle.generation')"
-              data-index="active_generation_number"
-              :width="130"
-            />
-            <a-table-column
-              :title="t('admin.applications.lifecycle.updatedAt')"
-              data-index="updated_at"
-              :width="210"
-            />
-          </template>
-          <template #empty>
-            <a-empty :description="t('admin.applications.lifecycle.noInstallations')" />
-          </template>
-        </a-table>
-      </a-card>
-
-      <a-card :title="t('admin.applications.lifecycle.runsTitle')">
-        <a-table
-          :data="pluginLifecycle.runs"
-          :pagination="{ pageSize: 10, hideOnSinglePage: true }"
-          :bordered="false"
-          :scroll="{ minWidth: 840 }"
-        >
-          <template #columns>
-            <a-table-column
-              :title="t('admin.applications.lifecycle.plugin')"
-              data-index="plugin_id"
-            />
-            <a-table-column
-              :title="t('admin.applications.lifecycle.action')"
-              :width="130"
-            >
-              <template #cell="{ record }">
-                {{ t(`admin.applications.generations.actions.${record.action}`) }}
-              </template>
-            </a-table-column>
-            <a-table-column
-              :title="t('admin.applications.lifecycle.runState')"
-              :width="130"
-            >
-              <template #cell="{ record }">
-                <a-tag :color="lifecycleStatusColor(record.state)">
-                  {{ lifecycleLabel(record.state) }}
-                </a-tag>
-              </template>
-            </a-table-column>
-            <a-table-column
-              :title="t('admin.applications.lifecycle.versionChange')"
-              :width="190"
-            >
-              <template #cell="{ record }">
-                {{ record.from_version || '—' }} → {{ record.to_version || '—' }}
-              </template>
-            </a-table-column>
-            <a-table-column
-              :title="t('admin.applications.lifecycle.startedAt')"
-              data-index="started_at"
-              :width="210"
-            />
-            <a-table-column
-              :title="t('admin.applications.lifecycle.details')"
-              :width="120"
-              fixed="right"
-            >
-              <template #cell="{ record }">
-                <a-button
-                  type="text"
-                  size="small"
-                  @click="selectedLifecycleRun = record"
-                >
-                  {{ t('admin.applications.lifecycle.view') }}
-                </a-button>
-              </template>
-            </a-table-column>
-          </template>
-          <template #empty>
-            <a-empty :description="t('admin.applications.lifecycle.noRuns')" />
-          </template>
-        </a-table>
-      </a-card>
-    </a-space>
-  </section>
-
-  <section v-if="pluginCapabilities.diagnostics" class="mb-8">
-    <div class="mb-4">
-      <h2 class="text-lg font-semibold">
-        {{ t('admin.applications.generations.title') }}
-      </h2>
-      <p class="text-sm text-muted-foreground">
-        {{ t('admin.applications.generations.hint') }}
-      </p>
-    </div>
-
-    <a-alert
-      v-if="!pluginRuntimeGenerations.available"
-      type="warning"
-      show-icon
-      :title="t('admin.applications.generations.unavailable')"
-    />
-    <a-collapse
-      v-else-if="pluginRuntimeGenerations.generations.length"
-      :bordered="false"
-      accordion
+    <a-grid
+      :cols="24"
+      :col-gap="{ xs: 0, sm: 12 }"
+      :row-gap="12"
+      align="stretch"
     >
-      <a-collapse-item
-        v-for="generation in pluginRuntimeGenerations.generations"
-        :key="generation.number"
-        :header="t('admin.applications.generations.generation', { number: generation.number })"
-      >
-        <template #extra>
-          <a-space wrap>
-            <a-tag :color="generationStatusColor(generation.state)">
-              {{ t(`admin.applications.generations.states.${generation.state}`) }}
-            </a-tag>
-            <a-tag>
-              {{ t(`admin.applications.generations.actions.${generation.action}`) }}
-            </a-tag>
-          </a-space>
-        </template>
-
-        <a-descriptions
-          :column="{ xs: 1, sm: 2, lg: 4 }"
-          layout="vertical"
-          size="small"
-          :bordered="false"
-        >
-          <a-descriptions-item :label="t('admin.applications.generations.target')">
-            {{ generation.target_plugin_id || '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item :label="t('admin.applications.generations.requiredAcks')">
-            {{
-              t('admin.applications.generations.requiredAcksValue', {
-                count: generation.expected_process_count,
-                ratio: Math.round(generation.minimum_ack_ratio * 100),
-              })
-            }}
-          </a-descriptions-item>
-          <a-descriptions-item :label="t('admin.applications.generations.deadline')">
-            {{ generation.deadline_at || '—' }}
-          </a-descriptions-item>
-          <a-descriptions-item :label="t('admin.applications.generations.activatedAt')">
-            {{ generation.activated_at || '—' }}
-          </a-descriptions-item>
-        </a-descriptions>
-
+      <a-grid-item :span="{ xs: 24, xl: 18 }">
         <a-alert
-          v-if="generation.error_code || generation.error_message"
-          class="mb-3"
-          type="error"
-          :title="t('admin.applications.generations.error')"
+          type="warning"
+          show-icon
+          :title="t('admin.applications.trustedPluginWarning')"
         >
-          {{ generation.error_message }}
-        </a-alert>
-
-        <a-table
-          :data="generation.acknowledgements"
-          :pagination="false"
-          :bordered="false"
-          :scroll="{ minWidth: 760 }"
-        >
-          <template #columns>
-            <a-table-column
-              :title="t('admin.applications.generations.process')"
-              :width="170"
-            >
-              <template #cell="{ record }">
-                <span class="font-mono text-xs">
-                  {{ record.process_kind }} · {{ record.process_ref }}
-                </span>
-              </template>
-            </a-table-column>
-            <a-table-column
-              :title="t('admin.applications.generations.status')"
-              :width="120"
-            >
-              <template #cell="{ record }">
-                <a-tag :color="record.status === 'healthy' ? 'green' : 'red'">
-                  {{ t(`admin.applications.generations.ackStates.${record.status}`) }}
-                </a-tag>
-              </template>
-            </a-table-column>
-            <a-table-column
-              :title="t('admin.applications.generations.loadedPlugins')"
-            >
-              <template #cell="{ record }">
-                <a-space v-if="Object.keys(record.plugin_versions).length" wrap>
-                  <a-tag
-                    v-for="(version, pluginId) in record.plugin_versions"
-                    :key="pluginId"
-                    bordered
-                  >
-                    {{ pluginId }} · {{ version }}
-                  </a-tag>
-                </a-space>
-                <span v-else>—</span>
-              </template>
-            </a-table-column>
-            <a-table-column
-              :title="t('admin.applications.generations.lastSeen')"
-              data-index="last_seen_at"
-              :width="210"
-            />
-          </template>
-          <template #empty>
-            <a-empty :description="t('admin.applications.generations.noAcks')" />
-          </template>
-        </a-table>
-      </a-collapse-item>
-    </a-collapse>
-    <a-empty
-      v-else
-      :description="t('admin.applications.generations.empty')"
-    />
-  </section>
-
-  <section class="mb-8">
-    <h2 class="mb-1 text-lg font-semibold">{{ t('admin.applications.platformTitle') }}</h2>
-    <p class="mb-4 text-sm text-muted-foreground">{{ t('admin.applications.platformHint') }}</p>
-    <div class="grid gap-3 md:grid-cols-2">
-      <a-card
-        v-for="item in platform"
-        :key="item.id"
-        :bordered="false"
-        class="bg-[var(--color-fill-1)]"
-      >
-        <template #title>
-          <div class="flex flex-wrap items-center gap-2">
-            <span>{{ item.label }}</span>
-            <a-tag color="arcoblue">{{ t('admin.applications.tierPlatform') }}</a-tag>
-          </div>
-        </template>
-        <p class="text-sm text-muted-foreground">{{ item.description }}</p>
-        <p v-if="item.ruby_namespaces?.length" class="mt-2 font-mono text-xs text-muted-foreground">
-          {{ item.ruby_namespaces.join(' · ') }}
-        </p>
-      </a-card>
-    </div>
-  </section>
-
-  <section class="mb-8">
-    <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
-      <div>
-        <h2 class="text-lg font-semibold">{{ t('admin.applications.appsTitle') }}</h2>
-        <p class="text-sm text-muted-foreground">{{ t('admin.applications.appsHint') }}</p>
-      </div>
-      <Link
-        :href="featureFlagsUrl"
-        class="rounded border border-[var(--color-border-3)] px-3 py-1.5 text-sm text-[rgb(var(--primary-6))] no-underline transition-colors hover:bg-[var(--color-fill-2)]"
-      >
-        {{ t('admin.applications.manageToggles') }}
-      </Link>
-    </div>
-    <div class="grid gap-3 md:grid-cols-2">
-      <a-card
-        v-for="item in applications"
-        :key="item.id"
-        :bordered="false"
-        class="bg-[var(--color-fill-1)]"
-      >
-        <template #title>
-          <div class="flex flex-wrap items-center gap-2">
-            <span>{{ item.label }}</span>
-            <a-tag :color="item.enabled ? 'green' : 'gray'">
-              {{ item.enabled ? t('admin.ui.enabled') : t('admin.ui.disabled') }}
-            </a-tag>
-            <a-tag>{{ t('admin.applications.tierApplication') }}</a-tag>
-          </div>
-        </template>
-        <p class="text-sm text-muted-foreground">{{ item.description }}</p>
-        <p v-if="item.ruby_namespaces?.length" class="mt-2 font-mono text-xs text-muted-foreground">
-          {{ item.ruby_namespaces.join(' · ') }}
-        </p>
-        <p v-if="item.path_prefixes?.length" class="mt-1 font-mono text-xs text-muted-foreground">
-          {{ item.path_prefixes.join(', ') }}
-        </p>
-      </a-card>
-    </div>
-  </section>
-
-  <section class="mb-8">
-    <h2 class="mb-1 text-lg font-semibold">{{ t('admin.applications.pluginsTitle') }}</h2>
-    <p class="mb-4 text-sm text-muted-foreground">{{ t('admin.applications.pluginsHint') }}</p>
-
-    <div v-if="plugins.length" class="grid gap-3">
-      <a-card
-        v-for="plugin in plugins"
-        :key="plugin.id"
-        :bordered="false"
-        class="bg-[var(--color-fill-1)]"
-        hoverable
-      >
-        <template #title>
-          <div class="flex flex-wrap items-center gap-2">
-            <span>{{ plugin.name }}</span>
-            <a-tag :color="pluginStatusColor(plugin.status)">
-              {{ pluginStatusLabel(plugin.status) }}
-            </a-tag>
-            <a-tag>v{{ plugin.version }}</a-tag>
-            <span class="font-mono text-xs font-normal text-muted-foreground">{{ plugin.id }}</span>
-          </div>
-        </template>
-
-        <p v-if="plugin.description" class="text-sm text-muted-foreground">
-          {{ plugin.description }}
-        </p>
-        <a-descriptions class="mt-3" :column="{ xs: 1, sm: 2, md: 3 }" size="small">
-          <a-descriptions-item :label="t('admin.applications.pluginApiLabel')">
-            v{{ plugin.api_version }}
-          </a-descriptions-item>
-          <a-descriptions-item :label="t('admin.applications.pluginListenersLabel')">
-            {{ plugin.listener_count }}
-          </a-descriptions-item>
-          <a-descriptions-item :label="t('admin.applications.pluginFailuresLabel')">
-            {{ plugin.failure_count }}
-          </a-descriptions-item>
-          <a-descriptions-item
-            v-if="plugin.activation_order != null"
-            :label="t('admin.applications.pluginActivationOrderLabel')"
-          >
-            {{ plugin.activation_order }}
-          </a-descriptions-item>
-          <a-descriptions-item v-if="plugin.author" :label="t('admin.applications.pluginAuthorLabel')">
-            {{ plugin.author }}
-          </a-descriptions-item>
-        </a-descriptions>
-
-        <div class="mt-3">
-          <p class="text-xs font-medium">{{ t('admin.applications.pluginCapabilities') }}</p>
-          <a-space v-if="plugin.capabilities.length" class="mt-1" wrap :size="[4, 4]">
-            <a-tag v-for="capability in plugin.capabilities" :key="capability" bordered>
-              {{ capability }}
-            </a-tag>
+          <a-space direction="vertical" size="mini" fill>
+            <a-typography-text v-if="!freelyExtensible">
+              {{ t('admin.applications.notFreelyExtensible') }}
+            </a-typography-text>
+            <a-typography-text type="secondary">
+              {{ t('admin.applications.readDocs') }}
+            </a-typography-text>
           </a-space>
-          <p v-else class="mt-1 text-xs text-muted-foreground">
-            {{ t('admin.applications.pluginNoCapabilities') }}
-          </p>
-        </div>
+        </a-alert>
+      </a-grid-item>
+      <a-grid-item :span="{ xs: 24, xl: 6 }">
+        <a-card size="small" :bordered="true">
+          <a-statistic :title="t('admin.applications.pluginsTitle')" :value="plugins.length">
+            <template #prefix><IconApps /></template>
+          </a-statistic>
+        </a-card>
+      </a-grid-item>
+    </a-grid>
 
-        <div v-if="Object.keys(plugin.requires).length" class="mt-3">
-          <p class="text-xs font-medium">{{ t('admin.applications.pluginDependencies') }}</p>
-          <a-descriptions
-            class="mt-1"
-            :column="{ xs: 1, sm: 2 }"
-            layout="vertical"
-            :bordered="false"
-          >
-            <a-descriptions-item
-              v-for="(requirement, dependency) in plugin.requires"
-              :key="dependency"
-              :label="dependency"
-            >
-              <span class="font-mono">{{ requirement }}</span>
-            </a-descriptions-item>
-          </a-descriptions>
-        </div>
-
-        <a-collapse
-          v-if="plugin.contribution_descriptors.length"
-          class="mt-3"
-          :bordered="false"
-        >
-          <a-collapse-item>
-            <template #header>
-              {{
-                t('admin.applications.contributions.header', {
-                  count: plugin.contribution_count,
-                })
-              }}
-            </template>
-            <div class="grid gap-2 lg:grid-cols-2">
-              <a-card
-                v-for="contribution in plugin.contribution_descriptors"
-                :key="contribution.id"
-                size="small"
-                :bordered="false"
-                class="bg-[var(--color-fill-1)]"
-              >
-                <a-space wrap>
-                  <a-tag color="arcoblue">
-                    {{ contributionTypeLabel(contribution.type) }}
-                  </a-tag>
-                  <span class="font-mono text-xs">{{ contribution.id }}</span>
-                </a-space>
-                <p class="mt-2 break-words text-xs text-muted-foreground">
-                  {{ contributionPayloadSummary(contribution.payload) }}
-                </p>
-                <a-space
-                  v-if="contribution.before.length ||
-                    contribution.after.length ||
-                    contribution.requires.length ||
-                    contribution.conflicts.length"
-                  class="mt-2"
-                  wrap
-                  :size="[4, 4]"
-                >
-                  <a-tag v-for="item in contribution.requires" :key="`requires-${item}`">
-                    {{ t('admin.applications.contributions.requires') }} · {{ item }}
-                  </a-tag>
-                  <a-tag v-for="item in contribution.before" :key="`before-${item}`">
-                    {{ t('admin.applications.contributions.before') }} · {{ item }}
-                  </a-tag>
-                  <a-tag v-for="item in contribution.after" :key="`after-${item}`">
-                    {{ t('admin.applications.contributions.after') }} · {{ item }}
-                  </a-tag>
-                  <a-tag
-                    v-for="item in contribution.conflicts"
-                    :key="`conflicts-${item}`"
-                    color="red"
+    <a-card :bordered="true">
+      <a-tabs default-active-key="applications" type="line">
+      <a-tab-pane key="platform" :title="t('admin.applications.platformTitle')">
+        <a-space direction="vertical" :size="16" fill>
+          <a-typography-paragraph type="secondary">
+            {{ t('admin.applications.platformHint') }}
+          </a-typography-paragraph>
+          <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
+            <a-grid-item v-for="item in platform" :key="item.id">
+              <a-card :bordered="true" hoverable>
+                <template #title>
+                  <a-space wrap>
+                    <a-typography-text bold>{{ item.label }}</a-typography-text>
+                    <a-tag color="arcoblue">{{ t('admin.applications.tierPlatform') }}</a-tag>
+                  </a-space>
+                </template>
+                <a-space direction="vertical" :size="16" fill>
+                  <a-typography-paragraph>{{ item.description }}</a-typography-paragraph>
+                  <a-descriptions
+                    v-if="item.ruby_namespaces?.length"
+                    :column="1"
+                    bordered
+                    size="small"
                   >
-                    {{ t('admin.applications.contributions.conflicts') }} · {{ item }}
-                  </a-tag>
+                    <a-descriptions-item :label="t('admin.applications.namespacesLabel')">
+                      <a-space wrap size="mini">
+                        <a-tag
+                          v-for="namespace in item.ruby_namespaces"
+                          :key="namespace"
+                          bordered
+                        >
+                          {{ namespace }}
+                        </a-tag>
+                      </a-space>
+                    </a-descriptions-item>
+                  </a-descriptions>
                 </a-space>
               </a-card>
-            </div>
-          </a-collapse-item>
-        </a-collapse>
-
-        <p v-if="plugin.homepage" class="mt-3 break-all font-mono text-xs text-muted-foreground">
-          {{ plugin.homepage }}
-        </p>
-        <a-alert
-          v-if="plugin.last_error"
-          class="mt-3"
-          type="error"
-          :title="t('admin.applications.pluginLastError')"
-        >
-          {{ plugin.last_error }}
-        </a-alert>
-      </a-card>
-    </div>
-    <a-empty v-else :description="t('admin.applications.noPlugins')" />
-  </section>
-
-  <section v-if="pluginDiagnostics.length" class="mb-8">
-    <h2 class="mb-1 text-lg font-semibold">{{ t('admin.applications.diagnosticsTitle') }}</h2>
-    <p class="mb-4 text-sm text-muted-foreground">{{ t('admin.applications.diagnosticsHint') }}</p>
-    <div class="overflow-x-auto">
-      <a-table
-        :data="pluginDiagnostics"
-        :pagination="false"
-        :bordered="false"
-        :scroll="{ minWidth: 920 }"
-      >
-        <template #columns>
-          <a-table-column :title="t('admin.applications.diagnosticLevel')" data-index="level" :width="110">
-            <template #cell="{ record }">
-              <a-tag :color="diagnosticColor(record.level)">{{ record.level }}</a-tag>
-            </template>
-          </a-table-column>
-          <a-table-column :title="t('admin.applications.diagnosticContext')" :width="240">
-            <template #cell="{ record }">
-              <div class="space-y-1">
-                <p class="font-mono text-xs font-medium">{{ record.code }}</p>
-                <p class="font-mono text-xs text-muted-foreground">
-                  {{ [record.phase, record.plugin_id, record.event].filter(Boolean).join(' · ') }}
-                </p>
-              </div>
-            </template>
-          </a-table-column>
-          <a-table-column :title="t('admin.applications.diagnosticMessage')">
-            <template #cell="{ record }">
-              <p class="break-words">{{ record.message }}</p>
-              <p v-if="record.exception" class="mt-1 font-mono text-xs text-muted-foreground">
-                {{ record.exception }}
-              </p>
-            </template>
-          </a-table-column>
-          <a-table-column
-            :title="t('admin.applications.diagnosticTime')"
-            data-index="occurred_at"
-            :width="210"
-          />
-        </template>
-      </a-table>
-    </div>
-  </section>
-
-  <section>
-    <h2 class="mb-1 text-lg font-semibold">{{ t('admin.applications.extensionsTitle') }}</h2>
-    <p class="mb-4 text-sm text-muted-foreground">{{ t('admin.applications.extensionsHint') }}</p>
-    <div class="grid gap-3">
-      <a-card
-        v-for="item in extensions"
-        :key="item.id"
-        :bordered="false"
-        class="bg-[var(--color-fill-1)]"
-      >
-        <template #title>
-          <div class="flex flex-wrap items-center gap-2">
-            <span>{{ item.label }}</span>
-            <a-tag>{{ t('admin.applications.tierExtension') }}</a-tag>
-            <span v-if="item.kind" class="text-xs font-normal text-muted-foreground">{{ item.kind }}</span>
-          </div>
-        </template>
-        <p class="text-sm text-muted-foreground">{{ item.description }}</p>
-        <p v-if="item.host" class="mt-2 font-mono text-xs text-muted-foreground">{{ item.host }}</p>
-        <a-space v-if="item.capabilities?.length" class="mt-2" wrap :size="[4, 4]">
-          <a-tag v-for="capability in item.capabilities" :key="capability" bordered>
-            {{ capability }}
-          </a-tag>
+            </a-grid-item>
+          </a-grid>
         </a-space>
-        <ul v-if="item.limitations?.length" class="mt-2 list-inside list-disc text-xs text-muted-foreground">
-          <li v-for="(line, index) in item.limitations" :key="index">{{ line }}</li>
-        </ul>
-      </a-card>
-    </div>
-  </section>
+      </a-tab-pane>
 
-  <Drawer
-    :visible="Boolean(selectedCatalogRelease)"
-    :width="'min(760px, calc(100vw - 24px))'"
-    :title="t('admin.applications.catalog.detailTitle')"
-    unmount-on-close
-    @cancel="selectedCatalogRelease = null"
-  >
-    <a-space v-if="selectedCatalogRelease" direction="vertical" :size="20" fill>
-      <a-descriptions :column="1" bordered size="small">
-        <a-descriptions-item :label="t('admin.applications.catalog.plugin')">
-          {{ selectedCatalogRelease.plugin_id }}
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.catalog.releaseIdentity')">
-          {{ selectedCatalogRelease.version }} · API {{ selectedCatalogRelease.api_version }}
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.catalog.manifestDigest')">
-          <span class="break-all font-mono text-xs">
-            {{ selectedCatalogRelease.manifest_sha256 }}
-          </span>
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.catalog.packageDigest')">
-          <a-space direction="vertical" size="mini">
-            <span class="break-all font-mono text-xs">
-              {{ selectedCatalogRelease.package_sha256 }}
-            </span>
-            <a-tag
-              :color="selectedCatalogRelease.package_digest_source === 'receipt'
-                ? 'green'
-                : 'orange'"
+      <a-tab-pane key="applications" :title="t('admin.applications.appsTitle')">
+        <a-space direction="vertical" :size="16" fill>
+          <a-typography-paragraph type="secondary">
+            {{ t('admin.applications.appsHint') }}
+          </a-typography-paragraph>
+          <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
+            <a-grid-item v-for="item in applications" :key="item.id">
+              <a-card :bordered="true" hoverable>
+                <template #title>
+                  <a-space wrap>
+                    <a-typography-text bold>{{ item.label }}</a-typography-text>
+                    <a-tag :color="item.enabled ? 'green' : 'gray'">
+                      {{ item.enabled ? t('admin.ui.enabled') : t('admin.ui.disabled') }}
+                    </a-tag>
+                    <a-tag>{{ t('admin.applications.tierApplication') }}</a-tag>
+                  </a-space>
+                </template>
+                <a-space direction="vertical" :size="16" fill>
+                  <a-typography-paragraph>{{ item.description }}</a-typography-paragraph>
+                  <a-descriptions
+                    v-if="item.ruby_namespaces?.length || item.path_prefixes?.length"
+                    :column="{ xs: 1, md: 2 }"
+                    bordered
+                    size="small"
+                  >
+                    <a-descriptions-item
+                      v-if="item.ruby_namespaces?.length"
+                      :label="t('admin.applications.namespacesLabel')"
+                    >
+                      <a-space wrap size="mini">
+                        <a-tag
+                          v-for="namespace in item.ruby_namespaces"
+                          :key="namespace"
+                          bordered
+                        >
+                          {{ namespace }}
+                        </a-tag>
+                      </a-space>
+                    </a-descriptions-item>
+                    <a-descriptions-item
+                      v-if="item.path_prefixes?.length"
+                      :label="t('admin.applications.routesLabel')"
+                    >
+                      <a-space wrap size="mini">
+                        <a-tag v-for="prefix in item.path_prefixes" :key="prefix" bordered>
+                          {{ prefix }}
+                        </a-tag>
+                      </a-space>
+                    </a-descriptions-item>
+                  </a-descriptions>
+                </a-space>
+              </a-card>
+            </a-grid-item>
+          </a-grid>
+        </a-space>
+      </a-tab-pane>
+
+      <a-tab-pane key="plugins" :title="t('admin.applications.pluginsTitle')">
+        <a-space direction="vertical" :size="16" fill>
+          <a-divider orientation="left">
+            <a-space align="center" wrap>
+              <a-typography-text bold>
+                {{ t('admin.applications.marketplace.title') }}
+              </a-typography-text>
+              <a-tag color="arcoblue" round>
+                {{ t('admin.applications.pluginsTitle') }}
+              </a-tag>
+            </a-space>
+          </a-divider>
+          <a-typography-paragraph type="secondary">
+            {{ t('admin.applications.marketplace.hint') }}
+          </a-typography-paragraph>
+
+          <a-card v-if="canMutatePlugins" :bordered="true">
+            <a-grid :cols="{ xs: 1, sm: 2 }" :col-gap="16" :row-gap="8">
+              <a-grid-item>
+                <a-checkbox v-model="installForm.dry_run">
+                  {{ t('admin.applications.marketplace.dryRun') }}
+                </a-checkbox>
+              </a-grid-item>
+              <a-grid-item>
+                <a-checkbox v-model="installForm.maintenance_mode">
+                  {{ t('admin.applications.marketplace.maintenanceMode') }}
+                </a-checkbox>
+              </a-grid-item>
+            </a-grid>
+          </a-card>
+
+          <a-alert
+            v-for="error in pluginMarketplace.errors"
+            :key="`${error.code}-${error.message}`"
+            type="warning"
+            show-icon
+            :title="t('admin.applications.marketplace.errorsTitle')"
+          >
+            {{ error.message }}
+          </a-alert>
+
+          <a-row :gutter="[16, 16]">
+            <a-col v-if="pluginCapabilities.install" :xs="24" :xl="10">
+              <a-card
+                :title="t('admin.applications.marketplace.installTitle')"
+                :bordered="true"
+              >
+                <a-form :model="installForm" layout="vertical" @submit="installPlugin">
+                  <a-form-item
+                    field="plugin_package"
+                    :label="t('admin.applications.marketplace.packageLabel')"
+                    :extra="t('admin.applications.marketplace.packageHint')"
+                  >
+                    <a-upload
+                      :file-list="pluginFiles"
+                      :auto-upload="false"
+                      :limit="1"
+                      accept=".zip,application/zip"
+                      @change="handlePluginPackageChange"
+                    />
+                  </a-form-item>
+                  <a-form-item
+                    field="expected_sha256"
+                    :label="t('admin.applications.marketplace.checksumLabel')"
+                    :extra="t('admin.applications.marketplace.checksumHint')"
+                  >
+                    <a-input
+                      v-model="installForm.expected_sha256"
+                      :max-length="64"
+                      allow-clear
+                    />
+                  </a-form-item>
+                  <a-form-item
+                    field="expected_id"
+                    :label="t('admin.applications.marketplace.expectedIdLabel')"
+                    :extra="t('admin.applications.marketplace.expectedIdHint')"
+                  >
+                    <a-input v-model="installForm.expected_id" allow-clear />
+                  </a-form-item>
+                  <a-form-item field="allow_downgrade">
+                    <a-checkbox v-model="installForm.allow_downgrade">
+                      {{ t('admin.applications.marketplace.allowDowngrade') }}
+                    </a-checkbox>
+                  </a-form-item>
+                  <a-button
+                    type="primary"
+                    html-type="submit"
+                    :loading="installForm.processing"
+                    :disabled="!installForm.plugin_package || installForm.expected_sha256.length !== 64"
+                  >
+                    {{ lifecycleActionLabel('install') }}
+                  </a-button>
+                </a-form>
+              </a-card>
+            </a-col>
+
+            <a-col :xs="24" :xl="pluginCapabilities.install ? 14 : 24">
+              <a-card
+                :title="t('admin.applications.marketplace.managedTitle')"
+                :bordered="true"
+              >
+                <a-list
+                  v-if="pluginMarketplace.plugins.length"
+                  :bordered="false"
+                  size="small"
+                  :max-height="620"
+                  scrollbar
+                >
+                  <a-list-item
+                    v-for="plugin in pluginMarketplace.plugins"
+                    :key="plugin.id"
+                  >
+                    <a-space direction="vertical" :size="12" fill>
+                      <a-list-item-meta
+                        :title="plugin.name"
+                        :description="plugin.id"
+                      />
+                      <a-space wrap size="small">
+                        <a-tag :color="marketplaceStatusColor(plugin.status)">
+                          {{ marketplaceStatusLabel(plugin.status) }}
+                        </a-tag>
+                        <a-tag>v{{ plugin.version }}</a-tag>
+                        <a-tag v-if="plugin.recoverable" color="orange">
+                          {{ t('admin.applications.marketplace.recoverable') }}
+                        </a-tag>
+                      </a-space>
+                      <a-descriptions
+                        :column="{ xs: 1, md: 2 }"
+                        size="small"
+                        bordered
+                      >
+                        <a-descriptions-item
+                          :label="t('admin.applications.marketplace.filesystemStatus')"
+                        >
+                          {{ marketplaceStatusLabel(plugin.filesystem_status) }}
+                        </a-descriptions-item>
+                        <a-descriptions-item
+                          :label="t('admin.applications.marketplace.runtimeStatus')"
+                        >
+                          {{ marketplaceStatusLabel(plugin.runtime_status) }}
+                        </a-descriptions-item>
+                        <a-descriptions-item
+                          v-if="plugin.sha256"
+                          :label="t('admin.applications.marketplace.checksum')"
+                        >
+                          <a-typography-text
+                            code
+                            copyable
+                            :ellipsis="{ showTooltip: true }"
+                          >
+                            {{ plugin.sha256 }}
+                          </a-typography-text>
+                        </a-descriptions-item>
+                        <a-descriptions-item
+                          v-if="plugin.source?.scheme || plugin.source?.host"
+                          :label="t('admin.applications.marketplace.source')"
+                        >
+                          {{ [plugin.source?.scheme, plugin.source?.host].filter(Boolean).join(' · ') }}
+                        </a-descriptions-item>
+                        <a-descriptions-item
+                          v-if="plugin.updated_at"
+                          :label="t('admin.applications.marketplace.updatedAt')"
+                        >
+                          {{ plugin.updated_at }}
+                        </a-descriptions-item>
+                        <a-descriptions-item
+                          :label="t('admin.applications.marketplace.fileHealth')"
+                        >
+                          {{
+                            t('admin.applications.marketplace.fileHealthSummary', {
+                              status: marketplaceStatusLabel(plugin.health.status),
+                              expected: plugin.health.expected_count,
+                              actual: plugin.health.actual_count,
+                              missing: plugin.health.missing_count,
+                              modified: plugin.health.modified_count,
+                              unknown: plugin.health.unknown_count,
+                            })
+                          }}
+                        </a-descriptions-item>
+                      </a-descriptions>
+                      <a-space v-if="canManagePlugins" wrap size="small">
+                        <a-button
+                          v-if="pluginCapabilities.enable && plugin.filesystem_status === 'disabled'"
+                          size="small"
+                          @click="changePluginState('enable', plugin.id)"
+                        >
+                          {{ lifecycleActionLabel('enable') }}
+                        </a-button>
+                        <a-button
+                          v-if="pluginCapabilities.disable && plugin.filesystem_status === 'installed'"
+                          size="small"
+                          @click="changePluginState('disable', plugin.id)"
+                        >
+                          {{ lifecycleActionLabel('disable') }}
+                        </a-button>
+                        <a-button
+                          v-if="pluginCapabilities.diagnostics"
+                          size="small"
+                          @click="checkPluginHealth(plugin.id)"
+                        >
+                          {{ t('admin.applications.marketplace.checkHealth') }}
+                        </a-button>
+                        <a-button
+                          v-if="pluginCapabilities.recover && plugin.recoverable && hasVerifiedUninstallIdentity(plugin)"
+                          size="small"
+                          status="warning"
+                          @click="recoverPlugin(plugin)"
+                        >
+                          {{ lifecycleActionLabel('recover') }}
+                        </a-button>
+                        <a-button
+                          v-if="pluginCapabilities.rollback && plugin.rollback_available && hasVerifiedUninstallIdentity(plugin)"
+                          size="small"
+                          status="warning"
+                          @click="rollbackPlugin(plugin)"
+                        >
+                          {{ lifecycleActionLabel('rollback') }}
+                        </a-button>
+                        <a-button
+                          v-if="(pluginCapabilities.uninstall_preserve || pluginCapabilities.uninstall_purge) &&
+                            ['installed', 'disabled'].includes(plugin.filesystem_status) &&
+                            hasVerifiedUninstallIdentity(plugin)"
+                          size="small"
+                          status="danger"
+                          @click="openUninstall(plugin)"
+                        >
+                          {{ lifecycleActionLabel('uninstall') }}
+                        </a-button>
+                      </a-space>
+                    </a-space>
+                  </a-list-item>
+                </a-list>
+                <a-empty
+                  v-else
+                  :description="t('admin.applications.marketplace.noManagedPlugins')"
+                />
+              </a-card>
+            </a-col>
+          </a-row>
+
+          <a-card
+            :title="t('admin.applications.marketplace.operationsTitle')"
+            :bordered="true"
+          >
+            <a-table
+              :data="pluginMarketplace.operations"
+              :pagination="false"
+              :bordered="{ cell: true }"
+              :scroll="{ x: 960 }"
+              size="small"
+              stripe
             >
-              {{
-                t(
-                  `admin.applications.catalog.digestSources.${selectedCatalogRelease.package_digest_source}`,
-                )
-              }}
-            </a-tag>
-          </a-space>
-        </a-descriptions-item>
-      </a-descriptions>
+              <template #columns>
+                <a-table-column
+                  :title="t('admin.applications.marketplace.action')"
+                  data-index="action"
+                  :width="130"
+                  ellipsis
+                  tooltip
+                />
+                <a-table-column
+                  :title="t('admin.applications.marketplace.status')"
+                  :width="130"
+                >
+                  <template #cell="{ record }">
+                    <a-tag :color="marketplaceStatusColor(record.status)">
+                      {{ marketplaceStatusLabel(record.status) }}
+                    </a-tag>
+                  </template>
+                </a-table-column>
+                <a-table-column
+                  :title="t('admin.applications.marketplace.plugin')"
+                  data-index="plugin_id"
+                  :width="190"
+                  ellipsis
+                  tooltip
+                />
+                <a-table-column
+                  :title="t('admin.applications.marketplace.version')"
+                  data-index="version"
+                  :width="120"
+                />
+                <a-table-column
+                  :title="t('admin.applications.marketplace.message')"
+                  data-index="message"
+                  :width="280"
+                  ellipsis
+                  tooltip
+                />
+                <a-table-column
+                  :title="t('admin.applications.marketplace.time')"
+                  data-index="occurred_at"
+                  :width="210"
+                  ellipsis
+                  tooltip
+                />
+              </template>
+              <template #empty>
+                <a-empty :description="t('admin.applications.marketplace.noOperations')" />
+              </template>
+            </a-table>
+          </a-card>
 
-      <a-space
-        v-if="selectedCatalogRelease.diagnostics.length"
-        direction="vertical"
-        fill
-      >
+          <a-divider orientation="left">
+            <a-typography-text bold>
+              {{ t('admin.applications.marketplace.runtimeTitle') }}
+            </a-typography-text>
+          </a-divider>
+          <a-typography-paragraph type="secondary">
+            {{ t('admin.applications.pluginsHint') }}
+          </a-typography-paragraph>
+          <a-collapse v-if="plugins.length" accordion>
+            <a-collapse-item
+              v-for="plugin in plugins"
+              :key="plugin.id"
+              :name="plugin.id"
+            >
+              <template #header>
+                <a-typography-text bold>{{ plugin.name }}</a-typography-text>
+              </template>
+              <template #extra>
+                <a-tag :color="pluginStatusColor(plugin.status)">
+                  {{ pluginStatusLabel(plugin.status) }}
+                </a-tag>
+              </template>
+
+              <a-space direction="vertical" :size="16" fill>
+                <a-typography-paragraph v-if="plugin.description">
+                  {{ plugin.description }}
+                </a-typography-paragraph>
+                <a-descriptions
+                  :column="{ xs: 1, sm: 2, lg: 3 }"
+                  size="small"
+                  bordered
+                >
+                  <a-descriptions-item :label="t('admin.applications.pluginIdLabel')">
+                    {{ plugin.id }}
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="t('admin.applications.pluginVersionLabel')">
+                    v{{ plugin.version }}
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="t('admin.applications.pluginApiLabel')">
+                    v{{ plugin.api_version }}
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="t('admin.applications.pluginListenersLabel')">
+                    {{ plugin.listener_count }}
+                  </a-descriptions-item>
+                  <a-descriptions-item :label="t('admin.applications.pluginFailuresLabel')">
+                    {{ plugin.failure_count }}
+                  </a-descriptions-item>
+                  <a-descriptions-item
+                    v-if="plugin.activation_order != null"
+                    :label="t('admin.applications.pluginActivationOrderLabel')"
+                  >
+                    {{ plugin.activation_order }}
+                  </a-descriptions-item>
+                  <a-descriptions-item
+                    v-if="plugin.author"
+                    :label="t('admin.applications.pluginAuthorLabel')"
+                  >
+                    {{ plugin.author }}
+                  </a-descriptions-item>
+                  <a-descriptions-item
+                    v-if="plugin.homepage"
+                    :label="t('admin.applications.pluginHomepageLabel')"
+                  >
+                    <a-link
+                      :href="plugin.homepage"
+                      target="_blank"
+                      rel="noopener"
+                      data-admin-hard-navigation
+                    >
+                      {{ plugin.homepage }}
+                    </a-link>
+                  </a-descriptions-item>
+                </a-descriptions>
+
+                <a-space direction="vertical" size="mini" fill>
+                  <a-typography-text bold>
+                    {{ t('admin.applications.pluginCapabilities') }}
+                  </a-typography-text>
+                  <a-space v-if="plugin.capabilities?.length" wrap size="mini">
+                    <a-tag
+                      v-for="capability in plugin.capabilities || []"
+                      :key="capability"
+                      bordered
+                    >
+                      {{ capability }}
+                    </a-tag>
+                  </a-space>
+                  <a-typography-text v-else type="secondary">
+                    {{ t('admin.applications.pluginNoCapabilities') }}
+                  </a-typography-text>
+                </a-space>
+
+                <a-descriptions
+                  v-if="Object.keys(plugin.requires || {}).length"
+                  :title="t('admin.applications.pluginDependencies')"
+                  :column="1"
+                  size="small"
+                  bordered
+                >
+                  <a-descriptions-item
+                    v-for="(requirement, dependency) in plugin.requires || {}"
+                    :key="dependency"
+                    :label="dependency"
+                  >
+                    {{ requirement }}
+                  </a-descriptions-item>
+                </a-descriptions>
+
+                <a-collapse v-if="plugin.contribution_descriptors.length" accordion>
+                  <a-collapse-item
+                    name="contributions"
+                    :header="t('admin.applications.contributions.header', {
+                      count: plugin.contribution_count,
+                    })"
+                  >
+                    <a-list :bordered="false" size="small">
+                      <a-list-item
+                        v-for="contribution in plugin.contribution_descriptors"
+                        :key="contribution.id"
+                      >
+                        <a-space direction="vertical" size="mini" fill>
+                          <a-space wrap size="mini">
+                            <a-tag color="arcoblue">
+                              {{ contributionTypeLabel(contribution.type) }}
+                            </a-tag>
+                            <a-typography-text code>{{ contribution.id }}</a-typography-text>
+                            <a-tag bordered>{{ contribution.priority }}</a-tag>
+                          </a-space>
+                          <a-typography-text type="secondary">
+                            {{ contributionPayloadSummary(contribution.payload) }}
+                          </a-typography-text>
+                          <a-space v-if="contribution.requires.length" wrap size="mini">
+                            <a-tag v-for="item in contribution.requires" :key="item" bordered>
+                              {{ t('admin.applications.contributions.requires') }} · {{ item }}
+                            </a-tag>
+                          </a-space>
+                          <a-space v-if="contribution.before.length" wrap size="mini">
+                            <a-tag v-for="item in contribution.before" :key="item" bordered>
+                              {{ t('admin.applications.contributions.before') }} · {{ item }}
+                            </a-tag>
+                          </a-space>
+                          <a-space v-if="contribution.after.length" wrap size="mini">
+                            <a-tag v-for="item in contribution.after" :key="item" bordered>
+                              {{ t('admin.applications.contributions.after') }} · {{ item }}
+                            </a-tag>
+                          </a-space>
+                          <a-space v-if="contribution.conflicts.length" wrap size="mini">
+                            <a-tag
+                              v-for="item in contribution.conflicts"
+                              :key="item"
+                              color="red"
+                            >
+                              {{ t('admin.applications.contributions.conflicts') }} · {{ item }}
+                            </a-tag>
+                          </a-space>
+                        </a-space>
+                      </a-list-item>
+                    </a-list>
+                  </a-collapse-item>
+                </a-collapse>
+
+                <a-alert
+                  v-if="plugin.last_error"
+                  type="error"
+                  :title="t('admin.applications.pluginLastError')"
+                  show-icon
+                >
+                  {{ plugin.last_error }}
+                </a-alert>
+              </a-space>
+            </a-collapse-item>
+          </a-collapse>
+          <a-empty v-else :description="t('admin.applications.noPlugins')" />
+        </a-space>
+      </a-tab-pane>
+
+      <a-tab-pane key="diagnostics" :title="t('admin.applications.diagnosticsTitle')">
+        <a-space direction="vertical" :size="16" fill>
+          <a-typography-paragraph type="secondary">
+            {{ t('admin.applications.diagnosticsHint') }}
+          </a-typography-paragraph>
+          <a-table
+            :data="pluginDiagnostics"
+            :pagination="false"
+            :bordered="{ cell: true }"
+            :scroll="{ x: 920 }"
+            size="small"
+            stripe
+          >
+            <template #columns>
+              <a-table-column
+                :title="t('admin.applications.diagnosticLevel')"
+                data-index="level"
+                :width="110"
+              >
+                <template #cell="{ record }">
+                  <a-tag :color="diagnosticColor(record.level)">{{ record.level }}</a-tag>
+                </template>
+              </a-table-column>
+              <a-table-column
+                :title="t('admin.applications.diagnosticContext')"
+                :width="260"
+                ellipsis
+                tooltip
+              >
+                <template #cell="{ record }">
+                  <a-space direction="vertical" size="mini" fill>
+                    <a-typography-text code>{{ record.code }}</a-typography-text>
+                    <a-typography-text type="secondary">
+                      {{ [record.phase, record.plugin_id, record.event].filter(Boolean).join(' · ') }}
+                    </a-typography-text>
+                  </a-space>
+                </template>
+              </a-table-column>
+              <a-table-column
+                :title="t('admin.applications.diagnosticMessage')"
+                :width="360"
+              >
+                <template #cell="{ record }">
+                  <a-space direction="vertical" size="mini" fill>
+                    <a-typography-text :ellipsis="{ showTooltip: true }">
+                      {{ record.message }}
+                    </a-typography-text>
+                    <a-typography-text
+                      v-if="record.exception"
+                      type="secondary"
+                      code
+                      :ellipsis="{ showTooltip: true }"
+                    >
+                      {{ record.exception }}
+                    </a-typography-text>
+                  </a-space>
+                </template>
+              </a-table-column>
+              <a-table-column
+                :title="t('admin.applications.diagnosticTime')"
+                data-index="occurred_at"
+                :width="210"
+                ellipsis
+                tooltip
+              />
+            </template>
+            <template #empty>
+              <a-empty :description="t('admin.applications.noDiagnostics')" />
+            </template>
+          </a-table>
+
+          <a-card
+            v-if="pluginCapabilities.diagnostics"
+            :title="t('admin.applications.catalog.title')"
+            :bordered="true"
+          >
+            <template #extra>
+              <a-button type="primary" @click="reconcilePluginCatalog">
+                {{ t('admin.applications.catalog.reconcile') }}
+              </a-button>
+            </template>
+            <a-alert
+              v-if="!pluginCatalog.available"
+              type="warning"
+              :title="t('admin.applications.catalog.unavailable')"
+              show-icon
+            />
+            <a-table
+              v-else
+              :data="pluginCatalog.releases"
+              :pagination="{ pageSize: 12 }"
+              :bordered="{ cell: true }"
+              :scroll="{ x: 980 }"
+              row-key="id"
+              size="small"
+              stripe
+            >
+              <template #columns>
+                <a-table-column
+                  :title="t('admin.applications.catalog.plugin')"
+                  data-index="plugin_id"
+                  :width="180"
+                  ellipsis
+                  tooltip
+                />
+                <a-table-column
+                  :title="t('admin.applications.catalog.version')"
+                  data-index="version"
+                  :width="120"
+                />
+                <a-table-column :title="t('admin.applications.catalog.state')" :width="140">
+                  <template #cell="{ record }">
+                    <a-tag :color="marketplaceStatusColor(record.state)">
+                      {{ marketplaceStatusLabel(record.state) }}
+                    </a-tag>
+                  </template>
+                </a-table-column>
+                <a-table-column :title="t('admin.applications.catalog.health')" :width="140">
+                  <template #cell="{ record }">
+                    <a-tag :color="marketplaceStatusColor(record.health)">
+                      {{ marketplaceStatusLabel(record.health) }}
+                    </a-tag>
+                  </template>
+                </a-table-column>
+                <a-table-column :title="t('admin.applications.catalog.contents')" :width="220">
+                  <template #cell="{ record }">
+                    {{
+                      t('admin.applications.catalog.contentCounts', {
+                        files: record.file_count,
+                        contributions: record.contributions.length,
+                        findings: record.diagnostics.length,
+                      })
+                    }}
+                  </template>
+                </a-table-column>
+                <a-table-column
+                  :title="t('admin.applications.catalog.observedAt')"
+                  data-index="observed_at"
+                  :width="190"
+                />
+                <a-table-column :title="t('admin.applications.catalog.details')" :width="100">
+                  <template #cell="{ record }">
+                    <a-button size="small" @click="selectedCatalogRelease = record">
+                      {{ t('admin.applications.catalog.view') }}
+                    </a-button>
+                  </template>
+                </a-table-column>
+              </template>
+              <template #empty>
+                <a-empty :description="t('admin.applications.catalog.empty')" />
+              </template>
+            </a-table>
+          </a-card>
+
+          <a-card
+            v-if="pluginCapabilities.diagnostics"
+            :title="t('admin.applications.lifecycle.title')"
+            :bordered="true"
+          >
+            <a-alert
+              v-if="!pluginLifecycle.available"
+              type="warning"
+              :title="t('admin.applications.lifecycle.unavailable')"
+              show-icon
+            />
+            <a-grid v-else :cols="{ xs: 1, xl: 2 }" :col-gap="16" :row-gap="16">
+              <a-grid-item>
+                <a-table
+                  :data="pluginLifecycle.installations"
+                  :pagination="{ pageSize: 10 }"
+                  :bordered="{ cell: true }"
+                  :scroll="{ x: 720 }"
+                  row-key="plugin_id"
+                  size="small"
+                >
+                  <template #columns>
+                    <a-table-column
+                      :title="t('admin.applications.lifecycle.plugin')"
+                      data-index="plugin_id"
+                      :width="180"
+                    />
+                    <a-table-column
+                      :title="t('admin.applications.lifecycle.version')"
+                      data-index="current_version"
+                      :width="120"
+                    />
+                    <a-table-column
+                      :title="t('admin.applications.lifecycle.currentState')"
+                      :width="150"
+                    >
+                      <template #cell="{ record }">
+                        <a-tag :color="lifecycleStatusColor(record.current_state)">
+                          {{ lifecycleLabel(record.current_state) }}
+                        </a-tag>
+                      </template>
+                    </a-table-column>
+                    <a-table-column
+                      :title="t('admin.applications.lifecycle.desiredState')"
+                      data-index="desired_state"
+                      :width="150"
+                    />
+                    <a-table-column
+                      :title="t('admin.applications.lifecycle.updatedAt')"
+                      data-index="updated_at"
+                      :width="190"
+                    />
+                  </template>
+                  <template #empty>
+                    <a-empty :description="t('admin.applications.lifecycle.noInstallations')" />
+                  </template>
+                </a-table>
+              </a-grid-item>
+              <a-grid-item>
+                <a-table
+                  :data="pluginLifecycle.runs"
+                  :pagination="{ pageSize: 10 }"
+                  :bordered="{ cell: true }"
+                  :scroll="{ x: 760 }"
+                  row-key="operation_id"
+                  size="small"
+                >
+                  <template #columns>
+                    <a-table-column
+                      :title="t('admin.applications.lifecycle.plugin')"
+                      data-index="plugin_id"
+                      :width="170"
+                    />
+                    <a-table-column :title="t('admin.applications.lifecycle.action')" :width="130">
+                      <template #cell="{ record }">
+                        {{ t(`admin.applications.generations.actions.${record.action}`) }}
+                      </template>
+                    </a-table-column>
+                    <a-table-column :title="t('admin.applications.lifecycle.runState')" :width="140">
+                      <template #cell="{ record }">
+                        <a-tag :color="lifecycleStatusColor(record.state)">
+                          {{ lifecycleLabel(record.state) }}
+                        </a-tag>
+                      </template>
+                    </a-table-column>
+                    <a-table-column :title="t('admin.applications.lifecycle.details')" :width="100">
+                      <template #cell="{ record }">
+                        <a-button size="small" @click="selectedLifecycleRun = record">
+                          {{ t('admin.applications.lifecycle.view') }}
+                        </a-button>
+                      </template>
+                    </a-table-column>
+                  </template>
+                  <template #empty>
+                    <a-empty :description="t('admin.applications.lifecycle.noRuns')" />
+                  </template>
+                </a-table>
+              </a-grid-item>
+            </a-grid>
+          </a-card>
+
+          <a-card
+            v-if="pluginCapabilities.diagnostics"
+            :title="t('admin.applications.generations.title')"
+            :bordered="true"
+          >
+            <a-alert
+              v-if="!pluginRuntimeGenerations.available"
+              type="warning"
+              :title="t('admin.applications.generations.unavailable')"
+              show-icon
+            />
+            <a-collapse v-else-if="pluginRuntimeGenerations.generations.length" accordion>
+              <a-collapse-item
+                v-for="generation in pluginRuntimeGenerations.generations"
+                :key="generation.number"
+                :name="String(generation.number)"
+                :header="t('admin.applications.generations.generation', { number: generation.number })"
+              >
+                <a-space direction="vertical" :size="12" fill>
+                  <a-space wrap>
+                    <a-tag :color="generationStatusColor(generation.state)">
+                      {{ t(`admin.applications.generations.states.${generation.state}`) }}
+                    </a-tag>
+                    <a-tag bordered>
+                      {{ t(`admin.applications.generations.actions.${generation.action}`) }}
+                    </a-tag>
+                  </a-space>
+                  <a-descriptions :column="{ xs: 1, sm: 2 }" bordered size="small">
+                    <a-descriptions-item :label="t('admin.applications.generations.target')">
+                      {{ generation.target_plugin_id || '—' }}
+                    </a-descriptions-item>
+                    <a-descriptions-item :label="t('admin.applications.generations.requiredAcks')">
+                      {{
+                        t('admin.applications.generations.requiredAcksValue', {
+                          ratio: generation.minimum_ack_ratio,
+                          count: generation.expected_process_count,
+                        })
+                      }}
+                    </a-descriptions-item>
+                    <a-descriptions-item :label="t('admin.applications.generations.deadline')">
+                      {{ generation.deadline_at || '—' }}
+                    </a-descriptions-item>
+                    <a-descriptions-item :label="t('admin.applications.generations.activatedAt')">
+                      {{ generation.activated_at || '—' }}
+                    </a-descriptions-item>
+                  </a-descriptions>
+                  <a-alert
+                    v-if="generation.error_message"
+                    type="error"
+                    :title="t('admin.applications.generations.error')"
+                    :description="generation.error_message"
+                    show-icon
+                  />
+                  <a-table
+                    :data="generation.acknowledgements"
+                    :pagination="false"
+                    :bordered="{ cell: true }"
+                    :scroll="{ x: 820 }"
+                    row-key="process_ref"
+                    size="small"
+                  >
+                    <template #columns>
+                      <a-table-column
+                        :title="t('admin.applications.generations.process')"
+                        data-index="process_ref"
+                        :width="220"
+                      />
+                      <a-table-column :title="t('admin.applications.generations.status')" :width="140">
+                        <template #cell="{ record }">
+                          <a-tag :color="generationStatusColor(record.status)">
+                            {{ t(`admin.applications.generations.ackStates.${record.status}`) }}
+                          </a-tag>
+                        </template>
+                      </a-table-column>
+                      <a-table-column :title="t('admin.applications.generations.loadedPlugins')">
+                        <template #cell="{ record }">
+                          <a-space wrap size="mini">
+                            <a-tag
+                              v-for="(version, pluginId) in record.plugin_versions"
+                              :key="pluginId"
+                              bordered
+                            >
+                              {{ pluginId }} · {{ version }}
+                            </a-tag>
+                          </a-space>
+                        </template>
+                      </a-table-column>
+                      <a-table-column
+                        :title="t('admin.applications.generations.lastSeen')"
+                        data-index="last_seen_at"
+                        :width="190"
+                      />
+                    </template>
+                    <template #empty>
+                      <a-empty :description="t('admin.applications.generations.noAcks')" />
+                    </template>
+                  </a-table>
+                </a-space>
+              </a-collapse-item>
+            </a-collapse>
+            <a-empty v-else :description="t('admin.applications.generations.empty')" />
+          </a-card>
+        </a-space>
+      </a-tab-pane>
+
+      <a-tab-pane key="extensions" :title="t('admin.applications.extensionsTitle')">
+        <a-space direction="vertical" :size="16" fill>
+          <a-typography-paragraph type="secondary">
+            {{ t('admin.applications.extensionsHint') }}
+          </a-typography-paragraph>
+          <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16">
+            <a-grid-item v-for="item in extensions" :key="item.id">
+              <a-card :bordered="true" hoverable>
+                <template #title>
+                  <a-space wrap>
+                    <a-typography-text bold>{{ item.label }}</a-typography-text>
+                    <a-tag>{{ t('admin.applications.tierExtension') }}</a-tag>
+                    <a-tag v-if="item.kind" bordered>{{ item.kind }}</a-tag>
+                  </a-space>
+                </template>
+                <a-space direction="vertical" :size="16" fill>
+                  <a-typography-paragraph>{{ item.description }}</a-typography-paragraph>
+                  <a-descriptions
+                    v-if="item.host || item.capabilities?.length || item.limitations?.length"
+                    :column="1"
+                    bordered
+                    size="small"
+                  >
+                    <a-descriptions-item
+                      v-if="item.host"
+                      :label="t('admin.applications.hostLabel')"
+                    >
+                      {{ item.host }}
+                    </a-descriptions-item>
+                    <a-descriptions-item
+                      v-if="item.capabilities?.length"
+                      :label="t('admin.applications.pluginCapabilities')"
+                    >
+                      <a-space wrap size="mini">
+                        <a-tag
+                          v-for="capability in item.capabilities"
+                          :key="capability"
+                          bordered
+                        >
+                          {{ capability }}
+                        </a-tag>
+                      </a-space>
+                    </a-descriptions-item>
+                    <a-descriptions-item
+                      v-if="item.limitations?.length"
+                      :label="t('admin.applications.limitationsLabel')"
+                    >
+                      <a-space direction="vertical" size="mini" fill>
+                        <a-typography-text
+                          v-for="(line, index) in item.limitations"
+                          :key="index"
+                          type="secondary"
+                        >
+                          {{ line }}
+                        </a-typography-text>
+                      </a-space>
+                    </a-descriptions-item>
+                  </a-descriptions>
+                </a-space>
+              </a-card>
+            </a-grid-item>
+          </a-grid>
+        </a-space>
+      </a-tab-pane>
+      </a-tabs>
+    </a-card>
+
+    <Drawer
+      :visible="selectedCatalogRelease !== null"
+      :title="t('admin.applications.catalog.detailTitle')"
+      :width="720"
+      unmount-on-close
+      @cancel="selectedCatalogRelease = null"
+    >
+      <a-space v-if="selectedCatalogRelease" direction="vertical" :size="16" fill>
+        <a-descriptions :column="{ xs: 1, sm: 2 }" bordered size="small">
+          <a-descriptions-item :label="t('admin.applications.catalog.plugin')">
+            {{ selectedCatalogRelease.plugin_id }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="t('admin.applications.catalog.releaseIdentity')">
+            {{ selectedCatalogRelease.version }} · API {{ selectedCatalogRelease.api_version }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="t('admin.applications.catalog.manifestDigest')">
+            <a-typography-text code copyable>
+              {{ selectedCatalogRelease.manifest_sha256 }}
+            </a-typography-text>
+          </a-descriptions-item>
+          <a-descriptions-item :label="t('admin.applications.catalog.packageDigest')">
+            <a-space direction="vertical" size="mini" fill>
+              <a-typography-text code copyable>
+                {{ selectedCatalogRelease.package_sha256 }}
+              </a-typography-text>
+              <a-tag bordered>
+                {{
+                  t(
+                    `admin.applications.catalog.digestSources.${selectedCatalogRelease.package_digest_source}`,
+                  )
+                }}
+              </a-tag>
+            </a-space>
+          </a-descriptions-item>
+        </a-descriptions>
+
         <a-alert
           v-for="diagnostic in selectedCatalogRelease.diagnostics"
-          :key="diagnostic.code"
+          :key="`${diagnostic.code}-${diagnostic.severity}`"
           :type="diagnostic.severity === 'error' ? 'error' : 'warning'"
-          show-icon
           :title="t(`admin.applications.catalog.findings.${diagnostic.code}`)"
+          show-icon
         />
-      </a-space>
 
-      <div>
-        <h3 class="mb-3 text-base font-semibold">
-          {{ t('admin.applications.catalog.contributionsTitle') }}
-        </h3>
         <a-table
           :data="selectedCatalogRelease.contributions"
-          :pagination="{ pageSize: 8, hideOnSinglePage: true }"
-          :bordered="false"
-          :scroll="{ minWidth: 660 }"
+          :pagination="false"
+          :bordered="{ cell: true }"
+          :scroll="{ x: 720 }"
+          row-key="id"
+          size="small"
         >
           <template #columns>
             <a-table-column
               :title="t('admin.applications.catalog.contributionId')"
               data-index="id"
+              :width="220"
             />
             <a-table-column
               :title="t('admin.applications.catalog.contributionType')"
+              data-index="type"
               :width="150"
-            >
-              <template #cell="{ record }">
-                {{ contributionTypeLabel(record.type) }}
-              </template>
-            </a-table-column>
+            />
             <a-table-column
               :title="t('admin.applications.catalog.schemaDigest')"
-              :width="170"
-            >
-              <template #cell="{ record }">
-                <span class="font-mono text-xs">
-                  {{ record.schema_sha256?.slice(0, 16) || '—' }}
-                </span>
-              </template>
-            </a-table-column>
+              data-index="schema_sha256"
+              :width="300"
+            />
           </template>
           <template #empty>
             <a-empty :description="t('admin.applications.catalog.noContributions')" />
           </template>
         </a-table>
-      </div>
 
-      <div>
-        <h3 class="mb-3 text-base font-semibold">
-          {{ t('admin.applications.catalog.fileIssuesTitle') }}
-        </h3>
         <a-table
           :data="selectedCatalogRelease.file_issues"
-          :pagination="{ pageSize: 8, hideOnSinglePage: true }"
-          :bordered="false"
-          :scroll="{ minWidth: 620 }"
+          :pagination="{ pageSize: 12 }"
+          :bordered="{ cell: true }"
+          :scroll="{ x: 820 }"
+          row-key="path"
+          size="small"
         >
           <template #columns>
             <a-table-column
               :title="t('admin.applications.catalog.filePath')"
               data-index="path"
+              :width="300"
             />
-            <a-table-column
-              :title="t('admin.applications.catalog.health')"
-              :width="150"
-            >
+            <a-table-column :title="t('admin.applications.catalog.health')" :width="140">
               <template #cell="{ record }">
                 <a-tag :color="marketplaceStatusColor(record.health)">
                   {{ marketplaceStatusLabel(record.health) }}
                 </a-tag>
               </template>
             </a-table-column>
-            <a-table-column
-              :title="t('admin.applications.catalog.fileSize')"
-              :width="150"
-            >
+            <a-table-column :title="t('admin.applications.catalog.fileSize')" :width="180">
               <template #cell="{ record }">
-                {{ record.expected_size }} → {{ record.observed_size ?? '—' }}
+                {{ record.observed_size ?? '—' }} / {{ record.expected_size }}
               </template>
             </a-table-column>
           </template>
@@ -1716,219 +1767,182 @@ function submitUninstall() {
             <a-empty :description="t('admin.applications.catalog.noFileIssues')" />
           </template>
         </a-table>
-      </div>
-    </a-space>
-  </Drawer>
+      </a-space>
+    </Drawer>
 
-  <Drawer
-    :visible="Boolean(selectedLifecycleRun)"
-    :width="'min(680px, calc(100vw - 24px))'"
-    :title="t('admin.applications.lifecycle.detailTitle')"
-    unmount-on-close
-    @cancel="selectedLifecycleRun = null"
-  >
-    <a-space v-if="selectedLifecycleRun" direction="vertical" :size="20" fill>
-      <a-descriptions :column="1" bordered size="small">
-        <a-descriptions-item :label="t('admin.applications.lifecycle.plugin')">
-          {{ selectedLifecycleRun.plugin_id || '—' }}
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.lifecycle.operation')">
-          <span class="break-all font-mono text-xs">
+    <Drawer
+      :visible="selectedLifecycleRun !== null"
+      :title="t('admin.applications.lifecycle.detailTitle')"
+      :width="680"
+      unmount-on-close
+      @cancel="selectedLifecycleRun = null"
+    >
+      <a-space v-if="selectedLifecycleRun" direction="vertical" :size="16" fill>
+        <a-descriptions :column="{ xs: 1, sm: 2 }" bordered size="small">
+          <a-descriptions-item :label="t('admin.applications.lifecycle.plugin')">
+            {{ selectedLifecycleRun.plugin_id || '—' }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="t('admin.applications.lifecycle.operation')">
             {{ selectedLifecycleRun.operation_id }}
-          </span>
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.lifecycle.action')">
-          {{ t(`admin.applications.generations.actions.${selectedLifecycleRun.action}`) }}
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.lifecycle.actor')">
-          {{ selectedLifecycleRun.actor || t('admin.applications.lifecycle.systemActor') }}
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.lifecycle.runState')">
-          <a-tag :color="lifecycleStatusColor(selectedLifecycleRun.state)">
-            {{ lifecycleLabel(selectedLifecycleRun.state) }}
-          </a-tag>
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.lifecycle.versionChange')">
-          {{ selectedLifecycleRun.from_version || '—' }}
-          →
-          {{ selectedLifecycleRun.to_version || '—' }}
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.lifecycle.generation')">
-          {{ selectedLifecycleRun.generation_number || '—' }}
-        </a-descriptions-item>
-        <a-descriptions-item :label="t('admin.applications.lifecycle.executionMode')">
-          <a-space wrap>
-            <a-tag v-if="selectedLifecycleRun.dry_run" color="arcoblue">
-              {{ t('admin.applications.marketplace.dryRun') }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="t('admin.applications.lifecycle.action')">
+            {{ t(`admin.applications.generations.actions.${selectedLifecycleRun.action}`) }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="t('admin.applications.lifecycle.actor')">
+            {{ selectedLifecycleRun.actor || t('admin.applications.lifecycle.systemActor') }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="t('admin.applications.lifecycle.runState')">
+            <a-tag :color="lifecycleStatusColor(selectedLifecycleRun.state)">
+              {{ lifecycleLabel(selectedLifecycleRun.state) }}
             </a-tag>
-            <a-tag v-if="selectedLifecycleRun.maintenance_mode" color="orange">
-              {{ t('admin.applications.marketplace.maintenanceMode') }}
-            </a-tag>
-            <span
-              v-if="!selectedLifecycleRun.dry_run &&
-                !selectedLifecycleRun.maintenance_mode"
-            >
-              {{ t('admin.applications.lifecycle.standardMode') }}
-            </span>
-          </a-space>
-        </a-descriptions-item>
-      </a-descriptions>
-
-      <a-alert
-        v-if="selectedLifecycleRun.error_code || selectedLifecycleRun.error_message"
-        type="error"
-        show-icon
-        :title="t('admin.applications.lifecycle.failed')"
-      >
-        {{ selectedLifecycleRun.error_message }}
-      </a-alert>
-
-      <div>
-        <h3 class="mb-3 text-base font-semibold">
-          {{ t('admin.applications.lifecycle.stepsTitle') }}
-        </h3>
+          </a-descriptions-item>
+          <a-descriptions-item :label="t('admin.applications.lifecycle.versionChange')">
+            {{ selectedLifecycleRun.from_version || '—' }} →
+            {{ selectedLifecycleRun.to_version || '—' }}
+          </a-descriptions-item>
+        </a-descriptions>
+        <a-alert
+          v-if="selectedLifecycleRun.error_message"
+          type="error"
+          :title="t('admin.applications.lifecycle.failed')"
+          :description="selectedLifecycleRun.error_message"
+          show-icon
+        />
         <Timeline v-if="selectedLifecycleRun.steps.length">
           <TimelineItem
             v-for="step in selectedLifecycleRun.steps"
-            :key="`${selectedLifecycleRun.operation_id}-${step.sequence}`"
-            :label="step.completed_at || step.started_at"
+            :key="step.sequence"
+            :dot-color="lifecycleStatusColor(step.state)"
           >
-            <a-space direction="vertical" size="mini">
-              <strong>{{ t(`admin.applications.lifecycle.steps.${step.step_key}`) }}</strong>
-              <a-tag :color="lifecycleStatusColor(step.state)">
+            <a-space direction="vertical" size="mini" fill>
+              <a-typography-text bold>
+                {{ t(`admin.applications.lifecycle.steps.${step.step_key}`) }}
+              </a-typography-text>
+              <a-typography-text type="secondary">
                 {{ lifecycleLabel(step.state) }}
-              </a-tag>
-              <span
-                v-if="step.error_message"
-                class="text-sm text-[rgb(var(--danger-6))]"
-              >
+              </a-typography-text>
+              <a-typography-text v-if="step.error_message" type="danger">
                 {{ step.error_message }}
-              </span>
+              </a-typography-text>
             </a-space>
           </TimelineItem>
         </Timeline>
-        <a-empty
-          v-else
-          :description="t('admin.applications.lifecycle.noSteps')"
-        />
-      </div>
-    </a-space>
-  </Drawer>
+        <a-empty v-else :description="t('admin.applications.lifecycle.noSteps')" />
+      </a-space>
+    </Drawer>
 
-  <a-modal
-    v-model:visible="uninstallModalVisible"
-    :title="t('admin.applications.marketplace.uninstallConfirmTitle')"
-    :footer="false"
-    :mask-closable="!uninstallSubmitting"
-    :esc-to-close="!uninstallSubmitting"
-    :width="'min(620px, calc(100vw - 32px))'"
-  >
-    <a-alert
-      :type="uninstallDataMode === 'purge_data' ? 'error' : 'warning'"
-      show-icon
-      :closable="false"
-      :title="t(`admin.applications.marketplace.dataModes.${uninstallDataMode}.warningTitle`)"
-      class="mb-5"
+    <a-modal
+      v-model:visible="uninstallModalVisible"
+      :title="t('admin.applications.marketplace.uninstallConfirmTitle')"
+      :footer="false"
+      :mask-closable="!uninstallSubmitting"
+      :esc-to-close="!uninstallSubmitting"
+      :width="'min(620px, calc(100vw - 32px))'"
     >
-      {{
-        t(`admin.applications.marketplace.dataModes.${uninstallDataMode}.warning`, {
-          plugin: uninstallTarget?.name || uninstallTarget?.id,
-        })
-      }}
-    </a-alert>
-
-    <a-descriptions
-      v-if="uninstallTarget"
-      class="mb-4"
-      :column="{ xs: 1, sm: 2 }"
-      layout="vertical"
-      :bordered="false"
-      size="small"
-    >
-      <a-descriptions-item :label="t('admin.applications.marketplace.version')">
-        {{ uninstallTarget.version }}
-      </a-descriptions-item>
-      <a-descriptions-item :label="t('admin.applications.marketplace.checksum')">
-        <span class="break-all font-mono text-xs">{{ uninstallTarget.sha256 }}</span>
-      </a-descriptions-item>
-    </a-descriptions>
-
-    <a-form
-      :model="{ confirmation: uninstallConfirmation, data_mode: uninstallDataMode }"
-      layout="vertical"
-    >
-      <a-form-item
-        field="data_mode"
-        :label="t('admin.applications.marketplace.uninstallDataModeLabel')"
-        required
-      >
-        <a-radio-group
-          v-model="uninstallDataMode"
-          direction="vertical"
-          :disabled="uninstallSubmitting"
+      <a-space direction="vertical" :size="16" fill>
+        <a-alert
+          type="error"
+          show-icon
+          :closable="false"
+          :title="t('admin.applications.marketplace.uninstallRiskTitle')"
         >
-          <a-radio
-            v-if="pluginCapabilities.uninstall_preserve"
-            value="preserve_data"
-          >
-            <div>
-              <strong>
-                {{ t('admin.applications.marketplace.dataModes.preserve_data.label') }}
-              </strong>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {{ t('admin.applications.marketplace.dataModes.preserve_data.description') }}
-              </p>
-            </div>
-          </a-radio>
-          <a-radio
-            v-if="pluginCapabilities.uninstall_purge"
-            value="purge_data"
-          >
-            <div>
-              <strong>
-                {{ t('admin.applications.marketplace.dataModes.purge_data.label') }}
-              </strong>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {{ t('admin.applications.marketplace.dataModes.purge_data.description') }}
-              </p>
-            </div>
-          </a-radio>
-        </a-radio-group>
-      </a-form-item>
-      <a-form-item
-        field="confirmation"
-        :label="t('admin.applications.marketplace.uninstallConfirmationLabel')"
-        required
-      >
-        <a-input
-          v-model="uninstallConfirmation"
-          :placeholder="uninstallTarget?.id"
-          :disabled="uninstallSubmitting"
-          autocomplete="off"
-        />
-        <template #extra>
           {{
-            t('admin.applications.marketplace.uninstallConfirmationHint', {
-              plugin: uninstallTarget?.id,
+            t('admin.applications.marketplace.uninstallConfirmMessage', {
+              plugin: uninstallTarget?.name || uninstallTarget?.id,
             })
           }}
-        </template>
-      </a-form-item>
-    </a-form>
+        </a-alert>
 
-    <div class="flex flex-wrap justify-end gap-2 pt-2">
-      <a-button :disabled="uninstallSubmitting" @click="closeUninstall">
-        {{ t('admin.ui.cancel') }}
-      </a-button>
-      <a-button
-        type="primary"
-        status="danger"
-        :loading="uninstallSubmitting"
-        :disabled="!canUninstall"
-        @click="submitUninstall"
-      >
-        {{ lifecycleActionLabel('uninstall') }}
-      </a-button>
-    </div>
-  </a-modal>
+        <a-descriptions
+          v-if="uninstallTarget"
+          :column="{ xs: 1, sm: 2 }"
+          layout="vertical"
+          bordered
+          size="small"
+        >
+          <a-descriptions-item :label="t('admin.applications.marketplace.version')">
+            {{ uninstallTarget.version }}
+          </a-descriptions-item>
+          <a-descriptions-item :label="t('admin.applications.marketplace.checksum')">
+            <a-typography-text code copyable>
+              {{ uninstallTarget.sha256 }}
+            </a-typography-text>
+          </a-descriptions-item>
+        </a-descriptions>
+
+        <a-alert
+          type="warning"
+          show-icon
+          :title="t(`admin.applications.marketplace.dataModes.${uninstallDataMode}.warningTitle`)"
+        >
+          {{
+            t(`admin.applications.marketplace.dataModes.${uninstallDataMode}.warning`, {
+              plugin: uninstallTarget?.name || uninstallTarget?.id,
+            })
+          }}
+        </a-alert>
+
+        <a-form
+          :model="{ confirmation: uninstallConfirmation, data_mode: uninstallDataMode }"
+          layout="vertical"
+        >
+          <a-form-item
+            field="data_mode"
+            :label="t('admin.applications.marketplace.uninstallDataModeLabel')"
+          >
+            <a-radio-group v-model="uninstallDataMode" direction="vertical">
+              <a-radio
+                v-if="pluginCapabilities.uninstall_preserve"
+                value="preserve_data"
+              >
+                {{ t('admin.applications.marketplace.dataModes.preserve_data.label') }}
+              </a-radio>
+              <a-radio
+                v-if="pluginCapabilities.uninstall_purge"
+                value="purge_data"
+              >
+                {{ t('admin.applications.marketplace.dataModes.purge_data.label') }}
+              </a-radio>
+            </a-radio-group>
+          </a-form-item>
+          <a-form-item
+            field="confirmation"
+            :label="t('admin.applications.marketplace.uninstallConfirmationLabel')"
+            required
+          >
+            <a-input
+              v-model="uninstallConfirmation"
+              :placeholder="uninstallTarget?.id"
+              :disabled="uninstallSubmitting"
+              autocomplete="off"
+            />
+            <template #extra>
+              {{
+                t('admin.applications.marketplace.uninstallConfirmationHint', {
+                  plugin: uninstallTarget?.id,
+                })
+              }}
+            </template>
+          </a-form-item>
+        </a-form>
+
+        <a-row justify="end">
+          <a-space wrap>
+            <a-button :disabled="uninstallSubmitting" @click="closeUninstall">
+              {{ t('admin.ui.cancel') }}
+            </a-button>
+            <a-button
+              type="primary"
+              status="danger"
+              :loading="uninstallSubmitting"
+              :disabled="!canUninstall"
+              @click="submitUninstall"
+            >
+              {{ lifecycleActionLabel('uninstall') }}
+            </a-button>
+          </a-space>
+        </a-row>
+      </a-space>
+    </a-modal>
+  </a-space>
 </template>

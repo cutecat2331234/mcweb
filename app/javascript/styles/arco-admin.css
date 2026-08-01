@@ -33,6 +33,14 @@ body.mcweb-admin {
   --mc-admin-accent-blue: #165dff;
   --mc-admin-accent-cyan: #0e9fbb;
   --mc-admin-accent-violet: #7048e8;
+  --mc-admin-tag-green-text: #075e24;
+  --mc-admin-tag-orange-text: #7a3500;
+  --mc-admin-tag-red-text: #8f1820;
+  --mc-admin-tag-blue-text: #0b4694;
+  --mc-admin-tag-gray-text: #344054;
+  --mc-admin-tag-purple-text: #5b268d;
+  --mc-admin-tag-orangered-text: #8c2f12;
+  --mc-admin-tag-gold-text: #6d4c00;
 }
 
 html.dark body.mcweb-admin {
@@ -44,6 +52,14 @@ html.dark body.mcweb-admin {
   --mc-admin-border-strong: rgb(109 149 225 / 28%);
   --mc-admin-shadow-sm: 0 1px 2px rgb(0 0 0 / 18%), 0 8px 22px rgb(0 0 0 / 14%);
   --mc-admin-shadow-md: 0 16px 36px rgb(0 0 0 / 24%);
+  --mc-admin-tag-green-text: #8ee6a0;
+  --mc-admin-tag-orange-text: #ffbd70;
+  --mc-admin-tag-red-text: #ff9a9e;
+  --mc-admin-tag-blue-text: #9bc7ff;
+  --mc-admin-tag-gray-text: #d5dae3;
+  --mc-admin-tag-purple-text: #d6afff;
+  --mc-admin-tag-orangered-text: #ffaf8f;
+  --mc-admin-tag-gold-text: #f4d36f;
 }
 
 /* Layered canvas: neutral enough for long sessions, colored enough for hierarchy. */
@@ -71,13 +87,71 @@ html.dark body.mcweb-admin {
   box-shadow: var(--mc-admin-shadow-sm);
 }
 
+.arco-admin-main .arco-page-header-wrapper {
+  padding-inline: 0;
+}
+
 .arco-admin-main .arco-page-header-title {
+  min-width: 0;
+  overflow: visible;
   color: var(--color-text-1);
+  line-height: 1.35;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-overflow: clip;
 }
 
 .arco-admin-main .arco-page-header-subtitle {
+  min-width: 0;
+  overflow: visible;
   color: var(--color-text-3);
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+/*
+ * Arco keeps PageHeader titles on one line by default. Keep the title and
+ * supporting copy in their own rows so long translations can wrap without
+ * squeezing the description or covering header actions.
+ */
+.arco-admin-main .arco-page-header-header-left,
+.arco-admin-main .arco-page-header-main {
+  min-width: 0;
+}
+
+.arco-admin-main .arco-page-header-header-left {
+  flex: 1 1 auto;
+}
+
+.arco-admin-main .arco-page-header-main {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  row-gap: 4px;
+}
+
+.arco-admin-main .arco-page-header-main-with-back {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.arco-admin-main .arco-page-header-main-with-back .arco-page-header-back-btn {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+.arco-admin-main .arco-page-header-main-with-back :is(
+  .arco-page-header-title,
+  .arco-page-header-subtitle
+) {
+  grid-column: 2;
+}
+
+.arco-admin-main .arco-page-header-divider {
+  display: none;
 }
 
 /* Content surfaces get depth and separation; tables remain slightly squarer. */
@@ -167,6 +241,48 @@ html.dark body.mcweb-admin {
 .mcweb-admin .arco-badge-status-text,
 .mcweb-admin .arco-tabs-type-rounded .arco-tabs-tab {
   border-radius: 999px;
+}
+
+/* Arco's light semantic tag palette is too low-contrast for compact text. */
+.mcweb-admin .arco-tag.arco-tag-green {
+  color: var(--mc-admin-tag-green-text) !important;
+}
+
+.mcweb-admin .arco-tag.arco-tag-orange {
+  color: var(--mc-admin-tag-orange-text) !important;
+}
+
+.mcweb-admin .arco-tag.arco-tag-red {
+  color: var(--mc-admin-tag-red-text) !important;
+}
+
+.mcweb-admin .arco-tag:is(.arco-tag-blue, .arco-tag-arcoblue) {
+  color: var(--mc-admin-tag-blue-text) !important;
+}
+
+.mcweb-admin .arco-tag.arco-tag-gray {
+  color: var(--mc-admin-tag-gray-text) !important;
+}
+
+.mcweb-admin .arco-tag.arco-tag-purple {
+  color: var(--mc-admin-tag-purple-text) !important;
+}
+
+.mcweb-admin .arco-tag.arco-tag-orangered {
+  color: var(--mc-admin-tag-orangered-text) !important;
+}
+
+.mcweb-admin .arco-tag.arco-tag-gold {
+  color: var(--mc-admin-tag-gold-text) !important;
+}
+
+.mcweb-admin .arco-descriptions-item-label,
+.mcweb-admin .arco-empty-description {
+  color: var(--color-text-1) !important;
+}
+
+.mcweb-admin .arco-empty-image {
+  color: var(--color-text-2) !important;
 }
 
 .mcweb-admin .arco-alert {

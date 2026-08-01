@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
-import { Link, router, useForm } from '@inertiajs/vue3'
+import { router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 import HighRiskActionModal from '@/components/admin/HighRiskActionModal.vue'
@@ -55,60 +55,62 @@ function completed(result: Record<string, unknown>) {
 </script>
 
 <template>
-  <section class="admin-store-user-entitlement-form">
-    <a-page-header :title="title" :show-back="false" class="mb-4 !px-0" />
+  <a-space direction="vertical" size="large" fill>
+    <a-page-header :title="title" :show-back="false" />
 
-    <a-card class="max-w-2xl" :bordered="true">
-      <a-alert
-        class="mb-5"
-        type="warning"
-        show-icon
-        :title="t('admin.highRisk.warningTitle')"
-      >
-        {{ t('admin.forms.userEntitlement.grantHint') }}
-      </a-alert>
+    <a-grid :cols="24" :col-gap="16" :row-gap="16">
+      <a-grid-item :span="{ xs: 24, md: 18, lg: 14, xl: 12 }">
+        <a-card :bordered="true">
+          <a-space direction="vertical" size="large" fill>
+            <a-alert
+              type="warning"
+              show-icon
+              :title="t('admin.highRisk.warningTitle')"
+            >
+              {{ t('admin.forms.userEntitlement.grantHint') }}
+            </a-alert>
 
-      <a-form :model="form.user_entitlement" layout="vertical" @submit="submit">
-        <a-form-item
-          field="username"
-          :label="t('admin.forms.userEntitlement.username')"
-          :rules="[{ required: true, message: t('admin.forms.userEntitlement.username') }]"
-          :validate-status="fieldError('username') ? 'error' : undefined"
-          :help="fieldError('username')"
-        >
-          <a-input v-model="form.user_entitlement.username" allow-clear />
-        </a-form-item>
+            <a-form :model="form.user_entitlement" layout="vertical" @submit="submit">
+              <a-form-item
+                field="username"
+                :label="t('admin.forms.userEntitlement.username')"
+                :rules="[{ required: true, message: t('admin.forms.userEntitlement.username') }]"
+                :validate-status="fieldError('username') ? 'error' : undefined"
+                :help="fieldError('username')"
+              >
+                <a-input v-model="form.user_entitlement.username" allow-clear />
+              </a-form-item>
 
-        <a-form-item
-          field="product_id"
-          :label="t('admin.forms.userEntitlement.product')"
-          :validate-status="fieldError('product_id') ? 'error' : undefined"
-          :help="fieldError('product_id')"
-        >
-          <a-select
-            v-model="form.user_entitlement.product_id"
-            :options="productOptions"
-            allow-search
-          />
-        </a-form-item>
+              <a-form-item
+                field="product_id"
+                :label="t('admin.forms.userEntitlement.product')"
+                :validate-status="fieldError('product_id') ? 'error' : undefined"
+                :help="fieldError('product_id')"
+              >
+                <a-select
+                  v-model="form.user_entitlement.product_id"
+                  :options="productOptions"
+                  allow-search
+                />
+              </a-form-item>
 
-        <a-space wrap>
-          <a-button
-            type="primary"
-            html-type="submit"
-            :disabled="!form.user_entitlement.username.trim() || !form.user_entitlement.product_id"
-          >
-            {{ t('admin.forms.userEntitlement.grant') }}
-          </a-button>
-          <Link
-            :href="backUrl"
-            class="arco-btn arco-btn-outline arco-btn-size-medium no-underline"
-          >
-            {{ t('admin.ui.cancel') }}
-          </Link>
-        </a-space>
-      </a-form>
-    </a-card>
+              <a-space wrap>
+                <a-button
+                  type="primary"
+                  html-type="submit"
+                  :disabled="!form.user_entitlement.username.trim() || !form.user_entitlement.product_id"
+                >
+                  {{ t('admin.forms.userEntitlement.grant') }}
+                </a-button>
+                <a-button @click="router.visit(backUrl)">
+                  {{ t('admin.ui.cancel') }}
+                </a-button>
+              </a-space>
+            </a-form>
+          </a-space>
+        </a-card>
+      </a-grid-item>
+    </a-grid>
 
     <HighRiskActionModal
       v-model:visible="confirmationVisible"
@@ -118,5 +120,5 @@ function completed(result: Record<string, unknown>) {
       :payload="highRiskPayload"
       @completed="completed"
     />
-  </section>
+  </a-space>
 </template>

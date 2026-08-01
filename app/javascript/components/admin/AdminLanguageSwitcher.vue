@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { IconCheck, IconLanguage } from '@arco-design/web-vue/es/icon'
@@ -9,8 +9,6 @@ import { routes } from '@/lib/routes'
 
 const page = usePage()
 const { t } = useI18n()
-const dropdownVisible = ref(false)
-const tooltipVisible = ref(false)
 
 const currentLocale = computed(() => normalizeAppLocale(page.props.locale))
 const availableLocales = computed(() => {
@@ -21,10 +19,6 @@ const availableLocales = computed(() => {
 
 function localeLabel(locale: AppLocale) {
   return t(`locale.${locale}`)
-}
-
-function handleDropdownVisibility(visible: boolean) {
-  if (visible) tooltipVisible.value = false
 }
 
 function switchLocale(value: string | number | Record<string, unknown>) {
@@ -41,21 +35,10 @@ function switchLocale(value: string | number | Record<string, unknown>) {
 </script>
 
 <template>
-  <a-dropdown
-    v-model:popup-visible="dropdownVisible"
-    trigger="click"
-    @popup-visible-change="handleDropdownVisibility"
-    @select="switchLocale"
-  >
-    <a-tooltip
-      v-model:popup-visible="tooltipVisible"
-      :content="t('locale.label')"
-      :disabled="dropdownVisible"
-    >
-      <a-button type="text" shape="circle" :aria-label="t('locale.label')">
-        <template #icon><icon-language /></template>
-      </a-button>
-    </a-tooltip>
+  <a-dropdown trigger="click" @select="switchLocale">
+    <a-button type="text" shape="circle" :aria-label="t('locale.label')">
+      <template #icon><icon-language /></template>
+    </a-button>
     <template #content>
       <a-doption
         v-for="locale in availableLocales"

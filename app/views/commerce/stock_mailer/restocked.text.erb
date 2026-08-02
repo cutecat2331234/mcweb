@@ -1,5 +1,9 @@
 <%= t("mcweb.mail.greeting_formal", username: @user.username) %>
 
-<%= t("mcweb.mail.commerce.stock.body", product: @product.name, variant: @alert.variant ? "（#{@alert.variant.name}）" : "") %>
+<%= t(
+  "mcweb.mail.commerce.stock.body",
+  product: @product.name,
+  variant: @alert.variant ? t("mcweb.mail.commerce.stock.variant", name: @alert.variant.name) : ""
+) %>
 
 <%= t("mcweb.mail.commerce.stock.visit", url: store_product_url(@product)) %>

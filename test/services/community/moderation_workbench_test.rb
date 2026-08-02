@@ -933,6 +933,51 @@ module Community
       assert_equal "actioned", attachment_case.reload.status
     end
 
+    test "execute action bounds hierarchy lock retries and reports a conflict" do
+      owner = create_user(account_type: "owner")
+      topic, opening = create_topic_and_post
+      moderation_case = create_case(opening)
+      request_id = SecureRandom.uuid
+      reason = "Move this reviewed topic into the correct destination section."
+      attributes = { section_id: @other_section.id }
+      issued = authorize(
+        actor: owner,
+        action: "move_topic",
+        cases: [ moderation_case ],
+        request_id: request_id,
+        reason: reason,
+        attributes: attributes
+      )
+      assert_predicate issued, :success?, issued.error
+
+      attempts = 0
+      result = Community::SectionHierarchyLock.stub(
+        :lock_topics!,
+        lambda do |*, **|
+          attempts += 1
+          raise ActiveRecord::Deadlocked, "simulated hierarchy lock deadlock"
+        end
+      ) do
+        execute(
+          actor: owner,
+          action: "move_topic",
+          cases: [ moderation_case ],
+          request_id: request_id,
+          reason: reason,
+          attributes: attributes,
+          token: issued.value.fetch(:authorization_token),
+          confirmation: issued.value.fetch(:typed_confirmation)
+        )
+      end
+
+      assert_predicate result, :failure?
+      assert_equal I18n.t("mcweb.services.errors.moderation_action_conflict"), result.error
+      assert_equal 3, attempts
+      assert_equal @section.id, topic.reload.forum_section_id
+      assert_equal "open", moderation_case.reload.status
+      assert_not Community::ModerationOperation.exists?(request_id: request_id)
+    end
+
     test "section moderators retain safe historical access after content deletion" do
       _, post = create_topic_and_post
       moderation_case = create_case(post)

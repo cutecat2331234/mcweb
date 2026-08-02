@@ -37,7 +37,9 @@ RUN SECRET_KEY_BASE=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb
 FROM ruby:4.0.6-slim-bookworm AS runtime
 
 RUN apt-get update -qq && \
-    apt-get install -y --no-install-recommends curl libpq5 libvips42 && \
+    apt-get install -y --no-install-recommends curl fonts-noto-cjk libpq5 libvips42 && \
+    test -f /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc && \
+    test -f /usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc && \
     rm -rf /var/lib/apt/lists/* && \
     groupadd --system --gid 1000 mcweb && \
     useradd --system --uid 1000 --gid mcweb --create-home --home-dir /home/mcweb mcweb

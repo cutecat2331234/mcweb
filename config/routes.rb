@@ -109,7 +109,14 @@ Rails.application.routes.draw do
         get :webhook_test_status
       end
       resources :categories
-      resources :sections, only: %i[index show new create edit update]
+      resources :sections, only: %i[index show new create edit update destroy] do
+        member do
+          get :lifecycle
+          patch :archive
+          patch :restore
+          patch :migrate_topics
+        end
+      end
       resources :topics, only: %i[index show]
       resources :reports, only: %i[index show update] do
         member do

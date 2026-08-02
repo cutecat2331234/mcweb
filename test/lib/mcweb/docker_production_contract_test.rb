@@ -5,6 +5,10 @@ require "yaml"
 
 class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
   ROOT = Rails.root
+  RECEIPT_FONT_PATHS = %w[
+    /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
+    /usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc
+  ].freeze
 
   test "production image is multi-stage and runs as an unprivileged user" do
     dockerfile = ROOT.join("deploy/docker/Dockerfile").read
@@ -16,6 +20,11 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
     assert_match(/^USER mcweb$/, dockerfile)
     assert_operator dockerfile.index("USER mcweb"), :<, dockerfile.index("ENTRYPOINT")
     assert_equal 2, dockerfile.scan(/\blibvips42\b/).length
+    assert_match(/apt-get install .*fonts-noto-cjk.*libvips42/, dockerfile)
+    RECEIPT_FONT_PATHS.each do |path|
+      assert_includes dockerfile, "test -f #{path}"
+    end
+    assert_includes ROOT.join("bin/install").read, "fonts-noto-cjk"
   end
 
   test "CI and release jobs install and exercise libvips JPEG support" do
@@ -26,11 +35,18 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
       source = workflow.read
 
       assert_includes source, "libvips-dev", workflow.to_s
+      assert_includes source, "fonts-noto-cjk", workflow.to_s
       assert_includes(
         source,
         "bundle exec ruby scripts/check-libvips-jpeg.rb",
         workflow.to_s
       )
+    end
+
+    ci = ROOT.join(".github/workflows/ci.yml").read
+    assert_includes ci, "Verify Unicode receipt fonts"
+    RECEIPT_FONT_PATHS.each do |path|
+      assert_includes ci, "test -f #{path}"
     end
   end
 

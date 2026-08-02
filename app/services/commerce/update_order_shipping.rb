@@ -57,7 +57,7 @@ module Commerce
           key: "order_shipped",
           order: @order,
           path: "/app/store/orders/#{@order.public_id}",
-          body: tracking_summary
+          body: -> { tracking_summary }
         )
       end
 

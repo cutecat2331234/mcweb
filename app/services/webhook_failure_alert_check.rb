@@ -6,6 +6,7 @@ class WebhookFailureAlertCheck < ApplicationService
   STORE_THRESHOLD_KEY = "webhook.failure_alert_store_threshold"
   LEGACY_THRESHOLD_KEY = "webhook.failure_alert_threshold"
   EMAIL_KEY = "webhook.failure_alert_email"
+  LOCALE_KEY = "webhook.failure_alert_locale"
   COOLDOWN_HOURS_KEY = "webhook.failure_alert_cooldown_hours"
 
   def call
@@ -33,7 +34,8 @@ class WebhookFailureAlertCheck < ApplicationService
       store_threshold: store_threshold,
       forum_alert: forum_alert,
       store_alert: store_alert,
-      stats: stats
+      stats: stats,
+      locale: alert_locale
     ).deliver_now
 
     SiteSetting.set(COOLDOWN_KEY, Time.current.iso8601)
@@ -47,6 +49,11 @@ class WebhookFailureAlertCheck < ApplicationService
   end
 
 private
+
+  def alert_locale
+    configured = SiteSetting.get(LOCALE_KEY, I18n.default_locale.to_s)
+    Mcweb::LocaleResolver.resolve(configured)
+  end
 
   def threshold_for(key)
     value = SiteSetting.get(key, "").to_s

@@ -13,10 +13,10 @@ module Commerce
       return ServiceResult.success if @asker.id == @answer.user_id
 
       if NotificationPreference.enabled?(@asker, channel: "in_app", notification_type: "commerce.question_answered")
-        Notification.notify!(
+        Commerce::InAppNotification.notify(
           user: @asker,
           notification_type: "commerce.question_answered",
-          title: Commerce::InAppNotification.t("question_answered.title"),
+          title_key: "question_answered.title",
           body: @answer.body.truncate(200),
           metadata: {
             path: "/app/store/products/#{@product.public_id}",

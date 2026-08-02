@@ -76,10 +76,12 @@ module Admin
 
       def update
         card = ::Commerce::GiftCard.find(params[:id])
-        if card.update(gift_card_params)
+        if card.update(gift_card_attributes)
           redirect_to admin_store_gift_card_path(card), notice: t("mcweb.flash.updated", resource: t("mcweb.resources.gift_card"))
         else
-          render inertia: "Admin/Store/GiftCards/Form", props: form_props(card, editing: true), status: :unprocessable_entity
+          render inertia: "Admin/Store/GiftCards/Form",
+            props: form_props(card, editing: true, form_errors: card.errors.to_hash(true)),
+            status: :unprocessable_entity
         end
       end
 
@@ -88,33 +90,51 @@ module Admin
       end
 
       def create
-        card = ::Commerce::GiftCard.new(gift_card_params)
+        recipient_email_input = params.dig(:gift_card, :recipient_email).to_s
+        recipient_email = normalize_recipient_email(recipient_email_input)
+        card = ::Commerce::GiftCard.new(gift_card_attributes)
         card.created_by = current_user
         card.initial_balance_cents = card.balance_cents if card.initial_balance_cents.to_i.zero?
         card.code = generate_code if card.code.blank?
 
+        unless valid_recipient_email?(recipient_email)
+          return render inertia: "Admin/Store/GiftCards/Form",
+            props: form_props(
+              card,
+              recipient_email: recipient_email_input,
+              form_errors: { recipient_email: [ I18n.t("errors.messages.invalid") ] }
+            ),
+            status: :unprocessable_entity
+        end
+
         if card.save
-          if params[:gift_card][:recipient_email].present?
+          if recipient_email.present?
             MailDeliveryJob.perform_later(
               "Commerce::GiftCardMailer",
               "gift_card_created",
               "deliver_now",
-              args: [ card.id, params[:gift_card][:recipient_email] ]
+              args: [ card.id, recipient_email ]
             )
           end
           redirect_to admin_store_gift_card_path(card), notice: t("mcweb.flash.created", resource: t("mcweb.resources.gift_card"))
         else
-          render inertia: "Admin/Store/GiftCards/Form", props: form_props(card), status: :unprocessable_entity
+          render inertia: "Admin/Store/GiftCards/Form",
+            props: form_props(
+              card,
+              recipient_email: recipient_email_input,
+              form_errors: card.errors.to_hash(true)
+            ),
+            status: :unprocessable_entity
         end
       end
 
       private
 
-      def gift_card_params
-        params.require(:gift_card).permit(:code, :balance_cents, :currency, :expires_at, :note, :active, :recipient_email)
+      def gift_card_attributes
+        params.require(:gift_card).permit(:code, :balance_cents, :currency, :expires_at, :note, :active)
       end
 
-      def form_props(card, editing: false)
+      def form_props(card, editing: false, recipient_email: "", form_errors: {})
         {
           title: editing ? t("mcweb.admin.store.gift_cards.edit") : t("mcweb.admin.store.gift_cards.new"),
           gift_card: {
@@ -124,12 +144,21 @@ module Admin
             expires_at: card.expires_at&.strftime("%Y-%m-%dT%H:%M"),
             note: card.note || "",
             active: card.active != false,
-            recipient_email: ""
+            recipient_email: recipient_email
           },
           submitUrl: editing ? admin_store_gift_card_path(card) : admin_store_gift_cards_path,
           method: editing ? "patch" : "post",
-          backUrl: editing ? admin_store_gift_card_path(card) : admin_store_gift_cards_path
+          backUrl: editing ? admin_store_gift_card_path(card) : admin_store_gift_cards_path,
+          form_errors: form_errors
         }
+      end
+
+      def normalize_recipient_email(email)
+        email.to_s.strip.downcase.presence
+      end
+
+      def valid_recipient_email?(email)
+        email.blank? || email.match?(URI::MailTo::EMAIL_REGEXP)
       end
 
       def generate_code

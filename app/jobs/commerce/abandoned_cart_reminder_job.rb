@@ -69,8 +69,8 @@ module Commerce
         Commerce::NotifyOrderEvent.call(
           user: user,
           notification_type: "commerce.abandoned_cart",
-          title: Commerce::InAppNotification.t("#{key}.title"),
-          body: Commerce::InAppNotification.t("#{key}.body", count: item_count),
+          title: -> { Commerce::InAppNotification.t("#{key}.title") },
+          body: -> { Commerce::InAppNotification.t("#{key}.body", count: item_count) },
           path: recovery_path
         )
       end

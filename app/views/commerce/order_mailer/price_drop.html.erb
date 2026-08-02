@@ -1,6 +1,5 @@
 <p><%= t("mcweb.mail.greeting_formal", username: @user.username) %></p>
 <p><%= t("mcweb.mail.commerce.price_drop.body", product: @product.name) %></p>
-<% unit = @product.currency == "CNY" ? "¥" : "$" %>
-<p><%= t("mcweb.mail.commerce.price_drop.was", amount: number_to_currency(@baseline / 100.0, unit: unit)) %></p>
-<p><%= t("mcweb.mail.commerce.price_drop.now", amount: number_to_currency(@current / 100.0, unit: unit)) %></p>
+<p><%= t("mcweb.mail.commerce.price_drop.was", amount: format_currency_from_cents(@baseline, @product.currency)) %></p>
+<p><%= t("mcweb.mail.commerce.price_drop.now", amount: format_currency_from_cents(@current, @product.currency)) %></p>
 <p><a href="<%= @url %>"><%= t("mcweb.mail.commerce.view_product") %></a></p>

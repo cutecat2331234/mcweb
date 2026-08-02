@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_07_29_127000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_02_110000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -839,6 +839,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_127000) do
 
   create_table "forum_sections", force: :cascade do |t|
     t.jsonb "allowed_tag_ids", default: [], null: false
+    t.datetime "archived_at"
+    t.bigint "archived_by_id"
+    t.text "archived_reason"
     t.text "banner_text"
     t.string "color_hex"
     t.datetime "created_at", null: false
@@ -865,6 +868,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_127000) do
     t.string "slug", null: false
     t.text "topic_template"
     t.datetime "updated_at", null: false
+    t.index ["archived_at", "position"], name: "index_forum_sections_on_archived_at_and_position"
+    t.index ["archived_by_id"], name: "index_forum_sections_on_archived_by_id"
     t.index ["forum_category_id", "slug"], name: "index_forum_sections_on_forum_category_id_and_slug", unique: true
     t.index ["forum_category_id"], name: "index_forum_sections_on_forum_category_id"
     t.index ["name", "slug"], name: "idx_forum_sections_suggest_names_trgm", opclass: :gin_trgm_ops, using: :gin
@@ -3427,6 +3432,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_07_29_127000) do
   add_foreign_key "forum_section_mutes", "users"
   add_foreign_key "forum_sections", "forum_categories"
   add_foreign_key "forum_sections", "forum_sections", column: "parent_id"
+  add_foreign_key "forum_sections", "users", column: "archived_by_id"
   add_foreign_key "forum_staff_notes", "users"
   add_foreign_key "forum_staff_notes", "users", column: "author_id"
   add_foreign_key "forum_subscriptions", "users"

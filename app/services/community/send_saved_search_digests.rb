@@ -45,17 +45,19 @@ module Community
       user = search.user
       return unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.saved_search_match")
 
-      Notification.notify!(
-        user: user,
-        notification_type: "forum.saved_search_match",
-        title: I18n.t("mcweb.forum.saved_search_digest.title", name: search.name),
-        body: topics.map(&:title).join(I18n.t("mcweb.commerce.list_separator")).truncate(200),
-        metadata: {
-          search_id: search.id,
-          topic_ids: topics.map(&:public_id),
-          path: saved_search_notification_path(search)
-        }
-      )
+      I18n.with_locale(Mcweb::LocaleResolver.resolve(user.locale)) do
+        Notification.notify!(
+          user: user,
+          notification_type: "forum.saved_search_match",
+          title: I18n.t("mcweb.forum.saved_search_digest.title", name: search.name),
+          body: topics.map(&:title).join(I18n.t("mcweb.commerce.list_separator")).truncate(200),
+          metadata: {
+            search_id: search.id,
+            topic_ids: topics.map(&:public_id),
+            path: saved_search_notification_path(search)
+          }
+        )
+      end
     end
 
     def saved_search_notification_path(search)

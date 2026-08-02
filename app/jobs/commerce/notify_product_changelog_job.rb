@@ -22,10 +22,11 @@ module Commerce
       User.where(id: buyer_ids).find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.product_changelog")
 
-        Notification.notify!(
+        Commerce::InAppNotification.notify(
           user: user,
           notification_type: "commerce.product_changelog",
-          title: Commerce::InAppNotification.t("product_changelog.title", product: product.name),
+          title_key: "product_changelog.title",
+          title_options: { product: product.name },
           body: product.changelog.truncate(200),
           metadata: {
             path: "/app/store/products/#{product.public_id}",

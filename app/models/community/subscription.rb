@@ -7,6 +7,7 @@ module Community
 
     validates :user_id, uniqueness: { scope: [ :subscribable_type, :subscribable_id ] }
     validates :notification_level, inclusion: { in: NOTIFICATION_LEVELS }
+    before_save :lock_active_section_subscribable!
 
     def self.subscribe!(user, subscribable, level: "watching")
       record = find_or_initialize_by(user: user, subscribable: subscribable)
@@ -25,6 +26,21 @@ module Community
 
     def self.unsubscribe!(user, subscribable)
       find_by(user: user, subscribable: subscribable)&.destroy
+    end
+
+    private
+
+    def lock_active_section_subscribable!
+      return unless subscribable_type == "Community::Section"
+
+      locked_section = Community::SectionHierarchyLock.lock!(subscribable).sole
+      if Community::SectionAccess.view?(section: locked_section, user: user)
+        self.subscribable = locked_section
+        return
+      end
+
+      errors.add(:subscribable, :invalid)
+      raise ActiveRecord::RecordInvalid, self
     end
   end
 end

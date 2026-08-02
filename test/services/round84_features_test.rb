@@ -50,17 +50,20 @@ class Round84WebhookFailureAlertTest < ActiveSupport::TestCase
   setup do
     @previous_threshold = SiteSetting.get("webhook.failure_alert_threshold")
     @previous_email = SiteSetting.get("webhook.failure_alert_email")
+    @previous_locale = SiteSetting.get("webhook.failure_alert_locale")
     @previous_cooldown = SiteSetting.get("webhook.failure_alert_last_sent_at")
     SiteSetting.set("webhook.failure_alert_threshold", "2")
     SiteSetting.set("webhook.failure_alert_forum_threshold", "2")
     SiteSetting.set("webhook.failure_alert_store_threshold", "0")
     SiteSetting.set("webhook.failure_alert_email", "admin-alert@example.com")
+    SiteSetting.set("webhook.failure_alert_locale", "en")
     SiteSetting.set("webhook.failure_alert_last_sent_at", "")
   end
 
   teardown do
     SiteSetting.set("webhook.failure_alert_threshold", @previous_threshold || "5")
     SiteSetting.set("webhook.failure_alert_email", @previous_email || "")
+    SiteSetting.set("webhook.failure_alert_locale", @previous_locale || I18n.default_locale.to_s)
     SiteSetting.set("webhook.failure_alert_last_sent_at", @previous_cooldown || "")
   end
 
@@ -82,6 +85,7 @@ class Round84WebhookFailureAlertTest < ActiveSupport::TestCase
       assert result.success?
       assert result.value[:sent]
     end
+    assert_equal "[McWeb] Webhook delivery failure alert (24 hours)", ActionMailer::Base.deliveries.last.subject
   end
 
   test "skips alert when below threshold" do
@@ -102,6 +106,7 @@ class Round84WebhookFailureAlertTest < ActiveSupport::TestCase
     content = File.read(Rails.root.join("app/controllers/admin/forum/settings_controller.rb"))
     assert_includes content, "webhook.failure_alert_threshold"
     assert_includes content, "webhook.failure_alert_email"
+    assert_includes content, "webhook.failure_alert_locale"
   end
 end
 

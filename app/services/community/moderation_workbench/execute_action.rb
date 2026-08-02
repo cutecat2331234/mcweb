@@ -48,8 +48,10 @@ module Community
         end
 
         operation = nil
-        Mcweb::Events.defer_until_success do
-          Community::ModerationOperation.transaction do
+        concurrency_attempts = 0
+        begin
+          Mcweb::Events.defer_until_success do
+            Community::ModerationOperation.transaction do
             cases = lock_cases
             unless cases.size == @case_ids.size
               raise DispositionFailure.new(nil, "moderation_cases_not_found")
@@ -161,7 +163,19 @@ module Community
                 attributes: audit_attributes
               }
             )
+            end
           end
+        rescue ActiveRecord::Deadlocked,
+          Community::SectionHierarchyLock::HierarchyChanged,
+          Community::SectionHierarchyLock::TopicSectionChanged
+          concurrency_attempts += 1
+          if concurrency_attempts <= 2
+            @results = []
+            @performed_targets = {}
+            @current_case_id = nil
+            retry
+          end
+          raise DispositionFailure.new(@current_case_id, "moderation_action_conflict")
         end
 
         ServiceResult.success(
@@ -224,7 +238,16 @@ module Community
         users = sources.grep(User) +
           sources.filter_map { |source| target_user_for_lock(source) }
 
-        Community::Topic.with_discarded.where(id: topics.map(&:id).uniq.sort).order(:id).lock.load
+        destination_sections = if @action == "move_topic"
+          destination_id = Integer(@attributes["section_id"], exception: false)
+          [ Community::Section.find_by(id: destination_id) ].compact
+        else
+          []
+        end
+        Community::SectionHierarchyLock.lock_topics!(
+          *topics.uniq(&:id),
+          additional_sections: destination_sections
+        )
         Community::Post.with_discarded.where(id: posts.map(&:id).uniq.sort).order(:id).lock.load
         Community::Report.where(id: reports.map(&:id).uniq.sort).order(:id).lock.load
         Community::Upload.where(id: sources.grep(Community::Upload).map(&:id).uniq.sort).order(:id).lock.load

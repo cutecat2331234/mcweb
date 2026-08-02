@@ -63,7 +63,7 @@ class Round93TrustLevelEmailTest < ActiveSupport::TestCase
 
   test "trust level up enqueues email" do
     assert_enqueued_jobs 1, only: MailDeliveryJob do
-      Community::NotifyTrustLevelUp.call(user: @user, level: 2, level_name: "Member")
+      Community::NotifyTrustLevelUp.call(user: @user, level: 2)
     end
   end
 end

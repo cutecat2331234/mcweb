@@ -30,6 +30,15 @@ module Community
       level_info(user)[:level]
     end
 
+    def self.localized_name(level, locale: I18n.locale)
+      normalized_level = level.to_i.clamp(0, LEVELS.last.fetch(:level))
+      I18n.t(
+        "mcweb.labels.trust_level.tl#{normalized_level}",
+        locale: Mcweb::LocaleResolver.resolve(locale),
+        default: "TL#{normalized_level}"
+      )
+    end
+
     def self.can_send_pm?(user)
       return true if user && developer_mode_bypasses_gates?
       return true if user&.permission?("forum.topics.lock") || user&.permission?("admin.access")

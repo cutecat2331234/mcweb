@@ -7,7 +7,7 @@ module Identity
       @username = username.to_s.strip
       @password = password
       @display_name = display_name.presence || @username
-      @locale = locale
+      @locale = Mcweb::LocaleResolver.normalize(locale) || locale.to_s
       @time_zone = time_zone
       @user_fields = user_fields
       @ip_address = ip_address

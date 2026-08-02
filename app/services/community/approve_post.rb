@@ -19,11 +19,13 @@ module Community
       Community::PublishPostSideEffects.call(post: @post.reload, dispatch_webhooks: false)
       award_post_points(@post)
 
-      Notification.create!(
+      Community::InAppNotification.notify(
         user: @post.user,
         notification_type: "forum.post_approved",
-        title: I18n.t("mcweb.labels.notification_types.forum.post_approved"),
-        body: I18n.t("mcweb.labels.notification_bodies.forum.post_approved", title: @topic.title.truncate(60)),
+        key: "post_approved",
+        title_key: "mcweb.labels.notification_types.forum.post_approved",
+        body_key: "mcweb.labels.notification_bodies.forum.post_approved",
+        title: @topic.title.truncate(60),
         metadata: {
           topic_id: @topic.public_id,
           post_id: @post.id,

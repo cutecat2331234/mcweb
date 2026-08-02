@@ -30,13 +30,12 @@ module Commerce
       return ServiceResult.success unless config
 
       user = @order.user
-      label = Commerce::InAppNotification.order_status_label(@order.status)
       Commerce::InAppNotification.order_event(
         user: user,
         notification_type: config[:preference],
         key: "order_status_updated",
         order: @order,
-        status: label
+        status: -> { Commerce::InAppNotification.order_status_label(@order.status) }
       )
 
       if NotificationPreference.enabled?(user, channel: "email", notification_type: config[:preference])

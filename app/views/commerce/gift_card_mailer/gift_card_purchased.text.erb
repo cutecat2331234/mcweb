@@ -4,7 +4,7 @@
 
 <% @cards.each do |card| %>
 - <%= t("mcweb.mail.commerce.gift_card.code", code: card.code) %>
-  <%= t("mcweb.mail.commerce.gift_card.face_value", amount: number_to_currency(card.initial_balance_cents / 100.0, unit: "¥")) %>
+  <%= t("mcweb.mail.commerce.gift_card.face_value", amount: format_currency_from_cents(card.initial_balance_cents, card.currency)) %>
   <% if card.expires_at %><%= t("mcweb.mail.commerce.gift_card.expires", time: l(card.expires_at, format: :short)) %><% end %>
 <% end %>
 

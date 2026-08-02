@@ -34,6 +34,127 @@ module Community
     end
 
     def call_core
+      access_result = reply_access_result
+      return access_result if access_result.failure?
+
+      rate_result = enforce_rate_limit
+      return rate_result if rate_result.failure?
+
+      old_trust_level = Community::TrustLevel.level_for(@user)
+      needs_approval = Community::RequiresPostApproval.required_for?(user: @user, whisper: @whisper)
+      post_status = needs_approval ? "pending_approval" : "published"
+      post = nil
+      attachment_result = nil
+      inline_upload_result = nil
+      request_result = nil
+      spam_result = nil
+      state_result = nil
+      replayed = false
+      section_lock_attempts = 0
+      begin
+        Community::Post.transaction do
+          @topic, = Community::SectionHierarchyLock.lock_topic!(@topic)
+          state_result = reply_access_result
+          raise ActiveRecord::Rollback if state_result.failure?
+
+          request_result = Community::ContentIdempotency.claim(
+            user: @user,
+            operation: "post.create",
+            key: @idempotency_key,
+            payload: idempotency_payload
+          )
+          raise ActiveRecord::Rollback if request_result.failure?
+
+          if request_result.value[:replay]
+            post = request_result.value[:resource]
+            replayed = true
+            next
+          end
+
+          spam_result = check_spam
+          raise ActiveRecord::Rollback if spam_result.failure?
+
+          attachment_result = Community::PreparePostAttachments.call(
+            user: @user,
+            attachment_ids: @attachment_ids
+          )
+          raise ActiveRecord::Rollback if attachment_result.failure?
+
+          # Soft-deleted rows still participate in the database uniqueness
+          # constraint, so their floor numbers must never be reused.
+          floor_number = @topic.posts.with_discarded.maximum(:floor_number).to_i + 1
+
+          post = Community::Post.create!(
+            topic: @topic,
+            user: @user,
+            floor_number: floor_number,
+            body: @body,
+            quoted_post: @quoted_post,
+            parent_post: @parent_post,
+            status: post_status,
+            post_type: @whisper ? "whisper" : "regular"
+          )
+          inline_upload_result = Community::BindInlineUploads.call(
+            user: @user,
+            post: post,
+            body: @body
+          )
+          raise ActiveRecord::Rollback if inline_upload_result.failure?
+
+          attachment_result = Community::LinkPostAttachments.call(
+            user: @user,
+            post: post,
+            attachment_ids: @attachment_ids
+          )
+          raise ActiveRecord::Rollback if attachment_result.failure?
+
+          Community::ReadState.mark_read!(@user, @topic, floor: post.floor_number)
+          Community::Subscription.subscribe!(@user, @topic)
+          request_result.value[:request]&.complete!(post)
+        end
+      rescue Community::SectionHierarchyLock::TopicSectionChanged,
+        Community::SectionHierarchyLock::HierarchyChanged,
+        ActiveRecord::Deadlocked
+        section_lock_attempts += 1
+        fresh_topic = Community::Topic.with_discarded.find_by(id: @topic.id)
+        if section_lock_attempts <= 2 && fresh_topic
+          @topic = fresh_topic
+          retry
+        end
+        state_result = ServiceResult.failure(error: :topic_not_available)
+      end
+
+      return request_result if request_result&.failure?
+      return spam_result if spam_result&.failure?
+      return state_result if state_result&.failure?
+      return attachment_result if attachment_result&.failure?
+      return inline_upload_result if inline_upload_result&.failure?
+      return ServiceResult.success(post) if replayed
+
+      Administration::AuditLogger.call(
+        actor: @user,
+        action: "community.post_created",
+        resource: post,
+        ip_address: @ip_address
+      )
+
+      if needs_approval
+        Community::NotifyPendingPost.call(post: post)
+      elsif !@whisper
+        Community::PublishPostSideEffects.call(post: post)
+        award_post_points(post)
+      end
+      Community::CheckAutoBadges.call(user: @user)
+      notify_trust_level_up!(old_trust_level)
+
+      ServiceResult.success(post)
+    rescue ActiveRecord::RecordInvalid => e
+      ServiceResult.failure(errors: e.record.errors.to_hash)
+    end
+
+    private
+
+    def reply_access_result
       unless Community::ForumAccess.topic_visible?(topic: @topic, user: @user)
         return ServiceResult.failure(error: :topic_not_available)
       end
@@ -73,112 +194,8 @@ module Community
         return ServiceResult.failure(error: :parent_post_is_not_available)
       end
 
-      rate_result = enforce_rate_limit
-      return rate_result if rate_result.failure?
-
-      old_trust_level = Community::TrustLevel.level_for(@user)
-      needs_approval = Community::RequiresPostApproval.required_for?(user: @user, whisper: @whisper)
-      post_status = needs_approval ? "pending_approval" : "published"
-      post = nil
-      attachment_result = nil
-      inline_upload_result = nil
-      request_result = nil
-      spam_result = nil
-      state_result = nil
-      replayed = false
-      Community::Post.transaction do
-        request_result = Community::ContentIdempotency.claim(
-          user: @user,
-          operation: "post.create",
-          key: @idempotency_key,
-          payload: idempotency_payload
-        )
-        raise ActiveRecord::Rollback if request_result.failure?
-
-        if request_result.value[:replay]
-          post = request_result.value[:resource]
-          replayed = true
-          next
-        end
-
-        spam_result = check_spam
-        raise ActiveRecord::Rollback if spam_result.failure?
-
-        @topic.lock!
-        state_error = topic_reply_state_error
-        if state_error
-          state_result = ServiceResult.failure(error: state_error)
-          raise ActiveRecord::Rollback
-        end
-
-        attachment_result = Community::PreparePostAttachments.call(
-          user: @user,
-          attachment_ids: @attachment_ids
-        )
-        raise ActiveRecord::Rollback if attachment_result.failure?
-
-        # Soft-deleted rows still participate in the database uniqueness
-        # constraint, so their floor numbers must never be reused.
-        floor_number = @topic.posts.with_discarded.maximum(:floor_number).to_i + 1
-
-        post = Community::Post.create!(
-          topic: @topic,
-          user: @user,
-          floor_number: floor_number,
-          body: @body,
-          quoted_post: @quoted_post,
-          parent_post: @parent_post,
-          status: post_status,
-          post_type: @whisper ? "whisper" : "regular"
-        )
-        inline_upload_result = Community::BindInlineUploads.call(
-          user: @user,
-          post: post,
-          body: @body
-        )
-        raise ActiveRecord::Rollback if inline_upload_result.failure?
-
-        attachment_result = Community::LinkPostAttachments.call(
-          user: @user,
-          post: post,
-          attachment_ids: @attachment_ids
-        )
-        raise ActiveRecord::Rollback if attachment_result.failure?
-
-        Community::ReadState.mark_read!(@user, @topic, floor: post.floor_number)
-        Community::Subscription.subscribe!(@user, @topic)
-        request_result.value[:request]&.complete!(post)
-      end
-
-      return request_result if request_result&.failure?
-      return spam_result if spam_result&.failure?
-      return state_result if state_result&.failure?
-      return attachment_result if attachment_result&.failure?
-      return inline_upload_result if inline_upload_result&.failure?
-      return ServiceResult.success(post) if replayed
-
-      Administration::AuditLogger.call(
-        actor: @user,
-        action: "community.post_created",
-        resource: post,
-        ip_address: @ip_address
-      )
-
-      if needs_approval
-        Community::NotifyPendingPost.call(post: post)
-      elsif !@whisper
-        Community::PublishPostSideEffects.call(post: post)
-        award_post_points(post)
-      end
-      Community::CheckAutoBadges.call(user: @user)
-      notify_trust_level_up!(old_trust_level)
-
-      ServiceResult.success(post)
-    rescue ActiveRecord::RecordInvalid => e
-      ServiceResult.failure(errors: e.record.errors.to_hash)
+      ServiceResult.success
     end
-
-    private
 
     def plugin_service_decorators_available?
       defined?(Mcweb::Plugins) && Mcweb::Plugins.respond_to?(:call_service)
@@ -329,7 +346,7 @@ module Community
       info = Community::TrustLevel.level_info(@user)
       return if info[:level] <= old_level
 
-      Community::NotifyTrustLevelUp.call(user: @user, level: info[:level], level_name: info[:name])
+      Community::NotifyTrustLevelUp.call(user: @user, level: info[:level])
     end
 
     def can_post_whisper?

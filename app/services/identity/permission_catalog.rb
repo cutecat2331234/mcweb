@@ -256,6 +256,22 @@ module Identity
         ]
       ),
       build_entry.call(
+        "forum.sections.lifecycle",
+        "归档与恢复论坛分区",
+        execution_points: [
+          "app/controllers/admin/forum/sections_controller.rb#lifecycle",
+          "app/controllers/admin/forum/sections_controller.rb#archive",
+          "app/controllers/admin/forum/sections_controller.rb#restore"
+        ]
+      ),
+      build_entry.call(
+        "forum.sections.delete",
+        "永久删除论坛分区",
+        execution_points: [
+          "app/controllers/admin/forum/sections_controller.rb#destroy"
+        ]
+      ),
+      build_entry.call(
         "forum.attachments.security.read",
         "查看附件安全状态",
         execution_points: [

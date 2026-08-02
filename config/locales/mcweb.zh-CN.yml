@@ -84,7 +84,13 @@
         description: "安装、配置、启用和移除公开前端模板。"
       forum_sections_manage:
         name: "管理论坛结构"
-        description: "管理论坛分类、板块、展示方式和社区设置。"
+        description: "查看、新建和编辑论坛分类、板块、展示方式及社区设置。"
+      forum_sections_lifecycle:
+        name: "归档与恢复论坛板块"
+        description: "查看板块生命周期影响、归档启用中的板块并恢复已归档板块。"
+      forum_sections_delete:
+        name: "永久删除论坛板块"
+        description: "输入确认内容后，永久删除符合条件的已归档论坛板块。"
       forum_attachments_security_read:
         name: "查看附件安全状态"
         description: "查看附件扫描、隔离、配额和清理状态，但不能执行处置。"
@@ -758,6 +764,30 @@
       censored_word: 敏感词
       template: 模板
     services:
+      community:
+        section_lifecycle:
+          invalid_operation: 不支持该板块生命周期操作。
+          permission_denied: 你没有权限执行该板块生命周期操作。
+          reason_required: 请先填写本次变更原因。
+          reason_too_long: 原因不能超过 1,000 个字符。
+          confirmation_mismatch: 输入的确认文字与当前板块或操作不一致。
+          already_archived: 该板块已经归档。
+          not_archived: 该板块当前已处于启用状态。
+          delete_requires_archive: 永久删除前必须先归档板块。
+          delete_has_descendants: 永久删除前请先移动或删除子板块。
+          delete_has_topics: 永久删除前请先移动全部主题。
+          delete_has_moderation_cases: 仍有审核案件引用该板块，必须保留这条证据关系。
+          delete_blocked: 数据库中仍有引用保护该板块，无法删除。
+          audit_failed: 审计记录写入失败，本次生命周期变更已完整回滚。
+          conflict: 板块层级刚刚发生变化，请刷新后重试。
+        section_topic_migration:
+          permission_denied: 你没有权限迁移该板块中的主题。
+          reason_required: 迁移归档主题前请填写原因。
+          reason_too_long: 迁移原因不能超过 1,000 个字符。
+          same_section: 请选择其他目标板块。
+          source_must_be_archived: 迁移主题前，请先归档该板块或其祖先板块。
+          target_not_available: 请选择实际处于启用状态的目标板块。
+          audit_failed: 审计记录写入失败，本次主题迁移已完整回滚。
       errors:
         invalid_or_expired_verification_token: 验证链接无效或已过期。
         invalid_or_expired_reset_token: 重置链接无效或已过期。
@@ -897,6 +927,7 @@
         order_no_shippable_items: 订单中没有可发货的商品。
         not_authorized_moderate_post: 你无权审核此帖子。
         unknown_moderation_action: 未知的审核操作。
+        moderation_action_conflict: 其他论坛操作与本次审核发生冲突，请检查当前状态后重试。
         small_action_body_required: 操作说明不能为空。
         link_code_used: 绑定码已被使用。
         minecraft_already_linked: 该 Minecraft 账号已绑定其他用户。
@@ -1130,6 +1161,7 @@
         payment_provider_mismatch: "支付渠道不匹配。"
         payment_reconciliation_could_not_be_completed: "无法完成支付对账。"
         pdf_generation_is_not_available: "当前无法生成 PDF。"
+        pdf_unicode_font_is_not_available: "未安装或未正确配置 PDF 收据所需的 Unicode 字体。"
         player_is_not_associated_with_this_server: "该玩家未关联此服务器。"
         player_is_not_listed_as_online_on_this_server: "该玩家不在此服务器的在线名单中。"
         poll_is_already_closed: "投票已经关闭。"
@@ -1146,6 +1178,7 @@
         replay_detected: "检测到重复请求。"
         scheduled_time_must_be_in_the_future: "计划时间必须晚于当前时间。"
         section_not_available: "分区不存在或无权访问。"
+        destination_section_not_available: "目标板块已归档或当前不可用。"
         server_connector_is_offline: "服务器连接器已离线。"
         server_is_not_bound_to_a_node: "服务器尚未绑定节点。"
         server_is_not_managed_by_this_node: "该服务器不由此节点管理。"
@@ -2296,6 +2329,11 @@
         sections:
           title: 论坛板块
           field_category: 分类
+          field_status: 生命周期状态
+          field_topics_count: 主题数
+          field_archived_at: 归档时间
+          field_archived_by: 归档操作人
+          field_archived_reason: 归档原因
           field_create_permission: 发帖权限
           field_reply_permission: 回复权限
           field_required_tags: 必填标签
@@ -2316,6 +2354,26 @@
           permission_everyone: 所有人
           form_edit: 编辑板块
           form_new: 新建板块
+          status_active: 启用中
+          status_archived: 已归档
+          status_effectively_active: 实际启用
+          status_self_archived: 自身已归档
+          status_inherited_archived: 随祖先归档
+          filter_all: 全部状态
+          filter_effectively_active: 实际启用
+          filter_self_archived: 自身归档
+          filter_inherited_archived: 随祖先归档
+          action_lifecycle: 归档、恢复或删除
+          lifecycle_title: "板块生命周期：%{name}"
+          lifecycle_success_archive: 板块已归档，公众访问和新内容写入均已停止。
+          lifecycle_success_restore: 板块已恢复，并会按原访问规则重新展示。
+          lifecycle_success_destroy: 空的已归档板块已永久删除。
+          migration_target_required: 请选择目标板块。
+          migration_success: "已将 %{count} 个主题迁移到 %{target}。"
+          blocker_not_archived: 请先归档该板块。
+          blocker_descendants: "请先移动或删除 %{count} 个子板块。"
+          blocker_topics: "请先移动 %{count} 个主题；系统绝不会级联删除主题。"
+          blocker_moderation_cases: "仍有 %{count} 个审核案件把该板块作为证据引用。"
         tags:
           title: 论坛标签
         webhook_deliveries:
@@ -2404,6 +2462,7 @@
             webhook.failure_alert_forum_threshold: 论坛 Webhook 失败告警阈值（24h）
             webhook.failure_alert_store_threshold: 商城 Webhook 失败告警阈值（24h）
             webhook.failure_alert_email: Webhook 失败告警邮箱
+            webhook.failure_alert_locale: Webhook 失败告警语言
             webhook.failure_alert_cooldown_hours: Webhook 告警冷却（小时）
           hints:
             forum.group_pm_creator_only_add: 开启后，群聊中只有创建者可邀请新成员（对标 Discourse 群组策略）。
@@ -2430,6 +2489,7 @@
             webhook.failure_alert_forum_threshold: 近 24 小时论坛 Webhook 失败达到此值时告警，0 表示不检查论坛。
             webhook.failure_alert_store_threshold: 近 24 小时商城 Webhook 失败达到此值时告警，0 表示不检查商城。
             webhook.failure_alert_email: 接收 Webhook 失败告警的管理员邮箱。
+            webhook.failure_alert_locale: Webhook 失败告警标题与正文所用语言（en 或 zh-CN）。
             webhook.failure_alert_cooldown_hours: 两次告警之间的最短间隔，避免重复打扰。
         badges:
           title: 论坛徽章
@@ -3360,6 +3420,30 @@
       view_quote: "查看引用"
       author_label: "作者：%{username}"
       forum:
+        subjects:
+          topic_reply: "主题有新回复：%{title}"
+          private_message: "来自 %{sender} 的私信"
+          mention: "%{author} 在主题中提到了你"
+          here: "%{author} 使用 @here 提及了你"
+          section_topic: "关注分区有新主题：%{title}"
+          tag_topic: "关注标签有新主题：%{title}"
+          followed_topic: "%{author} 发布了新主题"
+          followed_reply: "%{author} 回复了主题：%{title}"
+          digest:
+            one: "论坛摘要 — 1 条新动态"
+            other: "论坛摘要 — %{count} 条新动态"
+          saved_search_digest: "保存的搜索有新结果：%{name}"
+          post_edited: "帖子已编辑：%{title}"
+          bookmark_reminder: "书签提醒：%{title}"
+          user_warning: "社区警告通知"
+          badge_earned: "你获得了徽章：%{badge}"
+          topic_assigned: "主题已指派给你：%{title}"
+          trust_level_up: "信任等级提升：%{level_name}"
+          post_reaction: "%{author} 对你的帖子做出了反应 %{emoji}"
+          post_quoted: "%{author} 引用了你的帖子"
+          topic_solved: "你的主题已标记为已解决"
+          topic_invite: "%{inviter} 邀请你关注主题"
+          poll_closed: "投票已关闭：%{question}"
         topic_reply:
           body: "%{author} 在主题「%{title}」中回复了："
         mention:
@@ -3407,14 +3491,18 @@
           body: "你收到了一条社区警告（%{points} 点）："
           total_points: "累计警告积分：%{points} 点"
         digest:
-          intro: "以下是您订阅的论坛摘要（%{count} 条）："
+          intro:
+            one: "以下是您订阅的论坛摘要（1 条）："
+            other: "以下是您订阅的论坛摘要（%{count} 条）："
           disable_type: "关闭此类邮件"
           view_unread: "查看全部未读通知"
           visit_forum: "访问论坛"
           unsubscribe_digest: "一键关闭论坛邮件摘要"
           unsubscribe_mentions: "关闭 @提及 邮件"
         saved_search_digest:
-          intro: "你保存的搜索「%{name}」有 %{count} 条新主题："
+          intro:
+            one: "你保存的搜索「%{name}」有 1 条新主题："
+            other: "你保存的搜索「%{name}」有 %{count} 条新主题："
           filters: "筛选条件："
           view_results: "查看完整搜索结果"
           rss: "RSS 订阅"
@@ -3422,6 +3510,10 @@
           unsubscribe_search: "一键关闭此搜索的每日提醒"
           manage_saved: "在通知偏好中管理全部保存的搜索"
       identity:
+        subjects:
+          verification: "请验证您的 McWeb 邮箱"
+          password_reset: "McWeb 密码重置"
+          totp_recovery: "McWeb 两步验证恢复"
         verification:
           intro: "请点击以下链接验证您的邮箱地址："
           ignore: "如果您没有注册 McWeb 账号，请忽略此邮件。"
@@ -3429,6 +3521,32 @@
           intro: "我们收到了您的密码重置请求。请点击以下链接设置新密码："
           ignore: "如果您没有请求重置密码，请忽略此邮件。"
       commerce:
+        subjects:
+          order_created: "订单确认 %{number}"
+          payment_reminder: "请尽快支付订单 %{number}"
+          payment_confirmed: "支付成功 %{number}"
+          order_cancelled: "订单已取消 %{number}"
+          refund_processed: "退款处理通知 %{number}"
+          refund_rejected: "退款申请未通过 %{number}"
+          order_processing: "订单处理中 %{number}"
+          order_fulfilling: "订单发货处理中 %{number}"
+          order_completed: "订单已完成 %{number}"
+          refund_requested: "退款申请已提交 %{number}"
+          price_drop: "商品降价：%{product}"
+          order_fulfilled: "商品已发货 %{number}"
+          order_shipped: "订单已发货 %{number}"
+          question_answered: "你对 %{product} 的问题已收到回复"
+          product_changelog: "商品更新：%{product}"
+          new_product_question: "新商品提问：%{product}"
+          merchant_review_reply: "商家回复了你对 %{product} 的评价"
+          review_request: "邀请你评价订单 %{number}"
+          stock_restocked: "商品到货通知：%{product}"
+          product_available: "商品已上架：%{product}"
+          gift_card_created: "您收到一张礼品卡：%{code}"
+          gift_card_expiry: "礼品卡 %{code} 即将到期"
+          gift_card_purchased: "礼品卡已发放 — 订单 %{number}"
+          abandoned_cart_first: "您的购物车还有未结算商品"
+          abandoned_cart_second: "您的购物车仍在等待结账"
         order_heading: "订单通知"
         order_number: "订单号：%{number}"
         order_status: "状态：%{status}"
@@ -3515,6 +3633,7 @@
           text_action: "请访问 %{url} 完成购买。"
         stock:
           body: "您关注的商品「%{product}」%{variant}已补货。"
+          variant: "（%{name}）"
           visit: "请访问商城查看：%{url}"
         availability:
           body: "你订阅的即将上架商品「%{product}」现已开售。"
@@ -3535,8 +3654,23 @@
         receipt:
           title: "订单收据"
           page_title: "订单收据 %{number}"
+          filename: "订单收据-%{number}.pdf"
+          order_number: "订单号：%{number}"
           date: "日期：%{date}"
+          status: "状态：%{status}"
           notes: "备注：%{notes}"
+          shipping_address: "收货地址：%{address}"
+          shipping_method: "配送方式：%{method}"
+          tracking: "物流信息：%{carrier} %{number}"
+          items: "商品明细"
+          item: "• %{name}%{variant} ×%{quantity}  %{amount}"
+          subtotal: "小计：%{amount}"
+          discount: "优惠%{code}：−%{amount}"
+          gift_card: "礼品卡%{code}：−%{amount}"
+          shipping: "运费：%{amount}"
+          free_shipping: "运费：免运费"
+          gift_wrap: "礼品包装：%{amount}"
+          total: "合计：%{amount}"
           footer: "McWeb 商城 — 本收据由系统自动生成。"
         packing_slip:
           title: "装箱单 / Packing Slip"
@@ -3547,6 +3681,7 @@
           print: "打印"
           footer: "McWeb 商城 — 仓库装箱单"
         webhook_failure:
+          subject: "[McWeb] Webhook 投递失败告警（24 小时）"
           heading: "Webhook 投递失败"
           body: "近 24 小时内 Webhook 失败次数已超过配置阈值。"
           forum: "论坛保存搜索：失败 %{failed} 次（阈值 %{threshold}，共 %{total} 次）"

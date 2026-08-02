@@ -103,6 +103,7 @@ export const KNOWN_SYSTEM_SETTING_KEYS = [
   'store.shipping_methods',
   'webhook.failure_alert_cooldown_hours',
   'webhook.failure_alert_email',
+  'webhook.failure_alert_locale',
   'webhook.failure_alert_forum_threshold',
   'webhook.failure_alert_last_sent_at',
   'webhook.failure_alert_store_threshold',

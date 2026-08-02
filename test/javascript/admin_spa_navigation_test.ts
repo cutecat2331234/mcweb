@@ -262,7 +262,7 @@ test('admin pages share one persistent shell and cross-entry links stay outside 
     /import ArcoAdminLayout from '@\/layouts\/ArcoAdminLayout\.vue'/,
   )
   assert.match(canonicalLayout, /<ArcoAdminLayout>/)
-  assert.equal(pages.length, 83, 'update the reviewed Admin page inventory')
+  assert.equal(pages.length, 84, 'update the reviewed Admin page inventory')
   for (const page of pages) {
     assert.match(
       page.source,

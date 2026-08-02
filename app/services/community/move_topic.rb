@@ -11,15 +11,38 @@ module Community
 
     def call(leave_redirect: @leave_redirect)
       from_section = nil
-      @topic.with_lock do
-        unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
-          return ServiceResult.failure(error: :you_are_not_authorized_to_move_this_topic)
-        end
-        return ServiceResult.failure(error: :topic_is_already_in_this_section) if @topic.forum_section_id == @section.id
+      section_lock_attempts = 0
+      begin
+        Community::Topic.transaction do
+          @topic, from_section, @section = Community::SectionHierarchyLock.lock_topic!(
+            @topic,
+            @section
+          )
 
-        from_section = @topic.section
-        @topic.update!(section: @section)
-        create_redirect_stub(from_section) if leave_redirect
+          unless @section.publicly_active?
+            return ServiceResult.failure(error: :destination_section_not_available)
+          end
+
+          unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
+            return ServiceResult.failure(error: :you_are_not_authorized_to_move_this_topic)
+          end
+          return ServiceResult.failure(error: :topic_is_already_in_this_section) if @topic.forum_section_id == @section.id
+
+          @topic.update!(section: @section)
+          create_redirect_stub(from_section) if leave_redirect
+        end
+      rescue Community::SectionHierarchyLock::TopicSectionChanged,
+        Community::SectionHierarchyLock::HierarchyChanged,
+        ActiveRecord::Deadlocked
+        section_lock_attempts += 1
+        fresh_topic = Community::Topic.with_discarded.find_by(id: @topic.id)
+        fresh_section = Community::Section.find_by(id: @section.id)
+        if section_lock_attempts <= 2 && fresh_topic && fresh_section
+          @topic = fresh_topic
+          @section = fresh_section
+          retry
+        end
+        return ServiceResult.failure(error: :topic_not_available)
       end
       Community::DispatchForumEventWebhook.call(
         event_type: "topic.moved",

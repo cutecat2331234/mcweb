@@ -13,7 +13,8 @@ module Commerce
       @coupon_code = coupon_code.presence
       @second_reminder = ActiveModel::Type::Boolean.new.cast(second)
 
-      subject = @second_reminder ? "您的购物车仍在等待结账" : "您的购物车还有未结算商品"
+      subject_key = @second_reminder ? :abandoned_cart_second : :abandoned_cart_first
+      subject = recipient_t("mcweb.mail.commerce.subjects.#{subject_key}")
       mail(to: @user.email, subject: subject)
     end
   end

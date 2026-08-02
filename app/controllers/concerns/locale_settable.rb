@@ -39,16 +39,6 @@ module LocaleSettable
   end
 
   def normalize_locale(value)
-    return nil if value.blank?
-
-    string = value.to_s.tr("_", "-")
-    case string.downcase
-    when "zh", "zh-cn", "zh-hans"
-      "zh-CN"
-    when "en", "en-us", "en-gb"
-      "en"
-    else
-      I18n.available_locales.map(&:to_s).find { |locale| locale.casecmp?(string) }
-    end
+    Mcweb::LocaleResolver.normalize(value)
   end
 end

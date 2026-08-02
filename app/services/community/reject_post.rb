@@ -17,11 +17,14 @@ module Community
       )
       return decision if decision.failure?
 
-      Notification.create!(
+      Community::InAppNotification.notify(
         user: @post.user,
         notification_type: "forum.post_rejected",
-        title: I18n.t("mcweb.labels.notification_types.forum.post_rejected"),
-        body: @reason.presence || I18n.t("mcweb.labels.notification_bodies.forum.post_rejected", title: @topic.title.truncate(60)),
+        key: "post_rejected",
+        title_key: "mcweb.labels.notification_types.forum.post_rejected",
+        body_key: "mcweb.labels.notification_bodies.forum.post_rejected",
+        notification_body: @reason.presence,
+        title: @topic.title.truncate(60),
         metadata: { topic_id: @topic.public_id, post_id: @post.id, path: Rails.application.routes.url_helpers.forum_topic_path(@topic, anchor: "post-#{@post.id}") }
       )
 

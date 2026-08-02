@@ -84,7 +84,13 @@ en:
         description: "Install, configure, activate, and remove public frontend templates."
       forum_sections_manage:
         name: "Manage forum structure"
-        description: "Manage forum categories, sections, presentation, and community settings."
+        description: "View, create, and edit forum categories, sections, presentation, and community settings."
+      forum_sections_lifecycle:
+        name: "Archive and restore forum sections"
+        description: "Review section lifecycle impact, archive active sections, and restore archived sections."
+      forum_sections_delete:
+        name: "Permanently delete forum sections"
+        description: "Permanently delete an eligible archived forum section after typed confirmation."
       forum_attachments_security_read:
         name: "View attachment security"
         description: "View attachment scanning, quarantine, quota, and cleanup status without changing it."
@@ -758,6 +764,30 @@ en:
       censored_word: Censored word
       template: Template
     services:
+      community:
+        section_lifecycle:
+          invalid_operation: This section lifecycle operation is not supported.
+          permission_denied: You do not have permission to perform this section lifecycle operation.
+          reason_required: Enter a reason before changing this section.
+          reason_too_long: The reason cannot exceed 1,000 characters.
+          confirmation_mismatch: The typed confirmation does not match this section and operation.
+          already_archived: This section is already archived.
+          not_archived: This section is already active.
+          delete_requires_archive: Archive the section before permanently deleting it.
+          delete_has_descendants: Move or delete child sections before permanently deleting this section.
+          delete_has_topics: Move all topics before permanently deleting this section.
+          delete_has_moderation_cases: Resolve and retain the section because moderation cases still reference it.
+          delete_blocked: Database references still protect this section from deletion.
+          audit_failed: The lifecycle change was rolled back because its audit record could not be written.
+          conflict: The section hierarchy changed concurrently. Refresh and try again.
+        section_topic_migration:
+          permission_denied: You do not have permission to move topics out of this section.
+          reason_required: Enter a reason before migrating archived topics.
+          reason_too_long: The migration reason cannot exceed 1,000 characters.
+          same_section: Select a different destination section.
+          source_must_be_archived: Archive this section or one of its ancestors before migrating its topics here.
+          target_not_available: Select an effectively active destination section.
+          audit_failed: The topic migration was rolled back because its audit record could not be written.
       errors:
         invalid_or_expired_verification_token: Verification link is invalid or expired.
         invalid_or_expired_reset_token: Reset link is invalid or expired.
@@ -897,6 +927,7 @@ en:
         order_no_shippable_items: Order has no shippable items.
         not_authorized_moderate_post: You are not authorized to moderate this post.
         unknown_moderation_action: Unknown moderation action.
+        moderation_action_conflict: Another forum update conflicted with this moderation action. Review the current state and try again.
         small_action_body_required: Action body is required.
         link_code_used: Link code has already been used.
         minecraft_already_linked: This Minecraft account is already linked.
@@ -1130,6 +1161,7 @@ en:
         payment_provider_mismatch: "Payment provider mismatch."
         payment_reconciliation_could_not_be_completed: "Payment reconciliation could not be completed."
         pdf_generation_is_not_available: "PDF generation is not available."
+        pdf_unicode_font_is_not_available: "The Unicode font required for PDF receipts is not installed or configured."
         player_is_not_associated_with_this_server: "Player is not associated with this server."
         player_is_not_listed_as_online_on_this_server: "Player is not listed as online on this server."
         poll_is_already_closed: "Poll is already closed."
@@ -1146,6 +1178,7 @@ en:
         replay_detected: "Replay detected."
         scheduled_time_must_be_in_the_future: "Scheduled time must be in the future."
         section_not_available: "Section not available."
+        destination_section_not_available: "The destination section is archived or otherwise unavailable."
         server_connector_is_offline: "Server connector is offline."
         server_is_not_bound_to_a_node: "Server is not bound to a node."
         server_is_not_managed_by_this_node: "Server is not managed by this node."
@@ -2296,6 +2329,11 @@ en:
         sections:
           title: Forum sections
           field_category: Category
+          field_status: Lifecycle status
+          field_topics_count: Topics
+          field_archived_at: Archived at
+          field_archived_by: Archived by
+          field_archived_reason: Archive reason
           field_create_permission: Create permission
           field_reply_permission: Reply permission
           field_required_tags: Required tags
@@ -2316,6 +2354,26 @@ en:
           permission_everyone: Everyone
           form_edit: Edit section
           form_new: New section
+          status_active: Active
+          status_archived: Archived
+          status_effectively_active: Effectively active
+          status_self_archived: Archived directly
+          status_inherited_archived: Archived by ancestor
+          filter_all: All states
+          filter_effectively_active: Active
+          filter_self_archived: Archived directly
+          filter_inherited_archived: Archived by ancestor
+          action_lifecycle: Archive, restore, or delete
+          lifecycle_title: "Section lifecycle: %{name}"
+          lifecycle_success_archive: Section archived. Public access and new posting are now disabled.
+          lifecycle_success_restore: Section restored and visible according to its access rules.
+          lifecycle_success_destroy: Empty archived section permanently deleted.
+          migration_target_required: Select a destination section.
+          migration_success: "%{count} topics moved to %{target}."
+          blocker_not_archived: Archive this section first.
+          blocker_descendants: "%{count} child sections must be moved or deleted first."
+          blocker_topics: "%{count} topics must be moved first; topics are never cascade-deleted."
+          blocker_moderation_cases: "%{count} moderation cases still retain this section as evidence."
         tags:
           title: Forum tags
         webhook_deliveries:
@@ -2404,6 +2462,7 @@ en:
             webhook.failure_alert_forum_threshold: Forum webhook failure alert threshold (24h)
             webhook.failure_alert_store_threshold: Store webhook failure alert threshold (24h)
             webhook.failure_alert_email: Webhook failure alert email
+            webhook.failure_alert_locale: Webhook failure alert language
             webhook.failure_alert_cooldown_hours: Webhook alert cooldown (hours)
           hints:
             forum.group_pm_creator_only_add: When enabled, only the group creator can invite members.
@@ -2430,6 +2489,7 @@ en:
             webhook.failure_alert_forum_threshold: Alert when forum webhook failures in 24h reach this value; 0 = off.
             webhook.failure_alert_store_threshold: Alert when store webhook failures in 24h reach this value; 0 = off.
             webhook.failure_alert_email: Admin email for webhook failure alerts.
+            webhook.failure_alert_locale: Language used for webhook failure alert subjects and bodies (en or zh-CN).
             webhook.failure_alert_cooldown_hours: Minimum hours between duplicate alerts.
         badges:
           title: Forum badges
@@ -3360,6 +3420,30 @@ en:
       view_quote: "View quote"
       author_label: "Author: %{username}"
       forum:
+        subjects:
+          topic_reply: "New reply: %{title}"
+          private_message: "Private message from %{sender}"
+          mention: "%{author} mentioned you in a topic"
+          here: "%{author} mentioned you with @here"
+          section_topic: "New topic in a watched section: %{title}"
+          tag_topic: "New topic under a watched tag: %{title}"
+          followed_topic: "%{author} posted a new topic"
+          followed_reply: "%{author} replied: %{title}"
+          digest:
+            one: "Forum digest — 1 new notification"
+            other: "Forum digest — %{count} new notifications"
+          saved_search_digest: "New results for saved search: %{name}"
+          post_edited: "Post edited: %{title}"
+          bookmark_reminder: "Bookmark reminder: %{title}"
+          user_warning: "Community warning notice"
+          badge_earned: "You earned a badge: %{badge}"
+          topic_assigned: "Topic assigned to you: %{title}"
+          trust_level_up: "Trust level increased: %{level_name}"
+          post_reaction: "%{author} reacted %{emoji} to your post"
+          post_quoted: "%{author} quoted your post"
+          topic_solved: "Your topic was marked as solved"
+          topic_invite: "%{inviter} invited you to watch a topic"
+          poll_closed: "Poll closed: %{question}"
         topic_reply:
           body: "%{author} replied in topic \"%{title}\":"
         mention:
@@ -3407,14 +3491,18 @@ en:
           body: "You received a community warning (%{points} points):"
           total_points: "Total warning points: %{points}"
         digest:
-          intro: "Here is your forum digest (%{count} notifications):"
+          intro:
+            one: "Here is your forum digest (1 notification):"
+            other: "Here is your forum digest (%{count} notifications):"
           disable_type: "Turn off this type"
           view_unread: "View all unread notifications"
           visit_forum: "Visit forum"
           unsubscribe_digest: "Unsubscribe from forum digest"
           unsubscribe_mentions: "Turn off @mention emails"
         saved_search_digest:
-          intro: "Your saved search \"%{name}\" has %{count} new topics:"
+          intro:
+            one: "Your saved search \"%{name}\" has 1 new topic:"
+            other: "Your saved search \"%{name}\" has %{count} new topics:"
           filters: "Filters:"
           view_results: "View full search results"
           rss: "RSS feed"
@@ -3422,6 +3510,10 @@ en:
           unsubscribe_search: "Turn off daily alerts for this search"
           manage_saved: "Manage all saved searches in preferences"
       identity:
+        subjects:
+          verification: "Verify your McWeb email address"
+          password_reset: "Reset your McWeb password"
+          totp_recovery: "McWeb two-factor recovery"
         verification:
           intro: "Please verify your email address using the link below:"
           ignore: "If you did not create a McWeb account, you can ignore this email."
@@ -3429,6 +3521,32 @@ en:
           intro: "We received a password reset request. Use the link below to set a new password:"
           ignore: "If you did not request a reset, you can ignore this email."
       commerce:
+        subjects:
+          order_created: "Order confirmation %{number}"
+          payment_reminder: "Payment reminder for order %{number}"
+          payment_confirmed: "Payment confirmed for order %{number}"
+          order_cancelled: "Order cancelled %{number}"
+          refund_processed: "Refund processed for order %{number}"
+          refund_rejected: "Refund request declined for order %{number}"
+          order_processing: "Order processing %{number}"
+          order_fulfilling: "Order fulfillment in progress %{number}"
+          order_completed: "Order completed %{number}"
+          refund_requested: "Refund request submitted for order %{number}"
+          price_drop: "Price drop: %{product}"
+          order_fulfilled: "Items shipped for order %{number}"
+          order_shipped: "Order shipped %{number}"
+          question_answered: "Your question about %{product} was answered"
+          product_changelog: "Product update: %{product}"
+          new_product_question: "New product question: %{product}"
+          merchant_review_reply: "Seller replied to your review of %{product}"
+          review_request: "Review order %{number}"
+          stock_restocked: "Back in stock: %{product}"
+          product_available: "Now available: %{product}"
+          gift_card_created: "You received a gift card: %{code}"
+          gift_card_expiry: "Gift card %{code} expires soon"
+          gift_card_purchased: "Gift cards issued for order %{number}"
+          abandoned_cart_first: "You still have items in your cart"
+          abandoned_cart_second: "Your cart is still waiting for checkout"
         order_heading: "Order notification"
         order_number: "Order #: %{number}"
         order_status: "Status: %{status}"
@@ -3515,6 +3633,7 @@ en:
           text_action: "Visit %{url} to complete your purchase."
         stock:
           body: "Product \"%{product}\"%{variant} you watched is back in stock."
+          variant: " (%{name})"
           visit: "Visit the store: %{url}"
         availability:
           body: "Coming-soon product \"%{product}\" you subscribed to is now available."
@@ -3535,8 +3654,23 @@ en:
         receipt:
           title: "Order receipt"
           page_title: "Receipt %{number}"
+          filename: "receipt-%{number}.pdf"
+          order_number: "Order: %{number}"
           date: "Date: %{date}"
+          status: "Status: %{status}"
           notes: "Notes: %{notes}"
+          shipping_address: "Shipping address: %{address}"
+          shipping_method: "Shipping method: %{method}"
+          tracking: "Tracking: %{carrier} %{number}"
+          items: "Items"
+          item: "• %{name}%{variant} ×%{quantity}  %{amount}"
+          subtotal: "Subtotal: %{amount}"
+          discount: "Discount%{code}: −%{amount}"
+          gift_card: "Gift card%{code}: −%{amount}"
+          shipping: "Shipping: %{amount}"
+          free_shipping: "Shipping: Free"
+          gift_wrap: "Gift wrap: %{amount}"
+          total: "Total: %{amount}"
           footer: "McWeb Store — auto-generated receipt."
         packing_slip:
           title: "Packing slip"
@@ -3547,6 +3681,7 @@ en:
           print: "Print"
           footer: "McWeb Store — warehouse packing slip"
         webhook_failure:
+          subject: "[McWeb] Webhook delivery failure alert (24 hours)"
           heading: "Webhook delivery failure"
           body: "Webhook failures in the last 24 hours exceeded the configured threshold."
           forum: "Forum saved searches: %{failed} failures (threshold %{threshold}, %{total} total)"

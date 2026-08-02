@@ -94,6 +94,7 @@ class Round117NotifyPendingPostTest < ActiveSupport::TestCase
     category = Community::Category.find_or_create_by!(slug: "r117-notify") { |c| c.name = "R" }
     @section = Community::Section.find_or_create_by!(category: category, slug: "r117-notify-sec") { |s| s.name = "S"; s.position = 0 }
     @mod = create_user(username: "r117notifymod")
+    @mod.update!(locale: "en")
     Community::SectionModerator.create!(section: @section, user: @mod)
     @author = create_user(username: "r117author")
     @topic = Community::Topic.create!(
@@ -110,10 +111,10 @@ class Round117NotifyPendingPostTest < ActiveSupport::TestCase
   end
 
   test "notify pending post uses i18n and topic path" do
-    I18n.with_locale(:en) do
+    I18n.with_locale(:"zh-CN") do
       Community::NotifyPendingPost.call(post: @post)
       notification = Notification.find_by!(user: @mod, notification_type: "forum.post_pending")
-      assert_equal I18n.t("mcweb.labels.notification_types.forum.post_pending"), notification.title
+      assert_equal I18n.t("mcweb.labels.notification_types.forum.post_pending", locale: :en), notification.title
       assert_includes notification.body, @author.username
       assert_includes notification.metadata["path"], @topic.public_id
     end

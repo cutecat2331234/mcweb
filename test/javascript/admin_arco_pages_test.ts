@@ -71,6 +71,23 @@ test('generic admin show keeps action forms and renders them with Arco controls'
   assert.match(source, /router\.patch/)
 })
 
+test('forum section lifecycle exposes only permission-gated Inertia actions', () => {
+  const lifecycle = pageSource('Forum/Sections/Lifecycle.vue')
+  const layout = javascriptSource('layouts/ArcoAdminLayout.vue')
+
+  assertNoLegacyPagePrimitives(lifecycle)
+  assertNoNativeAdminControls(lifecycle)
+  assert.match(lifecycle, /canManageLifecycle: boolean/)
+  assert.match(lifecycle, /v-if="canManageLifecycle"/)
+  assert.match(lifecycle, /v-if="canDelete"/)
+  assert.match(lifecycle, /lifecycleForm\.patch/)
+  assert.match(lifecycle, /destroyForm\.delete/)
+  assert.match(
+    layout,
+    /href: adminRoutes\.forumSections,[\s\S]*permissionAny: \[[\s\S]*'forum\.sections\.manage'[\s\S]*'forum\.sections\.lifecycle'[\s\S]*'forum\.sections\.delete'/,
+  )
+})
+
 test('store-credit adjustment uses two JSON phases without remounting the page', () => {
   const source = pageSource('Generic/Show.vue')
 
@@ -423,6 +440,18 @@ test('interactive forum pages retain filters, mutations, confirmation, and neste
   assert.match(sections, /form\.section\.default_tag_ids/)
   assert.match(sections, /form\.patch\(props\.submitUrl\)/)
   assert.match(sections, /form\.post\(props\.submitUrl\)/)
+
+  const sectionLifecycle = pageSource('Forum/Sections/Lifecycle.vue')
+  assert.match(sectionLifecycle, /lifecycleForm\.patch\(lifecycleUrl\.value/)
+  assert.match(sectionLifecycle, /migrationForm\.patch\(props\.migrateTopicsUrl/)
+  assert.match(sectionLifecycle, /destroyForm\.delete\(props\.destroyUrl/)
+  assert.match(sectionLifecycle, /<a-statistic/)
+  assert.match(sectionLifecycle, /<a-drawer/)
+  assert.match(sectionLifecycle, /<a-modal/)
+  assert.doesNotMatch(sectionLifecycle, /<a-popconfirm/)
+  assert.match(sectionLifecycle, /confirmation === lifecycleConfirmation\.value/)
+  assert.match(sectionLifecycle, /confirmation === props\.confirmations\.destroy/)
+  assert.doesNotMatch(sectionLifecycle, /<style/)
 
   const userGroups = pageSource('Forum/UserGroups/Form.vue')
   assert.match(userGroups, /router\.post\(props\.addMemberUrl/)

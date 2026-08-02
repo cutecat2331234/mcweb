@@ -14,7 +14,7 @@
           <% if item.variant_name.present? %> — <%= item.variant_name %><% end %>
         </td>
         <td style="border:1px solid #ddd;padding:0.5rem;"><%= item.quantity %></td>
-        <td style="border:1px solid #ddd;padding:0.5rem;"><%= number_to_currency(item.total_cents / 100.0, unit: order.currency == "CNY" ? "¥" : "$") %></td>
+        <td style="border:1px solid #ddd;padding:0.5rem;"><%= format_currency_from_cents(item.total_cents, order.currency) %></td>
       </tr>
     <% end %>
   </tbody>
@@ -32,17 +32,16 @@
   <% end %>
 <% end %>
 
-<% currency_unit = order.currency == "CNY" ? "¥" : "$" %>
 <% if order.discount_cents.positive? %>
-  <p><%= t("mcweb.mail.commerce.discount_line", code: order.coupon ? " (#{order.coupon.code})" : "", amount: number_to_currency(order.discount_cents / 100.0, unit: currency_unit)) %></p>
+  <p><%= t("mcweb.mail.commerce.discount_line", code: order.coupon ? " (#{order.coupon.code})" : "", amount: format_currency_from_cents(order.discount_cents, order.currency)) %></p>
 <% end %>
 <% if order.gift_card_amount_cents.positive? %>
-  <p><%= t("mcweb.mail.commerce.gift_card_line", code: order.gift_card ? " (#{order.gift_card.code})" : "", amount: number_to_currency(order.gift_card_amount_cents / 100.0, unit: currency_unit)) %></p>
+  <p><%= t("mcweb.mail.commerce.gift_card_line", code: order.gift_card ? " (#{order.gift_card.code})" : "", amount: format_currency_from_cents(order.gift_card_amount_cents, order.currency)) %></p>
 <% end %>
-<p><%= t("mcweb.mail.commerce.subtotal_line", amount: number_to_currency(order.subtotal_cents / 100.0, unit: currency_unit)) %></p>
+<p><%= t("mcweb.mail.commerce.subtotal_line", amount: format_currency_from_cents(order.subtotal_cents, order.currency)) %></p>
 <% if order.shipping_cents.positive? %>
-  <p><%= t("mcweb.mail.commerce.shipping_line", amount: number_to_currency(order.shipping_cents / 100.0, unit: currency_unit)) %></p>
+  <p><%= t("mcweb.mail.commerce.shipping_line", amount: format_currency_from_cents(order.shipping_cents, order.currency)) %></p>
 <% elsif order.shipping_cents.zero? && order.subtotal_cents.positive? %>
   <p><%= t("mcweb.mail.commerce.shipping_line", amount: t("mcweb.mail.commerce.free_shipping")) %></p>
 <% end %>
-<p><strong><%= t("mcweb.mail.commerce.total_line", amount: number_to_currency(order.total_cents / 100.0, unit: currency_unit)) %></strong></p>
+<p><strong><%= t("mcweb.mail.commerce.total_line", amount: format_currency_from_cents(order.total_cents, order.currency)) %></strong></p>

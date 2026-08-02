@@ -1,4 +1,9 @@
 module ApplicationHelper
+  def format_currency_from_cents(cents, currency)
+    currency_code = currency.to_s.strip.upcase.presence || "XXX"
+    number_to_currency(cents.to_i / 100.0, unit: currency_code, format: "%u %n")
+  end
+
   def format_shipping_address(address)
     return nil unless address.is_a?(Hash) && address.values.any?(&:present?)
 

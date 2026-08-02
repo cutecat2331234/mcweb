@@ -18,18 +18,24 @@ module Commerce
       metadata = { path: @path }
       metadata[:order_public_id] = @order_public_id if @order_public_id.present?
 
-      Notification.notify!(
-        user: @user,
-        notification_type: @notification_type,
-        title: @title,
-        body: @body.truncate(200),
-        metadata: metadata
-      )
+      Commerce::InAppNotification.with_recipient_locale(@user) do
+        Notification.notify!(
+          user: @user,
+          notification_type: @notification_type,
+          title: resolve_value(@title),
+          body: resolve_value(@body).to_s.truncate(200),
+          metadata: metadata
+        )
+      end
 
       ServiceResult.success
     end
 
     private
+
+    def resolve_value(value)
+      value.respond_to?(:call) ? value.call : value
+    end
 
     def extract_order_public_id(path)
       path.to_s[%r{/store/orders/(ord_[a-zA-Z0-9]+)}, 1]

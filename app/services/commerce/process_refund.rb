@@ -424,14 +424,16 @@ module Commerce
       Commerce::NotifyOrderEvent.call(
         user: @order.user,
         notification_type: "commerce.refund_processed",
-        title: I18n.t("mcweb.labels.notification_types.commerce.refund_processed"),
-        body: [
-          I18n.t("mcweb.mail.commerce.refund_processed.body", number: @order.order_number),
-          I18n.t(
-            "mcweb.mail.commerce.refund_processed.amount",
-            amount: format_refund_amount(refund.amount_cents)
-          )
-        ].join(" "),
+        title: -> { I18n.t("mcweb.labels.notification_types.commerce.refund_processed") },
+        body: lambda {
+          [
+            I18n.t("mcweb.mail.commerce.refund_processed.body", number: @order.order_number),
+            I18n.t(
+              "mcweb.mail.commerce.refund_processed.amount",
+              amount: format_refund_amount(refund.amount_cents)
+            )
+          ].join(" ")
+        },
         path: "/app/store/orders/#{@order.public_id}"
       )
       Commerce::DispatchOrderWebhook.call(
@@ -498,7 +500,7 @@ module Commerce
     end
 
     def format_refund_amount(cents)
-      ActionController::Base.helpers.number_to_currency(cents / 100.0, unit: "¥")
+      ApplicationController.helpers.format_currency_from_cents(cents, @order.currency)
     end
 
     def ensure_restored!(result, fallback_message)

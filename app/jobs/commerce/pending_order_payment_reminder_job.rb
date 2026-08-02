@@ -47,16 +47,17 @@ module Commerce
       end
 
       if in_app_enabled
-        expires_label = payment_expires_label(order)
         Commerce::NotifyOrderEvent.call(
           user: user,
           notification_type: "commerce.payment_reminder",
-          title: Commerce::InAppNotification.t("payment_reminder.title"),
-          body: Commerce::InAppNotification.t(
-            "payment_reminder.body",
-            number: order.order_number,
-            expires: expires_label
-          ),
+          title: -> { Commerce::InAppNotification.t("payment_reminder.title") },
+          body: lambda {
+            Commerce::InAppNotification.t(
+              "payment_reminder.body",
+              number: order.order_number,
+              expires: payment_expires_label(order)
+            )
+          },
           path: "#{Mcweb::Paths::APP_PREFIX}/store/orders/#{order.public_id}"
         )
       end

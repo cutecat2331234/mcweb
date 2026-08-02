@@ -41,12 +41,11 @@ module Community
     def notify_muted!(mute)
       return unless NotificationPreference.enabled?(@user, channel: "in_app", notification_type: "forum.silenced")
 
-      scope = mute.section&.name || I18n.t("mcweb.forum.mute.site_wide", default: "全站")
       Community::InAppNotification.notify(
         user: @user,
         notification_type: "forum.silenced",
         key: "silenced",
-        area: scope,
+        area: -> { mute.section&.name || I18n.t("mcweb.forum.mute.site_wide") },
         reason: @reason.presence || "—",
         metadata: { mute_id: mute.id }
       )

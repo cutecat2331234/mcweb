@@ -17,35 +17,48 @@ module Community
       return ServiceResult.failure(error: :target_topic_not_found) unless target
       return ServiceResult.failure(error: :cannot_merge_a_topic_into_itself) if @source.id == target.id
 
-      Community::Topic.transaction do
-        # Lock both rows in a stable order. CreatePost uses the same topic-row
-        # lock, preventing a reply from being allocated while the merge snapshot
-        # is being moved.
-        Community::Topic.where(id: [ @source.id, target.id ]).order(:id).lock.load
-        @source.reload
-        target.reload
-        return ServiceResult.failure(error: :target_topic_not_found) unless target.status == "published"
-
-        posts_to_move = Community::Post.with_discarded
-          .where(forum_topic_id: @source.id)
-          .where.not(floor_number: 1)
-          .order(:floor_number)
-          .to_a
-        moved_posts_by_id = posts_to_move.index_by(&:id)
-        next_floor = target.posts.with_discarded.maximum(:floor_number).to_i
-
-        posts_to_move.each_with_index do |post, index|
-          updates = { topic: target, floor_number: next_floor + index + 1 }
-          if post.parent_post_id.present? && !moved_posts_by_id.key?(post.parent_post_id)
-            updates[:parent_post_id] = nil
+      lock_attempts = 0
+      begin
+        Community::Topic.transaction do
+          @source, target = Community::SectionHierarchyLock.lock_topics!(@source, target)
+          return ServiceResult.failure(error: :target_topic_not_found) unless target.status == "published"
+          unless target.section.publicly_active?
+            return ServiceResult.failure(error: :destination_section_not_available)
           end
-          post.update!(updates)
-        end
 
-        source_solved_post_id = moved_posts_by_id.key?(@source.solved_post_id) ? nil : @source.solved_post_id
-        @source.update!(status: :hidden, locked: true, solved_post_id: source_solved_post_id)
-        Community::SyncTopicLastPost.call(topic: @source)
-        Community::SyncTopicLastPost.call(topic: target)
+          posts_to_move = Community::Post.with_discarded
+            .where(forum_topic_id: @source.id)
+            .where.not(floor_number: 1)
+            .order(:floor_number)
+            .to_a
+          moved_posts_by_id = posts_to_move.index_by(&:id)
+          next_floor = target.posts.with_discarded.maximum(:floor_number).to_i
+
+          posts_to_move.each_with_index do |post, index|
+            updates = { topic: target, floor_number: next_floor + index + 1 }
+            if post.parent_post_id.present? && !moved_posts_by_id.key?(post.parent_post_id)
+              updates[:parent_post_id] = nil
+            end
+            post.update!(updates)
+          end
+
+          source_solved_post_id = moved_posts_by_id.key?(@source.solved_post_id) ? nil : @source.solved_post_id
+          @source.update!(status: :hidden, locked: true, solved_post_id: source_solved_post_id)
+          Community::SyncTopicLastPost.call(topic: @source)
+          Community::SyncTopicLastPost.call(topic: target)
+        end
+      rescue Community::SectionHierarchyLock::TopicSectionChanged,
+        Community::SectionHierarchyLock::HierarchyChanged,
+        ActiveRecord::Deadlocked
+        lock_attempts += 1
+        fresh_source = Community::Topic.with_discarded.find_by(id: @source.id)
+        fresh_target = Community::Topic.with_discarded.find_by(id: target.id)
+        if lock_attempts <= 2 && fresh_source && fresh_target
+          @source = fresh_source
+          target = fresh_target
+          retry
+        end
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
       Administration::AuditLogger.call(

@@ -79,6 +79,7 @@ module Community
 
     def can_move_topic?(user:, topic:, to_section: nil)
       return false unless user && topic
+      return false if to_section && !to_section.publicly_active?
 
       return true if user.permission?("forum.topics.move") || global_moderator?(user)
       return false unless section_moderator?(user, topic.section)
@@ -91,11 +92,14 @@ module Community
     def moderated_sections_for(user)
       return Community::Section.none unless user
 
-      if global_moderator?(user) || user.permission?("forum.topics.move")
+      scope = if global_moderator?(user) || user.permission?("forum.topics.move")
         Community::Section.all
       else
         Community::Section.where(id: Community::SectionModerator.where(user_id: user.id).select(:forum_section_id))
       end
+
+      active_ids = scope.active.to_a.filter_map { |section| section.id if section.publicly_active? }
+      Community::Section.where(id: active_ids)
     end
 
     def staff_for_any_section?(user)

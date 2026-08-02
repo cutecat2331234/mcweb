@@ -2,10 +2,9 @@
 
 module Community
   class NotifyTrustLevelUp < ApplicationService
-    def initialize(user:, level:, level_name:)
+    def initialize(user:, level:)
       @user = user
       @level = level
-      @level_name = level_name
     end
 
     def call
@@ -14,11 +13,12 @@ module Community
       return ServiceResult.success unless email_enabled || in_app_enabled
 
       if in_app_enabled
+        level_name = Community::TrustLevel.localized_name(@level, locale: @user.locale)
         Community::InAppNotification.notify(
           user: @user,
           notification_type: "forum.trust_level",
           key: "trust_level_up",
-          level_name: @level_name,
+          level_name: level_name,
           level: @level,
           metadata: {
             trust_level: @level,
@@ -32,7 +32,7 @@ module Community
           "Community::ForumMailer",
           "trust_level_up",
           "deliver_now",
-          args: [ @user.id, @level, @level_name ]
+          args: [ @user.id, @level ]
         )
       end
 

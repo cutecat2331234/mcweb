@@ -76,8 +76,8 @@ module Commerce
       Commerce::NotifyOrderEvent.call(
         user: @order.user,
         notification_type: "commerce.refund_requested",
-        title: I18n.t("mcweb.labels.notification_types.commerce.refund_requested"),
-        body: I18n.t("mcweb.mail.commerce.refund_requested.body", number: @order.order_number),
+        title: -> { I18n.t("mcweb.labels.notification_types.commerce.refund_requested") },
+        body: -> { I18n.t("mcweb.mail.commerce.refund_requested.body", number: @order.order_number) },
         path: "/app/store/orders/#{@order.public_id}"
       )
 

@@ -17,18 +17,10 @@ class LocaleController < ApplicationController
   private
 
   def available_locale?(locale)
-    locale.present? && I18n.available_locales.map(&:to_s).include?(locale)
+    locale.present? && Mcweb::LocaleResolver.available_locales.include?(locale)
   end
 
   def normalize_locale(value)
-    return nil if value.blank?
-
-    string = value.to_s.tr("_", "-")
-    case string.downcase
-    when "zh", "zh-cn", "zh-hans" then "zh-CN"
-    when "en", "en-us", "en-gb" then "en"
-    else
-      I18n.available_locales.map(&:to_s).find { |loc| loc.casecmp?(string) }
-    end
+    Mcweb::LocaleResolver.normalize(value)
   end
 end

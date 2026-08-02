@@ -1,4 +1,4 @@
 <p><%= t("mcweb.mail.greeting_short") %></p>
 <p><%= t("mcweb.mail.commerce.refund_processed.body", number: @order.order_number) %></p>
-<p><%= t("mcweb.mail.commerce.refund_processed.amount", amount: number_to_currency(@refund.amount_cents / 100.0, unit: @order.currency == "CNY" ? "¥" : "$")) %></p>
+<p><%= t("mcweb.mail.commerce.refund_processed.amount", amount: format_currency_from_cents(@refund.amount_cents, @order.currency)) %></p>
 <p><%= t("mcweb.mail.commerce.contact_support") %></p>

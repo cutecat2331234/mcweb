@@ -68,7 +68,7 @@ install_dependencies() {
       apt-get update -qq
       DEBIAN_FRONTEND=noninteractive apt-get install -y \
         build-essential libpq-dev libyaml-dev libssl-dev zlib1g-dev \
-        libvips-dev imagemagick curl git nginx certbot python3-certbot-nginx openssl nodejs
+        libvips-dev imagemagick fonts-noto-cjk curl git nginx certbot python3-certbot-nginx openssl nodejs
       install_postgresql
       ;;
     *)

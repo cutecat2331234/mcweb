@@ -19,19 +19,13 @@ module Commerce
         user = alert.user
 
         if NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.stock_restocked")
-          Notification.notify!(
+          Commerce::InAppNotification.notify(
             user: user,
             notification_type: "commerce.stock_restocked",
-            title: Commerce::InAppNotification.t("stock_restocked.title", product: product.name),
-            body: if alert.variant
-                    Commerce::InAppNotification.t(
-                      "stock_restocked_variant.body",
-                      product: product.name,
-                      variant: alert.variant.name
-                    )
-                  else
-                    Commerce::InAppNotification.t("stock_restocked.body", product: product.name)
-                  end,
+            title_key: "stock_restocked.title",
+            body_key: alert.variant ? "stock_restocked_variant.body" : "stock_restocked.body",
+            title_options: { product: product.name },
+            body_options: { product: product.name, variant: alert.variant&.name },
             metadata: {
               path: "/app/store/products/#{product.public_id}",
               product_id: product.public_id,

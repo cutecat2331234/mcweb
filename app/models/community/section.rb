@@ -2,18 +2,75 @@ module Community
   class Section < ApplicationRecord
     belongs_to :category, class_name: "Community::Category", foreign_key: :forum_category_id
     belongs_to :parent, class_name: "Community::Section", optional: true
-    has_many :children, class_name: "Community::Section", foreign_key: :parent_id, dependent: :destroy
-    has_many :topics, class_name: "Community::Topic", foreign_key: :forum_section_id, dependent: :destroy
+    belongs_to :archived_by, class_name: "User", optional: true
+    has_many :children, class_name: "Community::Section", foreign_key: :parent_id, dependent: :restrict_with_error
+    has_many :topics, class_name: "Community::Topic", foreign_key: :forum_section_id, dependent: :restrict_with_error
     has_many :mutes, class_name: "Community::Mute", foreign_key: :forum_section_id, dependent: :destroy
     has_many :subscriptions, as: :subscribable, class_name: "Community::Subscription", dependent: :destroy
     has_many :section_moderators, class_name: "Community::SectionModerator", foreign_key: :forum_section_id, dependent: :destroy
+    has_many :section_mutes, class_name: "Community::SectionMute", foreign_key: :forum_section_id, dependent: :destroy
+    has_many :moderation_cases, class_name: "Community::ModerationCase", foreign_key: :forum_section_id, dependent: :restrict_with_error
     has_many :moderators, through: :section_moderators, source: :user
 
     validates :name, presence: true
     validates :slug, presence: true, uniqueness: { scope: :forum_category_id }
+    validates :archived_reason, length: { maximum: 1_000 }, allow_blank: true
+    validate :parent_hierarchy_is_valid
 
     scope :ordered, -> { order(:position) }
     scope :roots, -> { where(parent_id: nil) }
+    scope :active, -> { where(archived_at: nil) }
+    scope :archived, -> { where.not(archived_at: nil) }
+
+    def self.effectively_active
+      active_sections = active.includes(:parent).to_a
+      where(id: active_sections.filter_map { |section| section.id if section.publicly_active? })
+    end
+
+    def self_archived?
+      archived_at.present?
+    end
+
+    def archived_ancestor
+      section = parent
+      visited_ids = []
+
+      while section
+        return section if section.archived_at.present?
+        return nil if section.id.present? && visited_ids.include?(section.id)
+
+        visited_ids << section.id if section.id.present?
+        section = section.parent
+      end
+
+      nil
+    end
+
+    def inherited_archived?
+      !self_archived? && archived_ancestor.present?
+    end
+
+    def lifecycle_status
+      return :self_archived if self_archived?
+      return :inherited_archived if inherited_archived?
+
+      :effectively_active
+    end
+
+    def publicly_active?
+      section = self
+      visited_ids = []
+
+      while section
+        return false if section.archived_at.present?
+        return false if section.id.present? && visited_ids.include?(section.id)
+
+        visited_ids << section.id if section.id.present?
+        section = section.parent
+      end
+
+      true
+    end
 
     def allowed?(user, action)
       return false unless trust_allowed?(user, action)
@@ -133,6 +190,32 @@ module Community
 
     def prefix_options
       Community::SectionPrefixes.serialize_options(prefixes)
+    end
+
+    private
+
+    def parent_hierarchy_is_valid
+      if parent
+        errors.add(:parent, :invalid) if parent.forum_category_id != forum_category_id
+
+        candidate = parent
+        visited_ids = []
+        while candidate
+          if id.present? && candidate.id == id
+            errors.add(:parent, :invalid)
+            break
+          end
+          break if candidate.id.present? && visited_ids.include?(candidate.id)
+
+          visited_ids << candidate.id if candidate.id.present?
+          candidate = candidate.parent
+        end
+      end
+
+      return unless persisted? && will_save_change_to_forum_category_id?
+      return unless children.where.not(forum_category_id: forum_category_id).exists?
+
+      errors.add(:category, :invalid)
     end
   end
 end

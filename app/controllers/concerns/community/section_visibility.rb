@@ -12,6 +12,7 @@ module Community
 
     def ensure_section_visible!(section)
       return if section_visible?(section)
+      raise ActiveRecord::RecordNotFound unless section.publicly_active?
 
       if !logged_in? && section.login_required?
         store_return_location

@@ -59,7 +59,9 @@ class User < ApplicationRecord
                     format: { with: URI::MailTo::EMAIL_REGEXP }
   validates :username, presence: true, uniqueness: { case_sensitive: false },
                        format: { with: /\A[a-zA-Z0-9_]+\z/ }, length: { minimum: 3, maximum: 32 }
-  validates :locale, presence: true
+  validates :locale,
+            presence: true,
+            inclusion: { in: ->(_) { Mcweb::LocaleResolver.available_locales } }
   validates :time_zone, presence: true
   validates :developer_mode_persona,
             inclusion: { in: DEVELOPER_MODE_PERSONAS },
@@ -70,6 +72,7 @@ class User < ApplicationRecord
             allow_nil: true,
             unless: :developer_mode_relaxes_password_policy?
 
+  before_validation :normalize_locale
   before_validation :track_developer_mode_relaxed_password, if: -> { password.present? }
   after_update :bump_permission_version_for_access_change,
                if: -> { saved_change_to_status? || saved_change_to_account_type? }
@@ -265,6 +268,10 @@ class User < ApplicationRecord
   end
 
   private
+
+  def normalize_locale
+    self.locale = Mcweb::LocaleResolver.normalize(locale) || locale.to_s
+  end
 
   def developer_mode_relaxes_password_policy?
     Mcweb::DeveloperMode.allow?(:relax_password_policy)

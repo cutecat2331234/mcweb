@@ -28,7 +28,6 @@ module Community
       end
 
       title = topic.title
-      note = @bookmark.note.presence || Community::InAppNotification.t("bookmark_reminder.default_note")
 
       if in_app_enabled
         Community::InAppNotification.notify(
@@ -36,7 +35,9 @@ module Community
           notification_type: "forum.bookmark_reminder",
           key: "bookmark_reminder",
           title: title,
-          note: note.truncate(200),
+          note: lambda {
+            (@bookmark.note.presence || Community::InAppNotification.t("bookmark_reminder.default_note")).truncate(200)
+          },
           metadata: {
             path: path,
             bookmark_id: @bookmark.id,

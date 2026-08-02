@@ -26,7 +26,8 @@ ROLES = {
     name: "论坛管理员",
     description: "管理论坛",
     permissions: %w[
-      forum.sections.manage forum.attachments.security.read forum.attachments.security.manage
+      forum.sections.manage forum.sections.lifecycle forum.sections.delete
+      forum.attachments.security.read forum.attachments.security.manage
       forum.attachments.security.release forum.topics.lock
       forum.topics.move forum.posts.edit_others forum.topics.edit_others
       forum.users.mute forum.users.warn forum.badges.manage forum.tags.manage
@@ -159,6 +160,7 @@ SiteSetting.set("webhook.failure_alert_threshold", "5") unless SiteSetting.exist
 SiteSetting.set("webhook.failure_alert_forum_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_forum_threshold")
 SiteSetting.set("webhook.failure_alert_store_threshold", "5") unless SiteSetting.exists?(key: "webhook.failure_alert_store_threshold")
 SiteSetting.set("webhook.failure_alert_email", "") unless SiteSetting.exists?(key: "webhook.failure_alert_email")
+SiteSetting.set("webhook.failure_alert_locale", I18n.default_locale.to_s) unless SiteSetting.exists?(key: "webhook.failure_alert_locale")
 SiteSetting.set("webhook.failure_alert_cooldown_hours", "6") unless SiteSetting.exists?(key: "webhook.failure_alert_cooldown_hours")
 SiteSetting.set("forum.digest_hour", "8") unless SiteSetting.exists?(key: "forum.digest_hour")
 SiteSetting.set("store.order_webhook_url", "") unless SiteSetting.exists?(key: "store.order_webhook_url")

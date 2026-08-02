@@ -6,6 +6,8 @@ class Identity::PermissionCatalogTest < ActiveSupport::TestCase
   NEW_SHARED_KEYS = %w[
     store.products.read
     forum.conversations.create
+    forum.sections.lifecycle
+    forum.sections.delete
     identity.groups.read
     identity.groups.manage
     identity.groups.members.assign

@@ -7,7 +7,13 @@ module Commerce
       @user = @alert.user
       @product = @alert.product
 
-      mail(to: @user.email, subject: "商品到货通知：#{@product.name}")
+      mail(to: @user.email, subject: commerce_subject(:stock_restocked, product: @product.name))
+    end
+
+    private
+
+    def commerce_subject(name, **options)
+      recipient_t("mcweb.mail.commerce.subjects.#{name}", **options)
     end
   end
 end

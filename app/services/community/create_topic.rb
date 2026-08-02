@@ -43,21 +43,8 @@ module Community
     end
 
     def call_core
-      unless Community::SectionAccess.view?(section: @section, user: @user)
-        return ServiceResult.failure(error: :section_not_available)
-      end
-
-      unless @section.allowed?(@user, :create_topic)
-        return ServiceResult.failure(error: :cannot_create_topic_in_section)
-      end
-
-      unless @section.trust_allowed?(@user, :create_topic)
-        return ServiceResult.failure(error: :trust_level_too_low)
-      end
-
-      unless @section.writable_by?(@user, :create_topic)
-        return ServiceResult.failure(error: :section_read_only)
-      end
+      access_result = create_access_result
+      return access_result if access_result.failure?
 
       rate_result = enforce_rate_limit
       return rate_result if rate_result.failure?
@@ -70,86 +57,105 @@ module Community
       inline_upload_result = nil
       request_result = nil
       spam_result = nil
+      state_result = nil
       replayed = false
       needs_approval = Community::RequiresPostApproval.required_for?(user: @user)
       topic_status = needs_approval ? "hidden" : "published"
       post_status = needs_approval ? "pending_approval" : "published"
-      Community::Topic.transaction do
-        request_result = Community::ContentIdempotency.claim(
-          user: @user,
-          operation: "topic.create",
-          key: @idempotency_key,
-          payload: idempotency_payload
-        )
-        raise ActiveRecord::Rollback if request_result.failure?
+      section_lock_attempts = 0
+      begin
+        Community::Topic.transaction do
+          @section = Community::SectionHierarchyLock.lock!(@section).sole
+          state_result = create_access_result
+          raise ActiveRecord::Rollback if state_result.failure?
 
-        if request_result.value[:replay]
-          topic = request_result.value[:resource]
-          replayed = true
-          next
+          request_result = Community::ContentIdempotency.claim(
+            user: @user,
+            operation: "topic.create",
+            key: @idempotency_key,
+            payload: idempotency_payload
+          )
+          raise ActiveRecord::Rollback if request_result.failure?
+
+          if request_result.value[:replay]
+            topic = request_result.value[:resource]
+            replayed = true
+            next
+          end
+
+          spam_result = check_spam
+          raise ActiveRecord::Rollback if spam_result.failure?
+
+          attachment_result = Community::PreparePostAttachments.call(
+            user: @user,
+            attachment_ids: @attachment_ids
+          )
+          raise ActiveRecord::Rollback if attachment_result.failure?
+
+          topic = Community::Topic.create!(
+            public_id: generate_public_id,
+            section: @section,
+            user: @user,
+            title: @title,
+            prefix: valid_prefix,
+            status: topic_status,
+            last_posted_at: Time.current,
+            last_post_user: @user,
+            replies_count: 0
+          )
+
+          opening_post = Community::Post.create!(
+            topic: topic,
+            user: @user,
+            floor_number: 1,
+            body: @body,
+            status: post_status
+          )
+          inline_upload_result = Community::BindInlineUploads.call(
+            user: @user,
+            post: opening_post,
+            body: @body
+          )
+          raise ActiveRecord::Rollback if inline_upload_result.failure?
+
+          if @tag_names.present?
+            tag_result = Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user)
+            raise ActiveRecord::Rollback unless tag_result.success?
+          end
+          create_poll!(topic) if @poll_question && @poll_options.size >= 2
+          field_result = Community::SyncTopicFieldValues.call(
+            topic: topic,
+            user: @user,
+            values: @custom_fields,
+            require_required: true
+          )
+          raise ActiveRecord::Rollback unless field_result.success?
+
+          attachment_result = Community::LinkPostAttachments.call(
+            user: @user,
+            post: opening_post,
+            attachment_ids: @attachment_ids
+          )
+          raise ActiveRecord::Rollback if attachment_result.failure?
+
+          Community::Subscription.subscribe!(@user, topic)
+          Community::ReadState.mark_read!(@user, topic, floor: 1)
+          request_result.value[:request]&.complete!(topic)
         end
-
-        spam_result = check_spam
-        raise ActiveRecord::Rollback if spam_result.failure?
-
-        attachment_result = Community::PreparePostAttachments.call(
-          user: @user,
-          attachment_ids: @attachment_ids
-        )
-        raise ActiveRecord::Rollback if attachment_result.failure?
-
-        topic = Community::Topic.create!(
-          public_id: generate_public_id,
-          section: @section,
-          user: @user,
-          title: @title,
-          prefix: valid_prefix,
-          status: topic_status,
-          last_posted_at: Time.current,
-          last_post_user: @user,
-          replies_count: 0
-        )
-
-        opening_post = Community::Post.create!(
-          topic: topic,
-          user: @user,
-          floor_number: 1,
-          body: @body,
-          status: post_status
-        )
-        inline_upload_result = Community::BindInlineUploads.call(
-          user: @user,
-          post: opening_post,
-          body: @body
-        )
-        raise ActiveRecord::Rollback if inline_upload_result.failure?
-
-        if @tag_names.present?
-          tag_result = Community::SyncTopicTags.call(topic: topic, tag_names: @tag_names, user: @user)
-          raise ActiveRecord::Rollback unless tag_result.success?
+      rescue Community::SectionHierarchyLock::HierarchyChanged, ActiveRecord::Deadlocked
+        section_lock_attempts += 1
+        fresh_section = Community::Section.find_by(id: @section.id)
+        if section_lock_attempts <= 2 && fresh_section
+          @section = fresh_section
+          retry
         end
-        create_poll!(topic) if @poll_question && @poll_options.size >= 2
-        field_result = Community::SyncTopicFieldValues.call(
-          topic: topic,
-          user: @user,
-          values: @custom_fields,
-          require_required: true
-        )
-        raise ActiveRecord::Rollback unless field_result.success?
-
-        attachment_result = Community::LinkPostAttachments.call(
-          user: @user,
-          post: opening_post,
-          attachment_ids: @attachment_ids
-        )
-        raise ActiveRecord::Rollback if attachment_result.failure?
-
-        Community::Subscription.subscribe!(@user, topic)
-        Community::ReadState.mark_read!(@user, topic, floor: 1)
-        request_result.value[:request]&.complete!(topic)
+        state_result = ServiceResult.failure(error: :section_not_available)
+      rescue ActiveRecord::RecordNotFound
+        state_result = ServiceResult.failure(error: :section_not_available)
       end
 
       return request_result if request_result&.failure?
+      return state_result if state_result&.failure?
       return spam_result if spam_result&.failure?
       return attachment_result if attachment_result&.failure?
       return inline_upload_result if inline_upload_result&.failure?
@@ -175,6 +181,26 @@ module Community
     end
 
     private
+
+    def create_access_result
+      unless Community::SectionAccess.view?(section: @section, user: @user)
+        return ServiceResult.failure(error: :section_not_available)
+      end
+
+      unless @section.allowed?(@user, :create_topic)
+        return ServiceResult.failure(error: :cannot_create_topic_in_section)
+      end
+
+      unless @section.trust_allowed?(@user, :create_topic)
+        return ServiceResult.failure(error: :trust_level_too_low)
+      end
+
+      unless @section.writable_by?(@user, :create_topic)
+        return ServiceResult.failure(error: :section_read_only)
+      end
+
+      ServiceResult.success
+    end
 
     def plugin_service_decorators_available?
       defined?(Mcweb::Plugins) && Mcweb::Plugins.respond_to?(:call_service)

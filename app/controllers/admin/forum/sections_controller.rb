@@ -3,28 +3,53 @@
 module Admin
   module Forum
     class SectionsController < BaseController
-      before_action -> { require_permission("forum.sections.manage") }
-      before_action :set_section, only: %i[show edit update]
+      SECTION_BROWSE_PERMISSIONS = %w[
+        forum.sections.manage forum.sections.lifecycle forum.sections.delete
+      ].freeze
+
+      before_action :require_section_browse_permission, only: %i[index show lifecycle]
+      before_action -> { require_permission("forum.sections.manage") },
+        only: %i[new create edit update]
+      before_action -> { require_permission("forum.sections.lifecycle") },
+        only: %i[archive restore migrate_topics]
+      before_action -> { require_permission("forum.topics.move") },
+        only: %i[migrate_topics]
+      before_action -> { require_permission("forum.sections.delete") },
+        only: %i[destroy]
+      before_action :set_section, only: %i[show edit update lifecycle archive restore migrate_topics destroy]
 
       def index
-        sections = ::Community::Section.ordered.includes(:category)
+        all_sections = ::Community::Section.ordered.includes(:category).to_a
+        selected_status = params[:status].presence_in(section_statuses) || "all"
+        sections = if selected_status == "all"
+          all_sections
+        else
+          all_sections.select { |section| section.lifecycle_status.to_s == selected_status }
+        end
+        topic_counts = ::Community::Topic.where(forum_section_id: all_sections.map(&:id)).group(:forum_section_id).count
+        status_counts = all_sections.group_by { |section| section.lifecycle_status.to_s }.transform_values(&:size)
 
         render inertia: "Admin/Generic/Index", props: {
           title: forum_t("sections.title"),
           columns: [
             admin_column(:name, t("mcweb.admin.forum.col_name"), link: true),
             admin_column(:slug, t("mcweb.admin.forum.col_slug")),
-            admin_column(:category, t("mcweb.admin.forum.col_category"))
+            admin_column(:category, t("mcweb.admin.forum.col_category")),
+            admin_column(:status, forum_t("sections.field_status")),
+            admin_column(:topics, forum_t("sections.field_topics_count"))
           ],
           rows: sections.map do |section|
             admin_row(
               name: section.name,
               slug: section.slug,
               category: section.category&.name,
-              url: admin_forum_section_path(section)
+              status: section_status_label(section),
+              topics: topic_counts.fetch(section.id, 0).to_s,
+              url: admin_forum_section_path(section.id)
             )
           end,
-          actions: [ { label: t("mcweb.admin.forum.action_new_section"), href: new_admin_forum_section_path } ]
+          actions: section_index_actions,
+          statusTabs: section_status_tabs(selected_status, status_counts, all_sections.length)
         }
       end
 
@@ -34,6 +59,10 @@ module Admin
           subtitle: @section.slug,
           fields: [
             { label: forum_t("sections.field_category"), value: @section.category&.name || forum_na },
+            { label: forum_t("sections.field_status"), value: section_status_label(@section) },
+            { label: forum_t("sections.field_archived_at"), value: @section.archived_at ? l(@section.archived_at, format: :short) : forum_na },
+            { label: forum_t("sections.field_archived_by"), value: @section.archived_by&.username || forum_na },
+            { label: forum_t("sections.field_archived_reason"), value: @section.archived_reason.presence || forum_na },
             { label: t("mcweb.admin.forum.field_description"), value: @section.description || forum_na },
             { label: t("mcweb.admin.forum.col_position"), value: @section.position.to_s },
             { label: forum_t("sections.field_create_permission"), value: forum_permission_label(@section.permissions["create_topic"]) },
@@ -54,7 +83,7 @@ module Admin
             { label: forum_t("sections.field_moderators"), value: forum_list_join(@section.moderators.order(:username).pluck(:username)).presence || forum_na }
           ],
           backUrl: admin_forum_sections_path,
-          actions: [ { label: t("mcweb.admin.forum.action_edit"), href: edit_admin_forum_section_path(@section) } ]
+          actions: section_show_actions
         }
       end
 
@@ -68,7 +97,7 @@ module Admin
           mod_result = sync_section_moderators(section)
           notice = t("mcweb.flash.created", resource: t("mcweb.resources.section"))
           notice = "#{notice} #{mod_result.error}" if mod_result&.failure?
-          redirect_to admin_forum_section_path(section), notice: notice
+          redirect_to admin_forum_section_path(section.id), notice: notice
         else
           render inertia: "Admin/Forum/Sections/Form", props: form_props(section), status: :unprocessable_entity
         end
@@ -83,16 +112,204 @@ module Admin
           mod_result = sync_section_moderators(@section)
           notice = t("mcweb.flash.updated", resource: t("mcweb.resources.section"))
           notice = "#{notice} #{mod_result.error}" if mod_result&.failure?
-          redirect_to admin_forum_section_path(@section), notice: notice
+          redirect_to admin_forum_section_path(@section.id), notice: notice
         else
           render inertia: "Admin/Forum/Sections/Form", props: form_props(@section), status: :unprocessable_entity
         end
       end
 
+      def lifecycle
+        impact = ::Community::SectionLifecycleImpact.call(section: @section)
+        archived_ancestor = @section.archived_ancestor
+
+        render inertia: "Admin/Forum/Sections/Lifecycle", props: {
+          title: forum_t("sections.lifecycle_title", name: @section.name),
+          section: {
+            id: @section.id,
+            name: @section.name,
+            slug: @section.slug,
+            archived: @section.self_archived?,
+            self_archived: @section.self_archived?,
+            inherited_archived: @section.inherited_archived?,
+            effectively_active: @section.publicly_active?,
+            lifecycle_status: @section.lifecycle_status.to_s,
+            archived_ancestor: archived_ancestor && {
+              id: archived_ancestor.id,
+              name: archived_ancestor.name,
+              slug: archived_ancestor.slug,
+              lifecycle_url: lifecycle_admin_forum_section_path(archived_ancestor.id)
+            },
+            archived_at: @section.archived_at&.iso8601,
+            archived_by: @section.archived_by&.username,
+            archived_reason: @section.archived_reason
+          },
+          impact: impact,
+          destroyBlockers: destroy_blockers(impact),
+          archiveUrl: archive_admin_forum_section_path(@section.id),
+          restoreUrl: restore_admin_forum_section_path(@section.id),
+          destroyUrl: admin_forum_section_path(@section.id),
+          migrateTopicsUrl: migrate_topics_admin_forum_section_path(@section.id),
+          migrationTargets: migration_targets,
+          canManageLifecycle: current_user.permission?("forum.sections.lifecycle"),
+          canMigrateTopics: current_user.permission?("forum.sections.lifecycle") &&
+            current_user.permission?("forum.topics.move") && !@section.publicly_active?,
+          canDelete: current_user.permission?("forum.sections.delete"),
+          confirmations: {
+            archive: lifecycle_confirmation("archive"),
+            restore: lifecycle_confirmation("restore"),
+            destroy: lifecycle_confirmation("destroy")
+          },
+          backUrl: admin_forum_section_path(@section.id)
+        }
+      end
+
+      def archive
+        run_lifecycle_operation("archive")
+      end
+
+      def restore
+        run_lifecycle_operation("restore")
+      end
+
+      def migrate_topics
+        target = ::Community::Section.find_by(id: params[:target_section_id])
+        unless target
+          redirect_to lifecycle_admin_forum_section_path(@section.id),
+            alert: forum_t("sections.migration_target_required")
+          return
+        end
+
+        result = ::Community::MigrateArchivedSectionTopics.call(
+          source_section: @section,
+          target_section: target,
+          actor: current_user,
+          reason: params[:reason],
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent,
+          request_id: request.request_id
+        )
+
+        if result.success?
+          redirect_to lifecycle_admin_forum_section_path(@section.id),
+            notice: forum_t(
+              "sections.migration_success",
+              count: result.value.fetch(:moved_topics).length,
+              target: result.value.fetch(:target_section).name
+            )
+        else
+          redirect_to lifecycle_admin_forum_section_path(@section.id), alert: result.error
+        end
+      end
+
+      def destroy
+        run_lifecycle_operation("destroy")
+      end
+
       private
+
+      def require_section_browse_permission
+        require_login
+        return if performed?
+        return if SECTION_BROWSE_PERMISSIONS.any? { |permission| current_user.permission?(permission) }
+
+        redirect_to root_path, alert: t("mcweb.flash.permission_denied")
+      end
 
       def set_section
         @section = ::Community::Section.find(params[:id])
+      end
+
+      def run_lifecycle_operation(operation)
+        result = ::Community::ManageSectionLifecycle.call(
+          section: @section,
+          actor: current_user,
+          operation: operation,
+          reason: params[:reason],
+          confirmation: params[:confirmation],
+          ip_address: request.remote_ip,
+          user_agent: request.user_agent,
+          request_id: request.request_id
+        )
+
+        if result.success?
+          if operation == "destroy"
+            redirect_to admin_forum_sections_path, notice: forum_t("sections.lifecycle_success_destroy")
+          else
+            redirect_to lifecycle_admin_forum_section_path(@section.id),
+              notice: forum_t("sections.lifecycle_success_#{operation}")
+          end
+        else
+          redirect_to lifecycle_admin_forum_section_path(@section.id), alert: result.error
+        end
+      end
+
+      def lifecycle_confirmation(operation)
+        ::Community::ManageSectionLifecycle.confirmation_for(
+          section: @section,
+          operation: operation
+        )
+      end
+
+      def destroy_blockers(impact)
+        blockers = []
+        blockers << forum_t("sections.blocker_not_archived") if @section.archived_at.blank?
+        blockers << forum_t("sections.blocker_descendants", count: impact.fetch(:descendants)) if impact.fetch(:descendants).positive?
+        blockers << forum_t("sections.blocker_topics", count: impact.fetch(:topics)) if impact.fetch(:topics).positive?
+        if impact.fetch(:moderation_cases).positive?
+          blockers << forum_t("sections.blocker_moderation_cases", count: impact.fetch(:moderation_cases))
+        end
+        blockers
+      end
+
+      def section_statuses
+        %w[effectively_active self_archived inherited_archived]
+      end
+
+      def section_status_label(section)
+        forum_t("sections.status_#{section.lifecycle_status}")
+      end
+
+      def section_status_tabs(selected_status, status_counts, total)
+        ([ "all" ] + section_statuses).map do |status|
+          {
+            label: forum_t("sections.filter_#{status}"),
+            href: admin_forum_sections_path(status: status == "all" ? nil : status),
+            active: selected_status == status,
+            count: status == "all" ? total : status_counts.fetch(status, 0)
+          }
+        end
+      end
+
+      def section_show_actions
+        actions = []
+        if current_user.permission?("forum.sections.manage")
+          actions << { label: t("mcweb.admin.forum.action_edit"), href: edit_admin_forum_section_path(@section.id) }
+        end
+        actions << {
+          label: forum_t("sections.action_lifecycle"),
+          href: lifecycle_admin_forum_section_path(@section.id),
+          variant: "outline"
+        }
+        actions
+      end
+
+      def section_index_actions
+        return [] unless current_user.permission?("forum.sections.manage")
+
+        [ { label: t("mcweb.admin.forum.action_new_section"), href: new_admin_forum_section_path } ]
+      end
+
+      def migration_targets
+        return [] unless current_user.permission?("forum.sections.lifecycle")
+        return [] unless current_user.permission?("forum.topics.move")
+
+        ::Community::Section.effectively_active.includes(:category).where.not(id: @section.id).order(:name).map do |section|
+          {
+            id: section.id,
+            name: section.name,
+            category: section.category&.name
+          }
+        end
       end
 
       def section_params
@@ -199,8 +416,8 @@ module Admin
           tags: ::Community::Tag.order(:name).map { |tag| { id: tag.id, name: tag.name } },
           tagGroups: ::Community::TagGroup.ordered.map { |g| { id: g.id, name: g.name } },
           categories: ::Community::Category.order(:name).map { |c| { id: c.id, name: c.name } },
-          parentSections: ::Community::Section.roots.where.not(id: section.id).order(:name).map { |s| { id: s.id, name: s.name } },
-          submitUrl: section.persisted? ? admin_forum_section_path(section) : admin_forum_sections_path,
+          parentSections: ::Community::Section.active.roots.where.not(id: section.id).order(:name).map { |s| { id: s.id, name: s.name } },
+          submitUrl: section.persisted? ? admin_forum_section_path(section.id) : admin_forum_sections_path,
           method: section.persisted? ? "patch" : "post",
           backUrl: admin_forum_sections_path
         }

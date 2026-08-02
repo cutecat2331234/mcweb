@@ -1,4 +1,4 @@
 <p><%= t("mcweb.mail.greeting_formal", username: @user.username) %></p>
 <p><%= t("mcweb.mail.commerce.merchant_review_reply.body", product: @product.name) %></p>
-<blockquote><%= simple_format(@reply.body) %></blockquote>
+<blockquote><%= simple_format(@review.merchant_reply) %></blockquote>
 <p><a href="<%= @url %>"><%= t("mcweb.mail.commerce.view_product_reviews") %></a></p>

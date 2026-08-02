@@ -37,7 +37,7 @@ jobs:
           echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo "$VERSION_CODENAME")-pgdg main" \
             | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
           sudo apt-get update
-          sudo apt-get install --no-install-recommends -y libvips-dev postgresql-client-18
+          sudo apt-get install --no-install-recommends -y fonts-noto-cjk libvips-dev postgresql-client-18
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0.6"
@@ -68,7 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install libvips
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y fonts-noto-cjk libvips-dev
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0.6"

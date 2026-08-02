@@ -46,6 +46,7 @@ module Admin
         webhook.failure_alert_forum_threshold
         webhook.failure_alert_store_threshold
         webhook.failure_alert_email
+        webhook.failure_alert_locale
         webhook.failure_alert_cooldown_hours
       ].freeze
 
@@ -212,6 +213,7 @@ module Admin
         when "webhook.failure_alert_forum_threshold" then "5"
         when "webhook.failure_alert_store_threshold" then "5"
         when "webhook.failure_alert_email" then ""
+        when "webhook.failure_alert_locale" then I18n.default_locale.to_s
         when "webhook.failure_alert_cooldown_hours" then "6"
         else "0"
         end
@@ -241,6 +243,7 @@ module Admin
         return "text" if key == "forum.event_webhook_url"
         return "text" if key == "forum.event_webhook_events"
         return "text" if key == "webhook.failure_alert_email"
+        return "text" if key == "webhook.failure_alert_locale"
 
         "text"
       end

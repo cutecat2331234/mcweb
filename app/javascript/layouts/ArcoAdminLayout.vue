@@ -183,7 +183,11 @@ const nav = computed<NavGroup[]>(() => {
         {
           label: t('admin.forumSections'),
           href: adminRoutes.forumSections,
-          permissionKey: 'forum.sections.manage',
+          permissionAny: [
+            'forum.sections.manage',
+            'forum.sections.lifecycle',
+            'forum.sections.delete',
+          ],
         },
         {
           label: t('admin.forumCategories'),

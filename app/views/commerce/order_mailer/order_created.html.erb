@@ -1,7 +1,7 @@
 <h2><%= t("mcweb.mail.commerce.order_heading") %></h2>
 <p><%= t("mcweb.mail.greeting_formal", username: @order.user.username) %></p>
 <p><%= t("mcweb.mail.commerce.order_number", number: @order.order_number) %></p>
-<p><%= t("mcweb.mail.commerce.order_status", status: @order.status) %></p>
+<p><%= t("mcweb.mail.commerce.order_status", status: t("mcweb.labels.order_status.#{@order.status}", default: @order.status.to_s.humanize)) %></p>
 <% if @pay_url.present? %>
   <p><%= t("mcweb.mail.commerce.pay_before", expires: @expires_label) %></p>
 <% end %>

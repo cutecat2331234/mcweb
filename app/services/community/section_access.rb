@@ -11,12 +11,13 @@ module Community
 
     def view?(section:, user:)
       section.present? &&
+        section.publicly_active? &&
         section.visible_to?(user) &&
         section.allowed?(user, :view)
     end
 
     def visible_ids(user:)
-      candidates = Community::Section.all
+      candidates = Community::Section.active
       candidates = candidates.where(login_required: false) unless user
 
       candidates.filter_map { |section| section.id if view?(section: section, user: user) }

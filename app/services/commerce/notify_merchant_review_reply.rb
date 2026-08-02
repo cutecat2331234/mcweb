@@ -14,8 +14,8 @@ module Commerce
       Commerce::NotifyOrderEvent.call(
         user: user,
         notification_type: "commerce.merchant_review_reply",
-        title: Commerce::InAppNotification.t("merchant_review_reply.title"),
-        body: Commerce::InAppNotification.t("merchant_review_reply.body", product: product.name),
+        title: -> { Commerce::InAppNotification.t("merchant_review_reply.title") },
+        body: -> { Commerce::InAppNotification.t("merchant_review_reply.body", product: product.name) },
         path: path
       )
 

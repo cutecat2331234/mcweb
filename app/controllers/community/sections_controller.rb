@@ -220,7 +220,9 @@ module Community
 
     def toggle_subscription
       require_login
+      return if performed?
       section = Community::Section.find_by!(slug: params[:id])
+      ensure_section_visible!(section)
       result = Community::ToggleSectionSubscription.call(user: current_user, section: section)
 
       if result.success?
@@ -233,7 +235,9 @@ module Community
 
     def update_subscription
       require_login
+      return if performed?
       section = Community::Section.find_by!(slug: params[:id])
+      ensure_section_visible!(section)
       result = Community::SetSubscriptionLevel.call(
         user: current_user,
         subscribable: section,
@@ -250,7 +254,9 @@ module Community
 
     def mark_all_read
       require_login
+      return if performed?
       section = Community::Section.find_by!(slug: params[:id])
+      ensure_section_visible!(section)
       result = Community::MarkSectionRead.call(user: current_user, section: section)
 
       if result.success?
@@ -262,7 +268,9 @@ module Community
 
     def toggle_mute
       require_login
+      return if performed?
       section = Community::Section.find_by!(slug: params[:id])
+      ensure_section_visible!(section)
       result = Community::ToggleSectionMute.call(user: current_user, section: section)
 
       if result.success?

@@ -15,16 +15,16 @@ module Commerce
         user = alert.user
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.price_drop")
 
-        Notification.notify!(
+        Commerce::InAppNotification.notify(
           user: user,
           notification_type: "commerce.price_drop",
-          title: Commerce::InAppNotification.t("price_drop.title"),
-          body: Commerce::InAppNotification.t(
-            "price_drop.body",
+          title_key: "price_drop.title",
+          body_key: "price_drop.body",
+          body_options: {
             product: product.name,
-            current: format_price(current_price, product.currency),
-            was: format_price(alert.baseline_price_cents, product.currency)
-          ),
+            current: -> { format_price(current_price, product.currency) },
+            was: -> { format_price(alert.baseline_price_cents, product.currency) }
+          },
           metadata: {
             path: "/app/store/products/#{product.public_id}",
             product_public_id: product.public_id
@@ -47,8 +47,7 @@ module Commerce
     private
 
     def format_price(cents, currency)
-      unit = currency == "CNY" ? "¥" : "$"
-      ActionController::Base.helpers.number_to_currency(cents / 100.0, unit: unit)
+      ApplicationController.helpers.format_currency_from_cents(cents, currency)
     end
   end
 end

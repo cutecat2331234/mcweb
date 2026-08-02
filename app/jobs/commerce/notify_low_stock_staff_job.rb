@@ -21,11 +21,13 @@ module Commerce
       recipients.find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.low_stock")
 
-        Notification.notify!(
+        Commerce::InAppNotification.notify(
           user: user,
           notification_type: "commerce.low_stock",
-          title: Commerce::InAppNotification.t("low_stock_staff.title", product: product.name),
-          body: Commerce::InAppNotification.t(variant_id ? "low_stock_staff_variant.body" : "low_stock_staff.body", product: product.name),
+          title_key: "low_stock_staff.title",
+          body_key: variant_id ? "low_stock_staff_variant.body" : "low_stock_staff.body",
+          title_options: { product: product.name },
+          body_options: { product: product.name },
           metadata: {
             product_id: product.public_id,
             path: "/admin/store/products/#{product.public_id}"

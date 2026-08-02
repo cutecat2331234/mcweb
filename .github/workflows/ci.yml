@@ -36,7 +36,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install libvips
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y fonts-noto-cjk libvips-dev
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1
@@ -93,7 +93,11 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Install libvips
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y fonts-noto-cjk libvips-dev
+      - name: Verify Unicode receipt fonts
+        run: |
+          test -f /usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc
+          test -f /usr/share/fonts/opentype/noto/NotoSansCJK-Bold.ttc
       - uses: ruby/setup-ruby@v1
         with:
           ruby-version: "4.0.6"
@@ -152,7 +156,7 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Install libvips
-        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y libvips-dev
+        run: sudo apt-get update && sudo apt-get install --no-install-recommends -y fonts-noto-cjk libvips-dev
 
       - name: Set up Ruby
         uses: ruby/setup-ruby@v1

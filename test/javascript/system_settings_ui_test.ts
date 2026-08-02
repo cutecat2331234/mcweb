@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import {
+  KNOWN_SYSTEM_SETTING_KEYS,
   systemSettingBooleanStorage,
   systemSettingGroup,
   systemSettingInputType,
@@ -20,6 +21,8 @@ test('system settings use semantic groups and controls', () => {
   assert.equal(systemSettingGroup('store.shipping_methods'), 'store')
   assert.equal(systemSettingGroup('minecraft.graceful_stop.enabled'), 'minecraft')
   assert.equal(systemSettingGroup('webhook.failure_alert_email'), 'integrations')
+  assert.equal(systemSettingGroup('webhook.failure_alert_locale'), 'integrations')
+  assert(KNOWN_SYSTEM_SETTING_KEYS.includes('webhook.failure_alert_locale'))
 
   assert.equal(systemSettingInputType('features.forum.enabled'), 'boolean')
   assert.equal(systemSettingInputType('forum.vapid_private_key'), 'password')

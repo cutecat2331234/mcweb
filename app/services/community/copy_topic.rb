@@ -13,15 +13,38 @@ module Community
 
     def call
       new_topic = nil
-      @topic.with_lock do
-        unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
-          return ServiceResult.failure(error: :you_are_not_authorized_to_copy_this_topic)
-        end
+      section_lock_attempts = 0
+      begin
+        Community::Topic.transaction do
+          @topic, _source_section, @section = Community::SectionHierarchyLock.lock_topic!(
+            @topic,
+            @section
+          )
+          unless @section.publicly_active?
+            return ServiceResult.failure(error: :destination_section_not_available)
+          end
 
-        new_topic = duplicate_topic
-        duplicate_tags(new_topic)
-        duplicate_posts(new_topic)
-        duplicate_topic_fields(new_topic)
+          unless Community::SectionModeration.can_move_topic?(user: @user, topic: @topic, to_section: @section)
+            return ServiceResult.failure(error: :you_are_not_authorized_to_copy_this_topic)
+          end
+
+          new_topic = duplicate_topic
+          duplicate_tags(new_topic)
+          duplicate_posts(new_topic)
+          duplicate_topic_fields(new_topic)
+        end
+      rescue Community::SectionHierarchyLock::TopicSectionChanged,
+        Community::SectionHierarchyLock::HierarchyChanged,
+        ActiveRecord::Deadlocked
+        section_lock_attempts += 1
+        fresh_topic = Community::Topic.with_discarded.find_by(id: @topic.id)
+        fresh_section = Community::Section.find_by(id: @section.id)
+        if section_lock_attempts <= 2 && fresh_topic && fresh_section
+          @topic = fresh_topic
+          @section = fresh_section
+          retry
+        end
+        return ServiceResult.failure(error: :topic_not_available)
       end
 
       Administration::AuditLogger.call(

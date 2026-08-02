@@ -26,10 +26,11 @@ module Commerce
       User.where(id: recipient_ids).find_each do |user|
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "commerce.new_product_question")
 
-        Notification.notify!(
+        Commerce::InAppNotification.notify(
           user: user,
           notification_type: "commerce.new_product_question",
-          title: Commerce::InAppNotification.t("new_product_question.title", product: @product.name),
+          title_key: "new_product_question.title",
+          title_options: { product: @product.name },
           body: @question.body.truncate(120),
           metadata: {
             path: "/app/store/products/#{@product.public_id}",

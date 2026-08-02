@@ -22,6 +22,7 @@ const props = defineProps<{
   submitUrl: string
   method?: 'post' | 'patch'
   backUrl: string
+  form_errors?: Record<string, string[]>
 }>()
 
 const form = useForm({ gift_card: { ...props.gift_card } })
@@ -34,7 +35,8 @@ const expiresAt = computed<string | undefined>({
 })
 
 function fieldError(field: string) {
-  return form.errors[field] || form.errors[`gift_card.${field}`]
+  const inertiaError = form.errors[field] || form.errors[`gift_card.${field}`]
+  return props.form_errors?.[field]?.join(' ') || (inertiaError ? String(inertiaError) : '')
 }
 
 function normalizeEmptyNumbers(record: object, fields: string[]) {

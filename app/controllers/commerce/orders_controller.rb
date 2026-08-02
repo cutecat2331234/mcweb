@@ -111,7 +111,11 @@ module Commerce
       result = Commerce::GenerateOrderReceiptPdf.call(order: @order)
       if result.success?
         send_data result.value,
-                  filename: "receipt-#{@order.order_number}.pdf",
+                  filename: I18n.t(
+                    "mcweb.mail.commerce.receipt.filename",
+                    number: @order.order_number,
+                    locale: Mcweb::LocaleResolver.resolve(@order.user&.locale)
+                  ),
                   type: "application/pdf",
                   disposition: "attachment"
       else

@@ -10,6 +10,7 @@ module Operations
     include ActiveJob::TestHelper
 
     setup do
+      DeveloperModeRuntimeState.delete_all
       AuditDeveloperModeConfiguration.reset_process_cache!
     end
 
@@ -26,6 +27,12 @@ module Operations
       ) do
         AuditDeveloperModeConfiguration.call(settings: disabled)
       end
+      assert_no_difference(
+        -> { AuditLog.by_action("system.developer_mode_configuration_changed").count }
+      ) do
+        AuditDeveloperModeConfiguration.call(settings: disabled)
+      end
+      AuditDeveloperModeConfiguration.reset_process_cache!
       assert_no_difference(
         -> { AuditLog.by_action("system.developer_mode_configuration_changed").count }
       ) do

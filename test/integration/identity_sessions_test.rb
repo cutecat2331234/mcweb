@@ -38,6 +38,121 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "邮箱或密码错误"
   end
 
+  test "totp account moves to a separate verification page before creating a session" do
+    @user.setup_totp!
+    @user.update!(totp_enabled: true)
+
+    assert_no_difference -> { @user.sessions.count } do
+      post identity_session_path, params: {
+        session: { email: @user.email, password: "password123", remember_me: "0" }
+      }
+    end
+
+    assert_response :see_other
+    assert_redirected_to identity_session_two_factor_path
+    assert_not session[:session_token].present?
+    assert_not cookies[:session_token].present?
+
+    follow_redirect!
+    assert_response :success
+    assert_includes response.body, "Identity/Sessions/TwoFactor"
+  end
+
+  test "valid totp completes the pending login and preserves return destination" do
+    @user.setup_totp!
+    @user.update!(totp_enabled: true)
+    get admin_root_path
+    assert_redirected_to identity_sign_in_path
+    assert_equal "/admin", session[:return_to]
+
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "password123", remember_me: "1" }
+    }
+    assert_redirected_to identity_session_two_factor_path
+
+    post identity_session_two_factor_path, params: {
+      two_factor: { code: ROTP::TOTP.new(@user.totp_secret).now }
+    }
+
+    assert_redirected_to "/admin"
+    assert session[:session_token].present? || cookies[:session_token].present?
+    assert @user.sessions.order(created_at: :desc).first.remember_me?
+  end
+
+  test "invalid totp stays on the separate verification page" do
+    @user.setup_totp!
+    @user.update!(totp_enabled: true)
+
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "password123" }
+    }
+    post identity_session_two_factor_path, params: {
+      two_factor: { code: "000000" }
+    }
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Identity/Sessions/TwoFactor"
+    assert_includes response.body, I18n.t("mcweb.services.errors.invalid_two_factor_code")
+    assert_not session[:session_token].present?
+    assert_not cookies[:session_token].present?
+  end
+
+  test "recovery code completes the pending login and is consumed once" do
+    @user.setup_totp!
+    @user.update!(totp_enabled: true)
+    recovery_code = @user.recovery_codes.first
+
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "password123" }
+    }
+    post identity_session_two_factor_path, params: {
+      two_factor: { code: recovery_code }
+    }
+
+    assert_redirected_to forum_sections_path
+    assert_equal 9, @user.reload.recovery_codes.size
+    assert_not_includes @user.recovery_codes, recovery_code
+  end
+
+  test "expired or missing second-factor challenge returns to password login" do
+    @user.setup_totp!
+    @user.update!(totp_enabled: true)
+
+    get identity_session_two_factor_path
+    assert_response :see_other
+    assert_redirected_to identity_sign_in_path
+
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "password123" }
+    }
+    assert_redirected_to identity_session_two_factor_path
+
+    travel 6.minutes do
+      post identity_session_two_factor_path, params: {
+        two_factor: { code: ROTP::TOTP.new(@user.totp_secret).now }
+      }
+    end
+
+    assert_response :see_other
+    assert_redirected_to identity_sign_in_path
+    assert_equal I18n.t("mcweb.flash.two_factor_challenge_expired"), flash[:alert]
+    assert_not session[:session_token].present?
+  end
+
+  test "wrong password does not reveal totp state or create a pending challenge" do
+    @user.setup_totp!
+    @user.update!(totp_enabled: true)
+
+    post identity_session_path, params: {
+      session: { email: @user.email, password: "wrong-password" }
+    }
+
+    assert_response :unprocessable_entity
+    assert_includes response.body, "Identity/Sessions/New"
+    assert_not_includes response.body, "Identity/Sessions/TwoFactor"
+    assert_nil session[:identity_pending_second_factor]
+  end
+
   test "sign in without csrf token is rejected when forgery protection enabled" do
     @old_forgery = ActionController::Base.allow_forgery_protection
     ActionController::Base.allow_forgery_protection = true

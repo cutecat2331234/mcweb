@@ -3070,6 +3070,15 @@ export default {
       createAccount: '创建账户',
       lostTwoFactor: '无法使用两步验证？',
     },
+    twoFactor: {
+      title: '两步验证',
+      subtitle: '输入验证器生成的验证码或账户恢复码',
+      code: '验证码或恢复码',
+      verify: '继续登录',
+      failed: '验证失败',
+      backToSignIn: '返回登录',
+      recover: '无法使用验证器？',
+    },
     register: {
       title: '创建账户',
       subtitle: '加入 Mcweb 社区',

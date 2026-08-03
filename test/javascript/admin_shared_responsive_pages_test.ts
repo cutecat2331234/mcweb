@@ -66,13 +66,15 @@ test('dashboard relies on Arco responsive primitives with one bounded semantic s
   assertNoHardReload(source)
 })
 
-test('admin entry registers Arco directly without leaking portal styles into the admin bundle', () => {
+test('admin entry resolves Arco on demand without leaking portal styles into the admin bundle', () => {
   const source = javascriptSource('entrypoints/admin.ts')
+  const viteConfig = fs.readFileSync(path.join(projectRoot, 'vite.config.ts'), 'utf8')
 
-  assert.match(source, /import ArcoVue from '@arco-design\/web-vue'/)
-  assert.match(source, /import '@arco-design\/web-vue\/dist\/arco\.css'/)
   assert.match(source, /import '@\/styles\/arco-admin\.css'/)
   assert.doesNotMatch(source, /@mcweb\/ui/)
   assert.doesNotMatch(source, /portal\.css/)
-  assert.match(source, /\.use\(ArcoVue\)/)
+  assert.doesNotMatch(source, /ArcoVue/)
+  assert.doesNotMatch(source, /@arco-design\/web-vue\/dist\/arco\.css/)
+  assert.match(viteConfig, /ArcoResolver\(\{/)
+  assert.match(viteConfig, /importStyle:\s*['"]css['"]/)
 })

@@ -13,7 +13,7 @@ import {
 } from 'reka-ui'
 import Button from '@/components/ui/Button.vue'
 import { cn } from '@/lib/utils'
-import { normalizeAppLocale, type AppLocale } from '@/lib/i18n'
+import { normalizeAppLocale, preloadAppLocale, type AppLocale } from '@/lib/i18n'
 import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
 import { routes } from '@/lib/routes'
 
@@ -31,8 +31,9 @@ function localeLabel(locale: AppLocale) {
   return t(`locale.${locale}`)
 }
 
-function switchLocale(locale: AppLocale) {
+async function switchLocale(locale: AppLocale) {
   if (locale === currentLocale.value) return
+  await preloadAppLocale(locale)
   const token = readCsrfToken()
   router.patch(
     routes.locale,

@@ -1,6 +1,4 @@
 import { createI18n } from 'vue-i18n'
-import zhCN from '@/locales/zh-CN'
-import en from '@/locales/en'
 import {
   missingTranslation,
   normalizeAppLocale,
@@ -14,28 +12,57 @@ export {
   type MissingTranslationDetail,
 } from './i18nRuntime'
 
-export function createAppI18n(locale: AppLocale = 'zh-CN') {
+const localeLoaders = {
+  'zh-CN': () => import('@/locales/zh-CN'),
+  en: () => import('@/locales/en'),
+} satisfies Record<AppLocale, () => Promise<{ default: Record<string, unknown> }>>
+
+type AppMessages = Awaited<ReturnType<(typeof localeLoaders)[AppLocale]>>['default']
+
+const loadedMessages = new Map<AppLocale, AppMessages>()
+
+async function loadLocaleMessages(locale: AppLocale): Promise<AppMessages> {
+  const cached = loadedMessages.get(locale)
+  if (cached) return cached
+
+  const messages = (await localeLoaders[locale]()).default
+  loadedMessages.set(locale, messages)
+  return messages
+}
+
+export function preloadAppLocale(locale: unknown): Promise<AppMessages> {
+  return loadLocaleMessages(normalizeAppLocale(locale))
+}
+
+export async function createAppI18n(locale: AppLocale = 'zh-CN') {
+  const initialLocale = normalizeAppLocale(locale)
+  const messages = await loadLocaleMessages(initialLocale)
+
   return createI18n({
     legacy: false,
     globalInjection: true,
-    locale,
-    fallbackLocale: 'en',
+    locale: initialLocale,
+    // A fallback language would force every visitor to download a second,
+    // otherwise unused locale bundle. Missing-copy checks run in CI instead.
+    fallbackLocale: false,
     missingWarn: false,
     fallbackWarn: false,
     missing: (missingLocale, key, _instance, type) => (
       missingTranslation(String(missingLocale), String(key), type)
     ),
     messages: {
-      'zh-CN': zhCN,
-      en,
+      [initialLocale]: messages,
     },
   })
 }
 
-export type AppI18n = ReturnType<typeof createAppI18n>
+export type AppI18n = Awaited<ReturnType<typeof createAppI18n>>
 
-export function syncI18nLocale(i18n: AppI18n, locale: unknown) {
+export async function syncI18nLocale(i18n: AppI18n, locale: unknown) {
   const next = normalizeAppLocale(locale)
+  if (!i18n.global.availableLocales.includes(next)) {
+    i18n.global.setLocaleMessage(next, await loadLocaleMessages(next))
+  }
   if (i18n.global.locale.value !== next) {
     i18n.global.locale.value = next
   }

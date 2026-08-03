@@ -700,14 +700,19 @@ test('Arco admin shell selects parent items on detail routes and keeps mobile gr
   assert.doesNotMatch(source, /@\/components\/portal\//)
 })
 
-test('admin entry bundles Arco without registering legacy Element Plus runtimes', () => {
+test('admin entry resolves Arco components and styles on demand', () => {
   const source = javascriptSource('entrypoints/admin.ts')
+  const viteConfig = projectSource('vite.config.ts')
 
-  assert.match(source, /\.use\(ArcoVue\)/)
+  assert.doesNotMatch(source, /\.use\(ArcoVue\)/)
+  assert.doesNotMatch(source, /@arco-design\/web-vue\/dist\/arco\.css/)
   assert.doesNotMatch(source, /from ['"]element-plus['"]/)
   assert.doesNotMatch(source, /plus-pro-components/)
   assert.doesNotMatch(source, /styles\/admin\.css/)
   assert.doesNotMatch(source, /AppProvider/)
+  assert.match(viteConfig, /Components\(\{/)
+  assert.match(viteConfig, /ArcoResolver\(\{/)
+  assert.match(viteConfig, /importStyle:\s*['"]css['"]/)
 })
 
 test('admin links that leave the admin Inertia entry use full document navigation', () => {

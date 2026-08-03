@@ -478,6 +478,8 @@ Rails.application.routes.draw do
   scope path: "app" do
     namespace :identity do
       get "sign-in", to: "sessions#new", as: :sign_in
+      get "session/two-factor", to: "sessions#two_factor", as: :session_two_factor
+      post "session/two-factor", to: "sessions#verify_two_factor"
       resource :session, only: %i[show create destroy]
       resources :registrations, only: %i[new create], path: "register"
       resources :password_resets, only: %i[new create edit update], param: :token

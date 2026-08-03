@@ -357,6 +357,7 @@ en:
       admin_module_denied: You do not have permission to access this module.
       sign_in_success: Signed in successfully.
       sign_out_success: Signed out successfully.
+      two_factor_challenge_expired: Your sign-in verification expired. Enter your email and password again.
       registration_success: Registration successful. Please check your email to verify your address.
       verification_email_resent: If that address is registered and not yet verified, we sent a new verification email.
       totp_setup_started: Scan the QR code with your authenticator app, then enter the code to finish setup.

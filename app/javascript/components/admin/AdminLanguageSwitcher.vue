@@ -3,7 +3,7 @@ import { computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { IconCheck, IconLanguage } from '@arco-design/web-vue/es/icon'
-import { normalizeAppLocale, type AppLocale } from '@/lib/i18n'
+import { normalizeAppLocale, preloadAppLocale, type AppLocale } from '@/lib/i18n'
 import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
 import { routes } from '@/lib/routes'
 
@@ -21,10 +21,11 @@ function localeLabel(locale: AppLocale) {
   return t(`locale.${locale}`)
 }
 
-function switchLocale(value: string | number | Record<string, unknown>) {
+async function switchLocale(value: string | number | Record<string, unknown>) {
   if (typeof value !== 'string') return
   const locale = normalizeAppLocale(value)
   if (locale === currentLocale.value) return
+  await preloadAppLocale(locale)
 
   router.patch(
     routes.locale,

@@ -86,6 +86,7 @@ export const routes = {
   forumAttachments: `${appPrefix}/forum/attachments`,
   signIn: `${appPrefix}/identity/sign-in`,
   identitySession: `${appPrefix}/identity/session`,
+  identitySessionTwoFactor: `${appPrefix}/identity/session/two-factor`,
   register: `${appPrefix}/identity/register`,
   identityPasswordResets: `${appPrefix}/identity/password_resets`,
   passwordReset: `${appPrefix}/identity/password_resets/new`,

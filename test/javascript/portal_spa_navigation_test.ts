@@ -51,3 +51,36 @@ test('portal entry installs delegated navigation for links inside rendered rich 
   assert.match(navigation, /target\.closest<HTMLAnchorElement>\('a\[href\]'\)/)
   assert.match(navigation, /destinationUrl\.pathname\.startsWith\('\/app\/'\)/)
 })
+
+test('portal return-to-website action opens a separate browser tab', () => {
+  const sidebar = readFileSync(
+    new URL('../../app/javascript/components/portal/PortalSidebar.vue', import.meta.url),
+    'utf8',
+  )
+
+  const returnLink = sidebar.match(/<a\s+:href="routes\.home"[\s\S]*?<\/a>/)?.[0] || ''
+  assert.match(returnLink, /target="_blank"/)
+  assert.match(returnLink, /rel="noopener noreferrer"/)
+  assert.match(returnLink, /data-no-prefetch/)
+  assert.match(returnLink, /portal\.backToWebsite/)
+})
+
+test('portal installs delayed protocol-aware prefetch for deliberate mouse hover', () => {
+  const entry = readFileSync(
+    new URL('../../app/javascript/entrypoints/inertia.ts', import.meta.url),
+    'utf8',
+  )
+  const prefetch = readFileSync(
+    new URL('../../app/javascript/lib/intentPrefetch.ts', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(entry, /installIntentPrefetch\(\)/)
+  assert.match(prefetch, /DEFAULT_HOVER_DELAY = 150/)
+  assert.match(prefetch, /router\.prefetch\(/)
+  assert.match(prefetch, /router\.getCached\(href\)/)
+  assert.match(prefetch, /router\.getPrefetching\(href\)/)
+  assert.match(prefetch, /connection\.saveData/)
+  assert.match(prefetch, /'slow-2g', '2g'/)
+  assert.match(prefetch, /\[ '\/app', '\/admin' \]/)
+})

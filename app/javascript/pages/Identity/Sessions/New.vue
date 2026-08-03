@@ -26,7 +26,6 @@ const form = useForm({
   session: {
     email: '',
     password: '',
-    totp_code: '',
     remember_me: false,
   },
 })
@@ -75,11 +74,6 @@ function submit() {
       <p v-if="form.errors['session.password']" class="text-sm text-destructive">{{ form.errors['session.password'] }}</p>
     </div>
 
-    <div class="space-y-2">
-      <Label for="totp_code">{{ t('auth.signIn.totp') }}</Label>
-      <Input id="totp_code" v-model="form.session.totp_code" name="session[totp_code]" autocomplete="one-time-code" />
-    </div>
-
     <label class="flex cursor-pointer items-center gap-2 text-sm">
       <Checkbox v-model="form.session.remember_me" />
       {{ t('auth.signIn.rememberMe') }}
@@ -93,9 +87,6 @@ function submit() {
         </Link>
         <Link :href="routes.resendVerification" class="text-muted-foreground hover:text-foreground">
           {{ t('identity.resendVerification.submit') }}
-        </Link>
-        <Link :href="routes.totpRecoveryRequest" class="text-muted-foreground hover:text-foreground">
-          {{ t('auth.signIn.lostTwoFactor') }}
         </Link>
       </div>
     </div>

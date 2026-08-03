@@ -3070,6 +3070,15 @@ export default {
       createAccount: 'Create account',
       lostTwoFactor: 'Lost access to two-factor authentication?',
     },
+    twoFactor: {
+      title: 'Two-factor authentication',
+      subtitle: 'Enter a code from your authenticator or an account recovery code',
+      code: 'Authentication or recovery code',
+      verify: 'Continue signing in',
+      failed: 'Verification failed',
+      backToSignIn: 'Back to sign in',
+      recover: 'Cannot use your authenticator?',
+    },
     register: {
       title: 'Create account',
       subtitle: 'Join the Mcweb community',

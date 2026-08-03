@@ -24,6 +24,19 @@ test('locale synchronization keeps the document language aligned after SPA visit
   assert.match(source, /document\.documentElement\.lang = next/)
 })
 
+test('only the active locale is loaded during application bootstrap', () => {
+  const source = readFileSync(
+    resolve(process.cwd(), 'app/javascript/lib/i18n.ts'),
+    'utf8',
+  )
+
+  assert.match(source, /'zh-CN': \(\) => import\(['"]@\/locales\/zh-CN['"]\)/)
+  assert.match(source, /en: \(\) => import\(['"]@\/locales\/en['"]\)/)
+  assert.doesNotMatch(source, /import\s+zhCN\s+from/)
+  assert.doesNotMatch(source, /import\s+en\s+from/)
+  assert.match(source, /fallbackLocale:\s*false/)
+})
+
 test('runtime translation misses are reported once and never render the raw key', () => {
   const originalError = console.error
   const reports: unknown[][] = []

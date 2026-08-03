@@ -226,15 +226,18 @@ watch(
     </nav>
 
     <div class="mt-auto border-t border-sidebar-border/50 p-3">
-      <Link
+      <a
         :href="routes.home"
+        target="_blank"
+        rel="noopener noreferrer"
+        data-no-prefetch
         class="group flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm text-sidebar-foreground/70 transition-all duration-150 hover:bg-sidebar-accent/35 hover:text-sidebar-foreground active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         @click="onNavigate?.()"
       >
         <Home class="h-4 w-4 shrink-0 opacity-70 transition-colors group-hover:opacity-100" />
         <span class="flex-1">{{ t('portal.backToWebsite') }}</span>
         <ExternalLink class="h-3.5 w-3.5 shrink-0 opacity-50 transition-all group-hover:opacity-80" />
-      </Link>
+      </a>
     </div>
   </aside>
 </template>

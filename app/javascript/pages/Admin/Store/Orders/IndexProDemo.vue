@@ -200,11 +200,19 @@ function bulkButtonStatus(type: OrderBulkAction['type']) {
     <a-card :bordered="true">
       <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
         <a-space wrap>
-          <a-segmented
+          <a-radio-group
             v-model="status"
-            :options="statusOptions"
+            type="button"
             @change="applyFilter({ status: status || undefined })"
-          />
+          >
+            <a-radio
+              v-for="option in statusOptions"
+              :key="option.value"
+              :value="option.value"
+            >
+              {{ option.label }}
+            </a-radio>
+          </a-radio-group>
           <a-input-search
             v-model="q"
             placeholder="搜索订单号"

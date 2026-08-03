@@ -2,6 +2,8 @@ import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
 import RubyPlugin from 'vite-plugin-ruby'
+import Components from 'unplugin-vue-components/vite'
+import { ArcoResolver } from 'unplugin-vue-components/resolvers'
 import path from 'path'
 
 function developerBuildBoolean(name: string) {
@@ -20,6 +22,15 @@ export default defineConfig({
   plugins: [
     RubyPlugin(),
     vue(),
+    Components({
+      dts: false,
+      resolvers: [
+        ArcoResolver({
+          importStyle: 'css',
+          resolveIcons: { enable: true },
+        }),
+      ],
+    }),
     tailwindcss(),
   ],
   resolve: {
@@ -32,9 +43,6 @@ export default defineConfig({
         'vendor/arco-design-vue/packages/web-vue/components/index.ts',
       ),
     },
-  },
-  optimizeDeps: {
-    include: ['@arco-design/web-vue'],
   },
   build: {
     ...(developerMinification === undefined ? {} : { minify: developerMinification }),

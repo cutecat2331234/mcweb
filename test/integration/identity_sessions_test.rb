@@ -50,8 +50,8 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
 
     assert_response :see_other
     assert_redirected_to identity_session_two_factor_path
-    assert_not session[:session_token].present?
-    assert_not cookies[:session_token].present?
+    assert_not session[Authentication::SESSION_COOKIE].present?
+    assert_not cookies[Authentication::SESSION_COOKIE].present?
 
     follow_redirect!
     assert_response :success
@@ -75,7 +75,8 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     }
 
     assert_redirected_to "/admin"
-    assert session[:session_token].present? || cookies[:session_token].present?
+    assert session[Authentication::SESSION_COOKIE].present? ||
+      cookies[Authentication::SESSION_COOKIE].present?
     assert @user.sessions.order(created_at: :desc).first.remember_me?
   end
 
@@ -93,8 +94,8 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_response :unprocessable_entity
     assert_includes response.body, "Identity/Sessions/TwoFactor"
     assert_includes response.body, I18n.t("mcweb.services.errors.invalid_two_factor_code")
-    assert_not session[:session_token].present?
-    assert_not cookies[:session_token].present?
+    assert_not session[Authentication::SESSION_COOKIE].present?
+    assert_not cookies[Authentication::SESSION_COOKIE].present?
   end
 
   test "recovery code completes the pending login and is consumed once" do
@@ -109,7 +110,7 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
       two_factor: { code: recovery_code }
     }
 
-    assert_redirected_to forum_sections_path
+    assert_redirected_to FeatureFlags.primary_portal_path(self)
     assert_equal 9, @user.reload.recovery_codes.size
     assert_not_includes @user.recovery_codes, recovery_code
   end
@@ -136,7 +137,7 @@ class IdentitySessionsTest < ActionDispatch::IntegrationTest
     assert_response :see_other
     assert_redirected_to identity_sign_in_path
     assert_equal I18n.t("mcweb.flash.two_factor_challenge_expired"), flash[:alert]
-    assert_not session[:session_token].present?
+    assert_not session[Authentication::SESSION_COOKIE].present?
   end
 
   test "wrong password does not reveal totp state or create a pending challenge" do

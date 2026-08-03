@@ -711,9 +711,11 @@ test('admin entry resolves Arco components and styles on demand', () => {
   assert.doesNotMatch(source, /plus-pro-components/)
   assert.doesNotMatch(source, /styles\/admin\.css/)
   assert.doesNotMatch(source, /AppProvider/)
-  assert.match(viteConfig, /Components\(\{/)
-  assert.match(viteConfig, /ArcoResolver\(\{/)
-  assert.match(viteConfig, /importStyle:\s*['"]css['"]/)
+  assert.match(viteConfig, /vitePluginForArco\(\{\s*style:\s*['"]css['"]\s*\}\)/)
+  assert.ok(
+    viteConfig.indexOf('vue()') < viteConfig.indexOf('vitePluginForArco('),
+    'Arco must transform compiled Vue modules so TypeScript SFC templates remain valid',
+  )
 })
 
 test('admin links that leave the admin Inertia entry use full document navigation', () => {

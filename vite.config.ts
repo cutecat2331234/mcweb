@@ -1,9 +1,8 @@
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import tailwindcss from '@tailwindcss/vite'
+import { vitePluginForArco } from '@arco-plugins/vite-vue'
 import RubyPlugin from 'vite-plugin-ruby'
-import Components from 'unplugin-vue-components/vite'
-import { ArcoResolver } from 'unplugin-vue-components/resolvers'
 import path from 'path'
 
 function developerBuildBoolean(name: string) {
@@ -22,15 +21,7 @@ export default defineConfig({
   plugins: [
     RubyPlugin(),
     vue(),
-    Components({
-      dts: false,
-      resolvers: [
-        ArcoResolver({
-          importStyle: 'css',
-          resolveIcons: { enable: true },
-        }),
-      ],
-    }),
+    vitePluginForArco({ style: 'css' }),
     tailwindcss(),
   ],
   resolve: {

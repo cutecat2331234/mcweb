@@ -697,6 +697,7 @@ test('Arco admin shell selects parent items on detail routes and keeps mobile gr
   assert.match(source, /min\(280px, 100vw\)/)
   assert.match(source, /id="admin-content"/)
   assert.match(source, /arco-admin-skip-link/)
+  assert.equal((source.match(/:data-prefetch-href="item\.href"/g) ?? []).length, 2)
   assert.doesNotMatch(source, /@\/components\/portal\//)
 })
 

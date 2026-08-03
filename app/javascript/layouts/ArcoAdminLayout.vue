@@ -703,7 +703,11 @@ watch(isDark, syncArcoTheme, { immediate: true })
           >
             <template #icon><component :is="group.icon" /></template>
             <template #title>{{ group.label }}</template>
-            <a-menu-item v-for="item in group.items" :key="item.href">
+            <a-menu-item
+              v-for="item in group.items"
+              :key="item.href"
+              :data-prefetch-href="item.href"
+            >
               {{ item.label }}
             </a-menu-item>
           </a-sub-menu>
@@ -810,7 +814,11 @@ watch(isDark, syncArcoTheme, { immediate: true })
           >
             <template #icon><component :is="group.icon" /></template>
             <template #title>{{ group.label }}</template>
-            <a-menu-item v-for="item in group.items" :key="item.href">
+            <a-menu-item
+              v-for="item in group.items"
+              :key="item.href"
+              :data-prefetch-href="item.href"
+            >
               {{ item.label }}
             </a-menu-item>
           </a-sub-menu>

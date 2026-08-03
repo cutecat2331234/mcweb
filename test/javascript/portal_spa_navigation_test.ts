@@ -83,4 +83,6 @@ test('portal installs delayed protocol-aware prefetch for deliberate mouse hover
   assert.match(prefetch, /connection\.saveData/)
   assert.match(prefetch, /'slow-2g', '2g'/)
   assert.match(prefetch, /\[ '\/app', '\/admin' \]/)
+  assert.match(prefetch, /currentIsAdmin !== targetIsAdmin/)
+  assert.match(prefetch, /!explicitHref && !knownAppPath/)
 })

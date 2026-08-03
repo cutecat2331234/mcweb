@@ -31,17 +31,28 @@ function prefetchHref(element: HTMLElement): string | null {
     if (method && method.toLowerCase() !== 'get') return null
   }
 
-  const raw = element.dataset.prefetchHref ||
+  const explicitHref = element.dataset.prefetchHref
+  const raw = explicitHref ||
     (element instanceof HTMLAnchorElement ? element.getAttribute('href') : null)
   if (!raw || raw.startsWith('#')) return null
 
   const url = new URL(raw, window.location.href)
   if (url.origin !== window.location.origin) return null
-  if (!PREFETCHABLE_PREFIXES.some((prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`))) {
+  const current = new URL(window.location.href)
+  const currentIsAdmin = current.pathname === '/admin' || current.pathname.startsWith('/admin/')
+  const targetIsAdmin = url.pathname === '/admin' || url.pathname.startsWith('/admin/')
+  if (currentIsAdmin !== targetIsAdmin) return null
+
+  const knownAppPath = PREFETCHABLE_PREFIXES.some(
+    (prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
+  )
+  // Explicit destinations are used by Arco menu items and buttons that render
+  // without an anchor. They may also point to a public website page such as
+  // /blog or a configured /:slug page, but never cross the admin entry boundary.
+  if (!explicitHref && !knownAppPath) {
     return null
   }
 
-  const current = new URL(window.location.href)
   if (url.pathname === current.pathname && url.search === current.search) return null
   return `${url.pathname}${url.search}${url.hash}`
 }

@@ -73,11 +73,6 @@ async function bootstrap() {
 
   syncCsrfMetaTag()
 
-  // Wappalyzer 等工具用于识别 Ruby on Rails 的 JS 指纹（Inertia 入口也需设置）
-  if (typeof window !== 'undefined') {
-    ;(window as Window & { _rails_loaded?: boolean })._rails_loaded = true
-  }
-
   await createInertiaApp({
     title: inertiaTitle,
     setup({ el, App, props, plugin }) {

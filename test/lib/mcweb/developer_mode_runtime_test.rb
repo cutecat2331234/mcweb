@@ -217,7 +217,7 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
     )
   end
 
-  test "test boot disables developer mode before settings are cached" do
+  test "late test environment selection reparses cached developer mode settings" do
     directory = Dir.mktmpdir("mcweb-test-boot")
     local_config_path = File.join(directory, "local.yml")
     File.write(
@@ -231,14 +231,16 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
 
     stdout, stderr, status = Open3.capture3(
       {
-        "RAILS_ENV" => "test",
-        "RACK_ENV" => "test",
+        "RAILS_ENV" => nil,
+        "RACK_ENV" => nil,
         "MCWEB_LOCAL_CONFIG_PATH" => local_config_path,
         "MCWEB_DEVELOPER_MODE" => nil
       },
       RbConfig.ruby,
       Rails.root.join("bin/rails").to_s,
       "runner",
+      "-e",
+      "test",
       "puts \"#{marker}\#{Mcweb::DeveloperMode.enabled?}:" \
         "\#{ENV.fetch('MCWEB_DEVELOPER_MODE')}\"",
       chdir: Rails.root.to_s

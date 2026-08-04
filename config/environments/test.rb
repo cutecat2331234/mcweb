@@ -3,6 +3,13 @@
 # your test database is "scratch space" for the test suite and is wiped
 # and recreated between test runs. Don't rely on the data there!
 
+# Rails command-line options such as `rails runner -e test` and `rails test`
+# can select this environment after config/boot.rb has already cached the
+# local Developer Mode profile. Reparse it here so the ordinary test suite
+# always exercises production security semantics.
+ENV["MCWEB_DEVELOPER_MODE"] = "0"
+Mcweb::DeveloperMode.reload!
+
 require_relative "../developer_mode_runtime"
 require_relative "../../lib/mcweb/test_log_path"
 

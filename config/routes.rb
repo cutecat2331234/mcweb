@@ -481,9 +481,12 @@ Rails.application.routes.draw do
       get "session/two-factor", to: "sessions#two_factor", as: :session_two_factor
       post "session/two-factor", to: "sessions#verify_two_factor"
       resource :session, only: %i[show create destroy]
+      get "register", to: "registrations#new", as: :registration_landing
       resources :registrations, only: %i[new create], path: "register"
+      get "password_resets", to: "password_resets#new", as: :password_resets_landing
       resources :password_resets, only: %i[new create edit update], param: :token
       resource :email_verification, only: %i[show], path: "verify-email"
+      get "resend-verification", to: "email_verification_resends#new", as: :email_verification_resend_landing
       resource :email_verification_resend, only: %i[new create], path: "resend-verification"
       get "security", to: "security#show"
       post "security/totp/setup", to: "security#setup_totp"

@@ -92,6 +92,16 @@ class Commerce::MaximumQuantityTest < ActiveSupport::TestCase
     result = Commerce::ValidateCartItem.call(user: @user, product: @product, quantity: 2)
     assert result.success?
   end
+
+  test "rejects non-integer and globally excessive quantities" do
+    non_integer = Commerce::ValidateCartItem.call(user: @user, product: @product, quantity: "1.5")
+    assert non_integer.failure?
+
+    @product.update!(maximum_quantity: nil)
+    excessive = Commerce::ValidateCartItem.call(user: @user, product: @product, quantity: 100)
+    assert excessive.failure?
+    assert_match(/99/, excessive.error)
+  end
 end
 
 class Commerce::CalculateShippingRound45Test < ActiveSupport::TestCase

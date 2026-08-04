@@ -169,7 +169,24 @@ const answerForms = ref<Record<number, string>>({})
 const selectedVariantId = ref<number | null>(
   props.product.variants.length === 1 ? props.product.variants[0].id : (props.product.saved_variant_id ?? null)
 )
-const quantity = ref(1)
+const minimumQuantity = computed(() => Math.max(1, Number(props.product.minimum_quantity) || 1))
+const maximumQuantity = computed(() => {
+  const limits = [99, props.product.maximum_quantity, props.product.purchase_limit]
+    .map((value) => Number(value))
+    .filter((value) => Number.isInteger(value) && value > 0)
+  return Math.min(...limits)
+})
+const quantity = ref(minimumQuantity.value)
+const quantityError = computed(() => {
+  if (!Number.isInteger(quantity.value)) return t('commerce.product.quantityInteger')
+  if (quantity.value < minimumQuantity.value) {
+    return t('commerce.product.quantityMinimum', { n: minimumQuantity.value })
+  }
+  if (quantity.value > maximumQuantity.value) {
+    return t('commerce.product.quantityMaximum', { n: maximumQuantity.value })
+  }
+  return ''
+})
 const galleryIndex = ref(0)
 
 const allImages = computed(() => {
@@ -331,6 +348,8 @@ function toggleHelpful(url: string | null | undefined) {
 }
 
 function addToCart() {
+  if (quantityError.value) return
+
   router.patch(props.addToCartUrl, {
     product_id: props.product.db_id,
     variant_id: selectedVariantId.value,
@@ -629,17 +648,23 @@ function submitAnswer(questionId: number, answerUrl: string) {
                 id="quantity"
                 v-model.number="quantity"
                 type="number"
-                :min="product.minimum_quantity && product.minimum_quantity > 1 ? product.minimum_quantity : 1"
-                :max="product.maximum_quantity || product.purchase_limit || 99"
+                :min="minimumQuantity"
+                :max="maximumQuantity"
+                step="1"
+                :aria-invalid="!!quantityError"
+                :aria-describedby="quantityError ? 'product-quantity-error' : undefined"
                 class="w-full sm:max-w-32"
               />
+              <p v-if="quantityError" id="product-quantity-error" class="text-xs text-destructive" role="alert">
+                {{ quantityError }}
+              </p>
             </div>
 
             <Button
               v-if="canPurchase"
               type="button"
               class="w-full"
-              :disabled="product.variants.length > 0 && !selectedVariantId"
+              :disabled="(product.variants.length > 0 && !selectedVariantId) || !!quantityError"
               @click="addToCart"
             >
               {{ t('commerce.product.addToCart') }}

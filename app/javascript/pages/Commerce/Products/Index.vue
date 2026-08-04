@@ -88,6 +88,24 @@ const onSale = ref(props.onSale ?? false)
 const priceMin = ref(props.priceMin ?? '')
 const priceMax = ref(props.priceMax ?? '')
 
+function optionalPrice(value: string) {
+  if (!value.trim()) return null
+  const parsed = Number(value)
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : Number.NaN
+}
+
+const priceRangeError = computed(() => {
+  const minimum = optionalPrice(priceMin.value)
+  const maximum = optionalPrice(priceMax.value)
+  if (Number.isNaN(minimum) || Number.isNaN(maximum)) {
+    return t('commerce.productList.priceInvalid')
+  }
+  if (minimum !== null && maximum !== null && minimum > maximum) {
+    return t('commerce.productList.priceRangeInvalid')
+  }
+  return ''
+})
+
 const sortOptions = computed(() => [
   { value: 'newest', label: t('commerce.productList.sortNewest') },
   { value: 'popular', label: t('commerce.productList.sortPopular') },
@@ -98,6 +116,8 @@ const sortOptions = computed(() => [
 ])
 
 function search() {
+  if (priceRangeError.value) return
+
   router.get(routes.store, {
     q: q.value || undefined,
     sort: sort.value !== 'newest' ? sort.value : undefined,
@@ -301,7 +321,7 @@ function clearFilters() {
     </div>
   </section>
 
-  <form class="mb-4 flex flex-wrap items-center gap-2" @submit.prevent="search">
+  <form class="mb-4 flex flex-wrap items-start gap-2" @submit.prevent="search">
     <Input v-model="q" :placeholder="t('commerce.productList.searchPlaceholder')" class="max-w-xs" />
     <Select v-model="sort" :options="sortOptions" size="sm" />
     <label class="flex items-center gap-2 text-sm">
@@ -312,9 +332,34 @@ function clearFilters() {
       <Checkbox v-model="onSale" />
       {{ t('commerce.productList.onSaleOnly') }}
     </label>
-    <Input v-model="priceMin" type="number" min="0" step="0.01" :placeholder="t('commerce.productList.priceMin')" class="w-24" />
-    <Input v-model="priceMax" type="number" min="0" step="0.01" :placeholder="t('commerce.productList.priceMax')" class="w-24" />
-    <button type="submit" class="rounded-md bg-primary px-4 py-2 text-sm text-primary-foreground">{{ t('commerce.productList.filter') }}</button>
+    <div class="flex flex-col gap-1">
+      <div class="flex items-center gap-2">
+        <Input
+          v-model="priceMin"
+          type="number"
+          min="0"
+          step="0.01"
+          :placeholder="t('commerce.productList.priceMin')"
+          :aria-invalid="!!priceRangeError"
+          :aria-describedby="priceRangeError ? 'product-price-range-error' : undefined"
+          class="w-24"
+        />
+        <Input
+          v-model="priceMax"
+          type="number"
+          min="0"
+          step="0.01"
+          :placeholder="t('commerce.productList.priceMax')"
+          :aria-invalid="!!priceRangeError"
+          :aria-describedby="priceRangeError ? 'product-price-range-error' : undefined"
+          class="w-24"
+        />
+      </div>
+      <p v-if="priceRangeError" id="product-price-range-error" class="text-xs text-destructive" role="alert">
+        {{ priceRangeError }}
+      </p>
+    </div>
+    <Button type="submit" :disabled="!!priceRangeError">{{ t('commerce.productList.filter') }}</Button>
     <Button v-if="hasActiveFilters" type="button" variant="outline" size="sm" @click="clearFilters">{{ t('commerce.productList.clearFilters') }}</Button>
   </form>
 

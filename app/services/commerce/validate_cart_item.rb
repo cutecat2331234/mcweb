@@ -2,26 +2,32 @@
 
 module Commerce
   class ValidateCartItem < ApplicationService
+    MAX_QUANTITY = 99
+
     def initialize(user:, product:, variant: nil, quantity: 1, cart: nil, replace_quantity: false)
       @user = user
       @product = product
       @variant = variant
       @cart = cart
       @replace_quantity = replace_quantity
-      @quantity = quantity.to_i
+      @quantity = quantity.to_s.match?(/\A\d+\z/) ? quantity.to_i : nil
     end
 
     def call
       feature_error = validate_store_features!
       return feature_error if feature_error
 
+      return ServiceResult.failure(error: I18n.t("commerce.cart.quantity_at_least_one")) unless @quantity&.positive?
+
       @quantity = resolved_quantity
+      if @quantity > MAX_QUANTITY
+        return ServiceResult.failure(error: I18n.t("commerce.cart.max_quantity", count: MAX_QUANTITY))
+      end
       min_qty = [ @product.minimum_quantity.to_i, 1 ].max
       return ServiceResult.failure(error: I18n.t("commerce.cart.min_quantity", count: min_qty)) if @quantity < min_qty
       if @product.maximum_quantity.present? && @quantity > @product.maximum_quantity
         return ServiceResult.failure(error: I18n.t("commerce.cart.max_quantity", count: @product.maximum_quantity))
       end
-      return ServiceResult.failure(error: I18n.t("commerce.cart.quantity_at_least_one")) if @quantity < 1
       return ServiceResult.failure(error: I18n.t("commerce.cart.product_inactive")) unless @product.active?
 
       if @product.variants.exists? && @variant.nil?

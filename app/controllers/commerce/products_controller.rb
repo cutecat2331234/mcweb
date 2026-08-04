@@ -14,13 +14,13 @@ module Commerce
         ).distinct
       end
       scope = case params[:sort]
-      when "price_asc" then scope.order(price_cents: :asc)
-      when "price_desc" then scope.order(price_cents: :desc)
-      when "discount_desc" then scope.on_sale.order(Arel.sql("((compare_at_price_cents - price_cents)::float / NULLIF(compare_at_price_cents, 0)) DESC"))
-      when "popular" then scope.order(view_count: :desc, created_at: :desc)
+      when "price_asc" then scope.order(Arel.sql("store_products.price_cents ASC"))
+      when "price_desc" then scope.order(Arel.sql("store_products.price_cents DESC"))
+      when "discount_desc" then scope.on_sale.order(Arel.sql("((store_products.compare_at_price_cents - store_products.price_cents)::float / NULLIF(store_products.compare_at_price_cents, 0)) DESC"))
+      when "popular" then scope.order(Arel.sql("store_products.view_count DESC, store_products.created_at DESC"))
       when "rating" then scope.left_joins(:reviews).where(store_reviews: { status: "published" })
                 .group("store_products.id").order(Arel.sql("COALESCE(AVG(store_reviews.rating), 0) DESC"))
-      else scope.order(created_at: :desc)
+      else scope.order(Arel.sql("store_products.created_at DESC"))
       end
 
       if params[:category].present?
@@ -28,14 +28,10 @@ module Commerce
         scope = scope.where(store_category_id: category.id)
       end
 
-      if params[:price_min].present?
-        min_cents = (params[:price_min].to_f * 100).to_i
-        scope = scope.where("price_cents >= ?", min_cents) if min_cents.positive?
-      end
-      if params[:price_max].present?
-        max_cents = (params[:price_max].to_f * 100).to_i
-        scope = scope.where("price_cents <= ?", max_cents) if max_cents.positive?
-      end
+      min_cents = normalized_price_cents(params[:price_min])
+      max_cents = normalized_price_cents(params[:price_max])
+      scope = scope.where("store_products.price_cents >= ?", min_cents) if min_cents
+      scope = scope.where("store_products.price_cents <= ?", max_cents) if max_cents
 
       featured_scope = Commerce::StoreFeatures.visible_products_scope(Commerce::Product.available.where(featured: true))
       featured_scope = featured_scope.with_stock if params[:in_stock] == "1"
@@ -320,6 +316,15 @@ module Commerce
         price_min: params[:price_min].presence,
         price_max: params[:price_max].presence
       }.compact
+    end
+
+    def normalized_price_cents(value)
+      return nil if value.blank?
+
+      decimal = BigDecimal(value.to_s, exception: false)
+      return nil unless decimal&.finite? && decimal >= 0
+
+      (decimal * 100).round.to_i
     end
 
     def serialize_product_question(question, current_user: nil, sort: "newest")

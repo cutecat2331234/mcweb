@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, nextTick, ref, watch } from 'vue'
 import { Link, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -37,6 +37,14 @@ const loginError = computed(() => {
   return pageErrors?.base || ''
 })
 
+const errorSummary = ref<HTMLElement | null>(null)
+
+watch(loginError, async (message) => {
+  if (!message) return
+  await nextTick()
+  errorSummary.value?.focus()
+})
+
 function submit() {
   const token = String(page.props.csrf_token || readCsrfToken())
   form
@@ -51,9 +59,11 @@ function submit() {
 <template>
   <PageHeader :title="t('auth.signIn.title')" :subtitle="t('auth.signIn.subtitle')" />
 
-  <Alert v-if="loginError" variant="destructive" :title="t('auth.signIn.failed')" class="mb-4 max-w-md">
-    {{ loginError }}
-  </Alert>
+  <div v-if="loginError" ref="errorSummary" class="mb-4 max-w-md" tabindex="-1">
+    <Alert variant="destructive" :title="t('auth.signIn.failed')">
+      {{ loginError }}
+    </Alert>
+  </div>
 
   <form
     class="max-w-md space-y-4"
@@ -64,14 +74,33 @@ function submit() {
     <input type="hidden" name="authenticity_token" :value="String(page.props.csrf_token || readCsrfToken())" />
     <div class="space-y-2">
       <Label for="email">{{ t('auth.signIn.email') }}</Label>
-      <Input id="email" v-model="form.session.email" name="session[email]" type="email" autocomplete="email" required autofocus />
-      <p v-if="form.errors['session.email']" class="text-sm text-destructive">{{ form.errors['session.email'] }}</p>
+      <Input
+        id="email"
+        v-model="form.session.email"
+        name="session[email]"
+        type="email"
+        autocomplete="email"
+        required
+        autofocus
+        :aria-invalid="!!form.errors['session.email']"
+        :aria-describedby="form.errors['session.email'] ? 'sign-in-email-error' : undefined"
+      />
+      <p v-if="form.errors['session.email']" id="sign-in-email-error" class="text-sm text-destructive">{{ form.errors['session.email'] }}</p>
     </div>
 
     <div class="space-y-2">
       <Label for="password">{{ t('auth.signIn.password') }}</Label>
-      <Input id="password" v-model="form.session.password" name="session[password]" type="password" autocomplete="current-password" required />
-      <p v-if="form.errors['session.password']" class="text-sm text-destructive">{{ form.errors['session.password'] }}</p>
+      <Input
+        id="password"
+        v-model="form.session.password"
+        name="session[password]"
+        type="password"
+        autocomplete="current-password"
+        required
+        :aria-invalid="!!form.errors['session.password']"
+        :aria-describedby="form.errors['session.password'] ? 'sign-in-password-error' : undefined"
+      />
+      <p v-if="form.errors['session.password']" id="sign-in-password-error" class="text-sm text-destructive">{{ form.errors['session.password'] }}</p>
     </div>
 
     <label class="flex cursor-pointer items-center gap-2 text-sm">

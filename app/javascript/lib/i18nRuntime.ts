@@ -26,7 +26,7 @@ export function captureMissingTranslation(locale: string, key: string, type = 't
   reportedMissingTranslations.add(fingerprint)
 
   const detail: MissingTranslationDetail = { locale, key, type }
-  console.error('[McWeb I18N] Missing translation', detail)
+  console.error(`[McWeb I18N] Missing translation: locale=${locale} type=${type} key=${key}`)
 
   if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
     window.dispatchEvent(new CustomEvent<MissingTranslationDetail>(

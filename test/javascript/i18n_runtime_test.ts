@@ -52,6 +52,10 @@ test('runtime translation misses are reported once and never render the raw key'
     assert.equal(second, '…')
     assert.doesNotMatch(first, /runtime\.contract/)
     assert.equal(reports.length, 2)
+    assert.equal(
+      reports[1]?.[0],
+      `[McWeb I18N] Missing translation: locale=en type=translate key=${missingKey}`,
+    )
     assert.equal(MISSING_TRANSLATION_EVENT, 'mcweb:i18n-missing')
   } finally {
     console.error = originalError

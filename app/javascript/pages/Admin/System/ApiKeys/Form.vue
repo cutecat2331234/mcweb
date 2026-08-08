@@ -18,13 +18,13 @@ const form = useForm({
   api_key: { name: '', scopes: ['read'] as string[], username: '' },
 })
 
-const staffScopes = [
-  { value: 'staff.moderation.read', label: 'admin.apiKeys.scopeStaffRead' },
-  { value: 'staff.moderation.claim', label: 'admin.apiKeys.scopeStaffClaim' },
-  { value: 'staff.moderation.assign', label: 'admin.apiKeys.scopeStaffAssign' },
-  { value: 'staff.moderation.note', label: 'admin.apiKeys.scopeStaffNote' },
-  { value: 'staff.moderation.execute', label: 'admin.apiKeys.scopeStaffExecute' },
-] as const
+const staffScopes = computed(() => [
+  { value: 'staff.moderation.read', label: t('admin.apiKeys.scopeStaffRead') },
+  { value: 'staff.moderation.claim', label: t('admin.apiKeys.scopeStaffClaim') },
+  { value: 'staff.moderation.assign', label: t('admin.apiKeys.scopeStaffAssign') },
+  { value: 'staff.moderation.note', label: t('admin.apiKeys.scopeStaffNote') },
+  { value: 'staff.moderation.execute', label: t('admin.apiKeys.scopeStaffExecute') },
+] as const)
 
 const readScope = computed({
   get: () => form.api_key.scopes.includes('read'),
@@ -56,7 +56,7 @@ function setScope(scope: string, checked: boolean) {
     scopes.add('staff.moderation.read')
   }
   if (!checked && scope === 'staff.moderation.read') {
-    staffScopes.forEach((staffScope) => scopes.delete(staffScope.value))
+    staffScopes.value.forEach((staffScope) => scopes.delete(staffScope.value))
   }
   form.api_key.scopes = Array.from(scopes)
 }
@@ -118,7 +118,7 @@ function submit(event?: { errors?: unknown }) {
               :model-value="hasScope(scope.value)"
               @change="setScope(scope.value, $event)"
             >
-              {{ t(scope.label) }}
+              {{ scope.label }}
             </a-checkbox>
           </a-space>
         </a-form-item>

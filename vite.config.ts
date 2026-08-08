@@ -18,6 +18,26 @@ const developerMinification = developerBuildBoolean('MCWEB_DEVELOPER_VITE_MINIFI
 const developerSourceMaps = developerBuildBoolean('MCWEB_DEVELOPER_VITE_SOURCE_MAPS')
 const runtimeProfile = process.env.MCWEB_RUNTIME_PROFILE
 
+function mcwebUiArcoStyleBridge() {
+  return {
+    name: 'mcweb-ui-arco-style-bridge',
+    enforce: 'pre' as const,
+    transform(code: string, id: string) {
+      if (!/\.(?:vue|[cm]?[jt]sx?)(?:$|\?)/.test(id) || !code.includes('@mcweb/ui')) {
+        return null
+      }
+
+      return {
+        code: code.replace(
+          /(['"])@mcweb\/ui\1/g,
+          '$1@arco-design/web-vue$1',
+        ),
+        map: null,
+      }
+    },
+  }
+}
+
 if (runtimeProfile === 'fast_preview') {
   if (developerMinification === false || developerSourceMaps === true) {
     throw new Error(
@@ -29,6 +49,7 @@ if (runtimeProfile === 'fast_preview') {
 export default defineConfig({
   plugins: [
     RubyPlugin(),
+    mcwebUiArcoStyleBridge(),
     vue(),
     vitePluginForArco({ style: 'css' }),
     tailwindcss(),

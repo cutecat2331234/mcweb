@@ -711,10 +711,17 @@ test('admin entry resolves Arco components and styles on demand', () => {
   assert.doesNotMatch(source, /plus-pro-components/)
   assert.doesNotMatch(source, /styles\/admin\.css/)
   assert.doesNotMatch(source, /AppProvider/)
+  assert.match(viteConfig, /function mcwebUiArcoStyleBridge\(\)/)
+  assert.match(viteConfig, /code\.includes\(['"]@mcweb\/ui['"]\)/)
+  assert.match(viteConfig, /@arco-design\/web-vue/)
   assert.match(viteConfig, /vitePluginForArco\(\{\s*style:\s*['"]css['"]\s*\}\)/)
   assert.ok(
     viteConfig.indexOf('vue()') < viteConfig.indexOf('vitePluginForArco('),
     'Arco must transform compiled Vue modules so TypeScript SFC templates remain valid',
+  )
+  assert.ok(
+    viteConfig.indexOf('mcwebUiArcoStyleBridge()') < viteConfig.indexOf('vitePluginForArco('),
+    'the @mcweb/ui bridge must expose named imports before Arco injects component styles',
   )
 })
 

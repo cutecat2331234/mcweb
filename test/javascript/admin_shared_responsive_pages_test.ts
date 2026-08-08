@@ -75,6 +75,8 @@ test('admin entry resolves Arco on demand without leaking portal styles into the
   assert.doesNotMatch(source, /portal\.css/)
   assert.doesNotMatch(source, /ArcoVue/)
   assert.doesNotMatch(source, /@arco-design\/web-vue\/dist\/arco\.css/)
+  assert.match(viteConfig, /mcwebUiArcoStyleBridge\(\)/)
   assert.match(viteConfig, /vitePluginForArco\(\{\s*style:\s*['"]css['"]\s*\}\)/)
   assert.ok(viteConfig.indexOf('vue()') < viteConfig.indexOf('vitePluginForArco('))
+  assert.ok(viteConfig.indexOf('mcwebUiArcoStyleBridge()') < viteConfig.indexOf('vitePluginForArco('))
 })

@@ -27,6 +27,7 @@ const forumUnread = computed(() => page.props.forum_unread as { count: number; u
 const forumNew = computed(() => page.props.forum_new as { count: number; url: string } | undefined)
 const forumAssigned = computed(() => page.props.forum_assigned as { count: number; url: string } | undefined)
 const forumModerationPending = computed(() => page.props.forum_moderation_pending as { count: number; url: string } | undefined)
+const staffWorkspace = computed(() => page.props.staff_workspace as { count: number; url: string; queue_url?: string } | undefined)
 const messagesUnread = computed(() => page.props.messages_unread as { count: number; url: string } | undefined)
 const cart = computed(() => page.props.cart as { count: number; url: string } | undefined)
 const developerMode = computed(
@@ -110,6 +111,7 @@ const sidebarProps = computed(() => ({
   forumNew: forumNew.value,
   forumAssigned: forumAssigned.value,
   forumModerationPending: forumModerationPending.value,
+  staffWorkspace: staffWorkspace.value,
   messagesUnread: messagesUnread.value,
   cart: cart.value,
 }))

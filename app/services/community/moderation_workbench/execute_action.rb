@@ -3,6 +3,8 @@
 module Community
   module ModerationWorkbench
     class ExecuteAction < ApplicationService
+      SURFACES = %w[admin staff api_staff].freeze
+
       class DispositionFailure < StandardError
         attr_reader :case_id, :code
 
@@ -15,7 +17,7 @@ module Community
 
       def initialize(actor:, case_ids:, action:, request_id:, reason:, attributes: {},
                      authorization_token:, typed_confirmation:, ip_address: nil,
-                     user_agent: nil)
+                     user_agent: nil, surface: "admin")
         @actor = actor
         @case_ids = ActionAuthorization.normalize_case_ids(case_ids)
         @action = action.to_s.strip.downcase
@@ -26,6 +28,7 @@ module Community
         @typed_confirmation = typed_confirmation.to_s.strip
         @ip_address = ip_address
         @user_agent = user_agent
+        @surface = SURFACES.include?(surface.to_s) ? surface.to_s : "admin"
         @results = []
         @performed_targets = {}
       end
@@ -112,7 +115,7 @@ module Community
               update_case_after_action!(moderation_case)
               Administration::AuditLogger.call(
                 actor: @actor,
-                action: "admin.forum_moderation_workbench_#{@action}",
+                action: "#{@surface}.forum_moderation_workbench_#{@action}",
                 resource: moderation_case,
                 reason: @reason,
                 metadata: {
@@ -120,6 +123,7 @@ module Community
                   source_kind: moderation_case.source_kind,
                   source_type: moderation_case.source_type,
                   source_id: moderation_case.source_id,
+                  surface: @surface,
                   request_id: @request_id,
                   confirmation_method: "signed_typed_challenge",
                   shared_target: shared_target,

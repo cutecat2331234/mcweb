@@ -4,9 +4,10 @@ module Community
   module ModerationWorkbench
     class ManageCase < ApplicationService
       ACTIONS = %w[claim assign note].freeze
+      SURFACES = %w[admin staff api_staff].freeze
 
       def initialize(actor:, moderation_case:, action:, lock_version:, assignee_id: nil,
-                     body: nil, ip_address: nil, user_agent: nil)
+                     body: nil, ip_address: nil, user_agent: nil, surface: "admin")
         @actor = actor
         @moderation_case = moderation_case
         @action = action.to_s
@@ -15,6 +16,7 @@ module Community
         @body = body.to_s.strip
         @ip_address = ip_address
         @user_agent = user_agent
+        @surface = SURFACES.include?(surface.to_s) ? surface.to_s : "admin"
         @policy = Policy.new(actor)
       end
 
@@ -64,11 +66,12 @@ module Community
 
           Administration::AuditLogger.call(
             actor: @actor,
-            action: "admin.forum_moderation_case_#{@action}",
+            action: "#{@surface}.forum_moderation_case_#{@action}",
             resource: locked,
             metadata: {
               moderation_case_id: locked.id,
               source_kind: locked.source_kind,
+              surface: @surface,
               note_id: note&.id,
               note_length: note&.body&.length
             }.compact,

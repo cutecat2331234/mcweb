@@ -6,6 +6,12 @@ module Api
     # event catalog, and the available resource endpoints.
     class RootController < BaseController
       def index
+        resources = %w[
+          me categories tags topics posts users notifications conversations
+          bookmarks profile_posts
+        ]
+        resources << "staff" if current_api_key.allows?("staff.moderation.read")
+
         render json: {
           version: "v1",
           authenticated_as: {
@@ -14,10 +20,7 @@ module Api
             user: api_user&.username
           },
           events: Mcweb::Events::CATALOG,
-          resources: %w[
-            me categories tags topics posts users notifications conversations
-            bookmarks profile_posts
-          ]
+          resources: resources
         }
       end
     end

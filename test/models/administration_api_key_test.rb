@@ -10,6 +10,25 @@ class AdministrationApiKeyTest < ActiveSupport::TestCase
     assert_raises(ArgumentError) do
       Administration::ApiKey.generate!(name: "unknown", scopes: %w[admin])
     end
+    assert_raises(ArgumentError) do
+      Administration::ApiKey.generate!(
+        name: "staff mutation without read",
+        scopes: %w[staff.moderation.note]
+      )
+    end
+  end
+
+  test "staff moderation scopes are accepted and remain independent" do
+    key, token = Administration::ApiKey.generate!(
+      name: "staff integration",
+      scopes: %w[staff.moderation.read staff.moderation.note]
+    )
+
+    assert token.start_with?(Administration::ApiKey::TOKEN_PREFIX)
+    assert key.allows?("staff.moderation.read")
+    assert key.allows?("staff.moderation.note")
+    refute key.allows?("staff.moderation.execute")
+    refute key.allows?("read")
   end
 
   test "authenticate rejects a key bound to a banned or deleted user" do

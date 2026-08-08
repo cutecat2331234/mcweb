@@ -2097,6 +2097,7 @@ en:
         revoked: API key revoked.
         name_required: Please enter a key name.
         scopes_invalid: Select at least one valid API scope.
+        staff_user_required: Staff API keys must be bound to a user.
         user_not_found: No user found with that username.
         user_binding_forbidden: Only the site owner can bind an API key to another user.
         user_unavailable: API keys cannot be bound to a banned or deleted user.

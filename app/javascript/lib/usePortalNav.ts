@@ -26,6 +26,7 @@ export interface PortalNavOptions {
   forumNew?: { count: number; url: string }
   forumAssigned?: { count: number; url: string }
   forumModerationPending?: { count: number; url: string }
+  staffWorkspace?: { count: number; url: string; queue_url?: string }
   messagesUnread?: { count: number; url: string }
   cart?: { count: number; url: string }
 }
@@ -79,6 +80,13 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
   const forumPersonalItems = computed<PortalNavItem[]>(() => {
     if (!opts.value.loggedIn) return []
     return [
+      ...(opts.value.staffWorkspace ? [ {
+        label: t('nav.staffWorkspace'),
+        href: opts.value.staffWorkspace.url,
+        badge: opts.value.staffWorkspace.count,
+        loginRequired: true,
+        icon: 'shield',
+      } ] : []),
       {
         label: t('nav.new'),
         href: opts.value.forumNew?.url || routes.forumNew,

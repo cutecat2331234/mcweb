@@ -103,6 +103,8 @@ export const routes = {
   identityDataExportDownload: (id: string) => `${appPrefix}/identity/data-exports/${id}/download`,
   identityDataExportRetry: (id: string) => `${appPrefix}/identity/data-exports/${id}/retry`,
   identityDataExportRevoke: (id: string) => `${appPrefix}/identity/data-exports/${id}/revoke`,
+  staff: `${appPrefix}/staff`,
+  staffModerationCases: `${appPrefix}/staff/moderation-cases`,
   totpRecoveryRequest: `${appPrefix}/identity/security/totp/recovery/new`,
   totpRecovery: `${appPrefix}/identity/security/totp/recovery`,
   editTotpRecovery: (token: string) => `${appPrefix}/identity/security/totp/recovery/${token}/edit`,

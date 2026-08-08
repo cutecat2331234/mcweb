@@ -45,6 +45,22 @@ Rails.application.routes.draw do
         member { post :follow }
         resources :profile_posts, only: %i[index create], path: "profile-posts"
       end
+      namespace :staff do
+        root "root#index"
+        resources :moderation_cases,
+          path: "moderation-cases",
+          only: %i[index show] do
+          collection do
+            post :authorize_action, path: "authorize-action"
+            post :execute_action, path: "execute-action"
+          end
+          member do
+            post :claim
+            post :assign
+            post :notes
+          end
+        end
+      end
     end
   end
 
@@ -507,6 +523,23 @@ Rails.application.routes.draw do
                 param: :token,
                 path: "security/totp/recovery"
       resources :sessions_management, only: %i[index destroy], path: "sessions"
+    end
+
+    namespace :staff do
+      root "dashboard#index"
+      resources :moderation_cases,
+        path: "moderation-cases",
+        only: %i[index show] do
+        collection do
+          post :authorize_action, path: "authorize-action"
+          post :execute_action, path: "execute-action"
+        end
+        member do
+          post :claim
+          post :assign
+          post :notes
+        end
+      end
     end
 
   scope module: :community, path: "forum", as: :forum do

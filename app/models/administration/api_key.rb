@@ -11,7 +11,16 @@ module Administration
     self.table_name = "api_keys"
 
     TOKEN_PREFIX = "mcw_"
-    VALID_SCOPES = %w[read write].freeze
+    STAFF_READ_SCOPE = "staff.moderation.read"
+    STAFF_MUTATION_SCOPES = %w[
+      staff.moderation.claim
+      staff.moderation.assign
+      staff.moderation.note
+      staff.moderation.execute
+    ].freeze
+    VALID_SCOPES = (
+      %w[read write] + [ STAFF_READ_SCOPE ] + STAFF_MUTATION_SCOPES
+    ).freeze
 
     belongs_to :user, class_name: "User", optional: true
     belongs_to :created_by, class_name: "User", optional: true
@@ -26,7 +35,7 @@ module Administration
     # persisted and cannot be recovered later.
     def self.generate!(name:, scopes: %w[read], user: nil, created_by: nil)
       requested_scopes = Array(scopes).map(&:to_s).map(&:strip).reject(&:blank?).uniq
-      if requested_scopes.empty? || (requested_scopes - VALID_SCOPES).any?
+      unless valid_scope_set?(requested_scopes)
         raise ArgumentError, "scopes must contain at least one of: #{VALID_SCOPES.join(', ')}"
       end
 
@@ -42,6 +51,15 @@ module Administration
         created_by: created_by
       )
       [ record, plaintext ]
+    end
+
+    def self.valid_scope_set?(scopes)
+      requested = Array(scopes).map(&:to_s).map(&:strip).reject(&:blank?).uniq
+      return false if requested.empty? || (requested - VALID_SCOPES).any?
+      return false if (requested & STAFF_MUTATION_SCOPES).any? &&
+        !requested.include?(STAFF_READ_SCOPE)
+
+      true
     end
 
     # Look up an active key by plaintext token using a constant-time digest match.

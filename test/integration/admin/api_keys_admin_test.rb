@@ -40,6 +40,30 @@ module Admin
       assert key.allows?("write")
     end
 
+    test "staff scopes require a bound user and preserve their fine-grained list" do
+      assert_no_difference -> { Administration::ApiKey.count } do
+        post admin_system_api_keys_path, params: {
+          api_key: {
+            name: "Unbound staff",
+            scopes: %w[staff.moderation.read staff.moderation.note]
+          }
+        }
+      end
+      assert_redirected_to new_admin_system_api_key_path
+
+      post admin_system_api_keys_path, params: {
+        api_key: {
+          name: "Bound staff",
+          scopes: %w[staff.moderation.read staff.moderation.note],
+          username: @admin.username
+        }
+      }
+      assert_redirected_to admin_system_api_keys_path
+      key = Administration::ApiKey.order(:created_at).last
+      assert_equal @admin.id, key.user_id
+      assert_equal %w[staff.moderation.read staff.moderation.note], key.scope_list
+    end
+
     test "non-owner cannot bind a key to another user" do
       target = create_user(username: "apiotheruser")
 

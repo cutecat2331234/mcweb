@@ -148,14 +148,13 @@ module Community
         return false unless can_manage_case?(moderation_case)
         return true if user.nil?
         return false unless user.status == "active"
-        return false unless user.can_access_admin?
-        return false unless user.admin_module_allowed?("forum")
 
-        self.class.new(user).can_manage_case?(moderation_case)
+        assignee_policy = self.class.new(user)
+        assignee_policy.accessible? && assignee_policy.can_manage_case?(moderation_case)
       end
 
       def assignable_staff(moderation_case)
-        User.where(status: "active").order(:username).select do |user|
+        assignable_candidates(moderation_case).where(status: "active").order(:username).select do |user|
           can_assign?(moderation_case, user)
         end
       end
@@ -209,6 +208,53 @@ module Community
       end
 
       private
+
+      def assignable_candidates(moderation_case)
+        ids = User.where(account_type: "owner").pluck(:id)
+        permission_keys = []
+
+        case moderation_case.source_kind
+        when *CONTENT_KINDS, *REPORT_KINDS
+          permission_keys << "forum.topics.lock"
+          if moderation_case.forum_section_id
+            ids.concat(
+              Community::SectionModerator
+                .where(forum_section_id: moderation_case.forum_section_id)
+                .pluck(:user_id)
+            )
+          end
+        when "quarantined_attachment"
+          permission_keys.concat([ ATTACHMENT_MANAGE_PERMISSION, ATTACHMENT_RELEASE_PERMISSION ])
+        when "user_risk"
+          permission_keys << "forum.users.warn" if moderation_case.source_type == "Community::UserWarning"
+          permission_keys << "forum.users.mute" if moderation_case.source_type == "Community::Mute"
+        end
+
+        ids.concat(user_ids_with_any_permission(permission_keys))
+        User.where(id: ids.uniq)
+      end
+
+      # Permission candidates include direct roles and global identity groups.
+      # This avoids scanning every account while preserving the same effective
+      # permission sources used by User#permission?.
+      def user_ids_with_any_permission(permission_keys)
+        keys = Array(permission_keys).map(&:to_s).uniq
+        return [] if keys.empty?
+
+        role_user_ids = User.joins(roles: :permissions)
+          .where(permissions: { key: keys })
+          .distinct
+          .pluck(:id)
+        group_ids = Community::UserGroup.all.filter_map do |group|
+          group.id if (group.permission_keys & keys).any?
+        end
+        group_user_ids = Community::GroupMembership
+          .where(community_user_group_id: group_ids)
+          .distinct
+          .pluck(:user_id)
+
+        role_user_ids + group_user_ids
+      end
 
       def moderated_section_ids
         @moderated_section_ids ||= Community::SectionModeration

@@ -20,6 +20,12 @@ module InertiaSharedProps
     }
 
     append_store_shared_props(share) if store_shared_props_required?
+    if logged_in? && FeatureFlags.enabled?(:forum)
+      share[:staff_workspace] = InertiaRails.defer(
+        group: "portal_navigation",
+        rescue: true
+      ) { staff_workspace_navigation_payload }
+    end
     append_forum_shared_props(share) if inertia_feature_domain == :forum
     append_minecraft_shared_props(share) if inertia_feature_domain == :minecraft
     append_website_shared_props(share) if inertia_feature_domain == :website
@@ -28,6 +34,22 @@ module InertiaSharedProps
     share.merge!(share_active_template)
     share[:csrf_token] = form_authenticity_token
     share
+  end
+
+  def staff_workspace_navigation_payload
+    policy = Community::ModerationWorkbench::Policy.new(current_user)
+    return unless policy.accessible?
+
+    active_count = policy.visible_scope
+      .where(status: Community::ModerationCase::ACTIVE_STATUSES)
+      .count
+    {
+      count: active_count,
+      url: staff_root_path,
+      queue_url: staff_moderation_cases_path
+    }
+  rescue ActiveRecord::ActiveRecordError
+    nil
   end
 
   def inertia_feature_domain

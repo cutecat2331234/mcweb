@@ -18,6 +18,14 @@ const form = useForm({
   api_key: { name: '', scopes: ['read'] as string[], username: '' },
 })
 
+const staffScopes = [
+  { value: 'staff.moderation.read', label: 'admin.apiKeys.scopeStaffRead' },
+  { value: 'staff.moderation.claim', label: 'admin.apiKeys.scopeStaffClaim' },
+  { value: 'staff.moderation.assign', label: 'admin.apiKeys.scopeStaffAssign' },
+  { value: 'staff.moderation.note', label: 'admin.apiKeys.scopeStaffNote' },
+  { value: 'staff.moderation.execute', label: 'admin.apiKeys.scopeStaffExecute' },
+] as const
+
 const readScope = computed({
   get: () => form.api_key.scopes.includes('read'),
   set: (checked: boolean) => toggleScope('read', checked),
@@ -32,6 +40,24 @@ function toggleScope(scope: string, checked: boolean) {
   const scopes = new Set(form.api_key.scopes)
   if (checked) scopes.add(scope)
   else scopes.delete(scope)
+  form.api_key.scopes = Array.from(scopes)
+}
+
+function hasScope(scope: string) {
+  return form.api_key.scopes.includes(scope)
+}
+
+function setScope(scope: string, checked: boolean) {
+  const scopes = new Set(form.api_key.scopes)
+  if (checked) scopes.add(scope)
+  else scopes.delete(scope)
+
+  if (checked && scope !== 'staff.moderation.read') {
+    scopes.add('staff.moderation.read')
+  }
+  if (!checked && scope === 'staff.moderation.read') {
+    staffScopes.forEach((staffScope) => scopes.delete(staffScope.value))
+  }
   form.api_key.scopes = Array.from(scopes)
 }
 
@@ -78,6 +104,21 @@ function submit(event?: { errors?: unknown }) {
             </a-checkbox>
             <a-checkbox v-model="writeScope">
               {{ t('admin.apiKeys.scopeWrite') }}
+            </a-checkbox>
+            <a-divider :margin="4" />
+            <a-typography-text bold>
+              {{ t('admin.apiKeys.staffScopes') }}
+            </a-typography-text>
+            <a-typography-text type="secondary">
+              {{ t('admin.apiKeys.staffScopesHint') }}
+            </a-typography-text>
+            <a-checkbox
+              v-for="scope in staffScopes"
+              :key="scope.value"
+              :model-value="hasScope(scope.value)"
+              @change="setScope(scope.value, $event)"
+            >
+              {{ t(scope.label) }}
             </a-checkbox>
           </a-space>
         </a-form-item>

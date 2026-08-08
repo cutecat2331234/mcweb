@@ -19,6 +19,9 @@ module TouchLastSeen
       .where(id: current_user.id)
       .where("last_seen_at IS NULL OR last_seen_at <= ?", cutoff)
       .update_all(last_seen_at: now)
-    current_user.last_seen_at = now if updated.positive?
+    return unless updated.positive?
+
+    current_user.last_seen_at = now
+    current_user.clear_attribute_changes([ :last_seen_at ])
   end
 end

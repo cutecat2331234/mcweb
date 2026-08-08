@@ -14,6 +14,7 @@ class PerformanceCacheTest < ActiveSupport::TestCase
 
     later = base + Session::ACTIVITY_TOUCH_INTERVAL + 1.second
     assert session.touch_activity!(at: later)
+    assert_not session.has_changes_to_save?
     assert_equal later, session.reload.last_active_at
   end
 

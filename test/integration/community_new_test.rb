@@ -38,6 +38,8 @@ class CommunityNewTest < ActionDispatch::IntegrationTest
     sign_in_as(@viewer)
 
     get forum_new_feed_path
+    assert_inertia_deferred_props :forum_new, group: "portal_navigation"
+    inertia_load_deferred_props("portal_navigation")
     assert_equal 2, inertia.props.deep_symbolize_keys[:forum_new][:count]
   end
 

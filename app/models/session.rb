@@ -50,7 +50,10 @@ class Session < ApplicationRecord
       .where(id: id)
       .where("last_active_at IS NULL OR last_active_at <= ?", cutoff)
       .update_all(last_active_at: at)
-    self.last_active_at = at if updated.positive?
+    if updated.positive?
+      self.last_active_at = at
+      clear_attribute_changes([ :last_active_at ])
+    end
     updated.positive?
   end
 

@@ -111,7 +111,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
 <template>
   <ConfigProvider>
-    <Layout :style="{ minHeight: '100vh', background: 'var(--color-fill-1)' }">
+    <Layout :style="{ minHeight: '100vh', background: 'var(--color-bg-1)' }">
       <LayoutSider
         v-if="!isCompact"
         breakpoint="lg"

@@ -34,6 +34,7 @@ module Commerce
       end
 
       @pagy, products = pagy(:offset, scope, limit: 20)
+      products = prepare_product_list(products)
 
       render inertia: "Commerce/Categories/Show", props: {
         category: {

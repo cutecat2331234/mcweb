@@ -8,7 +8,7 @@ module Operations
     class Catalog
       MAX_VALUE = BigDecimal("1000000000000")
 
-      SURFACES = %w[admin api app website other].freeze
+      SURFACES = %w[admin api app website health other].freeze
       OUTCOMES = %w[success client_error server_error failure other].freeze
       QUEUES = %w[
         default mailers maintenance minecraft notifications payments plugins
@@ -29,6 +29,16 @@ module Operations
         "request.duration_ms" => {
           "surface" => SURFACES,
           "outcome" => OUTCOMES
+        },
+        "request.total_duration_ms" => {
+          "surface" => SURFACES,
+          "outcome" => OUTCOMES
+        },
+        "request.queue_duration_ms" => {
+          "surface" => SURFACES
+        },
+        "request.middleware_duration_ms" => {
+          "surface" => SURFACES
         },
         "request.server_error" => {
           "surface" => SURFACES

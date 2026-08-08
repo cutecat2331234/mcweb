@@ -16,6 +16,7 @@ module Commerce
 
       total_count = all_items.size
       items = sort_wishlist_items(filter_wishlist_items(all_items))
+      prepare_product_list(items.map(&:product))
 
       share = Commerce::EnsureWishlistShareToken.call(user: current_user)
       availability_alerts = Commerce::ProductAvailabilityAlert
@@ -87,6 +88,7 @@ module Commerce
       all_items = all_items.select { |item| Commerce::StoreFeatures.product_visible?(item.product) }
       total_count = all_items.size
       items = sort_wishlist_items(filter_wishlist_items(all_items))
+      prepare_product_list(items.map(&:product))
 
       render inertia: "Commerce/Wishlist/Public", props: {
         owner: user.display_name || user.username,

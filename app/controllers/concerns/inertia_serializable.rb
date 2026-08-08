@@ -604,7 +604,12 @@ module InertiaSerializable
   end
 
   def serialize_product_list_item(product)
-    avg = product.reviews.published.average(:rating)&.round(1)
+    avg = if defined?(@product_list_average_ratings) &&
+        @product_list_average_ratings.key?(product.id)
+      @product_list_average_ratings[product.id]
+    else
+      product.reviews.published.average(:rating)&.round(1)
+    end
     {
       db_id: product.id,
       id: product.public_id,
@@ -625,6 +630,25 @@ module InertiaSerializable
       url: store_product_path(product),
       quick_addable: product.variants.none? && product.purchasable?
     }
+  end
+
+  def prepare_product_list(products)
+    records = Array(products).compact
+    return records if records.empty?
+
+    ActiveRecord::Associations::Preloader.new(
+      records:,
+      associations: [ :category, :variants, { cover_image_attachment: :blob } ]
+    ).call
+    ratings = Commerce::Review.published
+      .where(store_product_id: records.map(&:id))
+      .group(:store_product_id)
+      .average(:rating)
+      .transform_values { |value| value&.round(1) }
+    records.each { |product| ratings[product.id] = nil unless ratings.key?(product.id) }
+    @product_list_average_ratings ||= {}
+    @product_list_average_ratings.merge!(ratings)
+    records
   end
 
   def serialize_upcoming_product(product, availability_alert: false, availability_alert_id: nil)
@@ -800,11 +824,23 @@ module InertiaSerializable
       name: category.name,
       icon: category.icon,
       color_hex: category.color_hex,
-      product_count: Commerce::StoreFeatures.visible_products_scope(
-        Commerce::Product.available.where(store_category_id: category.id)
-      ).count,
+      product_count: if defined?(@category_product_counts)
+        @category_product_counts.fetch(category.id, 0)
+      else
+        Commerce::StoreFeatures.visible_products_scope(
+          Commerce::Product.available.where(store_category_id: category.id)
+        ).count
+      end,
       url: store_category_path(category.slug, **query.compact)
     }
+  end
+
+  def prepare_category_product_counts(categories)
+    records = Array(categories)
+    @category_product_counts = Commerce::StoreFeatures.visible_products_scope(
+      Commerce::Product.available.where(store_category_id: records.map(&:id))
+    ).group(:store_category_id).count
+    records
   end
 
   def serialize_cart_item(item)

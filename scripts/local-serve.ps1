@@ -2,6 +2,9 @@
 
 param(
 
+    [ValidateSet("Debug", "FastPreview")]
+    [string]$Profile = "FastPreview",
+
     [switch]$SyncAssets,
 
     [switch]$RebuildFrontend
@@ -21,6 +24,20 @@ Set-Location $Root
 $env:PORT = if ($env:PORT) { $env:PORT } else { "3000" }
 
 $env:VITE_RUBY_AUTO_BUILD = "false"
+
+$env:MCWEB_DEVELOPER_MODE = "1"
+
+if ($Profile -eq "FastPreview") {
+    $env:MCWEB_RUNTIME_PROFILE = "fast_preview"
+    $env:VITE_RUBY_MODE = "production"
+    $ViteOutput = "vite"
+    $ViteMode = "production"
+} else {
+    $env:MCWEB_RUNTIME_PROFILE = "debug"
+    $env:VITE_RUBY_MODE = "development"
+    $ViteOutput = "vite-dev"
+    $ViteMode = "development"
+}
 
 
 
@@ -42,17 +59,19 @@ if ($SyncAssets) {
 
 
 
-if ($RebuildFrontend -or -not (Test-Path "$Root\public\vite-dev\.vite\manifest.json")) {
+if ($RebuildFrontend -or -not (Test-Path "$Root\public\$ViteOutput\.vite\manifest.json")) {
 
-    Write-Host "==> Building frontend assets (vite-dev)..."
+    Write-Host "==> Building frontend assets ($ViteOutput, $Profile)..."
 
-    bundle exec rails tailwindcss:build
+    bundle exec ruby bin/rails tailwindcss:build
 
-    npx vite build --mode development
+    npx vite build --mode $ViteMode
 
 }
 
 
+
+Write-Host "==> Runtime profile: $Profile; Rails: development; Vite: $ViteMode"
 
 & "$Root\bin\local-serve" @args
 

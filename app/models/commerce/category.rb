@@ -6,5 +6,6 @@ module Commerce
     validates :slug, presence: true, uniqueness: true
 
     scope :ordered, -> { order(:position) }
+    after_commit -> { Website::HomeCache.bump! }
   end
 end

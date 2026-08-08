@@ -8,6 +8,7 @@ module Commerce
     validates :sku, presence: true, uniqueness: true
     validates :price_cents, numericality: { greater_than_or_equal_to: 0 }
     validates :compare_at_price_cents, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
+    after_commit -> { Website::HomeCache.bump! }
 
     def on_sale?
       compare_at_price_cents.present? && compare_at_price_cents > price_cents

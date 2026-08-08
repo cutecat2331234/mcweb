@@ -13,6 +13,7 @@ module Website
 
     scope :published, -> { where(status: :published) }
     scope :by_type, ->(type) { where(article_type: type) }
+    after_commit -> { Website::HomeCache.bump! }
 
     def publish!
       update!(status: :published, published_at: Time.current)

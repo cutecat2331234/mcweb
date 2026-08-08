@@ -20,6 +20,7 @@ Developer Mode 是启动期配置，不是管理员后台中的热开关。它�
 developer_mode:
   enabled: true
   preset: unrestricted
+  runtime_profile: debug
   security: {}
   integrations: {}
   runtime: {}
@@ -33,6 +34,7 @@ developer_mode:
 developer_mode:
   enabled: true
   preset: unrestricted
+  runtime_profile: fast_preview
   security:
     csrf: inherit
   runtime:
@@ -51,7 +53,8 @@ developer_mode:
 | 其他值，包括已定义但为空 | 启动失败 |
 | 未定义 | 使用 `config/local.yml` 的 `enabled` |
 
-环境变量只覆盖总开关，不覆盖 preset 或细项。没有 `developer_mode` 配置段时默认关闭。
+该环境变量只覆盖总开关，不覆盖 preset 或细项；运行档位另由下文的
+`MCWEB_RUNTIME_PROFILE` 覆盖。没有 `developer_mode` 配置段时默认关闭。
 配置文件使用严格解析：无效 YAML、未知键、错误枚举、非布尔 `enabled` 或无效的
 `auto_login_user` 都会在 Rails 初始化前中止启动。即使总开关为 `false`，错误的细项
 仍会被校验，避免以后启用时静默采用错误配置。
@@ -60,6 +63,18 @@ developer_mode:
 `MCWEB_DEVELOPER_MODE=0`。普通测试因此始终验证正常安全与真实集成选择逻辑，不会因
 开发者本机 `local.yml` 开启了 Developer Mode 而改走 fake provider；需要测试某个
 开发能力时，测试代码必须通过不可变 settings 快照显式注入。
+
+`runtime_profile` 把安全/集成替身与运行性能分开选择：
+
+| 值 | 用途 | Rails/Vite 行为 |
+|---|---|---|
+| `debug` | 修改代码、查看源码映射 | 代码重载、详细日志、未压缩开发资源和 source map |
+| `fast_preview` | 本地功能体验和浏览器验收 | 保留 Developer Mode 替身，但关闭重载，启用 eager load、缓存、压缩，并读取 production Vite manifest |
+
+`MCWEB_RUNTIME_PROFILE=debug|fast_preview` 可在启动时覆盖 YAML。该变量严格校验；修改后
+必须重启 Rails。Windows 可运行 `scripts/local-serve.ps1 -Profile FastPreview`，需要
+调试源码时改为 `-Profile Debug`。Fast Preview 不等于 production：Rails 环境仍是
+development，安全与外部集成行为仍由 Developer Mode 控制。
 
 在 `RAILS_ENV=production` 中开启还必须同时提供以下独立确认：
 
@@ -132,7 +147,7 @@ McWeb 现在定义了全局 CSP。`csp: disabled` 会只关闭这层全局浏览
 
 ### 2.3 已接线的运行时覆盖
 
-`unrestricted` 默认应用以下启动期设置：
+`debug` 默认应用以下启动期设置：
 
 | 配置项 | 默认值 | 当前效果 |
 |---|---|---|
@@ -154,6 +169,12 @@ McWeb 现在定义了全局 CSP。`csp: disabled` 会只关闭这层全局浏览
 
 Vite 两个设置只影响构建配置；Developer Mode 不会自动启动 Vite dev server，也不会
 自动提供 HMR。`async` Job 在进程退出时可能丢失，`local` storage 也不是持久生产存储。
+
+`fast_preview` 保留同一套 security 与 integrations 默认值，仅把 runtime 默认值改为：
+关闭 class reloading，启用 eager load、controller/fragment cache、静态资源长缓存、
+minification 与 response compression，关闭 public source map 和详细查询来源，并使用
+`info` 日志。`runtime` 下的显式单项仍拥有最高优先级，但 Fast Preview 会拒绝
+“关闭资源 minification”或“开启公开 source map”这类与其目标冲突的 Vite 构建。
 
 此外，Sidekiq server 在 Developer Mode 下会禁用 Cron poller，也不会调用
 `Sidekiq::Cron::Job.load_from_hash!` 自动注册 `config/sidekiq_cron.yml`。切换前已经

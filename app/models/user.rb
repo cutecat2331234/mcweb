@@ -1,3 +1,5 @@
+require "set"
+
 class User < ApplicationRecord
   include HasPublicId
   include HasAvatar
@@ -90,14 +92,30 @@ class User < ApplicationRecord
 
   def permission?(key)
     return true if account_owner?
-    return true if roles.joins(:permissions).exists?(permissions: { key: key })
 
-    # XenForo-style user groups grant permission keys too (union with roles).
-    group_permission_keys.include?(key.to_s)
+    authorization_permission_keys.include?(key.to_s)
   end
 
-  # Effective permission keys are resolved from current memberships on every
-  # check so group edits cannot leave a stale authorization decision behind.
+  # The version is bumped by role, role-permission, identity-group and account
+  # access mutations. Old cache entries are therefore never reused after an
+  # authorization change, while repeated checks in one request share one set.
+  def authorization_permission_keys
+    version = permission_version.to_i
+    if @authorization_permission_version == version &&
+        @authorization_permission_keys
+      return @authorization_permission_keys
+    end
+
+    keys = Rails.cache.fetch(
+      [ "identity", "effective-permissions", id, version ],
+      expires_in: 1.hour
+    ) do
+      (permissions.pluck(:key) + group_permission_keys).map(&:to_s).uniq.sort
+    end
+    @authorization_permission_version = version
+    @authorization_permission_keys = Array(keys).map(&:to_s).to_set.freeze
+  end
+
   def group_permission_keys
     Community::UserGroup.permission_keys_for(self)
   end

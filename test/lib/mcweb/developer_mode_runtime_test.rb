@@ -155,6 +155,32 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
     assert config.x.mcweb.developer_mode.enabled?
   end
 
+  test "fast preview applies cached compressed production-like runtime" do
+    config = production_like_config
+    routes = FakeRoutes.new
+
+    Mcweb::DeveloperModeRuntime.apply!(
+      config,
+      settings: developer_settings(enabled: true, runtime_profile: :fast_preview),
+      root: Rails.root,
+      routes: routes,
+      environment: {}
+    )
+
+    assert_not config.enable_reloading
+    assert config.eager_load
+    assert config.action_controller.perform_caching
+    assert_equal :memory_store, config.cache_store
+    assert_equal :info, config.log_level
+    assert_not config.active_record.verbose_query_logs
+    assert_not config.action_view.annotate_rendered_view_with_filenames
+    assert_equal(
+      { "cache-control" => "public, max-age=31536000" },
+      config.public_file_server.headers
+    )
+    assert_includes config.middleware.inserted, [ 0, Rack::Deflater, [] ]
+  end
+
   test "allow all CORS reflects arbitrary origins and terminates preflight requests" do
     calls = 0
     app = lambda do |_environment|
@@ -210,10 +236,24 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
     assert_equal(
       {
         "MCWEB_DEVELOPER_VITE" => "1",
+        "MCWEB_RUNTIME_PROFILE" => "debug",
         "MCWEB_DEVELOPER_VITE_MINIFICATION" => "disabled",
         "MCWEB_DEVELOPER_VITE_SOURCE_MAPS" => "enabled"
       },
       vite_developer_environment("MCWEB_DEVELOPER_MODE" => "1")
+    )
+
+    assert_equal(
+      {
+        "MCWEB_DEVELOPER_VITE" => "1",
+        "MCWEB_RUNTIME_PROFILE" => "fast_preview",
+        "MCWEB_DEVELOPER_VITE_MINIFICATION" => "enabled",
+        "MCWEB_DEVELOPER_VITE_SOURCE_MAPS" => "disabled"
+      },
+      vite_developer_environment(
+        "MCWEB_DEVELOPER_MODE" => "1",
+        "MCWEB_RUNTIME_PROFILE" => "fast_preview"
+      )
     )
   end
 
@@ -427,6 +467,7 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
 
   def developer_settings(
     enabled:,
+    runtime_profile: :debug,
     security: {},
     integrations: {},
     runtime: {}
@@ -435,6 +476,7 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
       config: {
         developer_mode: {
           enabled: enabled,
+          runtime_profile: runtime_profile,
           security: security,
           integrations: integrations,
           runtime: runtime
@@ -566,6 +608,7 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
       ViteRuby.config
       keys = %w[
         MCWEB_DEVELOPER_VITE
+        MCWEB_RUNTIME_PROFILE
         MCWEB_DEVELOPER_VITE_MINIFICATION
         MCWEB_DEVELOPER_VITE_SOURCE_MAPS
       ]

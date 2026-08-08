@@ -8,6 +8,7 @@ class Mcweb::DeveloperModeTest < ActiveSupport::TestCase
 
     assert_not settings.enabled?
     assert_equal :unrestricted, settings.preset
+    assert_equal :production, settings.runtime_profile
     assert_equal :inherit, settings.security.fetch(:email_verification)
     assert_equal :inherit, settings.integrations.fetch(:payments)
     assert_equal :inherit, settings.runtime.fetch(:job_backend)
@@ -37,6 +38,7 @@ class Mcweb::DeveloperModeTest < ActiveSupport::TestCase
 
     assert settings.enabled?
     assert_equal :unrestricted, settings.profile
+    assert_equal :debug, settings.runtime_profile
     assert_equal :inherit, settings.security.fetch(:rate_limits)
     assert_equal :auto_verify, settings.security.fetch(:email_verification)
     assert_equal :bypass, settings.security.fetch(:two_factor)
@@ -47,6 +49,46 @@ class Mcweb::DeveloperModeTest < ActiveSupport::TestCase
     assert_equal 2, settings.runtime.fetch(:puma_workers)
     assert_equal :disabled, settings.runtime.fetch(:eager_load)
     assert_equal "owner@example.test", settings.auto_login_user
+  end
+
+  test "fast preview keeps developer integrations while enabling production-like runtime" do
+    settings = parse(
+      developer_mode: {
+        enabled: true,
+        runtime_profile: "fast_preview"
+      }
+    )
+
+    assert settings.enabled?
+    assert_equal :fast_preview, settings.runtime_profile
+    assert_equal :bypass, settings.security.fetch(:two_factor)
+    assert_equal :fake, settings.integrations.fetch(:payments)
+    assert_equal :disabled, settings.runtime.fetch(:class_reloading)
+    assert_equal :enabled, settings.runtime.fetch(:eager_load)
+    assert_equal :enabled, settings.runtime.fetch(:controller_caching)
+    assert_equal :enabled, settings.runtime.fetch(:fragment_caching)
+    assert_equal :enabled, settings.runtime.fetch(:asset_minification)
+    assert_equal :disabled, settings.runtime.fetch(:source_maps)
+    assert_equal :enabled, settings.runtime.fetch(:response_compression)
+    assert_equal :info, settings.runtime.fetch(:log_level)
+  end
+
+  test "runtime profile accepts a strict environment override" do
+    settings = parse(
+      { developer_mode: { enabled: true } },
+      environment: { "MCWEB_RUNTIME_PROFILE" => "fast_preview" }
+    )
+
+    assert_equal :fast_preview, settings.runtime_profile
+    assert_equal :enabled, settings.runtime.fetch(:eager_load)
+
+    error = assert_raises(Mcweb::DeveloperMode::InvalidConfiguration) do
+      parse(
+        { developer_mode: { enabled: true } },
+        environment: { "MCWEB_RUNTIME_PROFILE" => "turbo" }
+      )
+    end
+    assert_includes error.message, "MCWEB_RUNTIME_PROFILE"
   end
 
   test "validates overrides even while the mode is disabled" do
@@ -85,6 +127,8 @@ class Mcweb::DeveloperModeTest < ActiveSupport::TestCase
     {
       { developer_mode: { enabled: true, preset: "fast_and_loose" } } =>
         "developer_mode.preset",
+      { developer_mode: { enabled: true, runtime_profile: "fast_and_loose" } } =>
+        "developer_mode.runtime_profile",
       { developer_mode: { enabled: true, security: { csrf: "off" } } } =>
         "developer_mode.security.csrf",
       { developer_mode: { enabled: true, integrations: { payments: "stripe" } } } =>
@@ -209,6 +253,7 @@ class Mcweb::DeveloperModeTest < ActiveSupport::TestCase
       assert Mcweb::DeveloperMode.enabled?
       assert_equal :unrestricted, Mcweb::DeveloperMode.preset
       assert_equal :unrestricted, Mcweb::DeveloperMode.profile
+      assert_equal :debug, Mcweb::DeveloperMode.runtime_profile
       assert_equal :auto_verify, Mcweb::DeveloperMode.security(:email_verification)
       assert_equal :fake, Mcweb::DeveloperMode.integration(:payments)
       assert_equal :inline, Mcweb::DeveloperMode.runtime(:job_backend)

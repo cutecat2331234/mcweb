@@ -15,6 +15,7 @@ require "monitor"
 require "pathname"
 require "set"
 require "time"
+require "digest"
 
 module Mcweb
   module Plugins
@@ -1217,11 +1218,25 @@ module Mcweb
           registry.reset!
           if disabled?
             registry.boot!
+            remember_source_signature(root)
             next list
           end
 
           Loader.new(root:, registry:).load!
           registry.boot!
+          remember_source_signature(root)
+          list
+        end
+      end
+
+      def reload_if_changed!(root: default_root)
+        root = Pathname(root).expand_path
+        signature = plugin_source_signature(root)
+        LIFECYCLE_MONITOR.synchronize do
+          @plugin_source_signatures ||= {}
+          return list if @plugin_source_signatures[root.to_s] == signature
+
+          reload!(root:)
         end
       end
 
@@ -1233,8 +1248,31 @@ module Mcweb
         Pathname(ENV.fetch("MCWEB_PLUGIN_DIR", Rails.root.join("plugins").to_s))
       end
 
+      def plugin_source_signature(root = default_root)
+        root = Pathname(root).expand_path
+        digest = Digest::SHA256.new
+        digest << (disabled? ? "disabled" : "enabled")
+        return digest.hexdigest unless root.directory?
+
+        root.glob("**/*.{rb,yml,yaml}").select(&:file?).sort.each do |path|
+          stat = path.stat
+          digest << path.relative_path_from(root).to_s
+          digest << stat.size.to_s
+          digest << stat.mtime.to_r.to_s
+        end
+        digest.hexdigest
+      end
+
       def with_loading_manifest(manifest, &block)
         registry.with_loading_manifest(manifest, &block)
+      end
+
+      private
+
+      def remember_source_signature(root)
+        root = Pathname(root).expand_path
+        @plugin_source_signatures ||= {}
+        @plugin_source_signatures[root.to_s] = plugin_source_signature(root)
       end
     end
   end

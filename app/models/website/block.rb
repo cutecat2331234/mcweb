@@ -7,6 +7,7 @@ module Website
 
     scope :visible_blocks, -> { where(visible: true) }
     scope :ordered, -> { order(:position) }
+    after_commit -> { Website::HomeCache.bump! }
 
     default_scope { ordered }
   end

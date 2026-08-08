@@ -8,7 +8,8 @@ module Mcweb
     class AllowAllCors
       ALLOWED_METHODS = "GET, HEAD, POST, PUT, PATCH, DELETE, OPTIONS"
       EXPOSED_HEADERS =
-        "X-Request-Id, X-McWeb-Developer-Mode, Location, Link"
+        "X-Request-Id, X-McWeb-Developer-Mode, " \
+        "X-McWeb-Runtime-Profile, Location, Link"
 
       def initialize(app)
         @app = app
@@ -294,10 +295,16 @@ module Mcweb
       end
 
       def apply_response_compression(config, value)
-        return unless value == :disabled
         return unless defined?(Rack::Deflater)
 
-        config.middleware.delete(Rack::Deflater)
+        case value
+        when :enabled
+          config.middleware.insert_before(0, Rack::Deflater)
+        when :disabled
+          config.middleware.delete(Rack::Deflater)
+        when :inherit
+          nil
+        end
       end
 
       def developer_url_options(environment)

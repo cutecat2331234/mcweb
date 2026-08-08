@@ -49,6 +49,7 @@ module Commerce
       upcoming = Commerce::StoreFeatures.visible_products_scope(
         Commerce::Product.upcoming.includes(:category)
       ).limit(8)
+      upcoming = prepare_product_list(upcoming)
       availability_alert_ids = if logged_in?
                                  Commerce::ProductAvailabilityAlert
                                    .where(user: current_user, store_product_id: upcoming.map(&:id))
@@ -59,7 +60,11 @@ module Commerce
       end
 
       @pagy, products = pagy(:offset, scope, limit: 20)
+      products = prepare_product_list(products)
+      featured = prepare_product_list(featured)
+      recently_viewed = prepare_product_list(recently_viewed)
       categories = Commerce::Category.ordered
+      categories = prepare_category_product_counts(categories)
       category_query = index_filter_params
 
       render inertia: "Commerce/Products/Index", props: {
@@ -108,6 +113,7 @@ module Commerce
         .includes(:product)
         .limit(20)
         .filter_map { |view| view.product if view.product&.active? && Commerce::StoreFeatures.product_visible?(view.product) }
+      products = prepare_product_list(products)
 
       render inertia: "Commerce/RecentlyViewed/Index", props: {
         products: products.map { |product|
@@ -232,7 +238,9 @@ module Commerce
         reviewsCount: reviews_count,
         ratingBreakdown: (1..5).map { |rating| { rating: rating, count: rating_breakdown[rating] || 0 } },
         reviewsPagination: pagy_props(@pagy_reviews),
-        related_products: related.map { |p| serialize_product_list_item(p) },
+        related_products: prepare_product_list(related).map do |related_product|
+          serialize_product_list_item(related_product)
+        end,
         questions: questions.map { |q| serialize_product_question(q, current_user: current_user, sort: question_sort) },
         questionsPagination: pagy_props(@pagy_questions),
         questionQuery: params[:question_q].to_s,

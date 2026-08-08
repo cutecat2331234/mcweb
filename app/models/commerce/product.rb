@@ -19,6 +19,7 @@ module Commerce
     has_one_attached :cover_image
 
     enum :status, { draft: "draft", active: "active", archived: "archived" }, validate: true
+    after_commit -> { Website::HomeCache.bump! }
     enum :prerequisite_match_mode, { all: "all", any: "any" }, validate: true, prefix: :prerequisite_match
 
     validates :name, presence: true
@@ -98,8 +99,11 @@ module Commerce
     }
 
     def in_stock?
-      if variants.exists?
-        variants.any? { |variant| variant.stock.nil? || variant.stock.positive? }
+      product_variants = variants.load
+      if product_variants.any?
+        product_variants.any? do |variant|
+          variant.stock.nil? || variant.stock.positive?
+        end
       elsif stock.nil?
         true
       else
@@ -118,8 +122,9 @@ module Commerce
     def low_stock?
       return false unless active?
 
-      if variants.exists?
-        variants.any? { |v| v.low_stock? }
+      product_variants = variants.load
+      if product_variants.any?
+        product_variants.any?(&:low_stock?)
       elsif stock.nil?
         false
       else

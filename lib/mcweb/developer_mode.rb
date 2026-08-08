@@ -9,6 +9,7 @@ module Mcweb
     Settings = Struct.new(
       :enabled,
       :preset,
+      :runtime_profile,
       :security,
       :integrations,
       :runtime,
@@ -20,6 +21,7 @@ module Mcweb
     end
 
     ENV_KEY = "MCWEB_DEVELOPER_MODE"
+    RUNTIME_PROFILE_ENV_KEY = "MCWEB_RUNTIME_PROFILE"
     PRODUCTION_CONFIRMATION_ENV_KEY =
       "MCWEB_DEVELOPER_MODE_PRODUCTION_CONFIRMATION"
     PRODUCTION_CONFIRMATION_VALUE =
@@ -28,12 +30,14 @@ module Mcweb
     TOP_LEVEL_KEYS = %i[
       enabled
       preset
+      runtime_profile
       security
       integrations
       runtime
       auto_login_user
     ].freeze
     PRESETS = %i[unrestricted].freeze
+    RUNTIME_PROFILES = %i[debug fast_preview].freeze
 
     SECURITY_ENUMS = {
       transport: %i[inherit http_allowed],
@@ -120,7 +124,7 @@ module Mcweb
       object_storage: :local
     }.freeze
 
-    UNRESTRICTED_RUNTIME = {
+    DEBUG_RUNTIME = {
       class_reloading: :enabled,
       eager_load: :disabled,
       full_error_reports: :enabled,
@@ -137,6 +141,25 @@ module Mcweb
       verbose_query_logs: :enabled,
       server_timing: :enabled,
       template_annotations: :enabled
+    }.freeze
+
+    FAST_PREVIEW_RUNTIME = {
+      class_reloading: :disabled,
+      eager_load: :enabled,
+      full_error_reports: :enabled,
+      controller_caching: :enabled,
+      fragment_caching: :enabled,
+      asset_cache: :enabled,
+      asset_minification: :enabled,
+      response_compression: :enabled,
+      source_maps: :disabled,
+      static_asset_far_future_headers: :enabled,
+      job_backend: :async,
+      puma_workers: 0,
+      log_level: :info,
+      verbose_query_logs: :disabled,
+      server_timing: :enabled,
+      template_annotations: :disabled
     }.freeze
 
     INACTIVE_SECURITY = SECURITY_ENUMS.keys.to_h { |key| [ key, :inherit ] }.freeze
@@ -189,6 +212,7 @@ module Mcweb
           PRESETS,
           "developer_mode.preset"
         )
+        runtime_profile = runtime_profile!(section)
         security = enum_group(section, :security, SECURITY_ENUMS)
         integrations = enum_group(section, :integrations, INTEGRATION_ENUMS)
         runtime = runtime_group(section)
@@ -198,15 +222,17 @@ module Mcweb
           build_settings(
             enabled: true,
             preset: preset,
+            runtime_profile: runtime_profile,
             security: preset_values(preset, :security).merge(security),
             integrations: preset_values(preset, :integrations).merge(integrations),
-            runtime: preset_values(preset, :runtime).merge(runtime),
+            runtime: runtime_profile_values(runtime_profile).merge(runtime),
             auto_login_user: auto_login_user
           )
         else
           build_settings(
             enabled: false,
             preset: preset,
+            runtime_profile: :production,
             security: INACTIVE_SECURITY,
             integrations: INACTIVE_INTEGRATIONS,
             runtime: INACTIVE_RUNTIME,
@@ -226,6 +252,21 @@ module Mcweb
 
         raise InvalidConfiguration,
           "#{ENV_KEY} must be one of: 1, true, yes, on, 0, false, no, off"
+      end
+
+      def runtime_profile!(section)
+        configured = enum!(
+          section.fetch(:runtime_profile, :debug),
+          RUNTIME_PROFILES,
+          "developer_mode.runtime_profile"
+        )
+        return configured unless @environment.key?(RUNTIME_PROFILE_ENV_KEY)
+
+        enum!(
+          @environment[RUNTIME_PROFILE_ENV_KEY],
+          RUNTIME_PROFILES,
+          RUNTIME_PROFILE_ENV_KEY
+        )
       end
 
       def enum_group(section, group_key, schema)
@@ -319,17 +360,36 @@ module Mcweb
           UNRESTRICTED_SECURITY
         when [ :unrestricted, :integrations ]
           UNRESTRICTED_INTEGRATIONS
-        when [ :unrestricted, :runtime ]
-          UNRESTRICTED_RUNTIME
         else
           raise InvalidConfiguration, "unsupported developer mode preset: #{preset}"
         end
       end
 
-      def build_settings(enabled:, preset:, security:, integrations:, runtime:, auto_login_user:)
+      def runtime_profile_values(runtime_profile)
+        case runtime_profile
+        when :debug
+          DEBUG_RUNTIME
+        when :fast_preview
+          FAST_PREVIEW_RUNTIME
+        else
+          raise InvalidConfiguration,
+            "unsupported developer mode runtime profile: #{runtime_profile}"
+        end
+      end
+
+      def build_settings(
+        enabled:,
+        preset:,
+        runtime_profile:,
+        security:,
+        integrations:,
+        runtime:,
+        auto_login_user:
+      )
         Settings.new(
           enabled: enabled,
           preset: preset,
+          runtime_profile: runtime_profile,
           security: security.dup.freeze,
           integrations: integrations.dup.freeze,
           runtime: runtime.dup.freeze,
@@ -392,6 +452,10 @@ module Mcweb
 
       def runtime(key = nil)
         key ? settings.runtime.fetch(key.to_sym) : settings.runtime
+      end
+
+      def runtime_profile
+        settings.runtime_profile
       end
 
       def auto_login_user

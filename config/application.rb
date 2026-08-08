@@ -12,6 +12,7 @@ require "action_mailbox/engine"
 require "action_text/engine"
 require "action_view/railtie"
 require "rails/test_unit/railtie"
+require_relative "../lib/mcweb/request_performance_middleware"
 
 # Require the gems listed in Gemfile, including any gems
 # you've limited to :test, :development, or :production.
@@ -35,6 +36,7 @@ module Mcweb
 
     config.active_job.queue_adapter = :sidekiq
     config.action_mailbox.ingress = ENV.fetch("MCWEB_ACTION_MAILBOX_INGRESS", "relay").to_sym
+    config.middleware.insert_before 0, Mcweb::RequestPerformanceMiddleware
 
     config.generators do |g|
       g.test_framework :minitest, fixture: false

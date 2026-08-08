@@ -52,6 +52,35 @@ class Mcweb::Plugins::LoaderTest < ActiveSupport::TestCase
     assert_equal 1, Mcweb::Plugins.list.length
   end
 
+  test "reload if changed skips unchanged entrypoints and reloads source changes" do
+    plugin_dir = write_plugin(
+      "changed-only",
+      manifest: manifest_yaml(id: "reload/changed-only"),
+      entrypoint: <<~RUBY
+        $mcweb_plugin_sdk_load_order << "version-one"
+        Mcweb::Plugins.register
+      RUBY
+    )
+
+    Mcweb::Plugins.reload_if_changed!(root: @root)
+    Mcweb::Plugins.reload_if_changed!(root: @root)
+    assert_equal [ "version-one" ], $mcweb_plugin_sdk_load_order
+
+    File.write(
+      plugin_dir.join("plugin.rb"),
+      <<~RUBY
+        $mcweb_plugin_sdk_load_order << "version-two"
+        Mcweb::Plugins.register
+      RUBY
+    )
+    changed_at = (Time.current + 1.second).to_time
+    File.utime(changed_at, changed_at, plugin_dir.join("plugin.rb"))
+    Mcweb::Plugins.reload_if_changed!(root: @root)
+
+    assert_equal [ "version-one", "version-two" ],
+      $mcweb_plugin_sdk_load_order
+  end
+
   test "entrypoint traversal is rejected before trusted code executes" do
     outside = @root.join("outside.rb")
     File.write(outside, "$mcweb_plugin_sdk_outside_executed = true\n")
@@ -389,6 +418,7 @@ class Mcweb::Plugins::LoaderTest < ActiveSupport::TestCase
     FileUtils.mkdir_p(plugin_dir)
     File.write(plugin_dir.join("mcweb_plugin.yml"), manifest)
     File.write(plugin_dir.join("plugin.rb"), entrypoint)
+    plugin_dir
   end
 
   def manifest_yaml(id:, entrypoint: "plugin.rb", requires: {})

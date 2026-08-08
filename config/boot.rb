@@ -13,7 +13,16 @@ require_relative "../lib/mcweb/developer_mode"
 
 # Developer Mode can affect boot-time runtime choices, so validate its strict
 # local configuration before Bootsnap or the Rails environment is initialized.
-Mcweb::DeveloperMode.settings
+developer_mode_settings = Mcweb::DeveloperMode.settings
+
+# Fast Preview keeps Developer Mode's local security and integration adapters,
+# but intentionally serves the same precompiled dependency graph as production.
+# This must be selected before vite_rails is loaded so ViteRuby resolves the
+# production manifest instead of public/vite-dev.
+if developer_mode_settings.enabled? &&
+    developer_mode_settings.runtime_profile == :fast_preview
+  ENV["VITE_RUBY_MODE"] = "production"
+end
 
 require "bootsnap/setup" # Speed up boot time by caching expensive operations.
 

@@ -18,6 +18,8 @@ module Website
     scope :published, -> { where(status: :published) }
     scope :by_slug, ->(slug) { find_by!(slug: slug) }
     scope :cms_home, -> { published.where(page_type: "home") }
+    after_commit -> { Website::NavItem.clear_frontend_cache! }
+    after_commit -> { Website::HomeCache.bump! }
 
     def publish!
       update!(status: :published, published_at: Time.current)

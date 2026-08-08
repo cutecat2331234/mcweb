@@ -9,6 +9,7 @@ module Commerce
     has_many_attached :photos
 
     enum :status, { published: "published", hidden: "hidden" }, validate: true
+    after_commit -> { Website::HomeCache.bump! }
 
     validates :rating, presence: true, inclusion: { in: 1..5 }
     validates :user_id, uniqueness: { scope: :store_product_id }

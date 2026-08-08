@@ -327,6 +327,7 @@ en:
     developer_mode:
       title: "Developer Mode"
       warning: "Some security checks and production optimizations are disabled."
+      fast_preview: "Developer security relaxations remain active; performance uses Fast Preview."
       production_warning: "Developer Mode is running in the production environment."
       personas:
         owner: "site owner"

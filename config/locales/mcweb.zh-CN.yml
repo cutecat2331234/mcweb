@@ -327,6 +327,7 @@
     developer_mode:
       title: "开发模式"
       warning: "安全检查和生产优化已被部分关闭。"
+      fast_preview: "安全检查仍按开发模式放宽；性能优化使用快速预览档位。"
       production_warning: "当前 production 环境正在运行开发模式。"
       personas:
         owner: "站点所有者"

@@ -297,7 +297,9 @@ module Commerce
           .limit(4)
       )
 
-      scope.map { |product| serialize_product_list_item(product) }
+      prepare_product_list(scope).map do |product|
+        serialize_product_list_item(product)
+      end
     end
 
     def shipping_cents_for_preview(subtotal_cents, coupon_code: nil)

@@ -2,6 +2,8 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "check:vite-budgets": "node scripts/check-vite-budgets.mjs",
+    "report:vite-bundles": "node scripts/check-vite-budgets.mjs --report-only",
     "check:i18n": "node scripts/check-frontend-i18n.mjs",
     "check:e2e-baselines": "node scripts/check-e2e-baselines.mjs",
     "check:user-copy": "node scripts/check-user-facing-copy.mjs",

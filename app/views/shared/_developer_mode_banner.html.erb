@@ -5,7 +5,14 @@
     class="border-b border-amber-500/40 bg-amber-100 px-4 py-2 text-sm text-amber-950"
   >
     <strong><%= t("mcweb.developer_mode.title") %></strong>
-    <span><%= t("mcweb.developer_mode.warning") %></span>
+    <span>
+      <% if Mcweb::DeveloperMode.runtime_profile == :fast_preview %>
+        <%= t("mcweb.developer_mode.fast_preview") %>
+      <% else %>
+        <%= t("mcweb.developer_mode.warning") %>
+      <% end %>
+      · <%= Rails.env %> · Vite <%= ViteRuby.config.mode %>
+    </span>
     <% if Rails.env.production? %>
       <strong class="text-red-700">
         <%= t("mcweb.developer_mode.production_warning") %>

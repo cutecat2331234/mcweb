@@ -23,6 +23,8 @@ job_concurrency: 5
 developer_mode:
   enabled: false
   preset: unrestricted
+  # debug: reload/source maps; fast_preview: production assets and caching.
+  runtime_profile: debug
   security: {}
   integrations: {}
   runtime: {}

@@ -44,13 +44,14 @@ function resolveBuild(overrides: Record<string, string | undefined>) {
   return JSON.parse(result.stdout)
 }
 
-test('Vite keeps its existing build defaults when Developer Mode is disabled', () => {
+test('Vite keeps public source maps disabled outside Developer Mode', () => {
   const baseline = resolveBuild({})
   const ignoredOverrides = resolveBuild({
     MCWEB_DEVELOPER_VITE_MINIFICATION: 'disabled',
     MCWEB_DEVELOPER_VITE_SOURCE_MAPS: 'disabled',
   })
 
+  assert.equal(baseline.sourcemap, false)
   assert.deepEqual(ignoredOverrides, baseline)
 })
 

@@ -17,6 +17,7 @@ export default {
     announcement: '公告',
     closeAnnouncement: '关闭公告',
     openMenu: '打开菜单',
+    navigation: '主导航',
     skipToContent: '跳到主要内容',
     toggleTheme: '切换主题',
     notifications: '通知',

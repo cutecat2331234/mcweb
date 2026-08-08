@@ -5,6 +5,7 @@ require_relative "../lib/mcweb/developer_mode"
 settings = Mcweb::DeveloperMode.settings
 if settings.enabled?
   ViteRuby.env["MCWEB_DEVELOPER_VITE"] = "1"
+  ViteRuby.env["MCWEB_RUNTIME_PROFILE"] = settings.runtime_profile.to_s
 
   {
     "MCWEB_DEVELOPER_VITE_MINIFICATION" => :asset_minification,

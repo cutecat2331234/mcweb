@@ -22,7 +22,7 @@ module Operations
 
       def record(metric_name, value: 1, dimensions: {}, at: @clock.call)
         flush_if_due!(at)
-        normalized = Catalog.normalize(
+        normalized = ::Operations::Metrics::Catalog.normalize(
           metric_name,
           value:,
           dimensions:
@@ -61,9 +61,7 @@ module Operations
         batch.sum { |entry| entry.fetch(:sample_count) }
       rescue StandardError => error
         restore_batch(batch || [])
-        Rails.logger.warn(
-          "[operations.metrics] flush retained for retry: #{error.class.name}"
-        )
+        ::Operations::Metrics.report_failure("flush retained for retry", error)
         false
       end
 

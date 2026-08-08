@@ -33,7 +33,8 @@ module Community
       return [] unless user
 
       where(id: Community::GroupMembership.where(user_id: user.id).select(:community_user_group_id))
-        .flat_map(&:permission_keys)
+        .pluck(:permissions)
+        .flat_map { |value| Array(value).map(&:to_s) }
         .uniq
     end
 

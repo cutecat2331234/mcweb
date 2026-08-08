@@ -62,7 +62,7 @@ module Identity
       return PermissionCatalog.assignable_keys.sort if user.account_owner?
 
       assignable_keys = PermissionCatalog.assignable_keys.to_set
-      (user.permissions.pluck(:key) + user.group_permission_keys)
+      user.authorization_permission_keys.to_a
         .uniq
         .select { |permission_key| assignable_keys.include?(permission_key) }
         .sort

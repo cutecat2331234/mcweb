@@ -17,6 +17,7 @@ export default {
     announcement: 'Announcement',
     closeAnnouncement: 'Dismiss announcements',
     openMenu: 'Open menu',
+    navigation: 'Primary navigation',
     skipToContent: 'Skip to content',
     toggleTheme: 'Toggle theme',
     notifications: 'Notifications',

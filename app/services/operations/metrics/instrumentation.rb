@@ -8,6 +8,7 @@ module Operations
       MAX_SLOW_QUERY_MS = 60_000
       HANDLED_JOB_FAILURES_KEY =
         :mcweb_operations_metrics_handled_job_failures
+      ACTION_DURATION_KEY = :mcweb_operations_metrics_action_duration_ms
 
       COMMUNITY_UPLOAD_EVENTS = {
         "community.upload.reserved" => "reserved",
@@ -47,7 +48,7 @@ module Operations
       end
 
       def initialize(
-        recorder: Operations::Metrics,
+        recorder: -> { ::Operations::Metrics },
         slow_query_ms: configured_slow_query_ms
       )
         @recorder = recorder
@@ -59,6 +60,7 @@ module Operations
         return self if @subscribers.any?
 
         subscribe("process_action.action_controller", :request)
+        subscribe("mcweb.request.outer", :outer_request)
         subscribe("sql.active_record", :sql)
         subscribe("perform.active_job", :job)
         subscribe("enqueue_retry.active_job", :job_failure_signal)
@@ -84,6 +86,7 @@ module Operations
       end
 
       def record_request(event)
+        ActiveSupport::IsolatedExecutionState[ACTION_DURATION_KEY] = event.duration
         payload = event.payload
         status = payload[:status].to_i
         status = 500 if status.zero? && event_failed?(payload)
@@ -99,7 +102,7 @@ module Operations
           surface: request_surface(payload[:controller]),
           outcome:
         }
-        @recorder.record(
+        recorder.record(
           "request.duration_ms",
           value: event.duration,
           dimensions:,
@@ -107,10 +110,44 @@ module Operations
         )
         return unless status >= 500
 
-        @recorder.record(
+        recorder.record(
           "request.server_error",
           dimensions: { surface: dimensions.fetch(:surface) },
           at: event_time(event)
+        )
+      end
+
+      def record_outer_request(event)
+        payload = event.payload
+        status = payload[:status].to_i
+        outcome = if status >= 500
+          "server_error"
+        elsif status >= 400
+          "client_error"
+        else
+          "success"
+        end
+        dimensions = { surface: payload[:surface], outcome: }
+        recorded_at = event_time(event)
+        recorder.record(
+          "request.total_duration_ms",
+          value: payload[:duration_ms],
+          dimensions:,
+          at: recorded_at
+        )
+        recorder.record(
+          "request.queue_duration_ms",
+          value: payload[:queue_duration_ms],
+          dimensions: { surface: dimensions.fetch(:surface) },
+          at: recorded_at
+        )
+        return if payload[:middleware_duration_ms].nil?
+
+        recorder.record(
+          "request.middleware_duration_ms",
+          value: payload[:middleware_duration_ms],
+          dimensions: { surface: dimensions.fetch(:surface) },
+          at: recorded_at
         )
       end
 
@@ -120,7 +157,7 @@ module Operations
         return if %w[SCHEMA TRANSACTION].include?(payload[:name].to_s.upcase)
         return if event.duration < @slow_query_ms
 
-        @recorder.record(
+        recorder.record(
           "database.slow_query.duration_ms",
           value: event.duration,
           at: event_time(event)
@@ -132,7 +169,7 @@ module Operations
         handled_failure = consume_handled_job_failure(payload[:job])
         failed = event_failed?(payload) || handled_failure
         queue = normalized_queue(payload[:job])
-        @recorder.record(
+        recorder.record(
           "job.execution.duration_ms",
           value: event.duration,
           dimensions: {
@@ -143,7 +180,7 @@ module Operations
         )
         return unless failed
 
-        @recorder.record(
+        recorder.record(
           "job.failure",
           dimensions: { queue: },
           at: event_time(event)
@@ -161,7 +198,7 @@ module Operations
 
       def record_mail(event)
         failed = event_failed?(event.payload)
-        @recorder.record(
+        recorder.record(
           "mail.delivery.duration_ms",
           value: event.duration,
           dimensions: { outcome: failed ? "failure" : "success" },
@@ -169,11 +206,11 @@ module Operations
         )
         return unless failed
 
-        @recorder.record("mail.failure", at: event_time(event))
+        recorder.record("mail.failure", at: event_time(event))
       end
 
       def record_payment_webhook(event)
-        @recorder.record(
+        recorder.record(
           "payments.webhook.processed",
           dimensions: {
             provider: event.payload[:provider],
@@ -185,7 +222,7 @@ module Operations
 
       def record_community_upload(event)
         upload_event = COMMUNITY_UPLOAD_EVENTS.fetch(event.name)
-        @recorder.record(
+        recorder.record(
           "community.upload.event",
           dimensions: {
             event: upload_event,
@@ -197,7 +234,7 @@ module Operations
 
       def record_community_scan(event)
         scan_outcome = COMMUNITY_SCAN_EVENTS.fetch(event.name)
-        @recorder.record(
+        recorder.record(
           "community.scan.event",
           dimensions: { outcome: scan_outcome },
           at: event_time(event)
@@ -212,9 +249,7 @@ module Operations
 
           public_send(:"record_#{handler}", event)
         rescue StandardError => error
-          Rails.logger.warn(
-            "[operations.metrics] notification ignored: #{error.class.name}"
-          )
+          ::Operations::Metrics.report_failure("notification ignored", error)
         end
       end
 
@@ -230,7 +265,7 @@ module Operations
 
       def normalized_queue(job)
         queue = job.respond_to?(:queue_name) ? job.queue_name.to_s : ""
-        Catalog::QUEUES.include?(queue) ? queue : "other"
+        ::Operations::Metrics::Catalog::QUEUES.include?(queue) ? queue : "other"
       end
 
       def consume_handled_job_failure(job)
@@ -253,6 +288,10 @@ module Operations
         # therefore not a wall-clock timestamp and must never become a bucket
         # time.
         Time.current
+      end
+
+      def recorder
+        @recorder.respond_to?(:call) ? @recorder.call : @recorder
       end
 
       def configured_slow_query_ms

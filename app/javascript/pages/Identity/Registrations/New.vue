@@ -2,7 +2,7 @@
 import { computed, watch } from 'vue'
 import { Link, useForm, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
-import PortalLayout from '@/layouts/PortalLayout.vue'
+import AuthLayout from '@/layouts/AuthLayout.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Input from '@/components/ui/Input.vue'
@@ -14,7 +14,7 @@ import { routes } from '@/lib/routes'
 import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
 import { normalizeAppLocale, type AppLocale } from '@/lib/i18n'
 
-defineOptions({ layout: PortalLayout })
+defineOptions({ layout: AuthLayout })
 
 const props = defineProps<{
   form_errors?: Record<string, string>

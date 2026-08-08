@@ -16,6 +16,15 @@ function developerBuildBoolean(name: string) {
 
 const developerMinification = developerBuildBoolean('MCWEB_DEVELOPER_VITE_MINIFICATION')
 const developerSourceMaps = developerBuildBoolean('MCWEB_DEVELOPER_VITE_SOURCE_MAPS')
+const runtimeProfile = process.env.MCWEB_RUNTIME_PROFILE
+
+if (runtimeProfile === 'fast_preview') {
+  if (developerMinification === false || developerSourceMaps === true) {
+    throw new Error(
+      'Fast Preview requires minified assets with public source maps disabled',
+    )
+  }
+}
 
 export default defineConfig({
   plugins: [
@@ -37,6 +46,9 @@ export default defineConfig({
   },
   build: {
     ...(developerMinification === undefined ? {} : { minify: developerMinification }),
-    ...(developerSourceMaps === undefined ? {} : { sourcemap: developerSourceMaps }),
+    // vite-plugin-ruby enables production source maps by default. Keep public
+    // source maps opt-in so normal production builds do not publish or retain
+    // several megabytes of debugging metadata.
+    sourcemap: developerSourceMaps ?? false,
   },
 })

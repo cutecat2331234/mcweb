@@ -176,6 +176,35 @@ module Operations
         collector&.uninstall!
       end
 
+      test "outer request event records total queue and middleware timings" do
+        recorder = Recorder.new
+        collector = Instrumentation.new(recorder:)
+        now = Time.zone.parse("2026-07-29 16:00:00")
+
+        collector.record_outer_request(event(
+          "mcweb.request.outer",
+          now:,
+          payload: {
+            status: 200,
+            surface: "health",
+            duration_ms: 45,
+            queue_duration_ms: 5,
+            middleware_duration_ms: 10
+          }
+        ))
+
+        assert_equal(
+          %w[
+            request.total_duration_ms
+            request.queue_duration_ms
+            request.middleware_duration_ms
+          ],
+          recorder.calls.map { |call| call.fetch(:metric_name) }
+        )
+        assert_equal "health",
+          recorder.calls.first.dig(:options, :dimensions, :surface)
+      end
+
       test "handled Active Job retries count one failed execution" do
         recorder = Recorder.new
         collector = Instrumentation.new(recorder:)

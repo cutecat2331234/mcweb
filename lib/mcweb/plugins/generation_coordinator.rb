@@ -15,6 +15,7 @@ module Mcweb
       DEFAULT_TIMEOUT = 45.seconds
       HEARTBEAT_TTL = 5.minutes
       HEARTBEAT_INTERVAL = 30.seconds
+      GENERATION_CHECK_INTERVAL = 5.seconds
       ERROR_MESSAGE_LIMIT = 1_000
 
       class << self
@@ -58,6 +59,8 @@ module Mcweb
         @reconcile_monitor = Monitor.new
         @last_heartbeat_at = nil
         @last_generation_number = nil
+        @last_generation_check_at = nil
+        @last_generation = nil
       end
 
       def available?
@@ -116,13 +119,20 @@ module Mcweb
         return unless available?
 
         @process_kind = normalize_process_kind(process_kind)
-        generation = PluginGeneration.actionable.or(
-          PluginGeneration.where(state: "active")
-        ).ordered.first
-        return unless generation
-
         @reconcile_monitor.synchronize do
           now = @clock.call
+          if @last_generation_check_at &&
+              @last_generation_check_at > now - GENERATION_CHECK_INTERVAL
+            return @last_generation
+          end
+
+          generation = PluginGeneration.actionable.or(
+            PluginGeneration.where(state: "active")
+          ).ordered.first
+          @last_generation_check_at = now
+          @last_generation = generation
+          return unless generation
+
           if @last_generation_number == generation.number &&
               @last_heartbeat_at &&
               @last_heartbeat_at > now - HEARTBEAT_INTERVAL
@@ -136,8 +146,9 @@ module Mcweb
           )
           @last_generation_number = generation.number
           @last_heartbeat_at = now
+          @last_generation = generation
         end
-        generation
+        @last_generation
       rescue ActiveRecord::ActiveRecordError
         nil
       end

@@ -122,6 +122,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
           position: 'fixed',
           inset: '0 auto 0 0',
           zIndex: 30,
+          overflowX: 'hidden',
           borderRight: '1px solid var(--color-border-2)',
           background: 'var(--color-bg-2)',
         }"

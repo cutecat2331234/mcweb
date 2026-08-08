@@ -218,7 +218,7 @@ connector-secret: "{{ server.plugin_config.connector_secret }}"</pre>
     </a-space>
   </a-card>
 
-  <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16" class="mt-4">
+  <a-grid :cols="{ xs: 1, sm: 1, lg: 2 }" :col-gap="16" :row-gap="16" class="mt-4">
     <a-grid-item v-if="controlUrls.exec">
       <a-card :title="t('adminMinecraft.remoteCommand')" :bordered="true">
         <a-input-search

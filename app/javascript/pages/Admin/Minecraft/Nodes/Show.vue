@@ -146,7 +146,7 @@ function runPageAction(action: PageAction) {
     </a-descriptions>
   </a-card>
 
-  <a-grid :cols="{ xs: 1, lg: 2 }" :col-gap="16" :row-gap="16" class="mt-4">
+  <a-grid :cols="{ xs: 1, sm: 1, lg: 2 }" :col-gap="16" :row-gap="16" class="mt-4">
     <a-grid-item v-if="hostMetricRows.length">
       <a-card :title="t('adminMinecraft.hostMetrics')" :bordered="true">
         <a-descriptions :column="1" bordered size="small">

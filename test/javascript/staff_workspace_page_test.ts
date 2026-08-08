@@ -7,10 +7,6 @@ const layout = readFileSync(
   resolve(process.cwd(), 'app/javascript/layouts/StaffLayout.vue'),
   'utf8',
 )
-const adminStyles = readFileSync(
-  resolve(process.cwd(), 'app/javascript/styles/arco-admin.css'),
-  'utf8',
-)
 const queue = readFileSync(
   resolve(process.cwd(), 'app/javascript/pages/Staff/ModerationCases/Index.vue'),
   'utf8',
@@ -22,8 +18,7 @@ test('staff workspace is independent from the administrator shell and responsive
   assert.match(layout, /window\.matchMedia\('\(max-width: 991px\)'\)/)
   assert.match(layout, /marginLeft: isCompact \? '0' : '236px'/)
   assert.match(layout, /width: isCompact \? '100%' : 'calc\(100% - 236px\)'/)
-  assert.match(layout, /class="staff-layout-sider"/)
-  assert.match(adminStyles, /\.staff-layout-sider > \.arco-layout-sider-children\s*{[^}]*overflow-x: hidden/s)
+  assert.match(layout, /boxSizing: 'border-box'/)
   assert.match(layout, /background: 'var\(--color-bg-1\)'/)
   assert.match(layout, /signOutConfirmTitle/)
   assert.doesNotMatch(layout, /<style\b/)

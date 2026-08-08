@@ -114,7 +114,6 @@ watch(isDark, syncArcoTheme, { immediate: true })
     <Layout :style="{ minHeight: '100vh', background: 'var(--color-bg-1)' }">
       <LayoutSider
         v-if="!isCompact"
-        class="staff-layout-sider"
         breakpoint="lg"
         :width="236"
         :collapsed-width="0"
@@ -130,7 +129,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
         <Space
           align="center"
           :size="12"
-          :style="{ height: '64px', padding: '0 20px', width: '100%' }"
+          :style="{
+            height: '64px',
+            padding: '0 20px',
+            width: '100%',
+            boxSizing: 'border-box',
+          }"
         >
           <IconCommand :size="24" />
           <TypographyText bold>{{ t('staffWorkspace.brand') }}</TypographyText>

@@ -10,6 +10,11 @@ html.dark body {
   color-scheme: dark;
 }
 
+/* Arco makes the sider's inner wrapper scroll in both axes by default. */
+.staff-layout-sider > .arco-layout-sider-children {
+  overflow-x: hidden;
+}
+
 /*
  * Shared admin visual language.
  *

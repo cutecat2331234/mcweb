@@ -114,6 +114,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
     <Layout :style="{ minHeight: '100vh', background: 'var(--color-bg-1)' }">
       <LayoutSider
         v-if="!isCompact"
+        class="staff-layout-sider"
         breakpoint="lg"
         :width="236"
         :collapsed-width="0"
@@ -122,7 +123,6 @@ watch(isDark, syncArcoTheme, { immediate: true })
           position: 'fixed',
           inset: '0 auto 0 0',
           zIndex: 30,
-          overflowX: 'hidden',
           borderRight: '1px solid var(--color-border-2)',
           background: 'var(--color-bg-2)',
         }"

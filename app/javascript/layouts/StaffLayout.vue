@@ -161,7 +161,13 @@ watch(isDark, syncArcoTheme, { immediate: true })
         </Space>
       </LayoutSider>
 
-      <Layout :style="{ marginLeft: isCompact ? '0' : '236px', minWidth: 0 }">
+      <Layout
+        :style="{
+          marginLeft: isCompact ? '0' : '236px',
+          width: isCompact ? '100%' : 'calc(100% - 236px)',
+          minWidth: 0,
+        }"
+      >
         <LayoutHeader
           :style="{
             position: 'sticky',

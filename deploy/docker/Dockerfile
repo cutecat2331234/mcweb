@@ -21,9 +21,9 @@ COPY Gemfile Gemfile.lock package.json package-lock.json ./
 RUN bundle install && npm ci
 
 COPY . .
-RUN SECRET_KEY_BASE=bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb \
-    LOCKBOX_MASTER_KEY=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
-    RAILS_INBOUND_EMAIL_PASSWORD=build-only-inbound-password-00000000000000000000000000000000 \
+RUN SECRET_KEY_BASE="$(ruby -rsecurerandom -e 'print SecureRandom.hex(64)')" \
+    LOCKBOX_MASTER_KEY="$(ruby -rsecurerandom -e 'print SecureRandom.hex(32)')" \
+    RAILS_INBOUND_EMAIL_PASSWORD="$(ruby -rsecurerandom -e 'print SecureRandom.hex(32)')" \
     MCWEB_PUBLIC_URL=https://build.mcweb.invalid-domain \
     MCWEB_ALLOWED_HOSTS=build.mcweb.invalid-domain \
     MCWEB_SMTP_ADDRESS=127.0.0.1 \

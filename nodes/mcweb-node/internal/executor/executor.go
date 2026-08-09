@@ -3,7 +3,11 @@ package executor
 import (
 	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"fmt"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -232,7 +236,10 @@ func (e *Executor) restoreWorld(ctx context.Context, payload map[string]interfac
 
 func (e *Executor) syncFiles(ctx context.Context, payload map[string]interface{}) map[string]interface{} {
 	url := strVal(payload, "url")
-	dest := strVal(payload, "destination")
+	dest, err := syncDestination(payload)
+	if err != nil {
+		return fail(err.Error())
+	}
 	if url == "" || dest == "" {
 		return fail("url and destination required")
 	}
@@ -242,16 +249,141 @@ func (e *Executor) syncFiles(ctx context.Context, payload map[string]interface{}
 	if err := os.MkdirAll(filepathDir(dest), 0o755); err != nil {
 		return fail(err.Error())
 	}
-	out, err := exec.CommandContext(ctx, "curl", "-fsSL", "-o", dest, url).CombinedOutput()
+
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
-		return fail(string(out) + ": " + err.Error())
+		return fail(err.Error())
 	}
+	client := &http.Client{
+		Timeout: 10 * time.Minute,
+		CheckRedirect: func(request *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("too many sync redirects")
+			}
+			return validateSyncURL(request.URL.String())
+		},
+	}
+	response, err := client.Do(request)
+	if err != nil {
+		return fail(err.Error())
+	}
+	defer response.Body.Close()
+	if response.StatusCode < 200 || response.StatusCode >= 300 {
+		return fail(fmt.Sprintf("sync download returned HTTP %d", response.StatusCode))
+	}
+	maxBytes := syncMaxBytes(payload)
+	if response.ContentLength > maxBytes {
+		return fail("sync download exceeds maximum size")
+	}
+
+	tmp, err := os.CreateTemp(filepathDir(dest), ".mcweb-sync-*")
+	if err != nil {
+		return fail(err.Error())
+	}
+	tmpPath := tmp.Name()
+	keepTemp := true
+	defer func() {
+		_ = tmp.Close()
+		if keepTemp {
+			_ = os.Remove(tmpPath)
+		}
+	}()
+
+	hasher := sha256.New()
+	written, err := io.Copy(io.MultiWriter(tmp, hasher), io.LimitReader(response.Body, maxBytes+1))
+	if err != nil {
+		return fail(err.Error())
+	}
+	if written > maxBytes {
+		return fail("sync download exceeds maximum size")
+	}
+	if err := tmp.Sync(); err != nil {
+		return fail(err.Error())
+	}
+	if err := tmp.Close(); err != nil {
+		return fail(err.Error())
+	}
+
+	actualDigest := hex.EncodeToString(hasher.Sum(nil))
+	expectedDigest := strings.ToLower(strings.TrimSpace(strVal(payload, "sha256")))
+	if expectedDigest != "" {
+		if _, err := hex.DecodeString(expectedDigest); err != nil || len(expectedDigest) != sha256.Size*2 {
+			return fail("invalid sha256 digest")
+		}
+		if actualDigest != expectedDigest {
+			return fail("downloaded file sha256 mismatch")
+		}
+	}
+	if err := replaceFile(tmpPath, dest); err != nil {
+		return fail(err.Error())
+	}
+	keepTemp = false
 	return map[string]interface{}{
-		"success":     true,
-		"status":      "completed",
-		"message":     "file synced",
-		"destination": dest,
+		"success":          true,
+		"status":           "completed",
+		"message":          "file synced",
+		"destination":      dest,
+		"sha256":           actualDigest,
+		"applied_revision": strVal(payload, "revision"),
 	}
+}
+
+func syncMaxBytes(payload map[string]interface{}) int64 {
+	const defaultMaxBytes int64 = 2 * 1024 * 1024 * 1024
+	if value, ok := payload["max_bytes"].(float64); ok && value > 0 && value <= float64(defaultMaxBytes) {
+		return int64(value)
+	}
+	return defaultMaxBytes
+}
+
+func syncDestination(payload map[string]interface{}) (string, error) {
+	if dest := strVal(payload, "destination"); dest != "" {
+		return dest, nil
+	}
+	root := strVal(payload, "working_directory")
+	relative := strVal(payload, "relative_path")
+	if root == "" || relative == "" {
+		return "", fmt.Errorf("working_directory and relative_path required")
+	}
+	if filepath.IsAbs(relative) {
+		return "", fmt.Errorf("relative_path must be relative")
+	}
+	cleanRelative := filepath.Clean(relative)
+	if cleanRelative == ".." || strings.HasPrefix(cleanRelative, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("relative_path escapes working_directory")
+	}
+
+	rootAbsolute, err := filepath.Abs(root)
+	if err != nil {
+		return "", err
+	}
+	destination := filepath.Join(rootAbsolute, cleanRelative)
+	withinRoot, err := filepath.Rel(rootAbsolute, destination)
+	if err != nil || withinRoot == ".." || strings.HasPrefix(withinRoot, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("relative_path escapes working_directory")
+	}
+	return destination, nil
+}
+
+func replaceFile(source, destination string) error {
+	if err := os.Rename(source, destination); err == nil {
+		return nil
+	}
+	if _, err := os.Stat(destination); err != nil {
+		return fmt.Errorf("replace destination: %w", err)
+	}
+
+	backup := destination + ".mcweb-previous"
+	_ = os.Remove(backup)
+	if err := os.Rename(destination, backup); err != nil {
+		return fmt.Errorf("preserve previous destination: %w", err)
+	}
+	if err := os.Rename(source, destination); err != nil {
+		_ = os.Rename(backup, destination)
+		return fmt.Errorf("replace destination: %w", err)
+	}
+	_ = os.Remove(backup)
+	return nil
 }
 
 func fail(msg string) map[string]interface{} {

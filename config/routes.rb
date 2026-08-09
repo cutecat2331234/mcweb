@@ -7,6 +7,11 @@ Rails.application.routes.draw do
 
   root "website/home#index"
 
+  get "minecraft/cached-skins/:id/:variant",
+    to: "minecraft/cached_skins#show",
+    as: :minecraft_cached_skin,
+    constraints: { id: /\d+/, variant: /avatar|bust|full|skin|cape/ }
+
   # Public REST API (v1). Key-authenticated, JSON only. See docs/API.md.
   namespace :api do
     namespace :v1 do
@@ -423,6 +428,12 @@ Rails.application.routes.draw do
           post :kick
         end
       end
+      post "players/:user_id/primary-account",
+        to: "primary_accounts#create",
+        as: :primary_account
+      resources :primary_account_change_requests,
+        only: :update,
+        path: "primary-account-change-requests"
       resource :settings, only: %i[show update]
       resources :profile_fields, only: %i[index new create edit update destroy], path: "profile-fields"
       resources :integration_actions, only: %i[index new create edit update destroy], path: "integration-actions"
@@ -467,7 +478,9 @@ Rails.application.routes.draw do
           as: :inject_attachment_state
         post "run-task", action: :run_task, as: :run_task
       end
-      resources :jobs, only: %i[index]
+      resources :jobs, only: %i[index] do
+        post :run, on: :collection
+      end
       resources :ip_bans, only: %i[index create destroy]
       resources :email_bans, only: %i[index new create edit update destroy]
       resources :api_keys, only: %i[index new create], path: "api-keys" do
@@ -834,6 +847,12 @@ Rails.application.routes.draw do
 
     namespace :minecraft, path: "minecraft" do
       resource :link, only: %i[show create], controller: "link"
+      post "accounts/:id/primary",
+        to: "primary_accounts#create",
+        as: :primary_account
+      delete "primary-account-change-requests/:id",
+        to: "primary_account_change_requests#destroy",
+        as: :primary_account_change_request
     end
   end
 

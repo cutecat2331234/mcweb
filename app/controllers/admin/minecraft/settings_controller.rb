@@ -19,13 +19,22 @@ module Admin
             exec_command_allowed_prefixes: SiteSetting.get("minecraft.exec_command.allowed_prefixes", ""),
             pause_fulfill_during_maintenance: SiteSetting.get("minecraft.commerce.pause_fulfill_during_maintenance", "true"),
             backup_enabled: SiteSetting.get("minecraft.backup.enabled", "false"),
-            backup_schedule: SiteSetting.get("minecraft.backup.schedule", "0 3 * * *")
+            backup_schedule: SiteSetting.get("minecraft.backup.schedule", "0 3 * * *"),
+            primary_account_switch_policy: ::Minecraft::PrimaryAccountPolicy.normalized_policy,
+            primary_account_cooldown_seconds: ::Minecraft::PrimaryAccountPolicy.snapshot(
+              user: current_user
+            ).cooldown_seconds.to_s,
+            primary_account_request_expiry_hours: ::Minecraft::PrimaryAccountPolicy.snapshot(
+              user: current_user
+            ).request_expiry_hours.to_s
           },
           updateUrl: admin_minecraft_settings_path
         }
       end
 
       def update
+        return unless update_primary_account_settings
+
         SiteSetting.set("minecraft.link_command", params[:link_command]) if params[:link_command]
         SiteSetting.set("minecraft.profile.skin_mode", params[:skin_mode]) if params[:skin_mode]
         SiteSetting.set("minecraft.bridges.enabled", params[:bridges_enabled]) if params[:bridges_enabled]
@@ -39,8 +48,58 @@ module Admin
         SiteSetting.set("minecraft.commerce.pause_fulfill_during_maintenance", params[:pause_fulfill_during_maintenance]) if params.key?(:pause_fulfill_during_maintenance)
         SiteSetting.set("minecraft.backup.enabled", params[:backup_enabled]) if params.key?(:backup_enabled)
         SiteSetting.set("minecraft.backup.schedule", params[:backup_schedule]) if params[:backup_schedule]
-
         redirect_to admin_minecraft_settings_path, notice: t("mcweb.flash.minecraft_settings_saved")
+      end
+
+      private
+
+      def update_primary_account_settings
+        updates = {}
+        if params.key?(:primary_account_switch_policy)
+          policy = params[:primary_account_switch_policy].to_s
+          unless policy.in?(::Minecraft::PrimaryAccountPolicy::POLICIES)
+            return reject_primary_account_settings
+          end
+          updates["minecraft.primary_account.switch_policy"] = policy
+        end
+
+        if params.key?(:primary_account_cooldown_seconds)
+          seconds = bounded_integer(
+            params[:primary_account_cooldown_seconds],
+            minimum: 0,
+            maximum: ::Minecraft::PrimaryAccountPolicy::MAX_COOLDOWN_SECONDS
+          )
+          return reject_primary_account_settings unless seconds
+
+          updates["minecraft.primary_account.cooldown_seconds"] = seconds.to_s
+        end
+
+        if params.key?(:primary_account_request_expiry_hours)
+          hours = bounded_integer(
+            params[:primary_account_request_expiry_hours],
+            minimum: 1,
+            maximum: ::Minecraft::PrimaryAccountPolicy::MAX_REQUEST_EXPIRY_HOURS
+          )
+          return reject_primary_account_settings unless hours
+
+          updates["minecraft.primary_account.request_expiry_hours"] = hours.to_s
+        end
+
+        updates.each { |key, value| SiteSetting.set(key, value) }
+        true
+      end
+
+      def reject_primary_account_settings
+        redirect_to admin_minecraft_settings_path,
+                    alert: t("mcweb.flash.primary_account_policy_invalid")
+        false
+      end
+
+      def bounded_integer(value, minimum:, maximum:)
+        integer = Integer(value, exception: false)
+        return unless integer
+
+        integer.clamp(minimum, maximum)
       end
     end
   end

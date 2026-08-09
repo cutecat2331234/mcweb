@@ -52,6 +52,12 @@ class User < ApplicationRecord
   has_many :minecraft_identities, class_name: "Minecraft::Identity", dependent: :destroy
   has_many :minecraft_identity_links, class_name: "Minecraft::IdentityLink", dependent: :destroy
   has_many :minecraft_player_profiles, through: :minecraft_identity_links, source: :player_profile
+  has_many :minecraft_primary_account_change_requests,
+           class_name: "Minecraft::PrimaryAccountChangeRequest",
+           dependent: :restrict_with_error
+  has_many :minecraft_primary_account_change_events,
+           class_name: "Minecraft::PrimaryAccountChangeEvent",
+           dependent: :restrict_with_error
 
   enum :status, { active: "active", banned: "banned", deleted: "deleted" }, validate: true
   enum :account_type, { member: "member", staff: "staff", admin: "admin", owner: "owner" }, validate: true, prefix: :account

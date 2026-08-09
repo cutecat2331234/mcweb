@@ -3,7 +3,6 @@ import { onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
   username: string
-  uuid?: string | null
   skinTextureUrl?: string | null
   skinModel?: string | null
   width?: number
@@ -16,15 +15,11 @@ const props = withDefaults(defineProps<{
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 let viewer: { dispose: () => void; loadSkin: (url: string, options?: { model?: string }) => Promise<void> } | null = null
 
-function isHttpUrl(value: string | null | undefined): value is string {
-  return typeof value === 'string' && /^https?:\/\//i.test(value)
-}
-
 function resolveSkinUrl(): string | null {
-  if (isHttpUrl(props.skinTextureUrl)) return props.skinTextureUrl
-  if (props.uuid) return `https://crafatar.com/skins/${encodeURIComponent(props.uuid)}`
-  if (props.username) return `https://mineskin.eu/skin/${encodeURIComponent(props.username)}`
-  return null
+  if (typeof props.skinTextureUrl !== 'string') return null
+  return /^\/minecraft\/cached-skins\/\d+\/skin$/.test(props.skinTextureUrl)
+    ? props.skinTextureUrl
+    : null
 }
 
 async function mountViewer() {
@@ -48,7 +43,7 @@ onMounted(() => {
 })
 
 watch(
-  () => [props.skinTextureUrl, props.uuid, props.username, props.skinModel, props.width, props.height],
+  () => [props.skinTextureUrl, props.username, props.skinModel, props.width, props.height],
   () => {
     void mountViewer()
   },

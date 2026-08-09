@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-label="Minecraft player avatar">
+  <rect width="128" height="128" rx="18" fill="#15202d"/>
+  <rect x="26" y="22" width="76" height="82" rx="8" fill="#8292a4"/>
+  <rect x="34" y="32" width="60" height="54" fill="#b9c4cf"/>
+  <rect x="43" y="48" width="13" height="13" fill="#243444"/>
+  <rect x="72" y="48" width="13" height="13" fill="#243444"/>
+  <rect x="54" y="72" width="20" height="8" fill="#667789"/>
+  <path d="M26 89h76v15H26z" fill="#5f7184"/>
+</svg>

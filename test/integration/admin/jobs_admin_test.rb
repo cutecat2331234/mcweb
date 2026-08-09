@@ -70,7 +70,109 @@ module Admin
           props.dig(:operationsMetrics, :ranges)
       end
 
+      test "downstream task arguments are rendered from schema and accepted without controller key changes" do
+        grant_permission(@admin, "system.jobs.manage")
+        @admin.reload
+
+        registrar = lambda do |registry|
+          registry.register(
+            key: "downstream.profile.transition",
+            label_key: "downstream.title",
+            description_key: "downstream.description",
+            permissions: [ "system.jobs.manage" ],
+            argument_schema: {
+              "profile_id" => {
+                type: "integer",
+                required: true,
+                minimum: 1,
+                label_key: "downstream.profile_id"
+              },
+              "desired_state_ids" => {
+                type: "integer_list",
+                required: true,
+                minimum: 1,
+                maximum_items: 20
+              }
+            }
+          ) { |_run| { changed: true } }
+        end
+
+        with_manual_task_registrar(registrar) do
+          get admin_system_jobs_path
+          assert_response :success
+          task = inertia.props.deep_symbolize_keys.fetch(:manualTasks).find do |candidate|
+            candidate.fetch(:key) == "downstream.profile.transition"
+          end
+          assert task
+          assert_equal %w[profile_id desired_state_ids], task.fetch(:arguments).pluck(:key)
+          assert_equal "downstream.profile_id", task.dig(:arguments, 0, :labelKey)
+
+          assert_enqueued_with(job: Operations::RunManualTaskJob) do
+            post run_admin_system_jobs_path, params: {
+              task_key: "downstream.profile.transition",
+              idempotency_key: "downstream-transition-1",
+              arguments: {
+                profile_id: "42",
+                desired_state_ids: "3, 5 5"
+              }
+            }
+          end
+          assert_redirected_to admin_system_jobs_path
+          run = Operations::ManualTaskRun.find_by!(
+            task_key: "downstream.profile.transition",
+            idempotency_key: "downstream-transition-1"
+          )
+          assert_equal 42, run.arguments.fetch("profile_id")
+          assert_equal [ 3, 5 ], run.arguments.fetch("desired_state_ids")
+        end
+      end
+
+      test "unknown nested task arguments are rejected before enqueue" do
+        grant_permission(@admin, "system.jobs.manage")
+        @admin.reload
+
+        registrar = lambda do |registry|
+          registry.register(
+            key: "downstream.profile.refresh",
+            label_key: "downstream.title",
+            description_key: "downstream.description",
+            permissions: [ "system.jobs.manage" ],
+            argument_schema: {
+              "profile_id" => { type: "integer", required: true, minimum: 1 }
+            }
+          ) { |_run| { refreshed: true } }
+        end
+
+        with_manual_task_registrar(registrar) do
+          assert_no_enqueued_jobs do
+            assert_no_difference("Operations::ManualTaskRun.count") do
+              post run_admin_system_jobs_path, params: {
+                task_key: "downstream.profile.refresh",
+                idempotency_key: "unknown-argument",
+                arguments: {
+                  profile_id: "42",
+                  command: "arbitrary input"
+                }
+              }
+            end
+          end
+          assert_redirected_to admin_system_jobs_path
+        end
+      end
+
       private
+
+      def with_manual_task_registrar(registrar)
+        previous = Array(
+          Rails.application.config.x.operations_manual_task_registrars
+        ).dup
+        Rails.application.config.x.operations_manual_task_registrars = previous + [ registrar ]
+        Operations::ManualTaskCatalog.reset_registry!
+        yield
+      ensure
+        Rails.application.config.x.operations_manual_task_registrars = previous
+        Operations::ManualTaskCatalog.reset_registry!
+      end
 
       def with_unrestricted_developer_mode
         settings = Mcweb::DeveloperMode.parse(

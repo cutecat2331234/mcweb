@@ -20,6 +20,9 @@ const props = defineProps<{
     pause_fulfill_during_maintenance: string
     backup_enabled: string
     backup_schedule: string
+    primary_account_switch_policy: 'immediate' | 'staff_approval' | 'administrator_only'
+    primary_account_cooldown_seconds: string
+    primary_account_request_expiry_hours: string
   }
   updateUrl: string
 }>()
@@ -35,6 +38,11 @@ const skinOptions = [
   { value: '2d', label: t('adminMinecraft.skin2d') },
   { value: '3d', label: t('adminMinecraft.skin3d') },
   { value: 'both', label: t('adminMinecraft.skinBoth') },
+]
+const primaryAccountPolicyOptions = [
+  { value: 'immediate', label: t('adminMinecraft.primaryAccountPolicyImmediate') },
+  { value: 'staff_approval', label: t('adminMinecraft.primaryAccountPolicyStaffApproval') },
+  { value: 'administrator_only', label: t('adminMinecraft.primaryAccountPolicyAdministratorOnly') },
 ]
 
 function submit() {
@@ -146,6 +154,52 @@ function submit() {
         <a-form-item field="backup_schedule" :label="t('adminMinecraft.backupSchedule')">
           <a-input v-model="form.backup_schedule" placeholder="0 3 * * *" allow-clear />
         </a-form-item>
+      </a-card>
+
+      <a-card :title="t('adminMinecraft.primaryAccountsSection')" :bordered="true">
+        <a-alert type="info" show-icon>
+          {{ t('adminMinecraft.primaryAccountsDescription') }}
+        </a-alert>
+        <a-grid :cols="{ xs: 1, md: 2 }" :col-gap="16">
+          <a-grid-item :span="{ xs: 1, md: 2 }">
+            <a-form-item
+              field="primary_account_switch_policy"
+              :label="t('adminMinecraft.primaryAccountSwitchPolicy')"
+            >
+              <a-select
+                v-model="form.primary_account_switch_policy"
+                :options="primaryAccountPolicyOptions"
+              />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item
+              field="primary_account_cooldown_seconds"
+              :label="t('adminMinecraft.primaryAccountCooldownSeconds')"
+              :help="t('adminMinecraft.primaryAccountCooldownHelp')"
+            >
+              <a-input
+                v-model="form.primary_account_cooldown_seconds"
+                type="number"
+                min="0"
+                :max="2678400"
+              />
+            </a-form-item>
+          </a-grid-item>
+          <a-grid-item>
+            <a-form-item
+              field="primary_account_request_expiry_hours"
+              :label="t('adminMinecraft.primaryAccountRequestExpiryHours')"
+            >
+              <a-input
+                v-model="form.primary_account_request_expiry_hours"
+                type="number"
+                min="1"
+                :max="720"
+              />
+            </a-form-item>
+          </a-grid-item>
+        </a-grid>
       </a-card>
 
       <a-button html-type="submit" type="primary" :loading="form.processing">

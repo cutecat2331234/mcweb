@@ -66,6 +66,14 @@ module Minecraft
         payload: { player_id: player_ref.public_id, uuid: identity.uuid, username: identity.username }
       )
 
+      Minecraft::RequestSkinRefresh.call(
+        player_identity: player_ref.active_identity,
+        actor: @user,
+        request_id: "identity-link-#{identity.id}-skin",
+        trigger: "link",
+        force: true
+      )
+
       ServiceResult.success(identity)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)

@@ -1,13 +1,15 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { reactive, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { router } from '@inertiajs/vue3'
 import AdminLayout from '@/layouts/AdminLayout.vue'
 
 defineOptions({ layout: AdminLayout })
 
-const { t, locale } = useI18n()
+const { t, te, locale } = useI18n()
 const metricsLoading = ref(false)
+const manualTaskLoading = ref<string | null>(null)
+const manualTaskArguments = reactive<Record<string, string | number | undefined>>({})
 
 type MetricStatus = 'healthy' | 'warning' | 'critical'
 
@@ -80,6 +82,31 @@ const props = defineProps<{
     profile?: string | null
   }
   automaticRegistration: boolean
+  manualTaskRunUrl: string
+  manualTasks: Array<{
+    key: string
+    labelKey: string
+    descriptionKey: string
+    arguments: Array<{
+      key: string
+      type: 'integer' | 'integer_list'
+      required: boolean
+      minimum?: number
+      maximumItems?: number
+      labelKey?: string
+      helpKey?: string
+    }>
+  }>
+  manualTaskRuns: Array<{
+    id: number
+    taskKey: string
+    status: 'queued' | 'running' | 'succeeded' | 'failed'
+    requestedBy?: string | null
+    requestedAt?: string | null
+    startedAt?: string | null
+    finishedAt?: string | null
+    errorCode?: string | null
+  }>
   queueSnapshot: {
     available: boolean
     adapter: string
@@ -185,6 +212,65 @@ function metricValue(key: string) {
   return props.operationsMetrics.summary[key as keyof OperationsMetrics['summary']] ?? 0
 }
 
+function manualTaskArgumentPresent(argument: (typeof props.manualTasks)[number]['arguments'][number]) {
+  const value = manualTaskArguments[argument.key]
+  return value !== undefined && value !== null && String(value).trim().length > 0
+}
+
+function manualTaskArgumentLabel(argument: (typeof props.manualTasks)[number]['arguments'][number]) {
+  if (argument.labelKey && te(argument.labelKey)) return t(argument.labelKey)
+  return argument.key.replaceAll('_', ' ')
+}
+
+function manualTaskArgumentHelp(argument: (typeof props.manualTasks)[number]['arguments'][number]) {
+  if (argument.helpKey && te(argument.helpKey)) return t(argument.helpKey)
+
+  const key = argument.type === 'integer'
+    ? 'admin.jobsPage.manualTasks.integerHelp'
+    : 'admin.jobsPage.manualTasks.integerListHelp'
+  return t(key, {
+    minimum: argument.minimum ?? 0,
+    maximum: argument.maximumItems ?? '∞',
+  })
+}
+
+function manualTaskDisabled(task: (typeof props.manualTasks)[number]) {
+  return manualTaskLoading.value !== null
+    || task.arguments.some((argument) => argument.required && !manualTaskArgumentPresent(argument))
+}
+
+function runManualTask(task: (typeof props.manualTasks)[number]) {
+  if (manualTaskDisabled(task)) return
+
+  const argumentsPayload = task.arguments.reduce<Record<string, string | number>>((payload, argument) => {
+    const value = manualTaskArguments[argument.key]
+    if (manualTaskArgumentPresent(argument) && value !== undefined) payload[argument.key] = value
+    return payload
+  }, {})
+
+  router.post(props.manualTaskRunUrl, { task_key: task.key, arguments: argumentsPayload }, {
+    preserveScroll: true,
+    onStart: () => {
+      manualTaskLoading.value = task.key
+    },
+    onFinish: () => {
+      manualTaskLoading.value = null
+    },
+  })
+}
+
+function manualTaskLabel(taskKey: string) {
+  const task = props.manualTasks.find((candidate) => candidate.key === taskKey)
+  return task ? t(task.labelKey) : taskKey
+}
+
+function manualTaskStatusColor(status: string) {
+  if (status === 'succeeded') return 'green'
+  if (status === 'failed') return 'red'
+  if (status === 'running') return 'arcoblue'
+  return 'orange'
+}
+
 function formatCheckValue(check: OperationsMetrics['checks'][number]) {
   return t(`admin.jobsPage.metrics.checkValues.${check.unit}`, {
     value: check.value,
@@ -274,6 +360,107 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
         </a-card>
       </a-grid-item>
     </a-grid>
+
+    <a-card :title="t('admin.jobsPage.manualTasks.title')" :bordered="true">
+      <a-space direction="vertical" :size="16" fill>
+        <a-alert type="info" show-icon>
+          {{ t('admin.jobsPage.manualTasks.description') }}
+        </a-alert>
+
+        <a-grid
+          v-if="manualTasks.length > 0"
+          :cols="{ xs: 1, md: 2, xl: 4 }"
+          :col-gap="12"
+          :row-gap="12"
+        >
+          <a-grid-item v-for="task in manualTasks" :key="task.key">
+            <a-card size="small" :bordered="true">
+              <a-space direction="vertical" :size="10" fill>
+                <a-typography-title :heading="6">
+                  {{ t(task.labelKey) }}
+                </a-typography-title>
+                <a-typography-paragraph type="secondary">
+                  {{ t(task.descriptionKey) }}
+                </a-typography-paragraph>
+                <a-form-item
+                  v-for="argument in task.arguments"
+                  :key="argument.key"
+                  :label="manualTaskArgumentLabel(argument)"
+                  :help="manualTaskArgumentHelp(argument)"
+                  :required="argument.required"
+                >
+                  <a-input-number
+                    v-if="argument.type === 'integer'"
+                    v-model="manualTaskArguments[argument.key]"
+                    :min="argument.minimum"
+                    :precision="0"
+                    allow-clear
+                  />
+                  <a-input
+                    v-else
+                    v-model="manualTaskArguments[argument.key]"
+                    allow-clear
+                  />
+                </a-form-item>
+                <a-button
+                  type="primary"
+                  long
+                  :disabled="manualTaskDisabled(task)"
+                  :loading="manualTaskLoading === task.key"
+                  @click="runManualTask(task)"
+                >
+                  {{ t('admin.jobsPage.manualTasks.run') }}
+                </a-button>
+              </a-space>
+            </a-card>
+          </a-grid-item>
+        </a-grid>
+        <a-empty v-else :description="t('admin.jobsPage.manualTasks.noTasks')" />
+
+        <a-divider />
+
+        <a-typography-title :heading="6">
+          {{ t('admin.jobsPage.manualTasks.recentRuns') }}
+        </a-typography-title>
+        <a-table
+          v-if="manualTaskRuns.length > 0"
+          :data="manualTaskRuns"
+          :pagination="false"
+          row-key="id"
+          :scroll="{ x: 760 }"
+        >
+          <template #columns>
+            <a-table-column :title="t('admin.jobsPage.manualTasks.task')">
+              <template #cell="{ record }">
+                {{ manualTaskLabel(record.taskKey) }}
+              </template>
+            </a-table-column>
+            <a-table-column :title="t('admin.jobsPage.manualTasks.status')" :width="120">
+              <template #cell="{ record }">
+                <a-tag :color="manualTaskStatusColor(record.status)">
+                  {{ t(`admin.jobsPage.manualTasks.statuses.${record.status}`) }}
+                </a-tag>
+              </template>
+            </a-table-column>
+            <a-table-column
+              data-index="requestedBy"
+              :title="t('admin.jobsPage.manualTasks.requestedBy')"
+              :width="160"
+            />
+            <a-table-column :title="t('admin.jobsPage.manualTasks.requestedAt')" :width="190">
+              <template #cell="{ record }">{{ formatDate(record.requestedAt) }}</template>
+            </a-table-column>
+            <a-table-column :title="t('admin.jobsPage.manualTasks.finishedAt')" :width="190">
+              <template #cell="{ record }">{{ formatDate(record.finishedAt) }}</template>
+            </a-table-column>
+            <a-table-column :title="t('admin.jobsPage.manualTasks.errorCode')" :width="190">
+              <template #cell="{ record }">{{ record.errorCode || t('common.notAvailable') }}</template>
+            </a-table-column>
+          </template>
+        </a-table>
+        <a-empty v-else :description="t('admin.jobsPage.manualTasks.noRuns')" />
+      </a-space>
+    </a-card>
 
     <a-card
       :title="t('admin.jobsPage.queue.title')"
@@ -584,11 +771,11 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
 
           <a-grid :cols="{ xs: 1, xl: 5 }" :col-gap="16" :row-gap="16">
             <a-grid-item :span="{ xs: 1, xl: 2 }">
-            <a-card
-              :title="t('admin.jobsPage.metrics.thresholdsTitle')"
-              :bordered="true"
-            >
-              <a-list :bordered="false" :split="true">
+              <a-card
+                :title="t('admin.jobsPage.metrics.thresholdsTitle')"
+                :bordered="true"
+              >
+                <a-list :bordered="false" :split="true">
                 <a-list-item
                   v-for="check in operationsMetrics.checks"
                   :key="check.key"
@@ -623,16 +810,16 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
                     />
                   </a-space>
                 </a-list-item>
-              </a-list>
-            </a-card>
+                </a-list>
+              </a-card>
             </a-grid-item>
 
             <a-grid-item :span="{ xs: 1, xl: 3 }">
-            <a-card
-              :title="t('admin.jobsPage.metrics.activityTitle')"
-              :bordered="true"
-            >
-              <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" bordered size="small">
+              <a-card
+                :title="t('admin.jobsPage.metrics.activityTitle')"
+                :bordered="true"
+              >
+                <a-descriptions :column="{ xs: 1, sm: 2, md: 3 }" bordered size="small">
                 <a-descriptions-item :label="t('admin.jobsPage.metrics.slowQueries')">
                   {{
                     t('admin.jobsPage.metrics.countWithMaximum', {
@@ -681,8 +868,8 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
                     })
                   }}
                 </a-descriptions-item>
-              </a-descriptions>
-            </a-card>
+                </a-descriptions>
+              </a-card>
             </a-grid-item>
           </a-grid>
 

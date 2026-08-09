@@ -61,14 +61,16 @@ module Minecraft
     end
 
     def link_user!(user)
-      return if profile.identity_links.active.exists?(user: user)
-      raise ArgumentError, "User already linked" if profile.identity_links.active.exists?
+      user.with_lock do
+        return if profile.identity_links.active.exists?(user: user)
+        raise ArgumentError, "User already linked" if profile.identity_links.active.exists?
 
-      IdentityLink.create!(
-        player_profile: profile,
-        user: user,
-        linked_at: Time.current
-      )
+        IdentityLink.create!(
+          player_profile: profile,
+          user: user,
+          linked_at: Time.current
+        )
+      end
     end
   end
 end

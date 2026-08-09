@@ -18,6 +18,13 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
     assert_match(/^FROM ruby:4\.0\.6-slim-bookworm AS runtime$/, dockerfile)
     assert_match(/^COPY --from=build --chown=mcweb:mcweb \/app \/app$/, dockerfile)
     assert_match(/^USER mcweb$/, dockerfile)
+    assert_equal 1, dockerfile.scan("COPY --from=node /usr/local/bin/node /usr/local/bin/node").length
+    assert_equal 1,
+      dockerfile.scan("COPY --from=node /usr/local/lib/node_modules /usr/local/lib/node_modules").length
+    refute_match(%r{^COPY --from=node /usr/local/bin/(?:npm|npx) }, dockerfile)
+    assert_includes dockerfile, "ln -s ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm"
+    assert_includes dockerfile, "ln -s ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx"
+    assert_includes dockerfile, "node --version && npm --version"
     assert_operator dockerfile.index("USER mcweb"), :<, dockerfile.index("ENTRYPOINT")
     assert_equal 2, dockerfile.scan(/\blibvips42\b/).length
     assert_match(/apt-get install .*fonts-noto-cjk.*libvips42/, dockerfile)

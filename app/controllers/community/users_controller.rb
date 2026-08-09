@@ -417,7 +417,7 @@ module Community
     end
 
     def serialize_game_permission_groups(user)
-      profile = user.minecraft_player_profiles.first
+      profile = primary_minecraft_account(user)&.fetch(:profile)
       return [] unless profile
 
       profile.permission_groups.order(weight: :desc).map do |group|
@@ -426,21 +426,16 @@ module Community
     end
 
     def serialize_minecraft_profile(user)
-      profile = user.minecraft_player_profiles.first
-      unless profile
-        legacy = user.minecraft_identities.order(linked_at: :desc).first
-        profile = legacy&.player_profile
-      end
-
-      unless profile
+      account = primary_minecraft_account(user)
+      unless account
         return {
           linked: false,
           link_url: (logged_in? && current_user.id == user.id) ? minecraft_link_path : nil
         }
       end
 
-      identity = profile.active_identity
-      legacy = user.minecraft_identities.find_by(player_profile: profile) || user.minecraft_identities.order(linked_at: :desc).first
+      profile = account.fetch(:profile)
+      identity = account.fetch(:identity)
 
       fields = profile.profile_field_values.map do |value|
         definition = Minecraft::ProfileFieldDefinition.find_by(key: value.field_key)
@@ -452,15 +447,45 @@ module Community
       {
         linked: true,
         player_id: profile.public_id,
-        username: identity&.username || legacy&.username,
-        uuid: identity&.external_uuid || legacy&.uuid,
-        identity_type: identity&.identity_type || legacy&.identity_type || "java",
-        skin_texture_url: identity&.skin_texture_url || legacy&.skin_texture_url,
-        skin_model: identity&.skin_model || legacy&.skin_model,
-        last_seen_ingame_at: (identity&.last_seen_ingame_at || legacy&.last_seen_ingame_at)&.then { |t| l(t, format: :short) },
+        username: identity.username,
+        uuid: identity.external_uuid,
+        identity_type: identity.identity_type,
+        primary_account: true,
+        skin_cached: identity.skin_cached?,
+        skin_avatar_url: cached_skin_path(identity, :skin_avatar_file, "avatar") || "/minecraft/default-skin-avatar.svg",
+        skin_full_url: cached_skin_path(identity, :skin_full_file, "full"),
+        skin_texture_url: cached_skin_path(identity, :skin_texture_file, "skin"),
+        skin_model: identity.skin_model,
+        last_seen_ingame_at: identity.last_seen_ingame_at&.then { |time| l(time, format: :short) },
         fields: fields,
         link_url: (logged_in? && current_user.id == user.id) ? minecraft_link_path : nil
       }
+    end
+
+    def primary_minecraft_account(user)
+      @primary_minecraft_accounts ||= {}
+      return @primary_minecraft_accounts[user.id] if @primary_minecraft_accounts.key?(user.id)
+
+      link = Minecraft::IdentityLink.active
+                                      .primary
+                                      .where(user_id: user.id)
+                                      .includes(player_profile: { player_identities: [
+                                        :skin_texture_file_attachment,
+                                        :skin_avatar_file_attachment,
+                                        :skin_full_file_attachment
+                                      ] })
+                                      .first
+      identity = link&.player_profile&.active_identity
+      @primary_minecraft_accounts[user.id] = if link && identity
+                                                { link: link, profile: link.player_profile, identity: identity }
+      end
+    end
+
+    def cached_skin_path(identity, attachment_name, variant)
+      attachment = identity.public_send(attachment_name)
+      return unless attachment.attached?
+
+      minecraft_cached_skin_path(identity, variant: variant)
     end
   end
 end

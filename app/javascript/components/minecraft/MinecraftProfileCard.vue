@@ -20,6 +20,10 @@ export interface MinecraftProfile {
   username?: string
   uuid?: string
   identity_type?: string
+  primary_account?: boolean
+  skin_cached?: boolean
+  skin_avatar_url?: string | null
+  skin_full_url?: string | null
   skin_texture_url?: string | null
   skin_model?: string | null
   last_seen_ingame_at?: string | null
@@ -37,24 +41,21 @@ const { t } = useI18n()
 const show2d = computed(() => !props.skinMode || props.skinMode === '2d' || props.skinMode === 'both')
 const show3d = computed(() => props.skinMode === '3d' || props.skinMode === 'both')
 
-const skinUrl = computed(() => {
-  if (!props.minecraft.linked || !props.minecraft.username) return null
-  if (props.minecraft.uuid) {
-    return `https://crafatar.com/avatars/${encodeURIComponent(props.minecraft.uuid)}?size=128&overlay`
-  }
-  if (props.minecraft.skin_texture_url && /^https?:\/\//i.test(props.minecraft.skin_texture_url)) {
-    return props.minecraft.skin_texture_url
-  }
-  return `https://mineskin.eu/avatar/${encodeURIComponent(props.minecraft.username)}/128.png`
-})
+function cachedSkinUrl(
+  value: string | null | undefined,
+  variant: 'avatar' | 'full' | 'skin',
+): string | null {
+  if (typeof value !== 'string') return null
+  const pattern = new RegExp(`^/minecraft/cached-skins/\\d+/${variant}$`)
+  return pattern.test(value) ? value : null
+}
 
-const bodySkinUrl = computed(() => {
-  if (!props.minecraft.linked || !props.minecraft.username) return null
-  if (props.minecraft.uuid) {
-    return `https://crafatar.com/renders/body/${encodeURIComponent(props.minecraft.uuid)}?overlay`
-  }
-  return `https://mineskin.eu/armor/body/${encodeURIComponent(props.minecraft.username)}`
-})
+const skinUrl = computed(
+  () => cachedSkinUrl(props.minecraft.skin_avatar_url, 'avatar')
+    || '/minecraft/default-skin-avatar.svg',
+)
+const bodySkinUrl = computed(() => cachedSkinUrl(props.minecraft.skin_full_url, 'full'))
+const textureUrl = computed(() => cachedSkinUrl(props.minecraft.skin_texture_url, 'skin'))
 </script>
 
 <template>
@@ -75,10 +76,9 @@ const bodySkinUrl = computed(() => {
           class="h-32 rounded-lg border bg-muted object-contain"
         >
         <MinecraftSkinViewer
-          v-if="show3d && minecraft.username"
+          v-if="show3d && minecraft.username && textureUrl"
           :username="minecraft.username"
-          :uuid="minecraft.uuid"
-          :skin-texture-url="minecraft.skin_texture_url"
+          :skin-texture-url="textureUrl"
           :skin-model="minecraft.skin_model"
         />
       </div>

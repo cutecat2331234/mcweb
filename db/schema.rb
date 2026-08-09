@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_320000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1359,11 +1359,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
     t.datetime "created_at", null: false
     t.datetime "linked_at", null: false
     t.bigint "player_profile_id", null: false
+    t.boolean "primary_account", default: false, null: false
     t.datetime "unlinked_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["player_profile_id", "user_id"], name: "idx_on_player_profile_id_user_id_a518a2f67b", unique: true, where: "(unlinked_at IS NULL)"
     t.index ["player_profile_id"], name: "index_minecraft_identity_links_on_player_profile_id"
+    t.index ["user_id"], name: "idx_mc_identity_links_one_primary_per_user", unique: true, where: "((unlinked_at IS NULL) AND (primary_account = true))"
     t.index ["user_id"], name: "index_minecraft_identity_links_on_user_id"
   end
 
@@ -1558,6 +1560,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
   end
 
   create_table "minecraft_player_identities", force: :cascade do |t|
+    t.string "cape_texture_sha256", limit: 64
     t.string "cape_texture_url"
     t.datetime "created_at", null: false
     t.string "external_uuid", null: false
@@ -1567,7 +1570,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
     t.string "platform", default: "java", null: false
     t.bigint "player_profile_id", null: false
     t.bigint "primary_server_id"
+    t.integer "skin_cache_version", default: 0, null: false
+    t.datetime "skin_cached_at"
     t.string "skin_model"
+    t.datetime "skin_refresh_attempted_at"
+    t.string "skin_refresh_error_code"
+    t.datetime "skin_refresh_failed_at"
+    t.string "skin_texture_sha256", limit: 64
     t.string "skin_texture_url"
     t.datetime "superseded_at"
     t.datetime "updated_at", null: false
@@ -1576,6 +1585,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
     t.index ["platform", "external_uuid"], name: "idx_on_platform_external_uuid_9bc1c89e08", unique: true, where: "(superseded_at IS NULL)"
     t.index ["player_profile_id"], name: "index_minecraft_player_identities_on_player_profile_id"
     t.index ["primary_server_id"], name: "index_minecraft_player_identities_on_primary_server_id"
+    t.index ["superseded_at", "skin_cached_at"], name: "idx_mc_player_identities_skin_cache_due"
     t.index ["username"], name: "index_minecraft_player_identities_on_username"
   end
 
@@ -1600,6 +1610,69 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
     t.index ["minecraft_server_id"], name: "index_minecraft_player_sessions_on_minecraft_server_id"
     t.index ["player_profile_id", "ended_at"], name: "idx_on_player_profile_id_ended_at_a039423057"
     t.index ["player_profile_id"], name: "index_minecraft_player_sessions_on_player_profile_id"
+  end
+
+  create_table "minecraft_primary_account_change_events", force: :cascade do |t|
+    t.bigint "actor_id", null: false
+    t.string "change_source", null: false
+    t.datetime "changed_at", null: false
+    t.boolean "counts_for_cooldown", default: true, null: false
+    t.datetime "created_at", null: false
+    t.bigint "from_identity_link_id"
+    t.string "idempotency_key_digest", limit: 64, null: false
+    t.bigint "primary_account_change_request_id"
+    t.text "reason"
+    t.bigint "to_identity_link_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["actor_id"], name: "index_minecraft_primary_account_change_events_on_actor_id"
+    t.index ["from_identity_link_id"], name: "idx_on_from_identity_link_id_8d7336ca35"
+    t.index ["primary_account_change_request_id"], name: "idx_mc_primary_events_request", unique: true, where: "(primary_account_change_request_id IS NOT NULL)"
+    t.index ["primary_account_change_request_id"], name: "idx_on_primary_account_change_request_id_dbc28f07ae"
+    t.index ["to_identity_link_id"], name: "idx_on_to_identity_link_id_a935602661"
+    t.index ["user_id", "changed_at"], name: "idx_mc_primary_events_user_changed"
+    t.index ["user_id", "idempotency_key_digest"], name: "idx_mc_primary_events_idempotency", unique: true
+    t.index ["user_id"], name: "index_minecraft_primary_account_change_events_on_user_id"
+    t.check_constraint "change_source::text <> 'administrator_override'::text OR btrim(COALESCE(reason, ''::text)) <> ''::text", name: "mc_primary_events_admin_reason"
+    t.check_constraint "change_source::text = ANY (ARRAY['player_immediate'::character varying, 'staff_approval'::character varying, 'administrator_override'::character varying, 'automatic_successor'::character varying]::text[])", name: "mc_primary_events_source"
+    t.check_constraint "from_identity_link_id IS NULL OR from_identity_link_id <> to_identity_link_id", name: "mc_primary_events_distinct_links"
+    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "mc_primary_events_digest"
+  end
+
+  create_table "minecraft_primary_account_change_requests", force: :cascade do |t|
+    t.datetime "applied_at"
+    t.datetime "created_at", null: false
+    t.bigint "decided_by_id"
+    t.text "decision_reason"
+    t.datetime "expires_at", null: false
+    t.string "idempotency_key_digest", limit: 64, null: false
+    t.integer "lock_version", default: 0, null: false
+    t.string "policy_snapshot", default: "staff_approval", null: false
+    t.text "request_reason", null: false
+    t.datetime "requested_at", null: false
+    t.bigint "requested_by_id", null: false
+    t.datetime "resolved_at"
+    t.bigint "source_identity_link_id"
+    t.string "status", default: "pending", null: false
+    t.bigint "target_identity_link_id", null: false
+    t.datetime "updated_at", null: false
+    t.bigint "user_id", null: false
+    t.index ["decided_by_id"], name: "idx_on_decided_by_id_f79a8d6a81"
+    t.index ["requested_by_id"], name: "idx_on_requested_by_id_ec1462ee85"
+    t.index ["source_identity_link_id"], name: "idx_on_source_identity_link_id_fa1efd1976"
+    t.index ["target_identity_link_id", "status"], name: "idx_mc_primary_requests_target_status"
+    t.index ["target_identity_link_id"], name: "idx_on_target_identity_link_id_e236c563d1"
+    t.index ["user_id", "idempotency_key_digest"], name: "idx_mc_primary_requests_idempotency", unique: true
+    t.index ["user_id", "status", "requested_at"], name: "idx_mc_primary_requests_user_status"
+    t.index ["user_id"], name: "idx_mc_primary_requests_one_pending", unique: true, where: "((status)::text = 'pending'::text)"
+    t.index ["user_id"], name: "index_minecraft_primary_account_change_requests_on_user_id"
+    t.check_constraint "btrim(request_reason) <> ''::text", name: "mc_primary_requests_reason"
+    t.check_constraint "expires_at > requested_at", name: "mc_primary_requests_expiry"
+    t.check_constraint "idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "mc_primary_requests_digest"
+    t.check_constraint "policy_snapshot::text = 'staff_approval'::text", name: "mc_primary_requests_policy"
+    t.check_constraint "source_identity_link_id IS NULL OR source_identity_link_id <> target_identity_link_id", name: "mc_primary_requests_distinct_links"
+    t.check_constraint "status::text = 'pending'::text AND resolved_at IS NULL AND applied_at IS NULL AND decided_by_id IS NULL OR status::text = 'approved'::text AND resolved_at IS NOT NULL AND applied_at IS NOT NULL AND decided_by_id IS NOT NULL OR status::text = 'rejected'::text AND resolved_at IS NOT NULL AND applied_at IS NULL AND decided_by_id IS NOT NULL AND btrim(COALESCE(decision_reason, ''::text)) <> ''::text OR status::text = 'expired'::text AND resolved_at IS NOT NULL AND applied_at IS NULL AND decided_by_id IS NULL OR status::text = 'cancelled'::text AND resolved_at IS NOT NULL AND applied_at IS NULL", name: "mc_primary_requests_resolution_shape"
+    t.check_constraint "status::text = ANY (ARRAY['pending'::character varying, 'approved'::character varying, 'rejected'::character varying, 'expired'::character varying, 'cancelled'::character varying]::text[])", name: "mc_primary_requests_status"
   end
 
   create_table "minecraft_processed_deliveries", force: :cascade do |t|
@@ -1683,6 +1756,24 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
     t.index ["public_id"], name: "index_minecraft_servers_on_public_id", unique: true
   end
 
+  create_table "minecraft_skin_refresh_requests", force: :cascade do |t|
+    t.boolean "cache_changed", default: false, null: false
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "error_code"
+    t.string "idempotency_key_digest", limit: 64, null: false
+    t.bigint "player_identity_id", null: false
+    t.bigint "requested_by_id"
+    t.datetime "started_at"
+    t.string "status", default: "pending", null: false
+    t.string "trigger", default: "scheduled", null: false
+    t.datetime "updated_at", null: false
+    t.index ["player_identity_id", "idempotency_key_digest"], name: "idx_mc_skin_refresh_requests_idempotency", unique: true
+    t.index ["player_identity_id"], name: "index_minecraft_skin_refresh_requests_on_player_identity_id"
+    t.index ["requested_by_id"], name: "index_minecraft_skin_refresh_requests_on_requested_by_id"
+    t.index ["status", "started_at"], name: "idx_mc_skin_refresh_requests_recovery"
+  end
+
   create_table "notification_preferences", force: :cascade do |t|
     t.string "channel", null: false
     t.datetime "created_at", null: false
@@ -1709,6 +1800,29 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
     t.index ["user_id", "notification_type", "created_at"], name: "idx_notifications_user_type_created", order: { created_at: :desc }
     t.index ["user_id", "read_at"], name: "index_notifications_on_user_id_and_read_at"
     t.index ["user_id"], name: "index_notifications_on_user_id"
+  end
+
+  create_table "operations_manual_task_runs", force: :cascade do |t|
+    t.jsonb "arguments", default: {}, null: false
+    t.datetime "created_at", null: false
+    t.string "error_code"
+    t.text "error_message"
+    t.datetime "finished_at"
+    t.string "idempotency_key", null: false
+    t.string "job_id"
+    t.integer "lock_version", default: 0, null: false
+    t.datetime "requested_at", null: false
+    t.bigint "requested_by_id"
+    t.jsonb "result", default: {}, null: false
+    t.datetime "started_at"
+    t.string "status", default: "queued", null: false
+    t.string "task_key", null: false
+    t.datetime "updated_at", null: false
+    t.index ["requested_by_id"], name: "index_operations_manual_task_runs_on_requested_by_id"
+    t.index ["status", "requested_at"], name: "idx_operations_manual_tasks_status"
+    t.index ["task_key", "idempotency_key"], name: "idx_operations_manual_tasks_idempotency", unique: true
+    t.check_constraint "(status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying]::text[])) AND finished_at IS NULL OR (status::text = ANY (ARRAY['succeeded'::character varying, 'failed'::character varying]::text[])) AND finished_at IS NOT NULL", name: "operations_manual_task_runs_finished_shape"
+    t.check_constraint "status::text = ANY (ARRAY['queued'::character varying, 'running'::character varying, 'succeeded'::character varying, 'failed'::character varying]::text[])", name: "operations_manual_task_runs_status"
   end
 
   create_table "operations_metric_buckets", force: :cascade do |t|
@@ -3584,12 +3698,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
   add_foreign_key "minecraft_player_identities", "minecraft_servers", column: "primary_server_id"
   add_foreign_key "minecraft_player_sessions", "minecraft_player_profiles", column: "player_profile_id"
   add_foreign_key "minecraft_player_sessions", "minecraft_servers"
+  add_foreign_key "minecraft_primary_account_change_events", "minecraft_identity_links", column: "from_identity_link_id"
+  add_foreign_key "minecraft_primary_account_change_events", "minecraft_identity_links", column: "to_identity_link_id"
+  add_foreign_key "minecraft_primary_account_change_events", "minecraft_primary_account_change_requests", column: "primary_account_change_request_id"
+  add_foreign_key "minecraft_primary_account_change_events", "users"
+  add_foreign_key "minecraft_primary_account_change_events", "users", column: "actor_id"
+  add_foreign_key "minecraft_primary_account_change_requests", "minecraft_identity_links", column: "source_identity_link_id"
+  add_foreign_key "minecraft_primary_account_change_requests", "minecraft_identity_links", column: "target_identity_link_id"
+  add_foreign_key "minecraft_primary_account_change_requests", "users"
+  add_foreign_key "minecraft_primary_account_change_requests", "users", column: "decided_by_id"
+  add_foreign_key "minecraft_primary_account_change_requests", "users", column: "requested_by_id"
   add_foreign_key "minecraft_processed_deliveries", "minecraft_servers"
   add_foreign_key "minecraft_profile_field_values", "minecraft_player_profiles", column: "player_profile_id"
   add_foreign_key "minecraft_server_snapshots", "minecraft_servers"
   add_foreign_key "minecraft_servers", "minecraft_nodes"
+  add_foreign_key "minecraft_skin_refresh_requests", "minecraft_player_identities", column: "player_identity_id"
+  add_foreign_key "minecraft_skin_refresh_requests", "users", column: "requested_by_id"
   add_foreign_key "notification_preferences", "users"
   add_foreign_key "notifications", "users"
+  add_foreign_key "operations_manual_task_runs", "users", column: "requested_by_id"
   add_foreign_key "payment_attempts", "payment_records"
   add_foreign_key "payment_late_payment_cases", "payment_records"
   add_foreign_key "payment_late_payment_cases", "payment_webhook_events"

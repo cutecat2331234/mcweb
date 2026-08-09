@@ -235,6 +235,15 @@ en:
       minecraft_players_view:
         name: "View Minecraft players"
         description: "View connected players and their current server activity."
+      minecraft_players_manage:
+        name: "Manage Minecraft player caches"
+        description: "Run approved maintenance and diagnostics for locally cached Minecraft identities."
+      minecraft_primary_accounts_review:
+        name: "Review Minecraft primary-account changes"
+        description: "Approve or reject player requests to change their primary bound Minecraft account."
+      minecraft_primary_accounts_switch_for_user:
+        name: "Change a member's primary Minecraft account"
+        description: "Override a member's primary bound Minecraft account with a mandatory audited reason."
       minecraft_fulfillments_retry:
         name: "Retry Minecraft fulfillment"
         description: "Retry failed or incomplete Minecraft order fulfillment actions."
@@ -277,6 +286,9 @@ en:
       system_jobs_read:
         name: "View background jobs"
         description: "View background-job status, schedules, and operational diagnostics."
+      system_jobs_manage:
+        name: "Run approved background jobs"
+        description: "Run explicitly allowlisted manual maintenance tasks and view their execution records."
       system_jobs_retry:
         name: "Retry background jobs (planned)"
         description: "Reserved for a future controlled retry workflow; it currently grants no retry action."
@@ -460,6 +472,13 @@ en:
       participant_removed: Participant removed.
       left_group: You left the group.
       minecraft_linked: Minecraft account linked successfully.
+      primary_account_changed: Primary Minecraft account changed.
+      primary_account_change_requested: Primary-account change request submitted for staff review.
+      primary_account_change_cancelled: Primary-account change request cancelled.
+      primary_account_request_decided: Primary-account change request resolved.
+      primary_account_policy_invalid: Enter a supported primary-account policy and valid cooldown and expiry values.
+      manual_task_enqueued: The approved maintenance task was queued.
+      manual_task_rejected: The maintenance task could not be queued. Check its arguments and your permissions.
       digest_unsubscribed: Forum digest emails disabled.
       digest_unsubscribe_invalid: Digest unsubscribe link is invalid or expired.
       all_topics_marked_read: All topics marked as read.
@@ -933,6 +952,32 @@ en:
         small_action_body_required: Action body is required.
         link_code_used: Link code has already been used.
         minecraft_already_linked: This Minecraft account is already linked.
+        minecraft_account_not_bound: Select one of this member's active bound Minecraft accounts.
+        minecraft_account_already_primary: This Minecraft account is already the primary account.
+        primary_account_forbidden: You do not have permission to perform this primary-account action.
+        primary_account_actor_required: A signed-in actor is required for this primary-account action.
+        primary_account_change_source_invalid: This primary-account change source is not supported.
+        primary_account_idempotency_required: A stable request identifier is required for this primary-account action.
+        primary_account_idempotency_conflict: This request identifier was already used for a different primary-account action.
+        primary_account_cooldown_active: The primary-account cooldown is still active. Try again later.
+        primary_account_administrator_only: This site allows primary-account changes only through an authorized administrator.
+        primary_account_policy_invalid: The configured primary-account switch policy is invalid.
+        primary_account_reason_required: Enter a reason for this primary-account action.
+        primary_account_reason_too_long: The primary-account reason cannot exceed 2,000 characters.
+        primary_account_request_pending: Resolve or cancel the current primary-account request before creating another one.
+        primary_account_request_conflict: The primary-account request changed concurrently. Refresh and try again.
+        primary_account_missing: This member does not currently have a primary bound Minecraft account.
+        primary_account_conflict: The primary account changed concurrently. Refresh and try again.
+        primary_account_lock_version_required: Refresh the request before resolving it.
+        primary_account_decision_invalid: Select approve or reject for this primary-account request.
+        primary_account_request_not_pending: This primary-account request is no longer pending.
+        primary_account_request_stale: The primary-account request changed while it was being reviewed. Refresh and try again.
+        primary_account_request_expired: This primary-account request has expired.
+        primary_account_request_accounts_changed: The source or target Minecraft binding changed, so this request was cancelled.
+        manual_task_unknown: This manual maintenance task is not registered.
+        manual_task_forbidden: You do not have every permission required by this manual maintenance task.
+        manual_task_idempotency_required: A stable request identifier is required for this manual maintenance task.
+        manual_task_enqueue_failed: The manual maintenance task could not be queued.
         request_timestamp_invalid: Request timestamp is too old or invalid.
         cannot_create_topic_in_section: You are not allowed to create topics in this section.
         trust_level_too_low: Your trust level is too low to create topics in this section.
@@ -1405,6 +1450,28 @@ en:
       minecraft_connector_offline: "process running but connector offline"
       minecraft_process_mismatch_title: "Minecraft process mismatch: %{name}"
       minecraft_process_mismatch_body: "%{name} — %{state} (process state: %{process_state})."
+    notifications:
+      minecraft_primary_account_requested:
+        title: "Primary Minecraft account change requested"
+        body: "Your request to use %{account} as the primary account is waiting for review."
+      minecraft_primary_account_review_required:
+        title: "Primary Minecraft account review required"
+        body: "%{member} requested to use %{account} as their primary account."
+      minecraft_primary_account_approved:
+        title: "Primary Minecraft account changed"
+        body: "%{account} is now your primary Minecraft account."
+      minecraft_primary_account_rejected:
+        title: "Primary Minecraft account request rejected"
+        body: "The request to use %{account} as your primary account was rejected."
+      minecraft_primary_account_expired:
+        title: "Primary Minecraft account request expired"
+        body: "The request to use %{account} as your primary account expired before review."
+      minecraft_primary_account_cancelled:
+        title: "Primary Minecraft account request cancelled"
+        body: "The request to use %{account} as your primary account was cancelled."
+      minecraft_primary_account_administrator_override:
+        title: "Primary Minecraft account changed by staff"
+        body: "An authorized staff member set %{account} as your primary Minecraft account."
     commerce:
       default_store_title: Store
       list_separator: ", "

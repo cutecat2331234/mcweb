@@ -599,6 +599,29 @@ module Identity
         ]
       ),
       build_entry.call(
+        "minecraft.players.manage",
+        "管理 Minecraft 玩家缓存",
+        execution_points: [
+          "app/services/operations/minecraft_manual_tasks.rb"
+        ]
+      ),
+      build_entry.call(
+        "minecraft.primary_accounts.review",
+        "审批 Minecraft 主账号切换",
+        execution_points: [
+          "app/controllers/admin/minecraft/primary_account_change_requests_controller.rb#update",
+          "app/services/minecraft/decide_primary_account_change_request.rb#call"
+        ]
+      ),
+      build_entry.call(
+        "minecraft.primary_accounts.switch_for_user",
+        "代用户切换 Minecraft 主账号",
+        execution_points: [
+          "app/controllers/admin/minecraft/primary_accounts_controller.rb#create",
+          "app/services/minecraft/administrator_set_primary_account.rb#call"
+        ]
+      ),
+      build_entry.call(
         "store.fulfillments.read",
         "View fulfillment recovery",
         admin_module: "store",
@@ -736,6 +759,14 @@ module Identity
           "app/controllers/admin/system/jobs_controller.rb#index",
           "app/services/operations/metrics/trend_query.rb#call",
           "app/constraints/sidekiq_web_constraint.rb"
+        ]
+      ),
+      build_entry.call(
+        "system.jobs.manage",
+        "执行允许列表中的后台任务",
+        execution_points: [
+          "app/controllers/admin/system/jobs_controller.rb#run",
+          "app/services/operations/enqueue_manual_task.rb#call"
         ]
       ),
       build_entry.call(

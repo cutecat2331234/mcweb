@@ -37,8 +37,13 @@ module Minecraft
         event: event
       )
 
-      if identity.skin_texture_url.blank? && identity.external_uuid.present?
-        Minecraft::RefreshSkinJob.perform_later(identity.external_uuid, platform: identity.platform)
+      if identity.external_uuid.present? && identity.player_profile.identity_links.active.exists?
+        Minecraft::RequestSkinRefresh.call(
+          player_identity: identity,
+          request_id: "presence-#{identity.id}-skin-#{Time.current.utc.to_date.iso8601}",
+          trigger: "scheduled",
+          force: false
+        )
       end
 
       user = player_ref.website_user

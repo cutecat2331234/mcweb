@@ -7,7 +7,7 @@ module Minecraft
     end
 
     def call
-      profile = @user.minecraft_identity_links.active.first&.player_profile
+      profile = @user.minecraft_identity_links.primary.first&.player_profile
       return ServiceResult.success(ingame_online: false) unless profile
 
       session = Minecraft::PlayerSession.active

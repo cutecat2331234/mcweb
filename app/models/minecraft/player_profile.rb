@@ -19,5 +19,13 @@ module Minecraft
     def website_user
       identity_links.active.includes(:user).first&.user
     end
+
+    def active_link_for(user)
+      identity_links.active.find_by(user: user)
+    end
+
+    def primary_for?(user)
+      active_link_for(user)&.primary_account? || false
+    end
   end
 end

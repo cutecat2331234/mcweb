@@ -235,6 +235,15 @@
       minecraft_players_view:
         name: "查看 Minecraft 玩家"
         description: "查看在线玩家及其当前服务器活动。"
+      minecraft_players_manage:
+        name: "管理 Minecraft 玩家缓存"
+        description: "对本地缓存的 Minecraft 身份执行受控维护和诊断。"
+      minecraft_primary_accounts_review:
+        name: "审批 Minecraft 主账号切换"
+        description: "批准或驳回玩家更换 Minecraft 主绑定账号的申请。"
+      minecraft_primary_accounts_switch_for_user:
+        name: "代用户切换 Minecraft 主账号"
+        description: "填写必需理由后，代用户切换 Minecraft 主绑定账号并保留完整审计。"
       minecraft_fulfillments_retry:
         name: "重试 Minecraft 发货"
         description: "重试失败或未完成的 Minecraft 订单发货操作。"
@@ -277,6 +286,9 @@
       system_jobs_read:
         name: "查看后台任务"
         description: "查看后台任务状态、调度信息和运行诊断。"
+      system_jobs_manage:
+        name: "执行受控后台任务"
+        description: "执行明确列入允许列表的手动维护任务，并查看执行记录。"
       system_jobs_retry:
         name: "重试后台任务（规划中）"
         description: "为后续受控重试流程保留；当前不会授予任何重试操作。"
@@ -460,6 +472,13 @@
       participant_removed: 已移除成员。
       left_group: 你已离开群组。
       minecraft_linked: Minecraft 账号已成功绑定。
+      primary_account_changed: Minecraft 主账号已切换。
+      primary_account_change_requested: 主账号切换申请已提交审核。
+      primary_account_change_cancelled: 主账号切换申请已取消。
+      primary_account_request_decided: 主账号切换申请已处理。
+      primary_account_policy_invalid: 请选择支持的主账号策略，并填写有效的冷却与有效期。
+      manual_task_enqueued: 受控维护任务已加入队列。
+      manual_task_rejected: 无法加入维护任务，请检查参数与权限。
       digest_unsubscribed: 已关闭论坛邮件摘要。
       digest_unsubscribe_invalid: 取消摘要链接无效或已过期。
       all_topics_marked_read: 全部主题已标记为已读。
@@ -933,6 +952,32 @@
         small_action_body_required: 操作说明不能为空。
         link_code_used: 绑定码已被使用。
         minecraft_already_linked: 该 Minecraft 账号已绑定其他用户。
+        minecraft_account_not_bound: 请选择该用户当前有效且已绑定的 Minecraft 账号。
+        minecraft_account_already_primary: 该 Minecraft 账号已经是主账号。
+        primary_account_forbidden: 你没有权限执行此主账号操作。
+        primary_account_actor_required: 此主账号操作必须由已登录用户发起。
+        primary_account_change_source_invalid: 不支持此主账号切换来源。
+        primary_account_idempotency_required: 此主账号操作需要稳定的请求标识。
+        primary_account_idempotency_conflict: 此请求标识已用于另一项主账号操作。
+        primary_account_cooldown_active: 主账号切换仍在冷却期内，请稍后重试。
+        primary_account_administrator_only: 当前站点只允许授权管理员切换主账号。
+        primary_account_policy_invalid: 站点配置的主账号切换策略无效。
+        primary_account_reason_required: 请填写本次主账号操作的理由。
+        primary_account_reason_too_long: 主账号操作理由不能超过 2,000 个字符。
+        primary_account_request_pending: 请先处理或取消当前主账号申请，再创建新申请。
+        primary_account_request_conflict: 主账号申请刚刚发生并发变化，请刷新后重试。
+        primary_account_missing: 该用户当前没有主绑定 Minecraft 账号。
+        primary_account_conflict: 主账号刚刚发生并发变化，请刷新后重试。
+        primary_account_lock_version_required: 请刷新申请后再处理。
+        primary_account_decision_invalid: 请选择批准或驳回此主账号申请。
+        primary_account_request_not_pending: 此主账号申请已不再等待处理。
+        primary_account_request_stale: 审核期间申请已发生变化，请刷新后重试。
+        primary_account_request_expired: 此主账号申请已过期。
+        primary_account_request_accounts_changed: 来源或目标 Minecraft 绑定已变化，此申请已取消。
+        manual_task_unknown: 此手动维护任务未在允许列表中登记。
+        manual_task_forbidden: 你没有此手动维护任务要求的全部权限。
+        manual_task_idempotency_required: 此手动维护任务需要稳定的请求标识。
+        manual_task_enqueue_failed: 无法将手动维护任务加入队列。
         request_timestamp_invalid: 请求时间戳无效或已过期。
         cannot_create_topic_in_section: 你无权在此分区发帖。
         trust_level_too_low: 信任等级不足，无法在此分区发帖。
@@ -1405,6 +1450,28 @@
       minecraft_connector_offline: "服务进程正在运行，但连接器离线"
       minecraft_process_mismatch_title: "Minecraft 进程状态不一致：%{name}"
       minecraft_process_mismatch_body: "%{name} — %{state}（进程状态：%{process_state}）。"
+    notifications:
+      minecraft_primary_account_requested:
+        title: "已申请切换 Minecraft 主账号"
+        body: "你将 %{account} 设为主账号的申请正在等待审核。"
+      minecraft_primary_account_review_required:
+        title: "有 Minecraft 主账号申请待审核"
+        body: "%{member} 申请将 %{account} 设为主账号。"
+      minecraft_primary_account_approved:
+        title: "Minecraft 主账号已切换"
+        body: "%{account} 现在是你的 Minecraft 主账号。"
+      minecraft_primary_account_rejected:
+        title: "Minecraft 主账号申请已驳回"
+        body: "将 %{account} 设为主账号的申请已被驳回。"
+      minecraft_primary_account_expired:
+        title: "Minecraft 主账号申请已过期"
+        body: "将 %{account} 设为主账号的申请在审核前已过期。"
+      minecraft_primary_account_cancelled:
+        title: "Minecraft 主账号申请已取消"
+        body: "将 %{account} 设为主账号的申请已取消。"
+      minecraft_primary_account_administrator_override:
+        title: "工作人员已切换 Minecraft 主账号"
+        body: "授权工作人员已将 %{account} 设为你的 Minecraft 主账号。"
     commerce:
       default_store_title: 商城
       list_separator: "、"

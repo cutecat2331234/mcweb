@@ -453,7 +453,11 @@ const nav = computed<NavGroup[]>(() => {
         {
           label: t('admin.minecraftPlayers'),
           href: adminRoutes.minecraftPlayers,
-          permissionKey: 'minecraft.players.view',
+          permissionAny: [
+            'minecraft.players.view',
+            'minecraft.primary_accounts.review',
+            'minecraft.primary_accounts.switch_for_user',
+          ],
         },
         {
           label: t('admin.minecraftSettings'),

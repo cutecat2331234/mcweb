@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require Rails.root.join("lib/mcweb/operations_manual_task_registrar_config")
+
 module Operations
   class ManualTaskCatalog
     class InvalidTask < StandardError; end
@@ -73,7 +75,9 @@ module Operations
       end
 
       def configured_registrars
-        Array(Rails.application.config.x.operations_manual_task_registrars)
+        Mcweb::OperationsManualTaskRegistrarConfig.freeze_and_fetch!(
+          Rails.application.config.x
+        )
       end
 
       def normalize_argument(key, value, schema)

@@ -165,7 +165,9 @@ jobs:
       - name: Stage connector plugin jars
         run: |
           mkdir -p dist/mcweb-${{ steps.version.outputs.value }}/plugins
-          find plugins/mcweb-connector -path '*/build/libs/*.jar' ! -name '*-plain.jar' -exec cp {} dist/mcweb-${{ steps.version.outputs.value }}/plugins/ \;
+          CONNECTOR_DIR="plugins/mcweb-connector/build/deployable"
+          test "$(find "$CONNECTOR_DIR" -maxdepth 1 -type f -name '*.jar' | wc -l)" -eq 4
+          cp "$CONNECTOR_DIR"/*.jar dist/mcweb-${{ steps.version.outputs.value }}/plugins/
           ls -la dist/mcweb-${{ steps.version.outputs.value }}/plugins/
 
       - name: Upload release artifact

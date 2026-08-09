@@ -87,8 +87,10 @@ module Mcweb
       delimiter = heredoc_delimiter(statement)
 
       stream.puts "  execute <<~'#{delimiter}'"
-      statement.each_line { |line| stream.print "    #{line}" }
-      stream.puts unless statement.end_with?("\n")
+      statement.each_line(chomp: true) do |line|
+        normalized = line.rstrip
+        normalized.empty? ? stream.puts : stream.puts("    #{normalized}")
+      end
       stream.puts "  #{delimiter}"
       stream.puts
     end

@@ -31,6 +31,8 @@ module Mcweb
       assert_includes source, "CREATE OR REPLACE FUNCTION #{@schema}.reject_ledger_change()"
       assert_includes source, "CREATE TRIGGER ledger_entries_immutable"
       assert_includes source, "User-defined PostgreSQL trigger functions and triggers"
+      refute source.lines.any? { |line| line.match?(/[ \t]+\r?\n\z/) },
+             "schema dump must not add trailing whitespace to blank SQL lines"
 
       reload_schema(source)
 
@@ -69,6 +71,7 @@ module Mcweb
         CREATE FUNCTION #{@quoted_schema}.reject_ledger_change()
         RETURNS trigger AS $function$
         BEGIN
+
           RAISE EXCEPTION '% is append-only', TG_TABLE_NAME
             USING ERRCODE = 'integrity_constraint_violation';
         END;

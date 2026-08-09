@@ -9,14 +9,18 @@ cd plugins/mcweb-connector
 ./gradlew build   # Windows: gradlew.bat build
 ```
 
-产物位于各子模块 `build/libs/`：
+可直接安装到服务器的四个自包含插件位于根项目 `build/deployable/`：
 
-| 模块 | 适用环境 |
-|------|----------|
-| `mcweb-connector-bukkit-legacy` | Spigot/Paper 1.8 – 1.12 |
-| `mcweb-connector-bukkit-modern` | Paper/Spigot 1.13+ |
-| `mcweb-connector-bungee` | BungeeCord 代理 |
-| `mcweb-connector-velocity` | Velocity 3.x 代理 |
+| 部署文件 | 适用环境 |
+|----------|----------|
+| `mcweb-connector-bukkit-legacy-1.0.0.jar` | Spigot/Paper 1.8 – 1.12 |
+| `mcweb-connector-bukkit-modern-1.0.0.jar` | Paper/Spigot 1.13+ |
+| `mcweb-connector-bungee-1.0.0.jar` | BungeeCord 代理 |
+| `mcweb-connector-velocity-1.0.0.jar` | Velocity 3.x 代理 |
+
+这些部署文件已经包含 Connector common、OkHttp、Gson 及其运行时依赖，并将第三方类隔离在 Connector 的内部命名空间中。构建会运行部署包契约测试，确认四个平台入口、插件元数据、依赖和 Java 目标版本正确。
+
+各平台子模块 `build/libs/` 下带 `-plain.jar` 后缀的是仅供构建与调试的薄包，不包含运行时依赖，**不能作为服务器部署文件**。发布或手动安装时只使用 `build/deployable/` 中的文件。
 
 ## 配置
 

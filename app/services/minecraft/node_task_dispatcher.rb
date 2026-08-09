@@ -2,8 +2,6 @@
 
 module Minecraft
   class NodeTaskDispatcher < ApplicationService
-    STALE_CLAIM_AFTER = 10.minutes
-
     def initialize(node:, task: nil, task_id: nil, result: {}, action: :claim)
       @node = node
       @task = task
@@ -28,9 +26,14 @@ module Minecraft
     def claim_tasks
       tasks = []
       Minecraft::NodeTask.transaction do
-        reclaim_stale_claimed_tasks!
+        @node.lock!
+        # The legacy protocol now observes the same one-at-a-time safety boundary as
+        # operation batches. A claimed task is never silently reclaimed because doing
+        # so can repeat a destructive command after a slow or disconnected execution.
+        next if @node.operation_batches.active.exists?
+        next if @node.node_tasks.where(status: "claimed").lock.exists?
 
-        pending = @node.node_tasks.claimable.lock.limit(10)
+        pending = @node.node_tasks.claimable.lock.limit(1)
 
         pending.each do |task|
           task.update!(status: "claimed", claimed_at: Time.current)
@@ -39,13 +42,6 @@ module Minecraft
       end
 
       ServiceResult.success(tasks: tasks)
-    end
-
-    def reclaim_stale_claimed_tasks!
-      Minecraft::NodeTask
-        .where(node: @node, status: "claimed")
-        .where("claimed_at IS NULL OR claimed_at < ?", STALE_CLAIM_AFTER.ago)
-        .update_all(status: "pending", claimed_at: nil, updated_at: Time.current)
     end
 
     def complete_task

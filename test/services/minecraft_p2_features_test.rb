@@ -6,7 +6,15 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
   include ActiveJob::TestHelper
 
   setup do
-    @node = Minecraft::Node.create!(name: "P2 Node", status: :online, last_heartbeat_at: Time.current)
+    @node = Minecraft::Node.create!(
+      name: "P2 Node",
+      status: :online,
+      last_heartbeat_at: Time.current,
+      metadata: {
+        "node_protocol_versions" => [ 1, 2 ],
+        "operation_types" => %w[collect_metrics sync_files]
+      }
+    )
     @server = Minecraft::Server.create!(
       name: "P2 Survival",
       node: @node,
@@ -146,10 +154,13 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
     assert sync_result.success?
   end
 
-  test "ScheduleCollectMetricsJob enqueues metrics tasks" do
-    assert_difference -> { Minecraft::NodeTask.where(task_type: "collect_metrics").count }, 1 do
+  test "ScheduleCollectMetricsJob enqueues one Sidekiq-owned metrics operation group" do
+    assert_difference -> { Minecraft::NodeOperation.where(operation_type: "collect_metrics").count }, 1 do
       Minecraft::ScheduleCollectMetricsJob.perform_now
     end
+    operation = Minecraft::NodeOperation.order(:created_at).last
+    assert_equal 1, operation.target_count
+    assert_enqueued_with(job: Minecraft::PrepareNodeOperationJob, args: [ operation.id ])
   end
 
   test "BuildFileSyncUrl generates verifiable url" do

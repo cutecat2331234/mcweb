@@ -5,14 +5,33 @@ module Minecraft
     queue_as :maintenance
 
     def perform
-      Minecraft::Server.managed_by_node.find_each do |server|
-        next unless server.node&.status == "online"
+      servers = Minecraft::Server
+        .managed_by_node
+        .joins(:node)
+        .where(minecraft_nodes: { status: "online" })
+        .to_a
+      return if servers.empty?
 
+      operation_servers, legacy_servers = servers.partition do |server|
+        server.node.supports_node_operation?("collect_metrics")
+      end
+
+      if operation_servers.any?
+        Minecraft::EnqueueNodeOperation.call(
+          operation_type: "collect_metrics",
+          servers: operation_servers,
+          idempotency_key: "metrics-group-#{Time.current.to_i / 10.minutes.to_i}"
+        )
+      end
+
+      # Rolling-upgrade compatibility only. Once an old agent advertises protocol v2,
+      # its servers automatically join the single Sidekiq-owned operation group.
+      legacy_servers.each do |server|
         Minecraft::EnqueueNodeTask.call(
           node: server.node,
           server: server,
           task_type: "collect_metrics",
-          delivery_id: "metrics-#{server.public_id}-#{Time.current.to_i}"
+          delivery_id: "metrics-legacy-#{server.public_id}-#{Time.current.to_i / 10.minutes.to_i}"
         )
       end
     end

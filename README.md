@@ -232,8 +232,10 @@ POST complete  → Minecraft::TaskDispatcher 更新履约状态
 ```
 管理员配对 mcweb-node → node_secret
 heartbeat          → 拉取所管实例配置 + 上报主机指标
-GET tasks / events → 拉取宿主机任务（启停、备份、sync_files 等）
-POST complete      → 回报执行结果
+Sidekiq 建立任务团  → 冻结全部目标，按物理节点生成一个批次
+GET operations/next → 每个节点一次只领取一个包含多个子服务器的批次
+complete + acknowledge → 汇总逐目标结果并确认；确认后才派发下一批次
+GET tasks / events → v1 单任务兼容通道（一次一个，不自动重放超时命令）
 ```
 
 更完整的模块交互说明见 [ARCHITECTURE.md](ARCHITECTURE.md)。

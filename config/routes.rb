@@ -892,6 +892,10 @@ Rails.application.routes.draw do
       post "pair", to: "pairing#create"
       scope ":node_id" do
         post "heartbeat", to: "api#heartbeat"
+        get "operations/next", to: "api#next_operation"
+        post "operations/:id/lease", to: "api#renew_operation_lease"
+        post "operations/:id/complete", to: "api#complete_operation"
+        post "operations/:id/acknowledge", to: "api#acknowledge_operation"
         get "tasks", to: "api#tasks"
         get "events", to: "events#show"
         post "tasks/:id/complete", to: "api#complete"

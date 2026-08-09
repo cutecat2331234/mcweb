@@ -8,6 +8,11 @@ module Minecraft
 
     has_many :servers, class_name: "Minecraft::Server", foreign_key: :minecraft_node_id, dependent: :nullify
     has_many :node_tasks, class_name: "Minecraft::NodeTask", foreign_key: :minecraft_node_id, dependent: :destroy
+    has_many :operation_batches,
+      class_name: "Minecraft::NodeOperationBatch",
+      foreign_key: :minecraft_node_id,
+      inverse_of: :node,
+      dependent: :restrict_with_error
     has_many :metric_snapshots, class_name: "Minecraft::NodeMetricSnapshot", foreign_key: :minecraft_node_id, dependent: :destroy
 
     enum :status, { offline: "offline", online: "online", maintenance: "maintenance" }, validate: true
@@ -36,6 +41,15 @@ module Minecraft
 
     def effective_proxy_listen_url
       proxy_listen_url.presence || "http://127.0.0.1:9876"
+    end
+
+    def supports_operation_batches?
+      Array(metadata["node_protocol_versions"]).map(&:to_i).include?(2)
+    end
+
+    def supports_node_operation?(operation_type)
+      supports_operation_batches? &&
+        Array(metadata["operation_types"]).map(&:to_s).include?(operation_type.to_s)
     end
   end
 end

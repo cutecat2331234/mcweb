@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_02_110000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_060000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1428,6 +1428,81 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_110000) do
     t.index ["minecraft_node_id"], name: "index_minecraft_node_metric_snapshots_on_minecraft_node_id"
     t.index ["minecraft_server_id", "recorded_at"], name: "idx_on_minecraft_server_id_recorded_at_d82cc9af1c"
     t.index ["minecraft_server_id"], name: "index_minecraft_node_metric_snapshots_on_minecraft_server_id"
+  end
+
+  create_table "minecraft_node_operation_batches", force: :cascade do |t|
+    t.datetime "acknowledged_at"
+    t.string "acknowledgement_id"
+    t.datetime "claimed_at"
+    t.datetime "completed_at"
+    t.integer "completed_target_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.integer "delivery_attempts", default: 0, null: false
+    t.string "delivery_id", null: false
+    t.integer "failed_target_count", default: 0, null: false
+    t.datetime "lease_expires_at"
+    t.integer "lock_version", default: 0, null: false
+    t.bigint "minecraft_node_id", null: false
+    t.bigint "minecraft_node_operation_id", null: false
+    t.jsonb "payload", default: {}, null: false
+    t.string "payload_digest", null: false
+    t.string "public_id", null: false
+    t.jsonb "result", default: {}, null: false
+    t.string "result_digest"
+    t.datetime "result_recorded_at"
+    t.datetime "started_at"
+    t.string "status", default: "ready", null: false
+    t.integer "target_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["acknowledgement_id"], name: "idx_minecraft_node_batches_ack_id", unique: true, where: "(acknowledgement_id IS NOT NULL)"
+    t.index ["delivery_id"], name: "idx_minecraft_node_batches_delivery_id", unique: true
+    t.index ["minecraft_node_id", "status", "created_at"], name: "idx_minecraft_node_batches_dispatch"
+    t.index ["minecraft_node_id"], name: "idx_minecraft_node_batches_node"
+    t.index ["minecraft_node_id"], name: "idx_minecraft_node_batches_one_active", unique: true, where: "((status)::text = ANY ((ARRAY['dispatched'::character varying, 'running'::character varying, 'result_pending_ack'::character varying])::text[]))"
+    t.index ["minecraft_node_operation_id", "minecraft_node_id"], name: "idx_minecraft_node_batches_operation_node", unique: true
+    t.index ["minecraft_node_operation_id"], name: "idx_minecraft_node_batches_operation"
+    t.index ["public_id"], name: "idx_minecraft_node_batches_public_id", unique: true
+  end
+
+  create_table "minecraft_node_operation_target_results", force: :cascade do |t|
+    t.datetime "applied_at"
+    t.string "applied_revision"
+    t.datetime "completed_at"
+    t.datetime "created_at", null: false
+    t.string "error_code"
+    t.text "error_message"
+    t.string "expected_revision"
+    t.bigint "minecraft_node_operation_batch_id", null: false
+    t.bigint "minecraft_server_id"
+    t.jsonb "result", default: {}, null: false
+    t.datetime "started_at"
+    t.string "status", null: false
+    t.string "target_key", null: false
+    t.datetime "updated_at", null: false
+    t.index ["minecraft_node_operation_batch_id", "target_key"], name: "idx_minecraft_node_target_results_unique", unique: true
+    t.index ["minecraft_node_operation_batch_id"], name: "idx_minecraft_node_target_results_batch"
+    t.index ["minecraft_server_id"], name: "idx_minecraft_node_target_results_server"
+  end
+
+  create_table "minecraft_node_operations", force: :cascade do |t|
+    t.integer "batch_count", default: 0, null: false
+    t.datetime "completed_at"
+    t.integer "completed_target_count", default: 0, null: false
+    t.datetime "created_at", null: false
+    t.integer "failed_target_count", default: 0, null: false
+    t.string "idempotency_key"
+    t.string "operation_type", null: false
+    t.string "public_id", null: false
+    t.string "request_digest", null: false
+    t.jsonb "request_payload", default: {}, null: false
+    t.jsonb "result", default: {}, null: false
+    t.datetime "started_at"
+    t.string "status", default: "queued", null: false
+    t.integer "target_count", default: 0, null: false
+    t.datetime "updated_at", null: false
+    t.index ["idempotency_key"], name: "index_minecraft_node_operations_on_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"
+    t.index ["public_id"], name: "index_minecraft_node_operations_on_public_id", unique: true
+    t.index ["status", "created_at"], name: "index_minecraft_node_operations_on_status_and_created_at"
   end
 
   create_table "minecraft_node_tasks", force: :cascade do |t|
@@ -3495,6 +3570,10 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_02_110000) do
   add_foreign_key "minecraft_link_codes", "users", column: "used_by_id"
   add_foreign_key "minecraft_node_metric_snapshots", "minecraft_nodes"
   add_foreign_key "minecraft_node_metric_snapshots", "minecraft_servers"
+  add_foreign_key "minecraft_node_operation_batches", "minecraft_node_operations"
+  add_foreign_key "minecraft_node_operation_batches", "minecraft_nodes"
+  add_foreign_key "minecraft_node_operation_target_results", "minecraft_node_operation_batches"
+  add_foreign_key "minecraft_node_operation_target_results", "minecraft_servers"
   add_foreign_key "minecraft_node_tasks", "minecraft_nodes"
   add_foreign_key "minecraft_node_tasks", "minecraft_servers"
   add_foreign_key "minecraft_permission_groups", "minecraft_player_profiles", column: "player_profile_id"

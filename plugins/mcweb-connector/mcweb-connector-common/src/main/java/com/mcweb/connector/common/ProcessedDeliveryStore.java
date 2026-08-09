@@ -82,4 +82,8 @@ public final class ProcessedDeliveryStore {
     public synchronized Set<String> snapshot() {
         return Collections.unmodifiableSet(new HashSet<>(ids));
     }
+
+    File dataFolder() {
+        return file.getParentFile();
+    }
 }

@@ -56,8 +56,19 @@
 ## 发货幂等
 
 - 每个发货任务携带全局唯一 `delivery_id`
-- 插件本地持久化已处理的 `delivery_id`
-- 重复任务返回已处理状态，不重复执行
+- 插件先原子持久化该 `delivery_id` 的首个终态回执，再向站点确认；确认请求失败、插件重启或任务重复投递时，重放完全相同的 `result`，不重复执行任务
+- 旧版 `processed_deliveries.txt` 继续读取；只有旧标记而没有结构化回执时，仍返回旧版“已在本地处理”的兼容结果
+- 回执只包含 `delivery_id` 和执行器返回的受限 `result`，不得包含 Connector 密钥、原任务或请求正文；损坏回执会隔离，回执和隔离文件均有保留上限
+
+### 任务完成结果
+
+`TaskPoller.Completion` 同时支持旧字符串结果和 `JsonObject` 结构化结果。插件会覆盖执行器提供的同名字段，保证：
+
+- 成功结果固定为 `success: true`、`status: "completed"`
+- 失败结果固定为 `success: false`、`status: "failed"`
+- 结构化结果必须是受限 JSON 对象：序列化后不超过 32 KiB，并受嵌套深度、成员数、字符串长度和敏感字段限制；不合规则返回有界的 `invalid_result_payload` 失败
+- `fail(JsonObject)` 默认是终态并持久化，避免确认丢失后再次执行副作用；只有显式设置 `retryable: true` 才允许同一 `delivery_id` 再执行。控制面需要重试终态失败时，应创建新的 delivery/attempt
+- 旧 `fail(String)` 保持历史行为，同一 `delivery_id` 后续仍可再次执行
 
 ## 集成事件
 

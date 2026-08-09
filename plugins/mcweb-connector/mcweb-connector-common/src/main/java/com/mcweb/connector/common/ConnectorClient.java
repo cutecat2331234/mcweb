@@ -7,7 +7,7 @@ import okhttp3.*;
 import java.io.IOException;
 import java.util.concurrent.TimeUnit;
 
-public final class ConnectorClient {
+public final class ConnectorClient implements ConnectorTransport {
     private static final Gson GSON = new Gson();
     private static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
 

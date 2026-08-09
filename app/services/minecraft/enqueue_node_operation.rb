@@ -39,7 +39,7 @@ module Minecraft
         request_payload: request_payload,
         target_count: @servers.length
       )
-      Minecraft::PrepareNodeOperationJob.perform_later(operation.id)
+      Minecraft::PrepareNodeOperationJob.perform_later
 
       ServiceResult.success(operation: operation, idempotent: false)
     rescue ActiveRecord::RecordNotUnique

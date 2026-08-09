@@ -4,15 +4,20 @@ module Minecraft
   class PrepareNodeOperationJob < ApplicationJob
     queue_as :minecraft
 
-    def perform(operation_id)
-      operation = Minecraft::NodeOperation.find(operation_id)
+    def perform
       nodes_to_wake = []
 
       Minecraft::NodeOperation.transaction do
-        operation.lock!
-        return if operation.terminal? || operation.status_ready? || operation.status_running?
+        return if Minecraft::NodeOperation.dispatching.exists?
 
-        operation.update!(status: "preparing")
+        operation = Minecraft::NodeOperation
+          .where(status: :queued)
+          .order(:created_at, :id)
+          .lock
+          .first
+        return unless operation
+
+        operation.update!(status: "preparing", dispatch_slot: 1)
         targets_by_node = operation.request_payload.fetch("targets").group_by { |target| target.fetch("node_id") }
 
         targets_by_node.each do |node_public_id, targets|
@@ -40,6 +45,10 @@ module Minecraft
       end
 
       nodes_to_wake.each(&:wake_for_tasks!)
+    rescue ActiveRecord::RecordNotUnique
+      # Another Sidekiq worker won the single global dispatch slot. Its terminal
+      # reconciliation will schedule the next queued task group.
+      raise unless Minecraft::NodeOperation.dispatching.exists?
     end
   end
 end

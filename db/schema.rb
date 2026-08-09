@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_060000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_09_070000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1489,6 +1489,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_060000) do
     t.datetime "completed_at"
     t.integer "completed_target_count", default: 0, null: false
     t.datetime "created_at", null: false
+    t.integer "dispatch_slot"
     t.integer "failed_target_count", default: 0, null: false
     t.string "idempotency_key"
     t.string "operation_type", null: false
@@ -1500,9 +1501,11 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_060000) do
     t.string "status", default: "queued", null: false
     t.integer "target_count", default: 0, null: false
     t.datetime "updated_at", null: false
+    t.index ["dispatch_slot"], name: "idx_minecraft_node_operations_single_dispatch", unique: true, where: "(dispatch_slot IS NOT NULL)"
     t.index ["idempotency_key"], name: "index_minecraft_node_operations_on_idempotency_key", unique: true, where: "(idempotency_key IS NOT NULL)"
     t.index ["public_id"], name: "index_minecraft_node_operations_on_public_id", unique: true
     t.index ["status", "created_at"], name: "index_minecraft_node_operations_on_status_and_created_at"
+    t.check_constraint "dispatch_slot IS NULL OR dispatch_slot = 1", name: "minecraft_node_operations_dispatch_slot_value"
   end
 
   create_table "minecraft_node_tasks", force: :cascade do |t|

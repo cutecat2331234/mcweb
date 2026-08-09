@@ -7,6 +7,7 @@ module Minecraft
     def perform(operation_id)
       operation = Minecraft::NodeOperation.find(operation_id)
       apply_target_results(operation)
+      start_next_operation = false
 
       operation.with_lock do
         batches = operation.batches.reload
@@ -26,9 +27,11 @@ module Minecraft
           }
         }
 
-        if all_terminal
+        if all_terminal && !operation.terminal?
           attributes[:status] = failed_targets.zero? ? "completed" : "completed_with_errors"
           attributes[:completed_at] = Time.current
+          attributes[:dispatch_slot] = nil
+          start_next_operation = true
         elsif !operation.terminal?
           attributes[:status] = "running"
         end
@@ -37,6 +40,7 @@ module Minecraft
       end
 
       wake_nodes_with_pending_batches(operation)
+      Minecraft::PrepareNodeOperationJob.perform_later if start_next_operation
     end
 
     private

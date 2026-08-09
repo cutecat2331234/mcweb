@@ -3,7 +3,7 @@ plugins {
 }
 
 dependencies {
-    implementation("com.squareup.okhttp3:okhttp:3.14.9")
+    implementation("com.squareup.okhttp3:okhttp:5.3.0")
     implementation("com.google.code.gson:gson:2.10.1")
 }
 

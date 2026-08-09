@@ -32,7 +32,7 @@ class Minecraft::Nodes::OperationsApiTest < ActionDispatch::IntegrationTest
       idempotency_key: "protocol-operation"
     )
     @operation = result.value.fetch(:operation)
-    Minecraft::PrepareNodeOperationJob.perform_now(@operation.id)
+    Minecraft::PrepareNodeOperationJob.perform_now
   end
 
   teardown do

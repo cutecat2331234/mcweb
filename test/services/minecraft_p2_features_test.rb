@@ -160,7 +160,7 @@ class Minecraft::P2FeaturesTest < ActiveSupport::TestCase
     end
     operation = Minecraft::NodeOperation.order(:created_at).last
     assert_equal 1, operation.target_count
-    assert_enqueued_with(job: Minecraft::PrepareNodeOperationJob, args: [ operation.id ])
+    assert_enqueued_with(job: Minecraft::PrepareNodeOperationJob, args: [])
   end
 
   test "BuildFileSyncUrl generates verifiable url" do

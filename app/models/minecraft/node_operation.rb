@@ -26,8 +26,10 @@ module Minecraft
 
     validates :operation_type, :request_digest, presence: true
     validates :idempotency_key, uniqueness: true, allow_nil: true
+    validates :dispatch_slot, inclusion: { in: [ 1 ] }, allow_nil: true
 
     scope :active, -> { where(status: %w[queued preparing ready running]) }
+    scope :dispatching, -> { where(status: %w[preparing ready running]) }
 
     def terminal?
       status_completed? || status_completed_with_errors? || status_failed? || status_cancelled?

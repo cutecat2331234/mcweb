@@ -68,6 +68,9 @@ class Minecraft::NodeOperationTest < ActiveSupport::TestCase
     first = enqueue_and_prepare(servers: [ @server_a ], idempotency_key: "queue-first")
     second = enqueue_and_prepare(servers: [ @server_b ], idempotency_key: "queue-second")
 
+    assert second.value.fetch(:operation).reload.status_queued?
+    assert_empty second.value.fetch(:operation).batches
+
     first_claim = claim(@node)
     assert_equal first.value.fetch(:operation).id, first_claim.operation_id
     blocked_claim = claim(@node)
@@ -92,6 +95,11 @@ class Minecraft::NodeOperationTest < ActiveSupport::TestCase
     assert repeated_acknowledgement.success?
     assert repeated_acknowledgement.value.fetch(:idempotent)
     assert conflicting_completion.failure?
+
+    Minecraft::ReconcileNodeOperationJob.perform_now(first_claim.operation_id)
+    assert first.value.fetch(:operation).reload.status_completed?
+    assert_nil first.value.fetch(:operation).dispatch_slot
+    Minecraft::PrepareNodeOperationJob.perform_now
 
     next_batch = claim(@node)
     assert_equal second.value.fetch(:operation).id, next_batch.operation_id
@@ -161,6 +169,55 @@ class Minecraft::NodeOperationTest < ActiveSupport::TestCase
     assert_equal 2, operation.completed_target_count
   end
 
+  test "the next task group stays queued until every node in the current group is acknowledged" do
+    other_node = Minecraft::Node.create!(
+      name: "Serialized Other Node",
+      status: :online,
+      metadata: operation_capabilities
+    )
+    other_server = create_server("SerializedC", other_node, "/srv/serialized-c")
+    first = enqueue_and_prepare(
+      servers: [ @server_a, other_server ],
+      idempotency_key: "serialized-parent-first"
+    ).value.fetch(:operation)
+    second = enqueue_and_prepare(
+      servers: [ @server_b ],
+      idempotency_key: "serialized-parent-second"
+    ).value.fetch(:operation)
+
+    assert_equal 1, first.reload.dispatch_slot
+    assert first.status_ready?
+    assert second.reload.status_queued?
+    assert_nil second.dispatch_slot
+    assert_empty second.batches
+
+    first_node_batch = claim(@node)
+    first_node_completion = complete_batch(first_node_batch, [ completed_result(@server_a) ])
+    acknowledge_batch(first_node_batch, first_node_completion.value.fetch(:acknowledgement_id))
+    Minecraft::ReconcileNodeOperationJob.perform_now(first.id)
+
+    assert first.reload.status_running?
+    assert_equal 1, first.dispatch_slot
+    Minecraft::PrepareNodeOperationJob.perform_now
+    assert second.reload.status_queued?
+    assert_empty second.batches
+    assert_nil claim(@node), "a free node must not start another task group early"
+
+    other_batch = claim(other_node)
+    other_completion = complete_batch(other_batch, [ completed_result(other_server) ])
+    acknowledge_batch(other_batch, other_completion.value.fetch(:acknowledgement_id))
+    assert_enqueued_with(job: Minecraft::PrepareNodeOperationJob, args: []) do
+      Minecraft::ReconcileNodeOperationJob.perform_now(first.id)
+    end
+
+    assert first.reload.status_completed?
+    assert_nil first.dispatch_slot
+    Minecraft::PrepareNodeOperationJob.perform_now
+    assert second.reload.status_ready?
+    assert_equal 1, second.dispatch_slot
+    assert_equal second.id, claim(@node).operation_id
+  end
+
   test "sync groups require a verified revision and a safe relative path" do
     valid = Minecraft::EnqueueNodeOperation.call(
       operation_type: "sync_files",
@@ -226,7 +283,7 @@ class Minecraft::NodeOperationTest < ActiveSupport::TestCase
       },
       idempotency_key: "sync-revision-check"
     )
-    Minecraft::PrepareNodeOperationJob.perform_now(result.value.fetch(:operation).id)
+    Minecraft::PrepareNodeOperationJob.perform_now
     batch = claim(@node)
 
     assert_equal "plugin-v2", batch.payload.dig("shared_payload", "revision")
@@ -332,7 +389,7 @@ class Minecraft::NodeOperationTest < ActiveSupport::TestCase
       servers: servers,
       idempotency_key: idempotency_key
     )
-    Minecraft::PrepareNodeOperationJob.perform_now(result.value.fetch(:operation).id)
+    Minecraft::PrepareNodeOperationJob.perform_now
     result
   end
 

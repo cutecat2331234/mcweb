@@ -35,7 +35,8 @@ module Operations
 
         immediately_expected =
           (@trigger == "after_commit" && state.last_event&.event_type == "recorded") ||
-          (@trigger == "manual" && state.last_event&.event_type == "reopened")
+          (@trigger == "manual" && state.last_event&.event_type == "reopened") ||
+          (@trigger == "maintenance" && state.last_event&.event_type == "lease_expired")
         due = state.due?(
           now: @now,
           enqueue_stale_after: entry.enqueue_stale_seconds

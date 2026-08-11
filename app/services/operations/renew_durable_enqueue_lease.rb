@@ -14,14 +14,16 @@ module Operations
       intent = Operations::DurableEnqueueIntent.find_by(id: @intent_id)
       return skipped("intent_missing") unless intent
 
-      renewed = Operations::DurableEnqueueLedger.with_locked_intent(intent) do |state|
+      outcome = Operations::DurableEnqueueLedger.with_locked_intent(intent) do |state|
         attempt = state.active_attempt
-        next false if state.terminal? || state.generation != @generation
-        next false unless attempt&.id == @attempt_id && attempt.lease_token == @lease_token
+        next :lease_stale if state.terminal? || state.generation != @generation
+        next :lease_stale unless attempt&.id == @attempt_id && attempt.lease_token == @lease_token
         entry = Operations::DurableEnqueueCatalog.entry(intent.handler_key)
-        next false unless entry
-        next false unless intent.source_kind == entry.source_kind && intent.queue_name == entry.queue_name
-        next false unless state.active_lease_expires_at > @now
+        next :handler_missing unless entry
+        unless intent.source_kind == entry.source_kind && intent.queue_name == entry.queue_name
+          next :handler_contract_mismatch
+        end
+        next :lease_stale unless state.active_lease_expires_at > @now
 
         Operations::DurableEnqueueLedger.append_locked!(
           intent:,
@@ -33,10 +35,18 @@ module Operations
           occurred_at: @now,
           lease_expires_at: @now + entry.lease_seconds
         )
-        true
+        :renewed
       end
 
-      renewed ? ServiceResult.success(renewed: true) : skipped("lease_stale")
+      case outcome
+      when :renewed
+        ServiceResult.success(renewed: true)
+      when :handler_missing, :handler_contract_mismatch
+        code = "durable_enqueue_#{outcome}"
+        ServiceResult.failure(error: code, code:)
+      else
+        skipped("lease_stale")
+      end
     end
 
     private

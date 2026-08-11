@@ -246,6 +246,7 @@ module Operations
         assert_equal 1, result.value.fetch(:enqueued_count)
       end
       assert_equal 1, intent.events.where(event_type: "lease_expired").count
+      assert_equal attempt, intent.events.find_by!(event_type: "lease_expired").attempt
 
       clear_enqueued_jobs
       Operations::DurableEnqueueCatalog.stub(
@@ -316,7 +317,11 @@ module Operations
 
       assert_equal 0, executor_calls
       assert_equal 1, intent.attempts.count
-      assert_equal now + 3.minutes, Operations::DurableEnqueueLedger.state(intent).active_lease_expires_at
+      assert_in_delta(
+        (now + 3.minutes).to_f,
+        Operations::DurableEnqueueLedger.state(intent).active_lease_expires_at.to_f,
+        1e-6
+      )
     end
 
     test "keyset recovery scans past fresh rows until it fills the due limit" do
@@ -329,7 +334,7 @@ module Operations
         requested_at: 10.minutes.ago
       )
 
-      assert_enqueued_with(job: Operations::DispatchDurableIntentJob, only: 1) do
+      assert_enqueued_jobs 1, only: Operations::DispatchDurableIntentJob do
         result = Operations::RecoverDurableEnqueue.call(limit: 1, now: Time.current)
         assert_predicate result, :success?
         assert_equal 1, result.value.fetch(:candidate_count)
@@ -440,7 +445,7 @@ module Operations
       assert_equal 2, reopen_event.generation
       assert_equal actor.id, reopen_event.metadata.fetch("actor_id")
       assert_equal "Provider health was independently verified", reopen_event.metadata.fetch("reason")
-      audit = AuditLog.find_by!(action: "operations.durable_enqueue.reopened", resource: intent)
+      audit = AuditLog.for_resource(intent).find_by!(action: "operations.durable_enqueue.reopened")
       assert_equal intent.public_id, audit.metadata.fetch("intent_public_id")
       refute audit.metadata.key?("source_id")
       refute audit.metadata.key?("arguments")
@@ -502,6 +507,131 @@ module Operations
           intent_public_ids: intent.public_id,
           reason: "x" * 501
         )
+      end
+    end
+
+    test "lease expiry is attempt-bound and cannot precede the effective renewed lease" do
+      now = Time.current
+      intent = create_intent(source_id: 83, dedupe_key: "test:lease-expiry-contract:83")
+      attempt = intent.attempts.create!(
+        attempt_number: 1,
+        generation: 1,
+        lease_token: SecureRandom.uuid,
+        job_id: SecureRandom.uuid,
+        trigger: "maintenance",
+        started_at: now,
+        lease_expires_at: now + 1.minute
+      )
+      Operations::DurableEnqueueLedger.append!(
+        intent:,
+        event_type: "attempt_started",
+        generation: 1,
+        attempt:,
+        metadata: { attempt_number: 1, trigger: "maintenance" },
+        occurred_at: now
+      )
+      assert_raises(ActiveRecord::StatementInvalid) do
+        intent.attempts.create!(
+          attempt_number: 2,
+          generation: 1,
+          lease_token: SecureRandom.uuid,
+          job_id: SecureRandom.uuid,
+          trigger: "maintenance",
+          started_at: now + 1.second,
+          lease_expires_at: now + 2.minutes
+        )
+      end
+      renewed_until = now + 3.minutes
+      Operations::DurableEnqueueLedger.append!(
+        intent:,
+        event_type: "lease_renewed",
+        generation: 1,
+        attempt:,
+        metadata: { attempt_number: 1 },
+        occurred_at: now + 30.seconds,
+        lease_expires_at: renewed_until
+      )
+
+      assert_raises(ActiveRecord::RecordInvalid) do
+        Operations::DurableEnqueueLedger.append!(
+          intent:,
+          event_type: "lease_expired",
+          generation: 1,
+          attempt:,
+          metadata: { attempt_number: 1 },
+          occurred_at: renewed_until - 1.second
+        )
+      end
+      assert_raises(ActiveRecord::StatementInvalid) do
+        Operations::DurableEnqueueEvent.transaction(requires_new: true) do
+          insert_native_lease_expired!(
+            intent:,
+            attempt:,
+            occurred_at: renewed_until - 1.second
+          )
+        end
+      end
+
+      other_intent = create_intent(source_id: 84, dedupe_key: "test:lease-expiry-contract:84")
+      other_attempt = other_intent.attempts.create!(
+        attempt_number: 1,
+        generation: 1,
+        lease_token: SecureRandom.uuid,
+        job_id: SecureRandom.uuid,
+        trigger: "maintenance",
+        started_at: now,
+        lease_expires_at: now + 1.minute
+      )
+      Operations::DurableEnqueueLedger.append!(
+        intent: other_intent,
+        event_type: "attempt_started",
+        generation: 1,
+        attempt: other_attempt,
+        metadata: { attempt_number: 1, trigger: "maintenance" },
+        occurred_at: now
+      )
+      assert_raises(ActiveRecord::StatementInvalid) do
+        Operations::DurableEnqueueEvent.transaction(requires_new: true) do
+          insert_native_lease_expired!(
+            intent:,
+            attempt: other_attempt,
+            occurred_at: renewed_until
+          )
+        end
+      end
+
+      expired = Operations::DurableEnqueueLedger.append!(
+        intent:,
+        event_type: "lease_expired",
+        generation: 1,
+        attempt:,
+        metadata: { attempt_number: 1 },
+        occurred_at: renewed_until
+      )
+      assert_equal attempt, expired.attempt
+      job = Operations::DispatchDurableIntentJob.new
+      entry = Operations::DurableEnqueueCatalog.entry(intent.handler_key)
+      assert_no_difference -> { intent.events.count } do
+        job.send(
+          :finish,
+          intent,
+          attempt:,
+          result: Operations::DurableEnqueueResult.succeeded
+        )
+      end
+      assert_no_difference -> { intent.events.count } do
+        job.send(
+          :fail_attempt,
+          intent,
+          attempt:,
+          entry:,
+          error_code: "execution_failed"
+        )
+      end
+      assert_raises(ActiveRecord::StatementInvalid) do
+        Operations::DurableEnqueueEvent.transaction(requires_new: true) do
+          insert_native_lease_expired!(intent:, attempt:, occurred_at: renewed_until + 1.second)
+        end
       end
     end
 
@@ -596,6 +726,7 @@ module Operations
 
     heartbeat = Operations::DurableEnqueueHeartbeat.new(context:, interval: 0.05)
     assert_instance_of Operations::DurableEnqueueHeartbeat, heartbeat
+    assert_in_delta 0.05, heartbeat.instance_variable_get(:@interval), 0.0001
 
     [ 0, -1, Float::NAN, Float::INFINITY, "invalid" ].each do |interval|
       assert_raises(ArgumentError) do
@@ -606,17 +737,18 @@ module Operations
 
   test "renew lease fails closed when the catalog entry is missing or mismatched" do
     now = Time.current
-    intent = create_intent
+    intent = create_intent(source_id: 82, dedupe_key: "test:renew-missing-catalog:82")
     attempt = intent.attempts.create!(
       generation: 1,
       attempt_number: 1,
       lease_token: SecureRandom.uuid,
-      trigger: "worker",
+      job_id: SecureRandom.uuid,
+      trigger: "maintenance",
       started_at: now,
       lease_expires_at: now + 1.minute
     )
     intent.with_lock do
-      state = Operations::DurableEnqueueReducer.reduce(intent)
+      state = Operations::DurableEnqueueReducer.call(intent)
       Operations::DurableEnqueueLedger.append_locked!(
         intent:,
         state:,
@@ -624,8 +756,7 @@ module Operations
         generation: 1,
         attempt:,
         metadata: { attempt_number: 1 },
-        occurred_at: now,
-        lease_expires_at: attempt.lease_expires_at
+        occurred_at: now
       )
     end
     attributes = {
@@ -637,7 +768,9 @@ module Operations
     }
 
     Operations::DurableEnqueueCatalog.stub(:entry, nil) do
-      assert_predicate Operations::RenewDurableEnqueueLease.call(**attributes), :failure?
+      result = Operations::RenewDurableEnqueueLease.call(**attributes)
+      assert_predicate result, :failure?
+      assert_equal "durable_enqueue_handler_missing", result.code
     end
 
     mismatch = Struct.new(:source_kind, :queue_name, :lease_seconds).new(
@@ -646,13 +779,30 @@ module Operations
       60
     )
     Operations::DurableEnqueueCatalog.stub(:entry, mismatch) do
-      assert_predicate Operations::RenewDurableEnqueueLease.call(**attributes), :failure?
+      result = Operations::RenewDurableEnqueueLease.call(**attributes)
+      assert_predicate result, :failure?
+      assert_equal "durable_enqueue_handler_contract_mismatch", result.code
     end
 
     assert_equal 0, intent.events.where(event_type: "lease_renewed").count
   end
 
   private
+
+    def insert_native_lease_expired!(intent:, attempt:, occurred_at:)
+      connection = Operations::DurableEnqueueEvent.connection
+      sequence = intent.events.maximum(:sequence).to_i + 1
+      timestamp = connection.quote(occurred_at)
+      metadata = connection.quote({ attempt_number: attempt.attempt_number }.to_json)
+      connection.execute(<<~SQL)
+        INSERT INTO operations_durable_enqueue_events
+          (intent_id, attempt_id, sequence, generation, event_type, metadata,
+           occurred_at, created_at, updated_at)
+        VALUES
+          (#{intent.id}, #{attempt.id}, #{sequence}, #{attempt.generation}, 'lease_expired',
+           #{metadata}::jsonb, #{timestamp}, #{timestamp}, #{timestamp})
+      SQL
+    end
 
     def create_intent(source_id:, dedupe_key:, requested_at: Time.current)
       intent = nil

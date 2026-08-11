@@ -9,7 +9,7 @@ module Operations
       raise ArgumentError, "interval must be finite and positive" unless interval&.finite? && interval.positive?
 
       @context = context
-      @interval = interval.to_i
+      @interval = interval
       @mutex = Mutex.new
       @condition = ConditionVariable.new
       @stopped = false
@@ -23,7 +23,7 @@ module Operations
             break if wait_until_tick_or_stop
 
             result = @context.heartbeat!
-            break if result.success? && result.value.to_h[:skipped]
+            break if result.failure? || (result.success? && result.value.to_h[:skipped])
           rescue StandardError => error
             Rails.logger.warn(
               "[operations.durable_enqueue] heartbeat_failed " \

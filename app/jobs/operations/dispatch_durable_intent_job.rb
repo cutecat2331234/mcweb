@@ -92,7 +92,7 @@ module Operations
     def finish(intent, attempt:, result:)
       Operations::DurableEnqueueLedger.with_locked_intent(intent) do |state|
         next if state.generation != attempt.generation
-        next if outcome_recorded?(intent, attempt)
+        next if attempt_closed?(intent, attempt)
         next unless latest_attempt?(intent, attempt)
 
         event_type = result.status == "skipped" ? "attempt_skipped" : "attempt_succeeded"
@@ -124,7 +124,7 @@ module Operations
       now = Time.current
       Operations::DurableEnqueueLedger.with_locked_intent(intent) do |state|
         next if state.generation != attempt.generation
-        next if outcome_recorded?(intent, attempt)
+        next if attempt_closed?(intent, attempt)
         next unless latest_attempt?(intent, attempt)
 
         Operations::DurableEnqueueLedger.append_locked!(
@@ -194,15 +194,16 @@ module Operations
         state:,
         event_type: "lease_expired",
         generation: attempt.generation,
+        attempt:,
         metadata: { attempt_number: attempt.attempt_number },
         occurred_at: now
       )
     end
 
-    def outcome_recorded?(intent, attempt)
+    def attempt_closed?(intent, attempt)
       intent.events.where(
         attempt:,
-        event_type: %w[attempt_succeeded attempt_skipped attempt_failed]
+        event_type: %w[attempt_succeeded attempt_skipped attempt_failed lease_expired]
       ).exists?
     end
 

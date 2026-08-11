@@ -20,7 +20,7 @@ module Operations
       reopened
     ].freeze
     ATTEMPT_EVENT_TYPES = %w[
-      attempt_started lease_renewed attempt_succeeded attempt_skipped attempt_failed
+      attempt_started lease_renewed attempt_succeeded attempt_skipped attempt_failed lease_expired
     ].freeze
     ERROR_EVENT_TYPES = %w[
       enqueue_failed attempt_failed retry_scheduled dead_lettered attempt_skipped
@@ -78,6 +78,17 @@ module Operations
 
       errors.add(:attempt, :invalid) if intent_id && attempt.intent_id != intent_id
       errors.add(:generation, :invalid) if attempt.generation != generation
+      validate_lease_expiry_time if event_type == "lease_expired"
+    end
+
+    def validate_lease_expiry_time
+      renewal_expiry = attempt.events
+        .where(event_type: "lease_renewed")
+        .maximum(:lease_expires_at)
+      effective_expiry = [ attempt.lease_expires_at, renewal_expiry ].compact.max
+      return unless occurred_at && effective_expiry && occurred_at < effective_expiry
+
+      errors.add(:occurred_at, :greater_than_or_equal_to, count: effective_expiry)
     end
   end
 end

@@ -43,7 +43,7 @@ module Operations
         active_attempt = attempts.reverse.find do |attempt|
           generation_events.none? do |event|
             event.attempt_id == attempt.id && event.event_type.in?(%w[
-              attempt_succeeded attempt_skipped attempt_failed
+              attempt_succeeded attempt_skipped attempt_failed lease_expired
             ])
           end
         end

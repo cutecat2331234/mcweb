@@ -181,9 +181,9 @@ class CreateOperationsDurableEnqueueLedgers < ActiveRecord::Migration[8.1]
                          name: "operations_durable_events_metadata"
     add_check_constraint :operations_durable_enqueue_events,
                          "((event_type IN ('attempt_started', 'lease_renewed', 'attempt_succeeded', " \
-                         "'attempt_skipped', 'attempt_failed') AND attempt_id IS NOT NULL) OR " \
+                         "'attempt_skipped', 'attempt_failed', 'lease_expired') AND attempt_id IS NOT NULL) OR " \
                          "(event_type NOT IN ('attempt_started', 'lease_renewed', 'attempt_succeeded', " \
-                         "'attempt_skipped', 'attempt_failed') AND attempt_id IS NULL))",
+                         "'attempt_skipped', 'attempt_failed', 'lease_expired') AND attempt_id IS NULL))",
                          name: "operations_durable_events_attempt_shape"
     add_check_constraint :operations_durable_enqueue_events,
                          "((event_type IN ('enqueue_failed', 'attempt_failed', 'retry_scheduled', " \
@@ -206,6 +206,11 @@ class CreateOperationsDurableEnqueueLedgers < ActiveRecord::Migration[8.1]
                          "COALESCE((metadata ->> 'actor_id') ~ '^[1-9][0-9]*$', FALSE) AND " \
                          "COALESCE(length(btrim(metadata ->> 'reason')) BETWEEN 1 AND 500, FALSE)))",
                          name: "operations_durable_events_reopened_shape"
+    add_index :operations_durable_enqueue_events,
+              :attempt_id,
+              unique: true,
+              where: "event_type = 'lease_expired'",
+              name: "index_operations_durable_events_unique_lease_expired"
 
     create_insert_guards
     create_immutable_trigger(:operations_durable_enqueue_intents, "operations_durable_intents")
@@ -257,6 +262,8 @@ class CreateOperationsDurableEnqueueLedgers < ActiveRecord::Migration[8.1]
       DECLARE
         current_generation integer;
         expected_attempt_number integer;
+        previous_attempt_id bigint;
+        previous_attempt_closed boolean;
       BEGIN
         SELECT generation
           INTO current_generation
@@ -269,6 +276,27 @@ class CreateOperationsDurableEnqueueLedgers < ActiveRecord::Migration[8.1]
           INTO expected_attempt_number
           FROM operations_durable_enqueue_attempts
          WHERE intent_id = NEW.intent_id;
+
+        SELECT id
+          INTO previous_attempt_id
+          FROM operations_durable_enqueue_attempts
+         WHERE intent_id = NEW.intent_id
+         ORDER BY attempt_number DESC
+         LIMIT 1;
+
+        IF previous_attempt_id IS NOT NULL THEN
+          SELECT EXISTS (
+            SELECT 1
+              FROM operations_durable_enqueue_events
+             WHERE attempt_id = previous_attempt_id
+               AND event_type IN (
+                 'attempt_succeeded', 'attempt_skipped', 'attempt_failed', 'lease_expired'
+               )
+          ) INTO previous_attempt_closed;
+          IF NOT previous_attempt_closed THEN
+            RAISE EXCEPTION 'durable enqueue previous attempt is still active';
+          END IF;
+        END IF;
 
         IF current_generation IS NULL OR NEW.generation <> current_generation THEN
           RAISE EXCEPTION 'durable enqueue attempt generation is stale';
@@ -295,6 +323,9 @@ class CreateOperationsDurableEnqueueLedgers < ActiveRecord::Migration[8.1]
         previous_event_type text;
         attempt_intent_id bigint;
         attempt_generation integer;
+        attempt_lease_expires_at timestamp without time zone;
+        effective_lease_expires_at timestamp without time zone;
+        latest_attempt_id bigint;
       BEGIN
         SELECT sequence, generation, event_type
           INTO previous_sequence, previous_generation, previous_event_type
@@ -326,8 +357,8 @@ class CreateOperationsDurableEnqueueLedgers < ActiveRecord::Migration[8.1]
         END IF;
 
         IF NEW.attempt_id IS NOT NULL THEN
-          SELECT intent_id, generation
-            INTO attempt_intent_id, attempt_generation
+          SELECT intent_id, generation, lease_expires_at
+            INTO attempt_intent_id, attempt_generation, attempt_lease_expires_at
             FROM operations_durable_enqueue_attempts
            WHERE id = NEW.attempt_id;
           IF attempt_intent_id IS NULL OR
@@ -343,7 +374,7 @@ class CreateOperationsDurableEnqueueLedgers < ActiveRecord::Migration[8.1]
                WHERE attempt_id = NEW.attempt_id
                  AND event_type IN (
                    'attempt_started', 'lease_renewed',
-                   'attempt_succeeded', 'attempt_skipped', 'attempt_failed'
+                   'attempt_succeeded', 'attempt_skipped', 'attempt_failed', 'lease_expired'
                  )
             ) THEN
               RAISE EXCEPTION 'durable enqueue attempt was already started';
@@ -357,11 +388,46 @@ class CreateOperationsDurableEnqueueLedgers < ActiveRecord::Migration[8.1]
                  AND sequence < NEW.sequence
             ) OR EXISTS (
               SELECT 1
-                FROM operations_durable_enqueue_events
-               WHERE attempt_id = NEW.attempt_id
-                 AND event_type IN ('attempt_succeeded', 'attempt_skipped', 'attempt_failed')
+                 FROM operations_durable_enqueue_events
+                WHERE attempt_id = NEW.attempt_id
+                  AND event_type IN (
+                    'attempt_succeeded', 'attempt_skipped', 'attempt_failed', 'lease_expired'
+                  )
             ) THEN
               RAISE EXCEPTION 'durable enqueue lease cannot be renewed';
+            END IF;
+          ELSIF NEW.event_type = 'lease_expired' THEN
+            SELECT id
+              INTO latest_attempt_id
+              FROM operations_durable_enqueue_attempts
+             WHERE intent_id = NEW.intent_id
+               AND generation = NEW.generation
+             ORDER BY attempt_number DESC
+             LIMIT 1;
+            SELECT GREATEST(
+                     attempt_lease_expires_at,
+                     COALESCE(MAX(lease_expires_at), attempt_lease_expires_at)
+                   )
+              INTO effective_lease_expires_at
+              FROM operations_durable_enqueue_events
+             WHERE attempt_id = NEW.attempt_id
+               AND event_type = 'lease_renewed'
+               AND sequence < NEW.sequence;
+            IF NEW.attempt_id <> latest_attempt_id OR NOT EXISTS (
+              SELECT 1
+                FROM operations_durable_enqueue_events
+               WHERE attempt_id = NEW.attempt_id
+                 AND event_type = 'attempt_started'
+                 AND sequence < NEW.sequence
+            ) OR EXISTS (
+              SELECT 1
+                FROM operations_durable_enqueue_events
+               WHERE attempt_id = NEW.attempt_id
+                 AND event_type IN (
+                   'attempt_succeeded', 'attempt_skipped', 'attempt_failed', 'lease_expired'
+                 )
+            ) OR NEW.occurred_at < effective_lease_expires_at THEN
+              RAISE EXCEPTION 'durable enqueue lease expiry is invalid, premature, or duplicated';
             END IF;
           ELSIF NEW.event_type IN ('attempt_succeeded', 'attempt_skipped', 'attempt_failed') THEN
             IF NOT EXISTS (
@@ -372,9 +438,11 @@ class CreateOperationsDurableEnqueueLedgers < ActiveRecord::Migration[8.1]
                  AND sequence < NEW.sequence
             ) OR EXISTS (
               SELECT 1
-                FROM operations_durable_enqueue_events
-               WHERE attempt_id = NEW.attempt_id
-                 AND event_type IN ('attempt_succeeded', 'attempt_skipped', 'attempt_failed')
+                 FROM operations_durable_enqueue_events
+                WHERE attempt_id = NEW.attempt_id
+                  AND event_type IN (
+                    'attempt_succeeded', 'attempt_skipped', 'attempt_failed', 'lease_expired'
+                  )
             ) THEN
               RAISE EXCEPTION 'durable enqueue attempt outcome is invalid or duplicated';
             END IF;

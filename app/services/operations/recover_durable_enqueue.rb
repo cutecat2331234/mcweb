@@ -180,6 +180,7 @@ module Operations
         state:,
         event_type: "lease_expired",
         generation: state.generation,
+        attempt:,
         metadata: { attempt_number: attempt.attempt_number },
         occurred_at: @now
       )

@@ -1,4 +1,6 @@
 import { spawn } from 'node:child_process'
+import { existsSync } from 'node:fs'
+import { resolve } from 'node:path'
 import process from 'node:process'
 
 const DEFAULT_TEST_SUFFIX = '_e2e'
@@ -28,6 +30,15 @@ if (process.env.MCWEB_E2E_DATABASE_URL) {
     )
   }
   environment.DATABASE_URL = databaseUrl.toString()
+  const isolatedLocalConfig = resolve(
+    process.cwd(),
+    'tmp',
+    `system-e2e-no-local-config-${process.pid}.yml`,
+  )
+  if (existsSync(isolatedLocalConfig)) {
+    throw new Error(`Refusing existing E2E local config override: ${isolatedLocalConfig}`)
+  }
+  environment.MCWEB_LOCAL_CONFIG_PATH = isolatedLocalConfig
 } else {
   delete environment.DATABASE_URL
 }

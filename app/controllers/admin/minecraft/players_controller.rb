@@ -113,7 +113,7 @@ module Admin
       end
 
       def cached_avatar_url(identity)
-        return "/minecraft/default-skin-avatar.svg" unless identity.skin_avatar_file.attached?
+        return "/minecraft/default-skin-avatar.png" unless identity.skin_avatar_file.attached?
 
         minecraft_cached_skin_path(identity, variant: "avatar")
       end

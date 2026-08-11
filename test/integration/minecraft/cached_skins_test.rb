@@ -44,7 +44,7 @@ module Minecraft
       )
 
       get minecraft_cached_skin_path(identity, variant: "avatar")
-      assert_redirected_to "/minecraft/default-skin-avatar.svg"
+      assert_redirected_to "/minecraft/default-skin-avatar.png"
       refute_match(/textures\.minecraft\.net|sessionserver\.mojang\.com/, response.location)
 
       get minecraft_cached_skin_path(identity, variant: "skin")

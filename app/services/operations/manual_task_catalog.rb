@@ -7,10 +7,11 @@ module Operations
     class InvalidTask < StandardError; end
 
     class ExecutionError < StandardError
-      attr_reader :code
+      attr_reader :code, :result
 
-      def initialize(code, message = nil)
+      def initialize(code, message = nil, result: {})
         @code = code.to_s
+        @result = result.to_h.deep_stringify_keys
         super(message || @code)
       end
     end
@@ -44,15 +45,19 @@ module Operations
         unknown = source.keys - entry.argument_schema.keys
         raise InvalidTask, "unsupported_arguments" if unknown.any?
 
-        entry.argument_schema.each_with_object({}) do |(key, schema), normalized|
+        normalized = entry.argument_schema.each_with_object({}) do |(key, schema), result|
           value = source[key]
           if value.blank?
             raise InvalidTask, "#{key}_required" if schema[:required]
             next
           end
 
-          normalized[key] = normalize_argument(key, value, schema)
+          result[key] = normalize_argument(key, value, schema)
         end
+        if ActiveSupport::JSON.encode(normalized).bytesize > Operations::ManualTaskRegistry::MAX_ARGUMENT_BYTES
+          raise InvalidTask, "manual_task_arguments_too_large"
+        end
+        normalized
       end
 
       def registry_frozen?
@@ -69,6 +74,7 @@ module Operations
         @registry ||= begin
           candidate = Operations::ManualTaskRegistry.new
           Operations::MinecraftManualTasks.register(candidate)
+          Operations::DurableEnqueueManualTasks.register(candidate)
           configured_registrars.each { |registrar| registrar.call(candidate) }
           candidate.freeze!
         end
@@ -101,6 +107,23 @@ module Operations
           raise InvalidTask, "#{key}_invalid" if invalid
 
           integers
+        when "string"
+          string = value.to_s.strip
+          maximum = schema[:maximum]
+          raise InvalidTask, "#{key}_invalid" if string.blank? || (maximum && string.length > maximum)
+
+          string
+        when "uuid_list"
+          values = value.is_a?(Array) ? value : value.to_s.split(/[\s,]+/)
+          parsed = values.reject { |entry| entry.to_s.blank? }.map(&:to_s)
+          uuids = parsed.select do |entry|
+            entry.match?(/\A[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\z/i)
+          end.map(&:downcase).uniq
+          invalid = uuids.empty? || uuids.length != parsed.length
+          invalid ||= schema[:maximum_items] && uuids.length > schema[:maximum_items]
+          raise InvalidTask, "#{key}_invalid" if invalid
+
+          uuids
         else
           raise InvalidTask, "argument_schema_invalid"
         end

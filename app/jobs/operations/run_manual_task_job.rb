@@ -36,7 +36,12 @@ module Operations
       audit(run, "operations.manual_task.succeeded")
     rescue Operations::ManualTaskCatalog::InvalidTask,
            Operations::ManualTaskCatalog::ExecutionError => error
-      mark_failed(run, error.respond_to?(:code) ? error.code : error.message, error.message)
+      mark_failed(
+        run,
+        error.respond_to?(:code) ? error.code : error.message,
+        error.message,
+        result: error.respond_to?(:result) ? error.result : {}
+      )
     rescue StandardError => error
       Rails.logger.error(
         "[operations.manual_task] run=#{run_id} failed=#{error.class} message=#{error.message}"
@@ -46,13 +51,14 @@ module Operations
 
     private
 
-    def mark_failed(run, code, message)
+    def mark_failed(run, code, message, result: {})
       return unless run&.persisted?
 
       run.update!(
         status: "failed",
         error_code: code.to_s.first(120),
         error_message: message.to_s.first(2_000),
+        result: result.to_h,
         finished_at: Time.current
       )
       audit(run, "operations.manual_task.failed", error_code: run.error_code)

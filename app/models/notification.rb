@@ -36,19 +36,22 @@ class Notification < ApplicationRecord
   end
 
   def self.notify!(user:, notification_type:, title:, body: nil, metadata: {})
-    notification = create!(
-      user: user,
-      notification_type: notification_type,
-      title: title,
-      body: body,
-      metadata: metadata,
-      auto_dismiss: ALERT_TYPES.include?(notification_type.to_s)
-    )
-    notification_id = notification.id
-    ActiveRecord.after_all_transactions_commit do
-      enqueue_web_push(notification_id)
+    transaction do
+      notification = create!(
+        user: user,
+        notification_type: notification_type,
+        title: title,
+        body: body,
+        metadata: metadata,
+        auto_dismiss: ALERT_TYPES.include?(notification_type.to_s)
+      )
+      Operations::DurableEnqueue.record!(
+        handler: "community.web_push",
+        source_id: notification.id,
+        dedupe_key: "notification:#{notification.id}"
+      )
+      notification
     end
-    notification
   end
 
   def self.enqueue_web_push(notification_or_id)

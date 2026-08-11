@@ -1,12 +1,15 @@
 # frozen_string_literal: true
 
+require "digest"
+
 module Community
   # Sends a Web Push message for a notification to the user's subscriptions.
   # Best-effort: dead subscriptions are pruned, all other errors swallowed so a
   # push failure never affects the notification itself.
   class DeliverWebPush < ApplicationService
-    def initialize(notification:)
+    def initialize(notification:, delivery_key: nil)
       @notification = notification
+      @delivery_key = delivery_key.to_s.presence
     end
 
     def call
@@ -24,7 +27,7 @@ module Community
         title: @notification.title,
         body: @notification.body.to_s.truncate(140),
         path: @notification.destination_path,
-        tag: "mcweb-notification-#{@notification.id}"
+        tag: delivery_tag
       }.to_json
 
       return capture(subscriptions, payload) if developer_mode_capture?
@@ -34,6 +37,12 @@ module Community
     end
 
     private
+
+    def delivery_tag
+      return "mcweb-notification-#{@notification.id}" unless @delivery_key
+
+      "mcweb-notification-#{Digest::SHA256.hexdigest(@delivery_key).first(24)}"
+    end
 
     def deliverable_notification?
       @user&.session_eligible? &&

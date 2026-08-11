@@ -24,7 +24,7 @@ test('background jobs page uses Arco and explains Developer Mode scheduling', ()
   assert.match(source, /queueSnapshot\.utilization_percent/)
   assert.match(source, /workerHeartbeat\.fresh_count/)
   assert.match(source, /workerHeartbeat\.latest_at/)
-  assert.match(source, /const \{ t, locale \} = useI18n\(\)/)
+  assert.match(source, /const \{ t, te, locale \} = useI18n\(\)/)
   assert.match(source, /new Intl\.DateTimeFormat\(locale\.value,/)
   assert.doesNotMatch(source, /new Intl\.DateTimeFormat\(undefined,/)
   assert.match(

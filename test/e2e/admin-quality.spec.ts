@@ -4,16 +4,14 @@ import {
   expectNoAccessibilityViolations,
   expectReducedMotion,
 } from './support/accessibility'
-import { signInAsAcceptanceOwner } from './support/session'
+import { acceptanceAuthStatePath } from './support/auth-state'
 
 const screenshotMasks = [
   '[data-testid="volatile-timestamp"]',
   '.arco-spin-icon',
 ]
 
-test.beforeEach(async ({ page }) => {
-  await signInAsAcceptanceOwner(page)
-})
+test.use({ storageState: acceptanceAuthStatePath('owner') })
 
 test('admin metrics filtering preserves the mounted document', async ({ page }) => {
   await page.goto('/admin/system/jobs?locale=en')

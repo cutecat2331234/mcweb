@@ -40,13 +40,24 @@ export default defineConfig({
         command: 'node scripts/start-system-e2e.mjs',
         url: `${baseURL}/health/ready`,
         timeout: 240_000,
-        reuseExistingServer: !process.env.CI,
+        reuseExistingServer: false,
         stdout: 'pipe',
         stderr: 'pipe',
       },
   projects: [
     {
+      name: 'auth-setup',
+      testMatch: /auth\.setup\.ts/,
+      teardown: 'auth-cleanup',
+    },
+    {
+      name: 'auth-cleanup',
+      testMatch: /auth\.teardown\.ts/,
+    },
+    {
       name: 'desktop-chromium',
+      dependencies: ['auth-setup'],
+      testIgnore: /auth\.(?:setup|teardown)\.ts/,
       use: {
         ...devices['Desktop Chrome'],
         viewport: { width: 1440, height: 1000 },
@@ -54,6 +65,8 @@ export default defineConfig({
     },
     {
       name: 'mobile-chromium',
+      dependencies: ['auth-setup'],
+      testIgnore: /auth\.(?:setup|teardown)\.ts/,
       use: {
         ...devices['Pixel 7'],
       },

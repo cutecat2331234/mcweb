@@ -9,6 +9,7 @@ DATA_DIR="/var/lib/mcweb"
 LOG_DIR="/var/log/mcweb"
 BACKUP_DIR="/var/backups/mcweb"
 RUBY_VERSION="4.0.6"
+NODE_MAJOR="26"
 NGINX_SITE="/etc/nginx/sites-available/mcweb"
 NGINX_TEMPLATE="config/templates/mcweb.nginx.conf"
 ACME_WEBROOT="/var/www/certbot"
@@ -60,6 +61,37 @@ install_postgresql() {
     "postgresql-client-${pg_version}"
 }
 
+install_node_runtime() {
+  local keyring="/etc/apt/keyrings/nodesource.gpg"
+  local repository="/etc/apt/sources.list.d/nodesource.list"
+
+  install -d -m 0755 /etc/apt/keyrings
+  curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+    | gpg --batch --yes --dearmor -o "${keyring}"
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=${keyring}] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
+    > "${repository}"
+  apt-get update -qq
+  DEBIAN_FRONTEND=noninteractive apt-get install -y nodejs
+
+  command -v node >/dev/null 2>&1 || {
+    echo "Node.js 安装失败" >&2
+    exit 1
+  }
+  command -v npm >/dev/null 2>&1 || {
+    echo "npm 安装失败" >&2
+    exit 1
+  }
+  node -e '
+    const [major, minor] = process.versions.node.split(".").map(Number)
+    if (major < 22 || (major === 22 && minor < 12)) {
+      console.error(`Node.js ${process.versions.node} 不满足 >=22.12.0`)
+      process.exit(1)
+    }
+  '
+  node --version
+  npm --version
+}
+
 install_dependencies() {
   local os
   os="$(detect_os)"
@@ -68,7 +100,8 @@ install_dependencies() {
       apt-get update -qq
       DEBIAN_FRONTEND=noninteractive apt-get install -y \
         build-essential libpq-dev libyaml-dev libssl-dev zlib1g-dev \
-        libvips-dev imagemagick fonts-noto-cjk curl git nginx certbot python3-certbot-nginx openssl nodejs
+        libvips-dev imagemagick fonts-noto-cjk curl git nginx certbot python3-certbot-nginx openssl
+      install_node_runtime
       install_postgresql
       ;;
     *)

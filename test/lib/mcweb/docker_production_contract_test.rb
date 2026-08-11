@@ -57,6 +57,18 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
     end
   end
 
+  test "native installer provisions the supported Node and npm runtime" do
+    installer = ROOT.join("bin/install").read
+
+    assert_includes installer, 'NODE_MAJOR="26"'
+    assert_includes installer, "https://deb.nodesource.com/node_${NODE_MAJOR}.x"
+    assert_includes installer, "signed-by=${keyring}"
+    assert_includes installer, "apt-get install -y nodejs"
+    assert_includes installer, "command -v npm"
+    assert_includes installer, "major < 22 || (major === 22 && minor < 12)"
+    refute_match(/python3-certbot-nginx openssl nodejs/, installer)
+  end
+
   test "compose gates web and worker on migration and dependency health" do
     compose = YAML.safe_load_file(
       ROOT.join("deploy/docker/docker-compose.yml"),

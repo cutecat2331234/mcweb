@@ -17,6 +17,16 @@ class Website::BlockSanitizerTest < ActiveSupport::TestCase
     assert result.success?
     assert_not_includes result.value.to_s, "onclick"
   end
+
+  test "preserves same-site links and images" do
+    html = '<a href="/app/forum">Forum</a><img src="/minecraft/cached-skins/9/avatar" alt="Skin">'
+
+    result = Website::BlockSanitizer.call(html: html)
+
+    assert_predicate result, :success?
+    assert_includes result.value.to_s, 'href="/app/forum"'
+    assert_includes result.value.to_s, 'src="/minecraft/cached-skins/9/avatar"'
+  end
 end
 
 class InstallationLockTest < ActiveSupport::TestCase

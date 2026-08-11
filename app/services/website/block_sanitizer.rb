@@ -14,8 +14,8 @@ module Website
         "div" => %w[class]
       },
       protocols: {
-        "a" => { "href" => %w[http https mailto] },
-        "img" => { "src" => %w[http https] }
+        "a" => { "href" => [ "http", "https", "mailto", :relative ] },
+        "img" => { "src" => [ "http", "https", :relative ] }
       }
     }.freeze
 

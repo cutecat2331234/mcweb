@@ -86,7 +86,7 @@ module Admin
 
         scalar_keys = allowed_keys.map(&:to_sym)
         list_filters = entry.argument_schema.filter_map do |key, schema|
-          { key => [] } if schema.fetch(:type) == "integer_list"
+          { key => [] } if schema.fetch(:type).in?(%w[integer_list uuid_list])
         end
         raw_arguments.permit(*scalar_keys, *list_filters).to_h.compact_blank
       end
@@ -103,6 +103,7 @@ module Admin
                 type: schema.fetch(:type),
                 required: schema.fetch(:required, false),
                 minimum: schema[:minimum],
+                maximum: schema[:maximum],
                 maximumItems: schema[:maximum_items],
                 labelKey: schema[:label_key],
                 helpKey: schema[:help_key]
@@ -126,11 +127,39 @@ module Admin
             requestedAt: run.requested_at&.iso8601,
             startedAt: run.started_at&.iso8601,
             finishedAt: run.finished_at&.iso8601,
-            errorCode: run.error_code
+            errorCode: run.error_code,
+            result: safe_manual_task_result(run)
           }
         end
       rescue ActiveRecord::ActiveRecordError
         []
+      end
+
+      def safe_manual_task_result(run)
+        payload = run.result.is_a?(Hash) ? run.result.stringify_keys : {}
+        error_codes = payload["error_codes"]
+        error_codes_count = case error_codes
+        when Array, Hash
+          error_codes.size
+        when String
+          error_codes.present? ? 1 : 0
+        else
+          0
+        end
+
+        {
+          partial: payload["partial"] == true,
+          processed_count: nonnegative_result_count(
+            payload["processed_count"] || payload["enqueued_count"]
+          ),
+          failed_count: nonnegative_result_count(payload["failed_count"]),
+          error_codes_count:
+        }
+      end
+
+      def nonnegative_result_count(value)
+        count = Integer(value, exception: false)
+        count&.nonnegative? ? count : 0
       end
 
       def worker_heartbeat_snapshot

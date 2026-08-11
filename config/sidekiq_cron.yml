@@ -1,3 +1,9 @@
+recover_durable_enqueue:
+  cron: "* * * * *"
+  class: "Operations::RecoverDurableEnqueueJob"
+  queue: maintenance
+  active_job: true
+
 expire_pending_orders:
   cron: "*/15 * * * *"
   class: "Commerce::ExpirePendingOrdersJob"

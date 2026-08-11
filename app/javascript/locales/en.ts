@@ -1227,6 +1227,10 @@ export default {
         identityIds: 'Minecraft identity IDs',
         identityIdsHelp: 'Required only for the selected-accounts refresh. Enter up to 200 IDs separated by commas or spaces.',
         identityIdsPlaceholder: 'For example: 123, 456',
+        durableIntentIds: 'Durable intent public IDs',
+        durableIntentIdsHelp: 'Enter up to 200 exhausted durable intent UUIDs separated by commas or spaces.',
+        retryReason: 'Retry reason',
+        retryReasonHelp: 'Required. Explain why the exhausted delivery is safe to reopen (maximum 500 characters).',
         integerHelp: 'Enter a whole number greater than or equal to {minimum}.',
         integerListHelp: 'Enter whole numbers greater than or equal to {minimum}, separated by commas or spaces (up to {maximum}).',
         run: 'Run task',
@@ -1238,6 +1242,11 @@ export default {
         requestedAt: 'Requested at',
         finishedAt: 'Finished at',
         errorCode: 'Error code',
+        result: 'Safe result summary',
+        partial: 'Partial',
+        processedCount: '{count} processed',
+        failedCount: '{count} failed',
+        errorCodesCount: '{count} error codes',
         noRuns: 'No manual task has been run yet.',
         statuses: {
           queued: 'Queued',
@@ -1285,6 +1294,14 @@ export default {
           checkPrimaryAccounts: {
             title: 'Check primary-account constraints',
             description: 'Report bound users with missing or duplicate primary Minecraft accounts.',
+          },
+          recoverDurableEnqueue: {
+            title: 'Recover due durable deliveries',
+            description: 'Re-enqueue committed operations whose queue handoff was lost, failed, or exceeded its worker lease.',
+          },
+          retryDurableEnqueue: {
+            title: 'Retry exhausted durable deliveries',
+            description: 'Reopen only explicitly selected dead-lettered intents. Completed and safely skipped intents remain terminal.',
           },
         },
       },

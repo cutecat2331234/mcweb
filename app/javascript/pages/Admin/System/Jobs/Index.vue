@@ -89,9 +89,10 @@ const props = defineProps<{
     descriptionKey: string
     arguments: Array<{
       key: string
-      type: 'integer' | 'integer_list'
+      type: 'integer' | 'integer_list' | 'string' | 'uuid_list'
       required: boolean
       minimum?: number
+      maximum?: number
       maximumItems?: number
       labelKey?: string
       helpKey?: string
@@ -452,6 +453,36 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
             </a-table-column>
             <a-table-column :title="t('admin.jobsPage.manualTasks.finishedAt')" :width="190">
               <template #cell="{ record }">{{ formatDate(record.finishedAt) }}</template>
+            </a-table-column>
+            <a-table-column :title="t('admin.jobsPage.manualTasks.result')" :width="260">
+              <template #cell="{ record }">
+                <a-space wrap size="small">
+                  <a-tag v-if="record.result.partial" color="orange">
+                    {{ t('admin.jobsPage.manualTasks.partial') }}
+                  </a-tag>
+                  <a-tag>
+                    {{
+                      t('admin.jobsPage.manualTasks.processedCount', {
+                        count: record.result.processed_count,
+                      })
+                    }}
+                  </a-tag>
+                  <a-tag :color="record.result.failed_count ? 'red' : 'green'">
+                    {{
+                      t('admin.jobsPage.manualTasks.failedCount', {
+                        count: record.result.failed_count,
+                      })
+                    }}
+                  </a-tag>
+                  <a-tag v-if="record.result.error_codes_count" color="orange">
+                    {{
+                      t('admin.jobsPage.manualTasks.errorCodesCount', {
+                        count: record.result.error_codes_count,
+                      })
+                    }}
+                  </a-tag>
+                </a-space>
+              </template>
             </a-table-column>
             <a-table-column :title="t('admin.jobsPage.manualTasks.errorCode')" :width="190">
               <template #cell="{ record }">{{ record.errorCode || t('common.notAvailable') }}</template>

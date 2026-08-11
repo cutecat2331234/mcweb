@@ -1227,6 +1227,10 @@ export default {
         identityIds: 'Minecraft 身份记录 ID 列表',
         identityIdsHelp: '仅刷新指定账号时需要填写；最多 200 个，用逗号或空格分隔。',
         identityIdsPlaceholder: '例如：123, 456',
+        durableIntentIds: '耐久投递意图公开 ID',
+        durableIntentIdsHelp: '输入最多 200 个已耗尽的耐久投递意图 UUID，用逗号或空格分隔。',
+        retryReason: '重试原因',
+        retryReasonHelp: '必填。说明为何可以安全重新开放该耗尽投递，最多 500 个字符。',
         integerHelp: '请输入不小于 {minimum} 的整数。',
         integerListHelp: '请输入不小于 {minimum} 的整数，用逗号或空格分隔（最多 {maximum} 个）。',
         run: '执行任务',
@@ -1238,6 +1242,11 @@ export default {
         requestedAt: '发起时间',
         finishedAt: '完成时间',
         errorCode: '错误代码',
+        result: '安全结果摘要',
+        partial: '部分完成',
+        processedCount: '已处理 {count} 项',
+        failedCount: '失败 {count} 项',
+        errorCodesCount: '{count} 类错误代码',
         noRuns: '尚未执行过手动任务。',
         statuses: {
           queued: '排队中',
@@ -1285,6 +1294,14 @@ export default {
           checkPrimaryAccounts: {
             title: '检查主账号约束',
             description: '报告没有主账号或存在多个主账号的已绑定用户。',
+          },
+          recoverDurableEnqueue: {
+            title: '恢复到期的耐久投递',
+            description: '重新入队已提交但队列交接丢失、失败或超过工作租约的操作。',
+          },
+          retryDurableEnqueue: {
+            title: '重试已耗尽的耐久投递',
+            description: '只重新开放明确选择的死信意图；已完成和安全跳过的意图保持终止。',
           },
         },
       },

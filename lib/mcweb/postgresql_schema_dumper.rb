@@ -1,15 +1,91 @@
 # frozen_string_literal: true
 
 module Mcweb
-  # Active Record's Ruby schema format does not include PostgreSQL triggers.
-  # Keep trigger-backed database invariants in fresh databases by appending the
-  # user-defined trigger functions and triggers to db/schema.rb.
+  # Active Record's Ruby schema format does not include standalone PostgreSQL
+  # sequences or triggers. Keep authority counters and trigger-backed database
+  # invariants in fresh databases by appending their definitions to schema.rb.
   module PostgresqlSchemaDumper
     private
 
     def trailer(stream)
+      dump_postgresql_sequences(stream)
       dump_postgresql_triggers(stream)
       super
+    end
+
+    def dump_postgresql_sequences(stream)
+      rows = postgresql_sequence_rows.reject do |row|
+        ignored?(row.fetch("sequence_name")) ||
+          ignored?("#{row.fetch('sequence_schema')}.#{row.fetch('sequence_name')}")
+      end
+      return if rows.empty?
+
+      stream.puts
+      stream.puts "  # Standalone PostgreSQL sequences."
+      stream.puts "  # Column-owned sequences are emitted with their tables by Active Record."
+      rows.each { |row| write_execute(stream, sequence_definition(row)) }
+      stream.puts
+    end
+
+    def postgresql_sequence_rows
+      schemas = instance_variable_get(:@dump_schemas)
+      schemas = @connection.current_schemas if schemas.blank?
+      return [] if schemas.empty?
+
+      quoted_schemas = schemas.map { |schema| @connection.quote(schema) }.join(", ")
+
+      @connection.select_all(<<~SQL.squish, "McWeb PostgreSQL sequence schema dump").to_a
+        SELECT
+          sequence_namespace.nspname AS sequence_schema,
+          sequence_object.relname AS sequence_name,
+          format_type(sequence_data.seqtypid, NULL) AS data_type,
+          sequence_data.seqstart AS start_value,
+          sequence_data.seqincrement AS increment_by,
+          sequence_data.seqmin AS minimum_value,
+          sequence_data.seqmax AS maximum_value,
+          sequence_data.seqcache AS cache_size,
+          sequence_data.seqcycle AS cycles
+        FROM pg_class sequence_object
+        INNER JOIN pg_namespace sequence_namespace
+          ON sequence_namespace.oid = sequence_object.relnamespace
+        INNER JOIN pg_sequence sequence_data
+          ON sequence_data.seqrelid = sequence_object.oid
+        LEFT JOIN pg_depend ownership_dependency
+          ON ownership_dependency.classid = 'pg_class'::regclass
+          AND ownership_dependency.objid = sequence_object.oid
+          AND ownership_dependency.refclassid = 'pg_class'::regclass
+          AND ownership_dependency.deptype IN ('a', 'i')
+        LEFT JOIN pg_depend extension_dependency
+          ON extension_dependency.classid = 'pg_class'::regclass
+          AND extension_dependency.objid = sequence_object.oid
+          AND extension_dependency.refclassid = 'pg_extension'::regclass
+          AND extension_dependency.deptype = 'e'
+        WHERE sequence_object.relkind = 'S'
+          AND sequence_namespace.nspname IN (#{quoted_schemas})
+          AND ownership_dependency.objid IS NULL
+          AND extension_dependency.objid IS NULL
+        ORDER BY sequence_namespace.nspname, sequence_object.relname
+      SQL
+    end
+
+    def sequence_definition(row)
+      data_type = row.fetch("data_type")
+      raise ArgumentError, "unsupported PostgreSQL sequence type" unless data_type.in?(%w[smallint integer bigint])
+
+      name = @connection.quote_table_name(
+        "#{row.fetch('sequence_schema')}.#{row.fetch('sequence_name')}"
+      )
+      cycle = row.fetch("cycles") ? "CYCLE" : "NO CYCLE"
+      <<~SQL.squish
+        CREATE SEQUENCE #{name}
+        AS #{data_type}
+        INCREMENT BY #{Integer(row.fetch('increment_by'))}
+        MINVALUE #{Integer(row.fetch('minimum_value'))}
+        MAXVALUE #{Integer(row.fetch('maximum_value'))}
+        START WITH #{Integer(row.fetch('start_value'))}
+        CACHE #{Integer(row.fetch('cache_size'))}
+        #{cycle}
+      SQL
     end
 
     def dump_postgresql_triggers(stream)

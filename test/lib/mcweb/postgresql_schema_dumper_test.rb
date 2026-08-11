@@ -59,6 +59,37 @@ module Mcweb
       assert_equal "D", trigger_state
     end
 
+    test "schema dump and fresh load preserve standalone sequences without duplicating column-owned sequences" do
+      create_append_only_ledger
+      @connection.execute(<<~SQL)
+        CREATE SEQUENCE #{@quoted_schema}.authority_version_seq
+        AS bigint
+        INCREMENT BY 7
+        MINVALUE 7
+        MAXVALUE 7000
+        START WITH 21
+        CACHE 3
+        CYCLE
+      SQL
+
+      source = dump_schema
+
+      assert_includes source, "Standalone PostgreSQL sequences"
+      assert_includes source, "CREATE SEQUENCE \"#{@schema}\".\"authority_version_seq\""
+      assert_includes source, "INCREMENT BY 7"
+      assert_includes source, "START WITH 21"
+      assert_includes source, "CACHE 3"
+      assert_includes source, "CYCLE"
+      refute_includes source, "CREATE SEQUENCE \"#{@schema}\".\"ledger_entries_id_seq\""
+
+      reload_schema(source)
+
+      assert_equal 21, @connection.select_value(
+        "SELECT nextval(#{@connection.quote("#{@schema}.authority_version_seq")})"
+      ).to_i
+      assert_equal 1, standalone_sequence_count
+    end
+
     private
 
     def create_append_only_ledger
@@ -119,6 +150,18 @@ module Mcweb
         WHERE trigger_object.tgisinternal = FALSE
           AND table_namespace.nspname = #{@connection.quote(@schema)}
           AND table_object.relname = 'ledger_entries'
+      SQL
+    end
+
+    def standalone_sequence_count
+      @connection.select_value(<<~SQL).to_i
+        SELECT COUNT(*)
+        FROM pg_class sequence_object
+        INNER JOIN pg_namespace sequence_namespace
+          ON sequence_namespace.oid = sequence_object.relnamespace
+        WHERE sequence_object.relkind = 'S'
+          AND sequence_namespace.nspname = #{@connection.quote(@schema)}
+          AND sequence_object.relname = 'authority_version_seq'
       SQL
     end
   end

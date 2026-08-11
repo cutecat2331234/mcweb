@@ -34,7 +34,7 @@ class OperationsManualTasksInitializerTest < ActiveSupport::TestCase
   end
 
   test "boot preserves a valid registrar array" do
-    registrar = ->(_registry) {}
+    registrar = ->(_registry) { }
     configured = [ registrar ]
     @store[KEY] = configured
 

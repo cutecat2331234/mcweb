@@ -826,11 +826,11 @@ module InertiaSerializable
       color_hex: category.color_hex,
       product_count: if defined?(@category_product_counts)
         @category_product_counts.fetch(category.id, 0)
-      else
+                     else
         Commerce::StoreFeatures.visible_products_scope(
           Commerce::Product.available.where(store_category_id: category.id)
         ).count
-      end,
+                     end,
       url: store_category_path(category.slug, **query.compact)
     }
   end

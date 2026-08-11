@@ -185,7 +185,7 @@ module InertiaSharedProps
         forum_assigned: if assigned_count.positive? ||
             current_user.permission?("forum.topics.lock")
           { count: assigned_count, url: forum_assigned_path }
-        end,
+                        end,
         forum_moderation_pending: if
           Community::SectionModeration.staff_for_any_section?(current_user)
           {
@@ -194,7 +194,7 @@ module InertiaSharedProps
               .count,
             url: forum_moderation_approvals_path
           }
-        end,
+                                  end,
         messages_unread: {
           count: Community::Conversation.total_unread_count_for(current_user),
           url: forum_conversations_path

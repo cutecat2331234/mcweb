@@ -52,7 +52,7 @@ function cachedSkinUrl(
 
 const skinUrl = computed(
   () => cachedSkinUrl(props.minecraft.skin_avatar_url, 'avatar')
-    || '/minecraft/default-skin-avatar.svg',
+    || '/minecraft/default-skin-avatar.png',
 )
 const bodySkinUrl = computed(() => cachedSkinUrl(props.minecraft.skin_full_url, 'full'))
 const textureUrl = computed(() => cachedSkinUrl(props.minecraft.skin_texture_url, 'skin'))

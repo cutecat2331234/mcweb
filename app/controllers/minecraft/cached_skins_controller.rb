@@ -32,7 +32,7 @@ module Minecraft
     private
 
     def unavailable_variant
-      return redirect_to("/minecraft/default-skin-avatar.svg") if params[:variant] == "avatar"
+      return redirect_to("/minecraft/default-skin-avatar.png") if params[:variant] == "avatar"
 
       head :not_found
     end

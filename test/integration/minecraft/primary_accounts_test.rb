@@ -33,7 +33,7 @@ module Minecraft
       assert_equal [ @first_identity.external_uuid, @second_identity.external_uuid ], accounts.pluck(:uuid)
       assert_equal true, accounts.first.fetch(:primary)
       assert_equal false, accounts.second.fetch(:primary)
-      assert_equal "/minecraft/default-skin-avatar.svg", accounts.first.fetch(:avatarUrl)
+      assert_equal "/minecraft/default-skin-avatar.png", accounts.first.fetch(:avatarUrl)
       assert_equal minecraft_cached_skin_path(@second_identity, variant: "avatar"),
         accounts.second.fetch(:avatarUrl)
       serialized = accounts.to_json

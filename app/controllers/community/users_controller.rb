@@ -452,7 +452,7 @@ module Community
         identity_type: identity.identity_type,
         primary_account: true,
         skin_cached: identity.skin_cached?,
-        skin_avatar_url: cached_skin_path(identity, :skin_avatar_file, "avatar") || "/minecraft/default-skin-avatar.svg",
+        skin_avatar_url: cached_skin_path(identity, :skin_avatar_file, "avatar") || "/minecraft/default-skin-avatar.png",
         skin_full_url: cached_skin_path(identity, :skin_full_file, "full"),
         skin_texture_url: cached_skin_path(identity, :skin_texture_file, "skin"),
         skin_model: identity.skin_model,

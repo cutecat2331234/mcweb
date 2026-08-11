@@ -3,6 +3,8 @@ import { existsSync } from 'node:fs'
 import { resolve } from 'node:path'
 import process from 'node:process'
 
+import { resolveSpawnInvocation } from './npm-cli-invocation.mjs'
+
 const DEFAULT_TEST_SUFFIX = '_e2e'
 const port = Number.parseInt(process.env.MCWEB_E2E_PORT || '3102', 10)
 
@@ -46,7 +48,8 @@ if (process.env.MCWEB_E2E_DATABASE_URL) {
 function runStep(label, executable, args) {
   process.stdout.write(`[system-e2e] ${label}\n`)
   return new Promise((resolvePromise, rejectPromise) => {
-    const child = spawn(executable, args, {
+    const invocation = resolveSpawnInvocation(executable, args)
+    const child = spawn(invocation.executable, invocation.args, {
       cwd: process.cwd(),
       env: environment,
       stdio: 'inherit',

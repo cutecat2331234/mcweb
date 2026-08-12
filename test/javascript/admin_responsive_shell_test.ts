@@ -133,6 +133,13 @@ test('admin navigation uses distinct product-area icons instead of one repeated 
   assert.doesNotMatch(source, /<template #icon><icon-apps \/><\/template>/)
 })
 
+test('expanded admin navigation keeps long labels discoverable and shares one translated brand', () => {
+  assert.match(source, /:width="260"/)
+  assert.equal(source.match(/:title="item\.label"/g)?.length, 2)
+  assert.equal(source.match(/\{\{ t\('common\.adminBrand'\) \}\}/g)?.length, 2)
+  assert.doesNotMatch(source, /arco-admin-brand__text">McWeb Admin</)
+})
+
 test('collapsed sidebar keeps its brand and menu inside the 48px rail', () => {
   assert.match(
     css,

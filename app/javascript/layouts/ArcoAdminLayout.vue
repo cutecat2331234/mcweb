@@ -680,7 +680,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
     <a-layout-sider
       class="arco-admin-sider"
       :collapsed="collapsed"
-      :width="220"
+      :width="260"
       :collapsed-width="48"
       collapsible
       :hide-trigger="true"
@@ -711,6 +711,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
               v-for="item in group.items"
               :key="item.href"
               :data-prefetch-href="item.href"
+              :title="item.label"
             >
               {{ item.label }}
             </a-menu-item>
@@ -802,7 +803,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <div class="arco-admin-brand arco-admin-brand--drawer">
         <Link :href="adminRoutes.dashboard" class="arco-admin-brand__link" @click="mobileNavOpen = false">
           <icon-command class="arco-admin-brand__icon" />
-          <span class="arco-admin-brand__text">McWeb Admin</span>
+          <span class="arco-admin-brand__text">{{ t('common.adminBrand') }}</span>
         </Link>
       </div>
       <div class="arco-admin-drawer__menu">
@@ -822,6 +823,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
               v-for="item in group.items"
               :key="item.href"
               :data-prefetch-href="item.href"
+              :title="item.label"
             >
               {{ item.label }}
             </a-menu-item>

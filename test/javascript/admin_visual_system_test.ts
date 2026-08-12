@@ -15,6 +15,10 @@ const shell = readFileSync(
   resolve(process.cwd(), 'app/javascript/layouts/ArcoAdminLayout.vue'),
   'utf8',
 )
+const jobs = readFileSync(
+  resolve(process.cwd(), 'app/javascript/pages/Admin/System/Jobs/Index.vue'),
+  'utf8',
+)
 
 function ruleBody(source: string, selector: RegExp) {
   const match = source.match(selector)
@@ -57,4 +61,20 @@ test('admin PageHeader supporting copy keeps its accessible semantic text color'
 test('medium-width page headers retain a padded surface instead of collapsing into loose text', () => {
   assert.match(shell, /@media \(max-width: 1099px\)[\s\S]*?\.arco-admin-main :deep\(\.arco-page-header\)\s*\{[\s\S]*?padding:\s*14px !important/)
   assert.doesNotMatch(shell, /padding:\s*8px 0/)
+})
+
+test('admin task cards use a content-driven grid instead of a fixed four-column breakpoint', () => {
+  const grid = ruleBody(
+    css,
+    /\.arco-admin-main \.mc-admin-responsive-card-grid\s*\{([^}]*)\}/,
+  )
+
+  assert.match(jobs, /class="mc-admin-responsive-card-grid"/)
+  assert.match(grid, /display:\s*grid/)
+  assert.match(
+    grid,
+    /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*22rem\),\s*1fr\)\)/,
+  )
+  assert.match(css, /\.mc-admin-responsive-card-grid > \*\s*\{\s*min-width:\s*0/)
+  assert.doesNotMatch(jobs, /:cols="\{\s*xs:\s*1,\s*md:\s*2,\s*xl:\s*4\s*\}"/)
 })

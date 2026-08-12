@@ -101,10 +101,15 @@ test('empty and long-copy layouts remain usable', async ({ page }) => {
   })
 })
 
-test('keyboard, ARIA, contrast, and reduced motion gates pass', async ({ page }) => {
+test('keyboard focus indicator is reachable through real Tab navigation', async ({ page }) => {
+  await page.goto('/admin/system/jobs?locale=en')
+  await expect(page.getByTestId('admin-jobs-page')).toBeVisible()
+  await expectKeyboardFocusIndicator(page)
+})
+
+test('ARIA, contrast, and reduced motion gates pass', async ({ page }) => {
   await page.emulateMedia({ reducedMotion: 'reduce' })
   await page.goto('/admin/system/jobs?locale=en')
-  await expectKeyboardFocusIndicator(page)
   await expectNoAccessibilityViolations(page)
   await expectReducedMotion(page)
 })

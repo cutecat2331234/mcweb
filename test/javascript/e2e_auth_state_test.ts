@@ -11,6 +11,11 @@ import {
   isolateAcceptanceAuthState,
 } from '../e2e/support/auth-state.ts'
 
+const authSetupSource = readFileSync(
+  new URL('../e2e/auth.setup.ts', import.meta.url),
+  'utf8',
+)
+
 const cookie = (name: string, value = 'secret') => ({
   name,
   value,
@@ -93,6 +98,10 @@ test('the managed E2E server never silently reuses a residual process', () => {
   assert.match(configSource, /reuseExistingServer:\s*false/)
   assert.doesNotMatch(configSource, /reuseExistingServer:\s*!process\.env\.CI/)
   assert.match(configSource, /webServer:\s*externalServer\s*\?\s*undefined/)
+})
+
+test('one-time authentication setup allows a real cold Rails boot', () => {
+  assert.match(authSetupSource, /setup\.setTimeout\(120_000\)/)
 })
 
 test('acceptance identity batches reject empty and duplicate identity sets', async () => {

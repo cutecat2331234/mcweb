@@ -105,7 +105,7 @@ html.dark body.mcweb-admin {
 .arco-admin-main .arco-page-header-subtitle {
   min-width: 0;
   overflow: visible;
-  color: var(--color-text-3);
+  color: var(--color-text-2);
   line-height: 1.45;
   overflow-wrap: anywhere;
   white-space: normal;

@@ -16,6 +16,12 @@ const shell = readFileSync(
   'utf8',
 )
 
+function ruleBody(source: string, selector: RegExp) {
+  const match = source.match(selector)
+  assert.ok(match, `missing CSS rule: ${selector}`)
+  return match[1]
+}
+
 test('admin visual tokens live on the body so teleported Arco overlays inherit them', () => {
   assert.match(layout, /<body class="mcweb-admin antialiased">/)
   assert.match(css, /body\.mcweb-admin\s*\{[\s\S]*?--mc-admin-canvas:/)
@@ -31,6 +37,21 @@ test('admin geometry mixes crisp data surfaces with softer content and round sem
   assert.match(css, /--mc-admin-radius-card:\s*11px/)
   assert.match(css, /\.arco-table-container\s*\{[\s\S]*?var\(--mc-admin-radius-shell\)/)
   assert.match(css, /\.mcweb-admin \.arco-tag,[\s\S]*?border-radius:\s*999px/)
+})
+
+test('admin PageHeader supporting copy keeps its accessible semantic text color', () => {
+  const sharedSubtitle = ruleBody(
+    css,
+    /\.arco-admin-main \.arco-page-header-subtitle\s*\{([^}]*)\}/,
+  )
+  const responsiveSubtitle = ruleBody(
+    shell,
+    /\.arco-admin-main :deep\(\.arco-page-header-subtitle\)\s*\{([^}]*)\}/,
+  )
+
+  assert.match(sharedSubtitle, /color:\s*var\(--color-text-2\)/)
+  assert.doesNotMatch(sharedSubtitle, /--color-text-3/)
+  assert.doesNotMatch(responsiveSubtitle, /\bcolor\s*:/)
 })
 
 test('medium-width page headers retain a padded surface instead of collapsing into loose text', () => {

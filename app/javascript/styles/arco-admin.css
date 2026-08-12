@@ -341,22 +341,6 @@ html.dark body.mcweb-admin {
   border-top: 3px solid rgb(var(--danger-6));
 }
 
-/*
- * Content-driven card collections keep forms and supporting copy readable.
- * The min() fallback lets narrow viewports shrink to one column without
- * forcing horizontal overflow, while auto-fit uses two or three columns when
- * the admin content area has enough room.
- */
-.arco-admin-main .mc-admin-responsive-card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
-  gap: 12px;
-}
-
-.arco-admin-main .mc-admin-responsive-card-grid > * {
-  min-width: 0;
-}
-
 @media (max-width: 768px) {
   .arco-admin-main {
     padding: 16px;

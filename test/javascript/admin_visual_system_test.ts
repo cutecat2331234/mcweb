@@ -63,18 +63,11 @@ test('medium-width page headers retain a padded surface instead of collapsing in
   assert.doesNotMatch(shell, /padding:\s*8px 0/)
 })
 
-test('admin task cards use a content-driven grid instead of a fixed four-column breakpoint', () => {
-  const grid = ruleBody(
-    css,
-    /\.arco-admin-main \.mc-admin-responsive-card-grid\s*\{([^}]*)\}/,
-  )
-
-  assert.match(jobs, /class="mc-admin-responsive-card-grid"/)
-  assert.match(grid, /display:\s*grid/)
-  assert.match(
-    grid,
-    /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(100%,\s*22rem\),\s*1fr\)\)/,
-  )
-  assert.match(css, /\.mc-admin-responsive-card-grid > \*\s*\{\s*min-width:\s*0/)
+test('admin task cards use a bounded Arco grid instead of a fixed four-column breakpoint', () => {
+  assert.match(jobs, /<a-grid[\s\S]*?:cols="\{\s*xs:\s*1,\s*md:\s*2\s*\}"/)
+  assert.match(jobs, /<a-grid-item v-for="task in manualTasks"/)
   assert.doesNotMatch(jobs, /:cols="\{\s*xs:\s*1,\s*md:\s*2,\s*xl:\s*4\s*\}"/)
+  assert.doesNotMatch(jobs, /\s(?:class|:class|style|:style)=/)
+  assert.doesNotMatch(jobs, /<(?:section|div|p|span)\b/)
+  assert.doesNotMatch(css, /mc-admin-responsive-card-grid/)
 })

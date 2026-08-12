@@ -368,11 +368,13 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
           {{ t('admin.jobsPage.manualTasks.description') }}
         </a-alert>
 
-        <div
+        <a-grid
           v-if="manualTasks.length > 0"
-          class="mc-admin-responsive-card-grid"
+          :cols="{ xs: 1, md: 2 }"
+          :col-gap="12"
+          :row-gap="12"
         >
-          <div v-for="task in manualTasks" :key="task.key">
+          <a-grid-item v-for="task in manualTasks" :key="task.key">
             <a-card size="small" :bordered="true">
               <a-space direction="vertical" :size="10" fill>
                 <a-typography-title :heading="6">
@@ -412,8 +414,8 @@ function formatCheckValue(check: OperationsMetrics['checks'][number]) {
                 </a-button>
               </a-space>
             </a-card>
-          </div>
-        </div>
+          </a-grid-item>
+        </a-grid>
         <a-empty v-else :description="t('admin.jobsPage.manualTasks.noTasks')" />
 
         <a-divider />

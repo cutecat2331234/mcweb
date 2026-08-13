@@ -7,20 +7,21 @@ module Minecraft
   class SkinDerivativeBuilder < ApplicationService
     MINIMUM_WIDTH = 64
     MINIMUM_HEIGHT = 32
-    BUST_CANVAS_SIZE = 32
-    BUST_SCALE = 8
+    BUST_CANVAS_SIZE = IsometricSkinBustRenderer::CANVAS_SIZE
+    BUST_SCALE = 1
 
-    HEAD_FRONT = [ 8, 8, 8, 8 ].freeze
-    HEAD_OVERLAY_FRONT = [ 40, 8, 8, 8 ].freeze
-    TORSO_FRONT = [ 20, 20, 8, 12 ].freeze
-    TORSO_OVERLAY_FRONT = [ 20, 36, 8, 12 ].freeze
-    RIGHT_ARM_FRONT = [ 44, 20, 4, 12 ].freeze
-    RIGHT_ARM_OVERLAY_FRONT = [ 44, 36, 4, 12 ].freeze
-    LEFT_ARM_FRONT = [ 36, 52, 4, 12 ].freeze
-    LEFT_ARM_OVERLAY_FRONT = [ 52, 52, 4, 12 ].freeze
+    HEAD_FRONT = IsometricSkinBustRenderer::HEAD_FRONT
+    HEAD_OVERLAY_FRONT = IsometricSkinBustRenderer::HEAD_OVERLAY_FRONT
+    TORSO_FRONT = IsometricSkinBustRenderer::TORSO_FRONT
+    TORSO_OVERLAY_FRONT = IsometricSkinBustRenderer::TORSO_OVERLAY_FRONT
+    RIGHT_ARM_FRONT = IsometricSkinBustRenderer::RIGHT_ARM_FRONT
+    RIGHT_ARM_OVERLAY_FRONT = IsometricSkinBustRenderer::RIGHT_ARM_OVERLAY_FRONT
+    LEFT_ARM_FRONT = IsometricSkinBustRenderer::LEFT_ARM_FRONT
+    LEFT_ARM_OVERLAY_FRONT = IsometricSkinBustRenderer::LEFT_ARM_OVERLAY_FRONT
 
-    def initialize(payload:)
+    def initialize(payload:, model: nil)
       @payload = payload.to_s.b
+      @model = model
     end
 
     def call
@@ -43,45 +44,7 @@ module Minecraft
     private
 
     def build_bust(image)
-      head = layered_part(image, HEAD_FRONT, HEAD_OVERLAY_FRONT)
-      torso = layered_part(image, TORSO_FRONT, modern_skin?(image) ? TORSO_OVERLAY_FRONT : nil)
-      right_arm = layered_part(
-        image,
-        RIGHT_ARM_FRONT,
-        modern_skin?(image) ? RIGHT_ARM_OVERLAY_FRONT : nil
-      )
-      left_arm = if modern_skin?(image)
-        layered_part(image, LEFT_ARM_FRONT, LEFT_ARM_OVERLAY_FRONT)
-      else
-        # Legacy 64 x 32 skins expose only the right limb texture. Minecraft
-        # mirrors that texture for the left arm, so preserve the same contract.
-        right_arm.flip(:horizontal)
-      end
-
-      body = Vips::Image.arrayjoin([ right_arm, torso, left_arm ], across: 3)
-      bust = body.embed(0, 8, 16, 20, extend: :background, background: transparent)
-      bust = bust.insert(head, 4, 0)
-      bust.embed(8, 6, BUST_CANVAS_SIZE, BUST_CANVAS_SIZE,
-        extend: :background, background: transparent)
-    end
-
-    def layered_part(image, base_region, overlay_region)
-      base = with_alpha(image.crop(*base_region))
-      return base unless overlay_region
-
-      base.composite2(with_alpha(image.crop(*overlay_region)), :over)
-    end
-
-    def with_alpha(image)
-      image.has_alpha? ? image : image.add_alpha
-    end
-
-    def modern_skin?(image)
-      image.height >= 64
-    end
-
-    def transparent
-      [ 0, 0, 0, 0 ]
+      IsometricSkinBustRenderer.call(image:, model: @model)
     end
 
     def derivative(image, scale:)

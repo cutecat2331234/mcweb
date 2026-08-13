@@ -3,6 +3,12 @@
 module Minecraft
   class PlayerIdentity < ApplicationRecord
     DEFAULT_SKIN_REFRESH_INTERVAL = 24.hours
+    REQUIRED_SKIN_CACHE_ATTACHMENTS = %w[
+      skin_texture_file
+      skin_avatar_file
+      skin_bust_file
+      skin_full_file
+    ].freeze
 
     belongs_to :player_profile, class_name: "Minecraft::PlayerProfile"
     belongs_to :primary_server, class_name: "Minecraft::Server", optional: true
@@ -26,7 +32,13 @@ module Minecraft
         .distinct
     }
     scope :skin_cache_due, lambda { |at: Time.current, interval: DEFAULT_SKIN_REFRESH_INTERVAL|
-      where("skin_cached_at IS NULL OR skin_cached_at <= ?", at - interval)
+      due = where("skin_cached_at IS NULL OR skin_cached_at <= ?", at - interval)
+      REQUIRED_SKIN_CACHE_ATTACHMENTS.reduce(due) do |relation, attachment_name|
+        attached_identity_ids = ActiveStorage::Attachment
+          .where(record_type: polymorphic_name, name: attachment_name)
+          .select(:record_id)
+        relation.or(where.not(id: attached_identity_ids))
+      end
     }
 
     def supersede!

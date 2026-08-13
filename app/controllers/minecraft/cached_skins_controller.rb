@@ -18,21 +18,28 @@ module Minecraft
       return unavailable_variant unless identity
 
       attachment = identity.public_send(attachment_name)
-      return unavailable_variant unless attachment.attached?
+      return unavailable_variant(identity:) unless attachment.attached?
 
-      expires_in 1.day, public: true
-      fresh_when(etag: attachment.blob.checksum, public: true)
-      return if performed?
-
-      redirect_to rails_blob_path(attachment, disposition: "inline")
+      serve_attachment(attachment, max_age: 1.day)
     rescue KeyError
       head :not_found
     end
 
     private
 
-    def unavailable_variant
+    def serve_attachment(attachment, max_age:)
+      expires_in max_age, public: true
+      fresh_when(etag: attachment.blob.checksum, public: true)
+      return if performed?
+
+      redirect_to rails_blob_path(attachment, disposition: "inline")
+    end
+
+    def unavailable_variant(identity: nil)
       return redirect_to("/minecraft/default-skin-avatar.png") if params[:variant] == "avatar"
+      if params[:variant] == "bust" && identity&.skin_avatar_file&.attached?
+        return serve_attachment(identity.skin_avatar_file, max_age: 5.minutes)
+      end
 
       head :not_found
     end

@@ -30,6 +30,13 @@ module Minecraft
       assert_match(%r{\A/rails/active_storage/}, response.location.delete_prefix("http://www.example.com"))
       refute_match(%r{https?://(?:textures\.minecraft\.net|sessionserver\.mojang\.com)}, response.location)
       assert_match(/public/, response.headers.fetch("Cache-Control"))
+
+      get minecraft_cached_skin_path(identity, variant: "bust")
+
+      assert_response :redirect
+      assert_match(%r{\A/rails/active_storage/}, response.location.delete_prefix("http://www.example.com"))
+      refute_match(%r{https?://(?:textures\.minecraft\.net|sessionserver\.mojang\.com)}, response.location)
+      assert_match(/public/, response.headers.fetch("Cache-Control"))
     end
 
     test "missing and unbound cache variants never disclose an upstream URL" do
@@ -48,6 +55,9 @@ module Minecraft
       refute_match(/textures\.minecraft\.net|sessionserver\.mojang\.com/, response.location)
 
       get minecraft_cached_skin_path(identity, variant: "skin")
+      assert_response :not_found
+
+      get minecraft_cached_skin_path(identity, variant: "bust")
       assert_response :not_found
 
       get "/minecraft/cached-skins/#{identity.id}/unsupported"

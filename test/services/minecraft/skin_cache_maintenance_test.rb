@@ -103,5 +103,42 @@ module Minecraft
         resource_id: identity.id
       )
     end
+
+    test "fresh identities with an incomplete derivative set remain due for repair" do
+      user = create_user
+      profile = Minecraft::PlayerProfile.create!
+      identity = Minecraft::PlayerIdentity.create!(
+        player_profile: profile,
+        platform: "java",
+        external_uuid: SecureRandom.uuid,
+        username: "IncompleteDerivative",
+        identity_type: "java",
+        valid_from: Time.current,
+        skin_cached_at: Time.current
+      )
+      Minecraft::IdentityLink.create!(
+        user: user,
+        player_profile: profile,
+        linked_at: Time.current
+      )
+      payload = ChunkyPNG::Image.new(64, 64, ChunkyPNG::Color::WHITE).to_blob
+      %i[skin_texture_file skin_avatar_file skin_full_file].each do |attachment_name|
+        identity.public_send(attachment_name).attach(
+          io: StringIO.new(payload),
+          filename: "#{attachment_name}.png",
+          content_type: "image/png"
+        )
+      end
+
+      assert_includes Minecraft::PlayerIdentity.skin_cache_due(at: Time.current), identity
+
+      identity.skin_bust_file.attach(
+        io: StringIO.new(payload),
+        filename: "skin_bust_file.png",
+        content_type: "image/png"
+      )
+
+      refute_includes Minecraft::PlayerIdentity.skin_cache_due(at: Time.current), identity
+    end
   end
 end

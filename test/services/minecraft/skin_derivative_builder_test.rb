@@ -72,6 +72,20 @@ module Minecraft
       assert_operator opaque_width(slim_bust), :<, opaque_width(classic_bust)
     end
 
+    test "bust framing fills the canvas while keeping its corners transparent" do
+      skin = Vips::Image.black(64, 64, bands: 4).new_from_image([ 90, 120, 150, 255 ])
+
+      result = SkinDerivativeBuilder.call(payload: skin.write_to_buffer(".png"), model: "classic")
+
+      assert result.success?
+      bust = Vips::Image.new_from_buffer(result.value.fetch(:bust).fetch(:payload), "")
+      assert_equal [ 19, 3, 218, 253 ], opaque_bounds(bust)
+      assert_pixel bust, 0, 0, [ 0, 0, 0, 0 ]
+      assert_pixel bust, 255, 0, [ 0, 0, 0, 0 ]
+      assert_pixel bust, 0, 255, [ 0, 0, 0, 0 ]
+      assert_pixel bust, 255, 255, [ 0, 0, 0, 0 ]
+    end
+
     private
 
     def transparent_image(width, height)
@@ -106,15 +120,29 @@ module Minecraft
     end
 
     def opaque_width(image)
+      opaque_bounds(image).fetch(2)
+    end
+
+    def opaque_bounds(image)
       pixels = image.write_to_memory.unpack("C*")
       x_coordinates = []
+      y_coordinates = []
       image.height.times do |y|
         image.width.times do |x|
           offset = ((y * image.width) + x) * image.bands
-          x_coordinates << x if pixels.fetch(offset + 3).positive?
+          next unless pixels.fetch(offset + 3).positive?
+
+          x_coordinates << x
+          y_coordinates << y
         end
       end
-      x_coordinates.max - x_coordinates.min + 1
+
+      [
+        x_coordinates.min,
+        y_coordinates.min,
+        x_coordinates.max - x_coordinates.min + 1,
+        y_coordinates.max - y_coordinates.min + 1
+      ]
     end
   end
 end

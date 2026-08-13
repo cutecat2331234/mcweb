@@ -8,11 +8,13 @@ module Minecraft
   # while preserving the block geometry and second skin layers.
   class IsometricSkinBustRenderer
     CANVAS_SIZE = 256
-    PROJECTION_SCALE = 10.0
-    PROJECTION_ORIGIN = [ CANVAS_SIZE / 2.0, CANVAS_SIZE / 2.0 ].freeze
+    PROJECTION_SCALE = 10.9
+    PROJECTION_ORIGIN = [ CANVAS_SIZE / 2.0, (CANVAS_SIZE / 2.0) + 4.0 ].freeze
     CAMERA_TARGET = [ 0.0, 10.0, 0.0 ].freeze
     CAMERA_YAW = -28.0 * Math::PI / 180.0
     CAMERA_PITCH = 17.0 * Math::PI / 180.0
+    ARM_POSE_ANGLE = 9.0 * Math::PI / 180.0
+    ARM_SHOULDER_Y = 12.0
     DEPTH_EPSILON = 1e-6
 
     HEAD_FRONT = [ 8, 8, 8, 8 ].freeze
@@ -185,12 +187,16 @@ module Minecraft
       render_cuboid(
         center: [ -arm_center, 6.0, 0.0 ],
         size: [ arm_width, 12.0, 4.0 ],
-        textures: @slim ? SLIM_RIGHT_ARM_TEXTURES : CLASSIC_RIGHT_ARM_TEXTURES
+        textures: @slim ? SLIM_RIGHT_ARM_TEXTURES : CLASSIC_RIGHT_ARM_TEXTURES,
+        rotation_z: -ARM_POSE_ANGLE,
+        pivot: [ -arm_center, ARM_SHOULDER_Y, 0.0 ]
       )
       render_cuboid(
         center: [ arm_center, 6.0, 0.0 ],
         size: [ arm_width, 12.0, 4.0 ],
-        textures: left_arm_textures
+        textures: left_arm_textures,
+        rotation_z: ARM_POSE_ANGLE,
+        pivot: [ arm_center, ARM_SHOULDER_Y, 0.0 ]
       )
     end
 
@@ -216,17 +222,21 @@ module Minecraft
         center: [ -arm_center, 6.0, 0.0 ],
         size: [ arm_width, 12.0, 4.0 ],
         textures: @slim ? SLIM_RIGHT_ARM_OVERLAY_TEXTURES : CLASSIC_RIGHT_ARM_OVERLAY_TEXTURES,
-        inflate: 0.25
+        inflate: 0.25,
+        rotation_z: -ARM_POSE_ANGLE,
+        pivot: [ -arm_center, ARM_SHOULDER_Y, 0.0 ]
       )
       render_cuboid(
         center: [ arm_center, 6.0, 0.0 ],
         size: [ arm_width, 12.0, 4.0 ],
         textures: @slim ? SLIM_LEFT_ARM_OVERLAY_TEXTURES : CLASSIC_LEFT_ARM_OVERLAY_TEXTURES,
-        inflate: 0.25
+        inflate: 0.25,
+        rotation_z: ARM_POSE_ANGLE,
+        pivot: [ arm_center, ARM_SHOULDER_Y, 0.0 ]
       )
     end
 
-    def render_cuboid(center:, size:, textures:, inflate: 0.0)
+    def render_cuboid(center:, size:, textures:, inflate: 0.0, rotation_z: 0.0, pivot: nil)
       half_width = (size.fetch(0) / 2.0) + inflate
       half_height = (size.fetch(1) / 2.0) + inflate
       half_depth = (size.fetch(2) / 2.0) + inflate
@@ -238,10 +248,13 @@ module Minecraft
       z1 = center.fetch(2) + half_depth
 
       textures.each do |face, texture|
-        next unless visible_face?(face)
+        next unless visible_face?(face, rotation_z:)
+
+        vertices = face_vertices(face, x0:, x1:, y0:, y1:, z0:, z1:)
+        vertices.map! { |vertex| rotate_around_z(vertex, pivot:, angle: rotation_z) } unless rotation_z.zero?
 
         render_face(
-          face_vertices(face, x0:, x1:, y0:, y1:, z0:, z1:),
+          vertices,
           texture,
           FACE_SHADES.fetch(face)
         )
@@ -357,8 +370,35 @@ module Minecraft
       ]
     end
 
-    def visible_face?(face)
-      dot(FACE_NORMALS.fetch(face), @camera_forward).positive?
+    def visible_face?(face, rotation_z: 0.0)
+      normal = FACE_NORMALS.fetch(face)
+      normal = rotate_vector_z(normal, angle: rotation_z) unless rotation_z.zero?
+      dot(normal, @camera_forward).positive?
+    end
+
+    def rotate_around_z(vertex, pivot:, angle:)
+      pivot ||= [ 0.0, 0.0, 0.0 ]
+      relative_x = vertex.fetch(0) - pivot.fetch(0)
+      relative_y = vertex.fetch(1) - pivot.fetch(1)
+      cos_angle = Math.cos(angle)
+      sin_angle = Math.sin(angle)
+
+      [
+        pivot.fetch(0) + (relative_x * cos_angle) - (relative_y * sin_angle),
+        pivot.fetch(1) + (relative_x * sin_angle) + (relative_y * cos_angle),
+        vertex.fetch(2)
+      ]
+    end
+
+    def rotate_vector_z(vector, angle:)
+      cos_angle = Math.cos(angle)
+      sin_angle = Math.sin(angle)
+
+      [
+        (vector.fetch(0) * cos_angle) - (vector.fetch(1) * sin_angle),
+        (vector.fetch(0) * sin_angle) + (vector.fetch(1) * cos_angle),
+        vector.fetch(2)
+      ]
     end
 
     def edge(first, second, x, y)

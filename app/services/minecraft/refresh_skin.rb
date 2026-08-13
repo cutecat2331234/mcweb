@@ -190,7 +190,10 @@ module Minecraft
       created_blobs = []
       now = Time.current
       changed = false
-      derivatives_result = Minecraft::SkinDerivativeBuilder.call(payload: skin_data.fetch(:payload))
+      derivatives_result = Minecraft::SkinDerivativeBuilder.call(
+        payload: skin_data.fetch(:payload),
+        model: profile_data[:skin_model]
+      )
       unless derivatives_result.success?
         return persist_failure(
           identity:,

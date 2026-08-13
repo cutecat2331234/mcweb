@@ -24,7 +24,10 @@ module Minecraft
           next
         end
 
-        result = Minecraft::SkinDerivativeBuilder.call(payload: identity.skin_texture_file.download)
+        result = Minecraft::SkinDerivativeBuilder.call(
+          payload: identity.skin_texture_file.download,
+          model: identity.skin_model
+        )
         unless result.success?
           failed += 1
           next

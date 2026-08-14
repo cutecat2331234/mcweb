@@ -2,6 +2,7 @@ import { getInitialPageFromDOM } from '@inertiajs/core'
 import { createInertiaApp, router } from '@inertiajs/vue3'
 import { createApp, h, type DefineComponent } from 'vue'
 
+import '@/styles/shell-foundation.css'
 import '@/styles/portal.css'
 import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'
 import { applyPhraseOverrides, createAppI18n, normalizeAppLocale, syncI18nLocale } from '@/lib/i18n'

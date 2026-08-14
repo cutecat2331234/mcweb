@@ -1,0 +1,176 @@
+/*
+ * Shared application-shell geometry.
+ *
+ * These tokens are intentionally edition-neutral. CE layouts establish the
+ * contract and downstream editions may add product-specific surfaces without
+ * redefining the page rhythm for each module.
+ */
+:root {
+  --mc-shell-topbar-height: 60px;
+  --mc-shell-sidebar-width: 248px;
+  --mc-shell-sidebar-collapsed-width: 48px;
+  --mc-shell-drawer-width: 280px;
+  --mc-shell-header-padding-inline: 20px;
+
+  --mc-page-max-width: 1440px;
+  --mc-page-gutter: 24px;
+  --mc-page-header-padding: 16px 18px;
+
+  --mc-space-1: 4px;
+  --mc-space-2: 8px;
+  --mc-space-3: 12px;
+  --mc-space-4: 16px;
+  --mc-space-5: 20px;
+  --mc-space-6: 24px;
+  --mc-space-8: 32px;
+
+  --mc-type-page-title-size: 20px;
+  --mc-type-page-title-line-height: 1.35;
+  --mc-type-page-title-weight: 650;
+  --mc-type-page-title-tracking: -0.01em;
+  --mc-type-page-subtitle-size: 14px;
+  --mc-type-page-subtitle-line-height: 1.5;
+}
+
+.mc-shell-header {
+  box-sizing: border-box;
+  flex-basis: var(--mc-shell-topbar-height);
+  height: var(--mc-shell-topbar-height);
+  min-height: var(--mc-shell-topbar-height);
+  padding-inline: var(--mc-shell-header-padding-inline);
+}
+
+.mc-page-content {
+  box-sizing: border-box;
+  padding: var(--mc-page-gutter);
+}
+
+.mc-page-container {
+  width: 100%;
+  min-width: 0;
+  max-width: var(--mc-page-max-width);
+  margin-inline: auto;
+}
+
+.mc-page-surface :is(
+  .arco-page-header,
+  .arco-page-header-wrapper,
+  .arco-page-header-header,
+  .arco-page-header-header-left,
+  .arco-page-header-main,
+  .arco-page-header-title,
+  .arco-page-header-subtitle,
+  .arco-page-header-extra
+) {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.mc-page-surface .arco-page-header {
+  padding: var(--mc-page-header-padding) !important;
+}
+
+.mc-page-surface .arco-page-header-header {
+  flex-wrap: wrap;
+  gap: var(--mc-space-2);
+}
+
+.mc-page-surface .arco-page-header-header-left {
+  flex: 1 1 auto;
+}
+
+.mc-page-surface .arco-page-header-main {
+  display: grid;
+  flex: 1 1 auto;
+  grid-template-columns: minmax(0, 1fr);
+  align-items: start;
+  row-gap: var(--mc-space-1);
+}
+
+.mc-page-surface .arco-page-header-main-with-back {
+  grid-template-columns: auto minmax(0, 1fr);
+}
+
+.mc-page-surface .arco-page-header-main-with-back .arco-page-header-back-btn {
+  grid-column: 1;
+  grid-row: 1 / span 2;
+}
+
+.mc-page-surface .arco-page-header-main-with-back :is(
+  .arco-page-header-title,
+  .arco-page-header-subtitle
+) {
+  grid-column: 2;
+}
+
+.mc-page-surface .arco-page-header-title {
+  overflow: visible;
+  color: var(--color-text-1);
+  font-size: var(--mc-type-page-title-size);
+  font-weight: var(--mc-type-page-title-weight);
+  line-height: var(--mc-type-page-title-line-height);
+  letter-spacing: var(--mc-type-page-title-tracking);
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.mc-page-surface .arco-page-header-subtitle {
+  width: 100%;
+  overflow: visible;
+  color: var(--color-text-2);
+  font-size: var(--mc-type-page-subtitle-size);
+  line-height: var(--mc-type-page-subtitle-line-height);
+  overflow-wrap: anywhere;
+  white-space: normal;
+  text-overflow: clip;
+}
+
+.mc-page-surface .arco-page-header-divider {
+  display: none;
+}
+
+.mc-page-surface .arco-page-header-extra {
+  flex: 0 1 auto;
+  white-space: normal;
+}
+
+.mc-page-surface .arco-page-header-extra > .arco-space {
+  max-width: 100%;
+  flex-wrap: wrap;
+  row-gap: var(--mc-space-2);
+}
+
+@media (max-width: 1279px) {
+  :root {
+    --mc-page-gutter: 20px;
+    --mc-shell-header-padding-inline: 16px;
+  }
+}
+
+@media (max-width: 1099px) {
+  :root {
+    --mc-page-header-padding: 14px;
+  }
+
+  .mc-page-surface .arco-page-header-main,
+  .mc-page-surface .arco-page-header-extra {
+    flex: 1 1 100%;
+    width: 100%;
+  }
+}
+
+@media (max-width: 767px) {
+  :root {
+    --mc-page-gutter: 16px;
+  }
+}
+
+@media (max-width: 479px) {
+  :root {
+    --mc-page-gutter: 12px;
+    --mc-page-header-padding: 12px;
+    --mc-shell-header-padding-inline: 12px;
+  }
+}

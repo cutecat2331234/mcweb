@@ -678,9 +678,9 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
   <a-layout class="arco-admin-layout">
     <a-layout-sider
-      class="arco-admin-sider"
+      class="arco-admin-sider mc-shell-sidebar"
       :collapsed="collapsed"
-      :width="260"
+      :width="'var(--mc-shell-sidebar-width, 248px)'"
       :collapsed-width="48"
       collapsible
       :hide-trigger="true"
@@ -726,7 +726,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
     </a-layout-sider>
 
     <a-layout class="arco-admin-body">
-      <a-layout-header class="arco-admin-header">
+      <a-layout-header class="arco-admin-header mc-shell-header">
         <div class="arco-admin-header__left">
           <a-button
             class="arco-admin-mobile-menu-trigger"
@@ -780,8 +780,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
         {{ developerModeMessage }}
       </a-alert>
 
-      <a-layout-content id="admin-content" class="arco-admin-main" tabindex="-1">
-        <div class="arco-admin-main__inner">
+      <a-layout-content
+        id="admin-content"
+        class="arco-admin-main mc-page-content mc-page-surface"
+        tabindex="-1"
+      >
+        <div class="arco-admin-main__inner mc-page-container">
           <AdminFlashMessages />
           <PluginUiSlots />
           <slot />
@@ -793,7 +797,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   <a-drawer
     v-model:visible="mobileNavOpen"
     placement="left"
-    :width="'min(280px, 100vw)'"
+    :width="'min(var(--mc-shell-drawer-width, 280px), 100vw)'"
     :footer="false"
     :header="false"
     :aria-label="t('common.openMenu')"
@@ -906,12 +910,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
 }
 
 .arco-admin-brand {
-  flex: 0 0 60px;
+  flex: 0 0 var(--mc-shell-topbar-height, 60px);
   display: flex;
   align-items: center;
-  height: 60px;
+  height: var(--mc-shell-topbar-height, 60px);
   min-width: 0;
-  padding: 0 16px;
+  padding: 0 var(--mc-shell-header-padding-inline, 20px);
   border-bottom: 1px solid var(--mc-admin-border, var(--color-border-2));
 }
 .arco-admin-brand--drawer {
@@ -952,7 +956,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 8px;
+  padding: var(--mc-space-2, 8px);
 }
 .arco-admin-sider__menu :deep(.arco-menu-inner) {
   overflow: visible;
@@ -1008,10 +1012,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
 .arco-admin-sider__footer {
   flex: 0 0 auto;
   min-width: 0;
-  padding: 12px 16px;
+  padding: var(--mc-space-3, 12px) var(--mc-space-4, 16px);
   font-size: 12px;
   color: var(--color-text-2);
-  margin: 0 8px 8px;
+  margin: 0 var(--mc-space-2, 8px) var(--mc-space-2, 8px);
   border: 1px solid var(--mc-admin-border, var(--color-border-2));
   border-radius: 8px;
   background: var(--mc-admin-surface-muted, var(--color-fill-1));
@@ -1025,14 +1029,15 @@ watch(isDark, syncArcoTheme, { immediate: true })
 }
 
 .arco-admin-header {
-  flex: 0 0 60px;
+  flex: 0 0 var(--mc-shell-topbar-height, 60px);
   display: flex;
   align-items: center;
   justify-content: space-between;
-  height: 60px;
+  height: var(--mc-shell-topbar-height, 60px);
+  min-height: var(--mc-shell-topbar-height, 60px);
   min-width: 0;
-  padding: 0 20px;
-  gap: 12px;
+  padding: 0 var(--mc-shell-header-padding-inline, 20px);
+  gap: var(--mc-space-3, 12px);
   background: var(--mc-admin-surface, var(--color-bg-2));
   border-bottom: 1px solid var(--mc-admin-border, var(--color-border-2));
   box-shadow: 0 2px 12px rgb(23 43 77 / 5%);
@@ -1105,14 +1110,14 @@ watch(isDark, syncArcoTheme, { immediate: true })
   flex: 1 1 auto;
   min-width: 0;
   min-height: 0;
-  padding: 24px;
+  padding: var(--mc-page-gutter, 24px);
   overflow: auto;
   overscroll-behavior: contain;
 }
 .arco-admin-main__inner {
   width: 100%;
   min-width: 0;
-  max-width: 1440px;
+  max-width: var(--mc-page-max-width, 1440px);
   margin: 0 auto;
 }
 
@@ -1135,16 +1140,6 @@ watch(isDark, syncArcoTheme, { immediate: true })
 }
 .arco-admin-drawer__menu :deep(.arco-menu-inner) {
   overflow: visible;
-}
-
-@media (max-width: 1279px) {
-  .arco-admin-header {
-    padding-inline: 16px;
-  }
-
-  .arco-admin-main {
-    padding: 20px;
-  }
 }
 
 @media (max-width: 1099px) {
@@ -1172,12 +1167,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
   .arco-admin-main :deep(.arco-page-header) {
     box-sizing: border-box;
     max-width: 100%;
-    padding: 14px !important;
+    padding: var(--mc-page-header-padding, 14px) !important;
   }
 
   .arco-admin-main :deep(.arco-page-header-header) {
     flex-wrap: wrap;
-    gap: 8px;
+    gap: var(--mc-space-2, 8px);
     padding-inline: 0;
   }
 
@@ -1193,9 +1188,9 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
   .arco-admin-main :deep(.arco-page-header-subtitle) {
     width: 100%;
-    margin-top: 4px;
+    margin-top: var(--mc-space-1, 4px);
     overflow: visible;
-    line-height: 20px;
+    line-height: var(--mc-type-page-subtitle-line-height, 1.5);
     white-space: normal;
   }
 
@@ -1207,7 +1202,6 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
 @media (max-width: 767px) {
   .arco-admin-main {
-    padding: 16px;
     overflow-x: hidden;
   }
 
@@ -1218,22 +1212,19 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
 @media (max-width: 479px) {
   .arco-admin-header {
-    padding-inline: 12px;
-    gap: 8px;
+    padding-inline: var(--mc-shell-header-padding-inline, 12px);
+    gap: var(--mc-space-2, 8px);
   }
 
   .arco-admin-header__left,
   .arco-admin-header__right {
-    gap: 4px;
+    gap: var(--mc-space-1, 4px);
   }
 
   .arco-admin-breadcrumb :deep(.arco-breadcrumb-item-label) {
     max-width: 88px;
   }
 
-  .arco-admin-main {
-    padding: 12px;
-  }
 }
 
 @media (min-width: 1100px) {

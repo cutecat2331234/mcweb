@@ -8,6 +8,10 @@ const source = readFileSync(
   'utf8',
 )
 const css = source.match(/<style scoped>([\s\S]*?)<\/style>/)?.[1] ?? ''
+const foundation = readFileSync(
+  resolve(process.cwd(), 'app/javascript/styles/shell-foundation.css'),
+  'utf8',
+)
 
 function rule(selector: string): string {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -43,7 +47,7 @@ test('admin shell switches to its Drawer before the sidebar can squeeze medium v
   assert.match(source, /v-model:visible="mobileNavOpen"/)
   assert.match(source, /class="arco-admin-drawer"/)
   assert.match(source, /class="arco-admin-drawer__menu"/)
-  assert.match(source, /min\(280px, 100vw\)/)
+  assert.match(source, /min\(var\(--mc-shell-drawer-width, 280px\), 100vw\)/)
 })
 
 test('admin shell owns one viewport and gives main content the only page scroll container', () => {
@@ -80,7 +84,7 @@ test('mobile admin navigation exposes its scroll container to keyboard users', (
 
 test('admin header, breadcrumb, and developer warning can shrink without widening the shell', () => {
   assert.match(rule('.arco-admin-header'), /min-width:\s*0/)
-  assert.match(rule('.arco-admin-header'), /flex:\s*0 0 60px/)
+  assert.match(rule('.arco-admin-header'), /flex:\s*0 0 var\(--mc-shell-topbar-height, 60px\)/)
   assert.match(rule('.arco-admin-header__left'), /flex:\s*1 1 auto/)
   assert.match(rule('.arco-admin-header__left'), /min-width:\s*0/)
   assert.match(rule('.arco-admin-header__left'), /overflow:\s*hidden/)
@@ -98,10 +102,10 @@ test('admin header, breadcrumb, and developer warning can shrink without widenin
 })
 
 test('admin shell uses tiered padding without replacing Arco structural components', () => {
-  assert.match(rule('.arco-admin-main'), /padding:\s*24px/)
-  assert.match(css, /@media \(max-width: 1279px\)[\s\S]*?\.arco-admin-main\s*\{\s*padding:\s*20px/)
-  assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.arco-admin-main\s*\{\s*padding:\s*16px/)
-  assert.match(css, /@media \(max-width: 479px\)[\s\S]*?\.arco-admin-main\s*\{\s*padding:\s*12px/)
+  assert.match(rule('.arco-admin-main'), /padding:\s*var\(--mc-page-gutter, 24px\)/)
+  assert.match(foundation, /@media \(max-width: 1279px\)[\s\S]*?--mc-page-gutter:\s*20px/)
+  assert.match(foundation, /@media \(max-width: 767px\)[\s\S]*?--mc-page-gutter:\s*16px/)
+  assert.match(foundation, /@media \(max-width: 479px\)[\s\S]*?--mc-page-gutter:\s*12px/)
   assert.match(css, /@media \(max-width: 767px\)[\s\S]*?\.arco-admin-main\s*\{[\s\S]*?overflow-x:\s*hidden/)
 
   assert.match(source, /<a-layout class="arco-admin-layout">/)
@@ -145,7 +149,7 @@ test('admin navigation uses distinct product-area icons instead of one repeated 
 })
 
 test('expanded admin navigation keeps long labels discoverable and shares one translated brand', () => {
-  assert.match(source, /:width="260"/)
+  assert.match(source, /:width="'var\(--mc-shell-sidebar-width, 248px\)'"/)
   assert.equal(source.match(/:title="item\.label"/g)?.length, 2)
   assert.equal(source.match(/\{\{ t\('common\.adminBrand'\) \}\}/g)?.length, 2)
   assert.doesNotMatch(source, /arco-admin-brand__text">McWeb Admin</)

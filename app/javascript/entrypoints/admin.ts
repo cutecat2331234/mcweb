@@ -3,6 +3,7 @@ import { createInertiaApp, router } from '@inertiajs/vue3'
 import { createApp, h, type DefineComponent } from 'vue'
 
 // Arco Design Vue — unified admin UI library (see docs/UI_COMPONENT_LIBRARY.md)
+import '@/styles/shell-foundation.css'
 import '@/styles/arco-admin.css'
 import { installAdminSpaNavigation } from '@/lib/adminNavigation'
 import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'

@@ -71,13 +71,13 @@ html.dark body.mcweb-admin {
 }
 
 .arco-admin-main {
-  padding: 20px 24px;
+  padding: var(--mc-page-gutter, 24px);
 }
 
 /* Page identity is a raised, softly colored surface instead of loose text. */
 .arco-admin-main .arco-page-header {
-  margin-bottom: 16px;
-  padding: 16px 18px !important;
+  margin-bottom: var(--mc-space-4, 16px);
+  padding: var(--mc-page-header-padding, 16px 18px) !important;
   overflow: hidden;
   border: 1px solid var(--mc-admin-border);
   border-radius: var(--mc-admin-radius-card);
@@ -95,8 +95,10 @@ html.dark body.mcweb-admin {
   min-width: 0;
   overflow: visible;
   color: var(--color-text-1);
-  line-height: 1.35;
-  letter-spacing: -0.01em;
+  font-size: var(--mc-type-page-title-size, 20px);
+  font-weight: var(--mc-type-page-title-weight, 650);
+  line-height: var(--mc-type-page-title-line-height, 1.35);
+  letter-spacing: var(--mc-type-page-title-tracking, -0.01em);
   overflow-wrap: anywhere;
   white-space: normal;
   text-overflow: clip;
@@ -106,7 +108,8 @@ html.dark body.mcweb-admin {
   min-width: 0;
   overflow: visible;
   color: var(--color-text-2);
-  line-height: 1.45;
+  font-size: var(--mc-type-page-subtitle-size, 14px);
+  line-height: var(--mc-type-page-subtitle-line-height, 1.5);
   overflow-wrap: anywhere;
   white-space: normal;
   text-overflow: clip;
@@ -131,7 +134,7 @@ html.dark body.mcweb-admin {
   flex: 1 1 auto;
   grid-template-columns: minmax(0, 1fr);
   align-items: start;
-  row-gap: 4px;
+  row-gap: var(--mc-space-1, 4px);
 }
 
 .arco-admin-main .arco-page-header-main-with-back {
@@ -342,12 +345,8 @@ html.dark body.mcweb-admin {
 }
 
 @media (max-width: 768px) {
-  .arco-admin-main {
-    padding: 16px;
-  }
-
   .arco-admin-main .arco-page-header {
-    padding: 14px !important;
+    padding: var(--mc-page-header-padding, 14px) !important;
     border-radius: 9px;
   }
 

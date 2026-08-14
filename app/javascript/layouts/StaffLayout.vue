@@ -111,11 +111,15 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
 <template>
   <ConfigProvider>
-    <Layout :style="{ minHeight: '100vh', background: 'var(--color-bg-1)' }">
+    <Layout
+      class="mc-shell-layout"
+      :style="{ minHeight: '100dvh', background: 'var(--color-bg-1)' }"
+    >
       <LayoutSider
         v-if="!isCompact"
+        class="mc-shell-sidebar"
         breakpoint="lg"
-        :width="236"
+        :width="'var(--mc-shell-sidebar-width, 248px)'"
         :collapsed-width="0"
         :hide-trigger="true"
         :style="{
@@ -130,8 +134,8 @@ watch(isDark, syncArcoTheme, { immediate: true })
           align="center"
           :size="12"
           :style="{
-            height: '64px',
-            padding: '0 20px',
+            height: 'var(--mc-shell-topbar-height, 60px)',
+            padding: '0 var(--mc-shell-header-padding-inline, 20px)',
             width: '100%',
             boxSizing: 'border-box',
           }"
@@ -141,7 +145,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
         </Space>
         <Menu
           :selected-keys="[selectedKey]"
-          :style="{ borderRight: 0, padding: '8px' }"
+          :style="{ borderRight: 0, padding: 'var(--mc-space-2, 8px)' }"
           @menu-item-click="onMenuClick"
         >
           <MenuItem :key="routes.staff">
@@ -157,7 +161,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
           direction="vertical"
           fill
           :size="8"
-          :style="{ position: 'absolute', inset: 'auto 12px 16px 12px' }"
+          :style="{
+            position: 'absolute',
+            inset: 'auto var(--mc-space-3, 12px) var(--mc-space-4, 16px)',
+          }"
         >
           <Button long @click="visit(routes.forum)">
             <template #icon><IconApps /></template>
@@ -168,18 +175,20 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
       <Layout
         :style="{
-          marginLeft: isCompact ? '0' : '236px',
-          width: isCompact ? '100%' : 'calc(100% - 236px)',
+          marginLeft: isCompact ? '0' : 'var(--mc-shell-sidebar-width, 248px)',
+          width: isCompact ? '100%' : 'calc(100% - var(--mc-shell-sidebar-width, 248px))',
           minWidth: 0,
         }"
       >
         <LayoutHeader
+          class="mc-shell-header"
           :style="{
             position: 'sticky',
             top: 0,
             zIndex: 20,
-            height: '64px',
-            padding: '0 20px',
+            height: 'var(--mc-shell-topbar-height, 60px)',
+            minHeight: 'var(--mc-shell-topbar-height, 60px)',
+            padding: '0 var(--mc-shell-header-padding-inline, 20px)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -238,10 +247,21 @@ watch(isDark, syncArcoTheme, { immediate: true })
 
         <LayoutContent
           id="staff-content"
+          class="mc-page-content mc-page-surface"
           tabindex="-1"
-          :style="{ padding: '20px', minHeight: 'calc(100vh - 64px)' }"
+          :style="{
+            padding: 'var(--mc-page-gutter, 24px)',
+            minHeight: 'calc(100dvh - var(--mc-shell-topbar-height, 60px))',
+          }"
         >
-          <div :style="{ width: '100%', maxWidth: '1480px', margin: '0 auto' }">
+          <div
+            class="mc-page-container"
+            :style="{
+              width: '100%',
+              maxWidth: 'var(--mc-page-max-width, 1440px)',
+              margin: '0 auto',
+            }"
+          >
             <slot />
           </div>
         </LayoutContent>
@@ -251,7 +271,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
     <Drawer
       v-model:visible="mobileNavOpen"
       placement="left"
-      :width="280"
+      :width="'min(var(--mc-shell-drawer-width, 280px), 100vw)'"
       :footer="false"
       unmount-on-close
     >

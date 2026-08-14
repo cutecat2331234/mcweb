@@ -4,6 +4,7 @@ import {
   normalizeAppLocale,
   type AppLocale,
 } from './i18nRuntime'
+import { writeSharedAppLocale } from './localePreference'
 
 export {
   MISSING_TRANSLATION_EVENT,
@@ -20,6 +21,7 @@ const localeLoaders = {
 type AppMessages = Awaited<ReturnType<(typeof localeLoaders)[AppLocale]>>['default']
 
 const loadedMessages = new Map<AppLocale, AppMessages>()
+const localeSyncGenerations = new WeakMap<object, number>()
 
 async function loadLocaleMessages(locale: AppLocale): Promise<AppMessages> {
   const cached = loadedMessages.get(locale)
@@ -37,6 +39,7 @@ export function preloadAppLocale(locale: unknown): Promise<AppMessages> {
 export async function createAppI18n(locale: AppLocale = 'zh-CN') {
   const initialLocale = normalizeAppLocale(locale)
   const messages = await loadLocaleMessages(initialLocale)
+  writeSharedAppLocale(initialLocale)
 
   return createI18n({
     legacy: false,
@@ -58,17 +61,27 @@ export async function createAppI18n(locale: AppLocale = 'zh-CN') {
 
 export type AppI18n = Awaited<ReturnType<typeof createAppI18n>>
 
-export async function syncI18nLocale(i18n: AppI18n, locale: unknown) {
+export async function syncI18nLocale(i18n: AppI18n, locale: unknown): Promise<boolean> {
   const next = normalizeAppLocale(locale)
+  const syncTarget = i18n as object
+  const generation = (localeSyncGenerations.get(syncTarget) ?? 0) + 1
+  localeSyncGenerations.set(syncTarget, generation)
+
+  let messages: AppMessages | null = null
   if (!i18n.global.availableLocales.includes(next)) {
-    i18n.global.setLocaleMessage(next, await loadLocaleMessages(next))
+    messages = await loadLocaleMessages(next)
   }
+  if (localeSyncGenerations.get(syncTarget) !== generation) return false
+
+  if (messages) i18n.global.setLocaleMessage(next, messages)
   if (i18n.global.locale.value !== next) {
     i18n.global.locale.value = next
   }
   if (typeof document !== 'undefined') {
     document.documentElement.lang = next
   }
+  writeSharedAppLocale(next)
+  return true
 }
 
 // Merge DB-backed admin "phrase overrides" (shared as a nested Inertia prop for

@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/vue3'
 import { csrfHeaders } from '@/lib/csrf'
+import { localeRequestHeaders } from '@/lib/localePreference'
 
 const DEFAULT_HOVER_DELAY = 150
 const DEFAULT_CACHE_FOR = '30s'
@@ -89,10 +90,18 @@ export function installIntentPrefetch({
     pendingTimer = window.setTimeout(() => {
       pendingTimer = null
       pendingElement = null
-      if (router.getCached(href) || router.getPrefetching(href)) return
+      const headers = {
+        ...csrfHeaders(),
+        ...localeRequestHeaders(),
+      }
+      const visitOptions = { headers }
+      if (
+        router.getCached(href, visitOptions) ||
+        router.getPrefetching(href, visitOptions)
+      ) return
       router.prefetch(
         href,
-        { headers: csrfHeaders() },
+        visitOptions,
         { cacheFor },
       )
     }, hoverDelay)

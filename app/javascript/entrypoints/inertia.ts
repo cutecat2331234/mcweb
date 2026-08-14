@@ -7,10 +7,12 @@ import '@/styles/portal.css'
 import { csrfHeaders, syncCsrfMetaTag } from '@/lib/csrf'
 import { applyPhraseOverrides, createAppI18n, normalizeAppLocale, syncI18nLocale } from '@/lib/i18n'
 import { installIntentPrefetch } from '@/lib/intentPrefetch'
+import { localeRequestHeaders } from '@/lib/localePreference'
 import { installPortalSpaNavigation } from '@/lib/portalNavigation'
 import AppProvider from '@/components/AppProvider.vue'
 
 interface InertiaPageLike {
+  component?: string
   props?: Record<string, unknown>
 }
 
@@ -52,13 +54,17 @@ async function bootstrap() {
 
   const syncLocaleFromInertiaPage = async (page?: InertiaPageLike) => {
     const locale = page?.props?.locale
-    await syncI18nLocale(i18n, locale)
+    if (typeof locale !== 'string' || locale.trim().length === 0) return
+    const synchronized = await syncI18nLocale(i18n, locale)
+    if (!synchronized) return
     applyPhraseOverrides(i18n, locale, page?.props?.phrase_overrides)
   }
 
   router.on('before', (event) => {
-    const headers = csrfHeaders()
-    if (Object.keys(headers).length === 0) return
+    const headers = {
+      ...csrfHeaders(),
+      ...localeRequestHeaders(),
+    }
 
     event.detail.visit.headers = {
       ...event.detail.visit.headers,
@@ -69,7 +75,6 @@ async function bootstrap() {
   document.addEventListener('inertia:success', (event) => {
     const detail = (event as CustomEvent<{ page?: InertiaPageLike }>).detail
     syncCsrfFromInertiaPage(detail.page)
-    void syncLocaleFromInertiaPage(detail.page)
   })
 
   syncCsrfMetaTag()
@@ -79,13 +84,12 @@ async function bootstrap() {
     setup({ el, App, props, plugin }) {
       const initialPage = (props as { initialPage?: InertiaPageLike }).initialPage
       syncCsrfFromInertiaPage(initialPage)
-      void syncLocaleFromInertiaPage(initialPage)
       createApp({ render: () => h(AppProvider, null, { default: () => h(App, props) }) })
         .use(plugin)
         .use(i18n)
         .mount(el)
     },
-    resolve: async (name) => {
+    resolve: async (name, targetPage?: InertiaPageLike) => {
       if (name.startsWith('Admin/')) {
         throw new Error(`Admin pages must use admin entry: ${name}`)
       }
@@ -94,6 +98,7 @@ async function bootstrap() {
       if (!loader) {
         throw new Error(`Inertia page not found: ${name}`)
       }
+      await syncLocaleFromInertiaPage(targetPage)
       return loader()
     },
     progress: false,

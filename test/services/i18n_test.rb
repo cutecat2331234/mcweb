@@ -117,4 +117,13 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
     assert_redirected_to root_path
     assert_nil session[:locale]
   end
+
+  test "locale switch removes a conflicting locale from the return URL" do
+    patch locale_path,
+      params: { locale: "zh-CN" },
+      headers: { "HTTP_REFERER" => "http://www.example.com/app/forum?locale=en&tab=latest#topic" }
+
+    assert_redirected_to "/app/forum?tab=latest#topic"
+    assert_equal "zh-CN", session[:locale]
+  end
 end

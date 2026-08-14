@@ -8,6 +8,8 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
   self.use_transactional_tests = false
 
   setup do
+    @original_database_url = ENV.delete("DATABASE_URL")
+    @original_local_config_path = ENV["MCWEB_LOCAL_CONFIG_PATH"]
     @local_config_path = Rails.root.join("tmp", "test-local-#{Process.pid}-#{SecureRandom.hex(4)}.yml")
     ENV["MCWEB_LOCAL_CONFIG_PATH"] = @local_config_path.to_s
     Mcweb::LocalConfig.reload!
@@ -25,7 +27,8 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
     User.where(account_type: "owner").update_all(account_type: "member")
     ensure_installation_locked!
     FileUtils.rm_f(@local_config_path)
-    ENV.delete("MCWEB_LOCAL_CONFIG_PATH")
+    restore_environment("DATABASE_URL", @original_database_url)
+    restore_environment("MCWEB_LOCAL_CONFIG_PATH", @original_local_config_path)
     Mcweb::LocalConfig.reload!
   end
 
@@ -170,5 +173,9 @@ class SetupWizardIntegrationTest < ActionDispatch::IntegrationTest
 
   def db_port
     ActiveRecord::Base.connection_db_config.configuration_hash[:port] || 5432
+  end
+
+  def restore_environment(name, value)
+    value.nil? ? ENV.delete(name) : ENV[name] = value
   end
 end

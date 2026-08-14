@@ -183,6 +183,7 @@ module Minecraft
     test "scheduled refresh queues only due bound accounts on the daily default" do
       _, due_identity = create_bound_account(user: @user, username: "Due")
       _, fresh_identity = create_bound_account(user: @user, username: "Fresh")
+      attach_complete_skin_cache(fresh_identity)
       fresh_identity.update!(skin_cached_at: 23.hours.ago)
       unbound_profile = Minecraft::PlayerProfile.create!
       unbound_identity = Minecraft::PlayerIdentity.create!(
@@ -262,6 +263,18 @@ module Minecraft
         ServiceResult.success(skin_data)
       end
       service
+    end
+
+    def attach_complete_skin_cache(identity)
+      payload = ChunkyPNG::Image.new(64, 64, ChunkyPNG::Color::WHITE).to_blob
+      Minecraft::PlayerIdentity::REQUIRED_SKIN_CACHE_ATTACHMENTS.each do |attachment_name|
+        identity.public_send(attachment_name).attach(
+          io: StringIO.new(payload),
+          filename: "#{attachment_name}.png",
+          content_type: "image/png",
+          identify: false
+        )
+      end
     end
 
     def texture_data(color:)

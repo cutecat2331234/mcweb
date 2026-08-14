@@ -9,16 +9,16 @@ require "tmpdir"
 class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
   ROOT = Rails.root
   SCRIPT_NAMES = %w[backup restore update rollback].freeze
+  BASH_PROBE_MARKER = "mcweb-bash-ready"
 
   test "production recovery scripts are valid Bash programs" do
+    bash = require_usable_bash
     SCRIPT_NAMES.each do |name|
       path = ROOT.join("bin", name).to_s.tr("\\", "/")
-      _stdout, stderr, status = Open3.capture3("bash", "-n", path)
+      _stdout, stderr, status = Open3.capture3(bash, "-n", path)
 
       assert status.success?, "#{name} failed bash -n:\n#{stderr}"
     end
-  rescue Errno::ENOENT
-    skip "bash is unavailable; static production recovery contracts still run"
   end
 
   test "isolated local backup can be verified without touching a database or production path" do
@@ -421,6 +421,35 @@ class Mcweb::ProductionRecoveryContractTest < ActiveSupport::TestCase
       Shellwords.join([ bash_path(ROOT.join(script)), *arguments ])
     ].join("; ")
 
-    Open3.capture3(environment, "bash", "-lc", command)
+    Open3.capture3(environment, require_usable_bash, "-lc", command)
+  end
+
+  def require_usable_bash
+    usable_bash_executable ||
+      skip("usable Bash is unavailable; static production recovery contracts still run")
+  end
+
+  def usable_bash_executable
+    return @usable_bash_executable if defined?(@usable_bash_executable)
+
+    candidates = if Gem.win_platform?
+      ENV.fetch("PATH", "").split(File::PATH_SEPARATOR).flat_map do |directory|
+        normalized = directory.delete_prefix('"').delete_suffix('"')
+        [ File.join(normalized, "bash.exe"), File.join(normalized, "bash") ]
+      end.select { |path| File.file?(path) }
+    else
+      [ "bash" ]
+    end
+
+    @usable_bash_executable = candidates.uniq.find do |candidate|
+      stdout, _stderr, status = Open3.capture3(
+        candidate,
+        "-lc",
+        "printf #{Shellwords.escape(BASH_PROBE_MARKER)}"
+      )
+      status.success? && stdout == BASH_PROBE_MARKER
+    rescue Errno::ENOENT
+      false
+    end
   end
 end

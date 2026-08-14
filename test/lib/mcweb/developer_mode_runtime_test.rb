@@ -351,7 +351,8 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
       "SECRET_KEY_BASE" => "s" * 128,
       "LOCKBOX_MASTER_KEY" => "a" * 64,
       "DATABASE_URL" =>
-        "postgresql://mcweb:database-password@127.0.0.1/mcweb_production"
+        "postgresql://mcweb:database-password@127.0.0.1/mcweb_production",
+      "RAILS_INBOUND_EMAIL_PASSWORD" => "inbound-" + ("p" * 32)
     }
 
     stdout, stderr, status = Open3.capture3(
@@ -420,7 +421,7 @@ class Mcweb::DeveloperModeRuntimeTest < ActiveSupport::TestCase
       "MCWEB_S3_REGION" => nil,
       "MCWEB_S3_ACCESS_KEY_ID" => nil,
       "MCWEB_S3_SECRET_ACCESS_KEY" => nil,
-      "RAILS_INBOUND_EMAIL_PASSWORD" => nil
+      "RAILS_INBOUND_EMAIL_PASSWORD" => "inbound-" + ("p" * 32)
     }
 
     stdout, stderr, status = Open3.capture3(

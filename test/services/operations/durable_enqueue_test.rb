@@ -7,6 +7,13 @@ module Operations
     setup do
       clear_enqueued_jobs
       clear_performed_jobs
+      Operations::DurableEnqueueEvent.connection.execute(<<~SQL)
+        TRUNCATE TABLE
+          operations_durable_enqueue_events,
+          operations_durable_enqueue_attempts,
+          operations_durable_enqueue_intents
+        RESTART IDENTITY CASCADE
+      SQL
       @callbacks = []
     end
 

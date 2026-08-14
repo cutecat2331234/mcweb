@@ -67,6 +67,17 @@ test('admin shell owns one viewport and gives main content the only page scroll 
   assert.match(rule('.arco-admin-drawer__menu'), /overflow-y:\s*auto/)
 })
 
+test('mobile admin navigation exposes its scroll container to keyboard users', () => {
+  const drawerMenu = source.match(/<div\s+class="arco-admin-drawer__menu"[\s\S]*?>/)?.[0]
+
+  assert.ok(drawerMenu)
+  assert.match(drawerMenu, /role="navigation"/)
+  assert.match(drawerMenu, /:aria-label="t\('common\.navigation'\)"/)
+  assert.match(drawerMenu, /tabindex="0"/)
+  assert.match(rule('.arco-admin-drawer__menu:focus-visible'), /outline:\s*2px solid rgb\(var\(--primary-6\)\)/)
+  assert.match(rule('.arco-admin-drawer__menu:focus-visible'), /outline-offset:\s*-2px/)
+})
+
 test('admin header, breadcrumb, and developer warning can shrink without widening the shell', () => {
   assert.match(rule('.arco-admin-header'), /min-width:\s*0/)
   assert.match(rule('.arco-admin-header'), /flex:\s*0 0 60px/)

@@ -806,7 +806,12 @@ watch(isDark, syncArcoTheme, { immediate: true })
           <span class="arco-admin-brand__text">{{ t('common.adminBrand') }}</span>
         </Link>
       </div>
-      <div class="arco-admin-drawer__menu">
+      <div
+        class="arco-admin-drawer__menu"
+        role="navigation"
+        :aria-label="t('common.navigation')"
+        tabindex="0"
+      >
         <a-menu
           :selected-keys="activeItemHref ? [activeItemHref] : []"
           v-model:open-keys="openKeys"
@@ -1123,6 +1128,10 @@ watch(isDark, syncArcoTheme, { immediate: true })
   min-height: 0;
   overflow-y: auto;
   overscroll-behavior: contain;
+}
+.arco-admin-drawer__menu:focus-visible {
+  outline: 2px solid rgb(var(--primary-6));
+  outline-offset: -2px;
 }
 .arco-admin-drawer__menu :deep(.arco-menu-inner) {
   overflow: visible;

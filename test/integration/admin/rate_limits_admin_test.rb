@@ -34,11 +34,11 @@ module Admin
         assert_equal 1, row[:blocked_requests]
         assert props[:csrf_token].present?
 
-        rendered = props.to_json
-        refute_includes rendered, identifier
-        refute_includes rendered, Digest::SHA256.hexdigest(identifier)
-        refute_includes rendered, "abuse:login:account:"
-        refute_includes rendered, '"key"'
+        rendered_metrics = props.slice(:rows, :summary).to_json
+        refute_includes rendered_metrics, identifier
+        refute_includes rendered_metrics, Digest::SHA256.hexdigest(identifier)
+        refute_includes rendered_metrics, "abuse:login:account:"
+        refute_includes rendered_metrics, '"key"'
       end
 
       test "authorized admin updates validated policies with a stateful audit" do

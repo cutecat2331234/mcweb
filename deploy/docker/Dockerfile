@@ -60,4 +60,4 @@ RUN chmod 0755 /usr/bin/docker-entrypoint && \
 USER mcweb
 ENTRYPOINT ["docker-entrypoint"]
 EXPOSE 3000
-CMD ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+CMD ["web"]

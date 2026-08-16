@@ -88,7 +88,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: ["bundle", "exec", "rails", "db:prepare"]
+    command: ["release"]
 
   mcweb-web:
     <<: *mcweb-app
@@ -100,7 +100,7 @@ services:
         condition: service_healthy
     ports:
       - "127.0.0.1:${MCWEB_WEB_PORT:-3000}:3000"
-    command: ["bundle", "exec", "puma", "-C", "config/puma.rb"]
+    command: ["web"]
     healthcheck:
       test: ["CMD", "curl", "--fail", "--silent", "--show-error", "http://127.0.0.1:3000/health/ready"]
       interval: 15s
@@ -116,7 +116,7 @@ services:
         condition: service_completed_successfully
       clamav:
         condition: service_healthy
-    command: ["bundle", "exec", "sidekiq", "-C", "config/sidekiq.yml"]
+    command: ["worker"]
     healthcheck:
       test:
         - CMD-SHELL

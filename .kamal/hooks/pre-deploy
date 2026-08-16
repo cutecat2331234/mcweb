@@ -1,0 +1,18 @@
+#!/bin/sh
+
+set -eu
+
+if [ -z "${KAMAL_VERSION:-}" ]; then
+  echo "pre-deploy: KAMAL_VERSION is required for the release container" >&2
+  exit 64
+fi
+
+set -- app exec --primary --roles web --version "$KAMAL_VERSION"
+if [ -n "${KAMAL_DESTINATION:-}" ]; then
+  set -- "$@" --destination "$KAMAL_DESTINATION"
+fi
+
+# Kamal has already delivered this image before pre-deploy runs. A new
+# one-shot container therefore prepares the exact version that will boot.
+# Non-zero migration or downstream release-hook status aborts the deployment.
+exec bin/kamal "$@" release

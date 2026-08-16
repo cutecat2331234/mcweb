@@ -1,0 +1,4 @@
+#!/bin/sh
+
+printf 'kamal:%s\n' "$*" >> "$TRACE_FILE"
+exit "${KAMAL_EXIT:-0}"

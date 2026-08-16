@@ -49,7 +49,7 @@ bin/vite build
 
 if [[ -n "${DATABASE_URL:-}" ]]; then
   echo "==> Preparing database for asset pipeline…"
-  bundle exec rails db:prepare 2>/dev/null || true
+  bundle exec rails db:prepare
 fi
 
 echo "==> Precompiling assets…"

@@ -13,6 +13,12 @@ module Minecraft
     has_many :legacy_identities, class_name: "Minecraft::Identity", foreign_key: :player_profile_id, dependent: :nullify
 
     def active_identity(platform: "java")
+      if association(:player_identities).loaded?
+        return player_identities.find do |identity|
+          identity.platform == platform && identity.superseded_at.nil?
+        end
+      end
+
       player_identities.active.find_by(platform: platform)
     end
 

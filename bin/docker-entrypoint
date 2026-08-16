@@ -1,8 +1,79 @@
-#!/bin/bash -e
+#!/bin/bash
 
-# If running the rails server then create or migrate existing database
-if [ "${@: -2:1}" == "./bin/rails" ] && [ "${@: -1:1}" == "server" ]; then
+set -Eeuo pipefail
+
+schema_is_current() {
+  ./bin/rails db:abort_if_pending_migrations
+}
+
+run_release() {
   ./bin/rails db:prepare
-fi
 
-exec "${@}"
+  # Downstream editions may add release-only, database-backed preparation here.
+  # It runs once, after every schema migration has completed successfully, and
+  # before any web or worker container is allowed to start.
+  if [ -x ./bin/docker-release ]; then
+    ./bin/docker-release
+  fi
+}
+
+is_web_command() {
+  if [ "${1:-}" = "./bin/rails" ] && [ "${2:-}" = "server" ]; then
+    return 0
+  fi
+
+  if [ "${1:-}" = "bundle" ] && [ "${2:-}" = "exec" ]; then
+    case "${3:-}" in
+      puma) return 0 ;;
+      rails)
+        [ "${4:-}" = "server" ] && return 0
+        ;;
+    esac
+  fi
+
+  [ "${1:-}" = "puma" ]
+}
+
+is_worker_command() {
+  if [ "${1:-}" = "bundle" ] && [ "${2:-}" = "exec" ] && [ "${3:-}" = "sidekiq" ]; then
+    return 0
+  fi
+
+  [ "${1:-}" = "sidekiq" ]
+}
+
+case "${1:-}" in
+  release)
+    if [ "$#" -ne 1 ]; then
+      echo "docker-entrypoint: release does not accept additional arguments" >&2
+      exit 64
+    fi
+
+    run_release
+    exit 0
+    ;;
+  web)
+    shift
+    if [ "$#" -eq 0 ]; then
+      set -- bundle exec puma -C config/puma.rb
+    fi
+    schema_is_current
+    ;;
+  worker)
+    shift
+    if [ "$#" -eq 0 ]; then
+      set -- bundle exec sidekiq -C config/sidekiq.yml
+    fi
+    schema_is_current
+    ;;
+  *)
+    # Keep direct Docker/Kamal command overrides safe. These are deliberately
+    # checks, not migrations: release is the only role allowed to mutate the
+    # schema, so parallel replicas cannot race database preparation.
+    if is_web_command "$@" || is_worker_command "$@"; then
+      schema_is_current
+    fi
+    ;;
+esac
+
+exec "$@"

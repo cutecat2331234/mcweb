@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "open3"
 require "yaml"
 
 class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
@@ -31,7 +32,26 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
     RECEIPT_FONT_PATHS.each do |path|
       assert_includes dockerfile, "test -f #{path}"
     end
+    assert_includes dockerfile, 'ENTRYPOINT ["docker-entrypoint"]'
+    assert_includes dockerfile, 'CMD ["web"]'
     assert_includes ROOT.join("bin/install").read, "fonts-noto-cjk"
+  end
+
+  test "container roles separate one-shot release from replica startup" do
+    entrypoint = ROOT.join("bin/docker-entrypoint").read
+    release_builder = ROOT.join("bin/build-release").read
+
+    assert_includes entrypoint, "release)"
+    assert_includes entrypoint, "./bin/rails db:prepare"
+    assert_includes entrypoint, "./bin/rails db:abort_if_pending_migrations"
+    assert_includes entrypoint, "./bin/docker-release"
+    assert_includes entrypoint, "bundle exec puma -C config/puma.rb"
+    assert_includes entrypoint, "bundle exec sidekiq -C config/sidekiq.yml"
+    assert_operator entrypoint.index("./bin/rails db:prepare"), :<,
+      entrypoint.index("./bin/docker-release")
+    refute_match(/rails server then create or migrate/, entrypoint)
+    assert_includes release_builder, "bundle exec rails db:prepare"
+    refute_match(/db:prepare.*(?:\|\|\s*true|2>\/dev\/null)/, release_builder)
   end
 
   test "CI and release jobs install and exercise libvips JPEG support" do
@@ -76,6 +96,10 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
     )
     services = compose.fetch("services")
 
+    assert_equal [ "release" ], services.dig("mcweb-migrate", "command")
+    assert_equal [ "web" ], services.dig("mcweb-web", "command")
+    assert_equal [ "worker" ], services.dig("mcweb-worker", "command")
+
     assert_equal(
       "service_completed_successfully",
       services.dig("mcweb-web", "depends_on", "mcweb-migrate", "condition")
@@ -115,6 +139,38 @@ class Mcweb::DockerProductionContractTest < ActiveSupport::TestCase
       "service_healthy",
       services.dig("nginx", "depends_on", "mcweb-web", "condition")
     )
+  end
+
+  test "Kamal runs the delivered release once before booting web and job roles" do
+    hook = ROOT.join(".kamal/hooks/pre-deploy").read
+    deploy = ROOT.join("config/deploy.yml").read
+
+    assert_includes hook, 'set -- app exec --primary --roles web --version "$KAMAL_VERSION"'
+    assert_includes hook, 'exec bin/kamal "$@" release'
+    assert_includes hook, "exit 64"
+    assert_includes deploy, "#   cmd: worker"
+    refute_includes deploy, "cmd: bundle exec sidekiq"
+  end
+
+  test "entrypoint integration covers real command forms and failure ordering" do
+    bash = if Gem.win_platform?
+      [
+        "C:/Program Files/Git/bin/bash.exe",
+        "C:/Ruby40-x64/msys64/usr/bin/bash.exe"
+      ].find { |candidate| File.file?(candidate) }
+    else
+      "bash"
+    end
+    skip "bash is unavailable" unless bash
+
+    stdout, stderr, status = Open3.capture3(
+      bash,
+      "test/scripts/container_startup_contract_test.sh",
+      chdir: ROOT.to_s
+    )
+
+    assert status.success?, [ stdout, stderr ].reject(&:empty?).join("\n")
+    assert_includes stdout, "container startup contract: PASS"
   end
 
   test "docker context excludes local secrets and mutable runtime data" do

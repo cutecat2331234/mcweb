@@ -1,0 +1,9 @@
+#!/bin/bash
+
+printf 'rails:%s\n' "$*" >> "$TRACE_FILE"
+
+case "$*" in
+  db:prepare) exit "${PREPARE_EXIT:-0}" ;;
+  db:abort_if_pending_migrations) exit "${SCHEMA_EXIT:-0}" ;;
+  *) exit "${PROCESS_EXIT:-0}" ;;
+esac

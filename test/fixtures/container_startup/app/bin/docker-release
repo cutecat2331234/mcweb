@@ -1,0 +1,4 @@
+#!/bin/bash
+
+printf 'release-hook\n' >> "$TRACE_FILE"
+exit "${RELEASE_EXIT:-0}"

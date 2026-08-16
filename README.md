@@ -169,7 +169,8 @@ McWeb 是 **Ruby on Rails 模块化单体**（modular monolith）：各业务域
 - Ubuntu LTS x86_64
 - Debian Stable x86_64
 
-仓库内提供 Docker 部署示例（`deploy/docker/`）。
+仓库内提供 Docker 部署示例（`deploy/docker/`）；容器上线前必须遵守
+[一次性发布与启动顺序](deploy/docker/README.md)，不能让 Web/Worker 副本自行迁移。
 
 ---
 

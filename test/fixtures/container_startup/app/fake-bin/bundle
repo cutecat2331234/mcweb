@@ -1,0 +1,4 @@
+#!/bin/bash
+
+printf 'process:%s\n' "$*" >> "$TRACE_FILE"
+exit "${PROCESS_EXIT:-0}"

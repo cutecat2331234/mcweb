@@ -26,7 +26,7 @@ gem "aasm", "~> 6.0"
 gem "csv"
 gem "ostruct"
 gem "rubyzip", "~> 3.4"
-gem "stripe", "~> 19.4"
+gem "stripe", "~> 19.5"
 gem "aws-sdk-s3", "~> 1.228", require: false
 
 gem "tzinfo-data", platforms: %i[ windows jruby ]

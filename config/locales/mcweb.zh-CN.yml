@@ -472,6 +472,7 @@
       participant_removed: 已移除成员。
       left_group: 你已离开群组。
       minecraft_linked: Minecraft 账号已成功绑定。
+      minecraft_identity_unlinked: Minecraft 账号已解除绑定。
       primary_account_changed: Minecraft 主账号已切换。
       primary_account_change_requested: 主账号切换申请已提交审核。
       primary_account_change_cancelled: 主账号切换申请已取消。
@@ -952,6 +953,18 @@
         small_action_body_required: 操作说明不能为空。
         link_code_used: 绑定码已被使用。
         minecraft_already_linked: 该 Minecraft 账号已绑定其他用户。
+        minecraft_identity_unlink_forbidden: 你只能解除自己名下的 Minecraft 账号绑定。
+        minecraft_identity_unlink_account_not_bound: 该 Minecraft 账号并未绑定到你的资料。
+        minecraft_identity_unlink_inactive: 该 Minecraft 账号已经解除绑定，请刷新页面后再试。
+        minecraft_identity_unlink_lock_version_required: 请刷新账号列表后再解除绑定。
+        minecraft_identity_unlink_stale: 你确认期间该 Minecraft 账号已发生变化，请刷新后重试。
+        minecraft_identity_unlink_confirmation_required: 请输入所选 Minecraft 账号名称以确认解除绑定。
+        minecraft_identity_unlink_confirmation_mismatch: 确认内容与所选 Minecraft 账号名称不一致。
+        minecraft_identity_unlink_idempotency_required: 解除 Minecraft 账号绑定需要稳定的请求标识。
+        minecraft_identity_unlink_idempotency_conflict: 此请求标识已用于另一项 Minecraft 账号解绑操作。
+        minecraft_identity_unlink_target_unavailable: 无法验证当前 Minecraft 身份，请刷新后重试。
+        minecraft_identity_unlink_restriction_unavailable: 当前无法安全核验解绑限制，请稍后重试。
+        minecraft_identity_unlink_conflict: Minecraft 账号刚刚发生并发变化，请刷新后重试。
         minecraft_account_not_bound: 请选择该用户当前有效且已绑定的 Minecraft 账号。
         minecraft_account_already_primary: 该 Minecraft 账号已经是主账号。
         primary_account_forbidden: 你没有权限执行此主账号操作。
@@ -2054,6 +2067,7 @@
         developer_mode_task_triggered: "开发模式任务已触发"
         developer_mode_captures_cleared: "开发模式捕获记录已清理"
         minecraft_identity_linked: "Minecraft 身份已绑定"
+        minecraft_identity_unlinked: "Minecraft 身份已解除绑定"
         forum_post_moderate: "论坛帖子已审核处理"
         forum_topic_moderate: "论坛主题已审核处理"
         forum_topic_move: "论坛主题已移动"

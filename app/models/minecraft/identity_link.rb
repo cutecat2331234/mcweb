@@ -24,6 +24,10 @@ module Minecraft
              dependent: :restrict_with_error
 
     validates :linked_at, presence: true
+    validates :unlink_idempotency_key_digest,
+              length: { is: 64 },
+              format: { with: /\A[0-9a-f]{64}\z/ },
+              allow_nil: true
     validates :primary_account,
               uniqueness: {
                 scope: :user_id,

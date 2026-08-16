@@ -70,7 +70,10 @@ module Minecraft
           skinCached: identity.skin_cached?,
           skinCachedAt: identity.skin_cached_at&.iso8601,
           avatarUrl: cached_avatar_url(identity),
-          setPrimaryUrl: minecraft_primary_account_path(link)
+          setPrimaryUrl: minecraft_primary_account_path(link),
+          unlinkUrl: minecraft_identity_link_path(link),
+          unlinkConfirmation: identity.username,
+          lockVersion: link.lock_version
         }
       end
       pending = Minecraft::PrimaryAccountChangeRequest.pending

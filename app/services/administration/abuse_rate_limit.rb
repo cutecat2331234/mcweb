@@ -59,6 +59,10 @@ module Administration
       private_message: {
         account: { limit: 10, window_seconds: 1.minute.to_i },
         ip: { limit: 30, window_seconds: 1.minute.to_i }
+      },
+      minecraft_identity_unlink: {
+        account: { limit: 5, window_seconds: 15.minutes.to_i },
+        ip: { limit: 30, window_seconds: 15.minutes.to_i }
       }
     }.freeze
 

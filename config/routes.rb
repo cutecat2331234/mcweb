@@ -850,6 +850,9 @@ Rails.application.routes.draw do
       post "accounts/:id/primary",
         to: "primary_accounts#create",
         as: :primary_account
+      delete "accounts/:id",
+        to: "identity_links#destroy",
+        as: :identity_link
       delete "primary-account-change-requests/:id",
         to: "primary_account_change_requests#destroy",
         as: :primary_account_change_request

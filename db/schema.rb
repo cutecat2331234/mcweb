@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_09_320000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1358,15 +1358,20 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_09_320000) do
   create_table "minecraft_identity_links", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.datetime "linked_at", null: false
+    t.integer "lock_version", default: 0, null: false
     t.bigint "player_profile_id", null: false
     t.boolean "primary_account", default: false, null: false
+    t.string "unlink_idempotency_key_digest", limit: 64
     t.datetime "unlinked_at"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["player_profile_id", "user_id"], name: "idx_on_player_profile_id_user_id_a518a2f67b", unique: true, where: "(unlinked_at IS NULL)"
     t.index ["player_profile_id"], name: "index_minecraft_identity_links_on_player_profile_id"
+    t.index ["user_id", "unlink_idempotency_key_digest"], name: "idx_mc_identity_links_unlink_idempotency", unique: true, where: "(unlink_idempotency_key_digest IS NOT NULL)"
     t.index ["user_id"], name: "idx_mc_identity_links_one_primary_per_user", unique: true, where: "((unlinked_at IS NULL) AND (primary_account = true))"
     t.index ["user_id"], name: "index_minecraft_identity_links_on_user_id"
+    t.check_constraint "lock_version >= 0", name: "mc_identity_links_lock_version"
+    t.check_constraint "unlink_idempotency_key_digest IS NULL OR unlink_idempotency_key_digest::text ~ '^[0-9a-f]{64}$'::text", name: "mc_identity_links_unlink_digest_format"
   end
 
   create_table "minecraft_integration_action_logs", force: :cascade do |t|

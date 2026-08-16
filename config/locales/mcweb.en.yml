@@ -472,6 +472,7 @@ en:
       participant_removed: Participant removed.
       left_group: You left the group.
       minecraft_linked: Minecraft account linked successfully.
+      minecraft_identity_unlinked: Minecraft account unlinked successfully.
       primary_account_changed: Primary Minecraft account changed.
       primary_account_change_requested: Primary-account change request submitted for staff review.
       primary_account_change_cancelled: Primary-account change request cancelled.
@@ -952,6 +953,18 @@ en:
         small_action_body_required: Action body is required.
         link_code_used: Link code has already been used.
         minecraft_already_linked: This Minecraft account is already linked.
+        minecraft_identity_unlink_forbidden: You can unlink only your own Minecraft accounts.
+        minecraft_identity_unlink_account_not_bound: This Minecraft account is not bound to your profile.
+        minecraft_identity_unlink_inactive: This Minecraft account is already unlinked. Refresh the page before trying again.
+        minecraft_identity_unlink_lock_version_required: Refresh the account list before unlinking this account.
+        minecraft_identity_unlink_stale: This Minecraft account changed while you were reviewing it. Refresh and try again.
+        minecraft_identity_unlink_confirmation_required: Enter the selected Minecraft account name to confirm unlinking.
+        minecraft_identity_unlink_confirmation_mismatch: The confirmation does not match the selected Minecraft account name.
+        minecraft_identity_unlink_idempotency_required: A stable request identifier is required to unlink this Minecraft account.
+        minecraft_identity_unlink_idempotency_conflict: This request identifier was already used for a different Minecraft account unlink.
+        minecraft_identity_unlink_target_unavailable: The current Minecraft identity could not be verified. Refresh and try again.
+        minecraft_identity_unlink_restriction_unavailable: Unlinking could not be safely verified right now. Try again later.
+        minecraft_identity_unlink_conflict: This Minecraft account changed concurrently. Refresh and try again.
         minecraft_account_not_bound: Select one of this member's active bound Minecraft accounts.
         minecraft_account_already_primary: This Minecraft account is already the primary account.
         primary_account_forbidden: You do not have permission to perform this primary-account action.
@@ -2054,6 +2067,7 @@ en:
         developer_mode_task_triggered: "Developer Mode task triggered"
         developer_mode_captures_cleared: "Developer Mode captures cleared"
         minecraft_identity_linked: "Minecraft identity linked"
+        minecraft_identity_unlinked: "Minecraft identity unlinked"
         forum_post_moderate: "Forum post moderated"
         forum_topic_moderate: "Forum topic moderated"
         forum_topic_move: "Forum topic moved"

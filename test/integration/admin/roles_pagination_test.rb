@@ -37,5 +37,23 @@ module Admin
       assert_equal 2, page_two.dig(:pagination, :page)
       assert page_two[:rows].any?
     end
+
+    test "an out-of-range page redirects to the canonical last page and preserves query parameters" do
+      expected_last_page = (Role.count.to_f / 25).ceil
+
+      get admin_roles_path(page: expected_last_page + 10, probe: "preserved")
+
+      assert_response :found
+      location = URI.parse(response.location)
+      query = Rack::Utils.parse_nested_query(location.query)
+      assert_equal admin_roles_path, location.path
+      assert_equal expected_last_page.to_s, query.fetch("page")
+      assert_equal "preserved", query.fetch("probe")
+
+      follow_redirect!
+
+      assert_response :success
+      assert_equal expected_last_page, inertia.props.deep_symbolize_keys.dig(:pagination, :page)
+    end
   end
 end

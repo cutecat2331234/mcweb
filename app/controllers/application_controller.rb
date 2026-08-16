@@ -5,6 +5,7 @@ class ApplicationController < ActionController::Base
   include FeatureGuard
   include ServiceResponder
   include Pagy::Method
+  include CanonicalPagination
   include InertiaSerializable
   include InertiaSharedProps
   include BlockedUsersFilterable

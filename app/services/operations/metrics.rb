@@ -15,6 +15,7 @@ module Operations
 
       def record(metric_name, value: 1, dimensions: {}, at: Time.current)
         return false if silenced?
+        return false unless Catalog.registered?(metric_name)
 
         buffer.record(
           metric_name,

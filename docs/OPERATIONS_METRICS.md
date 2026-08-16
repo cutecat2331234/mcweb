@@ -51,6 +51,10 @@ bucket_at + metric_name + dimensions_key
 512 个不同键；超过硬边界的新键会被拒绝并增加进程内 `dropped_samples`，不会无限占用
 内存。当前目录的闭集维度数量远低于这个上限。
 
+目录自身也限制为最多 512 个理论维度组合，并与默认缓冲键上限保持一致；单个指标最多
+4 个维度、每个维度最多 16 个固定值、单指标最多 256 个组合。目录规模在启动时计算，
+超限会直接阻止应用启动，而不是等流量进入后丢弃不可预测的一部分指标。
+
 尚未刷新的当前分钟仍属于进程内易失状态。操作系统强制终止或断电可能丢失该分钟尚未
 刷新的样本；本模块不为了运行指标给每个业务请求增加同步持久化开销。
 
@@ -87,6 +91,38 @@ bucket_at + metric_name + dimensions_key
 - token、Cookie、Authorization、密码、密钥或绝对路径。
 
 采集回调失败只记录异常类名，不记录通知 payload，也不会中断业务请求。
+
+### 3.1 下游版本的启动期扩展
+
+EE 等下游版本不需要修改 CE 的 `Catalog::DEFINITIONS`。下游可在一个排在
+`operations_metrics.rb` 之后的 initializer 中注册代码所有的 registrar：
+
+```ruby
+require Rails.root.join("lib/mcweb/operations_metrics_registrar_config")
+
+registrar = lambda do |registry|
+  registry.register(
+    key: "enterprise.maintenance.run",
+    type: :counter,
+    dimensions: {
+      outcome: %w[success failure other],
+      mode: %w[automatic manual other]
+    }
+  )
+end
+
+Mcweb::OperationsMetricsRegistrarConfig.register!(
+  Rails.application.config.x,
+  registrar
+)
+```
+
+类型只允许 `counter`、`distribution`、`gauge`。指标键、维度键和维度值只接受小写
+静态 token；每个有维度的定义必须显式包含 `other`，以便未知采样值安全归一。等价的
+重复定义幂等，名称相同但类型或维度不同会 fail closed。生产进程在启动收口时执行
+registrar，随后 registrar 列表和指标目录都会冻结；开发环境代码重载只会从这份已冻结
+列表重建目录。请求或任务运行期间没有注册 API，未知指标键只会被忽略，不会创建新目录
+项或缓冲键。
 
 ## 4. 采集来源
 

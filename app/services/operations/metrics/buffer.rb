@@ -3,7 +3,7 @@
 module Operations
   module Metrics
     class Buffer
-      DEFAULT_MAX_KEYS = 512
+      DEFAULT_MAX_KEYS = Registry::MAX_TOTAL_CARDINALITY
       FLUSH_INTERVAL = 1.minute
 
       def initialize(

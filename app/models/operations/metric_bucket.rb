@@ -6,7 +6,7 @@ module Operations
 
     validates :bucket_at, :metric_name, :dimensions_key, presence: true
     validates :metric_name,
-      inclusion: { in: Metrics::Catalog::DEFINITIONS.keys }
+      inclusion: { in: ->(_record) { Metrics::Catalog.metric_names } }
     validates :dimensions_key,
       length: { is: 64 },
       format: { with: /\A[0-9a-f]{64}\z/ }

@@ -2,6 +2,7 @@
 
 require "bigdecimal"
 require "digest"
+require Rails.root.join("lib/mcweb/operations_metrics_registrar_config")
 
 module Operations
   module Metrics
@@ -72,6 +73,26 @@ module Operations
         "queue.worker_count" => {}
       }.transform_values(&:freeze).freeze
 
+      DEFINITION_TYPES = {
+        "request.duration_ms" => "distribution",
+        "request.total_duration_ms" => "distribution",
+        "request.queue_duration_ms" => "distribution",
+        "request.middleware_duration_ms" => "distribution",
+        "request.server_error" => "counter",
+        "database.slow_query.duration_ms" => "distribution",
+        "job.execution.duration_ms" => "distribution",
+        "job.failure" => "counter",
+        "mail.delivery.duration_ms" => "distribution",
+        "mail.failure" => "counter",
+        "payments.webhook.processed" => "counter",
+        "community.upload.event" => "counter",
+        "community.scan.event" => "counter",
+        "queue.enqueued" => "gauge",
+        "queue.oldest_wait_seconds" => "gauge",
+        "queue.utilization_percent" => "gauge",
+        "queue.worker_count" => "gauge"
+      }.freeze
+
       Normalized = Data.define(
         :metric_name,
         :dimensions,
@@ -80,9 +101,41 @@ module Operations
       )
 
       class << self
+        def finalize!
+          return @registry if @boot_finalized == true
+          if Rails.application.initialized? && !registration_closed?
+            raise FrozenError, "operations_metrics_catalog_boot_closed"
+          end
+
+          finalization_mutex.synchronize do
+            return @registry if @boot_finalized == true
+
+            candidate = build_registry
+            @registry = candidate
+            @boot_finalized = true
+          end
+          @registry
+        end
+
+        def registry_frozen?
+          @boot_finalized == true && @registry&.frozen? == true
+        end
+
+        def metric_names
+          registry.keys
+        end
+
+        def definition(metric_name)
+          registry.entry(metric_name)
+        end
+
+        def registered?(metric_name)
+          !definition(metric_name).nil?
+        end
+
         def normalize(metric_name, value:, dimensions:)
           name = metric_name.to_s
-          definition = DEFINITIONS.fetch(name)
+          definition = registry.fetch(name).dimensions
           normalized_dimensions = normalize_dimensions(
             definition,
             dimensions
@@ -99,6 +152,46 @@ module Operations
         end
 
         private
+
+        def registry
+          ensure_finalized!
+          @registry
+        end
+
+        def ensure_finalized!
+          return if @boot_finalized == true
+
+          raise FrozenError, "operations_metrics_catalog_not_boot_finalized"
+        end
+
+        def build_registry
+          candidate = ::Operations::Metrics::Registry.new
+          DEFINITIONS.each do |key, dimensions|
+            candidate.register(
+              key:,
+              type: DEFINITION_TYPES.fetch(key),
+              dimensions:
+            )
+          end
+          configured_registrars.each { |registrar| registrar.call(candidate) }
+          candidate.freeze!
+        end
+
+        def configured_registrars
+          Mcweb::OperationsMetricsRegistrarConfig.freeze_and_fetch!(
+            Rails.application.config.x
+          )
+        end
+
+        def registration_closed?
+          Mcweb::OperationsMetricsRegistrarConfig.registration_closed?(
+            Rails.application.config.x
+          )
+        end
+
+        def finalization_mutex
+          @finalization_mutex ||= Mutex.new
+        end
 
         def normalize_dimensions(definition, dimensions)
           source = dimensions.to_h.stringify_keys

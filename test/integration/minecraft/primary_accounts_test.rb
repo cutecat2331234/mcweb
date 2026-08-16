@@ -36,6 +36,9 @@ module Minecraft
       assert_equal "/minecraft/default-skin-avatar.png", accounts.first.fetch(:avatarUrl)
       assert_equal minecraft_cached_skin_path(@second_identity, variant: "avatar"),
         accounts.second.fetch(:avatarUrl)
+      assert_equal minecraft_identity_link_path(@first_link), accounts.first.fetch(:unlinkUrl)
+      assert_equal "First", accounts.first.fetch(:unlinkConfirmation)
+      assert_equal @first_link.lock_version, accounts.first.fetch(:lockVersion)
       serialized = accounts.to_json
       refute_includes serialized, "Inactive"
       refute_includes serialized, "Other"

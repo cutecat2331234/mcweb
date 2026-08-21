@@ -1,10 +1,15 @@
 module Community
   class Report < ApplicationRecord
     REASON_CODES = %w[spam offensive off_topic other].freeze
-    # Compatibility contract for plugins and older callers. Values deliberately
-    # remain stable codes; user-facing labels belong to the locale-backed
-    # reason_options API below.
-    REASONS = REASON_CODES.index_with(&:itself).freeze
+    # Public compatibility contract retained for plugins and older callers.
+    # New user-facing code must use reason_options so labels follow the active
+    # locale instead of treating these historical Chinese values as UI copy.
+    REASONS = {
+      "spam" => "垃圾广告 / 刷屏",
+      "offensive" => "辱骂 / 不当内容",
+      "off_topic" => "跑题 / 无关内容",
+      "other" => "其他"
+    }.freeze
     MAX_REASON_LENGTH = 2_000
 
     # Built-in reasons plus any admin-configured extras

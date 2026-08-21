@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_21_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -469,6 +469,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090000) do
     t.bigint "user_id", null: false
     t.index ["forum_conversation_id"], name: "index_forum_message_drafts_on_forum_conversation_id"
     t.index ["user_id", "forum_conversation_id"], name: "index_forum_message_drafts_on_user_and_conversation", unique: true
+  end
+
+  create_table "forum_message_revision_backfill_queue", id: false, force: :cascade do |t|
+    t.bigint "forum_message_id", null: false
+    t.datetime "queued_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
+    t.index ["forum_message_id"], name: "idx_forum_message_revision_backfill_queue", unique: true
   end
 
   create_table "forum_message_revisions", force: :cascade do |t|
@@ -3711,6 +3717,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090000) do
   add_foreign_key "forum_email_reply_deliveries", "forum_posts"
   add_foreign_key "forum_event_webhook_deliveries", "forum_posts"
   add_foreign_key "forum_event_webhook_deliveries", "forum_topics"
+  add_foreign_key "forum_message_revision_backfill_queue", "forum_messages", on_delete: :cascade
   add_foreign_key "forum_message_revisions", "forum_messages", on_delete: :cascade
   add_foreign_key "forum_message_revisions", "users", column: "editor_id"
   add_foreign_key "forum_messages", "forum_conversations"
@@ -4003,6 +4010,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090000) do
   # User-defined PostgreSQL trigger functions and triggers.
   # These database invariants must also exist after db:schema:load.
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_message_revisions_dequeue_backfill()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      DELETE FROM forum_message_revision_backfill_queue
+      WHERE forum_message_id = NEW.forum_message_id;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.forum_message_revisions_reject_change()
      RETURNS trigger
      LANGUAGE plpgsql
@@ -4015,6 +4035,39 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090000) do
       END IF;
 
       RAISE EXCEPTION 'forum_message_revisions is immutable while its message exists';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_messages_queue_revision_backfill()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      INSERT INTO forum_message_revision_backfill_queue (forum_message_id, queued_at)
+      VALUES (NEW.id, CURRENT_TIMESTAMP)
+      ON CONFLICT (forum_message_id) DO NOTHING;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_messages_require_current_revision()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF NOT EXISTS (
+        SELECT 1
+        FROM forum_message_revisions
+        WHERE forum_message_id = NEW.id
+          AND revision = NEW.revision
+      ) THEN
+        RAISE EXCEPTION 'forum message current revision is missing';
+      END IF;
+      RETURN NEW;
     END;
     $function$;
   MCWEB_SCHEMA_SQL
@@ -4260,7 +4313,19 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_message_revisions_dequeue_backfill AFTER INSERT ON public.forum_message_revisions FOR EACH ROW EXECUTE FUNCTION forum_message_revisions_dequeue_backfill();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER forum_message_revisions_immutable BEFORE DELETE OR UPDATE ON public.forum_message_revisions FOR EACH ROW EXECUTE FUNCTION forum_message_revisions_reject_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_messages_queue_revision_backfill AFTER INSERT ON public.forum_messages FOR EACH ROW EXECUTE FUNCTION forum_messages_queue_revision_backfill();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE CONSTRAINT TRIGGER forum_messages_require_current_revision AFTER INSERT OR UPDATE OF revision ON public.forum_messages DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION forum_messages_require_current_revision();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'

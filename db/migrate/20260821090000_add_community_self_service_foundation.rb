@@ -1,130 +1,321 @@
 # frozen_string_literal: true
 
+# Expand phase for community self-service.
+#
+# Existing-table indexes are concurrent, constraints start NOT VALID, and no
+# message encryption runs here. The queue triggers cover messages created by an
+# old web process until the new dual-writing application has been deployed and
+# the explicit post-deploy contract gate is finalized.
 class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
+  disable_ddl_transaction!
+
   REVIEW_PERMISSION = "forum.conversations.reports.review"
-
-  class MigrationMessage < ActiveRecord::Base
-    self.table_name = "forum_messages"
-  end
-
-  class MigrationMessageRevision < ActiveRecord::Base
-    self.table_name = "forum_message_revisions"
-
-    has_encrypted :body, encrypted_attribute: :encrypted_body
-  end
+  REPORT_DEDUPE_INDEX = "idx_forum_reports_pending_dedupe"
+  MESSAGE_ATTACHMENT_INDEX = "index_forum_post_attachments_on_forum_message_id"
 
   def up
-    add_column :forum_reports, :dedupe_key, :string, limit: 64
-    add_index :forum_reports,
-      :dedupe_key,
-      unique: true,
-      where: "dedupe_key IS NOT NULL AND status = 'pending'",
-      name: "idx_forum_reports_pending_dedupe"
-    add_check_constraint :forum_reports,
-      "dedupe_key IS NULL OR dedupe_key ~ '^[0-9a-f]{64}$'",
-      name: "forum_reports_dedupe_key_format"
-
-    create_table :forum_report_evidences do |t|
-      t.references :forum_report, null: false, foreign_key: true, index: { unique: true }
-      t.string :subject_type, null: false
-      t.bigint :subject_id, null: false
-      t.integer :subject_revision, null: false, default: 1
-      t.text :encrypted_snapshot, null: false
-      t.string :content_digest, null: false, limit: 64
-      t.datetime :captured_at, null: false
-      t.timestamps
-    end
-    add_index :forum_report_evidences,
-      %i[subject_type subject_id],
-      name: "idx_forum_report_evidences_subject"
-    add_check_constraint :forum_report_evidences,
-      "subject_revision > 0",
-      name: "forum_report_evidences_positive_revision"
-    add_check_constraint :forum_report_evidences,
-      "content_digest ~ '^[0-9a-f]{64}$'",
-      name: "forum_report_evidences_digest_format"
-
-    add_column :forum_messages, :revision, :integer, null: false, default: 1
-    add_check_constraint :forum_messages, "revision > 0", name: "forum_messages_positive_revision"
-    create_table :forum_message_revisions do |t|
-      t.references :forum_message,
-        null: false,
-        foreign_key: { on_delete: :cascade }
-      t.references :editor, null: false, foreign_key: { to_table: :users }
-      t.integer :revision, null: false
-      t.text :encrypted_body, null: false
-      t.string :content_digest, null: false, limit: 64
-      t.datetime :created_at, null: false
-    end
-    add_index :forum_message_revisions,
-      %i[forum_message_id revision],
-      unique: true,
-      name: "idx_forum_message_revisions_unique"
-    add_check_constraint :forum_message_revisions,
-      "revision > 0",
-      name: "forum_message_revisions_positive_revision"
-    add_check_constraint :forum_message_revisions,
-      "content_digest ~ '^[0-9a-f]{64}$'",
-      name: "forum_message_revisions_digest_format"
-    backfill_message_revisions
-    add_column :forum_message_drafts, :attachment_ids, :jsonb, null: false, default: []
-
-    add_reference :forum_post_attachments,
-      :forum_message,
-      foreign_key: true,
-      index: true
-    add_check_constraint :forum_post_attachments,
-      "NOT (forum_post_id IS NOT NULL AND forum_message_id IS NOT NULL)",
-      name: "forum_post_attachments_single_parent"
-
-    add_column :forum_profile_posts, :edited_at, :datetime
-    add_column :forum_profile_posts, :revision, :integer, null: false, default: 1
-    add_check_constraint :forum_profile_posts,
-      "revision > 0",
-      name: "forum_profile_posts_positive_revision"
-    add_column :forum_profile_post_comments, :edited_at, :datetime
-    add_column :forum_profile_post_comments, :revision, :integer, null: false, default: 1
-    add_check_constraint :forum_profile_post_comments,
-      "revision > 0",
-      name: "forum_profile_post_comments_positive_revision"
-
+    expand_reports
+    expand_report_evidence
+    expand_message_revisions
+    expand_message_attachments
+    expand_profile_wall
     create_report_evidence_immutability
     create_message_revision_immutability
+    create_message_revision_queue_triggers
     upsert_review_permission
   end
 
   def down
-    execute "DROP TRIGGER IF EXISTS forum_report_evidences_immutable ON forum_report_evidences"
-    execute "DROP FUNCTION IF EXISTS forum_report_evidences_reject_change()"
-    execute "DROP TRIGGER IF EXISTS forum_message_revisions_immutable ON forum_message_revisions"
-    execute "DROP FUNCTION IF EXISTS forum_message_revisions_reject_change()"
-
-    remove_check_constraint :forum_profile_post_comments, name: "forum_profile_post_comments_positive_revision"
-    remove_column :forum_profile_post_comments, :revision
-    remove_column :forum_profile_post_comments, :edited_at
-    remove_check_constraint :forum_profile_posts, name: "forum_profile_posts_positive_revision"
-    remove_column :forum_profile_posts, :revision
-    remove_column :forum_profile_posts, :edited_at
-
-    remove_check_constraint :forum_post_attachments, name: "forum_post_attachments_single_parent"
-    schedule_message_attachment_cleanup_for_rollback
-    remove_reference :forum_post_attachments, :forum_message, foreign_key: true
-
-    drop_table :forum_message_revisions
-    remove_column :forum_message_drafts, :attachment_ids
-    remove_check_constraint :forum_messages, name: "forum_messages_positive_revision"
-    remove_column :forum_messages, :revision
-
-    drop_table :forum_report_evidences
-    remove_check_constraint :forum_reports, name: "forum_reports_dedupe_key_format"
-    remove_index :forum_reports, name: "idx_forum_reports_pending_dedupe"
-    remove_column :forum_reports, :dedupe_key
+    drop_message_revision_contract
+    drop_message_revision_queue_triggers
+    drop_immutability_triggers
+    contract_profile_wall
+    contract_message_attachments
+    contract_message_revisions
+    contract_report_evidence
+    contract_reports
+    # The permission and grants are deliberately retained: rollback cannot
+    # prove whether this migration, an earlier release, or a plugin created them.
   end
 
   private
 
-  # Keep private-message blobs quota-visible and eligible for the existing
-  # cleanup worker after their ownership column disappears during rollback.
+  def expand_reports
+    add_column :forum_reports, :dedupe_key, :string, limit: 64, if_not_exists: true
+    ensure_concurrent_index(
+      :forum_reports,
+      :dedupe_key,
+      unique: true,
+      where: "dedupe_key IS NOT NULL AND status = 'pending'",
+      name: REPORT_DEDUPE_INDEX
+    )
+    add_check_constraint :forum_reports,
+      "dedupe_key IS NULL OR dedupe_key ~ '^[0-9a-f]{64}$'",
+      name: "forum_reports_dedupe_key_format",
+      validate: false,
+      if_not_exists: true
+  end
+
+  def expand_report_evidence
+    unless table_exists?(:forum_report_evidences)
+      create_table :forum_report_evidences do |t|
+        t.bigint :forum_report_id, null: false
+        t.string :subject_type, null: false
+        t.bigint :subject_id, null: false
+        t.integer :subject_revision, null: false, default: 1
+        t.text :encrypted_snapshot, null: false
+        t.string :content_digest, null: false, limit: 64
+        t.datetime :captured_at, null: false
+        t.timestamps
+      end
+    end
+
+    add_index :forum_report_evidences,
+      :forum_report_id,
+      unique: true,
+      name: "index_forum_report_evidences_on_forum_report_id",
+      if_not_exists: true
+    add_index :forum_report_evidences,
+      %i[subject_type subject_id],
+      name: "idx_forum_report_evidences_subject",
+      if_not_exists: true
+    add_foreign_key :forum_report_evidences,
+      :forum_reports,
+      column: :forum_report_id,
+      validate: false,
+      if_not_exists: true
+    add_check_constraint :forum_report_evidences,
+      "subject_revision > 0",
+      name: "forum_report_evidences_positive_revision",
+      validate: false,
+      if_not_exists: true
+    add_check_constraint :forum_report_evidences,
+      "content_digest ~ '^[0-9a-f]{64}$'",
+      name: "forum_report_evidences_digest_format",
+      validate: false,
+      if_not_exists: true
+  end
+
+  def expand_message_revisions
+    add_column :forum_messages,
+      :revision,
+      :integer,
+      default: 1,
+      if_not_exists: true
+    add_check_constraint :forum_messages,
+      "revision > 0",
+      name: "forum_messages_positive_revision",
+      validate: false,
+      if_not_exists: true
+
+    unless table_exists?(:forum_message_revisions)
+      create_table :forum_message_revisions do |t|
+        t.bigint :forum_message_id, null: false
+        t.bigint :editor_id, null: false
+        t.integer :revision, null: false
+        t.text :encrypted_body, null: false
+        t.string :content_digest, null: false, limit: 64
+        t.datetime :created_at, null: false
+      end
+    end
+    unless table_exists?(:forum_message_revision_backfill_queue)
+      create_table :forum_message_revision_backfill_queue, id: false do |t|
+        t.bigint :forum_message_id, null: false
+        t.datetime :queued_at, null: false, default: -> { "CURRENT_TIMESTAMP" }
+      end
+    end
+
+    add_index :forum_message_revisions,
+      :forum_message_id,
+      name: "index_forum_message_revisions_on_forum_message_id",
+      if_not_exists: true
+    add_index :forum_message_revisions,
+      :editor_id,
+      name: "index_forum_message_revisions_on_editor_id",
+      if_not_exists: true
+    add_index :forum_message_revisions,
+      %i[forum_message_id revision],
+      unique: true,
+      name: "idx_forum_message_revisions_unique",
+      if_not_exists: true
+    add_index :forum_message_revision_backfill_queue,
+      :forum_message_id,
+      unique: true,
+      name: "idx_forum_message_revision_backfill_queue",
+      if_not_exists: true
+    add_foreign_key :forum_message_revisions,
+      :forum_messages,
+      column: :forum_message_id,
+      on_delete: :cascade,
+      validate: false,
+      if_not_exists: true
+    add_foreign_key :forum_message_revisions,
+      :users,
+      column: :editor_id,
+      validate: false,
+      if_not_exists: true
+    add_foreign_key :forum_message_revision_backfill_queue,
+      :forum_messages,
+      column: :forum_message_id,
+      on_delete: :cascade,
+      validate: false,
+      if_not_exists: true
+    add_check_constraint :forum_message_revisions,
+      "revision > 0",
+      name: "forum_message_revisions_positive_revision",
+      validate: false,
+      if_not_exists: true
+    add_check_constraint :forum_message_revisions,
+      "content_digest ~ '^[0-9a-f]{64}$'",
+      name: "forum_message_revisions_digest_format",
+      validate: false,
+      if_not_exists: true
+
+    add_column :forum_message_drafts,
+      :attachment_ids,
+      :jsonb,
+      default: [],
+      if_not_exists: true
+  end
+
+  def expand_message_attachments
+    add_column :forum_post_attachments,
+      :forum_message_id,
+      :bigint,
+      if_not_exists: true
+    ensure_concurrent_index(
+      :forum_post_attachments,
+      :forum_message_id,
+      name: MESSAGE_ATTACHMENT_INDEX
+    )
+    add_foreign_key :forum_post_attachments,
+      :forum_messages,
+      column: :forum_message_id,
+      validate: false,
+      if_not_exists: true
+    add_check_constraint :forum_post_attachments,
+      "NOT (forum_post_id IS NOT NULL AND forum_message_id IS NOT NULL)",
+      name: "forum_post_attachments_single_parent",
+      validate: false,
+      if_not_exists: true
+  end
+
+  def expand_profile_wall
+    add_column :forum_profile_posts, :edited_at, :datetime, if_not_exists: true
+    add_column :forum_profile_posts,
+      :revision,
+      :integer,
+      default: 1,
+      if_not_exists: true
+    add_check_constraint :forum_profile_posts,
+      "revision > 0",
+      name: "forum_profile_posts_positive_revision",
+      validate: false,
+      if_not_exists: true
+
+    add_column :forum_profile_post_comments, :edited_at, :datetime, if_not_exists: true
+    add_column :forum_profile_post_comments,
+      :revision,
+      :integer,
+      default: 1,
+      if_not_exists: true
+    add_check_constraint :forum_profile_post_comments,
+      "revision > 0",
+      name: "forum_profile_post_comments_positive_revision",
+      validate: false,
+      if_not_exists: true
+  end
+
+  def contract_profile_wall
+    remove_check_constraint :forum_profile_post_comments,
+      name: "forum_profile_post_comments_positive_revision",
+      if_exists: true
+    remove_column :forum_profile_post_comments, :revision, if_exists: true
+    remove_column :forum_profile_post_comments, :edited_at, if_exists: true
+    remove_check_constraint :forum_profile_posts,
+      name: "forum_profile_posts_positive_revision",
+      if_exists: true
+    remove_column :forum_profile_posts, :revision, if_exists: true
+    remove_column :forum_profile_posts, :edited_at, if_exists: true
+  end
+
+  def contract_message_attachments
+    return unless column_exists?(:forum_post_attachments, :forum_message_id)
+
+    remove_check_constraint :forum_post_attachments,
+      name: "forum_post_attachments_single_parent",
+      if_exists: true
+    schedule_message_attachment_cleanup_for_rollback
+    remove_foreign_key :forum_post_attachments,
+      column: :forum_message_id,
+      if_exists: true
+    remove_index :forum_post_attachments,
+      name: MESSAGE_ATTACHMENT_INDEX,
+      algorithm: :concurrently,
+      if_exists: true
+    remove_column :forum_post_attachments, :forum_message_id
+  end
+
+  def contract_message_revisions
+    drop_table :forum_message_revision_backfill_queue, if_exists: true
+    drop_table :forum_message_revisions, if_exists: true
+    remove_column :forum_message_drafts, :attachment_ids, if_exists: true
+    remove_check_constraint :forum_messages,
+      name: "forum_messages_positive_revision",
+      if_exists: true
+    remove_column :forum_messages, :revision, if_exists: true
+  end
+
+  def contract_report_evidence
+    drop_table :forum_report_evidences, if_exists: true
+  end
+
+  def contract_reports
+    remove_check_constraint :forum_reports,
+      name: "forum_reports_dedupe_key_format",
+      if_exists: true
+    remove_index :forum_reports,
+      name: REPORT_DEDUPE_INDEX,
+      algorithm: :concurrently,
+      if_exists: true
+    remove_column :forum_reports, :dedupe_key, if_exists: true
+  end
+
+  # Failed CREATE INDEX CONCURRENTLY can leave an invalid artifact. Remove it
+  # before retrying so IF NOT EXISTS cannot silently preserve an unusable index.
+  def ensure_concurrent_index(table, columns, name:, **options)
+    if invalid_index?(name)
+      execute "DROP INDEX CONCURRENTLY IF EXISTS #{connection.quote_table_name(name)}"
+    end
+
+    add_index table,
+      columns,
+      **options,
+      name: name,
+      algorithm: :concurrently,
+      if_not_exists: true
+  end
+
+  def invalid_index?(name)
+    ActiveModel::Type::Boolean.new.cast(
+      select_value(<<~SQL.squish)
+        SELECT EXISTS (
+          SELECT 1
+          FROM pg_index AS indexes
+          INNER JOIN pg_class AS index_relations
+            ON index_relations.oid = indexes.indexrelid
+          INNER JOIN pg_namespace AS namespaces
+            ON namespaces.oid = index_relations.relnamespace
+          WHERE namespaces.nspname = current_schema()
+            AND index_relations.relname = #{connection.quote(name)}
+            AND indexes.indisvalid = FALSE
+        )
+      SQL
+    )
+  end
+
+  # Preserve blob ownership and quota accounting before rollback removes the
+  # only relation that distinguishes a linked private-message attachment.
   def schedule_message_attachment_cleanup_for_rollback
     execute <<~SQL.squish
       UPDATE forum_uploads AS uploads
@@ -142,35 +333,9 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
     SQL
   end
 
-  def backfill_message_revisions
-    MigrationMessage.reset_column_information
-    MigrationMessageRevision.reset_column_information
-
-    MigrationMessage.find_each do |message|
-      next if MigrationMessageRevision.exists?(
-        forum_message_id: message.id,
-        revision: message.revision
-      )
-
-      revision = MigrationMessageRevision.new(
-        forum_message_id: message.id,
-        editor_id: message.user_id,
-        revision: message.revision,
-        content_digest: Digest::SHA256.hexdigest(message.body.to_s),
-        created_at: message.created_at
-      )
-      revision.body = message.body
-      revision.save!(validate: false)
-      revision.reload
-      unless revision.encrypted_body.present? && revision.body == message.body
-        raise "forum message revision backfill verification failed for row #{message.id}"
-      end
-    end
-  end
-
   def create_report_evidence_immutability
     execute <<~SQL
-      CREATE FUNCTION forum_report_evidences_reject_change()
+      CREATE OR REPLACE FUNCTION forum_report_evidences_reject_change()
       RETURNS trigger
       LANGUAGE plpgsql
       AS $$
@@ -179,16 +344,26 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       END;
       $$;
 
-      CREATE TRIGGER forum_report_evidences_immutable
-      BEFORE UPDATE OR DELETE ON forum_report_evidences
-      FOR EACH ROW
-      EXECUTE FUNCTION forum_report_evidences_reject_change();
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_trigger
+          WHERE tgname = 'forum_report_evidences_immutable'
+            AND tgrelid = 'forum_report_evidences'::regclass
+        ) THEN
+          CREATE TRIGGER forum_report_evidences_immutable
+          BEFORE UPDATE OR DELETE ON forum_report_evidences
+          FOR EACH ROW
+          EXECUTE FUNCTION forum_report_evidences_reject_change();
+        END IF;
+      END;
+      $$;
     SQL
   end
 
   def create_message_revision_immutability
     execute <<~SQL
-      CREATE FUNCTION forum_message_revisions_reject_change()
+      CREATE OR REPLACE FUNCTION forum_message_revisions_reject_change()
       RETURNS trigger
       LANGUAGE plpgsql
       AS $$
@@ -203,11 +378,85 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       END;
       $$;
 
-      CREATE TRIGGER forum_message_revisions_immutable
-      BEFORE UPDATE OR DELETE ON forum_message_revisions
-      FOR EACH ROW
-      EXECUTE FUNCTION forum_message_revisions_reject_change();
+      DO $$
+      BEGIN
+        IF NOT EXISTS (
+          SELECT 1 FROM pg_trigger
+          WHERE tgname = 'forum_message_revisions_immutable'
+            AND tgrelid = 'forum_message_revisions'::regclass
+        ) THEN
+          CREATE TRIGGER forum_message_revisions_immutable
+          BEFORE UPDATE OR DELETE ON forum_message_revisions
+          FOR EACH ROW
+          EXECUTE FUNCTION forum_message_revisions_reject_change();
+        END IF;
+      END;
+      $$;
     SQL
+  end
+
+  def create_message_revision_queue_triggers
+    execute <<~SQL
+      CREATE OR REPLACE FUNCTION forum_messages_queue_revision_backfill()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        INSERT INTO forum_message_revision_backfill_queue (forum_message_id, queued_at)
+        VALUES (NEW.id, CURRENT_TIMESTAMP)
+        ON CONFLICT (forum_message_id) DO NOTHING;
+        RETURN NEW;
+      END;
+      $$;
+
+      CREATE OR REPLACE FUNCTION forum_message_revisions_dequeue_backfill()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      BEGIN
+        DELETE FROM forum_message_revision_backfill_queue
+        WHERE forum_message_id = NEW.forum_message_id;
+        RETURN NEW;
+      END;
+      $$;
+
+      DROP TRIGGER IF EXISTS forum_messages_queue_revision_backfill ON forum_messages;
+      CREATE TRIGGER forum_messages_queue_revision_backfill
+      AFTER INSERT ON forum_messages
+      FOR EACH ROW
+      EXECUTE FUNCTION forum_messages_queue_revision_backfill();
+
+      DROP TRIGGER IF EXISTS forum_message_revisions_dequeue_backfill ON forum_message_revisions;
+      CREATE TRIGGER forum_message_revisions_dequeue_backfill
+      AFTER INSERT ON forum_message_revisions
+      FOR EACH ROW
+      EXECUTE FUNCTION forum_message_revisions_dequeue_backfill();
+    SQL
+  end
+
+  def drop_message_revision_queue_triggers
+    execute "DROP TRIGGER IF EXISTS forum_messages_queue_revision_backfill ON forum_messages"
+    if table_exists?(:forum_message_revisions)
+      execute "DROP TRIGGER IF EXISTS forum_message_revisions_dequeue_backfill ON forum_message_revisions"
+    end
+    execute "DROP FUNCTION IF EXISTS forum_messages_queue_revision_backfill()"
+    execute "DROP FUNCTION IF EXISTS forum_message_revisions_dequeue_backfill()"
+  end
+
+  def drop_message_revision_contract
+    execute "DROP TRIGGER IF EXISTS forum_messages_require_current_revision ON forum_messages"
+    execute "DROP FUNCTION IF EXISTS forum_messages_require_current_revision()"
+  end
+
+  def drop_immutability_triggers
+    if table_exists?(:forum_report_evidences)
+      execute "DROP TRIGGER IF EXISTS forum_report_evidences_immutable ON forum_report_evidences"
+    end
+    execute "DROP FUNCTION IF EXISTS forum_report_evidences_reject_change()"
+    if table_exists?(:forum_message_revisions)
+      execute "DROP TRIGGER IF EXISTS forum_message_revisions_immutable ON forum_message_revisions"
+    end
+    execute "DROP FUNCTION IF EXISTS forum_message_revisions_reject_change()"
   end
 
   def upsert_review_permission

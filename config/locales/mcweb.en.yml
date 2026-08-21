@@ -374,6 +374,7 @@ en:
       registration_success: Registration successful. Please check your email to verify your address.
       verification_email_resent: If that address is registered and not yet verified, we sent a new verification email.
       totp_setup_started: Scan the QR code with your authenticator app, then enter the code to finish setup.
+      totp_setup_stale: This two-factor setup was replaced in another browser. Start setup again.
       totp_setup_missing: Start two-factor setup before confirming.
       totp_invalid: Invalid two-factor code.
       totp_enabled: Two-factor authentication is enabled.
@@ -939,6 +940,8 @@ en:
         report_submitted: Report submitted.
         reset_token_expired: Reset token has expired.
         email_or_token_required: Email or token with new password is required.
+        registration_temporarily_unavailable: Registration is temporarily unavailable. Please try again.
+        email_delivery_temporarily_unavailable: Verification email delivery is temporarily unavailable. Please try again.
         cannot_vote_in_topic: You are not allowed to vote in this topic.
         poll_closed: Poll is closed.
         no_options_selected: No options selected.

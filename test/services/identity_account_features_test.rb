@@ -15,7 +15,12 @@ class IdentityAccountFeaturesTest < ActiveSupport::TestCase
   end
 
   test "resend email verification sends mail for unverified user" do
-    assert_enqueued_emails 1 do
+    assert_difference -> {
+      Operations::DurableEnqueueIntent.where(
+        handler_key: Identity::EmailVerificationDelivery::HANDLER_KEY,
+        source_id: @user.id
+      ).count
+    }, 1 do
       result = Identity::ResendEmailVerification.call(email: @user.email, ip_address: "127.0.0.1")
       assert result.success?
     end
@@ -24,7 +29,12 @@ class IdentityAccountFeaturesTest < ActiveSupport::TestCase
   test "resend email verification is noop for verified user" do
     @user.update!(email_verified: true)
 
-    assert_no_enqueued_emails do
+    assert_no_difference -> {
+      Operations::DurableEnqueueIntent.where(
+        handler_key: Identity::EmailVerificationDelivery::HANDLER_KEY,
+        source_id: @user.id
+      ).count
+    } do
       result = Identity::ResendEmailVerification.call(email: @user.email, ip_address: "127.0.0.1")
       assert result.success?
     end

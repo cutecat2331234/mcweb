@@ -189,7 +189,25 @@ production-readiness claim.
    library's form, form-item, input, password, checkbox, alert and button components.
    Chinese and English labels have one consistent vertical rhythm, controls remain at
    least 44 px high, and no custom page-level focus or border system is introduced.
-6. **Read-only prefetch contract:** hover or intent prefetch may target only an
+6. **Atomic registration and recoverable verification:** the User, registration
+   custom fields, default group memberships, registration audit and durable email
+   intent commit in one transaction. The usable verification token is encrypted at
+   rest; the durable ledger stores only its digest. Queue rejection or a lost job
+   leaves a recoverable intent rather than a registered account with no delivery
+   path.
+7. **Single-use password reset:** completion locks the User row and revalidates the
+   token and TTL after acquiring the lock. Token consumption, password replacement,
+   failed-login reset, session revocation and audit commit together. Two connections
+   racing with one token yield exactly one success.
+8. **Generation-safe TOTP setup:** confirmation requires the browser's pending setup
+   secret and compares it with the freshly locked User secret before verifying the
+   code and enabling TOTP. Starting setup in another browser invalidates the older
+   setup rather than enabling a different secret.
+9. **Private personal responses:** account, profile/security, session, export,
+   shipping-address, customer-order and wallet controllers reuse one CE response
+   concern that emits `Cache-Control: private, no-store`. Product-specific behavior
+   remains in its existing controller.
+10. **Read-only prefetch contract:** hover or intent prefetch may target only an
    explicit allowlist of side-effect-free GET destinations. Rendering a topic,
    conversation, notification inbox, product or attachment must not silently mark it
    read, increment views/downloads, or change recent-history state. Those effects use
@@ -208,6 +226,16 @@ production-readiness claim.
   that mutation fail, even when its controller was holding an older `User` instance.
 - The sign-in form passes desktop and narrow-width geometry, keyboard-focus and
   accessibility checks using the shared UI library.
+- Injected failure at registration custom-field, default-group, audit or durable-intent
+  boundaries leaves no User, membership, audit or intent behind; a committed intent
+  remains recoverable after queue handoff failure without exposing the raw token.
+- Concurrent password-reset completions produce one success, one invalid-token result,
+  one audit event and one fully revoked session set; audit failure rolls every change
+  back.
+- In the two-browser TOTP sequence `setup A -> setup B -> confirm A`, confirmation A
+  is rejected and only a valid confirmation for secret B may enable TOTP.
+- Every listed authenticated personal page returns `private, no-store` on success and
+  on validation/error responses containing personal state.
 - Hovering navigation, topic, message, product, notification or attachment links does
   not change persisted read/view/download/history state and does not stream the target
   payload. A real visit or explicit action applies each effect exactly once.

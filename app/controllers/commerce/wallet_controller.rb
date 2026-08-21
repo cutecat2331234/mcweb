@@ -2,6 +2,8 @@
 
 module Commerce
   class WalletController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
 
     def show

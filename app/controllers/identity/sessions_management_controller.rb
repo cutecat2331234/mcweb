@@ -2,6 +2,8 @@
 
 module Identity
   class SessionsManagementController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
 
     def index

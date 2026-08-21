@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_220000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -3472,6 +3472,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.string "display_name"
     t.string "email", null: false
     t.datetime "email_verification_sent_at"
+    t.text "email_verification_token_ciphertext"
     t.string "email_verification_token_digest"
     t.boolean "email_verified", default: false, null: false
     t.datetime "email_verified_at"

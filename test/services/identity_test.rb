@@ -6,20 +6,22 @@ class Identity::RegisterUserTest < ActiveSupport::TestCase
   test "registers a user with email verification token" do
     email = "new-#{SecureRandom.hex(4)}@example.com"
     username = "newuser#{SecureRandom.hex(4)}"
-    assert_enqueued_with(job: MailDeliveryJob) do
-      result = Identity::RegisterUser.call(
-        email: email,
-        username: username,
-        password: "password123",
-        ip_address: "127.0.0.1"
-      )
+    result = Identity::RegisterUser.call(
+      email: email,
+      username: username,
+      password: "password123",
+      ip_address: "127.0.0.1"
+    )
 
-      assert result.success?
-      user = result.value[:user]
-      assert_equal email, user.email
-      assert_not user.email_verified?
-      assert result.value[:verification_token].present?
-    end
+    assert result.success?
+    user = result.value[:user]
+    assert_equal email, user.email
+    assert_not user.email_verified?
+    assert result.value[:verification_token].present?
+    assert Operations::DurableEnqueueIntent.exists?(
+      handler_key: Identity::EmailVerificationDelivery::HANDLER_KEY,
+      source_id: user.id
+    )
   end
 
   test "rejects passwords shorter than six characters" do

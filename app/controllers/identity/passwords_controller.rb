@@ -2,8 +2,9 @@
 
 module Identity
   class PasswordsController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
-    after_action :set_private_no_store
 
     def edit
       render_password_form
@@ -55,10 +56,6 @@ module Identity
           code
         ]
       )
-    end
-
-    def set_private_no_store
-      response.set_header("Cache-Control", "private, no-store")
     end
   end
 end

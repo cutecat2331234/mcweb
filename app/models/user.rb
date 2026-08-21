@@ -8,6 +8,7 @@ class User < ApplicationRecord
 
   has_secure_password
 
+  has_encrypted :email_verification_token
   has_encrypted :totp_secret
   has_encrypted :recovery_codes, type: :array
 
@@ -205,6 +206,7 @@ class User < ApplicationRecord
   def generate_email_verification_token!
     token = SecureRandom.urlsafe_base64(32)
     update!(
+      email_verification_token: token,
       email_verification_token_digest: digest_token(token),
       email_verification_sent_at: Time.current
     )
@@ -218,6 +220,7 @@ class User < ApplicationRecord
       email_verified: true,
       email_verified_at: Time.current,
       developer_mode_email_verified: false,
+      email_verification_token: nil,
       email_verification_token_digest: nil,
       email_verification_sent_at: nil
     )

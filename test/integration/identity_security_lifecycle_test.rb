@@ -16,7 +16,9 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
   end
 
   test "totp confirmation presents recovery codes once" do
-    @user.setup_totp!
+    post identity_security_totp_setup_path
+    assert_redirected_to identity_security_path
+    @user.reload
     code = ROTP::TOTP.new(@user.totp_secret).now
     first_recovery_code = @user.recovery_codes.first
 
@@ -30,6 +32,48 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
     get identity_security_path
     assert_response :success
     refute_includes response.body, first_recovery_code
+  end
+
+  test "a stale browser cannot enable the secret installed by a newer totp setup" do
+    browser_a = open_session
+    browser_b = open_session
+    [ browser_a, browser_b ].each do |browser|
+      browser.post identity_session_path, params: {
+        session: {
+          email: @user.email,
+          password: "password123",
+          remember_me: "0"
+        }
+      }
+      assert_equal 302, browser.response.status
+    end
+
+    browser_a.post identity_security_totp_setup_path
+    assert_equal 302, browser_a.response.status
+    secret_a = @user.reload.totp_secret
+
+    browser_b.post identity_security_totp_setup_path
+    assert_equal 302, browser_b.response.status
+    secret_b = @user.reload.totp_secret
+    refute_equal secret_a, secret_b
+
+    browser_a.post identity_security_totp_confirm_path, params: {
+      totp: { code: ROTP::TOTP.new(secret_a).now }
+    }
+    assert_equal 302, browser_a.response.status
+    refute @user.reload.totp_enabled?
+    assert_equal secret_b, @user.totp_secret
+
+    browser_b.post identity_security_totp_confirm_path, params: {
+      totp: { code: ROTP::TOTP.new(secret_b).now }
+    }
+    assert_equal 302, browser_b.response.status
+    assert @user.reload.totp_enabled?
+    assert_equal secret_b, @user.totp_secret
+    assert_equal 1, AuditLog.where(
+      action: "identity.totp_enabled",
+      resource_id: @user.id
+    ).count
   end
 
   test "recovery code regeneration uses the signed-in flow and exposes replacements once" do
@@ -53,10 +97,14 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
 
   test "email change revokes other sessions and requires replacement verification" do
     other_session = create_test_session(@user).value.fetch(:session)
-    delivery_enqueued = false
 
     Mcweb::DeveloperMode.stub(:allow?, false) do
-      MailDeliveryJob.stub(:perform_later, ->(*_args, **_kwargs) { delivery_enqueued = true }) do
+      assert_difference -> {
+        Operations::DurableEnqueueIntent.where(
+          handler_key: Identity::EmailVerificationDelivery::HANDLER_KEY,
+          source_id: @user.id
+        ).count
+      }, 1 do
         patch identity_security_email_path, params: {
           email_change: {
             email: "changed@example.com",
@@ -68,7 +116,6 @@ class IdentitySecurityLifecycleIntegrationTest < ActionDispatch::IntegrationTest
     end
 
     assert_redirected_to identity_security_path
-    assert delivery_enqueued
     assert_equal "changed@example.com", @user.reload.email
     refute @user.email_verified?
     assert other_session.reload.revoked?

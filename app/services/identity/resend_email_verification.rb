@@ -19,12 +19,25 @@ module Identity
 
       user = User.find_by(email: @email)
       return generic_success unless user
-      return generic_success if user.email_verified? && !user.developer_mode_email_verified?
-      return generic_success if user.email_verification_sent_at.present? && user.email_verification_sent_at > RESEND_COOLDOWN.ago
 
-      token = user.generate_email_verification_token!
-      Identity::Mailer.verification_email(user.id, token).deliver_later
+      User.transaction do
+        user.lock!
+        if user.email_verified? && !user.developer_mode_email_verified?
+          raise ActiveRecord::Rollback
+        end
+        if user.email_verification_sent_at.present? &&
+            user.email_verification_sent_at > RESEND_COOLDOWN.ago
+          raise ActiveRecord::Rollback
+        end
 
+        token = user.generate_email_verification_token!
+        Identity::EmailVerificationDelivery.record!(user:, token:)
+      end
+
+      generic_success
+    rescue Operations::DurableEnqueue::InvalidRequest,
+           Operations::DurableEnqueue::IdempotencyConflict => e
+      Rails.logger.error("[identity.verification_resend] durable_delivery_unavailable error=#{e.class}")
       generic_success
     end
 

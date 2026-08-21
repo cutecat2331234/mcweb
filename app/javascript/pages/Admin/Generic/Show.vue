@@ -36,6 +36,12 @@ export interface DetailAction {
   external?: boolean
 }
 
+export interface OperationNotice {
+  type: 'info' | 'warning' | 'error' | 'success'
+  title: string
+  description?: string
+}
+
 export interface HighRiskAction {
   key: string
   label: string
@@ -141,6 +147,7 @@ const props = defineProps<{
   muteForm?: MuteForm | null
   banForm?: BanForm | null
   refundForm?: RefundForm | null
+  operationNotice?: OperationNotice | null
   badgeForm?: BadgeForm | null
   warningForm?: WarningForm | null
   staffNoteForm?: StaffNoteForm | null
@@ -613,6 +620,14 @@ function submitAccountAccess() {
         </a-button>
       </template>
     </a-page-header>
+
+    <a-alert
+      v-if="props.operationNotice"
+      :type="props.operationNotice.type"
+      :title="props.operationNotice.title"
+      :description="props.operationNotice.description"
+      show-icon
+    />
 
     <a-card :bordered="true">
       <a-tabs v-model:active-key="detailTab" type="line">

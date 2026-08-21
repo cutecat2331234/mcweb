@@ -282,6 +282,40 @@ module Commerce
       refute dispute.events.exists?(request_id: request_id)
     end
 
+    test "dangerous execution denies a stale actor after permission revocation" do
+      dispute = apply_channel(
+        event_id: "evt-revoked-action",
+        dispute_id: "dp-revoked-action",
+        status: "needs_response",
+        amount_cents: 400,
+        sequence: 10
+      ).value.fetch(:dispute)
+      request_id = SecureRandom.uuid
+      authorization = action(
+        dispute,
+        "accept_loss",
+        request_id: request_id,
+        authorize_only: true
+      )
+      permission = Permission.find_by!(key: "store.disputes.accept_loss")
+      role = @actor.roles.joins(:permissions).find_by!(permissions: { id: permission.id })
+      assert @actor.permission?(permission.key)
+      role.revoke_permission!(permission)
+
+      result = action(
+        dispute,
+        "accept_loss",
+        request_id: request_id,
+        authorization_token: authorization.value[:authorization_token],
+        confirmation: authorization.value[:confirmation]
+      )
+
+      assert_predicate result, :failure?
+      assert_equal I18n.t("mcweb.services.errors.high_risk_unauthorized"), result.error
+      assert_equal "evidence_required", dispute.reload.status
+      refute dispute.events.exists?(request_id: request_id)
+    end
+
     test "evidence download expires and retention purge is blocked until closed period ends" do
       dispute = apply_channel(
         event_id: "evt-evidence",

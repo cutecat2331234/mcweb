@@ -78,6 +78,21 @@ module Commerce
       refute @fulfillment.attempts.exists?(request_id: @request_id)
     end
 
+    test "execution denies a stale actor after permission revocation" do
+      authorization = authorize("retry")
+      permission = Permission.find_by!(key: "store.fulfillments.retry")
+      role = @actor.roles.joins(:permissions).find_by!(permissions: { id: permission.id })
+      assert @actor.permission?(permission.key)
+      role.revoke_permission!(permission)
+
+      result = execute("retry", authorization.value)
+
+      assert_predicate result, :failure?
+      assert_equal I18n.t("mcweb.services.errors.high_risk_unauthorized"), result.error
+      assert_equal "failed", @fulfillment.reload.status
+      refute @fulfillment.attempts.exists?(request_id: @request_id)
+    end
+
     test "signed cancellation stops active tasks and records a reason" do
       task = connector_task(status: "claimed")
       authorization = authorize("cancel")

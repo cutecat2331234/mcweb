@@ -16,9 +16,10 @@ module Commerce
         result = nil
 
         Commerce::Dispute.transaction do
-          payment = Payments::Record.lock.find(@payment_record.id)
-          Commerce::Order.lock.find(payment.store_order_id)
-          disputes = payment.disputes.order(:created_at, :id).lock.to_a
+          _order, payment, disputes = Commerce::FinancialLocking.lock_order_payment_disputes!(
+            order_id: @payment_record.store_order_id,
+            payment_record_id: @payment_record.id
+          )
           refunded_cents = payment.refunds.completed.sum(:amount_cents)
           available_cents = [ payment.amount_cents - refunded_cents, 0 ].max
 
@@ -98,6 +99,8 @@ module Commerce
         result
       rescue ActiveRecord::RecordNotUnique
         ServiceResult.success(changed: 0, idempotent: true)
+      rescue Commerce::FinancialLocking::BindingMismatch
+        ServiceResult.failure(error: "dispute_payment_binding_mismatch")
       rescue ActiveRecord::RecordInvalid => error
         ServiceResult.failure(errors: error.record.errors.to_hash)
       end

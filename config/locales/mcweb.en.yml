@@ -502,7 +502,12 @@ en:
       availability_subscribed: Availability alert subscribed.
       availability_unsubscribed: Availability alert removed.
       question_submitted: Question submitted.
+      question_updated: Question updated.
       answer_published: Answer published.
+      answer_updated: Answer updated.
+      answer_deleted: Answer deleted.
+      answer_hidden: Answer hidden.
+      answer_restored: Answer restored.
       gift_card_invalid: Invalid gift card.
       gift_card_saved: "Gift card %{code} saved to your wallet and will apply at checkout."
       gift_card_updated: Your cart gift card has been updated.
@@ -668,6 +673,7 @@ en:
       helpful_unmarked: Helpful mark removed.
       order_cancelled: Order cancelled.
       refund_requested: Refund request submitted. Please wait for review.
+      refund_withdrawn: Refund request withdrawn.
       no_receipt: No receipt available for this order.
       no_packing_slip: No packing slip available for this order.
       product_not_found: Product not found.
@@ -881,6 +887,7 @@ en:
         fulfillment_inventory_unavailable: Order inventory has not been confirmed, so fulfillment cannot be retried.
         fulfillment_state_changed: The fulfillment changed. Open a new impact preview.
         dispute_payment_invalid: The payment cannot be used for a dispute.
+        dispute_payment_binding_mismatch: The dispute does not belong to this order and payment.
         dispute_provider_mismatch: The dispute channel does not match the payment channel.
         dispute_event_identity_invalid: The channel event is missing a stable dispute or event identifier.
         dispute_event_type_invalid: The dispute event type is invalid.
@@ -1053,6 +1060,29 @@ en:
         order_mark_paid_failed: Order could not be marked paid.
         refund_amount_invalid: Invalid refund amount.
         refund_amount_exceeds_limit: Refund amount exceeds the refundable limit.
+        refund_payment_not_found: No successful payment was found for this order.
+        refund_already_pending: A refund request is already being reviewed.
+        refund_no_balance: No refundable balance remains.
+        refund_not_pending: This refund request is no longer pending.
+        refund_withdrawal_unauthorized: You cannot withdraw this refund request.
+        refund_withdrawal_no_longer_available: This refund request can no longer be withdrawn.
+        refund_binding_mismatch: The refund does not belong to this order and payment.
+        refund_completed_amount_immutable: A completed refund amount cannot be changed.
+        refund_amount_immutable: A refund amount cannot be changed after creation.
+        refund_restoration_in_progress: Refund restoration is already being processed.
+        refund_processing_in_progress: The refund is already being processed.
+        refund_no_longer_valid: This refund is no longer valid.
+        refund_provider_not_confirmed: The payment provider has not confirmed this refund.
+        refund_no_payment_basis: The order has no refundable payment basis.
+        refund_restoration_failed: Local refund restoration failed. Staff can retry without charging the provider again.
+        refund_provider_unavailable: The payment provider is unavailable. Try again later.
+        refund_provider_outcome_unknown: The payment provider's refund result could not be confirmed. The amount remains reserved for staff review; do not retry this refund.
+        refund_reconciliation_required: This payment has a refund with an unknown provider outcome. Reconcile it before creating or approving another refund.
+        payment_attempt_already_active: A payment session is already active. Finish it or wait for it to expire before choosing another payment method.
+        multiple_active_payment_attempts_require_reconciliation: This order has multiple active payment attempts and requires staff reconciliation before payment can continue.
+        refund_dispute_reconciliation_failed: Refund dispute exposure could not be reconciled.
+        refund_receipt_issue_failed: The refund receipt could not be issued.
+        refund_entitlement_revoke_failed: Digital entitlement revocation failed.
         cannot_create_order: Could not create order.
         stock_insufficient: Insufficient stock.
         order_min_subtotal_not_met: "Order does not meet the minimum subtotal (%{amount})."
@@ -1113,6 +1143,20 @@ en:
         product_already_available: Product is already available; no subscription needed.
         review_rating_invalid: Rating must be between 1 and 5.
         purchase_required_to_review: Purchase required to leave a review.
+        review_body_too_long: Review text cannot exceed 5,000 characters.
+        review_hidden_by_moderator: This review was hidden by staff and cannot be restored by resubmitting it.
+        review_already_exists: You already have a published review for this product.
+        review_update_unauthorized: You are not allowed to edit this review.
+        review_revision_required: This review changed or the page is outdated. Reopen the editor and try again.
+        review_update_conflict: This review changed in another tab. Your edits were kept; compare them with the latest version before saving again.
+        review_not_editable: This review can no longer be edited.
+        review_not_visible: This review is not available for helpful votes.
+        review_not_shareable: Only a published review can be shared to the forum.
+        review_not_moderatable: This review cannot be changed to the requested moderation state.
+        review_photo_selection_invalid: The selected retained review photo is invalid.
+        review_photos_too_many: A review may contain at most 3 photos.
+        review_photo_type_invalid: Review photos must be JPEG, PNG, GIF, or WebP images.
+        review_photo_too_large: Each review photo must be 2 MB or smaller.
         cannot_review_own: You cannot mark your own review as helpful.
         cannot_mark_own_answer: You cannot mark your own answer as helpful.
         compare_limit_reached: "You can compare at most %{count} products."
@@ -1134,6 +1178,25 @@ en:
         wishlist_note_item_missing: Item is not on your wishlist.
         order_item_mismatch: Order item does not match this product.
         order_question_unauthorized: You are not allowed to ask about this order item.
+        question_too_long: A question cannot exceed 2,000 characters.
+        question_update_unauthorized: You are not allowed to edit this question.
+        question_revision_required: This question changed or the page is outdated. Reopen the editor and try again.
+        question_update_conflict: This question changed in another tab. Your edits were kept; compare them with the latest version before saving again.
+        question_delete_unauthorized: You are not allowed to delete this question.
+        question_hidden_by_moderator: This question was hidden by staff and cannot be changed by its author.
+        question_not_editable: This question can no longer be edited.
+        question_not_moderatable: This question cannot be changed to the requested moderation state.
+        question_not_answerable: This question is not available for answers.
+        answer_too_long: An answer cannot exceed 2,000 characters.
+        answer_update_unauthorized: You are not allowed to edit this answer.
+        answer_revision_required: This answer changed or the page is outdated. Reopen the editor and try again.
+        answer_update_conflict: This answer changed in another tab. Your edits were kept; compare them with the latest version before saving again.
+        answer_delete_unauthorized: You are not allowed to delete this answer.
+        answer_hidden_by_moderator: This answer was hidden by staff and cannot be changed by its author.
+        answer_not_editable: This answer can no longer be edited.
+        answer_not_moderatable: This answer cannot be changed to the requested moderation state.
+        answer_not_visible: This answer is not available for helpful votes.
+        official_answer_permission_required: You no longer have permission to modify this official answer.
         webhook_url_private: Webhook URL cannot point to private or local addresses.
         webhook_delivery_timeout: Delivery timed out.
         product_inactive: Product is no longer available.
@@ -3266,6 +3329,8 @@ en:
           bulk_mark_fulfilled: Bulk mark fulfilled
           admin_refund_reason: Admin refund
           superseded_refund_reason: Superseded by admin refund
+          refund_reconciliation_title: Refunds paused for reconciliation
+          refund_reconciliation_description: The payment provider outcome is unknown. Refund actions are unavailable until staff reconcile the quarantined refund.
         gift_cards:
           title: Gift cards
           new: New gift card
@@ -3385,10 +3450,16 @@ en:
       review_status:
         published: Published
         hidden: Hidden
+        deleted: Deleted by author
         pending: Pending
       product_question_status:
         published: Published
         hidden: Hidden
+        deleted: Deleted by author
+      product_answer_status:
+        published: Published
+        hidden: Hidden
+        deleted: Deleted by author
       membership_status:
         active: Active
         expired: Expired
@@ -3500,10 +3571,16 @@ en:
       refund_status:
         pending: Pending review
         approved: Approved
+        provider_unknown: Needs reconciliation
         rejected: Rejected
         completed: Completed
         succeeded: Succeeded
         failed: Failed
+        withdrawn: Withdrawn
+      refund_reasons:
+        customer_request: Customer request
+        admin_refund: Admin refund
+        superseded_by_admin_refund: Superseded by admin refund
       fulfillment_status:
         pending: Pending
         processing: Processing
@@ -3533,6 +3610,8 @@ en:
         refund_requested: Refund requested
         refund_processed: Refund processed
         refund_rejected: Refund rejected
+        refund_withdrawn: Refund request withdrawn
+        refund_provider_unknown: Refund outcome needs reconciliation
         refunded: Refunded
         fulfilled: Fulfilled
         membership_granted: Membership granted

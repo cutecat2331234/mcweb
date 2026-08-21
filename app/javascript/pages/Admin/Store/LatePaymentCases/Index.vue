@@ -43,7 +43,12 @@ type LatePaymentRow = {
   webhook_reference: string | null
   webhook_event_type: string
   status: 'open' | 'acknowledged'
-  reason: 'order_cancelled' | 'order_expired'
+  reason:
+    | 'order_cancelled'
+    | 'order_expired'
+    | 'order_already_paid'
+    | 'order_not_payable'
+    | 'payment_superseded'
   amount_cents: number
   currency: string
   disposition?: string | null

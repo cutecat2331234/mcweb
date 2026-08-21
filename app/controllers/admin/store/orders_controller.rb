@@ -177,9 +177,10 @@ module Admin
             }
           ],
           backUrl: admin_store_orders_path,
-          actions: refund_actions(payment) + pending_refund_actions(pending_refunds) + shipping_actions,
+          actions: refund_actions(payment) + pending_refund_actions(pending_refunds, payment) + shipping_actions,
           highRiskActions: high_risk_order_actions,
           refundForm: refund_form_props(payment),
+          operationNotice: refund_reconciliation_notice(payment),
           shippingForm: shipping_form_props,
           staffNoteForm: { action_url: staff_note_admin_store_order_path(@order) }
         }
@@ -260,6 +261,7 @@ module Admin
 
       def refund_actions(payment)
         return [] unless payment && refundable_admin_status? && current_user.permission?("store.orders.refund")
+        return [] if refund_reconciliation_required?(payment)
 
         remaining = refund_remaining_cents(payment)
         return [] if remaining <= 0
@@ -274,6 +276,7 @@ module Admin
 
       def refund_form_props(payment)
         return nil unless payment && refundable_admin_status? && current_user.permission?("store.orders.refund")
+        return nil if refund_reconciliation_required?(payment)
 
         remaining = refund_remaining_cents(payment)
         return nil if remaining <= 0
@@ -286,7 +289,7 @@ module Admin
       end
 
       def refund_remaining_cents(payment)
-        reserved = @order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
+        reserved = payment.refunds.reserved.sum(:amount_cents)
         [ payment.amount_cents - reserved, 0 ].max
       end
 
@@ -295,9 +298,9 @@ module Admin
         if params[:refund_id].present?
           refund = @order.refunds.find_by(id: params[:refund_id])
           cents = refund.amount_cents if refund
-          reserved = @order.refunds.where(status: %w[pending completed]).where.not(id: refund&.id).sum(:amount_cents)
+          reserved = payment.refunds.reserved.where.not(id: refund&.id).sum(:amount_cents)
         else
-          reserved = @order.refunds.where(status: %w[pending completed]).sum(:amount_cents)
+          reserved = payment.refunds.reserved.sum(:amount_cents)
         end
         cents = refund_remaining_cents(payment) if cents <= 0
         remaining = payment.amount_cents - reserved
@@ -310,16 +313,19 @@ module Admin
         @order.refunds.find_by(id: params[:refund_id])
       end
 
-      def pending_refund_actions(pending_refunds)
+      def pending_refund_actions(pending_refunds, payment)
         return [] unless current_user.permission?("store.orders.refund")
 
         pending_refunds.flat_map do |refund|
-          actions = [ {
-            label: t("mcweb.admin.store.orders.action_approve_refund", amount: format_money(refund.amount_cents, @order.currency)),
-            href: admin_store_order_path(@order),
-            method: "patch",
-            data: { refund: true, refund_id: refund.id, amount_cents: refund.amount_cents }
-          } ]
+          actions = []
+          unless refund_reconciliation_required?(payment)
+            actions << {
+              label: t("mcweb.admin.store.orders.action_approve_refund", amount: format_money(refund.amount_cents, @order.currency)),
+              href: admin_store_order_path(@order),
+              method: "patch",
+              data: { refund: true, refund_id: refund.id, amount_cents: refund.amount_cents }
+            }
+          end
           actions << {
             label: t("mcweb.admin.store.orders.action_reject_refund"),
             href: admin_store_order_path(@order),
@@ -346,18 +352,25 @@ module Admin
       def process_refund
         return redirect_to admin_store_order_path(@order), alert: t("mcweb.flash.permission_denied") unless current_user.permission?("store.orders.refund")
 
-        reject_superseded_pending_refunds! if params[:refund_id].blank?
-
         payment = @order.primary_succeeded_payment_record
         return redirect_to admin_store_order_path(@order), alert: t("mcweb.flash.no_refundable_payment") unless payment
+        if refund_reconciliation_required?(payment)
+          return redirect_to admin_store_order_path(@order),
+            alert: t("mcweb.services.errors.refund_reconciliation_required")
+        end
+
+        reject_superseded_pending_refunds! if params[:refund_id].blank?
+        existing_refund = find_existing_refund
+        submitted_reason = params[:reason].presence
 
         result = Commerce::ProcessRefund.call(
           order: @order,
           payment_record: payment,
           amount_cents: refund_amount_cents(payment),
-          reason: params[:reason].presence || t("mcweb.admin.store.orders.admin_refund_reason"),
+          reason: submitted_reason,
+          reason_kind: existing_refund.nil? ? "admin_refund" : nil,
           approved_by: current_user,
-          existing_refund: find_existing_refund
+          existing_refund: existing_refund
         )
 
         if result.success?
@@ -499,9 +512,23 @@ module Admin
           Commerce::RejectRefund.call(
             refund: refund,
             actor: current_user,
-            reason: t("mcweb.admin.store.orders.superseded_refund_reason")
+            reason_kind: "superseded_by_admin_refund"
           )
         end
+      end
+
+      def refund_reconciliation_required?(_payment)
+        @order.refunds.provider_unknown.exists?
+      end
+
+      def refund_reconciliation_notice(payment)
+        return unless refund_reconciliation_required?(payment)
+
+        {
+          type: "warning",
+          title: t("mcweb.admin.store.orders.refund_reconciliation_title"),
+          description: t("mcweb.admin.store.orders.refund_reconciliation_description")
+        }
       end
 
       def order_status_tabs

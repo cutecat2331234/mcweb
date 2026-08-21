@@ -10,6 +10,7 @@ module Commerce
 
     def call
       return ServiceResult.failure(error: "share_review_unauthorized") unless @review.user_id == @user.id
+      return ServiceResult.failure(error: :review_not_shareable) unless @review.published?
       return ServiceResult.failure(error: "share_review_already_shared") if @review.forum_post_id.present?
 
       topic_result = Commerce::EnsureProductDiscussionTopic.call(product: @product, creator: @user)

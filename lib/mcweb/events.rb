@@ -50,6 +50,7 @@ module Mcweb
       commerce.refund.requested
       commerce.refund.processed
       commerce.refund.rejected
+      commerce.refund.withdrawn
       commerce.inventory.reserved
       commerce.inventory.released
       commerce.inventory.confirmed

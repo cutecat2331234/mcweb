@@ -438,7 +438,9 @@ module Identity
         "官方回答商品问答",
         admin_module: nil,
         execution_points: [
-          "app/controllers/commerce/product_questions_controller.rb#create",
+          "app/controllers/commerce/product_questions_controller.rb#answer",
+          "app/services/commerce/update_product_answer.rb#call",
+          "app/services/commerce/delete_product_answer.rb#call",
           "app/services/commerce/notify_new_product_question.rb"
         ]
       ),

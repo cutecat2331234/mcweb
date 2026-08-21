@@ -195,10 +195,11 @@ class Commerce::DeleteReviewTest < ActiveSupport::TestCase
     @review = Commerce::Review.create!(user: @user, product: @product, rating: 5, body: "Great", status: "published")
   end
 
-  test "author can hide own review" do
+  test "author deletion uses a distinct tombstone state" do
     result = Commerce::DeleteReview.call(user: @user, review: @review)
     assert result.success?
-    assert_equal "hidden", @review.reload.status
+    assert_equal "deleted", @review.reload.status
+    assert @review.deleted_at.present?
   end
 end
 

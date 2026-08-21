@@ -1,20 +1,24 @@
 module Commerce
   class Refund < ApplicationRecord
     STALE_PROCESSING_AFTER = 5.minutes
-    RESERVED_STATUSES = %w[pending approved completed].freeze
-    IN_FLIGHT_STATUSES = %w[pending approved].freeze
+    RESERVED_STATUSES = %w[pending approved provider_unknown completed].freeze
+    IN_FLIGHT_STATUSES = %w[pending approved provider_unknown].freeze
+    REASON_KINDS = %w[customer_request admin_refund superseded_by_admin_refund].freeze
 
     belongs_to :order, class_name: "Commerce::Order", foreign_key: :store_order_id
     belongs_to :payment_record, class_name: "Payments::Record"
     belongs_to :requested_by, class_name: "User", optional: true
     belongs_to :approved_by, class_name: "User", optional: true
+    belongs_to :withdrawn_by, class_name: "User", optional: true
 
     enum :status, {
       pending: "pending",
       approved: "approved",
+      provider_unknown: "provider_unknown",
       rejected: "rejected",
       failed: "failed",
-      completed: "completed"
+      completed: "completed",
+      withdrawn: "withdrawn"
     }, validate: true
 
     enum :restoration_status, {
@@ -37,6 +41,7 @@ module Commerce
 
     validates :provider_refund_id, uniqueness: true, allow_nil: true
     validates :restoration_attempts, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
+    validates :reason_kind, inclusion: { in: REASON_KINDS }, allow_nil: true
 
     validate :payment_belongs_to_order
 

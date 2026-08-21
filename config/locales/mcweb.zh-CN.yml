@@ -502,7 +502,12 @@
       availability_subscribed: 上架通知已订阅。
       availability_unsubscribed: 已取消上架通知。
       question_submitted: 问题已提交。
+      question_updated: 问题已更新。
       answer_published: 回答已发布。
+      answer_updated: 回答已更新。
+      answer_deleted: 回答已删除。
+      answer_hidden: 回答已隐藏。
+      answer_restored: 回答已恢复显示。
       gift_card_invalid: 礼品卡无效。
       gift_card_saved: "礼品卡 %{code} 已保存到您的钱包，结账时自动使用。"
       gift_card_updated: 购物车礼品卡已更新。
@@ -668,6 +673,7 @@
       helpful_unmarked: 已取消标记。
       order_cancelled: 订单已取消。
       refund_requested: 退款申请已提交，请等待审核。
+      refund_withdrawn: 退款申请已撤回。
       no_receipt: 该订单暂无收据。
       no_packing_slip: 该订单暂无装箱单。
       product_not_found: 商品不存在。
@@ -881,6 +887,7 @@
         fulfillment_inventory_unavailable: 订单库存尚未确认，不能重试履约。
         fulfillment_state_changed: 履约状态已变化，请重新打开影响预览。
         dispute_payment_invalid: 当前付款不能用于建立争议。
+        dispute_payment_binding_mismatch: 争议记录与订单或支付记录不匹配。
         dispute_provider_mismatch: 争议渠道与付款渠道不一致。
         dispute_event_identity_invalid: 渠道事件缺少稳定的争议编号或事件编号。
         dispute_event_type_invalid: 争议事件类型无效。
@@ -1053,6 +1060,29 @@
         order_mark_paid_failed: 订单无法标记为已支付。
         refund_amount_invalid: 退款金额无效。
         refund_amount_exceeds_limit: 退款金额超过可退上限。
+        refund_payment_not_found: 该订单没有成功的支付记录。
+        refund_already_pending: 已有一笔退款申请正在审核中。
+        refund_no_balance: 已没有可退款余额。
+        refund_not_pending: 该退款申请已不再处于待处理状态。
+        refund_withdrawal_unauthorized: 你无权撤回该退款申请。
+        refund_withdrawal_no_longer_available: 该退款申请已无法撤回。
+        refund_binding_mismatch: 退款记录与订单或支付记录不匹配。
+        refund_completed_amount_immutable: 已完成退款的金额不能修改。
+        refund_amount_immutable: 退款创建后不能修改金额。
+        refund_restoration_in_progress: 退款恢复流程正在处理中。
+        refund_processing_in_progress: 退款正在处理中。
+        refund_no_longer_valid: 该退款已失效。
+        refund_provider_not_confirmed: 支付渠道尚未确认该退款。
+        refund_no_payment_basis: 订单没有可退款的支付依据。
+        refund_restoration_failed: 本地退款恢复失败，工作人员可安全重试，且不会重复调用支付渠道。
+        refund_provider_unavailable: 支付渠道暂不可用，请稍后重试。
+        refund_provider_outcome_unknown: 无法确认支付渠道的退款结果。该金额会继续预留并等待工作人员核对，请勿重试这笔退款。
+        refund_reconciliation_required: 这笔支付存在渠道结果未知的退款，请先完成对账，再新建或批准其他退款。
+        payment_attempt_already_active: 当前已有支付会话，请先完成支付或等待会话过期后再选择其他支付方式。
+        multiple_active_payment_attempts_require_reconciliation: 该订单存在多笔进行中的支付尝试，请联系工作人员完成对账后再继续支付。
+        refund_dispute_reconciliation_failed: 无法重新核对退款争议敞口。
+        refund_receipt_issue_failed: 无法签发退款凭证。
+        refund_entitlement_revoke_failed: 数字权益撤销失败。
         cannot_create_order: 无法创建订单。
         stock_insufficient: 库存不足。
         order_min_subtotal_not_met: "订单未满最低消费金额（%{amount}）。"
@@ -1113,6 +1143,20 @@
         product_already_available: 商品已上架，无需订阅。
         review_rating_invalid: 评分须在 1 到 5 之间。
         purchase_required_to_review: 购买后才能评价。
+        review_body_too_long: 评价内容不能超过 5000 个字符。
+        review_hidden_by_moderator: 该评价已被工作人员隐藏，不能通过重新提交自行恢复。
+        review_already_exists: 你已为该商品发布过评价。
+        review_update_unauthorized: 你无权编辑该评价。
+        review_revision_required: 该评价已变更或当前页面已过期，请重新打开编辑器后再试。
+        review_update_conflict: 该评价已在其他标签页中变更。你的编辑内容已保留，请与最新版本对比后再保存。
+        review_not_editable: 该评价已无法编辑。
+        review_not_visible: 该评价当前不能标记为有帮助。
+        review_not_shareable: 只有已发布的评价才能分享到论坛。
+        review_not_moderatable: 该评价不能切换到所请求的审核状态。
+        review_photo_selection_invalid: 要保留的评价图片无效。
+        review_photos_too_many: 每条评价最多包含 3 张图片。
+        review_photo_type_invalid: 评价图片仅支持 JPEG、PNG、GIF 或 WebP。
+        review_photo_too_large: 每张评价图片不能超过 2 MB。
         cannot_review_own: 不能给自己的评价点有帮助。
         cannot_mark_own_answer: 不能给自己的回答点有帮助。
         compare_limit_reached: "最多只能对比 %{count} 件商品。"
@@ -1134,6 +1178,25 @@
         wishlist_note_item_missing: 心愿单中不存在该商品。
         order_item_mismatch: 订单商品不匹配。
         order_question_unauthorized: 无权就此订单提问。
+        question_too_long: 问题不能超过 2000 个字符。
+        question_update_unauthorized: 你无权编辑该问题。
+        question_revision_required: 该问题已变更或当前页面已过期，请重新打开编辑器后再试。
+        question_update_conflict: 该问题已在其他标签页中变更。你的编辑内容已保留，请与最新版本对比后再保存。
+        question_delete_unauthorized: 你无权删除该问题。
+        question_hidden_by_moderator: 该问题已被工作人员隐藏，作者不能修改其状态。
+        question_not_editable: 该问题已无法编辑。
+        question_not_moderatable: 该问题不能切换到所请求的审核状态。
+        question_not_answerable: 该问题当前不能回答。
+        answer_too_long: 回答不能超过 2000 个字符。
+        answer_update_unauthorized: 你无权编辑该回答。
+        answer_revision_required: 该回答已变更或当前页面已过期，请重新打开编辑器后再试。
+        answer_update_conflict: 该回答已在其他标签页中变更。你的编辑内容已保留，请与最新版本对比后再保存。
+        answer_delete_unauthorized: 你无权删除该回答。
+        answer_hidden_by_moderator: 该回答已被工作人员隐藏，作者不能修改其状态。
+        answer_not_editable: 该回答已无法编辑。
+        answer_not_moderatable: 该回答不能切换到所请求的审核状态。
+        answer_not_visible: 该回答当前不能标记为有帮助。
+        official_answer_permission_required: 你已没有修改该官方回答的权限。
         webhook_url_private: Webhook URL 不能指向内网或本地地址。
         webhook_delivery_timeout: 投递超时。
         product_inactive: 商品已下架。
@@ -3266,6 +3329,8 @@
           bulk_mark_fulfilled: 批量标记发货完成
           admin_refund_reason: 后台退款
           superseded_refund_reason: 已被后台退款取代
+          refund_reconciliation_title: 退款已暂停，等待对账
+          refund_reconciliation_description: 支付渠道返回结果未知。在工作人员完成待核对退款前，当前支付的退款操作不可用。
         gift_cards:
           title: 礼品卡
           new: 新建礼品卡
@@ -3385,10 +3450,16 @@
       review_status:
         published: 已发布
         hidden: 已隐藏
+        deleted: 作者已删除
         pending: 待审核
       product_question_status:
         published: 已发布
         hidden: 已隐藏
+        deleted: 作者已删除
+      product_answer_status:
+        published: 已发布
+        hidden: 已隐藏
+        deleted: 作者已删除
       membership_status:
         active: 有效
         expired: 已过期
@@ -3500,10 +3571,16 @@
       refund_status:
         pending: 待审核
         approved: 已批准
+        provider_unknown: 待人工核对
         rejected: 已拒绝
         completed: 已完成
         succeeded: 已成功
         failed: 失败
+        withdrawn: 已撤回
+      refund_reasons:
+        customer_request: 客户申请
+        admin_refund: 后台退款
+        superseded_by_admin_refund: 已被后台退款取代
       fulfillment_status:
         pending: 待发货
         processing: 处理中
@@ -3533,6 +3610,8 @@
         refund_requested: 退款申请
         refund_processed: 退款完成
         refund_rejected: 退款拒绝
+        refund_withdrawn: 退款申请已撤回
+        refund_provider_unknown: 退款结果待人工核对
         refunded: 已退款
         fulfilled: 发货完成
         membership_granted: 会员已授予

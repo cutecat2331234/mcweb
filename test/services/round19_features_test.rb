@@ -93,7 +93,8 @@ class Commerce::RejectRefundTest < ActiveSupport::TestCase
 
     assert first.success?
     assert second.failure?
-    assert_equal "Refund is not pending.", second.error
+    assert_equal "refund_not_pending", second.code
+    assert_equal I18n.t("mcweb.services.errors.refund_not_pending"), second.error
 
     @refund.reload
     assert_equal @admin.id, @refund.approved_by_id

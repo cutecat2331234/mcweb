@@ -57,11 +57,15 @@ module Admin
           return redirect_to admin_store_review_path(@review), alert: service_error_message(result)
         end
 
-        status = review_params[:status]
-        if status.present? && @review.update(status: status)
+        result = Commerce::ModerateReview.call(
+          review: @review,
+          actor: current_user,
+          target_status: review_params[:status]
+        )
+        if result.success?
           redirect_to admin_store_reviews_path, notice: t("mcweb.flash.review_updated")
         else
-          redirect_to admin_store_reviews_path, alert: @review.errors.full_messages.to_sentence
+          redirect_to admin_store_reviews_path, alert: service_error_message(result)
         end
       end
 

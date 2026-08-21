@@ -38,7 +38,7 @@ class Payments::RecordProviderModeTest < ActiveSupport::TestCase
     Payments::Record.create!(
       order: @order,
       provider: "stripe",
-      status: "pending",
+      status: "failed",
       amount_cents: 1_000,
       currency: "CNY",
       metadata: metadata

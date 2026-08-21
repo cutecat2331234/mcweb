@@ -79,6 +79,51 @@ module Payments
       assert_equal "awaiting_payment", @order.reload.status
     end
 
+    test "a verified success for a locally failed attempt is preserved for manual review" do
+      @payment.update!(status: "failed")
+
+      result = process_payload(stripe_payload)
+
+      assert result.success?, result.error
+      assert result.value[:orphaned]
+      assert_equal "succeeded", @payment.reload.status
+      assert_equal "payment_superseded", @payment.metadata["orphan_reason"]
+      assert_equal "awaiting_payment", @order.reload.status
+      assert_equal "payment_superseded", Payments::LatePaymentCase.sole.reason
+    end
+
+    test "an old failed link paid after a replacement is queued once across webhook retries" do
+      @payment.update!(status: "failed")
+      replacement = Payments::Record.create!(
+        order: @order,
+        provider: "fake",
+        status: "pending",
+        amount_cents: @order.total_cents,
+        currency: @order.currency,
+        provider_payment_id: "fake_replacement_#{SecureRandom.hex(8)}"
+      )
+      replacement_result = Commerce::ConfirmPayment.call(
+        payment_record: replacement,
+        provider_payment_id: replacement.provider_payment_id
+      )
+      assert replacement_result.success?, replacement_result.error
+
+      payload = stripe_payload
+      first = process_payload(payload)
+      duplicate = process_payload(payload)
+
+      assert first.success?, first.error
+      assert first.value[:orphaned]
+      assert duplicate.success?, duplicate.error
+      assert duplicate.value[:idempotent]
+      assert_equal "succeeded", @payment.reload.status
+      assert_equal "order_already_paid", @payment.metadata["orphan_reason"]
+      assert_equal "order_already_paid", Payments::LatePaymentCase.sole.reason
+      assert_equal 1, Payments::LatePaymentCase.where(payment_record: @payment).count
+      assert_includes Commerce::ConfirmPayment::APPLIED_PAYMENT_STATUSES, @order.reload.status
+      assert_equal 2, @order.payment_records.succeeded.count
+    end
+
     test "payment success and queue insertion roll back together when queue persistence fails" do
       @order.update!(status: "cancelled")
 
@@ -114,7 +159,7 @@ module Payments
 
     private
 
-    def stripe_payload
+    def stripe_payload(payment_intent: nil)
       {
         id: "evt_late_#{SecureRandom.hex(8)}",
         object: "event",
@@ -128,7 +173,7 @@ module Payments
             amount_total: @payment.amount_cents,
             currency: @payment.currency.downcase,
             client_reference_id: @order.public_id,
-            payment_intent: "pi_late_#{SecureRandom.hex(8)}",
+            payment_intent: payment_intent || "pi_late_#{SecureRandom.hex(8)}",
             metadata: {
               payment_record_id: @payment.id.to_s,
               order_public_id: @order.public_id

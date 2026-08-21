@@ -2,7 +2,7 @@
 
 module Payments
   class OperationsSerializer
-    ORPHAN_REASONS = %w[order_cancelled order_expired].freeze
+    ORPHAN_REASONS = Commerce::ConfirmPayment::ORPHAN_REASONS
     TOKEN_PATTERN = /\A[a-zA-Z0-9_.:-]+\z/
 
     class << self

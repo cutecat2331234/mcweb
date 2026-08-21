@@ -54,6 +54,10 @@ module Commerce
       end
 
       def call
+        with_fresh_authorized_actor { call_under_permission_lock }
+      end
+
+      def call_under_permission_lock
         existing = existing_event
         return idempotency_result(existing) if existing && !@authorize_only
 
@@ -65,7 +69,20 @@ module Commerce
         execute
       end
 
+      private :call_under_permission_lock
+
       private
+
+      def with_fresh_authorized_actor
+        Identity::AuthorizedMutation.with(
+          actor: @actor,
+          all_of: ACTION_PERMISSIONS[@action],
+          failure_code: "high_risk_unauthorized"
+        ) do |actor|
+          @actor = actor
+          yield
+        end
+      end
 
       def authorize
         return ServiceResult.failure(error: "dispute_action_not_high_risk") unless dangerous?
@@ -90,10 +107,12 @@ module Commerce
       def execute
         result = nil
 
-        Commerce::Dispute.transaction do
-          @dispute = Commerce::Dispute.lock.find(@dispute.id)
-          @dispute.order.lock!
-          @dispute.payment_record.lock!
+        Commerce::Dispute.transaction(requires_new: true) do
+          _order, _payment, @dispute = Commerce::FinancialLocking.lock_order_payment_dispute!(
+            order_id: @dispute.store_order_id,
+            payment_record_id: @dispute.payment_record_id,
+            dispute_id: @dispute.id
+          )
 
           existing = existing_event
           if existing
@@ -169,6 +188,8 @@ module Commerce
         end
 
         result
+      rescue Commerce::FinancialLocking::BindingMismatch
+        ServiceResult.failure(error: "dispute_payment_binding_mismatch")
       rescue ActiveRecord::RecordNotUnique
         idempotency_result(existing_event)
       rescue ActiveRecord::RecordInvalid => error

@@ -25,6 +25,12 @@ module Commerce
           next
         end
 
+        active_payments = @order.payment_records
+          .where(status: Commerce::PrepareOrderPayment::ACTIVE_STATUSES)
+          .order(:id)
+          .lock
+          .to_a
+
         previous_status = @order.status
         @order.cancel!
         stock_result = restore_stock!
@@ -35,7 +41,7 @@ module Commerce
         restore_coupon_usage!
         restore_gift_card_balance_if_debited!
         restore_store_credit_if_debited!
-        cancel_pending_payments!
+        cancel_pending_payments!(active_payments)
         cancelled = true
       end
 
@@ -101,8 +107,10 @@ module Commerce
       order.update!(coupon_usage_restored: true)
     end
 
-    def cancel_pending_payments!
-      @order.payment_records.where(status: %w[pending processing]).update_all(status: "failed", updated_at: Time.current)
+    def cancel_pending_payments!(payments)
+      payments.each do |payment|
+        payment.update!(status: "failed") if payment.pending? || payment.processing?
+      end
     end
 
     def restore_gift_card_balance_if_debited!

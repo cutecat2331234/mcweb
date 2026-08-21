@@ -3,7 +3,7 @@
 module Payments
   class LatePaymentCase < ApplicationRecord
     PERMISSION = "store.payments.late_review"
-    REASONS = %w[order_cancelled order_expired].freeze
+    REASONS = Commerce::ConfirmPayment::ORPHAN_REASONS
     DISPOSITIONS = %w[
       refund_required
       contact_customer

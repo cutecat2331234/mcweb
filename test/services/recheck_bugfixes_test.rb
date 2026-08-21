@@ -38,17 +38,20 @@ class CreateReviewModerationBypassTest < ActiveSupport::TestCase
     review = Commerce::CreateReview.call(user: @user, product: @product, rating: 5, body: "great").value
     assert_equal "published", review.status
 
-    review.update!(status: :hidden) # moderator (or DeleteReview) hides it
+    review.update!(status: :hidden)
 
     result = Commerce::CreateReview.call(user: @user, product: @product, rating: 1, body: "abusive resubmit")
-    assert result.success?
+    assert result.failure?
+    assert_equal I18n.t("mcweb.services.errors.review_hidden_by_moderator"), result.error
     assert_equal "hidden", review.reload.status, "a hidden review must stay hidden on resubmit"
   end
 
-  test "a normal resubmit of a still-published review stays published" do
+  test "create does not double as update for a published review" do
     review = Commerce::CreateReview.call(user: @user, product: @product, rating: 4, body: "ok").value
-    Commerce::CreateReview.call(user: @user, product: @product, rating: 5, body: "updated")
+    result = Commerce::CreateReview.call(user: @user, product: @product, rating: 5, body: "updated")
+    assert result.failure?
     assert_equal "published", review.reload.status
+    assert_equal 4, review.rating
   end
 end
 

@@ -70,8 +70,10 @@ module Commerce
 
         result = nil
         Commerce::Dispute.transaction do
-          @payment_record = Payments::Record.lock.find(@payment_record.id)
-          order = Commerce::Order.lock.find(@payment_record.store_order_id)
+          order, @payment_record = Commerce::FinancialLocking.lock_order_payment!(
+            order_id: @payment_record.store_order_id,
+            payment_record_id: @payment_record.id
+          )
           result = existing_event_result
           next if result
 
@@ -136,6 +138,8 @@ module Commerce
         end
 
         result
+      rescue Commerce::FinancialLocking::BindingMismatch
+        ServiceResult.failure(error: "dispute_payment_binding_mismatch")
       rescue ActiveRecord::RecordNotUnique
         existing_event_result ||
           ServiceResult.failure(error: "dispute_channel_event_conflict")

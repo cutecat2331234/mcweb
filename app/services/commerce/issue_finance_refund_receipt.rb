@@ -159,6 +159,7 @@ module Commerce
         invoice_public_id: invoice.public_id,
         invoice_number: invoice.document_number,
         reason: refund.reason,
+        reason_kind: refund.reason_kind,
         provider_status: refund.provider_status,
         allocation:,
         tax: {

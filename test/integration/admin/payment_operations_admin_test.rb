@@ -152,7 +152,7 @@ module Admin
           Payments::Record.create!(
             order: @order,
             provider: "stripe",
-            status: "pending",
+            status: "succeeded",
             amount_cents: 3_000,
             currency: "CNY",
             provider_payment_id: "pi_payment_ops_page_#{index}_#{SecureRandom.hex(4)}"

@@ -3,8 +3,11 @@
 module Payments
   class FakeProvider < Provider
     def create_payment(payment_record, return_url_base: nil)
-      provider_payment_id = "fake_#{SecureRandom.alphanumeric(16)}"
-      payment_record.update!(provider_payment_id: provider_payment_id)
+      provider_payment_id = nil
+      payment_record.with_lock do
+        provider_payment_id = payment_record.provider_payment_id.presence || "fake_#{SecureRandom.alphanumeric(16)}"
+        payment_record.update!(provider_payment_id: provider_payment_id) if payment_record.provider_payment_id.blank?
+      end
       ServiceResult.success(payment_record: payment_record, checkout_url: "#{Mcweb::Paths::APP_PREFIX}/payments/fake/#{provider_payment_id}")
     end
 

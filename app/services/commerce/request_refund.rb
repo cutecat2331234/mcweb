@@ -10,33 +10,39 @@ module Commerce
     end
 
     def call
-      return ServiceResult.failure(error: :not_your_order) unless @order.user_id == @user.id
-      return ServiceResult.failure(error: :order_is_not_refundable) unless %w[paid fulfilled completed].include?(@order.status)
-      return ServiceResult.failure(error: :refund_window_has_expired) unless within_refund_window?
+      return refund_failure(:not_your_order) unless @order.user_id == @user.id
+      return refund_failure(:order_is_not_refundable) unless %w[paid fulfilled completed].include?(@order.status)
+      return refund_failure(:refund_window_has_expired) unless within_refund_window?
 
       refund = nil
       failure_error = nil
 
       Commerce::Order.transaction do
-        @order.lock!
-        @order.reload
+        @order = Commerce::Order.lock.find(@order.id)
 
         payment = succeeded_payment
         unless payment
-          failure_error = "No payment found."
+          failure_error = :refund_payment_not_found
           raise ActiveRecord::Rollback
         end
-        payment.lock!
-        payment.reload
+        @order, payment = Commerce::FinancialLocking.lock_order_payment!(
+          order_id: @order.id,
+          payment_record_id: payment.id
+        )
+
+        if @order.refunds.provider_unknown.exists?
+          failure_error = :refund_reconciliation_required
+          raise ActiveRecord::Rollback
+        end
 
         if Commerce::Refund.where(order: @order).in_flight.exists?
-          failure_error = "Refund already pending."
+          failure_error = :refund_already_pending
           raise ActiveRecord::Rollback
         end
 
         max_cents = refundable_cents(payment)
         if max_cents <= 0
-          failure_error = "No refundable amount remaining."
+          failure_error = :refund_no_balance
           raise ActiveRecord::Rollback
         end
 
@@ -55,7 +61,8 @@ module Commerce
           payment_record: payment,
           status: "pending",
           amount_cents: requested,
-          reason: @reason || "Customer request",
+          reason: @reason.presence,
+          reason_kind: "customer_request",
           requested_by: @user,
           requested_by_customer: true
         )
@@ -71,7 +78,7 @@ module Commerce
         )
       end
 
-      return ServiceResult.failure(error: failure_error) if failure_error.present?
+      return refund_failure(failure_error) if failure_error.present?
 
       Commerce::NotifyOrderEvent.call(
         user: @order.user,
@@ -92,11 +99,17 @@ module Commerce
       end
 
       ServiceResult.success(refund)
+    rescue Commerce::FinancialLocking::BindingMismatch
+      refund_failure(:refund_binding_mismatch)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end
 
     private
+
+    def refund_failure(code)
+      ServiceResult.failure(error: code, code: code)
+    end
 
     def refundable_cents(payment)
       refunded = payment.refunds.reserved.sum(:amount_cents)

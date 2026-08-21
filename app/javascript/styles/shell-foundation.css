@@ -30,6 +30,47 @@
   --mc-type-page-title-tracking: -0.01em;
   --mc-type-page-subtitle-size: 14px;
   --mc-type-page-subtitle-line-height: 1.5;
+
+  --mc-control-primary-foreground: #ffffff;
+  --mc-control-primary-background: #165dff;
+  --mc-control-primary-background-hover: #0f4fe5;
+  --mc-control-primary-background-active: #0e42d2;
+}
+
+/*
+ * Arco's default primary hover is too light for its white 14px label. Keep
+ * shared portal, Staff, and Admin entrypoints on one accessible filled-button
+ * contract; semantic status buttons retain their own palettes.
+ */
+.arco-btn.arco-btn-primary:not(
+  .arco-btn-status-danger,
+  .arco-btn-status-warning,
+  .arco-btn-status-success,
+  .arco-btn-disabled
+):not([disabled]) {
+  color: var(--mc-control-primary-foreground);
+  background: var(--mc-control-primary-background);
+  border-color: var(--mc-control-primary-background);
+}
+
+.arco-btn.arco-btn-primary:not(
+  .arco-btn-status-danger,
+  .arco-btn-status-warning,
+  .arco-btn-status-success,
+  .arco-btn-disabled
+):not([disabled]):is(:hover, :focus-visible) {
+  background: var(--mc-control-primary-background-hover);
+  border-color: var(--mc-control-primary-background-hover);
+}
+
+.arco-btn.arco-btn-primary:not(
+  .arco-btn-status-danger,
+  .arco-btn-status-warning,
+  .arco-btn-status-success,
+  .arco-btn-disabled
+):not([disabled]):active {
+  background: var(--mc-control-primary-background-active);
+  border-color: var(--mc-control-primary-background-active);
 }
 
 .mc-shell-header {

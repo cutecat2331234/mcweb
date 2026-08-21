@@ -24,6 +24,21 @@ const staffLayout = readFileSync(
   'utf8',
 )
 
+function relativeLuminance(hex: string) {
+  const channels = hex.match(/[a-f\d]{2}/gi)?.map((value) => Number.parseInt(value, 16) / 255)
+  assert.ok(channels && channels.length === 3, `expected six-digit hex color, received ${hex}`)
+  const [red, green, blue] = channels.map((value) => (
+    value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4
+  ))
+  return (0.2126 * red) + (0.7152 * green) + (0.0722 * blue)
+}
+
+function contrastRatio(foreground: string, background: string) {
+  const lighter = Math.max(relativeLuminance(foreground), relativeLuminance(background))
+  const darker = Math.min(relativeLuminance(foreground), relativeLuminance(background))
+  return (lighter + 0.05) / (darker + 0.05)
+}
+
 test('admin and application entrypoints load one shared shell geometry contract', () => {
   for (const entrypoint of [adminEntry, appEntry]) {
     assert.match(entrypoint, /import '@\/styles\/shell-foundation\.css'/)
@@ -64,6 +79,40 @@ test('shared PageHeader typography and actions wrap without changing page rhythm
   assert.match(foundation, /\.mc-page-surface \.arco-page-header-extra\s*\{[\s\S]*?white-space:\s*normal/)
   assert.match(foundation, /\.mc-page-surface \.arco-page-header-extra > \.arco-space\s*\{[\s\S]*?flex-wrap:\s*wrap/)
   assert.match(foundation, /@media \(max-width: 1099px\)[\s\S]*?\.arco-page-header-extra[\s\S]*?flex:\s*1 1 100%/)
+})
+
+test('shared filled primary buttons retain readable labels in every interactive state', () => {
+  const colors = {
+    foreground: '#ffffff',
+    resting: '#165dff',
+    hover: '#0f4fe5',
+    active: '#0e42d2',
+  }
+
+  for (const [state, color] of Object.entries(colors).filter(([name]) => name !== 'foreground')) {
+    assert.ok(
+      contrastRatio(colors.foreground, color) >= 4.5,
+      `${state} primary button contrast must meet WCAG AA`,
+    )
+  }
+
+  for (const [token, color] of [
+    ['--mc-control-primary-foreground', colors.foreground],
+    ['--mc-control-primary-background', colors.resting],
+    ['--mc-control-primary-background-hover', colors.hover],
+    ['--mc-control-primary-background-active', colors.active],
+  ]) {
+    assert.match(foundation, new RegExp(`${token}:\\s*${color}`, 'i'))
+  }
+
+  assert.match(
+    foundation,
+    /\.arco-btn\.arco-btn-primary:not\([\s\S]*?:is\(:hover, :focus-visible\)[\s\S]*?background:\s*var\(--mc-control-primary-background-hover\)/,
+  )
+  assert.match(
+    foundation,
+    /\.arco-btn\.arco-btn-primary:not\([\s\S]*?:active[\s\S]*?background:\s*var\(--mc-control-primary-background-active\)/,
+  )
 })
 
 test('page gutters step down through the shared responsive scale', () => {

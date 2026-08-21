@@ -7,6 +7,7 @@ module Community
     include SoftDeletable
 
     belongs_to :post, class_name: "Community::Post", foreign_key: :forum_post_id, optional: true, inverse_of: :attachments
+    belongs_to :message, class_name: "Community::Message", foreign_key: :forum_message_id, optional: true, inverse_of: :attachments
     belongs_to :user
 
     has_one_attached :file
@@ -19,11 +20,11 @@ module Community
     validates :filename, presence: true
     validates :byte_size, numericality: { greater_than: 0 }, allow_nil: true
 
-    scope :unlinked, -> { where(forum_post_id: nil) }
+    scope :unlinked, -> { where(forum_post_id: nil, forum_message_id: nil) }
     scope :ordered, -> { order(:created_at) }
 
     def linked?
-      forum_post_id.present?
+      forum_post_id.present? || forum_message_id.present?
     end
 
     def scan_clean?

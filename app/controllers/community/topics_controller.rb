@@ -9,9 +9,9 @@ module Community
     include Community::SubscriptionNoticeable
     include Community::SectionVisibility
 
-    before_action :require_login, only: %i[new create update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate bulk_moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :require_login, only: %i[new create update destroy toggle_subscription update_subscription toggle_bookmark toggle_mute moderate bulk_moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :set_topic, only: %i[show update destroy toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
 
     def show
       @topic.record_view!
@@ -129,6 +129,10 @@ module Community
         topicSearchQuery: params[:q].to_s,
         postSort: params[:post_sort].to_s.presence || "oldest",
         canCloseOwn: can_close_own_topic?,
+        isOwnTopic: logged_in? && current_user.id == @topic.user_id,
+        canDeleteOwn: delete_own_topic_eligibility.success?,
+        deleteOwnUrl: delete_own_topic_eligibility.success? ? forum_topic_path(@topic) : nil,
+        deleteOwnRestrictedReason: logged_in? && current_user.id == @topic.user_id && delete_own_topic_eligibility.failure? ? delete_own_topic_eligibility.error : nil,
         topicBookmark: topic_bookmark ? {
           id: topic_bookmark.id,
           update_url: forum_bookmark_path(topic_bookmark),
@@ -143,6 +147,19 @@ module Community
         subscriptionUrl: logged_in? ? subscription_forum_topic_path(@topic) : nil,
         meta: topic_meta_props(@topic)
       }
+    end
+
+    def destroy
+      result = Community::DeleteOwnTopic.call(
+        user: current_user,
+        topic: @topic,
+        request_id: request.request_id
+      )
+      if result.success?
+        redirect_to forum_section_path(@topic.section), notice: t("mcweb.flash.topic_deleted")
+      else
+        redirect_to forum_topic_path(@topic), alert: service_error_message(result)
+      end
     end
 
     def new
@@ -743,6 +760,14 @@ module Community
       return false unless SiteSetting.get("forum.allow_op_close", "true") == "true"
 
       current_user.id == @topic.user_id
+    end
+
+
+    def delete_own_topic_eligibility
+      @delete_own_topic_eligibility ||= Community::DeleteOwnTopic.eligibility(
+        user: current_user,
+        topic: @topic
+      )
     end
 
     def movable_sections

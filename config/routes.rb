@@ -17,7 +17,7 @@ Rails.application.routes.draw do
     namespace :v1 do
       root "root#index"
       get "me", to: "me#show"
-      resources :notifications, only: :index do
+      resources :notifications, only: %i[index destroy] do
         member { post :read }
         collection { post :read_all }
       end
@@ -143,6 +143,7 @@ Rails.application.routes.draw do
         member do
           patch :claim
           patch :resolve_target
+          post :reveal_evidence
         end
       end
       resources :mutes, only: %i[create destroy]
@@ -597,7 +598,7 @@ Rails.application.routes.draw do
     get "topics/:id.rss", to: "rss#topic", as: :topic_rss, defaults: { format: :rss }
     get "categories/:slug.rss", to: "rss#category", as: :category_rss, defaults: { format: :rss }
     get "categories/:slug", to: "categories#show", as: :category
-    resources :topics, only: %i[show new create update] do
+    resources :topics, only: %i[show new create update destroy] do
       collection do
         get :similar_titles
         patch :bulk_moderate
@@ -646,7 +647,7 @@ Rails.application.routes.draw do
       end
     end
     resources :reports, only: %i[new create]
-    resources :notifications, only: %i[index] do
+    resources :notifications, only: %i[index destroy] do
       member do
         patch :mark_read
         get :visit
@@ -744,8 +745,10 @@ Rails.application.routes.draw do
     end
     post "users/:username/profile_posts", to: "profile_posts#create", as: :user_profile_posts
     delete "profile_posts/:id", to: "profile_posts#destroy", as: :profile_post
+    patch "profile_posts/:id", to: "profile_posts#update"
     post "profile_posts/:id/comments", to: "profile_post_comments#create", as: :profile_post_comments
     delete "profile_post_comments/:id", to: "profile_post_comments#destroy", as: :profile_post_comment
+    patch "profile_post_comments/:id", to: "profile_post_comments#update"
   end
 
     get "payments/fake/:id", to: "payments/fake#show", as: :fake_payment

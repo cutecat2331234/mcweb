@@ -175,6 +175,10 @@ const props = defineProps<{
     body: string
     author: { username: string; display_name: string | null; avatar_url: string; url: string }
     created_at: string
+    edited?: boolean
+    revision: number
+    can_edit: boolean
+    edit_url?: string | null
     can_delete: boolean
     delete_url: string
     report_url?: string | null
@@ -184,8 +188,13 @@ const props = defineProps<{
       body: string
       author: { username: string; display_name: string | null; avatar_url: string; url: string }
       created_at: string
+      edited?: boolean
+      revision: number
+      can_edit: boolean
+      edit_url?: string | null
       can_delete: boolean
       delete_url: string
+      report_url?: string | null
     }>
   }>
 }>()
@@ -279,6 +288,8 @@ function switchTab(tab: 'topics' | 'posts' | 'store' | 'assigned' | 'minecraft')
 const wallForm = useForm({ profile_post: { body: '' } })
 const commentDrafts = reactive<Record<number, string>>({})
 const openComments = reactive<Record<number, boolean>>({})
+const editingWallKey = ref<string | null>(null)
+const editingWallBody = ref('')
 
 function submitWallPost() {
   if (!props.profile_wall?.post_url || !wallForm.profile_post.body.trim()) return
@@ -303,6 +314,34 @@ function submitComment(post: { id: number; comment_url: string }) {
 
 function deleteWallItem(url: string) {
   router.delete(url, { preserveScroll: true })
+}
+
+function wallItemKey(kind: 'post' | 'comment', id: number) {
+  return `${kind}:${id}`
+}
+
+function startWallEdit(kind: 'post' | 'comment', item: { id: number; body: string }) {
+  editingWallKey.value = wallItemKey(kind, item.id)
+  editingWallBody.value = item.body
+}
+
+function cancelWallEdit() {
+  editingWallKey.value = null
+  editingWallBody.value = ''
+}
+
+function saveWallEdit(
+  kind: 'post' | 'comment',
+  item: { id: number; revision: number; edit_url?: string | null },
+) {
+  if (!item.edit_url || !editingWallBody.value.trim()) return
+  const payload = kind === 'post'
+    ? { profile_post: { body: editingWallBody.value, expected_revision: item.revision } }
+    : { comment: { body: editingWallBody.value, expected_revision: item.revision } }
+  router.patch(item.edit_url, payload, {
+    preserveScroll: true,
+    onSuccess: cancelWallEdit,
+  })
 }
 </script>
 
@@ -584,11 +623,21 @@ function deleteWallItem(url: string) {
           <div class="min-w-0 flex-1">
             <div class="flex flex-wrap items-center gap-x-2 text-sm">
               <UserLink variant="name" :user="post.author" link-class="font-medium hover:underline" />
-              <span class="text-xs text-muted-foreground">{{ post.created_at }}</span>
+              <span class="text-xs text-muted-foreground">
+                {{ post.created_at }}<span v-if="post.edited"> · {{ t('userProfile.wallEdited') }}</span>
+              </span>
             </div>
-            <p class="mt-1 whitespace-pre-wrap break-words text-sm">{{ post.body }}</p>
+            <div v-if="editingWallKey === wallItemKey('post', post.id)" class="mt-2 space-y-2">
+              <Textarea v-model="editingWallBody" rows="3" maxlength="5000" />
+              <div class="flex gap-2">
+                <Button type="button" size="xs" @click="saveWallEdit('post', post)">{{ t('common.save') }}</Button>
+                <Button type="button" size="xs" variant="outline" @click="cancelWallEdit">{{ t('common.cancel') }}</Button>
+              </div>
+            </div>
+            <p v-else class="mt-1 whitespace-pre-wrap break-words text-sm">{{ post.body }}</p>
             <div class="mt-2 flex flex-wrap gap-3 text-xs">
               <button type="button" class="text-muted-foreground hover:text-foreground" @click="toggleCommentBox(post.id)">{{ t('userProfile.wallReply') }}</button>
+              <Button v-if="post.can_edit" type="button" size="xs" variant="ghost" class="h-auto px-0 py-0 text-xs" @click="startWallEdit('post', post)">{{ t('userProfile.wallEdit') }}</Button>
               <Link v-if="post.report_url" :href="post.report_url" class="text-muted-foreground hover:text-foreground">{{ t('userProfile.wallReport') }}</Link>
               <button v-if="post.can_delete" type="button" class="text-muted-foreground hover:text-destructive" @click="deleteWallItem(post.delete_url)">{{ t('userProfile.wallDelete') }}</button>
             </div>
@@ -597,10 +646,21 @@ function deleteWallItem(url: string) {
               <li v-for="comment in post.comments" :key="comment.id" class="text-sm">
                 <div class="flex flex-wrap items-center gap-x-2">
                   <UserLink variant="name" :user="comment.author" link-class="font-medium hover:underline" />
-                  <span class="text-xs text-muted-foreground">{{ comment.created_at }}</span>
+                  <span class="text-xs text-muted-foreground">
+                    {{ comment.created_at }}<span v-if="comment.edited"> · {{ t('userProfile.wallEdited') }}</span>
+                  </span>
+                  <Button v-if="comment.can_edit" type="button" size="xs" variant="ghost" class="h-auto px-0 py-0 text-xs" @click="startWallEdit('comment', comment)">{{ t('userProfile.wallEdit') }}</Button>
+                  <Link v-if="comment.report_url" :href="comment.report_url" class="text-xs text-muted-foreground hover:text-foreground">{{ t('userProfile.wallReport') }}</Link>
                   <button v-if="comment.can_delete" type="button" class="text-xs text-muted-foreground hover:text-destructive" @click="deleteWallItem(comment.delete_url)">{{ t('userProfile.wallDelete') }}</button>
                 </div>
-                <p class="whitespace-pre-wrap break-words text-muted-foreground">{{ comment.body }}</p>
+                <div v-if="editingWallKey === wallItemKey('comment', comment.id)" class="mt-1 space-y-2">
+                  <Textarea v-model="editingWallBody" rows="2" maxlength="3000" />
+                  <div class="flex gap-2">
+                    <Button type="button" size="xs" @click="saveWallEdit('comment', comment)">{{ t('common.save') }}</Button>
+                    <Button type="button" size="xs" variant="outline" @click="cancelWallEdit">{{ t('common.cancel') }}</Button>
+                  </div>
+                </div>
+                <p v-else class="whitespace-pre-wrap break-words text-muted-foreground">{{ comment.body }}</p>
               </li>
             </ul>
 

@@ -11,6 +11,8 @@ import Alert from '@/components/ui/Alert.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
 import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import UserLink from '@/components/portal/UserLink.vue'
+import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
+import PostAttachmentsList from '@/components/portal/PostAttachmentsList.vue'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
 
@@ -35,9 +37,12 @@ const props = defineProps<{
     is_mine: boolean
     created_at: string
     edited?: boolean
+    revision: number
     read_by?: string[]
     delete_url?: string | null
     edit_url?: string | null
+    report_url?: string | null
+    attachments: PendingAttachment[]
   }>
   pagination: PaginationMeta
   participants: Array<{
@@ -55,6 +60,7 @@ const props = defineProps<{
   setLabelUrl?: string
   conversationLabel?: string | null
   messageDraft?: string | null
+  messageDraftAttachments?: PendingAttachment[]
   messageDraftUrl?: string
   archived?: boolean
   muted?: boolean
@@ -80,8 +86,26 @@ function containsLink(text: string) {
 const pmBlocked = computed(() => !!props.warningRestrictions?.pm)
 
 const form = useForm({
-  message: { body: props.initialBody || props.messageDraft || '' },
+  message: {
+    body: props.initialBody || props.messageDraft || '',
+    attachment_ids: (props.messageDraftAttachments || []).map((attachment) => attachment.id),
+  },
 })
+const pendingAttachments = ref<PendingAttachment[]>([...(props.messageDraftAttachments || [])])
+
+function addAttachment(attachment: PendingAttachment) {
+  if (pendingAttachments.value.length >= 10) return
+  if (pendingAttachments.value.some((item) => item.id === attachment.id)) return
+  pendingAttachments.value.push(attachment)
+  form.message.attachment_ids = pendingAttachments.value.map((item) => item.id)
+  saveDraft(form.message.body)
+}
+
+function removeAttachment(id: number) {
+  pendingAttachments.value = pendingAttachments.value.filter((item) => item.id !== id)
+  form.message.attachment_ids = pendingAttachments.value.map((item) => item.id)
+  saveDraft(form.message.body)
+}
 
 let draftTimer: ReturnType<typeof setTimeout> | null = null
 function saveDraft(body: string) {
@@ -90,7 +114,7 @@ function saveDraft(body: string) {
   fetch(props.messageDraftUrl, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json', 'X-CSRF-Token': token || '', Accept: 'application/json' },
-    body: JSON.stringify({ body }),
+    body: JSON.stringify({ body, attachment_ids: pendingAttachments.value.map((item) => item.id) }),
     credentials: 'same-origin',
   })
 }
@@ -183,9 +207,9 @@ function cancelEdit() {
   editBody.value = ''
 }
 
-function saveEdit(msg: { id: number; edit_url?: string | null }) {
+function saveEdit(msg: { id: number; revision: number; edit_url?: string | null }) {
   if (!msg.edit_url || !editBody.value.trim()) return
-  router.patch(msg.edit_url, { message: { body: editBody.value } }, {
+  router.patch(msg.edit_url, { message: { body: editBody.value, expected_revision: msg.revision } }, {
     preserveScroll: true,
     onSuccess: () => cancelEdit(),
   })
@@ -207,7 +231,12 @@ function submit() {
   }
   form.post(`${routes.app}/forum/conversations/${props.conversation.id}/messages`, {
     preserveScroll: true,
-    onSuccess: () => { form.message.body = ''; saveDraft('') },
+    onSuccess: () => {
+      form.message.body = ''
+      form.message.attachment_ids = []
+      pendingAttachments.value = []
+      saveDraft('')
+    },
   })
 }
 </script>
@@ -303,12 +332,16 @@ function submit() {
           </div>
         </div>
         <div v-else class="prose prose-sm max-w-none dark:prose-invert" v-html="msg.body_html" />
+        <PostAttachmentsList v-if="msg.attachments.length" :attachments="msg.attachments" />
         <p class="mt-1 text-[10px] opacity-70">
           {{ msg.created_at }}
           <span v-if="msg.edited" class="ml-1 italic">{{ t('forum.messages.editedMarker') }}</span>
           <span v-if="msg.is_mine && msg.read_by?.length" class="ml-1">{{ t('forum.messages.readBy', { users: msg.read_by.join(t('common.listSeparator')) }) }}</span>
           <button v-if="msg.edit_url && editingId !== msg.id" type="button" class="ml-1 underline hover:opacity-100" @click="startEdit(msg)">{{ t('forum.messages.editMessage') }}</button>
           <button v-if="msg.delete_url" type="button" class="ml-1 underline hover:opacity-100" @click="deleteMessage(msg)">{{ t('forum.messages.deleteMessage') }}</button>
+          <Button v-if="msg.report_url" as-child type="button" size="xs" variant="ghost" class="ml-1 h-auto px-1 py-0 text-[10px] underline">
+            <Link :href="msg.report_url">{{ t('forum.messages.reportMessage') }}</Link>
+          </Button>
         </p>
       </div>
     </div>
@@ -331,6 +364,20 @@ function submit() {
   <form class="max-w-2xl space-y-3" @submit.prevent="submit">
     <Alert v-if="formError" variant="destructive">{{ formError }}</Alert>
     <MarkdownEditor v-model="form.message.body" :show-mention="false" :rows="3" :placeholder="t('forum.messages.messagePlaceholder')" />
+    <PostAttachmentsList :attachments="pendingAttachments" />
+    <div v-if="pendingAttachments.length" class="flex flex-wrap gap-2">
+      <Button
+        v-for="attachment in pendingAttachments"
+        :key="attachment.id"
+        type="button"
+        size="xs"
+        variant="ghost"
+        @click="removeAttachment(attachment.id)"
+      >
+        {{ t('forum.messages.removeAttachment', { filename: attachment.filename }) }}
+      </Button>
+    </div>
+    <AttachmentUploadButton :disabled="form.processing || !canSend || pendingAttachments.length >= 10" @uploaded="addAttachment" />
     <p v-if="fieldError('body')" class="text-sm text-destructive">{{ fieldError('body') }}</p>
     <p v-else-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
     <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>

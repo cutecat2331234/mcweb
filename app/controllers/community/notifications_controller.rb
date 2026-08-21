@@ -17,7 +17,7 @@ module Community
         type: type_filter,
         period: period_filter
       )
-      notifications = filtered_scope.limit(100).to_a
+      @pagy, notifications = pagy(:offset, filtered_scope, limit: 50)
       notification_access = Community::NotificationAccess.new(
         user: current_user,
         notifications: notifications
@@ -62,7 +62,8 @@ module Community
         ),
         periodFilters: notification_period_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
         activeFilters: notification_active_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
-        unreadCount: unread_count
+        unreadCount: unread_count,
+        pagination: pagy_props(@pagy)
       }
 
       # XenForo-style transient alerts auto-dismiss once the page is viewed. This
@@ -70,6 +71,11 @@ module Community
       # and the bell badge — this response's notifications + unread_count are
       # unchanged.
       current_user.notifications.unread.alerts.update_all(read_at: Time.current)
+    end
+
+    def destroy
+      current_user.notifications.find(params[:id]).destroy!
+      redirect_to forum_notifications_path(notification_index_query_params), notice: t("mcweb.flash.notification_deleted")
     end
 
     def visit
@@ -112,7 +118,8 @@ module Community
         category: params[:category].presence,
         read: params[:read].presence,
         type: params[:type].presence,
-        period: params[:period].presence
+        period: params[:period].presence,
+        page: params[:page].presence
       }.compact
     end
 
@@ -135,7 +142,8 @@ module Community
         created_at: l(notification.created_at, format: :short),
         url: visible ? safe_notification_path(notification.metadata) : nil,
         visit_url: visible ? visit_forum_notification_path(notification) : nil,
-        mark_read_url: mark_read_forum_notification_path(notification)
+        mark_read_url: mark_read_forum_notification_path(notification),
+        delete_url: forum_notification_path(notification)
       }
     end
 
@@ -274,9 +282,10 @@ module Community
           latest_at: l(latest.created_at, format: :short),
           latest_at_ts: latest.created_at.to_i,
           visit_url: notification_content_visible?(latest, notification_access: notification_access) && latest.destination_path.present? ? visit_forum_notification_path(latest) : nil,
-          items: items.first(5).map { |n| serialize_notification(n, notification_access: notification_access) }
+          delete_url: items.one? ? forum_notification_path(latest) : nil,
+          items: items.map { |n| serialize_notification(n, notification_access: notification_access) }
         }
-      end.sort_by { |g| -g[:latest_at_ts] }.first(30)
+      end.sort_by { |g| -g[:latest_at_ts] }
     end
   end
 end

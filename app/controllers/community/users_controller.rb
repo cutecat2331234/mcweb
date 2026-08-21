@@ -380,6 +380,10 @@ module Community
           body: post.body,
           author: profile_actor(post.author),
           created_at: l(post.created_at, format: :short),
+          edited: post.edited?,
+          revision: post.revision,
+          can_edit: logged_in? && current_user.id == post.user_id,
+          edit_url: (logged_in? && current_user.id == post.user_id) ? forum_profile_post_path(post.id) : nil,
           can_delete: can_manage_profile_post?(post.user_id, user.id),
           delete_url: forum_profile_post_path(post.id),
           report_url: (logged_in? && current_user.id != post.user_id) ? new_forum_report_path(reportable_type: "Community::ProfilePost", reportable_id: post.id) : nil,
@@ -390,8 +394,13 @@ module Community
               body: comment.body,
               author: profile_actor(comment.author),
               created_at: l(comment.created_at, format: :short),
+              edited: comment.edited?,
+              revision: comment.revision,
+              can_edit: logged_in? && current_user.id == comment.user_id,
+              edit_url: (logged_in? && current_user.id == comment.user_id) ? forum_profile_post_comment_path(comment.id) : nil,
               can_delete: can_manage_profile_post?(comment.user_id, user.id),
-              delete_url: forum_profile_post_comment_path(comment.id)
+              delete_url: forum_profile_post_comment_path(comment.id),
+              report_url: (logged_in? && current_user.id != comment.user_id) ? new_forum_report_path(reportable_type: "Community::ProfilePostComment", reportable_id: comment.id) : nil
             }
           end
         }

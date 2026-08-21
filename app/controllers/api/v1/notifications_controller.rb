@@ -5,9 +5,9 @@ module Api
     # Notifications for the user the API key acts as. Requires a bound user.
     class NotificationsController < BaseController
       before_action :require_bound_user!
-      skip_before_action :require_read_scope!, only: %i[read read_all]
-      before_action :require_writer!, only: %i[read read_all]
-      before_action :set_notification, only: :read
+      skip_before_action :require_read_scope!, only: %i[read read_all destroy]
+      before_action :require_writer!, only: %i[read read_all destroy]
+      before_action :set_notification, only: %i[read destroy]
 
       # GET /api/v1/notifications?unread=true
       def index
@@ -36,6 +36,12 @@ module Api
       def read_all
         count = api_user.notifications.unread.update_all(read_at: Time.current)
         render json: { data: { marked_read: count } }
+      end
+
+      # DELETE /api/v1/notifications/:id
+      def destroy
+        @notification.destroy!
+        head :no_content
       end
 
       private

@@ -32,7 +32,7 @@ class CreateProfilePostTest < ActiveSupport::TestCase
   test "rejects a blank body" do
     result = Community::CreateProfilePost.call(author: @author, profile_user: @owner, body: "   ")
     assert result.failure?
-    assert_equal "profile_post_blank", result.error
+    assert_equal "profile_post_blank", result.code
   end
 
   test "is blocked when the wall owner has blocked the author" do
@@ -80,6 +80,88 @@ class CreateProfilePostCommentTest < ActiveSupport::TestCase
     @post.update!(status: :hidden)
     result = Community::CreateProfilePostComment.call(author: @commenter, profile_post: @post, body: "hi")
     assert result.failure?
+  end
+end
+
+class EditProfileWallItemTest < ActiveSupport::TestCase
+  setup do
+    @author = create_user
+    @owner = create_user
+    @other = create_user
+    SiteSetting.set("forum.profile_posts_enabled", "true")
+    SiteSetting.set("forum.min_trust_level_profile_post", "0")
+    @post = Community::CreateProfilePost.call(
+      author: @author,
+      profile_user: @owner,
+      body: "Original profile-wall body"
+    ).value
+  end
+
+  test "the author can edit without creating a notification and the audit contains only metadata" do
+    notification_count = Notification.count
+    edited_body = "Corrected wall text #{SecureRandom.hex(6)}"
+
+    result = Community::EditProfileWallItem.call(
+      author: @author,
+      item: @post,
+      body: edited_body,
+      expected_revision: 1,
+      request_id: "profile-edit-#{SecureRandom.uuid}"
+    )
+
+    assert_predicate result, :success?, result.error
+    assert_equal notification_count, Notification.count
+    assert_equal edited_body, @post.reload.body
+    assert_equal 2, @post.revision
+    assert_predicate @post, :edited?
+
+    audit = AuditLog.by_action("community.profile_wall_item_updated")
+      .find_by!(resource_type: "Community::ProfilePost", resource_id: @post.id)
+    assert_equal [ "body" ], audit.metadata.fetch("changed_fields")
+    assert_equal 2, audit.metadata.fetch("revision")
+    assert_equal Digest::SHA256.hexdigest(edited_body), audit.metadata.fetch("body_digest")
+    refute_includes JSON.generate(audit.attributes), edited_body
+  end
+
+  test "stale revisions and non-authors cannot overwrite a profile post" do
+    stale = Community::EditProfileWallItem.call(
+      author: @author,
+      item: @post,
+      body: "Stale body",
+      expected_revision: 2
+    )
+    assert_predicate stale, :failure?
+    assert_equal "profile_post_revision_conflict", stale.code
+
+    unauthorized = Community::EditProfileWallItem.call(
+      author: @other,
+      item: @post,
+      body: "Unauthorized body",
+      expected_revision: 1
+    )
+    assert_predicate unauthorized, :failure?
+    assert_equal "profile_post_edit_author_only", unauthorized.code
+    assert_equal "Original profile-wall body", @post.reload.body
+  end
+
+  test "a comment cannot be edited after its parent profile post is deleted" do
+    comment = Community::CreateProfilePostComment.call(
+      author: @author,
+      profile_post: @post,
+      body: "Original comment"
+    ).value
+    @post.soft_delete!
+
+    result = Community::EditProfileWallItem.call(
+      author: @author,
+      item: comment,
+      body: "Resurrected comment",
+      expected_revision: 1
+    )
+
+    assert_predicate result, :failure?
+    assert_equal "profile_post_unavailable", result.code
+    assert_equal "Original comment", comment.reload.body
   end
 end
 

@@ -10,6 +10,8 @@ import Input from '@/components/ui/Input.vue'
 import Label from '@/components/ui/Label.vue'
 import Alert from '@/components/ui/Alert.vue'
 import MarkdownEditor from '@/components/portal/MarkdownEditor.vue'
+import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
+import PostAttachmentsList from '@/components/portal/PostAttachmentsList.vue'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -22,6 +24,7 @@ const props = defineProps<{
   recipients?: string | null
   title?: string | null
   initialBody?: string | null
+  initialAttachments?: PendingAttachment[]
   canSendPm?: boolean
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
   form_errors?: Record<string, string>
@@ -41,8 +44,22 @@ const form = useForm({
     recipients: props.recipients || '',
     title: props.title || '',
     body: props.initialBody || '',
+    attachment_ids: (props.initialAttachments || []).map((attachment) => attachment.id),
   },
 })
+const pendingAttachments = ref<PendingAttachment[]>([...(props.initialAttachments || [])])
+
+function addAttachment(attachment: PendingAttachment) {
+  if (pendingAttachments.value.length >= 10) return
+  if (pendingAttachments.value.some((item) => item.id === attachment.id)) return
+  pendingAttachments.value.push(attachment)
+  form.conversation.attachment_ids = pendingAttachments.value.map((item) => item.id)
+}
+
+function removeAttachment(id: number) {
+  pendingAttachments.value = pendingAttachments.value.filter((item) => item.id !== id)
+  form.conversation.attachment_ids = pendingAttachments.value.map((item) => item.id)
+}
 
 watch(
   () => props.form_errors,
@@ -150,6 +167,20 @@ function submitMessage() {
     <div class="space-y-2">
       <Label>{{ t('forum.messages.body') }}</Label>
       <MarkdownEditor v-model="form.conversation.body" :show-mention="false" />
+      <PostAttachmentsList :attachments="pendingAttachments" />
+      <div v-if="pendingAttachments.length" class="flex flex-wrap gap-2">
+        <Button
+          v-for="attachment in pendingAttachments"
+          :key="attachment.id"
+          type="button"
+          size="xs"
+          variant="ghost"
+          @click="removeAttachment(attachment.id)"
+        >
+          {{ t('forum.messages.removeAttachment', { filename: attachment.filename }) }}
+        </Button>
+      </div>
+      <AttachmentUploadButton :disabled="form.processing || !canSend || pendingAttachments.length >= 10" @uploaded="addAttachment" />
       <p v-if="fieldError('body')" class="text-sm text-destructive">{{ fieldError('body') }}</p>
       <p v-else-if="linkError" class="text-sm text-destructive">{{ linkError }}</p>
       <p v-else-if="bodyHasBlockedLink" class="text-sm text-destructive">{{ warningRestrictions?.link }}</p>

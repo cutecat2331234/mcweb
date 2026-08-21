@@ -8,6 +8,13 @@ module Community
       return false unless attachment.file.attached?
 
       if attachment.linked?
+        if attachment.forum_message_id.present?
+          message = attachment.message
+          return false unless message && !message.deleted?
+
+          return message.conversation.participant?(user)
+        end
+
         post = attachment.post
         return false unless post
 

@@ -130,6 +130,9 @@
       forum_conversations_create:
         name: "分享他人主题到私信"
         description: "允许将其他用户创建的论坛主题分享到私密会话；普通私信仍沿用现有规则。"
+      forum_conversations_reports_review:
+        name: "复核私信举报"
+        description: "复核私信举报并在明确操作后查看加密证据；普通板块管理权限不会自动获得此权限。"
       store_products_read:
         name: "查看商城工作人员通知"
         description: "接收低库存等仅面向商城工作人员的通知。"
@@ -402,6 +405,7 @@
       marked_read: 已标记为已读。
       alerts_dismissed: 提醒已清除。
       notification_unavailable: 此通知关联的内容已不可用。
+      notification_deleted: 通知已删除。
       report_submitted: 举报已提交。
       report_rate_limited: 举报过于频繁，请稍后再试。
       content_not_found: 内容不存在或无权访问。
@@ -696,6 +700,9 @@
       topic_unavailable: 主题不可用。
       cannot_delete_post: 无权删除此帖子。
       post_deleted: 帖子已删除。
+      topic_deleted: 主题已删除并进入保留期。
+      profile_post_updated: 主页留言已更新。
+      profile_post_comment_updated: 主页留言评论已更新。
       cannot_view_edit_history: 无权查看编辑历史。
       post_restored_version: 已恢复至选定版本。
       post_restored: 帖子已恢复。
@@ -932,6 +939,18 @@
         cart_unauthorized: 无法使用该购物车结账。
         order_created: 订单已创建。
         report_submitted: 举报已提交。
+        report_target_unavailable: 该内容不可用，或你无权举报。
+        report_reason_invalid: 请选择有效的举报原因。
+        report_detail_too_long: 举报说明不能超过 2,000 个字符。
+        report_already_submitted: 你已经提交过一条待处理的相同举报。
+        report_create_failed: 举报暂时无法保存，请重试。
+        message_revision_conflict: 编辑期间私信已发生变化，请刷新后重试。
+        profile_post_blank: 主页留言内容不能为空。
+        profile_post_too_long: 主页留言内容超过长度限制。
+        profile_post_unavailable: 该主页留言内容已经不可用。
+        profile_post_edit_author_only: 只有作者可以编辑这条主页留言内容。
+        profile_post_revision_required: 编辑前请刷新当前主页。
+        profile_post_revision_conflict: 编辑期间该主页留言内容已发生变化，请刷新后重试。
         reset_token_expired: 重置链接已过期。
         email_or_token_required: 请提供邮箱，或提供重置令牌与新密码。
         cannot_vote_in_topic: 你无权在此主题投票。
@@ -1158,6 +1177,15 @@
         silence_user_unauthorized: 无权禁言用户。
         topic_close_disabled: 楼主关闭主题功能未启用。
         topic_close_author_only: 只有主题作者可以关闭或重新打开自己的主题。
+        topic_delete_unavailable: 当前主题不能删除。
+        topic_delete_author_only: 只有主题作者可以删除自己的主题。
+        topic_delete_archived: 已归档主题不能由作者删除。
+        topic_delete_announcement: 全站公告不能由作者删除。
+        topic_delete_commerce_managed: 商城托管主题不能在这里删除。
+        topic_delete_locked: 已锁定主题不能由作者删除。
+        topic_delete_staff_managed: 已由站务接管的主题不能由作者删除。
+        topic_delete_has_replies: 主题已有其他成员回复，作者不能再删除。
+        topic_delete_evidence_protected: 举报、审核案件或保留保全正在保护此主题，作者不能删除。
         change_post_author_unauthorized: 无权更改帖子作者。
         saved_searches_none_for_test: 没有可测试的保存搜索。
         ban_reply_unauthorized: 无权禁止用户回复。
@@ -1612,6 +1640,14 @@
         cancel_reason: 测试取消
       product_duplicate_suffix: " (副本)"
     forum:
+      topic_delete:
+        author_reason: 主题作者主动删除
+      reports:
+        reasons:
+          spam: 垃圾广告 / 刷屏
+          offensive: 辱骂 / 不当内容
+          off_topic: 跑题 / 无关内容
+          other: 其他
       stats:
         topics: 主题
         posts: 帖子
@@ -2617,10 +2653,14 @@
           field_status: 状态
           field_target: 对象
           field_time: 时间
+          field_evidence_revision: 取证修订版本
+          field_evidence_digest: 证据摘要
+          field_evidence_body: 取证内容
           action_agree: 采纳并隐藏
           action_reviewed: 标记已审核
           action_dismiss: 驳回举报
           action_claim: 认领
+          action_reveal_evidence: 查看加密证据
           action_resolve_target_action: 采纳并隐藏全部举报
           action_resolve_target_dismiss: 驳回全部举报
           target_topic: "主题：%{title}"
@@ -2628,6 +2668,8 @@
           target_review: "评价 #%{id}（%{product}）"
           target_user: "用户：%{username}"
           target_profile_post: "%{username} 资料墙上的留言"
+          target_profile_comment: "%{username} 资料墙留言下的评论"
+          target_private_message: "私信 #%{id}"
           action_view_topic: 查看主题
           action_view_post: 查看帖子
           action_view_product: 查看商品

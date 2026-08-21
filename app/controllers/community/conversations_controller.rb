@@ -98,6 +98,7 @@ module Community
           title: conversation_params[:title],
           recipient_usernames: conversation_params[:recipients],
           body: conversation_params[:body],
+          attachment_ids: conversation_params[:attachment_ids],
           ip_address: request.remote_ip
         )
       else
@@ -105,6 +106,7 @@ module Community
           sender: current_user,
           recipient_username: conversation_params[:recipient],
           body: conversation_params[:body],
+          attachment_ids: conversation_params[:attachment_ids],
           ip_address: request.remote_ip
         )
       end
@@ -189,7 +191,7 @@ module Community
     end
 
     def conversation_params
-      params.require(:conversation).permit(:recipient, :recipients, :title, :body, :is_group)
+      params.require(:conversation).permit(:recipient, :recipients, :title, :body, :is_group, attachment_ids: [])
     end
 
     def new_message_form_props(overrides = {})
@@ -207,10 +209,21 @@ module Community
         recipients: overrides[:recipients] || params.dig(:conversation, :recipients).presence,
         title: overrides[:title] || params.dig(:conversation, :title).presence,
         initialBody: overrides[:initialBody] || params.dig(:conversation, :body).presence,
+        initialAttachments: pending_attachment_props(params.dig(:conversation, :attachment_ids)),
         group: is_group,
         canSendPm: Community::TrustLevel.can_send_pm?(current_user),
         warningRestrictions: warning_restrictions_props
       }.merge(overrides)
+    end
+
+    def pending_attachment_props(ids)
+      normalized = Array(ids).filter_map { |id| Integer(id, exception: false) }.uniq
+      Community::PostAttachment
+        .unlinked
+        .where(user: current_user, id: normalized)
+        .includes(:upload_record)
+        .select(&:scan_clean?)
+        .map { |attachment| serialize_conversation_attachment(attachment) }
     end
   end
 end

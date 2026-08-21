@@ -13,6 +13,7 @@ module Community
         user: current_user,
         conversation: @conversation,
         body: message_params[:body],
+        attachment_ids: message_params[:attachment_ids],
         ip_address: request.remote_ip
       )
 
@@ -32,7 +33,12 @@ module Community
 
     def update
       message = @conversation.messages.find(params[:id])
-      result = Community::EditMessage.call(user: current_user, message: message, body: message_params[:body])
+      result = Community::EditMessage.call(
+        user: current_user,
+        message: message,
+        body: message_params[:body],
+        expected_revision: message_params[:expected_revision]
+      )
 
       if result.success?
         redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.message_updated", default: "消息已更新")
@@ -56,7 +62,7 @@ module Community
     end
 
     def message_params
-      params.require(:message).permit(:body)
+      params.require(:message).permit(:body, :expected_revision, attachment_ids: [])
     end
   end
 end

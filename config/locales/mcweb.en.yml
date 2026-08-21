@@ -130,6 +130,9 @@ en:
       forum_conversations_create:
         name: "Share others' topics privately"
         description: "Share a forum topic created by another user into a private conversation; normal private messaging keeps its existing policy."
+      forum_conversations_reports_review:
+        name: "Review private-message reports"
+        description: "Review private-message reports and explicitly reveal encrypted evidence. This permission does not come with normal section moderation."
       store_products_read:
         name: "View store staff notifications"
         description: "Receive staff-only store notifications such as low-stock alerts."
@@ -402,6 +405,7 @@ en:
       marked_read: Marked as read.
       alerts_dismissed: Alerts dismissed.
       notification_unavailable: The content for this notification is no longer available.
+      notification_deleted: Notification deleted.
       report_submitted: Report submitted.
       report_rate_limited: You are submitting reports too quickly. Please wait a while and try again.
       content_not_found: Content not found or access denied.
@@ -696,6 +700,9 @@ en:
       topic_unavailable: Topic unavailable.
       cannot_delete_post: You cannot delete this post.
       post_deleted: Post deleted.
+      topic_deleted: Topic deleted and moved into its retention period.
+      profile_post_updated: Profile post updated.
+      profile_post_comment_updated: Profile-post comment updated.
       cannot_view_edit_history: You cannot view edit history.
       post_restored_version: Restored to selected version.
       post_restored: Post restored.
@@ -932,6 +939,18 @@ en:
         cart_unauthorized: You cannot checkout with this cart.
         order_created: Order created.
         report_submitted: Report submitted.
+        report_target_unavailable: This content is unavailable or you cannot report it.
+        report_reason_invalid: Select a valid report reason.
+        report_detail_too_long: Report details cannot exceed 2,000 characters.
+        report_already_submitted: You already have a pending report for this content.
+        report_create_failed: The report could not be saved. Try again.
+        message_revision_conflict: This message changed while you were editing it. Refresh and try again.
+        profile_post_blank: Profile-wall content cannot be blank.
+        profile_post_too_long: Profile-wall content is too long.
+        profile_post_unavailable: This profile-wall item is no longer available.
+        profile_post_edit_author_only: Only the author can edit this profile-wall item.
+        profile_post_revision_required: Refresh the profile before editing this item.
+        profile_post_revision_conflict: This profile-wall item changed while you were editing it. Refresh and try again.
         reset_token_expired: Reset token has expired.
         email_or_token_required: Email or token with new password is required.
         cannot_vote_in_topic: You are not allowed to vote in this topic.
@@ -1158,6 +1177,15 @@ en:
         silence_user_unauthorized: You are not allowed to silence users.
         topic_close_disabled: Topic close-by-author is not enabled.
         topic_close_author_only: Only the topic author can close or reopen their topic.
+        topic_delete_unavailable: This topic cannot be deleted.
+        topic_delete_author_only: Only the topic author can delete this topic.
+        topic_delete_archived: Archived topics cannot be deleted by their author.
+        topic_delete_announcement: Global announcements cannot be deleted by their author.
+        topic_delete_commerce_managed: Store-managed topics cannot be deleted here.
+        topic_delete_locked: Locked topics cannot be deleted by their author.
+        topic_delete_staff_managed: Staff-managed topics cannot be deleted by their author.
+        topic_delete_has_replies: This topic has replies from other members and cannot be deleted by its author.
+        topic_delete_evidence_protected: A report, moderation case, or retention hold protects this topic from author deletion.
         change_post_author_unauthorized: You are not allowed to change the post author.
         saved_searches_none_for_test: No saved searches available to test.
         ban_reply_unauthorized: You are not allowed to ban replies.
@@ -1612,6 +1640,14 @@ en:
         cancel_reason: Test cancellation
       product_duplicate_suffix: " (copy)"
     forum:
+      topic_delete:
+        author_reason: Deleted by the topic author
+      reports:
+        reasons:
+          spam: Spam / flooding
+          offensive: Abuse / inappropriate content
+          off_topic: Off-topic / irrelevant content
+          other: Other
       stats:
         topics: Topics
         posts: Posts
@@ -2617,10 +2653,14 @@ en:
           field_status: Status
           field_target: Target
           field_time: Time
+          field_evidence_revision: Captured revision
+          field_evidence_digest: Evidence digest
+          field_evidence_body: Captured content
           action_agree: Agree and hide
           action_reviewed: Mark reviewed
           action_dismiss: Dismiss report
           action_claim: Claim
+          action_reveal_evidence: Reveal encrypted evidence
           action_resolve_target_action: Agree & hide all flags
           action_resolve_target_dismiss: Dismiss all flags
           target_topic: "Topic: %{title}"
@@ -2628,6 +2668,8 @@ en:
           target_review: "Review #%{id} (%{product})"
           target_user: "Member: %{username}"
           target_profile_post: "Profile post on %{username}'s wall"
+          target_profile_comment: "Comment on %{username}'s profile wall"
+          target_private_message: "Private message #%{id}"
           action_view_topic: View topic
           action_view_post: View post
           action_view_product: View product

@@ -9,7 +9,7 @@ module Community
     def conversation_show_props(conversation, overrides = {})
       conversation.mark_read_for!(current_user)
 
-      scope = conversation.messages.includes(:user).order(created_at: :asc)
+      scope = conversation.messages.includes(:user, attachments: :upload_record).order(created_at: :asc)
       limit = 50
       last_page = [ (scope.count / limit.to_f).ceil, 1 ].max
       page = params[:page].to_i
@@ -17,6 +17,7 @@ module Community
 
       @pagy, messages = pagy(:offset, scope, page: page, limit: limit)
       participants_by_user = conversation.participants.index_by(&:user_id)
+      draft = Community::MessageDraft.find_by(user: current_user, conversation: conversation)
 
       {
         conversation: serialize_conversation(conversation, include_other: true),
@@ -31,7 +32,8 @@ module Community
         markUnreadUrl: mark_unread_forum_conversation_path(conversation),
         setLabelUrl: set_label_forum_conversation_path(conversation),
         conversationLabel: conversation.participants.find_by(user: current_user)&.label,
-        messageDraft: Community::MessageDraft.find_by(user: current_user, conversation: conversation)&.body,
+        messageDraft: draft&.body,
+        messageDraftAttachments: draft_attachment_props(draft),
         messageDraftUrl: forum_conversation_message_draft_path(conversation),
         archived: conversation.participants.find_by(user: current_user)&.archived_at.present?,
         muted: conversation.participants.find_by(user: current_user)&.muted_at.present?,
@@ -150,9 +152,33 @@ module Community
         is_mine: message.user_id == current_user.id,
         created_at: l(message.created_at, format: :short),
         edited: message.edited?,
+        revision: message.revision,
         delete_url: (conversation && message.user_id == current_user.id) ? forum_conversation_message_path(conversation, message) : nil,
         edit_url: (conversation && message.user_id == current_user.id) ? forum_conversation_message_path(conversation, message) : nil,
-        read_by: read_by
+        report_url: (conversation && message.user_id != current_user.id && !message.deleted?) ? new_forum_report_path(reportable_type: "Community::Message", reportable_id: message.id) : nil,
+        read_by: read_by,
+        attachments: message.attachments.select(&:scan_clean?).map { |attachment| serialize_conversation_attachment(attachment) }
+      }
+    end
+
+    def draft_attachment_props(draft)
+      return [] unless draft
+
+      Community::PostAttachment
+        .unlinked
+        .where(user: current_user, id: draft.normalized_attachment_ids)
+        .includes(:upload_record)
+        .select(&:scan_clean?)
+        .map { |attachment| serialize_conversation_attachment(attachment) }
+    end
+
+    def serialize_conversation_attachment(attachment)
+      {
+        id: attachment.id,
+        filename: attachment.filename,
+        human_size: attachment.human_size,
+        download_url: forum_attachment_path(attachment),
+        download_count: attachment.download_count
       }
     end
 

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_21_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -461,6 +461,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   end
 
   create_table "forum_message_drafts", force: :cascade do |t|
+    t.jsonb "attachment_ids", default: [], null: false
     t.text "body", default: "", null: false
     t.datetime "created_at", null: false
     t.bigint "forum_conversation_id", null: false
@@ -470,18 +471,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.index ["user_id", "forum_conversation_id"], name: "index_forum_message_drafts_on_user_and_conversation", unique: true
   end
 
+  create_table "forum_message_revisions", force: :cascade do |t|
+    t.string "content_digest", limit: 64, null: false
+    t.datetime "created_at", null: false
+    t.bigint "editor_id", null: false
+    t.text "encrypted_body", null: false
+    t.bigint "forum_message_id", null: false
+    t.integer "revision", null: false
+    t.index ["editor_id"], name: "index_forum_message_revisions_on_editor_id"
+    t.index ["forum_message_id", "revision"], name: "idx_forum_message_revisions_unique", unique: true
+    t.index ["forum_message_id"], name: "index_forum_message_revisions_on_forum_message_id"
+    t.check_constraint "content_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_message_revisions_digest_format"
+    t.check_constraint "revision > 0", name: "forum_message_revisions_positive_revision"
+  end
+
   create_table "forum_messages", force: :cascade do |t|
     t.text "body", null: false
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
     t.datetime "edited_at"
     t.bigint "forum_conversation_id", null: false
+    t.integer "revision", default: 1, null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["deleted_at"], name: "index_forum_messages_on_deleted_at"
     t.index ["forum_conversation_id", "created_at"], name: "index_forum_messages_on_forum_conversation_id_and_created_at"
     t.index ["forum_conversation_id"], name: "index_forum_messages_on_forum_conversation_id"
     t.index ["user_id"], name: "index_forum_messages_on_user_id"
+    t.check_constraint "revision > 0", name: "forum_messages_positive_revision"
   end
 
   create_table "forum_moderation_case_notes", force: :cascade do |t|
@@ -640,13 +657,16 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.datetime "deleted_at"
     t.integer "download_count", default: 0, null: false
     t.string "filename", null: false
+    t.bigint "forum_message_id"
     t.bigint "forum_post_id"
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["deleted_at"], name: "index_forum_post_attachments_on_deleted_at"
+    t.index ["forum_message_id"], name: "index_forum_post_attachments_on_forum_message_id"
     t.index ["forum_post_id"], name: "index_forum_post_attachments_on_forum_post_id"
     t.index ["user_id", "forum_post_id"], name: "index_forum_post_attachments_on_user_id_and_forum_post_id"
     t.index ["user_id"], name: "index_forum_post_attachments_on_user_id"
+    t.check_constraint "NOT (forum_post_id IS NOT NULL AND forum_message_id IS NOT NULL)", name: "forum_post_attachments_single_parent"
   end
 
   create_table "forum_post_edits", force: :cascade do |t|
@@ -691,24 +711,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.text "body", null: false
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
+    t.datetime "edited_at"
     t.bigint "profile_post_id", null: false
+    t.integer "revision", default: 1, null: false
     t.string "status", default: "published", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["profile_post_id", "created_at"], name: "idx_on_profile_post_id_created_at_786d3823a2"
     t.index ["user_id"], name: "index_forum_profile_post_comments_on_user_id"
+    t.check_constraint "revision > 0", name: "forum_profile_post_comments_positive_revision"
   end
 
   create_table "forum_profile_posts", force: :cascade do |t|
     t.text "body", null: false
     t.datetime "created_at", null: false
     t.datetime "deleted_at"
+    t.datetime "edited_at"
     t.bigint "profile_user_id", null: false
+    t.integer "revision", default: 1, null: false
     t.string "status", default: "published", null: false
     t.datetime "updated_at", null: false
     t.bigint "user_id", null: false
     t.index ["profile_user_id", "created_at"], name: "index_forum_profile_posts_on_profile_user_id_and_created_at"
     t.index ["user_id"], name: "index_forum_profile_posts_on_user_id"
+    t.check_constraint "revision > 0", name: "forum_profile_posts_positive_revision"
   end
 
   create_table "forum_reaction_types", force: :cascade do |t|
@@ -757,8 +783,25 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.index ["user_id"], name: "index_forum_reply_drafts_on_user_id"
   end
 
+  create_table "forum_report_evidences", force: :cascade do |t|
+    t.datetime "captured_at", null: false
+    t.string "content_digest", limit: 64, null: false
+    t.datetime "created_at", null: false
+    t.text "encrypted_snapshot", null: false
+    t.bigint "forum_report_id", null: false
+    t.bigint "subject_id", null: false
+    t.integer "subject_revision", default: 1, null: false
+    t.string "subject_type", null: false
+    t.datetime "updated_at", null: false
+    t.index ["forum_report_id"], name: "index_forum_report_evidences_on_forum_report_id", unique: true
+    t.index ["subject_type", "subject_id"], name: "idx_forum_report_evidences_subject"
+    t.check_constraint "content_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_report_evidences_digest_format"
+    t.check_constraint "subject_revision > 0", name: "forum_report_evidences_positive_revision"
+  end
+
   create_table "forum_reports", force: :cascade do |t|
     t.datetime "created_at", null: false
+    t.string "dedupe_key", limit: 64
     t.text "reason", null: false
     t.string "reason_code"
     t.bigint "reportable_id", null: false
@@ -769,10 +812,12 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
     t.bigint "reviewer_id"
     t.string "status", default: "pending", null: false
     t.datetime "updated_at", null: false
+    t.index ["dedupe_key"], name: "idx_forum_reports_pending_dedupe", unique: true, where: "((dedupe_key IS NOT NULL) AND ((status)::text = 'pending'::text))"
     t.index ["reason_code"], name: "index_forum_reports_on_reason_code"
     t.index ["reportable_type", "reportable_id"], name: "index_forum_reports_on_reportable_type_and_reportable_id"
     t.index ["reporter_id"], name: "index_forum_reports_on_reporter_id"
     t.index ["reviewer_id"], name: "index_forum_reports_on_reviewer_id"
+    t.check_constraint "dedupe_key IS NULL OR dedupe_key::text ~ '^[0-9a-f]{64}$'::text", name: "forum_reports_dedupe_key_format"
   end
 
   create_table "forum_saved_search_webhook_deliveries", force: :cascade do |t|
@@ -3666,6 +3711,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   add_foreign_key "forum_email_reply_deliveries", "forum_posts"
   add_foreign_key "forum_event_webhook_deliveries", "forum_posts"
   add_foreign_key "forum_event_webhook_deliveries", "forum_topics"
+  add_foreign_key "forum_message_revisions", "forum_messages", on_delete: :cascade
+  add_foreign_key "forum_message_revisions", "users", column: "editor_id"
   add_foreign_key "forum_messages", "forum_conversations"
   add_foreign_key "forum_messages", "users"
   add_foreign_key "forum_moderation_case_notes", "forum_moderation_cases", column: "moderation_case_id"
@@ -3683,6 +3730,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   add_foreign_key "forum_poll_votes", "forum_polls"
   add_foreign_key "forum_poll_votes", "users"
   add_foreign_key "forum_polls", "forum_topics"
+  add_foreign_key "forum_post_attachments", "forum_messages"
   add_foreign_key "forum_post_attachments", "forum_posts"
   add_foreign_key "forum_post_attachments", "users"
   add_foreign_key "forum_post_edits", "forum_posts"
@@ -3701,6 +3749,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   add_foreign_key "forum_read_states", "users"
   add_foreign_key "forum_reply_drafts", "forum_topics"
   add_foreign_key "forum_reply_drafts", "users"
+  add_foreign_key "forum_report_evidences", "forum_reports"
   add_foreign_key "forum_reports", "users", column: "reporter_id"
   add_foreign_key "forum_reports", "users", column: "reviewer_id"
   add_foreign_key "forum_saved_search_webhook_deliveries", "forum_saved_searches", column: "saved_search_id"
@@ -3954,6 +4003,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
   # User-defined PostgreSQL trigger functions and triggers.
   # These database invariants must also exist after db:schema:load.
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_message_revisions_reject_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'DELETE' AND NOT EXISTS (
+        SELECT 1 FROM forum_messages WHERE id = OLD.forum_message_id
+      ) THEN
+        RETURN OLD;
+      END IF;
+
+      RAISE EXCEPTION 'forum_message_revisions is immutable while its message exists';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_report_evidences_reject_change()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      RAISE EXCEPTION 'forum_report_evidences is append-only';
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.operations_durable_attempts_reject_change()
      RETURNS trigger
      LANGUAGE plpgsql
@@ -4180,6 +4257,14 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_16_090000) do
       RAISE EXCEPTION 'operations_durable_enqueue_intents is append-only';
     END;
     $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_message_revisions_immutable BEFORE DELETE OR UPDATE ON public.forum_message_revisions FOR EACH ROW EXECUTE FUNCTION forum_message_revisions_reject_change();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER forum_report_evidences_immutable BEFORE DELETE OR UPDATE ON public.forum_report_evidences FOR EACH ROW EXECUTE FUNCTION forum_report_evidences_reject_change();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'

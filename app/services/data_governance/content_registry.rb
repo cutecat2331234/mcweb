@@ -111,8 +111,11 @@ module DataGovernance
           end
         when Community::Post
           targets.concat(Community::PostAttachment.with_discarded.where(forum_post_id: target.id).to_a)
+        when Community::Message
+          targets.concat(Community::PostAttachment.with_discarded.where(forum_message_id: target.id).to_a)
         when Community::PostAttachment
           targets << parent_post(target)
+          targets << parent_message(target)
         when Community::ProfilePost
           targets.concat(
             Community::ProfilePostComment.with_discarded.where(profile_post_id: target.id).to_a
@@ -176,6 +179,12 @@ module DataGovernance
         return unless target.respond_to?(:forum_post_id)
 
         Community::Post.with_discarded.find_by(id: target.forum_post_id)
+      end
+
+      def parent_message(target)
+        return unless target.respond_to?(:forum_message_id)
+
+        Community::Message.with_discarded.find_by(id: target.forum_message_id)
       end
 
       def parent_topic(target)

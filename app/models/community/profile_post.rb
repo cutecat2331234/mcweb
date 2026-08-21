@@ -13,6 +13,11 @@ module Community
     enum :status, { published: "published", hidden: "hidden" }, validate: true
 
     validates :body, presence: true, length: { maximum: 5000 }
+    validates :revision, numericality: { only_integer: true, greater_than: 0 }
+
+    def edited?
+      edited_at.present?
+    end
 
     scope :recent, -> { order(created_at: :desc) }
     scope :visible, -> { published }

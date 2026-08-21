@@ -170,7 +170,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
             inset: 'auto var(--mc-space-3, 12px) var(--mc-space-4, 16px)',
           }"
         >
-          <Button long @click="visit(routes.forum)">
+          <Button long @click="visit(routes.app)">
             <template #icon><IconApps /></template>
             {{ t('staffWorkspace.returnToApp') }}
           </Button>
@@ -239,7 +239,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
               </Button>
               <template #content>
                 <Doption disabled><IconUser /> {{ auth.user.username }}</Doption>
-                <Doption @click="visit(routes.forum)">
+                <Doption @click="visit(routes.app)">
                   <IconApps /> {{ t('staffWorkspace.returnToApp') }}
                 </Doption>
                 <Doption @click="signOutVisible = true">

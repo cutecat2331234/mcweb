@@ -505,6 +505,8 @@ Rails.application.routes.draw do
   end
 
   scope path: "app" do
+    get "account", to: "account#show", as: :account
+
     namespace :identity do
       get "sign-in", to: "sessions#new", as: :sign_in
       get "session/two-factor", to: "sessions#two_factor", as: :session_two_factor

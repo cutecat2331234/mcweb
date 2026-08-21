@@ -3,6 +3,7 @@ export const appPrefix = '/app' as const
 export const routes = {
   home: '/',
   app: appPrefix,
+  account: `${appPrefix}/account`,
   forum: `${appPrefix}/forum/sections`,
   forumLatest: `${appPrefix}/forum/latest`,
   forumTop: `${appPrefix}/forum/top`,

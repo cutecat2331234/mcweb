@@ -161,6 +161,48 @@ The account page is an **overview and launch point**, not a replacement for ever
 - Product pages remain renderable when a question or answer is tombstoned.
 - Cross-product question/answer identifiers return not found instead of mutating content through a mismatched product URL.
 
+### H. Production-launch concurrency and interface gates
+
+These defects were found during the implementation audit. They are shared-platform
+correctness issues, not PVP test-domain feature work, and must be closed before a
+production-readiness claim.
+
+1. **Single payable order attempt:** an order may have only one provider payment
+   attempt that can still succeed remotely. Changing provider must serialize on the
+   order, retire or expire the previous remote attempt through the provider contract,
+   and preserve enough identity to reconcile any later success. A late success for a
+   failed, replaced, cancelled or already-paid local payment always creates or updates
+   the idempotent manual-review case; it is never silently discarded.
+2. **Financial lock order:** checkout, payment confirmation, cancellation, refund and
+   dispute paths use the same `Order -> Payment -> Refund/Dispute` lock order. Tests
+   must force real overlapping transactions rather than infer safety only from final
+   state.
+3. **Atomic post editing:** a forum-post edit requires an expected revision and a row
+   lock. Body, inline uploads, attachment ownership and the revision/audit record
+   commit in one transaction; any stale edit or attachment failure leaves all of them
+   unchanged and returns the user's draft.
+4. **Fresh authorization at mutation time:** a permission-revoking transaction and a
+   permission-dependent mutation must share the platform permission lock contract.
+   Sensitive services re-read the actor's effective permission inside that lock and
+   transaction; a previously loaded `User` object is not an authorization snapshot.
+5. **Public sign-in geometry:** the sign-in page uses the existing Arco-based UI
+   library's form, form-item, input, password, checkbox, alert and button components.
+   Chinese and English labels have one consistent vertical rhythm, controls remain at
+   least 44 px high, and no custom page-level focus or border system is introduced.
+
+#### Acceptance criteria
+
+- Provider switching plus a late webhook cannot double-complete an order or bypass
+  the late-payment review queue.
+- Cancellation racing payment confirmation completes without deadlock and yields one
+  explainable terminal state.
+- Two editors racing on one post produce one success and one localized revision
+  conflict; a rejected attachment never leaves the new body persisted.
+- A permission revoked before a mutation acquires its shared authorization lock makes
+  that mutation fail, even when its controller was holding an older `User` instance.
+- The sign-in form passes desktop and narrow-width geometry, keyboard-focus and
+  accessibility checks using the shared UI library.
+
 ## Cross-cutting requirements
 
 - **Authorization:** every mutation is scoped to `current_user` and rechecked server-side; hiding a button is never the security boundary.

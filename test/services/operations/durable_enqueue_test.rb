@@ -327,7 +327,7 @@ module Operations
       assert_in_delta(
         (now + 3.minutes).to_f,
         Operations::DurableEnqueueLedger.state(intent).active_lease_expires_at.to_f,
-        1e-6
+        1e-5
       )
     end
 

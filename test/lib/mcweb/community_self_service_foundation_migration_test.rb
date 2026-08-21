@@ -12,11 +12,21 @@ class CommunitySelfServiceFoundationMigrationTest < ActiveSupport::TestCase
   MIGRATION_VERSIONS = [ 20260821090000, 20260821090100, 20260821090200 ].freeze
 
   setup do
+    @original_migration_verbosity = ActiveRecord::Migration.verbose
+    ActiveRecord::Migration.verbose = false
+    @created_user_ids = []
+    @created_conversation_ids = []
+    @created_role_ids = []
+    @track_migration_records = true
     reset_foundation!
   end
 
   teardown do
     reset_foundation!
+    cleanup_migration_records!
+  ensure
+    @track_migration_records = false
+    ActiveRecord::Migration.verbose = @original_migration_verbosity unless @original_migration_verbosity.nil?
   end
 
   test "feature-fresh migration encrypts legacy rows and post-deploy gate closes concurrent writes" do
@@ -118,9 +128,11 @@ class CommunitySelfServiceFoundationMigrationTest < ActiveSupport::TestCase
     upload.update!(status: "linked", expires_at: nil)
 
     permission = Permission.find_by!(key: AddCommunitySelfServiceFoundation::REVIEW_PERMISSION)
-    role = Role.find_or_create_by!(key: "migration_permission_owner") do |record|
-      record.name = "Migration permission owner"
-    end
+    role = Role.create!(
+      key: "migration_permission_owner_#{SecureRandom.hex(6)}",
+      name: "Migration permission owner"
+    )
+    @created_role_ids << role.id
     role.grant_permission!(permission)
     grant_id = RolePermission.find_by!(role: role, permission: permission).id
 
@@ -583,9 +595,41 @@ class CommunitySelfServiceFoundationMigrationTest < ActiveSupport::TestCase
 
   def create_conversation(sender, recipient)
     conversation = Community::Conversation.create!
+    @created_conversation_ids << conversation.id
     conversation.participants.create!(user: sender)
     conversation.participants.create!(user: recipient)
     conversation
+  end
+
+  def create_user(attrs = {})
+    user = super
+    @created_user_ids << user.id if @track_migration_records
+    user
+  end
+
+  def cleanup_migration_records!
+    user_ids = Array(@created_user_ids).compact
+    conversation_ids = Array(@created_conversation_ids).compact
+    role_ids = Array(@created_role_ids).compact
+    uploads = Community::Upload.where(user_id: user_ids)
+    attachments = Community::PostAttachment.with_discarded.where(user_id: user_ids)
+    blob_ids = uploads.where.not(active_storage_blob_id: nil).pluck(:active_storage_blob_id)
+    blob_ids.concat(
+      ActiveStorage::Attachment.where(
+        record_type: "Community::PostAttachment",
+        record_id: attachments.select(:id)
+      ).pluck(:blob_id)
+    )
+
+    uploads.delete_all
+    attachments.destroy_all
+    Community::Conversation.where(id: conversation_ids).destroy_all
+    RolePermission.where(role_id: role_ids).delete_all
+    Role.where(id: role_ids).delete_all
+    User.where(id: user_ids).destroy_all
+    ActiveStorage::Blob.where(id: blob_ids.uniq).find_each do |blob|
+      blob.purge if blob.attachments.empty?
+    end
   end
 
   def insert_legacy_message(conversation:, sender:, body:, connection: nil)

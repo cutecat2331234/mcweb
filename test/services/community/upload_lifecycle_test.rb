@@ -64,7 +64,8 @@ module Community
 
     test "enforces site retained count across accounts" do
       other = create_user
-      SiteSetting.set("forum.upload_quota.site.count", "1")
+      retained_count = Community::Upload.counted_toward_quota.count
+      SiteSetting.set("forum.upload_quota.site.count", (retained_count + 1).to_s)
 
       first = Community::UploadQuota.call(
         user: @user,
@@ -81,6 +82,7 @@ module Community
       assert_predicate second, :failure?
       assert_equal "site", second.value[:scope]
       assert_equal "count", second.value[:metric]
+      assert_equal retained_count + 1, second.value[:used]
     end
 
     test "accepted upload frequency remains accounted after storage is cleaned" do

@@ -47,7 +47,8 @@ class Community::CreateConversationTest < ActiveSupport::TestCase
     )
 
     assert result.success?
-    assert_equal 1, Community::Message.count
+    assert_equal 1, result.value.fetch(:conversation).messages.count
+    assert_equal result.value.fetch(:message), result.value.fetch(:conversation).messages.sole
     assert_equal recipient, result.value[:conversation].other_user(sender)
   end
 end

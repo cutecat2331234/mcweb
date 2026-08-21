@@ -34,6 +34,7 @@ import {
 } from '@arco-design/web-vue/es/icon'
 import { routes } from '@/lib/routes'
 import { useTheme } from '@/lib/useTheme'
+import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 
 const page = usePage()
 const { t } = useI18n()
@@ -112,6 +113,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
 <template>
   <ConfigProvider>
     <Layout
+      v-accessible-form-control-names
       class="mc-shell-layout"
       :style="{ minHeight: '100dvh', background: 'var(--color-bg-1)' }"
     >

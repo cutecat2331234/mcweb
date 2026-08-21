@@ -28,9 +28,26 @@ export function nameArcoFormControls(element: HTMLElement) {
   })
 }
 
+const formControlObservers = new WeakMap<HTMLElement, MutationObserver>()
+
+function observeArcoFormControls(element: HTMLElement) {
+  nameArcoFormControls(element)
+  if (typeof MutationObserver === 'undefined' || formControlObservers.has(element)) return
+
+  const observer = new MutationObserver(() => nameArcoFormControls(element))
+  observer.observe(element, { childList: true, subtree: true, characterData: true })
+  formControlObservers.set(element, observer)
+}
+
+function stopObservingArcoFormControls(element: HTMLElement) {
+  formControlObservers.get(element)?.disconnect()
+  formControlObservers.delete(element)
+}
+
 export const vAccessibleFormControlNames: ObjectDirective<HTMLElement> = {
-  mounted: nameArcoFormControls,
+  mounted: observeArcoFormControls,
   updated: nameArcoFormControls,
+  unmounted: stopObservingArcoFormControls,
 }
 
 export function nameArcoDialog(element: HTMLElement, name: string) {

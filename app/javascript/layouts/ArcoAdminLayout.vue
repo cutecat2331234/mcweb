@@ -24,6 +24,7 @@ import AdminFlashMessages from '@/components/admin/AdminFlashMessages.vue'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
 import DeveloperModeTools from '@/components/admin/DeveloperModeTools.vue'
 import PluginUiSlots from '@/components/plugins/PluginUiSlots.vue'
+import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import { adminRoutes } from '@/lib/adminRoutes'
 import { useTheme } from '@/lib/useTheme'
 
@@ -785,7 +786,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
         class="arco-admin-main mc-page-content mc-page-surface"
         tabindex="-1"
       >
-        <div class="arco-admin-main__inner mc-page-container">
+        <div v-accessible-form-control-names class="arco-admin-main__inner mc-page-container">
           <AdminFlashMessages />
           <PluginUiSlots />
           <slot />

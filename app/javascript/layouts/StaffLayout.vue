@@ -113,7 +113,6 @@ watch(isDark, syncArcoTheme, { immediate: true })
 <template>
   <ConfigProvider>
     <Layout
-      v-accessible-form-control-names
       class="mc-shell-layout"
       :style="{ minHeight: '100dvh', background: 'var(--color-bg-1)' }"
     >
@@ -257,6 +256,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
           }"
         >
           <div
+            v-accessible-form-control-names
             class="mc-page-container"
             :style="{
               width: '100%',

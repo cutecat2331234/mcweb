@@ -59,6 +59,20 @@ test('Arco global fallback is folded into the existing application i18n runtime'
   }
 })
 
+test('Arco English locale imports only validation messages into shared shells', () => {
+  const viteConfig = readFileSync(resolve(process.cwd(), 'vite.config.ts'), 'utf8')
+
+  assert.match(viteConfig, /function mcwebArcoEnglishLocaleBridge\(\)/)
+  assert.match(viteConfig, /mcwebArcoEnglishLocaleBridge\(\)/)
+  assert.match(viteConfig, /b-validate\/es\/locale\/en-US\.js/)
+  assert.match(viteConfig, /broadValidationImport/)
+  assert.match(viteConfig, /filter:\s*\{[\s\S]*?en-us\\\.js\$\//)
+  assert.match(
+    viteConfig,
+    /Arco English locale no longer exposes the expected validation import/,
+  )
+})
+
 test('every shared Arco shell binds its provider to the vue-i18n locale', () => {
   for (const relativePath of [
     'app/javascript/components/AppProvider.vue',

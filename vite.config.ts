@@ -38,6 +38,37 @@ function mcwebUiArcoStyleBridge() {
   }
 }
 
+function mcwebArcoEnglishLocaleBridge() {
+  const broadValidationImport =
+    /import\s*\{\s*DefaultValidateMessage\s*\}\s*from\s*(['"])b-validate\1;?/
+
+  return {
+    name: 'mcweb-arco-english-locale-bridge',
+    enforce: 'pre' as const,
+    transform: {
+      filter: {
+        id: /@arco-design[\\/]web-vue[\\/]es[\\/]locale[\\/]lang[\\/]en-us\.js$/,
+      },
+      handler(code: string) {
+        if (!broadValidationImport.test(code)) {
+          throw new Error('Arco English locale no longer exposes the expected validation import')
+        }
+
+        return {
+          // Arco only reads the default English messages here. Importing the
+          // package root also pulls the complete validator into every shell and
+          // creates a redundant initial request for pages that do not validate.
+          code: code.replace(
+            broadValidationImport,
+            "import DefaultValidateMessage from 'b-validate/es/locale/en-US.js';",
+          ),
+          map: null,
+        }
+      },
+    },
+  }
+}
+
 if (runtimeProfile === 'fast_preview') {
   if (developerMinification === false || developerSourceMaps === true) {
     throw new Error(
@@ -50,6 +81,7 @@ export default defineConfig({
   plugins: [
     RubyPlugin(),
     mcwebUiArcoStyleBridge(),
+    mcwebArcoEnglishLocaleBridge(),
     vue(),
     vitePluginForArco({ style: 'css' }),
     tailwindcss(),

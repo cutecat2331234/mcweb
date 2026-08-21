@@ -61,7 +61,7 @@ test('admin PageHeader supporting copy keeps its accessible semantic text color'
 test('admin form help and word counts use readable supporting text', () => {
   assert.match(
     css,
-    /\.mcweb-admin \.arco-form-item-message,[\s\S]*?\.mcweb-admin \.arco-textarea-word-limit\s*\{[\s\S]*?color:\s*var\(--color-text-2\)/,
+    /\.mcweb-admin \.arco-form-item-message,[\s\S]*?\.mcweb-admin \.arco-textarea-word-limit\s*\{[\s\S]*?color:\s*var\(--color-text-2\) !important/,
   )
 })
 

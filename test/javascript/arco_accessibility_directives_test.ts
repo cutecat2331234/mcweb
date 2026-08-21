@@ -1,0 +1,75 @@
+import assert from 'node:assert/strict'
+import test from 'node:test'
+
+import {
+  nameArcoDialog,
+  nameArcoFormControls,
+} from '../../app/javascript/directives/arcoAccessibility.ts'
+
+function attributeStore(initial: Record<string, string> = {}) {
+  const values = new Map(Object.entries(initial))
+
+  return {
+    getAttribute: (name: string) => values.get(name) ?? null,
+    hasAttribute: (name: string) => values.has(name),
+    setAttribute: (name: string, value: string) => values.set(name, value),
+    value: (name: string) => values.get(name),
+  }
+}
+
+test('Arco form controls receive the visible FormItem label as an accessible name', () => {
+  const attributes = attributeStore()
+  const formItem = {
+    querySelector: () => ({ textContent: '  Stable mode key  ' }),
+    querySelectorAll: () => [control],
+  }
+  const control = {
+    ...attributes,
+    closest: () => formItem,
+  }
+  const root = {
+    querySelectorAll: () => [formItem],
+  }
+
+  nameArcoFormControls(root as unknown as HTMLElement)
+
+  assert.equal(attributes.value('aria-label'), 'Stable mode key')
+  assert.equal(attributes.value('data-mcweb-form-control-name'), 'true')
+})
+
+test('Arco form control naming preserves an explicit application-provided name', () => {
+  const attributes = attributeStore({ 'aria-label': 'Search linked player' })
+  const formItem = {
+    querySelector: () => ({ textContent: 'Player' }),
+    querySelectorAll: () => [control],
+  }
+  const control = {
+    ...attributes,
+    closest: () => formItem,
+  }
+  const root = {
+    querySelectorAll: () => [formItem],
+  }
+
+  nameArcoFormControls(root as unknown as HTMLElement)
+
+  assert.equal(attributes.value('aria-label'), 'Search linked player')
+  assert.equal(attributes.value('data-mcweb-form-control-name'), undefined)
+})
+
+test('Arco modal content receives dialog semantics and a translated name', () => {
+  const attributes = attributeStore()
+  const dialog = {
+    ...attributes,
+  }
+  const root = {
+    matches: () => false,
+    querySelector: () => dialog,
+  }
+
+  nameArcoDialog(root as unknown as HTMLElement, 'Reject delegation')
+
+  assert.equal(attributes.value('role'), 'dialog')
+  assert.equal(attributes.value('aria-modal'), 'true')
+  assert.equal(attributes.value('aria-label'), 'Reject delegation')
+})

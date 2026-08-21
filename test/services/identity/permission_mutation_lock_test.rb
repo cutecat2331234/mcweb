@@ -85,6 +85,68 @@ module Identity
       assert_not @member.reload.permission?(@permission.key)
     end
 
+    test "database delete_all trigger blocks cached shared readers until commit" do
+      assert @member.permission?(@permission.key)
+
+      mutation_paused = Queue.new
+      release_mutation = Queue.new
+      mutation_result = Queue.new
+      writer_pid = Queue.new
+      reader_started = Queue.new
+      reader_prewarmed = Queue.new
+      reader_pid = Queue.new
+      reader_result = Queue.new
+
+      writer = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do |connection|
+          UserRole.transaction do
+            writer_pid << connection.select_value("SELECT pg_backend_pid()").to_i
+            deleted = UserRole.where(user_id: @member.id, role_id: @role.id).delete_all
+            mutation_paused << true
+            release_mutation.pop
+            mutation_result << deleted
+          end
+        end
+      rescue StandardError => e
+        mutation_result << e
+        mutation_paused << false
+      end
+      assert mutation_paused.pop, "database revocation did not reach the commit barrier"
+
+      reader = start_shared_reader(
+        started: reader_started,
+        prewarmed: reader_prewarmed,
+        backend_pid: reader_pid,
+        result: reader_result
+      )
+      assert reader_prewarmed.pop,
+             "reader connection should cache the permission before revocation commits"
+      reader_started.pop
+      observed_reader_pid = reader_pid.pop
+      observed_writer_pid = writer_pid.pop
+      assert_not_equal observed_writer_pid, observed_reader_pid,
+                       "writer and reader must use different PostgreSQL connections"
+      wait_until_advisory_lock_wait(observed_reader_pid)
+
+      assert_predicate reader, :alive?,
+                       "shared reader should wait for the trigger-held exclusive lock"
+
+      release_mutation << true
+      assert writer.join(5), "database revocation thread did not finish"
+      assert reader.join(5), "shared reader thread did not finish"
+
+      result = mutation_result.pop
+      raise result if result.is_a?(Exception)
+
+      assert_equal 1, result
+      assert_equal false, reader_result.pop
+      assert_not @member.reload.permission?(@permission.key)
+    ensure
+      release_mutation << true if writer&.alive?
+      writer&.join(5)
+      reader&.join(5)
+    end
+
     test "direct acquisition requires an open transaction" do
       error = assert_raises(ActiveRecord::ActiveRecordError) do
         PermissionMutationLock.acquire_exclusive!

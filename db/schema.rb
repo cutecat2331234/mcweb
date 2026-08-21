@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_08_21_220000) do
+ActiveRecord::Schema[8.1].define(version: 2026_08_22_090000) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
@@ -1885,7 +1885,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_220000) do
     t.check_constraint "generation > 0", name: "operations_durable_attempts_generation"
     t.check_constraint "lease_expires_at > started_at", name: "operations_durable_attempts_lease_window"
     t.check_constraint "lease_token::text ~ '^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$'::text", name: "operations_durable_attempts_lease_token"
-    t.check_constraint "trigger::text = ANY (ARRAY['after_commit'::character varying, 'maintenance'::character varying, 'manual'::character varying]::text[])", name: "operations_durable_attempts_trigger"
+    t.check_constraint "trigger::text = ANY (ARRAY['after_commit'::character varying::text, 'maintenance'::character varying::text, 'manual'::character varying::text])", name: "operations_durable_attempts_trigger"
   end
 
   create_table "operations_durable_enqueue_events", force: :cascade do |t|
@@ -1902,7 +1902,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_220000) do
     t.integer "sequence", null: false
     t.datetime "updated_at", null: false
     t.index ["attempt_id", "event_type"], name: "idx_operations_durable_events_attempt"
-    t.index ["attempt_id"], name: "idx_operations_durable_events_attempt_outcome", unique: true, where: "((event_type)::text = ANY ((ARRAY['attempt_succeeded'::character varying, 'attempt_skipped'::character varying, 'attempt_failed'::character varying])::text[]))"
+    t.index ["attempt_id"], name: "idx_operations_durable_events_attempt_outcome", unique: true, where: "((event_type)::text = ANY (ARRAY[('attempt_succeeded'::character varying)::text, ('attempt_skipped'::character varying)::text, ('attempt_failed'::character varying)::text]))"
     t.index ["attempt_id"], name: "idx_operations_durable_events_attempt_started", unique: true, where: "((event_type)::text = 'attempt_started'::text)"
     t.index ["attempt_id"], name: "index_operations_durable_enqueue_events_on_attempt_id"
     t.index ["attempt_id"], name: "index_operations_durable_events_unique_lease_expired", unique: true, where: "((event_type)::text = 'lease_expired'::text)"
@@ -1910,13 +1910,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_220000) do
     t.index ["intent_id", "generation", "sequence"], name: "idx_operations_durable_events_generation"
     t.index ["intent_id", "sequence"], name: "idx_operations_durable_events_sequence", unique: true
     t.index ["intent_id"], name: "index_operations_durable_enqueue_events_on_intent_id"
-    t.check_constraint "(event_type::text = ANY (ARRAY['attempt_started'::character varying, 'lease_renewed'::character varying, 'attempt_succeeded'::character varying, 'attempt_skipped'::character varying, 'attempt_failed'::character varying, 'lease_expired'::character varying]::text[])) AND attempt_id IS NOT NULL OR (event_type::text <> ALL (ARRAY['attempt_started'::character varying, 'lease_renewed'::character varying, 'attempt_succeeded'::character varying, 'attempt_skipped'::character varying, 'attempt_failed'::character varying, 'lease_expired'::character varying]::text[])) AND attempt_id IS NULL", name: "operations_durable_events_attempt_shape"
-    t.check_constraint "(event_type::text = ANY (ARRAY['enqueue_failed'::character varying, 'attempt_failed'::character varying, 'retry_scheduled'::character varying, 'dead_lettered'::character varying, 'attempt_skipped'::character varying]::text[])) AND error_code IS NOT NULL OR (event_type::text <> ALL (ARRAY['enqueue_failed'::character varying, 'attempt_failed'::character varying, 'retry_scheduled'::character varying, 'dead_lettered'::character varying, 'attempt_skipped'::character varying]::text[])) AND error_code IS NULL", name: "operations_durable_events_error_shape"
+    t.check_constraint "(event_type::text = ANY (ARRAY['attempt_started'::character varying::text, 'lease_renewed'::character varying::text, 'attempt_succeeded'::character varying::text, 'attempt_skipped'::character varying::text, 'attempt_failed'::character varying::text, 'lease_expired'::character varying::text])) AND attempt_id IS NOT NULL OR (event_type::text <> ALL (ARRAY['attempt_started'::character varying::text, 'lease_renewed'::character varying::text, 'attempt_succeeded'::character varying::text, 'attempt_skipped'::character varying::text, 'attempt_failed'::character varying::text, 'lease_expired'::character varying::text])) AND attempt_id IS NULL", name: "operations_durable_events_attempt_shape"
+    t.check_constraint "(event_type::text = ANY (ARRAY['enqueue_failed'::character varying::text, 'attempt_failed'::character varying::text, 'retry_scheduled'::character varying::text, 'dead_lettered'::character varying::text, 'attempt_skipped'::character varying::text])) AND error_code IS NOT NULL OR (event_type::text <> ALL (ARRAY['enqueue_failed'::character varying::text, 'attempt_failed'::character varying::text, 'retry_scheduled'::character varying::text, 'dead_lettered'::character varying::text, 'attempt_skipped'::character varying::text])) AND error_code IS NULL", name: "operations_durable_events_error_shape"
     t.check_constraint "error_code IS NULL OR error_code::text ~ '^[a-z][a-z0-9_]*$'::text", name: "operations_durable_events_error_code"
     t.check_constraint "event_type::text <> 'reopened'::text OR metadata ? 'actor_id'::text AND metadata ? 'reason'::text AND COALESCE((metadata ->> 'actor_id'::text) ~ '^[1-9][0-9]*$'::text, false) AND COALESCE(length(btrim(metadata ->> 'reason'::text)) >= 1 AND length(btrim(metadata ->> 'reason'::text)) <= 500, false)", name: "operations_durable_events_reopened_shape"
     t.check_constraint "event_type::text = 'lease_renewed'::text AND lease_expires_at IS NOT NULL AND lease_expires_at > occurred_at OR event_type::text <> 'lease_renewed'::text AND lease_expires_at IS NULL", name: "operations_durable_events_lease_shape"
     t.check_constraint "event_type::text = 'retry_scheduled'::text AND available_at IS NOT NULL OR event_type::text <> 'retry_scheduled'::text AND available_at IS NULL", name: "operations_durable_events_available_shape"
-    t.check_constraint "event_type::text = ANY (ARRAY['recorded'::character varying, 'enqueue_requested'::character varying, 'enqueue_succeeded'::character varying, 'enqueue_failed'::character varying, 'attempt_started'::character varying, 'lease_renewed'::character varying, 'attempt_succeeded'::character varying, 'attempt_skipped'::character varying, 'attempt_failed'::character varying, 'lease_expired'::character varying, 'retry_scheduled'::character varying, 'dead_lettered'::character varying, 'reopened'::character varying]::text[])", name: "operations_durable_events_type"
+    t.check_constraint "event_type::text = ANY (ARRAY['recorded'::character varying::text, 'enqueue_requested'::character varying::text, 'enqueue_succeeded'::character varying::text, 'enqueue_failed'::character varying::text, 'attempt_started'::character varying::text, 'lease_renewed'::character varying::text, 'attempt_succeeded'::character varying::text, 'attempt_skipped'::character varying::text, 'attempt_failed'::character varying::text, 'lease_expired'::character varying::text, 'retry_scheduled'::character varying::text, 'dead_lettered'::character varying::text, 'reopened'::character varying::text])", name: "operations_durable_events_type"
     t.check_constraint "generation > 0", name: "operations_durable_events_generation"
     t.check_constraint "jsonb_typeof(metadata) = 'object'::text AND octet_length(metadata::text) <= 4096", name: "operations_durable_events_metadata"
     t.check_constraint "sequence > 0", name: "operations_durable_events_sequence"
@@ -4167,6 +4167,193 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_220000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.identity_auth_acquire_exclusive_lock()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      PERFORM pg_advisory_xact_lock(5567389519336522823::bigint);
+      RETURN NULL;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.identity_auth_bump_group_memberships()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'INSERT' THEN
+        UPDATE users AS affected
+           SET permission_version = affected.permission_version + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE affected.id IN (SELECT DISTINCT user_id FROM new_rows);
+      ELSIF TG_OP = 'UPDATE' THEN
+        WITH changed_rows AS (
+          SELECT old_rows.user_id AS old_user_id,
+                 new_rows.user_id AS new_user_id
+            FROM old_rows
+            INNER JOIN new_rows ON new_rows.id = old_rows.id
+           WHERE old_rows.user_id IS DISTINCT FROM new_rows.user_id
+              OR old_rows.community_user_group_id IS DISTINCT FROM new_rows.community_user_group_id
+        ), affected_users AS (
+          SELECT old_user_id AS user_id FROM changed_rows
+          UNION
+          SELECT new_user_id AS user_id FROM changed_rows
+        )
+        UPDATE users AS affected
+           SET permission_version = affected.permission_version + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE affected.id IN (SELECT user_id FROM affected_users);
+      ELSE
+        UPDATE users AS affected
+           SET permission_version = affected.permission_version + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE affected.id IN (SELECT DISTINCT user_id FROM old_rows);
+      END IF;
+      RETURN NULL;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.identity_auth_bump_group_permissions()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      WITH changed_groups AS (
+        SELECT old_rows.id
+          FROM old_rows
+          INNER JOIN new_rows ON new_rows.id = old_rows.id
+         WHERE old_rows.permissions IS DISTINCT FROM new_rows.permissions
+      )
+      UPDATE users AS affected
+         SET permission_version = affected.permission_version + 1,
+             updated_at = CURRENT_TIMESTAMP
+       WHERE EXISTS (
+         SELECT 1
+           FROM community_group_memberships
+           INNER JOIN changed_groups
+             ON changed_groups.id = community_group_memberships.community_user_group_id
+          WHERE community_group_memberships.user_id = affected.id
+       );
+      RETURN NULL;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.identity_auth_bump_role_permissions()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'INSERT' THEN
+        UPDATE users AS affected
+           SET permission_version = affected.permission_version + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE EXISTS (
+           SELECT 1
+             FROM user_roles
+            WHERE user_roles.user_id = affected.id
+              AND user_roles.role_id IN (SELECT DISTINCT role_id FROM new_rows)
+         );
+      ELSIF TG_OP = 'UPDATE' THEN
+        WITH changed_rows AS (
+          SELECT old_rows.role_id AS old_role_id,
+                 new_rows.role_id AS new_role_id
+            FROM old_rows
+            INNER JOIN new_rows ON new_rows.id = old_rows.id
+           WHERE old_rows.role_id IS DISTINCT FROM new_rows.role_id
+              OR old_rows.permission_id IS DISTINCT FROM new_rows.permission_id
+        ), affected_roles AS (
+          SELECT old_role_id AS role_id FROM changed_rows
+          UNION
+          SELECT new_role_id AS role_id FROM changed_rows
+        )
+        UPDATE users AS affected
+           SET permission_version = affected.permission_version + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE EXISTS (
+           SELECT 1
+             FROM user_roles
+            WHERE user_roles.user_id = affected.id
+              AND user_roles.role_id IN (SELECT role_id FROM affected_roles)
+         );
+      ELSE
+        UPDATE users AS affected
+           SET permission_version = affected.permission_version + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE EXISTS (
+           SELECT 1
+             FROM user_roles
+            WHERE user_roles.user_id = affected.id
+              AND user_roles.role_id IN (SELECT DISTINCT role_id FROM old_rows)
+         );
+      END IF;
+      RETURN NULL;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.identity_auth_bump_user_access()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF OLD.status IS DISTINCT FROM NEW.status
+          OR OLD.account_type IS DISTINCT FROM NEW.account_type THEN
+        NEW.permission_version := OLD.permission_version + 1;
+        NEW.updated_at := CURRENT_TIMESTAMP;
+      END IF;
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.identity_auth_bump_user_roles()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    BEGIN
+      IF TG_OP = 'INSERT' THEN
+        UPDATE users AS affected
+           SET permission_version = affected.permission_version + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE affected.id IN (SELECT DISTINCT user_id FROM new_rows);
+      ELSIF TG_OP = 'UPDATE' THEN
+        WITH changed_rows AS (
+          SELECT old_rows.user_id AS old_user_id,
+                 new_rows.user_id AS new_user_id
+            FROM old_rows
+            INNER JOIN new_rows ON new_rows.id = old_rows.id
+           WHERE old_rows.user_id IS DISTINCT FROM new_rows.user_id
+              OR old_rows.role_id IS DISTINCT FROM new_rows.role_id
+        ), affected_users AS (
+          SELECT old_user_id AS user_id FROM changed_rows
+          UNION
+          SELECT new_user_id AS user_id FROM changed_rows
+        )
+        UPDATE users AS affected
+           SET permission_version = affected.permission_version + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE affected.id IN (SELECT user_id FROM affected_users);
+      ELSE
+        UPDATE users AS affected
+           SET permission_version = affected.permission_version + 1,
+               updated_at = CURRENT_TIMESTAMP
+         WHERE affected.id IN (SELECT DISTINCT user_id FROM old_rows);
+      END IF;
+      RETURN NULL;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE OR REPLACE FUNCTION public.operations_durable_attempts_reject_change()
      RETURNS trigger
      LANGUAGE plpgsql
@@ -4396,6 +4583,30 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_220000) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_group_memberships_bump_delete AFTER DELETE ON public.community_group_memberships REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_group_memberships();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_group_memberships_bump_insert AFTER INSERT ON public.community_group_memberships REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_group_memberships();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_group_memberships_bump_update AFTER UPDATE ON public.community_group_memberships REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_group_memberships();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_group_memberships_lock BEFORE INSERT OR DELETE OR UPDATE OF user_id, community_user_group_id ON public.community_group_memberships FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_acquire_exclusive_lock();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_group_permissions_bump_update AFTER UPDATE ON public.community_user_groups REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_group_permissions();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_group_permissions_lock_update BEFORE UPDATE OF permissions ON public.community_user_groups FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_acquire_exclusive_lock();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER forum_message_revisions_dequeue_backfill AFTER INSERT ON public.forum_message_revisions FOR EACH ROW EXECUTE FUNCTION forum_message_revisions_dequeue_backfill();
   MCWEB_SCHEMA_SQL
 
@@ -4438,5 +4649,50 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_220000) do
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER operations_durable_intents_immutable BEFORE DELETE OR UPDATE ON public.operations_durable_enqueue_intents FOR EACH ROW EXECUTE FUNCTION operations_durable_intents_reject_change();
   MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_role_permissions_bump_delete AFTER DELETE ON public.role_permissions REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_role_permissions();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_role_permissions_bump_insert AFTER INSERT ON public.role_permissions REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_role_permissions();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_role_permissions_bump_update AFTER UPDATE ON public.role_permissions REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_role_permissions();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_role_permissions_lock BEFORE INSERT OR DELETE OR UPDATE OF role_id, permission_id ON public.role_permissions FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_acquire_exclusive_lock();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_user_roles_bump_delete AFTER DELETE ON public.user_roles REFERENCING OLD TABLE AS old_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_user_roles();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_user_roles_bump_insert AFTER INSERT ON public.user_roles REFERENCING NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_user_roles();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_user_roles_bump_update AFTER UPDATE ON public.user_roles REFERENCING OLD TABLE AS old_rows NEW TABLE AS new_rows FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_bump_user_roles();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_user_roles_lock BEFORE INSERT OR DELETE OR UPDATE OF user_id, role_id ON public.user_roles FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_acquire_exclusive_lock();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_users_bump_update BEFORE UPDATE OF status, account_type ON public.users FOR EACH ROW EXECUTE FUNCTION identity_auth_bump_user_access();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_users_lock_delete BEFORE DELETE ON public.users FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_acquire_exclusive_lock();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE TRIGGER identity_auth_users_lock_update BEFORE UPDATE OF status, account_type ON public.users FOR EACH STATEMENT EXECUTE FUNCTION identity_auth_acquire_exclusive_lock();
+  MCWEB_SCHEMA_SQL
+
 
 end

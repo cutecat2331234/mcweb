@@ -13,12 +13,22 @@ class User < ApplicationRecord
   has_encrypted :recovery_codes, type: :array
 
   has_many :sessions, dependent: :destroy
-  has_many :user_roles, dependent: :destroy
+  has_many :user_roles,
+           dependent: :destroy,
+           extend: Identity::RefreshesPermissionSnapshotAfterBulkChange
   has_many :roles,
            through: :user_roles,
-           after_remove: :bump_permission_version_after_role_removal
-  has_many :group_memberships, class_name: "Community::GroupMembership", dependent: :destroy
-  has_many :user_groups, through: :group_memberships, source: :user_group
+           after_remove: :refresh_permission_snapshot_after_authorization_removal,
+           extend: Identity::RefreshesPermissionSnapshotAfterBulkChange
+  has_many :group_memberships,
+           class_name: "Community::GroupMembership",
+           dependent: :destroy,
+           extend: Identity::RefreshesPermissionSnapshotAfterBulkChange
+  has_many :user_groups,
+           through: :group_memberships,
+           source: :user_group,
+           after_remove: :refresh_permission_snapshot_after_authorization_removal,
+           extend: Identity::RefreshesPermissionSnapshotAfterBulkChange
   has_many :notifications, dependent: :destroy
   has_many :notification_preferences, dependent: :destroy
   has_many :user_badges, class_name: "Community::UserBadge", dependent: :destroy
@@ -93,7 +103,7 @@ class User < ApplicationRecord
   before_validation :track_developer_mode_relaxed_password, if: -> { password.present? }
   before_update :acquire_permission_mutation_lock_for_access_change,
                 if: -> { will_save_change_to_status? || will_save_change_to_account_type? }
-  after_update :bump_permission_version_for_access_change,
+  after_update :refresh_permission_snapshot_after_access_change,
                if: -> { saved_change_to_status? || saved_change_to_account_type? }
 
   scope :verified, -> { where(email_verified: true) }
@@ -101,23 +111,25 @@ class User < ApplicationRecord
 
   private
 
-  def bump_permission_version_for_access_change
-    Identity::PermissionVersion.bump_users!([ id ])
+  def refresh_permission_snapshot_after_access_change
+    refresh_permission_snapshot_from_database!
   end
 
   def acquire_permission_mutation_lock_for_access_change
     Identity::PermissionMutationLock.acquire_exclusive!
   end
 
-  # Rails removes has-many-through rows with delete_all, which bypasses the
-  # UserRole destroy callback. Invalidate the effective-permission cache from
-  # the association callback as well so a loaded user cannot retain a revoked
-  # role until the next request.
-  def bump_permission_version_after_role_removal(_role)
-    Identity::PermissionVersion.bump_users!([ id ])
+  # Refresh the already-loaded owner after association removal. PostgreSQL
+  # owns the persistent version bump, including callback-free bulk paths.
+  def refresh_permission_snapshot_after_authorization_removal(_record)
+    refresh_permission_snapshot_from_database!
+  end
+
+  def refresh_permission_snapshot_from_database!
     self.permission_version = User.uncached do
       User.where(id: id).pick(:permission_version)
     end
+    clear_attribute_changes([ :permission_version ])
     @authorization_permission_version = nil
     @authorization_permission_keys = nil
   end

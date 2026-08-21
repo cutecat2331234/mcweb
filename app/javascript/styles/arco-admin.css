@@ -321,8 +321,8 @@ html.dark body.mcweb-admin {
   .arco-picker,
   .arco-textarea-wrapper
 ):focus-within {
-  border-color: rgb(var(--primary-6));
-  box-shadow: 0 0 0 3px rgba(var(--primary-6), 0.12);
+  position: relative;
+  z-index: 2;
 }
 
 /* Reusable semantic surface accents for dashboards and summary cards. */
@@ -397,7 +397,7 @@ html.dark body.mcweb-admin {
   background: rgb(var(--arcoblue-1));
 }
 
-.mcweb-admin :where(a, button, input, select, textarea, [tabindex]):focus-visible {
+.mcweb-admin :where(a, button, input, select, textarea, [tabindex]):not([class*='arco-']):focus-visible {
   outline: 2px solid rgb(var(--primary-6)) !important;
   outline-offset: 2px !important;
 }

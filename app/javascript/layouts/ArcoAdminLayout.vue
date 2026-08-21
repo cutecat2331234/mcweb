@@ -977,11 +977,6 @@ watch(isDark, syncArcoTheme, { immediate: true })
   margin-block: 2px;
   border-radius: 8px;
 }
-.arco-admin-sider__menu :deep(.arco-menu-selected) {
-  color: rgb(var(--primary-6));
-  background: linear-gradient(90deg, rgba(var(--primary-6), 0.14), rgba(var(--primary-6), 0.05));
-  font-weight: 600;
-}
 .arco-admin-sider__menu :deep(.arco-admin-nav-group > .arco-menu-inline-header .arco-menu-icon) {
   display: inline-flex;
   align-items: center;

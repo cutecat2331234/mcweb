@@ -34,6 +34,24 @@ class HideReportableTest < ActiveSupport::TestCase
   end
 
   test "is a safe no-op for a nil reportable" do
-    assert Community::HideReportable.call(reportable: nil).success?
+    result = Community::HideReportable.call(reportable: nil)
+    assert_predicate result, :success?
+    assert_equal false, result.value.fetch(:hidden)
+  end
+
+  test "private messages are retained and never reported as hidden" do
+    recipient = create_user
+    conversation = Community::Conversation.create!
+    conversation.participants.create!(user: @author)
+    conversation.participants.create!(user: recipient)
+    message = conversation.messages.create!(user: @author, body: "Retained private message")
+
+    result = Community::HideReportable.call(reportable: message)
+
+    assert_predicate result, :success?
+    assert_equal false, result.value.fetch(:hidden)
+    assert_equal "unsupported_or_retained_reportable", result.value.fetch(:skipped)
+    assert Community::Message.exists?(message.id)
+    assert_equal "Retained private message", message.reload.body
   end
 end

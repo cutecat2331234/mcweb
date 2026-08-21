@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "inertia_rails/minitest"
 
 class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
+  include InertiaRails::Minitest
+
   setup do
     suffix = SecureRandom.hex(4)
     category = Community::Category.create!(
@@ -166,6 +169,118 @@ class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
     assert_nil row["title"]
     assert_nil row["body"]
     assert_nil row["url"]
+  end
+
+  test "the notification centre paginates beyond the first fifty items" do
+    55.times do |index|
+      @user.notifications.create!(
+        notification_type: "system.notice",
+        title: format("PAGEABLE-%02d", index),
+        body: "Pagination fixture",
+        created_at: 55.minutes.ago + index.minutes
+      )
+    end
+
+    get forum_notifications_path(page: 2), headers: inertia_headers
+
+    assert_response :success
+    props = inertia.props.deep_symbolize_keys
+    assert_equal 2, props.dig(:pagination, :page)
+    assert_equal 55, props.dig(:pagination, :count)
+    titles = props.fetch(:flat_notifications).map { |notification| notification[:title] }
+    assert_includes titles, "PAGEABLE-00"
+    refute_includes titles, "PAGEABLE-54"
+  end
+
+  test "a user can delete only their own individual notification and keep list filters" do
+    own = @user.notifications.create!(
+      notification_type: "system.notice",
+      title: "Delete this notification"
+    )
+    foreign = @author.notifications.create!(
+      notification_type: "system.notice",
+      title: "Do not delete this notification"
+    )
+
+    delete forum_notification_path(own), params: {
+      category: "forum",
+      read: "unread",
+      type: "system.notice",
+      period: "month",
+      page: "2"
+    }
+    assert_redirected_to forum_notifications_path(
+      category: "forum",
+      read: "unread",
+      type: "system.notice",
+      period: "month"
+    )
+    refute Notification.exists?(own.id)
+
+    delete forum_notification_path(foreign)
+    assert_response :not_found
+    assert Notification.exists?(foreign.id)
+  end
+
+  test "deleting the only notification on the last page returns to the preceding valid page" do
+    notifications = 51.times.map do |index|
+      @user.notifications.create!(
+        notification_type: "system.notice",
+        title: "LAST-PAGE-#{index}",
+        created_at: 51.minutes.ago + index.minutes
+      )
+    end
+    only_last_page_item = notifications.first
+
+    delete forum_notification_path(only_last_page_item), params: {
+      category: "forum",
+      type: "system.notice",
+      page: "2"
+    }
+
+    assert_redirected_to forum_notifications_path(
+      category: "forum",
+      type: "system.notice"
+    )
+    refute Notification.exists?(only_last_page_item.id)
+    assert_equal 50, @user.notifications.where(notification_type: "system.notice").count
+  end
+
+  test "notification API deletion requires a writer bound to the owner" do
+    notification = @user.notifications.create!(
+      notification_type: "system.notice",
+      title: "API deletable notification"
+    )
+    _reader_key, reader_token = Administration::ApiKey.generate!(
+      name: "notification-reader-#{SecureRandom.hex(4)}",
+      scopes: %w[read],
+      user: @user
+    )
+
+    delete "/api/v1/notifications/#{notification.id}",
+      headers: { "Authorization" => "Bearer #{reader_token}" }
+    assert_response :forbidden
+    assert Notification.exists?(notification.id)
+
+    _foreign_key, foreign_token = Administration::ApiKey.generate!(
+      name: "notification-foreign-writer-#{SecureRandom.hex(4)}",
+      scopes: %w[write],
+      user: @author
+    )
+    delete "/api/v1/notifications/#{notification.id}",
+      headers: { "Authorization" => "Bearer #{foreign_token}" }
+    assert_response :not_found
+    assert Notification.exists?(notification.id)
+
+    _writer_key, writer_token = Administration::ApiKey.generate!(
+      name: "notification-owner-writer-#{SecureRandom.hex(4)}",
+      scopes: %w[write],
+      user: @user
+    )
+    delete "/api/v1/notifications/#{notification.id}",
+      headers: { "Authorization" => "Bearer #{writer_token}" }
+    assert_response :no_content
+    refute Notification.exists?(notification.id)
   end
 
   private

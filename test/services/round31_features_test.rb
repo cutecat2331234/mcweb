@@ -148,7 +148,12 @@ class Community::NotifyPostEditedTest < ActiveSupport::TestCase
 
   test "edit post triggers notification" do
     assert_difference -> { Notification.where(user: @subscriber, notification_type: "forum.post_edited").count }, 1 do
-      result = Community::EditPost.call(user: @author, post: @post, body: "Updated body text")
+      result = Community::EditPost.call(
+        user: @author,
+        post: @post,
+        body: "Updated body text",
+        expected_revision: @post.revision
+      )
       assert result.success?
     end
   end

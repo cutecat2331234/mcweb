@@ -54,6 +54,12 @@ class Community::ReportReasonCodeTest < ActiveSupport::TestCase
     assert_includes Community::Report::REASONS.keys, "spam"
     assert_equal "垃圾广告 / 刷屏", Community::Report::REASONS["spam"]
   end
+
+  test "reason options localize built-in labels without changing the compatibility constant" do
+    assert_equal "Spam / flooding", Community::Report.reason_options(locale: :en)["spam"]
+    assert_equal "垃圾广告 / 刷屏", Community::Report.reason_options(locale: :"zh-CN")["spam"]
+    assert_equal "垃圾广告 / 刷屏", Community::Report::REASONS["spam"]
+  end
 end
 
 class Community::FormatPostBodyLangTest < ActiveSupport::TestCase

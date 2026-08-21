@@ -79,6 +79,7 @@ class Round116EditPostAttachmentsTest < ActiveSupport::TestCase
       user: @user,
       post: @post,
       body: @post.body,
+      expected_revision: @post.revision,
       attachment_ids: [ @attachment.id ]
     )
     assert result.success?
@@ -99,6 +100,7 @@ class Round116EditPostAttachmentsTest < ActiveSupport::TestCase
       user: @user,
       post: @post,
       body: @post.body,
+      expected_revision: @post.revision,
       attachment_ids: []
     )
     assert result.success?
@@ -111,6 +113,7 @@ class Round116EditPostAttachmentsTest < ActiveSupport::TestCase
         user: @user,
         post: @post,
         body: @post.body,
+        expected_revision: @post.revision,
         attachment_ids: [ @attachment.id ]
       )
       assert result.success?

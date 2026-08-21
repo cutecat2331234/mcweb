@@ -13,94 +13,45 @@ module Community
     end
 
     def create
-      reportable = find_reportable
-      return redirect_back fallback_location: root_path, alert: t("mcweb.flash.content_not_found") unless reportable
+      result = Community::CreateReport.call(
+        reporter: current_user,
+        reportable_type: report_params[:reportable_type],
+        reportable_id: report_params[:reportable_id],
+        reason: report_params[:reason],
+        reason_code: report_params[:reason_code],
+        reason_detail: report_params[:reason_detail],
+        ip_address: request.remote_ip
+      )
 
-      rate_limit_result = report_rate_limit
-      if rate_limit_result.failure?
-        apply_retry_after_header(rate_limit_result)
+      if result.rate_limited?
+        apply_retry_after_header(result)
         return redirect_back fallback_location: root_path, alert: t("mcweb.flash.report_rate_limited")
       end
 
-      reason_code = report_params[:reason_code].presence
-      detail = report_params[:reason_detail].to_s.strip
-      reason_text = if reason_code.present?
-                      label = Community::Report.reason_options[reason_code] || reason_code
-                      detail.present? ? "#{label}：#{detail}" : label
-      else
-                      report_params[:reason]
+      if result.code == "report_target_unavailable"
+        return redirect_back fallback_location: root_path, alert: t("mcweb.flash.content_not_found")
       end
 
-      report = Community::Report.create!(
-        reporter: current_user,
-        reportable: reportable,
-        reason: reason_text,
-        reason_code: reason_code,
-        status: :pending
-      )
-
-      Community::CheckReportThreshold.call(report: report)
-
-      Administration::AuditLogger.call(
-        actor: current_user,
-        action: "community.report_created",
-        resource: report
-      )
-
-      Mcweb::Events.publish("forum.report.created", report: report, reporter: current_user, reportable: reportable)
+      return render_failure(result) if result.failure?
 
       redirect_back fallback_location: root_path, notice: t("mcweb.flash.report_submitted")
-    rescue ActiveRecord::RecordInvalid => e
+    end
+
+    private
+
+    def render_failure(result)
       render inertia: "Community/Reports/New",
              props: {
                reportableType: report_params[:reportable_type],
                reportableId: report_params[:reportable_id],
                reasonOptions: Community::Report.reason_options.map { |code, label| { value: code, label: label } },
-               form_errors: { "report.reason" => e.record.errors.full_messages.join("；") }
+               form_errors: { "report.reason" => service_error_message(result) }
              },
              status: :unprocessable_entity
     end
 
-    private
-
     def report_params
       params.require(:report).permit(:reportable_type, :reportable_id, :reason, :reason_code, :reason_detail)
-    end
-
-    def report_rate_limit
-      Administration::AbuseRateLimit.call(
-        action: :report,
-        account: current_user,
-        ip_address: request.remote_ip
-      )
-    end
-
-    def find_reportable
-      type = report_params[:reportable_type]
-      return unless %w[Community::Topic Community::Post Community::ProfilePost Commerce::Review User].include?(type)
-
-      record = type.constantize.find_by(id: report_params[:reportable_id])
-      return unless record
-      return unless reportable_accessible?(record)
-
-      record
-    end
-
-    def reportable_accessible?(record)
-      case record
-      when Community::Topic
-        PollParticipation.visible?(topic: record, user: current_user)
-      when Community::Post
-        PostAccess.readable?(post: record, user: current_user)
-      when Community::ProfilePost
-        record.published?
-      when Commerce::Review
-        record.published?
-      when User
-        record.id != current_user.id && record.active?
-      else
-        false
-      end
     end
   end
 end

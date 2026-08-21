@@ -384,6 +384,15 @@ module Identity
         ]
       ),
       build_entry.call(
+        "forum.conversations.reports.review",
+        "Review private-message reports",
+        execution_points: [
+          "app/controllers/admin/forum/reports_controller.rb#index",
+          "app/controllers/admin/forum/reports_controller.rb#show",
+          "app/controllers/admin/forum/reports_controller.rb#reveal_evidence"
+        ]
+      ),
+      build_entry.call(
         "store.products.manage",
         "管理商品",
         execution_points: [

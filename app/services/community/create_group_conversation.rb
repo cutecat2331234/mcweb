@@ -4,12 +4,13 @@ module Community
   class CreateGroupConversation < ApplicationService
     MAX_PARTICIPANTS = 10
 
-    def initialize(sender:, title:, recipient_usernames:, body:, ip_address: nil)
+    def initialize(sender:, title:, recipient_usernames:, body:, attachment_ids: [], ip_address: nil)
       @sender = sender
       @title = title.to_s.strip
       @usernames = Array(recipient_usernames).flat_map { |n| n.to_s.split(",") }.map(&:strip).reject(&:blank?).uniq
       @usernames -= [ @sender.username ]
       @body = body.to_s.strip
+      @attachment_ids = attachment_ids
       @ip_address = ip_address
     end
 
@@ -60,6 +61,8 @@ module Community
       end
 
       conversation = nil
+      message = nil
+      attachment_result = nil
       Community::Conversation.transaction do
         conversation = Community::Conversation.create!(
           title: @title,
@@ -70,13 +73,20 @@ module Community
         conversation.participants.create!(user: @sender)
         recipients.each { |user| conversation.participants.create!(user: user) }
         message = conversation.messages.create!(user: @sender, body: @body)
+        attachment_result = Community::LinkMessageAttachments.call(
+          user: @sender,
+          message: message,
+          attachment_ids: @attachment_ids
+        )
+        raise ActiveRecord::Rollback if attachment_result.failure?
+
         conversation.update!(last_message_at: message.created_at)
+        conversation.mark_read_for!(@sender)
+        conversation.unarchive_all_participants!
       end
+      return attachment_result if attachment_result&.failure?
+      return ServiceResult.failure(error: "message_create_failed") unless message&.persisted?
 
-      conversation.mark_read_for!(@sender)
-      conversation.unarchive_all_participants!
-
-      message = conversation.messages.order(:created_at).last
       Community::NotifyPrivateMessage.call(message: message, conversation: conversation)
 
       ServiceResult.success(conversation: conversation, message: message)

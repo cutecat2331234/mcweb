@@ -50,7 +50,7 @@ module Identity
       result = nil
       ActiveRecord::Base.transaction do
         PermissionMutationLock.acquire_exclusive!
-        @actor = User.find_by(id: @actor&.id)
+        @actor = User.uncached { User.find_by(id: @actor&.id) }
         result = if operation_allowed?
                    send(:"apply_#{@operation}")
         else

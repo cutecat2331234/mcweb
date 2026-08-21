@@ -7,9 +7,11 @@ import Breadcrumb from '@/components/portal/Breadcrumb.vue'
 import PageHeader from '@/components/portal/PageHeader.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
+import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.vue'
 import { routes } from '@/lib/routes'
 import { appendQueryParams } from '@/lib/utils'
 import { commitNavigationEffect } from '@/lib/navigationReceipt'
+import { confirm } from '@/lib/useConfirm'
 
 defineOptions({ layout: PortalLayout })
 
@@ -26,13 +28,15 @@ export interface NotificationGroup {
   read: boolean
   latest_at: string
   visit_url: string | null
+  delete_url: string | null
   items: Array<{
     id: number
     title: string
     body: string | null
     created_at: string
-    visit_url: string
+    visit_url: string | null
     mark_read_url: string
+    delete_url: string
     read: boolean
     category: 'forum' | 'commerce'
     auto_dismiss?: boolean
@@ -97,6 +101,7 @@ const props = defineProps<{
   activeFilters?: Array<{ param: string; label: string; value?: string }>
   unreadCount?: number
   dismissAlertsUrl?: string | null
+  pagination: PaginationMeta
 }>()
 
 watch(
@@ -160,7 +165,26 @@ function toggleExpand(key: string) {
 }
 
 function markRead(url: string) {
-  router.patch(appendQueryParams(url, filterParams()), {}, { preserveScroll: true })
+  router.patch(appendQueryParams(url, currentListParams()), {}, { preserveScroll: true })
+}
+
+function currentListParams() {
+  return {
+    ...filterParams(),
+    page: props.pagination.page > 1 ? String(props.pagination.page) : undefined,
+  }
+}
+
+async function deleteNotification(url: string) {
+  const ok = await confirm({
+    title: t('community.notifications.deleteTitle'),
+    message: t('community.notifications.deleteConfirm'),
+    confirmLabel: t('community.notifications.delete'),
+    variant: 'destructive',
+  })
+  if (!ok) return
+
+  router.delete(appendQueryParams(url, currentListParams()), { preserveScroll: true })
 }
 
 function switchCategory(category: 'all' | 'forum' | 'commerce') {
@@ -344,6 +368,9 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
                   <Button v-if="group.visit_url" as-child size="sm">
                     <Link :href="group.visit_url">{{ t('community.notifications.view') }}</Link>
                   </Button>
+                  <Button v-if="group.delete_url" type="button" variant="destructive" size="sm" @click="deleteNotification(group.delete_url)">
+                    {{ t('community.notifications.delete') }}
+                  </Button>
                 </div>
               </div>
               <ul v-if="expanded[group.key] && group.items.length" class="mt-3 space-y-2 border-t pt-3">
@@ -358,8 +385,11 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
                   </div>
                   <div class="flex flex-wrap gap-1 sm:shrink-0">
                     <Button v-if="!item.read" type="button" variant="outline" size="sm" @click="markRead(item.mark_read_url)">{{ t('community.notifications.markRead') }}</Button>
-                    <Button as-child size="sm" variant="outline">
+                    <Button v-if="item.visit_url" as-child size="sm" variant="outline">
                       <Link :href="item.visit_url">{{ t('community.notifications.view') }}</Link>
+                    </Button>
+                    <Button type="button" variant="destructive" size="sm" @click="deleteNotification(item.delete_url)">
+                      {{ t('community.notifications.delete') }}
                     </Button>
                   </div>
                 </li>
@@ -374,4 +404,11 @@ function sectionTimelines(section: NotificationSection): TimelineSection[] {
   <p v-else class="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
     {{ t('community.notifications.empty') }}
   </p>
+
+  <Pagination
+    v-if="pagination.pages > 1"
+    :pagination="pagination"
+    :base-path="routes.forumNotifications"
+    :query="filterParams()"
+  />
 </template>

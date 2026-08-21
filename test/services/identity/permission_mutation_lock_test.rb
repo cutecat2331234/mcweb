@@ -38,6 +38,7 @@ module Identity
       release_mutation = Queue.new
       mutation_result = Queue.new
       reader_started = Queue.new
+      reader_prewarmed = Queue.new
       reader_pid = Queue.new
       reader_result = Queue.new
       original_audit_call = Administration::AuditLogger.method(:call)
@@ -57,9 +58,12 @@ module Identity
 
         reader = start_shared_reader(
           started: reader_started,
+          prewarmed: reader_prewarmed,
           backend_pid: reader_pid,
           result: reader_result
         )
+        assert reader_prewarmed.pop,
+               "reader connection should cache the permission before revocation commits"
         reader_started.pop
         wait_until_advisory_lock_wait(reader_pid.pop)
 
@@ -92,6 +96,63 @@ module Identity
       )
     end
 
+    test "owner demotion orders against cached high-risk readers" do
+      target = create_user(account_type: "owner")
+      reader_ready = Queue.new
+      start_reader = Queue.new
+      reader_pid = Queue.new
+      reader_result = Queue.new
+      writer_paused = Queue.new
+      release_writer = Queue.new
+      writer_result = Queue.new
+
+      reader = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do |connection|
+          connection.cache do
+            stale_actor = User.find(target.id)
+            assert stale_actor.permission?("identity.owner.demotion_probe")
+            reader_pid << connection.select_value("SELECT pg_backend_pid()").to_i
+            reader_ready << true
+            start_reader.pop
+            reader_result << AuthorizedMutation.with(
+              actor: stale_actor,
+              any_of: [ "identity.owner.demotion_probe" ]
+            ) { ServiceResult.success(executed: true) }
+          end
+        end
+      end
+      reader_ready.pop
+
+      writer = Thread.new do
+        ActiveRecord::Base.connection_pool.with_connection do
+          User.transaction do
+            User.find(target.id).update!(account_type: "member")
+            writer_paused << true
+            release_writer.pop
+          end
+          writer_result << true
+        end
+      end
+      writer_paused.pop
+
+      start_reader << true
+      wait_until_advisory_lock_wait(reader_pid.pop)
+      assert_predicate reader, :alive?,
+                       "shared reader should wait for the owner demotion to commit"
+
+      release_writer << true
+      assert writer.join(5), "owner demotion thread did not finish"
+      assert reader.join(5), "high-risk reader thread did not finish"
+      assert writer_result.pop
+      assert_predicate reader_result.pop, :failure?
+    ensure
+      start_reader << true if reader&.alive?
+      release_writer << true if writer&.alive?
+      writer&.join(5)
+      reader&.join(5)
+      User.where(id: target&.id).destroy_all
+    end
+
     private
 
     def start_revocation(result)
@@ -109,14 +170,18 @@ module Identity
       end
     end
 
-    def start_shared_reader(started:, backend_pid:, result:)
+    def start_shared_reader(started:, prewarmed:, backend_pid:, result:)
       Thread.new do
         ActiveRecord::Base.connection_pool.with_connection do |connection|
-          ApplicationRecord.transaction do
-            backend_pid << connection.select_value("SELECT pg_backend_pid()").to_i
-            started << true
-            PermissionMutationLock.acquire_shared!
-            result << User.find(@member.id).permission?(@permission.key)
+          connection.cache do
+            prewarmed << User.find(@member.id).permission?(@permission.key)
+            ApplicationRecord.transaction do
+              backend_pid << connection.select_value("SELECT pg_backend_pid()").to_i
+              started << true
+              PermissionMutationLock.acquire_shared!
+              actor = User.uncached { User.find(@member.id) }
+              result << actor.permission?(@permission.key)
+            end
           end
         end
       end

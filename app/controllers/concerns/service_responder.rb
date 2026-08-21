@@ -43,4 +43,12 @@ module ServiceResponder
     retry_after = result.retry_after.to_i
     response.set_header("Retry-After", retry_after.to_s) if retry_after.positive?
   end
+
+  def client_operation_token(value)
+    token = value.to_s
+    return if token.blank? || token.length > 128
+    return unless token.match?(/\A[a-zA-Z0-9_.:-]+\z/)
+
+    token
+  end
 end

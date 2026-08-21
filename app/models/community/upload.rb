@@ -139,5 +139,15 @@ module Community
       end
       update!(attributes)
     end
+
+    def schedule_cleanup!(at: Time.current)
+      update!(
+        status: "cleanup_pending",
+        expires_at: at,
+        cleanup_started_at: nil,
+        cleanup_error_code: nil,
+        cleanup_error_message: nil
+      )
+    end
   end
 end

@@ -158,7 +158,8 @@ module Community
         edit_result = Community::EditPost.call(
           user: actor,
           post: @opening_post,
-          body: "Archived mutation by #{actor.id}"
+          body: "Archived mutation by #{actor.id}",
+          expected_revision: @opening_post.revision
         )
         assert_predicate edit_result, :failure?
         assert_equal I18n.t("mcweb.services.errors.post_not_available"),
@@ -217,14 +218,16 @@ module Community
       hidden_result = Community::EditPost.call(
         user: @moderator,
         post: hidden_post,
-        body: "Edited hidden body"
+        body: "Edited hidden body",
+        expected_revision: hidden_post.revision
       )
       assert_predicate hidden_result, :success?
 
       pending_result = Community::EditPost.call(
         user: @moderator,
         post: pending_post,
-        body: "Edited pending body"
+        body: "Edited pending body",
+        expected_revision: pending_post.revision
       )
       assert_predicate pending_result, :success?
 
@@ -241,7 +244,8 @@ module Community
       edit_result = Community::EditPost.call(
         user: @author,
         post: @opening_post,
-        body: "Edit after deletion"
+        body: "Edit after deletion",
+        expected_revision: @opening_post.revision
       )
       assert_predicate edit_result, :failure?
       assert_equal I18n.t("mcweb.services.errors.post_not_available"),

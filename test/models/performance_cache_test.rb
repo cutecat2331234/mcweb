@@ -27,6 +27,12 @@ class PerformanceCacheTest < ActiveSupport::TestCase
     first_set = user.authorization_permission_keys
     assert_same first_set, user.authorization_permission_keys
 
+    statements = capture_business_sql do
+      3.times { assert user.permission?("forum.performance.first") }
+    end
+    assert_empty statements,
+      "warm permission checks should not query once per call:\n#{statements.join("\n")}"
+
     previous_version = user.permission_version
     grant_permission(user, "forum.performance.second")
     user.reload
@@ -34,6 +40,17 @@ class PerformanceCacheTest < ActiveSupport::TestCase
     assert_operator user.permission_version, :>, previous_version
     assert user.permission?("forum.performance.second")
     assert_not_same first_set, user.authorization_permission_keys
+  end
+
+  test "a loaded user stops authorizing immediately after a role is revoked" do
+    user = create_user
+    grant_permission(user, "forum.performance.revoked")
+    role = Role.find_by!(key: "test_forum_performance_revoked")
+
+    assert user.permission?("forum.performance.revoked")
+    user.roles.delete(role)
+
+    assert_not user.permission?("forum.performance.revoked")
   end
 
   test "site setting reads cache values and invalidates exact keys" do
@@ -68,5 +85,25 @@ class PerformanceCacheTest < ActiveSupport::TestCase
     assert_not_includes items, { label: "Performance", href: "/performance" }
   ensure
     item&.destroy!
+  end
+
+  private
+
+  def capture_business_sql
+    statements = []
+    subscriber = lambda do |_name, _started, _finished, _id, payload|
+      next if payload[:cached]
+      next if %w[SCHEMA TRANSACTION].include?(payload[:name].to_s.upcase)
+
+      sql = payload[:sql].to_s.squish
+      next if sql.match?(/\A(?:BEGIN|COMMIT|ROLLBACK|SAVEPOINT|RELEASE)/i)
+
+      statements << sql
+    end
+    ActiveSupport::Notifications.subscribed(
+      subscriber,
+      "sql.active_record"
+    ) { yield }
+    statements
   end
 end

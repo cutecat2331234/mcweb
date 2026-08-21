@@ -10,14 +10,15 @@ module Community
 
     def call
       return ServiceResult.failure(error: "profile_posts_disabled") unless Community::ProfileWallPolicy.enabled?
-      return ServiceResult.failure(error: "profile_post_blank") if @body.blank?
       return ServiceResult.failure(error: "profile_post_unavailable") unless @profile_post&.published?
       unless Community::ProfileWallPolicy.can_comment?(author: @author, profile_post: @profile_post)
         return ServiceResult.failure(error: "profile_post_not_allowed")
       end
+      prepared = Community::PrepareProfileWallBody.call(author: @author, body: @body, max_length: 3_000)
+      return prepared if prepared.failure?
 
-      comment = @profile_post.comments.create!(author: @author, body: @body, status: :published)
-      notify_recipients!(comment)
+      comment = @profile_post.comments.create!(author: @author, body: prepared.value, status: :published)
+      notify_recipients!(comment, prepared.value)
       ServiceResult.success(comment)
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
@@ -25,7 +26,7 @@ module Community
 
     private
 
-    def notify_recipients!(comment)
+    def notify_recipients!(comment, body)
       [ @profile_post.author, @profile_post.profile_user ].compact.uniq.each do |user|
         next if user.id == @author.id
         next unless NotificationPreference.enabled?(user, channel: "in_app", notification_type: "forum.profile_post_comment")
@@ -35,7 +36,7 @@ module Community
           notification_type: "forum.profile_post_comment",
           key: "profile_post_comment",
           author: @author.username,
-          excerpt: @body.truncate(140),
+          excerpt: body.truncate(140),
           metadata: {
             path: "/app/forum/users/#{@profile_post.profile_user.username}",
             profile_post_id: @profile_post.id,

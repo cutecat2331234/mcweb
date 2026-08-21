@@ -2,10 +2,11 @@
 
 module Community
   class CreateConversation < ApplicationService
-    def initialize(sender:, recipient_username:, body:, ip_address: nil)
+    def initialize(sender:, recipient_username:, body:, attachment_ids: [], ip_address: nil)
       @sender = sender
       @recipient = User.find_by(username: recipient_username.to_s.strip)
       @body = body.to_s.strip
+      @attachment_ids = attachment_ids
       @ip_address = ip_address
     end
 
@@ -35,11 +36,25 @@ module Community
 
       return ServiceResult.failure(error: :message_too_short) if @body.length < 1
 
-      conversation = find_existing || create_conversation!
-      message = conversation.messages.create!(user: @sender, body: @body)
-      conversation.update!(last_message_at: message.created_at)
-      conversation.mark_read_for!(@sender)
-      conversation.unarchive_all_participants!
+      conversation = nil
+      message = nil
+      attachment_result = nil
+      Community::Conversation.transaction do
+        conversation = find_existing || create_conversation!
+        message = conversation.messages.create!(user: @sender, body: @body)
+        attachment_result = Community::LinkMessageAttachments.call(
+          user: @sender,
+          message: message,
+          attachment_ids: @attachment_ids
+        )
+        raise ActiveRecord::Rollback if attachment_result.failure?
+
+        conversation.update!(last_message_at: message.created_at)
+        conversation.mark_read_for!(@sender)
+        conversation.unarchive_all_participants!
+      end
+      return attachment_result if attachment_result&.failure?
+      return ServiceResult.failure(error: "message_create_failed") unless message&.persisted?
 
       Community::NotifyPrivateMessage.call(message: message, conversation: conversation)
 

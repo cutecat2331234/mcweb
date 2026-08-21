@@ -19,7 +19,7 @@ module Community
         type: type_filter,
         period: period_filter
       )
-      notifications = filtered_scope.limit(100).to_a
+      @pagy, notifications = pagy(:offset, filtered_scope, limit: 50)
       notification_access = Community::NotificationAccess.new(
         user: current_user,
         notifications: notifications
@@ -65,8 +65,15 @@ module Community
         periodFilters: notification_period_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
         activeFilters: notification_active_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
         unreadCount: unread_count,
-        dismissAlertsUrl: dismiss_alerts_forum_notifications_path(notification_index_query_params)
+        dismissAlertsUrl: dismiss_alerts_forum_notifications_path(notification_index_query_params),
+        pagination: pagy_props(@pagy)
       }
+    end
+
+    def destroy
+      current_user.notifications.find(params[:id]).destroy!
+      redirect_to forum_notifications_path(notification_index_query_params(valid_page: true)),
+        notice: t("mcweb.flash.notification_deleted")
     end
 
     def visit
@@ -106,13 +113,29 @@ module Community
 
     private
 
-    def notification_index_query_params
-      {
+    def notification_index_query_params(valid_page: false)
+      query = {
         category: params[:category].presence,
         read: params[:read].presence,
         type: params[:type].presence,
-        period: params[:period].presence
+        period: params[:period].presence,
+        page: params[:page].presence
       }.compact
+      return query unless valid_page && query[:page]
+
+      requested_page = Integer(query[:page], exception: false)
+      return query.except(:page) unless requested_page&.positive?
+
+      remaining = apply_notification_filters(
+        current_user.notifications.recent,
+        category: query[:category],
+        read: query[:read],
+        type: query[:type],
+        period: query[:period]
+      ).count
+      last_page = [ (remaining.fdiv(50)).ceil, 1 ].max
+      corrected_page = [ requested_page, last_page ].min
+      corrected_page > 1 ? query.merge(page: corrected_page) : query.except(:page)
     end
 
     def safe_notification_path(metadata)
@@ -134,7 +157,8 @@ module Community
         created_at: l(notification.created_at, format: :short),
         url: visible ? safe_notification_path(notification.metadata) : nil,
         visit_url: visible ? visit_forum_notification_path(notification) : nil,
-        mark_read_url: mark_read_forum_notification_path(notification)
+        mark_read_url: mark_read_forum_notification_path(notification),
+        delete_url: forum_notification_path(notification)
       }
     end
 
@@ -273,9 +297,10 @@ module Community
           latest_at: l(latest.created_at, format: :short),
           latest_at_ts: latest.created_at.to_i,
           visit_url: notification_content_visible?(latest, notification_access: notification_access) && latest.destination_path.present? ? visit_forum_notification_path(latest) : nil,
-          items: items.first(5).map { |n| serialize_notification(n, notification_access: notification_access) }
+          delete_url: items.one? ? forum_notification_path(latest) : nil,
+          items: items.map { |n| serialize_notification(n, notification_access: notification_access) }
         }
-      end.sort_by { |g| -g[:latest_at_ts] }.first(30)
+      end.sort_by { |g| -g[:latest_at_ts] }
     end
   end
 end

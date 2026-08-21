@@ -1,8 +1,11 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "inertia_rails/minitest"
 
 class ReportEventTest < ActionDispatch::IntegrationTest
+  include InertiaRails::Minitest
+
   setup do
     category = Community::Category.find_or_create_by!(slug: "rep-cat") { |c| c.name = "R" }
     @section = Community::Section.find_or_create_by!(category: category, slug: "rep-sec") do |s|
@@ -34,5 +37,22 @@ class ReportEventTest < ActionDispatch::IntegrationTest
     assert_equal @post.id, events.first[:report].reportable_id
   ensure
     Mcweb::Events.unsubscribe(sub)
+  end
+
+  test "invalid report reasons render localized form errors instead of internal codes" do
+    sign_in_as(@reporter)
+
+    post forum_reports_path, params: {
+      report: {
+        reportable_type: "Community::Post",
+        reportable_id: @post.id,
+        reason_code: "not_a_real_reason"
+      }
+    }
+
+    assert_response :unprocessable_entity
+    assert_equal I18n.t("mcweb.services.errors.report_reason_invalid"),
+      inertia.props.deep_symbolize_keys.dig(:form_errors, :"report.reason")
+    refute_includes response.body, "report_reason_invalid"
   end
 end

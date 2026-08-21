@@ -330,13 +330,18 @@ module Community
     end
 
     def attach_forum_avatar!(user, file:)
-      return t("mcweb.services.errors.avatar_file_required") unless file.respond_to?(:content_type)
+      return t("mcweb.services.errors.avatar_file_required") unless file.respond_to?(:read)
 
-      allowed = %w[image/jpeg image/png image/gif image/webp]
-      return t("mcweb.services.errors.avatar_unsupported_format") unless allowed.include?(file.content_type)
-      return t("mcweb.services.errors.avatar_too_large") if file.size > 2.megabytes
+      inspected = Community::ImageUploadInspector.call(io: file, max_bytes: 2.megabytes)
+      return t("mcweb.services.errors.avatar_too_large") if inspected.too_large?
+      return t("mcweb.services.errors.avatar_unsupported_format") unless inspected.success?
 
-      user.forum_avatar.attach(file)
+      user.forum_avatar.attach(
+        io: StringIO.new(inspected.payload),
+        filename: "avatar.#{inspected.extension}",
+        content_type: inspected.content_type,
+        identify: false
+      )
       nil
     end
 
@@ -380,6 +385,10 @@ module Community
           body: post.body,
           author: profile_actor(post.author),
           created_at: l(post.created_at, format: :short),
+          edited: post.edited?,
+          revision: post.revision,
+          can_edit: logged_in? && current_user.id == post.user_id,
+          edit_url: (logged_in? && current_user.id == post.user_id) ? forum_profile_post_path(post.id) : nil,
           can_delete: can_manage_profile_post?(post.user_id, user.id),
           delete_url: forum_profile_post_path(post.id),
           report_url: (logged_in? && current_user.id != post.user_id) ? new_forum_report_path(reportable_type: "Community::ProfilePost", reportable_id: post.id) : nil,
@@ -390,8 +399,13 @@ module Community
               body: comment.body,
               author: profile_actor(comment.author),
               created_at: l(comment.created_at, format: :short),
+              edited: comment.edited?,
+              revision: comment.revision,
+              can_edit: logged_in? && current_user.id == comment.user_id,
+              edit_url: (logged_in? && current_user.id == comment.user_id) ? forum_profile_post_comment_path(comment.id) : nil,
               can_delete: can_manage_profile_post?(comment.user_id, user.id),
-              delete_url: forum_profile_post_comment_path(comment.id)
+              delete_url: forum_profile_post_comment_path(comment.id),
+              report_url: (logged_in? && current_user.id != comment.user_id) ? new_forum_report_path(reportable_type: "Community::ProfilePostComment", reportable_id: comment.id) : nil
             }
           end
         }

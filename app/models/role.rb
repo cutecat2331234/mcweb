@@ -1,6 +1,8 @@
 class Role < ApplicationRecord
   has_many :role_permissions, dependent: :destroy
-  has_many :permissions, through: :role_permissions
+  has_many :permissions,
+           through: :role_permissions,
+           after_remove: :bump_user_permission_versions_after_permission_removal
   has_many :user_roles, dependent: :destroy
   has_many :users, through: :user_roles
 
@@ -23,5 +25,14 @@ class Role < ApplicationRecord
       permission = Permission.find_by!(key: permission) if permission.is_a?(String)
       RolePermission.where(role: self, permission:).destroy_all
     end
+  end
+
+  private
+
+  # Assigning through #permissions deletes join rows without running the
+  # RolePermission destroy callback. Keep every affected user's cache version
+  # in sync with that association-level mutation path.
+  def bump_user_permission_versions_after_permission_removal(_permission)
+    Identity::PermissionVersion.bump_role_users!(id)
   end
 end

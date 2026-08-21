@@ -376,7 +376,12 @@ class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
     assert publish.success?
     @topic.update!(status: "hidden")
 
-    result = Community::EditPost.call(user: @author, post: @post, body: "Updated hidden topic body")
+    result = Community::EditPost.call(
+      user: @author,
+      post: @post,
+      body: "Updated hidden topic body",
+      expected_revision: @post.revision
+    )
 
     assert result.success?
   end
@@ -387,7 +392,12 @@ class Community::PostAccessControlTest < ActionDispatch::IntegrationTest
     @topic.update!(status: "hidden")
     other = create_user
 
-    result = Community::EditPost.call(user: other, post: @post, body: "Attempted edit text")
+    result = Community::EditPost.call(
+      user: other,
+      post: @post,
+      body: "Attempted edit text",
+      expected_revision: @post.revision
+    )
 
     assert result.failure?
     assert_equal I18n.t("mcweb.services.errors.post_not_available"), result.error

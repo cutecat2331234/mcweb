@@ -809,13 +809,16 @@ edited_post = api.forum.edit_post(
   user:,
   id: 9001,
   body: "Updated body",
+  expected_revision: current_post.fetch("revision"),
   reason: "Corrected the upgrade step",
   attachment_ids: [123, 124]
 )
 ```
 
 `edit_topic` delegates to `Community::EditTopic` and requires at least one
-provided attribute. `edit_post` delegates to `Community::EditPost`. Ownership,
+provided attribute. `edit_post` delegates to `Community::EditPost` and requires
+the latest post snapshot `revision`; a stale revision fails without changing the
+post or its attachments. Ownership,
 moderator permissions, edit windows, archived/read-only behavior, censorship,
 mentions, hashtags, attachments, revisions, notifications, events, and
 real-time invalidation remain core-owned.

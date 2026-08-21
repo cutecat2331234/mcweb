@@ -101,6 +101,7 @@ module Mcweb
             parent_post_id: post.parent_post_id,
             floor_number: post.floor_number,
             body: post.body,
+            revision: post.revision,
             status: post.status,
             post_type: post.post_type,
             wiki: post.wiki_post?,

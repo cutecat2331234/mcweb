@@ -54,7 +54,12 @@ module Community
         @post.update!(body: canonical_body) if canonical_body != @post.body
       end
 
-      return ServiceResult.failure(error: "inline_upload_expired") if invalid
+      if invalid
+        return ServiceResult.failure(
+          error: "inline_upload_expired",
+          code: "inline_upload_expired"
+        )
+      end
 
       ServiceResult.success(linked: linked)
     end

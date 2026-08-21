@@ -2,10 +2,11 @@
 
 module Community
   class SendMessage < ApplicationService
-    def initialize(user:, conversation:, body:, ip_address: nil)
+    def initialize(user:, conversation:, body:, attachment_ids: [], ip_address: nil)
       @user = user
       @conversation = conversation
       @body = body.to_s.strip
+      @attachment_ids = attachment_ids
       @ip_address = ip_address
     end
 
@@ -40,10 +41,24 @@ module Community
         end
       end
 
-      message = @conversation.messages.create!(user: @user, body: @body)
-      @conversation.update!(last_message_at: message.created_at)
-      @conversation.mark_read_for!(@user)
-      @conversation.unarchive_all_participants!
+      message = nil
+      attachment_result = nil
+      Community::Conversation.transaction do
+        message = @conversation.messages.create!(user: @user, body: @body)
+        attachment_result = Community::LinkMessageAttachments.call(
+          user: @user,
+          message: message,
+          attachment_ids: @attachment_ids
+        )
+        raise ActiveRecord::Rollback if attachment_result.failure?
+
+        @conversation.update!(last_message_at: message.created_at)
+        @conversation.mark_read_for!(@user)
+        @conversation.unarchive_all_participants!
+        Community::MessageDraft.where(user: @user, conversation: @conversation).delete_all
+      end
+      return attachment_result if attachment_result&.failure?
+      return ServiceResult.failure(error: "message_create_failed") unless message&.persisted?
 
       Community::NotifyPrivateMessage.call(message: message, conversation: @conversation)
 

@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "inertia_rails/minitest"
 
 class CreateProfilePostTest < ActiveSupport::TestCase
   setup do
@@ -32,7 +33,7 @@ class CreateProfilePostTest < ActiveSupport::TestCase
   test "rejects a blank body" do
     result = Community::CreateProfilePost.call(author: @author, profile_user: @owner, body: "   ")
     assert result.failure?
-    assert_equal "profile_post_blank", result.error
+    assert_equal "profile_post_blank", result.code
   end
 
   test "is blocked when the wall owner has blocked the author" do
@@ -83,7 +84,91 @@ class CreateProfilePostCommentTest < ActiveSupport::TestCase
   end
 end
 
+class EditProfileWallItemTest < ActiveSupport::TestCase
+  setup do
+    @author = create_user
+    @owner = create_user
+    @other = create_user
+    SiteSetting.set("forum.profile_posts_enabled", "true")
+    SiteSetting.set("forum.min_trust_level_profile_post", "0")
+    @post = Community::CreateProfilePost.call(
+      author: @author,
+      profile_user: @owner,
+      body: "Original profile-wall body"
+    ).value
+  end
+
+  test "the author can edit without creating a notification and the audit contains only metadata" do
+    notification_count = Notification.count
+    edited_body = "Corrected wall text #{SecureRandom.hex(6)}"
+
+    result = Community::EditProfileWallItem.call(
+      author: @author,
+      item: @post,
+      body: edited_body,
+      expected_revision: 1,
+      request_id: "profile-edit-#{SecureRandom.uuid}"
+    )
+
+    assert_predicate result, :success?, result.error
+    assert_equal notification_count, Notification.count
+    assert_equal edited_body, @post.reload.body
+    assert_equal 2, @post.revision
+    assert_predicate @post, :edited?
+
+    audit = AuditLog.by_action("community.profile_wall_item_updated")
+      .find_by!(resource_type: "Community::ProfilePost", resource_id: @post.id)
+    assert_equal [ "body" ], audit.metadata.fetch("changed_fields")
+    assert_equal 2, audit.metadata.fetch("revision")
+    assert_equal Digest::SHA256.hexdigest(edited_body), audit.metadata.fetch("body_digest")
+    refute_includes JSON.generate(audit.attributes), edited_body
+  end
+
+  test "stale revisions and non-authors cannot overwrite a profile post" do
+    stale = Community::EditProfileWallItem.call(
+      author: @author,
+      item: @post,
+      body: "Stale body",
+      expected_revision: 2
+    )
+    assert_predicate stale, :failure?
+    assert_equal "profile_post_revision_conflict", stale.code
+
+    unauthorized = Community::EditProfileWallItem.call(
+      author: @other,
+      item: @post,
+      body: "Unauthorized body",
+      expected_revision: 1
+    )
+    assert_predicate unauthorized, :failure?
+    assert_equal "profile_post_edit_author_only", unauthorized.code
+    assert_equal "Original profile-wall body", @post.reload.body
+  end
+
+  test "a comment cannot be edited after its parent profile post is deleted" do
+    comment = Community::CreateProfilePostComment.call(
+      author: @author,
+      profile_post: @post,
+      body: "Original comment"
+    ).value
+    @post.soft_delete!
+
+    result = Community::EditProfileWallItem.call(
+      author: @author,
+      item: comment,
+      body: "Resurrected comment",
+      expected_revision: 1
+    )
+
+    assert_predicate result, :failure?
+    assert_equal "profile_post_unavailable", result.code
+    assert_equal "Original comment", comment.reload.body
+  end
+end
+
 class ProfilePostsFlowTest < ActionDispatch::IntegrationTest
+  include InertiaRails::Minitest
+
   setup do
     @owner = create_user
     @author = create_user
@@ -107,5 +192,78 @@ class ProfilePostsFlowTest < ActionDispatch::IntegrationTest
     delete forum_profile_post_path(pp.id)
     assert_redirected_to forum_user_path(@owner.username)
     assert_not Community::ProfilePost.exists?(pp.id), "soft-deleted post should be excluded by the default scope"
+  end
+
+
+  test "profile-post editing closes only after the server echoes the success token" do
+    wall_post = Community::CreateProfilePost.call(
+      author: @author,
+      profile_user: @owner,
+      body: "Original wall post"
+    ).value
+    sign_in_as(@author)
+    success_token = "wall-post-#{SecureRandom.hex(8)}"
+
+    patch forum_profile_post_path(wall_post), params: {
+      profile_post: {
+        body: "Updated wall post",
+        expected_revision: 1,
+        edit_token: success_token
+      }
+    }
+    assert_redirected_to forum_user_path(@owner.username)
+    follow_redirect!
+    assert_equal success_token,
+      inertia.props.deep_symbolize_keys.dig(:flash, :profile_wall_edit_succeeded)
+
+    stale_token = "wall-post-stale-#{SecureRandom.hex(8)}"
+    patch forum_profile_post_path(wall_post), params: {
+      profile_post: {
+        body: "Stale overwrite",
+        expected_revision: 1,
+        edit_token: stale_token
+      }
+    }
+    assert_redirected_to forum_user_path(@owner.username)
+    follow_redirect!
+    props = inertia.props.deep_symbolize_keys
+    assert_nil props.dig(:flash, :profile_wall_edit_succeeded)
+    assert_equal I18n.t("mcweb.services.errors.profile_post_revision_conflict"), props.dig(:flash, :alert)
+    assert_equal "Updated wall post", wall_post.reload.body
+  end
+
+  test "profile-comment stale conflicts never emit the success token" do
+    wall_post = Community::CreateProfilePost.call(
+      author: @author,
+      profile_user: @owner,
+      body: "Comment host"
+    ).value
+    comment = Community::CreateProfilePostComment.call(
+      author: @author,
+      profile_post: wall_post,
+      body: "Original comment"
+    ).value
+    edited = Community::EditProfileWallItem.call(
+      author: @author,
+      item: comment,
+      body: "Newer comment",
+      expected_revision: 1
+    )
+    assert_predicate edited, :success?, edited.error
+    sign_in_as(@author)
+
+    patch forum_profile_post_comment_path(comment), params: {
+      comment: {
+        body: "Stale comment",
+        expected_revision: 1,
+        edit_token: "wall-comment-stale-#{SecureRandom.hex(8)}"
+      }
+    }
+    assert_redirected_to forum_user_path(@owner.username)
+    follow_redirect!
+    props = inertia.props.deep_symbolize_keys
+    assert_nil props.dig(:flash, :profile_wall_edit_succeeded)
+    assert_equal I18n.t("mcweb.services.errors.profile_post_revision_conflict"), props.dig(:flash, :alert)
+    assert_equal "Newer comment", comment.reload.body
   end
 end

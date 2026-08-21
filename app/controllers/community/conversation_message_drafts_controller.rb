@@ -8,7 +8,12 @@ module Community
     before_action :set_conversation
 
     def update
-      result = Community::SaveMessageDraft.call(user: current_user, conversation: @conversation, body: params[:body])
+      result = Community::SaveMessageDraft.call(
+        user: current_user,
+        conversation: @conversation,
+        body: params[:body],
+        attachment_ids: params[:attachment_ids]
+      )
 
       if result.success?
         head :no_content

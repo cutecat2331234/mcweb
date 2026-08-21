@@ -107,7 +107,12 @@ class Round66EditPostLinkTest < ActiveSupport::TestCase
       status: :published
     )
 
-    result = Community::EditPost.call(user: user, post: post, body: "Now with https://example.com link")
+    result = Community::EditPost.call(
+      user: user,
+      post: post,
+      body: "Now with https://example.com link",
+      expected_revision: post.revision
+    )
     assert result.failure?
     assert_match(/链接/, result.error)
   end

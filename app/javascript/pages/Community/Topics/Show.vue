@@ -80,6 +80,7 @@ export interface PostItem {
   author_memberships?: Array<{ name: string; slug: string; color?: string | null; icon?: string | null }>
   verified_purchaser?: boolean
   body: string
+  revision: number
   body_html: string
   body_long?: boolean
   edit_seconds_remaining?: number | null
@@ -241,6 +242,10 @@ const props = defineProps<{
   topicSearchQuery?: string
   postSort?: string
   canCloseOwn?: boolean
+  isOwnTopic?: boolean
+  canDeleteOwn?: boolean
+  deleteOwnUrl?: string | null
+  deleteOwnRestrictedReason?: string | null
   topicBookmark?: {
     id: number
     update_url: string
@@ -369,6 +374,7 @@ const hasTopicOverflowActions = computed(() => Boolean(
     || loggedIn
     || props.markUnreadUrl
     || props.canCloseOwn
+    || props.isOwnTopic
     || props.topic.share_as_pm_url
     || props.reportTopicUrl
     || props.topic.can_moderate,
@@ -740,15 +746,21 @@ function saveEdit(post: PostItem) {
     editLinkError.value = props.warningRestrictions.link
     return
   }
+  const editToken = createIdempotencyKey()
   router.patch(post.update_url, {
     post: {
       body: editBody.value,
+      expected_revision: post.revision,
+      edit_token: editToken,
       reason: editReason.value,
       attachment_ids: editPendingAttachments.value.map((item) => item.id),
     },
   }, {
     preserveScroll: true,
-    onSuccess: () => cancelEdit(),
+    onSuccess: () => {
+      const flash = page.props.flash as { post_edit_succeeded?: string | null } | undefined
+      if (flash?.post_edit_succeeded === editToken) cancelEdit()
+    },
   })
 }
 
@@ -1153,6 +1165,18 @@ function reopenOwnTopic() {
   router.post(`/app/forum/topics/${props.topic.id}/reopen_own`, {}, { preserveScroll: true })
 }
 
+async function deleteOwnTopic() {
+  if (!props.deleteOwnUrl) return
+  const accepted = await confirm({
+    title: t('forum.topics.deleteOwnTitle'),
+    message: t('forum.topics.deleteOwnConfirm'),
+    confirmLabel: t('forum.topics.deleteOwnAction'),
+    variant: 'destructive',
+  })
+  if (!accepted) return
+  router.delete(props.deleteOwnUrl)
+}
+
 function onPostMouseUp(post: PostItem, event: MouseEvent) {
   const selection = window.getSelection()
   const text = selection?.toString().trim()
@@ -1356,6 +1380,15 @@ async function copyPollShareLink() {
             @select="reopenOwnTopic"
           >
             {{ t('forum.topics.reopenTopic') }}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            v-if="isOwnTopic"
+            :disabled="!canDeleteOwn || !deleteOwnUrl"
+            :title="deleteOwnRestrictedReason || undefined"
+            :class="[menuItemClass, 'text-destructive data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50']"
+            @select="deleteOwnTopic"
+          >
+            {{ t('forum.topics.deleteOwnAction') }}
           </DropdownMenuItem>
           <DropdownMenuItem
             v-if="topic.share_as_pm_url"

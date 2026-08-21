@@ -26,7 +26,7 @@ module Identity
 
     def with
       PermissionMutationLock.with_shared do
-        actor = User.find_by(id: @actor_id)
+        actor = User.uncached { User.find_by(id: @actor_id) }
         return failure unless authorized?(actor)
 
         yield actor

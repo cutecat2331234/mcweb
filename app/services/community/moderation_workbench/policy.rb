@@ -8,6 +8,7 @@ module Community
       ATTACHMENT_READ_PERMISSION = "forum.attachments.security.read"
       ATTACHMENT_MANAGE_PERMISSION = "forum.attachments.security.manage"
       ATTACHMENT_RELEASE_PERMISSION = "forum.attachments.security.release"
+      PRIVATE_MESSAGE_REPORT_PERMISSION = "forum.conversations.reports.review"
 
       def initialize(actor)
         @actor = actor
@@ -18,6 +19,7 @@ module Community
       def accessible?
         Community::SectionModeration.staff_for_any_section?(actor) ||
           actor&.permission?(ATTACHMENT_READ_PERMISSION) ||
+          can_review_private_message_reports? ||
           actor&.permission?("forum.users.warn") ||
           actor&.permission?("forum.users.mute") ||
           actor&.account_owner?
@@ -28,10 +30,28 @@ module Community
 
         moderated_ids = moderated_section_ids
         if global_moderator?
-          visible = visible.or(relation.where(source_kind: CONTENT_KINDS + REPORT_KINDS))
+          visible = visible.or(relation.where(source_kind: CONTENT_KINDS))
+          visible = visible.or(
+            relation
+              .where(source_kind: REPORT_KINDS)
+              .where.not(
+                source_type: "Community::Report",
+                source_id: private_message_report_ids
+              )
+          )
         elsif moderated_ids.any?
           visible = visible.or(content_scope(relation, moderated_ids))
           visible = visible.or(report_scope(relation, moderated_ids))
+        end
+
+        if can_review_private_message_reports?
+          visible = visible.or(
+            relation.where(
+              source_kind: REPORT_KINDS,
+              source_type: "Community::Report",
+              source_id: private_message_report_ids
+            )
+          )
         end
 
         if attachment_reader?
@@ -67,6 +87,7 @@ module Community
           source.is_a?(Community::Post) &&
             can_moderate_section?(section_for_post(source))
         when *REPORT_KINDS
+          return can_review_private_message_reports? if private_message_report?(moderation_case)
           return true if global_moderator?
 
           source = safe_source(moderation_case)
@@ -94,6 +115,9 @@ module Community
       # Each source family requires its existing moderation/security permission.
       def evidence_visible?(moderation_case)
         return false unless visible?(moderation_case)
+        # Private-message evidence is available only through the dedicated,
+        # explicitly audited reveal action on the report page.
+        return false if private_message_report?(moderation_case)
 
         case safe_source(moderation_case)
         when Community::UserWarning
@@ -117,6 +141,10 @@ module Community
 
       def attachment_releaser?
         actor&.permission?(ATTACHMENT_RELEASE_PERMISSION)
+      end
+
+      def can_review_private_message_reports?
+        actor&.permission?(PRIVATE_MESSAGE_REPORT_PERMISSION) == true
       end
 
       def global_moderator?
@@ -215,8 +243,12 @@ module Community
 
         case moderation_case.source_kind
         when *CONTENT_KINDS, *REPORT_KINDS
-          permission_keys << "forum.topics.lock"
-          if moderation_case.forum_section_id
+          if private_message_report?(moderation_case)
+            permission_keys << PRIVATE_MESSAGE_REPORT_PERMISSION
+          else
+            permission_keys << "forum.topics.lock"
+          end
+          if moderation_case.forum_section_id && !private_message_report?(moderation_case)
             ids.concat(
               Community::SectionModerator
                 .where(forum_section_id: moderation_case.forum_section_id)
@@ -299,6 +331,15 @@ module Community
         )
       end
 
+      def private_message_report_ids
+        Community::Report.where(reportable_type: "Community::Message").select(:id)
+      end
+
+      def private_message_report?(moderation_case)
+        source = safe_source(moderation_case)
+        source.is_a?(Community::Report) && source.reportable_type == "Community::Message"
+      end
+
       def section_for_reportable(reportable)
         case reportable
         when Community::Topic then reportable.section
@@ -347,7 +388,7 @@ module Community
         target_user =
           case reportable
           when User then reportable
-          when Community::Topic, Community::Post then reportable.user
+          when Community::Topic, Community::Post, Community::Message then reportable.user
           end
         append_user_actions(actions, target_user)
       end

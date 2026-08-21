@@ -41,12 +41,12 @@ module Community
           next
         end
 
-        if @orphan_only && (!attachment || attachment.forum_post_id.present?)
+        if @orphan_only && (!attachment || attachment.linked?)
           skipped = "not_orphan"
           next
         end
 
-        if attachment&.forum_post_id.present? && !@force && !@upload.scan_quarantined?
+        if attachment&.linked? && !@force && !@upload.scan_quarantined?
           @upload.update!(
             status: "linked",
             post: attachment.post,

@@ -2,17 +2,28 @@
 
 module Community
   class DeleteMessage < ApplicationService
-    def initialize(user:, message:)
+    def initialize(user:, message:, request_id: nil)
       @user = user
       @message = message
+      @request_id = request_id
     end
 
     def call
       return ServiceResult.failure(error: "message_delete_unauthorized") unless authorized?
-      return ServiceResult.success(@message) if @message.deleted?
 
-      @message.soft_delete!
-      ServiceResult.success(@message)
+      result = DataGovernance::SoftDeleteContent.call(
+        target: @message,
+        actor: @user,
+        reason: I18n.t("mcweb.forum.messages.author_delete_reason"),
+        request_id: @request_id
+      )
+      return result if result.failure?
+
+      ServiceResult.success(
+        message: @message,
+        lifecycle: result.value.fetch(:record),
+        replayed: result.value.fetch(:replayed)
+      )
     rescue ActiveRecord::ActiveRecordError => e
       ServiceResult.failure(error: e.message)
     end

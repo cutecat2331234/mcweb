@@ -4,6 +4,7 @@ require "test_helper"
 
 class DeleteMessageTest < ActionDispatch::IntegrationTest
   setup do
+    DataGovernance::RetentionPolicy.ensure_defaults!
     @a = create_user
     @b = create_user
     [ @a, @b ].each { |u| enable_forum_pm!(u) }
@@ -16,6 +17,13 @@ class DeleteMessageTest < ActionDispatch::IntegrationTest
     delete forum_conversation_message_path(@conversation, @msg)
     assert_redirected_to forum_conversation_path(@conversation)
     assert_not Community::Message.exists?(@msg.id), "soft-deleted message should be excluded by the default scope"
+    lifecycle = DataGovernance::ContentLifecycleRecord.find_by!(
+      target_type: "Community::Message",
+      target_id: @msg.id
+    )
+    assert_predicate lifecycle, :status_soft_deleted?
+    assert_equal @a.id, lifecycle.deleted_by_id
+    assert_in_delta 30.days.from_now.to_i, lifecycle.purge_after.to_i, 5
   end
 
   test "a participant cannot delete another user's message" do

@@ -249,7 +249,7 @@ module Community
       def user_for(reportable)
         case reportable
         when User then reportable
-        when Community::Topic, Community::Post then reportable.user
+        when Community::Topic, Community::Post, Community::Message then reportable.user
         when Commerce::Review then reportable.user
         when Community::ProfilePost then reportable.user
         end
@@ -263,6 +263,8 @@ module Community
           "Reported reply in #{report.reportable.topic.title}"
         when User
           "Reported user: #{report.reportable.username}"
+        when Community::Message
+          I18n.t("mcweb.user_copy.moderation_reported_private_message")
         else
           "Reported #{report.reportable_type.to_s.demodulize.underscore.humanize.downcase}"
         end

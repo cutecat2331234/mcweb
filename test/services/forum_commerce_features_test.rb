@@ -79,7 +79,12 @@ class Community::EditPostTest < ActiveSupport::TestCase
   end
 
   test "author can edit within window" do
-    result = Community::EditPost.call(user: @user, post: @post, body: "Updated body")
+    result = Community::EditPost.call(
+      user: @user,
+      post: @post,
+      body: "Updated body",
+      expected_revision: @post.revision
+    )
     assert result.success?
     assert_equal "Updated body", @post.reload.body
     assert @post.edited_at.present?

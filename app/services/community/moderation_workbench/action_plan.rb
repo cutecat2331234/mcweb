@@ -143,7 +143,7 @@ module Community
         when Community::Report
           case source.reportable
           when User then source.reportable
-          when Community::Post, Community::Topic then source.reportable.user
+          when Community::Post, Community::Topic, Community::Message then source.reportable.user
           end
         end
       end
@@ -323,7 +323,7 @@ module Community
           "reject" => "hide_pending_content",
           "resolve_case" => "close_workbench_case",
           "dismiss_case" => "dismiss_workbench_case",
-          "resolve_report" => "agree_with_report_and_hide_target",
+          "resolve_report" => report_resolution_impact(moderation_case),
           "dismiss_report" => "dismiss_report_and_restore_target_when_safe",
           "delete_content" => "soft_delete_content",
           "move_topic" => "move_topic_to_section_#{destination_section&.id}",
@@ -333,6 +333,25 @@ module Community
           "mute_user" => "mute_user_for_#{duration_days}_days",
           "ban_user" => duration_days.zero? ? "ban_user_permanently" : "ban_user_for_#{duration_days}_days"
         }.fetch(action, "moderate_case_#{moderation_case.id}")
+      end
+
+      def private_message_report?(moderation_case)
+        source = safe_source(moderation_case)
+        source.is_a?(Community::Report) && source.reportable_type == "Community::Message"
+      end
+
+      def report_resolution_impact(moderation_case)
+        return "uphold_private_message_report_and_retain_evidence" if private_message_report?(moderation_case)
+
+        source = safe_source(moderation_case)
+        hideable = source.is_a?(Community::Report) && [
+          Community::Topic,
+          Community::Post,
+          Community::ProfilePost
+        ].any? { |type| source.reportable.is_a?(type) }
+        return "uphold_report_without_content_mutation" unless hideable
+
+        "agree_with_report_and_hide_target"
       end
 
       def warning_attributes_valid?

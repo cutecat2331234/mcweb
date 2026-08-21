@@ -8,6 +8,25 @@ class Identity::ApplyRoleMutationTest < ActiveSupport::TestCase
     grant_permission(@manager, "identity.roles.manage")
   end
 
+  test "a role mutation rejects an actor whose cached grant was revoked" do
+    assert @manager.permission?("identity.roles.manage")
+    managing_role = Role.find_by!(key: "test_identity_roles_manage")
+    UserRole.find_by!(user: @manager, role: managing_role).destroy!
+
+    result = mutate(
+      actor: @manager,
+      operation: :create,
+      attributes: {
+        name: "Stale manager role",
+        key: "stale_manager_role_#{SecureRandom.hex(4)}"
+      }
+    )
+
+    assert result.failure?
+    assert_equal "forbidden", result.code
+    assert_not Role.exists?(name: "Stale manager role")
+  end
+
   test "non owners cannot add permissions they do not hold" do
     delegated_permission = permission_for("forum.topics.lock")
 

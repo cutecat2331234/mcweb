@@ -46,11 +46,16 @@ module Identity
 
     def call
       return failure("Unknown group operation.", code: "invalid_operation") unless OPERATIONS.include?(@operation)
-      return failure("Not allowed.", code: "forbidden") unless operation_allowed?
 
       result = nil
       ActiveRecord::Base.transaction do
-        result = send(:"apply_#{@operation}")
+        PermissionMutationLock.acquire_exclusive!
+        @actor = User.find_by(id: @actor&.id)
+        result = if operation_allowed?
+                   send(:"apply_#{@operation}")
+        else
+                   failure("Not allowed.", code: "forbidden")
+        end
       end
       result
     rescue ActiveRecord::RecordInvalid => error

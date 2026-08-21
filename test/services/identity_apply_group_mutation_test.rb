@@ -21,6 +21,26 @@ class Identity::ApplyGroupMutationTest < ActiveSupport::TestCase
     @member = create_user
   end
 
+  test "a group mutation rejects an actor whose cached grant was revoked" do
+    assert @actor.permission?("identity.groups.manage")
+    managing_role = Role.find_by!(key: "test_identity_groups_manage")
+    UserRole.find_by!(user: @actor, role: managing_role).destroy!
+
+    result = mutate(
+      actor: @actor,
+      operation: :create,
+      attributes: {
+        name: "Stale manager group",
+        priority: 1,
+        permissions: []
+      }
+    )
+
+    assert result.failure?
+    assert_equal "forbidden", result.code
+    assert_nil Community::UserGroup.find_by(name: "Stale manager group")
+  end
+
   test "group mutations are authorized separately from permission delegation" do
     manager = create_user
     grant_permission(manager, "identity.groups.manage")

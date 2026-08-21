@@ -61,8 +61,7 @@ module Commerce
       result = Commerce::AnswerProductQuestion.call(
         user: current_user,
         question: @question,
-        body: params.dig(:answer, :body),
-        official: official_answer_permission?
+        body: params.dig(:answer, :body)
       )
       redirect_with_result(result, success_key: "mcweb.flash.answer_published")
     end
@@ -118,10 +117,6 @@ module Commerce
 
     def set_owned_answer
       @answer = @question.answers.where(user: current_user).find(params[:answer_id])
-    end
-
-    def official_answer_permission?
-      current_user.permission?("store.questions.answer") || current_user.permission?("admin.access")
     end
 
     def redirect_with_result(result, success_key:)

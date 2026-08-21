@@ -176,7 +176,7 @@ curl -H "Authorization: Bearer $MCWEB_API_KEY" \
 | PATCH | `/admin/store/late-payment-cases/:id/acknowledge` | 记录人工复核结果；要求同一专属权限 |
 
 Stripe 的成功事件通过官方签名验证，并完成支付对象、订单、金额、币种和 test/live
-环境校验后，如果本地订单已取消或支付窗口已过期，系统会在同一数据库事务内：
+环境校验后，如果本地支付尝试已失效，或订单已由其他付款完成、已取消、已过期或处于其他不可收款状态，系统会在同一数据库事务内：
 
 1. 保存已成功付款的支付记录；
 2. 以 payment record 唯一约束写入 `payment_late_payment_cases`；

@@ -27,6 +27,10 @@ module Commerce
     end
 
     def authorize
+      with_fresh_authorized_actor { authorize_under_permission_lock }
+    end
+
+    def authorize_under_permission_lock
       failure = validation_failure
       return failure if failure
 
@@ -55,6 +59,10 @@ module Commerce
     end
 
     def call
+      with_fresh_authorized_actor { call_under_permission_lock }
+    end
+
+    def call_under_permission_lock
       failure = validation_failure
       return failure if failure
 
@@ -73,7 +81,7 @@ module Commerce
 
       entitlement = nil
       operation = nil
-      Commerce::HighRiskOperation.transaction do
+      Commerce::HighRiskOperation.transaction(requires_new: true) do
         lock_targets!
         existing = Commerce::HighRiskOperation.find_by(request_id: @request_id)
         return idempotency_result(existing) if existing
@@ -151,7 +159,21 @@ module Commerce
       ServiceResult.failure(errors: e.record.errors.to_hash)
     end
 
+    private :authorize_under_permission_lock, :call_under_permission_lock
+
     private
+
+    def with_fresh_authorized_actor
+      permission = Commerce::HighRiskActionAuthorization.permission_for(@action)
+      Identity::AuthorizedMutation.with(
+        actor: @actor,
+        all_of: permission,
+        failure_code: "high_risk_unauthorized"
+      ) do |actor|
+        @actor = actor
+        yield
+      end
+    end
 
     def validation_failure
       return ServiceResult.failure(error: "high_risk_action_invalid") unless ACTIONS.include?(@action)

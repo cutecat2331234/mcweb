@@ -277,6 +277,76 @@ class CommerceSelfServiceRoutesTest < ActionDispatch::IntegrationTest
     assert_equal "Customer request", localized_refund.fetch(:reason)
   end
 
+  test "admin approval without a new reason does not relabel a customer refund" do
+    order, refund = create_pending_refund(owner: @owner)
+    refund.update!(reason: "Customer supplied details", reason_kind: "customer_request")
+    admin = create_user(account_type: "owner")
+    captured = nil
+    sign_in_as(admin)
+
+    Commerce::ProcessRefund.stub(:call, lambda { |**arguments|
+      captured = arguments
+      ServiceResult.failure(error: :refund_provider_unavailable)
+    }) do
+      patch admin_store_order_path(order), params: {
+        refund: true,
+        refund_id: refund.id,
+        amount_cents: refund.amount_cents
+      }
+    end
+
+    assert_redirected_to admin_store_order_path(order)
+    assert_equal refund.id, captured.fetch(:existing_refund).id
+    assert_nil captured.fetch(:reason)
+    assert_nil captured.fetch(:reason_kind)
+    assert_equal "Customer supplied details", refund.reload.reason
+    assert_equal "customer_request", refund.reason_kind
+  end
+
+  test "a new admin refund keeps its free reason and admin classification" do
+    order, = create_pending_refund(owner: @owner)
+    order.refunds.destroy_all
+    admin = create_user(account_type: "owner")
+    captured = nil
+    sign_in_as(admin)
+
+    Commerce::ProcessRefund.stub(:call, lambda { |**arguments|
+      captured = arguments
+      ServiceResult.failure(error: :refund_provider_unavailable)
+    }) do
+      patch admin_store_order_path(order), params: {
+        refund: true,
+        amount_cents: 100,
+        reason: "Verified support exception"
+      }
+    end
+
+    assert_redirected_to admin_store_order_path(order)
+    assert_nil captured.fetch(:existing_refund)
+    assert_equal "Verified support exception", captured.fetch(:reason)
+    assert_equal "admin_refund", captured.fetch(:reason_kind)
+  end
+
+  test "admin order page hides refund operations while the payment is quarantined" do
+    order, refund = create_pending_refund(owner: @owner)
+    refund.update!(status: :provider_unknown)
+    admin = create_user(account_type: "owner")
+    sign_in_as(admin)
+
+    get admin_store_order_path(order)
+
+    assert_response :success
+    props = inertia.props.deep_symbolize_keys
+    assert_nil props[:refundForm]
+    assert_equal "warning", props.dig(:operationNotice, :type)
+    expected_title = I18n.with_locale(admin.locale) do
+      I18n.t("mcweb.admin.store.orders.refund_reconciliation_title")
+    end
+    assert_equal expected_title, props.dig(:operationNotice, :title)
+    refund_actions = Array(props[:actions]).select { |action| action[:data].to_h[:refund] }
+    assert_empty refund_actions
+  end
+
   private
 
   def create_pending_refund(owner:)

@@ -33,6 +33,71 @@ class PaymentEntryHardeningTest < ActionDispatch::IntegrationTest
     assert_match(/\Acs_test_/, order.payment_records.pending.sole.provider_payment_id)
   end
 
+  test "repeated checkout reuses one payment record and one Stripe idempotency identity" do
+    configure_stripe!(
+      enabled: true,
+      credentials: {
+        "secret_key" => "sk_test_checkout_replay",
+        "webhook_secret" => "whsec_checkout_replay"
+      }
+    )
+    order = create_payable_order
+    client, sessions = build_stripe_test_client
+
+    with_stripe_client(client) do
+      2.times do
+        post store_checkout_path, params: {
+          order_id: order.public_id,
+          checkout: { provider: "stripe" }
+        }
+        assert_response :redirect
+      end
+    end
+
+    payment = order.payment_records.where(status: %w[pending processing]).sole
+    assert_equal "stripe", payment.provider
+    assert_equal 2, sessions.requests.size
+    assert_equal 1, sessions.requests.map { |request| request.dig(:options, :idempotency_key) }.uniq.size
+    assert_equal "mcweb:checkout:payment:#{payment.id}:v1",
+      sessions.requests.first.dig(:options, :idempotency_key)
+  end
+
+  test "provider change does not invalidate or replace an active Stripe session" do
+    configure_stripe!(
+      enabled: true,
+      credentials: {
+        "secret_key" => "sk_test_checkout_switch",
+        "webhook_secret" => "whsec_checkout_switch"
+      }
+    )
+    Payments::ProviderConfig.find_or_initialize_by(provider: "fake").tap do |config|
+      config.enabled = true
+      config.save!
+    end
+    order = create_payable_order
+    client, = build_stripe_test_client
+
+    with_stripe_client(client) do
+      post store_checkout_path, params: {
+        order_id: order.public_id,
+        checkout: { provider: "stripe" }
+      }
+    end
+    stripe_payment = order.payment_records.pending.sole
+    stripe_reference = stripe_payment.provider_payment_id
+
+    post store_checkout_path, params: {
+      order_id: order.public_id,
+      checkout: { provider: "fake" }
+    }
+
+    assert_redirected_to store_order_path(order)
+    assert_equal I18n.t("mcweb.services.errors.payment_attempt_already_active"), flash[:alert]
+    assert_equal [ stripe_payment.id ], order.payment_records.reload.pluck(:id)
+    assert_equal "pending", stripe_payment.reload.status
+    assert_equal stripe_reference, stripe_payment.provider_payment_id
+  end
+
   test "disabled provider is rejected before payment state changes" do
     configure_stripe!(
       enabled: false,

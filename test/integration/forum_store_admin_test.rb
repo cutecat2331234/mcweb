@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "inertia_rails/minitest"
 
 class ForumIntegrationTest < ActionDispatch::IntegrationTest
   setup do
@@ -104,6 +105,43 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     assert_response :redirect
   end
 
+  test "failed checkout preserves pending coupon and gift card selections" do
+    cart = Commerce::Cart.find_or_create_by!(user: @user)
+    cart.add_item!(product: @product, quantity: 1)
+    coupon, gift_card = create_checkout_codes
+    select_checkout_codes(coupon:, gift_card:)
+    coupon.update!(active: false)
+
+    assert_no_difference "Commerce::Order.count" do
+      post store_checkout_path, params: { checkout: { provider: "fake" } }
+    end
+    assert_redirected_to store_checkout_path
+
+    get store_checkout_path
+    assert_response :success
+    props = inertia.props.deep_symbolize_keys
+    assert_equal coupon.code, props.fetch(:pendingCouponCode)
+    assert_equal gift_card.code, props.fetch(:pendingGiftCardCode)
+  end
+
+  test "successful checkout consumes pending coupon and gift card selections" do
+    cart = Commerce::Cart.find_or_create_by!(user: @user)
+    cart.add_item!(product: @product, quantity: 1)
+    coupon, gift_card = create_checkout_codes
+    select_checkout_codes(coupon:, gift_card:)
+
+    assert_difference "Commerce::Order.count", 1 do
+      post store_checkout_path, params: { checkout: { provider: "fake" } }
+    end
+    assert_response :redirect
+
+    get store_checkout_path
+    assert_response :success
+    props = inertia.props.deep_symbolize_keys
+    assert_nil props.fetch(:pendingCouponCode)
+    assert_nil props.fetch(:pendingGiftCardCode)
+  end
+
   test "checkout completes zero total order via order_id" do
     gift_card = Commerce::GiftCard.create!(
       code: "GC#{SecureRandom.alphanumeric(10).upcase}",
@@ -127,7 +165,7 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     assert_equal "paid", order.reload.status
   end
 
-  test "checkout replaces stale pending payment for zero total order" do
+  test "checkout preserves active payment when a zero total retry no longer matches it" do
     gift_card = Commerce::GiftCard.create!(
       code: "GC#{SecureRandom.alphanumeric(10).upcase}",
       balance_cents: 10_000,
@@ -154,12 +192,13 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     post store_checkout_path, params: { order_id: order.public_id, checkout: { provider: "fake" } }
 
     assert_redirected_to store_order_path(order)
-    assert_equal "failed", stale.reload.status
-    assert_equal "paid", order.reload.status
-    assert Payments::Record.exists?(order: order, status: "succeeded", amount_cents: 0)
+    assert_equal I18n.t("mcweb.services.errors.payment_attempt_already_active"), flash[:alert]
+    assert_equal "pending", stale.reload.status
+    assert_equal "awaiting_payment", order.reload.status
+    assert_not Payments::Record.exists?(order: order, status: "succeeded", amount_cents: 0)
   end
 
-  test "checkout replaces stale pending payment amount on retry" do
+  test "checkout preserves active payment when its amount no longer matches the order" do
     cart = Commerce::Cart.find_or_create_by!(user: @user)
     cart.add_item!(product: @product, quantity: 1)
     order = Commerce::CreateOrder.call(cart: cart, user: @user).value
@@ -174,10 +213,10 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
 
     post store_checkout_path, params: { order_id: order.public_id, checkout: { provider: "fake" } }
 
-    assert_response :redirect
-    assert_equal "failed", stale.reload.status
-    active = order.payment_records.pending.order(created_at: :desc).first
-    assert_equal order.total_cents, active.amount_cents
+    assert_redirected_to store_order_path(order)
+    assert_equal I18n.t("mcweb.services.errors.payment_attempt_already_active"), flash[:alert]
+    assert_equal "pending", stale.reload.status
+    assert_equal [ stale.id ], order.payment_records.pending.pluck(:id)
   end
 
   test "checkout rejects expired order via order_id" do
@@ -246,6 +285,33 @@ class StoreIntegrationTest < ActionDispatch::IntegrationTest
     assert_redirected_to store_order_path(order)
     assert_match(/失效/, flash[:alert].to_s)
     assert_equal "failed", payment.reload.status
+  end
+
+  private
+
+  def create_checkout_codes
+    coupon = Commerce::Coupon.create!(
+      code: "KEEP#{SecureRandom.hex(4).upcase}",
+      discount_type: "fixed",
+      discount_value: 100,
+      active: true
+    )
+    gift_card = Commerce::GiftCard.create!(
+      code: "GC#{SecureRandom.alphanumeric(10).upcase}",
+      balance_cents: 200,
+      initial_balance_cents: 200,
+      currency: "CNY",
+      active: true,
+      created_by: @user
+    )
+    [ coupon, gift_card ]
+  end
+
+  def select_checkout_codes(coupon:, gift_card:)
+    post preview_coupon_store_checkout_path, params: { code: coupon.code }, as: :json
+    assert_response :success
+    post preview_gift_card_store_checkout_path, params: { code: gift_card.code }, as: :json
+    assert_response :success
   end
 end
 

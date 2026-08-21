@@ -55,6 +55,21 @@ module Commerce
       refute Commerce::InventoryMovement.exists?(request_id: @request_id)
     end
 
+    test "execution denies a stale actor after permission revocation" do
+      authorization = authorize(delta: 2)
+      permission = Permission.find_by!(key: "store.inventory.adjust")
+      role = @actor.roles.joins(:permissions).find_by!(permissions: { id: permission.id })
+      assert @actor.permission?(permission.key)
+      role.revoke_permission!(permission)
+
+      result = execute(delta: 2, authorization: authorization.value)
+
+      assert_predicate result, :failure?
+      assert_equal I18n.t("mcweb.services.errors.high_risk_unauthorized"), result.error
+      assert_equal 10, @product.reload.stock
+      refute Commerce::InventoryMovement.exists?(request_id: @request_id)
+    end
+
     test "audit failure rolls back stock and movement" do
       authorization = authorize(delta: 2)
 

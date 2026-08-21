@@ -98,6 +98,25 @@ module Commerce
       assert_not Commerce::HighRiskOperation.exists?(request_id: @request_id)
     end
 
+    test "grant call denies a stale actor after permission revocation" do
+      authorization = authorize_grant
+      permission = Permission.find_by!(key: "store.entitlements.grant")
+      role = @actor.roles.joins(:permissions).find_by!(permissions: { id: permission.id })
+      assert @actor.permission?(permission.key)
+      role.revoke_permission!(permission)
+
+      assert_no_difference -> { Commerce::UserEntitlement.count } do
+        result = Commerce::HighRiskEntitlementAction.call(
+          **grant_attributes,
+          authorization_token: authorization[:authorization_token],
+          confirmation: authorization[:confirmation]
+        )
+        assert_predicate result, :failure?
+        assert_equal I18n.t("mcweb.services.errors.high_risk_unauthorized"), result.error
+      end
+      assert_not Commerce::HighRiskOperation.exists?(request_id: @request_id)
+    end
+
     test "product must define a digital entitlement duration" do
       @product.update!(fulfillment_config: {})
       result = Commerce::HighRiskEntitlementAction.authorize(**grant_attributes)

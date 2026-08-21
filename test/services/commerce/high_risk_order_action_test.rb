@@ -145,6 +145,36 @@ module Commerce
       assert_not Commerce::HighRiskOperation.exists?(request_id: request_id)
     end
 
+    test "mark paid call denies a stale actor after permission revocation" do
+      grant_permission(@actor, "store.orders.mark_paid")
+      order = create_order
+      request_id = SecureRandom.uuid
+      authorization = authorize!(
+        order_ids: [ order.public_id ],
+        action: "mark_paid",
+        request_id: request_id
+      )
+      permission = Permission.find_by!(key: "store.orders.mark_paid")
+      role = @actor.roles.joins(:permissions).find_by!(permissions: { id: permission.id })
+      assert @actor.permission?(permission.key)
+      role.revoke_permission!(permission)
+
+      result = Commerce::HighRiskOrderAction.call(
+        **execute_attributes(
+          order_ids: [ order.public_id ],
+          action: "mark_paid",
+          request_id: request_id,
+          authorization: authorization
+        )
+      )
+
+      assert_predicate result, :failure?
+      assert_equal I18n.t("mcweb.services.errors.high_risk_unauthorized"), result.error
+      assert order.reload.pending?
+      assert_empty order.payment_records
+      assert_not Commerce::HighRiskOperation.exists?(request_id: request_id)
+    end
+
     test "mark paid and mark fulfilled have independent successful ledgers" do
       grant_permission(@actor, "store.orders.mark_paid")
       payable = create_order

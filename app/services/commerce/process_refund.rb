@@ -82,6 +82,11 @@ module Commerce
       Commerce::Refund.transaction do
         lock_order_and_payment!
 
+        if provider_reconciliation_required?
+          error = :refund_reconciliation_required
+          raise ActiveRecord::Rollback
+        end
+
         unless refundable_payment?
           error = :payment_not_refundable
           raise ActiveRecord::Rollback
@@ -613,16 +618,20 @@ module Commerce
 
     def resolved_reason(refund)
       return @reason if @reason.present?
-      return nil if @reason_kind.present?
 
       refund.reason
     end
 
     def resolved_reason_kind(refund)
       return @reason_kind if @reason_kind.present?
-      return nil if @reason.present?
 
       refund.reason_kind
+    end
+
+    def provider_reconciliation_required?
+      quarantined = @order.refunds.provider_unknown
+      quarantined = quarantined.where.not(id: @existing_refund.id) if @existing_refund&.persisted?
+      quarantined.exists?
     end
 
     def format_refund_amount(cents)

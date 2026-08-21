@@ -1047,6 +1047,9 @@ en:
         refund_restoration_failed: Local refund restoration failed. Staff can retry without charging the provider again.
         refund_provider_unavailable: The payment provider is unavailable. Try again later.
         refund_provider_outcome_unknown: The payment provider's refund result could not be confirmed. The amount remains reserved for staff review; do not retry this refund.
+        refund_reconciliation_required: This payment has a refund with an unknown provider outcome. Reconcile it before creating or approving another refund.
+        payment_attempt_already_active: A payment session is already active. Finish it or wait for it to expire before choosing another payment method.
+        multiple_active_payment_attempts_require_reconciliation: This order has multiple active payment attempts and requires staff reconciliation before payment can continue.
         refund_dispute_reconciliation_failed: Refund dispute exposure could not be reconciled.
         refund_receipt_issue_failed: The refund receipt could not be issued.
         refund_entitlement_revoke_failed: Digital entitlement revocation failed.
@@ -3265,6 +3268,8 @@ en:
           bulk_mark_fulfilled: Bulk mark fulfilled
           admin_refund_reason: Admin refund
           superseded_refund_reason: Superseded by admin refund
+          refund_reconciliation_title: Refunds paused for reconciliation
+          refund_reconciliation_description: The payment provider outcome is unknown. Refund actions are unavailable until staff reconcile the quarantined refund.
         gift_cards:
           title: Gift cards
           new: New gift card

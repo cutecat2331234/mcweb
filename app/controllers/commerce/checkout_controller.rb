@@ -80,11 +80,13 @@ module Commerce
           return redirect_to store_cart_path, alert: t("mcweb.services.errors.cart_empty")
         end
 
+        pending_coupon_code = session[:pending_coupon_code]
+        pending_gift_card_code = session[:pending_gift_card_code]
         order_result = Commerce::CreateOrder.call(
           cart: cart,
           user: current_user,
-          coupon_code: session.delete(:pending_coupon_code),
-          gift_card_code: session.delete(:pending_gift_card_code),
+          coupon_code: pending_coupon_code,
+          gift_card_code: pending_gift_card_code,
           use_store_credit: checkout_params[:use_store_credit],
           notes: checkout_params[:notes],
           shipping_address: shipping_address_params,
@@ -95,6 +97,8 @@ module Commerce
           return redirect_to store_checkout_path, alert: service_error_message(order_result)
         end
 
+        session.delete(:pending_coupon_code) if session[:pending_coupon_code] == pending_coupon_code
+        session.delete(:pending_gift_card_code) if session[:pending_gift_card_code] == pending_gift_card_code
         order = order_result.value
       else
         order = Commerce::Order.find_by!(public_id: params[:order_id], user: current_user)
@@ -105,7 +109,14 @@ module Commerce
       end
 
       if order.total_cents.zero?
-        payment_record = resolve_pending_payment(order: order, provider: "fake", amount_cents: 0)
+        prepare_result = Commerce::PrepareOrderPayment.call(
+          order: order,
+          provider: "fake"
+        )
+        unless prepare_result.success?
+          return redirect_to store_order_path(order), alert: service_error_message(prepare_result)
+        end
+        payment_record = prepare_result.value
         result = Commerce::ConfirmPayment.call(
           payment_record: payment_record,
           provider_payment_id: "free-#{order.public_id}"
@@ -123,18 +134,15 @@ module Commerce
         return redirect_to store_order_path(order), alert: t("mcweb.flash.payment_method_unavailable")
       end
 
-      begin_result = Commerce::BeginOrderPayment.call(order: order)
-      unless begin_result.success?
-        return redirect_to store_order_path(order), alert: service_error_message(begin_result)
-      end
-      order = begin_result.value
-
-      payment_record = resolve_pending_payment(
+      prepare_result = Commerce::PrepareOrderPayment.call(
         order: order,
         provider: provider_name,
-        amount_cents: order.total_cents,
         provider_mode: provider_name == "stripe" ? provider_config.effective_mode : nil
       )
+      unless prepare_result.success?
+        return redirect_to store_order_path(order), alert: service_error_message(prepare_result)
+      end
+      payment_record = prepare_result.value
 
       result = Payments::Provider.for(provider_name).create_payment(
         payment_record,
@@ -393,27 +401,6 @@ module Commerce
         session[:pending_coupon_code] = result.value[:code]
         result.value[:code]
       end
-    end
-
-    def resolve_pending_payment(order:, provider:, amount_cents:, provider_mode: nil)
-      matching = order.payment_records.pending.find_by(
-        amount_cents: amount_cents,
-        provider: provider,
-        provider_mode: provider_mode
-      )
-      stale = order.payment_records.pending
-      stale = stale.where.not(id: matching.id) if matching
-      stale.update_all(status: "failed", updated_at: Time.current)
-
-      matching ||
-        Payments::Record.create!(
-          order: order,
-          provider: provider,
-          provider_mode: provider_mode,
-          amount_cents: amount_cents,
-          currency: order.currency,
-          status: :pending
-        )
     end
 
     def checkout_redirect_path(order)

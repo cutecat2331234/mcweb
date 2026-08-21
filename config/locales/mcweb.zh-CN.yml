@@ -1047,6 +1047,9 @@
         refund_restoration_failed: 本地退款恢复失败，工作人员可安全重试，且不会重复调用支付渠道。
         refund_provider_unavailable: 支付渠道暂不可用，请稍后重试。
         refund_provider_outcome_unknown: 无法确认支付渠道的退款结果。该金额会继续预留并等待工作人员核对，请勿重试这笔退款。
+        refund_reconciliation_required: 这笔支付存在渠道结果未知的退款，请先完成对账，再新建或批准其他退款。
+        payment_attempt_already_active: 当前已有支付会话，请先完成支付或等待会话过期后再选择其他支付方式。
+        multiple_active_payment_attempts_require_reconciliation: 该订单存在多笔进行中的支付尝试，请联系工作人员完成对账后再继续支付。
         refund_dispute_reconciliation_failed: 无法重新核对退款争议敞口。
         refund_receipt_issue_failed: 无法签发退款凭证。
         refund_entitlement_revoke_failed: 数字权益撤销失败。
@@ -3265,6 +3268,8 @@
           bulk_mark_fulfilled: 批量标记发货完成
           admin_refund_reason: 后台退款
           superseded_refund_reason: 已被后台退款取代
+          refund_reconciliation_title: 退款已暂停，等待对账
+          refund_reconciliation_description: 支付渠道返回结果未知。在工作人员完成待核对退款前，当前支付的退款操作不可用。
         gift_cards:
           title: 礼品卡
           new: 新建礼品卡

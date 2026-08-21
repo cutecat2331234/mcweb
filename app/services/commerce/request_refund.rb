@@ -30,6 +30,11 @@ module Commerce
           payment_record_id: payment.id
         )
 
+        if @order.refunds.provider_unknown.exists?
+          failure_error = :refund_reconciliation_required
+          raise ActiveRecord::Rollback
+        end
+
         if Commerce::Refund.where(order: @order).in_flight.exists?
           failure_error = :refund_already_pending
           raise ActiveRecord::Rollback
@@ -57,7 +62,7 @@ module Commerce
           status: "pending",
           amount_cents: requested,
           reason: @reason.presence,
-          reason_kind: @reason.present? ? nil : "customer_request",
+          reason_kind: "customer_request",
           requested_by: @user,
           requested_by_customer: true
         )

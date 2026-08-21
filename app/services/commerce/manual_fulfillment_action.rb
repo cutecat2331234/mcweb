@@ -30,6 +30,10 @@ module Commerce
     end
 
     def call
+      with_fresh_authorized_actor { call_under_permission_lock }
+    end
+
+    def call_under_permission_lock
       @fulfillment.reload
       if !@authorize_only && @request_id
         existing = FulfillmentAttempt.find_by(idempotency_key: "fulfillment-action:#{@request_id}")
@@ -42,7 +46,20 @@ module Commerce
       execute
     end
 
+    private :call_under_permission_lock
+
     private
+
+    def with_fresh_authorized_actor
+      Identity::AuthorizedMutation.with(
+        actor: @actor,
+        all_of: permission,
+        failure_code: "high_risk_unauthorized"
+      ) do |actor|
+        @actor = actor
+        yield
+      end
+    end
 
     def authorize
       HighRiskActionAuthorization.issue(
@@ -71,7 +88,7 @@ module Commerce
 
       attempt = nil
       should_enqueue = false
-      Fulfillment.transaction do
+      Fulfillment.transaction(requires_new: true) do
         @fulfillment.lock!
         @fulfillment.order.lock!
         @fulfillment.reload

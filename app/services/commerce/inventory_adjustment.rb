@@ -29,6 +29,10 @@ module Commerce
     end
 
     def call
+      with_fresh_authorized_actor { call_under_permission_lock }
+    end
+
+    def call_under_permission_lock
       failure = validation_failure
       return failure if failure
       return authorize if @authorize_only
@@ -36,7 +40,20 @@ module Commerce
       execute
     end
 
+    private :call_under_permission_lock
+
     private
+
+    def with_fresh_authorized_actor
+      Identity::AuthorizedMutation.with(
+        actor: @actor,
+        all_of: "store.inventory.adjust",
+        failure_code: "high_risk_unauthorized"
+      ) do |actor|
+        @actor = actor
+        yield
+      end
+    end
 
     def authorize
       HighRiskActionAuthorization.issue(
@@ -69,7 +86,7 @@ module Commerce
       return idempotency_result(existing) if existing
 
       movement = nil
-      InventoryMovement.transaction do
+      InventoryMovement.transaction(requires_new: true) do
         @target.lock!
         @target.reload
         return ServiceResult.failure(error: "high_risk_authorization_invalid") unless authorization_valid?

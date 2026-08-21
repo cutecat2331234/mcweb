@@ -109,6 +109,59 @@ The account page is an **overview and launch point**, not a replacement for ever
 - Chinese users see Chinese refund feedback for missing payment, an existing pending request and no refundable balance.
 - Another user cannot view or withdraw the request; repeated withdrawal cannot create contradictory states.
 - Pending, approved and completed refunds all reserve refundable balance consistently in customer and staff views; a withdrawn refund releases it.
+- A customer request keeps `customer_request` as its classification independently of optional free text; staff approval preserves both values, and only a newly created staff refund uses `admin_refund`.
+
+### D.1 Payment-attempt integrity remediation
+
+#### Task checklist
+
+1. Move payment-attempt selection out of the checkout controller and into one CE service that locks the order before reading or locking payment records.
+2. Enforce one `pending` or `processing` payment record per order with both the service transaction and a resumable PostgreSQL partial unique index.
+3. Reuse an identical active attempt. Reject a payment-method change while a remote-capable attempt is still active; never mark the old local row failed while its provider session can still accept funds.
+4. Make payment confirmation and order cancellation use the same `Order -> Payment` row-lock order.
+5. Persist verified Stripe success for a failed/superseded payment or an already-paid, cancelled or expired order as an idempotent late-payment case instead of losing it in a generic failure path.
+6. Add migration interruption recovery, concurrent checkout, old-session late payment, duplicate webhook and cancel-versus-confirm lock-overlap tests.
+7. Preserve the selected coupon and gift card while order creation fails; consume those session selections only after an order is committed successfully.
+
+#### Functional and safety requirements
+
+- Checkout state and amount are revalidated under the order lock; controller prechecks and cached associations are not concurrency boundaries.
+- The database rejects a second active payable attempt even if a future caller bypasses the checkout service. A deployment with pre-existing duplicates fails explicitly for reconciliation instead of silently choosing or deleting a provider session.
+- A user may reopen the same provider attempt through its stable provider idempotency key. Selecting another provider while that attempt is active returns localized guidance and creates no second payment record or remote session.
+- A verified successful provider event always preserves the paid record. If it cannot be applied to the order because the attempt was superseded or the order was already paid, cancelled or expired, the payment and one manual-review case are committed together.
+- Replaying the same event, or receiving another success event for the same payment, does not duplicate the manual-review case.
+- Cancellation and confirmation cannot form a `Payment -> Order` / `Order -> Payment` deadlock cycle. Tests must observe real PostgreSQL blockers, not infer lock order only from final state.
+- Inventory, promotion, address or other order-creation failures keep the user's pending coupon and gift-card selections available for correction and retry. A successful order consumes both selections exactly once.
+
+#### Acceptance criteria
+
+- Two overlapping checkout requests for one order resolve to one active payment record and one provider idempotency identity.
+- A requested provider change cannot leave a still-payable old Stripe Checkout Session untracked.
+- Paying a historical failed link after a replacement/order payment creates a visible late-payment review while leaving the already-paid order unchanged.
+- A concurrent cancellation and verified payment confirmation completes without deadlock; the winner determines whether the payment applies normally or enters the manual-review queue.
+- The partial unique-index migration is safe to rerun after an interrupted/invalid concurrent-index build and supports a clean rollback.
+- A failed checkout renders the same pending coupon and gift-card codes on retry, while the next successful checkout clears them.
+
+### D.2 Permission-safe commerce mutations
+
+#### Task checklist
+
+1. Resolve the actor from the database only after acquiring the shared permission-mutation barrier; never treat a controller or service object as an authorization snapshot.
+2. Keep official-answer classification and every high-risk commerce write inside that shared lease so a concurrent role or permission mutation cannot cross the commit boundary.
+3. Preserve atomic rollback for service transactions nested under the permission lease by using real savepoints where failures are converted into service results.
+4. Cover stale revocation, newly granted permissions and a deterministic PostgreSQL advisory-lock overlap with separate database connections.
+
+#### Functional and safety requirements
+
+- Revoking official-answer permission before answer creation commits produces an ordinary answer, even when the request actor previously warmed its permission cache.
+- Revoking a high-risk permission before execution prevents the write even when a signed challenge was issued earlier. A newly granted permission is recognized without requiring a new login session.
+- Once an authorized mutation holds the shared lease, a permission revocation waits until the complete audited write commits or rolls back; no partial operation, audit or balance change may escape a failed nested transaction.
+
+#### Acceptance criteria
+
+- Tests observe the permission writer waiting on PostgreSQL's advisory lock while an authorized mutation is deliberately paused inside its transaction.
+- Grant, revoke, order, inventory, fulfillment and dispute high-risk services all use the same fresh-actor lease contract.
+- Existing rollback tests continue to prove that domain records, immutable operation ledgers and audit records succeed or fail together.
 
 ### E. Private-message lifecycle
 

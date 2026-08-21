@@ -1838,7 +1838,7 @@ export default {
     },
     latePayments: {
       title: 'Late payment reviews',
-      subtitle: 'Review verified provider payments that could not be applied to a cancelled or expired order.',
+      subtitle: 'Review verified provider payments that could not be safely applied to the local order.',
       safetyNotice: 'Acknowledging a case records an operational decision only. It never changes the order, payment, refund, balance, or provider funds.',
       backToOperations: 'Payment operations',
       total: 'Total',
@@ -1883,6 +1883,9 @@ export default {
       reasons: {
         order_cancelled: 'Order was cancelled',
         order_expired: 'Payment window expired',
+        order_already_paid: 'Order was already paid',
+        order_not_payable: 'Order could not accept payment',
+        payment_superseded: 'Payment attempt was superseded',
       },
       dispositions: {
         refund_required: 'Provider refund required',

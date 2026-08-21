@@ -146,7 +146,7 @@ class Commerce::RefundSelfServiceLifecycleTest < ActiveSupport::TestCase
 
     assert result.success?, result.error
     refund = result.value.reload
-    assert_nil refund.reason_kind
+    assert_equal "customer_request", refund.reason_kind
     assert_equal "The package was damaged", refund.reason
     assert_equal refund.reason, I18n.with_locale(:en) { Commerce::RefundReasonPresenter.label(refund) }
     assert_equal refund.reason, I18n.with_locale(:"zh-CN") { Commerce::RefundReasonPresenter.label(refund) }
@@ -173,6 +173,60 @@ class Commerce::RefundSelfServiceLifecycleTest < ActiveSupport::TestCase
     assert @refund.reload.provider_unknown?
     assert_equal "refund_provider_outcome_unknown", @refund.provider_error_code
     assert_equal @refund.amount_cents, @payment.refunds.reserved.sum(:amount_cents)
+  end
+
+  test "approving a customer refund without a replacement reason preserves the customer reason" do
+    @refund.update!(reason: "The delivered item was damaged", reason_kind: "customer_request")
+    provider = Object.new
+    provider.define_singleton_method(:process_refund) do |refund|
+      ServiceResult.success(
+        provider_refund_id: "preserved_reason_#{refund.id}",
+        provider_status: "succeeded"
+      )
+    end
+
+    result = Payments::Provider.stub(:for, provider) do
+      Commerce::ProcessRefund.call(
+        order: @order,
+        payment_record: @payment,
+        amount_cents: @refund.amount_cents,
+        existing_refund: @refund,
+        approved_by: @other_user
+      )
+    end
+
+    assert result.success?, result.error
+    assert_equal "The delivered item was damaged", @refund.reload.reason
+    assert_equal "customer_request", @refund.reason_kind
+    assert_equal @refund.reason, Commerce::RefundReasonPresenter.label(@refund)
+  end
+
+  test "a new admin refund preserves its classification and free reason" do
+    @refund.destroy!
+    provider = Object.new
+    provider.define_singleton_method(:process_refund) do |refund|
+      ServiceResult.success(
+        provider_refund_id: "admin_reason_#{refund.id}",
+        provider_status: "succeeded"
+      )
+    end
+
+    result = Payments::Provider.stub(:for, provider) do
+      Commerce::ProcessRefund.call(
+        order: @order,
+        payment_record: @payment,
+        amount_cents: @payment.amount_cents,
+        reason: "Verified support exception",
+        reason_kind: "admin_refund",
+        approved_by: @other_user
+      )
+    end
+
+    assert result.success?, result.error
+    refund = result.value.reload
+    assert_equal "admin_refund", refund.reason_kind
+    assert_equal "Verified support exception", refund.reason
+    assert_equal refund.reason, Commerce::RefundReasonPresenter.label(refund)
   end
 end
 
@@ -569,5 +623,24 @@ class Commerce::ProductContentSelfServiceLifecycleTest < ActiveSupport::TestCase
     assert delete_result.failure?
     assert_equal "official_answer_permission_required", delete_result.code
     assert @answer.reload.published?
+  end
+
+  test "answer creation rechecks a fresh actor after official permission revocation" do
+    staff = create_user
+    grant_permission(staff, "store.questions.answer")
+    stale_actor = staff.reload
+    assert stale_actor.permission?("store.questions.answer")
+    permission = Permission.find_by!(key: "store.questions.answer")
+    role = stale_actor.roles.joins(:permissions).find_by!(permissions: { id: permission.id })
+    role.revoke_permission!(permission)
+
+    result = Commerce::AnswerProductQuestion.call(
+      user: stale_actor,
+      question: @question,
+      body: "Created after revocation"
+    )
+
+    assert result.success?, result.error
+    refute result.value.reload.official?
   end
 end

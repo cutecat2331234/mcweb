@@ -1838,7 +1838,7 @@ export default {
     },
     latePayments: {
       title: '晚到支付复核',
-      subtitle: '复核已通过渠道签名验证、但无法应用到已取消或已过期订单的付款。',
+      subtitle: '复核已通过渠道签名验证、但无法安全应用到本地订单的付款。',
       safetyNotice: '确认复核只记录运维决定，不会修改订单、支付、退款、余额或渠道资金。',
       backToOperations: '支付运维',
       total: '总数',
@@ -1883,6 +1883,9 @@ export default {
       reasons: {
         order_cancelled: '订单已取消',
         order_expired: '支付窗口已过期',
+        order_already_paid: '订单已完成其他付款',
+        order_not_payable: '订单无法接收该付款',
+        payment_superseded: '支付尝试已被替代',
       },
       dispositions: {
         refund_required: '需要渠道退款',

@@ -91,7 +91,7 @@ module Commerce
       assert_predicate replay, :failure?
       assert_equal "refund_no_longer_valid", replay.code
       assert_predicate second_request, :failure?
-      assert_equal "refund_already_pending", second_request.code
+      assert_equal "refund_reconciliation_required", second_request.code
       assert_equal 1, provider.calls
 
       @refund.reload
@@ -103,6 +103,16 @@ module Commerce
       assert_equal "unknown", @refund.provider_metadata["outcome_classification"]
       assert_equal 700, @payment.refunds.reserved.sum(:amount_cents)
       assert_equal 1, @order.events.where(event_type: "refund_provider_unknown").count
+
+      second_admin_refund = Commerce::ProcessRefund.call(
+        order: @order,
+        payment_record: @payment,
+        amount_cents: 100,
+        approved_by: @admin
+      )
+      assert_predicate second_admin_refund, :failure?
+      assert_equal "refund_reconciliation_required", second_admin_refund.code
+      assert_equal 1, @payment.refunds.count
     end
 
     test "an ambiguous timeout is quarantined without releasing the reserved balance" do
@@ -123,6 +133,37 @@ module Commerce
       assert_equal "refund_provider_exception", @refund.provider_error_code
       assert_equal "Timeout::Error", @refund.provider_metadata["exception_class"]
       assert_equal 700, @payment.refunds.reserved.sum(:amount_cents)
+    end
+
+    test "one quarantined payment blocks refunds against every other payment on the order" do
+      @refund.update!(status: :provider_unknown)
+      second_payment = Payments::Record.create!(
+        order: @order,
+        provider: "stripe",
+        provider_mode: "test",
+        provider_payment_id: "cs_quarantine_other_#{SecureRandom.hex(8)}",
+        status: "succeeded",
+        amount_cents: @order.total_cents,
+        currency: @order.currency
+      )
+
+      customer_result = Commerce::RequestRefund.call(
+        order: @order,
+        user: @user,
+        amount_cents: 100
+      )
+      admin_result = Commerce::ProcessRefund.call(
+        order: @order,
+        payment_record: second_payment,
+        amount_cents: 100,
+        approved_by: @admin
+      )
+
+      assert_predicate customer_result, :failure?
+      assert_equal "refund_reconciliation_required", customer_result.code
+      assert_predicate admin_result, :failure?
+      assert_equal "refund_reconciliation_required", admin_result.code
+      assert_empty second_payment.refunds
     end
 
     test "an explicit provider failure is terminal and releases the reservation" do
@@ -151,6 +192,7 @@ module Commerce
       [ :en, :"zh-CN" ].each do |locale|
         I18n.with_locale(locale) do
           refute_match(/translation missing/i, I18n.t("mcweb.services.errors.refund_provider_outcome_unknown"))
+          refute_match(/translation missing/i, I18n.t("mcweb.services.errors.refund_reconciliation_required"))
           refute_match(/translation missing/i, I18n.t("mcweb.labels.refund_status.provider_unknown"))
           refute_match(/translation missing/i, I18n.t("mcweb.labels.order_events.refund_provider_unknown"))
         end
@@ -376,6 +418,56 @@ module Commerce
       assert_equal 0, @dispute.offset_cents
     end
 
+    test "database wait graph proves refund and dispute work overlap in order then payment lock order" do
+      provider = PendingProvider.new
+      connection = ApplicationRecord.connection
+      main_pid = connection.select_value("SELECT pg_backend_pid()").to_i
+      refund_result = Queue.new
+      refund_pid = Queue.new
+      rebalance_result = Queue.new
+      rebalance_pid = Queue.new
+      transaction_open = false
+      processing = nil
+      rebalancing = nil
+
+      Payments::Provider.stub(:for, provider) do
+        connection.execute("BEGIN")
+        transaction_open = true
+        connection.execute("SELECT id FROM payment_records WHERE id = #{@payment.id} FOR UPDATE")
+
+        processing = in_thread(refund_result, backend_pid_queue: refund_pid) { process_refund }
+        processing_pid = refund_pid.pop
+        refute_equal main_pid, processing_pid
+        assert_waiting_on!(waiting_pid: processing_pid, blocking_pid: main_pid)
+
+        rebalancing = in_thread(rebalance_result, backend_pid_queue: rebalance_pid) do
+          Commerce::Disputes::RebalanceExposure.call(
+            payment_record: Payments::Record.find(@payment.id),
+            trigger_idempotency: "verified-lock-overlap-#{@refund.id}"
+          )
+        end
+        rebalancing_backend_pid = rebalance_pid.pop
+        assert_waiting_on!(waiting_pid: rebalancing_backend_pid, blocking_pid: processing_pid)
+
+        connection.execute("COMMIT")
+        transaction_open = false
+        assert processing.join(10), "refund processing thread did not finish"
+        assert rebalancing.join(10), "dispute rebalance thread did not finish"
+      ensure
+        connection.execute("ROLLBACK") if transaction_open
+        processing&.join(10)
+        rebalancing&.join(10)
+      end
+
+      processed = refund_result.pop
+      rebalanced = rebalance_result.pop
+      assert_instance_of ServiceResult, processed
+      assert_predicate processed, :failure?
+      assert_equal "provider_pending", processed.code
+      assert_instance_of ServiceResult, rebalanced
+      assert_predicate rebalanced, :success?, rebalanced.error
+    end
+
     private
 
     def process_refund
@@ -388,12 +480,13 @@ module Commerce
       )
     end
 
-    def in_thread(result_queue, advisory_barrier: nil, &block)
+    def in_thread(result_queue, advisory_barrier: nil, backend_pid_queue: nil, &block)
       Thread.new do
         ActiveRecord::Base.connection_pool.with_connection do
           connection = ApplicationRecord.connection
           barrier_acquired = false
           connection.execute("SET lock_timeout TO '10s'")
+          backend_pid_queue << connection.select_value("SELECT pg_backend_pid()").to_i if backend_pid_queue
           if advisory_barrier
             barrier_key, ready = advisory_barrier
             ready << true
@@ -410,6 +503,34 @@ module Commerce
           connection.execute("SET lock_timeout TO DEFAULT")
         end
       end
+    end
+
+    def assert_waiting_on!(waiting_pid:, blocking_pid:)
+      blocked = Timeout.timeout(5) do
+        loop do
+          value = ApplicationRecord.connection.uncached do
+            ApplicationRecord.connection.select_value(<<~SQL.squish)
+              SELECT CASE
+                WHEN #{Integer(blocking_pid)} = ANY(pg_blocking_pids(#{Integer(waiting_pid)})) THEN 1
+                ELSE 0
+              END
+            SQL
+          end
+          break true if value.to_i == 1
+
+          sleep 0.02
+        end
+      end
+      assert blocked,
+        "expected backend #{waiting_pid} to wait on backend #{blocking_pid}"
+    rescue Timeout::Error
+      activity = ApplicationRecord.connection.select_rows(<<~SQL.squish)
+        SELECT pid, state, wait_event_type, wait_event, pg_blocking_pids(pid), query
+        FROM pg_stat_activity
+        WHERE pid IN (#{Integer(waiting_pid)}, #{Integer(blocking_pid)})
+        ORDER BY pid
+      SQL
+      flunk "expected backend #{waiting_pid} to wait on backend #{blocking_pid}; activity=#{activity.inspect}"
     end
   end
 end

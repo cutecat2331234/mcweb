@@ -42,7 +42,6 @@ module Commerce
     validates :provider_refund_id, uniqueness: true, allow_nil: true
     validates :restoration_attempts, numericality: { only_integer: true, greater_than_or_equal_to: 0 }
     validates :reason_kind, inclusion: { in: REASON_KINDS }, allow_nil: true
-    validates :reason, absence: true, if: :reason_kind?
 
     validate :payment_belongs_to_order
 

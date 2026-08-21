@@ -2,6 +2,8 @@
 
 module Minecraft
   class PrimaryAccountsController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
 
     def create

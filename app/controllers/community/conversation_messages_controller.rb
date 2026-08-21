@@ -2,6 +2,7 @@
 
 module Community
   class ConversationMessagesController < ApplicationController
+    include PrivateNoStoreResponse
     include Community::WarningRestrictionsSerializable
     include Community::ConversationsInertiaProps
 

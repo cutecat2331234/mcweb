@@ -2,6 +2,8 @@
 
 module Minecraft
   class IdentityLinksController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
     before_action :rate_limit_unlink_attempts!, only: :destroy
 

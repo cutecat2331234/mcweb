@@ -2,6 +2,8 @@
 
 module Minecraft
   class PrimaryAccountChangeRequestsController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
 
     def destroy

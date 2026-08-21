@@ -2,6 +2,8 @@
 
 module Minecraft
   class LinkController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
     before_action :rate_limit_link_attempts!, only: :create
 

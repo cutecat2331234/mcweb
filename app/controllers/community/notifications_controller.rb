@@ -2,6 +2,8 @@
 
 module Community
   class NotificationsController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
 
     def index

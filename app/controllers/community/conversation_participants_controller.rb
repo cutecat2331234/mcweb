@@ -2,6 +2,8 @@
 
 module Community
   class ConversationParticipantsController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
     before_action :set_conversation
 

@@ -6,6 +6,7 @@ class PersonalSensitiveResponseTest < ActionDispatch::IntegrationTest
   setup do
     @user = create_user
     enable_store_feature!(:shipping)
+    SiteSetting.set("features.minecraft.enabled", "true")
     sign_in_as(@user)
   end
 
@@ -15,7 +16,10 @@ class PersonalSensitiveResponseTest < ActionDispatch::IntegrationTest
       identity_sessions_management_index_path,
       store_shipping_addresses_path,
       store_orders_path,
-      store_wallet_path
+      store_wallet_path,
+      forum_conversations_path,
+      forum_notifications_path,
+      minecraft_link_path
     ]
 
     paths.each do |path|

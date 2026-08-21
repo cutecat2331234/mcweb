@@ -38,6 +38,20 @@ test('locale preference supplies a stable shared key and partitions Inertia cach
   assert.match(source, /\[INERTIA_LOCALE_HEADER\]: normalizeAppLocale\(candidate\)/)
 })
 
+test('language switchers publish the selected locale before starting an Inertia visit', () => {
+  for (const relativePath of [
+    'app/javascript/components/portal/LanguageSwitcher.vue',
+    'app/javascript/components/admin/AdminLanguageSwitcher.vue',
+  ]) {
+    const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
+    const publishSelection = source.indexOf('writeSharedAppLocale(locale)')
+    const startVisit = source.indexOf('router.patch(')
+
+    assert.ok(publishSelection >= 0, `${relativePath} must publish the selected locale`)
+    assert.ok(startVisit > publishSelection, `${relativePath} must publish the locale before the visit`)
+  }
+})
+
 test('Inertia resolves the target page locale before loading its component', () => {
   for (const relativePath of [
     'app/javascript/entrypoints/inertia.ts',

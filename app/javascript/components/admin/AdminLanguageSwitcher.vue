@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { IconCheck, IconLanguage } from '@arco-design/web-vue/es/icon'
 import { normalizeAppLocale, preloadAppLocale, type AppLocale } from '@/lib/i18n'
 import { csrfHeaders, readCsrfToken } from '@/lib/csrf'
+import { writeSharedAppLocale } from '@/lib/localePreference'
 import { routes } from '@/lib/routes'
 
 const page = usePage()
@@ -26,6 +27,7 @@ async function switchLocale(value: string | number | Record<string, unknown>) {
   const locale = normalizeAppLocale(value)
   if (locale === currentLocale.value) return
   await preloadAppLocale(locale)
+  writeSharedAppLocale(locale)
 
   router.patch(
     routes.locale,

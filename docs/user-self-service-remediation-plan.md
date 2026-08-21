@@ -189,6 +189,12 @@ production-readiness claim.
    library's form, form-item, input, password, checkbox, alert and button components.
    Chinese and English labels have one consistent vertical rhythm, controls remain at
    least 44 px high, and no custom page-level focus or border system is introduced.
+6. **Read-only prefetch contract:** hover or intent prefetch may target only an
+   explicit allowlist of side-effect-free GET destinations. Rendering a topic,
+   conversation, notification inbox, product or attachment must not silently mark it
+   read, increment views/downloads, or change recent-history state. Those effects use
+   explicit, CSRF-protected, idempotent actions after a real navigation or user action;
+   attachment downloads are never prefetched.
 
 #### Acceptance criteria
 
@@ -202,6 +208,9 @@ production-readiness claim.
   that mutation fail, even when its controller was holding an older `User` instance.
 - The sign-in form passes desktop and narrow-width geometry, keyboard-focus and
   accessibility checks using the shared UI library.
+- Hovering navigation, topic, message, product, notification or attachment links does
+  not change persisted read/view/download/history state and does not stream the target
+  payload. A real visit or explicit action applies each effect exactly once.
 
 ## Cross-cutting requirements
 

@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { Link, usePage } from '@inertiajs/vue3'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import { Moon, Sun } from '@lucide/vue'
 import { useI18n } from 'vue-i18n'
-import Button from '@/components/ui/Button.vue'
+import { Button, Card } from '@mcweb/ui'
 import DeveloperModeTools from '@/components/portal/DeveloperModeTools.vue'
 import FlashMessages from '@/components/portal/FlashMessages.vue'
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
@@ -46,19 +46,19 @@ const developerMode = computed(
         </Link>
 
         <nav class="ml-auto hidden items-center gap-1 sm:flex" :aria-label="t('common.navigation')">
-          <Button v-if="features.forum" as-child variant="ghost" size="sm">
-            <Link :href="routes.forum">{{ t('website.layout.forum') }}</Link>
+          <Button v-if="features.forum" type="text" size="small" @click="router.visit(routes.forum)">
+            {{ t('website.layout.forum') }}
           </Button>
-          <Button v-if="features.store" as-child variant="ghost" size="sm">
-            <Link :href="routes.store">{{ t('website.layout.store') }}</Link>
+          <Button v-if="features.store" type="text" size="small" @click="router.visit(routes.store)">
+            {{ t('website.layout.store') }}
           </Button>
         </nav>
 
         <LanguageSwitcher />
         <Button
-          variant="ghost"
-          size="icon"
-          type="button"
+          type="text"
+          shape="circle"
+          html-type="button"
           :aria-label="t('common.toggleTheme')"
           @click="toggleTheme"
         >
@@ -78,13 +78,15 @@ const developerMode = computed(
     </div>
 
     <main class="mx-auto flex w-full max-w-6xl justify-center px-4 py-8 sm:px-6 sm:py-12">
-      <section
-        class="w-full max-w-lg rounded-2xl border border-border/80 bg-card p-5 text-card-foreground shadow-sm sm:p-8"
+      <Card
+        class="w-full max-w-lg"
+        :bordered="true"
+        :body-style="{ padding: 'clamp(20px, 4vw, 32px)' }"
         data-testid="auth-surface"
       >
         <FlashMessages />
         <slot />
-      </section>
+      </Card>
     </main>
   </div>
 </template>

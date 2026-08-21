@@ -14,7 +14,7 @@ module LocaleSettable
   end
 
   def resolved_locale
-    candidate = explicit_locale_param || session[:locale].presence
+    candidate = explicit_locale_param || inertia_locale_header || session[:locale].presence
     candidate ||= current_user&.locale if respond_to?(:logged_in?, true) && logged_in?
     candidate ||= accept_language_locale
     normalize_locale(candidate) || I18n.default_locale
@@ -24,6 +24,12 @@ module LocaleSettable
     return unless params[:locale].present?
 
     normalize_locale(params[:locale])
+  end
+
+  def inertia_locale_header
+    return unless request.headers["X-Inertia"].present?
+
+    normalize_locale(request.headers["X-McWeb-Locale"])
   end
 
   def accept_language_locale

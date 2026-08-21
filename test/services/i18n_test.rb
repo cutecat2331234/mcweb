@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "inertia_rails/minitest"
 
 class I18nZhCNTest < ActiveSupport::TestCase
   test "user password blank error is translated in zh-CN" do
@@ -125,5 +126,42 @@ class I18nLocaleSwitchTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to "/app/forum?tab=latest#topic"
     assert_equal "zh-CN", session[:locale]
+  end
+
+  test "inertia navigation honors the shared frontend locale preference" do
+    patch locale_path, params: { locale: "zh-CN" }
+
+    get identity_sign_in_path,
+      headers: inertia_headers.merge("X-McWeb-Locale" => "en")
+
+    assert_response :success
+    assert_equal "en", inertia.props.deep_symbolize_keys[:locale]
+  end
+
+  test "explicit locale takes precedence over the inertia locale header" do
+    get identity_sign_in_path,
+      params: { locale: "zh-CN" },
+      headers: inertia_headers.merge("X-McWeb-Locale" => "en")
+
+    assert_response :success
+    assert_equal "zh-CN", inertia.props.deep_symbolize_keys[:locale]
+  end
+
+  test "non-inertia requests ignore the frontend locale header" do
+    patch locale_path, params: { locale: "zh-CN" }
+
+    get identity_sign_in_path, headers: { "X-McWeb-Locale" => "en" }
+
+    assert_response :success
+    assert_match(/<html\s+lang="zh-CN"/, response.body)
+  end
+
+  private
+
+  def inertia_headers
+    {
+      "X-Inertia" => "true",
+      "X-Inertia-Version" => InertiaRails.configuration.version
+    }
   end
 end

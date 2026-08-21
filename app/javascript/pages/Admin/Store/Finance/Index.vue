@@ -458,7 +458,7 @@ onUnmounted(() => {
       </Grid>
 
       <Card :title="t('admin.finance.filters.title')" :bordered="false">
-        <Form layout="vertical" @submit.prevent="applyFilters">
+        <Form layout="vertical" @submit="applyFilters">
           <Grid :cols="{ xs: 1, sm: 2, lg: 4 }" :col-gap="16" :row-gap="4">
             <GridItem>
               <FormItem :label="t('admin.finance.filters.from')">

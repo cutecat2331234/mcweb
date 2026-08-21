@@ -595,7 +595,7 @@ async function executeLifecycleAction() {
     :footer="false"
     unmount-on-close
   >
-    <Form :model="policyForm" layout="vertical" @submit.prevent="savePolicy">
+    <Form :model="policyForm" layout="vertical" @submit="savePolicy">
       <FormItem :label="t('admin.dataGovernance.columns.resourceType')">
         <Input :model-value="selectedPolicy?.resourceLabel" disabled />
       </FormItem>

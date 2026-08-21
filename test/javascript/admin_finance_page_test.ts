@@ -38,6 +38,7 @@ test('finance workbench uses Arco hierarchy, responsive documents, drawer timeli
     source,
     /\s(?:class|:class|v-bind:class|style|:style|v-bind:style)=|<style\b|<(?:form|label|input|select|textarea)(?:\s|>)/,
   )
+  assert.doesNotMatch(source, /<Form[^>]*@submit\.prevent/)
 })
 
 test('finance filters and asynchronous export update only local Inertia props', () => {

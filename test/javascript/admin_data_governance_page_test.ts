@@ -25,6 +25,7 @@ test('data governance is an Arco table, drawer, and modal workbench without long
   assert.match(page, /<Tabs/)
   assert.doesNotMatch(page, /<Collapse|<CollapseItem/)
   assert.doesNotMatch(page, /window\.location|document\.location/)
+  assert.doesNotMatch(page, /<Form[^>]*@submit\.prevent/)
 })
 
 test('policy, hold, reversible deletion, restore, and permanent purge use in-app JSON requests', () => {

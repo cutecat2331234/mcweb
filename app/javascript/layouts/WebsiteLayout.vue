@@ -1,10 +1,9 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, defineAsyncComponent } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { routes } from '@/lib/routes'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
-import DeveloperModeTools from '@/components/portal/DeveloperModeTools.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
 import { useFeatureFlags } from '@/lib/useFeatureFlags'
 import { isBlogHref } from '@/lib/featureFlags'
@@ -17,6 +16,9 @@ interface NavItem {
 
 const { t } = useI18n()
 const page = usePage()
+const DeveloperModeTools = defineAsyncComponent(
+  () => import('@/components/portal/DeveloperModeTools.vue'),
+)
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const developerMode = computed(
   () =>
@@ -64,7 +66,7 @@ function isActive(href: string) {
 </script>
 
 <template>
-  <DeveloperModeTools />
+  <DeveloperModeTools v-if="developerMode.enabled" />
   <div class="website-page" :style="tokenStyle">
     <TemplateAssets />
 

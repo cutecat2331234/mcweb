@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue'
+import { computed, defineAsyncComponent, ref } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import { Moon, Sun, Bell, Mail, ShoppingCart, Menu, TriangleAlert, X } from '@lucide/vue'
@@ -10,7 +10,6 @@ import PortalSidebar from '@/components/portal/PortalSidebar.vue'
 import PortalUserMenu from '@/components/portal/PortalUserMenu.vue'
 import LanguageSwitcher from '@/components/portal/LanguageSwitcher.vue'
 import TemplateAssets from '@/components/portal/TemplateAssets.vue'
-import DeveloperModeTools from '@/components/portal/DeveloperModeTools.vue'
 import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { useActiveTemplate } from '@/lib/useActiveTemplate'
@@ -20,6 +19,9 @@ import { useFeatureFlags } from '@/lib/useFeatureFlags'
 
 const page = usePage()
 const { t } = useI18n()
+const DeveloperModeTools = defineAsyncComponent(
+  () => import('@/components/portal/DeveloperModeTools.vue'),
+)
 const auth = computed(() => page.props.auth as { user: { username: string } | null })
 const notifications = computed(() => page.props.notifications as { unread_count: number; url: string } | undefined)
 const notificationUnreadCount = computed(() => notifications.value?.unread_count ?? 0)
@@ -118,7 +120,7 @@ const sidebarProps = computed(() => ({
 </script>
 
 <template>
-  <DeveloperModeTools />
+  <DeveloperModeTools v-if="developerMode.enabled" />
   <div class="min-h-dvh bg-background portal-themed" :style="portalStyle">
     <TemplateAssets :include-css="false" />
 

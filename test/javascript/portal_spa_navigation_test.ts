@@ -65,7 +65,7 @@ test('portal return-to-website action opens a separate browser tab', () => {
   assert.match(returnLink, /portal\.backToWebsite/)
 })
 
-test('portal installs delayed protocol-aware prefetch for deliberate mouse hover', () => {
+test('portal prefetch is delayed, protocol-aware, and explicit safe opt-in only', () => {
   const entry = readFileSync(
     new URL('../../app/javascript/entrypoints/inertia.ts', import.meta.url),
     'utf8',
@@ -85,5 +85,24 @@ test('portal installs delayed protocol-aware prefetch for deliberate mouse hover
   assert.match(prefetch, /'slow-2g', '2g'/)
   assert.match(prefetch, /\[ '\/app', '\/admin' \]/)
   assert.match(prefetch, /currentIsAdmin !== targetIsAdmin/)
-  assert.match(prefetch, /!explicitHref && !knownAppPath/)
+  assert.match(prefetch, /\[data-prefetch-safe="true"\]/)
+  assert.match(prefetch, /if \(!knownAppPath\)/)
+  assert.doesNotMatch(prefetch, /closest<HTMLElement>\('a\[href\]/)
+})
+
+test('stateful page visits acknowledge effects after mount and attachments never prefetch', () => {
+  const receipt = readFileSync(
+    new URL('../../app/javascript/lib/navigationReceipt.ts', import.meta.url),
+    'utf8',
+  )
+  const attachmentList = readFileSync(
+    new URL('../../app/javascript/components/portal/PostAttachmentsList.vue', import.meta.url),
+    'utf8',
+  )
+
+  assert.match(receipt, /method: method\.toUpperCase\(\)/)
+  assert.match(receipt, /X-Requested-With': 'XMLHttpRequest'/)
+  assert.match(receipt, /receipt_token: receiptToken/)
+  assert.match(attachmentList, /data-no-prefetch/)
+  assert.match(attachmentList, /download/)
 })

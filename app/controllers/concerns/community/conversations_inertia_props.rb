@@ -7,8 +7,6 @@ module Community
     private
 
     def conversation_show_props(conversation, overrides = {})
-      conversation.mark_read_for!(current_user)
-
       scope = conversation.messages.includes(:user).order(created_at: :asc)
       limit = 50
       last_page = [ (scope.count / limit.to_f).ceil, 1 ].max
@@ -23,6 +21,7 @@ module Community
         current_user_id: current_user.id,
         messages: messages.map { |msg| serialize_message(msg, conversation: conversation, participants_by_user: participants_by_user) },
         pagination: pagy_props(@pagy),
+        readReceipt: conversation_read_receipt(conversation, messages),
         participants: conversation.is_group? ? serialize_group_participants(conversation) : [],
         addParticipantUrl: group_add_participant_url(conversation),
         addParticipantRestrictedReason: group_add_restricted_reason(conversation),
@@ -45,6 +44,21 @@ module Community
         canSendPm: Community::TrustLevel.can_send_pm?(current_user),
         warningRestrictions: warning_restrictions_props
       }.merge(overrides)
+    end
+
+    def conversation_read_receipt(conversation, messages)
+      last_message = messages.max_by(&:created_at)
+      return nil unless last_message
+
+      {
+        url: read_receipt_forum_conversation_path(conversation),
+        token: NavigationReceipt.issue(
+          kind: "community.conversation",
+          resource_id: conversation.id,
+          user_id: current_user.id,
+          attributes: { last_message_id: last_message.id }
+        )
+      }
     end
 
     def group_add_participant_url(conversation)

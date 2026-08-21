@@ -13,6 +13,7 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import UserLink from '@/components/portal/UserLink.vue'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
+import { commitNavigationEffect } from '@/lib/navigationReceipt'
 
 defineOptions({ layout: PortalLayout })
 
@@ -69,7 +70,16 @@ const props = defineProps<{
   warningRestrictions?: { post?: string | null; link?: string | null; pm?: string | null }
   form_errors?: Record<string, string>
   initialBody?: string | null
+  readReceipt?: { url: string; token: string } | null
 }>()
+
+watch(
+  () => props.readReceipt,
+  (receipt) => {
+    void commitNavigationEffect(receipt?.url, { receiptToken: receipt?.token })
+  },
+  { immediate: true },
+)
 
 const linkError = ref('')
 

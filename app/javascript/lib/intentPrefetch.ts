@@ -21,7 +21,7 @@ function connectionAllowsPrefetch(): boolean {
 
 function intentElement(target: EventTarget | null): HTMLElement | null {
   if (!(target instanceof Element)) return null
-  return target.closest<HTMLElement>('a[href], [data-prefetch-href]')
+  return target.closest<HTMLElement>('[data-prefetch-safe="true"]')
 }
 
 function prefetchHref(element: HTMLElement): string | null {
@@ -47,10 +47,9 @@ function prefetchHref(element: HTMLElement): string | null {
   const knownAppPath = PREFETCHABLE_PREFIXES.some(
     (prefix) => url.pathname === prefix || url.pathname.startsWith(`${prefix}/`),
   )
-  // Explicit destinations are used by Arco menu items and buttons that render
-  // without an anchor. They may also point to a public website page such as
-  // /blog or a configured /:slug page, but never cross the admin entry boundary.
-  if (!explicitHref && !knownAppPath) {
+  // Only destinations explicitly reviewed and marked data-prefetch-safe may
+  // enter this path. The app/admin boundary remains closed in both directions.
+  if (!knownAppPath) {
     return null
   }
 

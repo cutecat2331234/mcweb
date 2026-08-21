@@ -35,6 +35,7 @@ import TopicCustomFieldsForm, {
 import { routes } from '@/lib/routes'
 import { createIdempotencyKey } from '@/lib/idempotency'
 import { readCsrfToken } from '@/lib/csrf'
+import { commitNavigationEffect } from '@/lib/navigationReceipt'
 import { highlightCodeBlocks } from '@/lib/highlightCode'
 import { confirm } from '@/lib/useConfirm'
 import { prompt } from '@/lib/usePrompt'
@@ -225,6 +226,7 @@ const props = defineProps<{
   pagination: PaginationMeta
   lastReadFloor?: number
   firstUnreadFloor?: number | null
+  visitReceipt?: { url: string; token: string } | null
   markUnreadUrl?: string | null
   jumpToUnreadUrl?: string | null
   canReply: boolean
@@ -253,6 +255,14 @@ const props = defineProps<{
   subscriptionUrl?: string | null
   meta?: { title: string; description: string | null; noindex?: boolean; url?: string | null; image?: string | null; poll_question?: string | null; twitter_card?: string | null; twitter_title?: string | null; twitter_description?: string | null; og_locale?: string | null; og_site_name?: string | null }
 }>()
+
+watch(
+  () => props.visitReceipt,
+  (receipt) => {
+    void commitNavigationEffect(receipt?.url, { receiptToken: receipt?.token })
+  },
+  { immediate: true },
+)
 
 const page = usePage<{ auth: { user: { id: string; username: string } | null } }>()
 const loggedIn = !!page.props.auth.user

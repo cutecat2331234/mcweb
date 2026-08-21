@@ -607,6 +607,7 @@ Rails.application.routes.draw do
       end
       resource :reply_draft, only: %i[update destroy], controller: "reply_drafts"
       member do
+        post :visit_receipt
         post :moderate
         post :move
         post :copy
@@ -719,6 +720,7 @@ Rails.application.routes.draw do
     patch "tags/:slug/subscription", to: "tags#update_subscription", as: :tag_subscription_level
     resources :conversations, only: %i[index show new create] do
       member do
+        post :read_receipt
         post :archive
         post :unarchive
         post :mute
@@ -770,6 +772,7 @@ Rails.application.routes.draw do
         delete :clear_recently_viewed
       end
       member do
+        post :view_receipt
         post :wishlist, to: "wishlist#toggle"
         post :reorder
         post :discussion, action: :create_discussion

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { computed, ref, onMounted, onUnmounted, watch } from 'vue'
 import { Head, Link, router, useForm } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
@@ -26,6 +26,7 @@ import Textarea from '@/components/ui/Textarea.vue'
 import Select from '@/components/ui/Select.vue'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
+import { commitNavigationEffect } from '@/lib/navigationReceipt'
 
 defineOptions({ layout: PortalLayout })
 
@@ -161,7 +162,16 @@ const props = defineProps<{
   }>
   questionsPagination?: import('@/components/portal/Pagination.vue').PaginationMeta
   questionQuery?: string
+  viewReceipt?: { url: string; token: string } | null
 }>()
+
+watch(
+  () => props.viewReceipt,
+  (receipt) => {
+    void commitNavigationEffect(receipt?.url, { receiptToken: receipt?.token })
+  },
+  { immediate: true },
+)
 
 const questionForm = useForm({ question: { body: '' } })
 const answerForms = ref<Record<number, string>>({})

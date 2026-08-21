@@ -62,14 +62,9 @@ module Community
         ),
         periodFilters: notification_period_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
         activeFilters: notification_active_filters(category: category, read: read_filter, type: type_filter, period: period_filter),
-        unreadCount: unread_count
+        unreadCount: unread_count,
+        dismissAlertsUrl: dismiss_alerts_forum_notifications_path(notification_index_query_params)
       }
-
-      # XenForo-style transient alerts auto-dismiss once the page is viewed. This
-      # runs AFTER the props above are computed, so it only affects the NEXT load
-      # and the bell badge — this response's notifications + unread_count are
-      # unchanged.
-      current_user.notifications.unread.alerts.update_all(read_at: Time.current)
     end
 
     def visit
@@ -102,6 +97,8 @@ module Community
 
     def dismiss_alerts
       current_user.notifications.unread.alerts.update_all(read_at: Time.current)
+      return head :no_content if request.xhr? || request.format.json?
+
       redirect_to forum_notifications_path(notification_index_query_params), notice: t("mcweb.flash.alerts_dismissed")
     end
 

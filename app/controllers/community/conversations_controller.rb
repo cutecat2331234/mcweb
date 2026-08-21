@@ -67,6 +67,22 @@ module Community
       render inertia: "Community/Messages/Show", props: conversation_show_props(conversation)
     end
 
+    def read_receipt
+      conversation = find_accessible_conversation!
+      result = NavigationReceipt.consume(
+        token: params[:receipt_token],
+        kind: "community.conversation",
+        resource_id: conversation.id,
+        user_id: current_user.id
+      ) do |attributes|
+        mark_conversation_read_through!(conversation, attributes.fetch(:last_message_id, nil))
+      end
+
+      return head :unprocessable_entity if result.failure?
+
+      head :no_content
+    end
+
     def mark_unread
       conversation = find_accessible_conversation!
       conversation.mark_unread_for!(current_user)
@@ -172,6 +188,17 @@ module Community
     end
 
     private
+
+    def mark_conversation_read_through!(conversation, message_id)
+      ActiveRecord::Base.transaction do
+        message = conversation.messages.find(message_id)
+        participant = conversation.participants.lock.find_by!(user: current_user)
+        read_through = message.created_at
+        next if participant.last_read_at && participant.last_read_at >= read_through
+
+        participant.update!(last_read_at: read_through)
+      end
+    end
 
     def set_invites_locked(locked)
       conversation = find_accessible_conversation!

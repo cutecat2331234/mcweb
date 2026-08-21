@@ -11,12 +11,9 @@ module Community
 
     before_action :require_login, only: %i[new create update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate bulk_moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
     before_action :set_section, only: %i[new create]
-    before_action :set_topic, only: %i[show update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
+    before_action :set_topic, only: %i[show visit_receipt update toggle_subscription update_subscription toggle_bookmark toggle_mute moderate move copy merge split mark_solved unsolve update_slow_mode update_auto_close update_auto_open update_auto_bump update_auto_archive mark_unread staff_note reply_ban reply_unban invite close_own reopen_own share_as_pm export]
 
     def show
-      @topic.record_view!
-      mark_topic_notifications_read!
-
       posts_scope = if can_moderate_topic?
                       @topic.posts.with_discarded.chronological
       elsif logged_in?
@@ -45,8 +42,8 @@ module Community
       end
 
       @pagy, posts = pagy(:offset, posts_scope, limit: per_page, page: target_page)
-      mark_topic_read!(posts) unless params[:unread] == "1"
       last_read_floor = logged_in? ? Community::ReadState.find_by(user: current_user, topic: @topic)&.last_read_floor.to_i : 0
+      receipt_floor = last_countable_floor(posts)
       topic_bookmark = if logged_in?
                          Community::Bookmark.find_by(user: current_user, topic: @topic, forum_post_id: nil)
       end
@@ -115,6 +112,15 @@ module Community
         pagination: pagy_props(@pagy),
         lastReadFloor: last_read_floor,
         firstUnreadFloor: first_unread_floor,
+        visitReceipt: {
+          url: visit_receipt_forum_topic_path(@topic),
+          token: NavigationReceipt.issue(
+            kind: "community.topic",
+            resource_id: @topic.public_id,
+            user_id: current_user&.id,
+            attributes: { last_read_floor: receipt_floor }
+          )
+        },
         markUnreadUrl: logged_in? ? mark_unread_forum_topic_path(@topic) : nil,
         jumpToUnreadUrl: first_unread_floor ? forum_topic_path(@topic, unread: 1) : nil,
         canReply: can_reply_to_topic?,
@@ -143,6 +149,28 @@ module Community
         subscriptionUrl: logged_in? ? subscription_forum_topic_path(@topic) : nil,
         meta: topic_meta_props(@topic)
       }
+    end
+
+    def visit_receipt
+      result = NavigationReceipt.consume(
+        token: params[:receipt_token],
+        kind: "community.topic",
+        resource_id: @topic.public_id,
+        user_id: current_user&.id
+      ) do |attributes|
+        ActiveRecord::Base.transaction do
+          @topic.record_view!
+          if logged_in?
+            floor = attributes.fetch(:last_read_floor, 0).to_i
+            Community::ReadState.mark_read!(current_user, @topic, floor: floor) if floor.positive?
+            mark_topic_notifications_read!
+          end
+        end
+      end
+
+      return head :unprocessable_entity if result.failure?
+
+      head :no_content
     end
 
     def new
@@ -662,14 +690,12 @@ module Community
       inertia_form_errors(result, prefix: "topic")
     end
 
-    def mark_topic_read!(posts)
-      return unless logged_in?
-
-      countable = posts.select { |post| post.published? && post.post_type_regular? }
-      return if countable.blank?
-
-      last_floor = countable.map(&:floor_number).max.to_i
-      Community::ReadState.mark_read!(current_user, @topic, floor: last_floor)
+    def last_countable_floor(posts)
+      posts
+        .select { |post| post.published? && post.post_type_regular? }
+        .map(&:floor_number)
+        .max
+        .to_i
     end
 
     def watching_topic?

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import PortalLayout from '@/layouts/PortalLayout.vue'
@@ -9,6 +9,7 @@ import Button from '@/components/ui/Button.vue'
 import Badge from '@/components/ui/Badge.vue'
 import { routes } from '@/lib/routes'
 import { appendQueryParams } from '@/lib/utils'
+import { commitNavigationEffect } from '@/lib/navigationReceipt'
 
 defineOptions({ layout: PortalLayout })
 
@@ -95,7 +96,14 @@ const props = defineProps<{
   periodFilters?: PeriodFilter[]
   activeFilters?: Array<{ param: string; label: string; value?: string }>
   unreadCount?: number
+  dismissAlertsUrl?: string | null
 }>()
+
+watch(
+  () => props.dismissAlertsUrl,
+  (url) => { void commitNavigationEffect(url, { method: 'patch' }) },
+  { immediate: true },
+)
 
 const expanded = ref<Record<string, boolean>>({})
 const sectionExpanded = ref<Record<string, boolean>>({})

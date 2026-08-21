@@ -172,8 +172,6 @@ module Commerce
     def show
       product = Commerce::Product.available.includes(:variants, :category, :forum_topic, :membership_type, :prerequisites).find_by!(public_id: params[:id])
       raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(product)
-      product.increment!(:view_count)
-      Commerce::RecordProductView.call(user: current_user, product: product) if logged_in?
 
       review_sort = params[:review_sort].to_s
       review_rating = params[:review_rating].to_i
@@ -270,8 +268,37 @@ module Commerce
         reviewUrl: store_reviews_path(product),
         questionUrl: store_questions_path(product),
         canAnswerOfficially: logged_in? && (current_user.permission?("store.questions.answer") || current_user.permission?("admin.access")),
-        loggedIn: logged_in?
+        loggedIn: logged_in?,
+        viewReceipt: {
+          url: view_receipt_store_product_path(product),
+          token: NavigationReceipt.issue(
+            kind: "commerce.product",
+            resource_id: product.public_id,
+            user_id: current_user&.id
+          )
+        }
       }
+    end
+
+    def view_receipt
+      product = Commerce::Product.available.find_by!(public_id: params[:id])
+      raise ActiveRecord::RecordNotFound unless Commerce::StoreFeatures.product_visible?(product)
+
+      result = NavigationReceipt.consume(
+        token: params[:receipt_token],
+        kind: "commerce.product",
+        resource_id: product.public_id,
+        user_id: current_user&.id
+      ) do
+        ActiveRecord::Base.transaction do
+          product.increment!(:view_count)
+          Commerce::RecordProductView.call(user: current_user, product: product) if logged_in?
+        end
+      end
+
+      return head :unprocessable_entity if result.failure?
+
+      head :no_content
     end
 
     def reorder

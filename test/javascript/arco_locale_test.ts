@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import test from 'node:test'
 import {
@@ -31,14 +31,15 @@ test('Arco locale adapter maps normalized application locales', () => {
   assert.deepEqual(chinese.popconfirm, { okText: '确定', cancelText: '取消' })
 })
 
-test('Arco global fallback follows application locale for static services', () => {
-  const adapter = readFileSync(
-    resolve(process.cwd(), 'app/javascript/lib/arcoLocale.ts'),
+test('Arco global fallback is folded into the existing application i18n runtime', () => {
+  const runtime = readFileSync(
+    resolve(process.cwd(), 'app/javascript/lib/i18n.ts'),
     'utf8',
   )
 
-  assert.match(adapter, /ARCO_LOCALES\[normalizeAppLocale\(locale\)\]/)
-  assert.match(adapter, /setArcoLocale\(next\.locale\)/)
+  assert.equal(existsSync(resolve(process.cwd(), 'app/javascript/lib/arcoLocale.ts')), false)
+  assert.match(runtime, /ARCO_LOCALES\[normalizeAppLocale\(locale\)\]/)
+  assert.match(runtime, /setArcoLocale\(next\.locale\)/)
 
   addI18nMessages(
     {
@@ -66,7 +67,7 @@ test('every shared Arco shell binds its provider to the vue-i18n locale', () => 
   ]) {
     const source = readFileSync(resolve(process.cwd(), relativePath), 'utf8')
 
-    assert.match(source, /import \{ useArcoLocale \} from '@\/lib\/arcoLocale'/)
+    assert.match(source, /import \{ useArcoLocale \} from '@\/lib\/i18n'/)
     assert.match(source, /const arcoLocale = useArcoLocale\(\)/)
     assert.match(source, /(?:a-config-provider|ConfigProvider) :locale="arcoLocale" global/)
   }

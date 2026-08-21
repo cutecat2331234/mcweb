@@ -26,7 +26,7 @@ import DeveloperModeTools from '@/components/admin/DeveloperModeTools.vue'
 import PluginUiSlots from '@/components/plugins/PluginUiSlots.vue'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import { adminRoutes } from '@/lib/adminRoutes'
-import { useArcoLocale } from '@/lib/arcoLocale'
+import { useArcoLocale } from '@/lib/i18n'
 import { useTheme } from '@/lib/useTheme'
 
 interface NavItem {

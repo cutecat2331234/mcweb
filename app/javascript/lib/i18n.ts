@@ -1,4 +1,12 @@
-import { createI18n } from 'vue-i18n'
+import { computed, watch } from 'vue'
+import { createI18n, useI18n } from 'vue-i18n'
+import {
+  addI18nMessages,
+  useLocale as setArcoLocale,
+} from '@arco-design/web-vue/es/locale/index.js'
+import arcoEnUS from '@arco-design/web-vue/es/locale/lang/en-us.js'
+import arcoZhCN from '@arco-design/web-vue/es/locale/lang/zh-cn.js'
+import type { ArcoLang } from '@arco-design/web-vue/es/locale/interface.js'
 import {
   missingTranslation,
   normalizeAppLocale,
@@ -12,6 +20,45 @@ export {
   type AppLocale,
   type MissingTranslationDetail,
 } from './i18nRuntime'
+
+const ARCO_LOCALES = {
+  'zh-CN': arcoZhCN,
+  en: arcoEnUS,
+} satisfies Record<AppLocale, ArcoLang>
+
+addI18nMessages(
+  {
+    [arcoZhCN.locale]: arcoZhCN,
+    [arcoEnUS.locale]: arcoEnUS,
+  },
+  { overwrite: true },
+)
+
+export function resolveArcoLocale(locale: unknown): ArcoLang {
+  return ARCO_LOCALES[normalizeAppLocale(locale)]
+}
+
+export function syncArcoLocale(locale: unknown): ArcoLang {
+  const next = resolveArcoLocale(locale)
+  // Static services such as Modal.confirm render outside the component tree.
+  setArcoLocale(next.locale)
+  return next
+}
+
+export function useArcoLocale() {
+  const { locale } = useI18n()
+  const arcoLocale = computed(() => resolveArcoLocale(locale.value))
+
+  watch(
+    locale,
+    (next) => {
+      syncArcoLocale(next)
+    },
+    { immediate: true },
+  )
+
+  return arcoLocale
+}
 
 const localeLoaders = {
   'zh-CN': () => import('@/locales/zh-CN'),

@@ -33,7 +33,7 @@ import {
   IconUser,
 } from '@arco-design/web-vue/es/icon'
 import { routes } from '@/lib/routes'
-import { useArcoLocale } from '@/lib/arcoLocale'
+import { useArcoLocale } from '@/lib/i18n'
 import { useTheme } from '@/lib/useTheme'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
 import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'

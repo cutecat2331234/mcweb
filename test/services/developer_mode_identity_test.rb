@@ -117,7 +117,12 @@ class DeveloperModeIdentityTest < ActiveSupport::TestCase
     user = registration.value[:user]
     assert user.developer_mode_email_verified?
 
-    assert_enqueued_jobs 1 do
+    assert_difference -> {
+      Operations::DurableEnqueueIntent.where(
+        handler_key: Identity::EmailVerificationDelivery::HANDLER_KEY,
+        source_id: user.id
+      ).count
+    }, 1 do
       result = Identity::ResendEmailVerification.call(
         email: user.email,
         ip_address: "203.0.113.24"

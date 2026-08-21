@@ -39,6 +39,7 @@ module Identity
           email_verified: auto_verify,
           email_verified_at: auto_verify ? Time.current : nil,
           developer_mode_email_verified: auto_verify,
+          email_verification_token: auto_verify ? nil : token,
           email_verification_token_digest: auto_verify ? nil : digest_token(token),
           email_verification_sent_at: auto_verify ? nil : Time.current
         )
@@ -62,15 +63,8 @@ module Identity
           ip_address: @ip_address,
           user_agent: @user_agent
         )
-      end
 
-      unless auto_verify
-        MailDeliveryJob.perform_later(
-          "Identity::Mailer",
-          "verification_email",
-          "deliver_now",
-          args: [ @user.id, token ]
-        )
+        Identity::EmailVerificationDelivery.record!(user: @user, token:) unless auto_verify
       end
 
       ServiceResult.success(user: @user, verification_required: !auto_verify)
@@ -78,6 +72,10 @@ module Identity
       e.result
     rescue ActiveRecord::RecordInvalid => e
       ServiceResult.failure(errors: e.record.errors.to_hash)
+    rescue Operations::DurableEnqueue::InvalidRequest,
+           Operations::DurableEnqueue::IdempotencyConflict => e
+      Rails.logger.error("[identity.email_change] durable_delivery_unavailable error=#{e.class}")
+      failure("email_delivery_temporarily_unavailable")
     end
 
     class VerificationFailed < StandardError

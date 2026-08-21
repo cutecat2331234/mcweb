@@ -2,6 +2,8 @@
 
 module Identity
   class DataExportsController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
     before_action :set_data_export, only: %i[download retry revoke]
 
@@ -73,7 +75,6 @@ module Identity
         ip_address: request.remote_ip,
         user_agent: request.user_agent
       )
-      response.headers["Cache-Control"] = "private, no-store"
       send_data(
         @data_export.archive.download,
         filename: @data_export.archive.filename.to_s,

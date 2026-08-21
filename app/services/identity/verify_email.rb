@@ -30,6 +30,7 @@ module Identity
         email_verified: true,
         email_verified_at: Time.current,
         developer_mode_email_verified: false,
+        email_verification_token: nil,
         email_verification_token_digest: nil,
         email_verification_sent_at: nil
       )

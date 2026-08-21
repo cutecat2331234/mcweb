@@ -2,9 +2,10 @@
 
 module Identity
   class SecurityController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
     skip_before_action :require_totp_setup, raise: false
-    after_action :set_private_no_store
 
     def show
       render inertia: "Identity/Security/Show", props: {
@@ -19,36 +20,66 @@ module Identity
     end
 
     def setup_totp
-      return redirect_to identity_security_path, alert: t("mcweb.flash.totp_already_enabled") if current_user.totp_enabled?
+      setup_secret = nil
+      already_enabled = false
+      User.transaction do
+        current_user.lock!
+        if current_user.totp_enabled?
+          already_enabled = true
+        else
+          current_user.setup_totp!
+          setup_secret = current_user.totp_secret
+        end
+      end
+      if already_enabled
+        return redirect_to identity_security_path, alert: t("mcweb.flash.totp_already_enabled")
+      end
 
-      current_user.setup_totp!
-      session[:pending_totp_secret] = current_user.totp_secret
+      session[:pending_totp_secret] = setup_secret
 
       redirect_to identity_security_path, notice: t("mcweb.flash.totp_setup_started")
     end
 
     def confirm_totp
-      secret = session[:pending_totp_secret].presence || current_user.totp_secret
+      secret = session[:pending_totp_secret].presence
       return redirect_to identity_security_path, alert: t("mcweb.flash.totp_setup_missing") if secret.blank?
 
-      unless User.verify_totp_code(secret, confirm_params[:code])
-        return redirect_to identity_security_path, alert: t("mcweb.flash.totp_invalid")
-      end
-
+      confirmation = :invalid
+      recovery_codes = nil
       User.transaction do
         current_user.lock!
-        current_user.update!(totp_enabled: true)
-        Administration::AuditLogger.call(
-          actor: current_user,
-          action: "identity.totp_enabled",
-          resource: current_user,
-          metadata: { recovery_code_count: Array(current_user.recovery_codes).size },
-          ip_address: request.remote_ip,
-          user_agent: request.user_agent
-        )
+        if current_user.totp_enabled?
+          confirmation = :already_enabled
+        elsif !secure_totp_secret_match?(current_user.totp_secret.to_s, secret)
+          confirmation = :stale
+        elsif User.verify_totp_code(secret, confirm_params[:code])
+          current_user.update!(totp_enabled: true)
+          Administration::AuditLogger.call(
+            actor: current_user,
+            action: "identity.totp_enabled",
+            resource: current_user,
+            metadata: { recovery_code_count: Array(current_user.recovery_codes).size },
+            ip_address: request.remote_ip,
+            user_agent: request.user_agent
+          )
+          recovery_codes = Array(current_user.recovery_codes)
+          confirmation = :enabled
+        end
       end
-      session.delete(:pending_totp_secret)
-      session[:identity_recovery_codes] = Array(current_user.recovery_codes)
+
+      case confirmation
+      when :enabled
+        session.delete(:pending_totp_secret)
+        session[:identity_recovery_codes] = recovery_codes
+      when :stale
+        session.delete(:pending_totp_secret)
+        return redirect_to identity_security_path, alert: t("mcweb.flash.totp_setup_stale")
+      when :already_enabled
+        session.delete(:pending_totp_secret)
+        return redirect_to identity_security_path, alert: t("mcweb.flash.totp_already_enabled")
+      else
+        return redirect_to identity_security_path, alert: t("mcweb.flash.totp_invalid")
+      end
 
       redirect_to identity_security_path, notice: t("mcweb.flash.totp_enabled")
     end
@@ -142,13 +173,13 @@ module Identity
 
     private
 
-    def set_private_no_store
-      response.set_header("Cache-Control", "private, no-store")
-    end
-
     def pending_totp_props
       secret = session[:pending_totp_secret].presence
       return nil if secret.blank? || current_user.totp_enabled?
+      unless secure_totp_secret_match?(current_user.totp_secret.to_s, secret)
+        session.delete(:pending_totp_secret)
+        return nil
+      end
 
       totp = ROTP::TOTP.new(secret, issuer: "Mcweb")
       qr = RQRCode::QRCode.new(totp.provisioning_uri(current_user.email))
@@ -158,6 +189,11 @@ module Identity
         provisioning_uri: totp.provisioning_uri(current_user.email),
         qr_svg: qr.as_svg(module_size: 4, standalone: true)
       }
+    end
+
+    def secure_totp_secret_match?(stored_secret, pending_secret)
+      stored_secret.bytesize == pending_secret.bytesize &&
+        ActiveSupport::SecurityUtils.secure_compare(stored_secret, pending_secret)
     end
 
     def confirm_params

@@ -6,6 +6,26 @@ module Operations
 
     def register(registry)
       registry.register(
+        key: Identity::EmailVerificationDelivery::HANDLER_KEY,
+        source_kind: "user",
+        queue: "mailers",
+        replay_contract: "at_least_once",
+        lease: 5.minutes,
+        max_attempts: 5,
+        retry_delays: [ 1.minute, 5.minutes, 30.minutes, 2.hours ],
+        argument_schema: {
+          "token_digest" => {
+            type: "string",
+            required: true,
+            maximum: 64,
+            pattern: /\A[0-9a-f]{64}\z/
+          }
+        }
+      ) do |intent, _context|
+        Identity::EmailVerificationDelivery.deliver(intent)
+      end
+
+      registry.register(
         key: "community.web_push",
         source_kind: "notification",
         queue: "default",

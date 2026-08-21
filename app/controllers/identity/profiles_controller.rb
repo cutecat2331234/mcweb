@@ -2,8 +2,9 @@
 
 module Identity
   class ProfilesController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
-    after_action :set_private_no_store
 
     def show
       render_profile
@@ -53,10 +54,6 @@ module Identity
 
     def profile_params
       params.expect(profile: %i[display_name locale])
-    end
-
-    def set_private_no_store
-      response.set_header("Cache-Control", "private, no-store")
     end
   end
 end

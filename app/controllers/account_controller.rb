@@ -1,8 +1,9 @@
 # frozen_string_literal: true
 
 class AccountController < ApplicationController
+  include PrivateNoStoreResponse
+
   before_action :require_login
-  after_action :set_private_no_store
 
   def show
     forum_enabled = FeatureFlags.enabled?(:forum)
@@ -65,9 +66,5 @@ class AccountController < ApplicationController
       username: identity&.username,
       uuid: identity&.external_uuid
     }
-  end
-
-  def set_private_no_store
-    response.set_header("Cache-Control", "private, no-store")
   end
 end

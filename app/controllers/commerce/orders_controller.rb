@@ -2,6 +2,8 @@
 
 module Commerce
   class OrdersController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
     before_action :set_order, only: %i[show cancel refund receipt receipt_pdf packing_slip reorder refresh_download]
 

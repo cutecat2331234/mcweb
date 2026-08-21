@@ -62,6 +62,7 @@ module Identity
           email_verified_at: nil,
           developer_mode_email_verified: false,
           developer_mode_relaxed_password: false,
+          email_verification_token: nil,
           email_verification_token_digest: nil,
           email_verification_sent_at: nil,
           password_reset_token_digest: nil,

@@ -2,6 +2,8 @@
 
 module Commerce
   class ShippingAddressesController < ApplicationController
+    include PrivateNoStoreResponse
+
     before_action :require_login
     before_action :require_shipping_feature!
     before_action :set_address, only: %i[update destroy make_default]

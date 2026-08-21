@@ -18,6 +18,7 @@ const props = defineProps<{
   forumNew?: { count: number; url: string }
   forumAssigned?: { count: number; url: string }
   forumModerationPending?: { count: number; url: string }
+  staffWorkspace?: { count: number; url: string; queue_url?: string }
   messagesUnread?: { count: number; url: string }
   cart?: { count: number; url: string }
   class?: string
@@ -34,6 +35,7 @@ const navOptions = computed(() => ({
   forumNew: props.forumNew,
   forumAssigned: props.forumAssigned,
   forumModerationPending: props.forumModerationPending,
+  staffWorkspace: props.staffWorkspace,
   messagesUnread: props.messagesUnread,
   cart: props.cart,
 }))

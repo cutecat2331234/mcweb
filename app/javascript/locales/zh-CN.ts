@@ -122,6 +122,7 @@ export default {
     availabilityAlerts: '上架通知',
     storePreferences: '商城通知',
     cart: '购物车',
+    personal: '我的',
     forum: '论坛',
     store: '商城',
   },

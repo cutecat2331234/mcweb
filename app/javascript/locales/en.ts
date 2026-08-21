@@ -122,6 +122,7 @@ export default {
     availabilityAlerts: 'Availability alerts',
     storePreferences: 'Store notifications',
     cart: 'Cart',
+    personal: 'My',
     forum: 'Forum',
     store: 'Store',
   },

@@ -77,64 +77,6 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
     })),
   ])
 
-  const forumPersonalItems = computed<PortalNavItem[]>(() => {
-    if (!opts.value.loggedIn) return []
-    return [
-      ...(opts.value.staffWorkspace ? [ {
-        label: t('nav.staffWorkspace'),
-        href: opts.value.staffWorkspace.url,
-        badge: opts.value.staffWorkspace.count,
-        loginRequired: true,
-        icon: 'shield',
-      } ] : []),
-      {
-        label: t('nav.new'),
-        href: opts.value.forumNew?.url || routes.forumNew,
-        badge: opts.value.forumNew?.count,
-        loginRequired: true,
-        icon: 'circle-dot',
-      },
-      { label: t('nav.watching'), href: routes.forumWatching, loginRequired: true, icon: 'eye' },
-      { label: t('nav.watchedTags'), href: routes.forumWatchedTags, loginRequired: true, icon: 'bookmark' },
-      { label: t('nav.watchedTagTopics'), href: routes.forumWatchedTagTopics, loginRequired: true, icon: 'list' },
-      { label: t('nav.following'), href: routes.forumFollowing, loginRequired: true, icon: 'user-plus' },
-      { label: t('nav.bookmarks'), href: routes.forumBookmarks, loginRequired: true, icon: 'bookmark' },
-      {
-        label: t('nav.unread'),
-        href: opts.value.forumUnread?.url || routes.forumUnread,
-        badge: opts.value.forumUnread?.count,
-        loginRequired: true,
-        icon: 'inbox',
-      },
-      ...(opts.value.forumAssigned ? [ {
-        label: t('nav.assigned'),
-        href: opts.value.forumAssigned.url,
-        badge: opts.value.forumAssigned.count,
-        loginRequired: true,
-        icon: 'list',
-      } ] : []),
-      ...(opts.value.forumModerationPending ? [ {
-        label: t('nav.moderationApprovals'),
-        href: opts.value.forumModerationPending.url,
-        badge: opts.value.forumModerationPending.count,
-        loginRequired: true,
-        icon: 'shield',
-      } ] : []),
-      {
-        label: t('nav.messages'),
-        href: opts.value.messagesUnread?.url || routes.forumMessages,
-        badge: opts.value.messagesUnread?.count,
-        loginRequired: true,
-        icon: 'mail',
-      },
-      { label: t('nav.drafts'), href: routes.forumDrafts, loginRequired: true, icon: 'file-text' },
-      { label: t('nav.preferences'), href: routes.forumPreferences, loginRequired: true, icon: 'settings' },
-      { label: t('nav.blocks'), href: routes.forumBlocks, loginRequired: true, icon: 'ban' },
-      { label: t('nav.ignores'), href: routes.forumIgnores, loginRequired: true, icon: 'user-minus' },
-      { label: t('nav.muted'), href: routes.forumMuted, loginRequired: true, icon: 'volume-off' },
-    ]
-  })
-
   const storeBrowseItems = computed<PortalNavItem[]>(() => [
     { label: t('nav.products'), href: routes.store, icon: 'shopping-bag' },
     { label: t('nav.compare'), href: routes.storeCompare, loginRequired: true, icon: 'sliders' },
@@ -169,8 +111,10 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
   })
 
   const navGroups = computed<PortalNavGroup[]>(() => {
+    let groups: PortalNavGroup[]
+
     if (activeSection.value === 'store' && features.value.store) {
-      const groups: PortalNavGroup[] = [
+      groups = [
         {
           key: 'store-browse',
           label: t('common.browse'),
@@ -181,17 +125,43 @@ export function usePortalNav(options: PortalNavOptions | ComputedRef<PortalNavOp
       if (opts.value.loggedIn) {
         groups.push({ key: 'store-mine', label: t('common.mine'), defaultExpanded: false, items: storePersonalItems.value })
       }
-      return groups
+    } else if (features.value.forum) {
+      groups = [
+        { key: 'forum-browse', label: t('common.browse'), defaultExpanded: true, items: forumBrowseItems.value },
+      ]
+    } else {
+      groups = []
     }
 
-    if (!features.value.forum) return []
-
-    const groups: PortalNavGroup[] = [
-      { key: 'forum-browse', label: t('common.browse'), defaultExpanded: true, items: forumBrowseItems.value },
-    ]
     if (opts.value.loggedIn) {
-      groups.push({ key: 'forum-mine', label: t('common.mine'), defaultExpanded: false, items: forumPersonalItems.value })
+      groups.push({
+        key: 'portal-personal',
+        label: t('common.mine'),
+        defaultExpanded: false,
+        items: [ {
+          label: t('nav.personal'),
+          href: routes.account,
+          loginRequired: true,
+          icon: 'user',
+        } ],
+      })
     }
+
+    if (opts.value.staffWorkspace) {
+      groups.push({
+        key: 'portal-staff',
+        label: t('nav.staffWorkspace'),
+        defaultExpanded: false,
+        items: [ {
+          label: t('staffWorkspace.navigation.overview'),
+          href: opts.value.staffWorkspace.url,
+          badge: opts.value.staffWorkspace.count,
+          loginRequired: true,
+          icon: 'shield',
+        } ],
+      })
+    }
+
     return groups
   })
 

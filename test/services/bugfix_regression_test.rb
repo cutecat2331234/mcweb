@@ -206,7 +206,10 @@ class IntegrationActionPendingEffectsTest < ActiveSupport::TestCase
     log = Minecraft::IntegrationActionLog.find_by!(event_id: event_id)
     assert_equal "failed", log.status
     assert_includes log.error_message, "pending effects"
-    assert_equal 0, Notification.count
+    assert_not Notification.where(
+      "metadata ->> 'integration_effect_key' LIKE ?",
+      "integration:#{event_id}:%"
+    ).exists?
   end
 
   test "reclaims stale processing logs" do

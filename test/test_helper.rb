@@ -191,6 +191,10 @@ module ActiveSupport
       end
       role.permissions << permission unless role.permissions.include?(permission)
       user.roles << role unless user.roles.include?(role)
+      # Permission version callbacks update the database directly. Refresh the
+      # same test instance so a permission cached earlier in this request does
+      # not hide a later grant behind its stale in-memory version.
+      user.reload
     end
 
     def grant_admin_module(user, module_key)

@@ -399,6 +399,7 @@ module InertiaSerializable
       verified_purchaser: verified_purchaser.nil? ? verified_purchaser?(post.user) : verified_purchaser,
       avatar_url: post.user.avatar_url,
       body: post.body,
+      revision: post.revision,
       body_html: body_html,
       body_long: body_long,
       edit_seconds_remaining: edit_seconds_remaining(post, current_user),

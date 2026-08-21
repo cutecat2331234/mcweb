@@ -14,7 +14,8 @@ namespace :db do
       puts(
         "finalized=#{result.fetch(:finalized)} " \
         "preflight_inserted=#{result.fetch(:preflight_inserted)} " \
-        "final_inserted=#{result.fetch(:final_inserted)}"
+        "tail_inserted=#{result.fetch(:tail_inserted)} " \
+        "watermark=#{result.fetch(:watermark)}"
       )
     end
   end

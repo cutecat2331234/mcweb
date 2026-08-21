@@ -18,7 +18,12 @@ class EditPostGraceWindowTest < ActiveSupport::TestCase
 
   test "quick self-edit within the grace window leaves no revision or edited marker" do
     assert_no_difference -> { @post.edits.count } do
-      result = Community::EditPost.call(user: @user, post: @post, body: "fixed a quick typo in the body")
+      result = Community::EditPost.call(
+        user: @user,
+        post: @post,
+        body: "fixed a quick typo in the body",
+        expected_revision: @post.revision
+      )
       assert result.success?, result.error
     end
     assert_nil @post.reload.edited_at
@@ -28,7 +33,12 @@ class EditPostGraceWindowTest < ActiveSupport::TestCase
   test "edit after the grace window records a revision and edited_at" do
     @post.update_column(:created_at, 10.minutes.ago)
     assert_difference -> { @post.edits.count }, 1 do
-      result = Community::EditPost.call(user: @user, post: @post, body: "a later substantive edit to the body")
+      result = Community::EditPost.call(
+        user: @user,
+        post: @post,
+        body: "a later substantive edit to the body",
+        expected_revision: @post.revision
+      )
       assert result.success?, result.error
     end
     assert_not_nil @post.reload.edited_at

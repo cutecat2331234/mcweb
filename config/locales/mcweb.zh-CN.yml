@@ -946,6 +946,8 @@
         report_create_failed: 举报暂时无法保存，请重试。
         message_revision_required: 编辑前请刷新当前私信会话。
         message_revision_conflict: 编辑期间私信已发生变化，请刷新后重试。
+        post_revision_required: 编辑前请刷新当前主题。
+        post_revision_conflict: 编辑期间帖子已经发生变化，请核对最新内容后重试。
         profile_post_blank: 主页留言内容不能为空。
         profile_post_too_long: 主页留言内容超过长度限制。
         profile_post_unavailable: 该主页留言内容已经不可用。
@@ -1194,7 +1196,7 @@
         image_upload_too_large: "文件过大（最大 %{max}）。"
         unsupported_upload_type: 不支持的文件类型。
         avatar_file_required: 请选择图片文件。
-        avatar_unsupported_format: 不支持的图片格式（仅支持 JPEG、PNG、GIF、WebP）。
+        avatar_unsupported_format: 头像不是有效的 JPEG 或 PNG 图片。
         avatar_too_large: 图片过大（最大 2MB）。
         answer_is_required: "请填写回答内容。"
         badge_not_found: "找不到该徽章。"

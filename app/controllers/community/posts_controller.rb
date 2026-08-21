@@ -35,6 +35,7 @@ module Community
         user: current_user,
         post: @post,
         body: post_params[:body],
+        expected_revision: post_params[:expected_revision],
         reason: post_params[:reason]
       }
       if params[:post].key?(:attachment_ids)
@@ -44,6 +45,7 @@ module Community
       result = Community::EditPost.call(**edit_args)
 
       if result.success?
+        flash[:post_edit_succeeded] = client_operation_token(post_params[:edit_token])
         redirect_to forum_topic_path(@post.topic, anchor: "post-#{@post.id}"), notice: t("mcweb.flash.post_updated")
       else
         redirect_to forum_topic_path(@post.topic), alert: service_error_message(result)
@@ -223,6 +225,8 @@ module Community
         :quoted_post_id,
         :parent_post_id,
         :reason,
+        :expected_revision,
+        :edit_token,
         :whisper,
         :idempotency_key,
         attachment_ids: []

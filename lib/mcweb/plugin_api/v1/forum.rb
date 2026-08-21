@@ -363,7 +363,7 @@ module Mcweb
         end
 
         def edit_post(
-          user:, id:, body:, reason: nil, attachment_ids: NOT_PROVIDED
+          user:, id:, body:, expected_revision: nil, reason: nil, attachment_ids: NOT_PROVIDED
         )
           audit("forum.write")
           return invalid_user(write: true) unless valid_writer?(user)
@@ -371,7 +371,7 @@ module Mcweb
           post, failure = resolve_post(user:, id:)
           return failure if failure
 
-          arguments = { user:, post:, body:, reason: }
+          arguments = { user:, post:, body:, expected_revision:, reason: }
           arguments[:attachment_ids] = attachment_ids unless attachment_ids.equal?(NOT_PROVIDED)
           service_result = Community::EditPost.call(**arguments)
           Result.from_service_result(service_result) { |updated_post| Snapshot.post(updated_post) }

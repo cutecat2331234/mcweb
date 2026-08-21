@@ -79,6 +79,7 @@ export interface PostItem {
   author_memberships?: Array<{ name: string; slug: string; color?: string | null; icon?: string | null }>
   verified_purchaser?: boolean
   body: string
+  revision: number
   body_html: string
   body_long?: boolean
   edit_seconds_remaining?: number | null
@@ -735,15 +736,21 @@ function saveEdit(post: PostItem) {
     editLinkError.value = props.warningRestrictions.link
     return
   }
+  const editToken = createIdempotencyKey()
   router.patch(post.update_url, {
     post: {
       body: editBody.value,
+      expected_revision: post.revision,
+      edit_token: editToken,
       reason: editReason.value,
       attachment_ids: editPendingAttachments.value.map((item) => item.id),
     },
   }, {
     preserveScroll: true,
-    onSuccess: () => cancelEdit(),
+    onSuccess: () => {
+      const flash = page.props.flash as { post_edit_succeeded?: string | null } | undefined
+      if (flash?.post_edit_succeeded === editToken) cancelEdit()
+    },
   })
 }
 

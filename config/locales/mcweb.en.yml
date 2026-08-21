@@ -946,6 +946,8 @@ en:
         report_create_failed: The report could not be saved. Try again.
         message_revision_required: Refresh the conversation before editing this message.
         message_revision_conflict: This message changed while you were editing it. Refresh and try again.
+        post_revision_required: Refresh the topic before editing this post.
+        post_revision_conflict: This post changed while you were editing it. Review the latest version and try again.
         profile_post_blank: Profile-wall content cannot be blank.
         profile_post_too_long: Profile-wall content is too long.
         profile_post_unavailable: This profile-wall item is no longer available.
@@ -1194,7 +1196,7 @@ en:
         image_upload_too_large: "File is too large (max %{max})."
         unsupported_upload_type: Unsupported file type.
         avatar_file_required: Select an image file.
-        avatar_unsupported_format: Unsupported image format (JPEG, PNG, GIF, and WebP only).
+        avatar_unsupported_format: The avatar is not a valid JPEG or PNG image.
         avatar_too_large: Image is too large (max 2MB).
         answer_is_required: "Answer is required."
         badge_not_found: "Badge not found."

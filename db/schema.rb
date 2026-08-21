@@ -14,6 +14,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
   # These are extensions that must be enabled in order to support this database
   enable_extension "pg_catalog.plpgsql"
   enable_extension "pg_trgm"
+  enable_extension "pgcrypto"
 
   create_table "action_mailbox_inbound_emails", force: :cascade do |t|
     t.datetime "created_at", null: false
@@ -472,9 +473,13 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
   end
 
   create_table "forum_message_revision_backfill_queue", id: false, force: :cascade do |t|
+    t.string "body_digest", limit: 64, null: false
     t.bigint "forum_message_id", null: false
     t.datetime "queued_at", default: -> { "CURRENT_TIMESTAMP" }, null: false
-    t.index ["forum_message_id"], name: "idx_forum_message_revision_backfill_queue", unique: true
+    t.integer "revision", null: false
+    t.index ["forum_message_id", "revision"], name: "idx_forum_message_revision_backfill_queue_unique", unique: true
+    t.check_constraint "body_digest::text ~ '^[0-9a-f]{64}$'::text", name: "forum_message_revision_queue_digest_format"
+    t.check_constraint "revision > 0", name: "forum_message_revision_queue_positive_revision"
   end
 
   create_table "forum_message_revisions", force: :cascade do |t|
@@ -697,6 +702,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
     t.bigint "parent_post_id"
     t.string "post_type", default: "regular", null: false
     t.bigint "quoted_post_id"
+    t.integer "revision", default: 1, null: false
     t.text "staff_notice"
     t.string "status", default: "published", null: false
     t.datetime "updated_at", null: false
@@ -711,6 +717,7 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
     t.index ["parent_post_id"], name: "index_forum_posts_on_parent_post_id"
     t.index ["quoted_post_id"], name: "index_forum_posts_on_quoted_post_id"
     t.index ["user_id"], name: "index_forum_posts_on_user_id"
+    t.check_constraint "revision > 0", name: "forum_posts_positive_revision"
   end
 
   create_table "forum_profile_post_comments", force: :cascade do |t|
@@ -4016,7 +4023,9 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
     AS $function$
     BEGIN
       DELETE FROM forum_message_revision_backfill_queue
-      WHERE forum_message_id = NEW.forum_message_id;
+      WHERE forum_message_id = NEW.forum_message_id
+        AND revision = NEW.revision
+        AND body_digest = NEW.content_digest;
       RETURN NEW;
     END;
     $function$;
@@ -4040,14 +4049,66 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE OR REPLACE FUNCTION public.forum_messages_queue_revision_backfill()
+    CREATE OR REPLACE FUNCTION public.forum_messages_prepare_revision_update()
      RETURNS trigger
      LANGUAGE plpgsql
     AS $function$
     BEGIN
-      INSERT INTO forum_message_revision_backfill_queue (forum_message_id, queued_at)
-      VALUES (NEW.id, CURRENT_TIMESTAMP)
-      ON CONFLICT (forum_message_id) DO NOTHING;
+      IF NEW.body IS NOT DISTINCT FROM OLD.body
+         AND NEW.revision IS NOT DISTINCT FROM OLD.revision THEN
+        RETURN NEW;
+      END IF;
+
+      IF EXISTS (
+        SELECT 1
+        FROM forum_message_revision_backfill_queue
+        WHERE forum_message_id = OLD.id
+      ) THEN
+        RAISE EXCEPTION 'forum message has a pending revision snapshot';
+      END IF;
+
+      IF NEW.body IS DISTINCT FROM OLD.body AND NEW.revision = OLD.revision THEN
+        NEW.revision := OLD.revision + 1;
+      END IF;
+
+      IF NEW.revision <> OLD.revision + 1 THEN
+        RAISE EXCEPTION 'forum message revision must advance by one';
+      END IF;
+
+      RETURN NEW;
+    END;
+    $function$;
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE OR REPLACE FUNCTION public.forum_messages_queue_revision_backfill()
+     RETURNS trigger
+     LANGUAGE plpgsql
+    AS $function$
+    DECLARE
+      snapshot_digest text;
+    BEGIN
+      snapshot_digest := encode(
+        digest(convert_to(NEW.body, 'UTF8'), 'sha256'),
+        'hex'
+      );
+      INSERT INTO forum_message_revision_backfill_queue (
+        forum_message_id,
+        revision,
+        body_digest,
+        queued_at
+      )
+      VALUES (NEW.id, NEW.revision, snapshot_digest, CURRENT_TIMESTAMP)
+      ON CONFLICT (forum_message_id, revision) DO NOTHING;
+      IF NOT FOUND AND NOT EXISTS (
+        SELECT 1
+        FROM forum_message_revision_backfill_queue
+        WHERE forum_message_id = NEW.id
+          AND revision = NEW.revision
+          AND body_digest = snapshot_digest
+      ) THEN
+        RAISE EXCEPTION 'forum message revision queue conflict';
+      END IF;
       RETURN NEW;
     END;
     $function$;
@@ -4059,13 +4120,34 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
      LANGUAGE plpgsql
     AS $function$
     BEGIN
+      IF TG_OP = 'UPDATE'
+         AND (
+           NEW.body IS DISTINCT FROM OLD.body
+           OR NEW.revision IS DISTINCT FROM OLD.revision
+         )
+         AND NEW.revision <> OLD.revision + 1 THEN
+        RAISE EXCEPTION 'forum message body changes require the next revision';
+      END IF;
+
       IF NOT EXISTS (
         SELECT 1
         FROM forum_message_revisions
         WHERE forum_message_id = NEW.id
           AND revision = NEW.revision
+          AND content_digest = encode(
+            digest(convert_to(NEW.body, 'UTF8'), 'sha256'),
+            'hex'
+          )
       ) THEN
-        RAISE EXCEPTION 'forum message current revision is missing';
+        RAISE EXCEPTION 'forum message current revision is missing or mismatched';
+      END IF;
+      IF EXISTS (
+        SELECT 1
+        FROM forum_message_revision_backfill_queue
+        WHERE forum_message_id = NEW.id
+          AND revision = NEW.revision
+      ) THEN
+        RAISE EXCEPTION 'forum message revision was not written in this transaction';
       END IF;
       RETURN NEW;
     END;
@@ -4321,11 +4403,15 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE TRIGGER forum_messages_queue_revision_backfill AFTER INSERT ON public.forum_messages FOR EACH ROW EXECUTE FUNCTION forum_messages_queue_revision_backfill();
+    CREATE TRIGGER forum_messages_prepare_revision_update BEFORE UPDATE OF body, revision ON public.forum_messages FOR EACH ROW EXECUTE FUNCTION forum_messages_prepare_revision_update();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
-    CREATE CONSTRAINT TRIGGER forum_messages_require_current_revision AFTER INSERT OR UPDATE OF revision ON public.forum_messages DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION forum_messages_require_current_revision();
+    CREATE TRIGGER forum_messages_queue_revision_backfill AFTER INSERT OR UPDATE OF body, revision ON public.forum_messages FOR EACH ROW EXECUTE FUNCTION forum_messages_queue_revision_backfill();
+  MCWEB_SCHEMA_SQL
+
+  execute <<~'MCWEB_SCHEMA_SQL'
+    CREATE CONSTRAINT TRIGGER forum_messages_require_current_revision AFTER INSERT OR UPDATE OF body, revision ON public.forum_messages DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION forum_messages_require_current_revision();
   MCWEB_SCHEMA_SQL
 
   execute <<~'MCWEB_SCHEMA_SQL'
@@ -4351,6 +4437,5 @@ ActiveRecord::Schema[8.1].define(version: 2026_08_21_090200) do
   execute <<~'MCWEB_SCHEMA_SQL'
     CREATE TRIGGER operations_durable_intents_immutable BEFORE DELETE OR UPDATE ON public.operations_durable_enqueue_intents FOR EACH ROW EXECUTE FUNCTION operations_durable_intents_reject_change();
   MCWEB_SCHEMA_SQL
-
 
 end

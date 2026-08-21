@@ -480,7 +480,7 @@ function saveWallEdit(
               {{ profileEditPanel === 'fields' ? t('userProfile.collapseCustomFields') : t('userProfile.editCustomFields') }}
             </Button>
             <template v-if="profile.can_edit">
-              <FileInput accept="image/*" :button-label="t('userProfile.changeAvatar')" @change="uploadAvatar" />
+              <FileInput accept="image/jpeg,image/png" :button-label="t('userProfile.changeAvatar')" @change="uploadAvatar" />
               <Button type="button" size="sm" variant="outline" @click="removeAvatar">{{ t('userProfile.resetAvatar') }}</Button>
             </template>
           </div>

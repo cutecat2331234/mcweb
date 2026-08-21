@@ -87,7 +87,12 @@ class Community::WikiEditsGuestTest < ActionDispatch::IntegrationTest
     @topic = Community::CreateTopic.call(user: @user, section: section, title: "Wiki topic", body: "OP").value
     @topic.update!(wiki: true)
     @post = @topic.posts.first
-    Community::EditPost.call(user: @user, post: @post, body: "Updated wiki content here")
+    Community::EditPost.call(
+      user: @user,
+      post: @post,
+      body: "Updated wiki content here",
+      expected_revision: @post.revision
+    )
   end
 
   test "guest can view wiki edit history" do

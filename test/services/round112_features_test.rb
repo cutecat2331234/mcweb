@@ -130,7 +130,12 @@ class Round112ForumEventWebhookTest < ActiveSupport::TestCase
 
   test "edit post dispatches post.edited webhook" do
     assert_enqueued_with(job: Community::DispatchForumEventWebhookJob) do
-      Community::EditPost.call(user: @user, post: @post, body: "Edited body for webhook test")
+      Community::EditPost.call(
+        user: @user,
+        post: @post,
+        body: "Edited body for webhook test",
+        expected_revision: @post.revision
+      )
     end
   end
 

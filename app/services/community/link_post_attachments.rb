@@ -10,7 +10,10 @@ module Community
 
     def call
       unless attachment_target_available?
-        return ServiceResult.failure(error: "attachment_invalid_or_unauthorized")
+        return ServiceResult.failure(
+          error: "attachment_invalid_or_unauthorized",
+          code: "attachment_invalid_or_unauthorized"
+        )
       end
 
       return ServiceResult.success(linked: 0) if @attachment_ids.empty?
@@ -49,7 +52,10 @@ module Community
       end
 
       if linked_count != @attachment_ids.size
-        return ServiceResult.failure(error: "attachment_invalid_or_unauthorized")
+        return ServiceResult.failure(
+          error: "attachment_invalid_or_unauthorized",
+          code: "attachment_invalid_or_unauthorized"
+        )
       end
 
       ServiceResult.success(linked: linked_count)

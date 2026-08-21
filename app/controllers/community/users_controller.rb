@@ -330,13 +330,18 @@ module Community
     end
 
     def attach_forum_avatar!(user, file:)
-      return t("mcweb.services.errors.avatar_file_required") unless file.respond_to?(:content_type)
+      return t("mcweb.services.errors.avatar_file_required") unless file.respond_to?(:read)
 
-      allowed = %w[image/jpeg image/png image/gif image/webp]
-      return t("mcweb.services.errors.avatar_unsupported_format") unless allowed.include?(file.content_type)
-      return t("mcweb.services.errors.avatar_too_large") if file.size > 2.megabytes
+      inspected = Community::ImageUploadInspector.call(io: file, max_bytes: 2.megabytes)
+      return t("mcweb.services.errors.avatar_too_large") if inspected.too_large?
+      return t("mcweb.services.errors.avatar_unsupported_format") unless inspected.success?
 
-      user.forum_avatar.attach(file)
+      user.forum_avatar.attach(
+        io: StringIO.new(inspected.payload),
+        filename: "avatar.#{inspected.extension}",
+        content_type: inspected.content_type,
+        identify: false
+      )
       nil
     end
 

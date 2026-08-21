@@ -24,3 +24,12 @@ test('profile-wall drafts close only after the server echoes the matching edit t
   assert.doesNotMatch(page, /onSuccess:\s*cancelWallEdit/)
   assert.match(page, /v-if="editingWallError"\s+role="alert"/)
 })
+
+test('forum-post drafts close only after the server echoes the matching edit token', () => {
+  const page = source('app/javascript/pages/Community/Topics/Show.vue')
+
+  assert.match(page, /expected_revision:\s*post\.revision/)
+  assert.match(page, /edit_token:\s*editToken/)
+  assert.match(page, /flash\?\.post_edit_succeeded === editToken\) cancelEdit\(\)/)
+  assert.doesNotMatch(page, /onSuccess:\s*\(\)\s*=>\s*cancelEdit\(\)/)
+})

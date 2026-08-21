@@ -22,6 +22,7 @@ module Community
 
     validates :body, presence: true
     validates :floor_number, presence: true, uniqueness: { scope: :forum_topic_id }
+    validates :revision, numericality: { only_integer: true, greater_than: 0 }
 
     scope :chronological, -> { order(:floor_number) }
     scope :countable, -> { published.where(post_type: :regular) }
@@ -80,9 +81,9 @@ module Community
     after_create :update_topic_counters
 
     def edit_body!(new_body, editor:, reason: nil)
-      transaction do
+      with_lock do
         edits.create!(editor: editor, body_before: body, body_after: new_body, reason: reason)
-        update!(body: new_body, edited_at: Time.current)
+        update!(body: new_body, edited_at: Time.current, revision: revision + 1)
       end
     end
 

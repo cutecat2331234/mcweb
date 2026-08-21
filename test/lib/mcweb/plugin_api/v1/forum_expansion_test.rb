@@ -160,11 +160,23 @@ class Mcweb::PluginApi::V1::ForumExpansionTest < ActiveSupport::TestCase
       user: @author,
       id: @public_post.id,
       body: "Edited #{@needle} post body",
+      expected_revision: @public_post.revision,
       reason: "Plugin test"
     )
     assert_predicate edited_post, :success?
     assert_equal "Edited #{@needle} post body", @public_post.reload.body
     assert_equal "forum.post", edited_post.value.fetch("type")
+    assert_equal 2, edited_post.value.fetch("revision")
+
+    stale_post = @forum.edit_post(
+      user: @author,
+      id: @public_post.id,
+      body: "A stale plugin edit",
+      expected_revision: 1
+    )
+    assert_predicate stale_post, :failure?
+    assert_equal "service_failure", stale_post.code
+    assert_equal "Edited #{@needle} post body", @public_post.reload.body
 
     denied = @forum.edit_topic(
       user: @member,

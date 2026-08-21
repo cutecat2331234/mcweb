@@ -161,6 +161,7 @@ class Community::PluginFilterIntegrationTest < ActiveSupport::TestCase
         user: @user,
         post: opening_post,
         body: "Updated body",
+        expected_revision: opening_post.revision,
         reason: "User reason"
       )
     end
@@ -227,6 +228,7 @@ class Community::PluginFilterIntegrationTest < ActiveSupport::TestCase
         user: @user,
         post: opening_post,
         body: "Updated opening post",
+        expected_revision: opening_post.revision,
         reason: "User reason"
       )
     end

@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require Rails.root.join("lib/mcweb/migrations/check_constraint_contract")
+
 # Expand phase for community self-service.
 #
 # Existing-table indexes are concurrent, constraints start NOT VALID, and no
@@ -7,13 +9,19 @@
 # old web process until the new dual-writing application has been deployed and
 # the explicit post-deploy contract gate is finalized.
 class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
+  include Mcweb::Migrations::CheckConstraintContract
+
   disable_ddl_transaction!
 
   REVIEW_PERMISSION = "forum.conversations.reports.review"
   REPORT_DEDUPE_INDEX = "idx_forum_reports_pending_dedupe"
   MESSAGE_ATTACHMENT_INDEX = "index_forum_post_attachments_on_forum_message_id"
+  MESSAGE_QUEUE_INDEX = "idx_forum_message_revision_backfill_queue_unique"
+  LEGACY_MESSAGE_QUEUE_INDEX = "idx_forum_message_revision_backfill_queue"
+  CHECK_CONSTRAINTS = Mcweb::Migrations::CheckConstraintContract::FEATURE_CHECK_CONSTRAINTS
 
   def up
+    enable_extension "pgcrypto" unless extension_enabled?("pgcrypto")
     expand_reports
     expand_report_evidence
     expand_message_revisions
@@ -49,11 +57,7 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       where: "dedupe_key IS NOT NULL AND status = 'pending'",
       name: REPORT_DEDUPE_INDEX
     )
-    add_check_constraint :forum_reports,
-      "dedupe_key IS NULL OR dedupe_key ~ '^[0-9a-f]{64}$'",
-      name: "forum_reports_dedupe_key_format",
-      validate: false,
-      if_not_exists: true
+    ensure_feature_check(:forum_reports, "forum_reports_dedupe_key_format")
   end
 
   def expand_report_evidence
@@ -84,16 +88,8 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       column: :forum_report_id,
       validate: false,
       if_not_exists: true
-    add_check_constraint :forum_report_evidences,
-      "subject_revision > 0",
-      name: "forum_report_evidences_positive_revision",
-      validate: false,
-      if_not_exists: true
-    add_check_constraint :forum_report_evidences,
-      "content_digest ~ '^[0-9a-f]{64}$'",
-      name: "forum_report_evidences_digest_format",
-      validate: false,
-      if_not_exists: true
+    ensure_feature_check(:forum_report_evidences, "forum_report_evidences_positive_revision")
+    ensure_feature_check(:forum_report_evidences, "forum_report_evidences_digest_format")
   end
 
   def expand_message_revisions
@@ -102,11 +98,7 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       :integer,
       default: 1,
       if_not_exists: true
-    add_check_constraint :forum_messages,
-      "revision > 0",
-      name: "forum_messages_positive_revision",
-      validate: false,
-      if_not_exists: true
+    ensure_feature_check(:forum_messages, "forum_messages_positive_revision")
 
     unless table_exists?(:forum_message_revisions)
       create_table :forum_message_revisions do |t|
@@ -121,9 +113,21 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
     unless table_exists?(:forum_message_revision_backfill_queue)
       create_table :forum_message_revision_backfill_queue, id: false do |t|
         t.bigint :forum_message_id, null: false
+        t.integer :revision
+        t.string :body_digest, limit: 64
         t.datetime :queued_at, null: false, default: -> { "CURRENT_TIMESTAMP" }
       end
     end
+    add_column :forum_message_revision_backfill_queue,
+      :revision,
+      :integer,
+      if_not_exists: true
+    add_column :forum_message_revision_backfill_queue,
+      :body_digest,
+      :string,
+      limit: 64,
+      if_not_exists: true
+    backfill_message_revision_queue_metadata
 
     add_index :forum_message_revisions,
       :forum_message_id,
@@ -138,10 +142,11 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       unique: true,
       name: "idx_forum_message_revisions_unique",
       if_not_exists: true
+    remove_legacy_message_queue_index
     add_index :forum_message_revision_backfill_queue,
-      :forum_message_id,
+      %i[forum_message_id revision],
       unique: true,
-      name: "idx_forum_message_revision_backfill_queue",
+      name: MESSAGE_QUEUE_INDEX,
       if_not_exists: true
     add_foreign_key :forum_message_revisions,
       :forum_messages,
@@ -160,16 +165,16 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       on_delete: :cascade,
       validate: false,
       if_not_exists: true
-    add_check_constraint :forum_message_revisions,
-      "revision > 0",
-      name: "forum_message_revisions_positive_revision",
-      validate: false,
-      if_not_exists: true
-    add_check_constraint :forum_message_revisions,
-      "content_digest ~ '^[0-9a-f]{64}$'",
-      name: "forum_message_revisions_digest_format",
-      validate: false,
-      if_not_exists: true
+    ensure_feature_check(:forum_message_revisions, "forum_message_revisions_positive_revision")
+    ensure_feature_check(:forum_message_revisions, "forum_message_revisions_digest_format")
+    ensure_feature_check(
+      :forum_message_revision_backfill_queue,
+      "forum_message_revision_queue_positive_revision"
+    )
+    ensure_feature_check(
+      :forum_message_revision_backfill_queue,
+      "forum_message_revision_queue_digest_format"
+    )
 
     add_column :forum_message_drafts,
       :attachment_ids,
@@ -193,25 +198,24 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       column: :forum_message_id,
       validate: false,
       if_not_exists: true
-    add_check_constraint :forum_post_attachments,
-      "NOT (forum_post_id IS NOT NULL AND forum_message_id IS NOT NULL)",
-      name: "forum_post_attachments_single_parent",
-      validate: false,
-      if_not_exists: true
+    ensure_feature_check(:forum_post_attachments, "forum_post_attachments_single_parent")
   end
 
   def expand_profile_wall
+    add_column :forum_posts,
+      :revision,
+      :integer,
+      default: 1,
+      if_not_exists: true
+    ensure_feature_check(:forum_posts, "forum_posts_positive_revision")
+
     add_column :forum_profile_posts, :edited_at, :datetime, if_not_exists: true
     add_column :forum_profile_posts,
       :revision,
       :integer,
       default: 1,
       if_not_exists: true
-    add_check_constraint :forum_profile_posts,
-      "revision > 0",
-      name: "forum_profile_posts_positive_revision",
-      validate: false,
-      if_not_exists: true
+    ensure_feature_check(:forum_profile_posts, "forum_profile_posts_positive_revision")
 
     add_column :forum_profile_post_comments, :edited_at, :datetime, if_not_exists: true
     add_column :forum_profile_post_comments,
@@ -219,11 +223,7 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       :integer,
       default: 1,
       if_not_exists: true
-    add_check_constraint :forum_profile_post_comments,
-      "revision > 0",
-      name: "forum_profile_post_comments_positive_revision",
-      validate: false,
-      if_not_exists: true
+    ensure_feature_check(:forum_profile_post_comments, "forum_profile_post_comments_positive_revision")
   end
 
   def contract_profile_wall
@@ -237,6 +237,10 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       if_exists: true
     remove_column :forum_profile_posts, :revision, if_exists: true
     remove_column :forum_profile_posts, :edited_at, if_exists: true
+    remove_check_constraint :forum_posts,
+      name: "forum_posts_positive_revision",
+      if_exists: true
+    remove_column :forum_posts, :revision, if_exists: true
   end
 
   def contract_message_attachments
@@ -312,6 +316,33 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
         )
       SQL
     )
+  end
+
+  def ensure_feature_check(table, name)
+    expression = CHECK_CONSTRAINTS.fetch(table).fetch(name)
+    ensure_named_check_constraint(table, name: name, expression: expression)
+  end
+
+  def backfill_message_revision_queue_metadata
+    execute <<~SQL.squish
+      UPDATE forum_message_revision_backfill_queue AS queue
+      SET revision = messages.revision,
+          body_digest = encode(
+            digest(convert_to(messages.body, 'UTF8'), 'sha256'),
+            'hex'
+          )
+      FROM forum_messages AS messages
+      WHERE messages.id = queue.forum_message_id
+        AND (queue.revision IS NULL OR queue.body_digest IS NULL)
+    SQL
+  end
+
+  def remove_legacy_message_queue_index
+    return unless index_name_exists?(:forum_message_revision_backfill_queue, LEGACY_MESSAGE_QUEUE_INDEX)
+
+    remove_index :forum_message_revision_backfill_queue,
+      name: LEGACY_MESSAGE_QUEUE_INDEX,
+      algorithm: :concurrently
   end
 
   # Preserve blob ownership and quota accounting before rollback removes the
@@ -397,14 +428,64 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
 
   def create_message_revision_queue_triggers
     execute <<~SQL
-      CREATE OR REPLACE FUNCTION forum_messages_queue_revision_backfill()
+      CREATE OR REPLACE FUNCTION forum_messages_prepare_revision_update()
       RETURNS trigger
       LANGUAGE plpgsql
       AS $$
       BEGIN
-        INSERT INTO forum_message_revision_backfill_queue (forum_message_id, queued_at)
-        VALUES (NEW.id, CURRENT_TIMESTAMP)
-        ON CONFLICT (forum_message_id) DO NOTHING;
+        IF NEW.body IS NOT DISTINCT FROM OLD.body
+           AND NEW.revision IS NOT DISTINCT FROM OLD.revision THEN
+          RETURN NEW;
+        END IF;
+
+        IF EXISTS (
+          SELECT 1
+          FROM forum_message_revision_backfill_queue
+          WHERE forum_message_id = OLD.id
+        ) THEN
+          RAISE EXCEPTION 'forum message has a pending revision snapshot';
+        END IF;
+
+        IF NEW.body IS DISTINCT FROM OLD.body AND NEW.revision = OLD.revision THEN
+          NEW.revision := OLD.revision + 1;
+        END IF;
+
+        IF NEW.revision <> OLD.revision + 1 THEN
+          RAISE EXCEPTION 'forum message revision must advance by one';
+        END IF;
+
+        RETURN NEW;
+      END;
+      $$;
+
+      CREATE OR REPLACE FUNCTION forum_messages_queue_revision_backfill()
+      RETURNS trigger
+      LANGUAGE plpgsql
+      AS $$
+      DECLARE
+        snapshot_digest text;
+      BEGIN
+        snapshot_digest := encode(
+          digest(convert_to(NEW.body, 'UTF8'), 'sha256'),
+          'hex'
+        );
+        INSERT INTO forum_message_revision_backfill_queue (
+          forum_message_id,
+          revision,
+          body_digest,
+          queued_at
+        )
+        VALUES (NEW.id, NEW.revision, snapshot_digest, CURRENT_TIMESTAMP)
+        ON CONFLICT (forum_message_id, revision) DO NOTHING;
+        IF NOT FOUND AND NOT EXISTS (
+          SELECT 1
+          FROM forum_message_revision_backfill_queue
+          WHERE forum_message_id = NEW.id
+            AND revision = NEW.revision
+            AND body_digest = snapshot_digest
+        ) THEN
+          RAISE EXCEPTION 'forum message revision queue conflict';
+        END IF;
         RETURN NEW;
       END;
       $$;
@@ -415,14 +496,22 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
       AS $$
       BEGIN
         DELETE FROM forum_message_revision_backfill_queue
-        WHERE forum_message_id = NEW.forum_message_id;
+        WHERE forum_message_id = NEW.forum_message_id
+          AND revision = NEW.revision
+          AND body_digest = NEW.content_digest;
         RETURN NEW;
       END;
       $$;
 
+      DROP TRIGGER IF EXISTS forum_messages_prepare_revision_update ON forum_messages;
+      CREATE TRIGGER forum_messages_prepare_revision_update
+      BEFORE UPDATE OF body, revision ON forum_messages
+      FOR EACH ROW
+      EXECUTE FUNCTION forum_messages_prepare_revision_update();
+
       DROP TRIGGER IF EXISTS forum_messages_queue_revision_backfill ON forum_messages;
       CREATE TRIGGER forum_messages_queue_revision_backfill
-      AFTER INSERT ON forum_messages
+      AFTER INSERT OR UPDATE OF body, revision ON forum_messages
       FOR EACH ROW
       EXECUTE FUNCTION forum_messages_queue_revision_backfill();
 
@@ -435,10 +524,12 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
   end
 
   def drop_message_revision_queue_triggers
+    execute "DROP TRIGGER IF EXISTS forum_messages_prepare_revision_update ON forum_messages"
     execute "DROP TRIGGER IF EXISTS forum_messages_queue_revision_backfill ON forum_messages"
     if table_exists?(:forum_message_revisions)
       execute "DROP TRIGGER IF EXISTS forum_message_revisions_dequeue_backfill ON forum_message_revisions"
     end
+    execute "DROP FUNCTION IF EXISTS forum_messages_prepare_revision_update()"
     execute "DROP FUNCTION IF EXISTS forum_messages_queue_revision_backfill()"
     execute "DROP FUNCTION IF EXISTS forum_message_revisions_dequeue_backfill()"
   end

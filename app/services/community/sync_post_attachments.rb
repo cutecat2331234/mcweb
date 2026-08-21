@@ -9,7 +9,9 @@ module Community
     end
 
     def call
-      return ServiceResult.failure(error: "attachment_unauthorized") unless can_manage_attachments?
+      unless can_manage_attachments?
+        return ServiceResult.failure(error: "attachment_unauthorized", code: "attachment_unauthorized")
+      end
 
       current_ids = @post.attachments.pluck(:id)
       to_link_ids = @attachment_ids - current_ids
@@ -48,13 +50,18 @@ module Community
       if @user.id == @post.user_id
         Community::LinkPostAttachments.call(user: @user, post: @post, attachment_ids: to_link_ids)
       else
-        ServiceResult.failure(error: "attachment_invalid_or_unauthorized")
+        ServiceResult.failure(
+          error: "attachment_invalid_or_unauthorized",
+          code: "attachment_invalid_or_unauthorized"
+        )
       end
     end
 
     def unlink_attachments(to_unlink_ids)
       scope = @post.attachments.where(id: to_unlink_ids)
-      return ServiceResult.failure(error: "attachment_invalid") if scope.count != to_unlink_ids.size
+      if scope.count != to_unlink_ids.size
+        return ServiceResult.failure(error: "attachment_invalid", code: "attachment_invalid")
+      end
 
       scope.update_all(forum_post_id: nil, updated_at: Time.current)
       Community::Upload

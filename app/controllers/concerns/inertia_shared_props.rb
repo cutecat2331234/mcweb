@@ -14,6 +14,7 @@ module InertiaSharedProps
         notice: flash[:notice],
         alert: flash[:alert],
         message_edit_succeeded: flash[:message_edit_succeeded],
+        post_edit_succeeded: flash[:post_edit_succeeded],
         profile_wall_edit_succeeded: flash[:profile_wall_edit_succeeded]
       },
       developer_mode: developer_mode_frontend_payload,

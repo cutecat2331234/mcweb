@@ -33,7 +33,12 @@ class Round113SectionModeratorPermissionsTest < ActiveSupport::TestCase
 
   test "section moderator can edit others post" do
     assert Community::EditPost.editable_by?(@mod, @reply)
-    result = Community::EditPost.call(user: @mod, post: @reply, body: "Moderated edit")
+    result = Community::EditPost.call(
+      user: @mod,
+      post: @reply,
+      body: "Moderated edit",
+      expected_revision: @reply.revision
+    )
     assert result.success?
   end
 

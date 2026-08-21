@@ -2,13 +2,16 @@
 
 module Mcweb
   module Migrations
-    # Restartable, bounded backfill used both by the data migration and by the
-    # explicit post-deploy contract gate. Each insert batch commits separately
-    # unless the caller deliberately wraps the final, small catch-up in a lock.
+    # Restartable, bounded encrypted-snapshot backfill. A full run is capped at
+    # its starting message ID watermark. The post-deploy gate uses call_queue so
+    # the write-lock window touches only a hard-bounded, trigger-captured tail.
     class CommunityMessageRevisionBackfill
       BATCH_SIZE = 250
       UNIQUE_INDEX = "idx_forum_message_revisions_unique"
-      MISSING_CURRENT_REVISION = <<~SQL.squish.freeze
+      BODY_DIGEST_SQL = <<~SQL.squish.freeze
+        encode(digest(convert_to(forum_messages.body, 'UTF8'), 'sha256'), 'hex')
+      SQL
+      MISSING_REVISION = <<~SQL.squish.freeze
         NOT EXISTS (
           SELECT 1
           FROM forum_message_revisions AS revisions
@@ -16,6 +19,24 @@ module Mcweb
             AND revisions.revision = forum_messages.revision
         )
       SQL
+      UNRESOLVED_CURRENT_SNAPSHOT = <<~SQL.squish.freeze
+        NOT EXISTS (
+          SELECT 1
+          FROM forum_message_revisions AS revisions
+          WHERE revisions.forum_message_id = forum_messages.id
+            AND revisions.revision = forum_messages.revision
+            AND revisions.content_digest = #{BODY_DIGEST_SQL}
+        )
+      SQL
+
+      class TailLimitExceeded < StandardError
+        attr_reader :limit
+
+        def initialize(limit)
+          @limit = limit
+          super("message revision tail exceeds the bounded limit of #{limit}")
+        end
+      end
 
       class Message < ActiveRecord::Base
         self.table_name = "forum_messages"
@@ -29,7 +50,7 @@ module Mcweb
 
       class QueueEntry < ActiveRecord::Base
         self.table_name = "forum_message_revision_backfill_queue"
-        self.primary_key = :forum_message_id
+        self.primary_key = nil
       end
 
       def initialize(batch_size: BATCH_SIZE)
@@ -37,39 +58,58 @@ module Mcweb
         raise ArgumentError, "batch_size must be positive" unless @batch_size.positive?
       end
 
-      def call
+      def call(up_to: nil)
         reset_models!
-        inserted = 0
-        # Bound this run so sustained old-process traffic cannot make a deploy
-        # migration chase a moving tail forever. Inserts above this watermark
-        # stay in the database-backed queue for the post-deploy catch-up.
-        upper_bound_id = Message.maximum(:id)
-
-        if upper_bound_id
-          loop do
-            messages = missing_scope.where(id: ..upper_bound_id).order(:id).limit(@batch_size).to_a
-            break if messages.empty?
-
-            result = Revision.insert_all(
-              messages.map { |message| revision_attributes(message) },
-              unique_by: UNIQUE_INDEX,
-              returning: %w[id]
-            )
-            inserted += result.rows.length
-          end
-        end
-
+        watermark = up_to || Message.maximum(:id)
+        inserted = watermark ? backfill_missing_revisions(up_to: watermark) : 0
+        enqueue_unresolved!(up_to: watermark) if watermark
         clear_satisfied_queue!
+
         {
           inserted: inserted,
           missing: missing_count,
-          queued: queued_count
+          missing_through_watermark: watermark ? missing_count(up_to: watermark) : 0,
+          queued: queued_count,
+          watermark: watermark
         }
       end
 
-      def missing_count
+      # Must be called while writes to forum_messages are blocked. It never scans
+      # the message table: every candidate comes from the reliable database queue.
+      def call_queue(limit:)
         reset_models!
-        missing_scope.unscope(:select).count
+        limit = Integer(limit)
+        raise ArgumentError, "limit must be positive" unless limit.positive?
+
+        entries = QueueEntry.order(:queued_at, :forum_message_id, :revision).limit(limit + 1).to_a
+        raise TailLimitExceeded, limit if entries.length > limit
+
+        messages = Message.where(id: entries.map(&:forum_message_id)).index_by(&:id)
+        attributes = entries.filter_map do |entry|
+          message = messages[entry.forum_message_id]
+          next unless message
+          next unless message.revision == entry.revision
+          next unless content_digest(message.body) == entry.body_digest
+          next if Revision.exists?(forum_message_id: message.id, revision: message.revision)
+
+          revision_attributes(message)
+        end
+        inserted = insert_revisions(attributes)
+        clear_satisfied_queue!
+
+        remaining = QueueEntry.limit(1).exists?
+        {
+          inserted: inserted,
+          remaining: remaining,
+          queued: remaining ? 1 : 0
+        }
+      end
+
+      def missing_count(up_to: nil)
+        reset_models!
+        scope = unresolved_scope
+        scope = scope.where(id: ..up_to) if up_to
+        scope.unscope(:select).count
       end
 
       def queued_count
@@ -79,10 +119,64 @@ module Mcweb
 
       private
 
-      def missing_scope
+      def backfill_missing_revisions(up_to:)
+        inserted = 0
+        loop do
+          messages = missing_revision_scope
+            .where(id: ..up_to)
+            .order(:id)
+            .limit(@batch_size)
+            .to_a
+          break if messages.empty?
+
+          inserted += insert_revisions(messages.map { |message| revision_attributes(message) })
+        end
+        inserted
+      end
+
+      def insert_revisions(attributes)
+        return 0 if attributes.empty?
+
+        attributes.each_slice(@batch_size).sum do |batch|
+          result = Revision.insert_all(
+            batch,
+            unique_by: UNIQUE_INDEX,
+            returning: %w[id]
+          )
+          result.rows.length
+        end
+      end
+
+      def missing_revision_scope
         Message
           .select(:id, :user_id, :revision, :body, :created_at)
-          .where(MISSING_CURRENT_REVISION)
+          .where(MISSING_REVISION)
+      end
+
+      def unresolved_scope
+        Message
+          .select(:id)
+          .where(UNRESOLVED_CURRENT_SNAPSHOT)
+      end
+
+      def enqueue_unresolved!(up_to:)
+        connection.execute <<~SQL.squish
+          INSERT INTO forum_message_revision_backfill_queue (
+            forum_message_id,
+            revision,
+            body_digest,
+            queued_at
+          )
+          SELECT
+            forum_messages.id,
+            forum_messages.revision,
+            #{BODY_DIGEST_SQL},
+            CURRENT_TIMESTAMP
+          FROM forum_messages
+          WHERE forum_messages.id <= #{Integer(up_to)}
+            AND #{UNRESOLVED_CURRENT_SNAPSHOT}
+          ON CONFLICT (forum_message_id, revision) DO NOTHING
+        SQL
       end
 
       def revision_attributes(message)
@@ -97,30 +191,30 @@ module Mcweb
           editor_id: message.user_id,
           revision: message.revision,
           encrypted_body: revision.encrypted_body,
-          content_digest: Digest::SHA256.hexdigest(message.body.to_s),
+          content_digest: content_digest(message.body),
           created_at: message.created_at || Time.current
         }
       end
 
       def clear_satisfied_queue!
-        loop do
-          message_ids = QueueEntry
-            .where(<<~SQL.squish)
-              EXISTS (
-                SELECT 1
-                FROM forum_messages AS messages
-                INNER JOIN forum_message_revisions AS revisions
-                  ON revisions.forum_message_id = messages.id
-                 AND revisions.revision = messages.revision
-                WHERE messages.id = forum_message_revision_backfill_queue.forum_message_id
-              )
-            SQL
-            .limit(@batch_size)
-            .pluck(:forum_message_id)
-          break if message_ids.empty?
+        connection.execute <<~SQL.squish
+          DELETE FROM forum_message_revision_backfill_queue AS queue
+          WHERE EXISTS (
+            SELECT 1
+            FROM forum_message_revisions AS revisions
+            WHERE revisions.forum_message_id = queue.forum_message_id
+              AND revisions.revision = queue.revision
+              AND revisions.content_digest = queue.body_digest
+          )
+        SQL
+      end
 
-          QueueEntry.where(forum_message_id: message_ids).delete_all
-        end
+      def content_digest(body)
+        Digest::SHA256.hexdigest(body.to_s)
+      end
+
+      def connection
+        ActiveRecord::Base.connection
       end
 
       def reset_models!

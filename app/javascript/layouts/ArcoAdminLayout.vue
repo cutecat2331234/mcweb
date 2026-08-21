@@ -787,6 +787,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
       <a-layout-content
         id="admin-content"
         class="arco-admin-main mc-page-content mc-page-surface"
+        scroll-region
         tabindex="-1"
       >
         <div v-accessible-form-control-names class="arco-admin-main__inner mc-page-container">

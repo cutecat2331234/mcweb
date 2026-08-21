@@ -65,6 +65,12 @@ test('admin shell owns one viewport and gives main content the only page scroll 
   assert.match(rule('.arco-admin-main'), /overflow:\s*auto/)
   assert.match(rule('.arco-admin-main'), /overscroll-behavior:\s*contain/)
 
+  const mainScrollContainer = source.match(/<a-layout-content\s+[\s\S]*?id="admin-content"[\s\S]*?>/)?.[0]
+  assert.ok(mainScrollContainer)
+  assert.match(mainScrollContainer, /class="arco-admin-main mc-page-content mc-page-surface"/)
+  assert.match(mainScrollContainer, /\bscroll-region\b/)
+  assert.equal((source.match(/\bscroll-region\b/g) ?? []).length, 1)
+
   assert.match(rule('.arco-admin-sider'), /height:\s*100%/)
   assert.match(rule('.arco-admin-sider'), /overflow:\s*hidden/)
   assert.match(rule('.arco-admin-sider__menu'), /overflow-y:\s*auto/)

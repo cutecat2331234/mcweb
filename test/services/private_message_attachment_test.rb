@@ -4,6 +4,7 @@ require "test_helper"
 
 class PrivateMessageAttachmentTest < ActiveSupport::TestCase
   setup do
+    DataGovernance::RetentionPolicy.ensure_defaults!
     @sender = create_user(forum_trust_level_override: 1)
     @recipient = create_user(forum_trust_level_override: 1)
     @outsider = create_user(forum_trust_level_override: 1)
@@ -79,6 +80,54 @@ class PrivateMessageAttachmentTest < ActiveSupport::TestCase
     end
     assert_nil attachment.reload.forum_message_id
     assert_equal "pending", attachment.upload_record.reload.scan_status
+  end
+
+  test "governed message purge schedules its linked upload and releases quota after cleanup" do
+    attachment = create_attachment(user: @sender, clean: true)
+    sent = Community::SendMessage.call(
+      user: @sender,
+      conversation: @conversation,
+      body: "Retain this attachment until governed purge.",
+      attachment_ids: [ attachment.id ]
+    )
+    assert_predicate sent, :success?, sent.error
+    message = sent.value
+    upload = attachment.reload.upload_record
+    DataGovernance::RetentionPolicy.find_by!(resource_type: "Community::Message")
+      .update!(retention_days: 0)
+
+    deleted = Community::DeleteMessage.call(
+      user: @sender,
+      message: message,
+      request_id: "message-delete-#{SecureRandom.uuid}"
+    )
+
+    assert_predicate deleted, :success?, deleted.error
+    lifecycle = deleted.value.fetch(:lifecycle)
+    assert_predicate lifecycle, :status_soft_deleted?
+    assert_predicate upload.reload, :status_linked?
+    assert_nil upload.expires_at
+    refute Community::PostAttachmentAccess.downloadable?(attachment.reload, user: @recipient)
+
+    purged = DataGovernance::PermanentlyPurgeContent.call(
+      record: lifecycle,
+      actor: @sender,
+      reason: "Retention elapsed.",
+      at: 1.minute.from_now
+    )
+
+    assert_predicate purged, :success?, purged.error
+    refute Community::Message.with_discarded.exists?(message.id)
+    refute Community::PostAttachment.with_discarded.exists?(attachment.id)
+    assert_predicate upload.reload, :status_cleanup_pending?
+    assert_not_nil upload.expires_at
+    assert_includes Community::Upload.cleanup_due(1.minute.from_now), upload
+
+    cleaned = Community::CleanupUpload.call(upload: upload, now: 1.minute.from_now)
+    assert_predicate cleaned, :success?, cleaned.error
+    assert_predicate upload.reload, :status_cleaned?
+    assert_nil upload.active_storage_blob_id
+    refute Community::Upload.counted_toward_quota.exists?(upload.id)
   end
 
   private

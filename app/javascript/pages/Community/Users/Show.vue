@@ -21,6 +21,7 @@ import UserLink from '@/components/portal/UserLink.vue'
 import MinecraftProfileCard, { type MinecraftProfile } from '@/components/minecraft/MinecraftProfileCard.vue'
 import Badge from '@/components/ui/Badge.vue'
 import UserCustomFieldsForm, { type UserCustomField } from '@/components/portal/UserCustomFieldsForm.vue'
+import { createIdempotencyKey } from '@/lib/idempotency'
 import { routes } from '@/lib/routes'
 
 defineOptions({ layout: PortalLayout })
@@ -290,6 +291,7 @@ const commentDrafts = reactive<Record<number, string>>({})
 const openComments = reactive<Record<number, boolean>>({})
 const editingWallKey = ref<string | null>(null)
 const editingWallBody = ref('')
+const editingWallError = ref('')
 
 function submitWallPost() {
   if (!props.profile_wall?.post_url || !wallForm.profile_post.body.trim()) return
@@ -323,11 +325,13 @@ function wallItemKey(kind: 'post' | 'comment', id: number) {
 function startWallEdit(kind: 'post' | 'comment', item: { id: number; body: string }) {
   editingWallKey.value = wallItemKey(kind, item.id)
   editingWallBody.value = item.body
+  editingWallError.value = ''
 }
 
 function cancelWallEdit() {
   editingWallKey.value = null
   editingWallBody.value = ''
+  editingWallError.value = ''
 }
 
 function saveWallEdit(
@@ -335,12 +339,18 @@ function saveWallEdit(
   item: { id: number; revision: number; edit_url?: string | null },
 ) {
   if (!item.edit_url || !editingWallBody.value.trim()) return
+  const editToken = createIdempotencyKey()
+  editingWallError.value = ''
   const payload = kind === 'post'
-    ? { profile_post: { body: editingWallBody.value, expected_revision: item.revision } }
-    : { comment: { body: editingWallBody.value, expected_revision: item.revision } }
+    ? { profile_post: { body: editingWallBody.value, expected_revision: item.revision, edit_token: editToken } }
+    : { comment: { body: editingWallBody.value, expected_revision: item.revision, edit_token: editToken } }
   router.patch(item.edit_url, payload, {
     preserveScroll: true,
-    onSuccess: cancelWallEdit,
+    onSuccess: (page) => {
+      const flash = page.props.flash as { alert?: string | null; profile_wall_edit_succeeded?: string | null } | undefined
+      if (flash?.profile_wall_edit_succeeded === editToken) cancelWallEdit()
+      else editingWallError.value = flash?.alert || ''
+    },
   })
 }
 </script>
@@ -629,6 +639,7 @@ function saveWallEdit(
             </div>
             <div v-if="editingWallKey === wallItemKey('post', post.id)" class="mt-2 space-y-2">
               <Textarea v-model="editingWallBody" rows="3" maxlength="5000" />
+              <p v-if="editingWallError" role="alert" class="text-sm text-destructive">{{ editingWallError }}</p>
               <div class="flex gap-2">
                 <Button type="button" size="xs" @click="saveWallEdit('post', post)">{{ t('common.save') }}</Button>
                 <Button type="button" size="xs" variant="outline" @click="cancelWallEdit">{{ t('common.cancel') }}</Button>
@@ -655,6 +666,7 @@ function saveWallEdit(
                 </div>
                 <div v-if="editingWallKey === wallItemKey('comment', comment.id)" class="mt-1 space-y-2">
                   <Textarea v-model="editingWallBody" rows="2" maxlength="3000" />
+                  <p v-if="editingWallError" role="alert" class="text-sm text-destructive">{{ editingWallError }}</p>
                   <div class="flex gap-2">
                     <Button type="button" size="xs" @click="saveWallEdit('comment', comment)">{{ t('common.save') }}</Button>
                     <Button type="button" size="xs" variant="outline" @click="cancelWallEdit">{{ t('common.cancel') }}</Button>

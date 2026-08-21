@@ -132,7 +132,7 @@ module Community
         isOwnTopic: logged_in? && current_user.id == @topic.user_id,
         canDeleteOwn: delete_own_topic_eligibility.success?,
         deleteOwnUrl: delete_own_topic_eligibility.success? ? forum_topic_path(@topic) : nil,
-        deleteOwnRestrictedReason: logged_in? && current_user.id == @topic.user_id && delete_own_topic_eligibility.failure? ? delete_own_topic_eligibility.error : nil,
+        deleteOwnRestrictedReason: logged_in? && current_user.id == @topic.user_id && delete_own_topic_eligibility.failure? ? service_error_message(delete_own_topic_eligibility) : nil,
         topicBookmark: topic_bookmark ? {
           id: topic_bookmark.id,
           update_url: forum_bookmark_path(topic_bookmark),

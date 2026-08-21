@@ -700,7 +700,7 @@ export default {
         reject: 'Reject content',
         resolve_case: 'Resolve case',
         dismiss_case: 'Dismiss case',
-        resolve_report: 'Agree and hide',
+        resolve_report: 'Uphold report',
         dismiss_report: 'Dismiss report',
         delete_content: 'Delete content',
         move_topic: 'Move topic',

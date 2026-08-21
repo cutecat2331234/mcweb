@@ -15,6 +15,7 @@ module DataGovernance
       return ServiceResult.success(record: @record, replayed: true) if @record.status_purged?
 
       result = nil
+      cleanup_upload_ids = []
       @record.with_lock do
         @record.reload
         if @record.status_purged?
@@ -48,7 +49,7 @@ module DataGovernance
         end
 
         snapshot = ContentRegistry.purged_snapshot(target)
-        ContentRegistry.before_permanent_purge(target)
+        cleanup_upload_ids = ContentRegistry.before_permanent_purge(target, at: @at)
         target.destroy!
         @record.update!(
           status: "purged",
@@ -75,6 +76,9 @@ module DataGovernance
         result = ServiceResult.success(record: @record, replayed: false)
       end
 
+      if result&.success? && cleanup_upload_ids.any?
+        ContentRegistry.enqueue_scheduled_upload_cleanup(cleanup_upload_ids)
+      end
       result
     rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotDestroyed => error
       ServiceResult.failure(

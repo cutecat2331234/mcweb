@@ -29,6 +29,9 @@ class ServiceErrorTranslatorTest < ActiveSupport::TestCase
       assert_equal "会员履约失败。", ServiceErrorTranslator.translate("membership_fulfillment_failed")
       assert_equal "订单含需自动履约的项目（含会员商品），不可手动标记发货完成。",
                    ServiceErrorTranslator.translate("automated_fulfillment_required")
+      assert_equal "请选择有效的举报原因。", ServiceErrorTranslator.translate("report_reason_invalid")
+      assert_equal "已由站务接管的主题不能由作者删除。",
+        ServiceErrorTranslator.translate("topic_delete_staff_managed")
     end
   end
 
@@ -36,6 +39,9 @@ class ServiceErrorTranslatorTest < ActiveSupport::TestCase
     I18n.with_locale(:en) do
       assert_equal "Recipient not found.", ServiceErrorTranslator.translate("Recipient not found.")
       assert_equal "Poll is closed.", ServiceErrorTranslator.translate("Poll is closed.")
+      assert_equal "Select a valid report reason.", ServiceErrorTranslator.translate("report_reason_invalid")
+      assert_equal "Staff-managed topics cannot be deleted by their author.",
+        ServiceErrorTranslator.translate("topic_delete_staff_managed")
     end
   end
 end

@@ -52,7 +52,8 @@ end
 class Community::ReportReasonCodeTest < ActiveSupport::TestCase
   test "reason codes are defined" do
     assert_includes Community::Report::REASONS.keys, "spam"
-    assert_equal "垃圾广告 / 刷屏", Community::Report::REASONS["spam"]
+    assert_equal "spam", Community::Report::REASONS["spam"]
+    assert_equal "Spam / flooding", Community::Report.reason_options(locale: :en)["spam"]
   end
 end
 

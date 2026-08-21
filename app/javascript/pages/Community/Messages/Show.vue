@@ -13,6 +13,7 @@ import Pagination, { type PaginationMeta } from '@/components/portal/Pagination.
 import UserLink from '@/components/portal/UserLink.vue'
 import AttachmentUploadButton, { type PendingAttachment } from '@/components/portal/AttachmentUploadButton.vue'
 import PostAttachmentsList from '@/components/portal/PostAttachmentsList.vue'
+import { createIdempotencyKey } from '@/lib/idempotency'
 import { routes } from '@/lib/routes'
 import { confirm } from '@/lib/useConfirm'
 
@@ -196,22 +197,31 @@ function deleteMessage(msg: { delete_url?: string | null }) {
 
 const editingId = ref<number | null>(null)
 const editBody = ref('')
+const editError = ref('')
 
 function startEdit(msg: { id: number; body: string }) {
   editingId.value = msg.id
   editBody.value = msg.body
+  editError.value = ''
 }
 
 function cancelEdit() {
   editingId.value = null
   editBody.value = ''
+  editError.value = ''
 }
 
 function saveEdit(msg: { id: number; revision: number; edit_url?: string | null }) {
   if (!msg.edit_url || !editBody.value.trim()) return
-  router.patch(msg.edit_url, { message: { body: editBody.value, expected_revision: msg.revision } }, {
+  const editToken = createIdempotencyKey()
+  editError.value = ''
+  router.patch(msg.edit_url, { message: { body: editBody.value, expected_revision: msg.revision, edit_token: editToken } }, {
     preserveScroll: true,
-    onSuccess: () => cancelEdit(),
+    onSuccess: (page) => {
+      const flash = page.props.flash as { alert?: string | null; message_edit_succeeded?: string | null } | undefined
+      if (flash?.message_edit_succeeded === editToken) cancelEdit()
+      else editError.value = flash?.alert || ''
+    },
   })
 }
 
@@ -326,6 +336,7 @@ function submit() {
         <p v-if="conversation.is_group && !msg.is_mine" class="mb-1 text-xs font-medium opacity-80">{{ msg.author }}</p>
         <div v-if="editingId === msg.id" class="space-y-1">
           <textarea v-model="editBody" rows="3" class="w-full rounded border bg-background px-2 py-1 text-sm text-foreground" />
+          <p v-if="editError" role="alert" class="text-xs text-destructive">{{ editError }}</p>
           <div class="flex gap-2">
             <button type="button" class="text-xs underline" @click="saveEdit(msg)">{{ t('forum.messages.saveEdit') }}</button>
             <button type="button" class="text-xs underline" @click="cancelEdit">{{ t('forum.messages.cancelEdit') }}</button>

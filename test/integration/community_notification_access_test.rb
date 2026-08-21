@@ -213,14 +213,37 @@ class CommunityNotificationAccessTest < ActionDispatch::IntegrationTest
       category: "forum",
       read: "unread",
       type: "system.notice",
-      period: "month",
-      page: "2"
+      period: "month"
     )
     refute Notification.exists?(own.id)
 
     delete forum_notification_path(foreign)
     assert_response :not_found
     assert Notification.exists?(foreign.id)
+  end
+
+  test "deleting the only notification on the last page returns to the preceding valid page" do
+    notifications = 51.times.map do |index|
+      @user.notifications.create!(
+        notification_type: "system.notice",
+        title: "LAST-PAGE-#{index}",
+        created_at: 51.minutes.ago + index.minutes
+      )
+    end
+    only_last_page_item = notifications.first
+
+    delete forum_notification_path(only_last_page_item), params: {
+      category: "forum",
+      type: "system.notice",
+      page: "2"
+    }
+
+    assert_redirected_to forum_notifications_path(
+      category: "forum",
+      type: "system.notice"
+    )
+    refute Notification.exists?(only_last_page_item.id)
+    assert_equal 50, @user.notifications.where(notification_type: "system.notice").count
   end
 
   test "notification API deletion requires a writer bound to the owner" do

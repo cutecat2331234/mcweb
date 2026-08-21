@@ -75,7 +75,8 @@ module Community
 
     def destroy
       current_user.notifications.find(params[:id]).destroy!
-      redirect_to forum_notifications_path(notification_index_query_params), notice: t("mcweb.flash.notification_deleted")
+      redirect_to forum_notifications_path(notification_index_query_params(valid_page: true)),
+        notice: t("mcweb.flash.notification_deleted")
     end
 
     def visit
@@ -113,14 +114,29 @@ module Community
 
     private
 
-    def notification_index_query_params
-      {
+    def notification_index_query_params(valid_page: false)
+      query = {
         category: params[:category].presence,
         read: params[:read].presence,
         type: params[:type].presence,
         period: params[:period].presence,
         page: params[:page].presence
       }.compact
+      return query unless valid_page && query[:page]
+
+      requested_page = Integer(query[:page], exception: false)
+      return query.except(:page) unless requested_page&.positive?
+
+      remaining = apply_notification_filters(
+        current_user.notifications.recent,
+        category: query[:category],
+        read: query[:read],
+        type: query[:type],
+        period: query[:period]
+      ).count
+      last_page = [ (remaining.fdiv(50)).ceil, 1 ].max
+      corrected_page = [ requested_page, last_page ].min
+      corrected_page > 1 ? query.merge(page: corrected_page) : query.except(:page)
     end
 
     def safe_notification_path(metadata)

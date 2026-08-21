@@ -41,6 +41,7 @@ module Community
       )
 
       if result.success?
+        flash[:message_edit_succeeded] = client_operation_token(message_params[:edit_token])
         redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.message_updated", default: "消息已更新")
       else
         redirect_to forum_conversation_path(@conversation), alert: service_error_message(result)
@@ -49,7 +50,11 @@ module Community
 
     def destroy
       message = @conversation.messages.find(params[:id])
-      result = Community::DeleteMessage.call(user: current_user, message: message)
+      result = Community::DeleteMessage.call(
+        user: current_user,
+        message: message,
+        request_id: request.request_id
+      )
       return head :forbidden if result.failure?
 
       redirect_to forum_conversation_path(@conversation), notice: t("mcweb.flash.message_deleted", default: "消息已删除")
@@ -62,7 +67,7 @@ module Community
     end
 
     def message_params
-      params.require(:message).permit(:body, :expected_revision, attachment_ids: [])
+      params.require(:message).permit(:body, :expected_revision, :edit_token, attachment_ids: [])
     end
   end
 end

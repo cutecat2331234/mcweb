@@ -944,6 +944,7 @@ en:
         report_detail_too_long: Report details cannot exceed 2,000 characters.
         report_already_submitted: You already have a pending report for this content.
         report_create_failed: The report could not be saved. Try again.
+        message_revision_required: Refresh the conversation before editing this message.
         message_revision_conflict: This message changed while you were editing it. Refresh and try again.
         profile_post_blank: Profile-wall content cannot be blank.
         profile_post_too_long: Profile-wall content is too long.
@@ -1449,6 +1450,7 @@ en:
       store_feature_order_shipping_description: "Tracking numbers, shipment status, and packing slips in admin"
       moderation_quarantined_attachment: "Quarantined attachment %{id}"
       moderation_quarantined_attachment_summary: "Security review required for an upload from %{username}"
+      moderation_reported_private_message: Reported private message
       moderation_active_warning: "Active warning for %{username}"
       moderation_active_warning_summary: "%{points} warning points issued by %{issuer}"
       moderation_active_mute: "Active mute for %{username}"
@@ -1642,6 +1644,8 @@ en:
     forum:
       topic_delete:
         author_reason: Deleted by the topic author
+      messages:
+        author_delete_reason: Deleted by the message author
       reports:
         reasons:
           spam: Spam / flooding
@@ -2657,11 +2661,15 @@ en:
           field_evidence_digest: Evidence digest
           field_evidence_body: Captured content
           action_agree: Agree and hide
+          action_uphold: Uphold report
+          action_uphold_private_message: Uphold report and retain evidence
           action_reviewed: Mark reviewed
           action_dismiss: Dismiss report
           action_claim: Claim
           action_reveal_evidence: Reveal encrypted evidence
           action_resolve_target_action: Agree & hide all flags
+          action_uphold_all: Uphold all reports
+          action_uphold_all_private_messages: Uphold all reports and retain evidence
           action_resolve_target_dismiss: Dismiss all flags
           target_topic: "Topic: %{title}"
           target_post: "Post #%{floor} (%{title})"

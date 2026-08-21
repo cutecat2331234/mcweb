@@ -388,7 +388,7 @@ module Community
         target_user =
           case reportable
           when User then reportable
-          when Community::Topic, Community::Post then reportable.user
+          when Community::Topic, Community::Post, Community::Message then reportable.user
           end
         append_user_actions(actions, target_user)
       end

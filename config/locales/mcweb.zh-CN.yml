@@ -944,6 +944,7 @@
         report_detail_too_long: 举报说明不能超过 2,000 个字符。
         report_already_submitted: 你已经提交过一条待处理的相同举报。
         report_create_failed: 举报暂时无法保存，请重试。
+        message_revision_required: 编辑前请刷新当前私信会话。
         message_revision_conflict: 编辑期间私信已发生变化，请刷新后重试。
         profile_post_blank: 主页留言内容不能为空。
         profile_post_too_long: 主页留言内容超过长度限制。
@@ -1449,6 +1450,7 @@
       store_feature_order_shipping_description: "后台填写快递单号、标记发货与生成装箱单"
       moderation_quarantined_attachment: "隔离附件 %{id}"
       moderation_quarantined_attachment_summary: "需要审核 %{username} 上传文件的安全性"
+      moderation_reported_private_message: 私信举报
       moderation_active_warning: "%{username} 的生效警告"
       moderation_active_warning_summary: "%{issuer} 发出了 %{points} 点警告"
       moderation_active_mute: "%{username} 的生效禁言"
@@ -1642,6 +1644,8 @@
     forum:
       topic_delete:
         author_reason: 主题作者主动删除
+      messages:
+        author_delete_reason: 私信作者主动删除
       reports:
         reasons:
           spam: 垃圾广告 / 刷屏
@@ -2657,11 +2661,15 @@
           field_evidence_digest: 证据摘要
           field_evidence_body: 取证内容
           action_agree: 采纳并隐藏
+          action_uphold: 采纳举报
+          action_uphold_private_message: 采纳举报并保留证据
           action_reviewed: 标记已审核
           action_dismiss: 驳回举报
           action_claim: 认领
           action_reveal_evidence: 查看加密证据
           action_resolve_target_action: 采纳并隐藏全部举报
+          action_uphold_all: 采纳全部举报
+          action_uphold_all_private_messages: 采纳全部举报并保留证据
           action_resolve_target_dismiss: 驳回全部举报
           target_topic: "主题：%{title}"
           target_post: "帖子 #%{floor}（%{title}）"

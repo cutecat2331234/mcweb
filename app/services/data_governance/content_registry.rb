@@ -145,7 +145,8 @@ module DataGovernance
         nil
       end
 
-      def before_permanent_purge(target)
+      def before_permanent_purge(target, at: Time.current)
+        cleanup_upload_ids = []
         case target
         when Community::Topic
           post_ids = Community::Post.with_discarded.where(forum_topic_id: target.id).pluck(:id)
@@ -155,7 +156,31 @@ module DataGovernance
         when Community::Post
           Community::Topic.unscoped.where(solved_post_id: target.id).update_all(solved_post_id: nil)
           Community::Topic.unscoped.where(source_post_id: target.id).update_all(source_post_id: nil)
+        when Community::Message
+          attachment_ids = Community::PostAttachment.with_discarded
+            .where(forum_message_id: target.id)
+            .pluck(:id)
+          cleanup_upload_ids = Community::Upload
+            .where(forum_post_attachment_id: attachment_ids)
+            .where.not(status: "cleaned")
+            .pluck(:id)
+          Community::Upload.where(id: cleanup_upload_ids).find_each do |upload|
+            upload.schedule_cleanup!(at: at)
+          end
         end
+
+        cleanup_upload_ids
+      end
+
+      def enqueue_scheduled_upload_cleanup(upload_ids)
+        Array(upload_ids).uniq.each do |upload_id|
+          Maintenance::CleanupForumUploadsJob.perform_later(upload_id: upload_id)
+        end
+      rescue StandardError => error
+        Rails.logger.error(
+          "[DataGovernance::ContentRegistry] upload cleanup enqueue failed " \
+          "upload_ids=#{Array(upload_ids).join(',')} error=#{error.class}"
+        )
       end
 
       def after_lifecycle_change(target)

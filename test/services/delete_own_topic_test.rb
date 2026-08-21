@@ -66,6 +66,37 @@ class DeleteOwnTopicTest < ActiveSupport::TestCase
     assert Community::Topic.exists?(@topic.id)
   end
 
+  test "another user's retained staff whisper marks the topic as staff managed" do
+    whisper = create_post(
+      user: @other,
+      floor: 2,
+      body: "Private staff evidence",
+      post_type: "whisper"
+    )
+    whisper.soft_delete!
+
+    result = Community::DeleteOwnTopic.call(user: @author, topic: @topic)
+
+    assert_predicate result, :failure?
+    assert_equal "topic_delete_staff_managed", result.code
+    assert Community::Topic.exists?(@topic.id)
+  end
+
+  test "a site small action marks the topic as staff managed" do
+    create_post(
+      user: @other,
+      floor: 2,
+      body: "Topic was moved by staff",
+      post_type: "small_action"
+    )
+
+    result = Community::DeleteOwnTopic.call(user: @author, topic: @topic)
+
+    assert_predicate result, :failure?
+    assert_equal "topic_delete_staff_managed", result.code
+    assert Community::Topic.exists?(@topic.id)
+  end
+
   test "staff-managed topics and unresolved reports are evidence protected" do
     @topic.update!(pinned: true)
     staff_result = Community::DeleteOwnTopic.call(user: @author, topic: @topic)
@@ -108,13 +139,14 @@ class DeleteOwnTopicTest < ActiveSupport::TestCase
     topic.reload
   end
 
-  def create_post(user:, floor:, body:, status: "published")
+  def create_post(user:, floor:, body:, status: "published", post_type: "regular")
     Community::Post.create!(
       topic: @topic,
       user: user,
       floor_number: floor,
       body: body,
-      status: status
+      status: status,
+      post_type: post_type
     )
   end
 end

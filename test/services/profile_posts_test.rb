@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require "test_helper"
+require "inertia_rails/minitest"
 
 class CreateProfilePostTest < ActiveSupport::TestCase
   setup do
@@ -166,6 +167,8 @@ class EditProfileWallItemTest < ActiveSupport::TestCase
 end
 
 class ProfilePostsFlowTest < ActionDispatch::IntegrationTest
+  include InertiaRails::Minitest
+
   setup do
     @owner = create_user
     @author = create_user
@@ -189,5 +192,78 @@ class ProfilePostsFlowTest < ActionDispatch::IntegrationTest
     delete forum_profile_post_path(pp.id)
     assert_redirected_to forum_user_path(@owner.username)
     assert_not Community::ProfilePost.exists?(pp.id), "soft-deleted post should be excluded by the default scope"
+  end
+
+
+  test "profile-post editing closes only after the server echoes the success token" do
+    wall_post = Community::CreateProfilePost.call(
+      author: @author,
+      profile_user: @owner,
+      body: "Original wall post"
+    ).value
+    sign_in_as(@author)
+    success_token = "wall-post-#{SecureRandom.hex(8)}"
+
+    patch forum_profile_post_path(wall_post), params: {
+      profile_post: {
+        body: "Updated wall post",
+        expected_revision: 1,
+        edit_token: success_token
+      }
+    }
+    assert_redirected_to forum_user_path(@owner.username)
+    follow_redirect!
+    assert_equal success_token,
+      inertia.props.deep_symbolize_keys.dig(:flash, :profile_wall_edit_succeeded)
+
+    stale_token = "wall-post-stale-#{SecureRandom.hex(8)}"
+    patch forum_profile_post_path(wall_post), params: {
+      profile_post: {
+        body: "Stale overwrite",
+        expected_revision: 1,
+        edit_token: stale_token
+      }
+    }
+    assert_redirected_to forum_user_path(@owner.username)
+    follow_redirect!
+    props = inertia.props.deep_symbolize_keys
+    assert_nil props.dig(:flash, :profile_wall_edit_succeeded)
+    assert_equal I18n.t("mcweb.services.errors.profile_post_revision_conflict"), props.dig(:flash, :alert)
+    assert_equal "Updated wall post", wall_post.reload.body
+  end
+
+  test "profile-comment stale conflicts never emit the success token" do
+    wall_post = Community::CreateProfilePost.call(
+      author: @author,
+      profile_user: @owner,
+      body: "Comment host"
+    ).value
+    comment = Community::CreateProfilePostComment.call(
+      author: @author,
+      profile_post: wall_post,
+      body: "Original comment"
+    ).value
+    edited = Community::EditProfileWallItem.call(
+      author: @author,
+      item: comment,
+      body: "Newer comment",
+      expected_revision: 1
+    )
+    assert_predicate edited, :success?, edited.error
+    sign_in_as(@author)
+
+    patch forum_profile_post_comment_path(comment), params: {
+      comment: {
+        body: "Stale comment",
+        expected_revision: 1,
+        edit_token: "wall-comment-stale-#{SecureRandom.hex(8)}"
+      }
+    }
+    assert_redirected_to forum_user_path(@owner.username)
+    follow_redirect!
+    props = inertia.props.deep_symbolize_keys
+    assert_nil props.dig(:flash, :profile_wall_edit_succeeded)
+    assert_equal I18n.t("mcweb.services.errors.profile_post_revision_conflict"), props.dig(:flash, :alert)
+    assert_equal "Newer comment", comment.reload.body
   end
 end

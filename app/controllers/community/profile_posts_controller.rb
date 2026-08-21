@@ -37,6 +37,9 @@ module Community
         request_id: request.request_id
       )
       if result.success?
+        flash[:profile_wall_edit_succeeded] = client_operation_token(
+          params.dig(:profile_post, :edit_token)
+        )
         redirect_to forum_user_path(post.profile_user.username), notice: t("mcweb.flash.profile_post_updated")
       else
         redirect_to forum_user_path(post.profile_user.username), alert: service_error_message(result)

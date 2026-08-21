@@ -100,11 +100,12 @@ module Admin
         Administration::AuditLogger.call(
           actor: current_user,
           action: "admin.forum_report_reviewed",
-          resource: @report
+          resource: @report,
+          metadata: { disposition: report_disposition(@report, status: @report.status) }
         )
 
         Community::ClearReportableHide.call(reportable: @report.reportable) if @report.dismissed?
-        Community::HideReportable.call(reportable: @report.reportable) if @report.actioned?
+        hide_actioned_reportable(@report) if @report.actioned?
 
         redirect_to admin_forum_report_path(@report), notice: t("mcweb.flash.report_resolved")
       rescue ActiveRecord::RecordInvalid => e
@@ -127,14 +128,18 @@ module Admin
         count = pending.count
         pending.find_each { |report| report.review!(reviewer: current_user, status: status) }
 
-        Community::HideReportable.call(reportable: @report.reportable) if status == :actioned
+        hide_actioned_reportable(@report) if status == :actioned
         Community::ClearReportableHide.call(reportable: @report.reportable) if status == :dismissed
 
         Administration::AuditLogger.call(
           actor: current_user,
           action: "admin.forum_reports_bulk_resolved",
           resource: @report.reportable,
-          metadata: { count: count, status: status }
+          metadata: {
+            count: count,
+            status: status,
+            disposition: report_disposition(@report, status: status)
+          }
         )
         redirect_to admin_forum_reports_path, notice: t("mcweb.flash.reports_bulk_resolved", count: count)
       end
@@ -191,7 +196,7 @@ module Admin
 
         [
           {
-            label: forum_t("reports.action_agree"),
+            label: forum_t(report_action_label_key),
             href: admin_forum_report_path(@report),
             method: "patch",
             data: { report: { status: "actioned" } }
@@ -217,7 +222,7 @@ module Admin
             variant: "outline"
           },
           {
-            label: forum_t("reports.action_resolve_target_action"),
+            label: forum_t(report_action_label_key(bulk: true)),
             href: resolve_target_admin_forum_report_path(@report),
             method: "patch",
             variant: "outline",
@@ -300,6 +305,41 @@ module Admin
             variant: "outline"
           }
         ]
+      end
+
+      def hide_actioned_reportable(report)
+        return unless hideable_reportable?(report)
+
+        Community::HideReportable.call(reportable: report.reportable)
+      end
+
+      def report_disposition(report, status:)
+        normalized = status.to_s
+        return normalized unless normalized == "actioned"
+
+        return "upheld_private_message_evidence_retained" if report.reportable_type == "Community::Message"
+        return "actioned_and_hidden" if hideable_reportable?(report)
+
+        "upheld_without_content_mutation"
+      end
+
+      def report_action_label_key(bulk: false)
+        if private_message_report?
+          bulk ? "reports.action_uphold_all_private_messages" : "reports.action_uphold_private_message"
+        elsif hideable_reportable?(@report)
+          bulk ? "reports.action_resolve_target_action" : "reports.action_agree"
+        else
+          bulk ? "reports.action_uphold_all" : "reports.action_uphold"
+        end
+      end
+
+      def hideable_reportable?(report)
+        reportable = report.reportable
+        [
+          Community::Topic,
+          Community::Post,
+          Community::ProfilePost
+        ].any? { |type| reportable.is_a?(type) }
       end
 
       def profile_wall_username(comment, fallback: forum_na)

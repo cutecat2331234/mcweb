@@ -10,7 +10,7 @@ module Community
       @user = user
       @message = message
       @body = body.to_s.strip
-      @expected_revision = expected_revision.presence&.to_i
+      @expected_revision = Integer(expected_revision, exception: false)
     end
 
     def call
@@ -18,11 +18,17 @@ module Community
       return ServiceResult.failure(error: "message_deleted") if @message.deleted?
       return ServiceResult.failure(error: "message_body_required") if @body.blank?
       return ServiceResult.failure(error: "message_too_long") if @body.length > MAX_LENGTH
+      unless @expected_revision&.positive?
+        return ServiceResult.failure(
+          error: "message_revision_required",
+          code: "message_revision_required"
+        )
+      end
 
       result = nil
       Community::Message.transaction do
         @message.lock!
-        if @expected_revision && @message.revision != @expected_revision
+        if @message.revision != @expected_revision
           result = ServiceResult.failure(error: "message_revision_conflict", code: "message_revision_conflict")
           raise ActiveRecord::Rollback
         end

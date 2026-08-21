@@ -63,7 +63,14 @@ module Community
       @topic.pinned? ||
         @topic.featured? ||
         @topic.assigned_to_id.present? ||
-        @topic.staff_notes.exists?
+        @topic.staff_notes.exists? ||
+        staff_post_evidence?
+    end
+
+    def staff_post_evidence?
+      posts = Community::Post.with_discarded.where(forum_topic_id: @topic.id)
+      posts.where(post_type: "small_action").exists? ||
+        posts.where(post_type: "whisper").where.not(user_id: @user.id).exists?
     end
 
     def other_user_replies?

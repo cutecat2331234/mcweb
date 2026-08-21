@@ -45,7 +45,7 @@ module Community
                reportableType: report_params[:reportable_type],
                reportableId: report_params[:reportable_id],
                reasonOptions: Community::Report.reason_options.map { |code, label| { value: code, label: label } },
-               form_errors: { "report.reason" => result.error.presence || result.errors.values.flatten.join("；") }
+               form_errors: { "report.reason" => service_error_message(result) }
              },
              status: :unprocessable_entity
     end

@@ -3,6 +3,16 @@
 class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
   REVIEW_PERMISSION = "forum.conversations.reports.review"
 
+  class MigrationMessage < ActiveRecord::Base
+    self.table_name = "forum_messages"
+  end
+
+  class MigrationMessageRevision < ActiveRecord::Base
+    self.table_name = "forum_message_revisions"
+
+    has_encrypted :body, encrypted_attribute: :encrypted_body
+  end
+
   def up
     add_column :forum_reports, :dedupe_key, :string, limit: 64
     add_index :forum_reports,
@@ -56,6 +66,7 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
     add_check_constraint :forum_message_revisions,
       "content_digest ~ '^[0-9a-f]{64}$'",
       name: "forum_message_revisions_digest_format"
+    backfill_message_revisions
     add_column :forum_message_drafts, :attachment_ids, :jsonb, null: false, default: []
 
     add_reference :forum_post_attachments,
@@ -88,12 +99,6 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
     execute "DROP TRIGGER IF EXISTS forum_message_revisions_immutable ON forum_message_revisions"
     execute "DROP FUNCTION IF EXISTS forum_message_revisions_reject_change()"
 
-    execute <<~SQL.squish
-      DELETE FROM role_permissions
-      WHERE permission_id IN (SELECT id FROM permissions WHERE key = #{connection.quote(REVIEW_PERMISSION)})
-    SQL
-    execute "DELETE FROM permissions WHERE key = #{connection.quote(REVIEW_PERMISSION)}"
-
     remove_check_constraint :forum_profile_post_comments, name: "forum_profile_post_comments_positive_revision"
     remove_column :forum_profile_post_comments, :revision
     remove_column :forum_profile_post_comments, :edited_at
@@ -102,6 +107,7 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
     remove_column :forum_profile_posts, :edited_at
 
     remove_check_constraint :forum_post_attachments, name: "forum_post_attachments_single_parent"
+    schedule_message_attachment_cleanup_for_rollback
     remove_reference :forum_post_attachments, :forum_message, foreign_key: true
 
     drop_table :forum_message_revisions
@@ -116,6 +122,51 @@ class AddCommunitySelfServiceFoundation < ActiveRecord::Migration[8.1]
   end
 
   private
+
+  # Keep private-message blobs quota-visible and eligible for the existing
+  # cleanup worker after their ownership column disappears during rollback.
+  def schedule_message_attachment_cleanup_for_rollback
+    execute <<~SQL.squish
+      UPDATE forum_uploads AS uploads
+      SET status = 'cleanup_pending',
+          expires_at = CURRENT_TIMESTAMP,
+          cleanup_started_at = NULL,
+          cleanup_error_code = NULL,
+          cleanup_error_message = NULL,
+          forum_post_id = NULL,
+          updated_at = CURRENT_TIMESTAMP
+      FROM forum_post_attachments AS attachments
+      WHERE uploads.forum_post_attachment_id = attachments.id
+        AND attachments.forum_message_id IS NOT NULL
+        AND uploads.status <> 'cleaned'
+    SQL
+  end
+
+  def backfill_message_revisions
+    MigrationMessage.reset_column_information
+    MigrationMessageRevision.reset_column_information
+
+    MigrationMessage.find_each do |message|
+      next if MigrationMessageRevision.exists?(
+        forum_message_id: message.id,
+        revision: message.revision
+      )
+
+      revision = MigrationMessageRevision.new(
+        forum_message_id: message.id,
+        editor_id: message.user_id,
+        revision: message.revision,
+        content_digest: Digest::SHA256.hexdigest(message.body.to_s),
+        created_at: message.created_at
+      )
+      revision.body = message.body
+      revision.save!(validate: false)
+      revision.reload
+      unless revision.encrypted_body.present? && revision.body == message.body
+        raise "forum message revision backfill verification failed for row #{message.id}"
+      end
+    end
+  end
 
   def create_report_evidence_immutability
     execute <<~SQL

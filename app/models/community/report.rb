@@ -1,6 +1,10 @@
 module Community
   class Report < ApplicationRecord
     REASON_CODES = %w[spam offensive off_topic other].freeze
+    # Compatibility contract for plugins and older callers. Values deliberately
+    # remain stable codes; user-facing labels belong to the locale-backed
+    # reason_options API below.
+    REASONS = REASON_CODES.index_with(&:itself).freeze
     MAX_REASON_LENGTH = 2_000
 
     # Built-in reasons plus any admin-configured extras

@@ -700,7 +700,7 @@ export default {
         reject: '拒绝内容',
         resolve_case: '解决案件',
         dismiss_case: '驳回案件',
-        resolve_report: '同意举报并隐藏',
+        resolve_report: '采纳举报',
         dismiss_report: '驳回举报',
         delete_content: '删除内容',
         move_topic: '移动主题',

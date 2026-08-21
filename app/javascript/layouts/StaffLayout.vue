@@ -35,6 +35,7 @@ import {
 import { routes } from '@/lib/routes'
 import { useTheme } from '@/lib/useTheme'
 import { vAccessibleFormControlNames } from '@/directives/arcoAccessibility'
+import AdminLanguageSwitcher from '@/components/admin/AdminLanguageSwitcher.vue'
 
 const page = usePage()
 const { t } = useI18n()
@@ -212,6 +213,7 @@ watch(isDark, syncArcoTheme, { immediate: true })
           </Space>
 
           <Space align="center" :size="4">
+            <AdminLanguageSwitcher />
             <Button
               type="text"
               shape="circle"

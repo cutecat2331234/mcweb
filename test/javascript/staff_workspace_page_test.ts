@@ -22,6 +22,8 @@ test('staff workspace is independent from the administrator shell and responsive
   assert.match(layout, /class="mc-page-container"/)
   assert.match(layout, /boxSizing: 'border-box'/)
   assert.match(layout, /background: 'var\(--color-bg-1\)'/)
+  assert.match(layout, /import AdminLanguageSwitcher from '@\/components\/admin\/AdminLanguageSwitcher\.vue'/)
+  assert.match(layout, /<AdminLanguageSwitcher \/>/)
   assert.match(layout, /signOutConfirmTitle/)
   assert.doesNotMatch(layout, /<style\b/)
 })
